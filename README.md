@@ -1,22 +1,11 @@
 # Lemmings - Lemmings / Oh no! More Lemmings
 
-Lemmings reimplementation written in HTML5 / JavaScript
+Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via WebMIDI instead of playing sounds (or music)
 
-## Play Online
-
-- Browser: https://lemmingsjs.oklemenz.de
-- Keyboard / Mouse Controls
-
-## Play Mobile
-
-- Browser: https://lemmingsjs.oklemenz.de
-  - Use Landscape Mode (Single Tab, Disable Landscape Tab Bar in Browser Settings)
-- Add to Home Screen to start as Fullscreen App
-- Touch Controls (tap/drag area on screen):
-
-## Play GitHub Version
-
-- Browser: https://oklemenz.github.io/LemmingsJS
+## Current Progress
+- [X] Added WebMIDI.js to /js
+- [ ] Comb Lemmings.js for spelling mistakes
+- [ ] Remove unfinished sound/music functionality 
 
 ## Play Locally
 
@@ -29,7 +18,7 @@ Lemmings reimplementation written in HTML5 / JavaScript
 
 ## Options
 
-Url parameters are leveraged to save game state automatically (shortcut in brackets):
+URL parameters are leveraged to save game state automatically (shortcut in brackets):
 
 - `version (v)`:
   - 1: Lemmings (default)
@@ -47,3 +36,4 @@ Url parameters are leveraged to save game state automatically (shortcut in brack
 ## Credits
 
 - https://github.com/tomsoftware
+- https://github.com/oklemenz/LemmingsJS
