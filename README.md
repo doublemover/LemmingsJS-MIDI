@@ -11,6 +11,12 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 - [ ] See if it still runs
 - [ ] Implement MIDIManager
 
+## Things I need to look at
+- [ ] Source some form of level editor
+or 
+- [ ] Make and import a custom DAT with just image assets and a level with 8 tracks and 8 spawns
+- [ ] The ability to place flags or something to trigger different midi events as they are walked by
+
 ## Play Locally
 
 - Install [Node.js](https://nodejs.org)
