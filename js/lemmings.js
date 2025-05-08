@@ -8,22 +8,22 @@ var Lemmings;
             let configFileReader = this.fileProvider.loadString("config.json");
             this.configReader = new Lemmings.ConfigReader(configFileReader);
         }
-        /** return a game object to controle/run the game */
+        /** return a game object to control/run the game */
         getGame(gameType) {
             return new Promise((resolve, reject) => {
                 /// load resources
                 this.getGameResources(gameType)
-                    .then(res => resolve(new Lemmings.Game(res)));
+                    .then((res) => resolve(new Lemmings.Game(res)));
             });
         }
         /** return the config of a game type */
         getConfig(gameType) {
             return this.configReader.getConfig(gameType);
         }
-        /** return a Game Resources that gaves access to images, maps, sounds  */
+        /** return a Game Resources that gives access to images, maps, sounds  */
         getGameResources(gameType) {
             return new Promise((resolve, reject) => {
-                this.configReader.getConfig(gameType).then(config => {
+                this.configReader.getConfig(gameType).then((config) => {
                     if (config == null) {
                         reject();
                         return;
@@ -37,37 +37,32 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** reprecent access to the resources of a Lemmings Game */
+    /** represents access to the resources of a Lemmings Game */
     class GameResources {
         constructor(fileProvider, config) {
             this.fileProvider = fileProvider;
             this.config = config;
             this.mainDat = null;
         }
-        /** free resources */
-        dispose() {
-            this.stopMusic();
-            this.stopSound();
-            this.soundImage = null;
-        }
         /** return the main.dat file container */
         getMainDat() {
-            if (this.mainDat != null)
+            if (this.mainDat != null) {
                 return this.mainDat;
+            }
             this.mainDat = new Promise((resolve, reject) => {
                 this.fileProvider.loadBinary(this.config.path, "MAIN.DAT")
-                    .then(data => {
-                    /// split the file in it's parts
-                    let mainParts = new Lemmings.FileContainer(data);
-                    resolve(mainParts);
-                });
+                    .then((data) => {
+                        /// split the file
+                        let mainParts = new Lemmings.FileContainer(data);
+                        resolve(mainParts);
+                    });
             });
             return this.mainDat;
         }
         /** return the Lemmings animations */
         getLemmingsSprite(colorPalette) {
             return new Promise((resolve, reject) => {
-                this.getMainDat().then(container => {
+                this.getMainDat().then((container) => {
                     let sprite = new Lemmings.LemmingsSprite(container.getPart(0), colorPalette);
                     resolve(sprite);
                 });
@@ -75,14 +70,14 @@ var Lemmings;
         }
         getSkillPanelSprite(colorPalette) {
             return new Promise((resolve, reject) => {
-                this.getMainDat().then(container => {
+                this.getMainDat().then((container) => {
                     resolve(new Lemmings.SkillPanelSprites(container.getPart(2), container.getPart(6), colorPalette));
                 });
             });
         }
         getMasks() {
             return new Promise((resolve, reject) => {
-                this.getMainDat().then(container => {
+                this.getMainDat().then((container) => {
                     resolve(new Lemmings.MaskProvider(container.getPart(1)));
                 });
             });
@@ -95,64 +90,6 @@ var Lemmings;
         /** return the level group names for this game */
         getLevelGroups() {
             return this.config.level.groups;
-        }
-        initSoundImage() {
-            if (this.soundImage)
-                return this.soundImage;
-            this.soundImage = new Promise((resolve, reject) => {
-                /// load the adlib file
-                this.fileProvider.loadBinary(this.config.path, "ADLIB.DAT")
-                    .then((data) => {
-                    /// unpack the file
-                    var container = new Lemmings.FileContainer(data);
-                    /// create Sound Image
-                    var soundImage = new Lemmings.SoundImageManager(container.getPart(0), this.config.audioConfig);
-                    resolve(soundImage);
-                });
-            });
-            return this.soundImage;
-        }
-        /** stop playback of the music song */
-        stopMusic() {
-            if (this.musicPlayer != null) {
-                this.musicPlayer.stop();
-                this.musicPlayer = null;
-            }
-        }
-        /** return a palyer to playback a music song */
-        getMusicPlayer(songIndex) {
-            this.stopMusic();
-            return new Promise((resolve, reject) => {
-                this.initSoundImage().then(soundImage => {
-                    /// get track
-                    var adlibSrc = soundImage.getMusicTrack(songIndex);
-                    /// play
-                    this.musicPlayer = new Lemmings.AudioPlayer(adlibSrc, Lemmings.OplEmulatorType.Dosbox);
-                    /// return
-                    resolve(this.musicPlayer);
-                });
-            });
-        }
-        /** stop playback of the music song */
-        stopSound() {
-            if (this.soundPlayer != null) {
-                this.soundPlayer.stop();
-                this.soundPlayer = null;
-            }
-        }
-        /** return a palyer to playback a sound effect */
-        getSoundPlayer(sondIndex) {
-            this.stopSound();
-            return new Promise((resolve, reject) => {
-                this.initSoundImage().then(soundImage => {
-                    /// get track
-                    var adlibSrc = soundImage.getSoundTrack(sondIndex);
-                    /// play
-                    this.soundPlayer = new Lemmings.AudioPlayer(adlibSrc, Lemmings.OplEmulatorType.Dosbox);
-                    /// return
-                    resolve(this.soundPlayer);
-                });
-            });
         }
     }
     Lemmings.GameResources = GameResources;
@@ -181,26 +118,28 @@ var Lemmings;
         GameStateTypes[GameStateTypes["FAILED_LESS_LEMMINGS"] = 3] = "FAILED_LESS_LEMMINGS";
         GameStateTypes[GameStateTypes["SUCCEEDED"] = 4] = "SUCCEEDED";
     })(GameStateTypes = Lemmings.GameStateTypes || (Lemmings.GameStateTypes = {}));
-    ;
     (function (GameStateTypes) {
         function toString(type) {
             return GameStateTypes[type];
         }
         GameStateTypes.toString = toString;
+
         function length() {
             return 5;
         }
         GameStateTypes.length = length;
+
         function isValid(type) {
-            return ((type > GameStateTypes.UNKNOWN) && (type < this.lenght()));
+            return ((type > GameStateTypes.UNKNOWN) && (type < this.length()));
         }
         GameStateTypes.isValid = isValid;
         /** return the GameStateTypes with the given name */
         function fromString(typeName) {
             typeName = typeName.trim().toUpperCase();
             for (let i = 0; i < this.length(); i++) {
-                if (GameStateTypes[i] == typeName)
+                if (GameStateTypes[i] == typeName) {
                     return i;
+                }
             }
             return GameStateTypes.UNKNOWN;
         }
@@ -219,26 +158,28 @@ var Lemmings;
         GameTypes[GameTypes["HOLIDAY93"] = 5] = "HOLIDAY93";
         GameTypes[GameTypes["HOLIDAY94"] = 6] = "HOLIDAY94";*/
     })(GameTypes = Lemmings.GameTypes || (Lemmings.GameTypes = {}));
-    ;
     (function (GameTypes) {
         function toString(type) {
             return GameTypes[type];
         }
         GameTypes.toString = toString;
+
         function length() {
             return 7;
         }
         GameTypes.length = length;
+
         function isValid(type) {
-            return ((type > GameTypes.UNKNOWN) && (type < this.lenght()));
+            return ((type > GameTypes.UNKNOWN) && (type < this.length()));
         }
         GameTypes.isValid = isValid;
         /** return the GameTypes with the given name */
         function fromString(typeName) {
             typeName = typeName.trim().toUpperCase();
             for (let i = 0; i < this.length(); i++) {
-                if (GameTypes[i] == typeName)
+                if (GameTypes[i] == typeName) {
                     return i;
+                }
             }
             return GameTypes.UNKNOWN;
         }
@@ -247,14 +188,14 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** provides an game object to controle the game */
+    /** provides an game object to pixel the game */
     class Game {
         constructor(gameResources) {
             this.log = new Lemmings.LogHandler("Game");
             this.gameResources = null;
-            this.guiDispaly = null;
-            this.dispaly = null;
-            this.gameDispaly = null;
+            this.guiDisplay = null;
+            this.display = null;
+            this.gameDisplay = null;
             this.gameTimer = null;
             this.commandManager = null;
             this.showDebug = false;
@@ -262,17 +203,17 @@ var Lemmings;
             this.finalGameState = Lemmings.GameStateTypes.UNKNOWN;
             this.gameResources = gameResources;
         }
-        setGameDispaly(dispaly) {
-            this.dispaly = dispaly;
-            if (this.gameDispaly != null) {
-                this.gameDispaly.setGuiDisplay(dispaly);
-                this.dispaly.setScreenPosition(this.level.screenPositionX, 0);
+        setGameDisplay(display) {
+            this.display = display;
+            if (this.gameDisplay != null) {
+                this.gameDisplay.setGuiDisplay(display);
+                this.display.setScreenPosition(this.level.screenPositionX, 0);
             }
         }
-        setGuiDisplay(dispaly) {
-            this.guiDispaly = dispaly;
+        setGuiDisplay(display) {
+            this.guiDisplay = display;
             if (this.gameGui != null) {
-                this.gameGui.setGuiDisplay(dispaly);
+                this.gameGui.setGuiDisplay(display);
             }
         }
         /** load a new game/level */
@@ -281,45 +222,45 @@ var Lemmings;
             this.levelIndex = levelIndex;
             return new Promise((resolve, reject) => {
                 this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex)
-                    .then(level => {
-                    this.gameTimer = new Lemmings.GameTimer(level);
-                    this.gameTimer.onGameTick.on(() => {
-                        this.onGameTimerTick();
+                    .then((level) => {
+                        this.gameTimer = new Lemmings.GameTimer(level);
+                        this.gameTimer.onGameTick.on(() => {
+                            this.onGameTimerTick();
+                        });
+                        this.commandManager = new Lemmings.CommandManager(this, this.gameTimer);
+                        this.skills = new Lemmings.GameSkills(level);
+                        this.level = level;
+                        this.gameVictoryCondition = new Lemmings.GameVictoryCondition(level);
+                        this.triggerManager = new Lemmings.TriggerManager(this.gameTimer);
+                        this.triggerManager.addRange(level.triggers);
+                        /// request next resources
+                        let maskPromise = this.gameResources.getMasks();
+                        let lemPromise = this.gameResources.getLemmingsSprite(this.level.colorPalette);
+                        return Promise.all([maskPromise, lemPromise]);
+                    })
+                    .then((results) => {
+                        let masks = results[0];
+                        let lemSprite = results[1];
+                        let particleTable = new Lemmings.ParticleTable(this.level.colorPalette);
+                        /// setup Lemmings
+                        this.lemmingManager = new Lemmings.LemmingManager(this.level, lemSprite, this.triggerManager, this.gameVictoryCondition, masks, particleTable);
+                        return this.gameResources.getSkillPanelSprite(this.level.colorPalette);
+                    })
+                    .then((skillPanelSprites) => {
+                        /// setup gui
+                        this.gameGui = new Lemmings.GameGui(this, skillPanelSprites, this.skills, this.gameTimer, this.gameVictoryCondition);
+                        if (this.guiDisplay != null) {
+                            this.gameGui.setGuiDisplay(this.guiDisplay);
+                        }
+                        this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
+                        this.objectManager.addRange(this.level.objects);
+                        this.gameDisplay = new Lemmings.GameDisplay(this, this.level, this.lemmingManager, this.objectManager, this.triggerManager);
+                        if (this.display != null) {
+                            this.gameDisplay.setGuiDisplay(this.display);
+                        }
+                        /// let's start!
+                        resolve(this);
                     });
-                    this.commandManager = new Lemmings.CommandManager(this, this.gameTimer);
-                    this.skills = new Lemmings.GameSkills(level);
-                    this.level = level;
-                    this.gameVictoryCondition = new Lemmings.GameVictoryCondition(level);
-                    this.triggerManager = new Lemmings.TriggerManager(this.gameTimer);
-                    this.triggerManager.addRange(level.triggers);
-                    /// request next resources
-                    let maskPromis = this.gameResources.getMasks();
-                    let lemPromis = this.gameResources.getLemmingsSprite(this.level.colorPalette);
-                    return Promise.all([maskPromis, lemPromis]);
-                })
-                    .then(results => {
-                    let masks = results[0];
-                    let lemSprite = results[1];
-                    let particleTable = new Lemmings.ParticleTable(this.level.colorPalette);
-                    /// setup Lemmings
-                    this.lemmingManager = new Lemmings.LemmingManager(this.level, lemSprite, this.triggerManager, this.gameVictoryCondition, masks, particleTable);
-                    return this.gameResources.getSkillPanelSprite(this.level.colorPalette);
-                })
-                    .then(skillPanelSprites => {
-                    /// setup gui
-                    this.gameGui = new Lemmings.GameGui(this, skillPanelSprites, this.skills, this.gameTimer, this.gameVictoryCondition);
-                    if (this.guiDispaly != null) {
-                        this.gameGui.setGuiDisplay(this.guiDispaly);
-                    }
-                    this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
-                    this.objectManager.addRange(this.level.objects);
-                    this.gameDispaly = new Lemmings.GameDisplay(this, this.level, this.lemmingManager, this.objectManager, this.triggerManager);
-                    if (this.dispaly != null) {
-                        this.gameDispaly.setGuiDisplay(this.dispaly);
-                    }
-                    /// let's start!
-                    resolve(this);
-                });
             });
         }
         /** run the game */
@@ -357,8 +298,8 @@ var Lemmings;
             this.commandManager.queueCommand(newCommand);
         }
         /** enables / disables the display of debug information */
-            setDebugMode(vale) {
-            this.showDebug = vale;
+        setDebugMode(value) {
+            this.showDebug = value;
         }
         /** run one step in game time and render the result */
         onGameTimerTick() {
@@ -369,7 +310,7 @@ var Lemmings;
         }
         /** return the current state of the game */
         getGameState() {
-            /// if the game has finised return it's saved state
+            /// if the game has finished return its saved state
             if (this.finalGameState != Lemmings.GameStateTypes.UNKNOWN) {
                 return this.finalGameState;
             }
@@ -378,8 +319,7 @@ var Lemmings;
             if ((this.gameVictoryCondition.getLeftCount() <= 0) && (this.gameVictoryCondition.getOutCount() <= 0)) {
                 if (hasWon) {
                     return Lemmings.GameStateTypes.SUCCEEDED;
-                }
-                else {
+                } else {
                     return Lemmings.GameStateTypes.FAILED_LESS_LEMMINGS;
                 }
             }
@@ -387,14 +327,12 @@ var Lemmings;
             if (this.gameTimer.getGameLeftTime() <= 0) {
                 if (hasWon) {
                     return Lemmings.GameStateTypes.SUCCEEDED;
-                }
-                else {
+                } else {
                     return Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
                 }
             }
             return Lemmings.GameStateTypes.RUNNING;
         }
-        /** check if the game  */
         checkForGameOver() {
             if (this.finalGameState != Lemmings.GameStateTypes.UNKNOWN) {
                 return;
@@ -416,25 +354,19 @@ var Lemmings;
         }
         /** refresh display */
         render() {
-            if (this.gameDispaly) {
-                this.gameDispaly.render();
+            if (this.gameDisplay) {
+                this.gameDisplay.render();
                 if (this.showDebug) {
-                    this.gameDispaly.renderDebug();
+                    this.gameDisplay.renderDebug();
                 }
             }
-            if (this.guiDispaly) {
+            if (this.guiDisplay) {
                 this.gameGui.render();
             }
-            this.guiDispaly.redraw();
+            this.guiDisplay.redraw();
         }
     }
     Lemmings.Game = Game;
-})(Lemmings || (Lemmings = {}));
-var Lemmings;
-(function (Lemmings) {
-    class AudioConfig {
-    }
-    Lemmings.AudioConfig = AudioConfig;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
@@ -446,7 +378,6 @@ var Lemmings;
             this.path = "";
             /** unique GameType Name */
             this.gametype = Lemmings.GameTypes.UNKNOWN;
-            this.audioConfig = new Lemmings.AudioConfig();
             this.level = new Lemmings.LevelConfig();
         }
     }
@@ -486,7 +417,7 @@ var Lemmings;
             this.onSelectionChanged = new Lemmings.EventHandler();
             this.skills = level.skills;
         }
-        /** return true if the skill can be redused / used */
+        /** return true if the skill can be reused / used */
         canReduseSkill(type) {
             return (this.skills[type] > 0);
         }
@@ -575,13 +506,12 @@ var Lemmings;
         toggle() {
             if (this.isRunning()) {
                 this.suspend();
-            }
-            else {
+            } else {
                 this.continue();
             }
         }
         /** Run the game timer */
-        continue() {
+        continue () {
             if (this.isRunning()) {
                 return;
             }
@@ -635,7 +565,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /// Handels the number of lemmings
+    /// Handles the number of lemmings
     ///  - needed to win or lose the game
     ///  - release rate
     class GameVictoryCondition {
@@ -749,7 +679,7 @@ var Lemmings;
         LemmingStateType[LemmingStateType["BLOCKING"] = 10] = "BLOCKING";
         LemmingStateType[LemmingStateType["BASHING"] = 11] = "BASHING";
         LemmingStateType[LemmingStateType["FLOATING"] = 12] = "FLOATING";
-        LemmingStateType[LemmingStateType["MINEING"] = 13] = "MINEING";
+        LemmingStateType[LemmingStateType["MINING"] = 13] = "MINING";
         LemmingStateType[LemmingStateType["DROWNING"] = 14] = "DROWNING";
         LemmingStateType[LemmingStateType["EXITING"] = 15] = "EXITING";
         LemmingStateType[LemmingStateType["FRYING"] = 16] = "FRYING";
@@ -782,7 +712,7 @@ var Lemmings;
             this.actions[Lemmings.LemmingStateType.EXITING] = new Lemmings.ActionExitingSystem(lemmingsSprite, gameVictoryCondition);
             this.actions[Lemmings.LemmingStateType.FLOATING] = new Lemmings.ActionFloatingSystem(lemmingsSprite);
             this.actions[Lemmings.LemmingStateType.BLOCKING] = new Lemmings.ActionBlockerSystem(lemmingsSprite, triggerManager);
-            this.actions[Lemmings.LemmingStateType.MINEING] = new Lemmings.ActionMineSystem(lemmingsSprite, masks);
+            this.actions[Lemmings.LemmingStateType.MINING] = new Lemmings.ActionMineSystem(lemmingsSprite, masks);
             this.actions[Lemmings.LemmingStateType.CLIMBING] = new Lemmings.ActionClimbSystem(lemmingsSprite);
             this.actions[Lemmings.LemmingStateType.HOISTING] = new Lemmings.ActionHoistSystem(lemmingsSprite);
             this.actions[Lemmings.LemmingStateType.BASHING] = new Lemmings.ActionBashSystem(lemmingsSprite, masks);
@@ -795,7 +725,7 @@ var Lemmings;
             this.skillActions[Lemmings.SkillTypes.DIGGER] = this.actions[Lemmings.LemmingStateType.DIGGING];
             this.skillActions[Lemmings.SkillTypes.FLOATER] = this.actions[Lemmings.LemmingStateType.FLOATING];
             this.skillActions[Lemmings.SkillTypes.BLOCKER] = this.actions[Lemmings.LemmingStateType.BLOCKING];
-            this.skillActions[Lemmings.SkillTypes.MINER] = this.actions[Lemmings.LemmingStateType.MINEING];
+            this.skillActions[Lemmings.SkillTypes.MINER] = this.actions[Lemmings.LemmingStateType.MINING];
             this.skillActions[Lemmings.SkillTypes.CLIMBER] = this.actions[Lemmings.LemmingStateType.CLIMBING];
             this.skillActions[Lemmings.SkillTypes.BASHER] = this.actions[Lemmings.LemmingStateType.BASHING];
             this.skillActions[Lemmings.SkillTypes.BUILDER] = this.actions[Lemmings.LemmingStateType.BUILDING];
@@ -853,27 +783,27 @@ var Lemmings;
             }
             let triggerType = this.triggerManager.trigger(lem.x, lem.y);
             switch (triggerType) {
-                case Lemmings.TriggerTypes.NO_TRIGGER:
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
-                case Lemmings.TriggerTypes.DROWN:
-                    return Lemmings.LemmingStateType.DROWNING;
-                case Lemmings.TriggerTypes.EXIT_LEVEL:
-                    return Lemmings.LemmingStateType.EXITING;
-                case Lemmings.TriggerTypes.KILL:
-                    return Lemmings.LemmingStateType.SPLATTING;
-                case Lemmings.TriggerTypes.TRAP:
-                    return Lemmings.LemmingStateType.HOISTING;
-                case Lemmings.TriggerTypes.BLOCKER_LEFT:
-                    if (lem.lookRight)
-                        lem.lookRight = false;
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
-                case Lemmings.TriggerTypes.BLOCKER_RIGHT:
-                    if (!lem.lookRight)
-                        lem.lookRight = true;
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
-                default:
-                    this.logging.log("unknown trigger type: " + triggerType);
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+            case Lemmings.TriggerTypes.NO_TRIGGER:
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
+            case Lemmings.TriggerTypes.DROWN:
+                return Lemmings.LemmingStateType.DROWNING;
+            case Lemmings.TriggerTypes.EXIT_LEVEL:
+                return Lemmings.LemmingStateType.EXITING;
+            case Lemmings.TriggerTypes.KILL:
+                return Lemmings.LemmingStateType.SPLATTING;
+            case Lemmings.TriggerTypes.TRAP:
+                return Lemmings.LemmingStateType.HOISTING;
+            case Lemmings.TriggerTypes.BLOCKER_LEFT:
+                if (lem.lookRight)
+                    lem.lookRight = false;
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
+            case Lemmings.TriggerTypes.BLOCKER_RIGHT:
+                if (!lem.lookRight)
+                    lem.lookRight = true;
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
+            default:
+                this.logging.log("unknown trigger type: " + triggerType);
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
             }
         }
         /** render all Lemmings to the GameDisplay */
@@ -894,7 +824,7 @@ var Lemmings;
         getLemming(id) {
             return this.lemmings[id];
         }
-        /** return a lemming a a geiven position */
+        /** return a lemming a a given position */
         getLemmingAt(x, y) {
             let lems = this.lemmings;
             let minDistance = 99999;
@@ -924,8 +854,7 @@ var Lemmings;
                 lem.remove();
                 this.logging.log(lem.id + " Action: Error not an action: " + Lemmings.LemmingStateType[stateType]);
                 return;
-            }
-            else {
+            } else {
                 this.logging.debug(lem.id + " Action: " + actionSystem.getActionName());
             }
             lem.setAction(actionSystem);
@@ -1041,8 +970,8 @@ var Lemmings;
                 return this.action.process(level, this);
             }
         }
-        /** disable this lemming so it can not longer be triggert
-         *   or beeing selected by the user */
+        /** disable this lemming so it can no longer be triggered
+         *   or selected by the user */
         disable() {
             this.disabled = true;
         }
@@ -1125,17 +1054,18 @@ var Lemmings;
         SkillTypes[SkillTypes["MINER"] = 7] = "MINER";
         SkillTypes[SkillTypes["DIGGER"] = 8] = "DIGGER";
     })(SkillTypes = Lemmings.SkillTypes || (Lemmings.SkillTypes = {}));
-    ;
     /** helper functions for SkillTypes */
     (function (SkillTypes) {
         function toString(type) {
             return SkillTypes[type];
         }
         SkillTypes.toString = toString;
+
         function length() {
             return 9;
         }
         SkillTypes.length = length;
+
         function isValid(type) {
             if (type == null)
                 return false;
@@ -1149,7 +1079,7 @@ var Lemmings;
     /** manage the in-game Lemmings animation sprite */
     class LemmingsSprite {
         constructor(fr, colorPalette) {
-            this.lemmingAnimation = []; //- Loockup table from ActionType -> this.animations(); First Element: left-move, Second: right-move
+            this.lemmingAnimation = []; //- Lookup table from ActionType -> this.animations(); First Element: left-move, Second: right-move
             this.colorPalette = colorPalette;
             this.registerAnimation(Lemmings.SpriteTypes.WALKING, 1, fr, 2, 16, 10, -8, -10, 8); //- walking (r)
             this.registerAnimation(Lemmings.SpriteTypes.JUMPING, 1, fr, 2, 16, 10, -8, -10, 1); //- jumping (r)
@@ -1165,8 +1095,8 @@ var Lemmings;
             this.registerAnimation(Lemmings.SpriteTypes.BUILDING, -1, fr, 3, 16, 13, -8, -13, 16); //- brick-laying (l)
             this.registerAnimation(Lemmings.SpriteTypes.BASHING, 1, fr, 3, 16, 10, -8, -10, 32); //- bashing (r)
             this.registerAnimation(Lemmings.SpriteTypes.BASHING, -1, fr, 3, 16, 10, -8, -10, 32); //- bashing (l)
-            this.registerAnimation(Lemmings.SpriteTypes.MINEING, 1, fr, 3, 16, 13, -8, -12, 24); //- mining (r)
-            this.registerAnimation(Lemmings.SpriteTypes.MINEING, -1, fr, 3, 16, 13, -8, -12, 24); //- mining (l)
+            this.registerAnimation(Lemmings.SpriteTypes.MINING, 1, fr, 3, 16, 13, -8, -12, 24); //- mining (r)
+            this.registerAnimation(Lemmings.SpriteTypes.MINING, -1, fr, 3, 16, 13, -8, -12, 24); //- mining (l)
             this.registerAnimation(Lemmings.SpriteTypes.FALLING, 1, fr, 2, 16, 10, -8, -10, 4); //- falling (r)
             this.registerAnimation(Lemmings.SpriteTypes.FALLING, -1, fr, 2, 16, 10, -8, -10, 4); //- falling (l)
             this.registerAnimation(Lemmings.SpriteTypes.UMBRELLA, 1, fr, 3, 16, 16, -8, -16, 8); //- pre-umbrella (r)
@@ -1187,11 +1117,11 @@ var Lemmings;
         typeToIndex(state, right) {
             return state * 2 + (right ? 0 : 1);
         }
-        registerAnimation(state, dir, fr, bitsPerPixle, width, height, offsetX, offsetY, frames) {
+        registerAnimation(state, dir, fr, bitsPerPixel, width, height, offsetX, offsetY, frames) {
             //- load animation frames from file (fr)
             var animation = new Lemmings.Animation();
-            animation.loadFromFile(fr, bitsPerPixle, width, height, frames, this.colorPalette, offsetX, offsetY);
-            //- add animation to cache -add unidirectional (dir == 0) annimations to both lists
+            animation.loadFromFile(fr, bitsPerPixel, width, height, frames, this.colorPalette, offsetX, offsetY);
+            //- add animation to cache -add unidirectional (dir == 0) animations to both lists
             if (dir >= 0) {
                 this.lemmingAnimation[this.typeToIndex(state, true)] = animation;
             }
@@ -1203,17 +1133,6 @@ var Lemmings;
     Lemmings.LemmingsSprite = LemmingsSprite;
 })(Lemmings || (Lemmings = {}));
 /// <reference path="../resources/lemmings-sprite.ts"/>
-var Lemmings;
-(function (Lemmings) {
-    class SoundSystem {
-        constructor() {
-        }
-        playSound(lem, soundId) {
-            // console.log("Play sound " + soundId);
-        }
-    }
-    Lemmings.SoundSystem = SoundSystem;
-})(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
     /** manages all triggers */
@@ -1285,7 +1204,6 @@ var Lemmings;
             this.x2 = Math.max(x1, x2);
             this.y2 = Math.max(y1, y2);
             this.disableTicksCount = disableTicksCount;
-            this.soundIndex = soundIndex;
         }
         trigger(x, y, tick) {
             if (this.disabledUntilTick <= tick) {
@@ -1306,7 +1224,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionBashSystem {
         constructor(sprites, masks) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.masks = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.BASHING, false));
@@ -1322,7 +1239,7 @@ var Lemmings;
             lem.setAction(this);
             return true;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1380,7 +1297,6 @@ var Lemmings;
     class ActionBlockerSystem {
         constructor(sprites, triggerManager) {
             this.triggerManager = triggerManager;
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.BLOCKING, false);
         }
         getActionName() {
@@ -1416,7 +1332,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionBuildSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, true));
@@ -1428,7 +1343,7 @@ var Lemmings;
             lem.setAction(this);
             return true;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1472,7 +1387,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionClimbSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.CLIMBING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.CLIMBING, true));
@@ -1487,7 +1401,7 @@ var Lemmings;
             lem.canClimb = true;
             return true;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1502,8 +1416,7 @@ var Lemmings;
                     return Lemmings.LemmingStateType.HOISTING;
                 }
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
-            }
-            else {
+            } else {
                 lem.y--;
                 if (level.hasGroundAt(lem.x + (lem.lookRight ? -1 : 1), lem.y - 8)) {
                     lem.lookRight = !lem.lookRight;
@@ -1520,7 +1433,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionCountdownSystem {
         constructor(masks) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.numberMasks = masks.GetMask(Lemmings.MaskTypes.NUMBERS);
         }
         getActionName() {
@@ -1529,7 +1441,7 @@ var Lemmings;
         triggerLemAction(lem) {
             return lem.setCountDown(this);
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let count = lem.getCountDownTime();
             if (count <= 0) {
@@ -1556,7 +1468,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionDiggSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true));
@@ -1578,8 +1489,7 @@ var Lemmings;
                 this.digRow(level, lem, lem.y - 2);
                 this.digRow(level, lem, lem.y - 1);
                 lem.state = 1;
-            }
-            else {
+            } else {
                 lem.frameIndex = (lem.frameIndex + 1) % 16;
             }
             if (!(lem.frameIndex & 0x07)) {
@@ -1610,7 +1520,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionDrowningSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.DROWNING, false);
         }
         getActionName() {
@@ -1631,8 +1540,7 @@ var Lemmings;
             }
             if (!level.hasGroundAt(lem.x + (lem.lookRight ? 8 : -8), lem.y)) {
                 lem.x += (lem.lookRight ? 1 : -1);
-            }
-            else {
+            } else {
                 lem.lookRight = !lem.lookRight;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
@@ -1645,7 +1553,6 @@ var Lemmings;
     class ActionExitingSystem {
         constructor(sprites, gameVictoryCondition) {
             this.gameVictoryCondition = gameVictoryCondition;
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.EXITING, false);
         }
         getActionName() {
@@ -1676,7 +1583,6 @@ var Lemmings;
         constructor(sprites, masks, triggerManager, particleTable) {
             this.triggerManager = triggerManager;
             this.particleTable = particleTable;
-            this.soundSystem = new Lemmings.SoundSystem();
             this.mask = masks.GetMask(Lemmings.MaskTypes.EXPLODING);
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.EXPLODING, false);
         }
@@ -1686,13 +1592,12 @@ var Lemmings;
         triggerLemAction(lem) {
             return false;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             if (lem.frameIndex == 0) {
                 let frame = this.sprite.getFrame(lem.frameIndex);
                 gameDisplay.drawFrame(frame, lem.x, lem.y);
-            }
-            else {
+            } else {
                 this.particleTable.draw(gameDisplay, lem.frameIndex - 1, lem.x, lem.y);
             }
         }
@@ -1715,7 +1620,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionFallSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true));
@@ -1726,7 +1630,7 @@ var Lemmings;
         triggerLemAction(lem) {
             return false;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1748,8 +1652,7 @@ var Lemmings;
             if (i == 3) {
                 lem.state += i;
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
-            }
-            else {
+            } else {
                 // landed
                 if (lem.state > Lemmings.Lemming.LEM_MAX_FALLING) {
                     return Lemmings.LemmingStateType.SPLATTING;
@@ -1764,7 +1667,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionFloatingSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.UMBRELLA, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.UMBRELLA, true));
@@ -1779,7 +1681,7 @@ var Lemmings;
             lem.hasParachute = true;
             return true;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(ActionFloatingSystem.floatFrame[lem.frameIndex]);
@@ -1811,7 +1713,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionHoistSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.POSTCLIMBING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.POSTCLIMBING, true));
@@ -1822,7 +1723,7 @@ var Lemmings;
         triggerLemAction(lem) {
             return false;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1836,7 +1737,6 @@ var Lemmings;
             }
             if (lem.frameIndex >= 8) {
                 return Lemmings.LemmingStateType.WALKING;
-                ;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
@@ -1847,7 +1747,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionJumpSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true));
@@ -1884,13 +1783,12 @@ var Lemmings;
 (function (Lemmings) {
     class ActionMineSystem {
         constructor(sprites, masks) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.masks = [];
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINEING, false));
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINEING, true));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINEING_L));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINEING_R));
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINING, false));
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINING, true));
+            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINING_L));
+            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINING_R));
         }
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
@@ -1907,20 +1805,20 @@ var Lemmings;
         process(level, lem) {
             lem.frameIndex = (lem.frameIndex + 1) % 24;
             switch (lem.frameIndex) {
-                case 1:
-                case 2:
-                    let mask = this.masks[(lem.lookRight ? 1 : 0)];
-                    let maskIndex = lem.frameIndex - 1;
-                    level.clearGroundWithMask(mask.GetMask(maskIndex), lem.x, lem.y);
-                    break;
-                case 3:
-                    lem.y++;
-                case 15:
-                    lem.x += lem.lookRight ? 1 : -1;
-                    if (!level.hasGroundAt(lem.x, lem.y)) {
-                        return Lemmings.LemmingStateType.FALLING;
-                    }
-                    break;
+            case 1:
+            case 2:
+                let mask = this.masks[(lem.lookRight ? 1 : 0)];
+                let maskIndex = lem.frameIndex - 1;
+                level.clearGroundWithMask(mask.GetMask(maskIndex), lem.x, lem.y);
+                break;
+            case 3:
+                lem.y++;
+            case 15:
+                lem.x += lem.lookRight ? 1 : -1;
+                if (!level.hasGroundAt(lem.x, lem.y)) {
+                    return Lemmings.LemmingStateType.FALLING;
+                }
+                break;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
@@ -1931,7 +1829,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionOhNoSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.OHNO, false);
         }
         getActionName() {
@@ -1940,7 +1837,7 @@ var Lemmings;
         triggerLemAction(lem) {
             return false;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
@@ -1967,18 +1864,17 @@ var Lemmings;
 (function (Lemmings) {
     class ActionShrugSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = [];
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.SHRUGGING, false));
             this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.SHRUGGING, true));
         }
         getActionName() {
-            return "shruging";
+            return "shrugging";
         }
         triggerLemAction(lem) {
             return false;
         }
-        /** render Lemming to gamedisply */
+        /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
             let ani = this.sprite[(lem.lookRight ? 1 : 0)];
             let frame = ani.getFrame(lem.frameIndex);
@@ -1998,7 +1894,6 @@ var Lemmings;
 (function (Lemmings) {
     class ActionSplatterSystem {
         constructor(sprites) {
-            this.soundSystem = new Lemmings.SoundSystem();
             this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.SPLATTING, false);
         }
         getActionName() {
@@ -2067,32 +1962,27 @@ var Lemmings;
                 if (lem.canClimb) {
                     // start climbing
                     return Lemmings.LemmingStateType.CLIMBING;
-                }
-                else {
+                } else {
                     // turn around
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
-            }
-            else if (upDelta > 0) {
+            } else if (upDelta > 0) {
                 lem.y -= upDelta - 1;
                 if (upDelta > 3) {
                     // jump
                     return Lemmings.LemmingStateType.JUMPING;
-                }
-                else {
+                } else {
                     // walk with small jump up
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
-            }
-            else {
+            } else {
                 // walk or fall
                 let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
                 lem.y += downDelta;
                 if (downDelta == 4) {
                     return Lemmings.LemmingStateType.FALLING;
-                }
-                else {
+                } else {
                     // walk with small jump down
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
@@ -2180,18 +2070,18 @@ var Lemmings;
         }
         commandFactory(type) {
             switch (type.toLowerCase()) {
-                case "l":
-                    return new Lemmings.CommandLemmingsAction();
-                case "n":
-                    return new Lemmings.CommandNuke();
-                case "s":
-                    return new Lemmings.CommandSelectSkill();
-                case "i":
-                    return new Lemmings.CommandReleaseRateIncrease();
-                case "d":
-                    return new Lemmings.CommandReleaseRateDecrease();
-                default:
-                    return null;
+            case "l":
+                return new Lemmings.CommandLemmingsAction();
+            case "n":
+                return new Lemmings.CommandNuke();
+            case "s":
+                return new Lemmings.CommandSelectSkill();
+            case "i":
+                return new Lemmings.CommandReleaseRateIncrease();
+            case "d":
+                return new Lemmings.CommandReleaseRateDecrease();
+            default:
+                return null;
             }
         }
         parseCommand(valuesStr) {
@@ -2232,8 +2122,7 @@ var Lemmings;
             return "n";
         }
         /** load parameters for this command from serializer */
-        load(values) {
-        }
+        load(values) {}
         /** save parameters of this command to serializer */
         save() {
             return [];
@@ -2359,18 +2248,17 @@ var Lemmings;
             let frame = 0;
             if (this.isRepeat) {
                 frame = frameIndex % this.frames.length;
-            }
-            else {
+            } else {
                 if (frameIndex < this.frames.length)
                     frame = frameIndex;
             }
             return this.frames[frame];
         }
         /** load all images for this animation from a file */
-        loadFromFile(fr, bitsPerPixle, width, height, frames, palette, offsetX = null, offsetY = null) {
+        loadFromFile(fr, bitsPerPixel, width, height, frames, palette, offsetX = null, offsetY = null) {
             for (let f = 0; f < frames; f++) {
                 let paletteImg = new Lemmings.PaletteImage(width, height);
-                paletteImg.processImage(fr, bitsPerPixle);
+                paletteImg.processImage(fr, bitsPerPixel);
                 paletteImg.processTransparentByColorIndex(0);
                 this.frames.push(paletteImg.createFrame(palette, offsetX, offsetY));
             }
@@ -2407,14 +2295,12 @@ var Lemmings;
             this.height = Math.trunc(height);
             if (offsetX == null) {
                 this.offsetX = 0;
-            }
-            else {
+            } else {
                 this.offsetX = Math.trunc(offsetX);
             }
             if (offsetY == null) {
                 this.offsetY = 0;
-            }
-            else {
+            } else {
                 this.offsetY = Math.trunc(offsetY);
             }
             let pixCount = this.width * this.height;
@@ -2456,14 +2342,13 @@ var Lemmings;
                     pixIndex++;
                     if ((colorIndex & 0x80) > 0) {
                         this.clearPixel(x + left, y + top);
-                    }
-                    else {
+                    } else {
                         this.setPixel(x + left, y + top, palette.getColor(colorIndex));
                     }
                 }
             }
         }
-        /** set the color of a pixle */
+        /** set the color of a pixel */
         setPixel(x, y, color, noOverwrite = false, onlyOverwrite = false) {
             if ((x < 0) || (x >= this.width))
                 return;
@@ -2483,7 +2368,7 @@ var Lemmings;
             this.data[destPixelPos] = color;
             this.mask[destPixelPos] = 1;
         }
-        /** set a pixle to back */
+        /** set a pixel to back */
         clearPixel(x, y) {
             if ((x < 0) || (x >= this.width))
                 return;
@@ -2500,8 +2385,7 @@ var Lemmings;
 (function (Lemmings) {
     /** uses the LevelReader and GroundReader to render/create the games background */
     class GroundRenderer {
-        constructor() {
-        }
+        constructor() {}
         createVgaspecMap(lr, vr) {
             this.img = vr.img;
         }
@@ -2538,8 +2422,7 @@ var Lemmings;
                         continue;
                     if (isErase) {
                         this.img.clearPixel(x + destX, y + destY);
-                    }
-                    else {
+                    } else {
                         this.img.setPixel(x + destX, y + destY, pal.getColor(colorIndex), noOverwrite, onlyOverwrite);
                     }
                 }
@@ -2617,61 +2500,60 @@ var Lemmings;
                     promiseList.push(this.fileProvider.loadBinary(this.config.path, "ODDTABLE.DAT"));
                 }
                 Promise.all(promiseList)
-                    .then(files => {
-                    /// read the level meta data
-                    let levelsContainer = new Lemmings.FileContainer(files[0]);
-                    levelReader = new Lemmings.LevelReader(levelsContainer.getPart(levelInfo.partIndex));
-                    level = new Lemmings.Level(levelReader.levelWidth, levelReader.levelHeight);
-                    level.gameType = this.config.gametype;
-                    level.levelIndex = levelIndex;
-                    level.levelMode = levelMode;
-                    level.screenPositionX = levelReader.screenPositionX;
-                    level.isSuperLemming = levelReader.isSuperLemming;
-                    /// default level properties
-                    let levelProperties = levelReader.levelProperties;
-                    /// switch level properties to odd table config
-                    if (useOddTable) {
-                        let oddTable = new Lemmings.OddTableReader(files[1]);
-                        levelProperties = oddTable.getLevelProperties(levelInfo.levelNumber);
-                    }
-                    level.name = levelProperties.levelName;
-                    level.releaseRate = levelProperties.releaseRate;
-                    level.releaseCount = levelProperties.releaseCount;
-                    level.needCount = levelProperties.needCount;
-                    level.timeLimit = levelProperties.timeLimit;
-                    level.skills = levelProperties.skills;
-                    let fileList = [];
-                    /// load level ground
-                    fileList.push(this.fileProvider.loadBinary(this.config.path, "VGAGR" + levelReader.graphicSet1 + ".DAT"));
-                    fileList.push(this.fileProvider.loadBinary(this.config.path, "GROUND" + levelReader.graphicSet1 + "O.DAT"));
-                    if (levelReader.graphicSet2 != 0) {
-                        /// this is a Image Map
-                        fileList.push(this.fileProvider.loadBinary(this.config.path, "VGASPEC" + (levelReader.graphicSet2 - 1) + ".DAT"));
-                    }
-                    return Promise.all(fileList);
-                })
+                    .then((files) => {
+                        /// read the level meta data
+                        let levelsContainer = new Lemmings.FileContainer(files[0]);
+                        levelReader = new Lemmings.LevelReader(levelsContainer.getPart(levelInfo.partIndex));
+                        level = new Lemmings.Level(levelReader.levelWidth, levelReader.levelHeight);
+                        level.gameType = this.config.gametype;
+                        level.levelIndex = levelIndex;
+                        level.levelMode = levelMode;
+                        level.screenPositionX = levelReader.screenPositionX;
+                        level.isSuperLemming = levelReader.isSuperLemming;
+                        /// default level properties
+                        let levelProperties = levelReader.levelProperties;
+                        /// switch level properties to odd table config
+                        if (useOddTable) {
+                            let oddTable = new Lemmings.OddTableReader(files[1]);
+                            levelProperties = oddTable.getLevelProperties(levelInfo.levelNumber);
+                        }
+                        level.name = levelProperties.levelName;
+                        level.releaseRate = levelProperties.releaseRate;
+                        level.releaseCount = levelProperties.releaseCount;
+                        level.needCount = levelProperties.needCount;
+                        level.timeLimit = levelProperties.timeLimit;
+                        level.skills = levelProperties.skills;
+                        let fileList = [];
+                        /// load level ground
+                        fileList.push(this.fileProvider.loadBinary(this.config.path, "VGAGR" + levelReader.graphicSet1 + ".DAT"));
+                        fileList.push(this.fileProvider.loadBinary(this.config.path, "GROUND" + levelReader.graphicSet1 + "O.DAT"));
+                        if (levelReader.graphicSet2 != 0) {
+                            /// this is a Image Map
+                            fileList.push(this.fileProvider.loadBinary(this.config.path, "VGASPEC" + (levelReader.graphicSet2 - 1) + ".DAT"));
+                        }
+                        return Promise.all(fileList);
+                    })
                     .then((fileList) => {
-                    let goundFile = fileList[1];
-                    let vgaContainer = new Lemmings.FileContainer(fileList[0]);
-                    /// read the images used for the map and for the objects of the map
-                    let groundReader = new Lemmings.GroundReader(goundFile, vgaContainer.getPart(0), vgaContainer.getPart(1));
-                    /// render the map background image
-                    let render = new Lemmings.GroundRenderer();
-                    if (fileList.length > 2) {
-                        /// use a image for this map background
-                        let vgaspecReader = new Lemmings.VgaspecReader(fileList[2], level.width, level.height);
-                        render.createVgaspecMap(levelReader, vgaspecReader);
-                    }
-                    else {
-                        /// this is a normal map background
-                        render.createGroundMap(levelReader, groundReader.getTerraImages());
-                    }
-                    level.setGroundImage(render.img.getData());
-                    level.setGroundMaskLayer(new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
-                    level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
-                    level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
-                    resolve(level);
-                });
+                        let goundFile = fileList[1];
+                        let vgaContainer = new Lemmings.FileContainer(fileList[0]);
+                        /// read the images used for the map and for the objects of the map
+                        let groundReader = new Lemmings.GroundReader(goundFile, vgaContainer.getPart(0), vgaContainer.getPart(1));
+                        /// render the map background image
+                        let render = new Lemmings.GroundRenderer();
+                        if (fileList.length > 2) {
+                            /// use a image for this map background
+                            let vgaspecReader = new Lemmings.VgaspecReader(fileList[2], level.width, level.height);
+                            render.createVgaspecMap(levelReader, vgaspecReader);
+                        } else {
+                            /// this is a normal map background
+                            render.createGroundMap(levelReader, groundReader.getTerraImages());
+                        }
+                        level.setGroundImage(render.img.getData());
+                        level.setGroundMaskLayer(new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
+                        level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
+                        level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
+                        resolve(level);
+                    });
             });
         }
     }
@@ -2799,7 +2681,7 @@ var Lemmings;
                 this.loadFromFile(fr, width, height, count, offsetX, offsetY);
             }
         }
-        get lenght() {
+        get length() {
             return frames.length;
         }
         GetMask(index) {
@@ -2823,8 +2705,8 @@ var Lemmings;
             this.maskList = [];
             this.maskList[Lemmings.MaskTypes.BASHING_R] = new Lemmings.MaskList(fr, 16, 10, 4, -8, -10);
             this.maskList[Lemmings.MaskTypes.BASHING_L] = new Lemmings.MaskList(fr, 16, 10, 4, -8, -10);
-            this.maskList[Lemmings.MaskTypes.MINEING_R] = new Lemmings.MaskList(fr, 16, 13, 2, -8, -12);
-            this.maskList[Lemmings.MaskTypes.MINEING_L] = new Lemmings.MaskList(fr, 16, 13, 2, -8, -12);
+            this.maskList[Lemmings.MaskTypes.MINING_R] = new Lemmings.MaskList(fr, 16, 13, 2, -8, -12);
+            this.maskList[Lemmings.MaskTypes.MINING_L] = new Lemmings.MaskList(fr, 16, 13, 2, -8, -12);
             this.maskList[Lemmings.MaskTypes.EXPLODING] = new Lemmings.MaskList(fr, 16, 22, 1, -8, -14);
             this.maskList[Lemmings.MaskTypes.NUMBERS] = new Lemmings.MaskList(fr, 8, 8, 10, -1, -19);
         }
@@ -2840,8 +2722,8 @@ var Lemmings;
     (function (MaskTypes) {
         MaskTypes[MaskTypes["BASHING_R"] = 0] = "BASHING_R";
         MaskTypes[MaskTypes["BASHING_L"] = 1] = "BASHING_L";
-        MaskTypes[MaskTypes["MINEING_R"] = 2] = "MINEING_R";
-        MaskTypes[MaskTypes["MINEING_L"] = 3] = "MINEING_L";
+        MaskTypes[MaskTypes["MINING_R"] = 2] = "MINING_R";
+        MaskTypes[MaskTypes["MINING_L"] = 3] = "MINING_L";
         MaskTypes[MaskTypes["EXPLODING"] = 4] = "EXPLODING";
         MaskTypes[MaskTypes["NUMBERS"] = 5] = "NUMBERS";
     })(MaskTypes = Lemmings.MaskTypes || (Lemmings.MaskTypes = {}));
@@ -2892,7 +2774,7 @@ var Lemmings;
         constructor(palette) {
             this.palette = palette;
             this.colorIndexTable = [4, 15, 14, 13, 12, 11, 10, 9, 8, 11, 10, 9, 8, 7, 6, 2];
-            /// read particle coordinats form Base64 string
+            /// read particle coordinates form Base64 string
             this.particleData = new Array(51);
             let data = window.atob(ParticleTable.particleDataBase64);
             let pos = 0;
@@ -3025,7 +2907,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** Handels a mask of points for the level background
+    /** Handles a mask of points for the level background
      *   that defines the solid points of the level */
     class SolidLayer {
         constructor(width, height, mask = null) {
@@ -3074,7 +2956,7 @@ var Lemmings;
         SpriteTypes[SpriteTypes["FALLING"] = 9] = "FALLING";
         SpriteTypes[SpriteTypes["UMBRELLA"] = 10] = "UMBRELLA";
         SpriteTypes[SpriteTypes["SPLATTING"] = 11] = "SPLATTING";
-        SpriteTypes[SpriteTypes["MINEING"] = 12] = "MINEING";
+        SpriteTypes[SpriteTypes["MINING"] = 12] = "MINING";
         SpriteTypes[SpriteTypes["DROWNING"] = 13] = "DROWNING";
         SpriteTypes[SpriteTypes["EXITING"] = 14] = "EXITING";
         SpriteTypes[SpriteTypes["FRYING"] = 15] = "FRYING";
@@ -3086,47 +2968,42 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** Class to provide a read pointer and readfunctions to a binary Buffer */
+    /** Class to provide a read pointer and read functions to a binary Buffer */
     class BinaryReader {
         constructor(dataArray, offset = 0, length, filename = "[unknown]") {
             this.log = new Lemmings.LogHandler("BinaryReader");
             this.filename = filename;
             if (offset == null)
                 offset = 0;
-            let dataLenght = 0;
+            let dataLength = 0;
             if (dataArray == null) {
                 this.data = new Uint8Array(0);
-                dataLenght = 0;
+                dataLength = 0;
                 this.log.log("BinaryReader from NULL; size:" + 0);
-            }
-            else if (dataArray instanceof BinaryReader) {
+            } else if (dataArray instanceof BinaryReader) {
                 //- if dataArray is BinaryReader use there data
                 this.data = dataArray.data;
-                dataLenght = dataArray.length;
-                this.log.log("BinaryReader from BinaryReader; size:" + dataLenght);
-            }
-            else if (dataArray instanceof Uint8Array) {
+                dataLength = dataArray.length;
+                this.log.log("BinaryReader from BinaryReader; size:" + dataLength);
+            } else if (dataArray instanceof Uint8Array) {
                 this.data = dataArray;
-                dataLenght = dataArray.byteLength;
-                this.log.log("BinaryReader from Uint8Array; size:" + dataLenght);
-            }
-            else if (dataArray instanceof ArrayBuffer) {
+                dataLength = dataArray.byteLength;
+                this.log.log("BinaryReader from Uint8Array; size:" + dataLength);
+            } else if (dataArray instanceof ArrayBuffer) {
                 this.data = new Uint8Array(dataArray);
-                dataLenght = dataArray.byteLength;
-                this.log.log("BinaryReader from ArrayBuffer; size:" + dataLenght);
-            }
-            else if (dataArray instanceof Blob) {
+                dataLength = dataArray.byteLength;
+                this.log.log("BinaryReader from ArrayBuffer; size:" + dataLength);
+            } else if (dataArray instanceof Blob) {
                 this.data = new Uint8Array(dataArray);
-                dataLenght = this.data.byteLength;
-                this.log.log("BinaryReader from Blob; size:" + dataLenght);
-            }
-            else {
+                dataLength = this.data.byteLength;
+                this.log.log("BinaryReader from Blob; size:" + dataLength);
+            } else {
                 this.data = dataArray;
-                dataLenght = this.data.length;
-                this.log.log("BinaryReader from unknown: " + dataArray + "; size:" + dataLenght);
+                dataLength = this.data.length;
+                this.log.log("BinaryReader from unknown: " + dataArray + "; size:" + dataLength);
             }
             if (length == null)
-                length = dataLenght - offset;
+                length = dataLength - offset;
             this.hiddenOffset = offset;
             this.length = length;
             this.pos = this.hiddenOffset;
@@ -3196,15 +3073,15 @@ var Lemmings;
             }
             return result;
         }
-        /** return the current curser position */
+        /** return the current cursor position */
         getOffset() {
             return this.pos - this.hiddenOffset;
         }
-        /** set the current curser position */
+        /** set the current cursor position */
         setOffset(newPos) {
             this.pos = newPos + this.hiddenOffset;
         }
-        /** return true if the curserposition is out of data */
+        /** return true if the cursor position is out of data */
         eof() {
             let pos = this.pos - this.hiddenOffset;
             return ((pos >= this.length) || (pos < 0));
@@ -3270,7 +3147,7 @@ var Lemmings;
             this.outPos = outLength;
             this.bitReader = bitReader;
         }
-        /** copy lenght bytes from the reader */
+        /** copy length bytes from the reader */
         copyRawData(length) {
             if (this.outPos - length < 0) {
                 this.log.log("copyRawData: out of out buffer");
@@ -3292,7 +3169,7 @@ var Lemmings;
                 offset = 0;
                 return;
             }
-            /// is lenght in range
+            /// is length in range
             if (this.outPos - length < 0) {
                 this.log.log("copyReferencedData: out of out buffer");
                 length = this.outPos;
@@ -3377,8 +3254,8 @@ var Lemmings;
 var Lemmings;
 (function (Lemmings) {
     /**
-    * Handle Files loading from remote/web
-    */
+     * Handle Files loading from remote/web
+     */
     class FileProvider {
         constructor(rootPath) {
             this.rootPath = rootPath;
@@ -3394,15 +3271,20 @@ var Lemmings;
                     if (xhr.status >= 200 && xhr.status < 300) {
                         let reader = new Lemmings.BinaryReader(xhr.response, 0, null, this.filenameFormUrl(url));
                         resolve(reader);
-                    }
-                    else {
+                    } else {
                         this.log.log("error load file:" + url);
-                        reject({ status: xhr.status, statusText: xhr.statusText });
+                        reject({
+                            status: xhr.status,
+                            statusText: xhr.statusText
+                        });
                     }
                 };
                 xhr.onerror = () => {
                     this.log.log("error load file:" + url);
-                    reject({ status: xhr.status, statusText: xhr.statusText });
+                    reject({
+                        status: xhr.status,
+                        statusText: xhr.statusText
+                    });
                 };
                 xhr.open("GET", url);
                 xhr.responseType = "arraybuffer";
@@ -3419,7 +3301,10 @@ var Lemmings;
                 };
                 xhr.onerror = () => {
                     this.log.log("error load file:" + url);
-                    reject({ status: xhr.status, statusText: xhr.statusText });
+                    reject({
+                        status: xhr.status,
+                        statusText: xhr.statusText
+                    });
                 };
                 /// setup query
                 xhr.open('GET', url, true);
@@ -3481,35 +3366,33 @@ var Lemmings;
             while ((!outBuffer.eof()) && (!bitReader.eof())) {
                 if (bitReader.read(1) == 0) {
                     switch (bitReader.read(1)) {
-                        case 0:
-                            outBuffer.copyRawData(bitReader.read(3) + 1);
-                            break;
-                        case 1:
-                            outBuffer.copyReferencedData(2, 8);
-                            break;
+                    case 0:
+                        outBuffer.copyRawData(bitReader.read(3) + 1);
+                        break;
+                    case 1:
+                        outBuffer.copyReferencedData(2, 8);
+                        break;
                     }
-                }
-                else {
+                } else {
                     switch (bitReader.read(2)) {
-                        case 0:
-                            outBuffer.copyReferencedData(3, 9);
-                            break;
-                        case 1:
-                            outBuffer.copyReferencedData(4, 10);
-                            break;
-                        case 2:
-                            outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
-                            break;
-                        case 3:
-                            outBuffer.copyRawData(bitReader.read(8) + 9);
-                            break;
+                    case 0:
+                        outBuffer.copyReferencedData(3, 9);
+                        break;
+                    case 1:
+                        outBuffer.copyReferencedData(4, 10);
+                        break;
+                    case 2:
+                        outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
+                        break;
+                    case 3:
+                        outBuffer.copyRawData(bitReader.read(8) + 9);
+                        break;
                     }
                 }
             }
             if (this.checksum == bitReader.getCurrentChecksum()) {
                 this.log.debug("doUnpacking(" + fileReader.filename + ") done! ");
-            }
-            else {
+            } else {
                 this.log.log("doUnpacking(" + fileReader.filename + ") : Checksum mismatch! ");
             }
             /// create FileReader from buffer
@@ -3521,7 +3404,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** The ColorPalette Class provides a Collor Palette of the game.
+    /** The ColorPalette Class provides a Color Palette of the game.
      *  use:
      *                           INDEX    RGBA
      * read:  ColorPalette.data[0 ... 16].color;
@@ -3574,7 +3457,7 @@ var Lemmings;
         constructor() {
             this.width = 0;
             this.height = 0;
-            /// normale case
+            /// normal case
             ///           +------------+
             /// imageLoc: |            | 1st Bits
             ///           |            | 2th Bits
@@ -3644,8 +3527,7 @@ var Lemmings;
 var Lemmings;
 (function (Lemmings) {
     /** stores terrain/background image properties */
-    class TerrainImageInfo extends Lemmings.BaseImageInfo {
-    }
+    class TerrainImageInfo extends Lemmings.BaseImageInfo {}
     Lemmings.TerrainImageInfo = TerrainImageInfo;
 })(Lemmings || (Lemmings = {}));
 /// <reference path="../file/binary-reader.ts"/>
@@ -3663,7 +3545,7 @@ var Lemmings;
      * The VGAGx file contains
      *  - the image data (color-indexed) of the level-background-images
      *  - the image data (color-indexed) of the level-object-images (multi frame/animation)
-    */
+     */
     class GroundReader {
         /** groundFile: GROUNDxO.DAT
          *  vgaTerrar: Part of VGAGx.DAT for the terrar-images
@@ -3697,14 +3579,14 @@ var Lemmings;
             return this.imgObjects;
         }
         /** loads all images of imgList from the VGAGx file */
-        readImages(imgList, vga, bitPerPixle) {
+        readImages(imgList, vga, bitPerPixel) {
             imgList.map((img) => {
                 img.frames = [];
                 let filePos = img.imageLoc;
                 for (let f = 0; f < img.frameCount; f++) {
                     var bitImage = new Lemmings.PaletteImage(img.width, img.height);
                     //// read image
-                    bitImage.processImage(vga, bitPerPixle, filePos);
+                    bitImage.processImage(vga, bitPerPixel, filePos);
                     bitImage.processTransparentData(vga, filePos + img.maskLoc);
                     img.frames.push(bitImage.getImageBuffer());
                     /// move to the next frame data
@@ -3907,7 +3789,7 @@ var Lemmings;
                 this.objects.push(newOb);
             }
         }
-        /** read the Level Obejcts */
+        /** read the Level Objects */
         readLevelTerrain(fr) {
             /// reset array
             this.terrains = [];
@@ -4027,7 +3909,7 @@ var Lemmings;
         }
         /** convert to frame (colored image) */
         createFrame(palette, offsetX, offsetY) {
-            /// convert color-index data to pixle image
+            /// convert color-index data to pixel image
             let resultFrame = new Lemmings.Frame(this.width, this.height, offsetX, offsetY);
             if (palette != null) {
                 resultFrame.drawPaletteImage(this.pixBuf, this.width, this.height, palette, 0, 0);
@@ -4035,7 +3917,7 @@ var Lemmings;
             return resultFrame;
         }
         /** convert the multi-bit-plain image to image */
-        processImage(src, bitsPerPixle = 3, startPos) {
+        processImage(src, bitsPerPixel = 3, startPos) {
             let pixBuf = this.pixBuf;
             let pixCount = pixBuf.length;
             let bitBufLen = 0;
@@ -4045,7 +3927,7 @@ var Lemmings;
             }
             /// read image
             //- bits of a byte are stored separately
-            for (var i = 0; i < bitsPerPixle; i++) {
+            for (var i = 0; i < bitsPerPixel; i++) {
                 for (var p = 0; p < pixCount; p++) {
                     if (bitBufLen <= 0) {
                         bitBuf = src.readByte();
@@ -4151,8 +4033,7 @@ var Lemmings;
                     if (startScanLine >= this.img.height)
                         return;
                     bitBufferPos = 0;
-                }
-                else if (curByte <= 127) {
+                } else if (curByte <= 127) {
                     let copyByteCount = curByte + 1;
                     /// copy copyByteCount to the bitImage
                     while (!fr.eof()) {
@@ -4165,8 +4046,7 @@ var Lemmings;
                         if (copyByteCount <= 0)
                             break;
                     }
-                }
-                else {
+                } else {
                     /// copy n times the same value
                     let repeatByte = fr.readByte();
                     for (let repeatByteCount = 257 - curByte; repeatByteCount > 0; repeatByteCount--) {
@@ -4196,3640 +4076,6 @@ var Lemmings;
     }
     Lemmings.VgaspecReader = VgaspecReader;
 })(Lemmings || (Lemmings = {}));
-var Lemmings;
-(function (Lemmings) {
-    class AudioPlayer {
-        constructor(src, emulatorType) {
-            this.log = new Lemmings.LogHandler("AudioPlayer");
-            /** is the sound playing at the moment */
-            this.isPlaying = false;
-            /** processor task for generating sample */
-            this.lenGen = 0;
-            /// setup audio context
-            this.audioCtx = new AudioContext();
-            if (!this.audioCtx) {
-                this.log.debug('Uanbel to create AudioContext!');
-                return;
-            }
-            this.soundImagePlayer = src;
-            this.log.debug("debug: " + this.soundImagePlayer.sampleRateFactor.toString(16));
-            this.log.debug("Sound image sample rate factor: " + this.soundImagePlayer.sampleRateFactor + " --> " + this.soundImagePlayer.getSamplingInterval());
-            this.log.debug('Audio sample rate ' + this.audioCtx.sampleRate);
-            this.samplesPerTick = Math.round(this.audioCtx.sampleRate / (this.soundImagePlayer.getSamplingInterval()));
-            this.source = this.audioCtx.createBufferSource();
-            this.processor = this.audioCtx.createScriptProcessor(8192, 2, 2);
-            // When the buffer source stops playing, disconnect everything
-            this.source.onended = () => {
-                // console.log('source.onended()');
-                this.source.disconnect(this.processor);
-                this.processor.disconnect(this.audioCtx.destination);
-                this.processor = null;
-                this.source = null;
-            };
-            this.setEmulatorType(emulatorType);
-            /// setup Web-Audio
-            this.processor.onaudioprocess = (e) => this.audioScriptProcessor(e);
-            this.processor.connect(this.audioCtx.destination);
-            this.source.connect(this.processor);
-            this.source.start();
-            this.play();
-        }
-        setEmulatorType(emulatorType) {
-            /// create opl interpreter
-            if (emulatorType == Lemmings.OplEmulatorType.Dosbox) {
-                this.opl = new DBOPL.OPL(this.audioCtx.sampleRate, 2);
-            }
-            else {
-                /// emulator only supports 49700 Hz
-                this.opl = new Cozendey.OPL3();
-            }
-        }
-        /** Start playback of the song/sound */
-        play() {
-            this.audioCtx.resume();
-            this.isPlaying = true;
-        }
-        audioScriptProcessor(e) {
-            var b = e.outputBuffer;
-            var c0 = b.getChannelData(0);
-            var c1 = b.getChannelData(1);
-            let lenFill = b.length;
-            let posFill = 0;
-            while (posFill < lenFill) {
-                // Fill any leftover delay from the last buffer-fill event first
-                while (this.lenGen > 0) {
-                    if (lenFill - posFill < 2) {
-                        // No more space in buffer
-                        return;
-                    }
-                    let lenNow = Math.max(2, Math.min(512, this.lenGen, lenFill - posFill));
-                    const samples = this.opl.generate(lenNow);
-                    for (let i = 0; i < lenNow; i++) {
-                        c0[posFill] = samples[i * 2 + 0] / 32768.0;
-                        c1[posFill] = samples[i * 2 + 1] / 32768.0;
-                        posFill++;
-                    }
-                    this.lenGen -= lenNow;
-                }
-                /// read on music-state from source file
-                this.soundImagePlayer.read((reg, value) => {
-                    /// write Adlib-Commands
-                    this.opl.write(reg, value);
-                });
-                this.lenGen += this.samplesPerTick;
-            }
-        }
-        /** pause palying */
-        suspend() {
-            if (!this.audioCtx) {
-                return;
-            }
-            this.audioCtx.suspend();
-        }
-        /** stop playing and close */
-        stop() {
-            if (this.isPlaying) {
-                this.isPlaying = false;
-            }
-            try {
-                this.audioCtx.close();
-            }
-            catch (ex) { }
-            if (this.processor) {
-                this.processor.onaudioprocess = null;
-            }
-            try {
-                this.source.disconnect(this.processor);
-            }
-            catch (ex) { }
-            this.audioCtx = null;
-            this.source = null;
-            this.processor = null;
-            this.opl = null;
-            this.soundImagePlayer = null;
-        }
-    }
-    Lemmings.AudioPlayer = AudioPlayer;
-})(Lemmings || (Lemmings = {}));
-var Lemmings;
-(function (Lemmings) {
-    var OplEmulatorType;
-    (function (OplEmulatorType) {
-        OplEmulatorType[OplEmulatorType["Dosbox"] = 0] = "Dosbox";
-        OplEmulatorType[OplEmulatorType["Cozendey"] = 1] = "Cozendey";
-    })(OplEmulatorType = Lemmings.OplEmulatorType || (Lemmings.OplEmulatorType = {}));
-})(Lemmings || (Lemmings = {}));
-/// <reference path="../file/binary-reader.ts"/>
-var Lemmings;
-(function (Lemmings) {
-    /** Class to read the Lemmings Sound Image File */
-    class SoundImageManager {
-        constructor(data, audioConfig) {
-            this.data = data;
-            this.fileConfig = audioConfig;
-        }
-        /** create a AdlibPlyer for a given music track number/index [0..N] */
-        getMusicTrack(trackIndex) {
-            var player = new Lemmings.SoundImagePlayer(this.data, this.fileConfig);
-            player.initMusic(trackIndex);
-            return player;
-        }
-        /** create a AdlibPlyer for a given sound index [0..N] */
-        getSoundTrack(soundIndex) {
-            var player = new Lemmings.SoundImagePlayer(this.data, this.fileConfig);
-            player.initSound(soundIndex);
-            return player;
-        }
-    }
-    Lemmings.SoundImageManager = SoundImageManager;
-})(Lemmings || (Lemmings = {}));
-/// <reference path="../file/binary-reader.ts"/>
-/// <reference path="sound-image-manager.ts"/>
-var Lemmings;
-(function (Lemmings) {
-    var SoundImagChannelState;
-    (function (SoundImagChannelState) {
-        SoundImagChannelState[SoundImagChannelState["NONE"] = 0] = "NONE";
-        SoundImagChannelState[SoundImagChannelState["SOUND"] = 1] = "SOUND";
-        SoundImagChannelState[SoundImagChannelState["MUSIC"] = 2] = "MUSIC";
-    })(SoundImagChannelState || (SoundImagChannelState = {}));
-    /** interpreter for a channel of a song from a sound image file
-     *  by calling 'read' its state is changes by procesing commands
-     *  and as result OPL3 command are returned */
-    class SoundImageChannels {
-        constructor(reader, audioConfig) {
-            this.waitTime = 0;
-            this.waitSum = 0;
-            this.programPointer = 0;
-            this.channelPosition = 0;
-            this.di00h = 0;
-            this.di02h = 0;
-            this.di04h = 0;
-            this.di05h_h = 0;
-            this.di05h_l = 0;
-            this.di07h = 0;
-            this.di08h_l = 0;
-            this.di08h_h = 0;
-            this.di0Fh = 0;
-            this.di12h = 0;
-            this.di13h = 0;
-            this.unused = 0;
-            /** only play if this is true */
-            this.playingState = SoundImagChannelState.NONE;
-            this.log = new Lemmings.LogHandler("AdliChannels");
-            this.fileConfig = audioConfig;
-            this.reader = new Lemmings.BinaryReader(reader);
-        }
-        /** read the channel data and write it to the callback */
-        read(commandCallback) {
-            if (this.playingState == SoundImagChannelState.NONE)
-                return;
-            this.waitTime--;
-            let saveChannelPosition = this.channelPosition;
-            if (this.waitTime <= 0) {
-                if (this.soundImageVersion == 1) {
-                    this.readBarVersion1(commandCallback);
-                }
-                else {
-                    this.readBarVersion2(commandCallback);
-                }
-                return;
-            }
-            if (this.di13h != 0) {
-                this.di00h = this.di00h + this.di13h;
-                this.setFrequency(commandCallback);
-            }
-            if (this.reader.readByte(saveChannelPosition) != 0x82) {
-                if (this.reader.readByte(this.di02h + 0xE) == this.waitTime) {
-                    commandCallback(this.di08h_l, this.di08h_h);
-                    this.di13h = 0;
-                }
-            }
-        }
-        readBarVersion1(commandCallback) {
-            var cmdPos = this.channelPosition;
-            while (true) {
-                var cmd = this.reader.readByte(cmdPos);
-                cmdPos++;
-                if ((cmd & 0x80) == 0) {
-                    this.setFrequencyHigh(commandCallback, cmd);
-                    this.channelPosition = cmdPos;
-                    return;
-                }
-                else if ((cmd >= 0xE0)) {
-                    this.waitSum = (cmd - 0xDF);
-                }
-                else if ((cmd >= 0xC0)) {
-                    this.setEnvelope(commandCallback, cmd - 0xC0);
-                }
-                else if ((cmd <= 0xB0)) {
-                    cmdPos = this.part3(commandCallback, cmd, cmdPos);
-                    if (cmdPos < 0)
-                        return;
-                }
-                else {
-                    this.setLevel(commandCallback, cmdPos);
-                    cmdPos++;
-                }
-            }
-        }
-        readBarVersion2(commandCallback) {
-            var cmdPos = this.channelPosition;
-            while (true) {
-                var cmd = this.reader.readByte(cmdPos);
-                cmdPos++;
-                if ((cmd & 0x80) == 0) {
-                    this.setFrequencyHigh(commandCallback, cmd);
-                    this.channelPosition = cmdPos;
-                    return;
-                }
-                else if ((cmd >= 0xE0)) {
-                    this.waitSum = (cmd - 0xDF);
-                }
-                else if ((cmd <= 0xA0)) {
-                    cmdPos = this.part3(commandCallback, cmd, cmdPos);
-                    if (cmdPos < 0)
-                        return;
-                }
-                else {
-                    this.setEnvelope(commandCallback, cmd - 0xA0);
-                }
-            }
-        }
-        setFrequencyHigh(commandCallback, cmd) {
-            this.di00h = cmd;
-            commandCallback(this.di08h_l, this.di08h_h);
-            this.setFrequency(commandCallback);
-            this.waitTime = this.waitSum;
-        }
-        setFrequency(commandCallback) {
-            var mainPos = ((this.di00h + this.di12h) & 0xFF) + 4;
-            var octave = this.reader.readByte(mainPos + this.fileConfig.octavesOffset);
-            var frequenciesCount = this.reader.readByte(mainPos + this.fileConfig.frequenciesCountOffset);
-            var frequency = this.reader.readWordBE(this.fileConfig.frequenciesOffset + frequenciesCount * 32);
-            if ((frequency & 0x8000) == 0) {
-                octave--;
-            }
-            if ((octave & 0x80) > 0) {
-                octave++;
-                frequency = frequency << 1; // * 2
-            }
-            /// write low part of frequency
-            commandCallback(this.di07h + 0xA0, frequency & 0xFF);
-            /// 0x3 : mask F-Number most sig.
-            this.di08h_h = ((frequency >> 8) & 0x3) | ((octave << 2) & 0xFF);
-            this.di08h_l = this.di07h + 0xB0;
-            /// write high part of frequency
-            /// 0x20 = set Key On
-            commandCallback(this.di08h_l, this.di08h_h | 0x20);
-        }
-        setEnvelope(commandCallback, cmd) {
-            var value;
-            this.di04h = cmd;
-            var pos = this.instrumentPos;
-            if (this.playingState == SoundImagChannelState.SOUND) {
-                pos = this.fileConfig.soundDataOffset;
-            }
-            pos = pos + ((cmd - 1) << 4);
-            /// Attack Rate / Decay Rate
-            value = this.reader.readByte(pos + 0);
-            commandCallback(this.di05h_l + 0x60, value);
-            value = this.reader.readByte(pos + 1);
-            commandCallback(this.di05h_h + 0x60, value);
-            /// Sustain Level / Release Rate
-            value = this.reader.readByte(pos + 2);
-            commandCallback(this.di05h_l + 0x80, value);
-            value = this.reader.readByte(pos + 3);
-            commandCallback(this.di05h_h + 0x80, value);
-            /// Waveform Select
-            value = this.reader.readByte(pos + 6);
-            commandCallback(this.di05h_l + 0xE0, value);
-            value = this.reader.readByte(pos + 7);
-            commandCallback(this.di05h_h + 0xE0, value);
-            /// 0xC0 -'
-            value = this.reader.readByte(pos + 9);
-            commandCallback(this.di07h + 0xC0, value);
-            /// 0x20 -'
-            value = this.reader.readByte(pos + 4);
-            commandCallback(this.di05h_l + 0x20, value);
-            value = this.reader.readByte(pos + 5);
-            commandCallback(this.di05h_h + 0x20, value);
-            /// other
-            this.di12h = this.reader.readByte(pos + 8);
-            this.di0Fh = this.reader.readByte(pos + 11);
-            this.di02h = pos;
-            this.setLevel(commandCallback, pos + 10);
-        }
-        part3(commandCallback, cmd, cmdPos) {
-            switch (cmd & 0xF) {
-                case 0:
-                    var tmpPos = this.programPointer;
-                    var cx = this.reader.readWordBE(tmpPos);
-                    tmpPos += 2;
-                    if (cx == 0) {
-                        tmpPos = this.reader.readWordBE(tmpPos) + this.fileConfig.instructionsOffset;
-                        cmdPos = this.reader.readWordBE(tmpPos) + this.fileConfig.instructionsOffset;
-                        tmpPos += 2;
-                    }
-                    else {
-                        cmdPos = cx + this.fileConfig.instructionsOffset;
-                    }
-                    this.programPointer = tmpPos;
-                    this.channelPosition = cmdPos;
-                    break;
-                case 1:
-                    /// Set frequency
-                    commandCallback(this.di08h_l, this.di08h_h);
-                    this.di13h = 0;
-                    this.channelPosition = cmdPos;
-                    this.waitTime = this.waitSum;
-                    return -1;
-                case 2:
-                    this.channelPosition = cmdPos;
-                    this.waitTime = this.waitSum;
-                    return -1;
-                case 3:
-                    this.log.log("not implemented - end of song");
-                    // Todo: 
-                    ///-- reset all chanels ----
-                    /*
-                    for (var i:number = 0; i< this.channelCount; i++) {
-          
-                      commandCallback(this.di08h_l, this.di08h_h);
-                      
-                      this.playingState = AdliChannelsPlayingType.NONE;
-                    }
-          
-                    */
-                    return -1;
-                case 4:
-                    this.di12h = this.reader.readByte(cmdPos);
-                    cmdPos++;
-                    break;
-                case 5:
-                    commandCallback(this.di08h_l, this.di08h_h);
-                    this.playingState = SoundImagChannelState.NONE;
-                    return -1;
-                case 6:
-                    this.di13h = 1;
-                    break;
-                case 7:
-                    this.di13h = 0xFF;
-                    break;
-                case 8:
-                    this.setLevel(commandCallback, cmdPos);
-                    cmdPos++;
-                    break;
-                default:
-                    this.log.log("unknown command in part3");
-            }
-            return cmdPos;
-        }
-        setLevel(commandCallback, cmdPos) {
-            var pos = this.reader.readByte(cmdPos);
-            var ah = this.reader.readByte((pos & 0x7F) + this.fileConfig.dataOffset);
-            var al = this.reader.readByte(this.di02h + 0xC);
-            al = (al << 2) & 0xC0;
-            ah = ah | al;
-            commandCallback(this.di05h_l + 0x40, ah);
-            pos = this.di0Fh + this.reader.readByte(this.di02h + 0xA) & 0x7F;
-            ah = this.reader.readByte(pos + this.fileConfig.dataOffset);
-            al = this.reader.readByte(this.di02h + 0xC);
-            al = (al >> 2) & 0xC0;
-            al = al & 0xC0;
-            ah = ah | al;
-            commandCallback(this.di05h_h + 0x40, ah);
-        }
-        /** init this channel for music */
-        initMusic() {
-            this.channelPosition = this.reader.readWordBE(this.programPointer) + this.fileConfig.instructionsOffset;
-            /// move the programm pointer
-            this.programPointer += 2;
-            this.playingState = SoundImagChannelState.MUSIC;
-        }
-        /** init this channel for sound */
-        initSound() {
-            this.playingState = SoundImagChannelState.SOUND;
-        }
-        /** read the adlib config for this channel from the giffen offset */
-        initChannel(offset, index) {
-            offset = offset + index * 20; /// 20: sizeof(Channel-Init-Data)
-            this.reader.setOffset(offset);
-            /// read Cahnnel-Init-Data
-            this.di00h = this.reader.readByte();
-            this.waitTime = this.reader.readByte();
-            this.di02h = this.reader.readWordBE();
-            this.di04h = this.reader.readByte();
-            this.di05h_l = this.reader.readByte();
-            this.di05h_h = this.reader.readByte();
-            this.di07h = this.reader.readByte();
-            ;
-            this.di08h_h = this.reader.readByte();
-            this.di08h_l = this.reader.readByte();
-            this.programPointer = this.reader.readWordBE();
-            this.channelPosition = this.reader.readWordBE();
-            this.unused = this.reader.readByte();
-            this.di0Fh = this.reader.readByte();
-            this.playingState = this.intToPlayingState(this.reader.readByte());
-            this.waitSum = this.reader.readByte();
-            this.di12h = this.reader.readByte();
-            this.di13h = this.reader.readByte();
-        }
-        /** convert a number to a playState */
-        intToPlayingState(stateVal) {
-            switch (stateVal) {
-                case 1:
-                    return SoundImagChannelState.MUSIC;
-                case 2:
-                    return SoundImagChannelState.SOUND;
-                default:
-                    return SoundImagChannelState.NONE;
-            }
-        }
-    }
-    Lemmings.SoundImageChannels = SoundImageChannels;
-})(Lemmings || (Lemmings = {}));
-/// <reference path="../file/binary-reader.ts"/>
-/// <reference path="sound-image-manager.ts"/>
-var Lemmings;
-(function (Lemmings) {
-    ;
-    /**
-     * Player on a Lemmings SoundImage File to playback one track.
-    */
-    class SoundImagePlayer {
-        constructor(reader, audioConfig) {
-            this.audioConfig = audioConfig;
-            this.log = new Lemmings.LogHandler("SoundImagePlayer");
-            /** every track is composed of several channel. */
-            this.channels = [];
-            this.currentCycle = 0;
-            /// are the init Commands send?
-            this.initCommandsDone = false;
-            /// create a new reader for the data
-            this.reader = new Lemmings.BinaryReader(reader);
-            this.fileConfig = audioConfig;
-        }
-        /** Return the samples to be generated */
-        getSamplingInterval() {
-            /// this is an empirical value... dont know if this is correct
-            return this.sampleRateFactor / 210;
-        }
-        /** init for a sound */
-        initSound(soundIndex) {
-            ///- reset
-            this.channels = [];
-            this.channelCount = 0;
-            this.waitCycles = 0;
-            this.sampleRateFactor = 0x4300;
-            /// check if valid
-            if ((soundIndex < 0) || (soundIndex > 17))
-                return;
-            /// create channel : the original DOS Soundimage format player use channels >= 8 for sounds...but this shouldn't matter
-            var ch = this.createChannel(8);
-            ch.channelPosition = this.reader.readWordBE(this.fileConfig.soundIndexTablePosition + soundIndex * 2);
-            ch.waitTime = 1;
-            ch.di13h = 0;
-            ch.initSound();
-            /// add channel
-            this.channels.push(ch);
-            this.channelCount = 1;
-        }
-        /** init for a song */
-        initMusic(musicIndex) {
-            ///- reset
-            this.channels = [];
-            this.channelCount = 0;
-            /// check if valid
-            if (musicIndex < 0)
-                return;
-            musicIndex = musicIndex % this.fileConfig.numberOfTracks;
-            this.songHeaderPosition = this.reader.readWordBE(this.fileConfig.instructionsOffset + musicIndex * 2);
-            this.reader.setOffset(this.songHeaderPosition);
-            this.sampleRateFactor = this.reader.readWordBE();
-            this.instrumentPos = this.reader.readWordBE() + this.fileConfig.instructionsOffset;
-            this.waitCycles = this.reader.readByte();
-            this.channelCount = this.reader.readByte();
-            /// create channels and set there programm position
-            for (var i = 0; i < this.channelCount; i++) {
-                /// create channels
-                var ch = this.createChannel(i);
-                /// config channel
-                ch.programPointer = this.reader.readWordBE() + this.fileConfig.instructionsOffset;
-                ch.instrumentPos = this.instrumentPos;
-                ch.initMusic();
-                this.channels.push(ch);
-            }
-            this.debug();
-        }
-        /** create an SoundImage Channel and init it */
-        createChannel(chIndex) {
-            var ch = new Lemmings.SoundImageChannels(this.reader, this.fileConfig);
-            ch.initChannel(this.fileConfig.adlibChannelConfigPosition, chIndex);
-            ch.waitTime = 1;
-            ch.soundImageVersion = this.fileConfig.version;
-            return ch;
-        }
-        /** reads the next block of data: call this to process the next data of this channel */
-        read(commandCallback) {
-            if (this.currentCycle > 0) {
-                /// wait some time
-                this.currentCycle--;
-                return;
-            }
-            this.currentCycle = this.waitCycles;
-            if (!this.initCommandsDone) {
-                /// write the init adlib commands if this is the first call
-                this.initCommandsDone = true;
-                this.doInitTimer(commandCallback);
-                this.doInitCommands(commandCallback);
-            }
-            /// read every channel
-            for (var i = 0; i < this.channelCount; i++) {
-                this.channels[i].read(commandCallback);
-            }
-        }
-        /** Init the adlib timer */
-        doInitTimer(commandCallback) {
-            //- Masks Timer 1 and Masks Timer 2
-            commandCallback(0x4, 0x60);
-            //- Resets the flags for timers 1 & 2. If set, all other bits are ignored
-            commandCallback(0x4, 0x80);
-            //- Set Value of Timer 1.  The value for this timer is incremented every eighty (80) microseconds
-            commandCallback(0x2, 0xFF);
-            //- Masks Timer 2 and
-            //- The value from byte 02 is loaded into Timer 1, and incrementation begins
-            commandCallback(0x4, 0x21);
-            //- Masks Timer 1 and Masks Timer 2
-            commandCallback(0x4, 0x60);
-            //- Resets the flags for timers 1 & 2. If set, all other bits are ignored
-            commandCallback(0x4, 0x80);
-        }
-        /** Return the commands to init the adlib driver */
-        doInitCommands(commandCallback) {
-            for (var i = 0; i < this.channelCount; i++) {
-                let ch = this.channels[i];
-                commandCallback(ch.di08h_l, ch.di08h_h);
-            }
-            // enabled the FM chips to control the waveform of each operator
-            commandCallback(0x01, 0x20);
-            /// Set: AM depth is 4.8 dB
-            /// Set: Vibrato depth is 14 cent
-            commandCallback(0xBD, 0xC0);
-            /// selects FM music mode
-            ///  keyboard split off
-            commandCallback(0x08, 0x00);
-            /// Masks Timer 2
-            /// the value from byte 02 is loaded into Timer 1, and incrementation begins. 
-            commandCallback(0x04, 0x21);
-        }
-        /** write debug info to console */
-        debug() {
-            this.log.debug(this.fileConfig);
-            this.log.debug("channelCount: " + this.channelCount);
-            this.log.debug("songHeaderPosition: " + this.songHeaderPosition);
-            this.log.debug("sampleRateFactor: " + this.sampleRateFactor);
-            this.log.debug("waitCycles: " + this.waitCycles);
-            this.log.debug("currentCycle: " + this.currentCycle);
-            this.log.debug("instrumentPos: " + this.instrumentPos);
-        }
-    }
-    Lemmings.SoundImagePlayer = SoundImagePlayer;
-})(Lemmings || (Lemmings = {}));
-/*
- * File: OPL3.java
- * Software implementation of the Yamaha YMF262 sound generator.
- * Copyright (C) 2008 Robson Cozendey <robson@cozendey.com>
- *
- * This library is free software; you can redistribute it and/or
- * modify it under the terms of the GNU Lesser General Public
- * License as published by the Free Software Foundation; either
- * version 2.1 of the License, or (at your option) any later version.
- *
- * This library is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
- * Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public
- * License along with this library; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
- *
- * One of the objectives of this emulator is to stimulate further research in the
- * OPL3 chip emulation. There was an explicit effort in making no optimizations,
- * and making the code as legible as possible, so that a new programmer
- * interested in modify and improve upon it could do so more easily.
- * This emulator's main body of information was taken from reverse engineering of
- * the OPL3 chip, from the YMF262 Datasheet and from the OPL3 section in the
- * YMF278b Application's Manual,
- * together with the vibrato table information, eighth waveform parameter
- * information and feedback averaging information provided in MAME's YMF262 and
- * YM3812 emulators, by Jarek Burczynski and Tatsuyuki Satoh.
- * This emulator has a high degree of accuracy, and most of music files sound
- * almost identical, exception made in some games which uses specific parts of
- * the rhythm section. In this respect, some parts of the rhythm mode are still
- * only an approximation of the real chip.
- * The other thing to note is that this emulator was done through recordings of
- * the SB16 DAC, so it has not bitwise precision. Additional equipment should be
- * used to verify the samples directly from the chip, and allow this exact
- * per-sample correspondence. As a good side-effect, since this emulator uses
- * floating point and has a more fine-grained envelope generator, it can produce
- * sometimes a crystal-clear, denser kind of OPL3 sound that, because of that,
- * may be useful for creating new music.
- *
- * Version 1.0.6
- *
- *
- * 2017 - Typescript Version: Thomas Zeugner
- */
-var Cozendey;
-(function (Cozendey) {
-    class OPL3 {
-        constructor() {
-            this.registers = new Int32Array(0x200);
-            this.channels2op = [[], []];
-            this.channels4op = [[], []];
-            this.nts = 0;
-            this.dam = 0;
-            this.dvb = 0;
-            this.ryt = 0;
-            this.bd = 0;
-            this.sd = 0;
-            this.tom = 0;
-            this.tc = 0;
-            this.hh = 0;
-            this._new = 0;
-            this.vibratoIndex = 0;
-            this.tremoloIndex = 0;
-            this.channels = [new Array(9), new Array(9)];
-            this.initOperators();
-            this.initChannels2op();
-            this.initChannels4op();
-            this.initRhythmChannels();
-            this.initChannels();
-        }
-        /** The methods read() and write() are the only
-        // ones needed by the user to interface with the emulator.
-        // read() returns one frame at a time, to be played at 49700 Hz,
-        // with each frame being four 16-bit samples,
-        // corresponding to the OPL3 four output channels CHA...CHD. */
-        read(bufferSize) {
-            let output = [new Float32Array(bufferSize), new Float32Array(bufferSize)];
-            let outputBuffer = new Float32Array(2);
-            let channelOutput;
-            for (let i = 0; i < bufferSize; i++) {
-                for (let outputChannelNumber = 0; outputChannelNumber < 4; outputChannelNumber++)
-                    outputBuffer[outputChannelNumber] = 0;
-                // If _new = 0, use OPL2 mode with 9 channels. If _new = 1, use OPL3 18 channels;
-                for (let array = 0; array < (this._new + 1); array++) {
-                    for (let channelNumber = 0; channelNumber < 9; channelNumber++) {
-                        // Reads output from each OPL3 channel, and accumulates it in the output buffer:
-                        channelOutput = this.channels[array][channelNumber].getChannelOutput();
-                        for (let outputChannelNumber = 0; outputChannelNumber < 4; outputChannelNumber++)
-                            outputBuffer[outputChannelNumber] += channelOutput[outputChannelNumber];
-                    }
-                }
-                // Normalizes the output buffer after all channels have been added,
-                // with a maximum of 18 channels,
-                // and multiplies it to get the 16 bit signed output.
-                for (let outputChannelNumber = 0; outputChannelNumber < 4; outputChannelNumber++) {
-                    output[outputChannelNumber][i] = (outputBuffer[outputChannelNumber] / 18 * 0x7FFF);
-                }
-                // Advances the OPL3-wide vibrato index, which is used by 
-                // PhaseGenerator.getPhase() in each Operator.
-                this.vibratoIndex++;
-                if (this.vibratoIndex >= OPL3Data.vibratoTable[this.dvb].length)
-                    this.vibratoIndex = 0;
-                // Advances the OPL3-wide tremolo index, which is used by 
-                // EnvelopeGenerator.getEnvelope() in each Operator.
-                this.tremoloIndex++;
-                if (this.tremoloIndex >= OPL3Data.tremoloTable[this.dam].length)
-                    this.tremoloIndex = 0;
-            }
-            return output;
-        }
-        /** optimised JavaScript version of Read
-         * returns one frame at a time, to be played at 49700 Hz,
-        */
-        generate(lenSamples) {
-            let output = new Float32Array(lenSamples * 2);
-            for (let i = 0; i < lenSamples; i++) {
-                // Reads output from each OPL3 channel, and accumulates it in the output buffer:
-                let outputValue0 = this.channels[0][0].getChannelOutput()[0];
-                outputValue0 += this.channels[0][1].getChannelOutput()[0];
-                outputValue0 += this.channels[0][2].getChannelOutput()[0];
-                outputValue0 += this.channels[0][3].getChannelOutput()[0];
-                outputValue0 += this.channels[0][4].getChannelOutput()[0];
-                outputValue0 += this.channels[0][5].getChannelOutput()[0];
-                outputValue0 += this.channels[0][6].getChannelOutput()[0];
-                outputValue0 += this.channels[0][7].getChannelOutput()[0];
-                outputValue0 += this.channels[0][8].getChannelOutput()[0];
-                // Normalizes the output buffer after all channels have been added,
-                // with a maximum of 9 channels,
-                // and multiplies it to get the 16 bit signed output.
-                /// to be compatible to the Dosbox version - add two chanels
-                let result = outputValue0 * 7281.4;
-                output[i * 2 + 0] = result;
-                output[i * 2 + 1] = result;
-                // Advances the OPL3-wide vibrato index, which is used by 
-                // PhaseGenerator.getPhase() in each Operator.
-                this.vibratoIndex++;
-                if (this.vibratoIndex >= OPL3Data.vibratoTable[this.dvb].length)
-                    this.vibratoIndex = 0;
-                // Advances the OPL3-wide tremolo index, which is used by 
-                // EnvelopeGenerator.getEnvelope() in each Operator.
-                this.tremoloIndex++;
-                if (this.tremoloIndex >= OPL3Data.tremoloTable[this.dam].length)
-                    this.tremoloIndex = 0;
-            }
-            return output;
-        }
-        write(address, data) {
-            let array = 0;
-            // The OPL3 has two registers arrays, each with adresses ranging
-            // from 0x00 to 0xF5.
-            // This emulator uses one array, with the two original register arrays
-            // starting at 0x00 and at 0x100.
-            let registerAddress = (array << 8) | address;
-            // If the address is out of the OPL3 memory map, returns.
-            if (registerAddress < 0 || registerAddress >= 0x200)
-                return;
-            this.registers[registerAddress] = data;
-            switch (address & 0xE0) {
-                // The first 3 bits masking gives the type of the register by using its base address:
-                // 0x00, 0x20, 0x40, 0x60, 0x80, 0xA0, 0xC0, 0xE0 
-                // When it is needed, we further separate the register type inside each base address,
-                // which is the case of 0x00 and 0xA0.
-                // Through out this emulator we will use the same name convention to
-                // reference a byte with several bit registers.
-                // The name of each bit register will be followed by the number of bits
-                // it occupies inside the byte. 
-                // Numbers without accompanying names are unused bits.
-                case 0x00:
-                    // Unique registers for the entire OPL3:                
-                    if (array == 1) {
-                        if (address == 0x04)
-                            this.update_2_CONNECTIONSEL6();
-                        else if (address == 0x05)
-                            this.update_7_NEW1();
-                    }
-                    else if (address == 0x08)
-                        this.update_1_NTS1_6();
-                    break;
-                case 0xA0:
-                    // 0xBD is a control register for the entire OPL3:
-                    if (address == 0xBD) {
-                        if (array == 0)
-                            this.update_DAM1_DVB1_RYT1_BD1_SD1_TOM1_TC1_HH1();
-                        break;
-                    }
-                    // Registers for each channel are in A0-A8, B0-B8, C0-C8, in both register arrays.
-                    // 0xB0...0xB8 keeps kon,block,fnum(h) for each channel.
-                    if ((address & 0xF0) == 0xB0 && address <= 0xB8) {
-                        // If the address is in the second register array, adds 9 to the channel number.
-                        // The channel number is given by the last four bits, like in A0,...,A8.
-                        this.channels[array][address & 0x0F].update_2_KON1_BLOCK3_FNUMH2();
-                        break;
-                    }
-                    // 0xA0...0xA8 keeps fnum(l) for each channel.
-                    if ((address & 0xF0) == 0xA0 && address <= 0xA8)
-                        this.channels[array][address & 0x0F].update_FNUML8();
-                    break;
-                // 0xC0...0xC8 keeps cha,chb,chc,chd,fb,cnt for each channel:
-                case 0xC0:
-                    if (address <= 0xC8)
-                        this.channels[array][address & 0x0F].update_CHD1_CHC1_CHB1_CHA1_FB3_CNT1();
-                    break;
-                // Registers for each of the 36 Operators:
-                default:
-                    let operatorOffset = address & 0x1F;
-                    if (this.operators[array][operatorOffset] == null)
-                        break;
-                    switch (address & 0xE0) {
-                        // 0x20...0x35 keeps am,vib,egt,ksr,mult for each operator:                
-                        case 0x20:
-                            this.operators[array][operatorOffset].update_AM1_VIB1_EGT1_KSR1_MULT4();
-                            break;
-                        // 0x40...0x55 keeps ksl,tl for each operator: 
-                        case 0x40:
-                            this.operators[array][operatorOffset].update_KSL2_TL6();
-                            break;
-                        // 0x60...0x75 keeps ar,dr for each operator: 
-                        case 0x60:
-                            this.operators[array][operatorOffset].update_AR4_DR4();
-                            break;
-                        // 0x80...0x95 keeps sl,rr for each operator:
-                        case 0x80:
-                            this.operators[array][operatorOffset].update_SL4_RR4();
-                            break;
-                        // 0xE0...0xF5 keeps ws for each operator:
-                        case 0xE0:
-                            this.operators[array][operatorOffset].update_5_WS3();
-                    }
-            }
-        }
-        initOperators() {
-            let baseAddress = 0;
-            // The YMF262 has 36 operators:
-            this.operators = [[], []]; //new Operator[2][0x20];
-            for (let array = 0; array < 2; array++)
-                for (let group = 0; group <= 0x10; group += 8)
-                    for (let offset = 0; offset < 6; offset++) {
-                        baseAddress = (array << 8) | (group + offset);
-                        this.operators[array][group + offset] = new Operator(this, baseAddress);
-                    }
-            // Create specific operators to switch when in rhythm mode:
-            this.highHatOperator = new HighHatOperator(this);
-            this.snareDrumOperator = new SnareDrumOperator(this);
-            this.tomTomOperator = new TomTomOperator(this);
-            this.topCymbalOperator = new TopCymbalOperator(this);
-            // Save operators when they are in non-rhythm mode:
-            // Channel 7:
-            this.highHatOperatorInNonRhythmMode = this.operators[0][0x11];
-            this.snareDrumOperatorInNonRhythmMode = this.operators[0][0x14];
-            // Channel 8:
-            this.tomTomOperatorInNonRhythmMode = this.operators[0][0x12];
-            this.topCymbalOperatorInNonRhythmMode = this.operators[0][0x15];
-        }
-        initChannels2op() {
-            // The YMF262 has 18 2-op channels.
-            // Each 2-op channel can be at a serial or parallel operator configuration:
-            this.channels2op = [[], []]; //new Channel2op[2][9];
-            for (let array = 0; array < 2; array++)
-                for (let channelNumber = 0; channelNumber < 3; channelNumber++) {
-                    let baseAddress = (array << 8) | channelNumber;
-                    // Channels 1, 2, 3 -> Operator offsets 0x0,0x3; 0x1,0x4; 0x2,0x5
-                    this.channels2op[array][channelNumber] = new Channel2op(this, baseAddress, this.operators[array][channelNumber], this.operators[array][channelNumber + 0x3]);
-                    // Channels 4, 5, 6 -> Operator offsets 0x8,0xB; 0x9,0xC; 0xA,0xD
-                    this.channels2op[array][channelNumber + 3] = new Channel2op(this, baseAddress + 3, this.operators[array][channelNumber + 0x8], this.operators[array][channelNumber + 0xB]);
-                    // Channels 7, 8, 9 -> Operators 0x10,0x13; 0x11,0x14; 0x12,0x15
-                    this.channels2op[array][channelNumber + 6] = new Channel2op(this, baseAddress + 6, this.operators[array][channelNumber + 0x10], this.operators[array][channelNumber + 0x13]);
-                }
-        }
-        initChannels4op() {
-            // The YMF262 has 3 4-op channels in each array:
-            this.channels4op = [[], []]; //new Channel4op[2][3];
-            for (let array = 0; array < 2; array++)
-                for (let channelNumber = 0; channelNumber < 3; channelNumber++) {
-                    let baseAddress = (array << 8) | channelNumber;
-                    // Channels 1, 2, 3 -> Operators 0x0,0x3,0x8,0xB; 0x1,0x4,0x9,0xC; 0x2,0x5,0xA,0xD;
-                    this.channels4op[array][channelNumber] = new Channel4op(this, baseAddress, this.operators[array][channelNumber], this.operators[array][channelNumber + 0x3], this.operators[array][channelNumber + 0x8], this.operators[array][channelNumber + 0xB]);
-                }
-        }
-        initRhythmChannels() {
-            this.bassDrumChannel = new BassDrumChannel(this);
-            this.highHatSnareDrumChannel = new HighHatSnareDrumChannel(this);
-            this.tomTomTopCymbalChannel = new TomTomTopCymbalChannel(this);
-        }
-        initChannels() {
-            // Channel is an abstract class that can be a 2-op, 4-op, rhythm or disabled channel, 
-            // depending on the OPL3 configuration at the time.
-            // channels[] inits as a 2-op serial channel array:
-            for (let array = 0; array < 2; array++)
-                for (let i = 0; i < 9; i++)
-                    this.channels[array][i] = this.channels2op[array][i];
-            // Unique instance to fill future gaps in the Channel array,
-            // when there will be switches between 2op and 4op mode.
-            this.disabledChannel = new DisabledChannel(this);
-        }
-        update_1_NTS1_6() {
-            let _1_nts1_6 = this.registers[OPL3Data._1_NTS1_6_Offset];
-            // Note Selection. This register is used in Channel.updateOperators() implementations,
-            // to calculate the channel´s Key Scale Number.
-            // The value of the actual envelope rate follows the value of
-            // OPL3.nts,Operator.keyScaleNumber and Operator.ksr
-            this.nts = (_1_nts1_6 & 0x40) >> 6;
-        }
-        update_DAM1_DVB1_RYT1_BD1_SD1_TOM1_TC1_HH1() {
-            let dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 = this.registers[OPL3Data.DAM1_DVB1_RYT1_BD1_SD1_TOM1_TC1_HH1_Offset];
-            // Depth of amplitude. This register is used in EnvelopeGenerator.getEnvelope();
-            this.dam = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x80) >> 7;
-            // Depth of vibrato. This register is used in PhaseGenerator.getPhase();
-            this.dvb = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x40) >> 6;
-            let new_ryt = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x20) >> 5;
-            if (new_ryt != this.ryt) {
-                this.ryt = new_ryt;
-                this.setRhythmMode();
-            }
-            let new_bd = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x10) >> 4;
-            if (new_bd != this.bd) {
-                this.bd = new_bd;
-                if (this.bd == 1) {
-                    this.bassDrumChannel.op1.keyOn();
-                    this.bassDrumChannel.op2.keyOn();
-                }
-            }
-            let new_sd = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x08) >> 3;
-            if (new_sd != this.sd) {
-                this.sd = new_sd;
-                if (this.sd == 1)
-                    this.snareDrumOperator.keyOn();
-            }
-            let new_tom = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x04) >> 2;
-            if (new_tom != this.tom) {
-                this.tom = new_tom;
-                if (this.tom == 1)
-                    this.tomTomOperator.keyOn();
-            }
-            let new_tc = (dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x02) >> 1;
-            if (new_tc != this.tc) {
-                this.tc = new_tc;
-                if (this.tc == 1)
-                    this.topCymbalOperator.keyOn();
-            }
-            let new_hh = dam1_dvb1_ryt1_bd1_sd1_tom1_tc1_hh1 & 0x01;
-            if (new_hh != this.hh) {
-                this.hh = new_hh;
-                if (this.hh == 1)
-                    this.highHatOperator.keyOn();
-            }
-        }
-        update_7_NEW1() {
-            let _7_new1 = this.registers[OPL3Data._7_NEW1_Offset];
-            // OPL2/OPL3 mode selection. This register is used in 
-            // OPL3.read(), OPL3.write() and Operator.getOperatorOutput();
-            this._new = (_7_new1 & 0x01);
-            if (this._new == 1)
-                this.setEnabledChannels();
-            this.set4opConnections();
-        }
-        setEnabledChannels() {
-            for (let array = 0; array < 2; array++)
-                for (let i = 0; i < 9; i++) {
-                    let baseAddress = this.channels[array][i].channelBaseAddress;
-                    this.registers[baseAddress + ChannelData.CHD1_CHC1_CHB1_CHA1_FB3_CNT1_Offset] |= 0xF0;
-                    this.channels[array][i].update_CHD1_CHC1_CHB1_CHA1_FB3_CNT1();
-                }
-        }
-        update_2_CONNECTIONSEL6() {
-            // This method is called only if _new is set.
-            let _2_connectionsel6 = this.registers[OPL3Data._2_CONNECTIONSEL6_Offset];
-            // 2-op/4-op channel selection. This register is used here to configure the OPL3.channels[] array.
-            this.connectionsel = (_2_connectionsel6 & 0x3F);
-            this.set4opConnections();
-        }
-        set4opConnections() {
-            // bits 0, 1, 2 sets respectively 2-op channels (1,4), (2,5), (3,6) to 4-op operation.
-            // bits 3, 4, 5 sets respectively 2-op channels (10,13), (11,14), (12,15) to 4-op operation.
-            for (let array = 0; array < 2; array++)
-                for (let i = 0; i < 3; i++) {
-                    if (this._new == 1) {
-                        let shift = array * 3 + i;
-                        let connectionBit = (this.connectionsel >> shift) & 0x01;
-                        if (connectionBit == 1) {
-                            this.channels[array][i] = this.channels4op[array][i];
-                            this.channels[array][i + 3] = this.disabledChannel;
-                            this.channels[array][i].updateChannel();
-                            continue;
-                        }
-                    }
-                    this.channels[array][i] = this.channels2op[array][i];
-                    this.channels[array][i + 3] = this.channels2op[array][i + 3];
-                    this.channels[array][i].updateChannel();
-                    this.channels[array][i + 3].updateChannel();
-                }
-        }
-        setRhythmMode() {
-            if (this.ryt == 1) {
-                this.channels[0][6] = this.bassDrumChannel;
-                this.channels[0][7] = this.highHatSnareDrumChannel;
-                this.channels[0][8] = this.tomTomTopCymbalChannel;
-                this.operators[0][0x11] = this.highHatOperator;
-                this.operators[0][0x14] = this.snareDrumOperator;
-                this.operators[0][0x12] = this.tomTomOperator;
-                this.operators[0][0x15] = this.topCymbalOperator;
-            }
-            else {
-                for (let i = 6; i <= 8; i++)
-                    this.channels[0][i] = this.channels2op[0][i];
-                this.operators[0][0x11] = this.highHatOperatorInNonRhythmMode;
-                this.operators[0][0x14] = this.snareDrumOperatorInNonRhythmMode;
-                this.operators[0][0x12] = this.tomTomOperatorInNonRhythmMode;
-                this.operators[0][0x15] = this.topCymbalOperatorInNonRhythmMode;
-            }
-            for (let i = 6; i <= 8; i++)
-                this.channels[0][i].updateChannel();
-        }
-    }
-    Cozendey.OPL3 = OPL3;
-    //
-    // Channels
-    //
-    class Channel {
-        constructor(opl, baseAddress) {
-            this.opl = opl;
-            this.fnuml = 0;
-            this.fnumh = 0;
-            this.kon = 0;
-            this.block = 0;
-            this.cha = 0;
-            this.chb = 0;
-            this.chc = 0;
-            this.chd = 0;
-            this.fb = 0;
-            this.cnt = 0;
-            // Factor to convert between normalized amplitude to normalized
-            // radians. The amplitude maximum is equivalent to 8*Pi radians.
-            this.toPhase = 4;
-            this.channelBaseAddress = baseAddress;
-            this.feedback = new Float32Array(2);
-            this.feedback[0] = this.feedback[1] = 0;
-        }
-        update_2_KON1_BLOCK3_FNUMH2() {
-            let _2_kon1_block3_fnumh2 = this.opl.registers[this.channelBaseAddress + ChannelData._2_KON1_BLOCK3_FNUMH2_Offset];
-            // Frequency Number (hi-register) and Block. These two registers, together with fnuml, 
-            // sets the Channel´s base frequency;
-            this.block = (_2_kon1_block3_fnumh2 & 0x1C) >> 2;
-            this.fnumh = _2_kon1_block3_fnumh2 & 0x03;
-            this.updateOperators();
-            // Key On. If changed, calls Channel.keyOn() / keyOff().
-            let newKon = (_2_kon1_block3_fnumh2 & 0x20) >> 5;
-            if (newKon != this.kon) {
-                if (newKon == 1)
-                    this.keyOn();
-                else
-                    this.keyOff();
-                this.kon = newKon;
-            }
-        }
-        update_FNUML8() {
-            let fnuml8 = this.opl.registers[this.channelBaseAddress + ChannelData.FNUML8_Offset];
-            // Frequency Number, low register.
-            this.fnuml = fnuml8 & 0xFF;
-            this.updateOperators();
-        }
-        update_CHD1_CHC1_CHB1_CHA1_FB3_CNT1() {
-            let chd1_chc1_chb1_cha1_fb3_cnt1 = this.opl.registers[this.channelBaseAddress + ChannelData.CHD1_CHC1_CHB1_CHA1_FB3_CNT1_Offset];
-            this.chd = (chd1_chc1_chb1_cha1_fb3_cnt1 & 0x80) >> 7;
-            this.chc = (chd1_chc1_chb1_cha1_fb3_cnt1 & 0x40) >> 6;
-            this.chb = (chd1_chc1_chb1_cha1_fb3_cnt1 & 0x20) >> 5;
-            this.cha = (chd1_chc1_chb1_cha1_fb3_cnt1 & 0x10) >> 4;
-            this.fb = (chd1_chc1_chb1_cha1_fb3_cnt1 & 0x0E) >> 1;
-            this.cnt = chd1_chc1_chb1_cha1_fb3_cnt1 & 0x01;
-            this.updateOperators();
-        }
-        updateChannel() {
-            this.update_2_KON1_BLOCK3_FNUMH2();
-            this.update_FNUML8();
-            this.update_CHD1_CHC1_CHB1_CHA1_FB3_CNT1();
-        }
-        getInFourChannels(channelOutput) {
-            let output = new Float32Array(4);
-            if (this.opl._new == 0)
-                output[0] = output[1] = output[2] = output[3] = channelOutput;
-            else {
-                output[0] = (this.cha == 1) ? channelOutput : 0;
-                output[1] = (this.chb == 1) ? channelOutput : 0;
-                output[2] = (this.chc == 1) ? channelOutput : 0;
-                output[3] = (this.chd == 1) ? channelOutput : 0;
-            }
-            return output;
-        }
-    }
-    class Channel2op extends Channel {
-        constructor(opl, baseAddress, o1, o2) {
-            super(opl, baseAddress);
-            this.op1 = o1;
-            this.op2 = o2;
-        }
-        getChannelOutput() {
-            let channelOutput = 0, op1Output = 0, op2Output = 0;
-            let output;
-            // The feedback uses the last two outputs from
-            // the first operator, instead of just the last one. 
-            let feedbackOutput = (this.feedback[0] + this.feedback[1]) / 2;
-            switch (this.cnt) {
-                // CNT = 0, the operators are in series, with the first in feedback.
-                case 0:
-                    if (this.op2.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    channelOutput = this.op2.getOperatorOutput(op1Output * this.toPhase);
-                    break;
-                // CNT = 1, the operators are in parallel, with the first in feedback.    
-                case 1:
-                    if (this.op1.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF &&
-                        this.op2.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    op2Output = this.op2.getOperatorOutput(Operator.noModulator);
-                    channelOutput = (op1Output + op2Output) / 2;
-            }
-            this.feedback[0] = this.feedback[1];
-            this.feedback[1] = (op1Output * ChannelData.feedback[this.fb]) % 1;
-            output = this.getInFourChannels(channelOutput);
-            return output;
-        }
-        keyOn() {
-            this.op1.keyOn();
-            this.op2.keyOn();
-            this.feedback[0] = this.feedback[1] = 0;
-        }
-        keyOff() {
-            this.op1.keyOff();
-            this.op2.keyOff();
-        }
-        updateOperators() {
-            // Key Scale Number, used in EnvelopeGenerator.setActualRates().
-            let keyScaleNumber = this.block * 2 + ((this.fnumh >> this.opl.nts) & 0x01);
-            let f_number = (this.fnumh << 8) | this.fnuml;
-            this.op1.updateOperator(keyScaleNumber, f_number, this.block);
-            this.op2.updateOperator(keyScaleNumber, f_number, this.block);
-        }
-        toString() {
-            let str = "";
-            let f_number = (this.fnumh << 8) + this.fnuml;
-            str += "channelBaseAddress: %d\n", this.channelBaseAddress;
-            str += "f_number: %d, block: %d\n", f_number, this.block;
-            str += "cnt: %d, feedback: %d\n", this.cnt, this.fb;
-            str += "op1:\n%s", this.op1.toString();
-            str += "op2:\n%s", this.op2.toString();
-            return str.toString();
-        }
-    }
-    class Channel4op extends Channel {
-        constructor(opl, baseAddress, o1, o2, o3, o4) {
-            super(opl, baseAddress);
-            this.op1 = o1;
-            this.op2 = o2;
-            this.op3 = o3;
-            this.op4 = o4;
-        }
-        getChannelOutput() {
-            let channelOutput = 0;
-            let op1Output = 0;
-            let op2Output = 0;
-            let op3Output = 0;
-            let op4Output = 0;
-            let output;
-            let secondChannelBaseAddress = this.channelBaseAddress + 3;
-            let secondCnt = this.opl.registers[secondChannelBaseAddress + ChannelData.CHD1_CHC1_CHB1_CHA1_FB3_CNT1_Offset] & 0x1;
-            let cnt4op = (this.cnt << 1) | secondCnt;
-            let feedbackOutput = (this.feedback[0] + this.feedback[1]) / 2;
-            switch (cnt4op) {
-                case 0:
-                    if (this.op4.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    op2Output = this.op2.getOperatorOutput(op1Output * this.toPhase);
-                    op3Output = this.op3.getOperatorOutput(op2Output * this.toPhase);
-                    channelOutput = this.op4.getOperatorOutput(op3Output * this.toPhase);
-                    break;
-                case 1:
-                    if (this.op2.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF &&
-                        this.op4.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    op2Output = this.op2.getOperatorOutput(op1Output * this.toPhase);
-                    op3Output = this.op3.getOperatorOutput(Operator.noModulator);
-                    op4Output = this.op4.getOperatorOutput(op3Output * this.toPhase);
-                    channelOutput = (op2Output + op4Output) / 2;
-                    break;
-                case 2:
-                    if (this.op1.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF &&
-                        this.op4.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    op2Output = this.op2.getOperatorOutput(Operator.noModulator);
-                    op3Output = this.op3.getOperatorOutput(op2Output * this.toPhase);
-                    op4Output = this.op4.getOperatorOutput(op3Output * this.toPhase);
-                    channelOutput = (op1Output + op4Output) / 2;
-                    break;
-                case 3:
-                    if (this.op1.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF &&
-                        this.op3.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF &&
-                        this.op4.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                        return this.getInFourChannels(0);
-                    op1Output = this.op1.getOperatorOutput(feedbackOutput);
-                    op2Output = this.op2.getOperatorOutput(Operator.noModulator);
-                    op3Output = this.op3.getOperatorOutput(op2Output * this.toPhase);
-                    op4Output = this.op4.getOperatorOutput(Operator.noModulator);
-                    channelOutput = (op1Output + op3Output + op4Output) / 3;
-            }
-            this.feedback[0] = this.feedback[1];
-            this.feedback[1] = (op1Output * ChannelData.feedback[this.fb]) % 1;
-            output = this.getInFourChannels(channelOutput);
-            return output;
-        }
-        keyOn() {
-            this.op1.keyOn();
-            this.op2.keyOn();
-            this.op3.keyOn();
-            this.op4.keyOn();
-            this.feedback[0] = this.feedback[1] = 0;
-        }
-        keyOff() {
-            this.op1.keyOff();
-            this.op2.keyOff();
-            this.op3.keyOff();
-            this.op4.keyOff();
-        }
-        updateOperators() {
-            // Key Scale Number, used in EnvelopeGenerator.setActualRates().
-            let keyScaleNumber = this.block * 2 + ((this.fnumh >> this.opl.nts) & 0x01);
-            let f_number = (this.fnumh << 8) | this.fnuml;
-            this.op1.updateOperator(keyScaleNumber, f_number, this.block);
-            this.op2.updateOperator(keyScaleNumber, f_number, this.block);
-            this.op3.updateOperator(keyScaleNumber, f_number, this.block);
-            this.op4.updateOperator(keyScaleNumber, f_number, this.block);
-        }
-        toString() {
-            let str = "";
-            let f_number = (this.fnumh << 8) + this.fnuml;
-            str += "channelBaseAddress: %d\n", this.channelBaseAddress;
-            str += "f_number: %d, block: %d\n", f_number, this.block;
-            str += "cnt: %d, feedback: %d\n", this.cnt, this.fb;
-            str += "op1:\n%s", this.op1.toString();
-            str += "op2:\n%s", this.op2.toString();
-            str += "op3:\n%s", this.op3.toString();
-            str += "op4:\n%s", this.op4.toString();
-            return str;
-        }
-    }
-    /** There's just one instance of this class, that fills the eventual gaps in the Channel array; */
-    class DisabledChannel extends Channel {
-        constructor(opl) {
-            super(opl, 0);
-        }
-        getChannelOutput() { return this.getInFourChannels(0); }
-        keyOn() { }
-        keyOff() { }
-        updateOperators() { }
-    }
-    //
-    // Operators
-    //
-    class Operator {
-        constructor(opl, baseAddress) {
-            this.opl = opl;
-            this.envelope = 0;
-            this.phase = 0;
-            this.operatorBaseAddress = 0;
-            this.am = 0;
-            this.vib = 0;
-            this.ksr = 0;
-            this.egt = 0;
-            this.mult = 0;
-            this.ksl = 0;
-            this.tl = 0;
-            this.ar = 0;
-            this.dr = 0;
-            this.sl = 0;
-            this.rr = 0;
-            this.ws = 0;
-            this.keyScaleNumber = 0;
-            this.f_number = 0;
-            this.block = 0;
-            this.operatorBaseAddress = baseAddress;
-            this.phaseGenerator = new PhaseGenerator(opl);
-            this.envelopeGenerator = new EnvelopeGenerator(opl);
-        }
-        update_AM1_VIB1_EGT1_KSR1_MULT4() {
-            let am1_vib1_egt1_ksr1_mult4 = this.opl.registers[this.operatorBaseAddress + OperatorData.AM1_VIB1_EGT1_KSR1_MULT4_Offset];
-            // Amplitude Modulation. This register is used int EnvelopeGenerator.getEnvelope();
-            this.am = (am1_vib1_egt1_ksr1_mult4 & 0x80) >> 7;
-            // Vibrato. This register is used in PhaseGenerator.getPhase();
-            this.vib = (am1_vib1_egt1_ksr1_mult4 & 0x40) >> 6;
-            // Envelope Generator Type. This register is used in EnvelopeGenerator.getEnvelope();
-            this.egt = (am1_vib1_egt1_ksr1_mult4 & 0x20) >> 5;
-            // Key Scale Rate. Sets the actual envelope rate together with rate and keyScaleNumber.
-            // This register os used in EnvelopeGenerator.setActualAttackRate().
-            this.ksr = (am1_vib1_egt1_ksr1_mult4 & 0x10) >> 4;
-            // Multiple. Multiplies the Channel.baseFrequency to get the Operator.operatorFrequency.
-            // This register is used in PhaseGenerator.setFrequency().
-            this.mult = am1_vib1_egt1_ksr1_mult4 & 0x0F;
-            this.phaseGenerator.setFrequency(this.f_number, this.block, this.mult);
-            this.envelopeGenerator.setActualAttackRate(this.ar, this.ksr, this.keyScaleNumber);
-            this.envelopeGenerator.setActualDecayRate(this.dr, this.ksr, this.keyScaleNumber);
-            this.envelopeGenerator.setActualReleaseRate(this.rr, this.ksr, this.keyScaleNumber);
-        }
-        update_KSL2_TL6() {
-            let ksl2_tl6 = this.opl.registers[this.operatorBaseAddress + OperatorData.KSL2_TL6_Offset];
-            // Key Scale Level. Sets the attenuation in accordance with the octave.
-            this.ksl = (ksl2_tl6 & 0xC0) >> 6;
-            // Total Level. Sets the overall damping for the envelope.
-            this.tl = ksl2_tl6 & 0x3F;
-            this.envelopeGenerator.setAtennuation(this.f_number, this.block, this.ksl);
-            this.envelopeGenerator.setTotalLevel(this.tl);
-        }
-        update_AR4_DR4() {
-            let ar4_dr4 = this.opl.registers[this.operatorBaseAddress + OperatorData.AR4_DR4_Offset];
-            // Attack Rate.
-            this.ar = (ar4_dr4 & 0xF0) >> 4;
-            // Decay Rate.
-            this.dr = ar4_dr4 & 0x0F;
-            this.envelopeGenerator.setActualAttackRate(this.ar, this.ksr, this.keyScaleNumber);
-            this.envelopeGenerator.setActualDecayRate(this.dr, this.ksr, this.keyScaleNumber);
-        }
-        update_SL4_RR4() {
-            let sl4_rr4 = this.opl.registers[this.operatorBaseAddress + OperatorData.SL4_RR4_Offset];
-            // Sustain Level.
-            this.sl = (sl4_rr4 & 0xF0) >> 4;
-            // Release Rate.
-            this.rr = sl4_rr4 & 0x0F;
-            this.envelopeGenerator.setActualSustainLevel(this.sl);
-            this.envelopeGenerator.setActualReleaseRate(this.rr, this.ksr, this.keyScaleNumber);
-        }
-        update_5_WS3() {
-            let _5_ws3 = this.opl.registers[this.operatorBaseAddress + OperatorData._5_WS3_Offset];
-            this.ws = _5_ws3 & 0x07;
-        }
-        getOperatorOutput(modulator) {
-            if (this.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                return 0;
-            let envelopeInDB = this.envelopeGenerator.getEnvelope(this.egt, this.am);
-            this.envelope = Math.pow(10, envelopeInDB / 10.0);
-            // If it is in OPL2 mode, use first four waveforms only:
-            this.ws &= ((this.opl._new << 2) + 3);
-            let waveform = OperatorData.waveforms[this.ws];
-            this.phase = this.phaseGenerator.getPhase(this.vib);
-            let operatorOutput = this.getOutput(modulator, this.phase, waveform);
-            return operatorOutput;
-        }
-        getOutput(modulator, outputPhase, waveform) {
-            outputPhase = (outputPhase + modulator) % 1;
-            if (outputPhase < 0) {
-                outputPhase++;
-                // If the double could not afford to be less than 1:
-                outputPhase %= 1;
-            }
-            let sampleIndex = (outputPhase * OperatorData.waveLength) | 0;
-            return waveform[sampleIndex] * this.envelope;
-        }
-        keyOn() {
-            if (this.ar > 0) {
-                this.envelopeGenerator.keyOn();
-                this.phaseGenerator.keyOn();
-            }
-            else
-                this.envelopeGenerator.stage = EnvelopeGenerator.Stage.OFF;
-        }
-        keyOff() {
-            this.envelopeGenerator.keyOff();
-        }
-        updateOperator(ksn, f_num, blk) {
-            this.keyScaleNumber = ksn;
-            this.f_number = f_num;
-            this.block = blk;
-            this.update_AM1_VIB1_EGT1_KSR1_MULT4();
-            this.update_KSL2_TL6();
-            this.update_AR4_DR4();
-            this.update_SL4_RR4();
-            this.update_5_WS3();
-        }
-        toString() {
-            let str = "";
-            let operatorFrequency = this.f_number * Math.pow(2, this.block - 1) * OPL3Data.sampleRate / Math.pow(2, 19) * OperatorData.multTable[this.mult];
-            str += "operatorBaseAddress: %d\n", this.operatorBaseAddress;
-            str += "operatorFrequency: %f\n", operatorFrequency;
-            str += "mult: %d, ar: %d, dr: %d, sl: %d, rr: %d, ws: %d\n", this.mult, this.ar, this.dr, this.sl, this.rr, this.ws;
-            str += "am: %d, vib: %d, ksr: %d, egt: %d, ksl: %d, tl: %d\n", this.am, this.vib, this.ksr, this.egt, this.ksl, this.tl;
-            return str;
-        }
-    }
-    Operator.noModulator = 0;
-    //
-    // Envelope Generator
-    //
-    class EnvelopeGenerator {
-        constructor(opl) {
-            this.opl = opl;
-            this.stage = EnvelopeGenerator.Stage.OFF;
-            this.actualAttackRate = 0;
-            this.actualDecayRate = 0;
-            this.xAttackIncrement = 0;
-            this.xMinimumInAttack = 0;
-            this.dBdecayIncrement = 0;
-            this.dBreleaseIncrement = 0;
-            this.attenuation = 0;
-            this.totalLevel = 0;
-            this.sustainLevel = 0;
-            this.x = 0;
-            this.envelope = 0;
-            this.x = this.dBtoX(-96);
-            this.envelope = -96;
-        }
-        setActualSustainLevel(sl) {
-            // If all SL bits are 1, sustain level is set to -93 dB:
-            if (sl == 0x0F) {
-                this.sustainLevel = -93;
-                return;
-            }
-            // The datasheet states that the SL formula is
-            // sustainLevel = -24*d7 -12*d6 -6*d5 -3*d4,
-            // translated as:
-            this.sustainLevel = -3 * sl;
-        }
-        setTotalLevel(tl) {
-            // The datasheet states that the TL formula is
-            // TL = -(24*d5 + 12*d4 + 6*d3 + 3*d2 + 1.5*d1 + 0.75*d0),
-            // translated as:
-            this.totalLevel = tl * -0.75;
-        }
-        setAtennuation(f_number, block, ksl) {
-            let hi4bits = (f_number >> 6) & 0x0F;
-            switch (ksl) {
-                case 0:
-                    this.attenuation = 0;
-                    break;
-                case 1:
-                    // ~3 dB/Octave
-                    this.attenuation = OperatorData.ksl3dBtable[hi4bits][block];
-                    break;
-                case 2:
-                    // ~1.5 dB/Octave
-                    this.attenuation = OperatorData.ksl3dBtable[hi4bits][block] / 2;
-                    break;
-                case 3:
-                    // ~6 dB/Octave
-                    this.attenuation = OperatorData.ksl3dBtable[hi4bits][block] * 2;
-            }
-        }
-        setActualAttackRate(attackRate, ksr, keyScaleNumber) {
-            // According to the YMF278B manual's OPL3 section, the attack curve is exponential,
-            // with a dynamic range from -96 dB to 0 dB and a resolution of 0.1875 dB 
-            // per level.
-            //
-            // This method sets an attack increment and attack minimum value 
-            // that creates a exponential dB curve with 'period0to100' seconds in length
-            // and 'period10to90' seconds between 10% and 90% of the curve total level.
-            this.actualAttackRate = this.calculateActualRate(attackRate, ksr, keyScaleNumber);
-            let period0to100inSeconds = (EnvelopeGeneratorData.attackTimeValuesTable[this.actualAttackRate][0] / 1000);
-            let period0to100inSamples = (period0to100inSeconds * OPL3Data.sampleRate) | 0;
-            let period10to90inSeconds = (EnvelopeGeneratorData.attackTimeValuesTable[this.actualAttackRate][1] / 1000);
-            let period10to90inSamples = (period10to90inSeconds * OPL3Data.sampleRate) | 0;
-            // The x increment is dictated by the period between 10% and 90%:
-            this.xAttackIncrement = OPL3Data.calculateIncrement(this.percentageToX(0.1), this.percentageToX(0.9), period10to90inSeconds);
-            // Discover how many samples are still from the top.
-            // It cannot reach 0 dB, since x is a logarithmic parameter and would be
-            // negative infinity. So we will use -0.1875 dB as the resolution
-            // maximum.
-            //
-            // percentageToX(0.9) + samplesToTheTop*xAttackIncrement = dBToX(-0.1875); ->
-            // samplesToTheTop = (dBtoX(-0.1875) - percentageToX(0.9)) / xAttackIncrement); ->
-            // period10to100InSamples = period10to90InSamples + samplesToTheTop; ->
-            let period10to100inSamples = (period10to90inSamples + (this.dBtoX(-0.1875) - this.percentageToX(0.9)) / this.xAttackIncrement) | 0;
-            // Discover the minimum x that, through the attackIncrement value, keeps 
-            // the 10%-90% period, and reaches 0 dB at the total period:
-            this.xMinimumInAttack = this.percentageToX(0.1) - (period0to100inSamples - period10to100inSamples) * this.xAttackIncrement;
-        }
-        setActualDecayRate(decayRate, ksr, keyScaleNumber) {
-            this.actualDecayRate = this.calculateActualRate(decayRate, ksr, keyScaleNumber);
-            let period10to90inSeconds = EnvelopeGeneratorData.decayAndReleaseTimeValuesTable[this.actualDecayRate][1] / 1000;
-            // Differently from the attack curve, the decay/release curve is linear.        
-            // The dB increment is dictated by the period between 10% and 90%:
-            this.dBdecayIncrement = OPL3Data.calculateIncrement(this.percentageToDB(0.1), this.percentageToDB(0.9), period10to90inSeconds);
-        }
-        setActualReleaseRate(releaseRate, ksr, keyScaleNumber) {
-            this.actualReleaseRate = this.calculateActualRate(releaseRate, ksr, keyScaleNumber);
-            let period10to90inSeconds = EnvelopeGeneratorData.decayAndReleaseTimeValuesTable[this.actualReleaseRate][1] / 1000;
-            this.dBreleaseIncrement = OPL3Data.calculateIncrement(this.percentageToDB(0.1), this.percentageToDB(0.9), period10to90inSeconds);
-        }
-        calculateActualRate(rate, ksr, keyScaleNumber) {
-            let rof = EnvelopeGeneratorData.rateOffset[ksr][keyScaleNumber];
-            let actualRate = rate * 4 + rof;
-            // If, as an example at the maximum, rate is 15 and the rate offset is 15, 
-            // the value would
-            // be 75, but the maximum allowed is 63:
-            if (actualRate > 63)
-                actualRate = 63;
-            return actualRate;
-        }
-        getEnvelope(egt, am) {
-            // The datasheets attenuation values
-            // must be halved to match the real OPL3 output.
-            let envelopeSustainLevel = this.sustainLevel / 2;
-            let envelopeTremolo = OPL3Data.tremoloTable[this.opl.dam][this.opl.tremoloIndex] / 2;
-            let envelopeAttenuation = this.attenuation / 2;
-            let envelopeTotalLevel = this.totalLevel / 2;
-            let envelopeMinimum = -96;
-            let envelopeResolution = 0.1875;
-            let outputEnvelope;
-            //
-            // Envelope Generation
-            //
-            switch (this.stage) {
-                case EnvelopeGenerator.Stage.ATTACK:
-                    // Since the attack is exponential, it will never reach 0 dB, so
-                    // we´ll work with the next to maximum in the envelope resolution.
-                    if (this.envelope < -envelopeResolution && this.xAttackIncrement != -Infinity) {
-                        // The attack is exponential.
-                        this.envelope = -Math.pow(2, this.x);
-                        this.x += this.xAttackIncrement;
-                        break;
-                    }
-                    else {
-                        // It is needed here to explicitly set envelope = 0, since
-                        // only the attack can have a period of
-                        // 0 seconds and produce an infinity envelope increment.
-                        this.envelope = 0;
-                        this.stage = EnvelopeGenerator.Stage.DECAY;
-                    }
-                case EnvelopeGenerator.Stage.DECAY:
-                    // The decay and release are linear.                
-                    if (this.envelope > envelopeSustainLevel) {
-                        this.envelope -= this.dBdecayIncrement;
-                        break;
-                    }
-                    else
-                        this.stage = EnvelopeGenerator.Stage.SUSTAIN;
-                case EnvelopeGenerator.Stage.SUSTAIN:
-                    // The Sustain stage is mantained all the time of the Key ON,
-                    // even if we are in non-sustaining mode.
-                    // This is necessary because, if the key is still pressed, we can
-                    // change back and forth the state of EGT, and it will release and
-                    // hold again accordingly.
-                    if (egt == 1)
-                        break;
-                    else {
-                        if (this.envelope > envelopeMinimum)
-                            this.envelope -= this.dBreleaseIncrement;
-                        else
-                            this.stage = EnvelopeGenerator.Stage.OFF;
-                    }
-                    break;
-                case EnvelopeGenerator.Stage.RELEASE:
-                    // If we have Key OFF, only here we are in the Release stage.
-                    // Now, we can turn EGT back and forth and it will have no effect,i.e.,
-                    // it will release inexorably to the Off stage.
-                    if (this.envelope > envelopeMinimum)
-                        this.envelope -= this.dBreleaseIncrement;
-                    else
-                        this.stage = EnvelopeGenerator.Stage.OFF;
-            }
-            // Ongoing original envelope
-            outputEnvelope = this.envelope;
-            //Tremolo
-            if (am == 1)
-                outputEnvelope += envelopeTremolo;
-            //Attenuation
-            outputEnvelope += envelopeAttenuation;
-            //Total Level
-            outputEnvelope += envelopeTotalLevel;
-            return outputEnvelope;
-        }
-        keyOn() {
-            // If we are taking it in the middle of a previous envelope, 
-            // start to rise from the current level:
-            // envelope = - (2 ^ x); ->
-            // 2 ^ x = -envelope ->
-            // x = log2(-envelope); ->
-            let xCurrent = OperatorData.log2(-this.envelope);
-            this.x = xCurrent < this.xMinimumInAttack ? xCurrent : this.xMinimumInAttack;
-            this.stage = EnvelopeGenerator.Stage.ATTACK;
-        }
-        keyOff() {
-            if (this.stage != EnvelopeGenerator.Stage.OFF)
-                this.stage = EnvelopeGenerator.Stage.RELEASE;
-        }
-        dBtoX(dB) {
-            return OperatorData.log2(-dB);
-        }
-        percentageToDB(percentage) {
-            return Math.log10(percentage) * 10;
-        }
-        percentageToX(percentage) {
-            return this.dBtoX(this.percentageToDB(percentage));
-        }
-        toString() {
-            let str = "";
-            str += "Envelope Generator: \n";
-            let attackPeriodInSeconds = EnvelopeGeneratorData.attackTimeValuesTable[this.actualAttackRate][0] / 1000;
-            str += "\tATTACK  %f s, rate %d. \n", attackPeriodInSeconds, this.actualAttackRate;
-            let decayPeriodInSeconds = EnvelopeGeneratorData.decayAndReleaseTimeValuesTable[this.actualDecayRate][0] / 1000;
-            str += "\tDECAY   %f s, rate %d. \n", decayPeriodInSeconds, this.actualDecayRate;
-            str += "\tSL      %f dB. \n", this.sustainLevel;
-            let releasePeriodInSeconds = EnvelopeGeneratorData.decayAndReleaseTimeValuesTable[this.actualReleaseRate][0] / 1000;
-            str += "\tRELEASE %f s, rate %d. \n", releasePeriodInSeconds, this.actualReleaseRate;
-            str += "\n";
-            return str.toString();
-        }
-    }
-    EnvelopeGenerator.INFINITY = null;
-    (function (EnvelopeGenerator) {
-        class Stage {
-        }
-        Stage.ATTACK = 'ATTACK';
-        Stage.DECAY = 'DECAY';
-        Stage.SUSTAIN = 'SUSTAIN';
-        Stage.RELEASE = 'RELEASE';
-        Stage.OFF = 'OFF';
-        EnvelopeGenerator.Stage = Stage;
-        ;
-    })(EnvelopeGenerator || (EnvelopeGenerator = {}));
-    //
-    // Phase Generator
-    //
-    class PhaseGenerator {
-        constructor(opl) {
-            this.opl = opl;
-            this.phase = 0;
-            this.phaseIncrement = 0;
-        }
-        setFrequency(f_number, block, mult) {
-            // This frequency formula is derived from the following equation:
-            // f_number = baseFrequency * pow(2,19) / sampleRate / pow(2,block-1);        
-            let baseFrequency = f_number * Math.pow(2, block - 1) * OPL3Data.sampleRate / Math.pow(2, 19);
-            let operatorFrequency = baseFrequency * OperatorData.multTable[mult];
-            // phase goes from 0 to 1 at 
-            // period = (1/frequency) seconds ->
-            // Samples in each period is (1/frequency)*sampleRate =
-            // = sampleRate/frequency ->
-            // So the increment in each sample, to go from 0 to 1, is:
-            // increment = (1-0) / samples in the period -> 
-            // increment = 1 / (OPL3Data.sampleRate/operatorFrequency) ->
-            this.phaseIncrement = operatorFrequency / OPL3Data.sampleRate;
-        }
-        getPhase(vib) {
-            if (vib == 1)
-                // phaseIncrement = (operatorFrequency * vibrato) / sampleRate
-                this.phase += this.phaseIncrement * OPL3Data.vibratoTable[this.opl.dvb][this.opl.vibratoIndex];
-            else
-                // phaseIncrement = operatorFrequency / sampleRate
-                this.phase += this.phaseIncrement;
-            this.phase %= 1;
-            return this.phase;
-        }
-        keyOn() {
-            this.phase = 0;
-        }
-        toString() {
-            return "Operator frequency: " + OPL3Data.sampleRate * this.phaseIncrement + " Hz.\n";
-        }
-    }
-    //
-    // Rhythm
-    //
-    /** The getOperatorOutput() method in TopCymbalOperator, HighHatOperator and SnareDrumOperator
-    // were made through purely empyrical reverse engineering of the OPL3 output. */
-    class RhythmChannel extends Channel2op {
-        constructor(opl, baseAddress, o1, o2) {
-            super(opl, baseAddress, o1, o2);
-        }
-        getChannelOutput() {
-            let channelOutput = 0;
-            let op1Output = 0;
-            let op2Output = 0;
-            let output;
-            // Note that, different from the common channel,
-            // we do not check to see if the Operator's envelopes are Off.
-            // Instead, we always do the calculations, 
-            // to update the publicly available phase.
-            op1Output = this.op1.getOperatorOutput(Operator.noModulator);
-            op2Output = this.op2.getOperatorOutput(Operator.noModulator);
-            channelOutput = (op1Output + op2Output) / 2;
-            output = this.getInFourChannels(channelOutput);
-            return output;
-        }
-        ;
-        // Rhythm channels are always running, 
-        // only the envelope is activated by the user.
-        keyOn() { }
-        ;
-        keyOff() { }
-        ;
-    }
-    class HighHatSnareDrumChannel extends RhythmChannel {
-        constructor(opl) {
-            super(opl, HighHatSnareDrumChannel.highHatSnareDrumChannelBaseAddress, opl.highHatOperator, opl.snareDrumOperator);
-        }
-    }
-    HighHatSnareDrumChannel.highHatSnareDrumChannelBaseAddress = 7;
-    class TomTomTopCymbalChannel extends RhythmChannel {
-        constructor(opl) {
-            super(opl, TomTomTopCymbalChannel.tomTomTopCymbalChannelBaseAddress, opl.tomTomOperator, opl.topCymbalOperator);
-        }
-    }
-    TomTomTopCymbalChannel.tomTomTopCymbalChannelBaseAddress = 8;
-    class TopCymbalOperator extends Operator {
-        constructor(opl, baseAddress = 0x15) {
-            super(opl, baseAddress);
-        }
-        getOperatorOutput(modulator) {
-            let highHatOperatorPhase = this.opl.highHatOperator.phase * OperatorData.multTable[this.opl.highHatOperator.mult];
-            // The Top Cymbal operator uses his own phase together with the High Hat phase.
-            return this.getOperatorOutputEx(modulator, highHatOperatorPhase);
-        }
-        // This method is used here with the HighHatOperator phase
-        // as the externalPhase. 
-        // Conversely, this method is also used through inheritance by the HighHatOperator, 
-        // now with the TopCymbalOperator phase as the externalPhase.
-        getOperatorOutputEx(modulator, externalPhase) {
-            let envelopeInDB = this.envelopeGenerator.getEnvelope(this.egt, this.am);
-            this.envelope = Math.pow(10, envelopeInDB / 10.0);
-            this.phase = this.phaseGenerator.getPhase(this.vib);
-            let waveIndex = this.ws & ((this.opl._new << 2) + 3);
-            let waveform = OperatorData.waveforms[waveIndex];
-            // Empirically tested multiplied phase for the Top Cymbal:
-            let carrierPhase = (8 * this.phase) % 1;
-            let modulatorPhase = externalPhase;
-            let modulatorOutput = this.getOutput(Operator.noModulator, modulatorPhase, waveform);
-            let carrierOutput = this.getOutput(modulatorOutput, carrierPhase, waveform);
-            let cycles = 4;
-            if ((carrierPhase * cycles) % cycles > 0.1)
-                carrierOutput = 0;
-            return carrierOutput * 2;
-        }
-    }
-    class HighHatOperator extends TopCymbalOperator {
-        constructor(opl) {
-            super(opl, HighHatOperator.highHatOperatorBaseAddress);
-        }
-        getOperatorOutput(modulator) {
-            let topCymbalOperatorPhase = this.opl.topCymbalOperator.phase * OperatorData.multTable[this.opl.topCymbalOperator.mult];
-            // The sound output from the High Hat resembles the one from
-            // Top Cymbal, so we use the parent method and modifies his output
-            // accordingly afterwards.
-            let operatorOutput = super.getOperatorOutputEx(modulator, topCymbalOperatorPhase);
-            if (operatorOutput == 0)
-                operatorOutput = Math.random() * this.envelope;
-            return operatorOutput;
-        }
-    }
-    HighHatOperator.highHatOperatorBaseAddress = 0x11;
-    class SnareDrumOperator extends Operator {
-        constructor(opl) {
-            super(opl, SnareDrumOperator.snareDrumOperatorBaseAddress);
-        }
-        getOperatorOutput(modulator) {
-            if (this.envelopeGenerator.stage == EnvelopeGenerator.Stage.OFF)
-                return 0;
-            let envelopeInDB = this.envelopeGenerator.getEnvelope(this.egt, this.am);
-            this.envelope = Math.pow(10, envelopeInDB / 10.0);
-            // If it is in OPL2 mode, use first four waveforms only:
-            let waveIndex = this.ws & ((this.opl._new << 2) + 3);
-            let waveform = OperatorData.waveforms[waveIndex];
-            this.phase = this.opl.highHatOperator.phase * 2;
-            let operatorOutput = this.getOutput(modulator, this.phase, waveform);
-            let noise = Math.random() * this.envelope;
-            if (operatorOutput / this.envelope != 1 && operatorOutput / this.envelope != -1) {
-                if (operatorOutput > 0)
-                    operatorOutput = noise;
-                else if (operatorOutput < 0)
-                    operatorOutput = -noise;
-                else
-                    operatorOutput = 0;
-            }
-            return operatorOutput * 2;
-        }
-    }
-    SnareDrumOperator.snareDrumOperatorBaseAddress = 0x14;
-    class TomTomOperator extends Operator {
-        constructor(opl) {
-            super(opl, TomTomOperator.tomTomOperatorBaseAddress);
-        }
-    }
-    TomTomOperator.tomTomOperatorBaseAddress = 0x12;
-    class BassDrumChannel extends Channel2op {
-        constructor(opl) {
-            super(opl, BassDrumChannel.bassDrumChannelBaseAddress, new Operator(opl, BassDrumChannel.op1BaseAddress), new Operator(opl, BassDrumChannel.op2BaseAddress));
-        }
-        getChannelOutput() {
-            // Bass Drum ignores first operator, when it is in series.
-            if (this.cnt == 1)
-                this.op1.ar = 0;
-            return super.getChannelOutput();
-        }
-        // Key ON and OFF are unused in rhythm channels.
-        keyOn() { }
-        keyOff() { }
-    }
-    BassDrumChannel.bassDrumChannelBaseAddress = 6;
-    BassDrumChannel.op1BaseAddress = 0x10;
-    BassDrumChannel.op2BaseAddress = 0x13;
-    //
-    // OPl3 Data
-    //
-    class OPL3Data {
-        static init() {
-            this.loadVibratoTable();
-            this.loadTremoloTable();
-        }
-        static loadVibratoTable() {
-            // According to the YMF262 datasheet, the OPL3 vibrato repetition rate is 6.1 Hz.
-            // According to the YMF278B manual, it is 6.0 Hz. 
-            // The information that the vibrato table has 8 levels standing 1024 samples each
-            // was taken from the emulator by Jarek Burczynski and Tatsuyuki Satoh,
-            // with a frequency of 6,06689453125 Hz, what  makes sense with the difference 
-            // in the information on the datasheets.
-            // The first array is used when DVB=0 and the second array is used when DVB=1.
-            this.vibratoTable = [new Float32Array(8192), new Float32Array(8192)];
-            let semitone = Math.pow(2, 1 / 12);
-            // A cent is 1/100 of a semitone:
-            let cent = Math.pow(semitone, 1 / 100);
-            // When dvb=0, the depth is 7 cents, when it is 1, the depth is 14 cents.
-            let DVB0 = Math.pow(cent, 7);
-            let DVB1 = Math.pow(cent, 14);
-            let i;
-            for (i = 0; i < 1024; i++)
-                this.vibratoTable[0][i] = this.vibratoTable[1][i] = 1;
-            for (; i < 2048; i++) {
-                this.vibratoTable[0][i] = Math.sqrt(DVB0);
-                this.vibratoTable[1][i] = Math.sqrt(DVB1);
-            }
-            for (; i < 3072; i++) {
-                this.vibratoTable[0][i] = DVB0;
-                this.vibratoTable[1][i] = DVB1;
-            }
-            for (; i < 4096; i++) {
-                this.vibratoTable[0][i] = Math.sqrt(DVB0);
-                this.vibratoTable[1][i] = Math.sqrt(DVB1);
-            }
-            for (; i < 5120; i++)
-                this.vibratoTable[0][i] = this.vibratoTable[1][i] = 1;
-            for (; i < 6144; i++) {
-                this.vibratoTable[0][i] = 1 / Math.sqrt(DVB0);
-                this.vibratoTable[1][i] = 1 / Math.sqrt(DVB1);
-            }
-            for (; i < 7168; i++) {
-                this.vibratoTable[0][i] = 1 / DVB0;
-                this.vibratoTable[1][i] = 1 / DVB1;
-            }
-            for (; i < 8192; i++) {
-                this.vibratoTable[0][i] = 1 / Math.sqrt(DVB0);
-                this.vibratoTable[1][i] = 1 / Math.sqrt(DVB1);
-            }
-        }
-        static loadTremoloTable() {
-            // The OPL3 tremolo repetition rate is 3.7 Hz.  
-            let tremoloFrequency = 3.7;
-            // The tremolo depth is -1 dB when DAM = 0, and -4.8 dB when DAM = 1.
-            let tremoloDepth = [-1, -4.8];
-            //  According to the YMF278B manual's OPL3 section graph, 
-            //              the tremolo waveform is not 
-            //   \      /   a sine wave, but a single triangle waveform.
-            //    \    /    Thus, the period to achieve the tremolo depth is T/2, and      
-            //     \  /     the increment in each T/2 section uses a frequency of 2*f.
-            //      \/      Tremolo varies from 0 dB to depth, to 0 dB again, at frequency*2:
-            let tremoloIncrement = [
-                this.calculateIncrement(tremoloDepth[0], 0, 1 / (2 * tremoloFrequency)),
-                this.calculateIncrement(tremoloDepth[1], 0, 1 / (2 * tremoloFrequency))
-            ];
-            let tremoloTableLength = (this.sampleRate / tremoloFrequency) | 0;
-            // First array used when AM = 0 and second array used when AM = 1.
-            this.tremoloTable = [new Float32Array(13432), new Float32Array(13432)];
-            // This is undocumented. The tremolo starts at the maximum attenuation,
-            // instead of at 0 dB:
-            this.tremoloTable[0][0] = tremoloDepth[0];
-            this.tremoloTable[1][0] = tremoloDepth[1];
-            let counter = 0;
-            // The first half of the triangle waveform:
-            while (this.tremoloTable[0][counter] < 0) {
-                counter++;
-                this.tremoloTable[0][counter] = this.tremoloTable[0][counter - 1] + tremoloIncrement[0];
-                this.tremoloTable[1][counter] = this.tremoloTable[1][counter - 1] + tremoloIncrement[1];
-            }
-            // The second half of the triangle waveform:
-            while (this.tremoloTable[0][counter] > tremoloDepth[0] && counter < tremoloTableLength - 1) {
-                counter++;
-                this.tremoloTable[0][counter] = this.tremoloTable[0][counter - 1] - tremoloIncrement[0];
-                this.tremoloTable[1][counter] = this.tremoloTable[1][counter - 1] - tremoloIncrement[1];
-            }
-        }
-        static calculateIncrement(begin, end, period) {
-            return (end - begin) / this.sampleRate * (1 / period);
-        }
-    }
-    // OPL3-wide registers offsets:
-    OPL3Data._1_NTS1_6_Offset = 0x08;
-    OPL3Data.DAM1_DVB1_RYT1_BD1_SD1_TOM1_TC1_HH1_Offset = 0xBD;
-    OPL3Data._7_NEW1_Offset = 0x105;
-    OPL3Data._2_CONNECTIONSEL6_Offset = 0x104;
-    OPL3Data.sampleRate = 49700;
-    OPL3Data.init();
-    //
-    // Channel Data
-    // 
-    class ChannelData {
-    }
-    ChannelData._2_KON1_BLOCK3_FNUMH2_Offset = 0xB0;
-    ChannelData.FNUML8_Offset = 0xA0;
-    ChannelData.CHD1_CHC1_CHB1_CHA1_FB3_CNT1_Offset = 0xC0;
-    // Feedback rate in fractions of 2*Pi, normalized to (0,1): 
-    // 0, Pi/16, Pi/8, Pi/4, Pi/2, Pi, 2*Pi, 4*Pi turns to be:
-    ChannelData.feedback = [0, 1 / 32, 1 / 16, 1 / 8, 1 / 4, 1 / 2, 1, 2];
-    //
-    // Operator Data
-    //
-    class OperatorData {
-        static init() {
-            OperatorData.loadWaveforms();
-        }
-        static loadWaveforms() {
-            //OPL3 has eight waveforms:
-            this.waveforms = [
-                new Float32Array(1024), new Float32Array(1024), new Float32Array(1024), new Float32Array(1024),
-                new Float32Array(1024), new Float32Array(1024), new Float32Array(1024), new Float32Array(1024)
-            ];
-            let i;
-            // 1st waveform: sinusoid.
-            let theta = 0, thetaIncrement = 2 * Math.PI / 1024;
-            for (i = 0, theta = 0; i < 1024; i++, theta += thetaIncrement)
-                this.waveforms[0][i] = Math.sin(theta);
-            let sineTable = this.waveforms[0];
-            // 2nd: first half of a sinusoid.
-            for (i = 0; i < 512; i++) {
-                this.waveforms[1][i] = sineTable[i];
-                this.waveforms[1][512 + i] = 0;
-            }
-            // 3rd: double positive sinusoid.
-            for (i = 0; i < 512; i++)
-                this.waveforms[2][i] = this.waveforms[2][512 + i] = sineTable[i];
-            // 4th: first and third quarter of double positive sinusoid.
-            for (i = 0; i < 256; i++) {
-                this.waveforms[3][i] = this.waveforms[3][512 + i] = sineTable[i];
-                this.waveforms[3][256 + i] = this.waveforms[3][768 + i] = 0;
-            }
-            // 5th: first half with double frequency sinusoid.
-            for (i = 0; i < 512; i++) {
-                this.waveforms[4][i] = sineTable[i * 2];
-                this.waveforms[4][512 + i] = 0;
-            }
-            // 6th: first half with double frequency positive sinusoid.
-            for (i = 0; i < 256; i++) {
-                this.waveforms[5][i] = this.waveforms[5][256 + i] = sineTable[i * 2];
-                this.waveforms[5][512 + i] = this.waveforms[5][768 + i] = 0;
-            }
-            // 7th: square wave
-            for (i = 0; i < 512; i++) {
-                this.waveforms[6][i] = 1;
-                this.waveforms[6][512 + i] = -1;
-            }
-            // 8th: exponential
-            let x;
-            let xIncrement = 1 * 16 / 256;
-            for (i = 0, x = 0; i < 512; i++, x += xIncrement) {
-                this.waveforms[7][i] = Math.pow(2, -x);
-                this.waveforms[7][1023 - i] = -Math.pow(2, -(x + 1 / 16));
-            }
-        }
-        static log2(x) {
-            return Math.log(x) / Math.log(2);
-        }
-    }
-    OperatorData.AM1_VIB1_EGT1_KSR1_MULT4_Offset = 0x20;
-    OperatorData.KSL2_TL6_Offset = 0x40;
-    OperatorData.AR4_DR4_Offset = 0x60;
-    OperatorData.SL4_RR4_Offset = 0x80;
-    OperatorData._5_WS3_Offset = 0xE0;
-    OperatorData.waveLength = 1024;
-    OperatorData.multTable = [0.5, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 10, 12, 12, 15, 15];
-    OperatorData.ksl3dBtable = [
-        [0, 0, 0, 0, 0, 0, 0, 0],
-        [0, 0, 0, 0, 0, -3, -6, -9],
-        [0, 0, 0, 0, -3, -6, -9, -12],
-        [0, 0, 0, -1.875, -4.875, -7.875, -10.875, -13.875],
-        [0, 0, 0, -3, -6, -9, -12, -15],
-        [0, 0, -1.125, -4.125, -7.125, -10.125, -13.125, -16.125],
-        [0, 0, -1.875, -4.875, -7.875, -10.875, -13.875, -16.875],
-        [0, 0, -2.625, -5.625, -8.625, -11.625, -14.625, -17.625],
-        [0, 0, -3, -6, -9, -12, -15, -18],
-        [0, -0.750, -3.750, -6.750, -9.750, -12.750, -15.750, -18.750],
-        [0, -1.125, -4.125, -7.125, -10.125, -13.125, -16.125, -19.125],
-        [0, -1.500, -4.500, -7.500, -10.500, -13.500, -16.500, -19.500],
-        [0, -1.875, -4.875, -7.875, -10.875, -13.875, -16.875, -19.875],
-        [0, -2.250, -5.250, -8.250, -11.250, -14.250, -17.250, -20.250],
-        [0, -2.625, -5.625, -8.625, -11.625, -14.625, -17.625, -20.625],
-        [0, -3, -6, -9, -12, -15, -18, -21]
-    ];
-    OperatorData.init();
-    (function (OperatorData) {
-        class type {
-        }
-        type.NO_MODULATION = 'NO_MODULATION';
-        type.CARRIER = 'CARRIER';
-        type.FEEDBACK = 'FEEDBACK';
-        OperatorData.type = type;
-        ;
-    })(OperatorData || (OperatorData = {}));
-    //
-    // Envelope Generator Data
-    //
-    class EnvelopeGeneratorData {
-    }
-    // This table is indexed by the value of Operator.ksr 
-    // and the value of ChannelRegister.keyScaleNumber.
-    EnvelopeGeneratorData.rateOffset = [
-        [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3],
-        [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]
-    ];
-    // These attack periods in miliseconds were taken from the YMF278B manual. 
-    // The attack actual rates range from 0 to 63, with different data for 
-    // 0%-100% and for 10%-90%: 
-    EnvelopeGeneratorData.attackTimeValuesTable = [
-        [Infinity, Infinity], [Infinity, Infinity], [Infinity, Infinity], [Infinity, Infinity],
-        [2826.24, 1482.75], [2252.80, 1155.07], [1884.16, 991.23], [1597.44, 868.35],
-        [1413.12, 741.38], [1126.40, 577.54], [942.08, 495.62], [798.72, 434.18],
-        [706.56, 370.69], [563.20, 288.77], [471.04, 247.81], [399.36, 217.09],
-        [353.28, 185.34], [281.60, 144.38], [235.52, 123.90], [199.68, 108.54],
-        [176.76, 92.67], [140.80, 72.19], [117.76, 61.95], [99.84, 54.27],
-        [88.32, 46.34], [70.40, 36.10], [58.88, 30.98], [49.92, 27.14],
-        [44.16, 23.17], [35.20, 18.05], [29.44, 15.49], [24.96, 13.57],
-        [22.08, 11.58], [17.60, 9.02], [14.72, 7.74], [12.48, 6.78],
-        [11.04, 5.79], [8.80, 4.51], [7.36, 3.87], [6.24, 3.39],
-        [5.52, 2.90], [4.40, 2.26], [3.68, 1.94], [3.12, 1.70],
-        [2.76, 1.45], [2.20, 1.13], [1.84, 0.97], [1.56, 0.85],
-        [1.40, 0.73], [1.12, 0.61], [0.92, 0.49], [0.80, 0.43],
-        [0.70, 0.37], [0.56, 0.31], [0.46, 0.26], [0.42, 0.22],
-        [0.38, 0.19], [0.30, 0.14], [0.24, 0.11], [0.20, 0.11],
-        [0.00, 0.00], [0.00, 0.00], [0.00, 0.00], [0.00, 0.00]
-    ];
-    // These decay and release periods in miliseconds were taken from the YMF278B manual. 
-    // The rate index range from 0 to 63, with different data for 
-    // 0%-100% and for 10%-90%: 
-    EnvelopeGeneratorData.decayAndReleaseTimeValuesTable = [
-        [Infinity, Infinity], [Infinity, Infinity], [Infinity, Infinity], [Infinity, Infinity],
-        [39280.64, 8212.48], [31416.32, 6574.08], [26173.44, 5509.12], [22446.08, 4730.88],
-        [19640.32, 4106.24], [15708.16, 3287.04], [13086.72, 2754.56], [11223.04, 2365.44],
-        [9820.16, 2053.12], [7854.08, 1643.52], [6543.36, 1377.28], [5611.52, 1182.72],
-        [4910.08, 1026.56], [3927.04, 821.76], [3271.68, 688.64], [2805.76, 591.36],
-        [2455.04, 513.28], [1936.52, 410.88], [1635.84, 344.34], [1402.88, 295.68],
-        [1227.52, 256.64], [981.76, 205.44], [817.92, 172.16], [701.44, 147.84],
-        [613.76, 128.32], [490.88, 102.72], [488.96, 86.08], [350.72, 73.92],
-        [306.88, 64.16], [245.44, 51.36], [204.48, 43.04], [175.36, 36.96],
-        [153.44, 32.08], [122.72, 25.68], [102.24, 21.52], [87.68, 18.48],
-        [76.72, 16.04], [61.36, 12.84], [51.12, 10.76], [43.84, 9.24],
-        [38.36, 8.02], [30.68, 6.42], [25.56, 5.38], [21.92, 4.62],
-        [19.20, 4.02], [15.36, 3.22], [12.80, 2.68], [10.96, 2.32],
-        [9.60, 2.02], [7.68, 1.62], [6.40, 1.35], [5.48, 1.15],
-        [4.80, 1.01], [3.84, 0.81], [3.20, 0.69], [2.74, 0.58],
-        [2.40, 0.51], [2.40, 0.51], [2.40, 0.51], [2.40, 0.51]
-    ];
-})(Cozendey || (Cozendey = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    class Channel {
-        constructor(channels, thisChannel, operators, thisOpIndex) {
-            this.old = new Int32Array(2);
-            this.channels = channels;
-            this.ChannelIndex = thisChannel;
-            this.operators = operators;
-            this.thisOpIndex = thisOpIndex;
-            this.old[0] = this.old[1] = 0 | 0;
-            this.chanData = 0 | 0;
-            this.regB0 = 0 | 0;
-            this.regC0 = 0 | 0;
-            this.maskLeft = -1 | 0;
-            this.maskRight = -1 | 0;
-            this.feedback = 31 | 0;
-            this.fourMask = 0 | 0;
-            this.synthMode = DBOPL.SynthMode.sm2FM;
-        }
-        Channel(index) {
-            return this.channels[this.ChannelIndex + index];
-        }
-        Op(index) {
-            return this.operators[this.thisOpIndex + index];
-        }
-        SetChanData(chip, data /** Bit32u */) {
-            let change = this.chanData ^ data;
-            this.chanData = data;
-            this.Op(0).chanData = data;
-            this.Op(1).chanData = data;
-            //Since a frequency update triggered this, always update frequency
-            this.Op(0).UpdateFrequency();
-            this.Op(1).UpdateFrequency();
-            if ((change & (0xff << DBOPL.Shifts.SHIFT_KSLBASE)) != 0) {
-                this.Op(0).UpdateAttenuation();
-                this.Op(1).UpdateAttenuation();
-            }
-            if ((change & (0xff << DBOPL.Shifts.SHIFT_KEYCODE)) != 0) {
-                this.Op(0).UpdateRates(chip);
-                this.Op(1).UpdateRates(chip);
-            }
-        }
-        UpdateFrequency(chip, fourOp /** UInt8 */) {
-            //Extrace the frequency signed long
-            let data = this.chanData & 0xffff;
-            let kslBase = DBOPL.GlobalMembers.KslTable[data >>> 6];
-            let keyCode = (data & 0x1c00) >>> 9;
-            if ((chip.reg08 & 0x40) != 0) {
-                keyCode |= (data & 0x100) >>> 8; /* notesel == 1 */
-            }
-            else {
-                keyCode |= (data & 0x200) >>> 9; /* notesel == 0 */
-            }
-            //Add the keycode and ksl into the highest signed long of chanData
-            data |= (keyCode << DBOPL.Shifts.SHIFT_KEYCODE) | (kslBase << DBOPL.Shifts.SHIFT_KSLBASE);
-            this.Channel(0).SetChanData(chip, data);
-            if ((fourOp & 0x3f) != 0) {
-                this.Channel(1).SetChanData(chip, data);
-            }
-        }
-        WriteA0(chip, val /* UInt8 */) {
-            let fourOp = (chip.reg104 & chip.opl3Active & this.fourMask);
-            //Don't handle writes to silent fourop channels
-            if (fourOp > 0x80) {
-                return;
-            }
-            let change = (this.chanData ^ val) & 0xff;
-            if (change != 0) {
-                this.chanData ^= change;
-                this.UpdateFrequency(chip, fourOp);
-            }
-        }
-        WriteB0(chip, val /* UInt8 */) {
-            let fourOp = (chip.reg104 & chip.opl3Active & this.fourMask);
-            //Don't handle writes to silent fourop channels
-            if (fourOp > 0x80) {
-                return;
-            }
-            let change = ((this.chanData ^ (val << 8)) & 0x1f00);
-            if (change != 0) {
-                this.chanData ^= change;
-                this.UpdateFrequency(chip, fourOp);
-            }
-            //Check for a change in the keyon/off state
-            if (((val ^ this.regB0) & 0x20) == 0) {
-                return;
-            }
-            this.regB0 = val;
-            if ((val & 0x20) != 0) {
-                this.Op(0).KeyOn(0x1);
-                this.Op(1).KeyOn(0x1);
-                if ((fourOp & 0x3f) != 0) {
-                    this.Channel(1).Op(0).KeyOn(1);
-                    this.Channel(1).Op(1).KeyOn(1);
-                }
-            }
-            else {
-                this.Op(0).KeyOff(0x1);
-                this.Op(1).KeyOff(0x1);
-                if ((fourOp & 0x3f) != 0) {
-                    this.Channel(1).Op(0).KeyOff(1);
-                    this.Channel(1).Op(1).KeyOff(1);
-                }
-            }
-        }
-        WriteC0(chip, val /* UInt8 */) {
-            let change = (val ^ this.regC0);
-            if (change == 0) {
-                return;
-            }
-            this.regC0 = val;
-            this.feedback = ((val >>> 1) & 7);
-            if (this.feedback != 0) {
-                //We shift the input to the right 10 bit wave index value
-                this.feedback = (9 - this.feedback) & 0xFF;
-            }
-            else {
-                this.feedback = 31;
-            }
-            //Select the new synth mode
-            if (chip.opl3Active) {
-                //4-op mode enabled for this channel
-                if (((chip.reg104 & this.fourMask) & 0x3f) != 0) {
-                    let chan0;
-                    let chan1;
-                    //Check if it's the 2nd channel in a 4-op
-                    if ((this.fourMask & 0x80) == 0) {
-                        chan0 = this.Channel(0);
-                        chan1 = this.Channel(1);
-                    }
-                    else {
-                        chan0 = this.Channel(-1);
-                        chan1 = this.Channel(0);
-                    }
-                    let synth = (((chan0.regC0 & 1) << 0) | ((chan1.regC0 & 1) << 1));
-                    switch (synth) {
-                        case 0:
-                            //chan0.synthHandler = this.BlockTemplate<SynthMode.sm3FMFM>;
-                            chan0.synthMode = DBOPL.SynthMode.sm3FMFM;
-                            break;
-                        case 1:
-                            //chan0.synthHandler = this.BlockTemplate<SynthMode.sm3AMFM>;
-                            chan0.synthMode = DBOPL.SynthMode.sm3AMFM;
-                            break;
-                        case 2:
-                            //chan0.synthHandler = this.BlockTemplate<SynthMode.sm3FMAM>;
-                            chan0.synthMode = DBOPL.SynthMode.sm3FMAM;
-                            break;
-                        case 3:
-                            //chan0.synthHandler = this.BlockTemplate<SynthMode.sm3AMAM>;
-                            chan0.synthMode = DBOPL.SynthMode.sm3AMAM;
-                            break;
-                    }
-                    //Disable updating percussion channels
-                }
-                else if ((this.fourMask & 0x40) && (chip.regBD & 0x20)) {
-                    //Regular dual op, am or fm
-                }
-                else if (val & 1) {
-                    //this.synthHandler = this.BlockTemplate<SynthMode.sm3AM>;
-                    this.synthMode = DBOPL.SynthMode.sm3AM;
-                }
-                else {
-                    //this.synthHandler = this.BlockTemplate<SynthMode.sm3FM>;
-                    this.synthMode = DBOPL.SynthMode.sm3FM;
-                }
-                this.maskLeft = (val & 0x10) != 0 ? -1 : 0;
-                this.maskRight = (val & 0x20) != 0 ? -1 : 0;
-                //opl2 active
-            }
-            else {
-                //Disable updating percussion channels
-                if ((this.fourMask & 0x40) != 0 && (chip.regBD & 0x20) != 0) {
-                    //Regular dual op, am or fm
-                }
-                else if (val & 1) {
-                    //this.synthHandler = this.BlockTemplate<SynthMode.sm2AM>;
-                    this.synthMode = DBOPL.SynthMode.sm2AM;
-                }
-                else {
-                    //this.synthHandler = this.BlockTemplate<SynthMode.sm2FM>;
-                    this.synthMode = DBOPL.SynthMode.sm2FM;
-                }
-            }
-        }
-        ResetC0(chip) {
-            let val = this.regC0;
-            this.regC0 ^= 0xff;
-            this.WriteC0(chip, val);
-        }
-        // template< bool opl3Mode> void Channel::GeneratePercussion( Chip* chip, Bit32s* output ) {
-        GeneratePercussion(opl3Mode, chip, output /* Bit32s */, outputOffset) {
-            let chan = this;
-            //BassDrum
-            let mod = ((this.old[0] + this.old[1])) >>> this.feedback;
-            this.old[0] = this.old[1];
-            this.old[1] = this.Op(0).GetSample(mod);
-            //When bassdrum is in AM mode first operator is ignoed
-            if ((chan.regC0 & 1) != 0) {
-                mod = 0;
-            }
-            else {
-                mod = this.old[0];
-            }
-            let sample = this.Op(1).GetSample(mod);
-            //Precalculate stuff used by other outputs
-            let noiseBit = chip.ForwardNoise() & 0x1;
-            let c2 = this.Op(2).ForwardWave();
-            let c5 = this.Op(5).ForwardWave();
-            let phaseBit = (((c2 & 0x88) ^ ((c2 << 5) & 0x80)) | ((c5 ^ (c5 << 2)) & 0x20)) != 0 ? 0x02 : 0x00;
-            //Hi-Hat
-            let hhVol = this.Op(2).ForwardVolume();
-            if (!((hhVol) >= ((12 * 256) >> (3 - ((9) - 9))))) {
-                let hhIndex = (phaseBit << 8) | (0x34 << (phaseBit ^ (noiseBit << 1)));
-                sample += this.Op(2).GetWave(hhIndex, hhVol);
-            }
-            //Snare Drum
-            let sdVol = this.Op(3).ForwardVolume();
-            if (!((sdVol) >= ((12 * 256) >> (3 - ((9) - 9))))) {
-                let sdIndex = (0x100 + (c2 & 0x100)) ^ (noiseBit << 8);
-                sample += this.Op(3).GetWave(sdIndex, sdVol);
-            }
-            //Tom-tom
-            sample += this.Op(4).GetSample(0);
-            //Top-Cymbal
-            let tcVol = this.Op(5).ForwardVolume();
-            if (!((tcVol) >= ((12 * 256) >> (3 - ((9) - 9))))) {
-                let tcIndex = (1 + phaseBit) << 8;
-                sample += this.Op(5).GetWave(tcIndex, tcVol);
-            }
-            sample <<= 1;
-            if (opl3Mode) {
-                output[outputOffset + 0] += sample;
-                output[outputOffset + 1] += sample;
-            }
-            else {
-                output[outputOffset + 0] += sample;
-            }
-        }
-        /// template<SynthMode mode> Channel* Channel::BlockTemplate( Chip* chip, Bit32u samples, Bit32s* output ) 
-        //public BlockTemplate(mode: SynthMode, chip: Chip, samples: number, output: Int32Array /** Bit32s* */): Channel {
-        synthHandler(chip, samples, output, outputIndex /** Bit32s* */) {
-            var mode = this.synthMode;
-            switch (mode) {
-                case DBOPL.SynthMode.sm2AM:
-                case DBOPL.SynthMode.sm3AM:
-                    if (this.Op(0).Silent() && this.Op(1).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(1);
-                    }
-                    break;
-                case DBOPL.SynthMode.sm2FM:
-                case DBOPL.SynthMode.sm3FM:
-                    if (this.Op(1).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(1);
-                    }
-                    break;
-                case DBOPL.SynthMode.sm3FMFM:
-                    if (this.Op(3).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(2);
-                    }
-                    break;
-                case DBOPL.SynthMode.sm3AMFM:
-                    if (this.Op(0).Silent() && this.Op(3).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(2);
-                    }
-                    break;
-                case DBOPL.SynthMode.sm3FMAM:
-                    if (this.Op(1).Silent() && this.Op(3).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(2);
-                    }
-                    break;
-                case DBOPL.SynthMode.sm3AMAM:
-                    if (this.Op(0).Silent() && this.Op(2).Silent() && this.Op(3).Silent()) {
-                        this.old[0] = this.old[1] = 0;
-                        return this.Channel(2);
-                    }
-                    break;
-            }
-            //Init the operators with the the current vibrato and tremolo values
-            this.Op(0).Prepare(chip);
-            this.Op(1).Prepare(chip);
-            if (mode > DBOPL.SynthMode.sm4Start) {
-                this.Op(2).Prepare(chip);
-                this.Op(3).Prepare(chip);
-            }
-            if (mode > DBOPL.SynthMode.sm6Start) {
-                this.Op(4).Prepare(chip);
-                this.Op(5).Prepare(chip);
-            }
-            for (let i = 0; i < samples; i++) {
-                //Early out for percussion handlers
-                if (mode == DBOPL.SynthMode.sm2Percussion) {
-                    this.GeneratePercussion(false, chip, output, outputIndex + i);
-                    continue; //Prevent some unitialized value bitching
-                }
-                else if (mode == DBOPL.SynthMode.sm3Percussion) {
-                    this.GeneratePercussion(true, chip, output, outputIndex + i * 2);
-                    continue; //Prevent some unitialized value bitching
-                }
-                //Do unsigned shift so we can shift out all signed long but still stay in 10 bit range otherwise
-                let mod = ((this.old[0] + this.old[1])) >>> this.feedback;
-                this.old[0] = this.old[1];
-                this.old[1] = this.Op(0).GetSample(mod);
-                let sample;
-                let out0 = this.old[0];
-                if (mode == DBOPL.SynthMode.sm2AM || mode == DBOPL.SynthMode.sm3AM) {
-                    sample = out0 + this.Op(1).GetSample(0);
-                }
-                else if (mode == DBOPL.SynthMode.sm2FM || mode == DBOPL.SynthMode.sm3FM) {
-                    sample = this.Op(1).GetSample(out0);
-                }
-                else if (mode == DBOPL.SynthMode.sm3FMFM) {
-                    let next = this.Op(1).GetSample(out0);
-                    next = this.Op(2).GetSample(next);
-                    sample = this.Op(3).GetSample(next);
-                }
-                else if (mode == DBOPL.SynthMode.sm3AMFM) {
-                    sample = out0;
-                    let next = this.Op(1).GetSample(0);
-                    next = this.Op(2).GetSample(next);
-                    sample += this.Op(3).GetSample(next);
-                }
-                else if (mode == DBOPL.SynthMode.sm3FMAM) {
-                    sample = this.Op(1).GetSample(out0);
-                    let next = this.Op(2).GetSample(0);
-                    sample += this.Op(3).GetSample(next);
-                }
-                else if (mode == DBOPL.SynthMode.sm3AMAM) {
-                    sample = out0;
-                    let next = this.Op(1).GetSample(0);
-                    sample += this.Op(2).GetSample(next);
-                    sample += this.Op(3).GetSample(0);
-                }
-                switch (mode) {
-                    case DBOPL.SynthMode.sm2AM:
-                    case DBOPL.SynthMode.sm2FM:
-                        output[outputIndex + i] += sample;
-                        break;
-                    case DBOPL.SynthMode.sm3AM:
-                    case DBOPL.SynthMode.sm3FM:
-                    case DBOPL.SynthMode.sm3FMFM:
-                    case DBOPL.SynthMode.sm3AMFM:
-                    case DBOPL.SynthMode.sm3FMAM:
-                    case DBOPL.SynthMode.sm3AMAM:
-                        output[outputIndex + i * 2 + 0] += sample & this.maskLeft;
-                        output[outputIndex + i * 2 + 1] += sample & this.maskRight;
-                        break;
-                }
-            }
-            switch (mode) {
-                case DBOPL.SynthMode.sm2AM:
-                case DBOPL.SynthMode.sm2FM:
-                case DBOPL.SynthMode.sm3AM:
-                case DBOPL.SynthMode.sm3FM:
-                    return this.Channel(1);
-                case DBOPL.SynthMode.sm3FMFM:
-                case DBOPL.SynthMode.sm3AMFM:
-                case DBOPL.SynthMode.sm3FMAM:
-                case DBOPL.SynthMode.sm3AMAM:
-                    return this.Channel(2);
-                case DBOPL.SynthMode.sm2Percussion:
-                case DBOPL.SynthMode.sm3Percussion:
-                    return this.Channel(3);
-            }
-            return null;
-        }
-    }
-    DBOPL.Channel = Channel;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    class Chip {
-        constructor() {
-            /// Frequency scales for the different multiplications
-            this.freqMul = new Uint32Array(16);
-            /// Rates for decay and release for rate of this chip
-            this.linearRates = new Int32Array(76);
-            /// Best match attack rates for the rate of this chip
-            this.attackRates = new Int32Array(76);
-            this.reg08 = 0;
-            this.reg04 = 0;
-            this.regBD = 0;
-            this.reg104 = 0;
-            this.opl3Active = 0;
-            const ChannelCount = 18;
-            this.chan = new Array(ChannelCount);
-            this.op = new Array(2 * ChannelCount);
-            for (let i = 0; i < this.op.length; i++) {
-                this.op[i] = new DBOPL.Operator();
-            }
-            for (let i = 0; i < ChannelCount; i++) {
-                this.chan[i] = new DBOPL.Channel(this.chan, i, this.op, i * 2);
-            }
-        }
-        ForwardLFO(samples /* UInt32 */) {
-            //Current vibrato value, runs 4x slower than tremolo
-            this.vibratoSign = (DBOPL.GlobalMembers.VibratoTable[this.vibratoIndex >>> 2]) >> 7;
-            this.vibratoShift = ((DBOPL.GlobalMembers.VibratoTable[this.vibratoIndex >>> 2] & 7) + this.vibratoStrength) | 0;
-            this.tremoloValue = (DBOPL.GlobalMembers.TremoloTable[this.tremoloIndex] >>> this.tremoloStrength) | 0;
-            //Check hom many samples there can be done before the value changes
-            let todo = ((256 << (((32 - 10) - 10))) - this.lfoCounter) | 0;
-            let count = ((todo + this.lfoAdd - 1) / this.lfoAdd) | 0;
-            if (count > samples) {
-                count = samples;
-                this.lfoCounter += count * this.lfoAdd | 0;
-            }
-            else {
-                this.lfoCounter += count * this.lfoAdd | 0;
-                this.lfoCounter &= ((256 << (((32 - 10) - 10))) - 1);
-                //Maximum of 7 vibrato value * 4
-                this.vibratoIndex = (this.vibratoIndex + 1) & 31;
-                //Clip tremolo to the the table size
-                if (this.tremoloIndex + 1 < DBOPL.GlobalMembers.TREMOLO_TABLE) {
-                    ++this.tremoloIndex;
-                }
-                else {
-                    this.tremoloIndex = 0;
-                }
-            }
-            return count;
-        }
-        ForwardNoise() {
-            this.noiseCounter += this.noiseAdd;
-            let count = (this.noiseCounter >>> ((32 - 10) - 10));
-            this.noiseCounter &= ((1 << (32 - 10)) - 1);
-            for (; count > 0; --count) {
-                //Noise calculation from mame
-                this.noiseValue ^= (0x800302) & (0 - (this.noiseValue & 1));
-                this.noiseValue >>>= 1;
-            }
-            return this.noiseValue;
-        }
-        WriteBD(val /* UInt8 */) {
-            let change = this.regBD ^ val;
-            if (change == 0) {
-                return;
-            }
-            this.regBD = val | 0;
-            /// TODO could do this with shift and xor?
-            this.vibratoStrength = ((val & 0x40) != 0 ? 0x00 : 0x01);
-            this.tremoloStrength = ((val & 0x80) != 0 ? 0x00 : 0x02);
-            if ((val & 0x20) != 0) {
-                //Drum was just enabled, make sure channel 6 has the right synth
-                if ((change & 0x20) != 0) {
-                    if (this.opl3Active) {
-                        //this.chan[6].synthHandler = & Channel.BlockTemplate < SynthMode.sm3Percussion >;
-                        this.chan[6].synthMode = DBOPL.SynthMode.sm3Percussion;
-                    }
-                    else {
-                        //this.chan[6].synthHandler = & Channel.BlockTemplate < SynthMode.sm2Percussion >;
-                        this.chan[6].synthMode = DBOPL.SynthMode.sm2Percussion;
-                    }
-                }
-                //Bass Drum
-                if ((val & 0x10) != 0) {
-                    this.chan[6].Op(0).KeyOn(0x2);
-                    this.chan[6].Op(1).KeyOn(0x2);
-                }
-                else {
-                    this.chan[6].Op(0).KeyOff(0x2);
-                    this.chan[6].Op(1).KeyOff(0x2);
-                }
-                //Hi-Hat
-                if ((val & 0x1) != 0) {
-                    this.chan[7].Op(0).KeyOn(0x2);
-                }
-                else {
-                    this.chan[7].Op(0).KeyOff(0x2);
-                }
-                //Snare
-                if ((val & 0x8) != 0) {
-                    this.chan[7].Op(1).KeyOn(0x2);
-                }
-                else {
-                    this.chan[7].Op(1).KeyOff(0x2);
-                }
-                //Tom-Tom
-                if ((val & 0x4) != 0) {
-                    this.chan[8].Op(0).KeyOn(0x2);
-                }
-                else {
-                    this.chan[8].Op(0).KeyOff(0x2);
-                }
-                //Top Cymbal
-                if ((val & 0x2) != 0) {
-                    this.chan[8].Op(1).KeyOn(0x2);
-                }
-                else {
-                    this.chan[8].Op(1).KeyOff(0x2);
-                }
-            }
-            else if (change & 0x20) {
-                //Trigger a reset to setup the original synth handler
-                this.chan[6].ResetC0(this);
-                this.chan[6].Op(0).KeyOff(0x2);
-                this.chan[6].Op(1).KeyOff(0x2);
-                this.chan[7].Op(0).KeyOff(0x2);
-                this.chan[7].Op(1).KeyOff(0x2);
-                this.chan[8].Op(0).KeyOff(0x2);
-                this.chan[8].Op(1).KeyOff(0x2);
-            }
-        }
-        WriteReg(reg /* int */, val /** byte */) {
-            let index = 0;
-            switch ((reg & 0xf0) >>> 4) {
-                case 0x00 >> 4:
-                    if (reg == 0x01) {
-                        this.waveFormMask = ((val & 0x20) != 0 ? 0x7 : 0x0);
-                    }
-                    else if (reg == 0x104) {
-                        if (((this.reg104 ^ val) & 0x3f) == 0) {
-                            return;
-                        }
-                        this.reg104 = (0x80 | (val & 0x3f));
-                    }
-                    else if (reg == 0x105) {
-                        if (((this.opl3Active ^ val) & 1) == 0) {
-                            return;
-                        }
-                        this.opl3Active = (val & 1) != 0 ? 0xff : 0;
-                        for (let i = 0; i < 18; i++) {
-                            this.chan[i].ResetC0(this);
-                        }
-                    }
-                    else if (reg == 0x08) {
-                        this.reg08 = val;
-                    }
-                case 0x10 >> 4:
-                    break;
-                case 0x20 >> 4:
-                case 0x30 >> 4:
-                    index = (((reg >>> 3) & 0x20) | (reg & 0x1f));
-                    if (this.OpTable[index]) {
-                        this.OpTable[index].Write20(this, val);
-                    }
-                    ;
-                    break;
-                case 0x40 >> 4:
-                case 0x50 >> 4:
-                    index = (((reg >>> 3) & 0x20) | (reg & 0x1f));
-                    if (this.OpTable[index]) {
-                        this.OpTable[index].Write40(this, val);
-                    }
-                    ;
-                    break;
-                case 0x60 >> 4:
-                case 0x70 >> 4:
-                    index = (((reg >>> 3) & 0x20) | (reg & 0x1f));
-                    if (this.OpTable[index]) {
-                        this.OpTable[index].Write60(this, val);
-                    }
-                    ;
-                    break;
-                case 0x80 >> 4:
-                case 0x90 >> 4:
-                    index = (((reg >>> 3) & 0x20) | (reg & 0x1f));
-                    if (this.OpTable[index]) {
-                        this.OpTable[index].Write80(this, val);
-                    }
-                    ;
-                    break;
-                case 0xa0 >> 4:
-                    index = (((reg >>> 4) & 0x10) | (reg & 0xf));
-                    if (this.ChanTable[index]) {
-                        this.ChanTable[index].WriteA0(this, val);
-                    }
-                    ;
-                    break;
-                case 0xb0 >> 4:
-                    if (reg == 0xbd) {
-                        this.WriteBD(val);
-                    }
-                    else {
-                        index = (((reg >>> 4) & 0x10) | (reg & 0xf));
-                        if (this.ChanTable[index]) {
-                            this.ChanTable[index].WriteB0(this, val);
-                        }
-                        ;
-                    }
-                    break;
-                case 0xc0 >> 4:
-                    index = (((reg >>> 4) & 0x10) | (reg & 0xf));
-                    if (this.ChanTable[index]) {
-                        this.ChanTable[index].WriteC0(this, val);
-                    }
-                    ;
-                case 0xd0 >> 4:
-                    break;
-                case 0xe0 >> 4:
-                case 0xf0 >> 4:
-                    index = (((reg >>> 3) & 0x20) | (reg & 0x1f));
-                    if (this.OpTable[index]) {
-                        this.OpTable[index].WriteE0(this, val);
-                    }
-                    ;
-                    break;
-            }
-        }
-        WriteAddr(port /* UInt32 */, val /* byte */) {
-            switch (port & 3) {
-                case 0:
-                    return val;
-                case 2:
-                    if (this.opl3Active || (val == 0x05)) {
-                        return 0x100 | val;
-                    }
-                    else {
-                        return val;
-                    }
-            }
-            return 0;
-        }
-        GenerateBlock2(total /* UInt32 */, output /*  Int32 */) {
-            let outputIndex = 0;
-            while (total > 0) {
-                let samples = this.ForwardLFO(total);
-                //todo ?? do we need this
-                //output.fill(0, outputIndex, outputIndex + samples);
-                let ch = this.chan[0];
-                while (ch.ChannelIndex < 9) {
-                    //ch.printDebug();
-                    ch = ch.synthHandler(this, samples, output, outputIndex);
-                }
-                total -= samples;
-                outputIndex += samples;
-            }
-        }
-        GenerateBlock3(total /* UInt32 */, output /* Int32 */) {
-            let outputIndex = 0;
-            while (total > 0) {
-                let samples = this.ForwardLFO(total);
-                output.fill(0, outputIndex, outputIndex + samples * 2);
-                //int count = 0;
-                for (let c = 0; c < 18; c++) {
-                    //count++;
-                    this.chan[c].synthHandler(this, samples, output, outputIndex);
-                }
-                total -= samples;
-                outputIndex += samples * 2;
-            }
-        }
-        Setup(rate /* UInt32 */) {
-            this.InitTables();
-            let scale = DBOPL.GlobalMembers.OPLRATE / rate;
-            //Noise counter is run at the same precision as general waves
-            this.noiseAdd = (0.5 + scale * (1 << ((32 - 10) - 10))) | 0;
-            this.noiseCounter = 0 | 0;
-            this.noiseValue = 1 | 0; //Make sure it triggers the noise xor the first time
-            //The low frequency oscillation counter
-            //Every time his overflows vibrato and tremoloindex are increased
-            this.lfoAdd = (0.5 + scale * (1 << ((32 - 10) - 10))) | 0;
-            this.lfoCounter = 0 | 0;
-            this.vibratoIndex = 0 | 0;
-            this.tremoloIndex = 0 | 0;
-            //With higher octave this gets shifted up
-            //-1 since the freqCreateTable = *2
-            let freqScale = (0.5 + scale * (1 << ((32 - 10) - 1 - 10))) | 0;
-            for (let i = 0; i < 16; i++) {
-                this.freqMul[i] = (freqScale * DBOPL.GlobalMembers.FreqCreateTable[i]) | 0;
-            }
-            //-3 since the real envelope takes 8 steps to reach the single value we supply
-            for (let i = 0; i < 76; i++) {
-                let index = DBOPL.GlobalMembers.EnvelopeSelectIndex(i);
-                let shift = DBOPL.GlobalMembers.EnvelopeSelectShift(i);
-                this.linearRates[i] = (scale * (DBOPL.GlobalMembers.EnvelopeIncreaseTable[index] << (24 + ((9) - 9) - shift - 3))) | 0;
-            }
-            //Generate the best matching attack rate
-            for (let i = 0; i < 62; i++) {
-                let index = DBOPL.GlobalMembers.EnvelopeSelectIndex(i);
-                let shift = DBOPL.GlobalMembers.EnvelopeSelectShift(i);
-                //Original amount of samples the attack would take
-                let original = ((DBOPL.GlobalMembers.AttackSamplesTable[index] << shift) / scale) | 0;
-                let guessAdd = (scale * (DBOPL.GlobalMembers.EnvelopeIncreaseTable[index] << (24 - shift - 3))) | 0;
-                let bestAdd = guessAdd;
-                let bestDiff = 1 << 30;
-                for (let passes = 0; passes < 16; passes++) {
-                    let volume = (511 << ((9) - 9));
-                    let samples = 0;
-                    let count = 0;
-                    while (volume > 0 && samples < original * 2) {
-                        count += guessAdd;
-                        let change = count >>> 24;
-                        count &= ((1 << 24) - 1);
-                        if ((change) != 0) {
-                            volume += (~volume * change) >> 3;
-                        }
-                        samples++;
-                    }
-                    let diff = original - samples;
-                    let lDiff = Math.abs(diff) | 0;
-                    //Init last on first pass
-                    if (lDiff < bestDiff) {
-                        bestDiff = lDiff;
-                        bestAdd = guessAdd;
-                        if (bestDiff == 0) {
-                            break;
-                        }
-                    }
-                    //Below our target
-                    if (diff < 0) {
-                        //Better than the last time
-                        let mul = (((original - diff) << 12) / original) | 0;
-                        guessAdd = ((guessAdd * mul) >> 12);
-                        guessAdd++;
-                    }
-                    else if (diff > 0) {
-                        let mul = (((original - diff) << 12) / original) | 0;
-                        guessAdd = (guessAdd * mul) >> 12;
-                        guessAdd--;
-                    }
-                }
-                this.attackRates[i] = bestAdd;
-            }
-            for (let i = 62; i < 76; i++) {
-                //This should provide instant volume maximizing
-                this.attackRates[i] = 8 << 24;
-            }
-            //Setup the channels with the correct four op flags
-            //Channels are accessed through a table so they appear linear here
-            this.chan[0].fourMask = (0x00 | (1 << 0));
-            this.chan[1].fourMask = (0x80 | (1 << 0));
-            this.chan[2].fourMask = (0x00 | (1 << 1));
-            this.chan[3].fourMask = (0x80 | (1 << 1));
-            this.chan[4].fourMask = (0x00 | (1 << 2));
-            this.chan[5].fourMask = (0x80 | (1 << 2));
-            this.chan[9].fourMask = (0x00 | (1 << 3));
-            this.chan[10].fourMask = (0x80 | (1 << 3));
-            this.chan[11].fourMask = (0x00 | (1 << 4));
-            this.chan[12].fourMask = (0x80 | (1 << 4));
-            this.chan[13].fourMask = (0x00 | (1 << 5));
-            this.chan[14].fourMask = (0x80 | (1 << 5));
-            //mark the percussion channels
-            this.chan[6].fourMask = 0x40;
-            this.chan[7].fourMask = 0x40;
-            this.chan[8].fourMask = 0x40;
-            //Clear Everything in opl3 mode
-            this.WriteReg(0x105, 0x1);
-            for (let i = 0; i < 512; i++) {
-                if (i == 0x105) {
-                    continue;
-                }
-                this.WriteReg(i, 0xff);
-                this.WriteReg(i, 0x0);
-            }
-            this.WriteReg(0x105, 0x0);
-            //Clear everything in opl2 mode
-            for (let i = 0; i < 255; i++) {
-                this.WriteReg(i, 0xff);
-                this.WriteReg(i, 0x0);
-            }
-        }
-        InitTables() {
-            this.OpTable = new Array(DBOPL.GlobalMembers.OpOffsetTable.length);
-            for (let i = 0; i < DBOPL.GlobalMembers.OpOffsetTable.length; i++) {
-                this.OpTable[i] = this.op[DBOPL.GlobalMembers.OpOffsetTable[i]];
-            }
-            this.ChanTable = new Array(DBOPL.GlobalMembers.ChanOffsetTable.length);
-            for (let i = 0; i < DBOPL.GlobalMembers.ChanOffsetTable.length; i++) {
-                this.ChanTable[i] = this.chan[DBOPL.GlobalMembers.ChanOffsetTable[i]];
-            }
-        }
-    }
-    DBOPL.Chip = Chip;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    class GlobalMembers {
-        static EnvelopeSelectShift(val /* UInt8  */) {
-            if (val < 13 * 4) {
-                return 12 - (val >>> 2);
-            }
-            else if (val < 15 * 4) {
-                return 0;
-            }
-            else {
-                return 0;
-            }
-        }
-        static EnvelopeSelectIndex(val /* UInt8  */) {
-            if (val < 13 * 4) {
-                return (val & 3);
-            }
-            else if (val < 15 * 4) {
-                return val - 12 * 4;
-            }
-            else {
-                return 12;
-            }
-        }
-        static InitTables() {
-            if (GlobalMembers.doneTables) {
-                return;
-            }
-            GlobalMembers.doneTables = true;
-            /// Multiplication based tables
-            for (let i = 0; i < 384; i++) {
-                let s = i * 8;
-                /// TODO maybe keep some of the precision errors of the original table?
-                let val = (0.5 + (Math.pow(2.0, -1.0 + (255 - s) * (1.0 / 256))) * (1 << 16)) | 0;
-                GlobalMembers.MulTable[i] = val;
-            }
-            //Sine Wave Base
-            for (let i = 0; i < 512; i++) {
-                GlobalMembers.WaveTable[0x0200 + i] = (Math.sin((i + 0.5) * (3.14159265358979323846 / 512.0)) * 4084) | 0;
-                GlobalMembers.WaveTable[0x0000 + i] = -GlobalMembers.WaveTable[0x200 + i];
-            }
-            //Exponential wave
-            for (let i = 0; i < 256; i++) {
-                GlobalMembers.WaveTable[0x700 + i] = (0.5 + (Math.pow(2.0, -1.0 + (255 - i * 8) * (1.0 / 256))) * 4085) | 0;
-                GlobalMembers.WaveTable[0x6ff - i] = -GlobalMembers.WaveTable[0x700 + i];
-            }
-            for (let i = 0; i < 256; i++) {
-                /// Fill silence gaps
-                GlobalMembers.WaveTable[0x400 + i] = GlobalMembers.WaveTable[0];
-                GlobalMembers.WaveTable[0x500 + i] = GlobalMembers.WaveTable[0];
-                GlobalMembers.WaveTable[0x900 + i] = GlobalMembers.WaveTable[0];
-                GlobalMembers.WaveTable[0xc00 + i] = GlobalMembers.WaveTable[0];
-                GlobalMembers.WaveTable[0xd00 + i] = GlobalMembers.WaveTable[0];
-                /// Replicate sines in other pieces
-                GlobalMembers.WaveTable[0x800 + i] = GlobalMembers.WaveTable[0x200 + i];
-                /// double speed sines
-                GlobalMembers.WaveTable[0xa00 + i] = GlobalMembers.WaveTable[0x200 + i * 2];
-                GlobalMembers.WaveTable[0xb00 + i] = GlobalMembers.WaveTable[0x000 + i * 2];
-                GlobalMembers.WaveTable[0xe00 + i] = GlobalMembers.WaveTable[0x200 + i * 2];
-                GlobalMembers.WaveTable[0xf00 + i] = GlobalMembers.WaveTable[0x200 + i * 2];
-            }
-            /// Create the ksl table
-            for (let oct = 0; oct < 8; oct++) {
-                let base = (oct * 8) | 0;
-                for (let i = 0; i < 16; i++) {
-                    let val = base - GlobalMembers.KslCreateTable[i];
-                    if (val < 0) {
-                        val = 0;
-                    }
-                    /// *4 for the final range to match attenuation range
-                    GlobalMembers.KslTable[oct * 16 + i] = (val * 4) | 0;
-                }
-            }
-            /// Create the Tremolo table, just increase and decrease a triangle wave
-            for (let i = 0; i < 52 / 2; i++) {
-                let val = (i << ((9) - 9)) | 0;
-                GlobalMembers.TremoloTable[i] = val;
-                GlobalMembers.TremoloTable[52 - 1 - i] = val;
-            }
-            /// Create a table with offsets of the channels from the start of the chip
-            for (let i = 0; i < 32; i++) {
-                let index = (i & 0xf);
-                if (index >= 9) {
-                    GlobalMembers.ChanOffsetTable[i] = -1;
-                    continue;
-                }
-                /// Make sure the four op channels follow eachother
-                if (index < 6) {
-                    index = ((index % 3) * 2 + ((index / 3) | 0)) | 0;
-                }
-                /// Add back the bits for highest ones
-                if (i >= 16) {
-                    index += 9;
-                }
-                GlobalMembers.ChanOffsetTable[i] = index;
-            }
-            /// Same for operators
-            for (let i = 0; i < 64; i++) {
-                if (i % 8 >= 6 || (((i / 8) | 0) % 4 == 3)) {
-                    GlobalMembers.OpOffsetTable[i] = null;
-                    continue;
-                }
-                let chNum = (((i / 8) | 0) * 3 + (i % 8) % 3) | 0;
-                //Make sure we use 16 and up for the 2nd range to match the chanoffset gap
-                if (chNum >= 12) {
-                    chNum += 16 - 12;
-                }
-                let opNum = ((i % 8) / 3) | 0;
-                if (GlobalMembers.ChanOffsetTable[chNum] == -1) {
-                    GlobalMembers.OpOffsetTable[i] = -1;
-                }
-                else {
-                    let c = GlobalMembers.ChanOffsetTable[chNum];
-                    GlobalMembers.OpOffsetTable[i] = c * 2 + opNum;
-                }
-            }
-        }
-    }
-    GlobalMembers.OPLRATE = (14318180.0 / 288.0); // double
-    /// How much to substract from the base value for the final attenuation
-    GlobalMembers.KslCreateTable = new Uint8Array([
-        64, 32, 24, 19,
-        16, 12, 11, 10,
-        8, 6, 5, 4,
-        3, 2, 1, 0
-    ]); /* UInt8[]*/
-    GlobalMembers.FreqCreateTable = new Uint8Array([
-        (0.5 * 2), (1 * 2), (2 * 2), (3 * 2), (4 * 2), (5 * 2), (6 * 2), (7 * 2),
-        (8 * 2), (9 * 2), (10 * 2), (10 * 2), (12 * 2), (12 * 2), (15 * 2), (15 * 2)
-    ]); /** final UInt8[]  */
-    /// We're not including the highest attack rate, that gets a special value
-    GlobalMembers.AttackSamplesTable = new Uint8Array([
-        69, 55, 46, 40,
-        35, 29, 23, 20,
-        19, 15, 11, 10,
-        9
-    ]); /** UInt8 */
-    GlobalMembers.EnvelopeIncreaseTable = new Uint8Array([
-        4, 5, 6, 7,
-        8, 10, 12, 14,
-        16, 20, 24, 28,
-        32
-    ]); /** UInt8 */
-    /// Layout of the waveform table in 512 entry intervals
-    /// With overlapping waves we reduce the table to half it's size
-    /// 	|    |//\\|____|WAV7|//__|/\  |____|/\/\|
-    /// 	|\\//|    |    |WAV7|    |  \/|    |    |
-    /// 	|06  |0126|17  |7   |3   |4   |4 5 |5   |
-    /// 6 is just 0 shifted and masked
-    GlobalMembers.WaveTable = new Int16Array(8 * 512); /** Bit16s */
-    GlobalMembers.WaveBaseTable = new Uint16Array([
-        0x000, 0x200, 0x200, 0x800,
-        0xa00, 0xc00, 0x100, 0x400
-    ]); /** UInt16 */
-    GlobalMembers.WaveMaskTable = new Uint16Array([
-        1023, 1023, 511, 511,
-        1023, 1023, 512, 1023
-    ]); /** UInt16 */
-    /// Where to start the counter on at keyon
-    GlobalMembers.WaveStartTable = new Uint16Array([
-        512, 0, 0, 0,
-        0, 512, 512, 256
-    ]); /** UInt16 */
-    GlobalMembers.MulTable = new Uint16Array(384); /** UInt16[] */
-    GlobalMembers.TREMOLO_TABLE = 52;
-    GlobalMembers.KslTable = new Uint8Array(8 * 16); /** UInt8[] */
-    GlobalMembers.TremoloTable = new Uint8Array(GlobalMembers.TREMOLO_TABLE); /** UInt8[] */
-    //Start of a channel behind the chip struct start
-    GlobalMembers.ChanOffsetTable = new Int16Array(32); /** UInt16[] */
-    //Start of an operator behind the chip struct start
-    GlobalMembers.OpOffsetTable = new Int16Array(64); /** UInt16[] */
-    //The lower bits are the shift of the operator vibrato value
-    //The highest bit is right shifted to generate -1 or 0 for negation
-    //So taking the highest input value of 7 this gives 3, 7, 3, 0, -3, -7, -3, 0
-    GlobalMembers.VibratoTable = new Int8Array([
-        1 - 0x00, 0 - 0x00, 1 - 0x00, 30 - 0x00,
-        1 - 0x80, 0 - 0x80, 1 - 0x80, 30 - 0x80
-    ]); /** Int8 */
-    //Shift strength for the ksl value determined by ksl strength
-    GlobalMembers.KslShiftTable = new Uint8Array([31, 1, 2, 0]); /** UInt8 */
-    GlobalMembers.doneTables = false;
-    DBOPL.GlobalMembers = GlobalMembers;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    class Handler {
-        constructor() {
-            this.chip = new DBOPL.Chip();
-        }
-        WriteAddr(port /* int */, val /* byte */) {
-            return this.chip.WriteAddr(port, val);
-        }
-        WriteReg(addr /* int */, val /* byte */) {
-            this.chip.WriteReg(addr, val);
-        }
-        Generate(chan, samples /* short */) {
-            let buffer = new Int32Array(512 * 2);
-            if ((samples > 512)) {
-                samples = 512;
-            }
-            if (!this.chip.opl3Active) {
-                this.chip.GenerateBlock2(samples, buffer);
-                chan.AddSamples_m32(samples, buffer);
-            }
-            else {
-                this.chip.GenerateBlock3(samples, buffer);
-                chan.AddSamples_s32(samples, buffer);
-            }
-        }
-        Init(rate /* short */) {
-            DBOPL.GlobalMembers.InitTables();
-            this.chip.Setup(rate);
-        }
-    }
-    DBOPL.Handler = Handler;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    class MixerChannel {
-        constructor(buffer, channels) {
-            this.buffer = buffer;
-            this.channels = channels;
-        }
-        CLIP(v) {
-            const SAMPLE_SIZE = 2;
-            const SAMP_BITS = (SAMPLE_SIZE << 3);
-            const SAMP_MAX = ((1 << (SAMP_BITS - 1)) - 1);
-            const SAMP_MIN = -((1 << (SAMP_BITS - 1)));
-            return (((v) > SAMP_MAX) ? SAMP_MAX : (((v) < SAMP_MIN) ? SAMP_MIN : (v)));
-        }
-        AddSamples_m32(samples, buffer) {
-            // Volume amplication (0 == none, 1 == 2x, 2 == 4x)
-            const VOL_AMP = 1;
-            // Convert samples from mono int32 to stereo int16
-            let out = this.buffer;
-            let outIndex = 0;
-            let ch = this.channels;
-            if (ch == 2) {
-                for (let i = 0; i < samples; i++) {
-                    let v = this.CLIP(buffer[i] << VOL_AMP);
-                    out[outIndex] = v;
-                    outIndex++;
-                    out[outIndex] = v;
-                    outIndex++;
-                }
-            }
-            else {
-                for (let i = 0; i < samples; i++) {
-                    let v = buffer[i] << VOL_AMP;
-                    out[outIndex] = this.CLIP(v);
-                    outIndex++;
-                }
-            }
-            return;
-        }
-        AddSamples_s32(samples, buffer) {
-            // Volume amplication (0 == none, 1 == 2x, 2 == 4x)
-            const VOL_AMP = 1;
-            // Convert samples from stereo s32 to stereo s16
-            let out = this.buffer;
-            let outIndex = 0;
-            let ch = this.channels;
-            if (ch == 2) {
-                for (let i = 0; i < samples; i++) {
-                    let v = buffer[i * 2] << VOL_AMP;
-                    out[outIndex] = this.CLIP(v);
-                    outIndex++;
-                    v = buffer[i * 2 + 1] << VOL_AMP;
-                    out[outIndex] = this.CLIP(v);
-                    outIndex++;
-                }
-            }
-            else {
-                for (let i = 0; i < samples; i++) {
-                    let v = buffer[i * 2] << VOL_AMP;
-                    out[outIndex] = this.CLIP(v);
-                    outIndex++;
-                }
-            }
-            return;
-        }
-    }
-    DBOPL.MixerChannel = MixerChannel;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-var DBOPL;
-(function (DBOPL) {
-    var Operator20Masks;
-    (function (Operator20Masks) {
-        Operator20Masks[Operator20Masks["MASK_KSR"] = 16] = "MASK_KSR";
-        Operator20Masks[Operator20Masks["MASK_SUSTAIN"] = 32] = "MASK_SUSTAIN";
-        Operator20Masks[Operator20Masks["MASK_VIBRATO"] = 64] = "MASK_VIBRATO";
-        Operator20Masks[Operator20Masks["MASK_TREMOLO"] = 128] = "MASK_TREMOLO";
-    })(Operator20Masks || (Operator20Masks = {}));
-    var State;
-    (function (State) {
-        State[State["OFF"] = 0] = "OFF";
-        State[State["RELEASE"] = 1] = "RELEASE";
-        State[State["SUSTAIN"] = 2] = "SUSTAIN";
-        State[State["DECAY"] = 3] = "DECAY";
-        State[State["ATTACK"] = 4] = "ATTACK";
-    })(State || (State = {}));
-    class Operator {
-        constructor() {
-            this.chanData = 0 | 0;
-            this.freqMul = 0 | 0;
-            this.waveIndex = 0 >>> 0;
-            this.waveAdd = 0 | 0;
-            this.waveCurrent = 0 | 0;
-            this.keyOn = 0 | 0;
-            this.ksr = 0 | 0;
-            this.reg20 = 0 | 0;
-            this.reg40 = 0 | 0;
-            this.reg60 = 0 | 0;
-            this.reg80 = 0 | 0;
-            this.regE0 = 0 | 0;
-            this.SetState(State.OFF);
-            this.rateZero = (1 << State.OFF);
-            this.sustainLevel = (511 << ((9) - 9));
-            this.currentLevel = (511 << ((9) - 9));
-            this.totalLevel = (511 << ((9) - 9));
-            this.volume = (511 << ((9) - 9));
-            this.releaseAdd = 0;
-        }
-        SetState(s /** Int8 */) {
-            this.state = s;
-        }
-        //We zero out when rate == 0
-        UpdateAttack(chip) {
-            let rate = this.reg60 >>> 4; /** UInt8 */
-            if (rate != 0) {
-                let val = ((rate << 2) + this.ksr) | 0; /** UInt8 */
-                ;
-                this.attackAdd = chip.attackRates[val];
-                this.rateZero &= ~(1 << State.ATTACK);
-            }
-            else {
-                this.attackAdd = 0;
-                this.rateZero |= (1 << State.ATTACK);
-            }
-        }
-        UpdateRelease(chip) {
-            let rate = (this.reg80 & 0xf);
-            if (rate != 0) {
-                let val = ((rate << 2) + this.ksr) | 0;
-                this.releaseAdd = chip.linearRates[val];
-                this.rateZero &= ~(1 << State.RELEASE);
-                if ((this.reg20 & Operator20Masks.MASK_SUSTAIN) == 0) {
-                    this.rateZero &= ~(1 << State.SUSTAIN);
-                }
-            }
-            else {
-                this.rateZero |= (1 << State.RELEASE);
-                this.releaseAdd = 0;
-                if ((this.reg20 & Operator20Masks.MASK_SUSTAIN) == 0) {
-                    this.rateZero |= (1 << State.SUSTAIN);
-                }
-            }
-        }
-        UpdateDecay(chip) {
-            let rate = (this.reg60 & 0xf);
-            if (rate != 0) {
-                let val = ((rate << 2) + this.ksr) | 0;
-                this.decayAdd = chip.linearRates[val];
-                this.rateZero &= ~(1 << State.DECAY);
-            }
-            else {
-                this.decayAdd = 0;
-                this.rateZero |= (1 << State.DECAY);
-            }
-        }
-        UpdateAttenuation() {
-            let kslBase = ((this.chanData >>> DBOPL.Shifts.SHIFT_KSLBASE) & 0xff);
-            let tl = this.reg40 & 0x3f;
-            let kslShift = DBOPL.GlobalMembers.KslShiftTable[this.reg40 >>> 6];
-            //Make sure the attenuation goes to the right Int32
-            this.totalLevel = tl << ((9) - 7);
-            this.totalLevel += (kslBase << ((9) - 9)) >> kslShift;
-        }
-        UpdateRates(chip) {
-            //Mame seems to reverse this where enabling ksr actually lowers
-            //the rate, but pdf manuals says otherwise?
-            let newKsr = ((this.chanData >>> DBOPL.Shifts.SHIFT_KEYCODE) & 0xff);
-            if ((this.reg20 & Operator20Masks.MASK_KSR) == 0) {
-                newKsr >>>= 2;
-            }
-            if (this.ksr == newKsr) {
-                return;
-            }
-            this.ksr = newKsr;
-            this.UpdateAttack(chip);
-            this.UpdateDecay(chip);
-            this.UpdateRelease(chip);
-        }
-        UpdateFrequency() {
-            let freq = this.chanData & ((1 << 10) - 1) | 0;
-            let block = (this.chanData >>> 10) & 0xff;
-            this.waveAdd = ((freq << block) * this.freqMul) | 0;
-            if ((this.reg20 & Operator20Masks.MASK_VIBRATO) != 0) {
-                this.vibStrength = (freq >>> 7) & 0xFF;
-                this.vibrato = ((this.vibStrength << block) * this.freqMul) | 0;
-            }
-            else {
-                this.vibStrength = 0;
-                this.vibrato = 0;
-            }
-        }
-        Write20(chip, val /** Int8 */) {
-            let change = (this.reg20 ^ val);
-            if (change == 0) {
-                return;
-            }
-            this.reg20 = val;
-            //Shift the tremolo bit over the entire register, saved a branch, YES!
-            this.tremoloMask = ((val) >> 7) & 0xFF;
-            this.tremoloMask &= ~((1 << ((9) - 9)) - 1);
-            //Update specific features based on changes
-            if ((change & Operator20Masks.MASK_KSR) != 0) {
-                this.UpdateRates(chip);
-            }
-            //With sustain enable the volume doesn't change
-            if ((this.reg20 & Operator20Masks.MASK_SUSTAIN) != 0 || (this.releaseAdd == 0)) {
-                this.rateZero |= (1 << State.SUSTAIN);
-            }
-            else {
-                this.rateZero &= ~(1 << State.SUSTAIN);
-            }
-            //Frequency multiplier or vibrato changed
-            if ((change & (0xf | Operator20Masks.MASK_VIBRATO)) != 0) {
-                this.freqMul = chip.freqMul[val & 0xf];
-                this.UpdateFrequency();
-            }
-        }
-        Write40(chip, val /** Int8 */) {
-            if ((this.reg40 ^ val) == 0) {
-                return;
-            }
-            this.reg40 = val;
-            this.UpdateAttenuation();
-        }
-        Write60(chip, val /** Int8 */) {
-            let change = (this.reg60 ^ val);
-            this.reg60 = val;
-            if ((change & 0x0f) != 0) {
-                this.UpdateDecay(chip);
-            }
-            if ((change & 0xf0) != 0) {
-                this.UpdateAttack(chip);
-            }
-        }
-        Write80(chip, val /** Int8 */) {
-            let change = (this.reg80 ^ val);
-            if (change == 0) {
-                return;
-            }
-            this.reg80 = val;
-            let sustain = (val >>> 4);
-            //Turn 0xf into 0x1f
-            sustain |= (sustain + 1) & 0x10;
-            this.sustainLevel = sustain << ((9) - 5);
-            if ((change & 0x0f) != 0) {
-                this.UpdateRelease(chip);
-            }
-        }
-        WriteE0(chip, val /** Int8 */) {
-            if ((this.regE0 ^ val) == 0) {
-                return;
-            }
-            //in opl3 mode you can always selet 7 waveforms regardless of waveformselect
-            let waveForm = (val & ((0x3 & chip.waveFormMask) | (0x7 & chip.opl3Active)));
-            this.regE0 = val;
-            //this.waveBase = GlobalMembers.WaveTable + GlobalMembers.WaveBaseTable[waveForm];
-            this.waveBase = DBOPL.GlobalMembers.WaveBaseTable[waveForm];
-            this.waveStart = (DBOPL.GlobalMembers.WaveStartTable[waveForm] << (32 - 10)) >>> 0;
-            this.waveMask = DBOPL.GlobalMembers.WaveMaskTable[waveForm];
-        }
-        Silent() {
-            if (!((this.totalLevel + this.volume) >= ((12 * 256) >> (3 - ((9) - 9))))) {
-                return false;
-            }
-            if ((this.rateZero & (1 << this.state)) == 0) {
-                return false;
-            }
-            return true;
-        }
-        Prepare(chip) {
-            this.currentLevel = this.totalLevel + (chip.tremoloValue & this.tremoloMask);
-            this.waveCurrent = this.waveAdd;
-            if ((this.vibStrength >>> chip.vibratoShift) != 0) {
-                let add = this.vibrato >>> chip.vibratoShift;
-                //Sign extend over the shift value
-                let neg = chip.vibratoSign;
-                //Negate the add with -1 or 0
-                add = ((add ^ neg) - neg);
-                this.waveCurrent += add;
-            }
-        }
-        KeyOn(mask /** Int8 */) {
-            if (this.keyOn == 0) {
-                //Restart the frequency generator
-                this.waveIndex = this.waveStart;
-                this.rateIndex = 0;
-                this.SetState(State.ATTACK);
-            }
-            this.keyOn |= mask;
-        }
-        KeyOff(mask /** Int8 */) {
-            this.keyOn &= ~mask;
-            if (this.keyOn == 0) {
-                if (this.state != State.OFF) {
-                    this.SetState(State.RELEASE);
-                }
-            }
-        }
-        // public TemplateVolume(yes:State):number {
-        TemplateVolume() {
-            var yes = this.state;
-            let vol = this.volume;
-            let change;
-            switch (yes) {
-                case State.OFF:
-                    return (511 << ((9) - 9));
-                case State.ATTACK:
-                    change = this.RateForward(this.attackAdd);
-                    if (change == 0) {
-                        return vol;
-                    }
-                    vol += ((~vol) * change) >> 3;
-                    if (vol < 0) {
-                        this.volume = 0;
-                        this.rateIndex = 0;
-                        this.SetState(State.DECAY);
-                        return 0;
-                    }
-                    break;
-                case State.DECAY:
-                    vol += this.RateForward(this.decayAdd);
-                    if ((vol >= this.sustainLevel)) {
-                        //Check if we didn't overshoot max attenuation, then just go off
-                        if ((vol >= (511 << ((9) - 9)))) {
-                            this.volume = (511 << ((9) - 9));
-                            this.SetState(State.OFF);
-                            return (511 << ((9) - 9));
-                        }
-                        //Continue as sustain
-                        this.rateIndex = 0;
-                        this.SetState(State.SUSTAIN);
-                    }
-                    break;
-                case State.SUSTAIN:
-                    if ((this.reg20 & Operator20Masks.MASK_SUSTAIN) != 0) {
-                        return vol;
-                    }
-                //In sustain phase, but not sustaining, do regular release
-                case State.RELEASE:
-                    vol += this.RateForward(this.releaseAdd);
-                    if ((vol >= (511 << ((9) - 9)))) {
-                        this.volume = (511 << ((9) - 9));
-                        this.SetState(State.OFF);
-                        return (511 << ((9) - 9));
-                    }
-                    break;
-            }
-            this.volume = vol;
-            return vol | 0;
-        }
-        RateForward(add /* UInt32 */) {
-            this.rateIndex += add | 0;
-            let ret = this.rateIndex >>> 24;
-            this.rateIndex = this.rateIndex & ((1 << 24) - 1);
-            return ret;
-        }
-        ForwardWave() {
-            this.waveIndex = (this.waveIndex + this.waveCurrent) >>> 0;
-            return (this.waveIndex >>> (32 - 10));
-        }
-        ForwardVolume() {
-            return this.currentLevel + this.TemplateVolume();
-        }
-        GetSample(modulation /** Int32 */) {
-            //this.printDebug();
-            let vol = this.ForwardVolume();
-            if (((vol) >= ((12 * 256) >> (3 - ((9) - 9))))) {
-                //Simply forward the wave
-                this.waveIndex = (this.waveIndex + this.waveCurrent) >>> 0;
-                return 0;
-            }
-            else {
-                let index = this.ForwardWave();
-                index += modulation;
-                return this.GetWave(index, vol);
-            }
-        }
-        GetWave(index /** Uint32 */, vol /** Uint32 */) {
-            return ((DBOPL.GlobalMembers.WaveTable[this.waveBase + (index & this.waveMask)] * DBOPL.GlobalMembers.MulTable[vol >>> ((9) - 9)]) >> 16);
-        }
-    }
-    DBOPL.Operator = Operator;
-})(DBOPL || (DBOPL = {}));
-/*
- *  Copyright (C) 2002-2015  The DOSBox Team
- *
- *  This program is free software; you can redistribute it and/or modify
- *  it under the terms of the GNU General Public License as published by
- *  the Free Software Foundation; either version 2 of the License, or
- *  (at your option) any later version.
- *
- *  This program is distributed in the hope that it will be useful,
- *  but WITHOUT ANY WARRANTY; without even the implied warranty of
- *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *  GNU General Public License for more details.
- *
- *  You should have received a copy of the GNU General Public License
- *  along with this program; if not, write to the Free Software
- *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
- */
-/*
-* 2019 - Typescript Version: Thomas Zeugner
-*/
-/*
-    DOSBox implementation of a combined Yamaha YMF262 and Yamaha YM3812 emulator.
-    Enabling the opl3 bit will switch the emulator to stereo opl3 output instead of regular mono opl2
-    Except for the table generation it's all integer math
-    Can choose different types of generators, using muls and bigger tables, try different ones for slower platforms
-    The generation was based on the MAME implementation but tried to have it use less memory and be faster in general
-    MAME uses much bigger envelope tables and this will be the biggest cause of it sounding different at times
-
-    //TODO Don't delay first operator 1 sample in opl3 mode
-    //TODO Maybe not use class method pointers but a regular function pointers with operator as first parameter
-    //TODO Fix panning for the Percussion channels, would any opl3 player use it and actually really change it though?
-    //TODO Check if having the same accuracy in all frequency multipliers sounds better or not
-
-    //DUNNO Keyon in 4op, switch to 2op without keyoff.
-*/
-/* $Id: dbopl.cpp,v 1.10 2009-06-10 19:54:51 harekiet Exp $ */
-var DBOPL;
-(function (DBOPL) {
-    var SynthMode;
-    (function (SynthMode) {
-        SynthMode[SynthMode["sm2AM"] = 0] = "sm2AM";
-        SynthMode[SynthMode["sm2FM"] = 1] = "sm2FM";
-        SynthMode[SynthMode["sm3AM"] = 2] = "sm3AM";
-        SynthMode[SynthMode["sm3FM"] = 3] = "sm3FM";
-        SynthMode[SynthMode["sm4Start"] = 4] = "sm4Start";
-        SynthMode[SynthMode["sm3FMFM"] = 5] = "sm3FMFM";
-        SynthMode[SynthMode["sm3AMFM"] = 6] = "sm3AMFM";
-        SynthMode[SynthMode["sm3FMAM"] = 7] = "sm3FMAM";
-        SynthMode[SynthMode["sm3AMAM"] = 8] = "sm3AMAM";
-        SynthMode[SynthMode["sm6Start"] = 9] = "sm6Start";
-        SynthMode[SynthMode["sm2Percussion"] = 10] = "sm2Percussion";
-        SynthMode[SynthMode["sm3Percussion"] = 11] = "sm3Percussion";
-    })(SynthMode = DBOPL.SynthMode || (DBOPL.SynthMode = {}));
-    // Shifts for the values contained in chandata variable
-    var Shifts;
-    (function (Shifts) {
-        Shifts[Shifts["SHIFT_KSLBASE"] = 16] = "SHIFT_KSLBASE";
-        Shifts[Shifts["SHIFT_KEYCODE"] = 24] = "SHIFT_KEYCODE";
-    })(Shifts = DBOPL.Shifts || (DBOPL.Shifts = {}));
-    ;
-    // Max buffer size.  Since only 512 samples can be generated at a time, setting
-    // this to 512 * 2 channels means it'll be the largest it'll ever need to be.
-    const BUFFER_SIZE_SAMPLES = 1024;
-    class OPL {
-        constructor(freq, channels) {
-            this.dbopl = new DBOPL.Handler();
-            this.buffer = new Int16Array(BUFFER_SIZE_SAMPLES * channels);
-            this.mixer = new DBOPL.MixerChannel(this.buffer, channels);
-            this.dbopl.Init(freq);
-        }
-        write(reg, val) {
-            this.dbopl.WriteReg(reg, val);
-        }
-        generate(lenSamples) {
-            if (lenSamples > 512) {
-                throw new Error('OPL.generate() cannot generate more than 512 samples per call');
-            }
-            if (lenSamples < 2) {
-                throw new Error('OPL.generate() cannot generate fewer than 2 samples per call');
-            }
-            this.dbopl.Generate(this.mixer, lenSamples);
-            return this.buffer;
-        }
-    }
-    DBOPL.OPL = OPL;
-})(DBOPL || (DBOPL = {}));
 var Lemmings;
 (function (Lemmings) {
     /** read the config.json file */
@@ -7862,8 +4108,7 @@ var Lemmings;
             let gameConfigs = [];
             try {
                 var config = JSON.parse(jsonData);
-            }
-            catch (e) {
+            } catch (e) {
                 this.log.log("Unable to parse config", e);
                 return gameConfigs;
             }
@@ -7881,17 +4126,6 @@ var Lemmings;
                 newConfig.level.order = configData["level.order"];
                 newConfig.level.filePrefix = configData["level.filePrefix"];
                 newConfig.level.groups = configData["level.groups"];
-                /// read audio config
-                newConfig.audioConfig.version = configData["audio.version"];
-                newConfig.audioConfig.adlibChannelConfigPosition = configData["audio.adlibChannelConfigPosition"];
-                newConfig.audioConfig.dataOffset = configData["audio.dataOffset"];
-                newConfig.audioConfig.frequenciesOffset = configData["audio.frequenciesOffset"];
-                newConfig.audioConfig.octavesOffset = configData["audio.octavesOffset"];
-                newConfig.audioConfig.frequenciesCountOffset = configData["audio.frequenciesCountOffset"];
-                newConfig.audioConfig.instructionsOffset = configData["audio.instructionsOffset"];
-                newConfig.audioConfig.soundIndexTablePosition = configData["audio.soundIndexTablePosition"];
-                newConfig.audioConfig.soundDataOffset = configData["audio.soundDataOffset"];
-                newConfig.audioConfig.numberOfTracks = configData["audio.numberOfTracks"];
                 gameConfigs.push(newConfig);
             }
             return gameConfigs;
@@ -7924,7 +4158,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** handel error logging */
+    /** handle error logging */
     class LogHandler {
         constructor(moduleName) {
             this._moduleName = moduleName;
@@ -7940,8 +4174,7 @@ var Lemmings;
         debug(msg) {
             if (typeof msg === 'string') {
                 console.log(this._moduleName + "\t" + msg);
-            }
-            else {
+            } else {
                 console.dir(msg);
             }
         }
@@ -7989,21 +4222,10 @@ var Lemmings;
             this.log = new Lemmings.LogHandler("GameView");
             this.levelIndex = 0;
             this.levelGroupIndex = 0;
-            this.musicIndex = 0;
-            this.soundIndex = 0;
             this.gameResources = null;
-            this.musicPlayer = null;
-            this.soundPlayer = null;
             this.game = null;
             this.gameFactory = new Lemmings.GameFactory("./");
             this.stage = null;
-            this.elementSoundNumber = null;
-            this.elementTrackNumber = null;
-            this.elementLevelNumber = null;
-            this.elementSelectedGame = null;
-            this.elementSelectLevelGroup = null;
-            this.elementLevelName = null;
-            this.elementGameState = null;
             this.gameSpeedFactor = 1;
             this.applyQuery();
             this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
@@ -8022,22 +4244,22 @@ var Lemmings;
             }
             /// create new game
             return this.gameFactory.getGame(this.gameType)
-                .then(game => game.loadLevel(this.levelGroupIndex, this.levelIndex))
-                .then(game => {
-                if (replayString != null) {
-                    game.getCommandManager().loadReplay(replayString);
-                }
-                game.setGameDispaly(this.stage.getGameDisplay());
-                game.setGuiDisplay(this.stage.getGuiDisplay());
-                game.getGameTimer().speedFactor = this.gameSpeedFactor;
-                game.start();
-                this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
-                game.onGameEnd.on((state) => this.onGameEnd(state));
-                this.game = game;
-                if (this.cheat) {
-                    this.game.cheat();
-                }
-            });
+                .then((game) => game.loadLevel(this.levelGroupIndex, this.levelIndex))
+                .then((game) => {
+                    if (replayString != null) {
+                        game.getCommandManager().loadReplay(replayString);
+                    }
+                    game.setGameDisplay(this.stage.getGameDisplay());
+                    game.setGuiDisplay(this.stage.getGuiDisplay());
+                    game.getGameTimer().speedFactor = this.gameSpeedFactor;
+                    game.start();
+                    this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
+                    game.onGameEnd.on((state) => this.onGameEnd(state));
+                    this.game = game;
+                    if (this.cheat) {
+                        this.game.cheat();
+                    }
+                });
         }
         onGameEnd(gameResult) {
             this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
@@ -8047,8 +4269,7 @@ var Lemmings;
                 if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                     /// move to next level
                     this.moveToLevel(1);
-                }
-                else {
+                } else {
                     /// redo this level
                     this.moveToLevel(0);
                 }
@@ -8073,7 +4294,7 @@ var Lemmings;
             this.game.getGameTimer().suspend();
         }
         /** continue the game after pause/suspend */
-        continue() {
+        continue () {
             if (this.game == null) {
                 return;
             }
@@ -8093,44 +4314,16 @@ var Lemmings;
             this.game.getGameTimer().speedFactor = newSpeed;
         }
         playMusic(moveInterval) {
-            this.stopMusic();
-            if (!this.gameResources)
-                return;
-            if (moveInterval == null)
-                moveInterval = 0;
-            this.musicIndex += moveInterval;
-            this.musicIndex = (this.musicIndex < 0) ? 0 : this.musicIndex;
-            this.changeHtmlText(this.elementTrackNumber, this.musicIndex.toString());
-            this.gameResources.getMusicPlayer(this.musicIndex)
-                .then((player) => {
-                this.musicPlayer = player;
-                this.musicPlayer.play();
-            });
+
         }
         stopMusic() {
-            if (this.musicPlayer) {
-                this.musicPlayer.stop();
-                this.musicPlayer = null;
-            }
+
         }
         stopSound() {
-            if (this.soundPlayer) {
-                this.soundPlayer.stop();
-                this.soundPlayer = null;
-            }
+
         }
         playSound(moveInterval) {
-            this.stopSound();
-            if (moveInterval == null)
-                moveInterval = 0;
-            this.soundIndex += moveInterval;
-            this.soundIndex = (this.soundIndex < 0) ? 0 : this.soundIndex;
-            this.changeHtmlText(this.elementSoundNumber, this.soundIndex.toString());
-            this.gameResources.getSoundPlayer(this.soundIndex)
-                .then((player) => {
-                this.soundPlayer = player;
-                this.soundPlayer.play();
-            });
+
         }
         enableDebug() {
             if (this.game == null) {
@@ -8182,7 +4375,7 @@ var Lemmings;
                 });
             });
         }
-        /** return the url hash for the pressent game/group/level-index */
+        /** return the url hash for the present game/group/level-index */
         applyQuery() {
             this.gameType = 1;
             let query = new URLSearchParams(window.location.search);
@@ -8244,10 +4437,10 @@ var Lemmings;
         }
         setHistoryState(state) {
             history.replaceState(
-              null,
-              null,
-              "?" +
-              Object.keys(state)
+                null,
+                null,
+                "?" +
+                Object.keys(state)
                 .map((key) => key + "=" + state[key])
                 .join("&")
             );
@@ -8293,10 +4486,10 @@ var Lemmings;
             this.applyQuery();
             this.gameFactory.getGameResources(this.gameType)
                 .then((newGameResources) => {
-                this.gameResources = newGameResources;
-                this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
-                this.loadLevel();
-            });
+                    this.gameResources = newGameResources;
+                    this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+                    this.loadLevel();
+                });
         }
         /** load a level and render it to the display */
         loadLevel() {
@@ -8309,28 +4502,28 @@ var Lemmings;
             this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.UNKNOWN));
             return this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex)
                 .then((level) => {
-                if (level == null)
-                    return;
-                this.changeHtmlText(this.elementLevelName, level.name);
-                if (this.stage != null) {
-                    let gameDisplay = this.stage.getGameDisplay();
-                    gameDisplay.clear();
-                    this.stage.resetFade();
-                    level.render(gameDisplay);
-                    gameDisplay.setScreenPosition(level.screenPositionX, 0);
-                    gameDisplay.redraw();
-                }
-                this.updateQuery();
-                console.dir(level);
-                return this.start();
-            });
+                    if (level == null)
+                        return;
+                    this.changeHtmlText(this.elementLevelName, level.name);
+                    if (this.stage != null) {
+                        let gameDisplay = this.stage.getGameDisplay();
+                        gameDisplay.clear();
+                        this.stage.resetFade();
+                        level.render(gameDisplay);
+                        gameDisplay.setScreenPosition(level.screenPositionX, 0);
+                        gameDisplay.redraw();
+                    }
+                    this.updateQuery();
+                    console.dir(level);
+                    return this.start();
+                });
         }
     }
     Lemmings.GameView = GameView;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** handel the display of the game images */
+    /** handle the display of the game images */
     class DisplayImage {
         constructor(stage) {
             this.stage = stage;
@@ -8427,7 +4620,7 @@ var Lemmings;
                 destData[destIndex + 3] = 255;
             }
         }
-        /** copy a maks frame to the display */
+        /** copy a mask frame to the display */
         drawMask(mask, posX, posY) {
             let srcW = mask.width;
             let srcH = mask.height;
@@ -8480,10 +4673,9 @@ var Lemmings;
                         continue;
                     let destIndex = ((destW * outY) + outX);
                     if (srcMask[srcIndex] == 0) {
-                        /// transparent pixle
+                        /// transparent pixel
                         destData[destIndex] = nullCollor;
-                    }
-                    else {
+                    } else {
                         destData[destIndex] = srcBuffer[srcIndex];
                     }
                 }
@@ -8593,11 +4785,11 @@ var Lemmings;
             this.lemmingManager = lemmingManager;
             this.objectManager = objectManager;
             this.triggerManager = triggerManager;
-            this.dispaly = null;
+            this.display = null;
         }
-        setGuiDisplay(dispaly) {
-            this.dispaly = dispaly;
-            this.dispaly.onMouseDown.on((e) => {
+        setGuiDisplay(display) {
+            this.display = display;
+            this.display.onMouseDown.on((e) => {
                 //console.log(e.x +" "+ e.y);
                 let lem = this.lemmingManager.getLemmingAt(e.x, e.y);
                 if (!lem)
@@ -8606,17 +4798,17 @@ var Lemmings;
             });
         }
         render() {
-            if (this.dispaly == null)
+            if (this.display == null)
                 return;
-            this.level.render(this.dispaly);
-            this.objectManager.render(this.dispaly);
-            this.lemmingManager.render(this.dispaly);
+            this.level.render(this.display);
+            this.objectManager.render(this.display);
+            this.lemmingManager.render(this.display);
         }
         renderDebug() {
-            if (this.dispaly == null)
+            if (this.display == null)
                 return;
-            this.lemmingManager.renderDebug(this.dispaly);
-            this.triggerManager.renderDebug(this.dispaly);
+            this.lemmingManager.renderDebug(this.display);
+            this.triggerManager.renderDebug(this.display);
         }
     }
     Lemmings.GameDisplay = GameDisplay;
@@ -8635,7 +4827,7 @@ var Lemmings;
             this.skillsCountChangd = true;
             this.skillSelectionChanged = true;
             this.backgroundChanged = true;
-            this.dispaly = null;
+            this.display = null;
             this.deltaReleaseRate = 0;
             gameTimer.onGameTick.on(() => {
                 this.gameTimeChanged = true;
@@ -8656,12 +4848,11 @@ var Lemmings;
             }
             if (this.deltaReleaseRate > 0) {
                 this.game.queueCmmand(new Lemmings.CommandReleaseRateIncrease(this.deltaReleaseRate));
-            }
-            else {
+            } else {
                 this.game.queueCmmand(new Lemmings.CommandReleaseRateDecrease(-this.deltaReleaseRate));
             }
         }
-        /// handel click on the skills panel
+        /// handle click on the skills panel
         handleSkillMouseDown(x) {
             let panelIndex = Math.trunc(x / 16);
             if (panelIndex != 11) {
@@ -8709,20 +4900,20 @@ var Lemmings;
             }
         }
         /** init the display */
-        setGuiDisplay(dispaly) {
-            this.dispaly = dispaly;
+        setGuiDisplay(display) {
+            this.display = display;
             /// handle user input in gui
-            this.dispaly.onMouseDown.on((e) => {
+            this.display.onMouseDown.on((e) => {
                 this.deltaReleaseRate = 0;
                 if (e.y > 15) {
                     this.handleSkillMouseDown(e.x);
                 }
             });
-            this.dispaly.onMouseUp.on((e) => {
+            this.display.onMouseUp.on((e) => {
                 /// clear release rate change
                 this.deltaReleaseRate = 0;
             });
-            this.dispaly.onDoubleClick.on((e) => {
+            this.display.onDoubleClick.on((e) => {
                 /// clear release rate change
                 this.deltaReleaseRate = 0;
                 if (e.y > 15) {
@@ -8736,15 +4927,15 @@ var Lemmings;
         }
         /** render the gui to the screen display */
         render() {
-            if (this.dispaly == null)
+            if (this.display == null)
                 return;
-            let dispaly = this.dispaly;
+            let display = this.display;
             /// background
             if (this.backgroundChanged) {
                 this.backgroundChanged = false;
                 let panelImage = this.skillPanelSprites.getPanelSprite();
-                dispaly.initSize(panelImage.width, panelImage.height);
-                dispaly.setBackground(panelImage.getData());
+                display.initSize(panelImage.width, panelImage.height);
+                display.setBackground(panelImage.getData());
                 /// redraw everything
                 this.gameTimeChanged = true;
                 this.skillsCountChangd = true;
@@ -8752,28 +4943,28 @@ var Lemmings;
             }
             /////////
             /// green text
-            this.drawGreenString(dispaly, "Out " + this.gameVictoryCondition.getOutCount() + "  ", 112, 0);
-            this.drawGreenString(dispaly, "In" + this.stringPad(this.gameVictoryCondition.getSurvivorPercentage() + "", 3) + "%", 186, 0);
+            this.drawGreenString(display, "Out " + this.gameVictoryCondition.getOutCount() + "  ", 112, 0);
+            this.drawGreenString(display, "In" + this.stringPad(this.gameVictoryCondition.getSurvivorPercentage() + "", 3) + "%", 186, 0);
             if (this.gameTimeChanged) {
                 this.gameTimeChanged = false;
-                this.renderGameTime(dispaly, 248, 0);
+                this.renderGameTime(display, 248, 0);
             }
             /////////
             /// white skill numbers
-            this.drawPanelNumber(dispaly, this.gameVictoryCondition.getMinReleaseRate(), 0);
-            this.drawPanelNumber(dispaly, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
+            this.drawPanelNumber(display, this.gameVictoryCondition.getMinReleaseRate(), 0);
+            this.drawPanelNumber(display, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
             if (this.skillsCountChangd) {
                 this.skillsCountChangd = false;
-                for (let i = 1 /* jump over unknown */; i < Lemmings.SkillTypes.length(); i++) {
+                for (let i = 1 /* jump over unknown */ ; i < Lemmings.SkillTypes.length(); i++) {
                     let count = this.skills.getSkill(i);
-                    this.drawPanelNumber(dispaly, count, this.getPanelIndexBySkill(i));
+                    this.drawPanelNumber(display, count, this.getPanelIndexBySkill(i));
                 }
             }
             ////////
             /// selected skill
             if (this.skillSelectionChanged) {
                 this.skillSelectionChanged = false;
-                this.drawSelection(dispaly, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
+                this.drawSelection(display, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
             }
         }
         /** left pad a string with spaces */
@@ -8785,64 +4976,81 @@ var Lemmings;
         /** return the skillType for an index */
         getSkillByPanelIndex(panelIndex) {
             switch (Math.trunc(panelIndex)) {
-                case 2: return Lemmings.SkillTypes.CLIMBER;
-                case 3: return Lemmings.SkillTypes.FLOATER;
-                case 4: return Lemmings.SkillTypes.BOMBER;
-                case 5: return Lemmings.SkillTypes.BLOCKER;
-                case 6: return Lemmings.SkillTypes.BUILDER;
-                case 7: return Lemmings.SkillTypes.BASHER;
-                case 8: return Lemmings.SkillTypes.MINER;
-                case 9: return Lemmings.SkillTypes.DIGGER;
-                default: return Lemmings.SkillTypes.UNKNOWN;
+            case 2:
+                return Lemmings.SkillTypes.CLIMBER;
+            case 3:
+                return Lemmings.SkillTypes.FLOATER;
+            case 4:
+                return Lemmings.SkillTypes.BOMBER;
+            case 5:
+                return Lemmings.SkillTypes.BLOCKER;
+            case 6:
+                return Lemmings.SkillTypes.BUILDER;
+            case 7:
+                return Lemmings.SkillTypes.BASHER;
+            case 8:
+                return Lemmings.SkillTypes.MINER;
+            case 9:
+                return Lemmings.SkillTypes.DIGGER;
+            default:
+                return Lemmings.SkillTypes.UNKNOWN;
             }
         }
         /** return the index for a skillType */
         getPanelIndexBySkill(skill) {
             switch (skill) {
-                case Lemmings.SkillTypes.CLIMBER: return 2;
-                case Lemmings.SkillTypes.FLOATER: return 3;
-                case Lemmings.SkillTypes.BOMBER: return 4;
-                case Lemmings.SkillTypes.BLOCKER: return 5;
-                case Lemmings.SkillTypes.BUILDER: return 6;
-                case Lemmings.SkillTypes.BASHER: return 7;
-                case Lemmings.SkillTypes.MINER: return 8;
-                case Lemmings.SkillTypes.DIGGER: return 9;
-                default: return -1;
+            case Lemmings.SkillTypes.CLIMBER:
+                return 2;
+            case Lemmings.SkillTypes.FLOATER:
+                return 3;
+            case Lemmings.SkillTypes.BOMBER:
+                return 4;
+            case Lemmings.SkillTypes.BLOCKER:
+                return 5;
+            case Lemmings.SkillTypes.BUILDER:
+                return 6;
+            case Lemmings.SkillTypes.BASHER:
+                return 7;
+            case Lemmings.SkillTypes.MINER:
+                return 8;
+            case Lemmings.SkillTypes.DIGGER:
+                return 9;
+            default:
+                return -1;
             }
         }
         /** draw a white rectangle border to the panel */
-        drawSelection(dispaly, panelIndex) {
-            dispaly.drawRect(16 * panelIndex, 16, 16, 23, 255, 255, 255);
+        drawSelection(display, panelIndex) {
+            display.drawRect(16 * panelIndex, 16, 16, 23, 255, 255, 255);
         }
         /** draw the game time to the panel */
-        renderGameTime(dispaly, x, y) {
+        renderGameTime(display, x, y) {
             let gameTime = this.gameTimer.getGameLeftTimeString();
-            this.drawGreenString(dispaly, "Time " + gameTime + "-00", x, y);
+            this.drawGreenString(display, "Time " + gameTime + "-00", x, y);
         }
         /** draw a white number to the skill-panel */
-        drawPanelNumber(dispaly, number, panelIndex) {
-            this.drawNumber(dispaly, number, 4 + 16 * panelIndex, 17);
+        drawPanelNumber(display, number, panelIndex) {
+            this.drawNumber(display, number, 4 + 16 * panelIndex, 17);
         }
         /** draw a white number */
-        drawNumber(dispaly, number, x, y) {
+        drawNumber(display, number, x, y) {
             if (number > 0) {
                 let num1Img = this.skillPanelSprites.getNumberSpriteLeft(Math.floor(number / 10));
                 let num2Img = this.skillPanelSprites.getNumberSpriteRight(number % 10);
-                dispaly.drawFrameCovered(num1Img, x, y, 0, 0, 0);
-                dispaly.drawFrame(num2Img, x, y);
-            }
-            else {
+                display.drawFrameCovered(num1Img, x, y, 0, 0, 0);
+                display.drawFrame(num2Img, x, y);
+            } else {
                 let numImg = this.skillPanelSprites.getNumberSpriteEmpty();
-                dispaly.drawFrame(numImg, x, y);
+                display.drawFrame(numImg, x, y);
             }
             return x + 8;
         }
         /** draw a text with green letters */
-        drawGreenString(dispaly, text, x, y) {
+        drawGreenString(display, text, x, y) {
             for (let i = 0; i < text.length; i++) {
                 let letterImg = this.skillPanelSprites.getLetterSprite(text[i]);
                 if (letterImg != null) {
-                    dispaly.drawFrameCovered(letterImg, x, y, 0, 0, 0);
+                    display.drawFrameCovered(letterImg, x, y, 0, 0, 0);
                 }
                 x += 8;
             }
@@ -8876,7 +5084,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    /** handel the display / output of game, gui, ... */
+    /** handle the display / output of game, gui, ... */
     class Stage {
         constructor(canvasForOutput) {
             this.controller = null;
@@ -8887,7 +5095,7 @@ var Lemmings;
             this.handleOnMouseDown();
             this.handleOnMouseMove();
             this.handleOnDoubleClick();
-            this.handelOnZoom();
+            this.handleOnZoom();
             this.stageCav = canvasForOutput;
             this.gameImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps = new Lemmings.StageImageProperties();
@@ -8934,8 +5142,7 @@ var Lemmings;
                     if (stageImage == this.gameImgProps) {
                         this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);
                     }
-                }
-                else {
+                } else {
                     let stageImage = this.getStageImageAt(e.x, e.y);
                     if (stageImage == null)
                         return;
@@ -8947,7 +5154,7 @@ var Lemmings;
                 }
             });
         }
-        handelOnZoom() {
+        handleOnZoom() {
             this.controller.onZoom.on((e) => {
                 let stageImage = this.getStageImageAt(e.x, e.y);
                 if (stageImage == null)
@@ -8967,8 +5174,7 @@ var Lemmings;
                 this.clear(stageImage);
                 let gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
-            }
-            ;
+            };
         }
         limitValue(minLimit, value, maxLimit) {
             let useMax = Math.max(minLimit, maxLimit);
@@ -8993,8 +5199,8 @@ var Lemmings;
             return null;
         }
         isPositionInStageImage(stageImage, x, y) {
-            return ((stageImage.x <= x) && ((stageImage.x + stageImage.width) >= x)
-                && (stageImage.y <= y) && ((stageImage.y + stageImage.height) >= y));
+            return ((stageImage.x <= x) && ((stageImage.x + stageImage.width) >= x) &&
+                (stageImage.y <= y) && ((stageImage.y + stageImage.height) >= y));
         }
         getGameDisplay() {
             if (this.gameImgProps.display != null)
@@ -9008,7 +5214,7 @@ var Lemmings;
             this.guiImgProps.display = new Lemmings.DisplayImage(this);
             return this.guiImgProps.display;
         }
-        /** set the position of the view point for the game dispaly */
+        /** set the position of the view point for the game display */
         setGameViewPointPosition(x, y) {
             this.gameImgProps.viewPoint.x = x;
             this.gameImgProps.viewPoint.y = y;
@@ -9018,19 +5224,16 @@ var Lemmings;
             if (this.gameImgProps.display != null) {
                 let gameImg = this.gameImgProps.display.getImageData();
                 this.draw(this.gameImgProps, gameImg);
-            }
-            ;
+            };
             if (this.guiImgProps.display != null) {
                 let guiImg = this.guiImgProps.display.getImageData();
                 this.draw(this.guiImgProps, guiImg);
-            }
-            ;
+            };
         }
         createImage(display, width, height) {
             if (display == this.gameImgProps.display) {
                 return this.gameImgProps.createImage(width, height);
-            }
-            else {
+            } else {
                 return this.guiImgProps.createImage(width, height);
             }
         }
@@ -9040,8 +5243,7 @@ var Lemmings;
             ctx.fillStyle = "#000000";
             if (stageImage == null) {
                 ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-            }
-            else {
+            } else {
                 ctx.fillRect(stageImage.x, stageImage.y, stageImage.width, stageImage.height);
             }
         }
@@ -9124,7 +5326,7 @@ var Lemmings;
         }
     }
     Lemmings.ZoomEventArguemnts = ZoomEventArguemnts;
-    /** handel the user events on the stage */
+    /** handle the user events on the stage */
     class UserInputManager {
         constructor(listenElement) {
             this.mouseDownX = 0;
@@ -9139,65 +5341,65 @@ var Lemmings;
             this.onZoom = new Lemmings.EventHandler();
             listenElement.addEventListener("mousemove", (e) => {
                 let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-                this.handelMouseMove(relativePos);
+                this.handleMouseMove(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             });
             listenElement.addEventListener("touchmove", (e) => {
-                if (e.touches.length !== 1){
+                if (e.touches.length !== 1) {
                     e.preventDefault();
                     return;
                 }
                 let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
-                this.handelMouseMove(relativePos);
+                this.handleMouseMove(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             });
             listenElement.addEventListener("touchstart", (e) => {
-                if (e.touches.length !== 1){
+                if (e.touches.length !== 1) {
                     e.preventDefault();
                     return;
                 }
                 let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
-                this.handelMouseDown(relativePos);
+                this.handleMouseDown(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             });
             listenElement.addEventListener("mousedown", (e) => {
                 let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-                this.handelMouseDown(relativePos);
+                this.handleMouseDown(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             });
             listenElement.addEventListener("mouseup", (e) => {
                 let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-                this.handelMouseUp(relativePos);
+                this.handleMouseUp(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             });
             listenElement.addEventListener("mouseleave", (e) => {
-                this.handelMouseClear();
+                this.handleMouseClear();
             });
             listenElement.addEventListener("touchend", (e) => {
-                if (e.changedTouches.length !== 1){
+                if (e.changedTouches.length !== 1) {
                     e.preventDefault();
                     return;
                 }
                 let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
-                this.handelMouseUp(relativePos);
+                this.handleMouseUp(relativePos);
                 return false;
             });
             listenElement.addEventListener("touchleave", (e) => {
-                this.handelMouseClear();
+                this.handleMouseClear();
                 return false;
             });
             listenElement.addEventListener("touchcancel", (e) => {
-                this.handelMouseClear();
+                this.handleMouseClear();
                 return false;
             });
             listenElement.addEventListener("dblclick", (e) => {
@@ -9221,7 +5423,7 @@ var Lemmings;
             const y = (clientY - rect.top) / rect.height * 480;
             return new Lemmings.Position2D(x, y);
         }
-        handelMouseMove(position) {
+        handleMouseMove(position) {
             //- Move Point of View
             if (this.mouseButton) {
                 let deltaX = (this.lastMouseX - position.x);
@@ -9234,13 +5436,12 @@ var Lemmings;
                 mouseDragArguments.mouseDownY = this.mouseDownY;
                 /// raise event
                 this.onMouseMove.trigger(mouseDragArguments);
-            }
-            else {
+            } else {
                 /// raise event
                 this.onMouseMove.trigger(new MouseMoveEventArguemnts(position.x, position.y, 0, 0, false));
             }
         }
-        handelMouseDown(position) {
+        handleMouseDown(position) {
             //- save start of Mousedown
             this.mouseButton = true;
             this.mouseDownX = position.x;
@@ -9253,15 +5454,15 @@ var Lemmings;
         handleMouseDoubleClick(position) {
             this.onDoubleClick.trigger(position);
         }
-        handelMouseClear() {
+        handleMouseClear() {
             this.mouseButton = false;
             this.mouseDownX = 0;
             this.mouseDownY = 0;
             this.lastMouseX = 0;
             this.lastMouseY = 0;
         }
-        handelMouseUp(position) {
-            this.handelMouseClear();
+        handleMouseUp(position) {
+            this.handleMouseClear();
             this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
         }
         /** Zoom view
@@ -9286,11 +5487,11 @@ var Lemmings;
             this.y = y;
             this.scale = scale;
         }
-        /** transforma a X coordinate from display space to game-world space */
+        /** transform a a X coordinate from display space to game-world space */
         getSceneX(x) {
             return Math.trunc(x / this.scale) + Math.trunc(this.x);
         }
-        /** transforma a Y coordinate from display space to game-world space */
+        /** transform a a Y coordinate from display space to game-world space */
         getSceneY(y) {
             return Math.trunc(y / this.scale) + Math.trunc(this.y);
         }
