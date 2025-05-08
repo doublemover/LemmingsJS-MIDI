@@ -4,12 +4,16 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 
 ## Current Progress
 - [X] Added WebMIDI.js to /js
-- [X] Comb Lemmings.js for spelling mistakes
-  - [ ] Double check 
+- [X] Clean up spelling mistakes & formatting
 - [X] Remove unfinished sound/music functionality
-- [X] Commented out a lot of console log calls  
-- [ ] See if it still runs
+- [X] See if it still runs
+- [X] Speed Management
+  - The button to the right of Nuke (yellow squiggle) now slows down the game by 1 (to a minimum of 1, the default speed)
+  - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
+  - The button after that (also not visible) resets the game speed to 1   
 - [ ] Implement MIDIManager
+  - [ ] Surely someone has made a nice device/channel config drop in or something
+  - [ ] Find a quick and easy midi note display for debugging 
 
 ## Things I need to look at
 - [ ] Source some form of level editor
