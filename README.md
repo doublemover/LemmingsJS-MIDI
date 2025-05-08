@@ -37,3 +37,5 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 
 - https://github.com/tomsoftware
 - https://github.com/oklemenz/LemmingsJS
+- The Throng (Blackmirror S7E4)
+- Mumdance (inspired me to do this during a radio show) 
