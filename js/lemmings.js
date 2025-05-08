@@ -4268,6 +4268,9 @@ var Lemmings;
                     if (this.cheat) {
                         this.game.cheat();
                     }
+                    if (this.debug) {
+                        this.game.showDebug = true;
+                    }
                 });
         }
         onGameEnd(gameResult) {
@@ -4418,6 +4421,10 @@ var Lemmings;
             this.cheat = false;
             if (query.get("cheat") || query.get("c")) {
                 this.cheat = (query.get("cheat") || query.get("c")) === "true";
+            }
+            this.debug = false
+            if (query.get("debug") || query.get("d")) {
+                this.debug = (query.get("debug") || query.get("d")) === "true";
             }
             this.shortcut = false;
             if (query.get("shortcut") || query.get("_")) {

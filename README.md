@@ -10,7 +10,10 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 - [X] Speed Management
   - The button to the right of Nuke (yellow squiggle) now slows down the game by 1 (to a minimum of 1, the default speed)
   - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
-  - The button after that (also not visible) resets the game speed to 1   
+  - The button after that (also not visible) resets the game speed to 1
+  - The final button toggles the game's debug output to the console
+- [ ] Make the buttons visible
+- [ ] It doesn't seem like "oddfiles" are working, which make things like multiple spawns function
 - [ ] Implement MIDIManager
   - [ ] Surely someone has made a nice device/channel config drop in or something
   - [ ] Find a quick and easy midi note display for debugging 
@@ -24,7 +27,7 @@ or
 ## Play Locally
 
 - Install [Node.js](https://nodejs.org)
-- Clone: `https://github.com/oklemenz/LemmingsJS.git`
+- Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
   - `npm start`
