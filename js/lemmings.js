@@ -4165,17 +4165,26 @@ var Lemmings;
         }
         /** log an error */
         log(msg, exeption) {
-            console.log(this._moduleName + "\t" + msg);
-            if (exeption) {
-                console.log(this._moduleName + "\t" + exeption.message);
+            if (!window.lemmings == false) {
+                if (!window.lemmings.game == false && window.lemmings.game.showDebug == true) {
+                    console.log(this._moduleName + "\t" + msg);
+                    if (exeption) {
+                        console.log(this._moduleName + "\t" + exeption.message);
+                    }
+                }
             }
+
         }
         /** write a debug message. If [msg] is not a String it is displayed: as {prop:value} */
         debug(msg) {
-            if (typeof msg === 'string') {
-                console.log(this._moduleName + "\t" + msg);
-            } else {
-                console.dir(msg);
+            if (!window.lemmings.game  == false) {
+                if (!window.lemmings.game == false && window.lemmings.game.showDebug == true) {
+                    if (typeof msg === 'string') {
+                        console.log(this._moduleName + "\t" + msg);
+                    } else {
+                        console.dir(msg);
+                    }
+                }
             }
         }
     }
