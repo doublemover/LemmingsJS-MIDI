@@ -4908,6 +4908,11 @@ var Lemmings;
                 this.gameTimer.speedFactor = 1;
                 return;
             }
+            if (panelIndex == 15) {
+                this.game.showDebug = !this.game.showDebug;
+                console.log("showDebug = " + this.game.showDebug);
+                return;
+            }
             let newSkill = this.getSkillByPanelIndex(panelIndex);
             if (newSkill == Lemmings.SkillTypes.UNKNOWN)
                 return;
