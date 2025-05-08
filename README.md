@@ -4,8 +4,12 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 
 ## Current Progress
 - [X] Added WebMIDI.js to /js
-- [ ] Comb Lemmings.js for spelling mistakes
-- [ ] Remove unfinished sound/music functionality 
+- [X] Comb Lemmings.js for spelling mistakes
+  - [ ] Double check 
+- [X] Remove unfinished sound/music functionality
+- [X] Commented out a lot of console log calls  
+- [ ] See if it still runs
+- [ ] Implement MIDIManager
 
 ## Play Locally
 
