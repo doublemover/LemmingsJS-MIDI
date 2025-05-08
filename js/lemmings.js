@@ -4881,9 +4881,22 @@ var Lemmings;
                 return;
             }
             if (panelIndex == 12) {
-                if (this.gameTimer.speedFactor < 10) {
-                    this.gameTimer.speedFactor += 2;
+                if (this.gameTimer.speedFactor > 1) {
+                    this.gameTimer.speedFactor = this.gameTimer.speedFactor - 1;
                 }
+                return;
+            }
+            if (panelIndex == 13) {
+                if (this.gameTimer.speedFactor < 10) {
+                    this.gameTimer.speedFactor = this.gameTimer.speedFactor + 1;
+                }
+                return;
+            }
+            if (panelIndex == 14) {
+                if (this.gameTimer.speedFactor == 1) {
+                    return;
+                }
+                this.gameTimer.speedFactor = 1;
                 return;
             }
             let newSkill = this.getSkillByPanelIndex(panelIndex);
@@ -5301,7 +5314,7 @@ var Lemmings;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
 (function (Lemmings) {
-    class MouseMoveEventArguemnts extends Lemmings.Position2D {
+    class MouseMoveEventArguements extends Lemmings.Position2D {
         constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
             super(x, y);
             /** delta the mouse move Y */
@@ -5318,14 +5331,14 @@ var Lemmings;
             this.button = button;
         }
     }
-    Lemmings.MouseMoveEventArguemnts = MouseMoveEventArguemnts;
-    class ZoomEventArguemnts extends Lemmings.Position2D {
+    Lemmings.MouseMoveEventArguements = MouseMoveEventArguements;
+    class ZoomEventArguements extends Lemmings.Position2D {
         constructor(x = 0, y = 0, deltaZoom = 0) {
             super(x, y);
             this.deltaZoom = deltaZoom;
         }
     }
-    Lemmings.ZoomEventArguemnts = ZoomEventArguemnts;
+    Lemmings.ZoomEventArguements = ZoomEventArguements;
     /** handle the user events on the stage */
     class UserInputManager {
         constructor(listenElement) {
@@ -5431,14 +5444,14 @@ var Lemmings;
                 //- save start of Mousedown
                 this.lastMouseX = position.x;
                 this.lastMouseY = position.y;
-                let mouseDragArguments = new MouseMoveEventArguemnts(position.x, position.y, deltaX, deltaY, true);
+                let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, deltaX, deltaY, true);
                 mouseDragArguments.mouseDownX = this.mouseDownX;
                 mouseDragArguments.mouseDownY = this.mouseDownY;
                 /// raise event
                 this.onMouseMove.trigger(mouseDragArguments);
             } else {
                 /// raise event
-                this.onMouseMove.trigger(new MouseMoveEventArguemnts(position.x, position.y, 0, 0, false));
+                this.onMouseMove.trigger(new MouseMoveEventArguements(position.x, position.y, 0, 0, false));
             }
         }
         handleMouseDown(position) {
@@ -5469,10 +5482,10 @@ var Lemmings;
          * todo: zoom to mouse pointer */
         handeWheel(position, deltaY) {
             if (deltaY < 0) {
-                this.onZoom.trigger(new ZoomEventArguemnts(position.x, position.y, 1));
+                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, 1));
             }
             if (deltaY > 0) {
-                this.onZoom.trigger(new ZoomEventArguemnts(position.x, position.y, -1));
+                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, -1));
             }
         }
     }
