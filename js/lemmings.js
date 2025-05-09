@@ -772,9 +772,11 @@ var Lemmings;
             this.releaseTickIndex++;
             if (this.releaseTickIndex >= (104 - this.gameVictoryCondition.getCurrentReleaseRate())) {
                 this.releaseTickIndex = 0;
-                let entrance = this.level.entrances[0];
-                this.addLemming(entrance.x + 24, entrance.y + 14);
-                this.gameVictoryCondition.releaseOne();
+                for (let i = 0; i < this.level.entrances.length; i++) {
+                    let entrance = this.level.entrances[i];
+                    this.addLemming(entrance.x + 24, entrance.y + 14);
+                    this.gameVictoryCondition.releaseOne();
+                }
             }
         }
         runTrigger(lem) {
@@ -792,7 +794,7 @@ var Lemmings;
             case Lemmings.TriggerTypes.KILL:
                 return Lemmings.LemmingStateType.SPLATTING;
             case Lemmings.TriggerTypes.TRAP:
-                return Lemmings.LemmingStateType.HOISTING;
+                return Lemmings.LemmingStateType.SPLATTING;
             case Lemmings.TriggerTypes.BLOCKER_LEFT:
                 if (lem.lookRight)
                     lem.lookRight = false;
@@ -1003,9 +1005,18 @@ var Lemmings;
             this.animation = new Lemmings.Animation();
             this.animation.isRepeat = objectImg.animationLoop;
             this.animation.firstFrameIndex = objectImg.firstFrameIndex;
+            this.animation.objectImg = objectImg;
             for (let i = 0; i < objectImg.frames.length; i++) {
                 let newFrame = new Lemmings.Frame(objectImg.width, objectImg.height);
                 //newFrame.clear();
+                newFrame.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height, objectImg.palette, 0, 0);
+                this.animation.frames.push(newFrame);
+            }
+        }
+        animate() {
+            var objectImg = this.animation.objectImg;
+            for (let i = 0; i < objectImg.frames.length; i++) {
+                let newFrame = new Lemmings.Frame(objectImg.width, objectImg.height);
                 newFrame.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height, objectImg.palette, 0, 0);
                 this.animation.frames.push(newFrame);
             }
@@ -1209,6 +1220,9 @@ var Lemmings;
             if (this.disabledUntilTick <= tick) {
                 if ((x >= this.x1) && (y >= this.y1) && (x <= this.x2) && (y <= this.y2)) {
                     this.disabledUntilTick = tick + this.disableTicksCount;
+                    if (this.owner) {
+                        this.owner.animate();
+                    }
                     return this.type;
                 }
             }
@@ -2242,6 +2256,7 @@ var Lemmings;
             this.frames = [];
             this.isRepeat = true;
             this.firstFrameIndex = 0;
+            this.objectImg = null;
         }
         getFrame(frameIndex) {
             frameIndex = frameIndex + this.firstFrameIndex;
@@ -2463,7 +2478,7 @@ var Lemmings;
             liType.useOddTable = (levelOrderConfig < 0);
             /// the level number is the sum-index of the level
             let levelNo = 0;
-            for (let i = 0; i < (levelMode - 1); i++) {
+            for (let i = 0; i < levelMode; i++) {
                 levelNo += levelOrderList[i].length;
             }
             liType.levelNumber = levelNo + levelIndex;
@@ -2604,7 +2619,7 @@ var Lemmings;
                     let y1 = ob.y + objectInfo.trigger_top;
                     let x2 = x1 + objectInfo.trigger_width;
                     let y2 = y1 + objectInfo.trigger_height;
-                    let newTrigger = new Lemmings.Trigger(objectInfo.trigger_effect_id, x1, y1, x2, y2, 0, objectInfo.trap_sound_effect_id);
+                    let newTrigger = new Lemmings.Trigger(objectInfo.trigger_effect_id, x1, y1, x2, y2, 0, objectInfo.trap_sound_effect_id, newMapObject);
                     this.triggers.push(newTrigger);
                 }
             }
@@ -3858,7 +3873,7 @@ var Lemmings;
          *  Odd-Tables are only used for the "Original Lemmings" Game
          */
         getLevelProperties(levelNumber) {
-            if ((levelNumber >= this.levelProperties.length) && (levelNumber < 0))
+            if ((levelNumber >= this.levelProperties.length) || (levelNumber < 0))
                 return null;
             return this.levelProperties[levelNumber];
         }
