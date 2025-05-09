@@ -12,6 +12,7 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
   - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
   - The button after that (also not visible) resets the game speed to 1
   - The final button toggles the game's debug output to the console
+- [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
 - [ ] Make the buttons visible
 - [ ] It doesn't seem like "oddfiles" are working, which make things like multiple spawns function
 - [ ] Implement MIDIManager
