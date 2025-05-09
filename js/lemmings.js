@@ -746,7 +746,13 @@ var Lemmings;
             let lems = this.lemmings;
             if (this.isNuking()) {
                 this.doLemmingAction(lems[this.nextNukingLemmingsIndex], Lemmings.SkillTypes.BOMBER);
-                this.nextNukingLemmingsIndex++;
+                // check that we don't increment past the number of lemmings
+                //  this can freeze the game on really long nukes
+                if (this.nextNukingLemmingsIndex + 1 >= lems.length) {
+                    this.nextNukingLemmingsIndex = -1;
+                } else {
+                    this.nextNukingLemmingsIndex++;
+                }
             }
             for (let i = 0; i < lems.length; i++) {
                 let lem = lems[i];
@@ -833,6 +839,9 @@ var Lemmings;
             let minDistanceLem = null;
             for (let i = 0; i < lems.length; i++) {
                 let lem = lems[i];
+                if (lem.removed || lem.isDisabled()) {
+                    continue;
+                }
                 let distance = lem.getClickDistance(x, y);
                 //console.log("--> "+ distance);
                 if ((distance < 0) || (distance >= minDistance)) {
@@ -866,12 +875,45 @@ var Lemmings;
             if (lem == null) {
                 return false;
             }
-            let actionSystem = this.skillActions[skillType];
+            const actionSystem = this.skillActions[skillType];
             if (!actionSystem) {
                 this.logging.log(lem.id + " Unknown Action: " + skillType);
                 return false;
             }
-            return actionSystem.triggerLemAction(lem);
+
+            const redundant = {
+                [Lemmings.SkillTypes.BLOCKER] : Lemmings.ActionBlockerSystem,
+                [Lemmings.SkillTypes.DIGGER]  : Lemmings.ActionDiggingSystem,
+                [Lemmings.SkillTypes.MINER]   : Lemmings.ActionMineSystem
+            };
+
+            const AlreadyDoingIt =
+                redundant[skillType] && (lem.action instanceof redundant[skillType]);
+
+            if (AlreadyDoingIt) {
+                // Lemming is *already* performing this skill → no effect, no cost.
+                return false;
+            }
+
+            const wasBlocking = (lem.action instanceof Lemmings.ActionBlockerSystem);
+
+            // Fire the skill – returns true only if the switch really happens
+            const ok = actionSystem.triggerLemAction(lem);
+
+            // If it *was* a blocker and the player gave it a skill that should
+            // cancel blocking immediately (everything except Bomber, Climber,
+            // and Floater), delete the two “wall” triggers now.
+            if (ok && wasBlocking) {
+                const keepWall =
+                    skillType === Lemmings.SkillTypes.BOMBER   ||   // keep until boom
+                    skillType === Lemmings.SkillTypes.CLIMBER  ||   // flag-only skill
+                    skillType === Lemmings.SkillTypes.FLOATER;      // flag-only skill
+
+                if (!keepWall) {
+                    this.triggerManager.removeByOwner(lem);
+                }
+            }
+            return ok;
         }
         /** return if the game is in nuke state */
         isNuking() {
@@ -971,6 +1013,9 @@ var Lemmings;
             if (this.action) {
                 return this.action.process(level, this);
             }
+            // prevent falling through function without returning a type
+            //  can cause random undefined is not a function errors
+            return LemmingStateType.NO_STATE_TYPE;
         }
         /** disable this lemming so it can no longer be triggered
          *   or selected by the user */
@@ -1004,7 +1049,6 @@ var Lemmings;
             this.drawProperties = ob.drawProperties;
             this.animation = animation;
             this.animation.loop = objectImg.animationLoop;
-            this.animation.isRepeat = objectImg.animationLoop;
             this.animation.firstFrameIndex = objectImg.firstFrameIndex;
             this.animation.objectImg = objectImg;
             this.triggerType = triggerType;
@@ -1177,7 +1221,9 @@ var Lemmings;
         /** add a new trigger to the manager */
         remove(trigger) {
             let triggerIndex = this.triggers.indexOf(trigger);
-            this.triggers.splice(triggerIndex, 1);
+            if (triggerIndex >= 0) {
+                this.triggers.splice(triggerIndex, 1);
+            }
         }
         addRange(newTriggers) {
             for (let i = 0; i < newTriggers.length; i++) {
