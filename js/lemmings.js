@@ -998,14 +998,16 @@ var Lemmings;
 (function (Lemmings) {
     /** represent a object (e.g. Exit, Entry, Trap, ...) */
     class MapObject {
-        constructor(ob, objectImg) {
+        constructor(ob, objectImg, animation = new Lemmings.Animation(), triggerType = Lemmings.TriggerTypes.NO_TRIGGER) {
             this.x = ob.x;
             this.y = ob.y;
             this.drawProperties = ob.drawProperties;
-            this.animation = new Lemmings.Animation();
+            this.animation = animation;
+            this.animation.loop = objectImg.animationLoop;
             this.animation.isRepeat = objectImg.animationLoop;
             this.animation.firstFrameIndex = objectImg.firstFrameIndex;
             this.animation.objectImg = objectImg;
+            this.triggerType = triggerType;
             for (let i = 0; i < objectImg.frames.length; i++) {
                 let newFrame = new Lemmings.Frame(objectImg.width, objectImg.height);
                 //newFrame.clear();
@@ -1013,13 +1015,19 @@ var Lemmings;
                 this.animation.frames.push(newFrame);
             }
         }
-        animate() {
-            var objectImg = this.animation.objectImg;
-            for (let i = 0; i < objectImg.frames.length; i++) {
-                let newFrame = new Lemmings.Frame(objectImg.width, objectImg.height);
-                newFrame.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height, objectImg.palette, 0, 0);
-                this.animation.frames.push(newFrame);
+        onTrigger(globalTick, lemming = null) {
+            // 1. Restart visual cue (blade swings, trap door slams, …)
+            if (this.animation) { 
+                this.animation.restart(globalTick);
             }
+            
+            // 2. Play sound (optional)
+            // if (this.soundId !== undefined) {
+            //   soundSystem.playSound(lemming, this.soundId);
+            // }
+
+            // 3. Anything else that should happen exactly once per trigger
+            //    e.g. spawn particles, increment stats, etc.
         }
     }
     Lemmings.MapObject = MapObject;
@@ -1220,9 +1228,9 @@ var Lemmings;
             if (this.disabledUntilTick <= tick) {
                 if ((x >= this.x1) && (y >= this.y1) && (x <= this.x2) && (y <= this.y2)) {
                     this.disabledUntilTick = tick + this.disableTicksCount;
-                    if (this.owner) {
-                        this.owner.animate();
-                    }
+                    if (this.owner?.onTrigger){
+                        this.owner.onTrigger(tick);  
+                    } 
                     return this.type;
                 }
             }
@@ -2252,22 +2260,29 @@ var Lemmings;
 var Lemmings;
 (function (Lemmings) {
     class Animation {
-        constructor() {
+        constructor(frames, loop = true) {
             this.frames = [];
-            this.isRepeat = true;
+            this.loop = loop;
             this.firstFrameIndex = 0;
             this.objectImg = null;
+            this.isFinished = false;
         }
-        getFrame(frameIndex) {
-            frameIndex = frameIndex + this.firstFrameIndex;
-            let frame = 0;
-            if (this.isRepeat) {
-                frame = frameIndex % this.frames.length;
-            } else {
-                if (frameIndex < this.frames.length)
-                    frame = frameIndex;
+        restart(startTick = 0) {
+            this.firstFrameIndex = startTick;    // treat current global tick as t=0
+            this.finished        = false;        // allow getFrame() to advance again
+        }
+        getFrame(globalTick) {
+            if (this.finished) {
+                return this.frames.at(-1);   // stay on last frame
             }
-            return this.frames[frame];
+
+            let localTick = globalTick - this.firstFrameIndex;
+            let idx = this.loop ? localTick % this.frames.length : Math.min(localTick, this.frames.length - 1);
+
+            if (!this.loop && idx === this.frames.length - 1) {
+                this.finished = true;
+            }
+            return this.frames[idx];
         }
         /** load all images for this animation from a file */
         loadFromFile(fr, bitsPerPixel, width, height, frames, palette, offsetX = null, offsetY = null) {
