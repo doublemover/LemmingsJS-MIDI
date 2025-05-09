@@ -2,41 +2,57 @@
 
 Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via WebMIDI instead of playing sounds (or music)
 
-## Current Progress
-- [X] Added WebMIDI.js to /js
-- [X] Clean up spelling mistakes & formatting
-- [X] Remove unfinished sound/music functionality
-- [X] See if it still runs
-- [X] Speed Management
-  - The button to the right of Nuke (yellow squiggle) now slows down the game by 1 (to a minimum of 1, the default speed)
-  - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
-  - The button after that (also not visible) resets the game speed to 1
-  - The final button toggles the game's debug output to the console
-- [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
-- [ ] Make the buttons visible
-- [X] Fixed oddfile offsets
-- [X] Levels with multiple entrances now function correctly
-- [X] Traps are now deadly
-- [ ] Animations on traps only play when the level starts
-  - [ ] MapObject needs startTick, use it in objectManager.render
-  - [ ] Animation needs Restart()
-    - [ ] Call animation.restart() from new onTrigger handler in MapObject
+Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https://doublemover.github.io/LemmingsJS-MIDI/)
+
+## New Features
+  - Speed Management
+    - The "button" to the right of Nuke (yellow squiggle) slows down the game by 1 (to a minimum of 1, the default speed)
+    - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
+    - The button after that (also not visible) resets the game speed to 1
+    - The final button (still invisible) toggles the game's debug output to the console
+  - Levels with multiple entrances now function correctly
+  - Traps are now deadly
+  - Traps now animate when triggered
+  - Fixed invisible blockers being left behind when a blocker does a different action
+  - Fixed invisible leftover lemmings consuming actions after dying
+  - Fixed bombers retaining their triggers in weird cases
+  - Fixed bombers exploding after falling into traps
+  - Steel Ground is functional, cannot be destroyed, and interrupts actions with a shrug
+  - Various crash fixes and performance improvements
+
+## Progress
+  - Everything above
+  - [X] Added WebMIDI.js to /js/
+  - [X] Clean up spelling mistakes & formatting
+  - [X] Remove unfinished sound/music functionality
+  - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
+  - [X] Fixed oddfile offsets
+
+## Roadmap
+- [ ] Make the speedup/slowdown/reset buttons visible
+- [ ] Winning
+  - [ ] Win conditions seem bugged in some cases
+  - [ ] Timer should stop when level is completed
+  - [ ] If all lemmings have been released and the only remaining lemmings are blockers then check for pass/fail
+- [ ] Bombs
+  - [ ] Explosion sprite misaligned
+  - [ ] I think these are supposed to kill other lemmings
+- [ ] Are we supposed to be able to bash throw arrow walls?
+- [ ] Arrow wall animations bugged when near/touched by lemmings
 - [ ] LevelProperties.skills needs this.skills.fill(0); after construction
-- [ ] Lemmings that are blocking and then do a different action leave behind an invisible blocker
-- [ ] Lemmings that die to traps or hazards seem to leave behind an invisible lemming that consumes actions
-- [ ] Interrupted bombers can leave persisting triggers
-- [ ] CountdownAction continues after bomber death (small memory leak)
-- [ ] ParticleTable entries never reclaimed (memory leak)
-- [ ] TriggerManager.remove(trigger) splices on index even if not found, can remove random triggers
-- [ ] Long nukes can freeze game
-- [ ] Lemmings.process fall through possible, random but rare undefined errors
-- [ ] TriggerManager.removeByOwner is looping instead of running backwards once
 - [ ] Trigger.disabledUntilTick overruns after 24 days
 - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
 - [ ] Lemming.isRemoved() null/removed conflict
 - [ ] Viewport zoom is stubbed but does not seem to function
+- [ ] Minimap
+  - [ ] Render it in lower right
+  - [ ] Display viewport box
+  - [ ] Show dots
+    - [ ] Entrance
+    - [ ] Exit
+    - [ ] Lemmings
+    - [ ] Indicate lemming deaths?
 - [ ] Implement MIDIManager
-- [ ] Metal is stubbed but does not seem to properly prevent digging or resist bombers
   - [ ] Surely someone has made a nice device/channel config drop in or something
   - [ ] Find a quick and easy midi note display for debugging 
 

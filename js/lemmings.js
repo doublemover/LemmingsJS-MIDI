@@ -418,7 +418,7 @@ var Lemmings;
             this.skills = level.skills;
         }
         /** return true if the skill can be reused / used */
-        canReduseSkill(type) {
+        canReuseSkill(type) {
             return (this.skills[type] > 0);
         }
         reduseSkill(type) {
@@ -685,7 +685,7 @@ var Lemmings;
         LemmingStateType[LemmingStateType["FRYING"] = 16] = "FRYING";
         LemmingStateType[LemmingStateType["OHNO"] = 17] = "OHNO";
         LemmingStateType[LemmingStateType["SHRUG"] = 18] = "SHRUG";
-        LemmingStateType[LemmingStateType["OUT_OFF_LEVEL"] = 19] = "OUT_OFF_LEVEL";
+        LemmingStateType[LemmingStateType["OUT_OF_LEVEL"] = 19] = "OUT_OF_LEVEL";
     })(LemmingStateType = Lemmings.LemmingStateType || (Lemmings.LemmingStateType = {}));
 })(Lemmings || (Lemmings = {}));
 /// <reference path="./lemming-state-type.ts"/>
@@ -855,7 +855,18 @@ var Lemmings;
         }
         /** change the action a Lemming is doing */
         setLemmingState(lem, stateType) {
-            if (stateType == Lemmings.LemmingStateType.OUT_OFF_LEVEL) {
+            if (lem.countdown > 0) {
+                const lethal =
+                      stateType === Lemmings.LemmingStateType.DROWNING   ||  // water
+                      stateType === Lemmings.LemmingStateType.SPLATTING  ||  // trap
+                      stateType === Lemmings.LemmingStateType.FRYING;        // lava / fire
+                if (lethal) {
+                    lem.countdown        = 0;      // stop the timer
+                    lem.countdownAction  = null;   // remove the overlay logic
+                }
+            }
+
+            if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
                 lem.remove();
                 this.gameVictoryCondition.removeOne();
                 return;
@@ -883,7 +894,7 @@ var Lemmings;
 
             const redundant = {
                 [Lemmings.SkillTypes.BLOCKER] : Lemmings.ActionBlockerSystem,
-                [Lemmings.SkillTypes.DIGGER]  : Lemmings.ActionDiggingSystem,
+                [Lemmings.SkillTypes.DIGGER]  : Lemmings.ActionDiggSystem,
                 [Lemmings.SkillTypes.MINER]   : Lemmings.ActionMineSystem
             };
 
@@ -997,11 +1008,11 @@ var Lemmings;
         /** process this lemming one tick in time */
         process(level) {
             if ((this.x < 0) || (this.x >= level.width) || (this.y < 0) || (this.y >= level.height + 6)) {
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run main action
             if (!this.action) {
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run secondary action
             if (this.countdownAction) {
@@ -1209,12 +1220,12 @@ var Lemmings;
             this.triggers.push(trigger);
         }
         /** remove all triggers having a giving owner */
+        // go in reverse so splicing doesn't move unchecked 
+        // only iterates once instead of looping
         removeByOwner(owner) {
-            let triggerIndex = (this.triggers.length - 1);
-            while (triggerIndex >= 0) {
-                triggerIndex = this.triggers.findIndex((t) => t.owner == owner);
-                if (triggerIndex >= 0) {
-                    this.triggers.splice(triggerIndex, 1);
+            for (let i = this.triggers.length - 1; i >= 0; --i) {
+                if (this.triggers[i].owner == owner) {
+                    this.triggers.splice(i, 1);   // 
                 }
             }
         }
@@ -1328,9 +1339,15 @@ var Lemmings;
             }
             /// apply mask
             if ((state > 1) && (state < 6)) {
-                let mask = this.masks[(lem.lookRight ? 1 : 0)];
+                let mask = this.masks[lem.lookRight ? 1 : 0];
                 let maskIndex = state - 2;
-                level.clearGroundWithMask(mask.GetMask(maskIndex), lem.x, lem.y);
+                let subMask   = mask.GetMask(maskIndex);
+                if (state === 3) {
+                    if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+                        return Lemmings.LemmingStateType.SHRUG;
+                    }
+                }
+                level.clearGroundWithMask(subMask, lem.x, lem.y);
             }
             /// check if end of solid?
             if (state == 5) {
@@ -1553,6 +1570,9 @@ var Lemmings;
             return true;
         }
         process(level, lem) {
+            if (level.isSteelGround(lem.x, lem.y - 1) || level.isSteelGround(lem.x, lem.y -2)) {
+                return Lemmings.LemmingStateType.SHRUG;
+            }
             if (lem.state == 0) {
                 this.digRow(level, lem, lem.y - 2);
                 this.digRow(level, lem, lem.y - 1);
@@ -1604,7 +1624,7 @@ var Lemmings;
             lem.disable();
             lem.frameIndex++;
             if (lem.frameIndex >= 16) {
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             if (!level.hasGroundAt(lem.x + (lem.lookRight ? 8 : -8), lem.y)) {
                 lem.x += (lem.lookRight ? 1 : -1);
@@ -1638,7 +1658,7 @@ var Lemmings;
             lem.frameIndex++;
             if (lem.frameIndex >= 8) {
                 this.gameVictoryCondition.addSurvivor();
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
@@ -1677,7 +1697,7 @@ var Lemmings;
                 level.clearGroundWithMask(this.mask.GetMask(0), lem.x, lem.y);
             }
             if (lem.frameIndex == 52) {
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
@@ -1877,7 +1897,11 @@ var Lemmings;
             case 2:
                 let mask = this.masks[(lem.lookRight ? 1 : 0)];
                 let maskIndex = lem.frameIndex - 1;
-                level.clearGroundWithMask(mask.GetMask(maskIndex), lem.x, lem.y);
+                let subMask   = mask.GetMask(maskIndex);
+                if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+                    return Lemmings.LemmingStateType.SHRUG;
+                }
+                level.clearGroundWithMask(subMask, lem.x, lem.y);
                 break;
             case 3:
                 lem.y++;
@@ -1978,7 +2002,7 @@ var Lemmings;
             lem.disable();
             lem.frameIndex++;
             if (lem.frameIndex >= 16) {
-                return Lemmings.LemmingStateType.OUT_OFF_LEVEL;
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
@@ -2093,7 +2117,7 @@ var Lemmings;
             }
             let skills = game.getGameSkills();
             let selectedSkill = skills.getSelectedSkill();
-            if (!skills.canReduseSkill(selectedSkill)) {
+            if (!skills.canReuseSkill(selectedSkill)) {
                 this.log.log("Not enough skills!");
                 return false;
             }
@@ -2628,6 +2652,7 @@ var Lemmings;
                         level.setGroundMaskLayer(new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
                         level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
                         level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
+                        level.setSteelAreas(levelReader.steel);
                         resolve(level);
                     });
             });
@@ -2642,6 +2667,7 @@ var Lemmings;
         constructor(width, height) {
             /** the background mask 0=noGround / 1=ground*/
             this.groundMask = null;
+            this.steelRanges = [];
             /** objects on the map: entrance/exit/traps */
             this.objects = [];
             this.entrances = [];
@@ -2706,19 +2732,19 @@ var Lemmings;
             y += mask.offsetY;
             for (let d_y = 0; d_y < mask.height; d_y++) {
                 for (let d_x = 0; d_x < mask.width; d_x++) {
-                    if (!mask.at(d_x, d_y)) {
+                    if (!mask.at(d_x, d_y) && !this.isSteelAt(x + d_x, y + d_y)) {
                         this.clearGroundAt(x + d_x, y + d_y);
                     }
                 }
             }
         }
         /** set a point in the map to solid ground  */
-        setGroundAt(x, y, palletIndex) {
+        setGroundAt(x, y, paletteIndex) {
             this.groundMask.setGroundAt(x, y);
             let index = (y * this.width + x) * 4;
-            this.groundImage[index + 0] = this.colorPalette.getR(palletIndex);
-            this.groundImage[index + 1] = this.colorPalette.getG(palletIndex);
-            this.groundImage[index + 2] = this.colorPalette.getB(palletIndex);
+            this.groundImage[index + 0] = this.colorPalette.getR(paletteIndex);
+            this.groundImage[index + 1] = this.colorPalette.getG(paletteIndex);
+            this.groundImage[index + 2] = this.colorPalette.getB(paletteIndex);
         }
         /** checks if a point is solid ground  */
         hasGroundAt(x, y) {
@@ -2726,6 +2752,9 @@ var Lemmings;
         }
         /** clear a point  */
         clearGroundAt(x, y) {
+            if (this.isSteelAt(x, y)) {
+                return;
+            }
             this.groundMask.clearGroundAt(x, y);
             let index = (y * this.width + x) * 4;
             this.groundImage[index + 0] = 0; // R
@@ -2744,6 +2773,33 @@ var Lemmings;
         render(gameDisplay) {
             gameDisplay.initSize(this.width, this.height);
             gameDisplay.setBackground(this.groundImage, this.groundMask);
+        }
+        setSteelAreas(ranges) { 
+            this.steelRanges = ranges || [];
+        }
+        isSteelAt(x, y) {
+            for (let i = 0; i < this.steelRanges.length; ++i) {
+                const r = this.steelRanges[i];
+                if (x >= r.x && x < r.x + r.width &&
+                    y >= r.y && y < r.y + r.height) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        isSteelGround(x, y) {
+            return this.isSteelAt(x, y) && this.hasGroundAt(x, y);
+        }
+        hasSteelUnderMask(mask, ox, oy) {
+            const { offsetX:mx, offsetY:my, width:w, height:h } = mask;
+            for (let dy = 0; dy < h; ++dy) {
+                for (let dx = 0; dx < w; ++dx) {
+                    if (!mask.at(dx, dy) && this.isSteelGround(ox + mx + dx, oy + my + dy)) {
+                        return true;           // mask wants to dig, but it's steel
+                    }
+                }
+            }
+            return false;
         }
     }
     Lemmings.Level = Level;
@@ -3039,7 +3095,7 @@ var Lemmings;
         SpriteTypes[SpriteTypes["OHNO"] = 16] = "OHNO";
         SpriteTypes[SpriteTypes["LEMACTION_SHRUG"] = 17] = "LEMACTION_SHRUG";
         SpriteTypes[SpriteTypes["SHRUGGING"] = 18] = "SHRUGGING";
-        SpriteTypes[SpriteTypes["OUT_OFF_LEVEL"] = 19] = "OUT_OFF_LEVEL";
+        SpriteTypes[SpriteTypes["OUT_OF_LEVEL"] = 19] = "OUT_OF_LEVEL";
     })(SpriteTypes = Lemmings.SpriteTypes || (Lemmings.SpriteTypes = {}));
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
@@ -3893,20 +3949,29 @@ var Lemmings;
             this.steel = [];
             fr.setOffset(0x0760);
             for (var i = 0; i < 32; i++) {
-                var newRange = new Lemmings.Range();
-                var pos = fr.readWord();
-                var size = fr.readByte();
-                var unknown = fr.readByte();
-                if ((pos == 0) && (size == 0))
-                    continue;
-                if (unknown != 0) {
+                const pos = fr.readByte() | (fr.readByte() << 8);
+                const size = fr.readByte();
+                const unknown = fr.readByte();
+                if (pos === 0 && size === 0) continue;
+                if (unknown !== 0) {
                     this.log.log("Error in readSteelArea() : unknown != 0");
                     continue;
                 }
-                newRange.x = (pos & 0x01FF) * 4 - 16;
-                newRange.y = ((pos >> 9) & 0x007F) * 4;
-                newRange.width = (size & 0x0F) * 4 + 4;
-                newRange.height = ((size >> 4) & 0x0F) * 4 + 4;
+                const x = ((pos & 0x01FF) << 3) - 16;         // *8 then −16
+                const yRaw = ((pos >> 9) & 0x007F) << 3;
+                /* rows 0-127 : subtract 0
+                   rows 128-255 : subtract 128 (wrap)     */
+                const y = (yRaw >= 1024 ? yRaw - 1024    // never used in official sets
+                         : yRaw >=  512 ? yRaw -  512    // “third page” (rare customs)
+                         : yRaw >=  256 ? yRaw -  256    // “second page”
+                         :                yRaw) - 8;     // universal −8 adjustment
+                const width  = ((size & 0x0F) + 1) << 4;   // (n+1)x24
+                const height = (((size >> 4) & 0x0F) + 1) << 4;
+                var newRange = new Lemmings.Range();
+                newRange.x = x;
+                newRange.y = y;
+                newRange.width = width;
+                newRange.height = height;
                 this.steel.push(newRange);
             }
         }
