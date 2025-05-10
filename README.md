@@ -29,7 +29,12 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Fixed oddfile offsets
 
 ## Roadmap
-- [ ] Make the speedup/slowdown/reset buttons visible
+- [ ] Panel Buttons
+  - [ ] Function to render new buttons
+  - [ ] Pass offsets of all new buttons to hit test for panel
+  - [ ] Speed up/Slow down/Reset speed buttons
+  - [ ] Speed indicator
+  - [ ] Confirmation state for nuke
 - [ ] Winning
   - [ ] Win conditions seem bugged in some cases
   - [ ] Timer should stop when level is completed
@@ -38,15 +43,21 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Explosion sprite misaligned
   - [ ] I think these are supposed to kill other lemmings
   - [ ] Bombs should remove dirt & etc from steel without removing steel
-- [ ] Are we supposed to be able to bash throw arrow walls?
-- [ ] Arrow wall animations bugged when near/touched by lemmings
-- [ ] LevelProperties.skills needs this.skills.fill(0); after construction
-- [ ] Trigger.disabledUntilTick overruns after 24 days
-- [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
-- [ ] Lemming.isRemoved() null/removed conflict
-- [ ] Viewport zoom is stubbed but does not seem to function
+- [ ] Arrow Walls
+  - [ ] Trying to bash/mine into an arrow wall from the opposing direction on level ground cancels the bash/mine
+  - [ ] Check if it's possible for arrows to point up or down and cover dig case if needed
+  - [ ] Building even one step and then bashing into an opposing arrow wall lets you go right through
+  - [ ] I think if you build stairs into an opposing arrow wall they are supposed to flip and continue instead of stopping
+  - [ ] Arrow wall overlay/animations are now bugged when near a lemming or being touched by a lemming
+- [ ] Various bullshit
+  - [ ] LevelProperties.skills needs this.skills.fill(0); after construction
+  - [ ] Trigger.disabledUntilTick overruns after 24 days
+  - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
+  - [ ] Lemming.isRemoved() null/removed conflict
+  - [ ] Viewport zoom is stubbed but does not seem to function
 - [ ] Minimap
-  - [ ] Render it in lower right
+  - [ ] Render level in lower right rectangle
+    - [ ] Fog of war
   - [ ] Display viewport box
   - [ ] Show dots
     - [ ] Entrance
