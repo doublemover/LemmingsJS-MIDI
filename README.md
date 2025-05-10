@@ -32,24 +32,28 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 - [ ] Traps
   - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and bouncing lemmings instead of turbo crushing 
 - [ ] Panel Buttons
-  - [ ] Function to render new buttons
-  - [ ] Pass offsets of all new buttons to hit test for panel
+  - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
+  - [ ] Minipanel hit test
   - [ ] Speed up/Slow down/Reset speed buttons
   - [ ] Speed indicator
-  - [ ] Confirmation state for nuke
+  - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Winning
-  - [ ] Win conditions seem bugged in some cases
+  - [ ] Is the quota supposed to be visible?
+  - [ ] Should it automatically fail when it's no longer possible to meet quota? 
   - [ ] Timer should stop when level is completed
+  - [ ] Was there a score system?
   - [ ] If all lemmings have been released and the only remaining lemmings are blockers then check for pass/fail
 - [ ] Bombs
   - [ ] Explosion sprite misaligned
+  - [ ] Are there enough particles/are they travelling correctly? I remember seeing way more
   - [ ] I think these are supposed to kill other lemmings
-  - [ ] Bombs should remove dirt & etc from steel without removing steel
+  - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
 - [ ] Arrow Walls
-  - [ ] Trying to bash/mine into an arrow wall from the opposing direction on level ground cancels the bash/mine
-  - [ ] Check if it's possible for arrows to point up or down and cover dig case if needed
-  - [ ] Building even one step and then bashing into an opposing arrow wall lets you go right through
-  - [ ] I think if you build stairs into an opposing arrow wall they are supposed to flip and continue instead of stopping
+  - [ ] Trying to bash/mine into an arrow wall from the opposing direction on level ground cancels the bash/mine, is that what's supposed to happen?
+  - [ ] Check if it's possible for arrows to point up or down?
+    - [ ] Cover dig/mining cases if it is
+  - [ ] Building even one step and then bashing into an opposing arrow wall lets you go right through, is that intended?
+  - [ ] If you build stairs into an opposing arrow wall are they supposed to flip and continue instead of stopping?
   - [ ] Arrow wall overlay/animations are now bugged when near a lemming or being touched by a lemming
 - [ ] Various bullshit
   - [ ] LevelProperties.skills needs this.skills.fill(0); after construction
