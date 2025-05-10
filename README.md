@@ -27,6 +27,17 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Remove unfinished sound/music functionality
   - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
   - [X] Fixed oddfile offsets
+  - [ ] Minimap
+    - [X] Render level in lower right rectangle
+      - [ ] Not rendering entire level
+      - [ ] Fog of war is broken
+      - [ ] Need to render at 2x res or something to capture smaller details
+    - [ ] Viewport box not showing
+    - [ ] Dots
+      - [X] Entrance dots
+      - [ ] Exit 
+      - [ ] Lemmings display stopped updating when I moved it to gui, needs ticks and udpate
+      - [ ] Indicate lemming deaths?
 
 ## Roadmap
 - [ ] Traps
@@ -61,15 +72,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
   - [ ] Viewport zoom is stubbed but does not seem to function
-- [ ] Minimap
-  - [ ] Render level in lower right rectangle
-    - [ ] Fog of war
-  - [ ] Display viewport box
-  - [ ] Show dots
-    - [ ] Entrance
-    - [ ] Exit
-    - [ ] Lemmings
-    - [ ] Indicate lemming deaths?
 - [ ] Implement MIDIManager
   - [ ] Surely someone has made a nice device/channel config drop in or something
   - [ ] Find a quick and easy midi note display for debugging 
