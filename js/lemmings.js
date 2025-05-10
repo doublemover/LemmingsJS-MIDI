@@ -703,6 +703,8 @@ var Lemmings;
             this.skillActions = [];
             this.releaseTickIndex = 0;
             this.logging = new Lemmings.LogHandler("LemmingManager");
+            this.miniMap = null; 
+            this.mmTickCounter = 0; 
             /** next lemming index need to explode */
             this.nextNukingLemmingsIndex = -1;
             this.actions[Lemmings.LemmingStateType.WALKING] = new Lemmings.ActionWalkSystem(lemmingsSprite);
@@ -733,6 +735,7 @@ var Lemmings;
             /// wait before first lemming is spawn
             this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
         }
+        setMiniMap(miniMap) { this.miniMap = miniMap; }
         processNewAction(lem, newAction) {
             if (newAction == Lemmings.LemmingStateType.NO_STATE_TYPE) {
                 return false;
@@ -762,6 +765,10 @@ var Lemmings;
                 this.processNewAction(lem, newAction);
                 let triggerAction = this.runTrigger(lem);
                 this.processNewAction(lem, triggerAction);
+            }
+            if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
+                const dots = this.lemmings.filter(l => !l.removed && !l.disabled).map(l => ({ x: l.x, y: l.y }));
+                this.miniMap.setLiveDots(dots);
             }
         }
         /** Add a new Lemming to the manager */
@@ -1617,8 +1624,12 @@ var Lemmings;
             return false;
         }
         draw(gameDisplay, lem) {
-            let frame = this.sprite.getFrame(lem.frameIndex);
+            let frameIndex = lem.frameIndex;
+            let frame = this.sprite.getFrame(frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
+            if (frameIndex >= 16) {
+                gameDisplay.miniMap.addDeath(lem.x, lem.y);
+            }
         }
         process(level, lem) {
             lem.disable();
@@ -1995,8 +2006,12 @@ var Lemmings;
             return false;
         }
         draw(gameDisplay, lem) {
-            let frame = this.sprite.getFrame(lem.frameIndex);
+            let frameIndex = lem.frameIndex;
+            let frame = this.sprite.getFrame(frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
+            if (frameIndex >= 16) {
+                gameDisplay.miniMap.addDeath(lem.x, lem.y);
+            }
         }
         process(level, lem) {
             lem.disable();
@@ -4942,7 +4957,12 @@ var Lemmings;
             this.lemmingManager = lemmingManager;
             this.objectManager = objectManager;
             this.triggerManager = triggerManager;
+            this.miniMap = null;  
             this.display = null;
+        }
+        setMiniMap(miniMap) { 
+            this.miniMap = miniMap;
+            this.lemmingManager.setMiniMap(this.miniMap);
         }
         setGuiDisplay(display) {
             this.display = display;
@@ -4960,6 +4980,12 @@ var Lemmings;
             this.level.render(this.display);
             this.objectManager.render(this.display);
             this.lemmingManager.render(this.display);
+            if (this.miniMap) {
+                const viewX = this.level.screenPositionX;
+                const viewW = this.display.getWidth();
+                this.miniMap.reveal(viewX, viewW);
+                this.miniMap.render(viewX, viewW);
+            }
         }
         renderDebug() {
             if (this.display == null)
@@ -4985,6 +5011,7 @@ var Lemmings;
             this.skillSelectionChanged = true;
             this.backgroundChanged = true;
             this.display = null;
+            this.miniMap = null;
             this.deltaReleaseRate = 0;
             gameTimer.onGameTick.on(() => {
                 this.gameTimeChanged = true;
@@ -4999,6 +5026,7 @@ var Lemmings;
                 this.backgroundChanged = true;
             });
         }
+        setMiniMap(miniMap) { this.miniMap = miniMap; }
         doReleaseRateChanges() {
             if (this.deltaReleaseRate == 0) {
                 return;
@@ -5077,6 +5105,9 @@ var Lemmings;
         /** init the display */
         setGuiDisplay(display) {
             this.display = display;
+            if (!this.miniMap) {
+                this.miniMap = new Lemmings.MiniMap(this, this.game.level, display);
+            }
             /// handle user input in gui
             this.display.onMouseDown.on((e) => {
                 this.deltaReleaseRate = 0;
@@ -5140,6 +5171,13 @@ var Lemmings;
             if (this.skillSelectionChanged) {
                 this.skillSelectionChanged = false;
                 this.drawSelection(display, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
+            }
+
+            if (this.miniMap) {
+                const viewX = this.game.level.screenPositionX;
+                const viewW = this.display.getWidth();
+                this.miniMap.reveal(viewX, viewW);
+                this.miniMap.render(viewX, viewW);
             }
         }
         /** left pad a string with spaces */
@@ -5672,4 +5710,120 @@ var Lemmings;
         }
     }
     Lemmings.ViewPoint = ViewPoint;
+})(Lemmings || (Lemmings = {}));
+var Lemmings;
+(function (Lemmings) {
+    class MiniMap {
+        constructor(gameDisplay, level, guiDisplay) {
+            this.gameDisplay   = gameDisplay;
+            this.level         = level;
+            this.guiDisplay    = guiDisplay;
+
+            // immutable scale factors
+            this.mmW = 108;
+            this.mmH = 22;
+            this.scaleX = this.mmW / level.width;
+            this.scaleY = this.mmH / level.height;
+
+            // dynamic state
+            this.fog        = new Uint8Array(this.mmW * this.mmH); // 0 = unseen
+            this.liveDots   = [];   // {x,y} sampled every 10 ticks
+            this.deadDots   = [];   // {x,y,ttl}
+
+            // render target (drawn into the GUI canvas once per frame)
+            this.frame = new Lemmings.Frame(this.mmW, this.mmH);
+        }
+
+        /** reveal terrain that is currently on screen */
+        reveal(viewX, viewW) {
+            const sx1 = Math.floor(viewX * this.scaleX);
+            const sx2 = Math.min(this.mmW, Math.ceil((viewX + viewW) * this.scaleX));
+            for (let y = 0; y < this.mmH; ++y) {
+              const row = y * this.mmW;
+              for (let x = sx1; x < sx2; ++x) this.fog[row + x] = 1;
+            }
+        }
+
+        /** called by LemmingManager every 10 ticks */
+        setLiveDots(arr) { this.liveDots = arr; }
+
+        /** called by LemmingManager when a lemming dies */
+        addDeath(x, y) {
+            this.deadDots.push({ x: x * this.scaleX | 0, y: y * this.scaleY | 0, ttl: 30});
+        }
+
+        /** draw one frame of the minimap */
+        render(viewX, viewW) {
+
+            if (this.guiDisplay == null) return;
+            const f = this.frame;
+
+            for (let y = 0; y < this.mmH; ++y) {
+                for (let x = 0; x < this.mmW; ++x) {
+                    f.setPixel(x, y, 0xFFFF00FF);   // ARGB 0xAARRGGBB
+                }
+            }
+            // 1. terrain (already revealed)
+            const gm = this.level.getGroundMaskLayer();
+            for (let y = 0; y < this.mmH; ++y) {
+                for (let x = 0; x < this.mmW; ++x) {
+                    if (!this.fog[y * this.mmW + x]) continue;
+                    const gx = (x / this.scaleX) | 0;
+                    const gy = (y / this.scaleY) | 0;
+                    if (gm.hasGroundAt(gx, gy)) f.setPixel(x, y, 0xFF444444);
+                }
+            }
+
+            // 2. level bounds
+            for (let x = 0; x < this.mmW; ++x) {
+                f.setPixel(x, 0,             0xFFFFFFFF);
+                f.setPixel(x, this.mmH - 1,  0xFFFFFFFF);
+            }
+            for (let y = 0; y < this.mmH; ++y) {
+                f.setPixel(0,            y, 0xFFFFFFFF);
+                f.setPixel(this.mmW - 1, y, 0xFFFFFFFF);
+            }
+
+            // 3. entrances (always green)
+            for (const ent of this.level.entrances) {
+                 const ex = (ent.x * this.scaleX) | 0;
+                 const ey = (ent.y * this.scaleY) | 0;
+                 f.setPixel(ex, ey, 0xFF00FF00);
+            }
+
+            // 4. exits (blue only after revealed)
+            for (const obj of this.level.objects) {
+                 if (obj.triggerType !== Lemmings.TriggerTypes.EXIT_LEVEL) continue;
+                 const rx = (obj.x * this.scaleX) | 0;
+                 const ry = (obj.y * this.scaleY) | 0;
+                 if (this.fog[ry * this.mmW + rx]) f.setPixel(rx, ry, 0xFF0080FF);
+            }
+
+            // 5. live lemmings (yellow)
+            for (const p of this.liveDots) {
+                f.setPixel(p.x * this.scaleX | 0, p.y * this.scaleY | 0, 0xFFFFFF00);
+            }
+
+            // 6. deaths flashing (red)
+            for (let i = this.deadDots.length - 1; i >= 0; --i) {
+                const d = this.deadDots[i];
+                if (--d.ttl <= 0) { this.deadDots.splice(i, 1); continue; }
+                if (d.ttl & 4) f.setPixel(d.x, d.y, 0xFFFF0000); // flash
+            }
+
+            // 7. current viewport (white rectangle)
+            const vx1 = (viewX * this.scaleX) | 0;
+            const vx2 = ((viewX + viewW) * this.scaleX) | 0;
+            for (let x = vx1; x < vx2; ++x) {
+                f.setPixel(x,                0, 0xFFFFFFFF);
+                f.setPixel(x, this.mmH - 1,     0xFFFFFFFF);
+            }
+
+            // blit to GUI canvas
+            const destX = this.guiDisplay.getWidth()  - this.mmW;
+            const destY = this.guiDisplay.getHeight() - this.mmH;
+            this.guiDisplay.drawFrame(f, destX - 6, destY - 1);
+            }
+        }
+        Lemmings.MiniMap = MiniMap;
 })(Lemmings || (Lemmings = {}));
