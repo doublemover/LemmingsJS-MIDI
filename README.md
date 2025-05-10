@@ -29,6 +29,8 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Fixed oddfile offsets
 
 ## Roadmap
+- [ ] Traps
+  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and bouncing lemmings instead of turbo crushing 
 - [ ] Panel Buttons
   - [ ] Function to render new buttons
   - [ ] Pass offsets of all new buttons to hit test for panel
