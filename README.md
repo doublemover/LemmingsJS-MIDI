@@ -27,9 +27,12 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Remove unfinished sound/music functionality
   - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
   - [X] Fixed oddfile offsets
-  - [ ] Steel ranges still wrong (lvl 2-28)
+  - [ ] Steel ranges still wrong (lvls 1-1-11, 1-1-17, 1-2-28)
+  - [ ] Draw steel ranges with debug function
   - [ ] Trap offset wrong? (lvl 4-30)
+    - [ ] Double check trap ranges with debug
   - [ ] Left trap needs mirrored? (2-1-7)
+    - [ ] Debug function update to reflect intended orientation
   - [ ] Minimap
     - [X] Render level in lower right rectangle
       - [ ] Not rendering entire level
