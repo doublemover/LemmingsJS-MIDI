@@ -30,7 +30,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## Roadmap
 - [ ] Traps
-  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and bouncing lemmings instead of turbo crushing 
+  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing 
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
   - [ ] Minipanel hit test
