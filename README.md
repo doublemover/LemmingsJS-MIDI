@@ -29,6 +29,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Fixed oddfile offsets
   - [ ] Steel ranges still wrong (lvl 2-28)
   - [ ] Trap offset wrong? (lvl 4-30)
+  - [ ] Left trap needs mirrored? (2-1-7)
   - [ ] Minimap
     - [X] Render level in lower right rectangle
       - [ ] Not rendering entire level
