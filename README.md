@@ -37,6 +37,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 - [ ] Bombs
   - [ ] Explosion sprite misaligned
   - [ ] I think these are supposed to kill other lemmings
+  - [ ] Bombs should remove dirt & etc from steel without removing steel
 - [ ] Are we supposed to be able to bash throw arrow walls?
 - [ ] Arrow wall animations bugged when near/touched by lemmings
 - [ ] LevelProperties.skills needs this.skills.fill(0); after construction
