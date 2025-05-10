@@ -44,6 +44,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [ ] Exit 
       - [ ] Lemmings display stopped updating when I moved it to gui, needs ticks and udpate
       - [ ] Indicate lemming deaths?
+    - [ ] Frying death does not have animations set up
 
 ## Roadmap
 - [ ] Traps
