@@ -2789,6 +2789,15 @@ var Lemmings;
             gameDisplay.initSize(this.width, this.height);
             gameDisplay.setBackground(this.groundImage, this.groundMask);
         }
+        renderDebug(gameDisplay) {
+            for (let i = 0; i < this.steelRanges.length; i++) {
+                let x = this.steelRanges[i].x;
+                let y = this.steelRanges[i].y;
+                let w = this.steelRanges[i].width;
+                let h = this.steelRanges[i].height;
+                gameDisplay.drawRect(x, y, w, h, 0, 255, 255);
+            }
+        }
         setSteelAreas(ranges) { 
             this.steelRanges = ranges || [];
         }
@@ -3964,30 +3973,27 @@ var Lemmings;
             this.steel = [];
             fr.setOffset(0x0760);
             for (var i = 0; i < 32; i++) {
-                const pos = fr.readByte() | (fr.readByte() << 8);
+                const low = fr.readByte();
+                const high = fr.readByte();
                 const size = fr.readByte();
-                const unknown = fr.readByte();
+                const flag = fr.readByte();
+                const pos = (high << 8) | low;
                 if (pos === 0 && size === 0) continue;
-                if (unknown !== 0) {
-                    this.log.log("Error in readSteelArea() : unknown != 0");
-                    continue;
-                }
-                const x = ((pos & 0x01FF) << 3) - 16;         // *8 then −16
-                const yRaw = ((pos >> 9) & 0x007F) << 3;
-                /* rows 0-127 : subtract 0
-                   rows 128-255 : subtract 128 (wrap)     */
-                const y = (yRaw >= 1024 ? yRaw - 1024    // never used in official sets
-                         : yRaw >=  512 ? yRaw -  512    // “third page” (rare customs)
-                         : yRaw >=  256 ? yRaw -  256    // “second page”
-                         :                yRaw) - 8;     // universal −8 adjustment
-                const width  = ((size & 0x0F) + 1) << 4;   // (n+1)x24
-                const height = (((size >> 4) & 0x0F) + 1) << 4;
+                const x = ((pos & 0x00FF) << 3) - 15;
+                let y = (((pos >> 9) & 0x7F) << 3);
+                y = y % 256;
+                const width = (((size >> 4) & 0x0F) + 1) * 4; 
+                const height = ((size & 0x0F) + 1) * 4;
+
                 var newRange = new Lemmings.Range();
                 newRange.x = x;
                 newRange.y = y;
                 newRange.width = width;
                 newRange.height = height;
-                this.steel.push(newRange);
+
+                if (flag === 0) {
+                    this.steel.push(newRange);
+                }
             }
         }
         /** read general Level information */
@@ -4990,6 +4996,7 @@ var Lemmings;
         renderDebug() {
             if (this.display == null)
                 return;
+            this.level.renderDebug(this.display);
             this.lemmingManager.renderDebug(this.display);
             this.triggerManager.renderDebug(this.display);
         }
