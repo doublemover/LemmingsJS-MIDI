@@ -1054,7 +1054,7 @@ var Lemmings;
         }
     }
     Lemming.LEM_MIN_Y = -5;
-    Lemming.LEM_MAX_FALLING = 60;
+    Lemming.LEM_MAX_FALLING = 59;
     Lemmings.Lemming = Lemming;
 })(Lemmings || (Lemmings = {}));
 var Lemmings;
@@ -3911,6 +3911,7 @@ var Lemmings;
             this.levelProperties.needCount = fr.readWord();
             this.levelProperties.timeLimit = fr.readWord();
             //- read amount of skills
+            this.levelProperties.skills.fill(0);
             this.levelProperties.skills[Lemmings.SkillTypes.CLIMBER] = fr.readWord();
             this.levelProperties.skills[Lemmings.SkillTypes.FLOATER] = fr.readWord();
             this.levelProperties.skills[Lemmings.SkillTypes.BOMBER] = fr.readWord();
@@ -3968,7 +3969,8 @@ var Lemmings;
             }
         }
         /** read Level Steel areas (Lemming can't pass) */
-        readSteelArea(fr) {
+        readSteelArea(fr, isLemEdit = false) {
+            const X_OFFSET = isLemEdit ? 12 : 16;   // originals use −16, LemEdit uses −12
             /// reset array
             this.steel = [];
             fr.setOffset(0x0760);
@@ -3978,10 +3980,14 @@ var Lemmings;
                 const size = fr.readByte();
                 const flag = fr.readByte();
                 const pos = (high << 8) | low;
-                if (pos === 0 && size === 0) continue;
-                const x = ((pos & 0x00FF) << 3) - 15;
+                if (pos === 0 && size === 0) continue; // end-of-list marker
+                // 9-bit X in 8-px steps, origin −X_OFFSET
+                const x = ((pos & 0x00FF) << 3) - X_OFFSET;
+                // 7-bit Y in 8-px steps, origin 0
                 let y = (((pos >> 9) & 0x7F) << 3);
+                // idk if this is needed
                 y = y % 256;
+                // each nibble is “blocks − 1”, one block = 4 px
                 const width = (((size >> 4) & 0x0F) + 1) * 4; 
                 const height = ((size & 0x0F) + 1) * 4;
 
