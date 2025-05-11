@@ -48,6 +48,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Frying death does not have animations set up
 
 ## Roadmap
+- [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
 - [ ] Traps
   - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing 
 - [ ] Panel Buttons
