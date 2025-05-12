@@ -735,7 +735,9 @@ var Lemmings;
             /// wait before first lemming is spawn
             this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
         }
-        setMiniMap(miniMap) { this.miniMap = miniMap; }
+        setMiniMap(miniMap) { 
+            this.miniMap = miniMap; 
+        }
         processNewAction(lem, newAction) {
             if (newAction == Lemmings.LemmingStateType.NO_STATE_TYPE) {
                 return false;
@@ -2710,7 +2712,7 @@ var Lemmings;
                 let ob = objects[i];
                 let objectInfo = objectImg[ob.id];
                 /// add object
-                let newMapObject = new Lemmings.MapObject(ob, objectInfo);
+                let newMapObject = new Lemmings.MapObject(ob, objectInfo, new Lemmings.Animation(), objectInfo.trigger_effect_id);
                 this.objects.push(newMapObject);
                 /// add entrances
                 if (ob.id == 1)
@@ -4969,12 +4971,7 @@ var Lemmings;
             this.lemmingManager = lemmingManager;
             this.objectManager = objectManager;
             this.triggerManager = triggerManager;
-            this.miniMap = null;  
             this.display = null;
-        }
-        setMiniMap(miniMap) { 
-            this.miniMap = miniMap;
-            this.lemmingManager.setMiniMap(this.miniMap);
         }
         setGuiDisplay(display) {
             this.display = display;
@@ -4992,12 +4989,6 @@ var Lemmings;
             this.level.render(this.display);
             this.objectManager.render(this.display);
             this.lemmingManager.render(this.display);
-            if (this.miniMap) {
-                const viewX = this.level.screenPositionX;
-                const viewW = this.display.getWidth();
-                this.miniMap.reveal(viewX, viewW);
-                this.miniMap.render(viewX, viewW);
-            }
         }
         renderDebug() {
             if (this.display == null)
@@ -5039,7 +5030,10 @@ var Lemmings;
                 this.backgroundChanged = true;
             });
         }
-        setMiniMap(miniMap) { this.miniMap = miniMap; }
+        setMiniMap(miniMap) { 
+            this.miniMap = miniMap;
+            this.game.lemmingManager.setMiniMap(this.miniMap);
+        }
         doReleaseRateChanges() {
             if (this.deltaReleaseRate == 0) {
                 return;
@@ -5119,7 +5113,7 @@ var Lemmings;
         setGuiDisplay(display) {
             this.display = display;
             if (!this.miniMap) {
-                this.miniMap = new Lemmings.MiniMap(this, this.game.level, display);
+                this.setMiniMap(new Lemmings.MiniMap(this, this.game.level, display));
             }
             /// handle user input in gui
             this.display.onMouseDown.on((e) => {
@@ -5732,27 +5726,33 @@ var Lemmings;
             this.level         = level;
             this.guiDisplay    = guiDisplay;
 
-            // immutable scale factors
-            this.mmW = 108;
-            this.mmH = 22;
-            this.scaleX = this.mmW / level.width;
-            this.scaleY = this.mmH / level.height;
+            this.renderScale = 2;
+            this.width = 108;
+            this.height = 22;
+            this.scaleX = this.width / level.width;
+            this.scaleY = this.height / level.height;
+            this.renderWidth = this.width * this.renderScale;
+            this.renderHeight = this.height * this.renderScale;
+            this.renderScaleX = this.renderWidth / level.width;
+            this.renderScaleY = this.renderHeight / level.height;
 
             // dynamic state
-            this.fog        = new Uint8Array(this.mmW * this.mmH); // 0 = unseen
+            this.fog        = new Uint8Array(this.width * this.height); // 0 = unseen
+            this.fog.fill(1);
             this.liveDots   = [];   // {x,y} sampled every 10 ticks
             this.deadDots   = [];   // {x,y,ttl}
 
             // render target (drawn into the GUI canvas once per frame)
-            this.frame = new Lemmings.Frame(this.mmW, this.mmH);
+            this.frame = new Lemmings.Frame(this.width, this.height);
+            //this.renderFrame = new Lemmings.Frame(this.renderWidth, this.renderHeight);
         }
 
         /** reveal terrain that is currently on screen */
         reveal(viewX, viewW) {
             const sx1 = Math.floor(viewX * this.scaleX);
-            const sx2 = Math.min(this.mmW, Math.ceil((viewX + viewW) * this.scaleX));
-            for (let y = 0; y < this.mmH; ++y) {
-              const row = y * this.mmW;
+            const sx2 = Math.min(this.width, Math.ceil((viewX + viewW) * this.scaleX));
+            for (let y = 0; y < this.height; ++y) {
+              const row = y * this.width;
               for (let x = sx1; x < sx2; ++x) this.fog[row + x] = 1;
             }
         }
@@ -5766,77 +5766,98 @@ var Lemmings;
         }
 
         /** draw one frame of the minimap */
-        render(viewX, viewW) {
-
+        render(viewX, viewW, scale = 1) {
             if (this.guiDisplay == null) return;
-            const f = this.frame;
 
-            for (let y = 0; y < this.mmH; ++y) {
-                for (let x = 0; x < this.mmW; ++x) {
-                    f.setPixel(x, y, 0xFFFF00FF);   // ARGB 0xAARRGGBB
+            // determine if we are rendering the larger minimap, or drawing the downscaled version of that to the display
+            //const destination = (this.renderScale === 1) ? this.frame : this.renderFrame;
+
+            for (let y = 0; y < this.frame.height; ++y) {
+                for (let x = 0; x < this.frame.width; ++x) {
+                    this.frame.setPixel(x, y, 0xFFFF00FF);   // ARGB 0xAARRGGBB
                 }
             }
             // 1. terrain (already revealed)
             const gm = this.level.getGroundMaskLayer();
-            for (let y = 0; y < this.mmH; ++y) {
-                for (let x = 0; x < this.mmW; ++x) {
-                    if (!this.fog[y * this.mmW + x]) continue;
+            for (let y = 0; y < this.height; ++y) {
+                for (let x = 0; x < this.width; ++x) {
+                    if (!this.fog[y * this.width + x]) continue;
                     const gx = (x / this.scaleX) | 0;
                     const gy = (y / this.scaleY) | 0;
-                    if (gm.hasGroundAt(gx, gy)) f.setPixel(x, y, 0xFF444444);
+                    if (gm.hasGroundAt(gx, gy)) this.frame.setPixel(x, y, 0xFF444444);
                 }
             }
 
-            // 2. level bounds
-            for (let x = 0; x < this.mmW; ++x) {
-                f.setPixel(x, 0,             0xFFFFFFFF);
-                f.setPixel(x, this.mmH - 1,  0xFFFFFFFF);
-            }
-            for (let y = 0; y < this.mmH; ++y) {
-                f.setPixel(0,            y, 0xFFFFFFFF);
-                f.setPixel(this.mmW - 1, y, 0xFFFFFFFF);
-            }
+            // // 2. level bounds
+            // for (let x = 0; x < this.width; ++x) {
+            //     this.frame.setPixel(x, 0,             0xFFFFFFFF);
+            //     this.frame.setPixel(x, this.width - 1,  0xFFFFFFFF);
+            // }
+            // for (let y = 0; y < this.height; ++y) {
+            //     this.frame.setPixel(0,            y, 0xFFFFFFFF);
+            //     this.frame.setPixel(this.height - 1, y, 0xFFFFFFFF);
+            // }
 
             // 3. entrances (always green)
             for (const ent of this.level.entrances) {
                  const ex = (ent.x * this.scaleX) | 0;
                  const ey = (ent.y * this.scaleY) | 0;
-                 f.setPixel(ex, ey, 0xFF00FF00);
+                 this.frame.setPixel(ex, ey, 0xFF00FF00);
             }
 
             // 4. exits (blue only after revealed)
             for (const obj of this.level.objects) {
-                 if (obj.triggerType !== Lemmings.TriggerTypes.EXIT_LEVEL) continue;
-                 const rx = (obj.x * this.scaleX) | 0;
-                 const ry = (obj.y * this.scaleY) | 0;
-                 if (this.fog[ry * this.mmW + rx]) f.setPixel(rx, ry, 0xFF0080FF);
+                 if (obj.triggerType == Lemmings.TriggerTypes.EXIT_LEVEL) {
+                    const rx = (obj.x * this.scaleX) | 0;
+                    const ry = (obj.y * this.scaleY) | 0;
+                    // if (this.fog[ry * this.width + rx]) 
+                    this.frame.setPixel(rx, ry, 0xFFFF0000);
+                 }
+
             }
 
             // 5. live lemmings (yellow)
             for (const p of this.liveDots) {
-                f.setPixel(p.x * this.scaleX | 0, p.y * this.scaleY | 0, 0xFFFFFF00);
+                this.frame.setPixel(p.x * this.scaleX | 0, p.y * this.scaleY | 0, 0xFFFFFF00);
             }
 
             // 6. deaths flashing (red)
             for (let i = this.deadDots.length - 1; i >= 0; --i) {
                 const d = this.deadDots[i];
                 if (--d.ttl <= 0) { this.deadDots.splice(i, 1); continue; }
-                if (d.ttl & 4) f.setPixel(d.x, d.y, 0xFFFF0000); // flash
+                if (d.ttl & 4) this.frame.setPixel(d.x, d.y, 0xFFFF0000); // flash
             }
 
             // 7. current viewport (white rectangle)
-            const vx1 = (viewX * this.scaleX) | 0;
-            const vx2 = ((viewX + viewW) * this.scaleX) | 0;
-            for (let x = vx1; x < vx2; ++x) {
-                f.setPixel(x,                0, 0xFFFFFFFF);
-                f.setPixel(x, this.mmH - 1,     0xFFFFFFFF);
-            }
+            // const vx1 = (viewX * this.scaleX) | 0;
+            // const vx2 = ((viewX + viewW) * this.scaleY) | 0;
+            // for (let x = vx1; x < vx2; ++x) {
+            //     this.frame.setPixel(x, 0, 0xFFFFFFFF);
+            //     this.frame.setPixel(x, this.height - 1,     0xFFFFFFFF);
+            // }
+
+            // if (this.renderScale !== 1) {
+            //     const renderBuffer = this.renderFrame.getBuffer();
+            //     const buffer = this.frame.getBuffer();
+            //     for (let y = 0; y < this.height; ++y) {
+            //         for (let x = 0; x < this.width; ++x) {
+            //             // nearest-neighbour 
+            //             const src = renderBuffer[(y * this.renderScale) * this.renderWidth + (x * this.renderScale)];
+            //             buffer[y * this.width + x] = src;
+            //         }
+            //     }
+            //     // this.frame.getMask().fill(1);   // every pixel is now valid
+            // }
 
             // blit to GUI canvas
-            const destX = this.guiDisplay.getWidth()  - this.mmW;
-            const destY = this.guiDisplay.getHeight() - this.mmH;
-            this.guiDisplay.drawFrame(f, destX - 6, destY - 1);
-            }
+            const destX = this.guiDisplay.getWidth()  - this.width;
+            const destY = this.guiDisplay.getHeight() - this.height;
+            
+            // if (scale == 1) {
+            //     this.render(viewX, viewW, 2);
+            // }
+            this.guiDisplay.drawFrame(this.frame, destX - 6, destY - 1);
         }
-        Lemmings.MiniMap = MiniMap;
+    }
+    Lemmings.MiniMap = MiniMap;
 })(Lemmings || (Lemmings = {}));
