@@ -5383,10 +5383,10 @@ var Lemmings;
             });
         }
         updateViewPoint(stageImage, deltaX, deltaY, deletaZoom) {
-            stageImage.viewPoint.scale += deletaZoom * 0.5;
+            stageImage.viewPoint.scale += deletaZoom;
             stageImage.viewPoint.scale = this.limitValue(0.5, stageImage.viewPoint.scale, 10);
-            stageImage.viewPoint.x += deltaX / stageImage.viewPoint.scale;
-            stageImage.viewPoint.y += deltaY / stageImage.viewPoint.scale;
+            stageImage.viewPoint.x += deltaX * stageImage.viewPoint.scale;
+            stageImage.viewPoint.y += deltaY * stageImage.viewPoint.scale;
             stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
             stageImage.viewPoint.y = this.limitValue(0, stageImage.viewPoint.y, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale);
             /// redraw
@@ -5630,8 +5630,8 @@ var Lemmings;
                 return false;
             });
             listenElement.addEventListener("wheel", (e) => {
-                // let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-                // this.handeWheel(relativePos, e.deltaY);
+                let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+                //this.handleWheel(relativePos, e.deltaY);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
@@ -5687,12 +5687,12 @@ var Lemmings;
         }
         /** Zoom view
          * todo: zoom to mouse pointer */
-        handeWheel(position, deltaY) {
+        handleWheel(position, deltaY) {
             if (deltaY < 0) {
-                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, 1));
+                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, 0.2));
             }
             if (deltaY > 0) {
-                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, -1));
+                this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, -0.2));
             }
         }
     }
