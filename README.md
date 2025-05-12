@@ -28,11 +28,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Remove unfinished sound/music functionality
   - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
   - [X] Fixed oddfile offsets
-  - [ ] Trap offset wrong? (lvl 4-30)
-    - [ ] Double check trap ranges with debug
-    - [ ] Particles being left behind by trap on 2-2-1
-  - [ ] Left trap needs mirrored? (2-1-7)
-    - [ ] Debug function update to reflect intended orientation
   - [ ] Minimap
     - [X] Render level in lower right rectangle
       - [ ] Not rendering entire level
@@ -49,7 +44,11 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 ## Roadmap
 - [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
 - [ ] Traps
-  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing 
+  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing
+  - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some (1-4-30)
+    - [ ] Particles being left behind by trap on 2-2-1
+    - [ ] Left trap needs mirrored? (2-1-7)
+      - [ ] Debug function update to reflect intended orientation
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
   - [ ] Minipanel hit test
@@ -75,7 +74,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] If you build stairs into an opposing arrow wall are they supposed to flip and continue instead of stopping?
   - [ ] Arrow wall overlay/animations are now bugged when near a lemming or being touched by a lemming
 - [ ] Various bullshit
-  - [ ] LevelProperties.skills needs this.skills.fill(0); after construction
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
