@@ -33,6 +33,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - [ ] Viewport box not showing
     - [ ] Supersampling is stubbed
     - [ ] Indicate lemming deaths
+    - [ ] Entrance/exit misaligned
   - [ ] Frying death does not have animations set up
 
 ## Roadmap
