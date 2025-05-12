@@ -19,6 +19,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Fixed bombers exploding after falling into traps
   - Steel Ground should now be faithful to the original implementation
   - Added purple rectangles to display ranges of steel when debugging is enabled
+  - Minimap now renders. Terrain, entrances, and exits are visible. Dots update with lemming locations every 10 ticks
   - Various crash fixes and performance improvements
 
 ## Progress
@@ -28,17 +29,10 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Remove unfinished sound/music functionality
   - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
   - [X] Fixed oddfile offsets
-  - [ ] Minimap
-    - [X] Render level in lower right rectangle
-      - [ ] Not rendering entire level
-      - [ ] Fog of war is broken
-      - [ ] Need to render at 2x res or something to capture smaller details
+  - [ ] Minimap enhancements
     - [ ] Viewport box not showing
-    - [ ] Dots
-      - [X] Entrance dots
-      - [ ] Exit 
-      - [ ] Lemmings display stopped updating when I moved it to gui, needs ticks and udpate
-      - [ ] Indicate lemming deaths?
+    - [ ] Supersampling is stubbed
+    - [ ] Indicate lemming deaths
   - [ ] Frying death does not have animations set up
 
 ## Roadmap
