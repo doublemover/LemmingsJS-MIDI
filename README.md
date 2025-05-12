@@ -35,6 +35,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - [ ] Indicate lemming deaths
     - [ ] Entrance/exit misaligned
   - [ ] Frying death does not have animations set up
+  - [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
 
 ## Roadmap
 - [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
@@ -72,7 +73,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
-  - [ ] Viewport zoom is stubbed but does not seem to function
 - [ ] Implement MIDIManager
   - [ ] Surely someone has made a nice device/channel config drop in or something
   - [ ] Find a quick and easy midi note display for debugging 
