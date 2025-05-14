@@ -1,0 +1,59 @@
+import { Lemmings } from './LemmingsNamespace.js';
+
+class GameResources {
+        constructor(fileProvider, config) {
+            this.fileProvider = fileProvider;
+            this.config = config;
+            this.mainDat = null;
+        }
+        /** return the main.dat file container */
+        getMainDat() {
+            if (this.mainDat != null) {
+                return this.mainDat;
+            }
+            this.mainDat = new Promise((resolve, reject) => {
+                this.fileProvider.loadBinary(this.config.path, "MAIN.DAT")
+                    .then((data) => {
+                        /// split the file
+                        let mainParts = new Lemmings.FileContainer(data);
+                        resolve(mainParts);
+                    });
+            });
+            return this.mainDat;
+        }
+        /** return the Lemmings animations */
+        getLemmingsSprite(colorPalette) {
+            return new Promise((resolve, reject) => {
+                this.getMainDat().then((container) => {
+                    let sprite = new Lemmings.LemmingsSprite(container.getPart(0), colorPalette);
+                    resolve(sprite);
+                });
+            });
+        }
+        getSkillPanelSprite(colorPalette) {
+            return new Promise((resolve, reject) => {
+                this.getMainDat().then((container) => {
+                    resolve(new Lemmings.SkillPanelSprites(container.getPart(2), container.getPart(6), colorPalette));
+                });
+            });
+        }
+        getMasks() {
+            return new Promise((resolve, reject) => {
+                this.getMainDat().then((container) => {
+                    resolve(new Lemmings.MaskProvider(container.getPart(1)));
+                });
+            });
+        }
+        /** return the Level Data for a given Level-Index */
+        getLevel(levelMode, levelIndex) {
+            let levelReader = new Lemmings.LevelLoader(this.fileProvider, this.config);
+            return levelReader.getLevel(levelMode, levelIndex);
+        }
+        /** return the level group names for this game */
+        getLevelGroups() {
+            return this.config.level.groups;
+        }
+    }
+    Lemmings.GameResources = GameResources;
+
+export { GameResources };
