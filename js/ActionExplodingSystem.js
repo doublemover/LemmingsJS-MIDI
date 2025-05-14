@@ -17,7 +17,7 @@ class ActionExplodingSystem {
         draw(gameDisplay, lem) {
             if (lem.frameIndex == 0) {
                 let frame = this.sprite.getFrame(lem.frameIndex);
-                gameDisplay.drawFrame(frame, lem.x, lem.y);
+                gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
             } else {
                 this.particleTable.draw(gameDisplay, lem.frameIndex - 1, lem.x, lem.y);
             }
