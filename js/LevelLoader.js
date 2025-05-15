@@ -25,7 +25,7 @@ class LevelLoader {
                 }
                 Promise.all(promiseList)
                     .then((files) => {
-                        /// read the level meta data
+                        /// read the level metadata
                         let levelsContainer = new Lemmings.FileContainer(files[0]);
                         levelReader = new Lemmings.LevelReader(levelsContainer.getPart(levelInfo.partIndex));
                         level = new Lemmings.Level(levelReader.levelWidth, levelReader.levelHeight);
@@ -36,7 +36,7 @@ class LevelLoader {
                         level.isSuperLemming = levelReader.isSuperLemming;
                         /// default level properties
                         let levelProperties = levelReader.levelProperties;
-                        /// switch level properties to odd table config
+                        /// switch level properties to oddTable config
                         if (useOddTable) {
                             let oddTable = new Lemmings.OddTableReader(files[1]);
                             levelProperties = oddTable.getLevelProperties(levelInfo.levelNumber);
@@ -66,8 +66,8 @@ class LevelLoader {
                         let render = new Lemmings.GroundRenderer();
                         if (fileList.length > 2) {
                             /// use a image for this map background
-                            let vgaspecReader = new Lemmings.VgaspecReader(fileList[2], level.width, level.height);
-                            render.createVgaspecMap(levelReader, vgaspecReader);
+                            let VGASpecReader = new Lemmings.VGASpecReader(fileList[2], level.width, level.height);
+                            render.createVgaspecMap(levelReader, VGASpecReader);
                         } else {
                             /// this is a normal map background
                             render.createGroundMap(levelReader, groundReader.getTerraImages());

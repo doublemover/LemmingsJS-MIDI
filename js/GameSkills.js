@@ -11,7 +11,7 @@ class GameSkills {
         canReuseSkill(type) {
             return (this.skills[type] > 0);
         }
-        reduseSkill(type) {
+        reuseSkill(type) {
             if (this.skills[type] <= 0)
                 return false;
             this.skills[type]--;

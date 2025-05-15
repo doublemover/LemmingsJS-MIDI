@@ -41,7 +41,7 @@ class CommandLemmingsAction {
                 return false;
             }
             /// reduce the available skill count
-            return skills.reduseSkill(selectedSkill);
+            return skills.reuseSkill(selectedSkill);
         }
     }
     Lemmings.CommandLemmingsAction = CommandLemmingsAction;

@@ -10,10 +10,10 @@ class Animation {
         }
         restart(startTick = 0) {
             this.firstFrameIndex = startTick;    // treat current global tick as t=0
-            this.finished        = false;        // allow getFrame() to advance again
+            this.isFinished = false;        // allow getFrame() to advance again
         }
         getFrame(globalTick) {
-            if (this.finished) {
+            if (this.isFinished) {
                 return this.frames.at(-1);   // stay on last frame
             }
 
@@ -21,7 +21,7 @@ class Animation {
             let idx = this.loop ? localTick % this.frames.length : Math.min(localTick, this.frames.length - 1);
 
             if (!this.loop && idx === this.frames.length - 1) {
-                this.finished = true;
+                this.isFinished = true;
             }
             return this.frames[idx];
         }
