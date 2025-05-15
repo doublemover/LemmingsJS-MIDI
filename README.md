@@ -49,19 +49,15 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [ ] Debug function update to reflect intended orientation
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
-  - [ ] Minipanel hit test
+  - [ ] Add y to gui events 
   - [ ] Speed up/Slow down/Reset speed buttons
   - [ ] Speed indicator
   - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Bombs
-  - [ ] I think these are supposed to kill other lemmings
+  - [ ] I think these are supposed to kill other lemmings (12px)
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
 - [ ] Arrow Walls
-  - [ ] Trying to bash/mine into an arrow wall from the opposing direction on level ground cancels the bash/mine, is that what's supposed to happen?
-  - [ ] Check if it's possible for arrows to point up or down?
-    - [ ] Cover dig/mining cases if it is
-  - [ ] Building even one step and then bashing into an opposing arrow wall lets you go right through, is that intended?
-  - [ ] If you build stairs into an opposing arrow wall are they supposed to flip and continue instead of stopping?
+  - [ ] Need triggers
 - [ ] Various bullshit
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
