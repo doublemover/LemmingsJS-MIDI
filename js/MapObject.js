@@ -12,14 +12,14 @@ class MapObject {
             this.triggerType = triggerType;
             for (let i = 0; i < objectImg.frames.length; i++) {
                 let newFrame = new Lemmings.Frame(objectImg.width, objectImg.height);
-                //newFrame.clear();
+                newFrame.clear();
                 newFrame.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height, objectImg.palette, 0, 0);
                 this.animation.frames.push(newFrame);
             }
         }
         onTrigger(globalTick, lemming = null) {
             // 1. Restart visual cue (blade swings, trap door slams, …)
-            if (this.animation) { 
+            if (this.animation && !this.animation.loop) { 
                 this.animation.restart(globalTick);
             }
             
