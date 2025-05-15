@@ -99,8 +99,8 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 
 ## Versions
 
-- Lemmings: https://lemmingsjs.oklemenz.de?version=0
-- Oh no! More Lemmings: https://lemmingsjs.oklemenz.de?version=1
+- Lemmings: https://doublemover.github.io/LemmingsJS-MIDI?version=0
+- Oh no! More Lemmings: https://doublemover.github.io/LemmingsJS-MIDI?version=1
 
 ## Credits
 
