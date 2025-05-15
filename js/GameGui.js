@@ -44,23 +44,28 @@ class GameGui {
         /// handle click on the skills panel
         handleSkillMouseDown(x) {
             let panelIndex = Math.trunc(x / 16);
+            // if not clicking on nuke, reset nuke confirmation state
             if (panelIndex != 11) {
                 this.game.nukePrepared = false;
             }
+            // lower release rate
             if (panelIndex == 0) {
                 this.deltaReleaseRate = -3;
                 this.doReleaseRateChanges();
                 return;
             }
+            // raise release rate
             if (panelIndex == 1) {
                 this.deltaReleaseRate = 3;
                 this.doReleaseRateChanges();
                 return;
             }
+            // pause game
             if (panelIndex == 10) {
                 this.gameTimer.toggle();
                 return;
             }
+            // nuke
             if (panelIndex == 11) {
                 if (this.game.nukePrepared) {
                     this.game.queueCmmand(new Lemmings.CommandNuke());
@@ -69,25 +74,30 @@ class GameGui {
                 }
                 return;
             }
+            // speedup
             if (panelIndex == 12) {
                 if (this.gameTimer.speedFactor > 1) {
                     this.gameTimer.speedFactor = this.gameTimer.speedFactor - 1;
                 }
                 return;
             }
+            // slowdown
             if (panelIndex == 13) {
                 if (this.gameTimer.speedFactor < 10) {
                     this.gameTimer.speedFactor = this.gameTimer.speedFactor + 1;
                 }
                 return;
             }
+            // reset speed
             if (panelIndex == 14) {
+                // prevent resetting speed if already at default, causes slowdowns otherwise
                 if (this.gameTimer.speedFactor == 1) {
                     return;
                 }
                 this.gameTimer.speedFactor = 1;
                 return;
             }
+            // enable debug mode
             if (panelIndex == 15) {
                 this.game.showDebug = !this.game.showDebug;
                 console.log("showDebug = " + this.game.showDebug);

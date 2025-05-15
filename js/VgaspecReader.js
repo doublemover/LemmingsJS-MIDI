@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class VgaspecReader {
+class VGASpecReader {
         constructor(vgaspecFile, width, height) {
-            this.log = new Lemmings.LogHandler("VgaspecReader");
+            this.log = new Lemmings.LogHandler("VGASpecReader");
             this.width = 0;
             this.height = 0;
             /** the color palette stored in this file */
@@ -92,6 +92,6 @@ class VgaspecReader {
             }
         }
     }
-    Lemmings.VgaspecReader = VgaspecReader;
+    Lemmings.VGASpecReader = VGASpecReader;
 
-export { VgaspecReader };
+export { VGASpecReader };

@@ -91,5 +91,5 @@ import './TriggerManager.js';
 import './TriggerTypes.js';
 import './UnpackFilePart.js';
 import './UserInputManager.js';
-import './VgaspecReader.js';
+import './VGASpecReader.js';
 import './ViewPoint.js';
