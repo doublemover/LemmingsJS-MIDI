@@ -8,8 +8,8 @@ export const TriggerTypes = Object.freeze({
   TRAP: 4,
   DROWN: 5,
   KILL: 6,
-  ONWAY_LEFT: 7,
-  ONWAY_RIGHT: 8,
+  ONEWAY_LEFT: 7,
+  ONEWAY_RIGHT: 8,
   STEEL: 9,
   BLOCKER_LEFT: 10,
   BLOCKER_RIGHT: 11
