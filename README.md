@@ -7,35 +7,45 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 ## New Features
   - Speed Management
     - The "button" to the right of Nuke (yellow squiggle) slows down the game by 1 (to a minimum of 1, the default speed)
-    - The next button (not visible) now speeds the game up by 1 (to a maximum of 10)
+    - The next button (not visible) speeds the game up by 1 (to a maximum of 10)
     - The button after that (also not visible) resets the game speed to 1
-    - The final button (still invisible) toggles the game's debug output to the console
-  - Levels with multiple entrances now function correctly
-  - Traps are now deadly
-  - Traps now animate when triggered
-  - Fixed invisible blockers being left behind when a blocker does a different action
-  - Fixed invisible leftover lemmings consuming actions after dying
-  - Fixed bombers retaining their triggers in weird cases
-  - Fixed bombers exploding after falling into traps
-  - Fixed bomber explosion sprite alignment
-  - Fixed Arrow Wall Animations
-  - Steel Ground should now be faithful to the original implementation
-  - Added purple rectangles to display ranges of steel when debugging is enabled
-  - Minimap now renders. Terrain, entrances, and exits are visible. Dots update with lemming locations every 10 ticks
-  - Various crash fixes and performance improvements
+    - The final button (still invisible) toggles the game's debug output (noisy console, red dots denoting lemming position, boxes denoting triggers and steel)
+  - Levels with multiple entrances function correctly
+  - Traps are deadly & animate when triggered
+  - Steel Ground should be faithful to the original implementation
+    - Added purple rectangles to display ranges of steel when debugging is enabled
+  - Minimap renders. Terrain, entrances, and exits are visible. Dots update with lemming locations every 10 ticks
+  - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode for one level
+
+### Fixed Bugs
+  - Invisible blockers being left behind when a blocker does a different action
+  - Invisible lemmings consuming actions after dying
+  - Bombers retaining their triggers in weird cases
+  - Bombers exploding after falling into traps
+  - Explosion sprite misalignment
+  - Arrow Wall animations
+  - Various crashes and performance issues
+  - Removed unfinished sound/music functionality
   - Split the codebase up into modules to aid with refactoring
 
 ## Progress
   - Everything above
-  - [X] Added WebMIDI.js to /js/
-  - [X] Clean up spelling mistakes & formatting
-  - [X] Remove unfinished sound/music functionality
-  - [X] Adding `&debug=true` or `&d=true` to the url will enable game's debug logs for one level
-  - [X] Fixed oddfile offsets
   - [ ] Minimap enhancements
     - [ ] Viewport box not showing
     - [ ] Indicate lemming deaths
+      - [X] Splat
+      - [X] Drowning
+      - [ ] Frying?
+      - [X] Exploding
+      - [ ] Other traps?
+      - [ ] Falling off level 
   - [ ] Frying death does not have animations set up
+  - [ ] MIDI Manager
+    - [X] WebMIDI Error Display
+    - [X] List Input & Output devices in select elements
+      - [ ] Fix display so it is above game
+    - [ ] Channel selection
+    - [ ] I/O Display
   
 
 ## Roadmap
@@ -44,7 +54,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 - [ ] Traps
   - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing
   - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some (1-4-30)
-    - [ ] Particles being left behind by trap on 2-2-1
+    - [ ] Particles being left behind by trap (2-2-1)
     - [ ] Left trap needs mirrored? (2-1-7)
       - [ ] Debug function update to reflect intended orientation
 - [ ] Panel Buttons
@@ -62,9 +72,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
-- [ ] Implement MIDIManager
-  - [ ] Surely someone has made a nice device/channel config drop in or something
-  - [ ] Find a quick and easy midi note display for debugging 
 
 ## Things I need to look at
 - [ ] Source some form of level editor
