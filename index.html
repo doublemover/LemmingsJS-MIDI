@@ -19,7 +19,36 @@
   <script type="module" src="js/LemmingsBootstrap.js"></script>
   <script type="text/javascript" src="js/webmidi.js"></script>
   <script type="text/javascript">
-    WebMidi.enable();
+    WebMidi.enable().then(onEnabled).catch(err => {
+      $("errorDisplay").innerHTML+=err
+    });
+
+    function onEnabled() {
+      const inputSelect = document.getElementById("midiInSelect");
+      const outputSelect = document.getElementById("midiOutSelect");
+      // Display available MIDI input devices
+      if (WebMidi.inputs.length < 1) {
+        $("#errorDisplay").innerHTML+= "No input device detected. <br />";
+      } else {
+        for (let input of WebMidi.inputs.values()) {
+          const opt = document.createElement("option");
+          opt.textContent = input.name;
+          opt.value = input.id;
+          inputSelect.appendChild(opt);
+        }
+      }
+
+      if (WebMidi.outputs.length < 1) {
+        $("#errorDisplay").innerHTML+= "No output device detected. <br />";
+      } else {
+        for (let output of WebMidi.outputs.values()) {
+          const opt = document.createElement("option");
+          opt.textContent = output.name;
+          opt.value = output.id;
+          outputSelect.appendChild(opt);
+        }
+      }
+    }
 
     let lemmings;
     function init() {
@@ -59,6 +88,16 @@
   </script>
 </head>
 <body onload="init();" oncontextmenu="return false;">
+  <div id="midiConfig" style="color:#fff;float:left;">
+    <div id="inputList">
+      <select id="midiInSelect"></select>
+    </div>
+    <div id="outputList">
+      <select id="midiOutSelect"></select>
+    </div>
+    <div id="errorDisplay" style="color:#f00;">
+    </div>
+  </div>
   <div class="game">
     <div class="game_container">
       <canvas height="480" width="800" id="gameCanvas"></canvas>
