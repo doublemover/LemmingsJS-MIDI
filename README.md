@@ -17,10 +17,13 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Fixed invisible leftover lemmings consuming actions after dying
   - Fixed bombers retaining their triggers in weird cases
   - Fixed bombers exploding after falling into traps
+  - Fixed bomber explosion sprite alignment
+  - Fixed Arrow Wall Animations
   - Steel Ground should now be faithful to the original implementation
   - Added purple rectangles to display ranges of steel when debugging is enabled
   - Minimap now renders. Terrain, entrances, and exits are visible. Dots update with lemming locations every 10 ticks
   - Various crash fixes and performance improvements
+  - Split the codebase up into modules to aid with refactoring
 
 ## Progress
   - Everything above
@@ -31,14 +34,13 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Fixed oddfile offsets
   - [ ] Minimap enhancements
     - [ ] Viewport box not showing
-    - [ ] Supersampling is stubbed
     - [ ] Indicate lemming deaths
-    - [ ] Entrance/exit misaligned
   - [ ] Frying death does not have animations set up
-  - [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
+  
 
 ## Roadmap
 - [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
+- [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
 - [ ] Traps
   - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing
   - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some (1-4-30)
@@ -47,28 +49,15 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [ ] Debug function update to reflect intended orientation
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
-  - [ ] Minipanel hit test
+  - [ ] Add y to gui events 
   - [ ] Speed up/Slow down/Reset speed buttons
   - [ ] Speed indicator
   - [ ] Confirmation state for nuke (darken button, draw questionmark)
-- [ ] Winning
-  - [ ] Is the quota supposed to be visible?
-  - [ ] Should it automatically fail when it's no longer possible to meet quota? 
-  - [ ] Timer should stop when level is completed
-  - [ ] Was there a score system?
-  - [ ] If all lemmings have been released and the only remaining lemmings are blockers then check for pass/fail
 - [ ] Bombs
-  - [ ] Explosion sprite misaligned
-  - [ ] Are there enough particles/are they travelling correctly? I remember seeing way more
-  - [ ] I think these are supposed to kill other lemmings
+  - [ ] I think these are supposed to kill other lemmings (12px)
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
 - [ ] Arrow Walls
-  - [ ] Trying to bash/mine into an arrow wall from the opposing direction on level ground cancels the bash/mine, is that what's supposed to happen?
-  - [ ] Check if it's possible for arrows to point up or down?
-    - [ ] Cover dig/mining cases if it is
-  - [ ] Building even one step and then bashing into an opposing arrow wall lets you go right through, is that intended?
-  - [ ] If you build stairs into an opposing arrow wall are they supposed to flip and continue instead of stopping?
-  - [ ] Arrow wall overlay/animations are now bugged when near a lemming or being touched by a lemming
+  - [ ] Need triggers
 - [ ] Various bullshit
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
@@ -106,8 +95,8 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 
 ## Versions
 
-- Lemmings: https://lemmingsjs.oklemenz.de?version=0
-- Oh no! More Lemmings: https://lemmingsjs.oklemenz.de?version=1
+- Lemmings: https://doublemover.github.io/LemmingsJS-MIDI?version=0
+- Oh no! More Lemmings: https://doublemover.github.io/LemmingsJS-MIDI?version=1
 
 ## Credits
 
