@@ -70,12 +70,12 @@ class MiniMap {
 
             // // 2. level bounds
             // for (let x = 0; x < this.width; ++x) {
-            //     this.frame.setPixel(x, 0,             0xFFFFFFFF);
-            //     this.frame.setPixel(x, this.width - 1,  0xFFFFFFFF);
+            //     this.frame.setPixel(x, 0,             0x00FF00FF);
+            //     this.frame.setPixel(x, this.width - 1,  0x00FF00FF);
             // }
-            // for (let y = 0; y < this.height; ++y) {
-            //     this.frame.setPixel(0,            y, 0xFFFFFFFF);
-            //     this.frame.setPixel(this.height - 1, y, 0xFFFFFFFF);
+            // for (let mapBoundY = 0; mapBoundY < this.height; ++mapBoundY) {
+            //     this.frame.setPixel(0,            mapBoundY, 0x00FF00FF);
+            //     this.frame.setPixel(this.height - 1, mapBoundY, 0x00FF00FF);
             // }
 
             // 3. entrances (always green)
@@ -112,17 +112,22 @@ class MiniMap {
             }
 
             // 7. current viewport (white rectangle)
-            const vx1 = (viewX * this.scaleX) | 0;
-            const vx2 = ((viewX + viewW) * this.scaleY) | 0;
-            for (let y = 0; y < this.height; y++) {
-                // this.frame.drawRect(x, 22, 16, 23, 255, 255, 255);
-                this.frame.setPixel(vx1, y, 0xFFFFFFFF);
-                // this.frame.setPixel(x, this.height - 1,     0xFFFFFFFF);
+            const vpX = Math.round(lemmings.stage.getGameViewRect().x * this.scaleX);
+            const vpW = Math.round(lemmings.stage.getGameViewRect().w * this.scaleX);
+            let vpXW = vpX + vpW;
+            if (vpXW >= this.width) {
+                vpXW = this.width-1;
             }
-            // let xxx = (viewX * this.scaleX) | 0;
-            // for (let x = xxx; x < (x+viewW); x++) {
-                // this.frame.setPixel(x, 0, 0xFFFFFFFF);
-            // }
+            const vpRectColor = 0x55FFFFFF;
+            for (let y = 0; y < this.height; y++) {
+                this.frame.setPixel(vpX, y, vpRectColor);
+                if (y == 0 || y == this.height-1) {
+                    for (let xx = vpX; xx < vpXW; xx++) {
+                        this.frame.setPixel(xx, y, vpRectColor);
+                    }
+                }
+                this.frame.setPixel(vpXW, y, vpRectColor);
+            }
 
             // if (this.renderScale !== 1) {
             //     const renderBuffer = this.renderFrame.getBuffer();

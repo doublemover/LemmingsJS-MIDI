@@ -213,6 +213,14 @@ class Stage {
                 ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
             }
         }
+        getGameViewRect() {
+            return {
+                x: this.gameImgProps.viewPoint.x,
+                y: this.gameImgProps.viewPoint.y,
+                w: this.gameImgProps.width / this.gameImgProps.viewPoint.scale,
+                h: this.gameImgProps.height / this.gameImgProps.viewPoint.scale
+            }
+        };
     }
     Lemmings.Stage = Stage;
 
