@@ -69,10 +69,15 @@ class Lemming {
         /** process this lemming one tick in time */
         process(level) {
             if ((this.x < 0) || (this.x >= level.width) || (this.y < 0) || (this.y >= level.height + 6)) {
+                // level height -12 so that minimap rect does not obscure them
+                // TODO: fix minimap rect
+                lemmings.game.lemmingManager.miniMap.addDeath(this.x, level.height-12);
                 return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run main action
+            // TODO: why is this necessary
             if (!this.action) {
+                lemmings.game.lemmingManager.miniMap.addDeath(this.x, level.height-12);
                 return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run secondary action
@@ -83,10 +88,12 @@ class Lemming {
                 }
             }
             if (this.action) {
-                return this.action.process(level, this);
+                var returnedState = this.action.process(level, this);
+                return returnedState;
             }
             // prevent falling through function without returning a type
             //  can cause random undefined is not a function errors
+            console.log("lemming state falling through, fix it")
             return LemmingStateType.NO_STATE_TYPE;
         }
         /** disable this lemming so it can no longer be triggered

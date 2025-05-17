@@ -14,7 +14,11 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Traps are deadly & animate when triggered
   - Steel Ground should be faithful to the original implementation
     - Added purple rectangles to display ranges of steel when debugging is enabled
-  - Minimap renders. Terrain, entrances, and exits are visible. Dots update with lemming locations every 10 ticks
+  - Minimap renders
+    - Terrain, entrances (green), and exits (blue) are visible.
+    - Dots (yellow) update with lemming locations every 10 ticks.
+    - Lemming deaths are indicated by a dot (red) that flashes 4 times
+    - Viewport box 
   - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode for one level
 
 ### Fixed Bugs
@@ -31,22 +35,20 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 ## Progress
   - Everything above
   - [ ] Minimap enhancements
-    - [ ] Viewport box not showing
     - [ ] Indicate lemming deaths
       - [X] Splat
       - [X] Drowning
       - [ ] Frying?
       - [X] Exploding
       - [ ] Other traps?
-      - [ ] Falling off level 
+    - [ ] Click on minimap to change view position
+    - [ ] Optimize rendering
   - [ ] Frying death does not have animations set up
   - [ ] MIDI Manager
     - [X] WebMIDI Error Display
     - [X] List Input & Output devices in select elements
-      - [ ] Fix display so it is above game
     - [ ] Channel selection
     - [ ] I/O Display
-  
 
 ## Roadmap
 - [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
