@@ -27,6 +27,16 @@ class ActionExplodingSystem {
             lem.frameIndex++;
             if (lem.frameIndex == 1) {
                 this.triggerManager.removeByOwner(lem);
+                // stub for if you want other lemmings to die from bomber explosions
+                // let nearbyLemmings = lemmings.game.lemmingManager.getLemmingsInMask(this.mask.GetMask(0), lem.x, lem.y);
+                // for (let i = 0; i < nearbyLemmings.length; i++) {
+                    // let lemming = nearbyLemmings[i];
+                    // give them bomber actions with a shortened countdown
+                    // lemmings.game.lemmingManager.doLemmingAction(lemming, Lemmings.SkillTypes.BOMBER);
+                    // lemming.countdown = 1;
+                    // or just splat them without causing additional explosions
+                    // lemmings.game.lemmingManager.setLemmingState(lemming, Lemmings.LemmingStateType.OHNO);
+                // }
                 level.clearGroundWithMask(this.mask.GetMask(0), lem.x, lem.y);
             }
             if (lem.frameIndex == 52) {

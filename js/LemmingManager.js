@@ -171,6 +171,18 @@ class LemmingManager {
             //console.log("====> "+ (minDistanceLem? minDistanceLem.id : "null"));
             return minDistanceLem;
         }
+        // returns all lemmings within a mask's offset bounds from x,y
+        //  (not using the shape of the mask yet)
+        getLemmingsInMask(mask, x, y) {
+            let lems = this.lemmings;
+            let foundLemmings = lems.slice().filter(val =>
+                    val.x > (x+mask.offsetX) &&
+                    val.x < (x+mask.offsetX+mask.width) &&
+                    val.y > (y+mask.offsetY) &&
+                    val.y < (y+mask.offsetY+mask.height)
+                );
+            return foundLemmings;
+        }
         /** change the action a Lemming is doing */
         setLemmingState(lem, stateType) {
             if (lem.countdown > 0) {
