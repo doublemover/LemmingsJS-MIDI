@@ -14,11 +14,11 @@ class Animation {
         }
         getFrame(globalTick) {
             if (this.isFinished) {
-                return this.frames.at(-1);   // stay on last frame
+                return this.frames.at(0);   // stay on last frame
             }
 
             let localTick = globalTick - this.firstFrameIndex;
-            let idx = this.loop ? localTick % this.frames.length : Math.min(localTick, this.frames.length - 1);
+            let idx = this.loop ? localTick % this.frames.length : Math.min(localTick, this.frames.length);
 
             if (!this.loop && idx === this.frames.length - 1) {
                 this.isFinished = true;

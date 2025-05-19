@@ -12,7 +12,8 @@ export const TriggerTypes = Object.freeze({
   ONEWAY_RIGHT: 8,
   STEEL: 9,
   BLOCKER_LEFT: 10,
-  BLOCKER_RIGHT: 11
+  BLOCKER_RIGHT: 11,
+  FRYING: 12, // gross hack alert to make frying work for now
 });
 
 Lemmings.TriggerTypes = TriggerTypes;

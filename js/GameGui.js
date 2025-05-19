@@ -42,7 +42,8 @@ class GameGui {
             }
         }
         /// handle click on the skills panel
-        handleSkillMouseDown(x) {
+        handleSkillMouseDown(e) {
+            let x = e.x;
             let panelIndex = Math.trunc(x / 16);
             // if not clicking on nuke, reset nuke confirmation state
             if (panelIndex != 11) {
@@ -109,7 +110,8 @@ class GameGui {
             this.game.queueCmmand(new Lemmings.CommandSelectSkill(newSkill));
             this.skillSelectionChanged = true;
         }
-        handleSkillDoubleClick(x) {
+        handleSkillDoubleClick(e) {
+            let x = e.x;
             let panelIndex = Math.trunc(x / 16);
             /// trigger the nuke for all lemmings
             if (panelIndex == 11) {
@@ -126,7 +128,7 @@ class GameGui {
             this.display.onMouseDown.on((e) => {
                 this.deltaReleaseRate = 0;
                 if (e.y > 15) {
-                    this.handleSkillMouseDown(e.x);
+                    this.handleSkillMouseDown(e);
                 }
             });
             this.display.onMouseUp.on((e) => {
@@ -137,7 +139,7 @@ class GameGui {
                 /// clear release rate change
                 this.deltaReleaseRate = 0;
                 if (e.y > 15) {
-                    this.handleSkillDoubleClick(e.x);
+                    this.handleSkillDoubleClick(e);
                 }
             });
             this.gameTimeChanged = true;

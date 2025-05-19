@@ -1,249 +1,186 @@
+/* -------------------- DisplayImage.js -------------------- */
 import { Lemmings } from './LemmingsNamespace.js';
 
 class DisplayImage {
-        constructor(stage) {
-            this.stage = stage;
-            this.onMouseUp = new Lemmings.EventHandler();
-            this.onMouseDown = new Lemmings.EventHandler();
-            this.onMouseMove = new Lemmings.EventHandler();
-            this.onDoubleClick = new Lemmings.EventHandler();
-            this.onMouseDown.on((e) => {
-                //this.setDebugPixel(e.x, e.y);
-            });
-        }
-        getWidth() {
-            if (this.imgData == null)
-                return 0;
-            return this.imgData.width;
-        }
-        getHeight() {
-            if (this.imgData == null)
-                return 0;
-            return this.imgData.height;
-        }
-        initSize(width, height) {
-            /// create image data
-            if ((this.imgData == null) || (this.imgData.width != width) || (this.imgData.height != height)) {
-                this.imgData = this.stage.createImage(this, width, height);
-                this.clear();
-            }
-        }
-        clear() {
-            if (this.imgData == null)
-                return;
-            let img = new Uint32Array(this.imgData.data);
-            for (let i = 0; i < img.length; i++) {
-                img[i] = 0xFF00FF00;
-            }
-        }
-        /** render the level-background to an image */
-        setBackground(groundImage, groundMask = null) {
-            /// set pixels
-            this.imgData.data.set(groundImage);
-            this.groundMask = groundMask;
-        }
-        uint8ClampedColor(colorValue) {
-            return colorValue & 0xFF;
-        }
-        /** draw a rect to the display */
-        drawRect(x, y, width, height, red, green, blue) {
-            let x2 = x + width;
-            let y2 = y + height;
-            this.drawHorizontalLine(x, y, x2, red, green, blue);
-            this.drawHorizontalLine(x, y2, x2, red, green, blue);
-            this.drawVerticalLine(x, y, y2, red, green, blue);
-            this.drawVerticalLine(x2, y, y2, red, green, blue);
-        }
-        drawVerticalLine(x1, y1, y2, red, green, blue) {
-            red = this.uint8ClampedColor(red);
-            green = this.uint8ClampedColor(green);
-            blue = this.uint8ClampedColor(blue);
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = this.imgData.data;
-            x1 = (x1 >= destW) ? (destW - 1) : (x1 < 0) ? 0 : x1;
-            y1 = (y1 >= destH) ? (destH - 1) : (y1 < 0) ? 0 : y1;
-            y2 = (y2 >= destH) ? (destH - 1) : (y2 < 0) ? 0 : y2;
-            for (let y = y1; y <= y2; y += 1) {
-                let destIndex = ((destW * y) + x1) * 4;
-                destData[destIndex] = red;
-                destData[destIndex + 1] = green;
-                destData[destIndex + 2] = blue;
-                destData[destIndex + 3] = 255;
-            }
-        }
-        drawHorizontalLine(x1, y1, x2, red, green, blue) {
-            red = this.uint8ClampedColor(red);
-            green = this.uint8ClampedColor(green);
-            blue = this.uint8ClampedColor(blue);
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = this.imgData.data;
-            x1 = (x1 >= destW) ? (destW - 1) : (x1 < 0) ? 0 : x1;
-            y1 = (y1 >= destH) ? (destH - 1) : (y1 < 0) ? 0 : y1;
-            x2 = (x2 >= destW) ? (destW - 1) : (x2 < 0) ? 0 : x2;
-            for (let x = x1; x <= x2; x += 1) {
-                let destIndex = ((destW * y1) + x) * 4;
-                destData[destIndex] = red;
-                destData[destIndex + 1] = green;
-                destData[destIndex + 2] = blue;
-                destData[destIndex + 3] = 255;
-            }
-        }
-        /** copy a mask frame to the display */
-        drawMask(mask, posX, posY) {
-            let srcW = mask.width;
-            let srcH = mask.height;
-            let srcMask = mask.getMask();
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = new Uint32Array(this.imgData.data.buffer);
-            let destX = posX + mask.offsetX;
-            let destY = posY + mask.offsetY;
-            for (let y = 0; y < srcH; y++) {
-                let outY = y + destY;
-                if ((outY < 0) || (outY >= destH))
-                    continue;
-                for (let x = 0; x < srcW; x++) {
-                    let srcIndex = ((srcW * y) + x);
-                    /// ignore transparent pixels
-                    if (srcMask[srcIndex] == 0)
-                        continue;
-                    let outX = x + destX;
-                    if ((outX < 0) || (outX >= destW))
-                        continue;
-                    let destIndex = ((destW * outY) + outX);
-                    destData[destIndex] = 0xFFFFFFFF;
-                }
-            }
-        }
-        /** copy a frame to the display - transparent color is changed to (r,g,b) */
-        drawFrameCovered(frame, posX, posY, red, green, blue) {
-            let srcW = frame.width;
-            let srcH = frame.height;
-            let srcBuffer = frame.getBuffer();
-            let srcMask = frame.getMask();
-            let nullCollor = 0xFF << 24 | blue << 16 | green << 8 | red;
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = new Uint32Array(this.imgData.data.buffer);
-            let destX = posX + frame.offsetX;
-            let destY = posY + frame.offsetY;
-            red = this.uint8ClampedColor(red);
-            green = this.uint8ClampedColor(green);
-            blue = this.uint8ClampedColor(blue);
-            for (let y = 0; y < srcH; y++) {
-                let outY = y + destY;
-                if ((outY < 0) || (outY >= destH))
-                    continue;
-                for (let x = 0; x < srcW; x++) {
-                    let srcIndex = ((srcW * y) + x);
-                    let outX = x + destX;
-                    if ((outX < 0) || (outX >= destW))
-                        continue;
-                    let destIndex = ((destW * outY) + outX);
-                    if (srcMask[srcIndex] == 0) {
-                        /// transparent pixel
-                        destData[destIndex] = nullCollor;
-                    } else {
-                        destData[destIndex] = srcBuffer[srcIndex];
-                    }
-                }
-            }
-        }
-        /** copy a frame to the display */
-        drawFrame(frame, posX, posY) {
-            let srcW = frame.width;
-            let srcH = frame.height;
-            let srcBuffer = frame.getBuffer();
-            let srcMask = frame.getMask();
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = new Uint32Array(this.imgData.data.buffer);
-            let destX = posX + frame.offsetX;
-            let destY = posY + frame.offsetY;
-            for (let y = 0; y < srcH; y++) {
-                let outY = y + destY;
-                if ((outY < 0) || (outY >= destH))
-                    continue;
-                for (let x = 0; x < srcW; x++) {
-                    let srcIndex = ((srcW * y) + x);
-                    /// ignore transparent pixels
-                    if (srcMask[srcIndex] == 0)
-                        continue;
-                    let outX = x + destX;
-                    if ((outX < 0) || (outX >= destW))
-                        continue;
-                    let destIndex = ((destW * outY) + outX);
-                    destData[destIndex] = srcBuffer[srcIndex];
-                }
-            }
-        }
-        /** copy a frame to the display */
-        drawFrameFlags(frame, posX, posY, destConfig) {
-            let srcW = frame.width;
-            let srcH = frame.height;
-            let srcBuffer = frame.getBuffer();
-            let srcMask = frame.getMask();
-            let destW = this.imgData.width;
-            let destH = this.imgData.height;
-            let destData = new Uint32Array(this.imgData.data.buffer);
-            let destX = posX + frame.offsetX;
-            let destY = posY + frame.offsetY;
-            var upsideDown = destConfig.isUpsideDown;
-            var noOverwrite = destConfig.noOverwrite;
-            var onlyOverwrite = destConfig.onlyOverwrite;
-            var mask = this.groundMask;
-            for (let srcY = 0; srcY < srcH; srcY++) {
-                let outY = srcY + destY;
-                if ((outY < 0) || (outY >= destH))
-                    continue;
-                for (let srcX = 0; srcX < srcW; srcX++) {
-                    let sourceY = upsideDown ? (srcH - srcY - 1) : srcY;
-                    let srcIndex = ((srcW * sourceY) + srcX);
-                    /// ignore transparent pixels
-                    if (srcMask[srcIndex] == 0)
-                        continue;
-                    let outX = srcX + destX;
-                    if ((outX < 0) || (outX >= destW))
-                        continue;
-                    /// check flags
-                    if (noOverwrite) {
-                        if (mask.hasGroundAt(outX, outY))
-                            continue;
-                    }
-                    if (onlyOverwrite) {
-                        if (!mask.hasGroundAt(outX, outY))
-                            continue;
-                    }
-                    /// draw
-                    let destIndex = ((destW * outY) + outX);
-                    destData[destIndex] = srcBuffer[srcIndex];
-                }
-            }
-        }
-        setDebugPixel(x, y) {
-            let pointIndex = (this.imgData.width * (y) + x) * 4;
-            this.imgData.data[pointIndex] = 255;
-            this.imgData.data[pointIndex + 1] = 0;
-            this.imgData.data[pointIndex + 2] = 0;
-        }
-        setPixel(x, y, r, g, b) {
-            let pointIndex = (this.imgData.width * (y) + x) * 4;
-            this.imgData.data[pointIndex] = r;
-            this.imgData.data[pointIndex + 1] = g;
-            this.imgData.data[pointIndex + 2] = b;
-        }
-        setScreenPosition(x, y) {
-            this.stage.setGameViewPointPosition(x, y);
-        }
-        getImageData() {
-            return this.imgData;
-        }
-        redraw() {
-            this.stage.redraw();
+    constructor(stage) {
+        this.stage = stage;
+        this.onMouseUp = new Lemmings.EventHandler();
+        this.onMouseDown = new Lemmings.EventHandler();
+        this.onMouseMove = new Lemmings.EventHandler();
+        this.onDoubleClick = new Lemmings.EventHandler();
+        // 32‑bit view reused everywhere; set by initSize()
+        this.buffer32 = null;
+        this.onMouseDown.on(e => {
+            // this.setDebugPixel(e.x, e.y);
+        });
+    }
+
+    /* ---------- image helpers ---------- */
+    getWidth()  { return this.imgData?.width  ?? 0; }
+    getHeight() { return this.imgData?.height ?? 0; }
+
+    /** (Re)allocate the backing ImageData + uint32 view. */
+    initSize(width, height) {
+        if (!this.imgData || this.imgData.width !== width || this.imgData.height !== height) {
+            this.imgData  = this.stage.createImage(this, width, height);
+            // Single 32‑bit view that aliases the same buffer – no copying.
+            this.buffer32 = new Uint32Array(this.imgData.data.buffer);
+            this.clear();
         }
     }
-    Lemmings.DisplayImage = DisplayImage;
 
+    /** Fast clear using .fill() on the uint32 view (default: ARGB 0xFF00FF00). */
+    clear(color = 0xFF00FF00) {
+        this.buffer32?.fill(color);
+    }
+
+    /** Bulk background copy – copy 32‑bit words where possible. */
+    setBackground(groundImage, groundMask = null) {
+        if (groundImage instanceof Uint8ClampedArray) {
+            // Uint8 – copy bytes directly.
+            this.imgData.data.set(groundImage);
+        } else if (groundImage instanceof Uint32Array) {
+            // Faster 32‑bit path.
+            this.buffer32.set(groundImage);
+        } else {
+            // Fallback (ArrayLike)
+            this.imgData.data.set(groundImage);
+        }
+        this.groundMask = groundMask;
+    }
+
+    // Clamp helper (kept tiny & inline‑able by V8)
+    #clamp8 = v => v & 0xFF;
+
+    /* ---------- primitive drawing ---------- */
+    /** Draw rectangle outline */
+    drawRect(x, y, width, height, r, g, b) {
+        const x2 = x + width;
+        const y2 = y + height;
+        this.drawHorizontalLine(x, y,  x2, r, g, b);
+        this.drawHorizontalLine(x, y2, x2, r, g, b);
+        this.drawVerticalLine(  x,  y,  y2, r, g, b);
+        this.drawVerticalLine( x2,  y,  y2, r, g, b);
+    }
+
+    /** Vertical 1‑px line (uses uint32 writes) */
+    drawVerticalLine(x, y1, y2, r, g, b) {
+        if (!this.buffer32) return;
+        const { width: w, height: h } = this.imgData;
+        x  = Math.min(Math.max(x,  0), w - 1);
+        y1 = Math.min(Math.max(y1, 0), h - 1);
+        y2 = Math.min(Math.max(y2, 0), h - 1);
+        if (y2 < y1) [y1, y2] = [y2, y1];
+        const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
+        let idx = y1 * w + x;
+        for (let y = y1; y <= y2; y++, idx += w) this.buffer32[idx] = color32;
+    }
+
+    /** Horizontal 1‑px line (uint32 writes) */
+    drawHorizontalLine(x1, y, x2, r, g, b) {
+        if (!this.buffer32) return;
+        const { width: w, height: h } = this.imgData;
+        y  = Math.min(Math.max(y,  0), h - 1);
+        x1 = Math.min(Math.max(x1, 0), w - 1);
+        x2 = Math.min(Math.max(x2, 0), w - 1);
+        if (x2 < x1) [x1, x2] = [x2, x1];
+        const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
+        let idx = y * w + x1;
+        for (let x = x1; x <= x2; x++, idx++) this.buffer32[idx] = color32;
+    }
+
+    /* ---------- blitting helpers ---------- */
+    /** Write sprite mask (white) */
+    drawMask(mask, posX, posY) {
+        if (!this.buffer32) return;
+        const srcW = mask.width, srcH = mask.height,
+              srcMask = mask.getMask(),
+              destW = this.imgData.width, destH = this.imgData.height,
+              baseX = posX + mask.offsetX, baseY = posY + mask.offsetY,
+              WHITE = 0xFFFFFFFF;
+        for (let srcY = 0; srcY < srcH; srcY++) {
+            const outY = srcY + baseY;
+            if (outY < 0 || outY >= destH) continue;
+            let srcRow = srcY * srcW, destRow = outY * destW + baseX;
+            for (let srcX = 0; srcX < srcW; srcX++, srcRow++, destRow++) {
+                if (!srcMask[srcRow]) continue;
+                const outX = srcX + baseX;
+                if (outX < 0 || outX >= destW) continue; // x‑clip
+                this.buffer32[destRow] = WHITE;
+            }
+        }
+    }
+
+    /** Generic blitter helper used by drawFrame & drawFrameCovered */
+    #blit(frame, posX, posY, opts) {
+        const { width: srcW, height: srcH } = frame,
+              srcBuf = frame.getBuffer(),
+              srcMask = frame.getMask(),
+              destW = this.imgData.width, destH = this.imgData.height,
+              baseX = posX + frame.offsetX, baseY = posY + frame.offsetY,
+              dest32 = this.buffer32;
+        const {
+            nullColor32 = null,
+            checkGround   = false,
+            onlyOverwrite = false,
+            noOverwrite   = false,
+            upsideDown    = false,
+            groundMask    = null
+        } = opts ?? {};
+        
+        for (let sy = 0; sy < srcH; sy++) {
+            const sourceY = upsideDown ? srcH - sy - 1 : sy;
+            const outY = sy + baseY;
+            if (outY < 0 || outY >= destH) continue;
+            let srcRow = sourceY * srcW;
+            let destRow = outY * destW + baseX;
+            for (let sx = 0; sx < srcW; sx++, srcRow++, destRow++) {
+                if (!srcMask[srcRow]) {
+                    if (nullColor32 !== null) dest32[destRow] = nullColor32; // covered variant
+                    continue;
+                }
+                const outX = sx + baseX;
+                if (outX < 0 || outX >= destW) continue;
+                if (checkGround) {
+                    const hasGround = groundMask?.hasGroundAt(outX, outY);
+                    if (noOverwrite && hasGround)      continue;
+                    if (onlyOverwrite && !hasGround)   continue;
+                }
+                dest32[destRow] = srcBuf[srcRow];
+            }
+        }
+    }
+
+    drawFrame(frame, x, y) {
+        this.#blit(frame, x, y);
+    }
+
+    drawFrameCovered(frame, x, y, r, g, b) {
+        const nullColor32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
+        this.#blit(frame, x, y, { nullColor32 });
+    }
+
+    drawFrameFlags(frame, x, y, cfg) {
+        this.#blit(frame, x, y, {
+            checkGround:   true,
+            onlyOverwrite: cfg.onlyOverwrite,
+            noOverwrite:   cfg.noOverwrite,
+            upsideDown:    cfg.isUpsideDown,
+            groundMask:    this.groundMask
+        });
+    }
+
+    /* ---------- misc utilities ---------- */
+    setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFFFF0000; }
+
+    setPixel(x,y,r,g,b) {
+        if (!this.buffer32) return;
+        this.buffer32[y * this.imgData.width + x] = 0xFF000000 | (b&0xFF)<<16 | (g&0xFF)<<8 | (r&0xFF);
+    }
+
+    setScreenPosition(x, y) { this.stage.setGameViewPointPosition(x, y); }
+    getImageData()         { return this.imgData;  }
+    redraw()               { this.stage.redraw();   }
+}
+Lemmings.DisplayImage = DisplayImage;
 export { DisplayImage };

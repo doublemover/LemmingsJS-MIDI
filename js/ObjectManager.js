@@ -11,7 +11,7 @@ class ObjectManager {
             let tick = this.gameTimer.getGameTicks();
             for (let i = 0; i < objs.length; i++) {
                 let obj = objs[i];
-                gameDisplay.drawFrameFlags(obj.animation.getFrame(tick), obj.x, obj.y, obj.drawProperties);
+                gameDisplay.drawFrameFlags(obj.animation.getFrame(tick+1), obj.x, obj.y, obj.drawProperties);
             }
         }
         /** add map objects to manager */

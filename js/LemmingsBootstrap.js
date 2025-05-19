@@ -11,6 +11,7 @@ import './ActionExitingSystem.js';
 import './ActionExplodingSystem.js';
 import './ActionFallSystem.js';
 import './ActionFloatingSystem.js';
+import './ActionFryingSystem.js';
 import './ActionHoistSystem.js';
 import './ActionJumpSystem.js';
 import './ActionMineSystem.js';
