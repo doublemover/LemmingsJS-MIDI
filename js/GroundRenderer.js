@@ -1,50 +1,70 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class GroundRenderer {
-        constructor() {}
-        createVgaspecMap(lr, vr) {
-            this.img = vr.img;
-        }
-        /** create the ground image from the level definition and the Terrain images */
-        createGroundMap(lr, terrarImg) {
-            this.img = new Lemmings.Frame(lr.levelWidth, lr.levelHeight);
-            let terrarObjects = lr.terrains;
-            for (let i = 0; i < terrarObjects.length; i++) {
-                let tOb = terrarObjects[i];
-                this.copyImageTo(terrarImg[tOb.id], tOb);
-            }
-        }
-        /** copy a terrain image to the ground */
-        copyImageTo(srcImg, destConfig, frameIndex = 0) {
-            if (!srcImg)
-                return;
-            var pixBuf = srcImg.frames[frameIndex];
-            var w = srcImg.width;
-            var h = srcImg.height;
-            var pal = srcImg.palette;
-            var destX = destConfig.x;
-            var destY = destConfig.y;
-            var upsideDown = destConfig.drawProperties.isUpsideDown;
-            var noOverwrite = destConfig.drawProperties.noOverwrite;
-            var isErase = destConfig.drawProperties.isErase;
-            var onlyOverwrite = destConfig.drawProperties.onlyOverwrite;
-            for (var y = 0; y < h; y++) {
-                for (var x = 0; x < w; x++) {
-                    let sourceY = upsideDown ? (h - y - 1) : y;
-                    /// read source color index
-                    let colorIndex = pixBuf[sourceY * w + x];
-                    /// ignore transparent pixels
-                    if ((colorIndex & 0x80) != 0)
-                        continue;
-                    if (isErase) {
-                        this.img.clearPixel(x + destX, y + destY);
-                    } else {
-                        this.img.setPixel(x + destX, y + destY, pal.getColor(colorIndex), noOverwrite, onlyOverwrite);
-                    }
-                }
-            }
-        }
-    }
-    Lemmings.GroundRenderer = GroundRenderer;
+  constructor () {}
 
+  /** VGA‑spec levels reuse the pre‑decoded frame */
+  createVgaspecMap (levelReader, vgaRenderer) {
+    this.img = vgaRenderer.img;
+  }
+
+  /** Build ground bitmap once per level */
+  createGroundMap (levelReader, terrainImages) {
+    const { levelWidth, levelHeight, terrains } = levelReader;
+    this.img = new Lemmings.Frame(levelWidth, levelHeight);
+
+    for (let i = 0, len = terrains.length; i < len; ++i) {
+      const tObj = terrains[i];
+      this.#blit(terrainImages[tObj.id], tObj);
+    }
+  }
+
+  #blit (srcImg, cfg, frameIdx = 0) {
+    if (!srcImg) return;
+
+    const pix  = srcImg.frames[frameIdx];
+    const w    = srcImg.width | 0;
+    const h    = srcImg.height | 0;
+    const pal  = srcImg.palette;
+
+    const destX = cfg.x | 0;
+    const destY = cfg.y | 0;
+
+    const { isUpsideDown, noOverwrite, isErase, onlyOverwrite } = cfg.drawProperties;
+    const img = this.img;
+
+    // Up–down variant chosen once, so the inner loop has zero branches
+    if (isUpsideDown) {
+      for (let y = 0; y < h; ++y) {
+        const srcRow = (h - 1 - y) * w;
+        const dy = y + destY;
+        for (let x = 0; x < w; ++x) {
+          const ci = pix[srcRow + x];
+          if (ci & 0x80) continue;             // transparent
+          if (isErase) {
+            img.clearPixel(x + destX, dy);
+          } else {
+            img.setPixel(x + destX, dy, pal.getColor(ci), noOverwrite, onlyOverwrite);
+          }
+        }
+      }
+    } else {
+      for (let y = 0; y < h; ++y) {
+        const srcRow = y * w;
+        const dy = y + destY;
+        for (let x = 0; x < w; ++x) {
+          const ci = pix[srcRow + x];
+          if (ci & 0x80) continue;
+          if (isErase) {
+            img.clearPixel(x + destX, dy);
+          } else {
+            img.setPixel(x + destX, dy, pal.getColor(ci), noOverwrite, onlyOverwrite);
+          }
+        }
+      }
+    }
+  }
+}
+
+Lemmings.GroundRenderer = GroundRenderer;
 export { GroundRenderer };

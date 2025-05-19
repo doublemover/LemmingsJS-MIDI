@@ -2,9 +2,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class StageImageProperties {
         constructor() {
-            /** X position to display this Image */
             this.x = 0;
-            /** Y position to display this Image */
             this.y = 0;
             this.width = 0;
             this.height = 0;
@@ -15,7 +13,7 @@ class StageImageProperties {
             this.cav = document.createElement('canvas');
             this.cav.width = width;
             this.cav.height = height;
-            this.ctx = this.cav.getContext("2d");
+            this.ctx = this.cav.getContext("2d", { alpha: false });
             return this.ctx.createImageData(width, height);
         }
     }

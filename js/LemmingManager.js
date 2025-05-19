@@ -33,6 +33,7 @@ class LemmingManager {
             this.actions[Lemmings.LemmingStateType.OHNO] = new Lemmings.ActionOhNoSystem(lemmingsSprite);
             this.actions[Lemmings.LemmingStateType.SPLATTING] = new Lemmings.ActionSplatterSystem(lemmingsSprite);
             this.actions[Lemmings.LemmingStateType.DROWNING] = new Lemmings.ActionDrowningSystem(lemmingsSprite);
+            this.actions[Lemmings.LemmingStateType.FRYING] = new Lemmings.ActionFryingSystem(lemmingsSprite);
             this.skillActions[Lemmings.SkillTypes.DIGGER] = this.actions[Lemmings.LemmingStateType.DIGGING];
             this.skillActions[Lemmings.SkillTypes.FLOATER] = this.actions[Lemmings.LemmingStateType.FLOATING];
             this.skillActions[Lemmings.SkillTypes.BLOCKER] = this.actions[Lemmings.LemmingStateType.BLOCKING];
@@ -117,6 +118,8 @@ class LemmingManager {
                 return Lemmings.LemmingStateType.EXITING;
             case Lemmings.TriggerTypes.KILL:
                 return Lemmings.LemmingStateType.SPLATTING;
+            case Lemmings.TriggerTypes.FRYING:
+                return Lemmings.LemmingStateType.FRYING;
             case Lemmings.TriggerTypes.TRAP:
                 return Lemmings.LemmingStateType.SPLATTING;
             case Lemmings.TriggerTypes.BLOCKER_LEFT:

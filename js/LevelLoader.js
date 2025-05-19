@@ -70,7 +70,7 @@ class LevelLoader {
                             render.createVgaspecMap(levelReader, VGASpecReader);
                         } else {
                             /// this is a normal map background
-                            render.createGroundMap(levelReader, groundReader.getTerraImages());
+                            render.createGroundMap(levelReader, groundReader.getTerrainImages());
                         }
                         level.setGroundImage(render.img.getData());
                         level.setGroundMaskLayer(new Lemmings.SolidLayer(level.width, level.height, render.img.mask));

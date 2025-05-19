@@ -6,19 +6,22 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## New Features
   - Speed Management
-    - The "button" to the right of Nuke (yellow squiggle) slows down the game by 1 (to a minimum of 1, the default speed)
+    - The "button" to the right of Nuke (not visible) slows down the game by 1 (to a minimum of 1, the default speed)
     - The next button (not visible) speeds the game up by 1 (to a maximum of 10)
     - The button after that (also not visible) resets the game speed to 1
     - The final button (still invisible) toggles the game's debug output (noisy console, red dots denoting lemming position, boxes denoting triggers and steel)
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
-  - Steel Ground should be faithful to the original implementation
+  - The frying animation plays when lemmings step into fire pit or flamethrower triggers
+  - Steel Ground almost faithful to the original implementation
     - Added purple rectangles to display ranges of steel when debugging is enabled
-  - Minimap renders
-    - Terrain, entrances (green), and exits (blue) are visible.
-    - Dots (yellow) update with lemming locations every 10 ticks.
-    - Lemming deaths are indicated by a dot (red) that flashes 4 times
-    - Viewport box 
+  - Minimap
+    - Enhanced visibility: Reads ground mask at full res, accumulates result into minimap res
+    - Terrain, entrances, and exits are visible
+    - Dots update with lemming locations
+    - Lemming deaths are indicated by a dot that flashes 4 times
+    - Viewport box
+    - Precomputed terrain with invalidation, prebuilt pallete, flattened uint8array to eliminate loop allocations ~(6.4x speedup)
   - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode for one level
 
 ### Fixed Bugs
@@ -28,56 +31,68 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Bombers exploding after falling into traps
   - Explosion sprite misalignment
   - Arrow Wall animations
+  - Prevent wasted actions on falling lemmings (only floater, climber, builder, and bomber can be applied)
+  - Prevent redundant actions (cannot re-apply basher, blocker, digger, or miner)
   - Various crashes and performance issues
   - Removed unfinished sound/music functionality
   - Split the codebase up into modules to aid with refactoring
 
 ## Progress
   - Everything above
-  - [ ] Minimap enhancements
-    - [ ] Indicate lemming deaths
-      - [X] Splat
-      - [X] Drowning
-      - [ ] Frying?
-      - [X] Exploding
-      - [X] Falling
-        - [ ] Had to manually add a -12px offset to their location when sending it to deathdots, need to fix minimap view rect or change draw order
-      - [ ] Check other traps
     - [ ] Click on minimap to change view position
-    - [ ] Optimize rendering
-  - [ ] Frying death does not have animations set up
+    - [ ] Minimap viewport freezes on pause
   - [ ] MIDI Manager
     - [X] WebMIDI Error Display
     - [X] List Input & Output devices in select elements
     - [ ] Channel selection
     - [ ] I/O Display
 
+(The a-b-c numbers are version-difficulty-level addresses) 
 ## Roadmap
-- [ ] Entrance animation is bugged, can briefly see frames flash in the wrong order
+- [ ] What is a super lemming
+- [ ] Steel still wrong
+  - [ ] 2-3-1
+- [ ] What's up with the water randomly off to the side
+  - [ ] 1-1-21
+  - [ ] 2-4-12
+- [ ] Misaligned bubbles on 2-3-1
 - [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
+- [ ] There is commented out code to render the minimap in full color
 - [ ] Traps
-  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps, I remember these closing more slowly and hoisting then turning lemmings around instead of turbo crushing
-  - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some (1-4-30)
-    - [ ] Particles being left behind by trap (2-2-1)
-    - [ ] Left trap needs mirrored? (2-1-7)
+  - [ ] Is there a pallete swapped freeze animation
+    - [ ] 2-2-9
+  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps
+  - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some
+    - [ ] 1-4-30
+    - [ ] Left trap needs mirrored?
+      - [ ] 2-1-7
       - [ ] Debug function update to reflect intended orientation
+  - [ ] TriggerManager seems like it's doing a lot of extra work for no reason
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
-  - [ ] Add y to gui events 
+  - [X] Add y to gui events 
   - [ ] Speed up/Slow down/Reset speed buttons
   - [ ] Speed indicator
   - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Bombs
   - [X] Bombers do not harm other lemmings
-    - [X] Added a function in lemmingManager that returns all lemmings within the offset bounds of a given mask at x,y anyways
+  - [X] Added a function in lemmingManager that returns all lemmings within the offset bounds of a given mask at x,y anyways
       - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
+    - [ ] Write steel to second backgroundLayer?
 - [ ] Arrow Walls
   - [ ] Need triggers
 - [ ] Various bullshit
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
+  - [ ] If you go through enough levels at some point it starts flashing other levels underneath it, it's probably doing everything twice
+  - [ ] I've managed to make the game lock up exactly once while dragging back and forth as fast as i could repeatedly and I cannot reproduce it
+  - [ ] Can't go back to version 1 by clicking back on the start of version 2
+  - [ ] Can apply actions on splatting lemmings?
+  - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
+  - [ ] keyboard controls
+  - [ ] clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
 
 ## Things I need to look at
 - [ ] Source some form of level editor

@@ -2,7 +2,9 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class LemmingsSprite {
         constructor(fr, colorPalette) {
-            this.lemmingAnimation = []; //- Lookup table from ActionType -> this.animations(); First Element: left-move, Second: right-move
+            //- Lookup table from ActionType -> this.animations();
+            // First Element: left-move, Second: right-move
+            this.lemmingAnimation = [];  
             this.colorPalette = colorPalette;
             this.registerAnimation(Lemmings.SpriteTypes.WALKING, 1, fr, 2, 16, 10, -8, -10, 8); //- walking (r)
             this.registerAnimation(Lemmings.SpriteTypes.JUMPING, 1, fr, 2, 16, 10, -8, -10, 1); //- jumping (r)

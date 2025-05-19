@@ -98,7 +98,7 @@ class Stage {
             return Math.min(Math.max(minLimit, value), useMax);
         }
         updateStageSize() {
-            let ctx = this.stageCav.getContext("2d");
+            let ctx = this.stageCav.getContext("2d", { alpha: false });
             let stageHeight = ctx.canvas.height;
             let stageWidth = ctx.canvas.width;
             this.gameImgProps.y = 0;
@@ -156,7 +156,7 @@ class Stage {
         }
         /** clear the stage/display/output */
         clear(stageImage) {
-            var ctx = this.stageCav.getContext("2d");
+            var ctx = this.stageCav.getContext("2d", { alpha: false });
             ctx.fillStyle = "#000000";
             if (stageImage == null) {
                 ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -186,7 +186,7 @@ class Stage {
                 return;
             /// write image to context
             display.ctx.putImageData(img, 0, 0);
-            let ctx = this.stageCav.getContext("2d");
+            let ctx = this.stageCav.getContext("2d", { alpha: false });
             //@ts-ignore
             ctx.mozImageSmoothingEnabled = false;
             //@ts-ignore
