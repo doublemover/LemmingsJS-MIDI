@@ -222,7 +222,23 @@ class LemmingManager {
                 return false;
             }
 
+            const canApplyWhileFalling = {
+                [Lemmings.SkillTypes.FLOATER] : Lemmings.ActionFloatingSystem,
+                [Lemmings.SkillTypes.CLIMBER]  : Lemmings.ActionClimbSystem,
+                [Lemmings.SkillTypes.BOMBER]   : this.skillActions[Lemmings.SkillTypes.BOMBER],
+                [Lemmings.SkillTypes.BUILDER] : Lemmings.ActionBuildSystem
+            };
+
+            // if the lemming is falling
+            if (lem.action == this.actions[Lemmings.LemmingStateType.FALLING]) {
+                // only apply float/climb/build/bomb, prevents wasted actions
+                if (!canApplyWhileFalling[skillType]) {
+                    return false;
+                }
+            }
+
             const redundant = {
+                [Lemmings.SkillTypes.BASHER] : Lemmings.ActionBashSystem,
                 [Lemmings.SkillTypes.BLOCKER] : Lemmings.ActionBlockerSystem,
                 [Lemmings.SkillTypes.DIGGER]  : Lemmings.ActionDiggSystem,
                 [Lemmings.SkillTypes.MINER]   : Lemmings.ActionMineSystem
