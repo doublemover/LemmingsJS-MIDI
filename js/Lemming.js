@@ -1,15 +1,14 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class Lemming {
-        constructor(x, y, id) {
-            this.x = 0;
-            this.y = 0;
+        constructor(x = 0, y = 0, id) {
             this.lookRight = true;
             this.frameIndex = 0;
             this.canClimb = false;
             this.hasParachute = false;
             this.removed = false;
             this.countdown = 0;
+            this.action = 0;
             this.state = 0;
             this.disabled = false;
             this.x = x;
