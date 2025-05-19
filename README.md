@@ -40,7 +40,9 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [X] Drowning
       - [ ] Frying?
       - [X] Exploding
-      - [ ] Other traps?
+      - [X] Falling
+        - [ ] Had to manually add a -12px offset to their location when sending it to deathdots, need to fix minimap view rect or change draw order
+      - [ ] Check other traps
     - [ ] Click on minimap to change view position
     - [ ] Optimize rendering
   - [ ] Frying death does not have animations set up
@@ -66,7 +68,9 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Speed indicator
   - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Bombs
-  - [ ] I think these are supposed to kill other lemmings (12px)
+  - [X] Bombers do not harm other lemmings
+    - [X] Added a function in lemmingManager that returns all lemmings within the offset bounds of a given mask at x,y anyways
+      - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
 - [ ] Arrow Walls
   - [ ] Need triggers
