@@ -39,35 +39,41 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## Progress
   - Everything above
-    - [ ] Click on minimap to change view position
-    - [ ] Minimap viewport freezes on pause
+  - [ ] Super lemmings act twice per tick
+  - [ ] Steel still wrong
+    - [ ] Think its missing negative offsets
+      - [ ] 2-3-1
+  - [ ] Arrow Walls
+    - [ ] Left, Right, and Down
+    - [ ] Need masks
+    - [ ] Basher/Miner treat it as steel
+    - [ ] Down opposes from either side
+  - [ ] Traps
+    - [ ] Squish is missing
+    - [ ] "Generic Trap" just vanishes em
+    - [ ] Cooldown
+  - [ ] Super lemmings act twice per tick
   - [ ] MIDI Manager
-    - [X] WebMIDI Error Display
-    - [X] List Input & Output devices in select elements
-    - [ ] Channel selection
-    - [ ] I/O Display
+  - [X] WebMIDI Error Display
+  - [X] List Input & Output devices in select elements
+  - [ ] Channel selection
+  - [ ] I/O Display
 
 (The a-b-c numbers are version-difficulty-level addresses) 
 ## Roadmap
-- [ ] What is a super lemming
-- [ ] Steel still wrong
-  - [ ] 2-3-1
-- [ ] What's up with the water randomly off to the side
-  - [ ] 1-1-21
-  - [ ] 2-4-12
-- [ ] Misaligned bubbles on 2-3-1
-- [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
-- [ ] There is commented out code to render the minimap in full color
-- [ ] Traps
-  - [ ] Is there a pallete swapped freeze animation
+- [ ] Click on minimap to change view position
+- [ ] Minimap viewport freezes on pause
+- [X] The water randomly off to the side on 1-1-12 is supposed to be there,
+- [X] Is there a pallete swapped freeze animation
+  - [X] No, it was introduced in Lemmings 2
+    - [ ] Make one anyways 
     - [ ] 2-2-9
-  - [ ] I don't think the cooldown/reactivation delay is functioning correctly on traps
-  - [ ] Traps are correctly placed but there seems to be a delay for when Lemmings are splatted on some
     - [ ] 1-4-30
     - [ ] Left trap needs mirrored?
       - [ ] 2-1-7
       - [ ] Debug function update to reflect intended orientation
   - [ ] TriggerManager seems like it's doing a lot of extra work for no reason
+- [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
   - [X] Add y to gui events 
@@ -80,8 +86,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
     - [ ] Write steel to second backgroundLayer?
-- [ ] Arrow Walls
-  - [ ] Need triggers
 - [ ] Various bullshit
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
