@@ -5,7 +5,7 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https://doublemover.github.io/LemmingsJS-MIDI/)
 
 ## New Features
-  - Speed Management
+  - Speed Management & Debug toggle
     - The "button" to the right of Nuke (not visible) slows down the game by 1 (to a minimum of 1, the default speed)
     - The next button (not visible) speeds the game up by 1 (to a maximum of 10)
     - The button after that (also not visible) resets the game speed to 1
