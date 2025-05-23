@@ -2,7 +2,6 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class Trigger {
         constructor(type, x1, y1, x2, y2, disableTicksCount = 0, soundIndex = -1, owner = null) {
-            this.owner = null;
             this.x1 = 0;
             this.y1 = 0;
             this.x2 = 0;
