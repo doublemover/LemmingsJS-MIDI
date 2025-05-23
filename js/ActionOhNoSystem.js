@@ -12,18 +12,18 @@ class ActionOhNoSystem {
         }
         /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
-            let frame = this.sprite.getFrame(lem.frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
             if (lem.frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
             }
         }
         process(level, lem) {
-            lem.frameIndex++;
-            if (lem.frameIndex == 16) {
-                // play sound: explosion
+            
+            if (++lem.frameIndex == 16) {
                 return Lemmings.LemmingStateType.EXPLODING;
             }
+            
             // fall down!
             for (let i = 0; i < 3; i++) {
                 if (!level.hasGroundAt(lem.x, lem.y + 1)) {

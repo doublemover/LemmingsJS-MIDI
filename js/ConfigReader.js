@@ -27,8 +27,9 @@ class ConfigReader {
         /** pars the config file */
         parseConfig(jsonData) {
             let gameConfigs = [];
+            let config = null;
             try {
-                var config = JSON.parse(jsonData);
+                config = JSON.parse(jsonData);
             } catch (e) {
                 this.log.log("Unable to parse config", e);
                 return gameConfigs;
@@ -37,9 +38,9 @@ class ConfigReader {
             for (let c = 0; c < config.length; c++) {
                 let newConfig = new Lemmings.GameConfig();
                 let configData = config[c];
-                newConfig.name = configData["name"];
-                newConfig.path = configData["path"];
-                newConfig.gametype = Lemmings.GameTypes[configData["gametype"]];
+                newConfig.name = configData.name;
+                newConfig.path = configData.path;
+                newConfig.gametype = Lemmings.GameTypes[configData.gametype];
                 /// read level config
                 if (configData["level.useoddtable"] != null) {
                     newConfig.level.useOddTable = (!!configData["level.useoddtable"]);

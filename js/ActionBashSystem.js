@@ -2,12 +2,14 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionBashSystem {
         constructor(sprites, masks) {
-            this.sprite = [];
-            this.masks = [];
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.BASHING, false));
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.BASHING, true));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.BASHING_L));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.BASHING_R));
+        this.sprite = [
+            sprites.getAnimation(Lemmings.SpriteTypes.BASHING, false),
+            sprites.getAnimation(Lemmings.SpriteTypes.BASHING, true),
+        ];
+        this.masks = [
+            masks.GetMask(Lemmings.MaskTypes.BASHING_L),
+            masks.GetMask(Lemmings.MaskTypes.BASHING_R),
+        ];
         }
         getActionName() {
             return "bashing";
@@ -19,30 +21,28 @@ class ActionBashSystem {
         }
         /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
-            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
-            let frame = ani.getFrame(lem.frameIndex);
+            const frame = this.sprite[lem.lookRight ? 1 : 0].getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         process(level, lem) {
-            let groundMask = level.getGroundMaskLayer();
+            const groundMask = level.getGroundMaskLayer();
             lem.frameIndex++;
-            let state = lem.frameIndex % 16;
-            /// move lemming
+            const state = lem.frameIndex % 16;
+            // move lemming
             if (state > 10) {
                 lem.x += (lem.lookRight ? 1 : -1);
-                let yDelta = this.findGapDelta(groundMask, lem.x, lem.y);
+                const yDelta = this.findGapDelta(groundMask, lem.x, lem.y);
                 lem.y += yDelta;
                 if (yDelta == 3) {
                     return Lemmings.LemmingStateType.FALLING;
                 }
             }
-            /// apply mask
+            // apply mask
             if ((state > 1) && (state < 6)) {
-                let mask = this.masks[lem.lookRight ? 1 : 0];
-                let maskIndex = state - 2;
-                let subMask   = mask.GetMask(maskIndex);
+                const subMask   = this.masks[lem.lookRight ? 1 : 0].GetMask(state - 2);
                 if (state === 3) {
-                    if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+                    if (level.hasSteelUnderMask(subMask, lem.x, lem.y) ||
+                        level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
                         return Lemmings.LemmingStateType.SHRUG;
                     }
                 }

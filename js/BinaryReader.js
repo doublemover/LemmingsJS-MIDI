@@ -1,9 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class BinaryReader {
-        constructor(dataArray, offset = 0, length, filename = "[unknown]") {
+        constructor(dataArray, offset = 0, length, filename = "[unknown]", foldername = "[unknown]") {
             this.log = new Lemmings.LogHandler("BinaryReader");
             this.filename = filename;
+            this.foldername = foldername;
             if (offset == null)
                 offset = 0;
             let dataLength = 0;

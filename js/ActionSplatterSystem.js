@@ -11,19 +11,15 @@ class ActionSplatterSystem {
             return false;
         }
         draw(gameDisplay, lem) {
-            let frameIndex = lem.frameIndex;
-            let frame = this.sprite.getFrame(frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
-            if (frameIndex >= 15) {
+            if (lem.frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
             }
         }
         process(level, lem) {
             lem.disable();
-            lem.frameIndex++;
-            if (lem.frameIndex >= 16) {
-                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
-            }
+            if (++lem.frameIndex >= 16) return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
     }

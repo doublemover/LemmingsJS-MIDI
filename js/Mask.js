@@ -4,6 +4,7 @@ class Mask {
         constructor(fr, width, height, offsetX, offsetY) {
             this.offsetX = offsetX;
             this.offsetY = offsetY;
+            this.data = null;
             if (fr != null) {
                 this.loadFromFile(fr, width, height);
             }

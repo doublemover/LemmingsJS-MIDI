@@ -1,11 +1,17 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+// Global animation cache: WeakMap<palette, Map<state, Map<dir, Animation>>>
+const _animationCache = new WeakMap();
+
 class LemmingsSprite {
         constructor(fr, colorPalette) {
+            this.colorPalette = colorPalette;
+            if (!_animationCache.has(colorPalette)) {
+                _animationCache.set(colorPalette, new Map());
+            }
+            this.lemmingAnimation = [];
             //- Lookup table from ActionType -> this.animations();
             // First Element: left-move, Second: right-move
-            this.lemmingAnimation = [];  
-            this.colorPalette = colorPalette;
             this.registerAnimation(Lemmings.SpriteTypes.WALKING, 1, fr, 2, 16, 10, -8, -10, 8); //- walking (r)
             this.registerAnimation(Lemmings.SpriteTypes.JUMPING, 1, fr, 2, 16, 10, -8, -10, 1); //- jumping (r)
             this.registerAnimation(Lemmings.SpriteTypes.WALKING, -1, fr, 2, 16, 10, -8, -10, 8); //- walking (l)
@@ -28,7 +34,7 @@ class LemmingsSprite {
             this.registerAnimation(Lemmings.SpriteTypes.UMBRELLA, -1, fr, 3, 16, 16, -8, -16, 8); //- umbrella (r)
             this.registerAnimation(Lemmings.SpriteTypes.SPLATTING, 0, fr, 2, 16, 10, -8, -10, 16); //- splatting
             this.registerAnimation(Lemmings.SpriteTypes.EXITING, 0, fr, 2, 16, 13, -8, -13, 8); //- exiting
-            this.registerAnimation(Lemmings.SpriteTypes.FRYING, 1, fr, 4, 16, 14, -8, -10, 14); //- fried
+            this.registerAnimation(Lemmings.SpriteTypes.FRYING, 0, fr, 4, 16, 14, -8, -10, 14); //- fried
             this.registerAnimation(Lemmings.SpriteTypes.BLOCKING, 0, fr, 2, 16, 10, -8, -10, 16); //- blocking
             this.registerAnimation(Lemmings.SpriteTypes.SHRUGGING, 1, fr, 2, 16, 10, -8, -10, 8); //- shrugging (r)
             this.registerAnimation(Lemmings.SpriteTypes.SHRUGGING, 0, fr, 2, 16, 10, -8, -10, 8); //- shrugging (l)
@@ -43,10 +49,18 @@ class LemmingsSprite {
             return state * 2 + (right ? 0 : 1);
         }
         registerAnimation(state, dir, fr, bitsPerPixel, width, height, offsetX, offsetY, frames) {
-            //- load animation frames from file (fr)
-            var animation = new Lemmings.Animation();
-            animation.loadFromFile(fr, bitsPerPixel, width, height, frames, this.colorPalette, offsetX, offsetY);
-            //- add animation to cache -add unidirectional (dir == 0) animations to both lists
+            let paletteCache = _animationCache.get(this.colorPalette);
+            if (!paletteCache.has(state)) paletteCache.set(state, new Map());
+            let stateCache = paletteCache.get(state);
+
+            if (!stateCache.has(dir)) {
+                // Not cached: create animation
+                let animation = new Lemmings.Animation();
+                animation.loadFromFile(fr, bitsPerPixel, width, height, frames, this.colorPalette, offsetX, offsetY);
+                stateCache.set(dir, animation);
+            }
+            let animation = stateCache.get(dir);
+
             if (dir >= 0) {
                 this.lemmingAnimation[this.typeToIndex(state, true)] = animation;
             }

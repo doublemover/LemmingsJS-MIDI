@@ -13,6 +13,7 @@ class DisplayImage {
         this.onMouseDown.on(e => {
             // this.setDebugPixel(e.x, e.y);
         });
+        this.imgData = null;
     }
 
     /* ---------- image helpers ---------- */
@@ -48,10 +49,7 @@ class DisplayImage {
         }
         this.groundMask = groundMask;
     }
-
-    // Clamp helper (kept tiny & inline‑able by V8)
-    #clamp8 = v => v & 0xFF;
-
+    
     /* ---------- primitive drawing ---------- */
     /** Draw rectangle outline */
     drawRect(x, y, width, height, r, g, b) {
@@ -112,7 +110,7 @@ class DisplayImage {
     }
 
     /** Generic blitter helper used by drawFrame & drawFrameCovered */
-    #blit(frame, posX, posY, opts) {
+    _blit(frame, posX, posY, opts) {
         const { width: srcW, height: srcH } = frame,
               srcBuf = frame.getBuffer(),
               srcMask = frame.getMask(),
@@ -152,16 +150,16 @@ class DisplayImage {
     }
 
     drawFrame(frame, x, y) {
-        this.#blit(frame, x, y);
+        this._blit(frame, x, y);
     }
 
     drawFrameCovered(frame, x, y, r, g, b) {
         const nullColor32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
-        this.#blit(frame, x, y, { nullColor32 });
+        this._blit(frame, x, y, { nullColor32 });
     }
 
     drawFrameFlags(frame, x, y, cfg) {
-        this.#blit(frame, x, y, {
+        this._blit(frame, x, y, {
             checkGround:   true,
             onlyOverwrite: cfg.onlyOverwrite,
             noOverwrite:   cfg.noOverwrite,

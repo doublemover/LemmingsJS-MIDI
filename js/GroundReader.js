@@ -1,14 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-// ---------------------------------------------------------------------------
-//  Constants – hoisted outside the class so they are evaluated only once and
-//  the engine can inline them. This avoids re‑allocations on every instance
-//  and lets V8 treat them as true compile‑time constants.
-// ---------------------------------------------------------------------------
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
 const BYTE_SIZE_OF_OBJECTS  = 28 * OBJECT_COUNT;
 const BYTE_SIZE_OF_TERRAIN  = 8  * TERRAIN_COUNT;
+const TRANSPARENT = 128;
 
 class GroundReader {
   /**
@@ -17,9 +13,6 @@ class GroundReader {
    * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
    */
   constructor (groundFile, vgaTerrar, vgaObject) {
-    // ---------------------------------------------------------------------
-    //  Fast‑fail on incorrect input – no work done, avoids hidden‑class churn
-    // ---------------------------------------------------------------------
     this.log = new Lemmings.LogHandler('GroundReader');
     if (groundFile.length !== 1056) {
       this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
@@ -39,46 +32,81 @@ class GroundReader {
     // Palette offset is the last block in the file – compute once.
     const paletteOffset = BYTE_SIZE_OF_OBJECTS + BYTE_SIZE_OF_TERRAIN;
 
-    this.#readPalettes(groundFile, paletteOffset);
-    this.#readObjectImages(groundFile, /*offset=*/0, this.colorPalette);
-    this.#readTerrainImages(groundFile, BYTE_SIZE_OF_OBJECTS, this.groundPalette);
+    this._readPalettes(groundFile, paletteOffset);
+    this._readObjectImages(groundFile, /*offset=*/0, this.colorPalette);
+    this._readTerrainImages(groundFile, BYTE_SIZE_OF_OBJECTS, this.groundPalette);
 
     // Decode bitmaps – these calls can be parallelised in WebWorkers later.
-    this.#readImages(this.imgObjects, vgaObject, /*bpp=*/4);
-    this.#readImages(this.imgTerrain, vgaTerrar, /*bpp=*/3);
+    this._readImages(this.imgObjects, vgaObject, /*bpp=*/4);
+    this._readImages(this.imgTerrain, vgaTerrar, /*bpp=*/3);
   }
 
-  // -----------------------------------------------------------------------
-  //  Public accessors – tiny inlineable getters.
-  // -----------------------------------------------------------------------
   getTerrainImages() { return this.imgTerrain;  }
   getObjectImages () { return this.imgObjects; }
 
   // -----------------------------------------------------------------------
-  //  Private helpers – prefixed with # so the engine can de‑virtualise them.
+  //  Private helpers – prefixed with _ so the engine can de‑virtualise them.
   // -----------------------------------------------------------------------
-  #readImages (imgList, vga, bitPerPixel) {
-    // Classic for‑loop is measurably faster than Array.map for side‑effects.
-    for (let i = 0, len = imgList.length; i < len; ++i) {
+  _readImages (imgList, vga, bitsPerPixel) {
+    for (let i = 0, imgCount = imgList.length; i < imgCount; ++i) {
       const img = imgList[i];
-      const frames = new Array(img.frameCount); // packed array – no pushes
+      if (!img) continue; // hack to continue if missing img
+
+      const frames = new Array(img.frameCount);
+      let maxSteelW = 0, maxSteelH = 0;
 
       let filePos = img.imageLoc;
+
       for (let f = 0; f < img.frameCount; ++f) {
-        const bitImage = new Lemmings.PaletteImage(img.width, img.height);
-        bitImage.processImage(vga, bitPerPixel, filePos);
-        bitImage.processTransparentData(vga, filePos + img.maskLoc);
-        frames[f] = bitImage.getImageBuffer();
-        filePos  += img.frameDataSize; // increment once, avoid extra mul
+        const pimg = new Lemmings.PaletteImage(img.width, img.height);
+        pimg.processImage(vga, bitsPerPixel, filePos);
+        pimg.processTransparentData(vga, filePos + img.maskLoc);
+
+        const frame = pimg.getImageBuffer();
+        frames[f]   = frame;
+        filePos    += img.frameDataSize;
+
+        if (img.isSteel) {
+          let widest  = 0;
+          let tallest = 0;
+
+          // scan each row once from the right 
+          for (let y = img.height - 1; y >= 0; --y) {
+            const rowBase = y * img.width;
+            let rowHasPixel = false;
+
+            // scan from rightmost column until we see a solid pixel
+            for (let x = img.width - 1; x >= 0; --x) {
+              if (frame[rowBase + x] !== TRANSPARENT) {
+                if (x + 1 > widest)  widest = x + 1;
+                rowHasPixel = true;
+                break;
+              }
+            }
+
+            if (rowHasPixel && tallest === 0) {
+              tallest = y + 1;          // first solid row from the bottom
+              if (widest === img.width) break;
+            }
+          }
+
+          if (widest  > maxSteelW) maxSteelW = widest;
+          if (tallest > maxSteelH) maxSteelH = tallest;
+        }
       }
 
+      if (img.isSteel) {
+        img.steelWidth  = maxSteelW;
+        img.steelHeight = maxSteelH;
+      }
       img.frames = frames;
     }
   }
 
-  #readObjectImages (fr, offset, palette) {
+  _readObjectImages (fr, offset, palette) {
     fr.setOffset(offset);
 
+    //console.log("obj count: " + OBJECT_COUNT)
     for (let i = 0; i < OBJECT_COUNT; ++i) {
       const img      = new Lemmings.ObjectImageInfo();
       const flags    = fr.readWordBE();
@@ -105,6 +133,13 @@ class GroundReader {
       img.trap_sound_effect_id = fr.readByte();
       img.palette              = palette;
 
+      if (img.unknown1 !== img.maskLoc)
+        this.log.log(`OBJ ${i}: unknown1 diverges from maskLoc (expected ${img.maskLoc}, got ${img.unknown1})`);
+      if (img.unknown2 !== (img.maskLoc >> 1))
+        this.log.log(`OBJ ${i}: unknown2 should be maskLoc/2 (got ${img.unknown2})`);
+      if (img.unknown !== 0)
+        this.log.log(`OBJ ${i}: unknown3 is non-zero (${img.unknown}) – CGA asset?`);
+
       if (fr.eof()) {
         this.log.log(`readObjectImages(): unexpected EOF reading ${fr.filename}`);
         return;
@@ -113,7 +148,7 @@ class GroundReader {
     }
   }
 
-  #readTerrainImages (fr, offset, palette) {
+  _readTerrainImages (fr, offset, palette) {
     fr.setOffset(offset);
 
     for (let i = 0; i < TERRAIN_COUNT; ++i) {
@@ -126,6 +161,62 @@ class GroundReader {
       img.palette  = palette;
       img.frameCount = 1; // terrains never animate
 
+      let filename = fr.filename;
+      let foldername = fr.foldername;
+      if (foldername == "[unknown]") {
+        console.log("folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel");
+      }
+      else if (foldername == "lemmings") {
+        if (filename == "GROUND0O.DAT") { // normal maps
+          if (i >= 22 && i <= 26) {
+            img.isSteel = true;
+          }
+          if (i == 19) {
+            // this one writes black over steel
+          }
+        } 
+        else if (filename == "GROUND1O.DAT") { // dungeon maps 
+          if (i >= 12 && i <= 17) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND2O.DAT") { // pink maps
+          if (i == 5 || i >= 57 && i <= 59) { 
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND3O.DAT") { // desert maps
+          if (i == 27) { 
+            img.isSteel = true;
+          }
+          if ( i >= 48 && i <= 50) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND4O.DAT") { // crystal maps
+          if (i >= 31 && i <= 32 || i == 34) {
+            img.isSteel = true;
+          }
+        }
+      } 
+      else if (foldername == "lemmings_ohNo") {
+        if (filename == "GROUND0O.DAT") { // brick maps
+          if (i >= 51 && i <= 54) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND1O.DAT") { // jungle maps 
+          if (i >= 56 && i <= 59) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND2O.DAT") { // ice maps
+          if (i >= 29 && i <= 32) { 
+            img.isSteel = true;
+          }
+        } 
+      }
+
       if (fr.eof()) {
         this.log.log(`readTerrainImages(): unexpected EOF reading ${fr.filename}`);
         return;
@@ -134,7 +225,7 @@ class GroundReader {
     }
   }
 
-  #readPalettes (fr, offset) {
+  _readPalettes (fr, offset) {
     // Skip EGA palettes – they are unused in the VGA version (3×8 bytes)
     fr.setOffset(offset + 24);
 
@@ -158,7 +249,5 @@ class GroundReader {
   }
 }
 
-// Attach to the public namespace exactly like the original so nothing else
-// in the code‑base needs to change.
 Lemmings.GroundReader = GroundReader;
 export { GroundReader };

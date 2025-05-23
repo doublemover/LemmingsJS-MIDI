@@ -18,7 +18,7 @@ class LogHandler {
     }
     /** write a debug message. If [msg] is not a String it is displayed: as {prop:value} */
     debug(msg) {
-        if (!lemmings.game  == false) {
+        if (!lemmings.game == false) {
             if (!lemmings.game == false && lemmings.game.showDebug == true) {
                 if (typeof msg === 'string') {
                     console.log(this._moduleName + "\t" + msg);

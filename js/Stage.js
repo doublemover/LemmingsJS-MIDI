@@ -91,7 +91,7 @@ class Stage {
                 this.clear(stageImage);
                 let gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
-            };
+            }
         }
         limitValue(minLimit, value, maxLimit) {
             let useMax = Math.max(minLimit, maxLimit);
@@ -141,11 +141,11 @@ class Stage {
             if (this.gameImgProps.display != null) {
                 let gameImg = this.gameImgProps.display.getImageData();
                 this.draw(this.gameImgProps, gameImg);
-            };
+            }
             if (this.guiImgProps.display != null) {
                 let guiImg = this.guiImgProps.display.getImageData();
                 this.draw(this.guiImgProps, guiImg);
-            };
+            }
         }
         createImage(display, width, height) {
             if (display == this.gameImgProps.display) {
@@ -219,8 +219,8 @@ class Stage {
                 y: this.gameImgProps.viewPoint.y,
                 w: this.gameImgProps.width / this.gameImgProps.viewPoint.scale,
                 h: this.gameImgProps.height / this.gameImgProps.viewPoint.scale
-            }
-        };
+            };
+        }
     }
     Lemmings.Stage = Stage;
 

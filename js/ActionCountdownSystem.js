@@ -12,7 +12,7 @@ class ActionCountdownSystem {
         }
         /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
-            let count = lem.getCountDownTime();
+            const count = lem.getCountDownTime();
             if (count <= 0) {
                 return;
             }
