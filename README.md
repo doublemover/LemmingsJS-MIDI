@@ -13,8 +13,10 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
   - The frying animation plays when lemmings step into fire pit or flamethrower triggers
-  - Steel Ground almost faithful to the original implementation
+  - Steel Ground faithful (?) to the original implementation
     - Added purple rectangles to display ranges of steel when debugging is enabled
+  - Arrow Walls faithful (?) to the original implementation
+    - Added orange (left) and green (right) rectangles to display arrow triggers when debugging is enabled
   - Minimap
     - Enhanced visibility: Reads ground mask at full res, accumulates result into minimap res
     - Terrain, entrances, and exits are visible
@@ -22,7 +24,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - Lemming deaths are indicated by a dot that flashes 4 times
     - Viewport box
     - Precomputed terrain with invalidation, prebuilt pallete, flattened uint8array to eliminate loop allocations ~(6.4x speedup)
-  - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode for one level
+  - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode until the page is refreshed
 
 ### Fixed Bugs
   - Invisible blockers being left behind when a blocker does a different action
@@ -40,44 +42,31 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 ## Progress
   - Everything above
   - [ ] Super lemmings act twice per tick
-  - [ ] Steel still wrong
-    - [ ] Think its missing negative offsets
-      - [ ] 2-3-1
-  - [ ] Arrow Walls
-    - [ ] Left, Right, and Down
-    - [ ] Need masks
-    - [ ] Basher/Miner treat it as steel
-    - [ ] Down opposes from either side
-  - [ ] Traps
+  - [X] Arrow Walls
+    - [X] Left & Right Arrows function correctly
+    - [X] Utilizing similar logic as steel to generate masks and store them packed 
+    - [X] Basher/Miner treat it as steel
+    - [ ] Are they supposed to bounce builders?
+  - [X] Traps
     - [ ] Squish is missing
     - [ ] "Generic Trap" just vanishes em
     - [ ] Cooldown
-  - [ ] Super lemmings act twice per tick
-  - [ ] MIDI Manager
-  - [X] WebMIDI Error Display
-  - [X] List Input & Output devices in select elements
-  - [ ] Channel selection
-  - [ ] I/O Display
+  - [ ] MIDI
+    - [X] WebMIDI Error Display
+    - [X] List Input & Output devices in select elements
+    - [ ] Channel selection
+    - [ ] I/O Display
+    - [ ] Debug Display
 
-(The a-b-c numbers are version-difficulty-level addresses) 
 ## Roadmap
 - [ ] Click on minimap to change view position
 - [ ] Minimap viewport freezes on pause
-- [X] The water randomly off to the side on 1-1-12 is supposed to be there,
-- [X] Is there a pallete swapped freeze animation
-  - [X] No, it was introduced in Lemmings 2
-    - [ ] Make one anyways 
-    - [ ] 2-2-9
-    - [ ] 1-4-30
-    - [ ] Left trap needs mirrored?
-      - [ ] 2-1-7
-      - [ ] Debug function update to reflect intended orientation
-  - [ ] TriggerManager seems like it's doing a lot of extra work for no reason
+- [ ] TriggerManager seems like it's doing a lot of extra work for no reason
 - [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
 - [ ] Panel Buttons
   - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
   - [X] Add y to gui events 
-  - [ ] Speed up/Slow down/Reset speed buttons
+  - [ ] Visual Speed up/Slow down/Reset speed buttons
   - [ ] Speed indicator
   - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Bombs
@@ -86,7 +75,19 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
       - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
     - [ ] Write steel to second backgroundLayer?
-- [ ] Various bullshit
+
+## Bugs, Things I am not sure of, and potential future enhancements
+  - [ ] Do down arrows exist anywhere in these levels? If it does it might not be displaying
+    - [ ] Down opposes from either side
+  - [ ] I don't know if steel is wrong or not but I want to make it perfectly aligned with the graphics
+  - [ ] I don't like that the arrows show up on stairs that are built
+      - [ ] Add built stairs to a separate ground mask that does not get painted by these?
+  - [ ] There is not a pallete swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+    - [ ] 2-2-9, 1-4-30
+  - [ ] It seems like some traps might not be mirroring horizontally, if they're even supposed to
+    - [ ] 2-1-7
+    - [ ] Add orientation indication to debug rects
+  - [X] The water randomly off to the side on 1-1-12 is supposed to be there,
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
@@ -124,6 +125,7 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control execution speed >0-10 (default: 1)
 - `cheat (c)`: Enable cheat mode (99 for all actions) (default: false)
+- `debug`: Enable debug mode until the page is refreshed (default: false)
 
 ## Versions
 
@@ -132,6 +134,7 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 
 ## Credits
 
+- All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
 - https://github.com/tomsoftware
 - https://github.com/oklemenz/LemmingsJS
 - The Throng (Blackmirror S7E4)

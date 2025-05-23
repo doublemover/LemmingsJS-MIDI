@@ -88,6 +88,7 @@ class LevelReader {
                 this.terrains.push(newOb);
             }
         }
+
         /** read Level Steel areas (Lemming can't pass) */
         readSteelArea(fr, isLemEdit = false) {
             const X_OFFSET = isLemEdit ? 12 : 16;   // originals use −16, LemEdit uses −12
@@ -100,8 +101,10 @@ class LevelReader {
                 const size = fr.readByte();
                 const flag = fr.readByte();
                 const pos = (high << 8) | low;
+
                 if (pos === 0 && size === 0) continue; // end-of-list marker
-                // 9-bit X in 8-px steps, origin −X_OFFSET
+
+                // 9-bit X in 8-px steps, origin - X_OFFSET
                 const x = ((pos & 0x00FF) << 3) - X_OFFSET;
                 // 7-bit Y in 8-px steps, origin 0
                 let y = (((pos >> 9) & 0x7F) << 3);
@@ -117,9 +120,7 @@ class LevelReader {
                 newRange.width = width;
                 newRange.height = height;
 
-                if (flag === 0) {
-                    this.steel.push(newRange);
-                }
+                this.steel.push(newRange);
             }
         }
         /** read general Level information */

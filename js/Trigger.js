@@ -1,13 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class Trigger {
-        constructor(type, x1, y1, x2, y2, disableTicksCount = 0, soundIndex = -1, owner = null) {
-            this.x1 = 0;
-            this.y1 = 0;
-            this.x2 = 0;
-            this.y2 = 0;
-            this.type = Lemmings.TriggerTypes.NO_TRIGGER;
-            this.disableTicksCount = 0;
+        constructor(type = Lemmings.TriggerTypes.NO_TRIGGER, x1 = 0, y1 = 0, x2 = 0, y2 = 0, disableTicksCount = 0, soundIndex = -1, owner = null) {
             this.disabledUntilTick = 0;
             this.owner = owner;
             this.type = type;
@@ -16,6 +10,7 @@ class Trigger {
             this.x2 = Math.max(x1, x2);
             this.y2 = Math.max(y1, y2);
             this.disableTicksCount = disableTicksCount;
+                        console.log(type)
         }
         trigger(x, y, tick) {
             if (this.disabledUntilTick <= tick) {
@@ -30,6 +25,10 @@ class Trigger {
             return Lemmings.TriggerTypes.NO_TRIGGER;
         }
         draw(gameDisplay) {
+
+            if (this.type == 7 || this.type == 8) {
+                return; // don't render arrow triggers to debug display, that is handled in level
+            }
             gameDisplay.drawRect(this.x1, this.y1, this.x2 - this.x1, this.y2 - this.y1, 255, 0, 0);
         }
     }

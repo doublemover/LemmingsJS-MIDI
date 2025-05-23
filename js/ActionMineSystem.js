@@ -32,6 +32,9 @@ class ActionMineSystem {
                 if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
                     return Lemmings.LemmingStateType.SHRUG;
                 }
+                if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
+                        return Lemmings.LemmingStateType.SHRUG;
+                }
                 level.clearGroundWithMask(subMask, lem.x, lem.y);
                 break;
             case 3:
