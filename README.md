@@ -59,6 +59,8 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - [ ] Debug Display
 
 ## Roadmap
+- [ ] Display selection rect around lemming nearest to cursor
+- [ ] Keyboard shortcuts
 - [ ] Click on minimap to change view position
 - [ ] Minimap viewport freezes on pause
 - [ ] TriggerManager seems like it's doing a lot of extra work for no reason
@@ -96,7 +98,6 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Can't go back to version 1 by clicking back on the start of version 2
   - [ ] Can apply actions on splatting lemmings?
   - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
-  - [ ] keyboard controls
   - [ ] clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
 
 ## Things I need to look at
