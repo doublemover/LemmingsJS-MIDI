@@ -2,7 +2,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionFryingSystem {
         constructor(sprites) {
-            this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.FRYING, true);
+            this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.FRYING, false);
         }
         getActionName() {
             return "frying";
@@ -11,16 +11,15 @@ class ActionFryingSystem {
             return false;
         }
         draw(gameDisplay, lem) {
-            let frameIndex = lem.frameIndex;
-            let frame = this.sprite.getFrame(frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
-            if (frameIndex >= 13) {
-                lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
-            }
         }
         process(level, lem) {
             lem.disable();
             lem.frameIndex++;
+            if (lem.frameIndex >= 13) {
+                lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
+            }
             if (lem.frameIndex == 14) {
                 return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }

@@ -10,4 +10,5 @@
 # package managers
 bower_components/
 node_modules/
-/jsP
+.jshintconfig
+.jshintignore

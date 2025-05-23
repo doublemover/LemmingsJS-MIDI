@@ -14,7 +14,7 @@ class MiniMap {
         this.scaleX = this.width / level.width;
         this.scaleY = this.height / level.height;
 
-        this.terrain = new Uint8Array(this.size)
+        this.terrain = new Uint8Array(this.size);
         this._buildTerrain();
 
         // dynamic state
@@ -29,8 +29,28 @@ class MiniMap {
 
         this.palette = new Uint32Array(129);
         for (let i = 1; i <= 128; ++i) {
-            this.palette[i] = 0xFF000000 | ((i*2) << 8)
+            this.palette[i] = 0xFF000000 | ((i*2) << 8);
         }
+
+        if (this.guiDisplay) this._hookPointer();
+    }
+
+    _hookPointer() {
+        const gd = this.guiDisplay;
+        gd.onMouseDown.on(evt => {
+            /* coordinates relative to minimap */
+            const destX = gd.getWidth()  - this.width;
+            const destY = gd.getHeight() - this.height - 1;
+
+            const mx = evt.x - destX;
+            const my = evt.y - destY;
+            if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
+
+            const pct = mx / this.width;
+            const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
+            this.level.screenPositionX = newX;
+            gd.setScreenPosition?.(newX, 0);
+        });
     }
 
     /* Build complete terrain snapshot (expensive – call at load/reset only). */

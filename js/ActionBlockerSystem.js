@@ -13,13 +13,13 @@ class ActionBlockerSystem {
             return true;
         }
         draw(gameDisplay, lem) {
-            let frame = this.sprite.getFrame(lem.frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         process(level, lem) {
             if (lem.state == 0) {
-                let trigger1 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_LEFT, lem.x - 6, lem.y + 4, lem.x - 3, lem.y - 10, 0, 0, lem);
-                let trigger2 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_RIGHT, lem.x + 7, lem.y + 4, lem.x + 4, lem.y - 10, 0, 0, lem);
+                const trigger1 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_LEFT, lem.x - 6, lem.y + 4, lem.x - 3, lem.y - 10, 0, 0, lem);
+                const trigger2 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_RIGHT, lem.x + 7, lem.y + 4, lem.x + 4, lem.y - 10, 0, 0, lem);
                 this.triggerManager.add(trigger1);
                 this.triggerManager.add(trigger2);
                 lem.state = 1;

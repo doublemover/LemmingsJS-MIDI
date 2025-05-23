@@ -12,7 +12,7 @@ class ActionExitingSystem {
             return false;
         }
         draw(gameDisplay, lem) {
-            let frame = this.sprite.getFrame(lem.frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         process(level, lem) {

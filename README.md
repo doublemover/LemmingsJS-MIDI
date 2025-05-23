@@ -10,19 +10,28 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - The next button (not visible) speeds the game up by 1 (to a maximum of 10)
     - The button after that (also not visible) resets the game speed to 1
     - The final button (still invisible) toggles the game's debug output (noisy console, red dots denoting lemming position, boxes denoting triggers and steel)
+      - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode until the page is refreshed
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
+    - Debug mode: $\color{Red}{\textsf{Red}}$ rectangles show triggers (traps & level exit)
   - The frying animation plays when lemmings step into fire pit or flamethrower triggers
-  - Steel Ground almost faithful to the original implementation
-    - Added purple rectangles to display ranges of steel when debugging is enabled
+  - Improved Steel terrain
+    - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
+    - Debug mode: $\color{Cyan}{\textsf{Cyan}}$ rectangles show ranges of steel
+  - Arrow Walls faithful to the original implementation
+    - Debug mode: $\color{Orange}{\textsf{Orange}}$ (left) & $\color{Green}{\textsf{Green}}$ (right) show arrow triggers
   - Minimap
     - Enhanced visibility: Reads ground mask at full res, accumulates result into minimap res
     - Terrain, entrances, and exits are visible
     - Dots update with lemming locations
     - Lemming deaths are indicated by a dot that flashes 4 times
     - Viewport box
-    - Precomputed terrain with invalidation, prebuilt pallete, flattened uint8array to eliminate loop allocations ~(6.4x speedup)
-  - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode for one level
+    - Precomputed terrain with invalidation, prebuilt pallete
+  - Grid based Trigger Management
+  - Revised lemming selection system
+  - Revised timer system allows for skill selection/use while the game is paused
+    - Eliminated drift for precise gameplay
+  - Performance & caching 
 
 ### Fixed Bugs
   - Invisible blockers being left behind when a blocker does a different action
@@ -33,70 +42,60 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Arrow Wall animations
   - Prevent wasted actions on falling lemmings (only floater, climber, builder, and bomber can be applied)
   - Prevent redundant actions (cannot re-apply basher, blocker, digger, or miner)
-  - Various crashes and performance issues
+  - Various crashes
   - Removed unfinished sound/music functionality
+  - Untangled promises so that all errors bubble up correctly
   - Split the codebase up into modules to aid with refactoring
 
 ## Progress
   - Everything above
-  - [ ] Super lemmings act twice per tick
-  - [ ] Steel still wrong
-    - [ ] Think its missing negative offsets
-      - [ ] 2-3-1
-  - [ ] Arrow Walls
-    - [ ] Left, Right, and Down
-    - [ ] Need masks
-    - [ ] Basher/Miner treat it as steel
-    - [ ] Down opposes from either side
-  - [ ] Traps
+  - [X] Click on minimap to change view position
+    - [ ] Drag
+  - [ ] Keyboard shortcuts
+    - [ ] incl debug, speed, swap skills
+  - [ ] Display selection rect around lemming nearest to cursor on hover
+  - [ ] Confirmation state for nuke
+  - [ ] Right click nuke for debug
+  - [ ] mask off bottom 12 pixels or so of pause
+    - [ ] display current gamespeed
+    - [ ] 1x, slower, faster buttons
+  - [X] Arrow Walls
+    - [ ] Are they supposed to bounce builders?
+    - [ ] 2-2-19 left arrows not rendering, range shows up in debug?
+    - [ ] I don't like that the arrows show up on stairs that are built
+      - [ ] Add built stairs to a separate ground that does not get painted by these?
+  - [X] Traps
     - [ ] Squish is missing
     - [ ] "Generic Trap" just vanishes em
-    - [ ] Cooldown
-  - [ ] Super lemmings act twice per tick
-  - [ ] MIDI Manager
-  - [X] WebMIDI Error Display
-  - [X] List Input & Output devices in select elements
-  - [ ] Channel selection
-  - [ ] I/O Display
+    - [X] Cooldown
+  - [ ] MIDI
+    - [X] WebMIDI Error Display
+    - [X] List Input & Output devices in select elements
+    - [ ] Channel selection
+    - [ ] I/O Display
+    - [ ] Debug Display
 
-(The a-b-c numbers are version-difficulty-level addresses) 
 ## Roadmap
-- [ ] Click on minimap to change view position
-- [ ] Minimap viewport freezes on pause
-- [X] The water randomly off to the side on 1-1-12 is supposed to be there,
-- [X] Is there a pallete swapped freeze animation
-  - [X] No, it was introduced in Lemmings 2
-    - [ ] Make one anyways 
-    - [ ] 2-2-9
-    - [ ] 1-4-30
-    - [ ] Left trap needs mirrored?
-      - [ ] 2-1-7
-      - [ ] Debug function update to reflect intended orientation
-  - [ ] TriggerManager seems like it's doing a lot of extra work for no reason
 - [ ] Viewport Zoom (currently disabled) almost works, needs stage view offset calcs
-- [ ] Panel Buttons
-  - [ ] Function to render a panel of smaller buttons between nuke and the minimap frame
-  - [X] Add y to gui events 
-  - [ ] Speed up/Slow down/Reset speed buttons
-  - [ ] Speed indicator
-  - [ ] Confirmation state for nuke (darken button, draw questionmark)
 - [ ] Bombs
-  - [X] Bombers do not harm other lemmings
-  - [X] Added a function in lemmingManager that returns all lemmings within the offset bounds of a given mask at x,y anyways
-      - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
-    - [ ] Write steel to second backgroundLayer?
-- [ ] Various bullshit
+    - [ ] Write steel to second layer?
+- [ ] Super lemmings act twice per tick
+
+## Bugs, Things I am not sure of, and potential future enhancements
+  - [ ] Still possible to apply bomb to exploding bombers, probably need to adjust the frame at which they are removed
+    - [ ] Same deal with splatting, drowning, and maybe falling lemmings
+  - [ ] There is not a pallete swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+    - [ ] 2-2-9, 1-4-30
   - [ ] Trigger.disabledUntilTick overruns after 24 days
-  - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
-  - [ ] If you go through enough levels at some point it starts flashing other levels underneath it, it's probably doing everything twice
-  - [ ] I've managed to make the game lock up exactly once while dragging back and forth as fast as i could repeatedly and I cannot reproduce it
-  - [ ] Can't go back to version 1 by clicking back on the start of version 2
-  - [ ] Can apply actions on splatting lemmings?
+  - [X] Fixed double level loads
+    - [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
+      - [ ] I've managed to make the game lock up exactly once while dragging back and forth as fast as i could repeatedly and I cannot reproduce it, this might be it
+      - [ ] Can't go back to version 1 by clicking back on the start of version 2, probably related
   - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
-  - [ ] keyboard controls
   - [ ] clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
+    - [ ] debounce/toggle
 
 ## Things I need to look at
 - [ ] Source some form of level editor
@@ -124,6 +123,7 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control execution speed >0-10 (default: 1)
 - `cheat (c)`: Enable cheat mode (99 for all actions) (default: false)
+- `debug`: Enable debug mode until the page is refreshed (default: false)
 
 ## Versions
 
@@ -132,6 +132,7 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
 
 ## Credits
 
+- All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
 - https://github.com/tomsoftware
 - https://github.com/oklemenz/LemmingsJS
 - The Throng (Blackmirror S7E4)

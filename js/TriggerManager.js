@@ -1,53 +1,138 @@
-import { Lemmings } from './LemmingsNamespace.js';
+/* global Lemmings */
+
+/*  TriggerManager
+ *  ───────────────
+ *  Public API (unchanged):
+ *      constructor(gameTimer[, levelW, levelH, cellSize])
+ *      add(trigger)
+ *      addRange(triggerArray)
+ *      removeByOwner(owner)
+ *      trigger(x, y)           → TriggerTypes enum
+ *      renderDebug(gameDisplay)
+ *
+ *  • Grid cell size defaults to 16 px (power-of-two → shift 4)
+ *  • Grid columns/rows are computed from levelW / levelH on construction
+ *  • All indices are clamped, so out-of-bounds writes are impossible
+ */
 
 class TriggerManager {
-        constructor(gameTimer) {
-            this.gameTimer = gameTimer;
-            this.triggers = [];
-        }
-        /** add a new trigger to the manager */
-        add(trigger) {
-            this.triggers.push(trigger);
-        }
-        /** remove all triggers having a giving owner */
-        // go in reverse so splicing doesn't move unchecked 
-        // only iterates once instead of looping
-        removeByOwner(owner) {
-            for (let i = this.triggers.length - 1; i >= 0; --i) {
-                if (this.triggers[i].owner == owner) {
-                    this.triggers.splice(i, 1);   // 
-                }
-            }
-        }
-        /** add a new trigger to the manager */
-        remove(trigger) {
-            let triggerIndex = this.triggers.indexOf(trigger);
-            if (triggerIndex >= 0) {
-                this.triggers.splice(triggerIndex, 1);
-            }
-        }
-        addRange(newTriggers) {
-            for (let i = 0; i < newTriggers.length; i++) {
-                this.triggers.push(newTriggers[i]);
-            }
-        }
-        renderDebug(gameDisplay) {
-            for (let i = 0; i < this.triggers.length; i++) {
-                this.triggers[i].draw(gameDisplay);
-            }
-        }
-        /** test all triggers. Returns the triggered type that matches */
-        trigger(x, y) {
-            let l = this.triggers.length;
-            let tick = this.gameTimer.getGameTicks();
-            for (var i = 0; i < l; i++) {
-                let type = this.triggers[i].trigger(x, y, tick);
-                if (type != Lemmings.TriggerTypes.NO_TRIGGER)
-                    return type;
-            }
-            return Lemmings.TriggerTypes.NO_TRIGGER;
-        }
-    }
-    Lemmings.TriggerManager = TriggerManager;
+  /**
+   * @param {Lemmings.GameTimer} gameTimer
+   * @param {number}  [levelW=1600]   – level width in pixels (inclusive)
+   * @param {number}  [levelH=160]    – level height in pixels (inclusive)
+   * @param {number}  [cellSize=16]   – grid cell size, must be power of two
+   */
+  constructor (gameTimer, levelW = 1600, levelH = 160, cellSize = 16) {
+    /* store basics */
+    this.gameTimer = gameTimer;
+    this._cellSize = cellSize;
+    this._shift    = Math.log2(cellSize) | 0;   // integer shift
+    this._levelW   = levelW;
+    this._levelH   = levelH;
 
+    /* derive grid */
+    this._cols   = (levelW  >> this._shift) + 1;   // e.g. 1600 → 101
+    this._rows   = (levelH  >> this._shift) + 1;   // e.g.  160 → 11
+    const slots  = this._cols * this._rows;
+
+    this._grid   = new Array(slots);
+    for (let i = 0; i < slots; ++i) this._grid[i] = [];
+
+    this._triggers = new Set();
+
+    /* handy bounds */
+    this._maxX = levelW;
+    this._maxY = levelH;
+  }
+
+  /* ───────────────────────── public API ───────────────────────── */
+
+  /** Register a single trigger. */
+  add (trigger) {
+    if (this._triggers.has(trigger)) return;
+    this._triggers.add(trigger);
+    this._insert(trigger);
+  }
+
+  /** Bulk-add (used by Level on load). */
+  addRange (arr) {
+    for (let i = 0; i < arr.length; ++i) this.add(arr[i]);
+  }
+
+  /** Remove every trigger that belongs to `owner`. */
+  removeByOwner (owner) {
+    for (const tr of this._triggers) {
+      if (tr.owner === owner) this._remove(tr);
+    }
+  }
+
+  /**
+   * Query at pixel (x,y).  Returns a value from Lemmings.TriggerTypes.
+   */
+  trigger (x, y) {
+    if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
+      return Lemmings.TriggerTypes.NO_TRIGGER;
+    }
+
+    const bucket =
+      ( (y >> this._shift) * this._cols ) +
+      ( x >> this._shift );
+
+    const cell = this._grid[bucket];
+    const tick = this.gameTimer.getGameTicks();
+
+    for (let i = 0; i < cell.length; ++i) {
+      const t = cell[i].trigger(x, y, tick);
+      if (t !== Lemmings.TriggerTypes.NO_TRIGGER) return t;
+    }
+    return Lemmings.TriggerTypes.NO_TRIGGER;
+  }
+
+  /** Draw rectangles in debug overlay (unchanged). */
+  renderDebug (g) {
+    for (const tr of this._triggers) tr.draw(g);
+  }
+
+  /* ────────────────────── internal helpers ────────────────────── */
+
+  _insert (trigger) {
+    /* normalise & clamp bounds */
+    let x0 = Math.max(0, Math.min(this._maxX, Math.min(trigger.x1, trigger.x2)));
+    let x1 = Math.max(0, Math.min(this._maxX, Math.max(trigger.x1, trigger.x2)));
+    let y0 = Math.max(0, Math.min(this._maxY, Math.min(trigger.y1, trigger.y2)));
+    let y1 = Math.max(0, Math.min(this._maxY, Math.max(trigger.y1, trigger.y2)));
+
+    const c0 = x0 >> this._shift;
+    const c1 = x1 >> this._shift;
+    const r0 = y0 >> this._shift;
+    const r1 = y1 >> this._shift;
+
+    const buckets = [];
+    for (let r = r0; r <= r1; ++r) {
+      const base = r * this._cols;
+      for (let c = c0; c <= c1; ++c) {
+        const idx = base + c;
+        this._grid[idx].push(trigger);
+        buckets.push(idx);
+      }
+    }
+    trigger.__bucketIndices = buckets;   // fast removal
+  }
+
+  _remove (trigger) {
+    this._triggers.delete(trigger);
+    const buckets = trigger.__bucketIndices;
+    if (buckets) {
+      for (let i = 0; i < buckets.length; ++i) {
+        const arr = this._grid[buckets[i]];
+        const j   = arr.indexOf(trigger);
+        if (j !== -1) arr.splice(j, 1);
+      }
+    }
+    delete trigger.__bucketIndices;
+  }
+}
+
+/* namespace hook for legacy code */
+Lemmings.TriggerManager = TriggerManager;
 export { TriggerManager };

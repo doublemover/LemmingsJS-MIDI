@@ -196,7 +196,7 @@ class GameView {
         if (query.get("cheat") || query.get("c")) {
             this.cheat = (query.get("cheat") || query.get("c")) === "true";
         }
-        this.debug = false
+        this.debug = false;
         if (query.get("debug") || query.get("d")) {
             this.debug = (query.get("debug") || query.get("d")) === "true";
         }
