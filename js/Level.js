@@ -46,6 +46,7 @@ class Level {
     let arrowRects = []
     for (const ob of objects) {
       const info = objectImg[ob.id];
+      if (info == null) continue; // hack to continue on missing images
       let tfxID  = info.trigger_effect_id;
 
       // gross hack → frying correction
