@@ -41,6 +41,7 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## Progress
   - Everything above
+  - [ ] I've isolated all of the steel objects by game version/map tileset in groundreader, need to use these for perfect steel rects
   - [ ] Super lemmings act twice per tick
   - [X] Arrow Walls
     - [X] Left & Right Arrows function correctly
