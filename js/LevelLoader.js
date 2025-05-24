@@ -77,6 +77,7 @@ class LevelLoader {
                         level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
                         level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
                         level.setSteelAreas(levelReader.steel);
+                        // level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());
                         resolve(level);
                     });
             });

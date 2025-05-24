@@ -125,33 +125,27 @@ class GroundReader {
 
       let filename = fr.filename;
       if (filename == "GROUND0O.DAT") {
-        if (i >= 22 && i <= 26) { // normal maps 
-
-        }
-        if (i >= 51 && i <= 54) { // brick maps
-
+        // normal maps            brick maps
+        if (i >= 22 && i <= 26) {
+          img.isSteel = true;
         }
       } else if (filename == "GROUND1O.DAT") {
-        if (i >= 12 && i <= 15 || i == 17) { // dungeon maps
-
-        }
-        if (i >= 56 && i <= 59) { // jungle maps
-
+        // dungeon maps                      jungle maps
+        if (i >= 12 && i <= 15 || i == 17 || i >= 56 && i <= 59) {
+          img.isSteel = true;
         }
       } else if (filename == "GROUND2O.DAT") {
-        if (i == 5 || i >= 57 && i <= 59) { // pink maps
-
-        }
-        if (i >= 29 && i <= 32) { // ice maps
-
+        // pink maps                         ice maps
+        if (i == 5 || i >= 57 && i <= 59 || i >= 29 && i <= 32) {
+          img.isSteel = true;
         }
       } else if (filename == "GROUND3O.DAT") {
         if (i == 27 || i >= 48 && i <= 50) { // desert maps
-
+          img.isSteel = true;
         }
       } else if (filename == "GROUND4O.DAT") {
         if (i >= 31 && i <= 32 || i == 34) { // crystal maps
-
+          img.isSteel = true;
         }
       }
 
