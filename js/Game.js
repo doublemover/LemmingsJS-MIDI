@@ -173,8 +173,8 @@ class Game {
             }
             if (this.guiDisplay) {
                 this.gameGui.render();
+                this.guiDisplay.redraw();
             }
-            this.guiDisplay.redraw();
         }
     }
     Lemmings.Game = Game;

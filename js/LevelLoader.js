@@ -52,16 +52,16 @@ class LevelLoader {
                         fileList.push(this.fileProvider.loadBinary(this.config.path, "VGAGR" + levelReader.graphicSet1 + ".DAT"));
                         fileList.push(this.fileProvider.loadBinary(this.config.path, "GROUND" + levelReader.graphicSet1 + "O.DAT"));
                         if (levelReader.graphicSet2 != 0) {
-                            /// this is a Image Map
+                            /// this is an Image Map
                             fileList.push(this.fileProvider.loadBinary(this.config.path, "VGASPEC" + (levelReader.graphicSet2 - 1) + ".DAT"));
                         }
                         return Promise.all(fileList);
                     })
                     .then((fileList) => {
-                        let goundFile = fileList[1];
+                        let groundFile = fileList[1];
                         let vgaContainer = new Lemmings.FileContainer(fileList[0]);
                         /// read the images used for the map and for the objects of the map
-                        let groundReader = new Lemmings.GroundReader(goundFile, vgaContainer.getPart(0), vgaContainer.getPart(1));
+                        let groundReader = new Lemmings.GroundReader(groundFile, vgaContainer.getPart(0), vgaContainer.getPart(1));
                         /// render the map background image
                         let render = new Lemmings.GroundRenderer();
                         if (fileList.length > 2) {
@@ -77,6 +77,7 @@ class LevelLoader {
                         level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
                         level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
                         level.setSteelAreas(levelReader.steel);
+                        level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());
                         resolve(level);
                     });
             });

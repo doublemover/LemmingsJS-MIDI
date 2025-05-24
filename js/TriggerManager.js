@@ -19,7 +19,6 @@ class TriggerManager {
                 }
             }
         }
-        /** add a new trigger to the manager */
         remove(trigger) {
             let triggerIndex = this.triggers.indexOf(trigger);
             if (triggerIndex >= 0) {

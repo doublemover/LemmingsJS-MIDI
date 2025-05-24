@@ -46,6 +46,7 @@ class Level {
     let arrowRects = []
     for (const ob of objects) {
       const info = objectImg[ob.id];
+      if (info == null) continue; // hack to continue on missing images
       let tfxID  = info.trigger_effect_id;
 
       // gross hack → frying correction
@@ -63,7 +64,16 @@ class Level {
         const x2 = x1 + info.trigger_width;
         const y2 = y1 + info.trigger_height;
 
-        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, 0, info.trap_sound_effect_id, mapOb)
+        let repeatDelay = 0
+        if (tfxID != 1) {
+          if (tfxID != 5 && tfxID != 7 && tfxID != 8) { // if not water or arrows
+            repeatDelay = info.frameCount; // 
+          }
+          //console.log(`unknown=${info.unknown} unknown1=${info.unknown1} unknown2=${info.unknown2}`)
+        }
+        
+
+        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb)
 
         // triggertype 7 and 8 are arrow areas, 7s is left and 8 is right
         // using rects to construct a mask like how steel works
@@ -192,6 +202,34 @@ class Level {
   // -------------------------------------------------------------------------
   // Steel
   // -------------------------------------------------------------------------
+  newSetSteelAreas(levelReader, terrainImages) {
+    const { levelWidth, levelHeight, terrains } = levelReader;
+    let newSteelRanges = [];
+    if (this.steelRanges.length == 0) return;
+    for (let i = 0, len = terrains.length; i < len; ++i) {
+      const tObj = terrains[i];
+      const terImg = terrainImages[tObj.id];
+      if (terImg.isSteel == true) {
+        var newRange = new Lemmings.Range();
+        newRange.x = tObj.x;
+        newRange.y = tObj.y;
+        newRange.width = terImg.steelWidth;
+        newRange.height = terImg.steelHeight;
+        for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
+          for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
+            if (this.isSteelAt(dx,dy)) {
+              newSteelRanges.push(newRange);
+            }
+          }
+        }
+      }
+    }
+    if (newSteelRanges.length > 0) {
+      this.steelRanges     = new Int32Array(0);
+      this.setSteelAreas(newSteelRanges);
+    }
+  }
+
   setSteelAreas (ranges = []) {
     // pack into Int32Array [x,y,w,h,…] for fast iteration
     const buf = new Int32Array(ranges.length * 4);

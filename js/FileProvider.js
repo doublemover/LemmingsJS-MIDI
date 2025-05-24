@@ -13,7 +13,7 @@ class FileProvider {
                 var xhr = new XMLHttpRequest();
                 xhr.onload = () => {
                     if (xhr.status >= 200 && xhr.status < 300) {
-                        let reader = new Lemmings.BinaryReader(xhr.response, 0, null, this.filenameFormUrl(url));
+                        let reader = new Lemmings.BinaryReader(xhr.response, 0, null, this.filenameFormUrl(url), path);
                         resolve(reader);
                     } else {
                         this.log.log("error load file:" + url);

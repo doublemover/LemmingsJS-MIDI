@@ -13,8 +13,9 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
   - The frying animation plays when lemmings step into fire pit or flamethrower triggers
-  - Steel Ground faithful (?) to the original implementation
-    - Added purple rectangles to display ranges of steel when debugging is enabled
+  - Improved Steel
+    - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
+    - Added cyan rectangles to display ranges of steel when debugging is enabled
   - Arrow Walls faithful (?) to the original implementation
     - Added orange (left) and green (right) rectangles to display arrow triggers when debugging is enabled
   - Minimap
@@ -41,16 +42,21 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## Progress
   - Everything above
-  - [ ] Super lemmings act twice per tick
   - [X] Arrow Walls
     - [X] Left & Right Arrows function correctly
     - [X] Utilizing similar logic as steel to generate masks and store them packed 
     - [X] Basher/Miner treat it as steel
+    - [X] Fixed rects being set at wrong height
     - [ ] Are they supposed to bounce builders?
+    - [ ] Some arrow walls not working correctly
+    - [ ] 2-2-19 left arrows not rendering, range shows up in debug?
+    - [ ] I don't like that the arrows show up on stairs that are built
+      - [ ] Add built stairs to a separate ground that does not get painted by these?
   - [X] Traps
     - [ ] Squish is missing
     - [ ] "Generic Trap" just vanishes em
-    - [ ] Cooldown
+    - [X] Cooldown
+    - [ ] Trigger Rect Alignment
   - [ ] MIDI
     - [X] WebMIDI Error Display
     - [X] List Input & Output devices in select elements
@@ -76,29 +82,31 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [X] Added a function in lemmingManager that returns all lemmings within the offset bounds of a given mask at x,y anyways
       - [ ] Actually check the mask 
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
-    - [ ] Write steel to second backgroundLayer?
+    - [ ] Write steel to second layer?
+  - [ ] Super lemmings act twice per tick
 
 ## Bugs, Things I am not sure of, and potential future enhancements
-  - [ ] Do down arrows exist anywhere in these levels? If it does it might not be displaying
-    - [ ] Down opposes from either side
-  - [ ] I don't know if steel is wrong or not but I want to make it perfectly aligned with the graphics
-  - [ ] I don't like that the arrows show up on stairs that are built
-      - [ ] Add built stairs to a separate ground mask that does not get painted by these?
+  - [ ] Still possible to apply bomb to exploding bombers, probably need to adjust the frame at which they are removed
+    - [ ] Same deal with splatting, drowning, and maybe falling lemmings
   - [ ] There is not a pallete swapped frying animation for the 'ice thrower' traps, I want to make one anyways
     - [ ] 2-2-9, 1-4-30
   - [ ] It seems like some traps might not be mirroring horizontally, if they're even supposed to
     - [ ] 2-1-7
     - [ ] Add orientation indication to debug rects
-  - [X] The water randomly off to the side on 1-1-12 is supposed to be there,
   - [ ] Trigger.disabledUntilTick overruns after 24 days
   - [ ] TriggerManager.trigger needs sweep-and-prune to avoid needlessly scanning every trigger each tick
   - [ ] Lemming.isRemoved() null/removed conflict
-  - [ ] If you go through enough levels at some point it starts flashing other levels underneath it, it's probably doing everything twice
+  - [ ] Level is getting loaded twice, it's a mess of promises
+    - [ ] I think this is the cause of levels from the previously played pack briefly flashing before the level from the current pack loads if you navigate between packs without refreshing
+      - [ ] The laziest way to fix this is to just force a refresh when the pack changes
   - [ ] I've managed to make the game lock up exactly once while dragging back and forth as fast as i could repeatedly and I cannot reproduce it
   - [ ] Can't go back to version 1 by clicking back on the start of version 2
-  - [ ] Can apply actions on splatting lemmings?
   - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
   - [ ] clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
+    - [ ] debounce/toggle
+  - [X] There are no down arrows until Lemmings 2
+  - [X] Steel is perfect in the cases where it bothered me, the remaining overlaps do not impact gameplay
+  - [X] The water randomly off to the side on 1-1-12 is supposed to be there,
 
 ## Things I need to look at
 - [ ] Source some form of level editor

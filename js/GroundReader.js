@@ -17,9 +17,6 @@ class GroundReader {
    * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
    */
   constructor (groundFile, vgaTerrar, vgaObject) {
-    // ---------------------------------------------------------------------
-    //  Fast‑fail on incorrect input – no work done, avoids hidden‑class churn
-    // ---------------------------------------------------------------------
     this.log = new Lemmings.LogHandler('GroundReader');
     if (groundFile.length !== 1056) {
       this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
@@ -48,9 +45,6 @@ class GroundReader {
     this.#readImages(this.imgTerrain, vgaTerrar, /*bpp=*/3);
   }
 
-  // -----------------------------------------------------------------------
-  //  Public accessors – tiny inlineable getters.
-  // -----------------------------------------------------------------------
   getTerrainImages() { return this.imgTerrain;  }
   getObjectImages () { return this.imgObjects; }
 
@@ -58,18 +52,37 @@ class GroundReader {
   //  Private helpers – prefixed with # so the engine can de‑virtualise them.
   // -----------------------------------------------------------------------
   #readImages (imgList, vga, bitPerPixel) {
-    // Classic for‑loop is measurably faster than Array.map for side‑effects.
     for (let i = 0, len = imgList.length; i < len; ++i) {
       const img = imgList[i];
+      if (img == null) continue; // hack to continue if missing img
       const frames = new Array(img.frameCount); // packed array – no pushes
 
       let filePos = img.imageLoc;
+      //console.log("frame images count: " + img.frameCount)
       for (let f = 0; f < img.frameCount; ++f) {
         const bitImage = new Lemmings.PaletteImage(img.width, img.height);
         bitImage.processImage(vga, bitPerPixel, filePos);
         bitImage.processTransparentData(vga, filePos + img.maskLoc);
         frames[f] = bitImage.getImageBuffer();
+        let frame = frames[f];
         filePos  += img.frameDataSize; // increment once, avoid extra mul
+
+        // TODO: this is slow
+        if (img.isSteel) {
+          let widest = 0;
+          let tallest = 0;
+          for (let y = 0; y < img.height; y++) {
+            for (let x = 0; x < img.width; x++) {
+              let row = y * img.width;
+              if (frame[row+x] != 128) {
+                widest = x+1;
+                tallest = y+1;
+              }
+            }
+          }
+          img.steelWidth = widest;
+          img.steelHeight = tallest;
+        }
       }
 
       img.frames = frames;
@@ -79,6 +92,7 @@ class GroundReader {
   #readObjectImages (fr, offset, palette) {
     fr.setOffset(offset);
 
+    //console.log("obj count: " + OBJECT_COUNT)
     for (let i = 0; i < OBJECT_COUNT; ++i) {
       const img      = new Lemmings.ObjectImageInfo();
       const flags    = fr.readWordBE();
@@ -126,6 +140,65 @@ class GroundReader {
       img.palette  = palette;
       img.frameCount = 1; // terrains never animate
 
+      let filename = fr.filename;
+      let foldername = fr.foldername;
+      if (foldername == "[unknown]") {
+        console.log("folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel")
+      }
+      else if (foldername == "lemmings") {
+        if (filename == "GROUND0O.DAT") { // normal maps
+          if (i >= 22 && i <= 26) {
+            img.isSteel = true;
+          }
+          if (i == 19) {
+            // this one writes black over steel
+          }
+        } 
+        else if (filename == "GROUND1O.DAT") { // dungeon maps 
+          if (i >= 12 && i <= 17) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND2O.DAT") { // pink maps
+          if (i == 5 || i >= 57 && i <= 59) { 
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND3O.DAT") { // desert maps
+          if (i == 27 || i >= 48 && i <= 50) { 
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND4O.DAT") { // crystal maps
+          if (i >= 31 && i <= 32 || i == 34) {
+            img.isSteel = true;
+          }
+        }
+      } 
+      else if (foldername == "lemmings_ohNo") {
+        if (filename == "GROUND0O.DAT") { // brick maps
+          if (i >= 51 && i <= 54) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND1O.DAT") { // jungle maps 
+          if (i >= 56 && i <= 59) {
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND2O.DAT") { // ice maps
+          if (i >= 29 && i <= 32) { 
+            img.isSteel = true;
+          }
+        } 
+        else if (filename == "GROUND3O.DAT") { // ? maps
+
+        } 
+        else if (filename == "GROUND4O.DAT") { // ? maps
+
+        }
+      }
+
       if (fr.eof()) {
         this.log.log(`readTerrainImages(): unexpected EOF reading ${fr.filename}`);
         return;
@@ -158,7 +231,5 @@ class GroundReader {
   }
 }
 
-// Attach to the public namespace exactly like the original so nothing else
-// in the code‑base needs to change.
 Lemmings.GroundReader = GroundReader;
 export { GroundReader };
