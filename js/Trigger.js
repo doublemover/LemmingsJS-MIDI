@@ -10,7 +10,6 @@ class Trigger {
             this.x2 = Math.max(x1, x2);
             this.y2 = Math.max(y1, y2);
             this.disableTicksCount = disableTicksCount;
-                        console.log(type)
         }
         trigger(x, y, tick) {
             if (this.disabledUntilTick <= tick) {
