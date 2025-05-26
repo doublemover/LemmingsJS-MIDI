@@ -2,7 +2,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class Trigger {
         constructor(type = Lemmings.TriggerTypes.NO_TRIGGER, x1 = 0, y1 = 0, x2 = 0, y2 = 0, disableTicksCount = 0, soundIndex = -1, owner = null) {
-            this.disabledUntilTick = disableTicksCount;
+            this.disabledUntilTick = 0;
             this.owner = owner;
             this.type = type;
             this.x1 = Math.min(x1, x2);

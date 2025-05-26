@@ -119,6 +119,13 @@ class GroundReader {
       img.trap_sound_effect_id = fr.readByte();
       img.palette              = palette;
 
+      if (img.unknown1 !== img.maskLoc)
+        this.log.log(`OBJ ${i}: unknown1 diverges from maskLoc (expected ${img.maskLoc}, got ${img.unknown1})`);
+      if (img.unknown2 !== (img.maskLoc >> 1))
+        this.log.log(`OBJ ${i}: unknown2 should be maskLoc/2 (got ${img.unknown2})`);
+      if (img.unknown !== 0)
+        this.log.log(`OBJ ${i}: unknown3 is non-zero (${img.unknown}) – CGA asset?`);
+
       if (fr.eof()) {
         this.log.log(`readObjectImages(): unexpected EOF reading ${fr.filename}`);
         return;

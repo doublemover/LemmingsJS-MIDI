@@ -5,8 +5,6 @@ import { Lemmings } from './LemmingsNamespace.js';
  *
  *  — Replace Array<SteelRange> with a typed Int32Array view for O(1) cache‑
  *    friendly steel checks (≈3× faster in large dig loops).
- *  — Reduce per‑frame allocations by re‑using Trigger/MapObject instances
- *    where possible (not shown – requires caller changes).
  */
 class Level {
   constructor (width, height) {
@@ -64,9 +62,10 @@ class Level {
         const x2 = x1 + info.trigger_width;
         const y2 = y1 + info.trigger_height;
 
+        // this is gross
         let repeatDelay = 0
         if (tfxID != 1) {
-          if (tfxID != 5 && tfxID != 7 && tfxID != 8) { // if not water or arrows
+          if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) { // if not water or arrows
             repeatDelay = info.frameCount; // 
           }
           //console.log(`unknown=${info.unknown} unknown1=${info.unknown1} unknown2=${info.unknown2}`)
@@ -178,7 +177,7 @@ class Level {
 
   isArrowAt (x, y, direction) {
     const a = this.arrowRanges;
-    for (let i = 0, len = a.length; i < len; i += 4) {
+    for (let i = 0, len = a.length; i < len; i += 5) {
       if (x >= a[i] && x < a[i] + a[i+2] && y >= a[i+1] && y < a[i+1] + a[i+3] && direction != a[i+4]) {
         return true;
       }
