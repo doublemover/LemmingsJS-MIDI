@@ -1,14 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-// ---------------------------------------------------------------------------
-//  Constants – hoisted outside the class so they are evaluated only once and
-//  the engine can inline them. This avoids re‑allocations on every instance
-//  and lets V8 treat them as true compile‑time constants.
-// ---------------------------------------------------------------------------
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
 const BYTE_SIZE_OF_OBJECTS  = 28 * OBJECT_COUNT;
 const BYTE_SIZE_OF_TERRAIN  = 8  * TERRAIN_COUNT;
+const TRANSPARENT = 128;
 
 class GroundReader {
   /**
@@ -51,40 +47,58 @@ class GroundReader {
   // -----------------------------------------------------------------------
   //  Private helpers – prefixed with # so the engine can de‑virtualise them.
   // -----------------------------------------------------------------------
-  #readImages (imgList, vga, bitPerPixel) {
-    for (let i = 0, len = imgList.length; i < len; ++i) {
+  #readImages (imgList, vga, bitsPerPixel) {
+    for (let i = 0, imgCount = imgList.length; i < imgCount; ++i) {
       const img = imgList[i];
-      if (img == null) continue; // hack to continue if missing img
-      const frames = new Array(img.frameCount); // packed array – no pushes
+      if (!img) continue; // hack to continue if missing img
+
+      const frames = new Array(img.frameCount);
+      let maxSteelW = 0, maxSteelH = 0;
 
       let filePos = img.imageLoc;
-      //console.log("frame images count: " + img.frameCount)
-      for (let f = 0; f < img.frameCount; ++f) {
-        const bitImage = new Lemmings.PaletteImage(img.width, img.height);
-        bitImage.processImage(vga, bitPerPixel, filePos);
-        bitImage.processTransparentData(vga, filePos + img.maskLoc);
-        frames[f] = bitImage.getImageBuffer();
-        let frame = frames[f];
-        filePos  += img.frameDataSize; // increment once, avoid extra mul
 
-        // TODO: this is slow
+      for (let f = 0; f < img.frameCount; ++f) {
+        const pimg = new Lemmings.PaletteImage(img.width, img.height);
+        pimg.processImage(vga, bitsPerPixel, filePos);
+        pimg.processTransparentData(vga, filePos + img.maskLoc);
+
+        const frame = pimg.getImageBuffer();
+        frames[f]   = frame;
+        filePos    += img.frameDataSize;
+
         if (img.isSteel) {
-          let widest = 0;
+          let widest  = 0;
           let tallest = 0;
-          for (let y = 0; y < img.height; y++) {
-            for (let x = 0; x < img.width; x++) {
-              let row = y * img.width;
-              if (frame[row+x] != 128) {
-                widest = x+1;
-                tallest = y+1;
+
+          // scan each row once from the right 
+          for (let y = img.height - 1; y >= 0; --y) {
+            const rowBase = y * img.width;
+            let rowHasPixel = false;
+
+            // scan from rightmost column until we see a solid pixel
+            for (let x = img.width - 1; x >= 0; --x) {
+              if (frame[rowBase + x] !== TRANSPARENT) {
+                if (x + 1 > widest)  widest = x + 1;
+                rowHasPixel = true;
+                break;
               }
             }
+
+            if (rowHasPixel && tallest === 0) {
+              tallest = y + 1;          // first solid row from the bottom
+              if (widest === img.width) break;
+            }
           }
-          img.steelWidth = widest;
-          img.steelHeight = tallest;
+
+          if (widest  > maxSteelW) maxSteelW = widest;
+          if (tallest > maxSteelH) maxSteelH = tallest;
         }
       }
 
+      if (img.isSteel) {
+        img.steelWidth  = maxSteelW;
+        img.steelHeight = maxSteelH;
+      }
       img.frames = frames;
     }
   }
@@ -198,12 +212,12 @@ class GroundReader {
             img.isSteel = true;
           }
         } 
-        else if (filename == "GROUND3O.DAT") { // ? maps
+        // else if (filename == "GROUND3O.DAT") { // ? maps
 
-        } 
-        else if (filename == "GROUND4O.DAT") { // ? maps
+        // } 
+        // else if (filename == "GROUND4O.DAT") { // ? maps
 
-        }
+        // }
       }
 
       if (fr.eof()) {
