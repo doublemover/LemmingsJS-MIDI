@@ -4,6 +4,7 @@ class FileContainer {
         /** read the content of the container  */
         constructor(content) {
             this.log = new Lemmings.LogHandler("FileContainer");
+            this.parts = new Array();
             this.read(content);
         }
         /** Unpack a part (chunks / segments) of the file and return it */
@@ -21,7 +22,7 @@ class FileContainer {
         /** do the read job and find all parts in this container */
         read(fileReader) {
             /// reset parts
-            this.parts = new Array();
+            this.parts.length = 0;
             /// we start at the end of the file
             var pos = 0;
             /// the size of the header
