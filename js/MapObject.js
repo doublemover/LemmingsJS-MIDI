@@ -33,11 +33,11 @@ class MapObject {
       MapObject.#frameCache.set(objectImg, frames);
     }
 
-    this.animation = animation;
+    this.animation                 = animation;
     this.animation.loop            = objectImg.animationLoop;
     this.animation.firstFrameIndex = objectImg.firstFrameIndex;
     this.animation.objectImg       = objectImg;
-    this.animation.frames.push(...frames);
+    this.animation.frames          = frames;
   }
 
   /** Called when a lemming collides with this object's trigger zone. */
