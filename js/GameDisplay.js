@@ -16,7 +16,7 @@ class GameDisplay {
                 let lem = this.lemmingManager.getLemmingAt(e.x, e.y);
                 if (!lem)
                     return;
-                this.game.queueCmmand(new Lemmings.CommandLemmingsAction(lem.id));
+                this.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
             });
         }
         render() {

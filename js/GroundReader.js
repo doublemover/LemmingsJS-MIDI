@@ -186,7 +186,10 @@ class GroundReader {
           }
         } 
         else if (filename == "GROUND3O.DAT") { // desert maps
-          if (i == 27 || i >= 48 && i <= 50) { 
+          if (i == 27) { 
+            img.isSteel = true;
+          }
+          if ( i >= 48 && i <= 50) {
             img.isSteel = true;
           }
         } 
@@ -212,12 +215,6 @@ class GroundReader {
             img.isSteel = true;
           }
         } 
-        // else if (filename == "GROUND3O.DAT") { // ? maps
-
-        // } 
-        // else if (filename == "GROUND4O.DAT") { // ? maps
-
-        // }
       }
 
       if (fr.eof()) {
