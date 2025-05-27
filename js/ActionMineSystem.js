@@ -2,16 +2,18 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionMineSystem {
         constructor(sprites, masks) {
-            this.sprite = [];
-            this.masks = [];
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINING, false));
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.MINING, true));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINING_L));
-            this.masks.push(masks.GetMask(Lemmings.MaskTypes.MINING_R));
+            this.sprite = [
+                sprites.getAnimation(Lemmings.SpriteTypes.MINING, false),
+                sprites.getAnimation(Lemmings.SpriteTypes.MINING, true)
+            ];
+            this.masks = [
+                masks.GetMask(Lemmings.MaskTypes.MINING_L),
+                masks.GetMask(Lemmings.MaskTypes.MINING_R)
+            ];
         }
         draw(gameDisplay, lem) {
-            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
-            let frame = ani.getFrame(lem.frameIndex);
+            const ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            const frame = ani.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         getActionName() {

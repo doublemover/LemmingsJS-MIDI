@@ -11,8 +11,7 @@ class ActionDrowningSystem {
             return false;
         }
         draw(gameDisplay, lem) {
-            let frameIndex = lem.frameIndex;
-            let frame = this.sprite.getFrame(frameIndex);
+            const frame = this.sprite.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
             if (frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);

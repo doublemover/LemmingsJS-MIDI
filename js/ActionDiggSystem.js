@@ -2,13 +2,14 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionDiggSystem {
         constructor(sprites) {
-            this.sprite = [];
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false));
-            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true));
+            this.sprite = [
+                sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false),
+                sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true)
+            ];
         }
         draw(gameDisplay, lem) {
-            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
-            let frame = ani.getFrame(lem.frameIndex);
+            const ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            const frame = ani.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         getActionName() {
