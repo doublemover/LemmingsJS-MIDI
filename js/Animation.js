@@ -3,6 +3,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 class Animation {
   constructor (_compat = null, loop = true) {
     this.frames = [];
+    this._lastFrame = null;
     this.loop   = loop;
 
     this.firstFrameIndex = 0;  // global tick when playback starts
@@ -26,8 +27,8 @@ class Animation {
     const count = this.frames.length;
     if (count === 0) return null;
 
-    if (this.isFinished) {
-      return this.frames[count - 1];
+    if (this.isFinished && this._lastFrame) {
+      return this._lastFrame;
     }
 
     const local = globalTick - this.firstFrameIndex;
@@ -37,8 +38,12 @@ class Animation {
       idx = ((local % count) + count) % count;  // positive remainder
     } else {
       if (local >= count - 1) {
-        this.isFinished = true;
         idx = count - 1;
+        if (!this._lastFrame) {
+          this._lastFrame = this.frames[idx];
+        }
+        this.isFinished = true;
+        return this._lastFrame;
       } else if (local < 0) {
         idx = 0;
       } else {
@@ -58,6 +63,7 @@ class Animation {
       arr[i] = paletteImg.createFrame(palette, offsetX, offsetY);
     }
     this.frames     = arr;   // one atomic swap – great for sharing/caching
+    this._lastFrame = arr[frames-1];
     this.isFinished = false;
   }
 }

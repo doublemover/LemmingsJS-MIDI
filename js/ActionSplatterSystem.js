@@ -1,8 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
-
+        
 class ActionSplatterSystem {
+        static sprites = new Map();
         constructor(sprites) {
-            this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.SPLATTING, false);
+            ActionSplatterSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.SPLATTING, false));
         }
         getActionName() {
             return "splatter";
@@ -11,7 +12,7 @@ class ActionSplatterSystem {
             return false;
         }
         draw(gameDisplay, lem) {
-            const frame = this.sprite.getFrame(lem.frameIndex);
+            const frame = ActionSplatterSystem.sprites.get("both").getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
             if (lem.frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);

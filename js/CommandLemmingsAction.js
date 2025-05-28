@@ -1,49 +1,77 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandLemmingsAction {
-        constructor(lemmingId) {
-            this.log = new Lemmings.LogHandler("CommandLemmingsAction");
-            if (lemmingId != null)
-                this.lemmingId = lemmingId;
+    static lemmingManager = null;
+    static gameSkills = null;
+    static _lemmingCache = new Map();
+
+    static setManagers(lemmingManager, gameSkills) {
+        CommandLemmingsAction.lemmingManager = lemmingManager;
+        CommandLemmingsAction.gameSkills = gameSkills;
+
+        const lemmings = CommandLemmingsAction.lemmingManager.getLemmings();
+        const cacheSize = CommandLemmingsAction._lemmingCache.size;
+
+        // new level, clear the cache
+        if (lemmings?.length == 1 && lemmings[0].action?.getActionName() == "falling") {
+            CommandLemmingsAction._lemmingCache = new Map();
         }
-        getCommandKey() {
-            return "l";
-        }
-        /** load parameters for this command from serializer */
-        load(values) {
-            if (values.length < 1) {
-                this.log.log("Unable to process load");
-                return;
+
+        if (lemmings?.length != cacheSize) {
+            for (const lem of lemmings) {
+                if (!CommandLemmingsAction._lemmingCache.has(lem.id)) {
+                    CommandLemmingsAction._lemmingCache.set(lem.id, lem);
+                }
             }
-            this.lemmingId = values[0];
         }
-        /** save parameters of this command to serializer */
-        save() {
-            return [this.lemmingId];
+    }
+
+    constructor(lemmingId) {
+        this.log = new Lemmings.LogHandler("CommandLemmingsAction");
+        if (lemmingId != null)
+            this.lemmingId = lemmingId;
+    }
+    getCommandKey() {
+        return "l";
+    }
+    load(values) {
+        if (values.length < 1) {
+            this.log.log("Unable to process load");
+            return;
         }
-        /** execute this command */
-        execute(game) {
-            let lemManager = game.getLemmingManager();
-            let lem = lemManager.getLemming(this.lemmingId);
+        this.lemmingId = values[0];
+    }
+    save() {
+        return [this.lemmingId];
+    }
+    #getLemming(lemmingID){
+        const cachedLem = CommandLemmingsAction._lemmingCache.get(this.lemmingId);
+        if (!cachedLem) {
+            const lem = CommandLemmingsAction.lemmingManager.getLemming(this.lemmingId);
             if (!lem) {
                 this.log.log("Lemming not found! " + this.lemmingId);
                 return false;
             }
-            let skills = game.getGameSkills();
-            let selectedSkill = skills.getSelectedSkill();
-            if (!skills.canReuseSkill(selectedSkill)) {
-                this.log.log("Not enough skills!");
-                return false;
-            }
-            /// set the skill
-            if (!lemManager.doLemmingAction(lem, selectedSkill)) {
-                this.log.log("unable to execute action on lemming!");
-                return false;
-            }
-            /// reduce the available skill count
-            return skills.reuseSkill(selectedSkill);
+            CommandLemmingsAction._lemmingCache.set(this.lemmingId, lem)
+            return lem;
+        } else {
+            return cachedLem;
         }
+        console.log("error in getlemming")
     }
-    Lemmings.CommandLemmingsAction = CommandLemmingsAction;
-
+    execute() {
+        const cachedLem = CommandLemmingsAction._lemmingCache.get(this.lemmingId);
+        const selectedSkill = CommandLemmingsAction.gameSkills.getSelectedSkill();
+        if (!CommandLemmingsAction.gameSkills.canReuseSkill(selectedSkill)) {
+            this.log.log("Not enough skills!");
+            return false;
+        }
+        if (!CommandLemmingsAction.lemmingManager.doLemmingAction(cachedLem, selectedSkill)) {
+            this.log.log("unable to execute action on lemming!");
+            return false;
+        }
+        return CommandLemmingsAction.gameSkills.reuseSkill(selectedSkill);
+    }
+}
+Lemmings.CommandLemmingsAction = CommandLemmingsAction;
 export { CommandLemmingsAction };

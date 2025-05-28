@@ -30,9 +30,12 @@ class UserInputManager {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
         this.mouseButton = false;
+        this.mouseButtonNumber = 0;
         this.onMouseMove = new Lemmings.EventHandler();
         this.onMouseUp = new Lemmings.EventHandler();
         this.onMouseDown = new Lemmings.EventHandler();
+        this.onMouseRightDown = new Lemmings.EventHandler();
+        this.onMouseRightUp = new Lemmings.EventHandler();
         this.onDoubleClick = new Lemmings.EventHandler();
         this.onZoom = new Lemmings.EventHandler();
         listenElement.addEventListener("mousemove", (e) => {
@@ -65,17 +68,26 @@ class UserInputManager {
             return false;
         });
         listenElement.addEventListener("mousedown", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-            this.handleMouseDown(relativePos);
             e.stopPropagation();
             e.preventDefault();
+            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            if (e.button == 2) {
+                this.handleMouseRightDown(relativePos, e.button);
+                return false;
+            }
+            this.handleMouseDown(relativePos, e.button);
+
             return false;
         });
         listenElement.addEventListener("mouseup", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-            this.handleMouseUp(relativePos);
             e.stopPropagation();
             e.preventDefault();
+            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            if (e.button == 2) {
+                this.handleMouseRightUp(relativePos, e.button);
+                return false;
+            }
+            this.handleMouseUp(relativePos, e.button);
             return false;
         });
         listenElement.addEventListener("mouseleave", (e) => {
@@ -137,27 +149,47 @@ class UserInputManager {
             this.onMouseMove.trigger(new MouseMoveEventArguements(position.x, position.y, 0, 0, false));
         }
     }
-    handleMouseDown(position) {
+    handleMouseDown(position, button = null) {
         //- save start of Mousedown
         this.mouseButton = true;
         this.mouseDownX = position.x;
         this.mouseDownY = position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-        /// create new event handler
+        if (button > 0) {
+            this.mouseButtonNumber = button;
+        }
+
         this.onMouseDown.trigger(position);
+    }
+    handleMouseRightDown(position, button = null) {
+        this.mouseButton = true;
+        this.mouseDownX = position.x;
+        this.mouseDownY = position.y;
+        this.lastMouseX = position.x;
+        this.lastMouseY = position.y;
+        if (button) {
+            this.mouseButtonNumber = button;
+        }
+
+        this.onMouseRightDown.trigger(position);
     }
     handleMouseDoubleClick(position) {
         this.onDoubleClick.trigger(position);
     }
     handleMouseClear() {
         this.mouseButton = false;
+        this.mouseButtonNumber = null;
         this.mouseDownX = 0;
         this.mouseDownY = 0;
         this.lastMouseX = 0;
         this.lastMouseY = 0;
     }
     handleMouseUp(position) {
+        this.handleMouseClear();
+        this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
+    }
+    handleMouseRightUp(position) {
         this.handleMouseClear();
         this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
     }

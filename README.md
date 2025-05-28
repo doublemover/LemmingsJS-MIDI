@@ -5,21 +5,21 @@ Lemmings reimplementation written in HTML5 / JavaScript. Emits MIDI events via W
 Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https://doublemover.github.io/LemmingsJS-MIDI/)
 
 ## New Features
-  - Speed Management & Debug toggle
-    - The "button" to the right of Nuke (not visible) slows down the game by 1 (to a minimum of 1, the default speed)
-    - The next button (not visible) speeds the game up by 1 (to a maximum of 10)
-    - The button after that (also not visible) resets the game speed to 1
-    - The final button (still invisible) toggles the game's debug output (noisy console, red dots denoting lemming position, boxes denoting triggers and steel)
-      - Adding `&debug=true` or `&d=true` to the url will enable game's debug mode until the page is refreshed
+  - Speed Management UI
+    - Speed is displayed at the bottom of the Paws (Pause) button
+    - `f` for faster, `-` for slower
+    - Right clicking the Paws button resets the Game Speed Multiplier to 1
+    - Right clicking Nuke toggles Debug Mode
+    - When Debug Mode is enabled, speed can be increased up to 60x or reduced to 0.5x 
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
-    - Debug mode: $\color{Red}{\textsf{Red}}$ rectangles show triggers (traps & level exit)
+    - Debug mode: Red rectangles show triggers (traps & level exit)
   - The frying animation plays when lemmings step into fire pit or flamethrower triggers
   - Improved Steel terrain
     - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
-    - Debug mode: $\color{Cyan}{\textsf{Cyan}}$ rectangles show ranges of steel
+    - Debug mode: Cyan rectangles show ranges of steel
   - Arrow Walls faithful to the original implementation
-    - Debug mode: $\color{Orange}{\textsf{Orange}}$ (left) & $\color{Green}{\textsf{Green}}$ (right) show arrow triggers
+    - Debug mode: Orange (left) & Green (right) show arrow triggers
   - Minimap
     - Enhanced visibility: Reads ground mask at full res, accumulates result into minimap res
     - Terrain, entrances, and exits are visible
@@ -49,16 +49,16 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 
 ## Progress
   - Everything above
+  - [X] Partial support for xmas91/92 and holiday93/94 level packs
+    - [ ] Needs steel sprite magic numbers
+    - [ ] New triggers probably
+    - [ ] Pallete? whatever else, some things look off
   - [X] Click on minimap to change view position
     - [ ] Drag
   - [ ] Keyboard shortcuts
     - [ ] incl debug, speed, swap skills
   - [ ] Display selection rect around lemming nearest to cursor on hover
   - [ ] Confirmation state for nuke
-  - [ ] Right click nuke for debug
-  - [ ] mask off bottom 12 pixels or so of pause
-    - [ ] display current gamespeed
-    - [ ] 1x, slower, faster buttons
   - [X] Arrow Walls
     - [ ] Are they supposed to bounce builders?
     - [ ] 2-2-19 left arrows not rendering, range shows up in debug?
@@ -121,7 +121,7 @@ URL parameters are leveraged to save game state automatically (shortcut in brack
   - 2: Oh no! More Lemmings 
 - `difficulty (d)`: Difficulty 1-5 (default: 1)
 - `level (l)`: Level 1-30 (default: 1)
-- `speed (s)`: Control execution speed >0-10 (default: 1)
+- `speed (s)`: Control execution speed >0-100 (default: 1)
 - `cheat (c)`: Enable cheat mode (99 for all actions) (default: false)
 - `debug`: Enable debug mode until the page is refreshed (default: false)
 

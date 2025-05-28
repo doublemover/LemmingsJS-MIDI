@@ -14,10 +14,12 @@ class GameGui {
         this.gameVictoryCondition = gameVictoryCondition;
 
         /* change-tracking flags (original names) */
-        this.gameTimeChanged       = true;
+        this.gameTimeChanged       = false;
         this.skillsCountChangd     = true;
         this.skillSelectionChanged = true;
         this.backgroundChanged     = true;
+        this.releaseRateChanged    = true;
+        this.lastGameSpeed      = 0;
 
         /* sprite caches */
         this._panelSprite    = skillPanelSprites.getPanelSprite();
@@ -36,9 +38,11 @@ class GameGui {
         /* timer heartbeat – fires every RAF tick */
         gameTimer.onGameTick.on((paused) => {
             this._applyReleaseRateAuto();
-            this.gameTimeChanged = true;
-            // (no render here; handled by our own RAF loop)
         });
+
+        gameTimer.eachGameSecond.on(() => {
+            this.gameTimeChanged = true;
+        })
 
         skills.onCountChanged.on(() => {
             this.skillsCountChangd = true;
@@ -87,26 +91,63 @@ class GameGui {
                 let   neu = cur + step;
                 if (neu < min) neu = min;
                 if (neu > max) neu = max;
+                this.lastGameSpeed = neu;
                 this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
                     (this.gameVictoryCondition.currentReleaseRate = neu);
                 this.skillsCountChangd = true;
+                this.gameSpeedChanged = true;
             }
             this.deltaReleaseRate = step;
             this._applyReleaseRateAuto();
             return;
         }
-        if (panelIndex === 10) { this.gameTimer.toggle(); return; }
+        if (panelIndex === 10) {
+            if (e.y >= 34) { // if it is the bottom of the pause button
+                const pauseX = e.x - 160; // 160 is the leftmost position
+                const pauseIndex = Math.trunc(pauseX / 8); // 15px buttons
+                const speedFac = this.gameTimer.speedFactor;
+                if (pauseIndex === 0) {
+                    if (this.game.showDebug && speedFac > 10) {
+                        this.gameTimer.speedFactor -= 10;
+                        return;
+                    }
+                    if (speedFac > 1) {
+                        this.gameTimer.speedFactor--; 
+                        return
+                    }
+                    if (this.game.showDebug && speedFac == 1) {
+                        this.gameTimer.speedFactor = 0.5;
+                        return;
+                    }
+                }
+                if (pauseIndex === 1) {
+                    if (speedFac == 0.5) {
+                        this.gameTimer.speedFactor = 1;
+                        return;
+                    }
+                    if (this.game.showDebug && speedFac >= 10 && speedFac < 60) {
+                        this.gameTimer.speedFactor += 10;
+                        return;
+                    }
+                    if (speedFac < 10) {
+                        this.gameTimer.speedFactor++;
+                        return;
+                    }
+                }
+            } else {
+                this.gameTimer.toggle(); 
+            }
+            return; 
+        }
         if (panelIndex === 11) {
-            if (this.game.nukePrepared)
+            if (this.game.nukePrepared) {
                 this.game.queueCommand(new Lemmings.CommandNuke());
-            else
+            }
+            else {
                 this.game.nukePrepared = true;
+            }
             return;
         }
-        if (panelIndex === 12) { if (this.gameTimer.speedFactor > 1) this.gameTimer.speedFactor--; return; }
-        if (panelIndex === 13) { if (this.gameTimer.speedFactor < 10) this.gameTimer.speedFactor++; return; }
-        if (panelIndex === 14) { if (this.gameTimer.speedFactor !== 1) this.gameTimer.speedFactor = 1; return; }
-        if (panelIndex === 15) { this.game.showDebug = !this.game.showDebug; console.log('showDebug =', this.game.showDebug); return; }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
         if (this.gameTimer.isPaused?.()) {
@@ -114,6 +155,23 @@ class GameGui {
             this.skillSelectionChanged = true;
         }
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
+    }
+
+    handleSkillMouseRightDown(e) {
+        const panelIndex = Math.trunc(e.x / 16);
+
+        this.game.nukePrepared = false; // always cancel nuke confirmation on right click
+
+        if (panelIndex === 10) { // reset game speed if you right click pause
+            if (this.gameTimer.speedFactor !== 1) {
+                this.gameTimer.speedFactor = 1;
+            }
+        }
+
+        if (panelIndex === 11) { // enable debug mode if you right click nuke
+            this.game.showDebug = !this.game.showDebug;
+            return;
+        }
     }
 
     handleSkillDoubleClick(e) {
@@ -128,12 +186,15 @@ class GameGui {
             }
         }
         this.display = display;
-        if (!this.miniMap)
+        if (!this.miniMap) {
             this.setMiniMap(new Lemmings.MiniMap(this, this.game.level, display));
+        }
 
         this._displayListeners = [
             ['onMouseDown', e => { this.deltaReleaseRate = 0; if (e.y > 15) this.handleSkillMouseDown(e); }],
-            ['onMouseUp',   () => { this.deltaReleaseRate = 0; }],
+            ['onMouseUp', () => { this.deltaReleaseRate = 0; }],
+            ['onMouseRightDown', e => { this.deltaReleaseRate = 0; if (e.y > 15) this.handleSkillMouseRightDown(e); }],
+            ['onMouseRightUp', () => { this.deltaReleaseRate = 0; }],
             ['onDoubleClick', e => { this.deltaReleaseRate = 0; if (e.y > 15) this.handleSkillDoubleClick(e); }]
         ];
         for (const [event, handler] of this._displayListeners) {
@@ -163,6 +224,12 @@ class GameGui {
                 this.display[event].off(handler);
             }
         }
+        this._letterCache = null;
+        this._numRightCache = null;
+        this._numLeftCache = null;
+        this._panelSprite = null;
+        this._numEmptySprite = null;
+
     }
 
     render() {
@@ -175,14 +242,45 @@ class GameGui {
             d.setBackground(this._panelSprite.getData());
             this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = true;
         }
-        this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
-        this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
+
 
         // --- Always update timer text so it reflects "frozen" state
-        this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
+        if (this.gameTimeChanged) {
+            this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
+            const outCount = this.gameVictoryCondition.getOutCount();
+            if (outCount >= 0) {
+                this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
+            }
+            this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
+            this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
+            this.drawPanelNumber(d, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
+            this.gameTimeChanged = false;
+        }
 
-        this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
-        this.drawPanelNumber(d, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
+        if (this.skillsCountChangd) {
+            d.drawRect(160, 32, 16, 10, 0, 0, 0, true); // draw bottom black rect on pause button
+
+            let greenS  = this._getGreenLetter("f");
+            d.drawFrameResized(greenS, 173, 34, 3, 4);
+            let greenP  = this._getGreenLetter("-");
+            d.drawFrameResized(greenP, 161, 33, 3, 6);
+
+            const speedFac = this.gameTimer.speedFactor;
+            const tens  = Math.floor(speedFac / 10);
+            const ones  = speedFac % 10;
+            const left  = this._getRightDigit(tens);
+            const right = this._getRightDigit(ones);
+            let rightX = 163;
+            if (left && tens > 0) {
+                rightX = 164;
+                d.drawFrameResized(left, rightX-4, 33, 8, 6);
+            }
+            if (right) {
+                d.drawFrameResized(right, rightX, 33, 8, 6);
+            }
+            this.backgroundChanged = true;
+        }
+
 
         if (this.skillsCountChangd) {
             this.skillsCountChangd = false;
@@ -206,12 +304,23 @@ class GameGui {
         return this._numLeftCache[d]; }
     _getRightDigit(d) { if (!this._numRightCache[d])
         this._numRightCache[d] = this.skillPanelSprites.getNumberSpriteRight(d);
-        return this._numRightCache[d]; }
+        return this._numRightCache[d]; 
+    }
+    _getGreenLetter(ch) {
+        const cachedGreenLet  = this._letterCache.get(ch);
+        if (!cachedGreenLet) { 
+            const newGreenLet = this.skillPanelSprites.getLetterSprite(ch); 
+            this._letterCache.set(ch, newGreenLet); 
+            return newGreenLet;
+        } else {
+            return cachedGreenLet;
+        }
+    }
 
     drawSelection(d, panelIdx) { d.drawRect(16 * panelIdx, 16, 16, 23, 255, 255, 255); }
     drawPanelNumber(d, num, panelIdx) { this.drawNumber(d, num, 4 + 16 * panelIdx, 17); }
 
-    drawNumber(d, num, x, y) {
+    drawNumber(d, num, x, y, small = false) {
         if (num <= 0) { d.drawFrame(this._numEmptySprite, x, y); return; }
         const tens  = Math.floor(num / 10);
         const ones  = num % 10;

@@ -17,10 +17,12 @@ class GameTimer {
     this._frameTime = this.TIME_PER_FRAME_MS;
     this._rafId = 0;             // requestAnimationFrame id when running, else 0 
     this._lastTime = 0;          // last wall‑clock timestamp processed (ms)
+    this._lastGameSecond = 0;    // last whole game second
     this.tickIndex = 0;          // the current game time in number of ticks processed
     this._loopBound = this._loop.bind(this); // Only allocate once
 
     this.onGameTick        = new Lemmings.EventHandler();
+    this.eachGameSecond        = new Lemmings.EventHandler();
     this.onBeforeGameTick  = new Lemmings.EventHandler();
 
     // total ticks allowed in minutes
@@ -87,6 +89,15 @@ class GameTimer {
 
   _loop(now) {
     if (!this.isRunning()) return;
+    window.cancelAnimationFrame(this._rafId);
+
+    const gameSeconds = (this._lastTime / this.TIME_PER_FRAME_MS) | 0;
+    if (gameSeconds > this._lastGameSecond) {
+      if (this.eachGameSecond) {
+        this._lastGameSecond = gameSeconds;
+        this.eachGameSecond.trigger();
+      }
+    }
 
     let delta = now - this._lastTime;
     if (delta >= this._frameTime) {

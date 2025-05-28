@@ -1,15 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionWalkSystem {
+        static sprites = new Map();
         constructor(sprites) {
-            this.sprite = [
-                sprites.getAnimation(Lemmings.SpriteTypes.WALKING, false),
-                sprites.getAnimation(Lemmings.SpriteTypes.WALKING, true)
-            ];
+            ActionWalkSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.WALKING, false));
+            ActionWalkSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.WALKING, true));
         }
         draw(gameDisplay, lem) {
-            const ani = this.sprite[(lem.lookRight ? 1 : 0)];
-            gameDisplay.drawFrame(ani.getFrame(lem.frameIndex), lem.x, lem.y);
+            const ani = ActionWalkSystem.sprites.get(lem.getDirection());
+            const frame = ani.getFrame(lem.frameIndex);
+            gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
         getActionName() {
             return "walk";

@@ -2,25 +2,19 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class EventHandler {
   constructor () {
-    this.handlers = [];
+    this.handlers = new Set();
   }
 
   // Register a callback (idempotent)
   on (handler) {
-    if (typeof handler === 'function' && !this.handlers.includes(handler)) {
-      this.handlers.push(handler);
+    if (typeof handler === 'function' && !this.handlers.has(handler)) {
+      this.handlers.add(handler);
     }
   }
 
   // Deregister a callback
   off (handler) {
-    const arr = this.handlers;
-    for (let i = arr.length - 1; i >= 0; --i) {
-      if (arr[i] === handler) {
-        arr.splice(i, 1);
-        break;
-      }
-    }
+    this.handlers.delete(handler);
   }
 
   // Remove all callbacks
@@ -31,9 +25,8 @@ class EventHandler {
   // Run every handler with `arg`.  No `.slice()` → no transient allocations
   trigger (arg) {
     // snapshot length once to tolerate `off` during iteration without skipping
-    const len = this.handlers.length;
-    for (let i = 0; i < len; ++i) {
-      this.handlers[i](arg);
+    for (const handler of this.handlers) {
+      handler(arg);
     }
   }
 }

@@ -1,9 +1,9 @@
-/* global Lemmings */
+import { Lemmings } from './LemmingsNamespace.js';
 
 /*  TriggerManager
  *  ───────────────
- *  Public API (unchanged):
- *      constructor(gameTimer[, levelW, levelH, cellSize])
+ *  Public API:
+ *      constructor(gameTimer, [levelW, levelH, cellSize])
  *      add(trigger)
  *      addRange(triggerArray)
  *      removeByOwner(owner)
@@ -35,8 +35,7 @@ class TriggerManager {
     this._rows   = (levelH  >> this._shift) + 1;   // e.g.  160 → 11
     const slots  = this._cols * this._rows;
 
-    this._grid   = new Array(slots);
-    for (let i = 0; i < slots; ++i) this._grid[i] = [];
+    this._grid   = Array.from({length: slots}, () => new Set());
 
     this._triggers = new Set();
 
@@ -47,27 +46,27 @@ class TriggerManager {
 
   /* ───────────────────────── public API ───────────────────────── */
 
-  /** Register a single trigger. */
+  /** Register a single trigger */
   add (trigger) {
     if (this._triggers.has(trigger)) return;
     this._triggers.add(trigger);
-    this._insert(trigger);
+    this.#insert(trigger);
   }
 
-  /** Bulk-add (used by Level on load). */
+  /** Bulk-add (used by Level on load) */
   addRange (arr) {
     for (let i = 0; i < arr.length; ++i) this.add(arr[i]);
   }
 
-  /** Remove every trigger that belongs to `owner`. */
+  /** Remove every trigger that belongs to `owner` */
   removeByOwner (owner) {
     for (const tr of this._triggers) {
-      if (tr.owner === owner) this._remove(tr);
+      if (tr.owner === owner) this.#remove(tr);
     }
   }
 
   /**
-   * Query at pixel (x,y).  Returns a value from Lemmings.TriggerTypes.
+   * Query at pixel (x,y).  Returns a value from Lemmings.TriggerTypes
    */
   trigger (x, y) {
     if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
@@ -76,26 +75,26 @@ class TriggerManager {
 
     const bucket =
       ( (y >> this._shift) * this._cols ) +
-      ( x >> this._shift );
+      (  x >> this._shift);
 
     const cell = this._grid[bucket];
     const tick = this.gameTimer.getGameTicks();
 
-    for (let i = 0; i < cell.length; ++i) {
-      const t = cell[i].trigger(x, y, tick);
-      if (t !== Lemmings.TriggerTypes.NO_TRIGGER) return t;
+    for (const trig of cell) {
+      const val = trig.trigger(x, y, tick);
+      if (val !== Lemmings.TriggerTypes.NO_TRIGGER) return val;
     }
     return Lemmings.TriggerTypes.NO_TRIGGER;
   }
 
-  /** Draw rectangles in debug overlay (unchanged). */
+  /** Draw rectangles in debug overlay */
   renderDebug (g) {
     for (const tr of this._triggers) tr.draw(g);
   }
 
   /* ────────────────────── internal helpers ────────────────────── */
 
-  _insert (trigger) {
+  #insert (trigger) {
     /* normalise & clamp bounds */
     let x0 = Math.max(0, Math.min(this._maxX, Math.min(trigger.x1, trigger.x2)));
     let x1 = Math.max(0, Math.min(this._maxX, Math.max(trigger.x1, trigger.x2)));
@@ -107,26 +106,26 @@ class TriggerManager {
     const r0 = y0 >> this._shift;
     const r1 = y1 >> this._shift;
 
-    const buckets = [];
+    const buckets = new Set();
     for (let r = r0; r <= r1; ++r) {
       const base = r * this._cols;
       for (let c = c0; c <= c1; ++c) {
         const idx = base + c;
-        this._grid[idx].push(trigger);
-        buckets.push(idx);
+        this._grid[idx].add(trigger);
+        buckets.add(idx);
       }
     }
     trigger.__bucketIndices = buckets;   // fast removal
   }
 
-  _remove (trigger) {
+  #remove (trigger) {
     this._triggers.delete(trigger);
     const buckets = trigger.__bucketIndices;
     if (buckets) {
-      for (let i = 0; i < buckets.length; ++i) {
-        const arr = this._grid[buckets[i]];
-        const j   = arr.indexOf(trigger);
-        if (j !== -1) arr.splice(j, 1);
+      for (const idx of buckets) {
+        const arr = this._grid[idx];
+        
+        arr.delete(trigger);
       }
     }
     delete trigger.__bucketIndices;
