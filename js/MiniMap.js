@@ -15,7 +15,7 @@ class MiniMap {
         this.scaleY = this.height / level.height;
 
         this.terrain = new Uint8Array(this.size);
-        this._buildTerrain();
+        this.#buildTerrain();
 
         // dynamic state
         this.fog = new Uint8Array(this.size); // 0 = unseen
@@ -32,10 +32,10 @@ class MiniMap {
             this.palette[i] = 0xFF000000 | ((i*2) << 8);
         }
 
-        if (this.guiDisplay) this._hookPointer();
+        if (this.guiDisplay) this.#hookPointer();
     }
 
-    _hookPointer() {
+    #hookPointer() {
         const gd = this.guiDisplay;
         gd.onMouseDown.on(evt => {
             /* coordinates relative to minimap */
@@ -54,7 +54,7 @@ class MiniMap {
     }
 
     /* Build complete terrain snapshot (expensive – call at load/reset only). */
-    _buildTerrain() {
+    #buildTerrain() {
         this.terrain.fill(0);
         const gm = this.level.getGroundMaskLayer();
         for (let y = 0; y < this.level.height; ++y) {
@@ -185,7 +185,7 @@ class MiniMap {
         frame.drawRect(vpX, 0, 0, this.height - 1, vpRectColor, false, false);
         frame.drawRect(vpX + vpW, 0, 0, this.height - 1, vpRectColor, false, false);
 
-        /* Entrances / exits */
+        /* Entrances / Exits */
         for (const obj of this.level.objects) {
             const rx = (obj.x * this.scaleX) | 0;
             const ry = (obj.y * this.scaleY) | 0;
@@ -202,7 +202,7 @@ class MiniMap {
         }
 
         /* Death flashes */
-        for (let i = this.deadDots.length - 1; i >= 0; --i) {
+        for (let i = this.deadDots.at(-1); i >= 0; --i) {
             const d = this.deadDots[i];
             if (--d.ttl <= 0) {
                 this.deadDots.splice(i, 1);

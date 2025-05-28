@@ -83,9 +83,10 @@ class LemmingManager {
                 const dots = this._miniMapDots;
                 dots.length = 0;
                 for (let i = 0; i < count; i++) {
-                    const llem = lems[i];
-                    if (!llem.removed && !llem.disabled) {
-                        dots.push({ x: llem.x, y: llem.y });
+                    const lem = lems[i];
+                    const pos = { x: lem.x, y: lem.y };
+                    if (!lem.removed && !lem.disabled && !dots.includes(pos)) {
+                        dots.push(pos);
                     }
                 }
                 this.miniMap.setLiveDots(dots);
@@ -160,8 +161,8 @@ class LemmingManager {
         getLemmingAt(x, y, radius = 6) {
           const halfW = radius;
           const halfH = radius * 2;
-          for (let i = this.lemmings.length - 1; i >= 0; --i) {
-            const l = this.lemmings[i];
+          for (const l of this.lemmings.toReversed()) {
+    
             if (l.removed) continue;
             if (x >= l.x - halfW && x <= l.x + halfW && y >= l.y - halfH && y <= l.y + halfH) return l;
           }

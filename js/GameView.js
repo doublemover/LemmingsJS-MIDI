@@ -3,6 +3,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 class GameView {
     constructor() {
         this.log = new Lemmings.LogHandler("GameView");
+        this.gameType = null;
         this.levelIndex = 0;
         this.levelGroupIndex = 0;
         this.gameResources = null;
@@ -11,6 +12,8 @@ class GameView {
         this.stage = null;
         this.gameSpeedFactor = 1;
         this.applyQuery();
+        this.elementGameState = null;
+
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
     set gameCanvas(el) {
@@ -131,29 +134,40 @@ class GameView {
         this.levelIndex = (this.levelIndex + moveInterval) | 0;
         /// check if the levelIndex is out of bounds
         this.gameFactory.getConfig(this.gameType).then((config) => {
+            const groupLength = config.level.getGroupLength(this.levelGroupIndex);
+
             /// jump to next level group?
-            if (this.levelIndex >= config.level.getGroupLength(this.levelGroupIndex)) {
+            if (this.levelIndex >= groupLength) {
                 this.levelGroupIndex++;
                 this.levelIndex = 0;
             } else if (this.levelGroupIndex > 0 && this.levelIndex < 0) {
                 this.levelGroupIndex--;
-                this.levelIndex = config.level.getGroupLength(this.levelGroupIndex) - 1;
+                this.levelIndex = groupLength - 1;
+            } else if (this.levelGroupIndex == 0 && this.levelIndex < 0 && this.gameType > 1) {
+                this.gameType--;
+                this.levelGroupIndex = 0;
+                this.levelIndex = 0;
             }
             if (this.levelGroupIndex >= config.level.order.length) {
                 this.gameType++;
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
+
+            // /// jump to previous level group?
+            // if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
+            //     this.levelGroupIndex--;
+            //     this.levelIndex = groupLength - 1;
+            // }
+
+            // if no gametype?
             if (!Lemmings.GameTypes[Object.keys(Lemmings.GameTypes)[this.gameType]]) {
                 this.gameType = 1;
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
-            /// jump to previous level group?
-            if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
-                this.levelGroupIndex--;
-                this.levelIndex = config.level.getGroupLength(this.levelGroupIndex) - 1;
-            }
+
+
             /// update and load level
             this.changeHtmlText(this.elementLevelNumber, (this.levelIndex + 1).toString());
             this.loadLevel().then(() => {
@@ -188,7 +202,7 @@ class GameView {
         this.gameSpeedFactor = 1;
         if (query.get("speed") || query.get("s")) {
             let querySpeed = parseFloat(query.get("speed") || query.get("s"));
-            if (!isNaN(querySpeed) && querySpeed > 0 && querySpeed <= 10) {
+            if (!isNaN(querySpeed) && querySpeed > 0 && querySpeed <= 100) {
                 this.gameSpeedFactor = querySpeed;
             }
         }

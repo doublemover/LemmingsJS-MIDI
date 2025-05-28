@@ -20,6 +20,8 @@ class Trigger {
                     } 
                     return this.type;
                 }
+            } else {
+                return Lemmings.TriggerTypes.DISABLED;
             }
             return Lemmings.TriggerTypes.NO_TRIGGER;
         }

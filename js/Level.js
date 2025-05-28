@@ -114,6 +114,7 @@ class Level {
     const arrows = this.arrowRanges;
     const arrowCount = arrows.length;
 
+    const clearedGrounds = [];
     for (let dy = 0; dy < mask.height; ++dy) {
       const rowY = baseY + dy;
       const maskRow = dy * mask.width;
@@ -127,12 +128,23 @@ class Level {
           if (px >= steel[i] && px < steel[i] + steel[i+2] &&
               rowY >= steel[i+1] && rowY < steel[i+1] + steel[i+3]) { isSteel = true; break; }
         }
-        if (!isSteel) {
-          this.clearGroundAt(px, rowY);
-          lemmings.game.lemmingManager.miniMap.onGroundChanged(px, rowY, true);
+        const cg = [px, rowY];
+        if (!isSteel && !clearedGrounds.includes(cg)) {
+          clearedGrounds.push(cg);
+          // this.clearGroundAt(px, rowY);
         }
       }
     }
+
+    if (clearedGrounds.length > 0) {
+      for (const cg of clearedGrounds) {
+        const px = cg[0];
+        const rowY = cg[1];
+        this.clearGroundAt(px, rowY);
+        // lemmings.game.lemmingManager.miniMap.onGroundChanged(px, rowY, true);
+      }
+    }
+    
   }
 
   setGroundAt (x, y, paletteIndex) {
@@ -148,7 +160,7 @@ class Level {
   hasGroundAt (x, y) { return this.groundMask.hasGroundAt(x, y); }
 
   clearGroundAt (x, y) {
-    if (this.isSteelAt(x, y)) return;
+    // if (this.isSteelAt(x, y)) return;
     this.groundMask.clearGroundAt(x, y);
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;

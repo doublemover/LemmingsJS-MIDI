@@ -14,6 +14,7 @@ export const TriggerTypes = Object.freeze({
   BLOCKER_LEFT: 10,
   BLOCKER_RIGHT: 11,
   FRYING: 12, // gross hack alert to make frying work for now
+  DISABLED: 13, // added for new triggermanager
 });
 
 Lemmings.TriggerTypes = TriggerTypes;

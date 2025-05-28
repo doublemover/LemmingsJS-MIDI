@@ -15,6 +15,13 @@ class Lemming {
             this.y = y;
             this.id = id;
         }
+        getDirection() {
+            if (this.lookRight == true) {
+                return "right";
+            } else {
+                return "left";
+            }
+        }
         /** return the number shown as countdown */
         getCountDownTime() {
             return (8 - (this.countdown >> 4));

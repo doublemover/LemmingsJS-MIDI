@@ -1,11 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
-
 class ActionFallSystem {
+        static sprites = new Map();
         constructor(sprites) {
-            this.sprite = [
-                sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false),
-                sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true)
-            ];
+            ActionFallSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false));
+            ActionFallSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true));
         }
         getActionName() {
             return "falling";
@@ -15,7 +13,7 @@ class ActionFallSystem {
         }
         /** render Lemming to gamedisplay */
         draw(gameDisplay, lem) {
-            const ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            const ani = ActionFallSystem.sprites.get(lem.getDirection());
             const frame = ani.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }

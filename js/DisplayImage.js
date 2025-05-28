@@ -6,13 +6,15 @@ class DisplayImage {
         this.stage = stage;
         this.onMouseUp = new Lemmings.EventHandler();
         this.onMouseDown = new Lemmings.EventHandler();
+        this.onMouseRightDown = new Lemmings.EventHandler();
+        this.onMouseRightUp = new Lemmings.EventHandler();
         this.onMouseMove = new Lemmings.EventHandler();
         this.onDoubleClick = new Lemmings.EventHandler();
         // 32‑bit view reused everywhere; set by initSize()
         this.buffer32 = null;
-        this.onMouseDown.on(e => {
-            // this.setDebugPixel(e.x, e.y);
-        });
+        // this.onMouseDown.on(e => {
+        //     // this.setDebugPixel(e.x, e.y);
+        // });
         this.imgData = null;
     }
 
@@ -45,17 +47,25 @@ class DisplayImage {
             this.buffer32.set(groundImage);
         } else {
             // Fallback (ArrayLike)
-            this.imgData.data.set(groundImage);
+            console.log("error: setBackground fallback")
+            // this.imgData.data.set(groundImage);
         }
         this.groundMask = groundMask;
     }
     
     /* ---------- primitive drawing ---------- */
     /** Draw rectangle outline */
-    drawRect(x, y, width, height, r, g, b) {
+    drawRect(x, y, width, height, r, g, b, filled = false) {
         const x2 = x + width;
         const y2 = y + height;
         this.drawHorizontalLine(x, y,  x2, r, g, b);
+
+        if (filled) {
+            for (let i = y; i <= y+height; i++) {
+                this.drawHorizontalLine(x, i, x2, r, g, b);
+            }
+        }
+
         this.drawHorizontalLine(x, y2, x2, r, g, b);
         this.drawVerticalLine(  x,  y,  y2, r, g, b);
         this.drawVerticalLine( x2,  y,  y2, r, g, b);
@@ -109,47 +119,97 @@ class DisplayImage {
         }
     }
 
-    /** Generic blitter helper used by drawFrame & drawFrameCovered */
+    /**
+     * Generic blitter helper used by drawFrame & drawFrameCovered
+     * Now accepts optional `size: {width, height}` in opts to scale the sprite.
+     * Scaling uses nearest‑neighbour for speed.
+     */
     _blit(frame, posX, posY, opts) {
         const { width: srcW, height: srcH } = frame,
-              srcBuf = frame.getBuffer(),
+              srcBuf  = frame.getBuffer(),
               srcMask = frame.getMask(),
-              destW = this.imgData.width, destH = this.imgData.height,
-              baseX = posX + frame.offsetX, baseY = posY + frame.offsetY,
-              dest32 = this.buffer32;
+              destW   = this.imgData.width, destH = this.imgData.height,
+              baseX   = posX + frame.offsetX, baseY = posY + frame.offsetY,
+              dest32  = this.buffer32;
+
         const {
-            nullColor32 = null,
+            nullColor32   = null,
             checkGround   = false,
             onlyOverwrite = false,
             noOverwrite   = false,
             upsideDown    = false,
-            groundMask    = null
+            groundMask    = null,
+            size          = null // { width, height }
         } = opts ?? {};
-        
-        for (let sy = 0; sy < srcH; sy++) {
-            const sourceY = upsideDown ? srcH - sy - 1 : sy;
-            const outY = sy + baseY;
+
+        // If no scaling requested or size matches source → fall back to original fast path
+        const dstW = size?.width  ?? srcW;
+        const dstH = size?.height ?? srcH;
+        const isScaled = (dstW !== srcW) || (dstH !== srcH);
+
+        if (!isScaled) {
+            for (let sy = 0; sy < srcH; sy++) {
+                const sourceY = upsideDown ? srcH - sy - 1 : sy;
+                const outY = sy + baseY;
+                if (outY < 0 || outY >= destH) continue;
+                let srcRow  = sourceY * srcW;
+                let destRow = outY * destW + baseX;
+                for (let sx = 0; sx < srcW; sx++, srcRow++, destRow++) {
+                    if (!srcMask[srcRow]) {
+                        if (nullColor32 !== null) dest32[destRow] = nullColor32; // covered variant
+                        continue;
+                    }
+                    const outX = sx + baseX;
+                    if (outX < 0 || outX >= destW) continue;
+                    if (checkGround) {
+                        const hasGround = groundMask?.hasGroundAt(outX, outY);
+                        if (noOverwrite && hasGround)    continue;
+                        if (onlyOverwrite && !hasGround) continue;
+                    }
+                    dest32[destRow] = srcBuf[srcRow];
+                }
+            }
+            return;
+        }
+
+        // Scaled path – nearest‑neighbour sampling
+        const scaleX = srcW / dstW;
+        const scaleY = srcH / dstH;
+
+        for (let dy = 0; dy < dstH; dy++) {
+            let srcY = Math.floor(dy * scaleY);
+            if (upsideDown) srcY = srcH - 1 - srcY;
+            const outY = dy + baseY;
             if (outY < 0 || outY >= destH) continue;
-            let srcRow = sourceY * srcW;
-            let destRow = outY * destW + baseX;
-            for (let sx = 0; sx < srcW; sx++, srcRow++, destRow++) {
-                if (!srcMask[srcRow]) {
-                    if (nullColor32 !== null) dest32[destRow] = nullColor32; // covered variant
+
+            const srcYBase = srcY * srcW;
+            const destYBase = outY * destW;
+
+            for (let dx = 0; dx < dstW; dx++) {
+                const outX = dx + baseX;
+                if (outX < 0 || outX >= destW) continue;
+
+                const srcX = Math.floor(dx * scaleX);
+                const srcIdx = srcYBase + srcX;
+                const destIdx = destYBase + outX;
+
+                if (!srcMask[srcIdx]) {
+                    if (nullColor32 !== null) dest32[destIdx] = nullColor32;
                     continue;
                 }
-                const outX = sx + baseX;
-                if (outX < 0 || outX >= destW) continue;
+
                 if (checkGround) {
                     const hasGround = groundMask?.hasGroundAt(outX, outY);
-                    if (noOverwrite && hasGround)      continue;
-                    if (onlyOverwrite && !hasGround)   continue;
+                    if (noOverwrite && hasGround)    continue;
+                    if (onlyOverwrite && !hasGround) continue;
                 }
-                dest32[destRow] = srcBuf[srcRow];
+
+                dest32[destIdx] = srcBuf[srcIdx];
             }
         }
     }
 
-    drawFrame(frame, x, y) {
+    drawFrame(frame, x, y,) {
         this._blit(frame, x, y);
     }
 
@@ -165,6 +225,11 @@ class DisplayImage {
             noOverwrite:   cfg.noOverwrite,
             upsideDown:    cfg.isUpsideDown,
             groundMask:    this.groundMask
+        });
+    }
+    drawFrameResized(frame, x, y, w, h) {
+        this._blit(frame, x, y, {
+            size: {width: w, height: h}
         });
     }
 

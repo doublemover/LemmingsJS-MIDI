@@ -8,6 +8,8 @@ class Stage {
             this.controller = new Lemmings.UserInputManager(canvasForOutput);
             this.handleOnMouseUp();
             this.handleOnMouseDown();
+            this.handleOnMouseRightUp();
+            this.handleOnMouseRightDown();
             this.handleOnMouseMove();
             this.handleOnDoubleClick();
             this.handleOnZoom();
@@ -46,6 +48,23 @@ class Stage {
                     return;
                 let pos = this.calcPosition2D(stageImage, e);
                 stageImage.display.onMouseUp.trigger(pos);
+            });
+        }
+        handleOnMouseRightDown() {
+            this.controller.onMouseRightDown.on((e) => {
+                let stageImage = this.getStageImageAt(e.x, e.y);
+                if ((stageImage == null) || (stageImage.display == null))
+                    return;
+                stageImage.display.onMouseRightDown.trigger(this.calcPosition2D(stageImage, e));
+            });
+        }
+        handleOnMouseRightUp() {
+            this.controller.onMouseRightUp.on((e) => {
+                let stageImage = this.getStageImageAt(e.x, e.y);
+                if ((stageImage == null) || (stageImage.display == null))
+                    return;
+                let pos = this.calcPosition2D(stageImage, e);
+                stageImage.display.onMouseRightUp.trigger(pos);
             });
         }
         handleOnMouseMove() {

@@ -19,9 +19,9 @@
   <script type="module" src="js/LemmingsBootstrap.js"></script>
   <script type="text/javascript" src="js/webmidi.js"></script>
   <script type="text/javascript">
-    WebMidi.enable().then(onEnabled).catch(err => {
-      $("errorDisplay").innerHTML+=err
-    });
+    // WebMidi.enable().then(onEnabled).catch(err => {
+    //   $("errorDisplay").innerHTML+=err
+    // });
 
     function onEnabled() {
       const inputSelect = document.getElementById("midiInSelect");
