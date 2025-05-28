@@ -167,7 +167,7 @@ class GameView {
         let query = new URLSearchParams(window.location.search);
         if (query.get("version") || query.get("v")) {
             let queryVersion = parseInt(query.get("version") || query.get("v"), 10);
-            if (!isNaN(queryVersion) && queryVersion >= 1 && queryVersion <= 2) {
+            if (!isNaN(queryVersion) && queryVersion >= 1 && queryVersion <= 6) {
                 this.gameType = queryVersion;
             }
         }
