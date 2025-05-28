@@ -133,6 +133,5 @@ class TriggerManager {
   }
 }
 
-/* namespace hook for legacy code */
 Lemmings.TriggerManager = TriggerManager;
 export { TriggerManager };
