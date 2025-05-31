@@ -8,7 +8,7 @@ class MiniMap {
         this.level = level;
         this.guiDisplay = guiDisplay;
 
-        this.width = 128;
+        this.width = 127;
         this.height = 24;
         this.size = this.width * this.height;
         this.scaleX = this.width / level.width;
@@ -202,18 +202,18 @@ class MiniMap {
         }
 
         /* Death flashes */
-        for (let i = this.deadDots.at(-1); i >= 0; --i) {
-            const d = this.deadDots[i];
-            if (--d.ttl <= 0) {
-                this.deadDots.splice(i, 1);
-                continue;
-            }
-            if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
-        }
+        // for (let i = this.deadDots.at(-1); i >= 0; --i) {
+        //     const d = this.deadDots[i];
+        //     if (--d.ttl <= 0) {
+        //         this.deadDots.splice(i, 1);
+        //         continue;
+        //     }
+        //     if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
+        // }
 
         /* Blit */
         const destX = this.guiDisplay.getWidth() - W;
-        const destY = this.guiDisplay.getHeight() - H - 1;
+        const destY = this.guiDisplay.getHeight() - H;
         this.guiDisplay.drawFrame(frame, destX, destY);
     }
 

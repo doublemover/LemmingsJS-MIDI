@@ -180,7 +180,7 @@ class Game {
         state !== Lemmings.GameStateTypes.UNKNOWN) {
       this.gameVictoryCondition.doFinalize();
       this.finalGameState = state;
-      this.onGameEnd.trigger(new Lemmings.GameResult(this));
+      this.onGameEnd?.trigger(new Lemmings.GameResult(this));
     }
   }
 

@@ -1,14 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
-
+        
 class ActionDiggSystem {
+    static sprites = new Map();
         constructor(sprites) {
-            this.sprite = [
-                sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false),
-                sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true)
-            ];
+            if (ActionDiggSystem.sprites.size == 0) {
+                ActionDiggSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false));
+                ActionDiggSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true));
+            }
         }
         draw(gameDisplay, lem) {
-            const ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            const ani = ActionDiggSystem.sprites.get(lem.getDirection());
             const frame = ani.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x, lem.y);
         }
@@ -20,7 +21,9 @@ class ActionDiggSystem {
             return true;
         }
         process(level, lem) {
-            if (level.isSteelGround(lem.x, lem.y - 1) || level.isSteelGround(lem.x, lem.y -2)) {
+            if (level.isSteelGround(lem.x, lem.y) || 
+                level.isSteelGround(lem.x, lem.y - 1) || 
+                level.isSteelGround(lem.x, lem.y - 2)) {
                 return Lemmings.LemmingStateType.SHRUG;
             }
             if (lem.state == 0) {

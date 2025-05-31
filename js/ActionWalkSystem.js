@@ -50,7 +50,7 @@ class ActionWalkSystem {
                 }
             } else if (upDelta > 0) {
                 lem.y -= upDelta - 1;
-                if (upDelta > 3) {
+                if (upDelta > 2) {
                     // jump
                     return Lemmings.LemmingStateType.JUMPING;
                 } else {

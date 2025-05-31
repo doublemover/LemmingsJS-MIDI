@@ -19,10 +19,10 @@ class GameTimer {
     this._lastTime = 0;          // last wall‑clock timestamp processed (ms)
     this._lastGameSecond = 0;    // last whole game second
     this.tickIndex = 0;          // the current game time in number of ticks processed
-    this._loopBound = this._loop.bind(this); // Only allocate once
+    this._loopBound = this._loop.bind(this);
 
     this.onGameTick        = new Lemmings.EventHandler();
-    this.eachGameSecond        = new Lemmings.EventHandler();
+    this.eachGameSecond    = new Lemmings.EventHandler();
     this.onBeforeGameTick  = new Lemmings.EventHandler();
 
     // total ticks allowed in minutes
@@ -124,6 +124,8 @@ class GameTimer {
       this.onBeforeGameTick.dispose();
     if (this.onGameTick && this.onGameTick.dispose)
       this.onGameTick.dispose();
+    if (this.eachGameSecond && this.eachGameSecond.dispose)
+      this.eachGameSecond.dispose();
   }
 
   getGameTime()          { return this.ticksToSeconds(this.tickIndex); }

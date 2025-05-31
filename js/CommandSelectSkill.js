@@ -2,13 +2,17 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandSelectSkill {
     static gameSkills = null;
+    static log = null;
 
     static setManagers(gameSkills) {
         CommandSelectSkill.gameSkills = gameSkills;
     }
 
     constructor(skill) {
-        this.log = new Lemmings.LogHandler("CommandSelectSkill");
+        if (!CommandSelectSkill.log) {
+            CommandSelectSkill.log = new Lemmings.LogHandler("CommandSelectSkill");
+        }
+        
         if (skill)
             this.skill = skill;
     }
@@ -17,7 +21,7 @@ class CommandSelectSkill {
     }
     load(values) {
         if (values.length < 1) {
-            this.log.log("Unable to process load");
+            CommandSelectSkill.log.log("Unable to process load");
             return;
         }
         this.skill = values[0];
@@ -27,6 +31,9 @@ class CommandSelectSkill {
     }
     execute() {
         return CommandSelectSkill.gameSkills.setSelectedSkill(this.skill);
+    }
+    dispose() {
+        CommandSelectSkill.gameSkills = null;
     }
 }
 Lemmings.CommandSelectSkill = CommandSelectSkill;

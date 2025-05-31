@@ -73,18 +73,20 @@ class Lemming {
         }
         /** process this lemming one tick in time */
         process(level) {
-            if ((this.x < 0) || (this.x >= level.width) || (this.y < 0) || (this.y >= level.height + 6)) {
-                let lemY = this.y; 
+            const lemX = this.x;
+            const lemY = this.y;
+            if ((lemX < 0) || (this.x >= level.width) || (this.y < 0) || (this.y >= level.height + 6)) {
+                let newY = lemY; 
                 if (lemY >= level.height) {
-                    lemY = level.height-6;
+                    newY = level.height-6;
                 }
-                lemmings.game.lemmingManager.miniMap.addDeath(this.x, lemY);
+                lemmings.game.lemmingManager.miniMap.addDeath(lemX, newY);
                 return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run main action
             // TODO: why is this necessary
             if (!this.action) {
-                lemmings.game.lemmingManager.miniMap.addDeath(this.x, this.y);
+                lemmings.game.lemmingManager.miniMap.addDeath(lemX, this.y);
                 return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             }
             /// run secondary action
@@ -95,7 +97,7 @@ class Lemming {
                 }
             }
             if (this.action) {
-                var returnedState = this.action.process(level, this);
+                let returnedState = this.action.process(level, this);
                 return returnedState;
             }
             // prevent falling through function without returning a type
@@ -113,6 +115,7 @@ class Lemming {
             this.action = null;
             this.countdownAction = null;
             this.removed = true;
+            this.id = null;
         }
         isDisabled() {
             return this.disabled;

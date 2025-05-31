@@ -114,7 +114,7 @@ class Level {
     const arrows = this.arrowRanges;
     const arrowCount = arrows.length;
 
-    const clearedGrounds = [];
+    let clearedGrounds = new Set();
     for (let dy = 0; dy < mask.height; ++dy) {
       const rowY = baseY + dy;
       const maskRow = dy * mask.width;
@@ -122,21 +122,14 @@ class Level {
         if (mask.at(dx, dy)) continue;          // solid pixel in mask → skip
 
         const px = baseX + dx;
-        // quick steel test (int32 array packed)
-        let isSteel = false;
-        for (let i = 0; i < steelCount; i += 4) {
-          if (px >= steel[i] && px < steel[i] + steel[i+2] &&
-              rowY >= steel[i+1] && rowY < steel[i+1] + steel[i+3]) { isSteel = true; break; }
-        }
         const cg = [px, rowY];
-        if (!isSteel && !clearedGrounds.includes(cg)) {
-          clearedGrounds.push(cg);
-          // this.clearGroundAt(px, rowY);
+        if (!this.isSteelAt(x, y)) {
+          clearedGrounds.add(cg);
         }
       }
     }
 
-    if (clearedGrounds.length > 0) {
+    if (clearedGrounds.size > 0) {
       for (const cg of clearedGrounds) {
         const px = cg[0];
         const rowY = cg[1];
@@ -160,7 +153,9 @@ class Level {
   hasGroundAt (x, y) { return this.groundMask.hasGroundAt(x, y); }
 
   clearGroundAt (x, y) {
-    // if (this.isSteelAt(x, y)) return;
+    if (this.isSteelAt(x, y)) {
+      return;
+    }
     this.groundMask.clearGroundAt(x, y);
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;
@@ -234,7 +229,7 @@ class Level {
       }
     }
     if (newSteelRanges.length > 0) {
-      this.steelRanges     = new Int32Array(0);
+      this.steelRanges = new Int32Array(0);
       this.setSteelAreas(newSteelRanges);
     }
   }
@@ -261,7 +256,12 @@ class Level {
     }
     return false;
   }
-  isSteelGround (x, y) { return this.isSteelAt(x, y) && this.hasGroundAt(x, y); }
+
+  isSteelGround(x, y) {
+    if (this.hasGroundAt(x,y)) {
+      return this.isSteelAt(x,y);
+    }
+  }
 
   hasSteelUnderMask (mask, ox, oy) {
     const { offsetX:mx, offsetY:my, width:w, height:h } = mask;

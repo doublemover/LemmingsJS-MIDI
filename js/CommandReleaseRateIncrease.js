@@ -2,13 +2,15 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandReleaseRateIncrease {
     static victoryCondition = null;
-
+    static log = null;
     static setManagers(victoryCondition) {
         CommandReleaseRateIncrease.victoryCondition = victoryCondition;
     }
 
     constructor(number) {
-        this.log = new Lemmings.LogHandler("CommandReleaseRateIncrease");
+        if (!CommandReleaseRateDecrease.log) {
+            CommandReleaseRateDecrease.log = new Lemmings.LogHandler("CommandReleaseRateIncrease");
+        }
         if (number != null)
             this.number = number;
     }
@@ -17,7 +19,7 @@ class CommandReleaseRateIncrease {
     }
     load(values) {
         if (values.length < 1) {
-            this.log.log("Unable to process load");
+            CommandReleaseRateDecrease.log.log("Unable to process load");
             return;
         }
         this.number = values[0];
@@ -27,6 +29,9 @@ class CommandReleaseRateIncrease {
     }
     execute() {
         return CommandReleaseRateIncrease.victoryCondition?.changeReleaseRate(this.number);
+    }
+    dispose() {
+        CommandReleaseRateIncrease.victoryCondition = null;
     }
 }
 Lemmings.CommandReleaseRateIncrease = CommandReleaseRateIncrease;

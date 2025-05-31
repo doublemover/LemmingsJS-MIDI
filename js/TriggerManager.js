@@ -60,6 +60,7 @@ class TriggerManager {
 
   /** Remove every trigger that belongs to `owner` */
   removeByOwner (owner) {
+    if (!this._triggers) return;
     for (const tr of this._triggers) {
       if (tr.owner === owner) this.#remove(tr);
     }
@@ -129,6 +130,12 @@ class TriggerManager {
       }
     }
     delete trigger.__bucketIndices;
+  }
+
+  dispose() {
+    this.gameTimer = null;
+    this._grid   = null;
+    this._triggers = null;
   }
 }
 

@@ -7,14 +7,14 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
 ## New Features
   - Speed Management UI
     - Speed is displayed at the bottom of the Paws (Pause) button
-    - `f` for faster, `-` for slower
-    - Right clicking the Paws button resets the Game Speed Multiplier to 1
+      - Click `f` for faster, `-` for slower
+      - Right clicking the Paws button resets the Game Speed Multiplier to 1
     - Right clicking Nuke toggles Debug Mode
-    - When Debug Mode is enabled, speed can be increased up to 60x or reduced to 0.5x 
+      - When Debug Mode is enabled, speed can be increased up to 60x or reduced to 0.5x 
   - Levels with multiple entrances function correctly
   - Traps are deadly & animate when triggered
     - Debug mode: Red rectangles show triggers (traps & level exit)
-  - The frying animation plays when lemmings step into fire pit or flamethrower triggers
+  - Frying & Jumping animations now function
   - Improved Steel terrain
     - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
     - Debug mode: Cyan rectangles show ranges of steel
@@ -31,7 +31,8 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - Revised lemming selection system
   - Revised timer system allows for skill selection/use while the game is paused
     - Eliminated drift for precise gameplay
-  - Performance & caching 
+  - Performance & caching
+    - Try setting speed to 100 in the URL :)
 
 ### Fixed Bugs
   - Invisible blockers being left behind when a blocker does a different action
@@ -53,12 +54,19 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
     - [ ] Pallete? whatever else, some things look off
+  - [ ] Clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
+    - [ ] debounce/toggle
+    - [ ] html needs size set
+    - [ ] better level nav buttons/pack & diff dropdowns
   - [X] Click on minimap to change view position
     - [ ] Drag
   - [ ] Keyboard shortcuts
     - [ ] incl debug, speed, swap skills
+  - [ ] OG Cursor
   - [ ] Display selection rect around lemming nearest to cursor on hover
-  - [ ] Confirmation state for nuke
+  - [X] Nuke Confirmation State
+    - [X] Just a red border for now
+    - [ ] I want marching ants 
   - [X] Arrow Walls
     - [ ] Are they supposed to bounce builders?
     - [ ] 2-2-19 left arrows not rendering, range shows up in debug?
@@ -91,11 +99,8 @@ Play it in your browser: [https://doublemover.github.io/LemmingsJS-MIDI/](https:
   - [ ] Lemming.isRemoved() null/removed conflict
   - [X] Fixed double level loads
     - [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
-      - [ ] I've managed to make the game lock up exactly once while dragging back and forth as fast as i could repeatedly and I cannot reproduce it, this might be it
-      - [ ] Can't go back to version 1 by clicking back on the start of version 2, probably related
+      - [ ] Can't go back to version 1 by clicking back on the start of version 2
   - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
-  - [ ] clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
-    - [ ] debounce/toggle
 
 ## Things I need to look at
 - [ ] Source some form of level editor
