@@ -76,6 +76,8 @@ class Stage {
                     if (stageImage == this.gameImgProps) {
                         this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);
                     }
+                    let pos = this.calcPosition2D(stageImage, e);
+                    stageImage.display.onMouseMove.trigger(pos);
                 } else {
                     let stageImage = this.getStageImageAt(e.x, e.y);
                     if (stageImage == null)
@@ -91,21 +93,48 @@ class Stage {
         handleOnZoom() {
             this.controller.onZoom.on((e) => {
                 let stageImage = this.getStageImageAt(e.x, e.y);
-                if (stageImage == null)
+                if (stageImage == null || stageImage.display.getWidth() != 1600)
                     return;
-                this.updateViewPoint(stageImage, 0, 0, e.deltaZoom);
+                let pos = this.calcPosition2D(stageImage, e);
+                this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
             });
         }
-        updateViewPoint(stageImage, deltaX, deltaY, deletaZoom) {
+        updateViewPoint(stageImage, deltaX, deltaY, deltaZoom, zx = 0, zy = 0) {
             if ((stageImage == null) || (stageImage.display == null))
-                    return;
-            stageImage.viewPoint.scale += deletaZoom;
-            stageImage.viewPoint.scale = this.limitValue(0.5, stageImage.viewPoint.scale, 10);
-            stageImage.viewPoint.x += deltaX * stageImage.viewPoint.scale;
-            stageImage.viewPoint.y += deltaY * stageImage.viewPoint.scale;
+                return;
+
+            // Mousewheel zoom: zx and zy are world coords under mouse
+            if (deltaZoom !== 0 && zx !== 0 && zy !== 0) {
+                // Calculate the screen (pixel) position relative to the image
+                let screenX = deltaX - stageImage.x;
+                let screenY = deltaY - stageImage.y;
+
+                // World coords under cursor before zoom
+                let sceneX = stageImage.viewPoint.getSceneX(screenX);
+                let sceneY = stageImage.viewPoint.getSceneY(screenY);
+
+                // Zoom around that point
+                let oldScale = stageImage.viewPoint.scale;
+                let newScale = Math.fround(oldScale * (1 + deltaZoom / 1000));
+
+                stageImage.viewPoint.scale = this.limitValue(.125, newScale, 4);
+
+                // Re-center so the same world point stays under the cursor
+                stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
+                stageImage.viewPoint.y = sceneY - screenY / stageImage.viewPoint.scale;
+            } else if (zx == 0 && zy == 0) {
+                // Dragging: keep as before
+                stageImage.viewPoint.x += deltaX * stageImage.viewPoint.scale;
+                stageImage.viewPoint.y += deltaY * stageImage.viewPoint.scale;
+            }
+
+            if (stageImage.display != null) {
+                this.clear(stageImage);
+                let gameImg = stageImage.display.getImageData();
+                this.draw(stageImage, gameImg);
+            }
             stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
-            stageImage.viewPoint.y = this.limitValue(0, stageImage.viewPoint.y, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale);
-            /// redraw
+            stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
             if (stageImage.display != null) {
                 this.clear(stageImage);
                 let gameImg = stageImage.display.getImageData();
@@ -152,8 +181,17 @@ class Stage {
         }
         /** set the position of the view point for the game display */
         setGameViewPointPosition(x, y) {
-            this.gameImgProps.viewPoint.x = x;
-            this.gameImgProps.viewPoint.y = y;
+            let scale = this.gameImgProps.viewPoint.scale;
+            if (scale == 2) {
+                this.gameImgProps.viewPoint.x = x;
+                this.gameImgProps.viewPoint.y = y;
+                return;
+            }
+            let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
+            let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
+            
+            this.gameImgProps.viewPoint.x = sceneX - x / scale;
+            this.gameImgProps.viewPoint.y = sceneY - y / scale;
         }
         /** redraw everything */
         redraw() {

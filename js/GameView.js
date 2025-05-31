@@ -11,6 +11,8 @@ class GameView {
         this.gameFactory = new Lemmings.GameFactory("./");
         this.stage = null;
         this.gameSpeedFactor = 1;
+        this.bench = false; // way more time on level, just keep spawning lems
+        this.vpXYS = null; // viewpoint to nav to
         this.applyQuery();
         this.elementGameState = null;
 
@@ -47,6 +49,9 @@ class GameView {
                 }
                 if (this.debug) {
                     this.game.showDebug = true;
+                }
+                if (this.bench) {
+                    this.game.bench = true;
                 }
             });
     }
@@ -155,10 +160,10 @@ class GameView {
             }
 
             // /// jump to previous level group?
-            // if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
-            //     this.levelGroupIndex--;
-            //     this.levelIndex = groupLength - 1;
-            // }
+            if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
+                this.levelGroupIndex--;
+                this.levelIndex = groupLength - 1;
+            }
 
             // if no gametype?
             if (!Lemmings.GameTypes[Object.keys(Lemmings.GameTypes)[this.gameType]]) {
@@ -211,9 +216,14 @@ class GameView {
             this.cheat = (query.get("cheat") || query.get("c")) === "true";
         }
         this.debug = false;
-        if (query.get("debug") || query.get("d")) {
-            this.debug = (query.get("debug") || query.get("d")) === "true";
+        if (query.get("debug") || query.get("dbg")) {
+            this.debug = (query.get("debug") || query.get("dbg")) === "true";
         }
+        this.bench = false;
+        if (query.get("bench") || query.get("b")) {
+            this.bench = (query.get("bench") || query.get("b")) === "true";
+        }
+        
         this.shortcut = false;
         if (query.get("shortcut") || query.get("_")) {
             this.shortcut = (query.get("shortcut") || query.get("_")) === "true";

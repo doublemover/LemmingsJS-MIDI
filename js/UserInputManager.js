@@ -3,11 +3,6 @@ import { Lemmings } from './LemmingsNamespace.js';
 class MouseMoveEventArguements extends Lemmings.Position2D {
     constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
         super(x, y);
-        /** delta the mouse move Y */
-        this.deltaX = 0;
-        this.deltaY = 0;
-        this.button = false;
-        /** position the user starts pressing the mouse */
         this.mouseDownX = 0;
         this.mouseDownY = 0;
         this.deltaX = deltaX;
@@ -16,10 +11,15 @@ class MouseMoveEventArguements extends Lemmings.Position2D {
     }
 }
 
-class ZoomEventArguements extends Lemmings.Position2D {
+class ZoomEventArgs extends Lemmings.Position2D {
     constructor(x = 0, y = 0, deltaZoom = 0) {
         super(x, y);
+        this.mouseDownX = 0;
+        this.mouseDownY = 0;
+        this.deltaX = 0;
+        this.deltaY = 0;
         this.deltaZoom = deltaZoom;
+        this.mda = null;
     }
 }
 
@@ -72,10 +72,10 @@ class UserInputManager {
             e.preventDefault();
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
-                this.handleMouseRightDown(relativePos, e.button);
+                this.handleMouseRightDown(relativePos);
                 return false;
             }
-            this.handleMouseDown(relativePos, e.button);
+            this.handleMouseDown(relativePos);
 
             return false;
         });
@@ -84,10 +84,10 @@ class UserInputManager {
             e.preventDefault();
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
-                this.handleMouseRightUp(relativePos, e.button);
+                this.handleMouseRightUp(relativePos);
                 return false;
             }
-            this.handleMouseUp(relativePos, e.button);
+            this.handleMouseUp(relativePos);
             return false;
         });
         listenElement.addEventListener("mouseleave", (e) => {
@@ -119,7 +119,7 @@ class UserInputManager {
         });
         listenElement.addEventListener("wheel", (e) => {
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
-            //this.handleWheel(relativePos, e.deltaY);
+            this.handleWheel(relativePos, e.deltaY);
             e.stopPropagation();
             e.preventDefault();
             return false;
@@ -149,28 +149,22 @@ class UserInputManager {
             this.onMouseMove.trigger(new MouseMoveEventArguements(position.x, position.y, 0, 0, false));
         }
     }
-    handleMouseDown(position, button = null) {
+    handleMouseDown(position) {
         //- save start of Mousedown
         this.mouseButton = true;
         this.mouseDownX = position.x;
         this.mouseDownY = position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-        if (button > 0) {
-            this.mouseButtonNumber = button;
-        }
 
         this.onMouseDown.trigger(position);
     }
-    handleMouseRightDown(position, button = null) {
+    handleMouseRightDown(position) {
         this.mouseButton = true;
         this.mouseDownX = position.x;
         this.mouseDownY = position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-        if (button) {
-            this.mouseButtonNumber = button;
-        }
 
         this.onMouseRightDown.trigger(position);
     }
@@ -179,7 +173,6 @@ class UserInputManager {
     }
     handleMouseClear() {
         this.mouseButton = false;
-        this.mouseButtonNumber = null;
         this.mouseDownX = 0;
         this.mouseDownY = 0;
         this.lastMouseX = 0;
@@ -196,12 +189,18 @@ class UserInputManager {
     /** Zoom view
      * todo: zoom to mouse pointer */
     handleWheel(position, deltaY) {
-        if (deltaY < 0) {
-            this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, 0.2));
-        }
-        if (deltaY > 0) {
-            this.onZoom.trigger(new ZoomEventArguements(position.x, position.y, -0.2));
-        }
+        let dX = (this.lastMouseX - position.x);
+        let dY = (this.lastMouseY - position.y);
+        this.lastMouseX = position.x;
+        this.lastMouseY = position.y;
+        let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);
+        mouseDragArguments.mouseDownX = this.mouseDownX;
+        mouseDragArguments.mouseDownY = this.mouseDownY;
+        let zea = new ZoomEventArgs(position.x, position.y, deltaY);
+        zea.deltaX = this.lastMouseX;
+        zea.deltaY = this.lastMouseY;
+        zea.mda = mouseDragArguments;
+        this.onZoom.trigger(zea);
     }
 }
 Lemmings.UserInputManager = UserInputManager;
