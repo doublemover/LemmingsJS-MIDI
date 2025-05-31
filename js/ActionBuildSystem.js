@@ -1,22 +1,24 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class ActionBuildSystem {
+    static sprites = new Map();
     constructor(sprites) {
-        this.sprite = [
-            sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, false),
-            sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, true),
-        ];
+        if (ActionBuildSystem.sprites.size == 0) {
+            ActionBuildSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, false));
+            ActionBuildSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, true));
+        }
     }
 
     getActionName() {
         return "building";
     }
+
     triggerLemAction(lem) {
         lem.setAction(this);
         return true;
     }
     draw(gameDisplay, lem) {
-        const ani = this.sprite[(lem.lookRight ? 1 : 0)];
+        const ani = ActionBuildSystem.sprites.get(lem.getDirection());
         const frame = ani.getFrame(lem.frameIndex);
         gameDisplay.drawFrame(frame, lem.x, lem.y);
     }

@@ -1,33 +1,20 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandReleaseRateDecrease {
-    static victoryCondition = null;
-
-    static setManagers(victoryCondition) {
-        CommandReleaseRateDecrease.victoryCondition = victoryCondition;
-    }
-
     constructor(number) {
-        this.log = new Lemmings.LogHandler("CommandReleaseRateDecrease");
-        if (number != null)
-            this.number = number;
+        this.number = number;
     }
-    getCommandKey() {
-        return "d";
+
+    execute(game) {
+        const gameVictoryCondition = game.getVictoryCondition();
+        if (!gameVictoryCondition) return false;
+        return gameVictoryCondition.changeReleaseRate(-this.number);
     }
-    load(values) {
-        if (values.length < 1) {
-            this.log.log("Unable to process load");
-            return;
-        }
-        this.number = values[0];
-    }
-    save() {
-        return [this.number];
-    }
-    execute() {
-        return CommandReleaseRateDecrease.victoryCondition?.changeReleaseRate(-this.number);
-    }
+
+    load() {}
+    save() { return []; }
+    getCommandKey() { return "d"; }
 }
+
 Lemmings.CommandReleaseRateDecrease = CommandReleaseRateDecrease;
 export { CommandReleaseRateDecrease };

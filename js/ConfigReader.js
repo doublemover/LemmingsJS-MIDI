@@ -24,7 +24,7 @@ class ConfigReader {
                 });
             });
         }
-        /** pars the config file */
+        /** parse the config file */
         parseConfig(jsonData) {
             let gameConfigs = [];
             let config = null;
@@ -35,7 +35,8 @@ class ConfigReader {
                 return gameConfigs;
             }
             /// for all game types
-            for (let c = 0; c < config.length; c++) {
+            const configLength = config.length;
+            for (let c = 0; c < configLength; c++) {
                 let newConfig = new Lemmings.GameConfig();
                 let configData = config[c];
                 newConfig.name = configData.name;

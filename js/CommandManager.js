@@ -2,84 +2,83 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandManager {
     constructor(game, gameTimer) {
+        this.log = new Lemmings.LogHandler("CommandManager");
+        if (game == null || gameTimer == null) {
+            this.log.log("error! game/timer is null");
+            return;
+        }
         this.game = game;
         this.gameTimer = gameTimer;
-        this.log = new Lemmings.LogHandler("CommandManager");
         this.runCommands = {};
         this.loggedCommads = {};
-        this.gameTimer.onBeforeGameTick.on((tick) => {
-            // Set static managers for all command classes before executing commands
-            const lemmingManager = this.game.getLemmingManager();
-            const victoryCondition = this.game.getVictoryCondition();
-            const gameSkills = this.game.getGameSkills();
-            
-            // if (Lemmings.CommandLemmingsAction.lemmingManager !== lemmingManager || Lemmings.CommandLemmingsAction.gameSkills !== gameSkills) {
-            Lemmings.CommandLemmingsAction.setManagers(lemmingManager, gameSkills);
-            Lemmings.CommandSelectSkill.setManagers(gameSkills);
-            // }
-            if (Lemmings.CommandNuke.lemmingManager !== lemmingManager || Lemmings.CommandNuke.victoryCondition !== victoryCondition) {
-                Lemmings.CommandNuke.setManagers(lemmingManager, victoryCondition);
-            }
-            if (Lemmings.CommandReleaseRateIncrease.victoryCondition !== victoryCondition) {
-                Lemmings.CommandReleaseRateIncrease.setManagers(victoryCondition);
-            }
-            if (Lemmings.CommandReleaseRateDecrease.victoryCondition !== victoryCondition) {
-                Lemmings.CommandReleaseRateDecrease.setManagers(victoryCondition);
-            }
-            
+        this.once = true;
 
+        // Remove previous tickListener if any
+        if (this._tickListener) {
+            this.gameTimer.onBeforeGameTick.off(this._tickListener);
+        }
+        this._tickListener = (tick) => {
+            if (this.once) {
+                this.once = false;
+            }
             const command = this.runCommands[tick];
-            if (!command)
-                return;
+            if (!command) return;
             this.queueCommand(command);
-        });
+        };
+        this.gameTimer.onBeforeGameTick.on(this._tickListener);
     }
-    /** load parameters for this command from serializer */
+
+    setGame(game) {
+        if (game == null) return;
+        this.game = game;
+        this.runCommands = {};
+        this.loggedCommads = {};
+    }
+
     loadReplay(replayString) {
         let parts = replayString.split("&");
         for (let i = 0; i < parts.length; i++) {
             let commandStr = parts[i].split("=", 2);
-            if (commandStr.length != 2)
-                continue;
+            if (commandStr.length != 2) continue;
             let tick = (+commandStr[0]) | 0;
             this.runCommands[tick] = this.parseCommand(commandStr[1]);
         }
     }
+
     commandFactory(type) {
         switch (type.toLowerCase()) {
-        case "l":
-            return new Lemmings.CommandLemmingsAction();
-        case "n":
-            return new Lemmings.CommandNuke();
-        case "s":
-            return new Lemmings.CommandSelectSkill();
-        case "i":
-            return new Lemmings.CommandReleaseRateIncrease();
-        case "d":
-            return new Lemmings.CommandReleaseRateDecrease();
-        default:
-            return null;
+            case "l": return new Lemmings.CommandLemmingsAction();
+            case "n": return new Lemmings.CommandNuke();
+            case "s": return new Lemmings.CommandSelectSkill();
+            case "i": return new Lemmings.CommandReleaseRateIncrease();
+            case "d": return new Lemmings.CommandReleaseRateDecrease();
+            default: return null;
         }
     }
+
     parseCommand(valuesStr) {
-        if (valuesStr.length < 1)
-            return;
-        let newCommand = this.commandFactory(valuesStr.substr(0, 1));
-        let values = valuesStr.substr(1).split(":");
+        if (valuesStr.length < 1) return;
+        const newCommand = this.commandFactory(valuesStr.substr(0, 1));
+        const values = valuesStr.substr(1).split(":");
         newCommand.load(values.map(Number));
         return newCommand;
     }
-    /** add a command to execute queue */
+
     queueCommand(newCommand) {
-        let currentTick = this.gameTimer.getGameTicks();
-        // Execute without passing game, use statics
-        if (newCommand.execute()) {
-            // only log commands that are executable
+        const currentTick = this.gameTimer?.getGameTicks();
+        if (!currentTick) return;
+
+        let ok = false;
+        if (typeof newCommand.execute === "function") {
+            ok = newCommand.execute(this.game);
+        }
+
+        if (ok) {
             this.loggedCommads[currentTick] = newCommand;
         }
     }
+
     serialize() {
-        this._clearCommandCaches();
         let result = [];
         Object.keys(this.loggedCommads).forEach((key) => {
             let command = this.loggedCommads[+key];
@@ -87,17 +86,21 @@ class CommandManager {
         });
         return result.join("&");
     }
-    _clearCommandCaches() {
-        Lemmings.CommandLemmingsAction.lemmingManager = null;
-        Lemmings.CommandLemmingsAction.gameSkills = null;
-        Lemmings.CommandLemmingsAction._lemmingCache = new Map();
-        Lemmings.CommandSelectSkill.gameSkills = null;
-        Lemmings.CommandNuke.lemmingManager = null;
-        Lemmings.CommandNuke.victoryCondition = null;
-        Lemmings.CommandReleaseRateIncrease.victoryCondition = null;
-        Lemmings.CommandReleaseRateDecrease.victoryCondition = null;
+
+    dispose() {
+        if (this._tickListener && this.gameTimer?.onBeforeGameTick) {
+            this.gameTimer.onBeforeGameTick.off(this._tickListener);
+            this._tickListener = null;
+        }
+        if (this.gameTimer && this.gameTimer.onBeforeGameTick && this.gameTimer.onBeforeGameTick.dispose)
+            this.gameTimer.onBeforeGameTick.dispose();
+        this.game = null;
+        this.gameTimer = null;
+        this.log = null;
+        this.runCommands = {};
+        this.loggedCommads = {};
     }
 }
-Lemmings.CommandManager = CommandManager;
 
+Lemmings.CommandManager = CommandManager;
 export { CommandManager };
