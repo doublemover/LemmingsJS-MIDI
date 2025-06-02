@@ -36,6 +36,9 @@ class GameVictoryCondition {
             return this.minReleaseRate;
         }
         getCurrentReleaseRate() {
+            if (lemmings.bench == true) {
+                return 99;
+            }
             return this.releaseRate;
         }
         /** one lemming reached the exit */

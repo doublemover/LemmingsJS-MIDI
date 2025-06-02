@@ -115,26 +115,40 @@ class Stage {
 
                 // Zoom around that point
                 let oldScale = stageImage.viewPoint.scale;
-                let newScale = Math.fround(oldScale * (1 + deltaZoom / 1000));
+                let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
 
-                stageImage.viewPoint.scale = this.limitValue(.125, newScale, 4);
+                stageImage.viewPoint.scale = this.limitValue(.25, newScale, 4);
 
                 // Re-center so the same world point stays under the cursor
                 stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
                 stageImage.viewPoint.y = sceneY - screenY / stageImage.viewPoint.scale;
             } else if (zx == 0 && zy == 0) {
                 // Dragging: keep as before
-                stageImage.viewPoint.x += deltaX * stageImage.viewPoint.scale;
-                stageImage.viewPoint.y += deltaY * stageImage.viewPoint.scale;
+                stageImage.viewPoint.x += Math.fround(deltaX / stageImage.viewPoint.scale);
+                stageImage.viewPoint.y += Math.fround(deltaY / stageImage.viewPoint.scale);
             }
 
             if (stageImage.display != null) {
                 this.clear(stageImage);
-                let gameImg = stageImage.display.getImageData();
+                const gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
             }
-            stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
-            stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
+
+            const xCeiling = Math.max(0, stageImage.viewPoint.x);
+            const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
+            const xFloor = Math.min(xCeiling, xFloorLimit);
+
+            stageImage.viewPoint.x = xFloor;
+
+            const yCeiling = Math.max(0, stageImage.viewPoint.y);
+            const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
+            const yFloor = Math.min(yCeiling, yFloorLimit);
+
+            stageImage.viewPoint.y = yFloor;
+
+            // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
+            // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
+
             if (stageImage.display != null) {
                 this.clear(stageImage);
                 let gameImg = stageImage.display.getImageData();
@@ -174,24 +188,41 @@ class Stage {
             return this.gameImgProps.display;
         }
         getGuiDisplay() {
-            if (this.guiImgProps.display != null)
+            if (this.guiImgProps.display != null) {
+                this.guiImg
                 return this.guiImgProps.display;
+            }
             this.guiImgProps.display = new Lemmings.DisplayImage(this);
             return this.guiImgProps.display;
         }
         /** set the position of the view point for the game display */
         setGameViewPointPosition(x, y) {
+            this.clear(this.gameImgProps);
+
+            if (lemmings.scale > 0) {
+                this.gameImgProps.viewPoint.scale = lemmings.scale;
+                this.gameImgProps.viewPoint.x = x;
+                this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+                this.redraw();
+                return;
+            }
+
             let scale = this.gameImgProps.viewPoint.scale;
             if (scale == 2) {
                 this.gameImgProps.viewPoint.x = x;
-                this.gameImgProps.viewPoint.y = y;
+                this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+                this.redraw();
                 return;
+            } else {
+
+                let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
+                let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
+                this.gameImgProps.viewPoint.scale = 2;
+                this.gameImgProps.viewPoint.x = sceneX - x / scale;
+                this.gameImgProps.viewPoint.y = sceneY - y / scale;
+
             }
-            let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
-            let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
-            
-            this.gameImgProps.viewPoint.x = sceneX - x / scale;
-            this.gameImgProps.viewPoint.y = sceneY - y / scale;
+            // this.redraw();
         }
         /** redraw everything */
         redraw() {
@@ -213,7 +244,7 @@ class Stage {
         }
         /** clear the stage/display/output */
         clear(stageImage) {
-            var ctx = this.stageCav.getContext("2d", { alpha: false });
+            const ctx = this.stageCav.getContext("2d", { alpha: false });
             ctx.fillStyle = "#000000";
             if (stageImage == null) {
                 ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);

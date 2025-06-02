@@ -7,6 +7,7 @@ class Level {
     this.groundMask = new Lemmings.SolidLayer(this.width, this.height);
     this.groundImages = null;
     this.steelRanges = new Int32Array(0);
+    this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
 
     this.objects = [];
     this.entrances = [];
@@ -25,6 +26,7 @@ class Level {
   }
 
   setMapObjects(objects, objectImg) {
+    // const start = performance.now();
     this.objects.length = 0;
     this.entrances.length = 0;
     this.triggers.length = 0;
@@ -73,6 +75,7 @@ class Level {
     if (arrowRects.length > 0) {
       this.setArrowAreas(arrowRects);
     }
+    // performance.measure(`setMapObjects`, { start, detail: { devtools: { track: "Level", trackGroup: "Game State", color: "primary-light", properties: [["Objects", `${this.objects.length}`],["Entrances", `${this.entrances.length}`],["Triggers", `${this.triggers.length}`]], tooltipText: `setMapObjects` } } });
   }
 
   getGroundMaskLayer() { return this.groundMask; }
@@ -160,6 +163,12 @@ class Level {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
+    if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
+      this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+    } else {
+      // Clear all
+      this.steelMask.mask.fill(0);
+    }
     const { levelWidth, levelHeight, terrains } = levelReader;
     let newSteelRanges = [];
     if (this.steelRanges.length == 0) return;
@@ -174,8 +183,9 @@ class Level {
         newRange.height = terImg.steelHeight;
         for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
           for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
-            if (this.isSteelAt(dx,dy)) {
+            if (this.isSteelAt(dx,dy, true)) {
               newSteelRanges.push(newRange);
+              this.steelMask.setMaskAt(dx, dy);
             }
           }
         }
@@ -199,7 +209,10 @@ class Level {
     this.steelRanges = buf;
   }
 
-  isSteelAt(x, y) {
+  isSteelAt(x, y, loading = false) {
+    if (loading == false) {
+      return this.steelMask.hasMaskAt(x,y);
+    }
     const s = this.steelRanges;
     for (let i = 0, len = s.length; i < len; i += 4) {
       if (x >= s[i] && x < s[i] + s[i+2] && y >= s[i+1] && y < s[i+1] + s[i+3]) {
@@ -209,7 +222,10 @@ class Level {
     return false;
   }
 
-  isSteelGround(x, y) {
+  isSteelGround(x, y, loading = false) {
+    if (loading == false) {
+      return this.steelMask.hasMaskAt(x,y);
+    }
     if (this.hasGroundAt(x, y)) {
       return this.isSteelAt(x, y);
     }

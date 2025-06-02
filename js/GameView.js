@@ -11,50 +11,49 @@ class GameView {
         this.gameFactory = new Lemmings.GameFactory("./");
         this.stage = null;
         this.gameSpeedFactor = 1;
-        this.bench = false; // way more time on level, just keep spawning lems
-        this.vpXYS = null; // viewpoint to nav to
+        this.bench = false; // just keep spawning lems
+        this.endless = false; // time doesn't run out, game doesn't end
+        this.nukeAfter = 0; // nuke after x seconds
+        this.scale = 0; // zoom 
+        this.laggedOut = 0;
+        this.extraLemmings = 0;
         this.applyQuery();
         this.elementGameState = null;
 
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
+
     set gameCanvas(el) {
         this.stage = new Lemmings.Stage(el);
     }
+
     /** start or continue the game */
-    start(replayString) {
-        if (!this.gameFactory)
-            return;
-        /// is the game already running
+    async start(replayString) {
+        if (!this.gameFactory) return;
         if (this.game != null) {
             this.continue();
             return;
         }
-        /// create new game
-        return this.gameFactory.getGame(this.gameType)
-            .then((game) => game.loadLevel(this.levelGroupIndex, this.levelIndex))
-            .then((game) => {
-                if (replayString != null) {
-                    game.getCommandManager().loadReplay(replayString);
-                }
-                game.setGameDisplay(this.stage.getGameDisplay());
-                game.setGuiDisplay(this.stage.getGuiDisplay());
-                game.getGameTimer().speedFactor = this.gameSpeedFactor;
-                game.start();
-                this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
-                game.onGameEnd.on((state) => this.onGameEnd(state));
-                this.game = game;
-                if (this.cheat) {
-                    this.game.cheat();
-                }
-                if (this.debug) {
-                    this.game.showDebug = true;
-                }
-                if (this.bench) {
-                    this.game.bench = true;
-                }
-            });
+        try {
+            const game = await this.gameFactory.getGame(this.gameType);
+            await game.loadLevel(this.levelGroupIndex, this.levelIndex);
+            if (replayString != null) {
+                game.getCommandManager().loadReplay(replayString);
+            }
+            game.setGameDisplay(this.stage.getGameDisplay());
+            game.setGuiDisplay(this.stage.getGuiDisplay());
+            game.getGameTimer().speedFactor = this.gameSpeedFactor;
+            game.start();
+            this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
+            game.onGameEnd.on(state => this.onGameEnd(state));
+            this.game = game;
+            if (this.cheat) this.game.cheat();
+            if (this.debug) this.game.showDebug = true;
+        } catch (e) {
+            this.log.log("Error starting game:", e);
+        }
     }
+
     onGameEnd(gameResult) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
@@ -69,37 +68,39 @@ class GameView {
             }
         }, 2500);
     }
-    /** load and run a replay */
-    loadReplay(replayString) {
-        this.start(replayString);
+
+    async loadReplay(replayString) {
+        await this.start(replayString);
     }
-    /** pause the game */
+
     cheat() {
         if (this.game == null) {
             return;
         }
         this.game.cheat();
     }
-    /** pause the game */
+
     suspend() {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().suspend();
     }
-    /** continue the game after pause/suspend */
+
     continue () {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().continue();
     }
+
     nextFrame() {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().tick();
     }
+
     selectSpeedFactor(newSpeed) {
         if (this.game == null) {
             return;
@@ -107,41 +108,40 @@ class GameView {
         this.gameSpeedFactor = newSpeed;
         this.game.getGameTimer().speedFactor = newSpeed;
     }
+
     playMusic(moveInterval) {
 
     }
+
     stopMusic() {
 
     }
+
     stopSound() {
 
     }
+
     playSound(moveInterval) {
 
     }
+
     enableDebug() {
         if (this.game == null) {
             return;
         }
         this.game.setDebugMode(true);
     }
+
     /** add/subtract one to the current levelIndex */
-    moveToLevel(moveInterval) {
-        if (moveInterval == null)
-            moveInterval = 0;
-        if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) {
-            return;
-        }
-        if (this.inMoveToLevel) {
-            return;
-        }
+async moveToLevel(moveInterval = 0) {
+        if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) return;
+        if (this.inMoveToLevel) return;
         this.inMoveToLevel = true;
         this.levelIndex = (this.levelIndex + moveInterval) | 0;
-        /// check if the levelIndex is out of bounds
-        this.gameFactory.getConfig(this.gameType).then((config) => {
+        try {
+            const config = await this.gameFactory.getConfig(this.gameType);
             const groupLength = config.level.getGroupLength(this.levelGroupIndex);
 
-            /// jump to next level group?
             if (this.levelIndex >= groupLength) {
                 this.levelGroupIndex++;
                 this.levelIndex = 0;
@@ -158,27 +158,21 @@ class GameView {
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
-
-            // /// jump to previous level group?
             if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
                 this.levelGroupIndex--;
                 this.levelIndex = groupLength - 1;
             }
-
-            // if no gametype?
             if (!Lemmings.GameTypes[Object.keys(Lemmings.GameTypes)[this.gameType]]) {
                 this.gameType = 1;
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
 
-
-            /// update and load level
             this.changeHtmlText(this.elementLevelNumber, (this.levelIndex + 1).toString());
-            this.loadLevel().then(() => {
-                this.inMoveToLevel = false;
-            });
-        });
+            await this.loadLevel();
+        } finally {
+            this.inMoveToLevel = false;
+        }
     }
     /** return the url hash for the present game/group/level-index */
     applyQuery() {
@@ -223,6 +217,32 @@ class GameView {
         if (query.get("bench") || query.get("b")) {
             this.bench = (query.get("bench") || query.get("b")) === "true";
         }
+        this.endless = false;
+        if (query.get("endless") || query.get("e")) {
+            this.endless = (query.get("endless") || query.get("e")) === "true";
+        }
+        this.nukeAfter = 0;
+        if (query.get("nukeAfter") || query.get("na")) {
+            const nukeAfter = parseInt(query.get("nukeAfter") || query.get("na"), 10);
+            if (!isNaN(nukeAfter) && nukeAfter >= 1 && nukeAfter <= 60) {
+                this.nukeAfter = nukeAfter*10;
+            }
+        }
+        this.extraLemmings = 0;
+        if (query.get("extra") || query.get("ex")) {
+            const extraLemmings = parseInt(query.get("extra") || query.get("ex"), 10);
+            if (!isNaN(extraLemmings) && extraLemmings >= 1 && extraLemmings <= 1000) {
+                this.extraLemmings = extraLemmings;
+            }
+        }
+        this.scale = 0;
+        if (query.get("scale") || query.get("sc")) {
+            const scale = parseFloat(query.get("scale") || query.get("sc"));
+            if (!isNaN(scale) && scale >= 0.0125 && scale <= 5) {
+                this.scale = scale;
+            }
+        }
+        this.laggedOut = 0;
         
         this.shortcut = false;
         if (query.get("shortcut") || query.get("_")) {
@@ -296,41 +316,35 @@ class GameView {
         this.loadLevel();
     }
     /** select a game type */
-    setup() {
+    async setup() {
         this.applyQuery();
-        this.gameFactory.getGameResources(this.gameType)
-            .then((newGameResources) => {
-                this.gameResources = newGameResources;
-                this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
-                this.loadLevel();
-            });
+        const newGameResources = await this.gameFactory.getGameResources(this.gameType);
+        this.gameResources = newGameResources;
+        this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+        await this.loadLevel();
     }
     /** load a level and render it to the display */
-    loadLevel() {
-        if (this.gameResources == null)
-            return;
-        if (this.game != null) {
+    async loadLevel() {
+        if (!this.gameResources) return;
+        if (this.game) {
             this.game.stop();
             this.game = null;
         }
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes[Lemmings.GameStateTypes.UNKNOWN]);
-        return this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex)
-            .then((level) => {
-                if (level == null)
-                    return;
-                this.changeHtmlText(this.elementLevelName, level.name);
-                if (this.stage != null) {
-                    let gameDisplay = this.stage.getGameDisplay();
-                    gameDisplay.clear();
-                    this.stage.resetFade();
-                    level.render(gameDisplay);
-                    gameDisplay.setScreenPosition(level.screenPositionX, 0);
-                    gameDisplay.redraw();
-                }
-                this.updateQuery();
-                console.dir(level);
-                return this.start();
-            });
+        const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
+        if (!level) return;
+        this.changeHtmlText(this.elementLevelName, level.name);
+        if (this.stage) {
+            let gameDisplay = this.stage.getGameDisplay();
+            gameDisplay.clear();
+            this.stage.resetFade();
+            level.render(gameDisplay);
+            gameDisplay.setScreenPosition(level.screenPositionX, 0);
+            gameDisplay.redraw();
+        }
+        this.updateQuery();
+        console.dir(level);
+        return this.start();
     }
 }
 Lemmings.GameView = GameView;

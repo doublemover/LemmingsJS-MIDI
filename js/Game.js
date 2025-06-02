@@ -23,7 +23,6 @@ class Game {
     this.onGameEnd      = new Lemmings.EventHandler();
     this.finalGameState = Lemmings.GameStateTypes.UNKNOWN;
     this.showDebug      = false;
-    this.bench          = false;
 
     this._boundTick = this.onGameTimerTick.bind(this);
   }
@@ -94,7 +93,6 @@ class Game {
       masks,
       particleTable,
     );
-    this.lemmingManager.bench = this.bench;
 
     const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
     this.gameGui = new Lemmings.GameGui(

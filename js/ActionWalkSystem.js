@@ -52,7 +52,7 @@ class ActionWalkSystem {
                 lem.y -= upDelta - 1;
                 if (upDelta > 3) {
                     // jump
-                    return Lemmings.LemmingStateType.JUMPING;
+                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 } else {
                     // walk with small jump up
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;

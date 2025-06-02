@@ -1,77 +1,150 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+/**
+ * Represents a single compressed file part/chunk in a Lemmings resource.
+ * Handles (lazy) decompression and exposes its metadata.
+ * @class
+ */
 class UnpackFilePart {
-        constructor(fileReader) {
-            /** file offset in the container */
-            this.offset = 0;
-            /** flag for uncompressing */
-            this.initialBufferLen = 0;
-            /** checksum this file need to have */
-            this.checksum = 0;
-            /** size the uncompressed chunk should have */
-            this.decompressedSize = 0;
-            /** the size the compressed chunk had */
-            this.compressedSize = 0;
-            this.unknown0 = 0;
-            this.unknown1 = 0;
-            /** position of this part/chunk in the container */
-            this.index = 0;
-            this.log = new Lemmings.LogHandler("UnpackFilePart");
-            this.fileReader = fileReader;
-            this.unpackingDone = false;
-        }
-        /** unpack this content and return a BinaryReader */
-        unpack() {
-            /// if the unpacking is not yet done, do it...
-            if (!this.unpackingDone) {
-                this.fileReader = this.doUnpacking(this.fileReader);
-                this.unpackingDone = true;
-                return this.fileReader;
-            }
-            /// use the cached file buffer but with a new file pointer
-            return new Lemmings.BinaryReader(this.fileReader);
-        }
-        /// unpack the fileReader
-        doUnpacking(fileReader) {
-            var bitReader = new Lemmings.BitReader(fileReader, this.offset, this.compressedSize, this.initialBufferLen);
-            var outBuffer = new Lemmings.BitWriter(bitReader, this.decompressedSize);
-            while ((!outBuffer.eof()) && (!bitReader.eof())) {
-                if (bitReader.read(1) == 0) {
-                    switch (bitReader.read(1)) {
-                    case 0:
-                        outBuffer.copyRawData(bitReader.read(3) + 1);
-                        break;
-                    case 1:
-                        outBuffer.copyReferencedData(2, 8);
-                        break;
-                    }
-                } else {
-                    switch (bitReader.read(2)) {
-                    case 0:
-                        outBuffer.copyReferencedData(3, 9);
-                        break;
-                    case 1:
-                        outBuffer.copyReferencedData(4, 10);
-                        break;
-                    case 2:
-                        outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
-                        break;
-                    case 3:
-                        outBuffer.copyRawData(bitReader.read(8) + 9);
-                        break;
-                    }
-                }
-            }
-            if (this.checksum == bitReader.getCurrentChecksum()) {
-                this.log.debug("doUnpacking(" + fileReader.filename + ") done! ");
-            } else {
-                this.log.log("doUnpacking(" + fileReader.filename + ") : Checksum mismatch! ");
-            }
-            /// create FileReader from buffer
-            var outReader = outBuffer.getFileReader(fileReader.filename + "[" + this.index + "]");
-            return outReader;
-        }
-    }
-    Lemmings.UnpackFilePart = UnpackFilePart;
+  /** @type {number} File offset in container */
+  #offset = 0;
+  /** @type {number} Initial buffer length for BitReader */
+  #initialBufferLen = 0;
+  /** @type {number} Expected checksum */
+  #checksum = 0;
+  /** @type {number} Size of decompressed data */
+  #decompressedSize = 0;
+  /** @type {number} Size of compressed data */
+  #compressedSize = 0;
+  /** @type {number} Unknown field (0) */
+  #unknown0 = 0;
+  /** @type {number} Unknown field (1) */
+  #unknown1 = 0;
+  /** @type {number} Index in container */
+  #index = 0;
 
+  /** @type {Lemmings.BinaryReader} Underlying file reader (or unpacked data after first unpack) */
+  #fileReader;
+  /** @type {boolean} Unpacking done flag */
+  #unpackingDone = false;
+  /** @type {Lemmings.LogHandler} Logger */
+  #log = new Lemmings.LogHandler("UnpackFilePart");
+
+  /**
+   * @param {Lemmings.BinaryReader} fileReader - The container file's BinaryReader (positioned at this part).
+   */
+  constructor(fileReader) {
+    this.#fileReader = fileReader;
+  }
+
+  /** @returns {number} File offset in container */
+  get offset() { return this.#offset; }
+  set offset(val) { this.#offset = val; }
+
+  /** @returns {number} Initial buffer length for BitReader */
+  get initialBufferLen() { return this.#initialBufferLen; }
+  set initialBufferLen(val) { this.#initialBufferLen = val; }
+
+  /** @returns {number} Expected checksum */
+  get checksum() { return this.#checksum; }
+  set checksum(val) { this.#checksum = val; }
+
+  /** @returns {number} Decompressed data size */
+  get decompressedSize() { return this.#decompressedSize; }
+  set decompressedSize(val) { this.#decompressedSize = val; }
+
+  /** @returns {number} Compressed data size */
+  get compressedSize() { return this.#compressedSize; }
+  set compressedSize(val) { this.#compressedSize = val; }
+
+  /** @returns {number} Unknown field (0) */
+  get unknown0() { return this.#unknown0; }
+  set unknown0(val) { this.#unknown0 = val; }
+
+  /** @returns {number} Unknown field (1) */
+  get unknown1() { return this.#unknown1; }
+  set unknown1(val) { this.#unknown1 = val; }
+
+  /** @returns {number} Index in container */
+  get index() { return this.#index; }
+  set index(val) { this.#index = val; }
+
+  /** @returns {boolean} Whether this chunk has been unpacked */
+  get unpackingDone() { return this.#unpackingDone; }
+
+  /** @returns {Lemmings.BinaryReader} The BinaryReader of the underlying (possibly unpacked) data */
+  get fileReader() { return this.#fileReader; }
+
+  /**
+   * Unpack (decompress) this file part and return a BinaryReader over the output buffer.
+   * Caches the result after the first call.
+   * @returns {Lemmings.BinaryReader}
+   */
+  unpack() {
+    if (!this.#unpackingDone) {
+      this.#fileReader = this.#doUnpacking(this.#fileReader);
+      this.#unpackingDone = true;
+      return this.#fileReader;
+    }
+    // Return a new BinaryReader over the decompressed buffer for repeat access
+    return new Lemmings.BinaryReader(this.#fileReader);
+  }
+
+  /**
+   * Internal method: perform actual decompression using BitReader/BitWriter.
+   * @private
+   * @param {Lemmings.BinaryReader} fileReader
+   * @returns {Lemmings.BinaryReader}
+   */
+  #doUnpacking(fileReader) {
+    const bitReader = new Lemmings.BitReader(
+      fileReader,
+      this.#offset,
+      this.#compressedSize,
+      this.#initialBufferLen
+    );
+    const outBuffer = new Lemmings.BitWriter(bitReader, this.#decompressedSize);
+
+    while (!outBuffer.eof() && !bitReader.eof()) {
+      if (bitReader.read(1) === 0) {
+        switch (bitReader.read(1)) {
+          case 0:
+            outBuffer.copyRawData(bitReader.read(3) + 1);
+            break;
+          case 1:
+            outBuffer.copyReferencedData(2, 8);
+            break;
+        }
+      } else {
+        switch (bitReader.read(2)) {
+          case 0:
+            outBuffer.copyReferencedData(3, 9);
+            break;
+          case 1:
+            outBuffer.copyReferencedData(4, 10);
+            break;
+          case 2:
+            outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
+            break;
+          case 3:
+            outBuffer.copyRawData(bitReader.read(8) + 9);
+            break;
+        }
+      }
+    }
+
+    if (this.#checksum === bitReader.getCurrentChecksum()) {
+      this.#log.debug(`doUnpacking(${fileReader.filename}) done!`);
+    } else {
+      this.#log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
+    }
+    // Create a BinaryReader over the decompressed buffer
+    return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
+  }
+}
+
+// Prevent extension if not intended
+Object.freeze(UnpackFilePart);
+
+Lemmings.UnpackFilePart = UnpackFilePart;
 export { UnpackFilePart };
