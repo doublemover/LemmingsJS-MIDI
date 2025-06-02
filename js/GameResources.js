@@ -14,18 +14,17 @@ class GameResources {
             this.mainDat = new Promise((resolve, reject) => {
                 this.fileProvider.loadBinary(this.config.path, "MAIN.DAT")
                     .then((data) => {
-                        /// split the file
-                        let mainParts = new Lemmings.FileContainer(data);
+                        // split the file
+                        const mainParts = new Lemmings.FileContainer(data);
                         resolve(mainParts);
                     });
             });
             return this.mainDat;
         }
-        /** return the Lemmings animations */
         getLemmingsSprite(colorPalette) {
             return new Promise((resolve, reject) => {
                 this.getMainDat().then((container) => {
-                    let sprite = new Lemmings.LemmingsSprite(container.getPart(0), colorPalette);
+                    const sprite = new Lemmings.LemmingsSprite(container.getPart(0), colorPalette);
                     resolve(sprite);
                 });
             });
@@ -46,7 +45,7 @@ class GameResources {
         }
         /** return the Level Data for a given Level-Index */
         getLevel(levelMode, levelIndex) {
-            let levelReader = new Lemmings.LevelLoader(this.fileProvider, this.config);
+            const levelReader = new Lemmings.LevelLoader(this.fileProvider, this.config);
             return levelReader.getLevel(levelMode, levelIndex);
         }
         /** return the level group names for this game */

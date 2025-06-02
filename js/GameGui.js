@@ -19,6 +19,7 @@ class GameGui {
         this.skillSelectionChanged = true;
         this.backgroundChanged     = true;
         this.releaseRateChanged    = true;
+
         this.nukePrepared          = false;
         this.lastGameSpeed      = 0;
 
@@ -34,22 +35,30 @@ class GameGui {
         this.miniMap          = null;
         this.deltaReleaseRate = 0;
 
+        this._guiBound = this._guiLoop.bind(this);
         this._guiRafId        = 0;
+
+        this._nukeAfterCountdown = 0;
 
 
         gameTimer.eachGameSecond.on(() => {
-            this.gameTimeChanged = true;
             this._applyReleaseRateAuto();
+            if (lemmings.nukeAfter > 0) {
+                this._nukeAfterCountdown++;
+                if (this._nukeAfterCountdown == lemmings.nukeAfter) {
+                    this.game.queueCommand(new Lemmings.CommandNuke());
+                    this.nukePrepared = false;
+                }
+            }
             this.backgroundChanged = true;
+            this._guiRafId = window.requestAnimationFrame(this._guiBound);
         })
 
         skills.onCountChanged.on(() => {
-            this.skillsCountChangd = true;
             this.backgroundChanged = true;
         });
 
         skills.onSelectionChanged.on(() => {
-            this.skillSelectionChanged = true;
             this.backgroundChanged     = true;
         });
     }
@@ -61,7 +70,7 @@ class GameGui {
 
     _applyReleaseRateAuto() {
         if (!this.deltaReleaseRate) return;
-        if (this.gameTimer.isPaused?.()) {
+        if (this.gameTimer.isRunning?.()) {
             const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
             const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
             const cur = this.gameVictoryCondition.getCurrentReleaseRate();
@@ -80,10 +89,14 @@ class GameGui {
 
     handleSkillMouseDown(e) {
         const panelIndex = Math.trunc(e.x / 16);
-        if (panelIndex !== 11) this.nukePrepared = false;
+        if (panelIndex !== 11) {
+            this.nukePrepared = false;
+            this.backgroundChanged = true;
+        }
+
         if (panelIndex === 0 || panelIndex === 1) {
             const step = panelIndex === 0 ? -3 : +3;
-            if (this.gameTimer.isPaused?.()) {
+            if (this.gameTimer.isRunning?.()) {
                 const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
                 const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
                 const cur = this.gameVictoryCondition.getCurrentReleaseRate();
@@ -93,8 +106,6 @@ class GameGui {
                 this.lastGameSpeed = neu;
                 this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
                     (this.gameVictoryCondition.currentReleaseRate = neu);
-                this.skillsCountChangd = true;
-                this.gameSpeedChanged = true;
             }
             this.deltaReleaseRate = step;
             this._applyReleaseRateAuto();
@@ -105,37 +116,46 @@ class GameGui {
                 const pauseX = e.x - 159; // the leftmost position
                 const pauseIndex = Math.trunc(pauseX / 9);
                 const speedFac = this.gameTimer.speedFactor;
+                const debugOrBench = (this.game.showDebug || lemmings.bench == true);
                 if (pauseIndex === 0) {
-                    if (this.game.showDebug && speedFac > 10) {
+                    if (speedFac > 10) {
                         this.gameTimer.speedFactor -= 10;
+                        this.drawSpeedChange(false);
                         return;
                     }
                     if (speedFac > 1) {
-                        this.gameTimer.speedFactor--; 
+                        this.gameTimer.speedFactor--;
+                        this.drawSpeedChange(false); 
                         return
                     }
-                    if (this.game.showDebug && speedFac == 1) {
-                        this.gameTimer.speedFactor = 0.5;
+                    if (debugOrBench || speedFac == 1 || speedFac > 0.1 && speedFac < 1) {
+                        this.gameTimer.speedFactor = Math.trunc((this.gameTimer.speedFactor-0.1)*100)/100
+                        this.drawSpeedChange(false);
                         return;
                     }
                 }
                 if (pauseIndex === 1) {
-                    if (speedFac == 0.5) {
-                        this.gameTimer.speedFactor = 1;
+                    if (speedFac < 1) {
+                        this.gameTimer.speedFactor = Math.trunc((this.gameTimer.speedFactor+0.1)*100)/100
+                        this.drawSpeedChange(true);
                         return;
                     }
-                    if (this.game.showDebug && speedFac >= 10 && speedFac < 60) {
+                    if (speedFac >= 10 && speedFac < 120) {
                         this.gameTimer.speedFactor += 10;
+                        this.drawSpeedChange(true);
                         return;
                     }
                     if (speedFac < 10) {
                         this.gameTimer.speedFactor++;
+                        this.drawSpeedChange(true);
+
                         return;
                     }
                 }
             } else {
-                this.gameTimer.toggle(); 
+                this.gameTimer.toggle();
             }
+            this.skillSelectionChanged = true;
             return; 
         }
         if (panelIndex === 11) {
@@ -146,14 +166,12 @@ class GameGui {
             else {
                 this.nukePrepared = true;
             }
+            this.skillSelectionChanged = true;
             return;
         }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
-        if (this.gameTimer.isPaused?.()) {
             this.skills.setSelectedSkill(newSkill);
-            this.skillSelectionChanged = true;
-        }
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
     }
 
@@ -162,10 +180,28 @@ class GameGui {
 
         this.nukePrepared = false; // always cancel nuke confirmation on right click
 
+        if (panelIndex === 0) {
+            const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
+            this.gameVictoryCondition.setCurrentReleaseRate?.(min);
+            this.deltaReleaseRate = -min;
+            this._applyReleaseRateAuto();
+            return;
+        }
+
+        if (panelIndex === 1) {
+            const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
+            this.gameVictoryCondition.setCurrentReleaseRate?.(max);
+            this.deltaReleaseRate = max;
+            this._applyReleaseRateAuto();
+            return;
+        }
+
         if (panelIndex === 10) { // reset game speed if you right click pause
             if (this.gameTimer.speedFactor !== 1) {
                 this.gameTimer.speedFactor = 1;
+                this.drawSpeedChange(false, true);
             }
+            return;
         }
 
         if (panelIndex === 11) { // enable debug mode if you right click nuke
@@ -204,14 +240,20 @@ class GameGui {
 
         this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
 
-        if (this._guiRafId) window.cancelAnimationFrame(this._guiRafId);
-        const guiLoop = () => {
-            this.render();
-            if (this.display && typeof this.display.redraw === "function") {
-                this.display.redraw();
-            }
-            this._guiRafId = window.requestAnimationFrame(guiLoop);
-        };
+
+        this._guiRafId = window.requestAnimationFrame(this._guiBound);
+    }
+
+    _guiLoop(now) {
+        if (!this.display) {
+            window.cancelAnimationFrame(this._guiRafId);
+            this._guiRafId = 0;
+            return;
+        }
+        window.cancelAnimationFrame(this._guiRafId);
+        this.render();
+        this.display.redraw();
+        this._guiRafId = window.requestAnimationFrame(this._guiBound);
     }
 
     dispose() {
@@ -244,38 +286,55 @@ class GameGui {
             this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
         }
 
-        if (this.gameTimeChanged) {
+        if (this.gameTimeChanged || lemmings.debugOrBench) {
             this.gameTimeChanged = false;
             this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
-            const outCount = this.gameVictoryCondition.getOutCount();
-            if (outCount >= 0) {
-                this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
+
+            if (lemmings.bench == false) {
+                const outCount = this.gameVictoryCondition.getOutCount();
+                if (outCount >= 0) {
+                    this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
+                }
+            } else if (lemmings.bench == true) {
+                this.drawGreenString(d, ' ' + lemmings.laggedOut + '  ', 112, 0);
             }
             this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
-            
         }
 
         if (this.gameSpeedChanged) {
             this.gameSpeedChanged = false;
+            const speedFac = this.gameTimer.speedFactor;
+
             d.drawRect(160, 32, 16, 10, 0, 0, 0, true); // draw bottom black rect on pause button
 
-            const greenS  = this._getGreenLetter("f");
-            d.drawFrameResized(greenS, 173, 34, 3, 4);
-            const greenP  = this._getGreenLetter("-");
-            d.drawFrameResized(greenP, 161, 33, 3, 6);
+            if (speedFac != 120) {
+                const greenS  = this._getGreenLetter("f");
+                d.drawFrameResized(greenS, 173, 34, 3, 4);
+            }
 
-            const speedFac = this.gameTimer.speedFactor;
+            if (speedFac != 0.1) {
+                const greenP  = this._getGreenLetter("-");
+                d.drawFrameResized(greenP, 161, 33, 3, 6);
+            }
+
             const tens  = Math.floor(speedFac / 10);
             const ones  = speedFac % 10;
             const left  = this._getRightDigit(tens);
             const right = this._getRightDigit(ones);
-            let rightX = 163;
+            let rightX = 164;
             if (left && tens > 0) {
                 rightX = 164;
                 d.drawFrameResized(left, rightX-4, 33, 8, 6);
             }
             if (right) {
                 d.drawFrameResized(right, rightX, 33, 8, 6);
+            }
+            if (speedFac < 1) {
+                let sn = Math.trunc((speedFac)*10);
+                const small = this._getRightDigit(sn);
+                d.setPixel(167, 38, 255, 255, 255);
+                d.drawFrameResized(small, 164, 33, 8, 6);
+                d.drawHorizontalLine(169, 33, 175, 0, 0, 0);
             }
         }
 
@@ -303,6 +362,9 @@ class GameGui {
             const viewW = d.getWidth();
             this.miniMap.render(viewX, viewW);
         }
+                    if (!this.gameTimer.isRunning?.()) {
+                this.drawPaused(d);
+            }
     }
 
     _pad(v, len) { const s = String(v); return s.length >= len ? s : ' '.repeat(len - s.length) + s; }
@@ -326,6 +388,26 @@ class GameGui {
 
     drawSelection(d, panelIdx) { 
         d.drawRect(16 * panelIdx, 16, 16, 23, 255, 255, 255); 
+    }
+
+    drawPaused(d) { 
+        d.drawRect(16 * 10, 16, 16, 23, 255, 255, 255); 
+    }
+
+    drawSpeedChange(upDown, reset = false) {
+        if (reset == false) {
+            if (upDown) {
+                this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
+                this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+            } else {
+                this.display.drawHorizontalLine(161, 32, 164, 0, 166, 0);
+                this.display.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+            }
+        } else {
+            this.display.drawHorizontalLine(161, 32, 175, 111, 0, 0);
+            this.display.drawHorizontalLine(161, 38, 175, 111, 0, 0);
+        }
+        this.gameSpeedChanged = true;
     }
 
     drawNukeConfirm(d) { 

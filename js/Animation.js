@@ -62,7 +62,7 @@ class Animation {
       paletteImg.processTransparentByColorIndex(0);
       arr[i] = paletteImg.createFrame(palette, offsetX, offsetY);
     }
-    this.frames     = arr;   // one atomic swap – great for sharing/caching
+    this.frames     = arr;
     this._lastFrame = arr[frames-1];
     this.isFinished = false;
   }

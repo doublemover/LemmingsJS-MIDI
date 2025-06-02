@@ -9,24 +9,37 @@ class SolidLayer {
     constructor(width, height, mask = null) {
         this.width = width;
         this.height = height;
-        this.groundMask = mask ? new Uint8Array(mask) : new Uint8Array(width * height);
-    }
-    /** Check if a point is solid */
-    hasGroundAt(x, y) {
-        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
-        return this.groundMask[x + y * this.width] !== 0;
+        this.mask = mask ? new Uint8Array(mask) : new Uint8Array(width * height);
     }
 
-    /** Clear a point */
+    hasGroundAt(x, y) {
+        return (this.hasMaskAt(x,y));
+    }
+
+    hasMaskAt(x, y) {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height) return false;
+        return this.mask[x + y * this.width] !== 0;
+    }
+
     clearGroundAt(x, y) {
-        if (x >= 0 && x < this.width && y >= 0 && y < this.height)
-            this.groundMask[x + y * this.width] = 0;
+        this.clearMaskAt(x, y);
+    }
+
+    clearMaskAt(x, y) {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.mask[x + y * this.width] = 0;
+        }
     }
 
     /** Set a point as solid */
     setGroundAt(x, y) {
-        if (x >= 0 && x < this.width && y >= 0 && y < this.height)
-            this.groundMask[x + y * this.width] = 1;
+        this.setMaskAt(x, y);
+    }
+
+    setMaskAt(x, y) {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+            this.mask[x + y * this.width] = 1;
+        }
     }
 
     /**
@@ -37,7 +50,7 @@ class SolidLayer {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
     clearGroundWithMask(mask, x, y, skipTest = null) {
-        const start = performance.now();
+        // const start = performance.now();
         const mx = mask.offsetX || 0, my = mask.offsetY || 0;
         for (let dy = 0; dy < mask.height; ++dy) {
             const mapY = y + my + dy;
@@ -48,12 +61,12 @@ class SolidLayer {
                 // Only clear where mask pixel is **not** solid
                 if (!mask.at(dx, dy)) {
                     if (!skipTest || !skipTest(mapX, mapY)) {
-                        this.groundMask[mapX + mapY * this.width] = 0;
+                        this.mask[mapX + mapY * this.width] = 0;
                     }
                 }
             }
         }
-        performance.measure("clearGroundWithMask Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-dark", properties: [["Position", `${x},${y}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMask" } } });
+        // performance.measure("clearGroundWithMask Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-dark", properties: [["Position", `${x},${y}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMask" } } });
     }
 
     /**
@@ -63,14 +76,14 @@ class SolidLayer {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
     clearGroundWithMasks(masks, positions, skipTest = null) {
-        const start = performance.now();
+        // const start = performance.now();
         if (!Array.isArray(masks) || masks.length === 0) return;
         for (let i = 0; i < masks.length; ++i) {
             const mask = masks[i], pos = positions[i];
             if (!mask || !pos) continue;
             this.clearGroundWithMask(mask, pos[0], pos[1], skipTest);
         }
-        performance.measure("clearGroundWithMasks Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-light", properties: [["Positions", `${positions}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMasks" } } });
+        // performance.measure("clearGroundWithMasks Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-light", properties: [["Positions", `${positions}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMasks" } } });
     }
 }
 

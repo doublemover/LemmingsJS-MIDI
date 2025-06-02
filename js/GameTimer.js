@@ -13,7 +13,6 @@ class GameTimer {
         this.onGameTick = new Lemmings.EventHandler();
         this.eachGameSecond = new Lemmings.EventHandler();
         this.onBeforeGameTick = new Lemmings.EventHandler();
-        this.bench = false;
         this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
         this._autoPaused = false;
         this._visHandler = () => {
@@ -83,6 +82,9 @@ class GameTimer {
         let delta = now - this._lastTime;
         if (delta >= this._frameTime) {
             const steps = Math.floor(delta / this._frameTime);
+            if (lemmings.bench == true) {
+                this._benchSpeedAdjust(steps);
+            }
             delta -= steps * this._frameTime;
             this._lastTime = now - delta;
             for (let i = 0; i < steps; ++i) {
@@ -92,6 +94,28 @@ class GameTimer {
             }
         }
         this._rafId = window.requestAnimationFrame(this._loopBound);
+    }
+
+    _benchSpeedAdjust(stepsMissed) {
+        if (stepsMissed > 24) {
+            window.cancelAnimationFrame(this._rafId);
+            const sf = this._speedFactor;
+            if (sf > 30) {
+                this.speedFactor = 30;
+            }
+            else if (sf > 10) {
+                this._speedFactor = 10;
+            } 
+            else if (sf <= 10 && sf > 1) {
+                this._speedFactor = 1;
+                this.suspend();
+            }
+            else if (sf <= 1 && sf > 0.5) {
+                this._speedFactor = ((this.speedFactor*10)-2)/10;
+                this.suspend();
+            }
+            this._updateFrameTime();
+        }
     }
 
     stop() {
@@ -121,7 +145,7 @@ class GameTimer {
         return Math.floor(secs / 60) + '-' + ('0' + (secs % 60)).slice(-2);
     }
     ticksToSeconds(t) {
-            if (lemmings.game.bench) {
+            if (lemmings.endless == true) {
             return 42069 * (this.TIME_PER_FRAME_MS / 1000);
         }  
         return t * (this.TIME_PER_FRAME_MS / 1000); 
