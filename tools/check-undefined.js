@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
 
@@ -128,8 +129,6 @@ function processJSFile(file, withCalls = false) {
 
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
