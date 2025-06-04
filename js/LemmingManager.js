@@ -302,13 +302,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   getLemmingAt(x, y, radius = 6) {
-    const halfW = radius;
-    const halfH = radius * 2;
-    for (const lem of this.lemmings) {
-      if (lem.removed) continue;
-      if (x >= lem.x - halfW && x <= lem.x + halfW && y >= lem.y - halfH && y <= lem.y + halfH) return lem;
-    }
-    return null;
+    return this.getNearestLemming(x, y);
   }
 
   getNearestLemming(x, y) {
