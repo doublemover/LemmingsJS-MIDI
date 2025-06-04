@@ -293,6 +293,10 @@ async moveToLevel(moveInterval = 0) {
         }
         htmlElement.innerText = value;
     }
+    /** prefix items with an increasing index */
+    prefixNumbers(list) {
+        return list.map((item, idx) => `${idx + 1} - ${item}`);
+    }
     /** remove items of a <select> */
     clearHtmlList(htmlList) {
         while (htmlList.options.length) {
@@ -341,7 +345,7 @@ async moveToLevel(moveInterval = 0) {
         this.levelIndex = 0;
         const newGameResources = await this.gameFactory.getGameResources(this.gameType);
         this.gameResources = newGameResources;
-        this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
         this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
         await this.populateLevelSelect();
         this.loadLevel();
@@ -361,7 +365,7 @@ async moveToLevel(moveInterval = 0) {
             this.elementSelectGameType.selectedIndex = typeIndex;
         const newGameResources = await this.gameFactory.getGameResources(this.gameType);
         this.gameResources = newGameResources;
-        this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
         this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
         await this.populateLevelSelect();
         await this.loadLevel();
