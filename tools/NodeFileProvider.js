@@ -117,7 +117,7 @@ class NodeFileProvider {
       const arr = new Uint8Array(buf);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
     }
-    const fullPath = path.join(this.rootPath, dir, filename);
+    const fullPath = path.resolve(this.rootPath, dir, filename);
     const data = fs.readFileSync(fullPath);
     const arr = new Uint8Array(data);
     return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
@@ -145,7 +145,7 @@ class NodeFileProvider {
         return Buffer.from(buf).toString('utf8');
       }
     }
-    const fullPath = path.join(this.rootPath, file);
+    const fullPath = path.resolve(this.rootPath, file);
     return fs.readFileSync(fullPath, 'utf8');
   }
 }
