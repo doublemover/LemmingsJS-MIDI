@@ -1,6 +1,21 @@
 import fs from 'fs';
 import path from 'path';
+import { pathToFileURL } from 'url';
 import { parse } from 'acorn';
+import { parseDocument, DomUtils } from 'htmlparser2';
+
+if (process.argv.length > 2) {
+  let exitCode = 0;
+  for (const f of process.argv.slice(2)) {
+    try {
+      await import(pathToFileURL(path.resolve(f)).href);
+    } catch (err) {
+      console.error(err.toString());
+      exitCode = 1;
+    }
+  }
+  process.exit(exitCode);
+}
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -116,16 +131,14 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
@@ -162,10 +175,21 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+let jsFiles = [];
+let htmlFiles = [];
+if (process.argv.length > 2) {
+  for (const f of process.argv.slice(2)) {
+    const ext = path.extname(f).toLowerCase();
+    if (ext === '.js') jsFiles.push(f);
+    else if (ext === '.html') htmlFiles.push(f);
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
+const cliMode = process.argv.length > 2;
+for (const file of jsFiles) processJSFile(file, cliMode);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
