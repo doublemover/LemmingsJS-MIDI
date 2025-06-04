@@ -28,3 +28,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **bit-writer**: [notes/bit-writer.md](notes/bit-writer.md)
 - **file-container**: [notes/file-container.md](notes/file-container.md)
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md)
+- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)

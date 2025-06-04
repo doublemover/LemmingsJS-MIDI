@@ -158,9 +158,25 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 ### NodeFileProvider
 
 The Node scripts in the `tools` directory use `NodeFileProvider` to read level
-packs. This provider can load files directly from folders or from archives such
-as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
-packed while running scripts with Node.
+packs. The provider loads files directly from folders or from `zip`, `tar`
+(including `.tar.gz`/`.tgz`) and `rar` archives. This lets you keep packs
+compressed while running the tools.
+
+Example usage:
+
+```bash
+# List sprites from an archived pack
+node tools/listSprites.js xmas92.tar.gz
+
+# Export all sprites from a zip archive
+node tools/exportAllSprites.js lemmings.zip export_lemmings
+
+# Patch sprites inside a rar archive
+node tools/patchSprites.js holiday94.rar edited_sprites holiday94_patched.DAT
+```
+
+For internal details see
+[.agentInfo/notes/node-file-provider.md](.agentInfo/notes/node-file-provider.md).
 
 ### Progressive Web App
 
@@ -217,3 +233,8 @@ URL parameters (shortcut in brackets):
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+
+## .agentInfo Notes
+
+The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
+See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
