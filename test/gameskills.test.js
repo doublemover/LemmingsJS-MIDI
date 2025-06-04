@@ -37,4 +37,25 @@ describe('GameSkills', function() {
     expect(gs.reuseSkill(Lemmings.SkillTypes.FLOATER)).to.be.false;
     expect(gs.getSkill(Lemmings.SkillTypes.FLOATER)).to.equal(0);
   });
+
+  it('ignores counts when cheat mode is enabled', function() {
+    const gs = createGameSkills({ BOMBER: 1 });
+    gs.cheatMode = true;
+    const before = gs.getSkill(Lemmings.SkillTypes.BOMBER);
+    expect(gs.canReuseSkill(Lemmings.SkillTypes.BOMBER)).to.be.true;
+    expect(gs.reuseSkill(Lemmings.SkillTypes.BOMBER)).to.be.true;
+    expect(gs.getSkill(Lemmings.SkillTypes.BOMBER)).to.equal(before);
+  });
+
+  it('cheat() sets all skills to Infinity', function() {
+    const gs = createGameSkills({});
+    const triggered = [];
+    gs.onCountChanged.on(idx => triggered.push(idx));
+    gs.cheat();
+    expect(gs.cheatMode).to.be.true;
+    for (let i = 0; i < gs.skills.length; i++) {
+      expect(gs.skills[i]).to.equal(Infinity);
+    }
+    expect(triggered).to.deep.equal([...Array(gs.skills.length).keys()]);
+  });
 });
