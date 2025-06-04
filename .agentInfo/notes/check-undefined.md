@@ -1,5 +1,5 @@
-# Undefined checker
+# Check undefined calls
 
 tags: tools, validation
 
-`tools/check-undefined.js` scans the game's data files for leftover `undefined` placeholders. Run it via `npm run check-undefined` to verify that exported assets and packed levels contain valid values. It's best executed after modifying sprite archives or level packs to catch missing resources before committing.
+`tools/check-undefined.js` scans JavaScript and HTML files for method calls. If it finds a call that cannot be resolved, it fails the build. Run `npm run check-undefined` (or `npm test`) after significant merges or large changes to catch missing or renamed functions early.
