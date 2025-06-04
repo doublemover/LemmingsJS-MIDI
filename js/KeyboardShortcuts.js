@@ -36,21 +36,21 @@ class KeyboardShortcuts {
             const vp = img.viewPoint;
             const scale = vp.scale;
             // hold shift to pan much further per frame
-            const shiftMul = this.mod.shift ? 4 : 1;
+            const shiftMul = this.mod.shift ? 2.5 : 1;
 
             // ----- panning -----
             // tweak distance per frame; previous values felt too large
             const baseX = 25 * scale;
             const baseY = 12 * scale;
             // slow the acceleration a touch for smoother motion
-            const accel = 0.035 / scale * dt;
+            const accel = 0.05 / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
             const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
             this.pan.vx += (targetVX - this.pan.vx) * accel;
             this.pan.vy += (targetVY - this.pan.vy) * accel;
             // extend easing so velocity decays more gradually
-            this.pan.vx *= 0.99;
-            this.pan.vy *= 0.99;
+            this.pan.vx *= 0.9;
+            this.pan.vy *= 0.9;
             const dx = this.pan.vx;
             const dy = this.pan.vy;
             if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
@@ -70,13 +70,13 @@ class KeyboardShortcuts {
             if (this.zoom.reset !== null) {
                 targetZ = (this.zoom.reset - vp.scale) * 0.2;
             } else {
-                // Stage expects a value around 30 for ~2% zoom steps
-                const baseZ = 30 * (this.mod.shift ? 2 : 1);
+                // smaller default zoom step; shift increases it only modestly
+                const baseZ = 20 * (this.mod.shift ? 1.5 : 1);
                 targetZ = this.zoom.dir * baseZ;
             }
             // gentler acceleration for zooming
-            this.zoom.v += (targetZ - this.zoom.v) * 0.05 * dt;
-            this.zoom.v *= 0.99;
+            this.zoom.v += (targetZ - this.zoom.v) * 0.07 * dt;
+            this.zoom.v *= 0.9;
             const dz = this.zoom.v;
             if (Math.abs(dz) > 0.001) {
                 stage.updateViewPoint(img, cx, cy, dz, zx, zy);
@@ -142,7 +142,7 @@ class KeyboardShortcuts {
 
     _onKeyDown(e) {
         const game = this.view.game;
-        if (!game) return;
+        if (!game || e.ctrlKey || e.metaKey) return;
         let handled = true;
         switch (e.code) {
             case 'Digit1':
