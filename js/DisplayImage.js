@@ -147,6 +147,30 @@ class DisplayImage extends Lemmings.BaseLogger {
     );
   }
 
+  /** Draw rectangle outline with a dashed pattern. */
+  drawDashedRect(
+    x,
+    y,
+    width,
+    height,
+    dashLen = 3,
+    offset = 0,
+    color1 = 0xFFFFFFFF,
+    color2 = 0xFF000000
+  ) {
+    drawDashedRect(
+      this,
+      x,
+      y,
+      width,
+      height,
+      dashLen,
+      offset,
+      color1,
+      color2
+    );
+  }
+
   /** Draw a stippled rectangle fill (simple checkerboard pattern). */
   drawStippleRect(x, y, width, height, r = 128, g = 128, b = 128) {
     if (!this.buffer32) return;
@@ -349,5 +373,30 @@ function drawMarchingAntRect(
   for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
 }
 
+function drawDashedRect(
+  display,
+  x,
+  y,
+  width,
+  height,
+  dashLen = 3,
+  offset = 0,
+  color1 = 0xFFFFFFFF,
+  color2 = 0xFF000000
+) {
+  drawMarchingAntRect(
+    display,
+    x,
+    y,
+    width,
+    height,
+    dashLen,
+    offset,
+    color1,
+    color2
+  );
+}
+
 Lemmings.drawMarchingAntRect = drawMarchingAntRect;
-export { DisplayImage, drawMarchingAntRect };
+Lemmings.drawDashedRect = drawDashedRect;
+export { DisplayImage, drawMarchingAntRect, drawDashedRect };
