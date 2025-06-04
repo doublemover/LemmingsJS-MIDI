@@ -198,6 +198,12 @@ class LemmingManager {
         return this.lemmings;
     }
 
+    _clearSelectedIf(lem) {
+        if (this.getSelectedLemming() === lem) {
+            this.selectedIndex = -1;
+        }
+    }
+
     setSelectedLemming(lem) {
         if (!lem) { this.selectedIndex = -1; return; }
         this.selectedIndex = this.lemmings.indexOf(lem);
@@ -279,22 +285,32 @@ class LemmingManager {
                 lem.countdownAction = null;
             }
         }
-        if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
-            lem.remove();
-            this.gameVictoryCondition.removeOne();
+       if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
+           lem.remove();
+            this._clearSelectedIf(lem);
+           this.gameVictoryCondition.removeOne();
             // performance.measure("removeOne", { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "secondary-dark", tooltipText: `removeOne ${lem.id}` } } });
             return;
         }
-        const actionSystem = this.actions[stateType];
-        if (!actionSystem) {
-            lem.remove();
-            this.logging.log(lem.id + " Action: Error not an action: " + Lemmings.LemmingStateType[stateType]);
-            return;
-        } else {
-            this.logging.debug(lem.id + " Action: " + actionSystem.getActionName());
-        }
+       const actionSystem = this.actions[stateType];
+       if (!actionSystem) {
+           lem.remove();
+           this._clearSelectedIf(lem);
+           this.logging.log(lem.id + " Action: Error not an action: " + Lemmings.LemmingStateType[stateType]);
+           return;
+       } else {
+           this.logging.debug(lem.id + " Action: " + actionSystem.getActionName());
+       }
         // performance.measure(`${actionSystem.getActionName()}`, { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "secondary-light", tooltipText: `setAction ${lem.id} ${actionSystem.getActionName()}` } } });
         lem.setAction(actionSystem);
+        switch (stateType) {
+            case Lemmings.LemmingStateType.EXPLODING:
+            case Lemmings.LemmingStateType.DROWNING:
+            case Lemmings.LemmingStateType.SPLATTING:
+            case Lemmings.LemmingStateType.FRYING:
+                this._clearSelectedIf(lem);
+                break;
+        }
     }
 
     doLemmingAction(lem, skillType) {
