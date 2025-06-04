@@ -12,10 +12,10 @@ describe('BitReader', function() {
     const bin = new BinaryReader(bytes);
     const reader = new BitReader(bin, 0, bin.length);
 
-    const first = reader.read(8); // expect 0xAA = reverse(0x55)
+    const first = reader.read(8);
     expect(first).to.equal(0xAA);
 
-    const second = reader.read(8); // expect 0x55 = reverse(0xAA)
+    const second = reader.read(8);
     expect(second).to.equal(0x55);
 
     expect(reader.getCurrentChecksum()).to.equal(0xFF);
