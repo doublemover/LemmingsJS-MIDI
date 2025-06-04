@@ -83,7 +83,6 @@ class LemmingManager {
         }
         if (lemmings.bench) {
             lemmings.laggedOut = count;
-            return;
         }
         if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
             const lemsCount = lems.length;
