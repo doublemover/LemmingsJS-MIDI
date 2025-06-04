@@ -31,6 +31,8 @@ class UserInputManager {
         this.lastMouseY = 0;
         this.mouseButton = false;
         this.mouseButtonNumber = 0;
+        this.twoTouch = false;
+        this.lastTouchDistance = 0;
         this.onMouseMove = new Lemmings.EventHandler();
         this.onMouseUp = new Lemmings.EventHandler();
         this.onMouseDown = new Lemmings.EventHandler();
@@ -46,26 +48,58 @@ class UserInputManager {
             return false;
         });
         listenElement.addEventListener("touchmove", (e) => {
-            if (e.touches.length !== 1) {
+            if (e.touches.length === 1 && !this.twoTouch) {
+                let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+                this.handleMouseMove(relativePos);
+                e.stopPropagation();
                 e.preventDefault();
-                return;
+                return false;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
-            this.handleMouseMove(relativePos);
-            e.stopPropagation();
+            if (e.touches.length === 2) {
+                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                let relativePos = this.getRelativePosition(listenElement, midX, midY);
+
+                if (!this.twoTouch) {
+                    this.twoTouch = true;
+                    this.lastTouchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                    this.handleMouseDown(relativePos);
+                } else {
+                    let newDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                    let delta = this.lastTouchDistance - newDistance;
+                    this.lastTouchDistance = newDistance;
+                    this.handleWheel(relativePos, delta);
+                }
+
+                this.handleMouseMove(relativePos);
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            }
             e.preventDefault();
-            return false;
+            return;
         });
         listenElement.addEventListener("touchstart", (e) => {
-            if (e.touches.length !== 1) {
+            if (e.touches.length === 1 && !this.twoTouch) {
+                let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+                this.handleMouseDown(relativePos);
+                e.stopPropagation();
                 e.preventDefault();
-                return;
+                return false;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
-            this.handleMouseDown(relativePos);
-            e.stopPropagation();
+            if (e.touches.length === 2) {
+                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                let relativePos = this.getRelativePosition(listenElement, midX, midY);
+                this.twoTouch = true;
+                this.lastTouchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                this.handleMouseDown(relativePos);
+                e.stopPropagation();
+                e.preventDefault();
+                return false;
+            }
             e.preventDefault();
-            return false;
+            return;
         });
         listenElement.addEventListener("mousedown", (e) => {
             e.stopPropagation();
@@ -94,6 +128,18 @@ class UserInputManager {
             this.handleMouseClear();
         });
         listenElement.addEventListener("touchend", (e) => {
+            if (this.twoTouch && e.touches.length < 2) {
+                this.twoTouch = false;
+                this.lastTouchDistance = 0;
+                if (e.changedTouches.length > 0) {
+                    let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    this.handleMouseUp(relativePos);
+                } else {
+                    this.handleMouseClear();
+                }
+                e.preventDefault();
+                return false;
+            }
             if (e.changedTouches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -103,10 +149,14 @@ class UserInputManager {
             return false;
         });
         listenElement.addEventListener("touchleave", (e) => {
+            this.twoTouch = false;
+            this.lastTouchDistance = 0;
             this.handleMouseClear();
             return false;
         });
         listenElement.addEventListener("touchcancel", (e) => {
+            this.twoTouch = false;
+            this.lastTouchDistance = 0;
             this.handleMouseClear();
             return false;
         });
@@ -130,6 +180,11 @@ class UserInputManager {
         const x = (clientX - rect.left) / rect.width * 800;
         const y = (clientY - rect.top) / rect.height * 480;
         return new Lemmings.Position2D(x, y);
+    }
+    getTouchDistance(t1, t2) {
+        let dx = t1.clientX - t2.clientX;
+        let dy = t1.clientY - t2.clientY;
+        return Math.hypot(dx, dy);
     }
     handleMouseMove(position) {
         //- Move Point of View
