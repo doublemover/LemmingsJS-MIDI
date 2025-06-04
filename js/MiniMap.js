@@ -138,16 +138,18 @@ class MiniMap {
     /* Region‑based revalidation (e.g. after a large mask dig). */
     invalidateRegion(x, y, w, h) {
         const gm = this.level.getGroundMaskLayer();
-        const xEnd = Math.min(this.level.width, x + w);
-        const yEnd = Math.min(this.level.height, y + h);
+        const x1 = Math.max(0, x | 0);
+        const y1 = Math.max(0, y | 0);
+        const xEnd = Math.min(this.level.width, x1 + w);
+        const yEnd = Math.min(this.level.height, y1 + h);
 
         // For minimal work, track which minimap rows/cols need recompute
         const touched = new Int8Array(this.width * this.height);
 
-        for (let py = y; py < yEnd; ++py) {
+        for (let py = y1; py < yEnd; ++py) {
             const mY = (py * this.scaleY) | 0;
             const rowBase = mY * this.width;
-            for (let px = x; px < xEnd; ++px) {
+            for (let px = x1; px < xEnd; ++px) {
                 const mX = (px * this.scaleX) | 0;
                 touched[rowBase + mX] = 1;
             }
