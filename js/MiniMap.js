@@ -209,8 +209,8 @@ class MiniMap {
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // show for four flashes (16 frames)
-        newTTLs[this.deadTTLs.length] = 16;
+        // dot starts lit for two frames then blinks three more times
+        newTTLs[this.deadTTLs.length] = 8;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
@@ -271,13 +271,18 @@ class MiniMap {
             const newTTLs = new Uint8Array(count);
             let idx = 0, tIdx = 0;
             for (let i = 0, j = 0; i < oldDots.length; i += 2, ++j) {
-                let ttl = oldTTLs[j] - 1;
+                let ttl = oldTTLs[j];
                 if (ttl <= 0) continue;
-                // toggle visibility every 2 frames using bit 1
-                if (ttl & 2) frame.setPixel(oldDots[i], oldDots[i + 1], 0xFF0000FF);
-                newDots[idx++] = oldDots[i];
-                newDots[idx++] = oldDots[i + 1];
-                newTTLs[tIdx++] = ttl;
+                // first two frames stay lit then blink every frame
+                if (ttl > 6 || (ttl & 1)) {
+                    frame.setPixel(oldDots[i], oldDots[i + 1], 0xFFFF0000);
+                }
+                ttl -= 1;
+                if (ttl > 0) {
+                    newDots[idx++] = oldDots[i];
+                    newDots[idx++] = oldDots[i + 1];
+                    newTTLs[tIdx++] = ttl;
+                }
             }
             this.deadDots = newDots;
             this.deadTTLs = newTTLs;
