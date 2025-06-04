@@ -34,16 +34,58 @@ function frameToPNG(frame) {
 
 (async () => {
     const dataPath = process.argv[2] || loadDefaultPack();
-    const outDir   = process.argv[3] || `${dataPath.replace(/\W+/g, '_')}_all`;
+    const outDir   = process.argv[3] || path.join('exports', `${dataPath.replace(/\W+/g, '_')}_all`);
     fs.mkdirSync(outDir, { recursive: true });
 
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
-    const pal = new Lemmings.ColorPalette();
 
     // Load steel metadata before reading ground files for palettes
     await Lemmings.loadSteelSprites();
 
+    // Grab a colour palette from the first ground set so lemming sprites
+    // render correctly.  Fallback to a blank palette if loading fails.
+    let pal = new Lemmings.ColorPalette();
+    for (let g = 0; g < 5; g++) {
+        try {
+            const groundBuf = await provider.loadBinary(dataPath, `GROUND${g}O.DAT`);
+            const vgaBuf    = await provider.loadBinary(dataPath, `VGAGR${g}.DAT`);
+            const vgaContainer = new Lemmings.FileContainer(vgaBuf);
+            const gr = new Lemmings.GroundReader(
+                groundBuf,
+                vgaContainer.getPart(0),
+                vgaContainer.getPart(1)
+            );
+            pal = gr.colorPalette;
+            break;
+        } catch {
+            // try next ground set
+        }
+    }
+
+    // Ensure steel sprite metadata is loaded for accurate terrain flags
+    await Lemmings.loadSteelSprites();
+
+    // Ensure steel sprite metadata is loaded for accurate terrain flags
+    await Lemmings.loadSteelSprites();
+
+
+            const spriteDir = `${outDir}/lemmings/${name}/${dirName}`;
+            fs.mkdirSync(spriteDir, { recursive: true });
+
+            const sheet = new PNG({
+                width: anim.frames[0].width * anim.frames.length,
+                height: anim.frames[0].height
+            });
+
+                await new Promise(res =>
+                    png.pack().pipe(fs.createWriteStream(`${spriteDir}/${i}.png`)).on('finish', res)
+                );
+
+
+            await new Promise(res =>
+                sheet.pack().pipe(fs.createWriteStream(`${spriteDir}/sheet.png`)).on('finish', res)
+            );
     // Grab a colour palette from the first ground set so lemming sprites
     // render correctly.  Fallback to a blank palette if loading fails.
     let pal = new Lemmings.ColorPalette();

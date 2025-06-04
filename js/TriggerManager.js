@@ -49,8 +49,27 @@ class TriggerManager {
 
     /** @type {Lemmings.Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
+
+    this._debugFrame = null;
+    if (arr.length) this._debugFrame = null;
+    this._debugFrame = null;
+    if (!this._debugFrame) this.#buildDebugFrame();
+    g.drawFrame(this._debugFrame, 0, 0);
+  #buildDebugFrame() {
+    const frame = new Lemmings.Frame(this._levelW, this._levelH);
+    const color = Lemmings.ColorPalette.colorFromRGB(255, 0, 0);
+    for (const tr of this._triggers) {
+      if (tr.type === 7 || tr.type === 8) continue; // arrows handled elsewhere
+      frame.drawRect(tr.x1, tr.y1, tr.x2 - tr.x1, tr.y2 - tr.y1, color);
+    }
+    this._debugFrame = frame;
   }
 
+
+    this._debugFrame = null;
+  }
+
+    this._debugFrame = null;
   /* ───────────────────────── public API ───────────────────────── */
 
   /** Register a single trigger */

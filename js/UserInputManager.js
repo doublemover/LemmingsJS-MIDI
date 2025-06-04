@@ -150,7 +150,6 @@ class UserInputManager {
         this.onDoubleClick.dispose();
         this.onZoom.dispose();
     }
-    getRelativePosition(element, clientX, clientY) {
         const rect = element.getBoundingClientRect();
         const x = (clientX - rect.left) / rect.width * 800;
         const y = (clientY - rect.top) / rect.height * 480;

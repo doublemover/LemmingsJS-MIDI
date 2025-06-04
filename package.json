@@ -17,6 +17,11 @@
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
     "patch-sprites": "node tools/patchSprites.js"
+    "adm-zip": "^0.5.10",
+    "tar": "^7.4.3",
+    "node-unrar-js": "^2.0.2"
+    "list-sprites": "node tools/listSprites.js",
+    "patch-sprites": "node tools/patchSprites.js"
   },
   "repository": {
     "type": "git",

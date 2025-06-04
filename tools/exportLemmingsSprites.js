@@ -62,6 +62,35 @@ function frameToPNG(frame) {
         }
     }
 
+            const spriteDir = `${outDir}/lemmings/${name}/${dirName}`;
+            fs.mkdirSync(spriteDir, { recursive: true });
+
+            const sheet = new PNG({
+                width: anim.frames[0].width * anim.frames.length,
+                height: anim.frames[0].height
+            });
+                await new Promise(res =>
+                    png.pack().pipe(fs.createWriteStream(`${spriteDir}/${i}.png`)).on('finish', res)
+                );
+            await new Promise(res =>
+                sheet.pack().pipe(fs.createWriteStream(`${spriteDir}/sheet.png`)).on('finish', res)
+            );
+        try {
+            const groundBuf = await provider.loadBinary(dataPath, `GROUND${g}O.DAT`);
+            const vgaBuf    = await provider.loadBinary(dataPath, `VGAGR${g}.DAT`);
+            const vgaContainer = new Lemmings.FileContainer(vgaBuf);
+            const gr = new Lemmings.GroundReader(
+                groundBuf,
+                vgaContainer.getPart(0),
+                vgaContainer.getPart(1)
+            );
+            pal = gr.colorPalette;
+            break;
+        } catch {
+            // ignore missing ground sets
+        }
+    }
+
     const spriteSet = await res.getLemmingsSprite(pal);
 
     for (const [name, id] of Object.entries(Lemmings.SpriteTypes)) {
