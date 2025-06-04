@@ -1,6 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-
 class ActionExplodingSystem extends ActionBaseSystem {
 
     constructor(sprites, masks, triggerManager, particleTable) {
@@ -12,11 +11,10 @@ class ActionExplodingSystem extends ActionBaseSystem {
             maskTypes: Lemmings.MaskTypes.EXPLODING,
             actionName: 'exploding'
         });
-        this.triggerManager = triggerManager;
-        this.particleTable = particleTable;
+            const ani = this.sprites.get("both");
     }
 
-
+            level.clearGroundWithMask(this.masks.get("both").GetMask(0), lem.x, lem.y);
     triggerLemAction(lem) {
         return false;
     }
