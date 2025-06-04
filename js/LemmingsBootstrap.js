@@ -93,6 +93,7 @@ import './TriggerManager.js';
 import './TriggerTypes.js';
 import './UnpackFilePart.js';
 import './PackFilePart.js';
+import './PackFilePart.js';
 import './UserInputManager.js';
 import './VGASpecReader.js';
 import './ViewPoint.js';

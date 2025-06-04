@@ -1,19 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-
 class ActionJumpSystem extends ActionBaseSystem {
-    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
-    }
-
-    triggerLemAction(lem) {
-        return false;
-    }
 
     draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
-    }
-
     process(level, lem) {
         lem.frameIndex++;
         lem.x += (lem.lookRight ? 1 : -1);

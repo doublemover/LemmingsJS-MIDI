@@ -3,15 +3,7 @@ import { ActionBaseSystem } from './ActionBaseSystem.js';
 class ActionFallSystem extends ActionBaseSystem {
     constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.FALLING, actionName: 'falling' });
-    }
-    triggerLemAction(lem) {
-        return false;
-    }
-    /** render Lemming to gamedisplay */
-    draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
-    }
-    process(level, lem) {
         lem.frameIndex++;
         if (lem.state > 16 && (lem.hasParachute)) {
             return Lemmings.LemmingStateType.FLOATING;
