@@ -4,7 +4,7 @@ class LemmingManager {
     constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
         // const start = performance.now();
         this.lemmings = [];
-        this.minimapDots = [];
+        this.minimapDots = new Uint8Array(0);
         if (!LemmingManager.log) {
             LemmingManager.log = new Lemmings.LogHandler("LemmingManager");
         }
@@ -83,18 +83,26 @@ class LemmingManager {
         }
         if (lemmings.bench) {
             lemmings.laggedOut = count;
-            return;
         }
         if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
-            const dots = this.minimapDots;
-            dots.length = 0;
+            const lemsCount = lems.length;
+            const dots = new Uint8Array(lemsCount * 2);
+            const visited = new Set();
+            const scaleX = this.miniMap.scaleX;
+            const scaleY = this.miniMap.scaleY;
+            let idx = 0;
             for (const lem of lems) {
-                const pos = { x: lem.x, y: lem.y };
-                if (!lem.removed && !lem.disabled) {
-                    dots.push(pos);
-                }
+                if (lem.removed || lem.disabled) continue;
+                const x = (lem.x * scaleX) | 0;
+                const y = (lem.y * scaleY) | 0;
+                const key = (y << 8) | x;
+                if (visited.has(key)) continue;
+                visited.add(key);
+                dots[idx++] = x;
+                dots[idx++] = y;
             }
-            this.miniMap.setLiveDots(dots);
+            this.minimapDots = dots.subarray(0, idx);
+            this.miniMap.setLiveDots(this.minimapDots);
         }
         // const tick = this.mmTickCounter;
         // performance.measure(`tick ${tick}`, { start, detail: { devtools: 
@@ -297,7 +305,7 @@ class LemmingManager {
     dispose() {
         const start = performance.now();
         if (this.lemmings) this.lemmings.length = 0;
-        if (this.minimapDots) this.minimapDots.length = 0;
+        if (this.minimapDots) this.minimapDots = new Uint8Array(0);
         this.level = null;
         this.triggerManager = null;
         this.gameVictoryCondition = null;
