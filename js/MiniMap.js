@@ -4,6 +4,7 @@ import {
 
 class MiniMap {
   static palette = null;
+  static DEATH_DOT_TTL = 30;
   constructor(gameDisplay, level, guiDisplay) {
     this.gameDisplay = gameDisplay;
     this.level = level;
@@ -24,7 +25,9 @@ class MiniMap {
     // typed array storing [x1,y1,x2,y2,...] scaled to minimap
     this.liveDots = new Uint8Array(0);
     this.selectedDot = null;
-    this.deadDots = []; // {x,y,ttl}
+    this.deadX = new Uint8Array(0);
+    this.deadY = new Uint8Array(0);
+    this.deadTTL = new Uint8Array(0);
 
     // render target (drawn into the GUI canvas once per frame)
     this.frame = new Lemmings.Frame(this.width, this.height);
@@ -201,11 +204,21 @@ class MiniMap {
   }
 
   addDeath(x, y) {
-    this.deadDots.push({
-      x: x * this.scaleX | 0,
-      y: y * this.scaleY | 0,
-      ttl: 30
-    });
+    const sx = Math.max(0, Math.min(this.width - 1, (x * this.scaleX) | 0));
+    const sy = Math.max(0, Math.min(this.height - 1, (y * this.scaleY) | 0));
+    const n = this.deadX.length + 1;
+    const nx = new Uint8Array(n);
+    const ny = new Uint8Array(n);
+    const nt = new Uint8Array(n);
+    nx.set(this.deadX);
+    ny.set(this.deadY);
+    nt.set(this.deadTTL);
+    nx[n - 1] = sx;
+    ny[n - 1] = sy;
+    nt[n - 1] = MiniMap.DEATH_DOT_TTL;
+    this.deadX = nx;
+    this.deadY = ny;
+    this.deadTTL = nt;
   }
 
   render() {
@@ -269,14 +282,22 @@ class MiniMap {
     }
 
     /* Death flashes */
-    // for (let i = this.deadDots.at(-1); i >= 0; --i) {
-    //     const d = this.deadDots[i];
-    //     if (--d.ttl <= 0) {
-    //         this.deadDots.splice(i, 1);
-    //         continue;
-    //     }
-    //     if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
-    // }
+    for (let i = this.deadX.length - 1; i >= 0; --i) {
+      const ttl = this.deadTTL[i] - 1;
+      this.deadTTL[i] = ttl;
+      if (ttl <= 0) {
+        if (i < this.deadX.length - 1) {
+          this.deadX.copyWithin(i, i + 1);
+          this.deadY.copyWithin(i, i + 1);
+          this.deadTTL.copyWithin(i, i + 1);
+        }
+        this.deadX = this.deadX.slice(0, -1);
+        this.deadY = this.deadY.slice(0, -1);
+        this.deadTTL = this.deadTTL.slice(0, -1);
+        continue;
+      }
+      if (ttl & 4) frame.setPixel(this.deadX[i], this.deadY[i], 0xFF0000FF);
+    }
 
     /* Blit */
     const destX = this.guiDisplay.getWidth() - W;
@@ -298,7 +319,9 @@ class MiniMap {
     this.fog = null;
     this.liveDots = null;
     this.selectedDot = null;
-    this.deadDots = null;
+    this.deadX = null;
+    this.deadY = null;
+    this.deadTTL = null;
     this.frame = null;
   }
 }

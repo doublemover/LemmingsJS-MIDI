@@ -13,7 +13,6 @@ describe('GameResources', function () {
   let origColorPalette;
   let origMaskProvider;
   let origFrame;
-  let origLoadCursor;
 
   let fileProvider;
   let config;
@@ -62,20 +61,13 @@ describe('GameResources', function () {
       drawPaletteImage(buf, w, h, pal) { this.drawn.push({ buf, w, h, pal }); }
     };
 
-    origLoadCursor = GameResources.prototype._loadCursorBmp;
-    GameResources.prototype._loadCursorBmp = async function (name) {
-      return { img: { getImageBuffer: () => new Uint8Array(0) }, palette: {}, width: 0, height: 0 };
-    };
 
     fileProvider = {
       loadBinary(path, file) {
-        if (file === 'MAIN.DAT') {
-          assert.strictEqual(path, config.path);
-          loadCount++;
-          return Promise.resolve('buf');
-        }
-        assert.strictEqual(path, 'src/Data/Cursors/Cursors.zip');
-        return Promise.reject(new Error('should not load real cursor'));
+        assert.strictEqual(file, 'MAIN.DAT');
+        assert.strictEqual(path, config.path);
+        loadCount++;
+        return Promise.resolve('buf');
       }
     };
   });
@@ -88,7 +80,6 @@ describe('GameResources', function () {
     Lemmings.ColorPalette = origColorPalette;
     Lemmings.MaskProvider = origMaskProvider;
     Lemmings.Frame = origFrame;
-    GameResources.prototype._loadCursorBmp = origLoadCursor;
   });
 
   it('caches the promise returned by getMainDat()', async function () {
