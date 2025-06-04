@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
+import { spawnSync } from 'child_process';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
@@ -11,6 +12,8 @@ import { BitWriter } from '../js/BitWriter.js';
 import { PackFilePart } from '../js/PackFilePart.js';
 import '../js/UnpackFilePart.js';
 import { FileContainer } from '../js/FileContainer.js';
+
+const script = path.resolve('tools/packLevels.js');
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -41,5 +44,22 @@ describe('tools/packLevels.js', function () {
       expect(part.checksum).to.equal(packed.checksum);
       expect(part.initialBufferLen).to.equal(packed.initialBits);
     });
+  });
+
+  it('prints usage when arguments are missing', function () {
+    const result = spawnSync('node', [script], { encoding: 'utf8' });
+    expect(result.status).to.equal(0);
+    const output = (result.stdout + result.stderr).trim();
+    expect(output).to.match(/Usage:/);
+  });
+
+  it('fails when the level directory is missing', function () {
+    const missingDir = path.join(os.tmpdir(), 'no-such-dir');
+    const outFile = path.join(os.tmpdir(), 'out.dat');
+    const result = spawnSync('node', [script, missingDir, outFile], {
+      encoding: 'utf8'
+    });
+    expect(result.status).to.not.equal(0);
+    expect(result.stderr).to.match(/ENOENT|no such file/i);
   });
 });

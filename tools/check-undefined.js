@@ -1,9 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
-import { parseDocument, DomUtils } from 'htmlparser2';
+import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
+
 
 const require = createRequire(import.meta.url);
 
@@ -127,27 +127,11 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-async function processHtmlFile(file) {
-  const html = fs.readFileSync(file, 'utf8');
-  const document = parseDocument(html);
-
-  // Extract and process <script> tag content
-  const scriptTags = DomUtils.findAll(elem => elem.tagName === 'script', document.children);
-  for (const scriptTag of scriptTags) {
-    const js = DomUtils.textContent(scriptTag);
-    const ast = parseJS(js, file);
+function processHtmlFile(file) {
+  const snippets = extractHtmlSnippets(file);
+  for (const { code } of snippets) {
+    const ast = parseJS(code, file);
     if (ast) collectFromAst(ast, file, true);
-  }
-
-  // Extract and process inline event handler attributes
-  const elementsWithAttributes = DomUtils.findAll(elem => elem.attribs, document.children);
-  for (const elem of elementsWithAttributes) {
-    for (const [attr, value] of Object.entries(elem.attribs)) {
-      if (attr.startsWith('on')) {
-        const ast = parseJS(value, file);
-        if (ast) collectFromAst(ast, file, true);
-      }
-    }
   }
 }
 
