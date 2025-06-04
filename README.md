@@ -169,9 +169,16 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - `zip -r export_lemmings.zip export_lemmings`
     - `tar -czf export_lemmings.tgz export_lemmings`
     - `rar a export_lemmings.rar export_lemmings`
-  - `npm run clean-exports` *(remove `export_*` folders)*
+- `npm run clean-exports` *(remove `export_*` folders)*
   - `npm start`
 - Browser: `localhost:8080`
+
+### NodeFileProvider
+
+The Node scripts in the `tools` directory use `NodeFileProvider` to read level
+packs. This provider can load files directly from folders or from archives such
+as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
+packed while running scripts with Node.
 
 ### Running Tests
 
