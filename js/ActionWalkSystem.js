@@ -18,12 +18,12 @@ class ActionWalkSystem {
             return false;
         }
         getGroundStepDelta(groundMask, x, y) {
-            for (let i = 0; i < 8; i++) {
+            for (let i = 0; i <= 7; i++) {
                 if (!groundMask.hasGroundAt(x, y - i)) {
                     return i;
                 }
             }
-            return 8;
+            return 8; // solid column higher than 7px
         }
         getGroudGapDelta(groundMask, x, y) {
             for (let i = 1; i < 4; i++) {
@@ -38,36 +38,31 @@ class ActionWalkSystem {
             lem.x += (lem.lookRight ? 1 : -1);
             const groundMask = level.getGroundMaskLayer();
             const upDelta = this.getGroundStepDelta(groundMask, lem.x, lem.y);
-            if (upDelta == 8) {
-                // collision with obstacle
-                if (lem.canClimb) {
-                    // start climbing
-                    return Lemmings.LemmingStateType.CLIMBING;
-                } else {
-                    // turn around
+
+            if (upDelta > 0) {
+                // obstacle directly ahead
+                if (upDelta > 6) {
+                    if (lem.canClimb) {
+                        return Lemmings.LemmingStateType.CLIMBING;
+                    }
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
-            } else if (upDelta > 0) {
-                lem.y -= upDelta - 1;
-                if (upDelta > 3) {
-                    // jump
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
-                } else {
-                    // walk with small jump up
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+                if (upDelta >= 3) {
+                    lem.y -= 2;
+                    return Lemmings.LemmingStateType.JUMPING;
                 }
-            } else {
-                // walk or fall
-                let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
-                lem.y += downDelta;
-                if (downDelta == 4) {
-                    return Lemmings.LemmingStateType.FALLING;
-                } else {
-                    // walk with small jump down
-                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
-                }
+                lem.y -= upDelta;
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
             }
+
+            // no obstacle, check for ground below
+            let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
+            lem.y += downDelta;
+            if (downDelta == 4) {
+                return Lemmings.LemmingStateType.FALLING;
+            }
+            return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
     }
     Lemmings.ActionWalkSystem = ActionWalkSystem;
