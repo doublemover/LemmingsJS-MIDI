@@ -1,10 +1,19 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionHoistSystem extends ActionBaseSystem {
+    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.POSTCLIMBING, actionName: 'hoist' });
+    }
+
+    triggerLemAction(lem) {
+        return false;
+    }
 
     draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
+    }
+
     // y+1, x+1 & y+1, x+2 & y+2?
     process(level, lem) {
         lem.frameIndex++;
