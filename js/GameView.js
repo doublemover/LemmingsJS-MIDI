@@ -1,9 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './KeyboardShortcuts.js';
 
-class GameView {
+class GameView extends Lemmings.BaseLogger {
     constructor() {
-        this.log = new Lemmings.LogHandler("GameView");
+        super();
         this.gameType = null;
         this.levelIndex = 0;
         this.levelGroupIndex = 0;
@@ -18,6 +18,7 @@ class GameView {
         this.scale = 0; // zoom 
         this.laggedOut = 0;
         this.extraLemmings = 0;
+        this.perfMetrics = false;
         this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
@@ -64,7 +65,7 @@ class GameView {
     onGameEnd(gameResult) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
-        console.dir(gameResult);
+        this.log.debug(gameResult);
         window.setTimeout(() => {
             if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                 /// move to next level
@@ -253,6 +254,10 @@ async moveToLevel(moveInterval = 0) {
         if (query.get("shortcut") || query.get("_")) {
             this.shortcut = (query.get("shortcut") || query.get("_")) === "true";
         }
+        this.perfMetrics = false;
+        if (query.get("perfMetrics") || query.get("pm")) {
+            this.perfMetrics = (query.get("perfMetrics") || query.get("pm")) === "true";
+        }
     }
     updateQuery() {
         if (this.shortcut) {
@@ -262,7 +267,8 @@ async moveToLevel(moveInterval = 0) {
                 l: this.levelIndex + 1,
                 s: this.gameSpeedFactor,
                 c: !!this.cheat,
-                _: true
+                _: true,
+                pm: !!this.perfMetrics
             });
         } else {
             this.setHistoryState({
@@ -270,7 +276,8 @@ async moveToLevel(moveInterval = 0) {
                 difficulty: this.levelGroupIndex + 1,
                 level: this.levelIndex + 1,
                 speed: this.gameSpeedFactor,
-                cheat: !!this.cheat
+                cheat: !!this.cheat,
+                perfMetrics: !!this.perfMetrics
             });
         }
     }
@@ -397,7 +404,7 @@ async moveToLevel(moveInterval = 0) {
             gameDisplay.redraw();
         }
         this.updateQuery();
-        console.dir(level);
+        this.log.debug(level);
         return this.start();
     }
 }

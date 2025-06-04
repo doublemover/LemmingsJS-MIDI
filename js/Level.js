@@ -1,7 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class Level {
+class Level extends Lemmings.BaseLogger {
   constructor(width, height) {
+    super();
     this.width = width | 0;
     this.height = height | 0;
     this.groundMask = new Lemmings.SolidLayer(this.width, this.height);
@@ -26,7 +27,15 @@ class Level {
   }
 
   setMapObjects(objects, objectImg) {
-    // const start = performance.now();
+    Lemmings.withPerformance(
+      'setMapObjects',
+      {
+        track: 'Level',
+        trackGroup: 'Game State',
+        color: 'primary-light',
+        tooltipText: 'setMapObjects'
+      },
+      () => {
     this.objects.length = 0;
     this.entrances.length = 0;
     this.triggers.length = 0;
@@ -75,7 +84,7 @@ class Level {
     if (arrowRects.length > 0) {
       this.setArrowAreas(arrowRects);
     }
-    // performance.measure(`setMapObjects`, { start, detail: { devtools: { track: "Level", trackGroup: "Game State", color: "primary-light", properties: [["Objects", `${this.objects.length}`],["Entrances", `${this.entrances.length}`],["Triggers", `${this.triggers.length}`]], tooltipText: `setMapObjects` } } });
+      })();
   }
 
   getGroundMaskLayer() { return this.groundMask; }
@@ -163,6 +172,15 @@ class Level {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
+    Lemmings.withPerformance(
+      'newSetSteelAreas',
+      {
+        track: 'Level',
+        trackGroup: 'Game State',
+        color: 'secondary-light',
+        tooltipText: 'newSetSteelAreas'
+      },
+      () => {
     if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
       this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
     } else {
@@ -195,6 +213,7 @@ class Level {
       this.steelRanges = new Int32Array(0);
       this.setSteelAreas(newSteelRanges);
     }
+      })();
   }
 
   setSteelAreas(ranges = []) {

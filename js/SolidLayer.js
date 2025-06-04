@@ -1,12 +1,13 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class SolidLayer {
+class SolidLayer extends Lemmings.BaseLogger {
     /**
      * @param {number} width
      * @param {number} height
      * @param {Uint8Array|Int8Array|null} mask - Optional initial ground mask
      */
-    constructor(width, height, mask = null) {
+   constructor(width, height, mask = null) {
+        super();
         this.width = width;
         this.height = height;
         this.mask = mask ? new Uint8Array(mask) : new Uint8Array(width * height);
@@ -50,7 +51,15 @@ class SolidLayer {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
     clearGroundWithMask(mask, x, y, skipTest = null) {
-        // const start = performance.now();
+        Lemmings.withPerformance(
+            'clearGroundWithMask',
+            {
+                track: 'SolidLayer',
+                trackGroup: 'Game State',
+                color: 'primary-dark',
+                tooltipText: `clearGroundWithMask ${x},${y}`
+            },
+            () => {
         const mx = mask.offsetX || 0, my = mask.offsetY || 0;
         for (let dy = 0; dy < mask.height; ++dy) {
             const mapY = y + my + dy;
@@ -66,7 +75,7 @@ class SolidLayer {
                 }
             }
         }
-        // performance.measure("clearGroundWithMask Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-dark", properties: [["Position", `${x},${y}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMask" } } });
+            })();
     }
 
     /**
@@ -76,14 +85,22 @@ class SolidLayer {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
     clearGroundWithMasks(masks, positions, skipTest = null) {
-        // const start = performance.now();
+        Lemmings.withPerformance(
+            'clearGroundWithMasks',
+            {
+                track: 'SolidLayer',
+                trackGroup: 'Game State',
+                color: 'primary-light',
+                tooltipText: `clearGroundWithMasks ${masks.length}`
+            },
+            () => {
         if (!Array.isArray(masks) || masks.length === 0) return;
         for (let i = 0; i < masks.length; ++i) {
             const mask = masks[i], pos = positions[i];
             if (!mask || !pos) continue;
             this.clearGroundWithMask(mask, pos[0], pos[1], skipTest);
         }
-        // performance.measure("clearGroundWithMasks Complete", { start, detail: { devtools: { track: "SolidLayer", trackGroup: "Game State", color: "primary-light", properties: [["Positions", `${positions}`],["skipTest"], `${skipTest}`], tooltipText: "clearGroundWithMasks" } } });
+            })();
     }
 }
 
