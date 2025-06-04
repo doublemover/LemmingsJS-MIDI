@@ -2,16 +2,32 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
-import { GameView } from '../js/GameView.js';
+// prepare a minimal window object for GameView.applyQuery
+function createWindowStub() {
+  return {
+    location: { search: '' },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
 
 // minimal window for GameView.applyQuery and KeyboardShortcuts stub
-global.window = {
-  location: { search: '' },
-  setTimeout,
-  clearTimeout,
-  addEventListener() {},
-  removeEventListener() {}
-};
+function setupWindow() {
+  global.window = {
+    location: { search: '' },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
+
+beforeEach(function() { globalThis.window = createWindowStub(); });
+afterEach(function() { delete globalThis.window; });
+
+import { GameView } from '../js/GameView.js';
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
@@ -74,17 +90,30 @@ class GameFactoryMock {
   get configReader() { return { configs: Promise.resolve([]) }; }
 }
 
-// override engine classes
-Lemmings.Stage = StageMock;
-Lemmings.GameFactory = GameFactoryMock;
-Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-Lemmings.GameTypes = { toString: () => '' };
-Lemmings.GameStateTypes = { toString: () => '' };
-
-global.lemmings = { game: { showDebug: false } };
-
 describe('GameView', function () {
+  before(function () {
+    setupWindow();
+    // override engine classes after all modules loaded
+    Lemmings.Stage = StageMock;
+    Lemmings.GameFactory = GameFactoryMock;
+    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    Lemmings.GameTypes = { toString: () => '' };
+    Lemmings.GameStateTypes = { toString: () => '' };
+    global.lemmings = { game: { showDebug: false } };
+  });
+
+  after(function () {
+    delete global.window;
+  });
   it('initializes stage and connects displays', async function () {
+    global.window = {
+      location: { search: '' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     const canvas = {
       addEventListener() {},

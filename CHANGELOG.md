@@ -6,10 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- _Nothing yet_
+
+### Added
+- `NodeFileProvider` can load files from `.zip`, `.tar.gz`, `.tgz`, and `.rar` archives and exposes `clearCache()`.
+
+### Changed
+- Project now requires Node.js 16+ (tests use Node 18 in CI).
+- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
+- `packLevels.js` creates DAT archives from 2048-byte level files.
+- These tools rely on `NodeFileProvider` to read packs from folders or archives.
+
 
 ## [0.0.2] - 2025-06-04
 ### Added
+- `.agentInfo/` directory for searchable design notes.
 - Keyboard shortcuts to adjust speed and game functions.
 - Right-click actions for quick release-rate changes and debug toggle.
 - Support for levels with multiple entrances and animated traps.
@@ -22,9 +32,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Level packs for Xmas '91/'92 and Holiday '93/'94.
 - Skill selection and speed changes while paused.
 - Asynchronous Blob loading for BinaryReader.
-- Mouse wheel zoom centers on the cursor.
+ - Mouse wheel zoom centers on the cursor and keeps the world point under the cursor fixed.
 
 ### Fixed
+- Switching the game type refreshes level resources automatically.
 - Numerous crashes and invisible blockers when lemmings die.
 - Corrected fall height and trap cooldown behavior.
 - Arrow trigger animation and explosion sprite alignment issues.

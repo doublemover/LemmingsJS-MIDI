@@ -1,5 +1,29 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import './ActionWalkSystem.js';
+import './ActionFallSystem.js';
+import './ActionJumpSystem.js';
+import './ActionDiggSystem.js';
+import './ActionExitingSystem.js';
+import './ActionFloatingSystem.js';
+import './ActionBlockerSystem.js';
+import './ActionMineSystem.js';
+import './ActionClimbSystem.js';
+import './ActionHoistSystem.js';
+import './ActionBashSystem.js';
+import './ActionBuildSystem.js';
+import './ActionShrugSystem.js';
+import './ActionExplodingSystem.js';
+import './ActionOhNoSystem.js';
+import './ActionSplatterSystem.js';
+import './ActionDrowningSystem.js';
+import './ActionFryingSystem.js';
+import './ActionCountdownSystem.js';
+import './LemmingStateType.js';
+import './Lemming.js';
+import './SpriteTypes.js';
+import './MaskTypes.js';
+import './LemmingsBootstrap.js';
 
 class LemmingManager extends Lemmings.BaseLogger {
   #mmTickCounter = 0;
@@ -278,13 +302,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   getLemmingAt(x, y, radius = 6) {
-    const halfW = radius;
-    const halfH = radius * 2;
-    for (const lem of this.lemmings) {
-      if (lem.removed) continue;
-      if (x >= lem.x - halfW && x <= lem.x + halfW && y >= lem.y - halfH && y <= lem.y + halfH) return lem;
-    }
-    return null;
+    return this.getNearestLemming(x, y);
   }
 
   getNearestLemming(x, y) {
