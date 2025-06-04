@@ -50,12 +50,12 @@ class LevelReader extends Lemmings.BaseLogger {
         /// reset array
         this.objects = [];
         fr.setOffset(0x0020);
-        for (var i = 0; i < 32; i++) {
-            var newOb = new Lemmings.LevelElement();
+        for (let i = 0; i < 32; i++) {
+            const newOb = new Lemmings.LevelElement();
             newOb.x = fr.readWord() - 16;
             newOb.y = fr.readWord();
             newOb.id = fr.readWord();
-            var flags = fr.readWord();
+            const flags = fr.readWord();
             let isUpsideDown = ((flags & 0x0080) > 0);
             let noOverwrite = ((flags & 0x8000) > 0);
             let onlyOverwrite = ((flags & 0x4000) > 0);
@@ -70,16 +70,16 @@ class LevelReader extends Lemmings.BaseLogger {
         /// reset array
         this.terrains = [];
         fr.setOffset(0x0120);
-        for (var i = 0; i < 400; i++) {
-            var newOb = new Lemmings.LevelElement();
-            var v = fr.readInt(4);
+        for (let i = 0; i < 400; i++) {
+            const newOb = new Lemmings.LevelElement();
+            const v = fr.readInt(4);
             if (v == -1)
                 continue;
             newOb.x = ((v >> 16) & 0x0FFF) - 16;
-            var y = ((v >> 7) & 0x01FF);
+            const y = ((v >> 7) & 0x01FF);
             newOb.y = y - ((y > 256) ? 516 : 4);
             newOb.id = (v & 0x003F);
-            var flags = ((v >> 29) & 0x000F);
+            const flags = ((v >> 29) & 0x000F);
             let isUpsideDown = ((flags & 2) > 0);
             let noOverwrite = ((flags & 4) > 0);
             let isErase = ((flags & 1) > 0);
@@ -94,7 +94,7 @@ class LevelReader extends Lemmings.BaseLogger {
         /// reset array
         this.steel = [];
         fr.setOffset(0x0760);
-        for (var i = 0; i < 32; i++) {
+        for (let i = 0; i < 32; i++) {
             const low = fr.readByte();
             const high = fr.readByte();
             const size = fr.readByte();
@@ -113,7 +113,7 @@ class LevelReader extends Lemmings.BaseLogger {
             const width = (((size >> 4) & 0x0F) + 1) * 4; 
             const height = ((size & 0x0F) + 1) * 4;
 
-            var newRange = new Lemmings.Range();
+            const newRange = new Lemmings.Range();
             newRange.x = x;
             newRange.y = y;
             newRange.width = width;
