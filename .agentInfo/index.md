@@ -7,3 +7,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 
 - **example, doc**: [notes/initial.md](notes/initial.md)
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
+- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md)
