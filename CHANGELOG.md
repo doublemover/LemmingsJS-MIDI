@@ -24,4 +24,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized performance to handle thousands of lemmings per tick.
 - Improved steel terrain detection and arrow wall functionality.
 
+## [0.0.1] - 2025-06-03
+### Added
+- Displayed speed indicator with keyboard shortcuts and right-click reset.
+- Instant min/max release rates and crosshair cursor sprite.
+- Multi-entrance levels, trap animations with cooldowns, and arrow walls.
+- Minimap with drag-to-pan, zoom, and skill usage while paused.
+- Extended debug controls via Nuke toggle and URL parameters.
+
+### Fixed
+- Various crashes and invisible blockers after blocking ends.
+- Actions consumed by dead lemmings and lingering bomber triggers.
+- Trap sprite misalignment, arrow wall animations, and fall height.
+- Missing trap cooldown and redundant or wasted actions.
+
+### Changed
+- Optimized hot loops and memory usage with typed arrays and caching.
+- Grid-based trigger management and requestAnimationFrame timing.
+- Better error propagation, modular code, and partial JSDoc coverage.
+
 <!-- Keep this changelog updated with future changes. -->
