@@ -32,6 +32,8 @@ class DisplayImage {
         //     // this.setDebugPixel(e.x, e.y);
         // });
         this.imgData = null;
+        this.groundMask = null;
+        this.steelMask  = null;
     }
 
     /* ---------- image helpers ---------- */
@@ -53,8 +55,10 @@ class DisplayImage {
         this.buffer32?.fill(color);
     }
 
-    /** Bulk background copy – copy 32‑bit words where possible. */
-    setBackground(groundImage, groundMask = null) {
+    /** Bulk background copy – copy 32‑bit words where possible.
+     *  Optionally accepts both ground and steel masks so sprite rendering can
+     *  respect steel areas as solid ground. */
+    setBackground(groundImage, groundMask = null, steelMask = null) {
         if (groundImage instanceof Uint8ClampedArray) {
             // Uint8 – copy bytes directly.
             this.imgData.data.set(groundImage);
@@ -67,6 +71,7 @@ class DisplayImage {
             // this.imgData.data.set(groundImage);
         }
         this.groundMask = groundMask;
+        this.steelMask  = steelMask;
     }
     
     /* ---------- primitive drawing ---------- */
@@ -155,6 +160,7 @@ class DisplayImage {
             noOverwrite   = false,
             upsideDown    = false,
             groundMask    = null,
+            steelMask     = null,
             size          = null // { width, height }
         } = opts ?? {};
 
@@ -178,7 +184,10 @@ class DisplayImage {
                     const outX = sx + baseX;
                     if (outX < 0 || outX >= destW) continue;
                     if (checkGround) {
-                        const hasGround = groundMask?.hasGroundAt(outX, outY);
+                        let hasGround = groundMask?.hasGroundAt(outX, outY);
+                        if (!hasGround && steelMask) {
+                            hasGround = steelMask.hasMaskAt(outX, outY);
+                        }
                         if (noOverwrite && hasGround)    continue;
                         if (onlyOverwrite && !hasGround) continue;
                     }
@@ -215,7 +224,10 @@ class DisplayImage {
                 }
 
                 if (checkGround) {
-                    const hasGround = groundMask?.hasGroundAt(outX, outY);
+                    let hasGround = groundMask?.hasGroundAt(outX, outY);
+                    if (!hasGround && steelMask) {
+                        hasGround = steelMask.hasMaskAt(outX, outY);
+                    }
                     if (noOverwrite && hasGround)    continue;
                     if (onlyOverwrite && !hasGround) continue;
                 }
@@ -240,7 +252,8 @@ class DisplayImage {
             onlyOverwrite: cfg.onlyOverwrite,
             noOverwrite:   cfg.noOverwrite,
             upsideDown:    cfg.isUpsideDown,
-            groundMask:    this.groundMask
+            groundMask:    this.groundMask,
+            steelMask:     this.steelMask,
         });
     }
     drawFrameResized(frame, x, y, w, h) {
