@@ -352,6 +352,7 @@ class LemmingManager extends Lemmings.BaseLogger {
             }).call(this);
         this.logging = new Lemmings.Logger("LemmingManager");
         if (typeof lemmings !== 'undefined' &&
+            case Lemmings.LemmingStateType.OHNO:
             lemmings.perfMetrics === true &&
             lemmings.debug === true &&
             typeof performance !== 'undefined' &&
