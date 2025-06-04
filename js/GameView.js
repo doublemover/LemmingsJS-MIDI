@@ -25,6 +25,9 @@ class GameView {
     }
 
     set gameCanvas(el) {
+        if (this.stage && this.stage.dispose) {
+            this.stage.dispose();
+        }
         this.stage = new Lemmings.Stage(el);
     }
 
