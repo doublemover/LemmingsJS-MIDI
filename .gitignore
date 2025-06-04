@@ -13,4 +13,3 @@ node_modules/
 .jshintconfig
 .jshintignore
 exports/
-tools/patchSprites.test-run.js

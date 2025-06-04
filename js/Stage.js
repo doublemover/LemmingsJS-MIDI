@@ -12,8 +12,6 @@ class Stage {
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
-    // Create displays before wiring up input handlers so events
-    // always have valid targets
     this.getGameDisplay();
     this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
@@ -113,12 +111,10 @@ class Stage {
   }
   handleOnZoom() {
     this.controller.onZoom.on((e) => {
-      const stageImage = this.getStageImageAt(e.x, e.y);
-      if (stageImage == null) return;
-      const { display } = stageImage;
-      if (display == null) return;
-      if (display.getWidth() != 1600) return;
-      const pos = this.calcPosition2D(stageImage, e);
+      let stageImage = this.getStageImageAt(e.x, e.y);
+      if (stageImage == null || stageImage.display == null) return;
+      if (stageImage.display.getWidth() != 1600) return;
+      let pos = this.calcPosition2D(stageImage, e);
       this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
     });
   }
