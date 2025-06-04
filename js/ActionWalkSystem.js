@@ -57,6 +57,7 @@ class ActionWalkSystem {
                 }
 
                 if (dy >= 3) {
+                    lem.y -= 2;
                     return Lemmings.LemmingStateType.JUMPING;
                 }
 
@@ -64,7 +65,7 @@ class ActionWalkSystem {
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
             }
 
-            let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
+            const downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
             lem.y += downDelta;
             if (downDelta == 4) {
                 return Lemmings.LemmingStateType.FALLING;
