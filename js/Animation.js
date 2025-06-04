@@ -1,5 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+// Palette indices for the fire shooter trap that will be remapped when creating
+// an ice version of the animation. These correspond to the red/orange shades of
+// the flame.
+const FIRE_INDICES = Object.freeze([5, 7, 9, 10, 11]);
+
+// Destination indices holding bluish colours within the same palette. Each
+// entry at the same position in FIRE_INDICES will be replaced with the colour
+// found at this index.
+const ICE_INDICES  = Object.freeze([1, 12, 13, 1, 12]);
+
 class Animation {
   constructor (_compat = null, loop = true) {
     this.frames = [];
@@ -72,7 +82,7 @@ class Animation {
    *
    * A few colour indices are replaced with different ones from the
    * supplied palette before the frames are generated.  The indices are
-   * defined by the const arrays PALETTE_SRC and PALETTE_DST below.
+   * defined by the const arrays FIRE_INDICES and ICE_INDICES below.
    *
    * @param {Lemmings.BinaryReader} fr - Frame data source
    * @param {number} bitsPerPixel     - Bits per pixel of the source data
@@ -92,9 +102,9 @@ class Animation {
     }
 
     // Replace selected indices with colours from different indices
-    for (let i = 0; i < PALETTE_SRC.length; i++) {
-      const src = PALETTE_SRC[i];
-      const dst = PALETTE_DST[i];
+    for (let i = 0; i < FIRE_INDICES.length; i++) {
+      const src = FIRE_INDICES[i];
+      const dst = ICE_INDICES[i];
       newPal.setColorInt(src, palette.getColor(dst));
     }
 
@@ -104,8 +114,3 @@ class Animation {
 }
 Lemmings.Animation = Animation;
 export { Animation };
-
-// Indices to swap when calling loadFromFileWithPaletteSwap().
-// Chosen arbitrarily from 1..16 as an example mapping.
-const PALETTE_SRC = Object.freeze([1, 2, 3]);
-const PALETTE_DST = Object.freeze([14, 15, 16]);

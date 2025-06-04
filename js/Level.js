@@ -1,5 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+// Palette remapping for the fire shooter trap. These arrays match the ones in
+// Animation.js and replace the warm flame colours with cooler blue tones.
+const FIRE_INDICES = Object.freeze([5, 7, 9, 10, 11]);
+const ICE_INDICES  = Object.freeze([1, 12, 13, 1, 12]);
+
 class Level {
   constructor(width, height) {
     this.width = width | 0;
@@ -32,8 +37,26 @@ class Level {
     this.triggers.length = 0;
     let arrowRects = [];
     for (const ob of objects) {
-      const info = objectImg[ob.id];
+      let info = objectImg[ob.id];
       if (info == null) continue;
+
+      // Ice palette swap for fire shooter traps
+      if (ob.id === 8 || ob.id === 10) {
+        const pal = new Lemmings.ColorPalette();
+        for (let i = 0; i < 16; ++i) {
+          pal.setColorInt(i, info.palette.getColor(i));
+        }
+        for (let i = 0; i < FIRE_INDICES.length; ++i) {
+          const src = FIRE_INDICES[i];
+          const dst = ICE_INDICES[i];
+          pal.setColorInt(src, info.palette.getColor(dst));
+        }
+
+        const clone = new Lemmings.ObjectImageInfo();
+        Object.assign(clone, info);
+        clone.palette = pal;
+        info = clone;
+      }
       let tfxID = info.trigger_effect_id;
 
       if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
