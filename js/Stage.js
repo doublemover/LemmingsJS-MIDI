@@ -134,17 +134,11 @@ class Stage {
                 this.draw(stageImage, gameImg);
             }
 
-            const xCeiling = Math.max(0, stageImage.viewPoint.x);
-            const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-            const xFloor = Math.min(xCeiling, xFloorLimit);
+            const xMax = Math.max(0, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
+            stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x), xMax);
 
-            stageImage.viewPoint.x = xFloor;
-
-            const yCeiling = Math.max(0, stageImage.viewPoint.y);
-            const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-            const yFloor = Math.min(yCeiling, yFloorLimit);
-
-            stageImage.viewPoint.y = yFloor;
+            const yMax = Math.max(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale);
+            stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y), yMax);
 
             // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
             // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
