@@ -18,7 +18,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Traps animate, are deadly, and have cooldowns
   - Frying, Jumping, Hoisting animations
   - Improved Steel terrain
-    - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
+    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack
+      to calculate opaque size for precise placement
   - Arrow Walls function
   - Minimap
     - Accumulates ground at full resolution for enhanced accuracy
