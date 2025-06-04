@@ -9,6 +9,8 @@ class Level extends Lemmings.BaseLogger {
     this.groundImages = null;
     this.steelRanges = new Int32Array(0);
     this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+    this.steelImage = null;
+    this.combinedImage = null;
 
     this.objects = [];
     this.entrances = [];
@@ -43,6 +45,11 @@ class Level extends Lemmings.BaseLogger {
     for (const ob of objects) {
       const info = objectImg[ob.id];
       if (info == null) continue;
+      if (info.trigger_effect_id === Lemmings.TriggerTypes.STEEL) {
+        // Steel rectangles are drawn into the background layer and do not
+        // behave as interactive objects.
+        continue;
+      }
       let tfxID = info.trigger_effect_id;
 
       if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
@@ -105,10 +112,27 @@ class Level extends Lemmings.BaseLogger {
         if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
         const px = x + offsetX + dx;
         const py = y + offsetY + dy;
-        if (this.isSteelAt(px, py)) continue;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
         const idx = (py * w + px) * 4;
-        img[idx] = img[idx + 1] = img[idx + 2] = 0;
+        if (this.isSteelAt(px, py)) {
+          img[idx] = img[idx + 1] = img[idx + 2] = 0;
+          if (this.combinedImage && this.steelImage) {
+            this.combinedImage[idx]     = this.steelImage[idx];
+            this.combinedImage[idx + 1] = this.steelImage[idx + 1];
+            this.combinedImage[idx + 2] = this.steelImage[idx + 2];
+          }
+        } else {
+          img[idx] = img[idx + 1] = img[idx + 2] = 0;
+          if (this.combinedImage) {
+            if (this.steelImage && this.steelMask.hasMaskAt(px, py)) {
+              this.combinedImage[idx]     = this.steelImage[idx];
+              this.combinedImage[idx + 1] = this.steelImage[idx + 1];
+              this.combinedImage[idx + 2] = this.steelImage[idx + 2];
+            } else {
+              this.combinedImage[idx] = this.combinedImage[idx + 1] = this.combinedImage[idx + 2] = 0;
+            }
+          }
+        }
       }
     }
   }
@@ -120,18 +144,41 @@ class Level extends Lemmings.BaseLogger {
     gp[idx]     = this.colorPalette.getR(paletteIndex);
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
+    if (this.combinedImage) {
+      this.combinedImage[idx]     = gp[idx];
+      this.combinedImage[idx + 1] = gp[idx + 1];
+      this.combinedImage[idx + 2] = gp[idx + 2];
+    }
     lemmings.game.lemmingManager.miniMap.onGroundChanged(x, y, false);
   }
 
   hasGroundAt(x, y) { return this.groundMask.hasGroundAt(x, y); }
 
   clearGroundAt(x, y) {
-    if (this.isSteelAt(x, y)) return;
-    this.groundMask.clearGroundAt(x, y);
     const idx = (y * this.width + x) * 4;
-    const gp  = this.groundImage;
-    gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
-    lemmings.game.lemmingManager.miniMap.onGroundChanged(x, y, true);
+    if (this.isSteelAt(x, y)) {
+      // Reveal steel beneath
+      this.groundImage[idx] = this.groundImage[idx + 1] = this.groundImage[idx + 2] = 0;
+      if (this.combinedImage && this.steelImage) {
+        this.combinedImage[idx]     = this.steelImage[idx];
+        this.combinedImage[idx + 1] = this.steelImage[idx + 1];
+        this.combinedImage[idx + 2] = this.steelImage[idx + 2];
+      }
+    } else {
+      this.groundMask.clearGroundAt(x, y);
+      const gp  = this.groundImage;
+      gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
+      if (this.combinedImage) {
+        if (this.steelImage && this.steelMask.hasMaskAt(x, y)) {
+          this.combinedImage[idx]     = this.steelImage[idx];
+          this.combinedImage[idx + 1] = this.steelImage[idx + 1];
+          this.combinedImage[idx + 2] = this.steelImage[idx + 2];
+        } else {
+          this.combinedImage[idx] = this.combinedImage[idx + 1] = this.combinedImage[idx + 2] = 0;
+        }
+      }
+      lemmings.game.lemmingManager.miniMap.onGroundChanged(x, y, true);
+    }
   }
 
   setArrowAreas(ranges = []) {
@@ -263,6 +310,26 @@ class Level extends Lemmings.BaseLogger {
   }
 
   setGroundImage(img) { this.groundImage = new Uint8ClampedArray(img); }
+  setSteelImage(img)  { this.steelImage  = new Uint8ClampedArray(img); }
+
+  initCombinedImage() {
+    const len = this.width * this.height * 4;
+    this.combinedImage = new Uint8ClampedArray(len);
+    if (this.steelImage) {
+      this.combinedImage.set(this.steelImage);
+    }
+    if (this.groundImage) {
+      const mask = this.groundMask.mask;
+      for (let i = 0; i < mask.length; ++i) {
+        if (mask[i]) {
+          const j = i * 4;
+          this.combinedImage[j]     = this.groundImage[j];
+          this.combinedImage[j + 1] = this.groundImage[j + 1];
+          this.combinedImage[j + 2] = this.groundImage[j + 2];
+        }
+      }
+    }
+  }
   setPalettes(colorPalette, groundPalette) {
     this.colorPalette = colorPalette;
     this.groundPalette = groundPalette;
@@ -270,7 +337,8 @@ class Level extends Lemmings.BaseLogger {
 
   render(gameDisplay) {
     gameDisplay.initSize(this.width, this.height);
-    gameDisplay.setBackground(this.groundImage, this.groundMask);
+    const bg = this.combinedImage || this.groundImage;
+    gameDisplay.setBackground(bg, this.groundMask, this.steelMask);
   }
 
   renderDebug(gameDisplay) {
