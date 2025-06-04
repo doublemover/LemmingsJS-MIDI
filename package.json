@@ -43,5 +43,8 @@
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
     "tar": "^7.4.3"
+  },
+  "dependencies": {
+    "htmlparser2": "^10.0.0"
   }
 }

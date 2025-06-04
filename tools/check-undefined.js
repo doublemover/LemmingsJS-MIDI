@@ -124,18 +124,27 @@ function processJSFile(file) {
 
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const scriptRegex = /<script[^>]*>([\s\S]*?)<\/script>/gi;
-  let m;
-  while ((m = scriptRegex.exec(html)) !== null) {
-    const js = m[1];
+  const { parseDocument } = require('htmlparser2');
+  const { DomUtils } = require('htmlparser2');
+  const document = parseDocument(html);
+
+  // Extract and process <script> tag content
+  const scriptTags = DomUtils.findAll(elem => elem.tagName === 'script', document.children);
+  for (const scriptTag of scriptTags) {
+    const js = DomUtils.textContent(scriptTag);
     const ast = parseJS(js, file);
     if (ast) collectFromAst(ast, file, true);
   }
-  const attrRegex = /on\w+="([^"]+)"/gi;
-  while ((m = attrRegex.exec(html)) !== null) {
-    const snippet = m[1];
-    const ast = parseJS(snippet, file);
-    if (ast) collectFromAst(ast, file, true);
+
+  // Extract and process inline event handler attributes
+  const elementsWithAttributes = DomUtils.findAll(elem => elem.attribs, document.children);
+  for (const elem of elementsWithAttributes) {
+    for (const [attr, value] of Object.entries(elem.attribs)) {
+      if (attr.startsWith('on')) {
+        const ast = parseJS(value, file);
+        if (ast) collectFromAst(ast, file, true);
+      }
+    }
   }
 }
 
