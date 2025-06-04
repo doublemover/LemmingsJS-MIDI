@@ -29,9 +29,7 @@ class PackFilePart {
   static pack(buffer) {
     if (!(buffer instanceof Uint8Array)) buffer = new Uint8Array(buffer);
 
-    const WINDOW = 0x1000; // 4096
     const bits = [];
-    const rawQueue = [];
 
     const pushBits = (val, count) => {
       for (let i = count - 1; i >= 0; i--) {
@@ -39,110 +37,24 @@ class PackFilePart {
       }
     };
 
-    const flushRaw = () => {
-      let idx = 0;
-      while (idx < rawQueue.length) {
-        const remain = rawQueue.length - idx;
-        if (remain <= 8) {
-          // 0,0,len-1
-          pushBits(0, 1);
-          pushBits(0, 1);
-          pushBits(remain - 1, 3);
-          for (let i = 0; i < remain; i++) pushBits(rawQueue[idx + i], 8);
-          idx = rawQueue.length;
-        } else {
-          const chunk = Math.min(264, remain);
-          // 1,11,length-9
-          pushBits(1, 1);
-          pushBits(3, 2);
-          pushBits(chunk - 9, 8);
-          for (let i = 0; i < chunk; i++) pushBits(rawQueue[idx + i], 8);
-          idx += chunk;
-        }
-      }
-      rawQueue.length = 0;
-    };
-
-    const emitRef = (len, offset) => {
-      if (len === 2 && offset <= 0x100) {
+    let remain = buffer.length;
+    let pos = buffer.length;
+    while (remain > 0) {
+      const chunk = Math.min(remain, 264);
+      if (chunk <= 8) {
         pushBits(0, 1);
-        pushBits(1, 1);
-        pushBits(offset - 1, 8);
-        return;
-      }
-      if (len === 3 && offset <= 0x200) {
-        pushBits(1, 1);
-        pushBits(0, 2);
-        pushBits(offset - 1, 9);
-        return;
-      }
-      if (len === 4 && offset <= 0x400) {
-        pushBits(1, 1);
-        pushBits(1, 2);
-        pushBits(offset - 1, 10);
-        return;
-      }
-      // generic reference
-      pushBits(1, 1);
-      pushBits(2, 2);
-      pushBits(len - 1, 8);
-      pushBits(offset - 1, 12);
-    };
-
-    const findMatch = (pos) => {
-      let bestLen = 0;
-      let bestOff = 0;
-      const maxOff = Math.min(pos, WINDOW);
-      for (let off = 1; off <= maxOff; off++) {
-        let l = 0;
-        while (
-          l < 256 &&
-          pos + l < buffer.length &&
-          buffer[pos + l] === buffer[pos - off + l]
-        ) {
-          l++;
-        }
-        if (l > bestLen) {
-          bestLen = l;
-          bestOff = off;
-          if (bestLen === 256) break;
-        }
-      }
-      return { len: bestLen, off: bestOff };
-    };
-
-    let pos = 0;
-    while (pos < buffer.length) {
-      const { len, off } = findMatch(pos);
-
-      // Determine if encoding the match actually saves space
-      let useRef = false;
-      let encLen = len;
-      if (len >= 5) {
-        useRef = true;
-        encLen = Math.min(len, 256);
-      } else if (len === 4) {
-        useRef = off <= 0x400;
-      } else if (len === 3) {
-        useRef = off <= 0x200;
-        if (!useRef && off <= WINDOW) {
-          useRef = true;
-        }
-      } else if (len === 2) {
-        useRef = off <= 0x100;
-      }
-
-      if (useRef && encLen >= 2) {
-        flushRaw();
-        emitRef(encLen, off);
-        pos += encLen;
+        pushBits(0, 1);
+        pushBits(chunk - 1, 3);
       } else {
-        rawQueue.push(buffer[pos++]);
-        if (rawQueue.length >= 264) flushRaw();
+        pushBits(1, 1);
+        pushBits(3, 2);
+        pushBits(chunk - 9, 8);
       }
+      for (let i = 0; i < chunk; i++) {
+        pushBits(buffer[--pos], 8);
+      }
+      remain -= chunk;
     }
-
-    flushRaw();
 
     // Convert bits to bytes.  Bits are produced in the order the BitReader
     // will consume them, so each group of 8 bits forms one byte with the first
@@ -159,7 +71,11 @@ class PackFilePart {
     byteGroups.reverse();
     const data = Uint8Array.from(byteGroups);
     const checksum = data.reduce((a, b) => a ^ b, 0);
-    const initialBits = bits.length % 8 === 0 ? 8 : bits.length % 8;
+    if (bits.length % 8 !== 0) {
+      const pad = 8 - (bits.length % 8);
+      for (let i = 0; i < pad; i++) bits.push(0);
+    }
+    const initialBits = 8;
 
     return { data, checksum, initialBits };
   }
