@@ -104,6 +104,8 @@ class LemmingManager {
             }
             this.minimapDots = dots.subarray(0, idx);
             this.miniMap.setLiveDots(this.minimapDots);
+            const sel = this.getSelectedLemming();
+            this.miniMap.setSelectedLemming(sel);
         }
         // const tick = this.mmTickCounter;
         // performance.measure(`tick ${tick}`, { start, detail: { devtools: 
@@ -201,12 +203,18 @@ class LemmingManager {
     _clearSelectedIf(lem) {
         if (this.getSelectedLemming() === lem) {
             this.selectedIndex = -1;
+            if (this.miniMap) this.miniMap.setSelectedLemming(null);
         }
     }
 
     setSelectedLemming(lem) {
-        if (!lem) { this.selectedIndex = -1; return; }
+        if (!lem) {
+            this.selectedIndex = -1;
+            if (this.miniMap) this.miniMap.setSelectedLemming(null);
+            return;
+        }
         this.selectedIndex = this.lemmings.indexOf(lem);
+        if (this.miniMap) this.miniMap.setSelectedLemming(lem);
     }
 
     getSelectedLemming() {
@@ -217,14 +225,15 @@ class LemmingManager {
 
     cycleSelection(dir = 1) {
         const count = this.lemmings.length;
-        if (!count) { this.selectedIndex = -1; return null; }
+        if (!count) { this.selectedIndex = -1; if (this.miniMap) this.miniMap.setSelectedLemming(null); return null; }
         let i = this.selectedIndex;
         for (let step = 0; step < count; step++) {
             i = (i + dir + count) % count;
             const lem = this.lemmings[i];
-            if (lem && !lem.removed) { this.selectedIndex = i; return lem; }
+            if (lem && !lem.removed) { this.selectedIndex = i; if (this.miniMap) this.miniMap.setSelectedLemming(lem); return lem; }
         }
         this.selectedIndex = -1;
+        if (this.miniMap) this.miniMap.setSelectedLemming(null);
         return null;
     }
 
