@@ -224,7 +224,8 @@ class GameView extends Lemmings.BaseLogger {
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;
-    const query = new URLSearchParams(window.location.search);
+    const search = typeof window !== 'undefined' && window.location ? window.location.search : '';
+    const query = new URLSearchParams(search);
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
