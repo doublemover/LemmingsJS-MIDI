@@ -46,6 +46,8 @@ describe('LemmingManager', function() {
     const logs = [];
     const originalLog = console.log;
     console.log = msg => logs.push(String(msg));
+    lemmings.game = lemmings.game || {};
+    lemmings.game.showDebug = true;
 
     manager.addLemming(5, 5);
     expect(manager.lemmings.length).to.equal(1);
