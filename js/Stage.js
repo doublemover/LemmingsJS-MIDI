@@ -17,6 +17,7 @@ class Stage {
             this.gameImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
+            this._rawScale = this.gameImgProps.viewPoint.scale;
             this.updateStageSize();
             this.clear();
         }
@@ -113,11 +114,10 @@ class Stage {
                 let sceneX = stageImage.viewPoint.getSceneX(screenX);
                 let sceneY = stageImage.viewPoint.getSceneY(screenY);
 
-                // Zoom around that point
-                let oldScale = stageImage.viewPoint.scale;
-                let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
-
-                stageImage.viewPoint.scale = this.snapScale(this.limitValue(.25, newScale, 4));
+                // Zoom around that point using the un-snapped scale
+                const oldScale = this._rawScale;
+                this._rawScale = this.limitValue(.25, oldScale * (1 + deltaZoom / 1500), 4);
+                stageImage.viewPoint.scale = this.snapScale(this._rawScale);
 
                 // Re-center so the same world point stays under the cursor
                 stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
@@ -164,11 +164,14 @@ class Stage {
             const disp = this.gameImgProps.display;
             if (!disp) return this.limitValue(0.25, scale, 4);
 
-            const stepX = this.gameImgProps.width  / disp.getWidth();
-            const stepY = this.gameImgProps.height / disp.getHeight();
-            const step  = Math.min(stepX, stepY);
+            const w = disp.getWidth();
+            const h = disp.getHeight();
+            if (!w || !h) return this.limitValue(0.25, scale, 4);
 
-            if (step <= 0) return this.limitValue(0.25, scale, 4);
+            const stepX = this.gameImgProps.width  / w;
+            const stepY = this.gameImgProps.height / h;
+            const step  = Math.min(stepX, stepY);
+            if (!isFinite(step) || step <= 0) return this.limitValue(0.25, scale, 4);
 
             const snapped = Math.round(scale / step) * step;
             return this.limitValue(0.25, snapped, 4);
@@ -213,7 +216,8 @@ class Stage {
             this.clear(this.gameImgProps);
 
             if (lemmings.scale > 0) {
-                this.gameImgProps.viewPoint.scale = this.snapScale(lemmings.scale);
+                this._rawScale = this.limitValue(.25, lemmings.scale, 4);
+                this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
                 this.gameImgProps.viewPoint.x = x;
                 this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
                 this.redraw();
@@ -224,12 +228,14 @@ class Stage {
             if (scale == 2) {
                 this.gameImgProps.viewPoint.x = x;
                 this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+                this._rawScale = scale;
                 this.redraw();
                 return;
             } else {
 
                 let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
                 let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
+                this._rawScale = 2;
                 this.gameImgProps.viewPoint.scale = 2;
                 this.gameImgProps.viewPoint.x = sceneX - x / scale;
                 this.gameImgProps.viewPoint.y = sceneY - y / scale;
