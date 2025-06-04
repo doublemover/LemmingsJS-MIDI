@@ -6,14 +6,14 @@ const BYTE_SIZE_OF_OBJECTS  = 28 * OBJECT_COUNT;
 const BYTE_SIZE_OF_TERRAIN  = 8  * TERRAIN_COUNT;
 const TRANSPARENT = 128;
 
-class GroundReader {
+class GroundReader extends Lemmings.BaseLogger {
   /**
    * @param {Lemmings.FileReader} groundFile  – GROUNDxO.DAT (1056 bytes)
    * @param {Lemmings.FileReader} vgaTerrain  – slice of VGAGx.DAT (terrain)
    * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
    */
   constructor (groundFile, vgaTerrain, vgaObject) {
-    this.log = new Lemmings.LogHandler('GroundReader');
+    super();
     if (groundFile.length !== 1056) {
       this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
       return;
@@ -164,7 +164,7 @@ class GroundReader {
       let filename = fr.filename;
       let foldername = fr.foldername;
       if (foldername == "[unknown]") {
-        console.log("folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel");
+        this.log.log("folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel");
       }
       else if (foldername == "lemmings") {
         if (filename == "GROUND0O.DAT") { // normal maps

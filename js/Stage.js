@@ -268,6 +268,13 @@ class Stage {
                 }
             }, 40);
         }
+        dispose() {
+            this.resetFade();
+            if (this.controller && this.controller.dispose) {
+                this.controller.dispose();
+            }
+            this.controller = null;
+        }
         /** draw everything to the stage/display */
         draw(display, img) {
             if (display.ctx == null)
