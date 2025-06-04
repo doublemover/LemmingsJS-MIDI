@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "http-server --cors=*",
-    "test": "node -r ./js/LogHandler.js ./node_modules/mocha/bin/mocha",
+    "test": "node --import ./js/LogHandler.js ./node_modules/mocha/bin/mocha",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
