@@ -5,3 +5,5 @@ This directory stores tagged notes about design decisions or TODOs. The root `AG
 ## Notes by tag
 
 - **example**: [notes/initial.md](notes/initial.md)
+
+- **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
