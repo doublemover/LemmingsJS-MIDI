@@ -17,6 +17,7 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **ui, debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
 - **render, display**: [notes/game-display.md](notes/game-display.md)
 - **display, canvas**: [notes/display-image.md](notes/display-image.md)
+- **stage, canvas, input**: [notes/stage.md](notes/stage.md)
 - **commands, replay, events**: [notes/command-manager.md](notes/command-manager.md)
 - **resources, caching**: [notes/game-resources.md](notes/game-resources.md)
 - **tools, cli**: [notes/tools.md](notes/tools.md)
