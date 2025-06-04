@@ -12,8 +12,6 @@ import '../js/SolidLayer.js';
 import '../js/LemmingStateType.js';
 import '../js/SkillTypes.js';
 import '../js/Lemming.js';
-
-
 // enable debug logging
 globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
 
