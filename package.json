@@ -1,7 +1,6 @@
 {
   "name": "lemmings-js",
   "version": "1.0.0",
-  "type": "module",
   "description": "Lemmings (JavaScript)",
   "main": "index.js",
   "directories": {
@@ -19,6 +18,7 @@
     "url": "https://github.com/oklemenz/LemmingsJS/issues"
   },
   "homepage": "https://github.com/oklemenz/LemmingsJS#readme",
+  "type": "module",
   "devDependencies": {
     "http-server": "^14.0.1",
     "mocha": "^11.5.0",

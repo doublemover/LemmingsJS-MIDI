@@ -8,8 +8,8 @@ class MockLogHandler {
   log() {}
   debug() {}
 }
-Lemmings.BinaryReader = MockBinaryReader;
-Lemmings.LogHandler = MockLogHandler;
+let origBR;
+let origLog;
 
 describe('FileProvider', function () {
   const rootPath = '/base/';
@@ -18,6 +18,10 @@ describe('FileProvider', function () {
   let restore;
 
   beforeEach(function () {
+    origBR = Lemmings.BinaryReader;
+    origLog = Lemmings.LogHandler;
+    Lemmings.BinaryReader = MockBinaryReader;
+    Lemmings.LogHandler = MockLogHandler;
     provider = new FileProvider(rootPath);
     requests = [];
     class FakeXHR {
@@ -52,6 +56,8 @@ describe('FileProvider', function () {
   afterEach(function () {
     restore();
     provider.clearCache();
+    Lemmings.BinaryReader = origBR;
+    Lemmings.LogHandler = origLog;
   });
 
   it('_buildUrl() joins rootPath, path and filename', function () {
