@@ -127,7 +127,7 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-function processHtmlFile(file) {
+async function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
   const document = parseDocument(html);
 
