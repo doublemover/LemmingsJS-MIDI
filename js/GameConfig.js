@@ -9,6 +9,8 @@ class GameConfig {
             /** unique GameType Name */
             this.gametype = Lemmings.GameTypes.UNKNOWN;
             this.level = new Lemmings.LevelConfig();
+            /** optional mechanics / glitches */
+            this.mechanics = {};
         }
     }
     Lemmings.GameConfig = GameConfig;
