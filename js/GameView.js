@@ -168,8 +168,6 @@ async moveToLevel(moveInterval = 0) {
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
-
-            this.changeHtmlText(this.elementLevelNumber, (this.levelIndex + 1).toString());
             await this.loadLevel();
         } finally {
             this.inMoveToLevel = false;
