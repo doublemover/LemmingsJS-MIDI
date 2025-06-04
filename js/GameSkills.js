@@ -6,6 +6,16 @@ class GameSkills {
             this.onCountChanged = new Lemmings.EventHandler();
             this.onSelectionChanged = new Lemmings.EventHandler();
             this.skills = level.skills;
+            this.selectFirstAvailable();
+        }
+
+        selectFirstAvailable() {
+            for (let i = Lemmings.SkillTypes.CLIMBER; i <= Lemmings.SkillTypes.DIGGER; i++) {
+                if (this.skills[i] > 0) {
+                    this.selectedSkill = i;
+                    break;
+                }
+            }
         }
         /** return true if the skill can be reused / used */
         canReuseSkill(type) {
@@ -16,6 +26,9 @@ class GameSkills {
                 return false;
             this.skills[type]--;
             this.onCountChanged.trigger(type);
+            if (this.skills[type] <= 0 && this.selectedSkill === type) {
+                this.selectFirstAvailable();
+            }
             return true;
         }
         getSkill(type) {

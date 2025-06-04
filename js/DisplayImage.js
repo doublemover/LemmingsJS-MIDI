@@ -122,7 +122,7 @@ class DisplayImage {
      * @param {number} dashLen Length of each dash segment (in pixels)
      * @param {number} offset  Offset of the dash pattern
      */
-    drawMarchingAntRect(x, y, width, height, dashLen = 2, offset = 0) {
+    drawMarchingAntRect(x, y, width, height, dashLen = 3, offset = 0) {
         if (!this.buffer32) return;
         const { width: w } = this.imgData;
         const pattern = dashLen * 2;

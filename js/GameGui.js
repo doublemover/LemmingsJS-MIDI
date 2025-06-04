@@ -36,8 +36,8 @@ class GameGui {
         this.deltaReleaseRate = 0;
 
         /* marching ants selection animation settings */
-        this.selectionDashLen   = 2;   // length of dash segments
-        this.selectionAnimDelay = 6;   // frames between offset increments
+        this.selectionDashLen   = 3;   // length of dash segments
+        this.selectionAnimDelay = 20;  // frames between offset increments
         this.selectionAnimStep  = 1;   // pixels per animation step
         this._selectionOffset   = 0;
         this._selectionCounter  = 0;
@@ -236,6 +236,10 @@ class GameGui {
         const rawIdx = e.y > 15 ? Math.trunc(e.x / 16) : -1;
         let idx = rawIdx;
 
+        if (!this.gameTimer.isRunning?.() && rawIdx !== 11) {
+            idx = -1;
+        }
+
         if (rawIdx === 0 || rawIdx === 1) {
             const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
             const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
@@ -390,20 +394,41 @@ class GameGui {
                 d.drawFrameResized(small, 164, 33, 8, 6);
                 d.drawHorizontalLine(169, 33, 175, 0, 0, 0);
             }
+
+            if (this._hoverSpeedUp) {
+                d.drawHorizontalLine(172, 32, 175, 0, 166, 0);
+                d.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+            } else if (this._hoverSpeedDown) {
+                d.drawHorizontalLine(161, 32, 164, 0, 166, 0);
+                d.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+            }
         }
 
 
         if (this.skillsCountChanged) {
             this.skillsCountChanged = false;
-            for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s)
-                this.drawPanelNumber(d, this.skills.getSkill(s), this.getPanelIndexBySkill(s));
+            for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+                const panel = this.getPanelIndexBySkill(s);
+                const count = this.skills.getSkill(s);
+                this.drawPanelNumber(d, count, panel);
+            }
+        }
+        for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+            if (this.skills.getSkill(s) <= 0) {
+                const panel = this.getPanelIndexBySkill(s);
+                d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+            }
         }
         if (this.skillSelectionChanged) {
             this.skillSelectionChanged = false;
         }
 
         if (this._hoverPanelIdx >= 0) {
-            this.drawSkillHover(d, this._hoverPanelIdx);
+            if (this._hoverPanelIdx === 11) {
+                this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
+            } else {
+                this.drawSkillHover(d, this._hoverPanelIdx);
+            }
         }
 
         // update marching ants animation
@@ -472,9 +497,9 @@ class GameGui {
         d.drawRect(16 * 10, 16, 16, 23, 255, 255, 255);
     }
 
-    drawSkillHover(d, panelIdx) {
+    drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {
         if (panelIdx < 0) return;
-        d.drawRect(16 * panelIdx, 16, 16, 23, 255, 255, 0);
+        d.drawRect(16 * panelIdx, 16, 16, 23, r, g, b);
     }
 
     drawSpeedChange(upDown, reset = false) {
