@@ -88,8 +88,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   <summary>In Progress (11)</summary>
   
   - [ ] Indicate bench speed adjustment with rect color
-  - [ ] Scale pixel alignment
-  - [X] OG Cursor
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
@@ -108,7 +106,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - [X] Traps
   - [ ] Squish is missing
   - [ ] "Generic Trap" just vanishes em
-  - [X] Cooldown
 - [ ] Bombs
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
     - [ ] Write steel to second layer?
@@ -124,7 +121,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <details>
   <summary>Bugs & etc</summary>
   
-- [ ] There is not a palette swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+- [ ] There is not a palette swapped frying animation 
   - [X] Palette swap functionality works!
   - [ ] 2-2-9, 1-4-30
 - [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
@@ -185,9 +182,9 @@ and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
 ### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
-as a **Progressive Web App (PWA)**. Installing adds the game to your device's
-app list and launches it fullscreen in landscape mode. Touch input still needs
-polish, so the mobile experience may be rough.
+as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
+and launches it fullscreen in landscape mode. Touch input still needs
+polish, so please file bugs for any issues you have! 
 
 ## Options
 
@@ -237,6 +234,8 @@ URL parameters (shortcut in brackets):
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## .agentInfo Notes
 
