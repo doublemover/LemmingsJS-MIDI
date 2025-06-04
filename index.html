@@ -60,10 +60,10 @@
     }
 
     function setSize() {
-      var ratio = 800 / 480;
-      var gameContainer = jQuery(".game_container");
-      var width = window.innerWidth;
-      var height = window.innerHeight;
+      const ratio = 800 / 480;
+      const gameContainer = jQuery(".game_container");
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       if (width >= height * ratio) {
         gameContainer.width(height * ratio);
         gameContainer.height(height);

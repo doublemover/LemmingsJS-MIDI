@@ -59,7 +59,7 @@ class Level {
         let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
 
         if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
-          var newRange = new Lemmings.Range();
+          const newRange = new Lemmings.Range();
           newRange.x = ob.x + info.trigger_left;
           newRange.y = ob.y + info.trigger_top;
           newRange.width = info.trigger_width;
@@ -176,7 +176,7 @@ class Level {
       const tObj = terrains[i];
       const terImg = terrainImages[tObj.id];
       if (terImg.isSteel == true) {
-        var newRange = new Lemmings.Range();
+        const newRange = new Lemmings.Range();
         newRange.x = tObj.x;
         newRange.y = tObj.y;
         newRange.width = terImg.steelWidth;
