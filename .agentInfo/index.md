@@ -6,6 +6,8 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 ## Notes by tag
 
 - **example, doc**: [notes/initial.md](notes/initial.md)
+- **lemming-manager, actions, spawning lemmings, processing lemmings, lemming triggers, lemming actions**: [notes/lemming-manager.md](notes/lemming-manager.md)
+- **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md)
 - **game, main-loop**: [notes/game.md](notes/game.md)
 - **gui, input, skill selection, release rate, nuke, pause button, speed control, minimap, game text display**: [notes/game-gui.md](notes/game-gui.md)
 - **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md)
