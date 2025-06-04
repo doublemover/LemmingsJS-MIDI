@@ -21,7 +21,8 @@ class MiniMap {
         // dynamic state
         this.fog = new Uint8Array(this.size); // 0 = unseen
         this.fog.fill(1); // disabled
-        this.liveDots = new Set(); // {x,y} sampled every x ticks
+        // typed array storing [x1,y1,x2,y2,...] scaled to minimap
+        this.liveDots = new Uint8Array(0);
         this.deadDots = []; // {x,y,ttl}
 
         // render target (drawn into the GUI canvas once per frame)
@@ -190,6 +191,7 @@ class MiniMap {
     }
 
     setLiveDots(arr) {
+        // arr is a Uint8Array of scaled [x1,y1,x2,y2,...]
         this.liveDots = arr;
     }
 
@@ -245,8 +247,10 @@ class MiniMap {
         }
 
         /* Live lemmings */
-        for (const p of this.liveDots) {
-            frame.setPixel((p.x * this.scaleX) | 0, (p.y * this.scaleY) | 0, 0x5500FFFF);
+        for (let i = 0; i < this.liveDots.length; i += 2) {
+            const x = this.liveDots[i];
+            const y = this.liveDots[i + 1];
+            frame.setPixel(x, y, 0x5500FFFF);
         }
 
         /* Death flashes */
