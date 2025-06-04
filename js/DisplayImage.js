@@ -89,6 +89,20 @@ class DisplayImage extends Lemmings.BaseLogger {
     this.drawVerticalLine( x2,  y,  y2, r, g, b);
   }
 
+  drawDashedRect(x, y, width, height, r, g, b, dashLen = 2) {
+    const x2 = x + width;
+    const y2 = y + height;
+    const step = dashLen * 2;
+    for (let dx = x; dx <= x2; dx += step) {
+      this.drawHorizontalLine(dx, y, Math.min(dx + dashLen - 1, x2), r, g, b);
+      this.drawHorizontalLine(dx, y2, Math.min(dx + dashLen - 1, x2), r, g, b);
+    }
+    for (let dy = y; dy <= y2; dy += step) {
+      this.drawVerticalLine(x, dy, Math.min(dy + dashLen - 1, y2), r, g, b);
+      this.drawVerticalLine(x2, dy, Math.min(dy + dashLen - 1, y2), r, g, b);
+    }
+  }
+
   /** Vertical 1‑px line (uses uint32 writes) */
   drawVerticalLine(x, y1, y2, r, g, b) {
     if (!this.buffer32) return;

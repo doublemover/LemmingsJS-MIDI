@@ -27,7 +27,8 @@ class ColorPalette {
     this.setColorInt(index, ColorPalette.colorFromRGB(r, g, b));
   }
   static colorFromRGB(r, g, b) {
-    return 0xFF << 24 | b << 16 | g << 8 | r << 0;
+    const value = (0xff << 24) | (b << 16) | (g << 8) | r;
+    return value >>> 0;
   }
   static get black() {
     return 0xFF000000;

@@ -28,6 +28,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Zoom In & Out with Mousewheel
   - Skill selection/use while paused
   - Original crosshair cursor (from `MAIN.DAT` part 5). The system cursor is hidden and this sprite follows your mouse.
+  - Dashed debug box highlights the lemming closest to your cursor
   - Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
     - [Try it at 30x speed in 'bench' mode](https://doublemover.github.io/LemmingsJS-MIDI/?version=1&difficulty=3&level=8&speed=30&cheat=false&bench=true&scale=0.8&endless=true&nukeAfter=8) 
   
