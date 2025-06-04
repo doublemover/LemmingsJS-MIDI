@@ -21,6 +21,8 @@ class LemmingManager extends Lemmings.BaseLogger {
         } else {
           this.lemmings = [];
         }
+        this.minimapDots = new Uint8Array(0);
+        this.selectedIndex = -1;
         const maxDots = (gameVictoryCondition.getReleaseCount() +
           (lemmings.extraLemmings | 0)) * 2;
         this._minimapDotBuffer = new Uint8Array(maxDots);
@@ -129,6 +131,8 @@ class LemmingManager extends Lemmings.BaseLogger {
           const triggerAction = this.runTrigger(lem);
           this.processNewAction(lem, triggerAction);
         }
+        const sel = this.getSelectedLemming();
+        if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
         if (lemmings.bench) {
           lemmings.laggedOut = count;
         }
@@ -143,10 +147,12 @@ class LemmingManager extends Lemmings.BaseLogger {
           const scaleX = this.miniMap.scaleX;
           const scaleY = this.miniMap.scaleY;
           let idx = 0;
+          let selDot = null;
           for (const lem of lems) {
             if (lem.removed || lem.disabled) continue;
             const x = (lem.x * scaleX) | 0;
             const y = (lem.y * scaleY) | 0;
+            if (lem.id === this.selectedIndex) selDot = [x, y];
             const key = (y << 8) | x;
             if (visited[key]) continue;
             visited[key] = 1;
@@ -155,6 +161,7 @@ class LemmingManager extends Lemmings.BaseLogger {
           }
           this.minimapDots = dots.subarray(0, idx);
           this.miniMap.setLiveDots(this.minimapDots);
+          this.miniMap.setSelectedDot(selDot);
         }
       })();
   }
@@ -260,6 +267,10 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   getLemming(id) {
     return this.lemmings[id] ?? null;
+  }
+
+  getSelectedLemming() {
+    return this.getLemming(this.selectedIndex);
   }
 
   getLemmings() {
@@ -400,6 +411,21 @@ class LemmingManager extends Lemmings.BaseLogger {
   isNuking() { return this.nextNukingLemmingsIndex >= 0; }
   doNukeAllLemmings() { this.nextNukingLemmingsIndex = 0; }
 
+  cycleSelection(dir = 1) {
+    if (!this.lemmings?.length) return;
+    const total = this.lemmings.length;
+    let idx = this.selectedIndex;
+    for (let i = 0; i < total; i++) {
+      idx = (idx + dir + total) % total;
+      const lem = this.lemmings[idx];
+      if (!lem.removed && !lem.disabled) {
+        this.selectedIndex = idx;
+        return;
+      }
+    }
+    this.selectedIndex = -1;
+  }
+
   dispose() {
     const start = performance.now();
     if (this.lemmings) this.lemmings.length = 0;
@@ -415,6 +441,7 @@ class LemmingManager extends Lemmings.BaseLogger {
     this.miniMap = null;
     this.#mmTickCounter = null;
     this.nextNukingLemmingsIndex = null;
+    this.selectedIndex = null;
     if (typeof lemmings !== 'undefined' &&
             lemmings.perfMetrics === true &&
             lemmings.debug === true &&
