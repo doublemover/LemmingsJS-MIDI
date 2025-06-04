@@ -6,7 +6,6 @@ import { createRequire } from 'module';
 import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
 import { parseDocument, DomUtils } from 'htmlparser2';
 
-
 const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
