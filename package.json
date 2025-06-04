@@ -19,7 +19,7 @@
     "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
-    "lint": "eslint .",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -38,6 +38,6 @@
     "mocha": "^11.5.0",
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
-    "tar": "^7.4.3",
+    "tar": "^7.4.3"
   }
 }
