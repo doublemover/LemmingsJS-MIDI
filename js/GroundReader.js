@@ -12,7 +12,7 @@ class GroundReader {
    * @param {Lemmings.FileReader} vgaTerrain  – slice of VGAGx.DAT (terrain)
    * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
    */
-  constructor (groundFile, vgaTerrar, vgaObject) {
+  constructor (groundFile, vgaTerrain, vgaObject) {
     this.log = new Lemmings.LogHandler('GroundReader');
     if (groundFile.length !== 1056) {
       this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
@@ -38,7 +38,7 @@ class GroundReader {
 
     // Decode bitmaps – these calls can be parallelised in WebWorkers later.
     this._readImages(this.imgObjects, vgaObject, /*bpp=*/4);
-    this._readImages(this.imgTerrain, vgaTerrar, /*bpp=*/3);
+    this._readImages(this.imgTerrain, vgaTerrain, /*bpp=*/3);
   }
 
   getTerrainImages() { return this.imgTerrain;  }
