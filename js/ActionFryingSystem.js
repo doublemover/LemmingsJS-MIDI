@@ -1,11 +1,18 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionFryingSystem extends ActionBaseSystem {
+    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.FRYING, singleSprite: true, actionName: 'frying' });
+    }
+
+    triggerLemAction(lem) {
+        return false;
     }
 
     draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
+    }
 
     process(level, lem) {
         lem.disable();
