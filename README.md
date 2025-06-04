@@ -209,6 +209,7 @@ polish, so the mobile experience may be rough.
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
   - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+  - `npm run pack-levels` – pack a folder of 2048-byte level files into a DAT
 - Browser: `localhost:8080`
 
 ### NodeFileProvider

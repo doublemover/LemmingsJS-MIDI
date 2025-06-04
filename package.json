@@ -22,6 +22,7 @@
     "node-unrar-js": "^2.0.2"
     "list-sprites": "node tools/listSprites.js",
     "patch-sprites": "node tools/patchSprites.js"
+    "pack-levels": "node tools/packLevels.js"
   },
   "repository": {
     "type": "git",
