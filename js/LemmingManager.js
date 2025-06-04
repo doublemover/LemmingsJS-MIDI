@@ -233,8 +233,7 @@ class LemmingManager {
         let found = null;
         for (const lem of this.lemmings) {
             if (lem.removed) continue;
-            if (lem.countdownAction ||
-                lem.action === this.actions[Lemmings.LemmingStateType.OHNO] ||
+            if (lem.action === this.actions[Lemmings.LemmingStateType.OHNO] ||
                 lem.action === this.actions[Lemmings.LemmingStateType.EXPLODING]) {
                 continue;
             }
