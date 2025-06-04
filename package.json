@@ -13,7 +13,10 @@
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
     "export-all-sprites": "node tools/exportAllSprites.js",
-    "export-all-packs": "node tools/exportAllPacks.js"
+    "export-all-packs": "node tools/exportAllPacks.js",
+    "clean-exports": "node tools/cleanExports.js",
+    "list-sprites": "node tools/listSprites.js",
+    "patch-sprites": "node tools/patchSprites.js"
   },
   "repository": {
     "type": "git",
@@ -29,6 +32,8 @@
     "http-server": "^14.0.1",
     "mocha": "^11.5.0",
     "pngjs": "^7.0.0",
-    "adm-zip": "^0.5.10"
+    "adm-zip": "^0.5.10",
+    "tar": "^7.4.3",
+    "node-unrar-js": "^2.0.2"
   }
 }
