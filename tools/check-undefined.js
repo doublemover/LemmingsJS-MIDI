@@ -1,10 +1,10 @@
 import fs from 'fs';
 import path from 'path';
-import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
 import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
 const require = createRequire(import.meta.url);
+
 
 const definedFunctions = new Set();
 const definedMethods = new Set();

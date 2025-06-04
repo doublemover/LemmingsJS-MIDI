@@ -28,6 +28,7 @@ class ColorPalette {
   }
   static colorFromRGB(r, g, b) {
     return ((0xFF << 24) | (b << 16) | (g << 8) | r) >>> 0;
+
   }
   static get black() {
     return 0xFF000000;

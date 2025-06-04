@@ -1,5 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
+import '../js/SolidLayer.js';
+import '../js/LemmingStateType.js';
+import '../js/Lemming.js';
+import '../js/SkillTypes.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
@@ -27,8 +31,30 @@ const maskStub = {
   }
 };
 
-const triggerStub = { trigger() { return Lemmings.TriggerTypes.NO_TRIGGER; }, removeByOwner() {} };
+const triggerStub = { trigger() { return 0; }, removeByOwner() {} };
 const particleStub = {};
+
+// stub action systems used during initialization
+const dummyAction = class {};
+Lemmings.ActionWalkSystem = dummyAction;
+Lemmings.ActionFallSystem = dummyAction;
+Lemmings.ActionJumpSystem = dummyAction;
+Lemmings.ActionDiggSystem = dummyAction;
+Lemmings.ActionExitingSystem = dummyAction;
+Lemmings.ActionFloatingSystem = dummyAction;
+Lemmings.ActionBlockerSystem = dummyAction;
+Lemmings.ActionMineSystem = dummyAction;
+Lemmings.ActionClimbSystem = dummyAction;
+Lemmings.ActionHoistSystem = dummyAction;
+Lemmings.ActionBashSystem = dummyAction;
+Lemmings.ActionBuildSystem = dummyAction;
+Lemmings.ActionShrugSystem = dummyAction;
+Lemmings.ActionExplodingSystem = dummyAction;
+Lemmings.ActionOhNoSystem = dummyAction;
+Lemmings.ActionSplatterSystem = dummyAction;
+Lemmings.ActionDrowningSystem = dummyAction;
+Lemmings.ActionFryingSystem = dummyAction;
+Lemmings.ActionCountdownSystem = dummyAction;
 
 describe('LemmingManager', function() {
 
@@ -49,7 +75,6 @@ describe('LemmingManager', function() {
     ].forEach(n => { Lemmings[n] = stub; });
   });
   it('logs state changes when lemmings transition actions', function() {
-
     const level = new Level(10, 10);
     level.entrances = [{ x: 0, y: 0 }];
     const gvc = new GameVictoryCondition(level);

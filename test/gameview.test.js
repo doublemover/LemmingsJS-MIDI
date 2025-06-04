@@ -107,6 +107,14 @@ describe('GameView', function () {
     delete global.window;
   });
   it('initializes stage and connects displays', async function () {
+    global.window = {
+      location: { search: '' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     const canvas = {
       addEventListener() {},
