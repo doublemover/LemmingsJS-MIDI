@@ -199,7 +199,7 @@ class UserInputManager {
   }
   handleMouseRightUp(position) {
     this.handleMouseClear();
-    this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
+    this.onMouseRightUp.trigger(new Lemmings.Position2D(position.x, position.y));
   }
   /** Zoom view around the cursor */
   handleWheel(position, deltaY) {

@@ -116,16 +116,15 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
-function processHtmlFile(file) {
+async function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
+  const { parseDocument, DomUtils } = await import('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
@@ -162,17 +161,31 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+let jsFiles = [];
+let htmlFiles = [];
+if (process.argv.length > 2) {
+  for (const arg of process.argv.slice(2)) {
+    if (arg.endsWith('.js')) jsFiles.push(arg);
+    else if (arg.endsWith('.html')) htmlFiles.push(arg);
+    else {
+      jsFiles = jsFiles.concat(gatherFiles(arg, ['.js']));
+      htmlFiles = htmlFiles.concat(gatherFiles(arg, ['.html']));
+    }
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
-for (const file of htmlFiles) processHtmlFile(file);
+const withCalls = process.argv.length > 2;
+for (const file of jsFiles) processJSFile(file, withCalls);
+for (const file of htmlFiles) await processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
