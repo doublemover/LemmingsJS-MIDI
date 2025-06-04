@@ -19,7 +19,7 @@ class MapObject {
         f.clear();
         // Draw once (palette → RGBA). This cost is now paid ONE time per sprite
         f.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height,
-                           objectImg.palette, 0, 0);
+          objectImg.palette, 0, 0);
         frames[i] = f;
       }
       MapObject._frameCache.set(objectImg, frames);

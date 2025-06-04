@@ -1,24 +1,11 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
 let steelSprites = null;
 
 async function loadSteelSprites() {
   if (!steelSprites) {
     const url = new URL('./steelSprites.json', import.meta.url);
-    if (url.protocol === 'file:' && typeof window === 'undefined') {
-      const fs = await import('fs/promises');
-      const json = await fs.readFile(url, 'utf8');
-      steelSprites = JSON.parse(json);
-    } else {
-      const res = await fetch(url);
-      steelSprites = await res.json();
-    }
-      const json = await fs.readFile(url, 'utf8');
-      steelSprites = JSON.parse(json);
-    } else {
-      const res = await fetch(url);
-      steelSprites = await res.json();
-    }
+    const res = await fetch(url);
+    steelSprites = await res.json();
   }
   return steelSprites;
 }
@@ -188,9 +175,9 @@ class GroundReader extends Lemmings.BaseLogger {
 
       const filename = fr.filename;
       const foldername = fr.foldername;
-      if (foldername === "[unknown]") {
+      if (foldername === '[unknown]') {
         console.log(
-          "folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel"
+          'folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel'
         );
       } else {
         const gameData = steelSprites[foldername];
