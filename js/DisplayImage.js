@@ -250,7 +250,7 @@ class DisplayImage {
     }
 
     /* ---------- misc utilities ---------- */
-    setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFFFF0000; }
+    setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFF0000FF; }
 
     setPixel(x,y,r,g,b) {
         if (!this.buffer32) return;
