@@ -2,7 +2,16 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
-import { GameView } from '../js/GameView.js';
+// prepare a minimal window object for GameView.applyQuery
+function createWindowStub() {
+  return {
+    location: { search: '' },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
 
 // minimal window for GameView.applyQuery and KeyboardShortcuts stub
 function setupWindow() {
@@ -14,6 +23,12 @@ function setupWindow() {
     removeEventListener() {}
   };
 }
+
+beforeEach(function() { globalThis.window = createWindowStub(); });
+afterEach(function() { delete globalThis.window; });
+
+import { GameView } from '../js/GameView.js';
+
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
