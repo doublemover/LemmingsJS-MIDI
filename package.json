@@ -21,6 +21,7 @@
     "tar": "^7.4.3",
     "node-unrar-js": "^2.0.2",
     "pack-levels": "node tools/packLevels.js",
+    "format": "eslint . --fix",
     "lint": "eslint ."
   },
   "repository": {

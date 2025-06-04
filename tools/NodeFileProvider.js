@@ -6,7 +6,7 @@ import * as tar from 'tar';
 import { createExtractorFromFile } from 'node-unrar-js';
 
 class NodeFileProvider {
-  constructor(rootPath) {
+  constructor(rootPath = '.') {
     this.rootPath = rootPath;
     this.zipCache = new Map();
     this.tarCache = new Map();
@@ -84,47 +84,44 @@ class NodeFileProvider {
   }
 
   _findZipEntry(zip, entryName) {
-    const clean = entryName.replace(/\\/g, '/');
-    let e = zip.getEntry(clean);
-    if (!e) {
-      const lower = clean.toLowerCase();
-      e = zip.getEntries().find(z => {
-        const n = z.entryName.toLowerCase();
-        return n === lower || n.endsWith('/' + lower);
+    const lower = entryName.replace(/\\/g, '/').toLowerCase();
+    let entry = zip.getEntry(entryName) || zip.getEntry(lower);
+    if (!entry) {
+      entry = zip.getEntries().find(e => {
+        const eName = e.entryName.toLowerCase();
+        return eName === lower || eName.endsWith('/' + lower);
       });
     }
-    return e || null;
+    return entry;
   }
 
-    async loadBinary(dir, filename) {
-        filename = this._validateEntry(filename);
-        if (/\.zip$/i.test(dir)) {
-            const zip = this._getZip(dir);
-            const entry = this._findZipEntry(zip, filename);
-            if (!entry) throw new Error(`File ${filename} not found in ${dir}`);
-            const data = entry.getData();
-            const arr = new Uint8Array(data);
-            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-        } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
-            const map = await this._getTar(dir);
-            const buf = this._findEntry(map, filename);
-            if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
-            const arr = new Uint8Array(buf);
-            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-        } else if (/\.rar$/i.test(dir)) {
-            const map = await this._getRar(dir);
-            const buf = this._findEntry(map, filename);
-            if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
-            const arr = new Uint8Array(buf);
-            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-        }
-        const fullPath = path.isAbsolute(dir)
-            ? path.join(dir, filename)
-            : path.join(this.rootPath, dir, filename);
-        const data = fs.readFileSync(fullPath);
-        const arr = new Uint8Array(data);
-        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+  async loadBinary(dir, filename) {
+    filename = this._validateEntry(filename);
+    if (/\.zip$/i.test(dir)) {
+      const zip = this._getZip(dir);
+      const entry = this._findZipEntry(zip, filename);
+      if (!entry) throw new Error(`File ${filename} not found in ${dir}`);
+      const data = entry.getData();
+      const arr = new Uint8Array(data);
+      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+    } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
+      const map = await this._getTar(dir);
+      const buf = this._findEntry(map, filename);
+      if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
+      const arr = new Uint8Array(buf);
+      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+    } else if (/\.rar$/i.test(dir)) {
+      const map = await this._getRar(dir);
+      const buf = this._findEntry(map, filename);
+      if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
+      const arr = new Uint8Array(buf);
+      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
     }
+    const fullPath = path.join(this.rootPath, dir, filename);
+    const data = fs.readFileSync(fullPath);
+    const arr = new Uint8Array(data);
+    return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+  }
 
   async loadString(file) {
     const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar))\/(.+)$/i);
@@ -148,7 +145,7 @@ class NodeFileProvider {
         return Buffer.from(buf).toString('utf8');
       }
     }
-    const fullPath = path.resolve(this.rootPath, file);
+    const fullPath = path.join(this.rootPath, file);
     return fs.readFileSync(fullPath, 'utf8');
   }
 }

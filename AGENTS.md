@@ -2,6 +2,10 @@
 
 This repository hosts a JavaScript/Node implementation of **Lemmings**. The following guidelines help the Codex agent work with the project.
 
+This repository uses ESLint for code style.
+Run `npm run format` before committing to automatically fix indentation,
+quotes, and semicolons across the JavaScript codebase.
+
 ## Environment
 - Use **Node.js 16 or later**.
 - Run `npm install` before running any tests or scripts.
@@ -34,4 +38,8 @@ Additional suggestions for the agent or future maintainers:
 - Create and maintain a `.agentInfo/` directory at the repository root.
 - Within `.agentInfo/`, store short notes about design decisions or TODOs using a tag-based system. Keep an index (e.g., `tags.json` or `index.md`) to search notes by tag.
 - Regularly review this index to locate relevant notes before starting new work.
+- Getting the dos file compression working is very important
+- Take your time and do your best work. Write comprehensive comments. 
+- Try and generate as many additional tasks to handle things as you can to maximize your potential
 -->
+

@@ -58,35 +58,35 @@ class FileContainer extends Lemmings.BaseLogger {
         tooltipText: `read ${fileReader.filename}`
       },
       () => {
-    this.#parts.length = 0; // Reset
-    let pos = 0;
-    const HEADER_SIZE = 10;
+        this.#parts.length = 0; // Reset
+        let pos = 0;
+        const HEADER_SIZE = 10;
 
-    while (pos + HEADER_SIZE < fileReader.length) {
-      fileReader.setOffset(pos);
+        while (pos + HEADER_SIZE < fileReader.length) {
+          fileReader.setOffset(pos);
 
-      // New part instance
-      let part = new Lemmings.UnpackFilePart(fileReader);
-      part.offset = pos + HEADER_SIZE;
-      // Header parsing
-      part.initialBufferLen = fileReader.readByte();
-      part.checksum = fileReader.readByte();
-      part.unknown1 = fileReader.readWord();
-      part.decompressedSize = fileReader.readWord();
-      part.unknown0 = fileReader.readWord();
-      let size = fileReader.readWord();
-      part.compressedSize = size - HEADER_SIZE;
-      part.index = this.#parts.length;
+          // New part instance
+          let part = new Lemmings.UnpackFilePart(fileReader);
+          part.offset = pos + HEADER_SIZE;
+          // Header parsing
+          part.initialBufferLen = fileReader.readByte();
+          part.checksum = fileReader.readByte();
+          part.unknown1 = fileReader.readWord();
+          part.decompressedSize = fileReader.readWord();
+          part.unknown0 = fileReader.readWord();
+          let size = fileReader.readWord();
+          part.compressedSize = size - HEADER_SIZE;
+          part.index = this.#parts.length;
 
-      // Sanity checks
-      if (part.offset < 0 || size > 0xFFFFFF || size < HEADER_SIZE) {
-        this.log.log(`out of sync ${fileReader.filename}`);
-        break;
-      }
-      this.#parts.push(part);
-      pos += size;
-    }
-    this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
+          // Sanity checks
+          if (part.offset < 0 || size > 0xFFFFFF || size < HEADER_SIZE) {
+            this.log.log(`out of sync ${fileReader.filename}`);
+            break;
+          }
+          this.#parts.push(part);
+          pos += size;
+        }
+        this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
       })();
   }
 

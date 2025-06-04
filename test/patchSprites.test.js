@@ -48,7 +48,7 @@ describe('tools/patchSprites.js', function () {
 
     const origPath = new URL('../tools/patchSprites.js', import.meta.url);
     const code = fs.readFileSync(fileURLToPath(origPath), 'utf8');
-    const patched = code.replace("import '../js/LemmingsBootstrap.js';", '');
+    const patched = code.replace('import \'../js/LemmingsBootstrap.js\';', '');
     const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
     fs.writeFileSync(tempScript, patched);
 
