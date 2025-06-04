@@ -149,7 +149,9 @@ class GameView extends Lemmings.BaseLogger {
 
   /** add/subtract one to the current levelIndex */
   async moveToLevel(moveInterval = 0) {
-    if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) return;
+    if (this.levelIndex + moveInterval < 0 &&
+        this.levelGroupIndex === 0 &&
+        this.gameType <= 1) return;
     if (this.inMoveToLevel) return;
     this.inMoveToLevel = true;
     this.levelIndex = (this.levelIndex + moveInterval) | 0;
