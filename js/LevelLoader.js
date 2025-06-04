@@ -2,9 +2,9 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class LevelLoader {
   constructor(fileProvider, config) {
-      this.fileProvider = fileProvider;
-      this.config = config;
-      this.levelIndexResolve = new Lemmings.LevelIndexResolve(config);
+    this.fileProvider = fileProvider;
+    this.config = config;
+    this.levelIndexResolve = new Lemmings.LevelIndexResolve(config);
   }
 
   async getLevel (levelMode, levelIndex) {
@@ -20,8 +20,8 @@ class LevelLoader {
     const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);   
 
     const baseLevel     = this.fileProvider.loadBinary(
-                          this.config.path,
-                          this.config.level.filePrefix + paddedFileId + '.DAT');
+      this.config.path,
+      this.config.level.filePrefix + paddedFileId + '.DAT');
 
     const oddTableBuf   = useOddTable ? this.fileProvider.loadBinary(this.config.path, 'ODDTABLE.DAT') : null;
 
@@ -32,11 +32,11 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     const levelsContainer = new Lemmings.FileContainer(levelDat);
     levelReader           = new Lemmings.LevelReader(
-                               levelsContainer.getPart(levelInfo.partIndex));
+      levelsContainer.getPart(levelInfo.partIndex));
 
     level                      = new Lemmings.Level(
-                                     levelReader.levelWidth,
-                                     levelReader.levelHeight);
+      levelReader.levelWidth,
+      levelReader.levelHeight);
     level.gameType             = this.config.gametype;
     level.levelIndex           = levelIndex;
     level.levelMode            = levelMode;
@@ -60,9 +60,9 @@ class LevelLoader {
     // 3 · Fetch graphics set(s) in parallel                                   //
     // ----------------------------------------------------------------------- //
     const vgagrFile    = this.fileProvider.loadBinary(
-                         this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
+      this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
     const groundFile   = this.fileProvider.loadBinary(
-                         this.config.path, `GROUND${levelReader.graphicSet1}O.DAT`);
+      this.config.path, `GROUND${levelReader.graphicSet1}O.DAT`);
     const vgaspecFile  = (levelReader.graphicSet2 !== 0) ? this.fileProvider.loadBinary(this.config.path, `VGASPEC${levelReader.graphicSet2 - 1}.DAT`) : null;
 
     const [vgagrBuf, groundBuf, vgaspecBuf] =
@@ -74,14 +74,14 @@ class LevelLoader {
     const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
     await Lemmings.loadSteelSprites();
     const groundReader = new Lemmings.GroundReader(
-                             groundBuf,
-                             vgaContainer.getPart(0),
-                             vgaContainer.getPart(1));
+      groundBuf,
+      vgaContainer.getPart(0),
+      vgaContainer.getPart(1));
 
     const render = new Lemmings.GroundRenderer();
     if (vgaspecBuf) {
       const spec = new Lemmings.VGASpecReader(
-                     vgaspecBuf, level.width, level.height);
+        vgaspecBuf, level.width, level.height);
       render.createVgaspecMap(levelReader, spec);
     } else {
       render.createGroundMap(levelReader, groundReader.getTerrainImages());
@@ -92,7 +92,7 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     level.setGroundImage(render.img.getData());
     level.setGroundMaskLayer(
-        new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
+      new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
 
     level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
     level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);

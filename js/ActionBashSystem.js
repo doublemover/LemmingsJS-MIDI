@@ -31,36 +31,36 @@ class ActionBashSystem extends ActionBaseSystem {
             if (state === 3) {
                 if (level.hasSteelUnderMask(subMask, lem.x, lem.y) ||
                     level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
-                    return Lemmings.LemmingStateType.SHRUG;
-                }
-            }
-            level.clearGroundWithMask(subMask, lem.x, lem.y);
+          return Lemmings.LemmingStateType.SHRUG;
         }
-        /// check if end of solid?
-        if (state == 5) {
-            if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8), lem.y - 6, lem.lookRight) == 4) {
-                return Lemmings.LemmingStateType.WALKING;
-            }
-        }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      }
+      level.clearGroundWithMask(subMask, lem.x, lem.y);
     }
-    findGapDelta(groundMask, x, y) {
-        for (let i = 0; i < 3; i++) {
-            if (groundMask.hasGroundAt(x, y + i)) {
-                return i;
-            }
-        }
-        return 3;
+    /// check if end of solid?
+    if (state == 5) {
+      if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8), lem.y - 6, lem.lookRight) == 4) {
+        return Lemmings.LemmingStateType.WALKING;
+      }
     }
-    findHorizontalSpace(groundMask, x, y, lookRight) {
-        for (let i = 0; i < 4; i++) {
-            if (groundMask.hasGroundAt(x, y)) {
-                return i;
-            }
-            x += (lookRight ? 1 : -1);
-        }
-        return 4;
+    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+  }
+  findGapDelta(groundMask, x, y) {
+    for (let i = 0; i < 3; i++) {
+      if (groundMask.hasGroundAt(x, y + i)) {
+        return i;
+      }
     }
+    return 3;
+  }
+  findHorizontalSpace(groundMask, x, y, lookRight) {
+    for (let i = 0; i < 4; i++) {
+      if (groundMask.hasGroundAt(x, y)) {
+        return i;
+      }
+      x += (lookRight ? 1 : -1);
+    }
+    return 4;
+  }
 }
 Lemmings.ActionBashSystem = ActionBashSystem;
 

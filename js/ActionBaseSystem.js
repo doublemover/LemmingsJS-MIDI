@@ -7,6 +7,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 class ActionBaseSystem {
     static spriteCache = new Map();
     static maskCache = new Map();
+
     /**
      * @param {Object} options
      * @param {*} options.sprites Sprite provider
