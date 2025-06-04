@@ -217,3 +217,8 @@ URL parameters (shortcut in brackets):
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+
+## .agentInfo Notes
+
+The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
+See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
