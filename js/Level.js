@@ -131,7 +131,7 @@ class Level extends Lemmings.BaseLogger {
   isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
   clearGroundWithMask(mask, x, y) {
-    this.groundMask.clearGroundWithMask(
+    let changed = this.groundMask.clearGroundWithMask(
       mask, x, y,
       (px, py) => this.isSteelAt(px, py)
     );
@@ -146,9 +146,11 @@ class Level extends Lemmings.BaseLogger {
         if (this.isSteelAt(px, py)) continue;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
         const idx = (py * w + px) * 4;
+        if (img[idx] || img[idx + 1] || img[idx + 2]) changed = true;
         img[idx] = img[idx + 1] = img[idx + 2] = 0;
       }
     }
+    return changed;
   }
 
   setGroundAt(x, y, paletteIndex) {

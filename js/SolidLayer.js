@@ -52,6 +52,7 @@ class SolidLayer extends Lemmings.BaseLogger {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
   clearGroundWithMask(mask, x, y, skipTest = null) {
+    let changed = false;
     Lemmings.withPerformance(
       'clearGroundWithMask',
       {
@@ -71,12 +72,17 @@ class SolidLayer extends Lemmings.BaseLogger {
             // Only clear where mask pixel is **not** solid
             if (!mask.at(dx, dy)) {
               if (!skipTest || !skipTest(mapX, mapY)) {
-                this.mask[mapX + mapY * this.width] = 0;
+                const idx = mapX + mapY * this.width;
+                if (this.mask[idx]) {
+                  this.mask[idx] = 0;
+                  changed = true;
+                }
               }
             }
           }
         }
       })();
+    return changed;
   }
 
   /**
