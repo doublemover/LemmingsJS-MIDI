@@ -57,7 +57,6 @@ class ActionWalkSystem {
                 }
 
                 if (dy >= 3) {
-                    lem.y -= 2;
                     return Lemmings.LemmingStateType.JUMPING;
                 }
 
