@@ -6,10 +6,13 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-- _Nothing yet_
+### Changed
+- Project now requires Node.js 16+ (tests use Node 18 in CI).
+
 
 ## [0.0.2] - 2025-06-04
 ### Added
+- `.agentInfo/` directory for searchable design notes.
 - Keyboard shortcuts to adjust speed and game functions.
 - Right-click actions for quick release-rate changes and debug toggle.
 - Support for levels with multiple entrances and animated traps.
@@ -25,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
  - Mouse wheel zoom centers on the cursor and keeps the world point under the cursor fixed.
 
 ### Fixed
+- Switching the game type refreshes level resources automatically.
 - Numerous crashes and invisible blockers when lemmings die.
 - Corrected fall height and trap cooldown behavior.
 - Arrow trigger animation and explosion sprite alignment issues.
