@@ -220,5 +220,5 @@ URL parameters (shortcut in brackets):
 
 ## .agentInfo Notes
 
-The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so you can search by keyword.
-See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes.
+The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
+See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
