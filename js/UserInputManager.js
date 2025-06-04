@@ -38,39 +38,42 @@ class UserInputManager {
         this.onMouseRightUp = new Lemmings.EventHandler();
         this.onDoubleClick = new Lemmings.EventHandler();
         this.onZoom = new Lemmings.EventHandler();
-        listenElement.addEventListener("mousemove", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this.listenElement = listenElement;
+        this._listeners = [];
+
+        this._addListener("mousemove", (e) => {
+            let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseMove(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("touchmove", (e) => {
+        this._addListener("touchmove", (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+            let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
             this.handleMouseMove(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("touchstart", (e) => {
+        this._addListener("touchstart", (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+            let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
             this.handleMouseDown(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("mousedown", (e) => {
+        this._addListener("mousedown", (e) => {
             e.stopPropagation();
             e.preventDefault();
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
                 this.handleMouseRightDown(relativePos);
                 return false;
@@ -79,10 +82,10 @@ class UserInputManager {
 
             return false;
         });
-        listenElement.addEventListener("mouseup", (e) => {
+        this._addListener("mouseup", (e) => {
             e.stopPropagation();
             e.preventDefault();
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
                 this.handleMouseRightUp(relativePos);
                 return false;
@@ -90,43 +93,55 @@ class UserInputManager {
             this.handleMouseUp(relativePos);
             return false;
         });
-        listenElement.addEventListener("mouseleave", (e) => {
+        this._addListener("mouseleave", (e) => {
             this.handleMouseClear();
         });
-        listenElement.addEventListener("touchend", (e) => {
+        this._addListener("touchend", (e) => {
             if (e.changedTouches.length !== 1) {
                 e.preventDefault();
                 return;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            let relativePos = this.getRelativePosition(this.listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             this.handleMouseUp(relativePos);
             return false;
         });
-        listenElement.addEventListener("touchleave", (e) => {
+        this._addListener("touchleave", (e) => {
             this.handleMouseClear();
             return false;
         });
-        listenElement.addEventListener("touchcancel", (e) => {
+        this._addListener("touchcancel", (e) => {
             this.handleMouseClear();
             return false;
         });
-        listenElement.addEventListener("dblclick", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this._addListener("dblclick", (e) => {
+            let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseDoubleClick(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("wheel", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this._addListener("wheel", (e) => {
+            let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleWheel(relativePos, e.deltaY);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
     }
+
+    _addListener(type, handler) {
+        this.listenElement.addEventListener(type, handler);
+        this._listeners.push([type, handler]);
+    }
+
+    dispose() {
+        for (const [type, handler] of this._listeners) {
+            this.listenElement.removeEventListener(type, handler);
+        }
+        this._listeners.length = 0;
+    }
     getRelativePosition(element, clientX, clientY) {
-        var rect = element.getBoundingClientRect();
+        const rect = element.getBoundingClientRect();
         const x = (clientX - rect.left) / rect.width * 800;
         const y = (clientY - rect.top) / rect.height * 480;
         return new Lemmings.Position2D(x, y);
