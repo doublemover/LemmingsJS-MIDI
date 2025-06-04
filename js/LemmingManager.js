@@ -20,13 +20,25 @@ class LemmingManager extends Lemmings.BaseLogger {
         }
             LemmingManager.log = this.log;
             })();
-        const tickNum = this.mmTickCounter;
-        Lemmings.withPerformance(
-            'tick',
-            {
-                track: 'LemmingManager',
-                trackGroup: 'Game State',
-                color: 'tertiary-dark',
+        this.actions[Lemmings.LemmingStateType.BUILDING]   =
+            new Lemmings.ActionBuildSystem(lemmingsSprite);
+        this.actions[Lemmings.LemmingStateType.SHRUG]      =
+            new Lemmings.ActionShrugSystem(lemmingsSprite);
+        this.actions[Lemmings.LemmingStateType.EXPLODING]  =
+            new Lemmings.ActionExplodingSystem(
+                lemmingsSprite,
+                masks,
+                triggerManager,
+                particleTable
+            );
+        this.actions[Lemmings.LemmingStateType.OHNO]       =
+            new Lemmings.ActionOhNoSystem(lemmingsSprite);
+        this.actions[Lemmings.LemmingStateType.SPLATTING]  =
+            new Lemmings.ActionSplatterSystem(lemmingsSprite);
+        this.actions[Lemmings.LemmingStateType.DROWNING]   =
+            new Lemmings.ActionDrowningSystem(lemmingsSprite);
+        this.actions[Lemmings.LemmingStateType.FRYING]     =
+            new Lemmings.ActionFryingSystem(lemmingsSprite);
                 tooltipText: `tick ${tickNum}`
             },
             () => {
