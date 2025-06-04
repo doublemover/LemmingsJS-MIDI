@@ -1,6 +1,5 @@
 import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
 import { BitReader } from '../js/BitReader.js';
 import { BitWriter } from '../js/BitWriter.js';
