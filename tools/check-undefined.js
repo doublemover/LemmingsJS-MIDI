@@ -3,8 +3,6 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
-
-// Provide CommonJS require for compatibility with ES modules
 const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
