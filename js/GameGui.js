@@ -202,6 +202,8 @@ class GameGui {
         }
         this.skills.setSelectedSkill(newSkill);
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
+        this.game.applySkillToSelected(newSkill);
+        this.skillSelectionChanged = true;
     }
 
     handleSkillMouseRightDown(e) {

@@ -132,9 +132,21 @@ class Game extends Lemmings.BaseLogger {
   getLemmingManager   () { return this.lemmingManager; }
   getVictoryCondition () { return this.gameVictoryCondition; }
   getCommandManager   () { return this.commandManager; }
+  getGameDisplay     () { return this.gameDisplay; }
   cheat               () { this.skills?.cheat(); }
   setDebugMode       (v) { this.showDebug = !!v; }
   queueCommand(cmd)   { this.commandManager?.queueCommand(cmd); }
+
+  applySkillToSelected(skillType) {
+    const lm = this.getLemmingManager();
+    const skills = this.getGameSkills();
+    const lem = lm?.getSelectedLemming?.();
+    if (!lem || !skills?.canReuseSkill(skillType)) return false;
+    if (!lm.doLemmingAction(lem, skillType)) return false;
+    skills.reuseSkill(skillType);
+    this.getGameDisplay()?.flashSelected?.();
+    return true;
+  }
 
   onGameTimerTick () {
     this.runGameLogic();
