@@ -115,8 +115,13 @@ class Stage {
 
                 // Zoom around that point
                 let oldScale = stageImage.viewPoint.scale;
-                let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
+                let rawScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
 
+                // use the actual draw surface dimensions when picking scales
+                const canvasW = stageImage.display?.getWidth()  || stageImage.width;
+                const canvasH = stageImage.display?.getHeight() || stageImage.height;
+                const cands = this._pixelPerfectScales(canvasW, canvasH);
+                let newScale = this._nearestScale(rawScale, cands);
                 stageImage.viewPoint.scale = this.limitValue(.25, newScale, 4);
 
                 // Re-center so the same world point stays under the cursor
@@ -158,6 +163,30 @@ class Stage {
         limitValue(minLimit, value, maxLimit) {
             let useMax = Math.max(minLimit, maxLimit);
             return Math.min(Math.max(minLimit, value), useMax);
+        }
+
+        _pixelPerfectScales(width, height) {
+            const gcd = (a, b) => b ? gcd(b, a % b) : a;
+            const g = gcd(width, height);
+            const out = new Set();
+            for (let i = 1; i <= g; i++) {
+                if (g % i !== 0) continue;
+                if (i >= 0.25 && i <= 4) out.add(i);
+                const inv = 1 / i;
+                if (inv >= 0.25 && inv <= 4) out.add(inv);
+            }
+            return Array.from(out).sort((a, b) => a - b);
+        }
+
+        _nearestScale(scale, candidates) {
+            if (!candidates.length) return scale;
+            let best = candidates[0];
+            let diff = Math.abs(scale - best);
+            for (const c of candidates) {
+                const d = Math.abs(scale - c);
+                if (d < diff) { diff = d; best = c; }
+            }
+            return best;
         }
         updateStageSize() {
             let ctx = this.stageCav.getContext("2d", { alpha: false });
