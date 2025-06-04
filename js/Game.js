@@ -132,6 +132,7 @@ class Game {
   getLemmingManager   () { return this.lemmingManager; }
   getVictoryCondition () { return this.gameVictoryCondition; }
   getCommandManager   () { return this.commandManager; }
+  getGameDisplay     () { return this.gameDisplay; }
   cheat               () { this.skills?.cheat(); }
   setDebugMode       (v) { this.showDebug = !!v; }
   queueCommand(cmd)   { this.commandManager?.queueCommand(cmd); }
@@ -143,6 +144,7 @@ class Game {
     if (!lem || !skills?.canReuseSkill(skillType)) return false;
     if (!lm.doLemmingAction(lem, skillType)) return false;
     skills.reuseSkill(skillType);
+    this.getGameDisplay()?.flashSelected?.();
     return true;
   }
 
