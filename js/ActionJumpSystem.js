@@ -28,16 +28,12 @@ class ActionJumpSystem {
         lem.x += (lem.lookRight ? 1 : -1);
 
         let moved = 0;
-        for (; moved < 2; moved++) {
-            if (!level.hasGroundAt(lem.x, lem.y - moved - 1)) {
-                break;
-            }
+        while (moved < 2 && level.hasGroundAt(lem.x, lem.y - moved - 1)) {
+            moved++;
+            lem.y--;
         }
-        lem.y -= moved;
 
-        lem.state += moved;
-        if (moved < 2 || lem.state >= 2) {
-            lem.state = 0;
+        if (moved < 2) {
             return Lemmings.LemmingStateType.WALKING;
         }
 
