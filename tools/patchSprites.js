@@ -28,8 +28,10 @@ function main() {
     return;
   }
 
+  // Use an empty root path so absolute input paths work correctly
+  const provider = new NodeFileProvider('');
+  const datReader = await provider.loadBinary(path.dirname(datFile), path.basename(datFile));
   const buf = fs.readFileSync(datFile);
-  const datReader = new BinaryReader(new Uint8Array(buf), 0, buf.length, path.basename(datFile), path.dirname(datFile));
   const container = new Lemmings.FileContainer(datReader);
 
   // Map of part index -> new raw buffer
