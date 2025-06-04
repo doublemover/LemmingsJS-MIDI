@@ -192,6 +192,13 @@ packed while running scripts with Node.
 - After `npm install`, run `npm test` to execute the Mocha test suite.
 - Mocha is installed automatically as part of the project's `devDependencies`.
 
+## Progressive Web App
+
+This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
+as a **Progressive Web App (PWA)**. Installing adds the game to your device's
+app list and launches it fullscreen in landscape mode. Touch input still needs
+polish, so the mobile experience may be rough.
+
 ## Options
 
 URL parameters (shortcut in brackets):
