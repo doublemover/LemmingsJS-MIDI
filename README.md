@@ -134,7 +134,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ## Play Locally, Export & Patch Sprites
 
-- Install [Node.js](https://nodejs.org)
+ - Install [Node.js 16 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
@@ -143,9 +143,16 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
 
+### Running Tests
 
-For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
-and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
+Run `npm test` to execute the Mocha suite. The command also invokes
+[`tools/check-undefined.js`](tools/check-undefined.js) to ensure no
+accidental global variables leak into the tests.
+
+### Continuous Integration
+
+The GitHub Actions workflow uses **Node 18** and runs `npm run lint` followed
+by `npm test`. See [docs/ci.md](docs/ci.md) for details.
 
 ### Progressive Web App
 
