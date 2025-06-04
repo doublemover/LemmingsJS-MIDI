@@ -35,14 +35,13 @@ class KeyboardShortcuts {
             const img = stage.gameImgProps;
             const vp = img.viewPoint;
             const scale = vp.scale;
-            // hold shift to pan much further per frame
-            const shiftMul = this.mod.shift ? 2.5 : 1;
+            // hold shift to pan slightly further per frame
+            const shiftMul = this.mod.shift ? 1.5 : 1;
 
             // ----- panning -----
             // tweak distance per frame; previous values felt too large
             const baseX = 25 * scale;
             const baseY = 12 * scale;
-            // accelerate quicker with Shift for a playful feel
             const accelBase = this.mod.shift ? 0.15 : 0.05;
             const accel = accelBase / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
