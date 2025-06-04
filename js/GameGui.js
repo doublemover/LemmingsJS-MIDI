@@ -36,8 +36,8 @@ class GameGui {
         this.deltaReleaseRate = 0;
 
         /* marching ants selection animation settings */
-        this.selectionDashLen   = 3;   // length of dash segments
-        this.selectionAnimDelay = 20;  // frames between offset increments
+        this.selectionDashLen   = 4;   // length of dash segments (1px longer)
+        this.selectionAnimDelay = 60;  // frames between offset increments (slower)
         this.selectionAnimStep  = 1;   // pixels per animation step
         this._selectionOffset   = 0;
         this._selectionCounter  = 0;
@@ -188,7 +188,8 @@ class GameGui {
         }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
-            this.skills.setSelectedSkill(newSkill);
+        if (this.skills.getSkill(newSkill) <= 0) return;
+        this.skills.setSelectedSkill(newSkill);
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
     }
 
@@ -261,8 +262,9 @@ class GameGui {
         let up = false, down = false;
         if (rawIdx === 10 && e.y >= 32) {
             const pauseIndex = Math.trunc((e.x - 159) / 9);
-            up   = pauseIndex === 1;
-            down = pauseIndex === 0;
+            const speedFac = this.gameTimer.speedFactor;
+            if (pauseIndex === 1 && speedFac < 120) up = true;
+            if (pauseIndex === 0 && speedFac > 0.1) down = true;
         }
         if (up !== this._hoverSpeedUp || down !== this._hoverSpeedDown) {
             this._hoverSpeedUp = up;
@@ -424,7 +426,9 @@ class GameGui {
         }
 
         if (this._hoverPanelIdx >= 0) {
-            if (this._hoverPanelIdx === 11) {
+            if (this._hoverPanelIdx === 11 && this.nukePrepared) {
+                this.drawNukeHover(d);
+            } else if (this._hoverPanelIdx === 11) {
                 this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
             } else {
                 this.drawSkillHover(d, this._hoverPanelIdx);
@@ -527,8 +531,21 @@ class GameGui {
         this.gameSpeedChanged = true;
     }
 
-    drawNukeConfirm(d) { 
-        d.drawRect(16 * 11, 16, 16, 23, 255, 0, 0); 
+    drawNukeConfirm(d) {
+        d.drawRect(16 * 11, 16, 16, 23, 255, 0, 0);
+    }
+
+    drawNukeHover(d) {
+        d.drawMarchingAntRect(
+            16 * 11,
+            16,
+            16,
+            23,
+            this.selectionDashLen,
+            this._selectionOffset,
+            0xFF0080FF,
+            0xFF00FFFF
+        );
     }
 
     drawPanelNumber(d, num, panelIdx) { 

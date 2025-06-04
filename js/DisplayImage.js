@@ -122,14 +122,23 @@ class DisplayImage {
      * @param {number} dashLen Length of each dash segment (in pixels)
      * @param {number} offset  Offset of the dash pattern
      */
-    drawMarchingAntRect(x, y, width, height, dashLen = 3, offset = 0) {
+    drawMarchingAntRect(
+        x,
+        y,
+        width,
+        height,
+        dashLen = 3,
+        offset = 0,
+        color1 = 0xFFFFFFFF,
+        color2 = 0xFF000000
+    ) {
         if (!this.buffer32) return;
         const { width: w } = this.imgData;
         const pattern = dashLen * 2;
         let pos = ((offset % pattern) + pattern) % pattern;
         const set = (px, py) => {
-            const useWhite = Math.floor(pos / dashLen) % 2 === 0;
-            this.buffer32[py * w + px] = useWhite ? 0xFFFFFFFF : 0xFF000000;
+            const useFirst = Math.floor(pos / dashLen) % 2 === 0;
+            this.buffer32[py * w + px] = useFirst ? color1 : color2;
             pos = (pos + 1) % pattern;
         };
 
