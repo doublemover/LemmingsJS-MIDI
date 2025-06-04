@@ -105,7 +105,7 @@ class BitReader {
    * @returns {boolean}
    */
   eof() {
-    return this.#bufferLen === 0 && this.#pos < 0;
+    return this.#bufferLen === 0 && this.#pos <= 0;
   }
 }
 
