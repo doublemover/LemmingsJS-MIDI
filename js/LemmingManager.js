@@ -235,6 +235,9 @@ class LemmingManager {
             }
         }
         if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
+            if (this.miniMap && lem.action !== this.actions[Lemmings.LemmingStateType.EXITING]) {
+                this.miniMap.addDeath(lem.x, lem.y);
+            }
             lem.remove();
             this.gameVictoryCondition.removeOne();
             // performance.measure("removeOne", { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "secondary-dark", tooltipText: `removeOne ${lem.id}` } } });

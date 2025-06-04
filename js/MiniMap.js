@@ -23,7 +23,8 @@ class MiniMap {
         this.fog.fill(1); // disabled
         // typed array storing [x1,y1,x2,y2,...] scaled to minimap
         this.liveDots = new Uint8Array(0);
-        this.deadDots = []; // {x,y,ttl}
+        this.deadDots = new Uint8Array(0); // [x1,y1,x2,y2,...]
+        this.deadTTLs = new Uint8Array(0); // parallel ttl values
 
         // render target (drawn into the GUI canvas once per frame)
         this.frame = new Lemmings.Frame(this.width, this.height);
@@ -196,11 +197,16 @@ class MiniMap {
     }
 
     addDeath(x, y) {
-        this.deadDots.push({
-            x: x * this.scaleX | 0,
-            y: y * this.scaleY | 0,
-            ttl: 30
-        });
+        const dx = (x * this.scaleX) | 0;
+        const dy = (y * this.scaleY) | 0;
+        const newDots = new Uint8Array(this.deadDots.length + 2);
+        newDots.set(this.deadDots);
+        newDots.set([dx, dy], this.deadDots.length);
+        const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
+        newTTLs.set(this.deadTTLs);
+        newTTLs[this.deadTTLs.length] = 30;
+        this.deadDots = newDots;
+        this.deadTTLs = newTTLs;
     }
 
     render() {
@@ -254,14 +260,28 @@ class MiniMap {
         }
 
         /* Death flashes */
-        // for (let i = this.deadDots.at(-1); i >= 0; --i) {
-        //     const d = this.deadDots[i];
-        //     if (--d.ttl <= 0) {
-        //         this.deadDots.splice(i, 1);
-        //         continue;
-        //     }
-        //     if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
-        // }
+        if (this.deadDots.length) {
+            const oldDots = this.deadDots;
+            const oldTTLs = this.deadTTLs;
+            let count = 0;
+            // determine remaining dots after ttl decrement
+            for (let i = 0, j = 0; i < oldDots.length; i += 2, ++j) {
+                if (oldTTLs[j] - 1 > 0) ++count;
+            }
+            const newDots = new Uint8Array(count * 2);
+            const newTTLs = new Uint8Array(count);
+            let idx = 0, tIdx = 0;
+            for (let i = 0, j = 0; i < oldDots.length; i += 2, ++j) {
+                let ttl = oldTTLs[j] - 1;
+                if (ttl <= 0) continue;
+                if (ttl & 4) frame.setPixel(oldDots[i], oldDots[i + 1], 0xFF0000FF);
+                newDots[idx++] = oldDots[i];
+                newDots[idx++] = oldDots[i + 1];
+                newTTLs[tIdx++] = ttl;
+            }
+            this.deadDots = newDots;
+            this.deadTTLs = newTTLs;
+        }
 
         /* Blit */
         const destX = this.guiDisplay.getWidth() - W;
