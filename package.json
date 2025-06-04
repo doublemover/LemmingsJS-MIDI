@@ -3,11 +3,13 @@
   "version": "1.0.0",
   "description": "Lemmings (JavaScript)",
   "main": "index.js",
+  "type": "module",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
-    "start": "http-server --cors=*"
+    "start": "http-server --cors=*",
+    "test": "node --test"
   },
   "repository": {
     "type": "git",
