@@ -14,7 +14,7 @@ class ConfigReader extends Lemmings.BaseLogger {
   /** return the game config for a given GameType */
   getConfig(gameType) {
     if (gameType == 0) {
-      this.log.log('tried to get gametype 0?')
+      this.log.log('tried to get gametype 0?');
       return;
     }
     return new Promise((resolve, reject) => {
