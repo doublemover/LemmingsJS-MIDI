@@ -104,55 +104,54 @@ class Stage {
             if ((stageImage == null) || (stageImage.display == null))
                 return;
 
+            const vp = stageImage.viewPoint;
+            let nx = vp.x;
+            let ny = vp.y;
+            let newScale = vp.scale;
+
             // Mousewheel zoom: zx and zy are world coords under mouse
             if (deltaZoom !== 0 && zx !== 0 && zy !== 0) {
                 // Calculate the screen (pixel) position relative to the image
-                let screenX = deltaX - stageImage.x;
-                let screenY = deltaY - stageImage.y;
+                const screenX = deltaX - stageImage.x;
+                const screenY = deltaY - stageImage.y;
 
                 // World coords under cursor before zoom
-                let sceneX = stageImage.viewPoint.getSceneX(screenX);
-                let sceneY = stageImage.viewPoint.getSceneY(screenY);
+                const sceneX = vp.getSceneX(screenX);
+                const sceneY = vp.getSceneY(screenY);
 
                 // Zoom around that point using the un-snapped scale
                 const oldScale = this._rawScale;
                 this._rawScale = this.limitValue(.25, oldScale * (1 + deltaZoom / 1500), 4);
-                stageImage.viewPoint.scale = this.snapScale(this._rawScale);
+                newScale = this.snapScale(this._rawScale);
 
                 // Re-center so the same world point stays under the cursor
-                stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
-                stageImage.viewPoint.y = sceneY - screenY / stageImage.viewPoint.scale;
+                nx = sceneX - screenX / newScale;
+                ny = sceneY - screenY / newScale;
             } else if (zx == 0 && zy == 0) {
-                // Dragging: keep as before
-                stageImage.viewPoint.x += Math.fround(deltaX / stageImage.viewPoint.scale);
-                stageImage.viewPoint.y += Math.fround(deltaY / stageImage.viewPoint.scale);
+                // Dragging
+                nx += Math.fround(deltaX / vp.scale);
+                ny += Math.fround(deltaY / vp.scale);
             }
+
+            const maxX = stageImage.display.getWidth() - stageImage.width / newScale;
+            const maxY = stageImage.display.getHeight() - stageImage.height / newScale;
+
+            this._applyZoom(vp, nx, ny, newScale, maxX, maxY);
 
             if (stageImage.display != null) {
                 this.clear(stageImage);
                 const gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
             }
+        }
 
-            const xCeiling = Math.max(0, stageImage.viewPoint.x);
-            const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-            const xFloor = Math.min(xCeiling, xFloorLimit);
-
-            stageImage.viewPoint.x = xFloor;
-
-            const yCeiling = Math.max(0, stageImage.viewPoint.y);
-            const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-            const yFloor = Math.min(yCeiling, yFloorLimit);
-
-            stageImage.viewPoint.y = yFloor;
-
-            // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
-            // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
-
-            if (stageImage.display != null) {
-                this.clear(stageImage);
-                let gameImg = stageImage.display.getImageData();
-                this.draw(stageImage, gameImg);
+        _applyZoom(vp, nx, ny, scale, maxX, maxY) {
+            vp.scale = scale;
+            vp.x = this.limitValue(0, nx, maxX);
+            if (maxY > 0) {
+                vp.y = this.limitValue(0, ny, maxY);
+            } else {
+                vp.y = this.limitValue(maxY, ny, 0);
             }
         }
         limitValue(minLimit, value, maxLimit) {
