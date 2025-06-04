@@ -19,16 +19,39 @@ class KeyboardShortcuts {
         const cy = img.height / 2;
         const zx = img.viewPoint.getSceneX(cx);
         const zy = img.viewPoint.getSceneY(cy);
-        stage.updateViewPoint(img, cx, cy, delta, zx, zy);
+        const steps = 10;
+        const dz = delta / steps;
+        let done = 0;
+        const step = () => {
+            stage.updateViewPoint(img, cx, cy, dz, zx, zy);
+            if (++done < steps) {
+                requestAnimationFrame(step);
+            } else {
+                stage.redraw();
+            }
+        };
+        requestAnimationFrame(step);
     }
 
     _pan(dirX, dirY) {
         const stage = this.view.stage;
         if (!stage) return;
         const vp = stage.gameImgProps.viewPoint;
-        const xStep = 20 * vp.scale * vp.scale;
-        const yStep = 10 * vp.scale * vp.scale;
-        stage.updateViewPoint(stage.gameImgProps, dirX * xStep, dirY * yStep, 0);
+        const xStep = 20 * vp.scale * vp.scale * dirX;
+        const yStep = 10 * vp.scale * vp.scale * dirY;
+        const steps = 10;
+        const dx = xStep / steps;
+        const dy = yStep / steps;
+        let done = 0;
+        const step = () => {
+            stage.updateViewPoint(stage.gameImgProps, dx, dy, 0);
+            if (++done < steps) {
+                requestAnimationFrame(step);
+            } else {
+                stage.redraw();
+            }
+        };
+        requestAnimationFrame(step);
     }
 
     _cycleSkill() {
@@ -48,8 +71,8 @@ class KeyboardShortcuts {
         const vc    = game.getVictoryCondition();
         const gui   = game.gameGui;
         let handled = true;
-        switch (e.key) {
-            case '1':
+        switch (e.code) {
+            case 'Digit1':
                 if (e.shiftKey) {
                     const diff = vc.getCurrentReleaseRate() - vc.getMinReleaseRate();
                     if (diff > 0) game.queueCommand(new Lemmings.CommandReleaseRateDecrease(diff));
@@ -58,7 +81,7 @@ class KeyboardShortcuts {
                 }
                 gui.releaseRateChanged = true;
                 break;
-            case '2':
+            case 'Digit2':
                 if (e.shiftKey) {
                     const max = vc.getMaxReleaseRate?.() ?? Lemmings.GameVictoryCondition.maxReleaseRate;
                     const diff = max - vc.getCurrentReleaseRate();
@@ -68,48 +91,43 @@ class KeyboardShortcuts {
                 }
                 gui.releaseRateChanged = true;
                 break;
-            case '3':
+            case 'Digit3':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.CLIMBER));
                 gui.skillSelectionChanged = true;
                 break;
-            case '4':
+            case 'Digit4':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.FLOATER));
                 gui.skillSelectionChanged = true;
                 break;
-            case '5':
+            case 'Digit5':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BOMBER));
                 gui.skillSelectionChanged = true;
                 break;
-            case '6':
+            case 'Digit6':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BLOCKER));
                 gui.skillSelectionChanged = true;
                 break;
-            case 'q':
-            case 'Q':
+            case 'KeyQ':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BUILDER));
                 gui.skillSelectionChanged = true;
                 break;
-            case 'w':
-            case 'W':
+            case 'KeyW':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BASHER));
                 gui.skillSelectionChanged = true;
                 break;
-            case 'e':
-            case 'E':
+            case 'KeyE':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.MINER));
                 gui.skillSelectionChanged = true;
                 break;
-            case 'r':
-            case 'R':
+            case 'KeyR':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.DIGGER));
                 gui.skillSelectionChanged = true;
                 break;
-            case ' ':
+            case 'Space':
                 timer.toggle();
                 gui.skillSelectionChanged = true;
                 break;
-            case 't':
-            case 'T':
+            case 'KeyT':
                 game.queueCommand(new Lemmings.CommandNuke());
                 break;
             case 'Backspace':
@@ -127,16 +145,13 @@ class KeyboardShortcuts {
             case 'ArrowDown':
                 this._pan(0, 1);
                 break;
-            case 'z':
-            case 'Z':
+            case 'KeyZ':
                 this._zoom(100);
                 break;
-            case 'x':
-            case 'X':
+            case 'KeyX':
                 this._zoom(-100);
                 break;
-            case 'v':
-            case 'V':
+            case 'KeyV':
                 if (this.view.stage) {
                     const vp = this.view.stage.gameImgProps.viewPoint;
                     vp.scale = 2;
@@ -146,10 +161,11 @@ class KeyboardShortcuts {
             case 'Tab':
                 this._cycleSkill();
                 break;
-            case '\\':
+            case 'Backslash':
                 game.showDebug = !game.showDebug;
                 break;
-            case '-':
+            case 'Minus':
+            case 'NumpadSubtract':
                 if (timer.speedFactor > 1) {
                     timer.speedFactor -= 1;
                     gui.drawSpeedChange(false);
@@ -158,8 +174,8 @@ class KeyboardShortcuts {
                     gui.drawSpeedChange(false);
                 }
                 break;
-            case '=':
-            case '+':
+            case 'Equal':
+            case 'NumpadAdd':
                 if (timer.speedFactor < 1) {
                     timer.speedFactor = Math.round((timer.speedFactor + 0.1) * 100) / 100;
                     gui.drawSpeedChange(true);
@@ -168,10 +184,10 @@ class KeyboardShortcuts {
                     gui.drawSpeedChange(true);
                 }
                 break;
-            case ',':
+            case 'Comma':
                 this.view.moveToLevel(-1);
                 break;
-            case '.':
+            case 'Period':
                 this.view.moveToLevel(1);
                 break;
             default:
