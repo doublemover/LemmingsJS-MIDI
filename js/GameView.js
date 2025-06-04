@@ -216,41 +216,38 @@ async moveToLevel(moveInterval = 0) {
         this.shortcut = this.parseBool(query, ["shortcut", "_"]); 
     }
     updateQuery() {
-        const state = {};
+        const params = new URLSearchParams(window.location.search);
+        const setParam = (longName, shortName, value, def) => {
+            params.delete(longName);
+            params.delete(shortName);
+            if (value !== undefined && value !== def) {
+                params.set(this.shortcut ? shortName : longName, value);
+            }
+        };
+
+        setParam('version', 'v', this.gameType, 1);
+        setParam('difficulty', 'd', this.levelGroupIndex + 1, 1);
+        setParam('level', 'l', this.levelIndex + 1, 1);
+        setParam('speed', 's', this.gameSpeedFactor, 1);
+        setParam('cheat', 'c', this.cheat, false);
+        setParam('debug', 'dbg', this.debug, false);
+        setParam('bench', 'b', this.bench, false);
+        setParam('endless', 'e', this.endless, false);
+        setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
+        setParam('extra', 'ex', this.extraLemmings);
+        setParam('scale', 'sc', this.scale);
+
         if (this.shortcut) {
-            state.v = this.gameType;
-            state.d = this.levelGroupIndex + 1;
-            state.l = this.levelIndex + 1;
-            state.s = this.gameSpeedFactor;
-            state.c = !!this.cheat;
-            if (this.debug) state.dbg = true;
-            if (this.bench) state.b = true;
-            if (this.endless) state.e = true;
-            if (this.nukeAfter) state.na = this.nukeAfter / 10;
-            if (this.extraLemmings) state.ex = this.extraLemmings;
-            if (this.scale) state.sc = this.scale;
-            state._ = true;
+            params.set('_', true);
         } else {
-            state.version = this.gameType;
-            state.difficulty = this.levelGroupIndex + 1;
-            state.level = this.levelIndex + 1;
-            state.speed = this.gameSpeedFactor;
-            state.cheat = !!this.cheat;
-            if (this.debug) state.debug = true;
-            if (this.bench) state.bench = true;
-            if (this.endless) state.endless = true;
-            if (this.nukeAfter) state.nukeAfter = this.nukeAfter / 10;
-            if (this.extraLemmings) state.extra = this.extraLemmings;
-            if (this.scale) state.scale = this.scale;
+            params.delete('_');
         }
-        this.setHistoryState(state);
+
+        this.setHistoryState(params);
     }
-    setHistoryState(state) {
-        const params = new URLSearchParams();
-        for (const [key, value] of Object.entries(state)) {
-            params.set(key, value);
-        }
-        history.replaceState(null, null, "?" + params.toString());
+    setHistoryState(params) {
+        const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
+        history.replaceState(null, null, "?" + query.toString());
     }
     /** change the the text of a html element */
     changeHtmlText(htmlElement, value) {
