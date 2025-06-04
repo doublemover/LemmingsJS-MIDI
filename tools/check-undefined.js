@@ -5,8 +5,6 @@ import { parse } from 'acorn';
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
 
-const require = createRequire(import.meta.url);
-
 const definedFunctions = new Set();
 const definedMethods = new Set();
 const calls = [];
