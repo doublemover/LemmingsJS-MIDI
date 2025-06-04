@@ -3,13 +3,12 @@
   "version": "1.0.0",
   "description": "Lemmings (JavaScript)",
   "main": "index.js",
-  "type": "module",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "start": "http-server --cors=*",
-    "test": "node --test"
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -19,7 +18,9 @@
     "url": "https://github.com/oklemenz/LemmingsJS/issues"
   },
   "homepage": "https://github.com/oklemenz/LemmingsJS#readme",
+  "type": "module",
   "devDependencies": {
-    "http-server": "^14.0.1"
+    "http-server": "^14.0.1",
+    "mocha": "^11.5.0"
   }
 }

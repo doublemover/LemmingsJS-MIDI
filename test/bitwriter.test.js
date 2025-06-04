@@ -1,5 +1,4 @@
-import test from 'node:test';
-import assert from 'node:assert/strict';
+import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { BitWriter } from '../js/BitWriter.js';
 import { BinaryReader } from '../js/BinaryReader.js';
@@ -17,19 +16,21 @@ class StubReader {
   }
 }
 
-test('BitWriter raw and referenced data', () => {
-  const stub = new StubReader([0x01, 0x02, 0x03, 0x04, 1]);
-  const writer = new BitWriter(stub, 6);
+describe('BitWriter', function () {
+  it('writes raw and referenced data', function () {
+    const stub = new StubReader([0x01, 0x02, 0x03, 0x04, 1]);
+    const writer = new BitWriter(stub, 6);
 
-  writer.copyRawData(4);
-  assert.deepEqual(Array.from(writer.outData.slice(2)), [0x04, 0x03, 0x02, 0x01]);
+    writer.copyRawData(4);
+    assert.deepStrictEqual(Array.from(writer.outData.slice(2)), [0x04, 0x03, 0x02, 0x01]);
 
-  writer.copyReferencedData(2, 2);
-  assert.deepEqual(Array.from(writer.outData), [0x04, 0x03, 0x04, 0x03, 0x02, 0x01]);
+    writer.copyReferencedData(2, 2);
+    assert.deepStrictEqual(Array.from(writer.outData), [0x04, 0x03, 0x04, 0x03, 0x02, 0x01]);
 
-  const fr = writer.getFileReader();
-  assert.ok(fr instanceof BinaryReader);
-  assert.deepEqual(Array.from(fr.data), Array.from(writer.outData));
+    const fr = writer.getFileReader();
+    assert.ok(fr instanceof BinaryReader);
+    assert.deepStrictEqual(Array.from(fr.data), Array.from(writer.outData));
 
-  assert.ok(writer.eof());
+    assert.ok(writer.eof());
+  });
 });
