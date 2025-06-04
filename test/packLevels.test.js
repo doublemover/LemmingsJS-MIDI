@@ -3,7 +3,6 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
-
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
