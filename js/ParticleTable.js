@@ -1,103 +1,42 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-/**
- * Particle effect coordinate table and color assignment for Lemmings explosions.
- * Decodes and draws animation frames for particle effects.
- * @class
- */
 class ParticleTable {
-  /** @type {any} Palette object */
-  #palette;
-  /** @type {number[]} 16-entry color index table */
-  #colorIndexTable;
-  /** @type {Int8Array[]} Decoded coordinates for all frames */
-  #particleData;
-
-  /**
-   * @param {any} palette - Color palette (with getR/G/B methods).
-   */
-  constructor(palette) {
-    this.#palette = palette;
-    this.#colorIndexTable = [4, 15, 14, 13, 12, 11, 10, 9, 8, 11, 10, 9, 8, 7, 6, 2];
-
-    // Only decode the Base64 data once for all instances
-    if (!ParticleTable._sharedParticleData) {
-      ParticleTable._sharedParticleData = ParticleTable.#decodeBase64Frames(ParticleTable.particleDataBase64);
+    constructor(palette) {
+        this.palette = palette;
+        this.colorIndexTable = [4, 15, 14, 13, 12, 11, 10, 9, 8, 11, 10, 9, 8, 7, 6, 2];
+        /// read particle coordinates form Base64 string
+        this.particleData = new Array(51);
+        let data = window.atob(ParticleTable.particleDataBase64);
+        let pos = 0;
+        for (let f = 0; f < 51; f++) {
+            this.particleData[f] = new Int8Array(160);
+            let tmpData = this.particleData[f];
+            for (let p = 0; p < 80; p++) {
+                /// x position
+                tmpData[p * 2] = data.charCodeAt(pos);
+                pos++;
+                /// y position
+                tmpData[p * 2 + 1] = data.charCodeAt(pos);
+                pos++;
+            }
+        }
     }
-    this.#particleData = ParticleTable._sharedParticleData;
-  }
-
-  /** @returns {any} The palette object */
-  get palette() { return this.#palette; }
-
-  /** @returns {number[]} The color index table (read-only) */
-  get colorIndexTable() { return this.#colorIndexTable.slice(); }
-
-  /** @returns {Int8Array[]} Decoded particle coordinate frames (read-only) */
-  get particleData() { return this.#particleData; }
-
-  /**
-   * Draw the specified frame of the particle animation at (x, y) using the palette.
-   * @param {any} gameDisplay - Display with setPixel(x, y, r, g, b)
-   * @param {number} frameIndex - Which frame of the animation (0..50)
-   * @param {number} x - Center x
-   * @param {number} y - Center y
-   */
-  draw(gameDisplay, frameIndex, x, y) {
-    const frameData = this.#particleData[frameIndex];
-    if (!frameData || !gameDisplay) return;
-    const table = this.#colorIndexTable;
-    const palette = this.#palette;
-    let a = 255;
-    for (let i = 0; i < frameData.length; i += 2) {
-      const dx = frameData[i];
-      const dy = frameData[i + 1];
-      if (dx === -128 || dy === -128) continue;
-      const colorIndex = table[i % 16];
-      gameDisplay.setPixel(
-        x + dx,
-        y + dy,
-        palette.getR(colorIndex),
-        palette.getG(colorIndex),
-        palette.getB(colorIndex),
-        a
-      );
+    draw(gameDisplay, frameIndex, x, y) {
+        var frameData = this.particleData[frameIndex];
+        if ((!frameData) || (gameDisplay == null)) {
+            return;
+        }
+        for (let i = 0; i < frameData.length; i += 2) {
+            let dx = frameData[i];
+            let dy = frameData[i + 1];
+            if ((dx == -128) || (dy == -128)) {
+                continue;
+            }
+            let colorIndex = this.colorIndexTable[i % 16];
+            gameDisplay.setPixel(x + dx, y + dy, this.palette.getR(colorIndex), this.palette.getG(colorIndex), this.palette.getB(colorIndex));
+        }
     }
-  }
-
-  /**
-   * Decode the base64 animation coordinate data into an array of Int8Arrays.
-   * @private
-   * @param {string} b64 - Base64-encoded coordinate frames (each frame: 80×2 bytes, 51 frames)
-   * @returns {Int8Array[]} Array of 51 Int8Arrays, each of length 160
-   */
-  static #decodeBase64Frames(b64) {
-    // Browsers: window.atob, Node: Buffer.from
-    const bin = typeof window !== "undefined" && window.atob
-      ? window.atob(b64)
-      : Buffer.from(b64, "base64").toString("binary");
-    const frames = [];
-    let pos = 0;
-    for (let f = 0; f < 51; f++) {
-      const arr = new Int8Array(160);
-      for (let p = 0; p < 80; p++) {
-        arr[p * 2]     = bin.charCodeAt(pos++);
-        arr[p * 2 + 1] = bin.charCodeAt(pos++);
-      }
-      frames.push(arr);
-    }
-    return frames;
-  }
 }
-
-/**
- * Shared, lazily decoded particle animation frames for all instances.
- * @type {Int8Array[]|undefined}
- * @private
- */
-ParticleTable._sharedParticleData = undefined;
-
-// Static base64 string: coordinates for 51 frames (each 160 bytes)
 ParticleTable.particleDataBase64 = "zJzp0Qfn/usD8vj1/PgD+fr6A/j+8/j3//b6/fv1Afz++vr2Av4F+AL5+fn7/wL4Afv++/r6AgH/AAD4BAD+/P4AA/gF/wD6/fr9+QMA/PsF+wQAAAL+AQH7/AL/Av7/BP39+fz+Af78+vz8+/sB/gP/AAABAAMAA/4A/f4C//0D///+/QL/A/78A/sA/v39/wH7/QL9AgH/Af7+Afv/AYCA0aMPy/zUBOL16PntCe728gnu+ev28Pzw+Pb48AT3//T48gH5B/MC9ff2+PwC9AP4Afj3+AH+//0B9QX+/vr+/QX2Bf0C9/v3/fYC/v35BvkF/wEA//" +
     "8C+v0B/gH+/QX7/fj8/QH8+/j7+vv6Af0D/QD+Af8D/gP9Afv+Af77Af7//f0BAAL++wP6Af3+/P8A+vwB/AIA/wD9/QL6AACAgICAF7D6vQXS8tz24Q/k8+oO5PTj8+n46vbv9uoH8gDv9+4B9AnvAfH28vb5A/AF9QP29fUA/P/7A/MG/P/3/fsG8wX7BPX69f30Avz99wb3B/0D/gD9BPj9//0A//sH+v32/PsC+/v3+vn6+QD8BPwA/QH+A/0D/AL6/v/++wD9APz8AAAB/foD+QH8//v///r7AfsC//8A/f0C+QAAgICAgB6V+aYFwu/Q9NYV" +
     "2e/iE9vw2/Di9eXz6fTlCu0B6vbqAPAL6gHu9O/z9gPtB/IF8/Pz/voA+QTwBvoA9f35B/EF+Qb0+PP98gH6/vYH9Qj7BPwB/AX3/v77///6CPn99fz6Avr69vn4+vgA+wX7AfwB/QP9BPsD+v7+/vr//QD7+/8BAP36A/gC+//6//75+wD7A/4A//z8A/kA/4CAgICAgPeQBrPsxPHLG8/s2hjS69Tt3PLf8eLx4A7pAuX05v/rDeYB6/Ps8fMD6gnwCPHx8f34APcF7gf4AfP9+AnvBfgH8vfx/fAB+f/0CPQK+gb7AvsH9v79+v4A+Qr4/fT7+Q" +
@@ -131,7 +70,5 @@ ParticleTable.particleDataBase64 = "zJzp0Qfn/usD8vj1/PgD+fr6A/j+8/j3//b6/fv1Afz+
     "ZUFVDGZUYbRY+1rtbxx0I21FeT9yMHeAgICAgIAQfoCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIeTjsyAgDbNvADd7mjx9hixLYM+EBxdPWtQk1nDYgxoOkklZStf7GxCXAxtVmizX/th7HYdeyN0gIBAeTJ+gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI" +
     "CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICFlovQgIA40bsF3PNq9fYdrzOBRBAhX0NtV5FgwmkMbztQJmwrZutzRGMMdFhwsWb7aOx9gIAke4CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgpiJ1ICAOdW6C9v3bPr2I605gIAQJ2FJb16PZ8FwDHY9VyZzLG3rekVqDHtad69t+2+AgICA" +
     "gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAh9iAgDrauBDa/G7/9SmsP4CAES1jUHJljW6/dwx9Pl0ney11gIBGcYCAXH6udft2gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA";
-Lemmings.ParticleTable?.particleDataBase64 || ""; // use the existing one if set, otherwise set below
-
 Lemmings.ParticleTable = ParticleTable;
 export { ParticleTable };

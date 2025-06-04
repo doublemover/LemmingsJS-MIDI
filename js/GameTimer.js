@@ -1,185 +1,107 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class GameTimer {
-    constructor(level) {
-        this.TIME_PER_FRAME_MS = 60;
-        this._speedFactor = 1;
-        this._frameTime = this.TIME_PER_FRAME_MS;
-        this._rafId = 0;
-        this._lastTime = 0;
-        this._lastGameSecond = 0;
-        this.tickIndex = 0;
-        this._loopBound = this._loop.bind(this);
-        this.onGameTick = new Lemmings.EventHandler();
-        this.eachGameSecond = new Lemmings.EventHandler();
-        this.onBeforeGameTick = new Lemmings.EventHandler();
-        this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
-        this._autoPaused = false;
-        this._normTickCount = 0;
-        this._visHandler = () => {
-            const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
-            if (hidden) {
-                if (this.isRunning()) {
-                    this._autoPaused = true;
-                    this.suspend();
-                }
-            } else if (this._autoPaused) {
-                this._autoPaused = false;
-                this.continue();
+        constructor(level) {
+            this.TIME_PER_FRAME_MS = 60;
+            this._speedFactor = 1;
+            this.gameTimerHandler = 0;
+            /** the current game time in number of steps the game has made  */
+            this.tickIndex = 0;
+            /** event raising on every tick (one step in time) the game made */
+            this.onGameTick = new Lemmings.EventHandler();
+            /** event raising on before every tick (one step in time) the game made */
+            this.onBeforeGameTick = new Lemmings.EventHandler();
+            this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
+        }
+        /** return if the game timer is running or not */
+        isRunning() {
+            return (this.gameTimerHandler != 0);
+        }
+        /** define a factor to speed up >1 or slow down <1 the game */
+        get speedFactor() {
+            return this._speedFactor;
+        }
+        /** set a factor to speed up >1 or slow down <1 the game */
+        set speedFactor(newSpeedFactor) {
+            this._speedFactor = newSpeedFactor;
+            if (!this.isRunning()) {
+                return;
             }
-        };
-        document.addEventListener('visibilitychange', this._visHandler, false);
-        window.addEventListener('blur',  this._visHandler, false);
-        window.addEventListener('focus', this._visHandler, false);
-        this._updateFrameTime();
-    }
-
-    isRunning() { return this._rafId !== 0; }
-
-    get speedFactor() { return this._speedFactor; }
-    set speedFactor(value) {
-        if (value <= 0) return;
-        if (this._speedFactor === value) return;
-        this._speedFactor = value;
-        this._updateFrameTime();
-        if (this.isRunning()) {
             this.suspend();
             this.continue();
         }
-    }
-
-    _updateFrameTime() {
-        this._frameTime = this.TIME_PER_FRAME_MS / this._speedFactor;
-    }
-
-    toggle() {
-        if (this.isRunning()) this.suspend();
-        else this.continue();
-    }
-
-    continue() {
-        if (this.isRunning()) return;
-        this._lastTime = performance.now();
-        this._rafId = window.requestAnimationFrame(this._loopBound);
-    }
-
-    suspend() {
-        if (this._rafId) {
-            window.cancelAnimationFrame(this._rafId);
-            this._rafId = 0;
-        }
-    }
-
-    _loop(now) {
-        if (!this.isRunning()) return;
-        // window.cancelAnimationFrame(this._rafId);
-        const gameSeconds = (this._lastTime / this.TIME_PER_FRAME_MS) | 0;
-        if (gameSeconds > this._lastGameSecond) {
-            if (this.eachGameSecond) {
-                this._lastGameSecond = gameSeconds;
-                this.eachGameSecond.trigger();
+        /** Pause the game */
+        suspend() {
+            if (this.gameTimerHandler != 0) {
+                clearInterval(this.gameTimerHandler);
             }
+            this.gameTimerHandler = 0;
         }
-        let delta = now - this._lastTime;
-        if (delta >= this._frameTime) {
-            const steps = Math.floor(delta / this._frameTime);
-            if (lemmings.bench == true) {
-                this._benchSpeedAdjust(steps);
-            }
-            delta -= steps * this._frameTime;
-            this._lastTime = now - delta;
-            for (let i = 0; i < steps; ++i) {
-                if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-                ++this.tickIndex;
-                if (this.onGameTick) this.onGameTick.trigger();
-            }
-        }
-        this._rafId = window.requestAnimationFrame(this._loopBound);
-    }
-
-    _benchSpeedAdjust(steps) {
-        lemmings.steps = steps;
-        if (steps > 100) {
+        /** End the game */
+        stop() {
             this.suspend();
-            this._normTickCount = 0;
-            this._speedFactor = 1;
-
-            if (this._speedFactor >= 1) {
-                this._speedFactor = 0.1;
-            }
-        } 
-        else if (steps > 16) {
-            this.suspend();
-            this._normTickCount = 0;
-            const sf = this._speedFactor;
-            if (sf > 60) {
-                this._speedFactor = 60
-            }
-            else if (sf > 40) {
-                this._speedFactor -= 10;
-            }
-            else if (sf > 10) {
-                this._speedFactor -= 9;
-            } 
-            else if (sf <= 10 && sf > 1) {
-                this._speedFactor -= 1;
-            }
-            else if (sf <= 1 && sf > 0.2) {
-                this._speedFactor = ((this._speedFactor*10)-1)/10;;
-            }
-        }
-        if (steps > 4) {
-            this._normTickCount -= 32;
-        }
-
-        if (steps <= 2) {
-            this._normTickCount++;
-        }
-
-        if (this._normTickCount > 32 && this._speedFactor < 60) {
-            this._normTickCount = 0;
-            this._speedFactor += 1;
-        }
-        if (this._normTickCount > 2 && this._speedFactor < 1) {
-            this._normTickCount = 0;
-            this._speedFactor = ((this._speedFactor*10)+1)/10;
-        }
-        this._updateFrameTime();
-    }
-
-    stop() {
-        this.suspend();
-        document.removeEventListener('visibilitychange', this._visHandler, false);
-        window.removeEventListener('blur', this._visHandler, false);
-        window.removeEventListener('focus', this._visHandler, false);
-
-        // Dispose all event handlers to prevent leaks across level reloads
-        if (this.onBeforeGameTick && this.onBeforeGameTick.dispose)
             this.onBeforeGameTick.dispose();
-        if (this.onGameTick && this.onGameTick.dispose)
             this.onGameTick.dispose();
-        if (this.eachGameSecond && this.eachGameSecond.dispose)
-            this.eachGameSecond.dispose();
+        }
+        /** toggle between suspend and continue */
+        toggle() {
+            if (this.isRunning()) {
+                this.suspend();
+            } else {
+                this.continue();
+            }
+        }
+        /** Run the game timer */
+        continue () {
+            if (this.isRunning()) {
+                return;
+            }
+            this.gameTimerHandler = setInterval(() => {
+                this.tick();
+            }, (this.TIME_PER_FRAME_MS / this._speedFactor));
+        }
+        /** run the game one step in time */
+        tick() {
+            if (this.onBeforeGameTick != null)
+                this.onBeforeGameTick.trigger(this.tickIndex);
+            this.tickIndex++;
+            if (this.onGameTick != null)
+                this.onGameTick.trigger();
+        }
+        /** return the past game time in seconds */
+        getGameTime() {
+            return Math.floor(this.ticksToSeconds(this.tickIndex));
+        }
+        /** return the past game time in ticks */
+        getGameTicks() {
+            return this.tickIndex;
+        }
+        /** return the left game time in seconds */
+        getGameLeftTime() {
+            let leftTicks = this.ticksTimeLimit - this.tickIndex;
+            if (leftTicks < 0)
+                leftTicks = 0;
+            return Math.floor(this.ticksToSeconds(leftTicks));
+        }
+        /** return the left game time in seconds */
+        getGameLeftTimeString() {
+            let leftSeconds = this.getGameLeftTime();
+            let secondsStr = "0" + Math.floor(leftSeconds % 60);
+            return Math.floor(leftSeconds / 60) + "-" + secondsStr.substr(secondsStr.length - 2, 2);
+        }
+        /** convert a game-ticks-time to in game-seconds. Returns Float */
+        ticksToSeconds(ticks) {
+            return ticks * (this.TIME_PER_FRAME_MS / 1000);
+        }
+        /** calc the number ticks form game-time in seconds  */
+        secondsToTicks(seconds) {
+            return seconds * (1000 / this.TIME_PER_FRAME_MS);
+        }
+        /** return the maximum time in seconds to win the game  */
+        getGameTimeLimit() {
+            return this.ticksTimeLimit;
+        }
     }
+    Lemmings.GameTimer = GameTimer;
 
-    getGameTime() { return this.ticksToSeconds(this.tickIndex); }
-    getGameTicks() { return this.tickIndex; }
-    getGameLeftTime() {
-        let left = this.ticksTimeLimit - this.tickIndex;
-        if (left < 0) left = 0;
-        return Math.floor(this.ticksToSeconds(left));
-    }
-    getGameLeftTimeString() {
-        const secs = this.getGameLeftTime();
-        return Math.floor(secs / 60) + '-' + ('0' + (secs % 60)).slice(-2);
-    }
-    ticksToSeconds(t) {
-            if (lemmings.endless == true) {
-            return 42069 * (this.TIME_PER_FRAME_MS / 1000);
-        }  
-        return t * (this.TIME_PER_FRAME_MS / 1000); 
-    }
-    secondsToTicks(s) { return s * (1000 / this.TIME_PER_FRAME_MS); }
-}
-Lemmings.GameTimer = GameTimer;
 export { GameTimer };

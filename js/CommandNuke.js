@@ -1,22 +1,26 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class CommandNuke {
-    constructor() {}
-
-    execute(game) {
-        const lemmingManager = game.getLemmingManager();
-        const gameVictoryCondition = game.getVictoryCondition();
-        if (!lemmingManager || !gameVictoryCondition) return false;
-        if (lemmingManager.isNuking()) return false;
-        lemmingManager.doNukeAllLemmings();
-        gameVictoryCondition.doNuke();
-        return true;
+        constructor() {
+            this.log = new Lemmings.LogHandler("CommandNuke");
+        }
+        getCommandKey() {
+            return "n";
+        }
+        load(values) {}
+        save() {
+            return [];
+        }
+        /** execute this command */
+        execute(game) {
+            let lemManager = game.getLemmingManager();
+            if (lemManager.isNuking())
+                return false;
+            lemManager.doNukeAllLemmings();
+            game.getVictoryCondition().doNuke();
+            return true;
+        }
     }
+    Lemmings.CommandNuke = CommandNuke;
 
-    load() {}
-    save() { return []; }
-    getCommandKey() { return "n"; }
-}
-
-Lemmings.CommandNuke = CommandNuke;
 export { CommandNuke };

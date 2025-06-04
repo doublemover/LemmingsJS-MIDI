@@ -101,16 +101,3 @@ canvas {
 .game_container.small > .arrow_r {
     zoom: 0.6
 }
-
-/* style level selection dropdowns */
-#levelSelects select {
-    background-color: #002200;
-    color: #0f0;
-    border: 1px solid #0f0;
-    margin-right: 4px;
-    font-size: 15px;
-}
-
-.game_container.small #levelSelects select {
-    font-size: 11px;
-}

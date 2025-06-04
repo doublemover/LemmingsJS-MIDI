@@ -1,49 +1,50 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionExplodingSystem extends ActionBaseSystem {
-
-    constructor(sprites, masks, triggerManager, particleTable) {
-        super({
-            sprites,
-            spriteType: Lemmings.SpriteTypes.EXPLODING,
-            singleSprite: true,
-            masks,
-            maskTypes: Lemmings.MaskTypes.EXPLODING,
-            actionName: 'exploding'
-        });
-        this.triggerManager = triggerManager;
-        this.particleTable = particleTable;
-    }
-
-
-    triggerLemAction(lem) {
-        return false;
-    }
-
-    draw(gameDisplay, lem) {
-        if (lem.frameIndex == 0) {
-            const ani = this.sprites.get("both");
-            const frame = ani.getFrame(lem.frameIndex);
-            gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
-        } else {
-            this.particleTable.draw(gameDisplay, lem.frameIndex - 1, lem.x, lem.y);
+class ActionExplodingSystem {
+        constructor(sprites, masks, triggerManager, particleTable) {
+            this.triggerManager = triggerManager;
+            this.particleTable = particleTable;
+            this.mask = masks.GetMask(Lemmings.MaskTypes.EXPLODING);
+            this.sprite = sprites.getAnimation(Lemmings.SpriteTypes.EXPLODING, false);
+        }
+        getActionName() {
+            return "exploding";
+        }
+        triggerLemAction(lem) {
+            return false;
+        }
+        /** render Lemming to gamedisplay */
+        draw(gameDisplay, lem) {
+            if (lem.frameIndex == 0) {
+                let frame = this.sprite.getFrame(lem.frameIndex);
+                gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
+            } else {
+                this.particleTable.draw(gameDisplay, lem.frameIndex - 1, lem.x, lem.y);
+            }
+        }
+        process(level, lem) {
+            lem.disable();
+            lem.frameIndex++;
+            if (lem.frameIndex == 1) {
+                this.triggerManager.removeByOwner(lem);
+                // stub for if you want other lemmings to die from bomber explosions
+                // let nearbyLemmings = lemmings.game.lemmingManager.getLemmingsInMask(this.mask.GetMask(0), lem.x, lem.y);
+                // for (let i = 0; i < nearbyLemmings.length; i++) {
+                    // let lemming = nearbyLemmings[i];
+                    // give them bomber actions with a shortened countdown
+                    // lemmings.game.lemmingManager.doLemmingAction(lemming, Lemmings.SkillTypes.BOMBER);
+                    // lemming.countdown = 1;
+                    // or just splat them without causing additional explosions
+                    // lemmings.game.lemmingManager.setLemmingState(lemming, Lemmings.LemmingStateType.OHNO);
+                // }
+                level.clearGroundWithMask(this.mask.GetMask(0), lem.x, lem.y);
+            }
+            if (lem.frameIndex == 52) {
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+            }
+            return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
     }
+    Lemmings.ActionExplodingSystem = ActionExplodingSystem;
 
-    process(level, lem) {
-        lem.disable();
-        lem.frameIndex++;
-        if (lem.frameIndex == 1) {
-            this.triggerManager.removeByOwner(lem);
-            level.clearGroundWithMask(this.masks.get("both").GetMask(0), lem.x, lem.y);
-        }
-        if (lem.frameIndex == 52) {
-            return Lemmings.LemmingStateType.OUT_OF_LEVEL;
-        }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
-    }
-}
-
-Lemmings.ActionExplodingSystem = ActionExplodingSystem;
 export { ActionExplodingSystem };
