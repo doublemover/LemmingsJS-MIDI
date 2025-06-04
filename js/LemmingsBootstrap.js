@@ -94,3 +94,4 @@ import './UnpackFilePart.js';
 import './UserInputManager.js';
 import './VGASpecReader.js';
 import './ViewPoint.js';
+import './Mechanics.js';

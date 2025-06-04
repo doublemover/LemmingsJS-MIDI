@@ -18,6 +18,9 @@ class LemmingManager {
         this.miniMap = null;
         this.mmTickCounter = 0;
         this.nextNukingLemmingsIndex = -1;
+        this._startTime = performance.now();
+        this._spawnSeq = [];
+        this._spawnIdx = 0;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
         this.actions[Lemmings.LemmingStateType.FALLING]    = new Lemmings.ActionFallSystem(lemmingsSprite);
@@ -48,6 +51,14 @@ class LemmingManager {
         this.skillActions[Lemmings.SkillTypes.BOMBER]  = new Lemmings.ActionCountdownSystem(masks);
 
         this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
+        const eLen = level.entrances.length;
+        if (level.mechanics.OldEntranceABBAOrder && eLen === 2) {
+            this._spawnSeq = [0,1,1,0];
+        } else if (level.mechanics.OldEntranceABBAOrder && eLen === 3) {
+            this._spawnSeq = [0,1,2,1];
+        } else {
+            this._spawnSeq = Array.from({length: eLen}, (_,i)=>i);
+        }
         // performance.measure("LemmingManager constructor", { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "primary", tooltipText: `LemmingManager constructor` } } });
     }
 
@@ -133,20 +144,31 @@ class LemmingManager {
         } else {
             if (this.gameVictoryCondition.getLeftCount() <= 0) return;
         }
-        if (++this.releaseTickIndex >= (104 - this.gameVictoryCondition.getCurrentReleaseRate())) {
+        if (this.level.mechanics?.PauseGlitch) {
+            const rt = Math.floor((performance.now() - this._startTime) / this.gameTimer.TIME_PER_FRAME_MS);
+            this.releaseTickIndex = rt;
+        } else {
+            this.releaseTickIndex++;
+        }
+        if (this.releaseTickIndex >= (104 - this.gameVictoryCondition.getCurrentReleaseRate())) {
             this.releaseTickIndex = 0;
             const entrances = this.level.entrances;
-            for (let i = 0, l = entrances.length; i < l; i++) {
-                const entrance = entrances[i];
-                this.addLemming(entrance.x + 24, entrance.y + 14);
-                this.gameVictoryCondition.releaseOne();
-            }
+            if (!entrances.length) return;
+            const idx = this._spawnSeq[this._spawnIdx % this._spawnSeq.length];
+            this._spawnIdx++;
+            const entrance = entrances[idx];
+            const offset = this.level.mechanics.EntranceX25 ? 25 : 24;
+            this.addLemming(entrance.x + offset, entrance.y + 14);
+            this.gameVictoryCondition.releaseOne();
         }
     }
 
     runTrigger(lem) {
         if (lem.isRemoved() || lem.isDisabled()) {
             // this.lemmings.splice(this.lemmings.indexOf(lem), 1);
+            return Lemmings.LemmingStateType.NO_STATE_TYPE;
+        }
+        if (!this.level.mechanics?.SplattingExitsBug && lem.action === this.actions[Lemmings.LemmingStateType.SPLATTING]) {
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
         const triggerType = this.triggerManager.trigger(lem.x, lem.y);
@@ -250,6 +272,9 @@ class LemmingManager {
         }
         // performance.measure(`${actionSystem.getActionName()}`, { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "secondary-light", tooltipText: `setAction ${lem.id} ${actionSystem.getActionName()}` } } });
         lem.setAction(actionSystem);
+        if (stateType === Lemmings.LemmingStateType.FALLING && this.level.mechanics?.FallerStartsWith3) {
+            lem.state = 3;
+        }
     }
 
     doLemmingAction(lem, skillType) {
@@ -283,6 +308,11 @@ class LemmingManager {
             redundant[skillType] && (lem.action instanceof redundant[skillType]);
         if (alreadyDoingIt) {
             return false;
+        }
+        if (skillType === Lemmings.SkillTypes.CLIMBER &&
+            this.level.mechanics?.AssignClimberShruggerActionBug &&
+            lem.action instanceof Lemmings.ActionShrugSystem) {
+            this.setLemmingState(lem, Lemmings.LemmingStateType.WALKING);
         }
         const wasBlocking = (lem.action instanceof Lemmings.ActionBlockerSystem);
         const ok = actionSystem.triggerLemAction(lem);

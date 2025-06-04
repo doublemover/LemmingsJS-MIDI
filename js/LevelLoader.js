@@ -36,7 +36,8 @@ class LevelLoader {
 
     level                      = new Lemmings.Level(
                                      levelReader.levelWidth,
-                                     levelReader.levelHeight);
+                                     levelReader.levelHeight,
+                                     this.config.mechanics);
     level.gameType             = this.config.gametype;
     level.levelIndex           = levelIndex;
     level.levelMode            = levelMode;

@@ -3,6 +3,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 class GameVictoryCondition {
         constructor(level) {
             this.isFinalize = false;
+            this.mechanics = level.mechanics || {};
             this.needCount = level.needCount;
             this.releaseCount = level.releaseCount;
             this.leftCount = level.releaseCount;
@@ -54,7 +55,11 @@ class GameVictoryCondition {
         }
         /** number of rescued lemmings in percentage */
         getSurvivorPercentage() {
-            return Math.floor(this.survivorCount / this.releaseCount * 100) | 0;
+            const total = (this.mechanics?.NukeGlitch)
+                ? (this.releaseCount - this.leftCount)
+                : this.releaseCount;
+            if (total <= 0) return 0;
+            return Math.floor(this.survivorCount / total * 100) | 0;
         }
         /** number of alive lemmings out in the level */
         getOutCount() {

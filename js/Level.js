@@ -1,7 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class Level {
-  constructor(width, height) {
+  constructor(width, height, mechanics = {}) {
     this.width = width | 0;
     this.height = height | 0;
     this.groundMask = new Lemmings.SolidLayer(this.width, this.height);
@@ -23,6 +23,7 @@ class Level {
     this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
     this.screenPositionX = 0;
     this.isSuperLemming = false;
+    this.mechanics = mechanics;
   }
 
   setMapObjects(objects, objectImg) {
@@ -31,7 +32,9 @@ class Level {
     this.entrances.length = 0;
     this.triggers.length = 0;
     let arrowRects = [];
+    let idx = 0;
     for (const ob of objects) {
+      if (this.mechanics.DisableObjectsAfter15 && idx >= 16) break;
       const info = objectImg[ob.id];
       if (info == null) continue;
       let tfxID = info.trigger_effect_id;
@@ -42,7 +45,11 @@ class Level {
 
       const mapOb = new Lemmings.MapObject(ob, info, new Lemmings.Animation(), tfxID);
       this.objects.push(mapOb);
-      if (ob.id === 1) this.entrances.push(ob);
+      if (ob.id === 1) {
+        if (!this.mechanics.Max4EnabledEntrances || this.entrances.length < 4) {
+          this.entrances.push(ob);
+        }
+      }
 
       if (tfxID !== 0) {
         const x1 = ob.x + info.trigger_left;
@@ -71,6 +78,7 @@ class Level {
 
         this.triggers.push(trigger);
       }
+      idx++;
     }
     if (arrowRects.length > 0) {
       this.setArrowAreas(arrowRects);
@@ -141,8 +149,9 @@ class Level {
   isArrowAt(x, y, direction) {
     const a = this.arrowRanges;
     for (let i = 0, len = a.length; i < len; i += 5) {
-      if (x >= a[i] && x < a[i] + a[i+2] && y >= a[i+1] && y < a[i+1] + a[i+3] && direction != a[i+4]) {
-        return true;
+      if (x >= a[i] && x < a[i] + a[i+2] && y >= a[i+1] && y < a[i+1] + a[i+3]) {
+        if (direction != a[i+4]) return true;
+        if (this.mechanics.MinerOneWayRightBug && a[i+4] === 1) return true;
       }
     }
     return false;

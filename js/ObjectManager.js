@@ -1,9 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class ObjectManager {
-        constructor(gameTimer) {
+        constructor(gameTimer, mechanics = {}) {
             this.gameTimer = gameTimer;
             this.objects = [];
+            this.mechanics = mechanics;
         }
         /** render all Objects to the GameDisplay */
         render(gameDisplay) {
@@ -11,7 +12,8 @@ class ObjectManager {
             let tick = this.gameTimer.getGameTicks();
             for (let i = 0; i < objs.length; i++) {
                 let obj = objs[i];
-                gameDisplay.drawFrameFlags(obj.animation.getFrame(tick+1), obj.x, obj.y, obj.drawProperties);
+                const t = tick + (this.mechanics.TriggeredTrapLemmixBugSolved ? 0 : 1);
+                gameDisplay.drawFrameFlags(obj.animation.getFrame(t), obj.x, obj.y, obj.drawProperties);
             }
         }
         /** add map objects to manager */
