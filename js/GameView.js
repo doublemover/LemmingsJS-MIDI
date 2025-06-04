@@ -295,9 +295,9 @@ async moveToLevel(moveInterval = 0) {
             return;
         }
         this.clearHtmlList(htmlList);
-        for (var i = 0; i < list.length; i++) {
-            var opt = list[i];
-            var el = document.createElement("option");
+        for (let i = 0; i < list.length; i++) {
+            const opt = list[i];
+            const el = document.createElement("option");
             el.textContent = opt;
             el.value = i.toString();
             htmlList.appendChild(el);
@@ -377,7 +377,7 @@ async moveToLevel(moveInterval = 0) {
         if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
         if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
         if (this.stage) {
-            let gameDisplay = this.stage.getGameDisplay();
+            const gameDisplay = this.stage.getGameDisplay();
             gameDisplay.clear();
             this.stage.resetFade();
             level.render(gameDisplay);

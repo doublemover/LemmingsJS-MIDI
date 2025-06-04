@@ -1,21 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionDrowningSystem {
-    static sprites = new Map();
+class ActionDrowningSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionDrowningSystem.sprites.size == 0) {
-            ActionDrowningSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.DROWNING, false));
-        }
-    }
-    getActionName() {
-        return "drowning";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.DROWNING, singleSprite: true, actionName: 'drowning' });
     }
     triggerLemAction(lem) {
         return false;
     }
     draw(gameDisplay, lem) {
-        const frame = ActionDrowningSystem.sprites.get("both").getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
         if (lem.frameIndex >= 15) {
             lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
         }

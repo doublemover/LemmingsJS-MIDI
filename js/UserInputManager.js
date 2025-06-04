@@ -70,7 +70,7 @@ class UserInputManager {
             e.preventDefault();
             return false;
         });
-        this._addListener('mousedown', (e) => {
+        this._addListener("mousedown", (e) => {
             e.stopPropagation();
             e.preventDefault();
             let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
@@ -82,7 +82,7 @@ class UserInputManager {
 
             return false;
         });
-        this._addListener('mouseup', (e) => {
+        this._addListener("mouseup", (e) => {
             e.stopPropagation();
             e.preventDefault();
             let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
@@ -93,10 +93,10 @@ class UserInputManager {
             this.handleMouseUp(relativePos);
             return false;
         });
-        this._addListener('mouseleave', () => {
+        this._addListener("mouseleave", (e) => {
             this.handleMouseClear();
         });
-        this._addListener('touchend', (e) => {
+        this._addListener("touchend", (e) => {
             if (e.changedTouches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -105,22 +105,22 @@ class UserInputManager {
             this.handleMouseUp(relativePos);
             return false;
         });
-        this._addListener('touchleave', () => {
+        this._addListener("touchleave", (e) => {
             this.handleMouseClear();
             return false;
         });
-        this._addListener('touchcancel', () => {
+        this._addListener("touchcancel", (e) => {
             this.handleMouseClear();
             return false;
         });
-        this._addListener('dblclick', (e) => {
+        this._addListener("dblclick", (e) => {
             let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseDoubleClick(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        this._addListener('wheel', (e) => {
+        this._addListener("wheel", (e) => {
             let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleWheel(relativePos, e.deltaY);
             e.stopPropagation();
@@ -150,9 +150,8 @@ class UserInputManager {
         this.onDoubleClick.dispose();
         this.onZoom.dispose();
     }
-
     getRelativePosition(element, clientX, clientY) {
-        var rect = element.getBoundingClientRect();
+        const rect = element.getBoundingClientRect();
         const x = (clientX - rect.left) / rect.width * 800;
         const y = (clientY - rect.top) / rect.height * 480;
         return new Lemmings.Position2D(x, y);
