@@ -220,7 +220,9 @@ class GameView extends Lemmings.BaseLogger {
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;
-    const query = new URLSearchParams(window.location.search);
+    const query = typeof window === 'undefined'
+      ? new URLSearchParams('')
+      : new URLSearchParams(window.location.search);
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
@@ -244,7 +246,9 @@ class GameView extends Lemmings.BaseLogger {
     }
   }
   updateQuery() {
-    const params = new URLSearchParams(window.location.search);
+    const params = typeof window === 'undefined'
+      ? new URLSearchParams('')
+      : new URLSearchParams(window.location.search);
     const setParam = (longName, shortName, value, def, always) => {
       params.delete(longName);
       params.delete(shortName);
