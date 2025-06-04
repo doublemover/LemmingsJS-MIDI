@@ -42,15 +42,17 @@ class KeyboardShortcuts {
             // tweak distance per frame; previous values felt too large
             const baseX = 25 * scale;
             const baseY = 12 * scale;
-            // slow the acceleration a touch for smoother motion
-            const accel = 0.05 / scale * dt;
+            // accelerate quicker with Shift for a playful feel
+            const accelBase = this.mod.shift ? 0.15 : 0.05;
+            const accel = accelBase / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
             const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
             this.pan.vx += (targetVX - this.pan.vx) * accel;
             this.pan.vy += (targetVY - this.pan.vy) * accel;
             // extend easing so velocity decays more gradually
-            this.pan.vx *= 0.9;
-            this.pan.vy *= 0.9;
+            const damp = this.mod.shift ? 0.94 : 0.9;
+            this.pan.vx *= damp;
+            this.pan.vy *= damp;
             const dx = this.pan.vx;
             const dy = this.pan.vy;
             if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
@@ -63,10 +65,12 @@ class KeyboardShortcuts {
 
             // ----- zooming -----
             if (this.zoom.anim) {
-                const a = this.zoom.anim;
-                const p = Math.min(1, (t - a.startTime) / a.duration);
-                const ease = 1 - Math.pow(1 - p, 2);
-                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+            const a = this.zoom.anim;
+            const p = Math.min(1, (t - a.startTime) / a.duration);
+            const ease = p < 0.5
+                ? 4 * p * p * p
+                : 1 - Math.pow(-2 * p + 2, 3) / 2;
+            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
                 stage._rawScale = raw;
                 const newScale = stage.snapScale(raw);
                 const cx = img.width / 2;
@@ -147,7 +151,7 @@ class KeyboardShortcuts {
             centerX: vp.x + cx / vp.scale,
             centerY: vp.y + cy / vp.scale,
             startTime: performance.now(),
-            duration: 250
+            duration: 400
         };
         this._startLoop();
     }

@@ -116,7 +116,8 @@ class Stage {
 
                 // Zoom around that point using the un-snapped scale
                 const oldScale = this._rawScale;
-                this._rawScale = this.limitValue(.25, oldScale * (1 + deltaZoom / 1500), 4);
+                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 3000), 4);
+                this._rawScale += (target - this._rawScale) * 0.6;
                 stageImage.viewPoint.scale = this.snapScale(this._rawScale);
 
                 // Re-center so the same world point stays under the cursor
@@ -154,6 +155,7 @@ class Stage {
                 let gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
             }
+            this.redraw();
         }
         limitValue(minLimit, value, maxLimit) {
             let useMax = Math.max(minLimit, maxLimit);
