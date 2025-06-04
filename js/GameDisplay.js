@@ -12,14 +12,23 @@ class GameDisplay {
             this.mouseX = 0;
             this.mouseY = 0;
             this.flashTicks = 0;
+            this.flashDuration = 12;
         }
         setGuiDisplay(display) {
             this.display = display;
             this.display.onMouseDown.on((e) => {
                 const lem = this.lemmingManager.getLemmingAt(e.x, e.y);
+                const selected = this.lemmingManager.getSelectedLemming();
                 if (lem) {
-                    this.lemmingManager.setSelectedLemming(lem);
-                    this.flashSelected();
+                    if (lem === selected) {
+                        const skill = this.game.getGameSkills()?.getSelectedSkill?.();
+                        if (skill != null) {
+                            this.game.applySkillToSelected(skill);
+                        }
+                    } else {
+                        this.lemmingManager.setSelectedLemming(lem);
+                        this.flashSelected();
+                    }
                 } else {
                     this.lemmingManager.setSelectedLemming(null);
                 }
@@ -32,7 +41,7 @@ class GameDisplay {
         }
 
         flashSelected() {
-            this.flashTicks = 8;
+            this.flashTicks = this.flashDuration;
         }
         render() {
             if (this.display == null)
@@ -41,22 +50,27 @@ class GameDisplay {
             this.objectManager.render(this.display);
             this.lemmingManager.render(this.display);
 
+            if (this.highlightLemming && this.highlightLemming.removed) {
+                this.highlightLemming = null;
+            }
+
             const selected = this.lemmingManager.getSelectedLemming();
             if (this.highlightLemming && this.highlightLemming !== selected) {
                 const lem = this.highlightLemming;
                 const size = 13;
                 const x = lem.x - 6;
-                const y = lem.y - 11;
+                const y = lem.y - 12;
                 this.display.drawDashedRect(x, y, size, size, 64, 64, 64);
             }
 
             if (selected) {
                 const size = 13;
                 const x = selected.x - 6;
-                const y = selected.y - 11;
-                const r = this.flashTicks > 0 ? 120 : 40;
-                const g = this.flashTicks > 0 ? 255 : 160;
-                const b = this.flashTicks > 0 ? 120 : 40;
+                const y = selected.y - 12;
+                const fade = this.flashTicks / this.flashDuration;
+                const r = Math.round(40 + 80 * fade);
+                const g = Math.round(160 + 95 * fade);
+                const b = Math.round(40 + 80 * fade);
                 this.display.drawCornerRect(x, y, size, r, g, b, 2);
             }
             if (this.flashTicks > 0) this.flashTicks--;
@@ -64,6 +78,9 @@ class GameDisplay {
         renderDebug() {
             if (this.display == null)
                 return;
+            if (this.highlightLemming && this.highlightLemming.removed) {
+                this.highlightLemming = null;
+            }
             this.level.renderDebug(this.display);
             this.lemmingManager.renderDebug(this.display);
             this.triggerManager.renderDebug(this.display);
@@ -71,13 +88,14 @@ class GameDisplay {
                 const lem = this.highlightLemming;
                 const size = 13;
                 const x = lem.x - 6;
-                const y = lem.y - 11;
+                const y = lem.y - 12;
                 const inRange = lem.getClickDistance(this.mouseX, this.mouseY) >= 0;
                 const isSelected = this.lemmingManager.getSelectedLemming() === lem;
                 if (isSelected) {
-                    const r = this.flashTicks > 0 ? 120 : 64;
-                    const g = this.flashTicks > 0 ? 255 : 160;
-                    const b = this.flashTicks > 0 ? 120 : 64;
+                    const fade = this.flashTicks / this.flashDuration;
+                    const r = Math.round(64 + 56 * fade);
+                    const g = Math.round(160 + 95 * fade);
+                    const b = Math.round(64 + 56 * fade);
                     this.display.drawDashedRect(x, y, size, size, r, g, b);
                 } else if (inRange) {
                     this.display.drawDashedRect(x, y, size, size, 64, 180, 64);
