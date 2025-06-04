@@ -119,7 +119,7 @@ class Level extends Lemmings.BaseLogger {
       this.setArrowAreas(arrowRects);
     }
     this._debugFrame = null; // invalidate cached debug overlay
-      })();
+    });
   }
 
   getGroundMaskLayer() { return this.groundMask; }
@@ -137,7 +137,7 @@ class Level extends Lemmings.BaseLogger {
     const { offsetX, offsetY, width: mw, height: mh } = mask;
     for (let dy = 0; dy < mh; ++dy) {
       for (let dx = 0; dx < mw; ++dx) {
-        if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
+        if (mask.at(dx, dy)) continue;
         const px = x + offsetX + dx;
         const py = y + offsetY + dy;
         if (this.isSteelAt(px, py)) continue;
@@ -147,6 +147,8 @@ class Level extends Lemmings.BaseLogger {
       }
     }
   }
+
+
 
   setGroundAt(x, y, paletteIndex) {
     this.groundMask.setGroundAt(x, y);

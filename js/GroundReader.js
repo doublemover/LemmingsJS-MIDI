@@ -12,12 +12,6 @@ async function loadSteelSprites() {
       const res = await fetch(url);
       steelSprites = await res.json();
     }
-      const json = await fs.readFile(url, 'utf8');
-      steelSprites = JSON.parse(json);
-    } else {
-      const res = await fetch(url);
-      steelSprites = await res.json();
-    }
   }
   return steelSprites;
 }

@@ -209,11 +209,9 @@ async moveToLevel(moveInterval = 0) {
         return def;
     }
 
-    /** convert a string value to an integer, return 0 for NaN */
     strToNum(value) {
-        const num = parseInt(value, 10);
-        return isNaN(num) ? 0 : num;
-    }
+        const val = parseInt(value, 10);
+        return isNaN(val) ? 0 : val;
 
     /** read parameters from the current URL */
     applyQuery() {
