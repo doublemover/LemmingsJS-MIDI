@@ -28,7 +28,6 @@ class ActionJumpSystem extends ActionBaseSystem {
       lem.state++;
       moved++;
     }
-
     if (lem.state >= 2 || !level.hasGroundAt(lem.x, lem.y - 1)) {
       if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
         lem.y = Lemmings.Lemming.LEM_MIN_Y;

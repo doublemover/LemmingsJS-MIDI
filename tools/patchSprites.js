@@ -1,6 +1,6 @@
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LemmingsBootstrap.js';
-import { NodeFileProvider } from './NodeFileProvider.js';
+import { BinaryReader } from '../js/BinaryReader.js';
 import { PNG } from 'pngjs';
 import fs from 'fs';
 import path from 'path';
@@ -10,7 +10,7 @@ function usage() {
   console.log('Usage: node tools/patchSprites.js [--sheet-orientation=horizontal|vertical] <target DAT> <png dir> <out DAT>');
 }
 
-(async () => {
+function main() {
   const args = process.argv.slice(2);
   let orientation = 'horizontal';
   for (let i = 0; i < args.length; i++) {
@@ -31,6 +31,7 @@ function usage() {
   // Use an empty root path so absolute input paths work correctly
   const provider = new NodeFileProvider('');
   const datReader = await provider.loadBinary(path.dirname(datFile), path.basename(datFile));
+  const buf = fs.readFileSync(datFile);
   const container = new Lemmings.FileContainer(datReader);
 
   // Map of part index -> new raw buffer
@@ -138,4 +139,6 @@ function usage() {
 
   fs.writeFileSync(outFile, out);
   console.log(`Wrote ${outFile}`);
-})();
+}
+
+main();

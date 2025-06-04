@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 let steelSprites = null;
 
 async function loadSteelSprites() {
