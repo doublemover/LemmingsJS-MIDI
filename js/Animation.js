@@ -4,21 +4,24 @@ import './ColorPalette.js';
 // Palette indices for the fire shooter trap that will be remapped when
 // creating an ice version of the animation.  They cover the full gradient
 // from the bright yellow core through orange to the darkest reds.
-const FIRE_INDICES = Object.freeze([4, 5, 6, 7, 8, 9, 10, 11, 12]);
+// Indices 2 and 3 are now included so the entire flame gets swapped.
+const FIRE_INDICES = Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 
 // Destination colours lifted from the object palette of the ONML ice
 // set.  These values replace the warm tones of the fire trap with
 // cooler shades to give the impression of an "ice" trap.
 const ICE_COLORS = Object.freeze([
-  Lemmings.ColorPalette.colorFromRGB(160, 232, 248), // bright core
-  Lemmings.ColorPalette.colorFromRGB(144, 208, 224),
-  Lemmings.ColorPalette.colorFromRGB(128, 184, 216),
-  Lemmings.ColorPalette.colorFromRGB(96, 160, 208),
-  Lemmings.ColorPalette.colorFromRGB(72, 136, 192),
-  Lemmings.ColorPalette.colorFromRGB(56, 112, 176),
-  Lemmings.ColorPalette.colorFromRGB(40, 80, 160),
-  Lemmings.ColorPalette.colorFromRGB(24, 56, 144),
-  Lemmings.ColorPalette.colorFromRGB(8, 32, 128)
+  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),  // brightest blue core
+  Lemmings.ColorPalette.colorFromRGB(56, 152, 240),
+  Lemmings.ColorPalette.colorFromRGB(48, 144, 232),
+  Lemmings.ColorPalette.colorFromRGB(40, 128, 216),
+  Lemmings.ColorPalette.colorFromRGB(32, 112, 200),
+  Lemmings.ColorPalette.colorFromRGB(24, 96, 184),
+  Lemmings.ColorPalette.colorFromRGB(16, 80, 168),
+  Lemmings.ColorPalette.colorFromRGB(8, 64, 152),
+  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
+  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
+  Lemmings.ColorPalette.colorFromRGB(0, 16, 104)
 ]);
 
 class Animation {
