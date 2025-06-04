@@ -23,6 +23,9 @@ class Level {
     this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
     this.screenPositionX = 0;
     this.isSuperLemming = false;
+
+    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
+    this._debugFrame = null;
   }
 
   setMapObjects(objects, objectImg) {
@@ -75,6 +78,7 @@ class Level {
     if (arrowRects.length > 0) {
       this.setArrowAreas(arrowRects);
     }
+    this._debugFrame = null; // invalidate cached debug overlay
     // performance.measure(`setMapObjects`, { start, detail: { devtools: { track: "Level", trackGroup: "Game State", color: "primary-light", properties: [["Objects", `${this.objects.length}`],["Entrances", `${this.entrances.length}`],["Triggers", `${this.triggers.length}`]], tooltipText: `setMapObjects` } } });
   }
 
@@ -207,6 +211,7 @@ class Level {
       buf[o+3] = r.height;
     }
     this.steelRanges = buf;
+    this._debugFrame = null; // invalidate cached debug overlay
   }
 
   isSteelAt(x, y, loading = false) {
@@ -255,18 +260,28 @@ class Level {
   }
 
   renderDebug(gameDisplay) {
+    if (!this._debugFrame) this.#buildDebugFrame();
+    gameDisplay.drawFrame(this._debugFrame, 0, 0);
+  }
+
+  #buildDebugFrame() {
+    const frame = new Lemmings.Frame(this.width, this.height);
+    const steelColor  = Lemmings.ColorPalette.colorFromRGB(0, 255, 255);
+    const arrowRColor = Lemmings.ColorPalette.colorFromRGB(128, 255, 0);
+    const arrowLColor = Lemmings.ColorPalette.colorFromRGB(255, 128, 0);
+
     const s = this.steelRanges;
     for (let i = 0, len = s.length; i < len; i += 4) {
-      gameDisplay.drawRect(s[i], s[i+1], s[i+2], s[i+3], 0, 255, 255);
+      frame.drawRect(s[i], s[i+1], s[i+2], s[i+3], steelColor);
     }
+
     const a = this.arrowRanges;
     for (let i = 0, len = a.length; i < len; i += 5) {
-      if (a[i+4]) {
-        gameDisplay.drawRect(a[i], a[i+1], a[i+2], a[i+3], 128, 255, 0);
-      } else {
-        gameDisplay.drawRect(a[i], a[i+1], a[i+2], a[i+3], 255, 128, 0);
-      }
+      const col = a[i+4] ? arrowRColor : arrowLColor;
+      frame.drawRect(a[i], a[i+1], a[i+2], a[i+3], col);
     }
+
+    this._debugFrame = frame;
   }
 }
 

@@ -42,6 +42,9 @@ class TriggerManager {
     /* handy bounds */
     this._maxX = levelW;
     this._maxY = levelH;
+
+    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
+    this._debugFrame = null;
   }
 
   /* ───────────────────────── public API ───────────────────────── */
@@ -51,11 +54,13 @@ class TriggerManager {
     if (this._triggers.has(trigger)) return;
     this._triggers.add(trigger);
     this.#insert(trigger);
+    this._debugFrame = null;
   }
 
   /** Bulk-add (used by Level on load) */
   addRange (arr) {
     for (let i = 0; i < arr.length; ++i) this.add(arr[i]);
+    if (arr.length) this._debugFrame = null;
   }
 
   /** Remove every trigger that belongs to `owner` */
@@ -64,6 +69,7 @@ class TriggerManager {
     for (const tr of this._triggers) {
       if (tr.owner === owner) this.#remove(tr);
     }
+    this._debugFrame = null;
   }
 
   /**
@@ -90,10 +96,21 @@ class TriggerManager {
 
   /** Draw rectangles in debug overlay */
   renderDebug (g) {
-    for (const tr of this._triggers) tr.draw(g);
+    if (!this._debugFrame) this.#buildDebugFrame();
+    g.drawFrame(this._debugFrame, 0, 0);
   }
 
   /* ────────────────────── internal helpers ────────────────────── */
+
+  #buildDebugFrame() {
+    const frame = new Lemmings.Frame(this._levelW, this._levelH);
+    const color = Lemmings.ColorPalette.colorFromRGB(255, 0, 0);
+    for (const tr of this._triggers) {
+      if (tr.type === 7 || tr.type === 8) continue; // arrows handled elsewhere
+      frame.drawRect(tr.x1, tr.y1, tr.x2 - tr.x1, tr.y2 - tr.y1, color);
+    }
+    this._debugFrame = frame;
+  }
 
   #insert (trigger) {
     /* normalise & clamp bounds */
@@ -125,17 +142,19 @@ class TriggerManager {
     if (buckets) {
       for (const idx of buckets) {
         const arr = this._grid[idx];
-        
+
         arr.delete(trigger);
       }
     }
     delete trigger.__bucketIndices;
+    this._debugFrame = null;
   }
 
   dispose() {
     this.gameTimer = null;
     this._grid   = null;
     this._triggers = null;
+    this._debugFrame = null;
   }
 }
 
