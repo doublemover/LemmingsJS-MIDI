@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Project now requires Node.js 16+ (tests use Node 18 in CI).
+- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
+- `packLevels.js` creates DAT archives from 2048-byte level files.
+- These tools rely on `NodeFileProvider` to read packs from folders or archives.
+
 
 ## [0.0.2] - 2025-06-04
 ### Added
@@ -28,7 +32,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Level packs for Xmas '91/'92 and Holiday '93/'94.
 - Skill selection and speed changes while paused.
 - Asynchronous Blob loading for BinaryReader.
-- Mouse wheel zoom centers on the cursor.
+ - Mouse wheel zoom centers on the cursor and keeps the world point under the cursor fixed.
 
 ### Fixed
 - Switching the game type refreshes level resources automatically.
