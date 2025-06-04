@@ -5,13 +5,15 @@ import '../js/DisplayImage.js';
 import { GameView } from '../js/GameView.js';
 
 // minimal window for GameView.applyQuery and KeyboardShortcuts stub
-global.window = {
-  location: { search: '' },
-  setTimeout,
-  clearTimeout,
-  addEventListener() {},
-  removeEventListener() {}
-};
+function createWindow() {
+  return {
+    location: { search: '' },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
@@ -84,6 +86,12 @@ Lemmings.GameStateTypes = { toString: () => '' };
 global.lemmings = { game: { showDebug: false } };
 
 describe('GameView', function () {
+  beforeEach(function () {
+    global.window = createWindow();
+  });
+  afterEach(function () {
+    delete global.window;
+  });
   it('initializes stage and connects displays', async function () {
     const view = new GameView();
     const canvas = {
