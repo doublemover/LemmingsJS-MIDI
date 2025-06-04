@@ -65,25 +65,13 @@ class KeyboardShortcuts {
 
             // ----- zooming -----
             if (this.zoom.anim) {
-            const a = this.zoom.anim;
-            const p = Math.min(1, (t - a.startTime) / a.duration);
-            const ease = p < 0.5
-                ? 8 * p * p * p * p
-                : 1 - Math.pow(-2 * p + 2, 4) / 2;
-            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
-                stage._rawScale = raw;
-                const newScale = stage.snapScale(raw);
-                const cx = img.width / 2;
-                const cy = img.height / 2;
-                const nx = a.centerX - cx / newScale;
-                const ny = a.centerY - cy / newScale;
-                const maxX = img.display.getWidth()  - img.width  / newScale;
-                const maxY = img.display.getHeight() - img.height / newScale;
-                vp.x = Math.min(Math.max(0, nx), maxX);
-                vp.y = Math.min(Math.max(0, ny), maxY);
-                vp.scale = newScale;
-                stage.clear(img);
-                stage.redraw();
+                const a = this.zoom.anim;
+                const p = Math.min(1, (t - a.startTime) / a.duration);
+                const ease = p < 0.5
+                    ? 8 * p * p * p * p
+                    : 1 - Math.pow(-2 * p + 2, 4) / 2;
+                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+                stage._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY, p >= 1);
                 again = true;
                 if (p >= 1) this.zoom.anim = null;
             }
@@ -142,17 +130,19 @@ class KeyboardShortcuts {
         if (!stage) return;
         const img = stage.gameImgProps;
         const vp = img.viewPoint;
-        const cx = img.width / 2;
-        const cy = img.height / 2;
+        const cx = img.display.getWidth()  / 2;
+        const cy = img.display.getHeight() / 2;
         const target = stage.limitValue(0.25, scale, 4);
         if (Math.abs(target - stage._rawScale) < 0.001) return;
         this.zoom.anim = {
             startScale: stage._rawScale,
             targetScale: target,
-            centerX: vp.x + cx / vp.scale,
-            centerY: vp.y + cy / vp.scale,
+            worldX: vp.x + cx / vp.scale,
+            worldY: vp.y + cy / vp.scale,
+            screenX: cx,
+            screenY: cy,
             startTime: performance.now(),
-            duration: 300
+            duration: 200
         };
         this._startLoop();
     }

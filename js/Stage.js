@@ -99,21 +99,25 @@ class Stage {
                 if (stageImage == null || stageImage.display.getWidth() != 1600)
                     return;
                 const pos = this.calcPosition2D(stageImage, e);
+                const screenX = e.x - stageImage.x;
+                const screenY = e.y - stageImage.y;
                 const oldScale = this._rawScale;
                 const rawTarget = oldScale * (1 + -e.deltaZoom / 1200);
-                this._startWheelZoom(rawTarget, pos.x, pos.y);
+                this._startWheelZoom(rawTarget, pos.x, pos.y, screenX, screenY);
             });
         }
 
-        _startWheelZoom(scale, centerX, centerY) {
+        _startWheelZoom(scale, worldX, worldY, screenX, screenY) {
             const img = this.gameImgProps;
             const target = this.limitValue(.25, scale, 4);
             if (Math.abs(target - this._rawScale) < 0.001) return;
             this._wheelAnim = {
                 startScale: this._rawScale,
                 targetScale: target,
-                centerX,
-                centerY,
+                worldX,
+                worldY,
+                screenX,
+                screenY,
                 startTime: performance.now(),
                 duration: 120
             };
@@ -131,7 +135,7 @@ class Stage {
             const p = Math.min(1, (t - a.startTime) / a.duration);
             const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
             const raw = a.startScale + (a.targetScale - a.startScale) * ease;
-            this._applyZoom(raw, a.centerX, a.centerY);
+            this._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY, p >= 1);
             if (p < 1) {
                 this._wheelRaf = requestAnimationFrame(tt => this._stepWheelZoom(tt));
             } else {
@@ -140,17 +144,15 @@ class Stage {
             }
         }
 
-        _applyZoom(rawScale, centerX, centerY) {
+        _applyZoom(rawScale, worldX, worldY, screenX, screenY, finalize = false) {
             this._rawScale = rawScale;
             const img = this.gameImgProps;
             const vp = img.viewPoint;
-            const newScale = this.snapScale(rawScale);
-            const cx = img.width / 2;
-            const cy = img.height / 2;
-            const nx = centerX - cx / newScale;
-            const ny = centerY - cy / newScale;
-            const maxX = img.width / newScale - img.display.getWidth();
-            const maxY = img.height / newScale - img.display.getHeight();
+            const newScale = finalize ? this.snapScale(rawScale) : rawScale;
+            const nx = worldX - screenX / newScale;
+            const ny = worldY - screenY / newScale;
+            const maxX = img.display.getWidth() - img.width / newScale;
+            const maxY = img.display.getHeight() - img.height / newScale;
             vp.x = this.limitValue(0, nx, maxX);
             vp.y = this.limitValue(0, ny, maxY);
             vp.scale = newScale;
@@ -196,8 +198,8 @@ class Stage {
                 this.draw(stageImage, gameImg);
             }
 
-            const maxX = stageImage.width  / stageImage.viewPoint.scale - stageImage.display.getWidth();
-            const maxY = stageImage.height / stageImage.viewPoint.scale - stageImage.display.getHeight();
+            const maxX = stageImage.display.getWidth()  - stageImage.width  / stageImage.viewPoint.scale;
+            const maxY = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
             stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, maxX);
             stageImage.viewPoint.y = this.limitValue(0, stageImage.viewPoint.y, maxY);
 

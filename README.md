@@ -200,7 +200,7 @@ URL parameters (shortcut in brackets):
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
- - `(Shift+)Z` / `X`: Zoom in / out one level per press with a quick animation
+ - `(Shift+)Z` / `X`: Zoom in / out one level per press with a smooth animation
 - `V`: Reset zoom to 2
 - `(Shift+)-` / `=`: Decrease / Increase game speed (More)
 - `,` / `.`: Previous / Next level
