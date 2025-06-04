@@ -22,6 +22,7 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **commands, replay, events**: [notes/command-manager.md](notes/command-manager.md)
 - **resources, caching**: [notes/game-resources.md](notes/game-resources.md)
 - **tools, cli**: [notes/tools.md](notes/tools.md)
+- **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md)
 - **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md)
 - **binary-reader**: [notes/binary-reader.md](notes/binary-reader.md)
 - **bit-reader**: [notes/bit-reader.md](notes/bit-reader.md)
