@@ -38,6 +38,17 @@ class BinaryReader extends Lemmings.BaseLogger {
     this.filename = filename;
     this.foldername = foldername;
 
+    /**
+     * Promise that resolves when the backing data is available.
+     * @type {Promise<void>}
+     */
+    this.ready = Promise.resolve();
+
+    // Set initial offsets to allow property access before async load
+    this.#hiddenOffset = offset;
+    this.#length = 0;
+    this.#pos = this.#hiddenOffset;
+
     let dataLength = 0;
     if (dataArray == null) {
       this.#data = new Uint8Array(0);
@@ -56,10 +67,33 @@ class BinaryReader extends Lemmings.BaseLogger {
       dataLength = dataArray.byteLength;
       this.log.log('BinaryReader from ArrayBuffer; size: ' + dataLength);
     } else if (typeof Blob !== 'undefined' && dataArray instanceof Blob) {
-      // Modern browsers: Blobs must be async-read; fallback for now
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log('BinaryReader from Blob: async not implemented; size: 0');
+      this.log.log('BinaryReader from Blob; reading asynchronously');
+      this.ready = (async () => {
+        let buf;
+        if (typeof dataArray.arrayBuffer === 'function') {
+          buf = await dataArray.arrayBuffer();
+        } else if (typeof FileReader !== 'undefined') {
+          buf = await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => reject(fr.error);
+            fr.readAsArrayBuffer(dataArray);
+          });
+        } else {
+          throw new Error('Blob reading not supported');
+        }
+        this.#data = new Uint8Array(buf);
+        dataLength = this.#data.byteLength;
+        if (length == null) length = dataLength - offset;
+        this.#hiddenOffset = offset;
+        this.#length = length;
+        this.#pos = this.#hiddenOffset;
+      })();
+      // constructor returns immediately; callers should await this.ready
+      this.ready.catch(() => {}); // avoid unhandled rejection
+      return;
     } else {
       // Generic object: treat as array-like
       this.#data = new Uint8Array(dataArray);
