@@ -14,6 +14,7 @@ class GameDisplay {
     this._mouseY = -1;
     this._dashOffset = 0;
     this.hoverIndex = -1;
+    this.hoverLemming = null;
   }
   setGuiDisplay(display) {
     this.display = display;
@@ -28,6 +29,7 @@ class GameDisplay {
     this._mouseMoveHandler = (e) => {
       this._mouseX = e.x;
       this._mouseY = e.y;
+      this.hoverLemming = this.lemmingManager.getNearestLemming(e.x, e.y);
     };
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
@@ -52,14 +54,11 @@ class GameDisplay {
     this.level.renderDebug(this.display);
     this.lemmingManager.renderDebug(this.display);
     this.triggerManager.renderDebug(this.display);
-    if (this._mouseX >= 0 && this._mouseY >= 0) {
-      const lem = this.lemmingManager.getNearestLemming(this._mouseX, this._mouseY);
-      if (lem) {
-        const x = lem.x - 5;
-        const y = lem.y - 11;
-        this.display.drawMarchingAntRect(x, y, 10, 13, 3, this._dashOffset);
-        this._dashOffset = (this._dashOffset + 1) % 6;
-      }
+    if (this.hoverLemming) {
+      const x = this.hoverLemming.x - 5;
+      const y = this.hoverLemming.y - 11;
+      this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
+      this._dashOffset = (this._dashOffset + 1) % 6;
     }
   }
 
@@ -106,6 +105,7 @@ class GameDisplay {
     this.objectManager = null;
     this.triggerManager = null;
     this.hoverIndex = -1;
+    this.hoverLemming = null;
   }
 }
 Lemmings.GameDisplay = GameDisplay;
