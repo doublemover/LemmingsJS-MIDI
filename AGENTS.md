@@ -18,6 +18,7 @@ quotes, and semicolons across the JavaScript codebase.
 - `npm start` launches `http-server` for local testing.
 - `npm run lint` checks source files with ESLint.
 - JavaScript code uses **two-space indentation** (see `js/BitReader.js` for examples).
+- The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
 
 ## Commit policy
 - Keep commit messages concise.
