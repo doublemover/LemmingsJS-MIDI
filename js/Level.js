@@ -1,9 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-// Palette remapping for the fire shooter trap. These arrays match the ones in
-// Animation.js and replace the warm flame colours with cooler blue tones.
-const FIRE_INDICES = Object.freeze([5, 7, 9, 10, 11]);
-const ICE_INDICES  = Object.freeze([1, 12, 13, 1, 12]);
+// Palette remapping for the fire shooter trap. These arrays mirror the
+// constants in Animation.js and replace the warm flame colours with cooler
+// blues.
+const FIRE_INDICES = Object.freeze([4, 5, 7, 8, 9, 10, 11]);
+const ICE_INDICES  = Object.freeze([1, 1, 12, 12, 13, 1, 12]);
 
 class Level {
   constructor(width, height) {
