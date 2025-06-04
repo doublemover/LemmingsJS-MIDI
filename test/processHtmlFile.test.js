@@ -7,5 +7,6 @@ describe('processHtmlFile', function () {
     assert.ok(snippets.length >= 4);
     const inline = snippets.find(s => s.type === 'script');
     assert.ok(inline.code.includes('function onEnabled'));
+    assert.ok(inline.loc.start < inline.loc.end);
   });
 });
