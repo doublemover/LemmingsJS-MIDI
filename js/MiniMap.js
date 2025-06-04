@@ -24,6 +24,8 @@ class MiniMap {
         // typed array storing [x1,y1,x2,y2,...] scaled to minimap
         this.liveDots = new Uint8Array(0);
         this.deadDots = []; // {x,y,ttl}
+        this.selX = -1;
+        this.selY = -1;
 
         // render target (drawn into the GUI canvas once per frame)
         this.frame = new Lemmings.Frame(this.width, this.height);
@@ -203,6 +205,16 @@ class MiniMap {
         });
     }
 
+    setSelectedLemming(lem) {
+        if (lem && !lem.removed) {
+            this.selX = (lem.x * this.scaleX) | 0;
+            this.selY = (lem.y * this.scaleY) | 0;
+        } else {
+            this.selX = -1;
+            this.selY = -1;
+        }
+    }
+
     render() {
         if (!this.guiDisplay) return;
 
@@ -258,6 +270,10 @@ class MiniMap {
             const x = this.liveDots[i];
             const y = this.liveDots[i + 1];
             frame.setPixel(x, y, 0x5500FFFF);
+        }
+
+        if (this.selX >= 0 && this.selY >= 0) {
+            frame.setPixel(this.selX, this.selY, 0xFFFFFFFF);
         }
 
         /* Death flashes */
