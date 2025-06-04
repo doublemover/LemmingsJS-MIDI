@@ -3,7 +3,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 class LemmingManager extends Lemmings.BaseLogger {
     constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
         super();
-        const runCtor = Lemmings.withPerformance(
+        Lemmings.withPerformance(
             'LemmingManager constructor',
             {
                 track: 'LemmingManager',
@@ -50,8 +50,7 @@ class LemmingManager extends Lemmings.BaseLogger {
                 trackGroup: 'Game State',
                 color: 'primary-light',
                 tooltipText: `addLemming ${x},${y}`
-            });
-        runCtor();
+            })();
             () => {
 
         const extraCount = lemmings.extraLemmings | 0;
