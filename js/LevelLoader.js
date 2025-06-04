@@ -90,6 +90,9 @@ class LevelLoader {
     // 5 · Wire everything into the Level instance                             //
     // ----------------------------------------------------------------------- //
     level.setGroundImage(render.img.getData());
+    if (render.steelImg) {
+      level.setSteelImage(render.steelImg.getData());
+    }
     level.setGroundMaskLayer(
         new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
 
@@ -97,7 +100,8 @@ class LevelLoader {
     level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
 
     level.setSteelAreas(levelReader.steel);
-    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages()); 
+    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());
+    level.initCombinedImage();
 
     return level;  
   }
