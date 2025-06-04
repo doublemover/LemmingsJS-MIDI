@@ -4,19 +4,17 @@ import './ColorPalette.js';
 // Palette remapping for the fire shooter trap. These arrays mirror the
 // constants in Animation.js and replace the warm flame colours with cooler
 // blues sourced from the ONML ice palette.
-const FIRE_INDICES = Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
+const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
 const ICE_COLORS   = Object.freeze([
+  Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
+  Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
+  Lemmings.ColorPalette.colorFromRGB(72, 192, 255),
   Lemmings.ColorPalette.colorFromRGB(64, 160, 255),
-  Lemmings.ColorPalette.colorFromRGB(56, 152, 240),
-  Lemmings.ColorPalette.colorFromRGB(48, 144, 232),
-  Lemmings.ColorPalette.colorFromRGB(40, 128, 216),
-  Lemmings.ColorPalette.colorFromRGB(32, 112, 200),
-  Lemmings.ColorPalette.colorFromRGB(24, 96, 184),
-  Lemmings.ColorPalette.colorFromRGB(16, 80, 168),
-  Lemmings.ColorPalette.colorFromRGB(8, 64, 152),
   Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
+  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
   Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
-  Lemmings.ColorPalette.colorFromRGB(0, 16, 104)
+  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
+  Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
 ]);
 
 class Level {
