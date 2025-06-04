@@ -183,74 +183,45 @@ async moveToLevel(moveInterval = 0) {
             this.inMoveToLevel = false;
         }
     }
-    /** return the url hash for the present game/group/level-index */
+    /** helper to parse a numeric query value */
+    parseNumber(query, names, def, min, max, multiplier = 1) {
+        for (const name of names) {
+            const raw = query.get(name);
+            if (raw !== null) {
+                const val = parseFloat(raw);
+                if (!isNaN(val) && val >= min && val <= max) {
+                    return val * multiplier;
+                }
+            }
+        }
+        return def;
+    }
+
+    /** helper to parse a boolean query value */
+    parseBool(query, names, def = false) {
+        for (const name of names) {
+            if (query.has(name)) {
+                return query.get(name) === "true";
+            }
+        }
+        return def;
+    }
+
+    /** read parameters from the current URL */
     applyQuery() {
         this.gameType = 1;
-        let query = new URLSearchParams(window.location.search);
-        if (query.get("version") || query.get("v")) {
-            let queryVersion = parseInt(query.get("version") || query.get("v"), 10);
-            if (!isNaN(queryVersion) && queryVersion >= 1 && queryVersion <= 6) {
-                this.gameType = queryVersion;
-            }
-        }
-        this.levelGroupIndex = 0;
-        if (query.get("difficulty") || query.get("d")) {
-            let queryDifficulty = parseInt(query.get("difficulty") || query.get("d"), 10);
-            if (!isNaN(queryDifficulty) && queryDifficulty >= 1 && queryDifficulty <= 5) {
-                this.levelGroupIndex = queryDifficulty - 1;
-            }
-        }
-        this.levelIndex = 0;
-        if (query.get("level") || query.get("l")) {
-            let queryLevel = parseInt(query.get("level") || query.get("l"), 10);
-            if (!isNaN(queryLevel) && queryLevel >= 1 && queryLevel <= 30) {
-                this.levelIndex = queryLevel - 1;
-            }
-        }
-        this.gameSpeedFactor = 1;
-        if (query.get("speed") || query.get("s")) {
-            let querySpeed = parseFloat(query.get("speed") || query.get("s"));
-            if (!isNaN(querySpeed) && querySpeed > 0 && querySpeed <= 100) {
-                this.gameSpeedFactor = querySpeed;
-            }
-        }
-        this.cheat = false;
-        if (query.get("cheat") || query.get("c")) {
-            this.cheat = (query.get("cheat") || query.get("c")) === "true";
-        }
-        this.debug = false;
-        if (query.get("debug") || query.get("dbg")) {
-            this.debug = (query.get("debug") || query.get("dbg")) === "true";
-        }
-        this.bench = false;
-        if (query.get("bench") || query.get("b")) {
-            this.bench = (query.get("bench") || query.get("b")) === "true";
-        }
-        this.endless = false;
-        if (query.get("endless") || query.get("e")) {
-            this.endless = (query.get("endless") || query.get("e")) === "true";
-        }
-        this.nukeAfter = 0;
-        if (query.get("nukeAfter") || query.get("na")) {
-            const nukeAfter = parseInt(query.get("nukeAfter") || query.get("na"), 10);
-            if (!isNaN(nukeAfter) && nukeAfter >= 1 && nukeAfter <= 60) {
-                this.nukeAfter = nukeAfter*10;
-            }
-        }
-        this.extraLemmings = 0;
-        if (query.get("extra") || query.get("ex")) {
-            const extraLemmings = parseInt(query.get("extra") || query.get("ex"), 10);
-            if (!isNaN(extraLemmings) && extraLemmings >= 1 && extraLemmings <= 1000) {
-                this.extraLemmings = extraLemmings;
-            }
-        }
-        this.scale = 0;
-        if (query.get("scale") || query.get("sc")) {
-            const scale = parseFloat(query.get("scale") || query.get("sc"));
-            if (!isNaN(scale) && scale >= 0.0125 && scale <= 5) {
-                this.scale = scale;
-            }
-        }
+        const query = new URLSearchParams(window.location.search);
+        this.gameType = this.parseNumber(query, ["version", "v"], 1, 1, 6);
+        this.levelGroupIndex = this.parseNumber(query, ["difficulty", "d"], 1, 1, 5) - 1;
+        this.levelIndex = this.parseNumber(query, ["level", "l"], 1, 1, 30) - 1;
+        this.gameSpeedFactor = this.parseNumber(query, ["speed", "s"], 1, 0, 100);
+        this.cheat = this.parseBool(query, ["cheat", "c"]);
+        this.debug = this.parseBool(query, ["debug", "dbg"]);
+        this.bench = this.parseBool(query, ["bench", "b"]);
+        this.endless = this.parseBool(query, ["endless", "e"]);
+        this.nukeAfter = this.parseNumber(query, ["nukeAfter", "na"], 0, 1, 60, 10);
+        this.extraLemmings = this.parseNumber(query, ["extra", "ex"], 0, 1, 1000);
+        this.scale = this.parseNumber(query, ["scale", "sc"], 0, 0.0125, 5);
         this.laggedOut = 0;
         
         this.shortcut = false;
@@ -263,40 +234,41 @@ async moveToLevel(moveInterval = 0) {
         }
     }
     updateQuery() {
+        const params = new URLSearchParams(window.location.search);
+        const setParam = (longName, shortName, value, def, always) => {
+            params.delete(longName);
+            params.delete(shortName);
+            if (always || (value !== undefined && value !== def)) {
+                params.set(this.shortcut ? shortName : longName, value);
+            }
+        };
+
+        // main game state should always remain visible
+        setParam('version', 'v', this.gameType, undefined, true);
+        setParam('difficulty', 'd', this.levelGroupIndex + 1, undefined, true);
+        setParam('level', 'l', this.levelIndex + 1, undefined, true);
+        setParam('speed', 's', this.gameSpeedFactor, undefined, true);
+        setParam('cheat', 'c', this.cheat, undefined, true);
+
+        // optional flags only appear when non-default
+        setParam('debug', 'dbg', this.debug, false);
+        setParam('bench', 'b', this.bench, false);
+        setParam('endless', 'e', this.endless, false);
+        setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
+        setParam('extra', 'ex', this.extraLemmings, 0);
+        setParam('scale', 'sc', this.scale, 0);
+
         if (this.shortcut) {
-            this.setHistoryState({
-                v: this.gameType,
-                d: this.levelGroupIndex + 1,
-                l: this.levelIndex + 1,
-                s: this.gameSpeedFactor,
-                c: !!this.cheat,
-                _: true,
-                pm: !!this.perfMetrics
-            });
+            params.set('_', true);
         } else {
-            this.setHistoryState({
-                version: this.gameType,
-                difficulty: this.levelGroupIndex + 1,
-                level: this.levelIndex + 1,
-                speed: this.gameSpeedFactor,
-                cheat: !!this.cheat,
-                perfMetrics: !!this.perfMetrics
-            });
+            params.delete('_');
         }
+
+        this.setHistoryState(params);
     }
-    setHistoryState(state) {
-        history.replaceState(
-            null,
-            null,
-            "?" +
-            Object.keys(state)
-            .map((key) => key + "=" + state[key])
-            .join("&")
-        );
-    }
-    /** convert a string to a number */
-    strToNum(str) {
-        return Number(str) | 0;
+    setHistoryState(params) {
+        const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
+        history.replaceState(null, null, "?" + query.toString());
     }
     /** change the the text of a html element */
     changeHtmlText(htmlElement, value) {
