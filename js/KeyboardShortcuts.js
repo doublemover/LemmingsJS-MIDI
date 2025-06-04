@@ -39,8 +39,9 @@ class KeyboardShortcuts {
             const shiftMul = this.mod.shift ? 4 : 1;
 
             // ----- panning -----
-            const baseX = 40 * scale;
-            const baseY = 20 * scale;
+            // tweak distance per frame; previous values felt too large
+            const baseX = 25 * scale;
+            const baseY = 12 * scale;
             // slow the acceleration a touch for smoother motion
             const accel = 0.035 / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
@@ -69,7 +70,8 @@ class KeyboardShortcuts {
             if (this.zoom.reset !== null) {
                 targetZ = (this.zoom.reset - vp.scale) * 0.2;
             } else {
-                const baseZ = 0.1 * scale * (this.mod.shift ? 2 : 1);
+                // Stage expects a value around 30 for ~2% zoom steps
+                const baseZ = 30 * (this.mod.shift ? 2 : 1);
                 targetZ = this.zoom.dir * baseZ;
             }
             // gentler acceleration for zooming
@@ -207,15 +209,19 @@ class KeyboardShortcuts {
                 this.view.moveToLevel(0);
                 break;
             case 'ArrowLeft':
+                if (this.pan.vx > 0) this.pan.vx = 0;
                 this.pan.left = true; this._startLoop();
                 break;
             case 'ArrowRight':
+                if (this.pan.vx < 0) this.pan.vx = 0;
                 this.pan.right = true; this._startLoop();
                 break;
             case 'ArrowUp':
+                if (this.pan.vy > 0) this.pan.vy = 0;
                 this.pan.up = true; this._startLoop();
                 break;
             case 'ArrowDown':
+                if (this.pan.vy < 0) this.pan.vy = 0;
                 this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
