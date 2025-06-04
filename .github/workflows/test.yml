@@ -20,5 +20,4 @@ jobs:
       - run: npm install
       - run: npm run check-undefined
       - run: npm run lint
-      - run: npm run check-undefined
       - run: npm test
