@@ -268,15 +268,18 @@ class Stage {
                 }
             }, 40);
         }
-
         dispose() {
+            this.resetFade();
             if (this.fadeTimer) {
                 clearInterval(this.fadeTimer);
                 this.fadeTimer = 0;
             }
             if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
             if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
-            if (this.controller?.dispose) this.controller.dispose();
+            if (this.controller && this.controller.dispose) {
+                this.controller.dispose();
+            }
+            this.controller = null;
             this.gameImgProps = null;
             this.guiImgProps = null;
             this.stageCav = null;
