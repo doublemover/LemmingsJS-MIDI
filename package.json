@@ -30,6 +30,9 @@
   },
   "homepage": "https://github.com/doublemover/LemmingsJS-MIDI#readme",
   "type": "module",
+  "engines": {
+    "node": ">=16"
+  },
   "devDependencies": {
     "adm-zip": "^0.5.10",
     "chai": "^4.3.7",
