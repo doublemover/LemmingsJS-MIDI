@@ -111,6 +111,8 @@ class TriggerManager {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 255, 255, 255);
         } else if (this._grid[idx].size === 0) {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 128, 128, 128);
+        } else {
+          g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 0, 0, 255);
         }
       }
     }
