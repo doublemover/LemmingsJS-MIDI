@@ -1,12 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+        
 class ActionSplatterSystem extends ActionBaseSystem {
+        constructor(sprites) {
             super({ sprites, spriteType: Lemmings.SpriteTypes.SPLATTING, singleSprite: true, actionName: 'splatter' });
+        }
         triggerLemAction(lem) {
             return false;
         }
         draw(gameDisplay, lem) {
             super.draw(gameDisplay, lem);
+            if (lem.frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
             }
         }

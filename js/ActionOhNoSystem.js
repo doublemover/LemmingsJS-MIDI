@@ -1,11 +1,18 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+    
 class ActionOhNoSystem extends ActionBaseSystem {
+    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.OHNO, singleSprite: true, actionName: 'oh-no' });
+    }
+
+    triggerLemAction(lem) {
+        return false;
     }
 
     draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
+        if (lem.frameIndex >= 15) {
             lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
         }
     }
