@@ -1,16 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionJumpSystem {
-    static sprites = new Map();
+class ActionJumpSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionJumpSystem.sprites.size == 0) {
-            ActionJumpSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.JUMPING, false));
-            ActionJumpSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.JUMPING, true));
-        }
-    }
-
-    getActionName() {
-        return "jump";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
     }
 
     triggerLemAction(lem) {
@@ -18,25 +11,33 @@ class ActionJumpSystem {
     }
 
     draw(gameDisplay, lem) {
-        const ani = ActionJumpSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
 
     process(level, lem) {
         lem.frameIndex++;
         lem.x += (lem.lookRight ? 1 : -1);
-        let i = 0;
-        for (; i < 2; i++) {
-            if (!level.hasGroundAt(lem.x, lem.y - i - 1)) {
-                break;
-            }
+
+        if (lem.state == null) {
+            lem.state = 0; // how far we've jumped so far
         }
-        lem.y -= i;
-        if (i < 2) { // stop jumping
+
+        let moved = 0;
+        while (lem.state < 2 && moved < 2 && level.hasGroundAt(lem.x, lem.y - 1)) {
+            lem.y--;
+            lem.state++;
+            moved++;
+        }
+
+        if (lem.state >= 2 || !level.hasGroundAt(lem.x, lem.y - 1)) {
+            if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
+                lem.y = Lemmings.Lemming.LEM_MIN_Y;
+            }
+            lem.state = 0;
             return Lemmings.LemmingStateType.WALKING;
         }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE; // this.check_top_collision(lem); <no idea what this is for
+
+        return Lemmings.LemmingStateType.JUMPING;
     }
 }
 

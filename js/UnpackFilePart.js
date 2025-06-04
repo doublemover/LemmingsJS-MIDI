@@ -5,7 +5,7 @@ import { Lemmings } from './LemmingsNamespace.js';
  * Handles (lazy) decompression and exposes its metadata.
  * @class
  */
-class UnpackFilePart {
+class UnpackFilePart extends Lemmings.BaseLogger {
   /** @type {number} File offset in container */
   #offset = 0;
   /** @type {number} Initial buffer length for BitReader */
@@ -27,13 +27,12 @@ class UnpackFilePart {
   #fileReader;
   /** @type {boolean} Unpacking done flag */
   #unpackingDone = false;
-  /** @type {Lemmings.LogHandler} Logger */
-  #log = new Lemmings.LogHandler("UnpackFilePart");
 
   /**
    * @param {Lemmings.BinaryReader} fileReader - The container file's BinaryReader (positioned at this part).
    */
   constructor(fileReader) {
+    super();
     this.#fileReader = fileReader;
   }
 
@@ -97,6 +96,15 @@ class UnpackFilePart {
    * @returns {Lemmings.BinaryReader}
    */
   #doUnpacking(fileReader) {
+    return Lemmings.withPerformance(
+      'doUnpacking',
+      {
+        track: 'UnpackFilePart',
+        trackGroup: 'IO',
+        color: 'tertiary-light',
+        tooltipText: `doUnpacking ${fileReader.filename}`
+      },
+      () => {
     const bitReader = new Lemmings.BitReader(
       fileReader,
       this.#offset,
@@ -134,12 +142,13 @@ class UnpackFilePart {
     }
 
     if (this.#checksum === bitReader.getCurrentChecksum()) {
-      this.#log.debug(`doUnpacking(${fileReader.filename}) done!`);
+      this.log.debug(`doUnpacking(${fileReader.filename}) done!`);
     } else {
-      this.#log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
+      this.log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
     }
     // Create a BinaryReader over the decompressed buffer
     return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
+      }).call(this);
   }
 }
 

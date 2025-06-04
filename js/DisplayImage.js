@@ -17,8 +17,9 @@ const cyrb53 = (str, seed = 0) => {
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
 
-class DisplayImage {
+class DisplayImage extends Lemmings.BaseLogger {
     constructor(stage) {
+        super();
         this.stage = stage;
         this.onMouseUp = new Lemmings.EventHandler();
         this.onMouseDown = new Lemmings.EventHandler();
@@ -63,7 +64,7 @@ class DisplayImage {
             this.buffer32.set(groundImage);
         } else {
             // Fallback (ArrayLike)
-            console.log("error: setBackground fallback")
+            this.log.log("error: setBackground fallback");
             // this.imgData.data.set(groundImage);
         }
         this.groundMask = groundMask;
@@ -111,6 +112,54 @@ class DisplayImage {
         const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
         let idx = y * w + x1;
         for (let x = x1; x <= x2; x++, idx++) this.buffer32[idx] = color32;
+    }
+
+    /**
+     * Draw rectangle outline using a "marching ants" effect.
+     * @param {number} x      Top left x position
+     * @param {number} y      Top left y position
+     * @param {number} width  Rectangle width
+     * @param {number} height Rectangle height
+     * @param {number} dashLen Length of each dash segment (in pixels)
+     * @param {number} offset  Offset of the dash pattern
+     */
+    drawMarchingAntRect(
+        x,
+        y,
+        width,
+        height,
+        dashLen = 3,
+        offset = 0,
+        color1 = 0xFFFFFFFF,
+        color2 = 0xFF000000
+    ) {
+        if (!this.buffer32) return;
+        const { width: w } = this.imgData;
+        const pattern = dashLen * 2;
+        let pos = ((offset % pattern) + pattern) % pattern;
+        const set = (px, py) => {
+            const useFirst = Math.floor(pos / dashLen) % 2 === 0;
+            this.buffer32[py * w + px] = useFirst ? color1 : color2;
+            pos = (pos + 1) % pattern;
+        };
+
+        for (let dx = 0; dx <= width; dx++) set(x + dx, y);
+        for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
+        for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
+        for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+    }
+
+    /** Draw a stippled rectangle fill (simple checkerboard pattern). */
+    drawStippleRect(x, y, width, height, r = 128, g = 128, b = 128) {
+        if (!this.buffer32) return;
+        const { width: w } = this.imgData;
+        const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
+        for (let dy = 0; dy <= height; dy++) {
+            let idx = (y + dy) * w + x;
+            for (let dx = 0; dx <= width; dx++, idx++) {
+                if (((dx + dy) & 1) === 0) this.buffer32[idx] = color32;
+            }
+        }
     }
 
     /* ---------- blitting helpers ---------- */
@@ -250,7 +299,7 @@ class DisplayImage {
     }
 
     /* ---------- misc utilities ---------- */
-    setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFFFF0000; }
+    setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFF0000FF; }
 
     setPixel(x,y,r,g,b) {
         if (!this.buffer32) return;

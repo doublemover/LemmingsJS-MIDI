@@ -1,23 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionBlockerSystem {
-    static sprites = new Map();
+class ActionBlockerSystem extends ActionBaseSystem {
     constructor(sprites, triggerManager) {
+        super({ sprites, spriteType: Lemmings.SpriteTypes.BLOCKING, singleSprite: true, actionName: 'blocking' });
         this.triggerManager = triggerManager;
-        if (ActionBlockerSystem.sprites.size == 0) {
-            ActionBlockerSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.BLOCKING, false));
-        }
-    }
-    getActionName() {
-        return "blocking";
-    }
-    triggerLemAction(lem) {
-        lem.setAction(this);
-        return true;
-    }
-    draw(gameDisplay, lem) {
-        const frame = ActionBlockerSystem.sprites.get("both").getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
     }
     process(level, lem) {
         if (lem.state == 0) {

@@ -1,25 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
         
-class ActionDiggSystem {
-    static sprites = new Map();
-        constructor(sprites) {
-            if (ActionDiggSystem.sprites.size == 0) {
-                ActionDiggSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, false));
-                ActionDiggSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.DIGGING, true));
-            }
-        }
-        draw(gameDisplay, lem) {
-            const ani = ActionDiggSystem.sprites.get(lem.getDirection());
-            const frame = ani.getFrame(lem.frameIndex);
-            gameDisplay.drawFrame(frame, lem.x, lem.y);
-        }
-        getActionName() {
-            return "digging";
-        }
-        triggerLemAction(lem) {
-            lem.setAction(this);
-            return true;
-        }
+class ActionDiggSystem extends ActionBaseSystem {
+    constructor(sprites) {
+        super({ sprites, spriteType: Lemmings.SpriteTypes.DIGGING, actionName: 'digging' });
+    }
         process(level, lem) {
             if (level.isSteelGround(lem.x, lem.y) || 
                 level.isSteelGround(lem.x, lem.y - 1) || 

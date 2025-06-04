@@ -1,18 +1,12 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
 const FLOAT_SPEED = [3, 3, 3, 3, -1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2];
 const FLOAT_FRAME = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4];
 
-class ActionFloatingSystem {
-    static sprites = new Map();
+class ActionFloatingSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionFloatingSystem.sprites.size == 0) {
-            ActionFloatingSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.UMBRELLA, false));
-            ActionFloatingSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.UMBRELLA, true));
-        }
-    }
-    getActionName() {
-        return "floating";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.UMBRELLA, actionName: 'floating' });
     }
     triggerLemAction(lem) {
         if (lem.hasParachute) {
@@ -23,7 +17,7 @@ class ActionFloatingSystem {
     }
     /** render Lemming to gamedisplay */
     draw(gameDisplay, lem) {
-        const ani = ActionFloatingSystem.sprites.get(lem.getDirection());
+        const ani = this.sprites.get(lem.getDirection());
         const frame = ani.getFrame(FLOAT_FRAME[lem.frameIndex]);
         gameDisplay.drawFrame(frame, lem.x, lem.y);
     }

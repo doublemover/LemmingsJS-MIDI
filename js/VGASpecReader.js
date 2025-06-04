@@ -4,7 +4,7 @@ import { Lemmings } from './LemmingsNamespace.js';
  * Decodes a VGASPEC-format ground file, including color palette and image buffer.
  * @class
  */
-class VGASpecReader {
+class VGASpecReader extends Lemmings.BaseLogger {
     /** @type {number} */
     #width;
     /** @type {number} */
@@ -13,7 +13,7 @@ class VGASpecReader {
     #groundPalette;
     /** @type {Lemmings.Frame} */
     #img;
-    /** @type {Lemmings.LogHandler} */
+    /** @type {Lemmings.Logger} */
     #log;
 
     /**
@@ -22,7 +22,8 @@ class VGASpecReader {
      * @param {number} height
      */
     constructor(vgaspecFile, width, height) {
-        this.#log = new Lemmings.LogHandler("VGASpecReader");
+        super();
+        this.#log = this.log;
         this.#width = width | 0;
         this.#height = height | 0;
         this.#groundPalette = new Lemmings.ColorPalette();

@@ -1,15 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionFryingSystem {
-    static sprites = new Map();
+class ActionFryingSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionFryingSystem.sprites.size == 0) {
-            ActionFryingSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.FRYING, false));
-        }
-    }
-
-    getActionName() {
-        return "frying";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.FRYING, singleSprite: true, actionName: 'frying' });
     }
 
     triggerLemAction(lem) {
@@ -17,8 +11,7 @@ class ActionFryingSystem {
     }
 
     draw(gameDisplay, lem) {
-        const frame = ActionFryingSystem.sprites.get("both").getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
 
     process(level, lem) {

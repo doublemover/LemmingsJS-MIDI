@@ -40,37 +40,39 @@ class UserInputManager {
         this.onMouseRightUp = new Lemmings.EventHandler();
         this.onDoubleClick = new Lemmings.EventHandler();
         this.onZoom = new Lemmings.EventHandler();
-        listenElement.addEventListener("mousemove", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this.listenElement = listenElement;
+        this._listeners = [];
+
+        this._addListener('mousemove', (e) => {
+            const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseMove(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("touchmove", (e) => {
+        this._addListener('touchmove', (e) => {
             if (e.touches.length === 1 && !this.twoTouch) {
-                let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+                const t = e.touches[0];
+                const relativePos = this.getRelativePosition(this.listenElement, t.clientX, t.clientY);
                 this.handleMouseMove(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             }
             if (e.touches.length === 2) {
-                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                let relativePos = this.getRelativePosition(listenElement, midX, midY);
-
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const relativePos = this.getRelativePosition(this.listenElement, midX, midY);
                 if (!this.twoTouch) {
                     this.twoTouch = true;
                     this.lastTouchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
                     this.handleMouseDown(relativePos);
                 } else {
-                    let newDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
-                    let delta = this.lastTouchDistance - newDistance;
+                    const newDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
+                    const delta = this.lastTouchDistance - newDistance;
                     this.lastTouchDistance = newDistance;
                     this.handleWheel(relativePos, delta);
                 }
-
                 this.handleMouseMove(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
@@ -79,18 +81,19 @@ class UserInputManager {
             e.preventDefault();
             return;
         });
-        listenElement.addEventListener("touchstart", (e) => {
+        this._addListener('touchstart', (e) => {
             if (e.touches.length === 1 && !this.twoTouch) {
-                let relativePos = this.getRelativePosition(listenElement, e.touches[0].clientX, e.touches[0].clientY);
+                const t = e.touches[0];
+                const relativePos = this.getRelativePosition(this.listenElement, t.clientX, t.clientY);
                 this.handleMouseDown(relativePos);
                 e.stopPropagation();
                 e.preventDefault();
                 return false;
             }
             if (e.touches.length === 2) {
-                let midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-                let midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-                let relativePos = this.getRelativePosition(listenElement, midX, midY);
+                const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+                const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+                const relativePos = this.getRelativePosition(this.listenElement, midX, midY);
                 this.twoTouch = true;
                 this.lastTouchDistance = this.getTouchDistance(e.touches[0], e.touches[1]);
                 this.handleMouseDown(relativePos);
@@ -101,22 +104,21 @@ class UserInputManager {
             e.preventDefault();
             return;
         });
-        listenElement.addEventListener("mousedown", (e) => {
+        this._addListener('mousedown', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
                 this.handleMouseRightDown(relativePos);
                 return false;
             }
             this.handleMouseDown(relativePos);
-
             return false;
         });
-        listenElement.addEventListener("mouseup", (e) => {
+        this._addListener('mouseup', (e) => {
             e.stopPropagation();
             e.preventDefault();
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+            const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             if (e.button == 2) {
                 this.handleMouseRightUp(relativePos);
                 return false;
@@ -124,15 +126,16 @@ class UserInputManager {
             this.handleMouseUp(relativePos);
             return false;
         });
-        listenElement.addEventListener("mouseleave", (e) => {
+        this._addListener('mouseleave', () => {
             this.handleMouseClear();
         });
-        listenElement.addEventListener("touchend", (e) => {
+        this._addListener('touchend', (e) => {
             if (this.twoTouch && e.touches.length < 2) {
                 this.twoTouch = false;
                 this.lastTouchDistance = 0;
                 if (e.changedTouches.length > 0) {
-                    let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+                    const t = e.changedTouches[0];
+                    const relativePos = this.getRelativePosition(this.listenElement, t.clientX, t.clientY);
                     this.handleMouseUp(relativePos);
                 } else {
                     this.handleMouseClear();
@@ -144,88 +147,101 @@ class UserInputManager {
                 e.preventDefault();
                 return;
             }
-            let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+            const t = e.changedTouches[0];
+            const relativePos = this.getRelativePosition(this.listenElement, t.clientX, t.clientY);
             this.handleMouseUp(relativePos);
             return false;
         });
-        listenElement.addEventListener("touchleave", (e) => {
+        this._addListener('touchleave', () => {
             this.twoTouch = false;
             this.lastTouchDistance = 0;
             this.handleMouseClear();
             return false;
         });
-        listenElement.addEventListener("touchcancel", (e) => {
+        this._addListener('touchcancel', () => {
             this.twoTouch = false;
             this.lastTouchDistance = 0;
             this.handleMouseClear();
             return false;
         });
-        listenElement.addEventListener("dblclick", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this._addListener('dblclick', (e) => {
+            const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseDoubleClick(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        listenElement.addEventListener("wheel", (e) => {
-            let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
+        this._addListener('wheel', (e) => {
+            const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleWheel(relativePos, e.deltaY);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
     }
+
+    _addListener(type, handler) {
+        this.listenElement.addEventListener(type, handler);
+        this._listeners.push([type, handler]);
+    }
+
+    dispose() {
+        for (const [type, handler] of this._listeners) {
+            this.listenElement.removeEventListener(type, handler);
+        }
+        this._listeners.length = 0;
+    }
+
     getRelativePosition(element, clientX, clientY) {
-        var rect = element.getBoundingClientRect();
-        const x = (clientX - rect.left) / rect.width * 800;
-        const y = (clientY - rect.top) / rect.height * 480;
+        const rect = element.getBoundingClientRect();
+        const x = ((clientX - rect.left) / rect.width) * 800;
+        const y = ((clientY - rect.top) / rect.height) * 480;
         return new Lemmings.Position2D(x, y);
     }
+
     getTouchDistance(t1, t2) {
-        let dx = t1.clientX - t2.clientX;
-        let dy = t1.clientY - t2.clientY;
+        const dx = t1.clientX - t2.clientX;
+        const dy = t1.clientY - t2.clientY;
         return Math.hypot(dx, dy);
     }
+
     handleMouseMove(position) {
-        //- Move Point of View
         if (this.mouseButton) {
-            let deltaX = (this.lastMouseX - position.x);
-            let deltaY = (this.lastMouseY - position.y);
-            //- save start of Mousedown
+            const deltaX = this.lastMouseX - position.x;
+            const deltaY = this.lastMouseY - position.y;
             this.lastMouseX = position.x;
             this.lastMouseY = position.y;
-            let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, deltaX, deltaY, true);
+            const mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, deltaX, deltaY, true);
             mouseDragArguments.mouseDownX = this.mouseDownX;
             mouseDragArguments.mouseDownY = this.mouseDownY;
-            /// raise event
             this.onMouseMove.trigger(mouseDragArguments);
         } else {
-            /// raise event
             this.onMouseMove.trigger(new MouseMoveEventArguements(position.x, position.y, 0, 0, false));
         }
     }
+
     handleMouseDown(position) {
-        //- save start of Mousedown
         this.mouseButton = true;
         this.mouseDownX = position.x;
         this.mouseDownY = position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-
         this.onMouseDown.trigger(position);
     }
+
     handleMouseRightDown(position) {
         this.mouseButton = true;
         this.mouseDownX = position.x;
         this.mouseDownY = position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-
         this.onMouseRightDown.trigger(position);
     }
+
     handleMouseDoubleClick(position) {
         this.onDoubleClick.trigger(position);
     }
+
     handleMouseClear() {
         this.mouseButton = false;
         this.mouseDownX = 0;
@@ -233,25 +249,28 @@ class UserInputManager {
         this.lastMouseX = 0;
         this.lastMouseY = 0;
     }
+
     handleMouseUp(position) {
         this.handleMouseClear();
         this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
     }
+
     handleMouseRightUp(position) {
         this.handleMouseClear();
         this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
     }
+
     /** Zoom view
      * todo: zoom to mouse pointer */
     handleWheel(position, deltaY) {
-        let dX = (this.lastMouseX - position.x);
-        let dY = (this.lastMouseY - position.y);
+        const dX = this.lastMouseX - position.x;
+        const dY = this.lastMouseY - position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
-        let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);
+        const mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);
         mouseDragArguments.mouseDownX = this.mouseDownX;
         mouseDragArguments.mouseDownY = this.mouseDownY;
-        let zea = new ZoomEventArgs(position.x, position.y, deltaY);
+        const zea = new ZoomEventArgs(position.x, position.y, deltaY);
         zea.deltaX = this.lastMouseX;
         zea.deltaY = this.lastMouseY;
         zea.mda = mouseDragArguments;
