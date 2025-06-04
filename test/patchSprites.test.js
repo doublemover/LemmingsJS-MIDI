@@ -69,7 +69,7 @@ describe('tools/patchSprites.js', function () {
     expect(part.checksum).to.equal(expected.checksum);
     expect(part.initialBufferLen).to.equal(expected.initialBits);
   });
-
+  
   it('patches multiple sprites and preserves palette offsets', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
     const pngDir = path.join(dir, 'png');
