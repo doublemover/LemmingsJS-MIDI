@@ -189,7 +189,6 @@ class Stage {
         }
         getGuiDisplay() {
             if (this.guiImgProps.display != null) {
-                this.guiImg
                 return this.guiImgProps.display;
             }
             this.guiImgProps.display = new Lemmings.DisplayImage(this);
