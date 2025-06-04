@@ -1,18 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionWalkSystem {
-        static sprites = new Map();
+class ActionWalkSystem extends ActionBaseSystem {
         constructor(sprites) {
-            ActionWalkSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.WALKING, false));
-            ActionWalkSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.WALKING, true));
-        }
-        draw(gameDisplay, lem) {
-            const ani = ActionWalkSystem.sprites.get(lem.getDirection());
-            const frame = ani.getFrame(lem.frameIndex);
-            gameDisplay.drawFrame(frame, lem.x, lem.y);
-        }
-        getActionName() {
-            return "walk";
+            super({ sprites, spriteType: Lemmings.SpriteTypes.WALKING, actionName: 'walk' });
         }
         triggerLemAction(lem) {
             return false;

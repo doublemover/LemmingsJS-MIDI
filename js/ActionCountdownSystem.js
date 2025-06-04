@@ -1,15 +1,13 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionCountdownSystem {
+class ActionCountdownSystem extends ActionBaseSystem {
     static numberMasks = new Map();
     constructor(masks) {
+        super({ actionName: 'countdown' });
         if (ActionCountdownSystem.numberMasks.size == 0) {
             ActionCountdownSystem.numberMasks.set("numbers", masks.GetMask(Lemmings.MaskTypes.NUMBERS));
         }
-    }
-
-    getActionName() {
-        return "countdown";
     }
 
     triggerLemAction(lem) {
