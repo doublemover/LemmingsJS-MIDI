@@ -4,8 +4,16 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 
 class MockBinaryReader {}
 class MockLogHandler {
-  log() {}
-  debug() {}
+  constructor() {
+    this.logged = [];
+    this.debugged = [];
+  }
+  log(msg) {
+    this.logged.push(msg);
+  }
+  debug(msg) {
+    this.debugged.push(msg);
+  }
 }
 let origBR;
 let origLog;
@@ -15,6 +23,7 @@ describe('FileProvider', function () {
   let provider;
   let requests;
   let restore;
+  let origFetch;
 
   beforeEach(function () {
     origBR = Lemmings.BinaryReader;
@@ -22,6 +31,15 @@ describe('FileProvider', function () {
     Lemmings.BinaryReader = MockBinaryReader;
     Lemmings.LogHandler = MockLogHandler;
     provider = new FileProvider(rootPath);
+    global.localStorage = new (class {
+      constructor() { this.store = new Map(); }
+      getItem(k) { return this.store.has(k) ? this.store.get(k) : null; }
+      setItem(k, v) { this.store.set(k, v); }
+      removeItem(k) { this.store.delete(k); }
+      clear() { this.store.clear(); }
+    })();
+    origFetch = global.fetch;
+    delete global.fetch; // disable HEAD requests
     requests = [];
     class FakeXHR {
       constructor() {
@@ -54,6 +72,10 @@ describe('FileProvider', function () {
 
   afterEach(function () {
     restore();
+    delete global.localStorage;
+    if (origFetch) {
+      global.fetch = origFetch;
+    }
     provider.clearCache();
     Lemmings.BinaryReader = origBR;
     Lemmings.LogHandler = origLog;
@@ -104,5 +126,29 @@ describe('FileProvider', function () {
     assert.strictEqual(provider._cache.size, 1);
     provider.clearCache();
     assert.strictEqual(provider._cache.size, 0);
+  });
+
+  it('stores data in localStorage and reuses it', async function () {
+    const url = rootPath + 'text.txt';
+    const p1 = provider.loadString(url);
+    requests[0].respond(200, 'hello');
+    const result1 = await p1;
+    assert.strictEqual(result1, 'hello');
+    const stored = global.localStorage.getItem('lem-cache:' + url);
+    assert.ok(stored, 'entry stored');
+
+    // new provider simulating page reload
+    provider = new FileProvider(rootPath);
+    const p2 = provider.loadString(url);
+    assert.strictEqual(requests.length, 1, 'no new XHR');
+    const result2 = await p2;
+    assert.strictEqual(result2, 'hello');
+  });
+
+  it('logs an error when binary load fails', async function () {
+    const p = provider.loadBinary('data', 'file.bin');
+    requests[0].respond(404, null);
+    await assert.rejects(p);
+    assert.ok(provider.log.logged.some(m => m.includes('error load file')));
   });
 });
