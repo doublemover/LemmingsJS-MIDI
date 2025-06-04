@@ -13,6 +13,15 @@ class NodeFileProvider {
     this.rarCache = new Map();
   }
 
+  /**
+   * Clear all archive caches.
+   */
+  clearCache() {
+    this.zipCache.clear();
+    this.tarCache.clear();
+    this.rarCache.clear();
+  }
+
   _validateEntry(name) {
     if (path.isAbsolute(name) || name.includes('..')) {
       throw new Error(`Invalid file path ${name}`);
