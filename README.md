@@ -219,12 +219,17 @@ URL parameters (shortcut in brackets):
 - `R`: Select Digger
 - `Space`: Pause
 - `T`: Nuke
+- `Shift+T`: Instant nuke
 - `Backspace`: Restart level
 - Arrow Keys: Move viewport
+- `Shift` + Arrow Keys: Move viewport faster
 - `Z` / `X`: Zoom in / out
+- `Shift+Z` / `Shift+X`: Faster zoom in / out
 - `V`: Reset zoom to 2
 - `-` / `=`: Decrease / Increase game speed
+- `Shift+-` / `Shift+=`: Double game speed change
 - `,` / `.`: Previous / Next level
+- `Shift+,` / `Shift+.`: Previous / Next group
 - `Tab`: Cycle through skills
 - `\`: Toggle debug mode
   

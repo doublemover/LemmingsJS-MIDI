@@ -3,160 +3,215 @@ import { Lemmings } from './LemmingsNamespace.js';
 class KeyboardShortcuts {
     constructor(view) {
         this.view = view;
-        this._bound = this._onKeyDown.bind(this);
-        window.addEventListener('keydown', this._bound);
+        this._down = this._onKeyDown.bind(this);
+        this._up = this._onKeyUp.bind(this);
+        window.addEventListener('keydown', this._down);
+        window.addEventListener('keyup', this._up);
+        this.mod = { shift:false };
+        this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0 };
+        this.zoom = { dir:0,v:0,reset:null };
+        this._raf = null;
     }
 
     dispose() {
-        window.removeEventListener('keydown', this._bound);
+        window.removeEventListener('keydown', this._down);
+        window.removeEventListener('keyup', this._up);
     }
 
-    _zoom(delta) {
-        const stage = this.view.stage;
-        if (!stage) return;
-        const img = stage.gameImgProps;
-        const cx = img.width / 2;
-        const cy = img.height / 2;
-        const zx = img.viewPoint.getSceneX(cx);
-        const zy = img.viewPoint.getSceneY(cy);
-        const steps = 10;
-        const dz = delta / steps;
-        let done = 0;
-        const step = () => {
-            stage.updateViewPoint(img, cx, cy, dz, zx, zy);
-            if (++done < steps) {
-                requestAnimationFrame(step);
-            } else {
-                stage.redraw();
-            }
-        };
-        requestAnimationFrame(step);
+    _startLoop() {
+        if (!this._raf) this._raf = requestAnimationFrame(() => this._step());
     }
 
-    _pan(dirX, dirY) {
+    _step() {
         const stage = this.view.stage;
-        if (!stage) return;
-        const vp = stage.gameImgProps.viewPoint;
-        const xStep = 20 * vp.scale * vp.scale * dirX;
-        const yStep = 10 * vp.scale * vp.scale * dirY;
-        const steps = 10;
-        const dx = xStep / steps;
-        const dy = yStep / steps;
-        let done = 0;
-        const step = () => {
-            stage.updateViewPoint(stage.gameImgProps, dx, dy, 0);
-            if (++done < steps) {
-                requestAnimationFrame(step);
-            } else {
+        let again = false;
+        if (stage) {
+            const img = stage.gameImgProps;
+            const vp = img.viewPoint;
+            const scale = vp.scale;
+            const shiftMul = this.mod.shift ? 2 : 1;
+
+            // ----- panning -----
+            const baseX = 40 * scale * scale;
+            const baseY = 20 * scale * scale;
+            const accel = 0.1 / scale;
+            const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
+            const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
+            this.pan.vx += (targetVX - this.pan.vx) * accel;
+            this.pan.vy += (targetVY - this.pan.vy) * accel;
+            const dx = this.pan.vx;
+            const dy = this.pan.vy;
+            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+                stage.updateViewPoint(img, dx, dy, 0);
                 stage.redraw();
+                again = true;
+            } else {
+                this.pan.vx = this.pan.vy = 0;
             }
-        };
-        requestAnimationFrame(step);
+
+            // ----- zooming -----
+            const cx = img.width / 2;
+            const cy = img.height / 2;
+            const zx = vp.getSceneX(cx);
+            const zy = vp.getSceneY(cy);
+            let targetZ = 0;
+            if (this.zoom.reset !== null) {
+                targetZ = (this.zoom.reset - vp.scale) * 0.2;
+            } else {
+                const baseZ = 0.25 * scale * (this.mod.shift ? 2 : 1);
+                targetZ = this.zoom.dir * baseZ;
+            }
+            this.zoom.v += (targetZ - this.zoom.v) * 0.15;
+            const dz = this.zoom.v;
+            if (Math.abs(dz) > 0.001) {
+                stage.updateViewPoint(img, cx, cy, dz, zx, zy);
+                stage.redraw();
+                again = true;
+            } else if (this.zoom.reset !== null) {
+                vp.scale = this.zoom.reset;
+                this.zoom.reset = null;
+                stage.redraw();
+                this.zoom.v = 0;
+            } else {
+                this.zoom.v = 0;
+            }
+        }
+        if (again) {
+            this._raf = requestAnimationFrame(() => this._step());
+        } else {
+            this._raf = null;
+        }
     }
 
     _cycleSkill() {
         const skills = this.view.game.getGameSkills();
         let next = skills.getSelectedSkill() + 1;
-        if (next > Lemmings.SkillTypes.DIGGER) {
-            next = Lemmings.SkillTypes.CLIMBER;
-        }
+        if (next > Lemmings.SkillTypes.DIGGER) next = Lemmings.SkillTypes.CLIMBER;
         this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next));
         this.view.game.gameGui.skillSelectionChanged = true;
+    }
+
+    _instantNuke() {
+        const mgr = this.view.game.getLemmingManager?.();
+        if (!mgr || !mgr.lemmings) return;
+        for (const lem of mgr.lemmings) {
+            mgr.setLemmingState(lem, Lemmings.LemmingStateType.EXPLODING);
+        }
+    }
+
+    _changeSpeed(dir, isShift) {
+        const timer = this.view.game.getGameTimer();
+        const gui = this.view.game.gameGui;
+        const steps = isShift ? 2 : 1;
+        for (let i=0;i<steps;i++) {
+            if (dir > 0) {
+                if (timer.speedFactor < 1) {
+                    timer.speedFactor = Math.round((timer.speedFactor + 0.1) * 100) / 100;
+                    gui.drawSpeedChange(true);
+                } else if (timer.speedFactor < 120) {
+                    timer.speedFactor += 1;
+                    gui.drawSpeedChange(true);
+                }
+            } else {
+                if (timer.speedFactor > 1) {
+                    timer.speedFactor -= 1;
+                    gui.drawSpeedChange(false);
+                } else if (timer.speedFactor > 0.1) {
+                    timer.speedFactor = Math.round((timer.speedFactor - 0.1) * 100) / 100;
+                    gui.drawSpeedChange(false);
+                }
+            }
+        }
     }
 
     _onKeyDown(e) {
         const game = this.view.game;
         if (!game) return;
-        const timer = game.getGameTimer();
-        const vc    = game.getVictoryCondition();
-        const gui   = game.gameGui;
         let handled = true;
         switch (e.code) {
             case 'Digit1':
                 if (e.shiftKey) {
-                    const diff = vc.getCurrentReleaseRate() - vc.getMinReleaseRate();
+                    const diff = game.getVictoryCondition().getCurrentReleaseRate() - game.getVictoryCondition().getMinReleaseRate();
                     if (diff > 0) game.queueCommand(new Lemmings.CommandReleaseRateDecrease(diff));
                 } else {
                     game.queueCommand(new Lemmings.CommandReleaseRateDecrease(1));
                 }
-                gui.releaseRateChanged = true;
+                game.gameGui.releaseRateChanged = true;
                 break;
             case 'Digit2':
                 if (e.shiftKey) {
+                    const vc = game.getVictoryCondition();
                     const max = vc.getMaxReleaseRate?.() ?? Lemmings.GameVictoryCondition.maxReleaseRate;
                     const diff = max - vc.getCurrentReleaseRate();
                     if (diff > 0) game.queueCommand(new Lemmings.CommandReleaseRateIncrease(diff));
                 } else {
                     game.queueCommand(new Lemmings.CommandReleaseRateIncrease(1));
                 }
-                gui.releaseRateChanged = true;
+                game.gameGui.releaseRateChanged = true;
                 break;
             case 'Digit3':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.CLIMBER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'Digit4':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.FLOATER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'Digit5':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BOMBER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'Digit6':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BLOCKER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'KeyQ':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BUILDER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'KeyW':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BASHER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'KeyE':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.MINER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'KeyR':
                 game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.DIGGER));
-                gui.skillSelectionChanged = true;
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'Space':
-                timer.toggle();
-                gui.skillSelectionChanged = true;
+                game.getGameTimer().toggle();
+                game.gameGui.skillSelectionChanged = true;
                 break;
             case 'KeyT':
-                game.queueCommand(new Lemmings.CommandNuke());
+                if (e.shiftKey) this._instantNuke();
+                else game.queueCommand(new Lemmings.CommandNuke());
                 break;
             case 'Backspace':
                 this.view.moveToLevel(0);
                 break;
             case 'ArrowLeft':
-                this._pan(-1, 0);
+                this.pan.left = true; this._startLoop();
                 break;
             case 'ArrowRight':
-                this._pan(1, 0);
+                this.pan.right = true; this._startLoop();
                 break;
             case 'ArrowUp':
-                this._pan(0, -1);
+                this.pan.up = true; this._startLoop();
                 break;
             case 'ArrowDown':
-                this._pan(0, 1);
+                this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
-                this._zoom(100);
+                this.zoom.dir = 1; this._startLoop();
                 break;
             case 'KeyX':
-                this._zoom(-100);
+                this.zoom.dir = -1; this._startLoop();
                 break;
             case 'KeyV':
-                if (this.view.stage) {
-                    const vp = this.view.stage.gameImgProps.viewPoint;
-                    vp.scale = 2;
-                    this.view.stage.redraw();
-                }
+                this.zoom.reset = 2; this._startLoop();
                 break;
             case 'Tab':
                 this._cycleSkill();
@@ -166,36 +221,50 @@ class KeyboardShortcuts {
                 break;
             case 'Minus':
             case 'NumpadSubtract':
-                if (timer.speedFactor > 1) {
-                    timer.speedFactor -= 1;
-                    gui.drawSpeedChange(false);
-                } else if (timer.speedFactor > 0.1) {
-                    timer.speedFactor = Math.round((timer.speedFactor - 0.1) * 100) / 100;
-                    gui.drawSpeedChange(false);
-                }
+                this._changeSpeed(-1, e.shiftKey);
                 break;
             case 'Equal':
             case 'NumpadAdd':
-                if (timer.speedFactor < 1) {
-                    timer.speedFactor = Math.round((timer.speedFactor + 0.1) * 100) / 100;
-                    gui.drawSpeedChange(true);
-                } else if (timer.speedFactor < 120) {
-                    timer.speedFactor += 1;
-                    gui.drawSpeedChange(true);
-                }
+                this._changeSpeed(1, e.shiftKey);
                 break;
             case 'Comma':
-                this.view.moveToLevel(-1);
+                if (e.shiftKey) {
+                    if (this.view.levelGroupIndex > 0) this.view.selectLevelGroup(this.view.levelGroupIndex - 1);
+                } else {
+                    this.view.moveToLevel(-1);
+                }
                 break;
             case 'Period':
-                this.view.moveToLevel(1);
+                if (e.shiftKey) {
+                    this.view.selectLevelGroup(this.view.levelGroupIndex + 1);
+                } else {
+                    this.view.moveToLevel(1);
+                }
+                break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                this.mod.shift = true; this._startLoop();
+                handled = false; // allow others maybe
                 break;
             default:
                 handled = false;
         }
-        if (handled) {
-            e.preventDefault();
+        if (handled) e.preventDefault();
+    }
+
+    _onKeyUp(e) {
+        switch (e.code) {
+            case 'ArrowLeft': this.pan.left = false; break;
+            case 'ArrowRight': this.pan.right = false; break;
+            case 'ArrowUp': this.pan.up = false; break;
+            case 'ArrowDown': this.pan.down = false; break;
+            case 'KeyZ': if (this.zoom.dir > 0) this.zoom.dir = 0; break;
+            case 'KeyX': if (this.zoom.dir < 0) this.zoom.dir = 0; break;
+            case 'ShiftLeft':
+            case 'ShiftRight':
+                this.mod.shift = false; break;
         }
+        this._startLoop();
     }
 }
 
