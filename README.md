@@ -182,7 +182,7 @@ URL parameters (shortcut in brackets):
 - `difficulty (d)`: Difficulty 1-5 (default: 1)
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control speed 0-100 (default: 1)
-- `cheat (c)`: Enable cheat mode (99 for all actions) (default: false)
+- `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
 - `bench (b)`: Enable bench mode, lemmings never stop spawning (default: false)
 - `endless (e)`: Disables time limit (default: false)
