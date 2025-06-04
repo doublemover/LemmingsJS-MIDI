@@ -11,6 +11,7 @@ class KeyboardShortcuts {
         this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0 };
         this.zoom = { dir:0,v:0,reset:null };
         this._raf = null;
+        this._last = 0;
     }
 
     dispose() {
@@ -19,12 +20,17 @@ class KeyboardShortcuts {
     }
 
     _startLoop() {
-        if (!this._raf) this._raf = requestAnimationFrame(() => this._step());
+        if (!this._raf) {
+            this._last = performance.now();
+            this._raf = requestAnimationFrame((t) => this._step(t));
+        }
     }
 
-    _step() {
+    _step(t) {
         const stage = this.view.stage;
         let again = false;
+        const dt = Math.min(60, t - this._last) / 16.666;
+        this._last = t;
         if (stage) {
             const img = stage.gameImgProps;
             const vp = img.viewPoint;
@@ -32,13 +38,15 @@ class KeyboardShortcuts {
             const shiftMul = this.mod.shift ? 2 : 1;
 
             // ----- panning -----
-            const baseX = 40 * scale * scale;
-            const baseY = 20 * scale * scale;
-            const accel = 0.1 / scale;
+            const baseX = 40 * scale;
+            const baseY = 20 * scale;
+            const accel = 0.05 / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
             const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
             this.pan.vx += (targetVX - this.pan.vx) * accel;
             this.pan.vy += (targetVY - this.pan.vy) * accel;
+            this.pan.vx *= 0.98;
+            this.pan.vy *= 0.98;
             const dx = this.pan.vx;
             const dy = this.pan.vy;
             if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
@@ -58,10 +66,10 @@ class KeyboardShortcuts {
             if (this.zoom.reset !== null) {
                 targetZ = (this.zoom.reset - vp.scale) * 0.2;
             } else {
-                const baseZ = 0.25 * scale * (this.mod.shift ? 2 : 1);
+                const baseZ = 0.1 * scale * (this.mod.shift ? 2 : 1);
                 targetZ = this.zoom.dir * baseZ;
             }
-            this.zoom.v += (targetZ - this.zoom.v) * 0.15;
+            this.zoom.v += (targetZ - this.zoom.v) * 0.1 * dt;
             const dz = this.zoom.v;
             if (Math.abs(dz) > 0.001) {
                 stage.updateViewPoint(img, cx, cy, dz, zx, zy);
@@ -77,7 +85,7 @@ class KeyboardShortcuts {
             }
         }
         if (again) {
-            this._raf = requestAnimationFrame(() => this._step());
+            this._raf = requestAnimationFrame((tt) => this._step(tt));
         } else {
             this._raf = null;
         }
