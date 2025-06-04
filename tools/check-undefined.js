@@ -179,6 +179,7 @@ if (extra.length) {
   htmlFiles = gatherFiles('.', ['.html']);
 }
 
+
 for (const file of jsFiles) processJSFile(file, extra.length > 0);
 for (const file of htmlFiles) processHtmlFile(file);
 
