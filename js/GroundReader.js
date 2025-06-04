@@ -1,5 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import steelSprites from './steelSprites.json' assert { type: 'json' };
+let steelSprites = null;
+
+async function loadSteelSprites() {
+  if (!steelSprites) {
+    const url = new URL('./steelSprites.json', import.meta.url);
+    const res = await fetch(url);
+    steelSprites = await res.json();
+  }
+  return steelSprites;
+}
+
+Lemmings.loadSteelSprites = loadSteelSprites;
 
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
