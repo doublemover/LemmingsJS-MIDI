@@ -23,3 +23,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **resources, caching**: [notes/game-resources.md](notes/game-resources.md)
 - **tools, cli**: [notes/tools.md](notes/tools.md)
 - **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md)
+- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
