@@ -18,6 +18,8 @@ class Stage {
             this.guiImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
             this._rawScale = this.gameImgProps.viewPoint.scale;
+            this._wheelAnim = null;
+            this._wheelRaf = null;
             this.updateStageSize();
             this.clear();
         }
@@ -93,12 +95,100 @@ class Stage {
         }
         handleOnZoom() {
             this.controller.onZoom.on((e) => {
-                let stageImage = this.getStageImageAt(e.x, e.y);
+                const stageImage = this.getStageImageAt(e.x, e.y);
                 if (stageImage == null || stageImage.display.getWidth() != 1600)
                     return;
-                let pos = this.calcPosition2D(stageImage, e);
-                this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
+                const pos = this.calcPosition2D(stageImage, e);
+                const screenX = e.x - stageImage.x;
+                const screenY = e.y - stageImage.y;
+                const oldScale = this._rawScale;
+                const rawTarget = oldScale * (1 + -e.deltaZoom / 1600);
+                this._startWheelZoom(rawTarget, pos.x, pos.y, screenX, screenY);
             });
+        }
+
+        _startWheelZoom(scale, worldX, worldY, screenX, screenY) {
+            const img = this.gameImgProps;
+            const target = this.limitValue(.25, scale, 4);
+            if (Math.abs(target - this._rawScale) < 0.001) return;
+            const now = performance.now();
+            if (this._wheelAnim) {
+                const a = this._wheelAnim;
+                const p = Math.min(1, (now - a.startTime) / a.duration);
+                const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+                this._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY);
+                this._wheelAnim = {
+                    startScale: raw,
+                    targetScale: target,
+                    worldX,
+                    worldY,
+                    screenX,
+                    screenY,
+                    startTime: now,
+                    duration: a.duration
+                };
+            } else {
+                this._wheelAnim = {
+                    startScale: this._rawScale,
+                    targetScale: target,
+                    worldX,
+                    worldY,
+                    screenX,
+                    screenY,
+                    startTime: now,
+                    duration: 100
+                };
+            }
+            if (!this._wheelRaf) {
+                this._wheelRaf = requestAnimationFrame(t => this._stepWheelZoom(t));
+            }
+        }
+
+        _stepWheelZoom(t) {
+            if (!this._wheelAnim) {
+                this._wheelRaf = null;
+                return;
+            }
+            const a = this._wheelAnim;
+            const p = Math.min(1, (t - a.startTime) / a.duration);
+            const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+            this._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY, p >= 1);
+            if (p < 1) {
+                this._wheelRaf = requestAnimationFrame(tt => this._stepWheelZoom(tt));
+            } else {
+                this._wheelAnim = null;
+                this._wheelRaf = null;
+            }
+        }
+
+        _applyZoom(rawScale, worldX, worldY, screenX, screenY, finalize = false) {
+            const img = this.gameImgProps;
+            const vp = img.viewPoint;
+            const newScale = finalize ? this.snapScale(rawScale) : rawScale;
+            this._rawScale = finalize ? newScale : rawScale;
+            const nx = worldX - screenX / newScale;
+            const ny = worldY - screenY / newScale;
+            const maxX = img.display.getWidth() - img.width / newScale;
+            const maxY = img.display.getHeight() - img.height / newScale;
+            if (maxX > 0) {
+                vp.x = this.limitValue(0, nx, maxX);
+            } else {
+                vp.x = this.limitValue(maxX, nx, 0);
+            }
+            if (maxY > 0) {
+                vp.y = maxY; // keep bottom glued
+            } else {
+                vp.y = this.limitValue(maxY, ny, 0);
+            }
+            vp.scale = newScale;
+            if (img.display != null) {
+                this.clear(img);
+                const gameImg = img.display.getImageData();
+                this.draw(img, gameImg);
+            }
+            this.redraw();
         }
         updateViewPoint(stageImage, deltaX, deltaY, deltaZoom, zx = 0, zy = 0) {
             if ((stageImage == null) || (stageImage.display == null))
@@ -121,8 +211,9 @@ class Stage {
 
                 // Zoom around that point using the un-snapped scale
                 const oldScale = this._rawScale;
-                this._rawScale = this.limitValue(.25, oldScale * (1 + deltaZoom / 1500), 4);
-                newScale = this.snapScale(this._rawScale);
+                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 1600), 4);
+                this._rawScale += (target - this._rawScale) * 0.8;
+                stageImage.viewPoint.scale = this.snapScale(this._rawScale);
 
                 // Re-center so the same world point stays under the cursor
                 nx = sceneX - screenX / newScale;
@@ -143,8 +234,22 @@ class Stage {
                 const gameImg = stageImage.display.getImageData();
                 this.draw(stageImage, gameImg);
             }
-        }
 
+            const maxX = stageImage.display.getWidth()  - stageImage.width  / stageImage.viewPoint.scale;
+            const maxY = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
+            if (maxX > 0) {
+                stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, maxX);
+            } else {
+                stageImage.viewPoint.x = this.limitValue(maxX, stageImage.viewPoint.x, 0);
+            }
+            if (maxY > 0) {
+                stageImage.viewPoint.y = maxY;
+            } else {
+                stageImage.viewPoint.y = this.limitValue(maxY, stageImage.viewPoint.y, 0);
+            }
+        }
+            // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
+            // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
 
         _applyZoom(vp, nx, ny, scale, maxX, maxY) {
             vp.scale = scale;
@@ -154,6 +259,7 @@ class Stage {
             } else {
                 vp.y = this.limitValue(maxY, ny, 0);
             }
+            this.redraw();
         }
         limitValue(minLimit, value, maxLimit) {
             let useMax = Math.max(minLimit, maxLimit);
@@ -311,11 +417,11 @@ class Stage {
             let outW = display.width;
             ctx.globalAlpha = 1;
             //- Display Layers
-            var dW = img.width - display.viewPoint.x; //- display width
+            let dW = img.width - display.viewPoint.x; //- display width
             if ((dW * display.viewPoint.scale) > outW) {
                 dW = outW / display.viewPoint.scale;
             }
-            var dH = img.height - display.viewPoint.y; //- display height
+            let dH = img.height - display.viewPoint.y; //- display height
             if ((dH * display.viewPoint.scale) > outH) {
                 dH = outH / display.viewPoint.scale;
             }

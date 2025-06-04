@@ -22,6 +22,7 @@ class GameView extends Lemmings.BaseLogger {
         this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
+        this.autoMoveTimer = null;
         this.elementSelectGameType = null;
         this.elementSelectLevelGroup = null;
         this.elementSelectLevel = null;
@@ -68,8 +69,8 @@ class GameView extends Lemmings.BaseLogger {
     onGameEnd(gameResult) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
-        this.log.debug(gameResult);
-        window.setTimeout(() => {
+        console.dir(gameResult);
+        this.autoMoveTimer = window.setTimeout(() => {
             if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                 /// move to next level
                 this.moveToLevel(1);
@@ -77,6 +78,7 @@ class GameView extends Lemmings.BaseLogger {
                 /// redo this level
                 this.moveToLevel(0);
             }
+            this.autoMoveTimer = null;
         }, 2500);
     }
 
@@ -293,9 +295,9 @@ async moveToLevel(moveInterval = 0) {
             return;
         }
         this.clearHtmlList(htmlList);
-        for (var i = 0; i < list.length; i++) {
-            var opt = list[i];
-            var el = document.createElement("option");
+        for (let i = 0; i < list.length; i++) {
+            const opt = list[i];
+            const el = document.createElement("option");
             el.textContent = opt;
             el.value = i.toString();
             htmlList.appendChild(el);
@@ -356,6 +358,10 @@ async moveToLevel(moveInterval = 0) {
     }
     /** load a level and render it to the display */
     async loadLevel() {
+        if (this.autoMoveTimer !== null) {
+            window.clearTimeout(this.autoMoveTimer);
+            this.autoMoveTimer = null;
+        }
         if (!this.gameResources) return;
         if (this.game) {
             this.game.stop();
@@ -371,7 +377,7 @@ async moveToLevel(moveInterval = 0) {
         if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
         if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
         if (this.stage) {
-            let gameDisplay = this.stage.getGameDisplay();
+            const gameDisplay = this.stage.getGameDisplay();
             gameDisplay.clear();
             this.stage.resetFade();
             level.render(gameDisplay);

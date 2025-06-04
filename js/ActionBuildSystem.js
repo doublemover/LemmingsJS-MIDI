@@ -1,26 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionBuildSystem {
-    static sprites = new Map();
+class ActionBuildSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionBuildSystem.sprites.size == 0) {
-            ActionBuildSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, false));
-            ActionBuildSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.BUILDING, true));
-        }
-    }
-
-    getActionName() {
-        return "building";
-    }
-
-    triggerLemAction(lem) {
-        lem.setAction(this);
-        return true;
-    }
-    draw(gameDisplay, lem) {
-        const ani = ActionBuildSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super({ sprites, spriteType: Lemmings.SpriteTypes.BUILDING, actionName: 'building' });
     }
     process(level, lem) {
         lem.frameIndex = (lem.frameIndex + 1) % 16;

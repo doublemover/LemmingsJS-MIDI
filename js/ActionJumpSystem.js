@@ -1,16 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionJumpSystem {
-    static sprites = new Map();
+class ActionJumpSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionJumpSystem.sprites.size == 0) {
-            ActionJumpSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.JUMPING, false));
-            ActionJumpSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.JUMPING, true));
-        }
-    }
-
-    getActionName() {
-        return "jump";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
     }
 
     triggerLemAction(lem) {
@@ -18,9 +11,7 @@ class ActionJumpSystem {
     }
 
     draw(gameDisplay, lem) {
-        const ani = ActionJumpSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
 
     process(level, lem) {
