@@ -34,7 +34,9 @@ class PackFilePart {
     const rawQueue = [];
 
     const pushBits = (val, count) => {
-      for (let i = 0; i < count; i++) bits.push((val >> i) & 1);
+      for (let i = count - 1; i >= 0; i--) {
+        bits.push((val >> i) & 1);
+      }
     };
 
     const flushRaw = () => {
