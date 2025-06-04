@@ -3,9 +3,18 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import '../js/LemmingsBootstrap.js';
 
-// enable debug logging
-globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+let originalLemmings;
+
+beforeEach(function () {
+  originalLemmings = globalThis.lemmings;
+  globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+});
+
+afterEach(function () {
+  globalThis.lemmings = originalLemmings;
+});
 
 // minimal sprite and mask providers so the constructor doesn't fail
 const spriteStub = {
