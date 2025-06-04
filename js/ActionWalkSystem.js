@@ -17,30 +17,43 @@ class ActionWalkSystem {
         triggerLemAction(lem) {
             return false;
         }
+        /**
+         * Scan upward to determine how tall the obstacle directly in front of
+         * the lemming is. Returns a value between 0 and 7 inclusive, or 8 if
+         * the column is completely solid up to 7px above the current Y.
+         */
         getGroundStepDelta(groundMask, x, y) {
-            for (let i = 0; i <= 7; i++) {
-                if (!groundMask.hasGroundAt(x, y - i)) {
-                    return i;
-                }
+            let dy = 0;
+            let checkY = y;
+            while (dy <= 7 && groundMask.hasGroundAt(x, checkY)) {
+                dy++;
+                checkY--;
             }
-            return 8; // solid column higher than 7px
+            return dy > 7 ? 8 : dy;
         }
+
+        /**
+         * Scan downward to see how far the lemming can drop before falling.
+         * Returns a value between 1 and 3 inclusive, or 4 if no ground was
+         * found within those three pixels.
+         */
         getGroudGapDelta(groundMask, x, y) {
-            for (let i = 1; i < 4; i++) {
-                if (groundMask.hasGroundAt(x, y + i)) {
-                    return i;
-                }
+            let dy = 1;
+            while (dy <= 3) {
+                if (groundMask.hasGroundAt(x, y + dy)) break;
+                dy++;
             }
-            return 4;
+            return dy > 3 ? 4 : dy;
         }
         process(level, lem) {
             lem.frameIndex++;
             lem.x += (lem.lookRight ? 1 : -1);
             const groundMask = level.getGroundMaskLayer();
-            const upDelta = this.getGroundStepDelta(groundMask, lem.x, lem.y);
 
-            if (upDelta > 0) {
-                // obstacle directly ahead
+            if (groundMask.hasGroundAt(lem.x, lem.y)) {
+                // Obstacle directly ahead - walk up, jump or turn around
+                const upDelta = this.getGroundStepDelta(groundMask, lem.x, lem.y);
+
                 if (upDelta > 6) {
                     if (lem.canClimb) {
                         return Lemmings.LemmingStateType.CLIMBING;
@@ -48,18 +61,20 @@ class ActionWalkSystem {
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
+
                 if (upDelta >= 3) {
                     lem.y -= 2;
                     return Lemmings.LemmingStateType.JUMPING;
                 }
+
                 lem.y -= upDelta;
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
             }
 
-            // no obstacle, check for ground below
-            let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
+            // Nothing at feet - walk down or start falling
+            const downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
             lem.y += downDelta;
-            if (downDelta == 4) {
+            if (downDelta === 4) {
                 return Lemmings.LemmingStateType.FALLING;
             }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
