@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 import './ColorPalette.js';
 
 // Palette remapping for the fire shooter trap. 
