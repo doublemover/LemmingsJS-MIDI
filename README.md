@@ -139,20 +139,10 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Terminal:
   - `npm install`
   - `npm run`
-- See [docs/tools.md](docs/tools.md) for detailed usage of each script
+- See [docs/tools.md](docs/tools.md) for detailed usage of each script.
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
-
-### Running Tests
-
-Run `npm test` to execute the Mocha suite. The command also invokes
-[`tools/check-undefined.js`](tools/check-undefined.js) to ensure no
-accidental global variables leak into the tests.
-
-### Continuous Integration
-
-The GitHub Actions workflow uses **Node 18** and runs `npm run lint` followed
-by `npm test`. See [docs/ci.md](docs/ci.md) for details.
+- See [docs/ci.md](docs/ci.md) for gh actions workflow info.
 
 ### Progressive Web App
 
