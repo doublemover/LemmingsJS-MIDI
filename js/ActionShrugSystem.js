@@ -1,16 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionShrugSystem {
-    static sprites = new Map();
+class ActionShrugSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionShrugSystem.sprites.size == 0) {
-            ActionShrugSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.SHRUGGING, false));
-            ActionShrugSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.SHRUGGING, true));
-        }
-    }
-
-    getActionName() {
-        return "shrugging";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.SHRUGGING, actionName: 'shrugging' });
     }
 
     triggerLemAction(lem) {
@@ -18,8 +11,7 @@ class ActionShrugSystem {
     }
 
     draw(gameDisplay, lem) {
-        const frame = ActionShrugSystem.sprites.get(lem.getDirection()).getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
 
     process(level, lem) {

@@ -1,22 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionExitingSystem {
-    static sprites = new Map();
+class ActionExitingSystem extends ActionBaseSystem {
     constructor(sprites, gameVictoryCondition) {
+        super({ sprites, spriteType: Lemmings.SpriteTypes.EXITING, singleSprite: true, actionName: 'exiting' });
         this.gameVictoryCondition = gameVictoryCondition;
-        if (ActionExitingSystem.sprites.size == 0) {
-            ActionExitingSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.EXITING, false));
-        }
-    }
-    getActionName() {
-        return "exiting";
     }
     triggerLemAction(lem) {
         return false;
     }
     draw(gameDisplay, lem) {
-        const frame = ActionExitingSystem.sprites.get("both").getFrame(lem.frameIndex)
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
     process(level, lem) {
         lem.disable();

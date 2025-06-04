@@ -1,4 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
+let steelSprites = null;
+
+async function loadSteelSprites() {
+  if (!steelSprites) {
+    const url = new URL('./steelSprites.json', import.meta.url);
+    const res = await fetch(url);
+    steelSprites = await res.json();
+  }
+  return steelSprites;
+}
+
+Lemmings.loadSteelSprites = loadSteelSprites;
 
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
@@ -6,14 +18,14 @@ const BYTE_SIZE_OF_OBJECTS  = 28 * OBJECT_COUNT;
 const BYTE_SIZE_OF_TERRAIN  = 8  * TERRAIN_COUNT;
 const TRANSPARENT = 128;
 
-class GroundReader {
+class GroundReader extends Lemmings.BaseLogger {
   /**
    * @param {Lemmings.FileReader} groundFile  – GROUNDxO.DAT (1056 bytes)
    * @param {Lemmings.FileReader} vgaTerrain  – slice of VGAGx.DAT (terrain)
    * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
    */
   constructor (groundFile, vgaTerrain, vgaObject) {
-    this.log = new Lemmings.LogHandler('GroundReader');
+    super();
     if (groundFile.length !== 1056) {
       this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
       return;
@@ -161,60 +173,18 @@ class GroundReader {
       img.palette  = palette;
       img.frameCount = 1; // terrains never animate
 
-      let filename = fr.filename;
-      let foldername = fr.foldername;
-      if (foldername == "[unknown]") {
-        console.log("folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel");
-      }
-      else if (foldername == "lemmings") {
-        if (filename == "GROUND0O.DAT") { // normal maps
-          if (i >= 22 && i <= 26) {
-            img.isSteel = true;
-          }
-          if (i == 19) {
-            // this one writes black over steel
-          }
-        } 
-        else if (filename == "GROUND1O.DAT") { // dungeon maps 
-          if (i >= 12 && i <= 17) {
-            img.isSteel = true;
-          }
-        } 
-        else if (filename == "GROUND2O.DAT") { // pink maps
-          if (i == 5 || i >= 57 && i <= 59) { 
-            img.isSteel = true;
-          }
-        } 
-        else if (filename == "GROUND3O.DAT") { // desert maps
-          if (i == 27) { 
-            img.isSteel = true;
-          }
-          if ( i >= 48 && i <= 50) {
-            img.isSteel = true;
-          }
-        } 
-        else if (filename == "GROUND4O.DAT") { // crystal maps
-          if (i >= 31 && i <= 32 || i == 34) {
-            img.isSteel = true;
-          }
+      const filename = fr.filename;
+      const foldername = fr.foldername;
+      if (foldername === "[unknown]") {
+        console.log(
+          "folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel"
+        );
+      } else {
+        const gameData = steelSprites[foldername];
+        const steelList = gameData ? gameData[filename] : null;
+        if (steelList && steelList.includes(i)) {
+          img.isSteel = true;
         }
-      } 
-      else if (foldername == "lemmings_ohNo") {
-        if (filename == "GROUND0O.DAT") { // brick maps
-          if (i >= 51 && i <= 54) {
-            img.isSteel = true;
-          }
-        } 
-        else if (filename == "GROUND1O.DAT") { // jungle maps 
-          if (i >= 56 && i <= 59) {
-            img.isSteel = true;
-          }
-        } 
-        else if (filename == "GROUND2O.DAT") { // ice maps
-          if (i >= 29 && i <= 32) { 
-            img.isSteel = true;
-          }
-        } 
       }
 
       if (fr.eof()) {

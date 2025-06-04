@@ -5,7 +5,7 @@ import { Lemmings } from './LemmingsNamespace.js';
  * Copies raw data or references already-written bytes using a BitReader.
  * @class
  */
-class BitWriter {
+class BitWriter extends Lemmings.BaseLogger {
   /** @type {Uint8Array} Output buffer (write backwards from end) */
   #outData;
 
@@ -15,21 +15,19 @@ class BitWriter {
   /** @type {Lemmings.BitReader} Input reader for compressed data */
   #bitReader;
 
-  /** @type {Lemmings.LogHandler} Logger */
-  #log;
 
   /**
    * @param {Lemmings.BitReader} bitReader - Source of compressed bits.
    * @param {number} outLength - Total length of output buffer.
    */
   constructor(bitReader, outLength) {
+    super();
     if (!bitReader || typeof bitReader.read !== 'function') {
       throw new TypeError('bitReader must have a .read() method');
     }
     if (!Number.isInteger(outLength) || outLength <= 0) {
       throw new RangeError('outLength must be a positive integer');
     }
-    this.#log = new Lemmings.LogHandler('BitWriter');
     this.#outData = new Uint8Array(outLength);
     this.#outPos = outLength; // Write head walks *backwards*
     this.#bitReader = bitReader;
@@ -60,7 +58,7 @@ class BitWriter {
     const reader = this.#bitReader;
 
     if (outPos - length < 0) {
-      this.#log.log('copyRawData: out of out buffer');
+      this.log.log('copyRawData: out of out buffer');
       length = outPos;
     }
 
@@ -82,11 +80,11 @@ class BitWriter {
     const offset = this.#bitReader.read(offsetBitCount) + 1;
 
     if (outPos + offset > outData.length) {
-      this.#log.log('copyReferencedData: offset out of range');
+      this.log.log('copyReferencedData: offset out of range');
       return;
     }
     if (outPos - length < 0) {
-      this.#log.log('copyReferencedData: out of out buffer');
+      this.log.log('copyReferencedData: out of out buffer');
       length = outPos;
     }
 
