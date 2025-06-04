@@ -222,12 +222,12 @@ URL parameters (shortcut in brackets):
 - `Shift+T`: Instant nuke
 - `Backspace`: Restart level
 - Arrow Keys: Move viewport
-- `Shift` + Arrow Keys: Move viewport faster
+- `Shift` + Arrow Keys: Move viewport 4× faster
 - `Z` / `X`: Zoom in / out
 - `Shift+Z` / `Shift+X`: Faster zoom in / out
 - `V`: Reset zoom to 2
 - `-` / `=`: Decrease / Increase game speed
-- `Shift+-` / `Shift+=`: Double game speed change
+- `Shift+-` / `Shift+=`: Bigger game speed change
 - `,` / `.`: Previous / Next level
 - `Shift+,` / `Shift+.`: Previous / Next group
 - `Tab`: Cycle through skills

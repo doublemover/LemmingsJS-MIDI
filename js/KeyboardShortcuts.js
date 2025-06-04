@@ -35,21 +35,24 @@ class KeyboardShortcuts {
             const img = stage.gameImgProps;
             const vp = img.viewPoint;
             const scale = vp.scale;
-            const shiftMul = this.mod.shift ? 2 : 1;
+            // hold shift to pan much further per frame
+            const shiftMul = this.mod.shift ? 4 : 1;
 
             // ----- panning -----
             const baseX = 40 * scale;
             const baseY = 20 * scale;
-            const accel = 0.05 / scale * dt;
+            // slow the acceleration a touch for smoother motion
+            const accel = 0.035 / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
             const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
             this.pan.vx += (targetVX - this.pan.vx) * accel;
             this.pan.vy += (targetVY - this.pan.vy) * accel;
-            this.pan.vx *= 0.98;
-            this.pan.vy *= 0.98;
+            // extend easing so velocity decays more gradually
+            this.pan.vx *= 0.99;
+            this.pan.vy *= 0.99;
             const dx = this.pan.vx;
             const dy = this.pan.vy;
-            if (Math.abs(dx) > 0.1 || Math.abs(dy) > 0.1) {
+            if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
                 stage.updateViewPoint(img, dx, dy, 0);
                 stage.redraw();
                 again = true;
@@ -69,7 +72,9 @@ class KeyboardShortcuts {
                 const baseZ = 0.1 * scale * (this.mod.shift ? 2 : 1);
                 targetZ = this.zoom.dir * baseZ;
             }
-            this.zoom.v += (targetZ - this.zoom.v) * 0.1 * dt;
+            // gentler acceleration for zooming
+            this.zoom.v += (targetZ - this.zoom.v) * 0.05 * dt;
+            this.zoom.v *= 0.99;
             const dz = this.zoom.v;
             if (Math.abs(dz) > 0.001) {
                 stage.updateViewPoint(img, cx, cy, dz, zx, zy);
@@ -110,7 +115,8 @@ class KeyboardShortcuts {
     _changeSpeed(dir, isShift) {
         const timer = this.view.game.getGameTimer();
         const gui = this.view.game.gameGui;
-        const steps = isShift ? 2 : 1;
+        // Shift should noticeably speed things up
+        const steps = isShift ? 5 : 1;
         for (let i=0;i<steps;i++) {
             if (dir > 0) {
                 if (timer.speedFactor < 1) {
