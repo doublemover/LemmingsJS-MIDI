@@ -105,19 +105,19 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] debounce/toggle
     - [ ] html needs size set
     - [ ] better level nav buttons/pack & diff dropdowns
-  - [ ] Keyboard shortcuts
-    - [ ] Decrease Release Rate
-    - [ ] Min Release Rate
-    - [ ] Increase Release Rate
-    - [ ] Max Release Rate
-    - [ ] Climb/Float/Bomb/Block/Build/Bash/Mine/Dig
-    - [ ] Pause
-    - [ ] Nuke
-    - [ ] Reset Speed
-    - [ ] Increase Speed
-    - [ ] Decrease Speed
-    - [ ] Restart
-    - [ ] Debug
+  - [X] Keyboard shortcuts
+    - [X] Decrease Release Rate
+    - [X] Min Release Rate
+    - [X] Increase Release Rate
+    - [X] Max Release Rate
+    - [X] Climb/Float/Bomb/Block/Build/Bash/Mine/Dig
+    - [X] Pause
+    - [X] Nuke
+    - [X] Reset Speed
+    - [X] Increase Speed
+    - [X] Decrease Speed
+    - [X] Restart
+    - [X] Debug
     - [ ] Skill/Lem Cycle
     - [ ] Viewport Movement, Zoom, Reset, Focus Lem/D
   - [ ] Tick Step
@@ -202,6 +202,36 @@ URL parameters (shortcut in brackets):
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
+
+## Keyboard Shortcuts
+
+- `1`: Decrease Release Rate
+- `Shift+1`: Minimize Release Rate
+- `2`: Increase Release Rate
+- `Shift+2`: Maximize Release Rate
+- `3`: Select Climber
+- `4`: Select Floater
+- `5`: Select Bomber
+- `6`: Select Blocker
+- `Q`: Select Builder
+- `W`: Select Basher
+- `E`: Select Miner
+- `R`: Select Digger
+- `Space`: Pause
+- `T`: Nuke
+- `Shift+T`: Instant nuke
+- `Backspace`: Restart level
+- Arrow Keys: Move viewport
+- `Shift` + Arrow Keys: Move viewport 2.5× faster
+- `Z` / `X`: Zoom in / out
+- `Shift+Z` / `Shift+X`: 1.5× zoom in / out
+- `V`: Reset zoom to 2
+- `-` / `=`: Decrease / Increase game speed
+- `Shift+-` / `Shift+=`: Bigger game speed change
+- `,` / `.`: Previous / Next level
+- `Shift+,` / `Shift+.`: Previous / Next group
+- `Tab`: Cycle through skills
+- `\`: Toggle debug mode
   
 ## Credits
 
