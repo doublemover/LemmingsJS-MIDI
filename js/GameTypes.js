@@ -1,7 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 
-export const GameTypes = Object.freeze({ UNKNOWN:0, LEMMINGS:1, OHNO:2, XMAS91:3, XMAS92:4, HOLIDAY93:5, HOLIDAY94:6 });
+export const GameTypes = Object.freeze({ UNKNOWN:0, LEMMINGS:1, OHNO:2 });
 
 Lemmings.GameTypes = GameTypes;
 

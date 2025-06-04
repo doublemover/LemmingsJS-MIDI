@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class ConfigReader extends Lemmings.BaseLogger {
+class ConfigReader {
         constructor(configFile) {
-            super();
+            this.log = new Lemmings.LogHandler("ConfigReader");
             this.configs = new Promise((resolve, reject) => {
                 configFile.then((jsonString) => {
                     let configJson = this.parseConfig(jsonString);
@@ -24,24 +24,22 @@ class ConfigReader extends Lemmings.BaseLogger {
                 });
             });
         }
-        /** parse the config file */
+        /** pars the config file */
         parseConfig(jsonData) {
             let gameConfigs = [];
-            let config = null;
             try {
-                config = JSON.parse(jsonData);
+                var config = JSON.parse(jsonData);
             } catch (e) {
                 this.log.log("Unable to parse config", e);
                 return gameConfigs;
             }
             /// for all game types
-            const configLength = config.length;
-            for (let c = 0; c < configLength; c++) {
+            for (let c = 0; c < config.length; c++) {
                 let newConfig = new Lemmings.GameConfig();
                 let configData = config[c];
-                newConfig.name = configData.name;
-                newConfig.path = configData.path;
-                newConfig.gametype = Lemmings.GameTypes[configData.gametype];
+                newConfig.name = configData["name"];
+                newConfig.path = configData["path"];
+                newConfig.gametype = Lemmings.GameTypes[configData["gametype"]];
                 /// read level config
                 if (configData["level.useoddtable"] != null) {
                     newConfig.level.useOddTable = (!!configData["level.useoddtable"]);

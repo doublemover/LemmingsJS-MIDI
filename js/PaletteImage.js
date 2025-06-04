@@ -4,7 +4,7 @@ class PaletteImage {
     constructor(width, height) {
         this.width = width;
         this.height = height;
-        this.pixBuf = new Uint8Array(width * height);
+        this.pixBuf = new Uint8Array(width * height); // one‑time allocation
     }
 
     getImageBuffer() { return this.pixBuf; }

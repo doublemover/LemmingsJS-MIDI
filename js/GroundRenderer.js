@@ -15,11 +15,11 @@ class GroundRenderer {
 
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];
-      this._blit(terrainImages[tObj.id], tObj);
+      this.#blit(terrainImages[tObj.id], tObj);
     }
   }
 
-  _blit (srcImg, cfg, frameIdx = 0) {
+  #blit (srcImg, cfg, frameIdx = 0) {
     if (!srcImg) return;
 
     const pix  = srcImg.frames[frameIdx];

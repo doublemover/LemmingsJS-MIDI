@@ -1,10 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import './KeyboardShortcuts.js';
 
-class GameView extends Lemmings.BaseLogger {
+class GameView {
     constructor() {
-        super();
-        this.gameType = null;
+        this.log = new Lemmings.LogHandler("GameView");
         this.levelIndex = 0;
         this.levelGroupIndex = 0;
         this.gameResources = null;
@@ -12,71 +10,47 @@ class GameView extends Lemmings.BaseLogger {
         this.gameFactory = new Lemmings.GameFactory("./");
         this.stage = null;
         this.gameSpeedFactor = 1;
-        this.bench = false; // just keep spawning lems
-        this.endless = false; // time doesn't run out, game doesn't end
-        this.nukeAfter = 0; // nuke after x seconds
-        this.scale = 0; // zoom 
-        this.laggedOut = 0;
-        this.extraLemmings = 0;
-        this.perfMetrics = false;
-        this.steps = 0;
         this.applyQuery();
-        this.elementGameState = null;
-        this.autoMoveTimer = null;
-        this.elementSelectGameType = null;
-        this.elementSelectLevelGroup = null;
-        this.elementSelectLevel = null;
-        this.configs = null;
-        this.shortcuts = new Lemmings.KeyboardShortcuts(this);
-        this._keyHandler = this._onKeyDown.bind(this);
-        this._keysAdded = false;
-
-        this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
-
     set gameCanvas(el) {
-        if (this.stage && this.stage.dispose) {
-            this.stage.dispose();
-        }
         this.stage = new Lemmings.Stage(el);
     }
-
     /** start or continue the game */
-    async start(replayString) {
-        if (!this.gameFactory) return;
+    start(replayString) {
+        if (!this.gameFactory)
+            return;
+        /// is the game already running
         if (this.game != null) {
             this.continue();
             return;
         }
-        try {
-            const game = await this.gameFactory.getGame(this.gameType);
-            await game.loadLevel(this.levelGroupIndex, this.levelIndex);
-            if (replayString != null) {
-                game.getCommandManager().loadReplay(replayString);
-            }
-            game.setGameDisplay(this.stage.getGameDisplay());
-            game.setGuiDisplay(this.stage.getGuiDisplay());
-            game.getGameTimer().speedFactor = this.gameSpeedFactor;
-            game.start();
-            if (!this._keysAdded) {
-                document.addEventListener('keydown', this._keyHandler);
-                this._keysAdded = true;
-            }
-            this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
-            game.onGameEnd.on(state => this.onGameEnd(state));
-            this.game = game;
-            if (this.cheat) this.game.cheat();
-            if (this.debug) this.game.showDebug = true;
-        } catch (e) {
-            this.log.log("Error starting game:", e);
-        }
+        /// create new game
+        return this.gameFactory.getGame(this.gameType)
+            .then((game) => game.loadLevel(this.levelGroupIndex, this.levelIndex))
+            .then((game) => {
+                if (replayString != null) {
+                    game.getCommandManager().loadReplay(replayString);
+                }
+                game.setGameDisplay(this.stage.getGameDisplay());
+                game.setGuiDisplay(this.stage.getGuiDisplay());
+                game.getGameTimer().speedFactor = this.gameSpeedFactor;
+                game.start();
+                this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
+                game.onGameEnd.on((state) => this.onGameEnd(state));
+                this.game = game;
+                if (this.cheat) {
+                    this.game.cheat();
+                }
+                if (this.debug) {
+                    this.game.showDebug = true;
+                }
+            });
     }
-
     onGameEnd(gameResult) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
         console.dir(gameResult);
-        this.autoMoveTimer = window.setTimeout(() => {
+        window.setTimeout(() => {
             if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                 /// move to next level
                 this.moveToLevel(1);
@@ -84,42 +58,39 @@ class GameView extends Lemmings.BaseLogger {
                 /// redo this level
                 this.moveToLevel(0);
             }
-            this.autoMoveTimer = null;
         }, 2500);
     }
-
-    async loadReplay(replayString) {
-        await this.start(replayString);
+    /** load and run a replay */
+    loadReplay(replayString) {
+        this.start(replayString);
     }
-
+    /** pause the game */
     cheat() {
         if (this.game == null) {
             return;
         }
         this.game.cheat();
     }
-
+    /** pause the game */
     suspend() {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().suspend();
     }
-
+    /** continue the game after pause/suspend */
     continue () {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().continue();
     }
-
     nextFrame() {
         if (this.game == null) {
             return;
         }
         this.game.getGameTimer().tick();
     }
-
     selectSpeedFactor(newSpeed) {
         if (this.game == null) {
             return;
@@ -127,156 +98,145 @@ class GameView extends Lemmings.BaseLogger {
         this.gameSpeedFactor = newSpeed;
         this.game.getGameTimer().speedFactor = newSpeed;
     }
-
     playMusic(moveInterval) {
 
     }
-
     stopMusic() {
 
     }
-
     stopSound() {
 
     }
-
     playSound(moveInterval) {
 
     }
-
     enableDebug() {
         if (this.game == null) {
             return;
         }
         this.game.setDebugMode(true);
     }
-
     /** add/subtract one to the current levelIndex */
-async moveToLevel(moveInterval = 0) {
-        if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) return;
-        if (this.inMoveToLevel) return;
+    moveToLevel(moveInterval) {
+        if (moveInterval == null)
+            moveInterval = 0;
+        if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) {
+            return;
+        }
+        if (this.inMoveToLevel) {
+            return;
+        }
         this.inMoveToLevel = true;
         this.levelIndex = (this.levelIndex + moveInterval) | 0;
-        try {
-            const config = await this.gameFactory.getConfig(this.gameType);
-            const groupLength = config.level.getGroupLength(this.levelGroupIndex);
-
-            if (this.levelIndex >= groupLength) {
+        /// check if the levelIndex is out of bounds
+        this.gameFactory.getConfig(this.gameType).then((config) => {
+            /// jump to next level group?
+            if (this.levelIndex >= config.level.getGroupLength(this.levelGroupIndex)) {
                 this.levelGroupIndex++;
                 this.levelIndex = 0;
             } else if (this.levelGroupIndex > 0 && this.levelIndex < 0) {
                 this.levelGroupIndex--;
-                this.levelIndex = groupLength - 1;
-            } else if (this.levelGroupIndex == 0 && this.levelIndex < 0 && this.gameType > 1) {
-                this.gameType--;
-                this.levelGroupIndex = 0;
-                this.levelIndex = 0;
+                this.levelIndex = config.level.getGroupLength(this.levelGroupIndex) - 1;
             }
             if (this.levelGroupIndex >= config.level.order.length) {
                 this.gameType++;
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
-            if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
-                this.levelGroupIndex--;
-                this.levelIndex = groupLength - 1;
-            }
             if (!Lemmings.GameTypes[Object.keys(Lemmings.GameTypes)[this.gameType]]) {
                 this.gameType = 1;
                 this.levelGroupIndex = 0;
                 this.levelIndex = 0;
             }
-            await this.loadLevel();
-        } finally {
-            this.inMoveToLevel = false;
-        }
-    }
-    /** helper to parse a numeric query value */
-    parseNumber(query, names, def, min, max, multiplier = 1) {
-        for (const name of names) {
-            const raw = query.get(name);
-            if (raw !== null) {
-                const val = parseFloat(raw);
-                if (!isNaN(val) && val >= min && val <= max) {
-                    return val * multiplier;
-                }
+            /// jump to previous level group?
+            if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
+                this.levelGroupIndex--;
+                this.levelIndex = config.level.getGroupLength(this.levelGroupIndex) - 1;
             }
-        }
-        return def;
+            /// update and load level
+            this.changeHtmlText(this.elementLevelNumber, (this.levelIndex + 1).toString());
+            this.loadLevel().then(() => {
+                this.inMoveToLevel = false;
+            });
+        });
     }
-
-    /** helper to parse a boolean query value */
-    parseBool(query, names, def = false) {
-        for (const name of names) {
-            if (query.has(name)) {
-                return query.get(name) === "true";
-            }
-        }
-        return def;
-    }
-
-    /** read parameters from the current URL */
+    /** return the url hash for the present game/group/level-index */
     applyQuery() {
         this.gameType = 1;
-        const query = new URLSearchParams(window.location.search);
-        this.gameType = this.parseNumber(query, ["version", "v"], 1, 1, 6);
-        this.levelGroupIndex = this.parseNumber(query, ["difficulty", "d"], 1, 1, 5) - 1;
-        this.levelIndex = this.parseNumber(query, ["level", "l"], 1, 1, 30) - 1;
-        this.gameSpeedFactor = this.parseNumber(query, ["speed", "s"], 1, 0, 100);
-        this.cheat = this.parseBool(query, ["cheat", "c"]);
-        this.debug = this.parseBool(query, ["debug", "dbg"]);
-        this.bench = this.parseBool(query, ["bench", "b"]);
-        this.endless = this.parseBool(query, ["endless", "e"]);
-        this.nukeAfter = this.parseNumber(query, ["nukeAfter", "na"], 0, 1, 60, 10);
-        this.extraLemmings = this.parseNumber(query, ["extra", "ex"], 0, 1, 1000);
-        this.scale = this.parseNumber(query, ["scale", "sc"], 0, 0.0125, 5);
-        this.laggedOut = 0;
-        
+        let query = new URLSearchParams(window.location.search);
+        if (query.get("version") || query.get("v")) {
+            let queryVersion = parseInt(query.get("version") || query.get("v"), 10);
+            if (!isNaN(queryVersion) && queryVersion >= 1 && queryVersion <= 2) {
+                this.gameType = queryVersion;
+            }
+        }
+        this.levelGroupIndex = 0;
+        if (query.get("difficulty") || query.get("d")) {
+            let queryDifficulty = parseInt(query.get("difficulty") || query.get("d"), 10);
+            if (!isNaN(queryDifficulty) && queryDifficulty >= 1 && queryDifficulty <= 5) {
+                this.levelGroupIndex = queryDifficulty - 1;
+            }
+        }
+        this.levelIndex = 0;
+        if (query.get("level") || query.get("l")) {
+            let queryLevel = parseInt(query.get("level") || query.get("l"), 10);
+            if (!isNaN(queryLevel) && queryLevel >= 1 && queryLevel <= 30) {
+                this.levelIndex = queryLevel - 1;
+            }
+        }
+        this.gameSpeedFactor = 1;
+        if (query.get("speed") || query.get("s")) {
+            let querySpeed = parseFloat(query.get("speed") || query.get("s"));
+            if (!isNaN(querySpeed) && querySpeed > 0 && querySpeed <= 10) {
+                this.gameSpeedFactor = querySpeed;
+            }
+        }
+        this.cheat = false;
+        if (query.get("cheat") || query.get("c")) {
+            this.cheat = (query.get("cheat") || query.get("c")) === "true";
+        }
+        this.debug = false
+        if (query.get("debug") || query.get("d")) {
+            this.debug = (query.get("debug") || query.get("d")) === "true";
+        }
         this.shortcut = false;
         if (query.get("shortcut") || query.get("_")) {
             this.shortcut = (query.get("shortcut") || query.get("_")) === "true";
         }
-        this.perfMetrics = false;
-        if (query.get("perfMetrics") || query.get("pm")) {
-            this.perfMetrics = (query.get("perfMetrics") || query.get("pm")) === "true";
-        }
     }
     updateQuery() {
-        const params = new URLSearchParams(window.location.search);
-        const setParam = (longName, shortName, value, def, always) => {
-            params.delete(longName);
-            params.delete(shortName);
-            if (always || (value !== undefined && value !== def)) {
-                params.set(this.shortcut ? shortName : longName, value);
-            }
-        };
-
-        // main game state should always remain visible
-        setParam('version', 'v', this.gameType, undefined, true);
-        setParam('difficulty', 'd', this.levelGroupIndex + 1, undefined, true);
-        setParam('level', 'l', this.levelIndex + 1, undefined, true);
-        setParam('speed', 's', this.gameSpeedFactor, undefined, true);
-        setParam('cheat', 'c', this.cheat, undefined, true);
-
-        // optional flags only appear when non-default
-        setParam('debug', 'dbg', this.debug, false);
-        setParam('bench', 'b', this.bench, false);
-        setParam('endless', 'e', this.endless, false);
-        setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
-        setParam('extra', 'ex', this.extraLemmings, 0);
-        setParam('scale', 'sc', this.scale, 0);
-
         if (this.shortcut) {
-            params.set('_', true);
+            this.setHistoryState({
+                v: this.gameType,
+                d: this.levelGroupIndex + 1,
+                l: this.levelIndex + 1,
+                s: this.gameSpeedFactor,
+                c: !!this.cheat,
+                _: true
+            });
         } else {
-            params.delete('_');
+            this.setHistoryState({
+                version: this.gameType,
+                difficulty: this.levelGroupIndex + 1,
+                level: this.levelIndex + 1,
+                speed: this.gameSpeedFactor,
+                cheat: !!this.cheat
+            });
         }
-
-        this.setHistoryState(params);
     }
-    setHistoryState(params) {
-        const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
-        history.replaceState(null, null, "?" + query.toString());
+    setHistoryState(state) {
+        history.replaceState(
+            null,
+            null,
+            "?" +
+            Object.keys(state)
+            .map((key) => key + "=" + state[key])
+            .join("&")
+        );
+    }
+    /** convert a string to a number */
+    strToNum(str) {
+        return Number(str) | 0;
     }
     /** change the the text of a html element */
     changeHtmlText(htmlElement, value) {
@@ -284,10 +244,6 @@ async moveToLevel(moveInterval = 0) {
             return;
         }
         htmlElement.innerText = value;
-    }
-    /** prefix items with an increasing index */
-    prefixNumbers(list) {
-        return list.map((item, idx) => `${idx + 1} - ${item}`);
     }
     /** remove items of a <select> */
     clearHtmlList(htmlList) {
@@ -301,124 +257,55 @@ async moveToLevel(moveInterval = 0) {
             return;
         }
         this.clearHtmlList(htmlList);
-        for (let i = 0; i < list.length; i++) {
-            const opt = list[i];
-            const el = document.createElement("option");
+        for (var i = 0; i < list.length; i++) {
+            var opt = list[i];
+            var el = document.createElement("option");
             el.textContent = opt;
             el.value = i.toString();
             htmlList.appendChild(el);
         }
     }
-    /** fill the level select with the names for the current group */
-    async populateLevelSelect() {
-        if (!this.elementSelectLevel || !this.gameResources) return;
-        const config = await this.gameFactory.getConfig(this.gameType);
-        const groupLength = config.level.getGroupLength(this.levelGroupIndex);
-        const list = [];
-        for (let i = 0; i < groupLength; i++) {
-            const lvl = await this.gameResources.getLevel(this.levelGroupIndex, i);
-            if (!lvl) continue;
-            list.push((i + 1) + ": " + lvl.name);
-        }
-        this.arrayToSelect(this.elementSelectLevel, list);
-        this.elementSelectLevel.selectedIndex = this.levelIndex;
-    }
     /** switch the selected level group */
-    async selectLevelGroup(newLevelGroupIndex) {
+    selectLevelGroup(newLevelGroupIndex) {
         this.levelGroupIndex = newLevelGroupIndex;
-        this.levelIndex = 0;
-        await this.populateLevelSelect();
-        this.loadLevel();
-    }
-    /** switch the selected game type */
-    async selectGameType(newGameType) {
-        this.gameType = newGameType;
-        this.levelGroupIndex = 0;
-        this.levelIndex = 0;
-        const newGameResources = await this.gameFactory.getGameResources(this.gameType);
-        this.gameResources = newGameResources;
-        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
-        this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
-        await this.populateLevelSelect();
-        this.loadLevel();
-    }
-    /** select a specific level */
-    selectLevel(newLevelIndex) {
-        this.levelIndex = newLevelIndex;
         this.loadLevel();
     }
     /** select a game type */
-    async setup() {
+    setup() {
         this.applyQuery();
-        this.configs = await this.gameFactory.configReader.configs;
-        this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));
-        const typeIndex = this.configs.findIndex(c => c.gametype === this.gameType);
-        if (typeIndex >= 0 && this.elementSelectGameType)
-            this.elementSelectGameType.selectedIndex = typeIndex;
-        const newGameResources = await this.gameFactory.getGameResources(this.gameType);
-        this.gameResources = newGameResources;
-        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
-        this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
-        await this.populateLevelSelect();
-        await this.loadLevel();
+        this.gameFactory.getGameResources(this.gameType)
+            .then((newGameResources) => {
+                this.gameResources = newGameResources;
+                this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+                this.loadLevel();
+            });
     }
     /** load a level and render it to the display */
-    async loadLevel() {
-        if (this.autoMoveTimer !== null) {
-            window.clearTimeout(this.autoMoveTimer);
-            this.autoMoveTimer = null;
-        }
-        if (!this.gameResources) return;
-        if (this.game) {
+    loadLevel() {
+        if (this.gameResources == null)
+            return;
+        if (this.game != null) {
             this.game.stop();
             this.game = null;
         }
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes[Lemmings.GameStateTypes.UNKNOWN]);
-        const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
-        if (!level) return;
-        if (this.elementSelectGameType && this.configs) {
-            const idx = this.configs.findIndex(c => c.gametype === this.gameType);
-            if (idx >= 0) this.elementSelectGameType.selectedIndex = idx;
-        }
-        if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
-        if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
-        if (this.stage) {
-            let gameDisplay = this.stage.getGameDisplay();
-            gameDisplay.clear();
-            this.stage.resetFade();
-            level.render(gameDisplay);
-            gameDisplay.setScreenPosition(level.screenPositionX, 0);
-            gameDisplay.redraw();
-        }
-        this.updateQuery();
-        this.log.debug(level);
-        return this.start();
-    }
-
-    _onKeyDown(e) {
-        if (!this.game) return;
-        const lm = this.game.getLemmingManager();
-        const skills = {
-            '1': Lemmings.SkillTypes.CLIMBER,
-            '2': Lemmings.SkillTypes.FLOATER,
-            '3': Lemmings.SkillTypes.BOMBER,
-            '4': Lemmings.SkillTypes.BLOCKER,
-            '5': Lemmings.SkillTypes.BUILDER,
-            '6': Lemmings.SkillTypes.BASHER,
-            '7': Lemmings.SkillTypes.MINER,
-            '8': Lemmings.SkillTypes.DIGGER
-        };
-        if (e.key === '`' || e.key === '~') {
-            lm.cycleSelection(e.shiftKey ? -1 : 1);
-            this.game.getGameDisplay()?.flashSelected?.();
-            return;
-        }
-        const skill = skills[e.key];
-        if (skill) {
-            this.game.getGameSkills().setSelectedSkill(skill);
-            this.game.queueCommand(new Lemmings.CommandSelectSkill(skill));
-            this.game.applySkillToSelected(skill);
-        }
+        return this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex)
+            .then((level) => {
+                if (level == null)
+                    return;
+                this.changeHtmlText(this.elementLevelName, level.name);
+                if (this.stage != null) {
+                    let gameDisplay = this.stage.getGameDisplay();
+                    gameDisplay.clear();
+                    this.stage.resetFade();
+                    level.render(gameDisplay);
+                    gameDisplay.setScreenPosition(level.screenPositionX, 0);
+                    gameDisplay.redraw();
+                }
+                this.updateQuery();
+                console.dir(level);
+                return this.start();
+            });
     }
 }
 Lemmings.GameView = GameView;

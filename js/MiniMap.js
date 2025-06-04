@@ -3,110 +3,38 @@ import {
 } from './LemmingsNamespace.js';
 
 class MiniMap {
-    static palette = null;
     constructor(gameDisplay, level, guiDisplay) {
         this.gameDisplay = gameDisplay;
         this.level = level;
         this.guiDisplay = guiDisplay;
 
-        this.width = 127;
+        this.width = 128;
         this.height = 24;
         this.size = this.width * this.height;
         this.scaleX = this.width / level.width;
         this.scaleY = this.height / level.height;
 
-        this.terrain = new Uint8Array(this.size);
-        this.#buildTerrain();
+        this.terrain = new Uint8Array(this.size)
+        this._buildTerrain();
 
         // dynamic state
         this.fog = new Uint8Array(this.size); // 0 = unseen
         this.fog.fill(1); // disabled
-        // typed array storing [x1,y1,x2,y2,...] scaled to minimap
-        this.liveDots = new Uint8Array(0);
+        this.liveDots = []; // {x,y} sampled every x ticks
         this.deadDots = []; // {x,y,ttl}
-        this.selX = -1;
-        this.selY = -1;
 
         // render target (drawn into the GUI canvas once per frame)
         this.frame = new Lemmings.Frame(this.width, this.height);
         //this.renderFrame = new Lemmings.Frame(this.renderWidth, this.renderHeight);
-        
-        if (!MiniMap.palette) {
-            MiniMap.palette = new Uint32Array(129);
-            for (let i = 1; i <= 128; ++i) {
-                MiniMap.palette[i] = 0xFF000000 | ((i*2) << 8);
-            }
+
+        this.palette = new Uint32Array(129);
+        for (let i = 1; i <= 128; ++i) {
+            this.palette[i] = 0xFF000000 | ((i*2) << 8)
         }
-        
-        this._displayListeners = null;
-        this._mouseDown = false;
-        if (this.guiDisplay) this.#hookPointer();
-    }
-
-    #hookPointer() {
-        this._displayListeners = [
-            ['onMouseDown', e => { this.#handleMouseDown(e); }],
-            ['onMouseUp', e => { this.#handleMouseUp(e); }],
-            ['onMouseMove', e => { this.#handleMouseMove(e); }],
-        ];
-        for (const [event, handler] of this._displayListeners) {
-            this.guiDisplay[event].on(handler);
-        }
-    }
-
-    #handleMouseDown(event){
-        if (!this.guiDisplay) return;
-        this._mouseDown = true;
-        const gd = this.guiDisplay;
-        const destX = gd.getWidth()  - this.width;
-        const destY = gd.getHeight() - this.height - 1;
-
-        const mx = event.x - destX;
-        const my = event.y - destY;
-        if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-        
-        const pct = mx / this.width;
-        const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
-        this.level.screenPositionX = newX;
-        gd.setScreenPosition?.(newX, 0);
-    }
-
-    #handleMouseUp(event){
-        if (!this.guiDisplay) return;
-        this._mouseDown = false;
-        const gd = this.guiDisplay;
-        const destX = gd.getWidth()  - this.width;
-        const destY = gd.getHeight() - this.height - 1;
-
-        const mx = event.x - destX;
-        const my = event.y - destY;
-        if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-        const pct = mx / this.width;
-        const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
-        this.level.screenPositionX = newX;
-        gd.setScreenPosition?.(newX, 0);
-    }
-
-    #handleMouseMove(event){
-        if (!this.guiDisplay) return;
-        if (!this._mouseDown) return;
-        const gd = this.guiDisplay;
-
-        const destX = gd.getWidth()  - this.width;
-        const destY = gd.getHeight() - this.height - 1;
-
-        const mx = event.x - destX;
-        const my = event.y - destY;
-        if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-
-        const pct = mx / this.width;
-        const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
-        this.level.screenPositionX = newX;
-        gd.setScreenPosition?.(newX, 0);
     }
 
     /* Build complete terrain snapshot (expensive – call at load/reset only). */
-    #buildTerrain() {
+    _buildTerrain() {
         this.terrain.fill(0);
         const gm = this.level.getGroundMaskLayer();
         for (let y = 0; y < this.level.height; ++y) {
@@ -193,7 +121,6 @@ class MiniMap {
     }
 
     setLiveDots(arr) {
-        // arr is a Uint8Array of scaled [x1,y1,x2,y2,...]
         this.liveDots = arr;
     }
 
@@ -205,16 +132,6 @@ class MiniMap {
         });
     }
 
-    setSelectedLemming(lem) {
-        if (lem && !lem.removed) {
-            this.selX = (lem.x * this.scaleX) | 0;
-            this.selY = (lem.y * this.scaleY) | 0;
-        } else {
-            this.selX = -1;
-            this.selY = -1;
-        }
-    }
-
     render() {
         if (!this.guiDisplay) return;
 
@@ -224,23 +141,21 @@ class MiniMap {
             frame,
             terrain,
             fog,
+            palette
         } = this;
 
         /* Terrain + fog background */
         for (let idx = 0; idx < terrain.length; ++idx) {
             let color = 0xFF000000;
-            if (MiniMap.palette[terrain[idx]]) {
-                color = MiniMap.palette[terrain[idx]];
+            if (palette[terrain[idx]]) {
+                color = palette[terrain[idx]];
             }
             frame.data[idx] = color;
             frame.mask[idx] = 1;
         }
 
-        const viewRect = lemmings.stage.getGameViewRect();
-        const vpX = (viewRect.x * this.scaleX) | 0;
-        let vpW = (viewRect.w * this.scaleX) | 0;
-        const vpY = (viewRect.y * this.scaleY) | 0;
-        const vpH = (viewRect.h * this.scaleY) | 0;
+        const vpX = (lemmings.stage.getGameViewRect().x * this.scaleX) | 0;
+        let vpW = (lemmings.stage.getGameViewRect().w * this.scaleX) | 0;
         let vpXW = vpX + vpW;
         // dumb fix to keep right edge of viewport rect visible
         if (vpXW == this.width) {
@@ -249,12 +164,8 @@ class MiniMap {
         const vpRectColor = 0xFFFFFFFF;
         frame.drawRect(vpX, 0, 0, this.height - 1, vpRectColor, false, false);
         frame.drawRect(vpX + vpW, 0, 0, this.height - 1, vpRectColor, false, false);
-        if (vpH < this.height) {
-            frame.drawRect(vpX, vpY, vpW, 0, vpRectColor, false, false);
-            frame.drawRect(vpX, vpY + vpH, vpW, 0, vpRectColor, false, false);
-        }
 
-        /* Entrances / Exits */
+        /* Entrances / exits */
         for (const obj of this.level.objects) {
             const rx = (obj.x * this.scaleX) | 0;
             const ry = (obj.y * this.scaleY) | 0;
@@ -266,29 +177,23 @@ class MiniMap {
         }
 
         /* Live lemmings */
-        for (let i = 0; i < this.liveDots.length; i += 2) {
-            const x = this.liveDots[i];
-            const y = this.liveDots[i + 1];
-            frame.setPixel(x, y, 0x5500FFFF);
-        }
-
-        if (this.selX >= 0 && this.selY >= 0) {
-            frame.setPixel(this.selX, this.selY, 0xFFFFFFFF);
+        for (const p of this.liveDots) {
+            frame.setPixel((p.x * this.scaleX) | 0, (p.y * this.scaleY) | 0, 0x5500FFFF);
         }
 
         /* Death flashes */
-        // for (let i = this.deadDots.at(-1); i >= 0; --i) {
-        //     const d = this.deadDots[i];
-        //     if (--d.ttl <= 0) {
-        //         this.deadDots.splice(i, 1);
-        //         continue;
-        //     }
-        //     if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
-        // }
+        for (let i = this.deadDots.length - 1; i >= 0; --i) {
+            const d = this.deadDots[i];
+            if (--d.ttl <= 0) {
+                this.deadDots.splice(i, 1);
+                continue;
+            }
+            if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
+        }
 
         /* Blit */
         const destX = this.guiDisplay.getWidth() - W;
-        const destY = this.guiDisplay.getHeight() - H;
+        const destY = this.guiDisplay.getHeight() - H - 1;
         this.guiDisplay.drawFrame(frame, destX, destY);
     }
 

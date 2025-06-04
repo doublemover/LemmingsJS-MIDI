@@ -57,56 +57,6 @@ class SkillPanelSprites {
         getNumberSpriteEmpty() {
             return this.emptyNumberSprite;
         }
-
-        /** extract a rectangular patch from the panel background */
-        getBackgroundPatch(x, y, w, h) {
-            const src = this.panelSprite;
-            const out = new Lemmings.Frame(w, h);
-            for (let yy = 0; yy < h; yy++) {
-                const srcRow = (y + yy) * src.width + x;
-                const dstRow = yy * w;
-                for (let xx = 0; xx < w; xx++) {
-                    out.data[dstRow + xx] = src.data[srcRow + xx];
-                    out.mask[dstRow + xx] = 1;
-                }
-            }
-            return out;
-        }
-
-        /** tile a patch across a larger area */
-        createTiledBackground(x, y, w, h, outW, outH) {
-            const patch = this.getBackgroundPatch(x, y, w, h);
-            const out = new Lemmings.Frame(outW, outH);
-            for (let yy = 0; yy < outH; yy++) {
-                for (let xx = 0; xx < outW; xx++) {
-                    const px = xx % w;
-                    const py = yy % h;
-                    const srcIdx = py * w + px;
-                    const dstIdx = yy * outW + xx;
-                    out.data[dstIdx] = patch.data[srcIdx];
-                    out.mask[dstIdx] = 1;
-                }
-            }
-            return out;
-        }
-
-        /** return a brightened copy of the specified button region */
-        getHighlightedButton(panelIndex) {
-            const x = panelIndex * 16;
-            const y = 16;
-            const w = 16;
-            const h = 23;
-            const patch = this.getBackgroundPatch(x, y, w, h);
-            for (let i = 0; i < patch.data.length; i++) {
-                let c = patch.data[i];
-                let r = Math.min(255, (c       & 0xFF) + 40);
-                let g = Math.min(255, ((c>>8)  & 0xFF) + 40);
-                let b = Math.min(255, ((c>>16) & 0xFF) + 40);
-                patch.data[i] = 0xFF000000 | (b<<16) | (g<<8) | r;
-                patch.mask[i] = 1;
-            }
-            return patch;
-        }
     }
     Lemmings.SkillPanelSprites = SkillPanelSprites;
 

@@ -1,8 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+/**
+ * A single animated level object (trap, entrance, exit, …).
+ *
+ *  — Cache pre‑rendered animation frames per object image so identical objects
+ *    share memory & avoid expensive palette blits during construction.
+ *  — Use const / let scoping & micro‑optimise hot loops.
+ */
 class MapObject {
-  /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
-  static _frameCache = new WeakMap();
+  /** WeakMap<objectImg, Frame[]> – shared across ALL MapObject instances. */
+  static #frameCache = new WeakMap();
+
   constructor (ob, objectImg, animation = new Lemmings.Animation(), triggerType = Lemmings.TriggerTypes.NO_TRIGGER) {
     this.ob              = ob;
     this.obID            = ob.id;
@@ -11,7 +19,7 @@ class MapObject {
     this.drawProperties  = ob.drawProperties;
     this.triggerType     = triggerType;
 
-    let frames = MapObject._frameCache.get(objectImg);
+    let frames = MapObject.#frameCache.get(objectImg);
     if (!frames) {
       frames = new Array(objectImg.frames.length);
       for (let i = 0, len = frames.length; i < len; ++i) {
@@ -22,14 +30,14 @@ class MapObject {
                            objectImg.palette, 0, 0);
         frames[i] = f;
       }
-      MapObject._frameCache.set(objectImg, frames);
+      MapObject.#frameCache.set(objectImg, frames);
     }
 
-    this.animation                 = animation;
+    this.animation = animation;
     this.animation.loop            = objectImg.animationLoop;
     this.animation.firstFrameIndex = objectImg.firstFrameIndex;
     this.animation.objectImg       = objectImg;
-    this.animation.frames          = frames;
+    this.animation.frames.push(...frames);
   }
 
   /** Called when a lemming collides with this object's trigger zone. */

@@ -1,14 +1,23 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionWalkSystem extends ActionBaseSystem {
+class ActionWalkSystem {
         constructor(sprites) {
-            super({ sprites, spriteType: Lemmings.SpriteTypes.WALKING, actionName: 'walk' });
+            this.sprite = [];
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.WALKING, false));
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.WALKING, true));
+        }
+        draw(gameDisplay, lem) {
+            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            let frame = ani.getFrame(lem.frameIndex);
+            gameDisplay.drawFrame(frame, lem.x, lem.y);
+        }
+        getActionName() {
+            return "walk";
         }
         triggerLemAction(lem) {
             return false;
         }
-        getGroundStepHeight(groundMask, x, y) {
+        getGroundStepDelta(groundMask, x, y) {
             for (let i = 0; i < 8; i++) {
                 if (!groundMask.hasGroundAt(x, y - i)) {
                     return i;
@@ -16,8 +25,7 @@ class ActionWalkSystem extends ActionBaseSystem {
             }
             return 8;
         }
-
-        getGroundGapDepth(groundMask, x, y) {
+        getGroudGapDelta(groundMask, x, y) {
             for (let i = 1; i < 4; i++) {
                 if (groundMask.hasGroundAt(x, y + i)) {
                     return i;
@@ -28,34 +36,35 @@ class ActionWalkSystem extends ActionBaseSystem {
         process(level, lem) {
             lem.frameIndex++;
             lem.x += (lem.lookRight ? 1 : -1);
-
-            const groundMask = level.getGroundMaskLayer();
-            const upDelta = this.getGroundStepHeight(groundMask, lem.x, lem.y);
+            let groundMask = level.getGroundMaskLayer();
+            let upDelta = this.getGroundStepDelta(groundMask, lem.x, lem.y);
             if (upDelta == 8) {
                 // collision with obstacle
                 if (lem.canClimb) {
+                    // start climbing
                     return Lemmings.LemmingStateType.CLIMBING;
                 } else {
+                    // turn around
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
             } else if (upDelta > 0) {
                 lem.y -= upDelta - 1;
                 if (upDelta > 3) {
-                    lem.state = 0;
+                    // jump
                     return Lemmings.LemmingStateType.JUMPING;
                 } else {
-                    if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
-                        lem.y = Lemmings.Lemming.LEM_MIN_Y;
-                    }
+                    // walk with small jump up
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
             } else {
-                let downDelta = this.getGroundGapDepth(groundMask, lem.x, lem.y);
+                // walk or fall
+                let downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
                 lem.y += downDelta;
                 if (downDelta == 4) {
                     return Lemmings.LemmingStateType.FALLING;
                 } else {
+                    // walk with small jump down
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
             }

@@ -1,41 +1,35 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionHoistSystem extends ActionBaseSystem {
-    constructor(sprites) {
-        super({ sprites, spriteType: Lemmings.SpriteTypes.POSTCLIMBING, actionName: 'hoist' });
-    }
-
-    triggerLemAction(lem) {
-        return false;
-    }
-
-    draw(gameDisplay, lem) {
-        super.draw(gameDisplay, lem);
-    }
-
-    // y+1, x+1 & y+1, x+2 & y+2?
-    process(level, lem) {
-        lem.frameIndex++;
-        // if (!level.hasGroundAt(x + 1, y - 1) &&   // above wall, just ahead
-        //     !level.hasGroundAt(x + 2, y - 1) &&   // further ahead, still above
-        //     !level.hasGroundAt(x + 2, y)) {       // 2 ahead, at current height
-
-        if (lem.frameIndex <= 4) {
-            lem.y -= 2;
+class ActionHoistSystem {
+        constructor(sprites) {
+            this.sprite = [];
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.POSTCLIMBING, false));
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.POSTCLIMBING, true));
+        }
+        getActionName() {
+            return "hoist";
+        }
+        triggerLemAction(lem) {
+            return false;
+        }
+        /** render Lemming to gamedisplay */
+        draw(gameDisplay, lem) {
+            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            let frame = ani.getFrame(lem.frameIndex);
+            gameDisplay.drawFrame(frame, lem.x, lem.y);
+        }
+        process(level, lem) {
+            lem.frameIndex++;
+            if (lem.frameIndex <= 4) {
+                lem.y -= 2;
+                return Lemmings.LemmingStateType.NO_STATE_TYPE;
+            }
+            if (lem.frameIndex >= 8) {
+                return Lemmings.LemmingStateType.WALKING;
+            }
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
-
-        if (lem.frameIndex > 4 && lem.frameIndex < 8) {
-            return Lemmings.LemmingStateType.NO_STATE_TYPE;
-        }
-                   
-        if (lem.frameIndex >= 8) {
-            return Lemmings.LemmingStateType.WALKING;
-        }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
     }
-}
+    Lemmings.ActionHoistSystem = ActionHoistSystem;
 
-Lemmings.ActionHoistSystem = ActionHoistSystem;
 export { ActionHoistSystem };

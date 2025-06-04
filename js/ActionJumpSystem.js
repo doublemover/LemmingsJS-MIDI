@@ -1,45 +1,37 @@
 import { Lemmings } from './LemmingsNamespace.js';
-import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionJumpSystem extends ActionBaseSystem {
-    constructor(sprites) {
-        super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
-    }
-
-    triggerLemAction(lem) {
-        return false;
-    }
-
-    draw(gameDisplay, lem) {
-        super.draw(gameDisplay, lem);
-    }
-
-    process(level, lem) {
-        lem.frameIndex++;
-        lem.x += (lem.lookRight ? 1 : -1);
-
-        if (lem.state == null) {
-            lem.state = 0; // how far we've jumped so far
+class ActionJumpSystem {
+        constructor(sprites) {
+            this.sprite = [];
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false));
+            this.sprite.push(sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true));
         }
-
-        let moved = 0;
-        while (lem.state < 2 && moved < 2 && level.hasGroundAt(lem.x, lem.y - 1)) {
-            lem.y--;
-            lem.state++;
-            moved++;
+        getActionName() {
+            return "jump";
         }
-
-        if (lem.state >= 2 || !level.hasGroundAt(lem.x, lem.y - 1)) {
-            if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
-                lem.y = Lemmings.Lemming.LEM_MIN_Y;
+        triggerLemAction(lem) {
+            return false;
+        }
+        draw(gameDisplay, lem) {
+            let ani = this.sprite[(lem.lookRight ? 1 : 0)];
+            let frame = ani.getFrame(lem.frameIndex);
+            gameDisplay.drawFrame(frame, lem.x, lem.y);
+        }
+        process(level, lem) {
+            lem.frameIndex++;
+            let i = 0;
+            for (; i < 2; i++) {
+                if (!level.hasGroundAt(lem.x, lem.y + i - 1)) {
+                    break;
+                }
             }
-            lem.state = 0;
-            return Lemmings.LemmingStateType.WALKING;
+            lem.y -= i;
+            if (i < 2) {
+                return Lemmings.LemmingStateType.WALKING;
+            }
+            return Lemmings.LemmingStateType.NO_STATE_TYPE; // this.check_top_collision(lem);
         }
-
-        return Lemmings.LemmingStateType.JUMPING;
     }
-}
+    Lemmings.ActionJumpSystem = ActionJumpSystem;
 
-Lemmings.ActionJumpSystem = ActionJumpSystem;
 export { ActionJumpSystem };
