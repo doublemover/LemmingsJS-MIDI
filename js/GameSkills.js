@@ -6,6 +6,7 @@ class GameSkills {
             this.onCountChanged = new Lemmings.EventHandler();
             this.onSelectionChanged = new Lemmings.EventHandler();
             this.skills = level.skills;
+            this.cheatMode = false;
             this.selectFirstAvailable();
         }
 
@@ -19,9 +20,11 @@ class GameSkills {
         }
         /** return true if the skill can be reused / used */
         canReuseSkill(type) {
+            if (this.cheatMode) return true;
             return (this.skills[type] > 0);
         }
         reuseSkill(type) {
+            if (this.cheatMode) return true;
             if (this.skills[type] <= 0)
                 return false;
             this.skills[type]--;
@@ -34,7 +37,9 @@ class GameSkills {
         getSkill(type) {
             if (!Lemmings.SkillTypes[Object.keys(Lemmings.SkillTypes)[type]])
                 return 0;
-            return this.skills[type];
+            const val = this.skills[type];
+            if (val === Infinity) return 99;
+            return val;
         }
         getSelectedSkill() {
             return this.selectedSkill;
@@ -52,8 +57,9 @@ class GameSkills {
         }
         /** increase the amount of actions for all skills */
         cheat() {
+            this.cheatMode = true;
             for (let i = 0; i < this.skills.length; i++) {
-                this.skills[i] = 99;
+                this.skills[i] = Infinity;
                 this.onCountChanged.trigger(i);
             }
         }

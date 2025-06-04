@@ -149,6 +149,6 @@ describe('FileProvider', function () {
     const p = provider.loadBinary('data', 'file.bin');
     requests[0].respond(404, null);
     await assert.rejects(p);
-    assert.ok(typeof provider.log.log === 'function');
+    assert.ok(provider.log.logged.some(m => m.includes('error load file')));
   });
 });

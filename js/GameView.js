@@ -28,7 +28,6 @@ class GameView extends Lemmings.BaseLogger {
         this.elementSelectLevel = null;
         this.configs = null;
         this.shortcuts = new Lemmings.KeyboardShortcuts(this);
-
         this._keyHandler = this._onKeyDown.bind(this);
         this._keysAdded = false;
 
