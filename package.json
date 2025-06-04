@@ -16,7 +16,8 @@
     "export-all-packs": "node tools/exportAllPacks.js",
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
-    "patch-sprites": "node tools/patchSprites.js"
+    "patch-sprites": "node tools/patchSprites.js",
+    "pack-levels": "node tools/packLevels.js"
   },
   "repository": {
     "type": "git",
