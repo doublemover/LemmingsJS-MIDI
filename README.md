@@ -88,8 +88,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   <summary>In Progress (11)</summary>
   
   - [ ] Indicate bench speed adjustment with rect color
-  - [ ] Scale pixel alignment
-  - [X] OG Cursor
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
@@ -108,7 +106,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - [X] Traps
   - [ ] Squish is missing
   - [ ] "Generic Trap" just vanishes em
-  - [X] Cooldown
 - [ ] Bombs
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
     - [ ] Write steel to second layer?
@@ -124,7 +121,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <details>
   <summary>Bugs & etc</summary>
   
-- [ ] There is not a palette swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+- [ ] There is not a palette swapped frying animation 
   - [X] Palette swap functionality works!
   - [ ] 2-2-9, 1-4-30
 - [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
@@ -154,21 +151,40 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
   - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+  - See [docs/tools.md](docs/tools.md) for detailed usage of each script
 
 ### NodeFileProvider
 
 The Node scripts in the `tools` directory use `NodeFileProvider` to read level
-packs. This provider can load files directly from folders or from archives such
-as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
-packed while running scripts with Node.
+packs. The provider loads files directly from folders or from `zip`, `tar`
+(including `.tar.gz`/`.tgz`) and `rar` archives. This lets you keep packs
+compressed while running the tools.
+
+Example usage:
+
+```bash
+# List sprites from an archived pack
+node tools/listSprites.js xmas92.tar.gz
+
+# Export all sprites from a zip archive
+node tools/exportAllSprites.js lemmings.zip export_lemmings
+
+# Patch sprites inside a rar archive
+node tools/patchSprites.js holiday94.rar edited_sprites holiday94_patched.DAT
+```
+
+For internal details see
+[.agentInfo/notes/node-file-provider.md](.agentInfo/notes/node-file-provider.md).
+
+For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
+and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
 
 ### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
-as a **Progressive Web App (PWA)**. Installing adds the game to your device's
-app list and launches it fullscreen in landscape mode. Touch input still needs
-polish, so the mobile experience may be rough.
-
+as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
+and launches it fullscreen in landscape mode. Touch input still needs
+polish, so please file bugs for any issues you have! 
 
 ## Options
 
@@ -220,3 +236,8 @@ URL parameters (shortcut in brackets):
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
+
+## .agentInfo Notes
+
+The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
+See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
