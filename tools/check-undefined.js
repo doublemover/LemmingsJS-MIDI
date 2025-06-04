@@ -1,21 +1,9 @@
 import fs from 'fs';
 import path from 'path';
-import { pathToFileURL } from 'url';
+import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
-import { parseDocument, DomUtils } from 'htmlparser2';
-
-if (process.argv.length > 2) {
-  let exitCode = 0;
-  for (const f of process.argv.slice(2)) {
-    try {
-      await import(pathToFileURL(path.resolve(f)).href);
-    } catch (err) {
-      console.error(err.toString());
-      exitCode = 1;
-    }
-  }
-  process.exit(exitCode);
-}
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -137,7 +125,7 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-function processHtmlFile(file) {
+async function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
   const document = parseDocument(html);
 
@@ -175,40 +163,43 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
+const extra = process.argv.slice(2);
 let jsFiles = [];
 let htmlFiles = [];
-if (process.argv.length > 2) {
-  for (const f of process.argv.slice(2)) {
-    const ext = path.extname(f).toLowerCase();
-    if (ext === '.js') jsFiles.push(f);
-    else if (ext === '.html') htmlFiles.push(f);
+
+if (extra.length) {
+  for (const f of extra) {
+    if (f.endsWith('.js')) jsFiles.push(f);
+    else if (f.endsWith('.html')) htmlFiles.push(f);
   }
 } else {
   jsFiles = gatherFiles('js', ['.js']);
   htmlFiles = gatherFiles('.', ['.html']);
 }
 
-const cliMode = process.argv.length > 2;
-for (const file of jsFiles) processJSFile(file, cliMode);
+
+for (const file of jsFiles) processJSFile(file, extra.length > 0);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push({ file: call.file, line: call.line, name: call.name });
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
     if (!definedMethods.has(call.name) && !builtinMethods.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined method ${call.name}`);
+      errors.push({ file: call.file, line: call.line, name: call.name });
     }
   }
 }
 
 if (errors.length) {
   console.error('Undefined calls found:');
-  for (const err of errors) console.error('  ' + err);
+  for (const err of errors) {
+    console.error(`  ${err.file}:${err.line} - ${err.name} is not defined`);
+  }
   process.exit(1);
 } else {
   console.log('No undefined calls detected.');
