@@ -85,6 +85,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 <details open>
   <summary>In Progress (11)</summary>
+  
   - [ ] Indicate bench speed adjustment with rect color
   - [ ] Scale pixel alignment
   - [ ] OG Cursor
@@ -160,7 +161,7 @@ packs. This provider can load files directly from folders or from archives such
 as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
 packed while running scripts with Node.
 
-## Progressive Web App
+### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your device's
