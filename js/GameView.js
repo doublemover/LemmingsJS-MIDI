@@ -217,25 +217,28 @@ async moveToLevel(moveInterval = 0) {
     }
     updateQuery() {
         const params = new URLSearchParams(window.location.search);
-        const setParam = (longName, shortName, value, def) => {
+        const setParam = (longName, shortName, value, def, always) => {
             params.delete(longName);
             params.delete(shortName);
-            if (value !== undefined && value !== def) {
+            if (always || (value !== undefined && value !== def)) {
                 params.set(this.shortcut ? shortName : longName, value);
             }
         };
 
-        setParam('version', 'v', this.gameType, 1);
-        setParam('difficulty', 'd', this.levelGroupIndex + 1, 1);
-        setParam('level', 'l', this.levelIndex + 1, 1);
-        setParam('speed', 's', this.gameSpeedFactor, 1);
-        setParam('cheat', 'c', this.cheat, false);
+        // main game state should always remain visible
+        setParam('version', 'v', this.gameType, undefined, true);
+        setParam('difficulty', 'd', this.levelGroupIndex + 1, undefined, true);
+        setParam('level', 'l', this.levelIndex + 1, undefined, true);
+        setParam('speed', 's', this.gameSpeedFactor, undefined, true);
+        setParam('cheat', 'c', this.cheat, undefined, true);
+
+        // optional flags only appear when non-default
         setParam('debug', 'dbg', this.debug, false);
         setParam('bench', 'b', this.bench, false);
         setParam('endless', 'e', this.endless, false);
         setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
-        setParam('extra', 'ex', this.extraLemmings);
-        setParam('scale', 'sc', this.scale);
+        setParam('extra', 'ex', this.extraLemmings, 0);
+        setParam('scale', 'sc', this.scale, 0);
 
         if (this.shortcut) {
             params.set('_', true);
