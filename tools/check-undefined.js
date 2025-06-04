@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
 
@@ -125,10 +126,8 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-function processHtmlFile(file) {
+async function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
@@ -165,44 +164,43 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const args = process.argv.slice(2);
+
+const extra = process.argv.slice(2);
 let jsFiles = [];
 let htmlFiles = [];
-if (args.length) {
-  jsFiles = args.filter(f => f.endsWith('.js'));
-  htmlFiles = args.filter(f => f.endsWith('.html'));
+
+if (extra.length) {
+  for (const f of extra) {
+    if (f.endsWith('.js')) jsFiles.push(f);
+    else if (f.endsWith('.html')) htmlFiles.push(f);
+  }
 } else {
   jsFiles = gatherFiles('js', ['.js']);
   htmlFiles = gatherFiles('.', ['.html']);
 }
 
-for (const file of jsFiles) processJSFile(file, args.length > 0);
+
+for (const file of jsFiles) processJSFile(file, extra.length > 0);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push({ file: call.file, line: call.line, name: call.name });
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
     if (!definedMethods.has(call.name) && !builtinMethods.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined method ${call.name}`);
+      errors.push({ file: call.file, line: call.line, name: call.name });
     }
   }
 }
 
 if (errors.length) {
-  if (args.length) {
-    for (const err of errors) {
-      const match = /Undefined (?:function|method) (\S+)/.exec(err);
-      const name = match ? match[1] : err;
-      console.error(`${name} is not defined`);
-    }
-  } else {
-    console.error('Undefined calls found:');
-    for (const err of errors) console.error('  ' + err);
+  console.error('Undefined calls found:');
+  for (const err of errors) {
+    console.error(`  ${err.file}:${err.line} - ${err.name} is not defined`);
   }
   process.exit(1);
 } else {
