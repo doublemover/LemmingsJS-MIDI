@@ -1,6 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class LevelReader {
+class LevelReader extends Lemmings.BaseLogger {
     /// Load a Level
     constructor(fr) {
         this.levelWidth = 1600;
@@ -15,7 +15,7 @@ class LevelReader {
         this.objects = [];
         this.terrains = [];
         this.steel = [];
-        this.log = new Lemmings.LogHandler("LevelReader");
+        super();
         this.readLevelInfo(fr);
         this.readLevelObjects(fr);
         this.readLevelTerrain(fr);

@@ -3,10 +3,10 @@ import { Lemmings } from './LemmingsNamespace.js';
 /**
  * FileProvider with transparent in‑memory caching.
  */
-class FileProvider {
+class FileProvider extends Lemmings.BaseLogger {
   constructor(rootPath) {
+    super();
     this.rootPath = rootPath;
-    this.log = new Lemmings.LogHandler('FileProvider');
 
     /**
      * Cache mapping full URL → Promise<BinaryReader> or Promise<string>.
