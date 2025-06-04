@@ -162,6 +162,9 @@ packs. This provider can load files directly from folders or from archives such
 as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
 packed while running scripts with Node.
 
+For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
+and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
+
 ### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
