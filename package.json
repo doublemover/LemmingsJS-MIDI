@@ -1,6 +1,6 @@
 {
   "name": "lemmings-js-midi",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Lemmings (JavaScript)",
   "main": "index.js",
   "directories": {
