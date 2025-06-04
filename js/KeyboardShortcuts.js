@@ -62,10 +62,13 @@ class KeyboardShortcuts {
             }
 
             // ----- zooming -----
+            // anchor zooming around the current screen centre without
+            // drifting the viewpoint. Using updateViewPoint() directly was
+            // causing the camera to slide left as the scale changed.
             const cx = img.width / 2;
             const cy = img.height / 2;
-            const zx = vp.getSceneX(cx);
-            const zy = vp.getSceneY(cy);
+            const centerX = vp.x + cx / vp.scale;
+            const centerY = vp.y + cy / vp.scale;
             let targetZ = 0;
             if (this.zoom.reset !== null) {
                 targetZ = (this.zoom.reset - vp.scale) * 0.2;
@@ -79,7 +82,14 @@ class KeyboardShortcuts {
             this.zoom.v *= 0.9;
             const dz = this.zoom.v;
             if (Math.abs(dz) > 0.001) {
-                stage.updateViewPoint(img, cx, cy, dz, zx, zy);
+                const newScale = Math.max(0.25, Math.min(4, vp.scale * (1 + dz / 1500)));
+                const nx = centerX - cx / newScale;
+                const ny = centerY - cy / newScale;
+                const maxX = img.display.getWidth()  - img.width  / newScale;
+                const maxY = img.display.getHeight() - img.height / newScale;
+                vp.x = Math.min(Math.max(0, nx), maxX);
+                vp.y = Math.min(Math.max(0, ny), maxY);
+                vp.scale = newScale;
                 stage.redraw();
                 again = true;
             } else if (this.zoom.reset !== null) {
