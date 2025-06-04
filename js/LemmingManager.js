@@ -233,6 +233,11 @@ class LemmingManager {
         let found = null;
         for (const lem of this.lemmings) {
             if (lem.removed) continue;
+            if (lem.countdownAction ||
+                lem.action === this.actions[Lemmings.LemmingStateType.OHNO] ||
+                lem.action === this.actions[Lemmings.LemmingStateType.EXPLODING]) {
+                continue;
+            }
             const dist = lem.getClickDistance(x, y);
             if (dist >= 0 && dist <= best) {
                 best = dist;
@@ -344,6 +349,13 @@ class LemmingManager {
             redundant[skillType] && (lem.action instanceof redundant[skillType]);
         if (alreadyDoingIt) {
             return false;
+        }
+        if (skillType === Lemmings.SkillTypes.BOMBER) {
+            if (lem.countdownAction ||
+                lem.action === this.actions[Lemmings.LemmingStateType.OHNO] ||
+                lem.action === this.actions[Lemmings.LemmingStateType.EXPLODING]) {
+                return false;
+            }
         }
         const wasBlocking = (lem.action instanceof Lemmings.ActionBlockerSystem);
         const ok = actionSystem.triggerLemAction(lem);

@@ -50,8 +50,13 @@ class GameDisplay {
             this.objectManager.render(this.display);
             this.lemmingManager.render(this.display);
 
-            if (this.highlightLemming && this.highlightLemming.removed) {
-                this.highlightLemming = null;
+            if (this.highlightLemming) {
+                if (this.highlightLemming.removed ||
+                    this.highlightLemming.countdownAction ||
+                    this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.OHNO] ||
+                    this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.EXPLODING]) {
+                    this.highlightLemming = null;
+                }
             }
 
             const selected = this.lemmingManager.getSelectedLemming();
@@ -78,8 +83,13 @@ class GameDisplay {
         renderDebug() {
             if (this.display == null)
                 return;
-            if (this.highlightLemming && this.highlightLemming.removed) {
-                this.highlightLemming = null;
+            if (this.highlightLemming) {
+                if (this.highlightLemming.removed ||
+                    this.highlightLemming.countdownAction ||
+                    this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.OHNO] ||
+                    this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.EXPLODING]) {
+                    this.highlightLemming = null;
+                }
             }
             this.level.renderDebug(this.display);
             this.lemmingManager.renderDebug(this.display);
