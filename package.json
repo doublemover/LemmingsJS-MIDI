@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "start": "http-server --cors=*"
+    "start": "http-server --cors=*",
+    "test": "mocha"
   },
   "repository": {
     "type": "git",
@@ -17,7 +18,10 @@
     "url": "https://github.com/oklemenz/LemmingsJS/issues"
   },
   "homepage": "https://github.com/oklemenz/LemmingsJS#readme",
+  "type": "module",
   "devDependencies": {
-    "http-server": "^14.0.1"
+    "http-server": "^14.0.1",
+    "mocha": "^11.5.0",
+    "chai": "^4.3.7"
   }
 }
