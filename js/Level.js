@@ -140,6 +140,7 @@ class Level {
       buf[o+4] = r.direction;
     }
     this.arrowRanges = buf;
+    this._debugFrame = null; // invalidate cached debug overlay
   }
 
   isArrowAt(x, y, direction) {
