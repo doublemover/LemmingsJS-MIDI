@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * Decodes a VGASPEC-format ground file, including color palette and image buffer.
