@@ -1,7 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
-class GameResources {
+class GameResources extends Lemmings.BaseLogger {
   constructor(fileProvider, config) {
+    super();
     this.fileProvider = fileProvider;
     this.config = config;
     this.mainDat = null;
@@ -17,6 +19,10 @@ class GameResources {
           // split the file
           const mainParts = new Lemmings.FileContainer(data);
           resolve(mainParts);
+        })
+        .catch((e) => {
+          this.log.log('Failed to load MAIN.DAT', e);
+          reject(e);
         });
     });
     return this.mainDat;
