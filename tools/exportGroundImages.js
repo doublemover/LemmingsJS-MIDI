@@ -45,9 +45,11 @@ function frameToPNG(frame) {
   fs.mkdirSync(outDir, { recursive: true });
 
   const provider = new NodeFileProvider('.');
+  await Lemmings.loadSteelSprites();
   const groundBuf = await provider.loadBinary(dataPath, `GROUND${index}O.DAT`);
   const vgagrBuf = await provider.loadBinary(dataPath, `VGAGR${index}.DAT`);
   const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
+  await Lemmings.loadSteelSprites();
   const groundReader = new Lemmings.GroundReader(
     groundBuf,
     vgaContainer.getPart(0),
@@ -78,4 +80,5 @@ function frameToPNG(frame) {
       await new Promise(res => png.pack().pipe(fs.createWriteStream(file)).on('finish', res));
     }
   }
+  Lemmings.resetSteelSprites();
 })();

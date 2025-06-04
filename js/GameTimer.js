@@ -4,12 +4,13 @@ class GameTimer {
   #speedFactor;
   #frameTime;
   #rafId;
+  #running;
   #lastTime;
   #lastGameSecond;
   #tickIndex;
   #loopBound;
   #autoPaused;
-  #normTickCount;
+  #stableTicks;
   #catchupSlow;
   #visHandler;
 
@@ -18,6 +19,7 @@ class GameTimer {
     this.#speedFactor = 1;
     this.#frameTime = this.TIME_PER_FRAME_MS;
     this.#rafId = 0;
+    this.#running = false;
     this.#lastTime = 0;
     this.#lastGameSecond = 0;
     this.#tickIndex = 0;
@@ -27,7 +29,7 @@ class GameTimer {
     this.onBeforeGameTick = new Lemmings.EventHandler();
     this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
     this.#autoPaused = false;
-    this.#normTickCount = 0;
+    this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#visHandler = () => {
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
@@ -47,7 +49,7 @@ class GameTimer {
     this.#updateFrameTime();
   }
 
-  isRunning() { return this.#rafId !== 0; }
+  isRunning() { return this.#running; }
 
   get tickIndex() { return this.#tickIndex; }
   set tickIndex(v) {
@@ -56,16 +58,6 @@ class GameTimer {
       this.#tickIndex = 0;
     } else {
       this.#tickIndex = v;
-    }
-  }
-
-  get normTickCount() { return this.#normTickCount; }
-  set normTickCount(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
-      console.warn('normTickCount wrapped, resetting to 0');
-      this.normTickCount = 0;
-    } else {
-      this.#normTickCount = v;
     }
   }
 
@@ -93,6 +85,7 @@ class GameTimer {
   continue() {
     if (this.isRunning()) return;
     this.#lastTime = performance.now();
+    this.#running = true;
     this.#rafId = window.requestAnimationFrame(this.#loopBound);
   }
 
@@ -101,6 +94,7 @@ class GameTimer {
       window.cancelAnimationFrame(this.#rafId);
       this.#rafId = 0;
     }
+    this.#running = false;
   }
 
   #loop(now) {
@@ -136,19 +130,20 @@ class GameTimer {
   }
 
   #benchSpeedAdjust(steps) {
+    // dynamically adjust speed based on how far we fall behind
+    // slowThreshold scales with current speedFactor so faster games tolerate
+    // fewer queued frames. minimum 10 frames before slowing down.
+    // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
+    const oldSpeed = this.#speedFactor;
     if (steps > 100) {
       this.suspend();
-      this.normTickCount = 0;
-      this.#speedFactor = 1;
-
-      if (this.#speedFactor >= 1) {
-        this.#speedFactor = 0.1;
-      }
+      this.#stableTicks = 0;
+      this.#speedFactor = 0.1;
     }
     else if (steps > 16) {
       this.suspend();
-      this.normTickCount = 0;
+      this.#stableTicks = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
         this.#speedFactor = 60;
@@ -167,22 +162,34 @@ class GameTimer {
       }
     }
     if (steps > 4) {
-      this.normTickCount = this.normTickCount - 32;
+      this.#stableTicks -= 32;
     }
 
     if (steps <= 2) {
-      this.normTickCount = this.normTickCount + 1;
+      this.#stableTicks += 1;
     }
 
-    if (this.normTickCount > 32 && this.#speedFactor < 60) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 32 && this.#speedFactor < 60) {
+      this.#stableTicks = 0;
       this.#speedFactor += 1;
     }
-    if (this.normTickCount > 2 && this.#speedFactor < 1) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 2 && this.#speedFactor < 1) {
+      this.#stableTicks = 0;
       this.#speedFactor = ((this.#speedFactor*10)+1)/10;
     }
-    this.#updateFrameTime();
+    const diff = this.#speedFactor - oldSpeed;
+    if (diff !== 0) {
+      if (typeof lemmings?.suspendWithColor === 'function') {
+        const intensity = Math.min(Math.abs(diff) / 5, 1);
+        const color = diff > 0
+          ? `rgba(0,255,0,${intensity})`
+          : `rgba(255,0,0,${intensity})`;
+        lemmings.suspendWithColor(color);
+      } else {
+        this.suspend();
+      }
+    }
+    this.normTickCount = this.#stableTicks;
   }
 
   #catchupSpeedAdjust(steps) {

@@ -86,6 +86,30 @@ class Frame {
     }
   }
 
+  drawMarchingAntRect(
+    x,
+    y,
+    width,
+    height,
+    dashLen = 1,
+    offset = 0,
+    color1 = 0xFFFFFFFF,
+    color2 = 0xFF000000
+  ) {
+    const pattern = dashLen * 2;
+    let pos = ((offset % pattern) + pattern) % pattern;
+    const set = (px, py) => {
+      const useFirst = Math.floor(pos / dashLen) % 2 === 0;
+      this.setPixel(px, py, useFirst ? color1 : color2);
+      pos = (pos + 1) % pattern;
+    };
+
+    for (let dx = 0; dx <= width; dx++) set(x + dx, y);
+    for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
+    for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
+    for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+  }
+
   setPixel (x, y, color, noOverwrite = false, onlyOverwrite = false) {
     if ((x >>> 0) >= this.width || (y >>> 0) >= this.height) return;
     const idx = (y * this.width + x) >>> 0;

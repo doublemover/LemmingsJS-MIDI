@@ -4,6 +4,7 @@ import {
 
 class MiniMap {
   static palette = null;
+  static DEATH_DOT_TTL = 30;
   constructor(gameDisplay, level, guiDisplay) {
     this.gameDisplay = gameDisplay;
     this.level = level;
@@ -24,21 +25,26 @@ class MiniMap {
     // typed array storing [x1,y1,x2,y2,...] scaled to minimap
     this.liveDots = new Uint8Array(0);
     this.selectedDot = null;
-    this.deadDots = []; // {x,y,ttl}
+    // typed arrays storing [x1,y1,x2,y2,...] and TTL per dot
+    this.deadDots = new Uint8Array(0);
+    this.deadTTLs = new Uint8Array(0);
 
     // render target (drawn into the GUI canvas once per frame)
     this.frame = new Lemmings.Frame(this.width, this.height);
     //this.renderFrame = new Lemmings.Frame(this.renderWidth, this.renderHeight);
-        
+
     if (!MiniMap.palette) {
       MiniMap.palette = new Uint32Array(129);
       for (let i = 1; i <= 128; ++i) {
         MiniMap.palette[i] = 0xFF000000 | ((i*2) << 8);
       }
     }
-        
+
     this._displayListeners = null;
     this._mouseDown = false;
+    this.viewportDashOffset = 0;
+    this._viewportCounter = 0;
+    this.viewportDashDelay = 100;
     if (this.guiDisplay) this.#hookPointer();
   }
 
@@ -108,16 +114,21 @@ class MiniMap {
   #buildTerrain() {
     this.terrain.fill(0);
     const gm = this.level.getGroundMaskLayer();
-    for (let y = 0; y < this.level.height; ++y) {
-      const mY = (y * this.scaleY) | 0;
-      const base = mY * this.width;
-      for (let x = 0; x < this.level.width; ++x) {
-        if (gm.hasGroundAt(x, y)) {
-          const mX = (x * this.scaleX) | 0;
-          const idx = base + mX;
-          if (this.terrain[idx] < 128) ++this.terrain[idx];
-          if (this.terrain[idx] > 71) this.terrain[idx] = 72;
+    for (let mY = 0; mY < this.height; ++mY) {
+      const ly1 = Math.floor(mY / this.scaleY);
+      const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
+      for (let mX = 0; mX < this.width; ++mX) {
+        const lx1 = Math.floor(mX / this.scaleX);
+        const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
+        const layer = gm.getSubLayer(lx1, ly1, lx2 - lx1, ly2 - ly1);
+        let count = 0;
+        for (const v of layer.mask) {
+          if (v) {
+            if (++count === 128) break;
+          }
         }
+        if (count > 71) count = 72;
+        this.terrain[mY * this.width + mX] = count;
       }
     }
   }
@@ -166,16 +177,14 @@ class MiniMap {
         const ly1 = Math.floor(mY / this.scaleY);
         const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
 
+        const layer = gm.getSubLayer(lx1, ly1, lx2 - lx1, ly2 - ly1);
         let count = 0;
-        for (let ly = ly1; ly < ly2; ++ly) {
-          for (let lx = lx1; lx < lx2; ++lx)
-            if (gm.hasGroundAt(lx, ly)) {
-              if (++count === 128) {
-                ly = ly2;
-                break;
-              }
-            }
+        for (const v of layer.mask) {
+          if (v) {
+            if (++count === 128) break;
+          }
         }
+        if (count > 71) count = 72;
         this.terrain[idx] = count;
       }
     }
@@ -201,15 +210,27 @@ class MiniMap {
   }
 
   addDeath(x, y) {
-    this.deadDots.push({
-      x: x * this.scaleX | 0,
-      y: y * this.scaleY | 0,
-      ttl: 30
-    });
+    const sx = Math.max(0, Math.min(this.width - 1, (x * this.scaleX) | 0));
+    const sy = Math.max(0, Math.min(this.height - 1, (y * this.scaleY) | 0));
+
+    const coords = new Uint8Array(this.deadDots.length + 2);
+    const ttls = new Uint8Array(this.deadTTLs.length + 1);
+    coords.set(this.deadDots);
+    ttls.set(this.deadTTLs);
+    coords[coords.length - 2] = sx;
+    coords[coords.length - 1] = sy;
+    ttls[ttls.length - 1] = MiniMap.DEATH_DOT_TTL;
+    this.deadDots = coords;
+    this.deadTTLs = ttls;
   }
 
   render() {
     if (!this.guiDisplay) return;
+
+    if (++this._viewportCounter >= this.viewportDashDelay) {
+      this._viewportCounter = 0;
+      this.viewportDashOffset += 1;
+    }
 
     const {
       width: W,
@@ -239,13 +260,16 @@ class MiniMap {
     if (vpXW == this.width) {
       vpW -= 1;
     }
-    const vpRectColor = 0xFFFFFFFF;
-    frame.drawRect(vpX, 0, 0, this.height - 1, vpRectColor, false, false);
-    frame.drawRect(vpX + vpW, 0, 0, this.height - 1, vpRectColor, false, false);
-    if (vpH < this.height) {
-      frame.drawRect(vpX, vpY, vpW, 0, vpRectColor, false, false);
-      frame.drawRect(vpX, vpY + vpH, vpW, 0, vpRectColor, false, false);
-    }
+    frame.drawMarchingAntRect(
+      vpX,
+      vpY,
+      vpW,
+      vpH,
+      2,
+      this.viewportDashOffset,
+      0xFF00FF00,
+      0xFF005500
+    );
 
     /* Entrances / Exits */
     for (const obj of this.level.objects) {
@@ -269,14 +293,24 @@ class MiniMap {
     }
 
     /* Death flashes */
-    // for (let i = this.deadDots.at(-1); i >= 0; --i) {
-    //     const d = this.deadDots[i];
-    //     if (--d.ttl <= 0) {
-    //         this.deadDots.splice(i, 1);
-    //         continue;
-    //     }
-    //     if (d.ttl & 4) frame.setPixel(d.x, d.y, 0xFF0000FF);
-    // }
+    for (let i = this.deadTTLs.length - 1; i >= 0; --i) {
+      const ttl = this.deadTTLs[i] - 1;
+      this.deadTTLs[i] = ttl;
+      if (ttl <= 0) {
+        if (i < this.deadTTLs.length - 1) {
+          this.deadDots.copyWithin(i * 2, (i + 1) * 2);
+          this.deadTTLs.copyWithin(i, i + 1);
+        }
+        this.deadDots = this.deadDots.slice(0, -2);
+        this.deadTTLs = this.deadTTLs.slice(0, -1);
+        continue;
+      }
+      if (ttl & 4) {
+        const x = this.deadDots[i * 2];
+        const y = this.deadDots[i * 2 + 1];
+        frame.setPixel(x, y, 0xFF0000FF);
+      }
+    }
 
     /* Blit */
     const destX = this.guiDisplay.getWidth() - W;
@@ -299,6 +333,7 @@ class MiniMap {
     this.liveDots = null;
     this.selectedDot = null;
     this.deadDots = null;
+    this.deadTTLs = null;
     this.frame = null;
   }
 }

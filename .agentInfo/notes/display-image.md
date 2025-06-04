@@ -7,3 +7,7 @@ tags: display, canvas
 The method `initSize(width, height)` (re)allocates this `ImageData` and buffer.  After allocating it calls `clear()` which fills the entire image with a color (default `0xFF00FF00`).  `setBackground()` copies an existing ground image into the buffer, handling both `Uint8ClampedArray` and `Uint32Array` sources and storing an optional mask for later use.
 
 `DisplayImage` exposes several event handlers – `onMouseDown`, `onMouseUp`, `onMouseRightDown`, `onMouseRightUp`, `onMouseMove` and `onDoubleClick`.  `Stage` forwards pointer events to these handlers so the rest of the engine can listen for input relative to the offscreen canvas.
+
+GameDisplay highlights lemmings with dashed outlines. Hover uses a dark grey rectangle while the selected lemming gets a brighter green (`0xFF30FF30`). Both use `drawDashedRect` with 1 px dashes and sit slightly above the feet. A redundant skill switches the selection outline to yellow (`0xFFFFFF00`).
+
+`drawCornerRect(x, y, size, r, g, b, cornerSize = 2)` paints filled corner squares. The optional `cornerSize` lets callers use larger corners, such as the 3 px squares on hover.

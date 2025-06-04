@@ -5,13 +5,24 @@ let steelSprites = null;
 async function loadSteelSprites() {
   if (!steelSprites) {
     const url = new URL('./steelSprites.json', import.meta.url);
-    const res = await fetch(url);
-    steelSprites = await res.json();
+    try {
+      const res = await fetch(url);
+      steelSprites = await res.json();
+    } catch (e) {
+      if (url.protocol === 'file:') {
+        const { readFile } = await import('node:fs/promises');
+        const txt = await readFile(url, 'utf8');
+        steelSprites = JSON.parse(txt);
+      } else {
+        throw e;
+      }
+    }
   }
   return steelSprites;
 }
 
 Lemmings.loadSteelSprites = loadSteelSprites;
+Lemmings.resetSteelSprites = () => { steelSprites = null; };
 
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;

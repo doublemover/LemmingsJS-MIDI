@@ -2,6 +2,7 @@ import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import { GameResources } from '../js/GameResources.js';
+import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -13,7 +14,6 @@ describe('GameResources', function () {
   let origColorPalette;
   let origMaskProvider;
   let origFrame;
-  let origLoadCursor;
 
   let fileProvider;
   let config;
@@ -23,19 +23,25 @@ describe('GameResources', function () {
   beforeEach(function () {
     loadCount = 0;
     partIndices = [];
-    config = { path: 'data', level: { groups: [] } };
+    config = { path: 'lemmings', level: { groups: [] } };
 
-    class FakeFileContainer {
-      constructor(data) {
-        this.data = data;
-      }
+    origFileContainer = Lemmings.FileContainer;
+    class SpyFileContainer extends origFileContainer {
       getPart(i) {
         partIndices.push(i);
-        return { idx: i };
+        return super.getPart(i);
       }
     }
-    origFileContainer = Lemmings.FileContainer;
-    Lemmings.FileContainer = FakeFileContainer;
+    Lemmings.FileContainer = SpyFileContainer;
+
+    fileProvider = new NodeFileProvider('.');
+    const origLoad = fileProvider.loadBinary.bind(fileProvider);
+    fileProvider.loadBinary = async (path, file) => {
+      assert.strictEqual(file, 'MAIN.DAT');
+      assert.strictEqual(path, config.path);
+      loadCount++;
+      return origLoad(path, file);
+    };
 
     origLemmingsSprite = Lemmings.LemmingsSprite;
     Lemmings.LemmingsSprite = class { constructor(part) { this.part = part; } };
@@ -62,22 +68,6 @@ describe('GameResources', function () {
       drawPaletteImage(buf, w, h, pal) { this.drawn.push({ buf, w, h, pal }); }
     };
 
-    origLoadCursor = GameResources.prototype._loadCursorBmp;
-    GameResources.prototype._loadCursorBmp = async function (name) {
-      return { img: { getImageBuffer: () => new Uint8Array(0) }, palette: {}, width: 0, height: 0 };
-    };
-
-    fileProvider = {
-      loadBinary(path, file) {
-        if (file === 'MAIN.DAT') {
-          assert.strictEqual(path, config.path);
-          loadCount++;
-          return Promise.resolve('buf');
-        }
-        assert.strictEqual(path, 'src/Data/Cursors/Cursors.zip');
-        return Promise.reject(new Error('should not load real cursor'));
-      }
-    };
   });
 
   afterEach(function () {
@@ -88,7 +78,6 @@ describe('GameResources', function () {
     Lemmings.ColorPalette = origColorPalette;
     Lemmings.MaskProvider = origMaskProvider;
     Lemmings.Frame = origFrame;
-    GameResources.prototype._loadCursorBmp = origLoadCursor;
   });
 
   it('caches the promise returned by getMainDat()', async function () {
@@ -98,7 +87,7 @@ describe('GameResources', function () {
     assert.strictEqual(p1, p2);
 
     const container = await p1;
-    assert.strictEqual(container.data, 'buf');
+    assert.ok(container instanceof Lemmings.FileContainer);
     assert.strictEqual(loadCount, 1);
   });
 
@@ -110,6 +99,11 @@ describe('GameResources', function () {
     await gr.getMasks();
     assert.strictEqual(loadCount, 1);
     assert.deepStrictEqual(partIndices, [0, 2, 6, 5, 1]);
-    assert.deepStrictEqual(partIndices, [0, 2, 6, 1]);
+  });
+
+  it('stores mechanics from config', function () {
+    const cfg = { path: 'data', mechanics: { speed: 1 }, level: { groups: [] } };
+    const gr = new GameResources(fileProvider, cfg);
+    assert.deepStrictEqual(gr.mechanics, { speed: 1 });
   });
 });

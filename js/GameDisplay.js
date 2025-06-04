@@ -14,20 +14,23 @@ class GameDisplay {
     this._mouseY = -1;
     this._dashOffset = 0;
     this.hoverIndex = -1;
+    this.hoverLemming = null;
   }
   setGuiDisplay(display) {
     this.display = display;
     this._mouseHandler = (e) => {
-      //console.log(e.x +" "+ e.y);
-      let lem = this.lemmingManager.getNearestLemming(e.x, e.y);
-      if (!lem)
-        return;
-      this.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+      const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
+      if (lem) {
+        this.lemmingManager.setSelectedLemming(lem);
+      } else {
+        this.lemmingManager.setSelectedLemming(null);
+      }
     };
     this.display.onMouseDown.on(this._mouseHandler);
     this._mouseMoveHandler = (e) => {
       this._mouseX = e.x;
       this._mouseY = e.y;
+      this.hoverLemming = this.lemmingManager.getNearestLemming(e.x, e.y);
     };
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
@@ -40,9 +43,9 @@ class GameDisplay {
     if (!this.game.showDebug) {
       const sel = this.lemmingManager.getSelectedLemming();
       if (sel && !sel.removed) this.#drawSelection(sel);
-      if (this.hoverIndex >= 0 && this.hoverIndex !== this.lemmingManager.selectedIndex) {
-        const h = this.lemmingManager.getLemming(this.hoverIndex);
-        if (h && !h.removed) this.#drawHover(h);
+
+      if (this.hoverLemming && !this.hoverLemming.removed) {
+        this.#drawHover(this.hoverLemming);
       }
     }
   }
@@ -52,14 +55,11 @@ class GameDisplay {
     this.level.renderDebug(this.display);
     this.lemmingManager.renderDebug(this.display);
     this.triggerManager.renderDebug(this.display);
-    if (this._mouseX >= 0 && this._mouseY >= 0) {
-      const lem = this.lemmingManager.getNearestLemming(this._mouseX, this._mouseY);
-      if (lem) {
-        const x = lem.x - 5;
-        const y = lem.y - 11;
-        this.display.drawMarchingAntRect(x, y, 10, 13, 3, this._dashOffset);
-        this._dashOffset = (this._dashOffset + 1) % 6;
-      }
+    if (this.hoverLemming) {
+      const x = this.hoverLemming.x - 5;
+      const y = this.hoverLemming.y - 11;
+      this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
+      this._dashOffset = (this._dashOffset + 1) % 6;
     }
   }
 
@@ -68,22 +68,34 @@ class GameDisplay {
   }
 
   #drawSelection(lem) {
-    const x1 = lem.x - 5;
-    const y1 = lem.y - 6;
-    const x2 = lem.x + 5 - 2;
-    const y2 = lem.y + 7 - 2;
-    this.#drawCorner(x1, y1, 255, 255, 255);
-    this.#drawCorner(x2, y1, 255, 255, 255);
-    this.#drawCorner(x1, y2, 255, 255, 255);
-    this.#drawCorner(x2, y2, 255, 255, 255);
+    const x = lem.x - 5;
+    const y = lem.y - 11; // sits a bit higher
+
+    let color = 0x00ff00; // bright green
+    const skills = this.game?.getGameSkills?.();
+    if (skills) {
+      const selectedSkill = skills.getSelectedSkill();
+      const redundant = {
+        [Lemmings.SkillTypes.BASHER]: Lemmings.ActionBashSystem,
+        [Lemmings.SkillTypes.BLOCKER]: Lemmings.ActionBlockerSystem,
+        [Lemmings.SkillTypes.DIGGER]: Lemmings.ActionDiggSystem,
+        [Lemmings.SkillTypes.MINER]: Lemmings.ActionMineSystem
+      };
+      const ActionClass = redundant[selectedSkill];
+      if (ActionClass && lem.action instanceof ActionClass) {
+        color = 0xffffff00; // yellow tint for redundant action
+      }
+    }
+
+    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
   }
 
   #drawHover(lem) {
-    const x1 = lem.x - 5;
-    const y1 = lem.y - 6;
-    const width = 10;
-    const height = 13;
-    this.display.drawRect(x1, y1, width, height, 64, 64, 64);
+    const x = lem.x - 5;
+    const y = lem.y - 11; // sits a bit higher
+    const color = 0x5e5e5e; // slightly lighter grey
+
+    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
   }
 
   dispose() {
@@ -106,6 +118,7 @@ class GameDisplay {
     this.objectManager = null;
     this.triggerManager = null;
     this.hoverIndex = -1;
+    this.hoverLemming = null;
   }
 }
 Lemmings.GameDisplay = GameDisplay;

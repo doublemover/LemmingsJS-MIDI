@@ -161,6 +161,30 @@ class DisplayImage extends Lemmings.BaseLogger {
     );
   }
 
+  /** Draw rectangle outline with a dashed pattern. */
+  drawDashedRect(
+    x,
+    y,
+    width,
+    height,
+    dashLen = 3,
+    offset = 0,
+    color1 = 0xFFFFFFFF,
+    color2 = 0xFF000000
+  ) {
+    drawDashedRect(
+      this,
+      x,
+      y,
+      width,
+      height,
+      dashLen,
+      offset,
+      color1,
+      color2
+    );
+  }
+
   /** Draw a stippled rectangle fill (simple checkerboard pattern). */
   drawStippleRect(x, y, width, height, r = 128, g = 128, b = 128) {
     if (!this.buffer32) return;
@@ -172,6 +196,18 @@ class DisplayImage extends Lemmings.BaseLogger {
         if (((dx + dy) & 1) === 0) this.buffer32[idx] = color32;
       }
     }
+  }
+
+  /** Draw filled corner squares around a rectangle. */
+  drawCornerRect(x, y, size, r, g, b, cornerSize = 2) {
+    const w = typeof size === 'object' ? size.width : size;
+    const h = typeof size === 'object' ? size.height : size;
+    const x2 = x + w - cornerSize;
+    const y2 = y + h - cornerSize;
+    this.drawRect(x, y, cornerSize, cornerSize, r, g, b, true);
+    this.drawRect(x2, y, cornerSize, cornerSize, r, g, b, true);
+    this.drawRect(x, y2, cornerSize, cornerSize, r, g, b, true);
+    this.drawRect(x2, y2, cornerSize, cornerSize, r, g, b, true);
   }
 
   /* ---------- blitting helpers ---------- */
@@ -363,5 +399,30 @@ function drawMarchingAntRect(
   for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
 }
 
+function drawDashedRect(
+  display,
+  x,
+  y,
+  width,
+  height,
+  dashLen = 3,
+  offset = 0,
+  color1 = 0xFFFFFFFF,
+  color2 = 0xFF000000
+) {
+  drawMarchingAntRect(
+    display,
+    x,
+    y,
+    width,
+    height,
+    dashLen,
+    offset,
+    color1,
+    color2
+  );
+}
+
 Lemmings.drawMarchingAntRect = drawMarchingAntRect;
-export { DisplayImage, drawMarchingAntRect };
+Lemmings.drawDashedRect = drawDashedRect;
+export { DisplayImage, drawMarchingAntRect, drawDashedRect };

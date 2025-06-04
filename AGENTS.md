@@ -18,6 +18,13 @@ quotes, and semicolons across the JavaScript codebase.
 - `npm start` launches `http-server` for local testing.
 - `npm run lint` checks source files with ESLint.
 - JavaScript code uses **two-space indentation** (see `js/BitReader.js` for examples).
+- The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
+### WebMIDI
+- Browsers only enable WebMIDI on HTTPS or localhost.
+- Running `WebMidi.enable()` prompts the user to allow MIDI device access.
+- See `.agentInfo/notes/webmidi.md` for details.
+- The call in `index.html` lines 22-24 is commented out; enable it for MIDI tests.
+
 
 ## Commit policy
 - Keep commit messages concise.

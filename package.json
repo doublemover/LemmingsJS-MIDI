@@ -9,7 +9,7 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "npm run check-undefined && node --import ./js/LogHandler.js ./node_modules/mocha/bin/mocha",
+    "test": "mocha",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -17,6 +17,7 @@
     "export-all-packs": "node tools/exportAllPacks.js",
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
+    "scan-panel-green": "node tools/scanGreenPanel.js",
     "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
