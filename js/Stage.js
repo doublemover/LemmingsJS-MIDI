@@ -110,8 +110,8 @@ class Stage {
   handleOnZoom() {
     this.controller.onZoom.on((e) => {
       let stageImage = this.getStageImageAt(e.x, e.y);
-      if (stageImage == null || stageImage.display.getWidth() != 1600)
-        return;
+      if (stageImage == null || stageImage.display == null) return;
+      if (stageImage.display.getWidth() != 1600) return;
       let pos = this.calcPosition2D(stageImage, e);
       this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
     });
