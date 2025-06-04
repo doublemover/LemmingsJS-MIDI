@@ -9,8 +9,9 @@ class LevelConfig {
             /** the names of the level groups */
             this.groups = [];
             /** sort order of the levels for each group
-             *   every entry is a number where:
-             *     ->  (FileId * 10 + FilePart) * (useOddTabelEntry? -1 : 1)
+             *   each entry is calculated as:
+             *     (FileId * 10 + FilePart) * (useOddTableEntry ? -1 : 1)
+             *   where a negative value means the odd table should be used
              */
             this.order = [];
         }
