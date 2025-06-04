@@ -38,7 +38,6 @@ class BitReader {
     if (!Number.isInteger(initBufferLength) || initBufferLength < 0 || initBufferLength > 8)
       throw new RangeError('initBufferLength must be an integer between 0 and 8');
 
-    this.#pos = length - 1;
     this.#binReader = new Lemmings.BinaryReader(
       fileReader,
       offset,
@@ -46,8 +45,9 @@ class BitReader {
       fileReader.filename,
     );
 
-    // Preload first byte as buffer
-    this.#buffer = this.#binReader.readByte(this.#pos);
+    // Preload first byte and adjust position to next byte to read
+    this.#pos = length - 1;
+    this.#buffer = this.#binReader.readByte(this.#pos--);
     this.#bufferLen = initBufferLength;
     this.#checksum = this.#buffer;
   }
@@ -82,7 +82,7 @@ class BitReader {
     for (let i = bitCount; i-- > 0;) {
       if (bufferLen === 0) {
         if (pos < 0) throw new RangeError('Attempt to read past end of buffer');
-        buffer = br.readByte(--pos);
+        buffer = br.readByte(pos--);
         checksum ^= buffer;
         bufferLen = 8;
       }
