@@ -139,42 +139,10 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Terminal:
   - `npm install`
   - `npm run`
-  - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs
-    - `zip -r export_lemmings.zip export_lemmings`
-    - `tar -czf export_lemmings.tgz export_lemmings`
-    - `rar a export_lemmings.rar export_lemmings`
-    - `npm run clean-exports` *(remove `export_*` folders)*
-- Other useful scripts:
-  - `npm run export-panel-sprite` – export the skill panel sprite as `exports/panel_export`
-  - `npm run export-lemmings-sprites` – export all lemming animations to `exports/<pack>_sprites`
-  - `npm run export-ground-images` – export ground and object images from a single ground set
-  - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
-  - `npm run list-sprites` – list sprite names with sizes and frame counts
-  - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
-  - See [docs/tools.md](docs/tools.md) for detailed usage of each script
+- See [docs/tools.md](docs/tools.md) for detailed usage of each script
+- See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
+- See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
 
-### NodeFileProvider
-
-The Node scripts in the `tools` directory use `NodeFileProvider` to read level
-packs. The provider loads files directly from folders or from `zip`, `tar`
-(including `.tar.gz`/`.tgz`) and `rar` archives. This lets you keep packs
-compressed while running the tools.
-
-Example usage:
-
-```bash
-# List sprites from an archived pack
-node tools/listSprites.js xmas92.tar.gz
-
-# Export all sprites from a zip archive
-node tools/exportAllSprites.js lemmings.zip export_lemmings
-
-# Patch sprites inside a rar archive
-node tools/patchSprites.js holiday94.rar edited_sprites holiday94_patched.DAT
-```
-
-For internal details see
-[.agentInfo/notes/node-file-provider.md](.agentInfo/notes/node-file-provider.md).
 
 For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
 and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
@@ -194,9 +162,6 @@ URL parameters (shortcut in brackets):
   - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=0) (default)
   - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1)
   - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
-  - 4: [Xmas 1992](https://doublemover.github.io/LemmingsJS-MIDI?version=3)
-  - 5: [Holiday 1993](https://doublemover.github.io/LemmingsJS-MIDI?version=4)
-  - 6: [Holiday 1994](https://doublemover.github.io/LemmingsJS-MIDI?version=5)
 - `difficulty (d)`: Difficulty 1-5 (default: 1)
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control speed 0-100 (default: 1)
