@@ -32,7 +32,7 @@ class GameDisplay {
         }
 
         flashSelected() {
-            this.flashTicks = 6;
+            this.flashTicks = 8;
         }
         render() {
             if (this.display == null)
@@ -54,9 +54,9 @@ class GameDisplay {
                 const size = 13;
                 const x = selected.x - 6;
                 const y = selected.y - 11;
-                const r = this.flashTicks > 0 ? 120 : 80;
-                const g = this.flashTicks > 0 ? 255 : 230;
-                const b = this.flashTicks > 0 ? 120 : 80;
+                const r = this.flashTicks > 0 ? 120 : 40;
+                const g = this.flashTicks > 0 ? 255 : 160;
+                const b = this.flashTicks > 0 ? 120 : 40;
                 this.display.drawCornerRect(x, y, size, r, g, b, 2);
             }
             if (this.flashTicks > 0) this.flashTicks--;
@@ -75,7 +75,10 @@ class GameDisplay {
                 const inRange = lem.getClickDistance(this.mouseX, this.mouseY) >= 0;
                 const isSelected = this.lemmingManager.getSelectedLemming() === lem;
                 if (isSelected) {
-                    this.display.drawDashedRect(x, y, size, size, 96, 220, 96);
+                    const r = this.flashTicks > 0 ? 120 : 64;
+                    const g = this.flashTicks > 0 ? 255 : 160;
+                    const b = this.flashTicks > 0 ? 120 : 64;
+                    this.display.drawDashedRect(x, y, size, size, r, g, b);
                 } else if (inRange) {
                     this.display.drawDashedRect(x, y, size, size, 64, 180, 64);
                 } else {
