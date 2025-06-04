@@ -1,13 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-
-const FLOAT_SPEED = [3, 3, 3, 3, -1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2];
-const FLOAT_FRAME = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4];
-
 class ActionFloatingSystem extends ActionBaseSystem {
-    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.UMBRELLA, actionName: 'floating' });
-    }
     triggerLemAction(lem) {
         if (lem.hasParachute) {
             return false;
