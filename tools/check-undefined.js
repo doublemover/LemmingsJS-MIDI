@@ -1,6 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -116,10 +118,10 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
 function processHtmlFile(file) {
@@ -162,17 +164,25 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+let jsFiles;
+let htmlFiles;
+if (process.argv.length > 2) {
+  jsFiles = [process.argv[2]];
+  htmlFiles = [];
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
+const withCalls = process.argv.length > 2;
+for (const file of jsFiles) processJSFile(file, withCalls);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
