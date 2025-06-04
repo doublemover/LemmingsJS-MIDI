@@ -292,7 +292,7 @@ class GameGui {
     }
     this.display = display;
     if (!this.miniMap) {
-      this.setMiniMap(new Lemmings.MiniMap(this, this.game.level, display));
+      this.setMiniMap(new Lemmings.MiniMap(this.game.gameDisplay, this.game.level, display));
     }
 
     this._displayListeners = [
