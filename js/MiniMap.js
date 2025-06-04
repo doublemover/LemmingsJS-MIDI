@@ -209,8 +209,8 @@ class MiniMap {
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // 4+ on/off flashes => 20 total frames; start on
-        newTTLs[this.deadTTLs.length] = 20;
+        // show for ~8 flashes (32 frames) starting visible
+        newTTLs[this.deadTTLs.length] = 32;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
@@ -258,13 +258,6 @@ class MiniMap {
             }
         }
 
-        /* Live lemmings */
-        for (let i = 0; i < this.liveDots.length; i += 2) {
-            const x = this.liveDots[i];
-            const y = this.liveDots[i + 1];
-            frame.setPixel(x, y, 0x5500FFFF);
-        }
-
         /* Death flashes */
         if (this.deadDots.length) {
             const oldDots = this.deadDots;
@@ -288,6 +281,13 @@ class MiniMap {
             }
             this.deadDots = newDots;
             this.deadTTLs = newTTLs;
+        }
+
+        /* Live lemmings */
+        for (let i = 0; i < this.liveDots.length; i += 2) {
+            const x = this.liveDots[i];
+            const y = this.liveDots[i + 1];
+            frame.setPixel(x, y, 0x5500FFFF);
         }
 
         /* Blit */
