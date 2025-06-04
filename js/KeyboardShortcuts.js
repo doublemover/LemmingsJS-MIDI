@@ -153,6 +153,37 @@ class KeyboardShortcuts {
         }
     }
 
+    _startZoomTo(target) {
+        const stage = this.view.stage;
+        if (!stage) return;
+        stage._rawScale = stage.limitValue(0.25, target, 4);
+        this.zoom.reset = stage.snapScale(stage._rawScale);
+        this._startLoop();
+    }
+
+    _zoomStep(dir) {
+        const stage = this.view.stage;
+        if (!stage) return;
+
+        const disp = stage.gameImgProps.display;
+        if (!disp) return;
+        const w = disp.getWidth();
+        const h = disp.getHeight();
+        if (!w || !h) return;
+
+        const stepX = stage.gameImgProps.width  / w;
+        const stepY = stage.gameImgProps.height / h;
+        const step  = Math.min(stepX, stepY);
+        if (!isFinite(step) || step <= 0) return;
+
+        const base = this.zoom.reset !== null ? this.zoom.reset
+                    : stage.snapScale(stage._rawScale);
+        let target = base + dir * step;
+        target = stage.limitValue(0.25, target, 4);
+        target = stage.snapScale(target);
+        this._startZoomTo(target);
+    }
+
     _onKeyDown(e) {
         const game = this.view.game;
         if (!game || e.ctrlKey || e.metaKey) return;
@@ -238,10 +269,10 @@ class KeyboardShortcuts {
                 this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
-                this.zoom.dir = 1; this._startLoop();
+                this._zoomStep(1);
                 break;
             case 'KeyX':
-                this.zoom.dir = -1; this._startLoop();
+                this._zoomStep(-1);
                 break;
             case 'KeyV':
                 this.zoom.reset = 2; this._startLoop();
@@ -291,8 +322,6 @@ class KeyboardShortcuts {
             case 'ArrowRight': this.pan.right = false; break;
             case 'ArrowUp': this.pan.up = false; break;
             case 'ArrowDown': this.pan.down = false; break;
-            case 'KeyZ': if (this.zoom.dir > 0) this.zoom.dir = 0; break;
-            case 'KeyX': if (this.zoom.dir < 0) this.zoom.dir = 0; break;
             case 'ShiftLeft':
             case 'ShiftRight':
                 this.mod.shift = false; break;
