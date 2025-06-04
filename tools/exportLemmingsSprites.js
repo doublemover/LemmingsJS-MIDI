@@ -39,7 +39,26 @@ function frameToPNG(frame) {
 
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
-    const pal = new Lemmings.ColorPalette();
+
+    // Load a colour palette from a ground set so sprites are coloured
+    let pal = new Lemmings.ColorPalette();
+    for (let g = 0; g < 5; g++) {
+        try {
+            const groundBuf = await provider.loadBinary(dataPath, `GROUND${g}O.DAT`);
+            const vgaBuf    = await provider.loadBinary(dataPath, `VGAGR${g}.DAT`);
+            const vgaContainer = new Lemmings.FileContainer(vgaBuf);
+            const gr = new Lemmings.GroundReader(
+                groundBuf,
+                vgaContainer.getPart(0),
+                vgaContainer.getPart(1)
+            );
+            pal = gr.colorPalette;
+            break;
+        } catch {
+            // ignore missing ground sets
+        }
+    }
+
     const spriteSet = await res.getLemmingsSprite(pal);
 
     for (const [name, id] of Object.entries(Lemmings.SpriteTypes)) {
@@ -48,15 +67,21 @@ function frameToPNG(frame) {
             if (!anim || !anim.frames || anim.frames.length === 0) continue;
 
             const dirName = dir ? 'right' : 'left';
-            const sheet = new PNG({ width: anim.frames[0].width * anim.frames.length, height: anim.frames[0].height });
+            const spriteDir = `${outDir}/lemmings/${name}/${dirName}`;
+            fs.mkdirSync(spriteDir, { recursive: true });
+
+            const sheet = new PNG({
+                width: anim.frames[0].width * anim.frames.length,
+                height: anim.frames[0].height
+            });
 
             for (let i = 0; i < anim.frames.length; i++) {
                 const frame = anim.getFrame(i);
                 const png = frameToPNG(frame);
-                const file = `${outDir}/${name}_${dirName}_${i}.png`;
-                await new Promise(res => png.pack().pipe(fs.createWriteStream(file)).on('finish', res));
+                await new Promise(res =>
+                    png.pack().pipe(fs.createWriteStream(`${spriteDir}/${i}.png`)).on('finish', res)
+                );
 
-                // blit into sheet
                 for (let y = 0; y < frame.height; y++) {
                     for (let x = 0; x < frame.width; x++) {
                         const idx = (y * frame.width + x) * 4;
@@ -69,8 +94,9 @@ function frameToPNG(frame) {
                 }
             }
 
-            const sheetFile = `${outDir}/${name}_${dirName}_sheet.png`;
-            await new Promise(res => sheet.pack().pipe(fs.createWriteStream(sheetFile)).on('finish', res));
+            await new Promise(res =>
+                sheet.pack().pipe(fs.createWriteStream(`${spriteDir}/sheet.png`)).on('finish', res)
+            );
         }
     }
 })();
