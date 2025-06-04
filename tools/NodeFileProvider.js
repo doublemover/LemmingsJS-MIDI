@@ -96,33 +96,35 @@ class NodeFileProvider {
     return e || null;
   }
 
-  async loadBinary(dir, filename) {
-    filename = this._validateEntry(filename);
-    if (/\.zip$/i.test(dir)) {
-      const zip = this._getZip(dir);
-      const entry = this._findZipEntry(zip, filename);
-      if (!entry) throw new Error(`File ${filename} not found in ${dir}`);
-      const data = entry.getData();
-      const arr = new Uint8Array(data);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-    } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
-      const map = await this._getTar(dir);
-      const buf = this._findEntry(map, filename);
-      if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
-      const arr = new Uint8Array(buf);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-    } else if (/\.rar$/i.test(dir)) {
-      const map = await this._getRar(dir);
-      const buf = this._findEntry(map, filename);
-      if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
-      const arr = new Uint8Array(buf);
-      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+    async loadBinary(dir, filename) {
+        filename = this._validateEntry(filename);
+        if (/\.zip$/i.test(dir)) {
+            const zip = this._getZip(dir);
+            const entry = this._findZipEntry(zip, filename);
+            if (!entry) throw new Error(`File ${filename} not found in ${dir}`);
+            const data = entry.getData();
+            const arr = new Uint8Array(data);
+            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+        } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
+            const map = await this._getTar(dir);
+            const buf = this._findEntry(map, filename);
+            if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
+            const arr = new Uint8Array(buf);
+            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+        } else if (/\.rar$/i.test(dir)) {
+            const map = await this._getRar(dir);
+            const buf = this._findEntry(map, filename);
+            if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
+            const arr = new Uint8Array(buf);
+            return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+        }
+        const fullPath = path.isAbsolute(dir)
+            ? path.join(dir, filename)
+            : path.join(this.rootPath, dir, filename);
+        const data = fs.readFileSync(fullPath);
+        const arr = new Uint8Array(data);
+        return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
     }
-    const fullPath = path.resolve(this.rootPath, dir, filename);
-    const data = fs.readFileSync(fullPath);
-    const arr = new Uint8Array(data);
-    return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
-  }
 
   async loadString(file) {
     const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar))\/(.+)$/i);
