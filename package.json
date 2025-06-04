@@ -20,8 +20,6 @@
     "adm-zip": "^0.5.10",
     "tar": "^7.4.3",
     "node-unrar-js": "^2.0.2",
-    "list-sprites": "node tools/listSprites.js",
-    "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js"
   },
   "repository": {
@@ -41,5 +39,8 @@
     "adm-zip": "^0.5.10",
     "tar": "^7.4.3",
     "node-unrar-js": "^2.0.2"
+  },
+  "dependencies": {
+    "unrar-js": "^0.2.3"
   }
 }
