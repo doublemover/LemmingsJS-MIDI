@@ -132,23 +132,43 @@ class KeyboardShortcuts {
         const cy = img.display.getHeight() / 2;
         const target = stage.limitValue(0.25, scale, 4);
         if (Math.abs(target - stage._rawScale) < 0.001) return;
-        this.zoom.anim = {
-            startScale: stage._rawScale,
-            targetScale: target,
-            worldX: vp.x + cx / vp.scale,
-            worldY: vp.y + cy / vp.scale,
-            screenX: cx,
-            screenY: cy,
-            startTime: performance.now(),
-            duration: 150
-        };
+
+        const now = performance.now();
+        if (this.zoom.anim) {
+            const a = this.zoom.anim;
+            const p = Math.min(1, (now - a.startTime) / a.duration);
+            const ease = 1 - Math.pow(1 - p, 3);
+            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+            stage._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY);
+            this.zoom.anim = {
+                startScale: raw,
+                targetScale: target,
+                worldX: vp.x + cx / vp.scale,
+                worldY: vp.y + cy / vp.scale,
+                screenX: cx,
+                screenY: cy,
+                startTime: now,
+                duration: a.duration
+            };
+        } else {
+            this.zoom.anim = {
+                startScale: stage._rawScale,
+                targetScale: target,
+                worldX: vp.x + cx / vp.scale,
+                worldY: vp.y + cy / vp.scale,
+                screenX: cx,
+                screenY: cy,
+                startTime: now,
+                duration: 200
+            };
+        }
         this._startLoop();
     }
 
     _zoomStep(dir) {
         const stage = this.view.stage;
         if (!stage) return;
-        const step = this.mod.shift ? 1 : 0.5;
+        const step = this.mod.shift ? 0.5 : 0.25;
         const target = stage._rawScale + dir * step;
         this._startZoomTo(target);
     }

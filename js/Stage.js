@@ -111,16 +111,35 @@ class Stage {
             const img = this.gameImgProps;
             const target = this.limitValue(.25, scale, 4);
             if (Math.abs(target - this._rawScale) < 0.001) return;
-            this._wheelAnim = {
-                startScale: this._rawScale,
-                targetScale: target,
-                worldX,
-                worldY,
-                screenX,
-                screenY,
-                startTime: performance.now(),
-                duration: 120
-            };
+            const now = performance.now();
+            if (this._wheelAnim) {
+                const a = this._wheelAnim;
+                const p = Math.min(1, (now - a.startTime) / a.duration);
+                const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+                this._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY);
+                this._wheelAnim = {
+                    startScale: raw,
+                    targetScale: target,
+                    worldX,
+                    worldY,
+                    screenX,
+                    screenY,
+                    startTime: now,
+                    duration: a.duration
+                };
+            } else {
+                this._wheelAnim = {
+                    startScale: this._rawScale,
+                    targetScale: target,
+                    worldX,
+                    worldY,
+                    screenX,
+                    screenY,
+                    startTime: now,
+                    duration: 100
+                };
+            }
             if (!this._wheelRaf) {
                 this._wheelRaf = requestAnimationFrame(t => this._stepWheelZoom(t));
             }
