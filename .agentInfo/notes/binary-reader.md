@@ -6,4 +6,6 @@ tags: binary-reader
 It accepts arrays, ArrayBuffers or another reader and exposes methods like
 `readByte`, `readInt`, `readWord` and `readString`. Offsets and lengths define a
 logical window so multiple readers can share data. Position setters/getters allow
-seek-like access when decoding resource files.
+seek-like access when decoding resource files. The constructor also accepts a
+`Blob`; when provided, it loads the blob asynchronously and the `ready` promise
+resolves with the resulting `Uint8Array`.
