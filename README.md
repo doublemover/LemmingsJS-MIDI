@@ -173,6 +173,11 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm start`
 - Browser: `localhost:8080`
 
+### Running Tests
+
+- After `npm install`, run `npm test` to execute the Mocha test suite.
+- Mocha is installed automatically as part of the project's `devDependencies`.
+
 ## Options
 
 URL parameters (shortcut in brackets):
