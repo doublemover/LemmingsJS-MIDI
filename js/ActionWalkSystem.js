@@ -18,7 +18,8 @@ class ActionWalkSystem extends ActionBaseSystem {
         }
         process(level, lem) {
             lem.frameIndex++;
-            lem.x += (lem.lookRight ? 1 : -1);
+            const step = lem.lookRight ? 1 : -1;
+            lem.x += step;
 
             const groundMask = level.getGroundMaskLayer();
             const upDelta = this.getGroundStepHeight(groundMask, lem.x, lem.y);
@@ -27,6 +28,7 @@ class ActionWalkSystem extends ActionBaseSystem {
                 if (lem.canClimb) {
                     return Lemmings.LemmingStateType.CLIMBING;
                 } else {
+                    lem.x -= step;
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
