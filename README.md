@@ -159,7 +159,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - [ ] perf.measure helper
 - [ ] Still possible to apply bomb to exploding bombers, probably need to adjust the frame at which they are removed
   - [ ] Same deal with splatting, drowning, and maybe falling lemmings
-- [ ] There is not a pallete swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+- [ ] There is not a palette swapped frying animation for the 'ice thrower' traps, I want to make one anyways
   - [ ] 2-2-9, 1-4-30
 - [ ] Trigger.disabledUntilTick overruns after 24 days
 - [ ] Lemming.isRemoved() null/removed conflict
