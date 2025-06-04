@@ -16,6 +16,6 @@ describe('tools/check-undefined.js', function () {
     });
 
     expect(result.status).to.not.equal(0);
-    expect(result.stderr).to.match(/nonexistentFunc is not defined/);
+    expect(result.stderr).to.match(/Undefined function nonexistentFunc/);
   });
 });
