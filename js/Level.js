@@ -1,42 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './ColorPalette.js';
-// Palette remapping for the fire shooter trap.
+
+// Palette remapping for the fire shooter trap. 
 const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
-const ICE_COLORS   = Object.freeze([
-  Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
-  Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
-  Lemmings.ColorPalette.colorFromRGB(72, 192, 255),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),
-  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
-]);
-
-    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
-    this._debugFrame = null;
-    const arrowRects = [];
-
-      // // Ice palette swap for fire shooter traps
-      // if (ob.id === 8 || ob.id === 10) {
-      //   const pal = new Lemmings.ColorPalette();
-      //   for (let i = 0; i < 16; ++i) {
-      //     pal.setColorInt(i, info.palette.getColor(i));
-      //   }
-      //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
-      //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
-      //   }
-
-      //   const clone = new Lemmings.ObjectImageInfo();
-      //   Object.assign(clone, info);
-      //   clone.palette = pal;
-      //   info = clone;
-      // }
-
-        const trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
-          const newRange = new Lemmings.Range();
-    this._debugFrame = null; // invalidate cached debug overlay
 const ICE_COLORS   = Object.freeze([
   Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
   Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
@@ -91,9 +57,9 @@ class Level extends Lemmings.BaseLogger {
     this.objects.length = 0;
     this.entrances.length = 0;
     this.triggers.length = 0;
-    const arrowRects = [];
+    let arrowRects = [];
     for (const ob of objects) {
-      const info = objectImg[ob.id];
+      let info = objectImg[ob.id];
       if (info == null) continue;
 
       // // Ice palette swap for fire shooter traps
@@ -133,7 +99,7 @@ class Level extends Lemmings.BaseLogger {
           }
         }
 
-        const trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
+        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
 
         if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
           const newRange = new Lemmings.Range();
@@ -156,27 +122,15 @@ class Level extends Lemmings.BaseLogger {
       })();
   }
 
-    this._debugFrame = null; // invalidate cached debug overlay
-    const newSteelRanges = [];
-        const newRange = new Lemmings.Range();
+  getGroundMaskLayer() { return this.groundMask; }
+  setGroundMaskLayer(solidLayer) { this.groundMask = solidLayer; }
 
-    this._debugFrame = null; // invalidate cached debug overlay
-    if (!this._debugFrame) this.#buildDebugFrame();
-    gameDisplay.drawFrame(this._debugFrame, 0, 0);
-  }
+  isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
-  #buildDebugFrame() {
-    const frame = new Lemmings.Frame(this.width, this.height);
-    const steelColor  = Lemmings.ColorPalette.colorFromRGB(0, 255, 255);
-    const arrowRColor = Lemmings.ColorPalette.colorFromRGB(128, 255, 0);
-    const arrowLColor = Lemmings.ColorPalette.colorFromRGB(255, 128, 0);
-
-      frame.drawRect(s[i], s[i+1], s[i+2], s[i+3], steelColor);
-
-      const col = a[i+4] ? arrowRColor : arrowLColor;
-      frame.drawRect(a[i], a[i+1], a[i+2], a[i+3], col);
-
-    this._debugFrame = frame;
+  clearGroundWithMask(mask, x, y) {
+    this.groundMask.clearGroundWithMask(
+      mask, x, y,
+      (px, py) => this.isSteelAt(px, py)
     );
     const img = this.groundImage;
     const w = this.width;
@@ -270,7 +224,7 @@ class Level extends Lemmings.BaseLogger {
       this.steelMask.mask.fill(0);
     }
     const { levelWidth, levelHeight, terrains } = levelReader;
-    const newSteelRanges = [];
+    let newSteelRanges = [];
     if (this.steelRanges.length == 0) return;
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];

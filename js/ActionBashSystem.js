@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionBashSystem extends ActionBaseSystem {
     constructor(sprites, masks) {
         super({
@@ -9,6 +10,21 @@ class ActionBashSystem extends ActionBaseSystem {
             maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
             actionName: 'bashing'
         });
+    }
+
+    process(level, lem) {
+        const groundMask = level.getGroundMaskLayer();
+        lem.frameIndex++;
+        const state = lem.frameIndex % 16;
+        // move lemming
+        if (state > 10) {
+            lem.x += (lem.lookRight ? 1 : -1);
+            const yDelta = this.findGapDelta(groundMask, lem.x, lem.y);
+            lem.y += yDelta;
+            if (yDelta == 3) {
+                return Lemmings.LemmingStateType.FALLING;
+            }
+        }
         // apply mask
         if ((state > 1) && (state < 6)) {
             const subMask = this.masks.get(lem.getDirection()).GetMask(state - 2);

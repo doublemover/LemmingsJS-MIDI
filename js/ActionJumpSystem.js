@@ -1,21 +1,22 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionJumpSystem extends ActionBaseSystem {
+    constructor(sprites) {
         super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
+    }
+
+    triggerLemAction(lem) {
+        return false;
+    }
 
     draw(gameDisplay, lem) {
         super.draw(gameDisplay, lem);
+    }
+
     process(level, lem) {
         lem.frameIndex++;
-        const step = lem.lookRight ? 1 : -1;
-        lem.x += step;
-
-        if (level.hasGroundAt(lem.x, lem.y)) {
-            lem.x -= step;
-            lem.lookRight = !lem.lookRight;
-            lem.state = 0;
-            return Lemmings.LemmingStateType.WALKING;
-        }
+        lem.x += (lem.lookRight ? 1 : -1);
 
         if (lem.state == null) {
             lem.state = 0; // how far we've jumped so far

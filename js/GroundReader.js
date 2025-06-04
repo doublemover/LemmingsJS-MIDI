@@ -4,20 +4,8 @@ let steelSprites = null;
 async function loadSteelSprites() {
   if (!steelSprites) {
     const url = new URL('./steelSprites.json', import.meta.url);
-    if (url.protocol === 'file:' && typeof window === 'undefined') {
-      const fs = await import('fs/promises');
-      const json = await fs.readFile(url, 'utf8');
-      steelSprites = JSON.parse(json);
-    } else {
-      const res = await fetch(url);
-      steelSprites = await res.json();
-    }
-      const json = await fs.readFile(url, 'utf8');
-      steelSprites = JSON.parse(json);
-    } else {
-      const res = await fetch(url);
-      steelSprites = await res.json();
-    }
+    const res = await fetch(url);
+    steelSprites = await res.json();
   }
   return steelSprites;
 }
