@@ -17,17 +17,27 @@ class ActionJumpSystem extends ActionBaseSystem {
     process(level, lem) {
         lem.frameIndex++;
         lem.x += (lem.lookRight ? 1 : -1);
-        let i = 0;
-        for (; i < 2; i++) {
-            if (!level.hasGroundAt(lem.x, lem.y - i - 1)) {
-                break;
-            }
+
+        if (lem.state == null) {
+            lem.state = 0; // how far we've jumped so far
         }
-        lem.y -= i;
-        if (i < 2) { // stop jumping
+
+        let moved = 0;
+        while (lem.state < 2 && moved < 2 && level.hasGroundAt(lem.x, lem.y - 1)) {
+            lem.y--;
+            lem.state++;
+            moved++;
+        }
+
+        if (lem.state >= 2 || !level.hasGroundAt(lem.x, lem.y - 1)) {
+            if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
+                lem.y = Lemmings.Lemming.LEM_MIN_Y;
+            }
+            lem.state = 0;
             return Lemmings.LemmingStateType.WALKING;
         }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE; // this.check_top_collision(lem); <no idea what this is for
+
+        return Lemmings.LemmingStateType.JUMPING;
     }
 }
 

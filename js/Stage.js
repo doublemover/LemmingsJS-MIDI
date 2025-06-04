@@ -262,10 +262,18 @@ class Stage {
             this.resetFade();
             this.fadeTimer = setInterval(() => {
                 this.fadeAlpha = Math.min(this.fadeAlpha + 0.02, 1);
-                if (this.fadeAlpha <= 0) {
+                if (this.fadeAlpha >= 1) {
                     clearInterval(this.fadeTimer);
+                    this.fadeTimer = 0;
                 }
             }, 40);
+        }
+        dispose() {
+            this.resetFade();
+            if (this.controller && this.controller.dispose) {
+                this.controller.dispose();
+            }
+            this.controller = null;
         }
         /** draw everything to the stage/display */
         draw(display, img) {

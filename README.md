@@ -9,6 +9,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <p align=center><img src="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" width=50% height=50%></img></p>
 
 ## New Features
+  - [Keyboard Shortcuts](https://github.com/doublemover/LemmingsJS-MIDI/blob/master/README.md#keyboard-shortcuts)
   - Speed is displayed at the bottom of the Paws (Pause) button
     - Click `f` for faster, `-` for slower
     - Right clicking Paws resets the Speed to 1
@@ -18,7 +19,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Traps animate, are deadly, and have cooldowns
   - Frying, Jumping, Hoisting animations
   - Improved Steel terrain
-    - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
+    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack
+      to calculate opaque size for precise placement
   - Arrow Walls function
   - Minimap
     - Accumulates ground at full resolution for enhanced accuracy
@@ -94,7 +96,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] packname or vnum/difficulty name or number/level title or number nav
   - [ ] Display selection rect around lemming nearest to cursor on hover
   - [ ] Minimap
-    - [ ] switch to uint8
+    - [X] switch to uint8
     - [ ] dots broken
     - [ ] Full vp rect
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
@@ -105,21 +107,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] debounce/toggle
     - [ ] html needs size set
     - [ ] better level nav buttons/pack & diff dropdowns
-  - [ ] Keyboard shortcuts
-    - [ ] Decrease Release Rate
-    - [ ] Min Release Rate
-    - [ ] Increase Release Rate
-    - [ ] Max Release Rate
-    - [ ] Climb/Float/Bomb/Block/Build/Bash/Mine/Dig
-    - [ ] Pause
-    - [ ] Nuke
-    - [ ] Reset Speed
-    - [ ] Increase Speed
-    - [ ] Decrease Speed
-    - [ ] Restart
-    - [ ] Debug
-    - [ ] Skill/Lem Cycle
-    - [ ] Viewport Movement, Zoom, Reset, Focus Lem/D
   - [ ] Tick Step
 </details>
 
@@ -202,6 +189,24 @@ URL parameters (shortcut in brackets):
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
+
+## Keyboard Shortcuts
+
+- `(Shift+)1`: Decrease Release Rate (Minimum)
+- `(Shift+)2`: Increase Release Rate (Maximum)
+- `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
+- `Q, W, E, R`: Select Builder, Basher, Miner, Digger
+- `Space`: Pause
+- `(Shift+)T`: Nuke (Instant)
+- `Backspace`: Restart level
+- `(Shift+)←↑↓→`: Move viewport (More)
+- `(Shift+)Z` / `X`: Zoom in / out (More)
+- `V`: Reset zoom to 2
+- `(Shift+)-` / `=`: Decrease / Increase game speed (More)
+- `,` / `.`: Previous / Next level
+- `Shift+,` / `Shift+.`: Previous / Next group
+- `Tab`: Cycle through skills
+- `\`: Toggle debug mode
   
 ## Credits
 

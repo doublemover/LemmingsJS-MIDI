@@ -5,19 +5,17 @@ import { Lemmings } from './LemmingsNamespace.js';
  * Each part can be unpacked into a BinaryReader.
  * @class
  */
-class FileContainer {
+class FileContainer extends Lemmings.BaseLogger {
   /** @type {Lemmings.UnpackFilePart[]} */
   #parts;
 
-  /** @type {Lemmings.LogHandler} */
-  #log;
 
   /**
    * Parse the file container's content on construction.
    * @param {Lemmings.BinaryReader} content - The binary file content.
    */
   constructor(content) {
-    this.#log = new Lemmings.LogHandler("FileContainer");
+    super();
     this.#parts = [];
     this.read(content);
   }
@@ -38,7 +36,7 @@ class FileContainer {
    */
   getPart(index) {
     if (index < 0 || index >= this.#parts.length) {
-      this.#log.log(`getPart(${index}) Out of index!`);
+      this.log.log(`getPart(${index}) Out of index!`);
       return new Lemmings.BinaryReader();
     }
     return this.#parts[index].unpack();
@@ -50,6 +48,15 @@ class FileContainer {
    * @param {Lemmings.BinaryReader} fileReader - Input file reader.
    */
   read(fileReader) {
+    Lemmings.withPerformance(
+      'FileContainer.read',
+      {
+        track: 'FileContainer',
+        trackGroup: 'IO',
+        color: 'secondary-dark',
+        tooltipText: `read ${fileReader.filename}`
+      },
+      () => {
     this.#parts.length = 0; // Reset
     let pos = 0;
     const HEADER_SIZE = 10;
@@ -72,13 +79,14 @@ class FileContainer {
 
       // Sanity checks
       if (part.offset < 0 || size > 0xFFFFFF || size < HEADER_SIZE) {
-        this.#log.log(`out of sync ${fileReader.filename}`);
+        this.log.log(`out of sync ${fileReader.filename}`);
         break;
       }
       this.#parts.push(part);
       pos += size;
     }
-    this.#log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
+    this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
+      })();
   }
 
   /** @returns {Lemmings.UnpackFilePart[]} Array of all file parts (read-only view). */
