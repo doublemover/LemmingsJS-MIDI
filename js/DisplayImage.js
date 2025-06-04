@@ -17,8 +17,9 @@ const cyrb53 = (str, seed = 0) => {
     return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
 
-class DisplayImage {
+class DisplayImage extends Lemmings.BaseLogger {
     constructor(stage) {
+        super();
         this.stage = stage;
         this.onMouseUp = new Lemmings.EventHandler();
         this.onMouseDown = new Lemmings.EventHandler();
@@ -63,7 +64,7 @@ class DisplayImage {
             this.buffer32.set(groundImage);
         } else {
             // Fallback (ArrayLike)
-            console.log("error: setBackground fallback")
+            this.log.log("error: setBackground fallback");
             // this.imgData.data.set(groundImage);
         }
         this.groundMask = groundMask;
