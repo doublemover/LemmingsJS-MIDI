@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 class CommandManager extends Lemmings.BaseLogger {
     constructor(game, gameTimer) {

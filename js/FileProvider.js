@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * FileProvider with transparent in‑memory caching.

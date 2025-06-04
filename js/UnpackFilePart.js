@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * Represents a single compressed file part/chunk in a Lemmings resource.

@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 import './KeyboardShortcuts.js';
 
 class GameView extends Lemmings.BaseLogger {

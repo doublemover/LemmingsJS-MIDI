@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * Efficient backwards-writing buffer for Lemmings decompression (LZ-style).

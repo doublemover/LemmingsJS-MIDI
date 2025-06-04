@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 class LevelWriter extends Lemmings.BaseLogger {
     /**

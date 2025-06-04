@@ -4,7 +4,6 @@ import assert from 'assert';
 global.lemmings = { game: { showDebug: false } };
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import '../js/BinaryReader.js';
 import '../js/BitReader.js';
 import '../js/BitWriter.js';
