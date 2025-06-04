@@ -82,7 +82,9 @@ class KeyboardShortcuts {
             this.zoom.v *= 0.9;
             const dz = this.zoom.v;
             if (Math.abs(dz) > 0.001) {
-                const newScale = Math.max(0.25, Math.min(4, vp.scale * (1 + dz / 1500)));
+                const desired = stage._rawScale * (1 + dz / 1500);
+                stage._rawScale = stage.limitValue(0.25, desired, 4);
+                const newScale = stage.snapScale(stage._rawScale);
                 const nx = centerX - cx / newScale;
                 const ny = centerY - cy / newScale;
                 const maxX = img.display.getWidth()  - img.width  / newScale;
@@ -93,7 +95,8 @@ class KeyboardShortcuts {
                 stage.redraw();
                 again = true;
             } else if (this.zoom.reset !== null) {
-                vp.scale = this.zoom.reset;
+                stage._rawScale = stage.limitValue(0.25, this.zoom.reset, 4);
+                vp.scale = stage.snapScale(stage._rawScale);
                 this.zoom.reset = null;
                 stage.redraw();
                 this.zoom.v = 0;
