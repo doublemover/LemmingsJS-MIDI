@@ -8,6 +8,13 @@ class Stage {
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
+    this.stageCav = canvasForOutput;
+    this.gameImgProps = new Lemmings.StageImageProperties();
+    this.guiImgProps = new Lemmings.StageImageProperties();
+    this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
+    // Ensure displays exist before any user input is processed
+    this.getGameDisplay();
+    this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
     this.handleOnMouseUp();
     this.handleOnMouseDown();
@@ -16,10 +23,6 @@ class Stage {
     this.handleOnMouseMove();
     this.handleOnDoubleClick();
     this.handleOnZoom();
-    this.stageCav = canvasForOutput;
-    this.gameImgProps = new Lemmings.StageImageProperties();
-    this.guiImgProps = new Lemmings.StageImageProperties();
-    this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
     this.updateStageSize();
     this.clear();
   }
