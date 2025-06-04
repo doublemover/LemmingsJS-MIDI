@@ -421,7 +421,7 @@ class LemmingManager extends Lemmings.BaseLogger {
                 tooltipText: `setLemmingState ${lem.id}`
             },
             () => {
-        if (lem.countdown > 0) {
+            })();
             const lethal =
                 stateType === Lemmings.LemmingStateType.DROWNING   ||
                 stateType === Lemmings.LemmingStateType.SPLATTING  ||
