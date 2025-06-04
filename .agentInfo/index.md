@@ -6,6 +6,7 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 ## Notes by tag
 
 - **example, doc**: [notes/initial.md](notes/initial.md)
+- **gui, input, skill selection, release rate, nuke, pause button, speed control, minimap, game text display**: [notes/game-gui.md](notes/game-gui.md)
 - **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md)
 - **level-writing**: [notes/level-writer.md](notes/level-writer.md)
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md)
