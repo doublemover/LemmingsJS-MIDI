@@ -103,7 +103,6 @@ class Game extends Lemmings.BaseLogger {
       this.gameTimer,
       this.gameVictoryCondition,
     );
-    if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
     this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
     this.objectManager.addRange(level.objects);
@@ -116,6 +115,7 @@ class Game extends Lemmings.BaseLogger {
       this.triggerManager,
     );
     if (this.display) this.gameDisplay.setGuiDisplay(this.display);
+    if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
     return this; // keeps legacy promise signature intact
   }
