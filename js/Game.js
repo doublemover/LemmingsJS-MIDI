@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 class Game extends Lemmings.BaseLogger {
   constructor (gameResources) {
@@ -102,7 +103,6 @@ class Game extends Lemmings.BaseLogger {
       this.gameTimer,
       this.gameVictoryCondition,
     );
-    if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
     this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
     this.objectManager.addRange(level.objects);
@@ -115,6 +115,7 @@ class Game extends Lemmings.BaseLogger {
       this.triggerManager,
     );
     if (this.display) this.gameDisplay.setGuiDisplay(this.display);
+    if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
     return this; // keeps legacy promise signature intact
   }
@@ -163,11 +164,11 @@ class Game extends Lemmings.BaseLogger {
 
     if (left <= 0 && out <= 0) {
       return won ? Lemmings.GameStateTypes.SUCCEEDED
-                 : Lemmings.GameStateTypes.FAILED_LESS_LEMMINGS;
+        : Lemmings.GameStateTypes.FAILED_LESS_LEMMINGS;
     }
     if (this.gameTimer?.getGameLeftTime() <= 0) {
       return won ? Lemmings.GameStateTypes.SUCCEEDED
-                 : Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
+        : Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
     }
     return Lemmings.GameStateTypes.RUNNING;
   }

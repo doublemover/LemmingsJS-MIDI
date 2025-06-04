@@ -1,6 +1,5 @@
 import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
 import { BitReader } from '../js/BitReader.js';
 import { BitWriter } from '../js/BitWriter.js';
@@ -26,18 +25,18 @@ describe('BitReader/BitWriter', function () {
         }
       } else {
         switch (bitReader.read(2)) {
-          case 0:
-            bitWriter.copyReferencedData(3, 9);
-            break;
-          case 1:
-            bitWriter.copyReferencedData(4, 10);
-            break;
-          case 2:
-            bitWriter.copyReferencedData(bitReader.read(8) + 1, 12);
-            break;
-          case 3:
-            bitWriter.copyRawData(bitReader.read(8) + 9);
-            break;
+        case 0:
+          bitWriter.copyReferencedData(3, 9);
+          break;
+        case 1:
+          bitWriter.copyReferencedData(4, 10);
+          break;
+        case 2:
+          bitWriter.copyReferencedData(bitReader.read(8) + 1, 12);
+          break;
+        case 3:
+          bitWriter.copyRawData(bitReader.read(8) + 9);
+          break;
         }
       }
     }

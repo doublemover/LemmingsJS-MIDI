@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * Reads binary data with flexible offset, length, and endian options.
@@ -32,7 +33,7 @@ class BinaryReader extends Lemmings.BaseLogger {
    * @param {string} [filename='[unknown]'] - File name for debug/logging.
    * @param {string} [foldername='[unknown]'] - Folder name for debug/logging.
    */
-  constructor(dataArray, offset = 0, length, filename = "[unknown]", foldername = "[unknown]") {
+  constructor(dataArray, offset = 0, length, filename = '[unknown]', foldername = '[unknown]') {
     super();
     this.filename = filename;
     this.foldername = foldername;
@@ -41,29 +42,29 @@ class BinaryReader extends Lemmings.BaseLogger {
     if (dataArray == null) {
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log("BinaryReader from NULL; size: 0");
+      this.log.log('BinaryReader from NULL; size: 0');
     } else if (dataArray instanceof BinaryReader) {
       this.#data = dataArray.data;
       dataLength = dataArray.length;
-      this.log.log("BinaryReader from BinaryReader; size: " + dataLength);
+      this.log.log('BinaryReader from BinaryReader; size: ' + dataLength);
     } else if (dataArray instanceof Uint8Array) {
       this.#data = dataArray;
       dataLength = dataArray.byteLength;
-      this.log.log("BinaryReader from Uint8Array; size: " + dataLength);
+      this.log.log('BinaryReader from Uint8Array; size: ' + dataLength);
     } else if (dataArray instanceof ArrayBuffer) {
       this.#data = new Uint8Array(dataArray);
       dataLength = dataArray.byteLength;
-      this.log.log("BinaryReader from ArrayBuffer; size: " + dataLength);
+      this.log.log('BinaryReader from ArrayBuffer; size: ' + dataLength);
     } else if (typeof Blob !== 'undefined' && dataArray instanceof Blob) {
       // Modern browsers: Blobs must be async-read; fallback for now
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log("BinaryReader from Blob: async not implemented; size: 0");
+      this.log.log('BinaryReader from Blob: async not implemented; size: 0');
     } else {
       // Generic object: treat as array-like
       this.#data = new Uint8Array(dataArray);
       dataLength = this.#data.length;
-      this.log.log("BinaryReader from unknown: " + dataArray + "; size:" + dataLength);
+      this.log.log('BinaryReader from unknown: ' + dataArray + '; size:' + dataLength);
     }
 
     if (length == null) length = dataLength - offset;

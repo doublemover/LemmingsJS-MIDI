@@ -15,6 +15,9 @@ body * {
     user-select: none;
     overflow: hidden;
 }
+.gameCanvas {
+    cursor: none;
+}
 
 @media (orientation: landscape) {
     html,

@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 import './ColorPalette.js';
 
 // Palette remapping for the fire shooter trap. 
@@ -31,7 +32,7 @@ class Level extends Lemmings.BaseLogger {
     this.arrowRanges = new Int32Array(0);
     this.arrowTriggers = [];
 
-    this.name = "";
+    this.name = '';
     this.releaseRate = 0;
     this.releaseCount = 0;
     this.needCount = 0;
@@ -54,71 +55,71 @@ class Level extends Lemmings.BaseLogger {
         tooltipText: 'setMapObjects'
       },
       () => {
-    this.objects.length = 0;
-    this.entrances.length = 0;
-    this.triggers.length = 0;
-    let arrowRects = [];
-    for (const ob of objects) {
-      let info = objectImg[ob.id];
-      if (info == null) continue;
+        this.objects.length = 0;
+        this.entrances.length = 0;
+        this.triggers.length = 0;
+        let arrowRects = [];
+        for (const ob of objects) {
+          let info = objectImg[ob.id];
+          if (info == null) continue;
 
-      // // Ice palette swap for fire shooter traps
-      // if (ob.id === 8 || ob.id === 10) {
-      //   const pal = new Lemmings.ColorPalette();
-      //   for (let i = 0; i < 16; ++i) {
-      //     pal.setColorInt(i, info.palette.getColor(i));
-      //   }
-      //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
-      //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
-      //   }
+          // // Ice palette swap for fire shooter traps
+          // if (ob.id === 8 || ob.id === 10) {
+          //   const pal = new Lemmings.ColorPalette();
+          //   for (let i = 0; i < 16; ++i) {
+          //     pal.setColorInt(i, info.palette.getColor(i));
+          //   }
+          //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
+          //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+          //   }
 
-      //   const clone = new Lemmings.ObjectImageInfo();
-      //   Object.assign(clone, info);
-      //   clone.palette = pal;
-      //   info = clone;
-      // }
-      let tfxID = info.trigger_effect_id;
+          //   const clone = new Lemmings.ObjectImageInfo();
+          //   Object.assign(clone, info);
+          //   clone.palette = pal;
+          //   info = clone;
+          // }
+          let tfxID = info.trigger_effect_id;
 
-      if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
-        tfxID = 12;
-      }
+          if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
+            tfxID = 12;
+          }
 
-      const mapOb = new Lemmings.MapObject(ob, info, new Lemmings.Animation(), tfxID);
-      this.objects.push(mapOb);
-      if (ob.id === 1) this.entrances.push(ob);
+          const mapOb = new Lemmings.MapObject(ob, info, new Lemmings.Animation(), tfxID);
+          this.objects.push(mapOb);
+          if (ob.id === 1) this.entrances.push(ob);
 
-      if (tfxID !== 0) {
-        const x1 = ob.x + info.trigger_left;
-        const y1 = ob.y + info.trigger_top;
-        const x2 = x1 + info.trigger_width;
-        const y2 = y1 + info.trigger_height;
-        let repeatDelay = 0;
-        if (tfxID != 1) {
-          if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) {
-            repeatDelay = info.frameCount;
+          if (tfxID !== 0) {
+            const x1 = ob.x + info.trigger_left;
+            const y1 = ob.y + info.trigger_top;
+            const x2 = x1 + info.trigger_width;
+            const y2 = y1 + info.trigger_height;
+            let repeatDelay = 0;
+            if (tfxID != 1) {
+              if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) {
+                repeatDelay = info.frameCount;
+              }
+            }
+
+            let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
+
+            if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
+              const newRange = new Lemmings.Range();
+              newRange.x = ob.x + info.trigger_left;
+              newRange.y = ob.y + info.trigger_top;
+              newRange.width = info.trigger_width;
+              newRange.height = info.trigger_height;
+              newRange.direction = mapOb.triggerType == 8 ? 1 : 0;
+              arrowRects.push(newRange);
+              this.arrowTriggers.push(trigger);
+            }
+
+            this.triggers.push(trigger);
           }
         }
-
-        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
-
-        if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
-          const newRange = new Lemmings.Range();
-          newRange.x = ob.x + info.trigger_left;
-          newRange.y = ob.y + info.trigger_top;
-          newRange.width = info.trigger_width;
-          newRange.height = info.trigger_height;
-          newRange.direction = mapOb.triggerType == 8 ? 1 : 0;
-          arrowRects.push(newRange);
-          this.arrowTriggers.push(trigger);
+        if (arrowRects.length > 0) {
+          this.setArrowAreas(arrowRects);
         }
-
-        this.triggers.push(trigger);
-      }
-    }
-    if (arrowRects.length > 0) {
-      this.setArrowAreas(arrowRects);
-    }
-    this._debugFrame = null; // invalidate cached debug overlay
+        this._debugFrame = null; // invalidate cached debug overlay
       })();
   }
 
@@ -217,38 +218,38 @@ class Level extends Lemmings.BaseLogger {
         tooltipText: 'newSetSteelAreas'
       },
       () => {
-    if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
-      this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
-    } else {
-      // Clear all
-      this.steelMask.mask.fill(0);
-    }
-    const { levelWidth, levelHeight, terrains } = levelReader;
-    let newSteelRanges = [];
-    if (this.steelRanges.length == 0) return;
-    for (let i = 0, len = terrains.length; i < len; ++i) {
-      const tObj = terrains[i];
-      const terImg = terrainImages[tObj.id];
-      if (terImg.isSteel == true) {
-        const newRange = new Lemmings.Range();
-        newRange.x = tObj.x;
-        newRange.y = tObj.y;
-        newRange.width = terImg.steelWidth;
-        newRange.height = terImg.steelHeight;
-        for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
-          for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
-            if (this.isSteelAt(dx,dy, true)) {
-              newSteelRanges.push(newRange);
-              this.steelMask.setMaskAt(dx, dy);
+        if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
+          this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+        } else {
+          // Clear all
+          this.steelMask.mask.fill(0);
+        }
+        const { levelWidth, levelHeight, terrains } = levelReader;
+        let newSteelRanges = [];
+        if (this.steelRanges.length == 0) return;
+        for (let i = 0, len = terrains.length; i < len; ++i) {
+          const tObj = terrains[i];
+          const terImg = terrainImages[tObj.id];
+          if (terImg.isSteel == true) {
+            const newRange = new Lemmings.Range();
+            newRange.x = tObj.x;
+            newRange.y = tObj.y;
+            newRange.width = terImg.steelWidth;
+            newRange.height = terImg.steelHeight;
+            for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
+              for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
+                if (this.isSteelAt(dx,dy, true)) {
+                  newSteelRanges.push(newRange);
+                  this.steelMask.setMaskAt(dx, dy);
+                }
+              }
             }
           }
         }
-      }
-    }
-    if (newSteelRanges.length > 0) {
-      this.steelRanges = new Int32Array(0);
-      this.setSteelAreas(newSteelRanges);
-    }
+        if (newSteelRanges.length > 0) {
+          this.steelRanges = new Int32Array(0);
+          this.setSteelAreas(newSteelRanges);
+        }
       })();
   }
 
