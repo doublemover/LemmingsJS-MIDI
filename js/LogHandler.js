@@ -5,12 +5,12 @@ class LogHandler {
         this._moduleName = moduleName;
     }
     /** log an error */
-    log(msg, exception) {
+    log(msg, exeption) {
         if (!lemmings == false) {
             if (!lemmings.game == false && lemmings.game.showDebug == true) {
                 console.log(this._moduleName + "\t" + msg);
-                if (exception) {
-                    console.log(this._moduleName + "\t" + exception.message);
+                if (exeption) {
+                    console.log(this._moduleName + "\t" + exeption.message);
                 }
             }
         }
