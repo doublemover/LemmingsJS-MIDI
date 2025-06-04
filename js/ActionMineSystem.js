@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionMineSystem extends ActionBaseSystem {
     constructor(sprites, masks) {
         super({
@@ -9,7 +10,20 @@ class ActionMineSystem extends ActionBaseSystem {
             maskTypes: { left: Lemmings.MaskTypes.MINING_L, right: Lemmings.MaskTypes.MINING_R },
             actionName: 'mining'
         });
+    }
+    process(level, lem) {
+        lem.frameIndex = (lem.frameIndex + 1) % 24;
+        switch (lem.frameIndex) {
+        case 1:
+        case 2:
             let mask = this.masks.get(lem.getDirection());
+            let maskIndex = lem.frameIndex - 1;
+            let subMask   = mask.GetMask(maskIndex);
+            if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+                return Lemmings.LemmingStateType.SHRUG;
+            }
+            if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
+                return Lemmings.LemmingStateType.SHRUG;
             }
             level.clearGroundWithMask(subMask, lem.x, lem.y);
             break;

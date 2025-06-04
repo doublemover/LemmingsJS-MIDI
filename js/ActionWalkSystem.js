@@ -1,7 +1,16 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+
 class ActionWalkSystem extends ActionBaseSystem {
+        constructor(sprites) {
             super({ sprites, spriteType: Lemmings.SpriteTypes.WALKING, actionName: 'walk' });
+        }
+        triggerLemAction(lem) {
+            return false;
+        }
+        getGroundStepHeight(groundMask, x, y) {
+            for (let i = 0; i < 8; i++) {
+                if (!groundMask.hasGroundAt(x, y - i)) {
                     return i;
                 }
             }
