@@ -23,6 +23,11 @@ class LemmingManager extends Lemmings.BaseLogger {
         }
         this.minimapDots = new Uint8Array(0);
         this.selectedIndex = -1;
+        const maxDots = (gameVictoryCondition.getReleaseCount() +
+          (lemmings.extraLemmings | 0)) * 2;
+        this._minimapDotBuffer = new Uint8Array(maxDots);
+        this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
+        this._mmVisited = new Uint8Array(65536);
         if (!LemmingManager.log) {
           LemmingManager.log = this.log;
         }
@@ -133,8 +138,12 @@ class LemmingManager extends Lemmings.BaseLogger {
         }
         if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
           const lemsCount = lems.length;
-          const dots = new Uint8Array(lemsCount * 2);
-          const visited = new Set();
+          if (this._minimapDotBuffer.length < lemsCount * 2) {
+            this._minimapDotBuffer = new Uint8Array(lemsCount * 2);
+          }
+          const dots = this._minimapDotBuffer;
+          const visited = this._mmVisited;
+          visited.fill(0);
           const scaleX = this.miniMap.scaleX;
           const scaleY = this.miniMap.scaleY;
           let idx = 0;
@@ -145,8 +154,8 @@ class LemmingManager extends Lemmings.BaseLogger {
             const y = (lem.y * scaleY) | 0;
             if (lem.id === this.selectedIndex) selDot = [x, y];
             const key = (y << 8) | x;
-            if (visited.has(key)) continue;
-            visited.add(key);
+            if (visited[key]) continue;
+            visited[key] = 1;
             dots[idx++] = x;
             dots[idx++] = y;
           }
@@ -421,6 +430,8 @@ class LemmingManager extends Lemmings.BaseLogger {
     const start = performance.now();
     if (this.lemmings) this.lemmings.length = 0;
     if (this.minimapDots) this.minimapDots = new Uint8Array(0);
+    this._minimapDotBuffer = null;
+    this._mmVisited = null;
     this.level = null;
     this.triggerManager = null;
     this.gameVictoryCondition = null;

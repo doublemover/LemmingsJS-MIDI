@@ -1,6 +1,6 @@
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LemmingsBootstrap.js';
-import { BinaryReader } from '../js/BinaryReader.js';
+import { NodeFileProvider } from './NodeFileProvider.js';
 import { PNG } from 'pngjs';
 import fs from 'fs';
 import path from 'path';

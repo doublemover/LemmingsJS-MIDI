@@ -134,20 +134,17 @@ class DisplayImage extends Lemmings.BaseLogger {
     color1 = 0xFFFFFFFF,
     color2 = 0xFF000000
   ) {
-    if (!this.buffer32) return;
-    const { width: w } = this.imgData;
-    const pattern = dashLen * 2;
-    let pos = ((offset % pattern) + pattern) % pattern;
-    const set = (px, py) => {
-      const useFirst = Math.floor(pos / dashLen) % 2 === 0;
-      this.buffer32[py * w + px] = useFirst ? color1 : color2;
-      pos = (pos + 1) % pattern;
-    };
-
-    for (let dx = 0; dx <= width; dx++) set(x + dx, y);
-    for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
-    for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
-    for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+    drawMarchingAntRect(
+      this,
+      x,
+      y,
+      width,
+      height,
+      dashLen,
+      offset,
+      color1,
+      color2
+    );
   }
 
   /** Draw a stippled rectangle fill (simple checkerboard pattern). */
@@ -324,4 +321,33 @@ class DisplayImage extends Lemmings.BaseLogger {
   }
 }
 Lemmings.DisplayImage = DisplayImage;
-export { DisplayImage };
+
+function drawMarchingAntRect(
+  display,
+  x,
+  y,
+  width,
+  height,
+  dashLen = 3,
+  offset = 0,
+  color1 = 0xFFFFFFFF,
+  color2 = 0xFF000000
+) {
+  if (!display?.buffer32) return;
+  const { width: w } = display.imgData;
+  const pattern = dashLen * 2;
+  let pos = ((offset % pattern) + pattern) % pattern;
+  const set = (px, py) => {
+    const useFirst = Math.floor(pos / dashLen) % 2 === 0;
+    display.buffer32[py * w + px] = useFirst ? color1 : color2;
+    pos = (pos + 1) % pattern;
+  };
+
+  for (let dx = 0; dx <= width; dx++) set(x + dx, y);
+  for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
+  for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
+  for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+}
+
+Lemmings.drawMarchingAntRect = drawMarchingAntRect;
+export { DisplayImage, drawMarchingAntRect };
