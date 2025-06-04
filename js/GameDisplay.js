@@ -64,7 +64,13 @@ class GameDisplay {
                 const size = 13;
                 const x = lem.x - 6;
                 const y = lem.y - 12;
-                this.display.drawDashedRect(x, y, size, size, 64, 64, 64);
+                let r = 64, g = 64, b = 64;
+                const skill = this.game.getGameSkills()?.getSelectedSkill?.();
+                if ((skill === Lemmings.SkillTypes.CLIMBER && lem.canClimb) ||
+                    (skill === Lemmings.SkillTypes.FLOATER && lem.hasParachute)) {
+                    r = 32; g = 120; b = 32;
+                }
+                this.display.drawDashedRect(x, y, size, size, r, g, b);
             }
 
             if (selected) {
@@ -115,7 +121,13 @@ class GameDisplay {
                     const b = Math.round(64 + 56 * fade);
                     this.display.drawDashedRect(x, y, size, size, r, g, b);
                 } else if (inRange) {
-                    this.display.drawDashedRect(x, y, size, size, 64, 180, 64);
+                    let r = 64, g = 180, b = 64;
+                    const skill = this.game.getGameSkills()?.getSelectedSkill?.();
+                    if ((skill === Lemmings.SkillTypes.CLIMBER && lem.canClimb) ||
+                        (skill === Lemmings.SkillTypes.FLOATER && lem.hasParachute)) {
+                        r = 32; g = 120; b = 32;
+                    }
+                    this.display.drawDashedRect(x, y, size, size, r, g, b);
                 } else {
                     this.display.drawDashedRect(x, y, size, size, 64, 64, 64);
                 }
