@@ -3,6 +3,8 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import '../js/LemmingStateType.js';
+import '../js/LemmingsBootstrap.js';
 
 // enable debug logging
 globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
@@ -29,6 +31,9 @@ describe('LemmingManager', function() {
     level.entrances = [{ x: 0, y: 0 }];
     const gvc = new GameVictoryCondition(level);
     const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+
+    // ensure debug logging is enabled
+    globalThis.lemmings.game.showDebug = true;
 
     class StubAction {
       constructor(name, next) { this.name = name; this.next = next; }

@@ -10,7 +10,12 @@ describe('Frame', function () {
     const frame = new Frame(2, 2);
     frame.fill(1, 2, 3);
     const color = ColorPalette.colorFromRGB(1, 2, 3);
-    expect(Array.from(frame.data)).to.eql([color, color, color, color]);
+    expect(Array.from(frame.data)).to.eql([
+      color >>> 0,
+      color >>> 0,
+      color >>> 0,
+      color >>> 0
+    ]);
     expect(Array.from(frame.mask)).to.eql([1, 1, 1, 1]);
   });
 
@@ -21,21 +26,31 @@ describe('Frame', function () {
     const color2 = ColorPalette.colorFromRGB(4, 5, 6);
 
     frame.setPixel(1, 0, color2);
-    expect(frame.data[1]).to.equal(color2);
+    expect(frame.data[1]).to.equal(color2 >>> 0);
     expect(frame.mask[1]).to.equal(1);
 
     frame.setPixel(2, 2, color2);
     frame.setPixel(-1, 0, color2);
-    expect(Array.from(frame.data)).to.eql([color1, color2, color1, color1]);
+    expect(Array.from(frame.data)).to.eql([
+      color1 >>> 0,
+      color2 >>> 0,
+      color1 >>> 0,
+      color1 >>> 0
+    ]);
     expect(Array.from(frame.mask)).to.eql([1, 1, 1, 1]);
 
     frame.clearPixel(1, 0);
-    expect(frame.data[1]).to.equal(ColorPalette.black);
+    expect(frame.data[1]).to.equal(ColorPalette.black >>> 0);
     expect(frame.mask[1]).to.equal(0);
 
     frame.clearPixel(10, 0);
     frame.clearPixel(0, -1);
-    expect(Array.from(frame.data)).to.eql([color1, ColorPalette.black, color1, color1]);
+    expect(Array.from(frame.data)).to.eql([
+      color1 >>> 0,
+      ColorPalette.black >>> 0,
+      color1 >>> 0,
+      color1 >>> 0
+    ]);
     expect(Array.from(frame.mask)).to.eql([1, 0, 1, 1]);
   });
 
@@ -52,8 +67,8 @@ describe('Frame', function () {
     const c0 = ColorPalette.colorFromRGB(1, 2, 3);
     const c1 = ColorPalette.colorFromRGB(4, 5, 6);
     expect(Array.from(frame.data)).to.eql([
-      c0, c1,
-      ColorPalette.black, c0
+      c0 >>> 0, c1 >>> 0,
+      ColorPalette.black >>> 0, c0 >>> 0
     ]);
     expect(Array.from(frame.mask)).to.eql([
       1, 1,

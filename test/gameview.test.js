@@ -5,13 +5,15 @@ import '../js/DisplayImage.js';
 import { GameView } from '../js/GameView.js';
 
 // minimal window for GameView.applyQuery and KeyboardShortcuts stub
-global.window = {
-  location: { search: '' },
-  setTimeout,
-  clearTimeout,
-  addEventListener() {},
-  removeEventListener() {}
-};
+function setupWindow() {
+  global.window = {
+    location: { search: '' },
+    setTimeout,
+    clearTimeout,
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
@@ -74,16 +76,21 @@ class GameFactoryMock {
   get configReader() { return { configs: Promise.resolve([]) }; }
 }
 
-// override engine classes
-Lemmings.Stage = StageMock;
-Lemmings.GameFactory = GameFactoryMock;
-Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-Lemmings.GameTypes = { toString: () => '' };
-Lemmings.GameStateTypes = { toString: () => '' };
-
-global.lemmings = { game: { showDebug: false } };
-
 describe('GameView', function () {
+  before(function () {
+    setupWindow();
+    // override engine classes after all modules loaded
+    Lemmings.Stage = StageMock;
+    Lemmings.GameFactory = GameFactoryMock;
+    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    Lemmings.GameTypes = { toString: () => '' };
+    Lemmings.GameStateTypes = { toString: () => '' };
+    global.lemmings = { game: { showDebug: false } };
+  });
+
+  after(function () {
+    delete global.window;
+  });
   it('initializes stage and connects displays', async function () {
     const view = new GameView();
     const canvas = {
