@@ -7,6 +7,7 @@ Development uses ESLint to keep code consistent.
 - Semicolons required
 
 Run `npm run lint` to check formatting. Run `npm run format` to automatically fix style.
+Run `npm run depcheck` to list unused dependencies.
 
 ## Before committing
 
