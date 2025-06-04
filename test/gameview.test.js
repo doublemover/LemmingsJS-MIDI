@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
-
 // prepare a minimal window object for GameView.applyQuery
 function createWindowStub() {
   return {

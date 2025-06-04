@@ -51,6 +51,7 @@ describe('Frame', function () {
 
     const c0 = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
     const c1 = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
+
     expect(Array.from(frame.data)).to.eql([
       c0, c1,
       ColorPalette.black, c0

@@ -42,6 +42,7 @@ describe('CommandManager', function() {
   it('queueCommand logs command and serializes', function() {
     const timer = new MockTimer();
     timer.tick = 1;
+
     const cm = new TestCommandManager(game, timer);
     const cmd = new StubCommand();
     cm.queueCommand(cmd);
