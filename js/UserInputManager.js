@@ -201,20 +201,11 @@ class UserInputManager {
     this.handleMouseClear();
     this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
   }
-  /** Zoom view
-     * todo: zoom to mouse pointer */
+  /** Zoom view around the cursor */
   handleWheel(position, deltaY) {
-    let dX = (this.lastMouseX - position.x);
-    let dY = (this.lastMouseY - position.y);
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
-    let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);
-    mouseDragArguments.mouseDownX = this.mouseDownX;
-    mouseDragArguments.mouseDownY = this.mouseDownY;
-    let zea = new ZoomEventArgs(position.x, position.y, deltaY);
-    zea.deltaX = this.lastMouseX;
-    zea.deltaY = this.lastMouseY;
-    zea.mda = mouseDragArguments;
+    const zea = new ZoomEventArgs(position.x, position.y, deltaY);
     this.onZoom.trigger(zea);
   }
 }
