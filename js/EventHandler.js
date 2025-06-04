@@ -19,7 +19,7 @@ class EventHandler {
 
   // Remove all callbacks
   dispose () {
-    this.handlers.length = 0;
+    this.handlers.clear();
   }
 
   // Run every handler with `arg`.  No `.slice()` → no transient allocations
