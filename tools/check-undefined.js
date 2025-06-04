@@ -1,6 +1,12 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
+import { createRequire } from 'module';
+
+// Provide CommonJS-style require for portions of this script that still
+// expect it. Node 20+ executes this file as an ES module and would
+// otherwise throw a ReferenceError.
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -122,6 +128,12 @@ function processJSFile(file) {
   if (ast) collectFromAst(ast, file, false);
 }
 
+function processJSFileWithCalls(file) {
+  const code = fs.readFileSync(file, 'utf8');
+  const ast = parseJS(code, file);
+  if (ast) collectFromAst(ast, file, true);
+}
+
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
   const { parseDocument } = require('htmlparser2');
@@ -162,22 +174,35 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+const args = process.argv.slice(2);
+let jsFiles = [];
+let htmlFiles = [];
+if (args.length) {
+  for (const arg of args) {
+    if (arg.endsWith('.js')) jsFiles.push(arg);
+    else if (arg.endsWith('.html')) htmlFiles.push(arg);
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
+for (const file of jsFiles) {
+  if (args.length) processJSFileWithCalls(file);
+  else processJSFile(file);
+}
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
     if (!definedMethods.has(call.name) && !builtinMethods.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined method ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   }
 }
