@@ -10,7 +10,7 @@ describe('ColorPalette', function() {
     pal.setColorRGB(0, 12, 34, 56);
 
     const stored = pal.getColor(0);
-    const expected = ColorPalette.colorFromRGB(12, 34, 56);
+    const expected = ColorPalette.colorFromRGB(12, 34, 56)  >>> 0;
     expect(stored).to.equal(expected);
     expect(pal.getR(0)).to.equal(12);
     expect(pal.getG(0)).to.equal(34);

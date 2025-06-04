@@ -1,7 +1,10 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
-import { parseDocument, DomUtils } from 'htmlparser2';
+import { createRequire } from 'module';
+import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
+const require = createRequire(import.meta.url);
+
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -123,30 +126,6 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-async function processHtmlFile(file) {
-  const html = fs.readFileSync(file, 'utf8');
-  const document = parseDocument(html);
-
-  // Extract and process <script> tag content
-  const scriptTags = DomUtils.findAll(elem => elem.tagName === 'script', document.children);
-  for (const scriptTag of scriptTags) {
-    const js = DomUtils.textContent(scriptTag);
-    const ast = parseJS(js, file);
-    if (ast) collectFromAst(ast, file, true);
-  }
-
-  // Extract and process inline event handler attributes
-  const elementsWithAttributes = DomUtils.findAll(elem => elem.attribs, document.children);
-  for (const elem of elementsWithAttributes) {
-    for (const [attr, value] of Object.entries(elem.attribs)) {
-      if (attr.startsWith('on')) {
-        const ast = parseJS(value, file);
-        if (ast) collectFromAst(ast, file, true);
-      }
-    }
-  }
-}
-
 function gatherFiles(dir, exts, results = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
@@ -178,7 +157,13 @@ if (extra.length) {
 
 
 for (const file of jsFiles) processJSFile(file, extra.length > 0);
-for (const file of htmlFiles) processHtmlFile(file);
+for (const file of htmlFiles) {
+  const snippets = extractHtmlSnippets(file);
+  for (const snippet of snippets) {
+    const ast = parseJS(snippet.code, file);
+    if (ast) collectFromAst(ast, file, true);
+  }
+}
 
 const errors = [];
 for (const call of calls) {
