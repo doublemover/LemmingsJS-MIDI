@@ -41,7 +41,7 @@ function frameToPNG(frame) {
 (async () => {
     const dataPath = process.argv[2] || loadDefaultPack();
     const index = parseInt(process.argv[3] || '0', 10);
-    const outDir = process.argv[4] || `${dataPath.replace(/\W+/g, '_')}_ground_${index}`;
+    const outDir = process.argv[4] || path.join('exports', `${dataPath.replace(/\W+/g, '_')}_ground_${index}`);
     fs.mkdirSync(outDir, { recursive: true });
 
     const provider = new NodeFileProvider('.');

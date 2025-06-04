@@ -33,7 +33,8 @@ class Logger {
 
 class BaseLogger {
     constructor(name) {
-        this.log = new Logger(name || this.constructor.name);
+        const Handler = Lemmings.LogHandler || Lemmings.Logger;
+        this.log = new Handler(name || this.constructor.name);
     }
 
     /**

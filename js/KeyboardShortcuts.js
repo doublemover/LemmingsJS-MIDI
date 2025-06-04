@@ -9,7 +9,7 @@ class KeyboardShortcuts {
         window.addEventListener('keyup', this._up);
         this.mod = { shift:false };
         this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0 };
-        this.zoom = { dir:0,v:0,reset:null };
+        this.zoom = { anim:null };
         this._raf = null;
         this._last = 0;
     }
@@ -42,16 +42,16 @@ class KeyboardShortcuts {
             // tweak distance per frame; previous values felt too large
             const baseX = 25 * scale;
             const baseY = 12 * scale;
-            // slow the acceleration a touch for smoother motion
-            const accelBase = 0.04;
+            const accelBase = this.mod.shift ? 0.15 : 0.05;
             const accel = accelBase / scale * dt;
             const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
             const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
             this.pan.vx += (targetVX - this.pan.vx) * accel;
             this.pan.vy += (targetVY - this.pan.vy) * accel;
             // extend easing so velocity decays more gradually
-            this.pan.vx *= 0.9;
-            this.pan.vy *= 0.9;
+            const damp = this.mod.shift ? 0.94 : 0.9;
+            this.pan.vx *= damp;
+            this.pan.vy *= damp;
             const dx = this.pan.vx;
             const dy = this.pan.vy;
             if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
@@ -63,46 +63,14 @@ class KeyboardShortcuts {
             }
 
             // ----- zooming -----
-            // anchor zooming around the current screen centre without
-            // drifting the viewpoint. Using updateViewPoint() directly was
-            // causing the camera to slide left as the scale changed.
-            const cx = img.width / 2;
-            const cy = img.height / 2;
-            const centerX = vp.x + cx / vp.scale;
-            const centerY = vp.y + cy / vp.scale;
-            let targetZ = 0;
-            if (this.zoom.reset !== null) {
-                targetZ = (this.zoom.reset - vp.scale) * 0.2;
-            } else {
-                // smaller default zoom step; shift increases it only modestly
-                const baseZ = 20 * (this.mod.shift ? 1.5 : 1);
-                targetZ = this.zoom.dir * baseZ;
-            }
-            // gentler acceleration for zooming
-            this.zoom.v += (targetZ - this.zoom.v) * 0.07 * dt;
-            this.zoom.v *= 0.9;
-            const dz = this.zoom.v;
-            if (Math.abs(dz) > 0.001) {
-                const desired = stage._rawScale * (1 + dz / 1500);
-                stage._rawScale = stage.limitValue(0.25, desired, 4);
-                const newScale = stage.snapScale(stage._rawScale);
-                const nx = centerX - cx / newScale;
-                const ny = centerY - cy / newScale;
-                const maxX = img.display.getWidth()  - img.width  / newScale;
-                const maxY = img.display.getHeight() - img.height / newScale;
-                vp.x = Math.min(Math.max(0, nx), maxX);
-                vp.y = Math.min(Math.max(0, ny), maxY);
-                vp.scale = newScale;
-                stage.redraw();
+            if (this.zoom.anim) {
+                const a = this.zoom.anim;
+                const p = Math.min(1, (t - a.startTime) / a.duration);
+                const ease = 1 - Math.pow(1 - p, 3); // cubic out
+                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+                stage._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY, p >= 1);
                 again = true;
-            } else if (this.zoom.reset !== null) {
-                stage._rawScale = stage.limitValue(0.25, this.zoom.reset, 4);
-                vp.scale = stage.snapScale(stage._rawScale);
-                this.zoom.reset = null;
-                stage.redraw();
-                this.zoom.v = 0;
-            } else {
-                this.zoom.v = 0;
+                if (p >= 1) this.zoom.anim = null;
             }
         }
         if (again) {
@@ -154,34 +122,53 @@ class KeyboardShortcuts {
         }
     }
 
-    _startZoomTo(target) {
+    _startZoomTo(scale) {
         const stage = this.view.stage;
         if (!stage) return;
-        stage._rawScale = stage.limitValue(0.25, target, 4);
-        this.zoom.reset = stage.snapScale(stage._rawScale);
+        const img = stage.gameImgProps;
+        const vp = img.viewPoint;
+        const cx = img.display.getWidth()  / 2;
+        const cy = img.display.getHeight() / 2;
+        const target = stage.limitValue(0.25, scale, 4);
+        if (Math.abs(target - stage._rawScale) < 0.001) return;
+
+        const now = performance.now();
+        if (this.zoom.anim) {
+            const a = this.zoom.anim;
+            const p = Math.min(1, (now - a.startTime) / a.duration);
+            const ease = 1 - Math.pow(1 - p, 3);
+            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+            stage._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY);
+            this.zoom.anim = {
+                startScale: raw,
+                targetScale: target,
+                worldX: vp.x + cx / vp.scale,
+                worldY: vp.y + cy / vp.scale,
+                screenX: cx,
+                screenY: cy,
+                startTime: now,
+                duration: a.duration
+            };
+        } else {
+            this.zoom.anim = {
+                startScale: stage._rawScale,
+                targetScale: target,
+                worldX: vp.x + cx / vp.scale,
+                worldY: vp.y + cy / vp.scale,
+                screenX: cx,
+                screenY: cy,
+                startTime: now,
+                duration: 200
+            };
+        }
         this._startLoop();
     }
 
     _zoomStep(dir) {
         const stage = this.view.stage;
         if (!stage) return;
-
-        const disp = stage.gameImgProps.display;
-        if (!disp) return;
-        const w = disp.getWidth();
-        const h = disp.getHeight();
-        if (!w || !h) return;
-
-        const stepX = stage.gameImgProps.width  / w;
-        const stepY = stage.gameImgProps.height / h;
-        const step  = Math.min(stepX, stepY);
-        if (!isFinite(step) || step <= 0) return;
-
-        const base = this.zoom.reset !== null ? this.zoom.reset
-                    : stage.snapScale(stage._rawScale);
-        let target = base + dir * step;
-        target = stage.limitValue(0.25, target, 4);
-        target = stage.snapScale(target);
+        const step = this.mod.shift ? 0.5 : 0.25;
+        const target = stage._rawScale + dir * step;
         this._startZoomTo(target);
     }
 
@@ -270,13 +257,13 @@ class KeyboardShortcuts {
                 this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
-                this._zoomStep(1);
+                if (!e.repeat) this._zoomStep(1);
                 break;
             case 'KeyX':
-                this._zoomStep(-1);
+                if (!e.repeat) this._zoomStep(-1);
                 break;
             case 'KeyV':
-                this.zoom.reset = 2; this._startLoop();
+                if (!e.repeat) this._startZoomTo(2);
                 break;
             case 'Tab':
                 this._cycleSkill();

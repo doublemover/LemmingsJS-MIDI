@@ -1,36 +1,22 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionMineSystem {
-    static sprites = new Map();
-    static masks = new Map();
+class ActionMineSystem extends ActionBaseSystem {
     constructor(sprites, masks) {
-        if (ActionMineSystem.sprites.size == 0) {
-            ActionMineSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.MINING, false));
-            ActionMineSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.MINING, true));
-        }
-        if (ActionMineSystem.masks.size == 0) {
-            ActionMineSystem.masks.set("left", masks.GetMask(Lemmings.MaskTypes.MINING_L));
-            ActionMineSystem.masks.set("right", masks.GetMask(Lemmings.MaskTypes.MINING_R));
-        }
-    }
-    draw(gameDisplay, lem) {
-        const ani = ActionMineSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
-    }
-    getActionName() {
-        return "mining";
-    }
-    triggerLemAction(lem) {
-        lem.setAction(this);
-        return true;
+        super({
+            sprites,
+            spriteType: Lemmings.SpriteTypes.MINING,
+            masks,
+            maskTypes: { left: Lemmings.MaskTypes.MINING_L, right: Lemmings.MaskTypes.MINING_R },
+            actionName: 'mining'
+        });
     }
     process(level, lem) {
         lem.frameIndex = (lem.frameIndex + 1) % 24;
         switch (lem.frameIndex) {
         case 1:
         case 2:
-            let mask = ActionMineSystem.masks.get(lem.getDirection());
+            let mask = this.masks.get(lem.getDirection());
             let maskIndex = lem.frameIndex - 1;
             let subMask   = mask.GetMask(maskIndex);
             if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
