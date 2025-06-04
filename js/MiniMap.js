@@ -4,6 +4,8 @@ import {
 
 class MiniMap {
     static palette = null;
+    // death dots live 32 frames (four 4-frame flashes)
+    static DEATH_DOT_TTL = 32;
     constructor(gameDisplay, level, guiDisplay) {
         this.gameDisplay = gameDisplay;
         this.level = level;
@@ -209,8 +211,8 @@ class MiniMap {
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // dot flashes four times (16 frames total)
-        newTTLs[this.deadTTLs.length] = 16;
+        // each death dot flashes four times over DEATH_DOT_TTL frames
+        newTTLs[this.deadTTLs.length] = MiniMap.DEATH_DOT_TTL;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
@@ -273,9 +275,9 @@ class MiniMap {
             for (let i = 0, j = 0; i < oldDots.length; i += 2, ++j) {
                 let ttl = oldTTLs[j];
                 if (ttl <= 0) continue;
-                // first two frames stay lit then blink every two frames
-                if (ttl >= 15 || (Math.ceil(ttl / 2) % 2 === 0)) {
-                    frame.setPixel(oldDots[i], oldDots[i + 1], 0xFFFF0000);
+                const age = MiniMap.DEATH_DOT_TTL - ttl;
+                if ((age % 8) < 4) {
+                    frame.setPixel(oldDots[i], oldDots[i + 1], 0xFF0000FF);
                 }
                 ttl -= 1;
                 if (ttl > 0) {
