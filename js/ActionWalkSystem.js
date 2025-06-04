@@ -1,16 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-
 class ActionWalkSystem extends ActionBaseSystem {
-        constructor(sprites) {
             super({ sprites, spriteType: Lemmings.SpriteTypes.WALKING, actionName: 'walk' });
-        }
-        triggerLemAction(lem) {
-            return false;
-        }
-        getGroundStepHeight(groundMask, x, y) {
-            for (let i = 0; i < 8; i++) {
-                if (!groundMask.hasGroundAt(x, y - i)) {
                     return i;
                 }
             }
@@ -27,7 +18,8 @@ class ActionWalkSystem extends ActionBaseSystem {
         }
         process(level, lem) {
             lem.frameIndex++;
-            lem.x += (lem.lookRight ? 1 : -1);
+            const step = lem.lookRight ? 1 : -1;
+            lem.x += step;
 
             const groundMask = level.getGroundMaskLayer();
             const upDelta = this.getGroundStepHeight(groundMask, lem.x, lem.y);
@@ -36,6 +28,7 @@ class ActionWalkSystem extends ActionBaseSystem {
                 if (lem.canClimb) {
                     return Lemmings.LemmingStateType.CLIMBING;
                 } else {
+                    lem.x -= step;
                     lem.lookRight = !lem.lookRight;
                     return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
