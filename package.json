@@ -8,7 +8,7 @@
   },
   "scripts": {
     "start": "http-server --cors=*",
-    "test": "mocha",
+    "test": "node -r ./js/LogHandler.js ./node_modules/mocha/bin/mocha",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -16,7 +16,10 @@
     "export-all-packs": "node tools/exportAllPacks.js",
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
-    "patch-sprites": "node tools/patchSprites.js"
+    "patch-sprites": "node tools/patchSprites.js",
+    "pack-levels": "node tools/packLevels.js",
+    "format": "eslint . --fix",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -34,6 +37,7 @@
     "pngjs": "^7.0.0",
     "adm-zip": "^0.5.10",
     "tar": "^7.4.3",
-    "node-unrar-js": "^2.0.2"
+    "node-unrar-js": "^2.0.2",
+    "eslint": "^9.28.0",
   }
 }

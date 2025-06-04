@@ -12,6 +12,8 @@ async function loadSteelSprites() {
       const res = await fetch(url);
       steelSprites = await res.json();
     }
+    const res = await fetch(url);
+    steelSprites = await res.json();
   }
   return steelSprites;
 }
@@ -181,9 +183,9 @@ class GroundReader extends Lemmings.BaseLogger {
 
       const filename = fr.filename;
       const foldername = fr.foldername;
-      if (foldername === "[unknown]") {
+      if (foldername === '[unknown]') {
         console.log(
-          "folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel"
+          'folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel'
         );
       } else {
         const gameData = steelSprites[foldername];

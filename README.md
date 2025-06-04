@@ -19,8 +19,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Traps animate, are deadly, and have cooldowns
   - Frying, Jumping, Hoisting animations
   - Improved Steel terrain
-    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack
-      to calculate opaque size for precise placement
+    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack to calculate opaque size for precise placement
   - Arrow Walls function
   - Minimap
     - Accumulates ground at full resolution for enhanced accuracy
@@ -28,6 +27,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - Click & Drag to reposition view
   - Zoom In & Out with Mousewheel
   - Skill selection/use while paused
+  - Original crosshair cursor (from `MAIN.DAT` part 5). The system cursor is hidden and this sprite follows your mouse.
   - Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
     - [Try it at 30x speed in 'bench' mode](https://doublemover.github.io/LemmingsJS-MIDI/?version=1&difficulty=3&level=8&speed=30&cheat=false&bench=true&scale=0.8&endless=true&nukeAfter=8) 
   
@@ -88,25 +88,12 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   <summary>In Progress (11)</summary>
   
   - [ ] Indicate bench speed adjustment with rect color
-    - [ ] Tune speed reduction to prevent shitty computers from locking themselves up
   - [ ] Scale pixel alignment
-  - [ ] I want marching ants 
-  - [ ] OG Cursor
-  - [ ] URL options
-    - [ ] packname or vnum/difficulty name or number/level title or number nav
-  - [ ] Display selection rect around lemming nearest to cursor on hover
-  - [ ] Minimap
-    - [X] switch to uint8
-    - [ ] dots broken
-    - [ ] Full vp rect
+  - [X] OG Cursor
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
     - [ ] Pallete? whatever else, some things look off
-  - [ ] Clicking prev/next level arrows while gameover screen fadeout is playing causes double load of selected level
-    - [ ] debounce/toggle
-    - [ ] html needs size set
-    - [ ] better level nav buttons/pack & diff dropdowns
   - [ ] Tick Step
 </details>
 
@@ -123,8 +110,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - [ ] "Generic Trap" just vanishes em
   - [X] Cooldown
 - [ ] Bombs
-  - [ ] I think I can do something neat with the last 20 or so frames of the sprite by using small amounts of transparency
-    - [ ] And maybe nearest neighbor upscaling w/ low alpha
   - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
     - [ ] Write steel to second layer?
 - [ ] Super lemmings act twice per tick
@@ -139,38 +124,29 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <details>
   <summary>Bugs & etc</summary>
   
-- [ ] Figure out what's up with jump and hoist
-- [ ] Clean up logging
-  - [ ] helper?
-  - [ ] Shut lemmingManager up
-  - [ ] perf.measure helper
-- [ ] Still possible to apply bomb to exploding bombers, probably need to adjust the frame at which they are removed
-  - [ ] Same deal with splatting, drowning, and maybe falling lemmings
 - [ ] There is not a palette swapped frying animation for the 'ice thrower' traps, I want to make one anyways
+  - [X] Palette swap functionality works!
   - [ ] 2-2-9, 1-4-30
-- [ ] Trigger.disabledUntilTick overruns after 24 days
-- [ ] Lemming.isRemoved() null/removed conflict
-- [X] Fixed double level loads
-  - [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
-    - [ ] Can't go back to version 1 by clicking back on the start of version 2
+- [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
+  - [ ] Can't go back to version 1 by clicking back on the start of version 2
 - [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
 - [ ] Source some form of level editor
   - [ ] Make and import a custom DAT with just image assets and a level with 8 tracks and 8 spawns
 - [ ] The ability to place flags or something to trigger different midi events as they are walked by
 </details>
 
-## Play Locally
+## Play Locally, Export & Patch Sprites
 
 - Install [Node.js](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
+  - `npm run`
   - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs
     - `zip -r export_lemmings.zip export_lemmings`
     - `tar -czf export_lemmings.tgz export_lemmings`
     - `rar a export_lemmings.rar export_lemmings`
-- `npm run clean-exports` *(remove `export_*` folders)*
-  - `npm start`
+    - `npm run clean-exports` *(remove `export_*` folders)*
 - Other useful scripts:
   - `npm run export-panel-sprite` – export the skill panel sprite as `exports/panel_export`
   - `npm run export-lemmings-sprites` – export all lemming animations to `exports/<pack>_sprites`
@@ -178,7 +154,13 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
   - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+
 - Browser: `localhost:8080`
+
+### Running Tests
+
+- After `npm install`, run `npm test` to execute the Mocha test suite.
+- Mocha is installed automatically as part of the project's `devDependencies`.
 
 ### NodeFileProvider
 
@@ -186,11 +168,6 @@ The Node scripts in the `tools` directory use `NodeFileProvider` to read level
 packs. This provider can load files directly from folders or from archives such
 as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
 packed while running scripts with Node.
-
-### Running Tests
-
-- After `npm install`, run `npm test` to execute the Mocha test suite.
-- Mocha is installed automatically as part of the project's `devDependencies`.
 
 ## Progressive Web App
 
@@ -231,7 +208,7 @@ URL parameters (shortcut in brackets):
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
- - `(Shift+)Z` / `X`: Zoom in / out in small steps with a smooth animation
+- `(Shift+)Z` / `X`: Zoom in / out (More)
 - `V`: Reset zoom to 2
 - `(Shift+)-` / `=`: Decrease / Increase game speed (More)
 - `,` / `.`: Previous / Next level
