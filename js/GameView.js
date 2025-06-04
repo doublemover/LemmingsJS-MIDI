@@ -285,6 +285,12 @@ class GameView extends Lemmings.BaseLogger {
   prefixNumbers(list) {
     return list.map((item, idx) => `${idx + 1} - ${item}`);
   }
+
+  /** convert select values to integers */
+  strToNum(str) {
+    const n = parseInt(str, 10);
+    return Number.isNaN(n) ? 0 : n;
+  }
   /** remove items of a <select> */
   clearHtmlList(htmlList) {
     while (htmlList.options.length) {
