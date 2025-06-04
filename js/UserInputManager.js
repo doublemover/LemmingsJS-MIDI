@@ -38,14 +38,18 @@ class UserInputManager {
         this.onMouseRightUp = new Lemmings.EventHandler();
         this.onDoubleClick = new Lemmings.EventHandler();
         this.onZoom = new Lemmings.EventHandler();
-        listenElement.addEventListener("mousemove", (e) => {
+        this._element = listenElement;
+        this._listeners = [];
+        const mm = (e) => {
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
             this.handleMouseMove(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
-        });
-        listenElement.addEventListener("touchmove", (e) => {
+        };
+        this._listeners.push(["mousemove", mm]);
+        listenElement.addEventListener("mousemove", mm);
+        const tm = (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -55,8 +59,10 @@ class UserInputManager {
             e.stopPropagation();
             e.preventDefault();
             return false;
-        });
-        listenElement.addEventListener("touchstart", (e) => {
+        };
+        this._listeners.push(["touchmove", tm]);
+        listenElement.addEventListener("touchmove", tm);
+        const ts = (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -66,8 +72,10 @@ class UserInputManager {
             e.stopPropagation();
             e.preventDefault();
             return false;
-        });
-        listenElement.addEventListener("mousedown", (e) => {
+        };
+        this._listeners.push(["touchstart", ts]);
+        listenElement.addEventListener("touchstart", ts);
+        const md = (e) => {
             e.stopPropagation();
             e.preventDefault();
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
@@ -78,8 +86,10 @@ class UserInputManager {
             this.handleMouseDown(relativePos);
 
             return false;
-        });
-        listenElement.addEventListener("mouseup", (e) => {
+        };
+        this._listeners.push(["mousedown", md]);
+        listenElement.addEventListener("mousedown", md);
+        const mu = (e) => {
             e.stopPropagation();
             e.preventDefault();
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
@@ -89,11 +99,15 @@ class UserInputManager {
             }
             this.handleMouseUp(relativePos);
             return false;
-        });
-        listenElement.addEventListener("mouseleave", (e) => {
+        };
+        this._listeners.push(["mouseup", mu]);
+        listenElement.addEventListener("mouseup", mu);
+        const ml = () => {
             this.handleMouseClear();
-        });
-        listenElement.addEventListener("touchend", (e) => {
+        };
+        this._listeners.push(["mouseleave", ml]);
+        listenElement.addEventListener("mouseleave", ml);
+        const te = (e) => {
             if (e.changedTouches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -101,29 +115,39 @@ class UserInputManager {
             let relativePos = this.getRelativePosition(listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
             this.handleMouseUp(relativePos);
             return false;
-        });
-        listenElement.addEventListener("touchleave", (e) => {
+        };
+        this._listeners.push(["touchend", te]);
+        listenElement.addEventListener("touchend", te);
+        const tl = () => {
             this.handleMouseClear();
             return false;
-        });
-        listenElement.addEventListener("touchcancel", (e) => {
+        };
+        this._listeners.push(["touchleave", tl]);
+        listenElement.addEventListener("touchleave", tl);
+        const tc = () => {
             this.handleMouseClear();
             return false;
-        });
-        listenElement.addEventListener("dblclick", (e) => {
+        };
+        this._listeners.push(["touchcancel", tc]);
+        listenElement.addEventListener("touchcancel", tc);
+        const db = (e) => {
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
             this.handleMouseDoubleClick(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
-        });
-        listenElement.addEventListener("wheel", (e) => {
+        };
+        this._listeners.push(["dblclick", db]);
+        listenElement.addEventListener("dblclick", db);
+        const wh = (e) => {
             let relativePos = this.getRelativePosition(listenElement, e.clientX, e.clientY);
             this.handleWheel(relativePos, e.deltaY);
             e.stopPropagation();
             e.preventDefault();
             return false;
-        });
+        };
+        this._listeners.push(["wheel", wh]);
+        listenElement.addEventListener("wheel", wh);
     }
     getRelativePosition(element, clientX, clientY) {
         var rect = element.getBoundingClientRect();
@@ -201,6 +225,23 @@ class UserInputManager {
         zea.deltaY = this.lastMouseY;
         zea.mda = mouseDragArguments;
         this.onZoom.trigger(zea);
+    }
+
+    dispose() {
+        if (this._element) {
+            for (const [evt, handler] of this._listeners) {
+                this._element.removeEventListener(evt, handler);
+            }
+        }
+        this._listeners = [];
+        this._element = null;
+        this.onMouseMove.dispose();
+        this.onMouseUp.dispose();
+        this.onMouseDown.dispose();
+        this.onMouseRightDown.dispose();
+        this.onMouseRightUp.dispose();
+        this.onDoubleClick.dispose();
+        this.onZoom.dispose();
     }
 }
 Lemmings.UserInputManager = UserInputManager;

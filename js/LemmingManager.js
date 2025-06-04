@@ -1,6 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class LemmingManager {
+    #mmTickCounter = 0;
+    #releaseTickIndex = 0;
     constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
         // const start = performance.now();
         this.lemmings = [];
@@ -13,10 +15,8 @@ class LemmingManager {
         this.gameVictoryCondition = gameVictoryCondition;
         this.actions = [];
         this.skillActions = [];
-        this.releaseTickIndex = 0;
         this.logging = LemmingManager.log;
         this.miniMap = null;
-        this.mmTickCounter = 0;
         this.nextNukingLemmingsIndex = -1;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
@@ -49,6 +49,26 @@ class LemmingManager {
 
         this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
         // performance.measure("LemmingManager constructor", { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "primary", tooltipText: `LemmingManager constructor` } } });
+    }
+
+    get mmTickCounter() { return this.#mmTickCounter; }
+    set mmTickCounter(v) {
+        if (v >= Lemmings.COUNTER_LIMIT) {
+            console.warn('mmTickCounter wrapped, resetting to 0');
+            this.#mmTickCounter = 0;
+        } else {
+            this.#mmTickCounter = v;
+        }
+    }
+
+    get releaseTickIndex() { return this.#releaseTickIndex; }
+    set releaseTickIndex(v) {
+        if (v >= Lemmings.COUNTER_LIMIT) {
+            console.warn('releaseTickIndex wrapped, resetting to 0');
+            this.#releaseTickIndex = 0;
+        } else {
+            this.#releaseTickIndex = v;
+        }
     }
 
     setMiniMap(miniMap) {
@@ -310,10 +330,10 @@ class LemmingManager {
         this.triggerManager = null;
         this.gameVictoryCondition = null;
         this.skillActions.length = 0;
-        this.releaseTickIndex = null;
+        this.#releaseTickIndex = null;
         this.logging = new Lemmings.LogHandler("LemmingManager");
         this.miniMap = null;
-        this.mmTickCounter = null;
+        this.#mmTickCounter = null;
         this.nextNukingLemmingsIndex = null;
         performance.measure(`LemmingManager Dispose`, { start, detail: { devtools: { track: "LemmingManager", trackGroup: "Game State", color: "error", tooltipText: `LemmingManager Dispose` } } });
     }

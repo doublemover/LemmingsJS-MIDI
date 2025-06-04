@@ -268,6 +268,19 @@ class Stage {
                 }
             }, 40);
         }
+
+        dispose() {
+            if (this.fadeTimer) {
+                clearInterval(this.fadeTimer);
+                this.fadeTimer = 0;
+            }
+            if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
+            if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
+            if (this.controller?.dispose) this.controller.dispose();
+            this.gameImgProps = null;
+            this.guiImgProps = null;
+            this.stageCav = null;
+        }
         /** draw everything to the stage/display */
         draw(display, img) {
             if (display.ctx == null)

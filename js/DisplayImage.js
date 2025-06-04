@@ -260,6 +260,18 @@ class DisplayImage {
     setScreenPosition(x, y) { this.stage.setGameViewPointPosition(x, y); }
     getImageData()         { return this.imgData;  }
     redraw()               { this.stage.redraw();   }
+
+    dispose() {
+        this.onMouseUp.dispose();
+        this.onMouseDown.dispose();
+        this.onMouseRightDown.dispose();
+        this.onMouseRightUp.dispose();
+        this.onMouseMove.dispose();
+        this.onDoubleClick.dispose();
+        this.buffer32 = null;
+        this.imgData = null;
+        this.stage = null;
+    }
 }
 Lemmings.DisplayImage = DisplayImage;
 export { DisplayImage };
