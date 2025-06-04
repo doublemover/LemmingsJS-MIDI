@@ -3,9 +3,8 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
-import { parseDocument, DomUtils } from 'htmlparser2';
 import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
-
+import { parseDocument, DomUtils } from 'htmlparser2';
 
 const require = createRequire(import.meta.url);
 
