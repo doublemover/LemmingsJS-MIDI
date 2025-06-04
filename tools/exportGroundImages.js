@@ -2,7 +2,19 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LemmingsBootstrap.js';
 import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';
+import path from 'path';
 import { PNG } from 'pngjs';
+
+function loadDefaultPack() {
+    try {
+        const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'config.json');
+        const txt = fs.readFileSync(cfgPath, 'utf8');
+        const cfg = JSON.parse(txt);
+        return cfg[0]?.path || 'lemmings';
+    } catch {
+        return 'lemmings';
+    }
+}
 
 function bufToFrame(buf, width, height, palette) {
     const frame = new Lemmings.Frame(width, height);
@@ -27,7 +39,7 @@ function frameToPNG(frame) {
 }
 
 (async () => {
-    const dataPath = process.argv[2] || 'lemmings';
+    const dataPath = process.argv[2] || loadDefaultPack();
     const index = parseInt(process.argv[3] || '0', 10);
     const outDir = process.argv[4] || `${dataPath.replace(/\W+/g, '_')}_ground_${index}`;
     fs.mkdirSync(outDir, { recursive: true });

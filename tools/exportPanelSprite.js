@@ -2,10 +2,22 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LemmingsBootstrap.js';
 import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';
+import path from 'path';
 import { PNG } from 'pngjs';
 
+function loadDefaultPack() {
+    try {
+        const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), '..', 'config.json');
+        const txt = fs.readFileSync(cfgPath, 'utf8');
+        const cfg = JSON.parse(txt);
+        return cfg[0]?.path || 'lemmings';
+    } catch {
+        return 'lemmings';
+    }
+}
+
 (async () => {
-    const pack = process.argv[2] || 'lemmings';
+    const pack = process.argv[2] || loadDefaultPack();
     const outDir = process.argv[3] || 'panel_export';
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: pack, level: { groups: [] }});
