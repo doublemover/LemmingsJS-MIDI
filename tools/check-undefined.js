@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { createRequire } from 'module';
 import { parse } from 'acorn';
+
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -162,8 +165,19 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+let jsFiles = [];
+let htmlFiles = [];
+
+const args = process.argv.slice(2);
+if (args.length) {
+  for (const arg of args) {
+    if (arg.endsWith('.js')) jsFiles.push(arg);
+    else if (arg.endsWith('.html')) htmlFiles.push(arg);
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
 for (const file of jsFiles) processJSFile(file);
 for (const file of htmlFiles) processHtmlFile(file);
