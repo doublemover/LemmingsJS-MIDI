@@ -104,7 +104,7 @@ class Game extends Lemmings.BaseLogger {
       this.gameVictoryCondition,
     );
 
-    this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
+    this.objectManager = new Lemmings.ObjectManager(this.gameTimer, level.mechanics);
     this.objectManager.addRange(level.objects);
 
     this.gameDisplay = new Lemmings.GameDisplay(
