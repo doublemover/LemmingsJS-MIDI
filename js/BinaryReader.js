@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * Reads binary data with flexible offset, length, and endian options.
@@ -32,44 +33,81 @@ class BinaryReader extends Lemmings.BaseLogger {
    * @param {string} [filename='[unknown]'] - File name for debug/logging.
    * @param {string} [foldername='[unknown]'] - Folder name for debug/logging.
    */
-  constructor(dataArray, offset = 0, length, filename = "[unknown]", foldername = "[unknown]") {
+  constructor(dataArray, offset = 0, length, filename = '[unknown]', foldername = '[unknown]') {
     super();
     this.filename = filename;
     this.foldername = foldername;
+
+    /**
+     * Promise that resolves when the backing data is available.
+     * For synchronous sources it resolves immediately with the data array.
+     * @type {Promise<Uint8Array>}
+     */
+    this.ready = Promise.resolve();
+
+    // Set initial offsets to allow property access before async load
+    this.#hiddenOffset = offset;
+    this.#length = 0;
+    this.#pos = this.#hiddenOffset;
 
     let dataLength = 0;
     if (dataArray == null) {
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log("BinaryReader from NULL; size: 0");
+      this.log.log('BinaryReader from NULL; size: 0');
     } else if (dataArray instanceof BinaryReader) {
       this.#data = dataArray.data;
       dataLength = dataArray.length;
-      this.log.log("BinaryReader from BinaryReader; size: " + dataLength);
+      this.log.log('BinaryReader from BinaryReader; size: ' + dataLength);
     } else if (dataArray instanceof Uint8Array) {
       this.#data = dataArray;
       dataLength = dataArray.byteLength;
-      this.log.log("BinaryReader from Uint8Array; size: " + dataLength);
+      this.log.log('BinaryReader from Uint8Array; size: ' + dataLength);
     } else if (dataArray instanceof ArrayBuffer) {
       this.#data = new Uint8Array(dataArray);
       dataLength = dataArray.byteLength;
-      this.log.log("BinaryReader from ArrayBuffer; size: " + dataLength);
+      this.log.log('BinaryReader from ArrayBuffer; size: ' + dataLength);
     } else if (typeof Blob !== 'undefined' && dataArray instanceof Blob) {
-      // Modern browsers: Blobs must be async-read; fallback for now
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log("BinaryReader from Blob: async not implemented; size: 0");
+      this.log.log('BinaryReader from Blob; reading asynchronously');
+      this.ready = (async () => {
+        let buf;
+        if (typeof dataArray.arrayBuffer === 'function') {
+          buf = await dataArray.arrayBuffer();
+        } else if (typeof FileReader !== 'undefined') {
+          buf = await new Promise((resolve, reject) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result);
+            fr.onerror = () => reject(fr.error);
+            fr.readAsArrayBuffer(dataArray);
+          });
+        } else {
+          throw new Error('Blob reading not supported');
+        }
+        this.#data = new Uint8Array(buf);
+        dataLength = this.#data.byteLength;
+        if (length == null) length = dataLength - offset;
+        this.#hiddenOffset = offset;
+        this.#length = length;
+        this.#pos = this.#hiddenOffset;
+        return this.#data;
+      })();
+      // constructor returns immediately; callers should await this.ready
+      this.ready.catch(() => {}); // avoid unhandled rejection
+      return;
     } else {
       // Generic object: treat as array-like
       this.#data = new Uint8Array(dataArray);
       dataLength = this.#data.length;
-      this.log.log("BinaryReader from unknown: " + dataArray + "; size:" + dataLength);
+      this.log.log('BinaryReader from unknown: ' + dataArray + '; size:' + dataLength);
     }
 
     if (length == null) length = dataLength - offset;
     this.#hiddenOffset = offset;
     this.#length = length;
     this.#pos = this.#hiddenOffset;
+    this.ready = Promise.resolve(this.#data);
   }
 
   /** @returns {Uint8Array} Backing data array */
