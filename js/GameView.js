@@ -377,7 +377,7 @@ async moveToLevel(moveInterval = 0) {
         if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
         if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
         if (this.stage) {
-            let gameDisplay = this.stage.getGameDisplay();
+            const gameDisplay = this.stage.getGameDisplay();
             gameDisplay.clear();
             this.stage.resetFade();
             level.render(gameDisplay);

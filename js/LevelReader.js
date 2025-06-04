@@ -56,9 +56,9 @@ class LevelReader extends Lemmings.BaseLogger {
             newOb.y = fr.readWord();
             newOb.id = fr.readWord();
             const flags = fr.readWord();
-            let isUpsideDown = ((flags & 0x0080) > 0);
-            let noOverwrite = ((flags & 0x8000) > 0);
-            let onlyOverwrite = ((flags & 0x4000) > 0);
+            const isUpsideDown = ((flags & 0x0080) > 0);
+            const noOverwrite = ((flags & 0x8000) > 0);
+            const onlyOverwrite = ((flags & 0x4000) > 0);
             newOb.drawProperties = new Lemmings.DrawProperties(isUpsideDown, noOverwrite, onlyOverwrite, false);
             /// ignore empty items/objects
             if (flags == 0)
@@ -80,9 +80,9 @@ class LevelReader extends Lemmings.BaseLogger {
             newOb.y = y - ((y > 256) ? 516 : 4);
             newOb.id = (v & 0x003F);
             const flags = ((v >> 29) & 0x000F);
-            let isUpsideDown = ((flags & 2) > 0);
-            let noOverwrite = ((flags & 4) > 0);
-            let isErase = ((flags & 1) > 0);
+            const isUpsideDown = ((flags & 2) > 0);
+            const noOverwrite = ((flags & 4) > 0);
+            const isErase = ((flags & 1) > 0);
             newOb.drawProperties = new Lemmings.DrawProperties(isUpsideDown, noOverwrite, false, isErase);
             this.terrains.push(newOb);
         }

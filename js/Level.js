@@ -57,7 +57,7 @@ class Level extends Lemmings.BaseLogger {
     this.objects.length = 0;
     this.entrances.length = 0;
     this.triggers.length = 0;
-    let arrowRects = [];
+    const arrowRects = [];
     for (const ob of objects) {
       let info = objectImg[ob.id];
       if (info == null) continue;
@@ -99,7 +99,7 @@ class Level extends Lemmings.BaseLogger {
           }
         }
 
-        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
+        const trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
 
         if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
           const newRange = new Lemmings.Range();
@@ -233,7 +233,7 @@ class Level extends Lemmings.BaseLogger {
       this.steelMask.mask.fill(0);
     }
     const { levelWidth, levelHeight, terrains } = levelReader;
-    let newSteelRanges = [];
+    const newSteelRanges = [];
     if (this.steelRanges.length == 0) return;
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];
