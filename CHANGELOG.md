@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Level packs for Xmas '91/'92 and Holiday '93/'94.
 - Skill selection and speed changes while paused.
 - Asynchronous Blob loading for BinaryReader.
-- Mouse wheel zoom centers on the cursor.
+ - Mouse wheel zoom centers on the cursor and keeps the world point under the cursor fixed.
 
 ### Fixed
 - Numerous crashes and invisible blockers when lemmings die.
