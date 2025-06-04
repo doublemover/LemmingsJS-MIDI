@@ -16,7 +16,7 @@ class LevelConfig {
             this.order = [];
         }
         getGroupLength(groupIndex) {
-            if ((groupIndex < 0) || (groupIndex > this.order.length)) {
+            if ((groupIndex < 0) || (groupIndex >= this.order.length)) {
                 return 0;
             }
             return this.order[groupIndex].length;
