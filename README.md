@@ -177,8 +177,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm run export-ground-images` – export ground and object images from a single ground set
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
-  - `npm run patch-sprites` – verify and patch a directory of edited sprites
-    - Example: `npm run patch-sprites -- lemmings/lemmings.dat my_edits patched.dat`
+  - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+  - `npm run pack-levels` – pack a folder of 2048-byte level files into a DAT
 - Browser: `localhost:8080`
 
 ### NodeFileProvider
