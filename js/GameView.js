@@ -153,6 +153,7 @@ class GameView extends Lemmings.BaseLogger {
     if (this.inMoveToLevel) return;
     this.inMoveToLevel = true;
     this.levelIndex = (this.levelIndex + moveInterval) | 0;
+    const oldGameType = this.gameType;
     try {
       const config = await this.gameFactory.getConfig(this.gameType);
       const groupLength = config.level.getGroupLength(this.levelGroupIndex);
@@ -181,6 +182,9 @@ class GameView extends Lemmings.BaseLogger {
         this.gameType = 1;
         this.levelGroupIndex = 0;
         this.levelIndex = 0;
+      }
+      if (oldGameType !== this.gameType) {
+        this.gameResources = await this.gameFactory.getGameResources(this.gameType);
       }
       await this.loadLevel();
     } finally {
@@ -220,7 +224,8 @@ class GameView extends Lemmings.BaseLogger {
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;
-    const query = new URLSearchParams(window.location.search);
+    const search = typeof window !== 'undefined' && window.location ? window.location.search : '';
+    const query = new URLSearchParams(search);
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
