@@ -366,8 +366,9 @@ async moveToLevel(moveInterval = 0) {
             '7': Lemmings.SkillTypes.MINER,
             '8': Lemmings.SkillTypes.DIGGER
         };
-        if (e.key === '`') {
+        if (e.key === '`' || e.key === '~') {
             lm.cycleSelection(e.shiftKey ? -1 : 1);
+            this.game.getGameDisplay()?.flashSelected?.();
             return;
         }
         const skill = skills[e.key];
