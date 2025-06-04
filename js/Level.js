@@ -36,6 +36,11 @@ class Level {
     for (const ob of objects) {
       const info = objectImg[ob.id];
       if (info == null) continue;
+      if (info.trigger_effect_id === Lemmings.TriggerTypes.STEEL) {
+        // Steel rectangles are drawn into the background layer and do not
+        // behave as interactive objects.
+        continue;
+      }
       let tfxID = info.trigger_effect_id;
 
       if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {

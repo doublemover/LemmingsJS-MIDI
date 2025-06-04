@@ -83,7 +83,10 @@ class LevelLoader {
                      vgaspecBuf, level.width, level.height);
       render.createVgaspecMap(levelReader, spec);
     } else {
-      render.createGroundMap(levelReader, groundReader.getTerrainImages());
+      render.createGroundMap(
+        levelReader,
+        groundReader.getTerrainImages(),
+        groundReader.getObjectImages());
     }
 
     // ----------------------------------------------------------------------- //
