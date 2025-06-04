@@ -134,13 +134,28 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - [ ] Make and import a custom DAT with just image assets and a level with 8 tracks and 8 spawns
 - [ ] The ability to place flags or something to trigger different midi events as they are walked by
 </details>
+
 ## Play Locally, Export & Patch Sprites
 
-See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running Node tools and exporting sprites.
+- Install [Node.js](https://nodejs.org)
+- Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
+- Terminal:
+  - `npm install`
+  - `npm run`
+- See [docs/tools.md](docs/tools.md) for detailed usage of each script
+- See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
+- See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
 
-## Testing
 
-See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
+For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
+and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
+
+### Progressive Web App
+
+This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
+as a **Progressive Web App (PWA)**. Installing adds the game to your device's
+app list and launches it fullscreen in landscape mode. Touch input still needs
+polish, so the mobile experience may be rough.
 
 ## Options
 
@@ -150,9 +165,6 @@ URL parameters (shortcut in brackets):
   - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=0) (default)
   - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1)
   - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
-  - 4: [Xmas 1992](https://doublemover.github.io/LemmingsJS-MIDI?version=3)
-  - 5: [Holiday 1993](https://doublemover.github.io/LemmingsJS-MIDI?version=4)
-  - 6: [Holiday 1994](https://doublemover.github.io/LemmingsJS-MIDI?version=5)
 - `difficulty (d)`: Difficulty 1-5 (default: 1)
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control speed 0-100 (default: 1)
@@ -190,3 +202,8 @@ URL parameters (shortcut in brackets):
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+
+## .agentInfo Notes
+
+The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
+See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
