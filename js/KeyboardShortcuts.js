@@ -67,9 +67,7 @@ class KeyboardShortcuts {
             if (this.zoom.anim) {
                 const a = this.zoom.anim;
                 const p = Math.min(1, (t - a.startTime) / a.duration);
-                const ease = p < 0.5
-                    ? 8 * p * p * p * p
-                    : 1 - Math.pow(-2 * p + 2, 4) / 2;
+                const ease = 1 - Math.pow(1 - p, 3); // cubic out
                 const raw = a.startScale + (a.targetScale - a.startScale) * ease;
                 stage._applyZoom(raw, a.worldX, a.worldY, a.screenX, a.screenY, p >= 1);
                 again = true;
@@ -142,7 +140,7 @@ class KeyboardShortcuts {
             screenX: cx,
             screenY: cy,
             startTime: performance.now(),
-            duration: 200
+            duration: 150
         };
         this._startLoop();
     }
@@ -150,8 +148,8 @@ class KeyboardShortcuts {
     _zoomStep(dir) {
         const stage = this.view.stage;
         if (!stage) return;
-        const factor = this.mod.shift ? 4 : 2;
-        const target = stage._rawScale * (dir > 0 ? factor : 1 / factor);
+        const step = this.mod.shift ? 1 : 0.5;
+        const target = stage._rawScale + dir * step;
         this._startZoomTo(target);
     }
 

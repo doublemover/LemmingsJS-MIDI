@@ -102,7 +102,7 @@ class Stage {
                 const screenX = e.x - stageImage.x;
                 const screenY = e.y - stageImage.y;
                 const oldScale = this._rawScale;
-                const rawTarget = oldScale * (1 + -e.deltaZoom / 1200);
+                const rawTarget = oldScale * (1 + -e.deltaZoom / 1600);
                 this._startWheelZoom(rawTarget, pos.x, pos.y, screenX, screenY);
             });
         }
@@ -153,8 +153,16 @@ class Stage {
             const ny = worldY - screenY / newScale;
             const maxX = img.display.getWidth() - img.width / newScale;
             const maxY = img.display.getHeight() - img.height / newScale;
-            vp.x = this.limitValue(0, nx, maxX);
-            vp.y = this.limitValue(0, ny, maxY);
+            if (maxX > 0) {
+                vp.x = this.limitValue(0, nx, maxX);
+            } else {
+                vp.x = this.limitValue(maxX, nx, 0);
+            }
+            if (maxY > 0) {
+                vp.y = maxY; // keep bottom glued
+            } else {
+                vp.y = this.limitValue(maxY, ny, 0);
+            }
             vp.scale = newScale;
             if (img.display != null) {
                 this.clear(img);
@@ -179,7 +187,7 @@ class Stage {
 
                 // Zoom around that point using the un-snapped scale
                 const oldScale = this._rawScale;
-                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 1200), 4);
+                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 1600), 4);
                 this._rawScale += (target - this._rawScale) * 0.8;
                 stageImage.viewPoint.scale = this.snapScale(this._rawScale);
 
@@ -200,8 +208,16 @@ class Stage {
 
             const maxX = stageImage.display.getWidth()  - stageImage.width  / stageImage.viewPoint.scale;
             const maxY = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-            stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, maxX);
-            stageImage.viewPoint.y = this.limitValue(0, stageImage.viewPoint.y, maxY);
+            if (maxX > 0) {
+                stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, maxX);
+            } else {
+                stageImage.viewPoint.x = this.limitValue(maxX, stageImage.viewPoint.x, 0);
+            }
+            if (maxY > 0) {
+                stageImage.viewPoint.y = maxY;
+            } else {
+                stageImage.viewPoint.y = this.limitValue(maxY, stageImage.viewPoint.y, 0);
+            }
 
             // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
             // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
