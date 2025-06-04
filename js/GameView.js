@@ -149,12 +149,11 @@ class GameView extends Lemmings.BaseLogger {
 
   /** add/subtract one to the current levelIndex */
   async moveToLevel(moveInterval = 0) {
-    if (this.levelIndex + moveInterval < 0 &&
-        this.levelGroupIndex === 0 &&
-        this.gameType <= 1) return;
+    if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) return;
     if (this.inMoveToLevel) return;
     this.inMoveToLevel = true;
     this.levelIndex = (this.levelIndex + moveInterval) | 0;
+    const oldGameType = this.gameType;
     try {
       const config = await this.gameFactory.getConfig(this.gameType);
       const groupLength = config.level.getGroupLength(this.levelGroupIndex);
@@ -183,6 +182,9 @@ class GameView extends Lemmings.BaseLogger {
         this.gameType = 1;
         this.levelGroupIndex = 0;
         this.levelIndex = 0;
+      }
+      if (oldGameType !== this.gameType) {
+        this.gameResources = await this.gameFactory.getGameResources(this.gameType);
       }
       await this.loadLevel();
     } finally {
