@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './ColorPalette.js';
 
 // Palette indices for the fire shooter trap that will be remapped when
 // creating an ice version of the animation.  They cover the full gradient
