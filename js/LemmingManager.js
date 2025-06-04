@@ -162,7 +162,8 @@ class LemmingManager {
             case Lemmings.TriggerTypes.FRYING:
                 return Lemmings.LemmingStateType.FRYING;
             case Lemmings.TriggerTypes.TRAP:
-                return Lemmings.LemmingStateType.SPLATTING;
+                if (this.miniMap) this.miniMap.addDeath(lem.x, lem.y);
+                return Lemmings.LemmingStateType.OUT_OF_LEVEL;
             case Lemmings.TriggerTypes.BLOCKER_LEFT:
                 if (lem.lookRight) lem.lookRight = false;
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
