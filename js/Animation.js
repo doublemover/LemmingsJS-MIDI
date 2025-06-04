@@ -5,11 +5,19 @@ import { Lemmings } from './LemmingsNamespace.js';
 // from the bright yellow core through orange to the darkest reds.
 const FIRE_INDICES = Object.freeze([4, 5, 7, 8, 9, 10, 11, 12]);
 
-// Destination indices holding icy blue tones taken from the ice-level
-// graphics set.  They roughly match the brightness of the original
-// colours so the animation still looks natural.  Each entry maps to the
-// index at the same position in FIRE_INDICES.
-const ICE_INDICES  = Object.freeze([4, 4, 3, 2, 3, 2, 2, 2]);
+// Destination colours lifted from the object palette of the ONML ice
+// set.  These values replace the warm tones of the fire trap with
+// cooler shades to give the impression of an "ice" trap.
+const ICE_COLORS = Object.freeze([
+  0xff90d0d0, // light blue for the bright yellow core
+  0xff90d0d0,
+  0xff4080a0, // mid blue tones
+  0xff003080, // darker blues toward the edges
+  0xff4080a0,
+  0xff003080,
+  0xff003080,
+  0xff003080
+]);
 
 class Animation {
   constructor (_compat = null, loop = true) {
@@ -102,11 +110,11 @@ class Animation {
       newPal.setColorInt(i, palette.getColor(i));
     }
 
-    // Replace selected indices with colours from different indices
+    // Replace selected indices with icy colours pulled from the ONML
+    // object palette.  The ICE_COLORS array mirrors FIRE_INDICES by
+    // position rather than by colour index.
     for (let i = 0; i < FIRE_INDICES.length; i++) {
-      const src = FIRE_INDICES[i];
-      const dst = ICE_INDICES[i];
-      newPal.setColorInt(src, palette.getColor(dst));
+      newPal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
     }
 
     this.loadFromFile(fr, bitsPerPixel, width, height, frames,

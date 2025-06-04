@@ -2,9 +2,18 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 // Palette remapping for the fire shooter trap. These arrays mirror the
 // constants in Animation.js and replace the warm flame colours with cooler
-// blues.
+// blues sourced from the ONML ice palette.
 const FIRE_INDICES = Object.freeze([4, 5, 7, 8, 9, 10, 11, 12]);
-const ICE_INDICES  = Object.freeze([4, 4, 3, 2, 3, 2, 2, 2]);
+const ICE_COLORS   = Object.freeze([
+  0xff90d0d0,
+  0xff90d0d0,
+  0xff4080a0,
+  0xff003080,
+  0xff4080a0,
+  0xff003080,
+  0xff003080,
+  0xff003080
+]);
 
 class Level {
   constructor(width, height) {
@@ -48,9 +57,7 @@ class Level {
           pal.setColorInt(i, info.palette.getColor(i));
         }
         for (let i = 0; i < FIRE_INDICES.length; ++i) {
-          const src = FIRE_INDICES[i];
-          const dst = ICE_INDICES[i];
-          pal.setColorInt(src, info.palette.getColor(dst));
+          pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
         }
 
         const clone = new Lemmings.ObjectImageInfo();
