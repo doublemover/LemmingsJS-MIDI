@@ -24,12 +24,12 @@ class ActionWalkSystem {
          */
         getGroundStepDelta(groundMask, x, y) {
             let dy = 0;
-            let checkY = y;
-            while (dy <= 7 && groundMask.hasGroundAt(x, checkY)) {
+            let checkY = y - 1; // start one pixel above current foot level
+            while (dy <= 6 && groundMask.hasGroundAt(x, checkY)) {
                 dy++;
                 checkY--;
             }
-            return dy > 7 ? 8 : dy;
+            return dy;
         }
 
         /**
