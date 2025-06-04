@@ -8,6 +8,7 @@ import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
 
+// enable debug logging
 globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
 
 
