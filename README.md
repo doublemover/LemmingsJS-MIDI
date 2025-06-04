@@ -154,6 +154,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
   - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+  - See [docs/tools.md](docs/tools.md) for detailed usage of each script
 
 ### NodeFileProvider
 
