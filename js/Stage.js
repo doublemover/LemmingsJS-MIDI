@@ -13,6 +13,7 @@ class Stage {
             this.handleOnMouseMove();
             this.handleOnDoubleClick();
             this.handleOnZoom();
+            this.handleOnKeyboard();
             this.stageCav = canvasForOutput;
             this.gameImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps = new Lemmings.StageImageProperties();
@@ -97,6 +98,51 @@ class Stage {
                     return;
                 let pos = this.calcPosition2D(stageImage, e);
                 this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
+            });
+        }
+
+        handleOnKeyboard() {
+            document.addEventListener('keydown', (e) => {
+                if (!window.lemmings?.shortcut) return;
+                const stageImage = this.gameImgProps;
+                if (!stageImage.display) return;
+
+                const step = 16;
+                const centerX = stageImage.x + stageImage.width / 2;
+                const centerY = stageImage.y + stageImage.height / 2;
+                const centerSceneX = stageImage.viewPoint.getSceneX(stageImage.width / 2);
+                const centerSceneY = stageImage.viewPoint.getSceneY(stageImage.height / 2);
+
+                let handled = true;
+                switch (e.key) {
+                    case 'ArrowLeft':
+                        this.updateViewPoint(stageImage, step, 0, 0);
+                        break;
+                    case 'ArrowRight':
+                        this.updateViewPoint(stageImage, -step, 0, 0);
+                        break;
+                    case 'ArrowUp':
+                        this.updateViewPoint(stageImage, 0, step, 0);
+                        break;
+                    case 'ArrowDown':
+                        this.updateViewPoint(stageImage, 0, -step, 0);
+                        break;
+                    case '+':
+                    case '=':
+                        this.updateViewPoint(stageImage, centerX, centerY, 120, centerSceneX, centerSceneY);
+                        break;
+                    case '-':
+                    case '_':
+                        this.updateViewPoint(stageImage, centerX, centerY, -120, centerSceneX, centerSceneY);
+                        break;
+                    default:
+                        handled = false;
+                }
+
+                if (handled) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                }
             });
         }
         updateViewPoint(stageImage, deltaX, deltaY, deltaZoom, zx = 0, zy = 0) {
