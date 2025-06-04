@@ -69,6 +69,46 @@ function frameToPNG(frame) {
     // Ensure steel sprite metadata is loaded for accurate terrain flags
     await Lemmings.loadSteelSprites();
 
+
+            const spriteDir = `${outDir}/lemmings/${name}/${dirName}`;
+            fs.mkdirSync(spriteDir, { recursive: true });
+
+            const sheet = new PNG({
+                width: anim.frames[0].width * anim.frames.length,
+                height: anim.frames[0].height
+            });
+
+                await new Promise(res =>
+                    png.pack().pipe(fs.createWriteStream(`${spriteDir}/${i}.png`)).on('finish', res)
+                );
+
+
+            await new Promise(res =>
+                sheet.pack().pipe(fs.createWriteStream(`${spriteDir}/sheet.png`)).on('finish', res)
+            );
+    // Grab a colour palette from the first ground set so lemming sprites
+    // render correctly.  Fallback to a blank palette if loading fails.
+    let pal = new Lemmings.ColorPalette();
+    for (let g = 0; g < 5; g++) {
+        try {
+            const groundBuf = await provider.loadBinary(dataPath, `GROUND${g}O.DAT`);
+            const vgaBuf    = await provider.loadBinary(dataPath, `VGAGR${g}.DAT`);
+            const vgaContainer = new Lemmings.FileContainer(vgaBuf);
+            const gr = new Lemmings.GroundReader(
+                groundBuf,
+                vgaContainer.getPart(0),
+                vgaContainer.getPart(1)
+            );
+            pal = gr.colorPalette;
+            break;
+        } catch {
+            // try next ground set
+        }
+    }
+
+    // Ensure steel sprite metadata is loaded for accurate terrain flags
+    await Lemmings.loadSteelSprites();
+
     // --- Panel background and letters/numbers ---
     const panelSprites = await res.getSkillPanelSprite(pal);
 
@@ -95,8 +135,7 @@ function frameToPNG(frame) {
         for (const dir of [true, false]) {
             const anim = spriteSet.getAnimation(id, dir);
             if (!anim || !anim.frames || anim.frames.length === 0) continue;
-
-            const dirName = dir ? 'right' : 'left';
+           const dirName = dir ? 'right' : 'left';
             const spriteDir = `${outDir}/lemmings/${name}/${dirName}`;
             fs.mkdirSync(spriteDir, { recursive: true });
 
@@ -111,7 +150,6 @@ function frameToPNG(frame) {
                 await new Promise(res =>
                     png.pack().pipe(fs.createWriteStream(`${spriteDir}/${i}.png`)).on('finish', res)
                 );
-
                 for (let y = 0; y < frame.height; y++) {
                     for (let x = 0; x < frame.width; x++) {
                         const idx = (y * frame.width + x) * 4;
@@ -123,7 +161,6 @@ function frameToPNG(frame) {
                     }
                 }
             }
-
             await new Promise(res =>
                 sheet.pack().pipe(fs.createWriteStream(`${spriteDir}/sheet.png`)).on('finish', res)
             );

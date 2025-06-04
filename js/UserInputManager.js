@@ -41,14 +41,14 @@ class UserInputManager {
         this.listenElement = listenElement;
         this._listeners = [];
 
-        this._addListener("mousemove", (e) => {
+        this._addListener('mousemove', (e) => {
             let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
             this.handleMouseMove(relativePos);
             e.stopPropagation();
             e.preventDefault();
             return false;
         });
-        this._addListener("touchmove", (e) => {
+        this._addListener('touchmove', (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -59,7 +59,7 @@ class UserInputManager {
             e.preventDefault();
             return false;
         });
-        this._addListener("touchstart", (e) => {
+        this._addListener('touchstart', (e) => {
             if (e.touches.length !== 1) {
                 e.preventDefault();
                 return;
@@ -135,12 +135,21 @@ class UserInputManager {
     }
 
     dispose() {
-        for (const [type, handler] of this._listeners) {
-            this.listenElement.removeEventListener(type, handler);
+        if (this.listenElement) {
+            for (const [type, handler] of this._listeners) {
+                this.listenElement.removeEventListener(type, handler);
+            }
         }
-        this._listeners.length = 0;
+        this._listeners = [];
+        this.listenElement = null;
+        this.onMouseMove.dispose();
+        this.onMouseUp.dispose();
+        this.onMouseDown.dispose();
+        this.onMouseRightDown.dispose();
+        this.onMouseRightUp.dispose();
+        this.onDoubleClick.dispose();
+        this.onZoom.dispose();
     }
-    getRelativePosition(element, clientX, clientY) {
         const rect = element.getBoundingClientRect();
         const x = (clientX - rect.left) / rect.width * 800;
         const y = (clientY - rect.top) / rect.height * 480;
@@ -149,8 +158,8 @@ class UserInputManager {
     handleMouseMove(position) {
         //- Move Point of View
         if (this.mouseButton) {
-            let deltaX = (this.lastMouseX - position.x);
-            let deltaY = (this.lastMouseY - position.y);
+            let deltaX = this.lastMouseX - position.x;
+            let deltaY = this.lastMouseY - position.y;
             //- save start of Mousedown
             this.lastMouseX = position.x;
             this.lastMouseY = position.y;
@@ -204,8 +213,8 @@ class UserInputManager {
     /** Zoom view
      * todo: zoom to mouse pointer */
     handleWheel(position, deltaY) {
-        let dX = (this.lastMouseX - position.x);
-        let dY = (this.lastMouseY - position.y);
+        let dX = this.lastMouseX - position.x;
+        let dY = this.lastMouseY - position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
         let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);
