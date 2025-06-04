@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './ColorPalette.js';
 
 // Palette remapping for the fire shooter trap. These arrays mirror the
 // constants in Animation.js and replace the warm flame colours with cooler
