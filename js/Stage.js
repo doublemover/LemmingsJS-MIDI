@@ -12,7 +12,8 @@ class Stage {
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
-    // Ensure displays exist before any user input is processed
+    // Create displays before wiring up input handlers so events
+    // always have valid targets
     this.getGameDisplay();
     this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
