@@ -1,7 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class Lemming {
+class Lemming extends Lemmings.BaseLogger {
     constructor(x = 0, y = 0, id) {
+        super();
         this.lookRight = true;
         this.frameIndex = 0;
         this.canClimb = false;
@@ -95,7 +96,7 @@ class Lemming {
             return returnedState;
         }
         // prevent falling through function without returning a type
-        console.log("lemming state falling through, fix it");
+        this.log.log("lemming state falling through, fix it");
         return Lemmings.LemmingStateType.NO_STATE_TYPE;
     }
 

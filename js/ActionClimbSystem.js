@@ -1,17 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
     
-class ActionClimbSystem {
-    static sprites = new Map();
+class ActionClimbSystem extends ActionBaseSystem {
 
     constructor(sprites) {
-        if (ActionClimbSystem.sprites.size == 0) {
-            ActionClimbSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.CLIMBING, false));
-            ActionClimbSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.CLIMBING, true));
-        }
-    }
-
-    getActionName() {
-        return "climbing";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.CLIMBING, actionName: 'climbing' });
     }
 
     triggerLemAction(lem) {
@@ -20,12 +13,6 @@ class ActionClimbSystem {
         }
         lem.canClimb = true;
         return true;
-    }
-
-    draw(gameDisplay, lem) {
-        const ani = ActionClimbSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
     }
 
     process(level, lem) {
