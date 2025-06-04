@@ -9,7 +9,9 @@ describe('BinaryReader', function () {
     const bytes = Uint8Array.from([1, 2, 3, 4]);
     const blob = new Blob([bytes]);
     const reader = new BinaryReader(blob);
-    await reader.ready;
+    const loaded = await reader.ready;
+    assert.ok(loaded instanceof Uint8Array);
+    assert.deepStrictEqual(Array.from(loaded), [1, 2, 3, 4]);
     const result = [reader.readByte(), reader.readByte(), reader.readByte(), reader.readByte()];
     assert.deepStrictEqual(result, [1, 2, 3, 4]);
   });

@@ -40,7 +40,8 @@ class BinaryReader extends Lemmings.BaseLogger {
 
     /**
      * Promise that resolves when the backing data is available.
-     * @type {Promise<void>}
+     * For synchronous sources it resolves immediately with the data array.
+     * @type {Promise<Uint8Array>}
      */
     this.ready = Promise.resolve();
 
@@ -90,6 +91,7 @@ class BinaryReader extends Lemmings.BaseLogger {
         this.#hiddenOffset = offset;
         this.#length = length;
         this.#pos = this.#hiddenOffset;
+        return this.#data;
       })();
       // constructor returns immediately; callers should await this.ready
       this.ready.catch(() => {}); // avoid unhandled rejection
@@ -105,6 +107,7 @@ class BinaryReader extends Lemmings.BaseLogger {
     this.#hiddenOffset = offset;
     this.#length = length;
     this.#pos = this.#hiddenOffset;
+    this.ready = Promise.resolve(this.#data);
   }
 
   /** @returns {Uint8Array} Backing data array */
