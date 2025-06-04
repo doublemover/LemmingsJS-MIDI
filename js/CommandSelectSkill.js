@@ -1,9 +1,10 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class CommandSelectSkill {
+class CommandSelectSkill extends Lemmings.BaseLogger {
     constructor(skill) {
+        super();
         if (!skill) {
-            console.log("error, skill is null");
+            this.log.log("error, skill is null");
             return;
         }
         this.skill = skill;
