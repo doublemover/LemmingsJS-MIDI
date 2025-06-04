@@ -23,6 +23,7 @@ class MiniMap {
     this.fog.fill(1); // disabled
     // typed array storing [x1,y1,x2,y2,...] scaled to minimap
     this.liveDots = new Uint8Array(0);
+    this.selectedDot = null;
     this.deadDots = []; // {x,y,ttl}
 
     // render target (drawn into the GUI canvas once per frame)
@@ -195,6 +196,10 @@ class MiniMap {
     this.liveDots = arr;
   }
 
+  setSelectedDot(dot) {
+    this.selectedDot = dot;
+  }
+
   addDeath(x, y) {
     this.deadDots.push({
       x: x * this.scaleX | 0,
@@ -259,6 +264,9 @@ class MiniMap {
       const y = this.liveDots[i + 1];
       frame.setPixel(x, y, 0x5500FFFF);
     }
+    if (this.selectedDot) {
+      frame.setPixel(this.selectedDot[0], this.selectedDot[1], 0xFFFFFFFF);
+    }
 
     /* Death flashes */
     // for (let i = this.deadDots.at(-1); i >= 0; --i) {
@@ -289,6 +297,7 @@ class MiniMap {
     this.terrain = null;
     this.fog = null;
     this.liveDots = null;
+    this.selectedDot = null;
     this.deadDots = null;
     this.frame = null;
   }

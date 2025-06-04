@@ -5,12 +5,13 @@ import { PNG } from 'pngjs';
 import fs from 'fs';
 import path from 'path';
 import { PackFilePart } from '../js/PackFilePart.js';
+import { NodeFileProvider } from './NodeFileProvider.js';
 
 function usage() {
   console.log('Usage: node tools/patchSprites.js [--sheet-orientation=horizontal|vertical] <target DAT> <png dir> <out DAT>');
 }
 
-function main() {
+async function main() {
   const args = process.argv.slice(2);
   let orientation = 'horizontal';
   for (let i = 0; i < args.length; i++) {
@@ -141,4 +142,4 @@ function main() {
   console.log(`Wrote ${outFile}`);
 }
 
-main();
+await main();
