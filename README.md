@@ -165,6 +165,11 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
+  - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs
+    - `zip -r export_lemmings.zip export_lemmings`
+    - `tar -czf export_lemmings.tgz export_lemmings`
+    - `rar a export_lemmings.rar export_lemmings`
+  - `npm run clean-exports` *(remove `export_*` folders)*
   - `npm start`
 - Browser: `localhost:8080`
 
