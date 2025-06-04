@@ -2,7 +2,7 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
-import tar from 'tar';
+import * as tar from 'tar';
 import { createExtractorFromFile } from 'node-unrar-js';
 
 class NodeFileProvider {

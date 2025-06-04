@@ -14,7 +14,9 @@
     "export-ground-images": "node tools/exportGroundImages.js",
     "export-all-sprites": "node tools/exportAllSprites.js",
     "export-all-packs": "node tools/exportAllPacks.js",
-    "clean-exports": "node tools/cleanExports.js"
+    "clean-exports": "node tools/cleanExports.js",
+    "list-sprites": "node tools/listSprites.js",
+    "patch-sprites": "node tools/patchSprites.js"
   },
   "repository": {
     "type": "git",
