@@ -109,7 +109,6 @@ describe('GameResources', function () {
     await gr.getCursorSprite();
     await gr.getMasks();
     assert.strictEqual(loadCount, 1);
-    assert.deepStrictEqual(partIndices, [0, 2, 6, 5, 1]);
     assert.deepStrictEqual(partIndices, [0, 2, 6, 1]);
   });
 });
