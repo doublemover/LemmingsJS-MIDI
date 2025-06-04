@@ -1,10 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
 import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
-
-
 const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
@@ -127,14 +126,6 @@ function processJSFile(file, withCalls = false) {
   if (ast) collectFromAst(ast, file, withCalls);
 }
 
-function processHtmlFile(file) {
-  const snippets = extractHtmlSnippets(file);
-  for (const { code } of snippets) {
-    const ast = parseJS(code, file);
-    if (ast) collectFromAst(ast, file, true);
-  }
-}
-
 function gatherFiles(dir, exts, results = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === 'node_modules' || entry.name === '.git') continue;
@@ -166,7 +157,13 @@ if (extra.length) {
 
 
 for (const file of jsFiles) processJSFile(file, extra.length > 0);
-for (const file of htmlFiles) processHtmlFile(file);
+for (const file of htmlFiles) {
+  const snippets = extractHtmlSnippets(file);
+  for (const snippet of snippets) {
+    const ast = parseJS(snippet.code, file);
+    if (ast) collectFromAst(ast, file, true);
+  }
+}
 
 const errors = [];
 for (const call of calls) {
