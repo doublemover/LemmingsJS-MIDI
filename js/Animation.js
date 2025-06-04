@@ -66,6 +66,46 @@ class Animation {
     this._lastFrame = arr[frames-1];
     this.isFinished = false;
   }
+
+  /**
+   * Load animation frames while applying a simple palette swap.
+   *
+   * A few colour indices are replaced with different ones from the
+   * supplied palette before the frames are generated.  The indices are
+   * defined by the const arrays PALETTE_SRC and PALETTE_DST below.
+   *
+   * @param {Lemmings.BinaryReader} fr - Frame data source
+   * @param {number} bitsPerPixel     - Bits per pixel of the source data
+   * @param {number} width            - Frame width
+   * @param {number} height           - Frame height
+   * @param {number} frames           - Number of frames to read
+   * @param {any}    palette          - Base colour palette
+   * @param {number} [offsetX=null]   - Optional X offset
+   * @param {number} [offsetY=null]   - Optional Y offset
+   */
+  loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
+                               offsetX = null, offsetY = null) {
+    const newPal = new Lemmings.ColorPalette();
+    // Copy existing palette colours
+    for (let i = 0; i < 16; i++) {
+      newPal.setColorInt(i, palette.getColor(i));
+    }
+
+    // Replace selected indices with colours from different indices
+    for (let i = 0; i < PALETTE_SRC.length; i++) {
+      const src = PALETTE_SRC[i];
+      const dst = PALETTE_DST[i];
+      newPal.setColorInt(src, palette.getColor(dst));
+    }
+
+    this.loadFromFile(fr, bitsPerPixel, width, height, frames,
+                      newPal, offsetX, offsetY);
+  }
 }
 Lemmings.Animation = Animation;
 export { Animation };
+
+// Indices to swap when calling loadFromFileWithPaletteSwap().
+// Chosen arbitrarily from 1..16 as an example mapping.
+const PALETTE_SRC = Object.freeze([1, 2, 3]);
+const PALETTE_DST = Object.freeze([14, 15, 16]);
