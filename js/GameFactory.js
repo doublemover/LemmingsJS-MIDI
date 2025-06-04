@@ -8,11 +8,16 @@ class GameFactory {
     this.configReader = new Lemmings.ConfigReader(configFileReader);
   }
   /** return a game object to control/run the game */
-  getGame(gameType) {
+  getGame(gameType, gameResources = null) {
     return new Promise((resolve, reject) => {
+      if (gameResources) {
+        resolve(new Lemmings.Game(gameResources));
+        return;
+      }
       /// load resources
       this.getGameResources(gameType)
-        .then((res) => resolve(new Lemmings.Game(res)));
+        .then((res) => resolve(new Lemmings.Game(res)))
+        .catch(reject);
     });
   }
   /** return the config of a game type */
