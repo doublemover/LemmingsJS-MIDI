@@ -20,6 +20,7 @@ class GameView {
         this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
+        this.autoMoveTimer = null;
 
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
@@ -59,7 +60,7 @@ class GameView {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
         console.dir(gameResult);
-        window.setTimeout(() => {
+        this.autoMoveTimer = window.setTimeout(() => {
             if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                 /// move to next level
                 this.moveToLevel(1);
@@ -67,6 +68,7 @@ class GameView {
                 /// redo this level
                 this.moveToLevel(0);
             }
+            this.autoMoveTimer = null;
         }, 2500);
     }
 
@@ -324,6 +326,10 @@ async moveToLevel(moveInterval = 0) {
     }
     /** load a level and render it to the display */
     async loadLevel() {
+        if (this.autoMoveTimer !== null) {
+            window.clearTimeout(this.autoMoveTimer);
+            this.autoMoveTimer = null;
+        }
         if (!this.gameResources) return;
         if (this.game) {
             this.game.stop();
