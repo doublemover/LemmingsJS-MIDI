@@ -17,6 +17,7 @@ class GameView {
         this.scale = 0; // zoom 
         this.laggedOut = 0;
         this.extraLemmings = 0;
+        this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
 
