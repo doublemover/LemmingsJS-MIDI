@@ -5,6 +5,9 @@ class Stage {
             this.controller = null;
             this.fadeTimer = 0;
             this.fadeAlpha = 0;
+            this.cursorCanvas = null;
+            this.cursorX = 0;
+            this.cursorY = 0;
             this.controller = new Lemmings.UserInputManager(canvasForOutput);
             this.handleOnMouseUp();
             this.handleOnMouseDown();
@@ -19,6 +22,18 @@ class Stage {
             this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
             this.updateStageSize();
             this.clear();
+        }
+        setCursorSprite(frame) {
+            if (!frame) {
+                this.cursorCanvas = null;
+                return;
+            }
+            const c = document.createElement('canvas');
+            c.width = frame.width;
+            c.height = frame.height;
+            const ictx = c.getContext('2d');
+            ictx.putImageData(new ImageData(frame.getData(), frame.width, frame.height), 0, 0);
+            this.cursorCanvas = c;
         }
         calcPosition2D(stageImage, e) {
             let x = (stageImage.viewPoint.getSceneX(e.x - stageImage.x));
@@ -69,6 +84,8 @@ class Stage {
         }
         handleOnMouseMove() {
             this.controller.onMouseMove.on((e) => {
+                this.cursorX = e.x;
+                this.cursorY = e.y;
                 if (e.button) {
                     let stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
                     if (stageImage == null)
@@ -233,6 +250,7 @@ class Stage {
                 let guiImg = this.guiImgProps.display.getImageData();
                 this.draw(this.guiImgProps, guiImg);
             }
+            this.drawCursor();
         }
         createImage(display, width, height) {
             if (display == this.gameImgProps.display) {
@@ -316,6 +334,14 @@ class Stage {
                 ctx.fillStyle = "black";
                 ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
             }
+        }
+
+        drawCursor() {
+            if (!this.cursorCanvas) return;
+            const ctx = this.stageCav.getContext("2d", { alpha: true });
+            const x = Math.trunc(this.cursorX - this.cursorCanvas.width / 2);
+            const y = Math.trunc(this.cursorY - this.cursorCanvas.height / 2);
+            ctx.drawImage(this.cursorCanvas, x, y);
         }
         getGameViewRect() {
             return {
