@@ -11,9 +11,17 @@ import '../js/BitReader.js';
 import '../js/BitWriter.js';
 import '../js/UnpackFilePart.js';
 import { BinaryReader } from '../js/BinaryReader.js';
+import { BitReader } from '../js/BitReader.js';
+import { BitWriter } from '../js/BitWriter.js';
+import { UnpackFilePart } from '../js/UnpackFilePart.js';
 import { FileContainer } from '../js/FileContainer.js';
 import { LevelReader } from '../js/LevelReader.js';
 import { LevelWriter } from '../js/LevelWriter.js';
+import '../js/LevelProperties.js';
+import '../js/LevelElement.js';
+import '../js/DrawProperties.js';
+import '../js/Range.js';
+import '../js/SkillTypes.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

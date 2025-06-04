@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
 import { BitReader } from '../js/BitReader.js';
 

@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 import './ColorPalette.js';
 // Palette remapping for the fire shooter trap.
 const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);

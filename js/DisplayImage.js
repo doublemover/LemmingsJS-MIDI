@@ -1,4 +1,5 @@
 /* -------------------- DisplayImage.js -------------------- */
+import './LogHandler.js';
 import { Lemmings } from './LemmingsNamespace.js';
 
 // a simple but high quality 53-bit hash
