@@ -35,16 +35,17 @@
     "node": ">=16"
   },
   "devDependencies": {
+    "@sinonjs/fake-timers": "^14.0.0",
+    "acorn": "^8.14.1",
     "adm-zip": "^0.5.10",
     "chai": "^4.3.7",
     "cheerio": "^1.0.0",
     "eslint": "^9.28.0",
+    "htmlparser2": "^10.0.0",
     "http-server": "^14.0.1",
     "mocha": "^11.5.0",
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
-    "tar": "^7.4.3",
-    "acorn": "^8.14.1",
-    "htmlparser2": "^10.0.0"
+    "tar": "^7.4.3"
   }
 }
