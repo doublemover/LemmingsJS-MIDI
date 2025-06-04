@@ -36,6 +36,19 @@ class GameResources {
                 });
             });
         }
+        getCursorSprite() {
+            return new Promise((resolve) => {
+                this.getMainDat().then((container) => {
+                    const fr = container.getPart(5);
+                    const pimg = new Lemmings.PaletteImage(17, 17);
+                    pimg.processImage(fr, 1);
+                    pimg.processTransparentByColorIndex(0);
+                    const pal = new Lemmings.ColorPalette();
+                    pal.setColorRGB(1, 255, 255, 255);
+                    resolve(pimg.createFrame(pal));
+                });
+            });
+        }
         getMasks() {
             return new Promise((resolve, reject) => {
                 this.getMainDat().then((container) => {

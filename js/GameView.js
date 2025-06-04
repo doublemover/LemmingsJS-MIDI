@@ -49,6 +49,7 @@ class GameView extends Lemmings.BaseLogger {
         try {
             const game = await this.gameFactory.getGame(this.gameType);
             await game.loadLevel(this.levelGroupIndex, this.levelIndex);
+            game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
             if (replayString != null) {
                 game.getCommandManager().loadReplay(replayString);
             }
