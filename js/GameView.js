@@ -209,6 +209,11 @@ async moveToLevel(moveInterval = 0) {
         return def;
     }
 
+    strToNum(value) {
+        const val = parseInt(value, 10);
+        return isNaN(val) ? 0 : val;
+    }
+
     /** read parameters from the current URL */
     applyQuery() {
         this.gameType = 1;
