@@ -21,6 +21,10 @@ class GameView {
         this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
+        this.elementSelectGameType = null;
+        this.elementSelectLevelGroup = null;
+        this.elementSelectLevel = null;
+        this.configs = null;
         this.shortcuts = new Lemmings.KeyboardShortcuts(this);
 
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
@@ -291,6 +295,10 @@ async moveToLevel(moveInterval = 0) {
         }
         htmlElement.innerText = value;
     }
+    /** prefix items with an increasing index */
+    prefixNumbers(list) {
+        return list.map((item, idx) => `${idx + 1} - ${item}`);
+    }
     /** remove items of a <select> */
     clearHtmlList(htmlList) {
         while (htmlList.options.length) {
@@ -311,17 +319,57 @@ async moveToLevel(moveInterval = 0) {
             htmlList.appendChild(el);
         }
     }
+    /** fill the level select with the names for the current group */
+    async populateLevelSelect() {
+        if (!this.elementSelectLevel || !this.gameResources) return;
+        const config = await this.gameFactory.getConfig(this.gameType);
+        const groupLength = config.level.getGroupLength(this.levelGroupIndex);
+        const list = [];
+        for (let i = 0; i < groupLength; i++) {
+            const lvl = await this.gameResources.getLevel(this.levelGroupIndex, i);
+            if (!lvl) continue;
+            list.push((i + 1) + ": " + lvl.name);
+        }
+        this.arrayToSelect(this.elementSelectLevel, list);
+        this.elementSelectLevel.selectedIndex = this.levelIndex;
+    }
     /** switch the selected level group */
-    selectLevelGroup(newLevelGroupIndex) {
+    async selectLevelGroup(newLevelGroupIndex) {
         this.levelGroupIndex = newLevelGroupIndex;
+        this.levelIndex = 0;
+        await this.populateLevelSelect();
+        this.loadLevel();
+    }
+    /** switch the selected game type */
+    async selectGameType(newGameType) {
+        this.gameType = newGameType;
+        this.levelGroupIndex = 0;
+        this.levelIndex = 0;
+        const newGameResources = await this.gameFactory.getGameResources(this.gameType);
+        this.gameResources = newGameResources;
+        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
+        this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+        await this.populateLevelSelect();
+        this.loadLevel();
+    }
+    /** select a specific level */
+    selectLevel(newLevelIndex) {
+        this.levelIndex = newLevelIndex;
         this.loadLevel();
     }
     /** select a game type */
     async setup() {
         this.applyQuery();
+        this.configs = await this.gameFactory.configReader.configs;
+        this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));
+        const typeIndex = this.configs.findIndex(c => c.gametype === this.gameType);
+        if (typeIndex >= 0 && this.elementSelectGameType)
+            this.elementSelectGameType.selectedIndex = typeIndex;
         const newGameResources = await this.gameFactory.getGameResources(this.gameType);
         this.gameResources = newGameResources;
-        this.arrayToSelect(this.elementSelectLevelGroup, this.gameResources.getLevelGroups());
+        this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
+        this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+        await this.populateLevelSelect();
         await this.loadLevel();
     }
     /** load a level and render it to the display */
@@ -334,7 +382,12 @@ async moveToLevel(moveInterval = 0) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes[Lemmings.GameStateTypes.UNKNOWN]);
         const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
         if (!level) return;
-        this.changeHtmlText(this.elementLevelName, level.name);
+        if (this.elementSelectGameType && this.configs) {
+            const idx = this.configs.findIndex(c => c.gametype === this.gameType);
+            if (idx >= 0) this.elementSelectGameType.selectedIndex = idx;
+        }
+        if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+        if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
         if (this.stage) {
             let gameDisplay = this.stage.getGameDisplay();
             gameDisplay.clear();
