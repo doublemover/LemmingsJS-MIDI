@@ -67,6 +67,7 @@ import './LevelIndexType.js';
 import './LevelLoader.js';
 import './LevelProperties.js';
 import './LevelReader.js';
+import './LevelWriter.js';
 import './MapObject.js';
 import './Mask.js';
 import './MaskList.js';
