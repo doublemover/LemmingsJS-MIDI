@@ -3,6 +3,7 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
 import { createRequire } from 'module';
+
 const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
@@ -162,6 +163,7 @@ function gatherFiles(dir, exts, results = []) {
   }
   return results;
 }
+
 
 const extra = process.argv.slice(2);
 let jsFiles = [];
