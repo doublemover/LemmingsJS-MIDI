@@ -7,11 +7,7 @@ import '../js/SkillTypes.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
-import '../js/LemmingsBootstrap.js';
-import '../js/SolidLayer.js';
-import '../js/LemmingStateType.js';
-import '../js/SkillTypes.js';
-import '../js/Lemming.js';
+
 // enable debug logging
 globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
 

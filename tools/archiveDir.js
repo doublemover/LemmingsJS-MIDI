@@ -1,5 +1,5 @@
 import AdmZip from 'adm-zip';
-import tar from 'tar';
+import * as tar from 'tar';
 import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
