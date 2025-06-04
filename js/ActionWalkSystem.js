@@ -39,7 +39,6 @@ class ActionWalkSystem {
             const groundMask = level.getGroundMaskLayer();
             const upDelta = this.getGroundStepDelta(groundMask, lem.x, lem.y);
             if (upDelta > 6) {
-                // tall obstacle
                 if (lem.canClimb) {
                     return Lemmings.LemmingStateType.CLIMBING;
                 } else {
@@ -51,7 +50,7 @@ class ActionWalkSystem {
                 lem.state = 0;
                 return Lemmings.LemmingStateType.JUMPING;
             } else if (upDelta > 0) {
-                lem.y -= upDelta - 1;
+                lem.y -= upDelta;
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
             } else {
                 // walk or fall
