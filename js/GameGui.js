@@ -114,11 +114,17 @@ class GameGui {
 
         if (panelIndex === 0 || panelIndex === 1) {
             const step = panelIndex === 0 ? -3 : +3;
+            const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
+            const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
+            const cur = this.gameVictoryCondition.getCurrentReleaseRate();
+            if ((step < 0 && cur <= min) || (step > 0 && cur >= max)) {
+                if (this.skills.clearSelectedSkill()) {
+                    this.skillSelectionChanged = true;
+                }
+                return;
+            }
             if (this.gameTimer.isRunning?.()) {
-                const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
-                const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
-                const cur = this.gameVictoryCondition.getCurrentReleaseRate();
-                let   neu = cur + step;
+                let neu = cur + step;
                 if (neu < min) neu = min;
                 if (neu > max) neu = max;
                 this.lastGameSpeed = neu;
@@ -179,16 +185,21 @@ class GameGui {
             if (this.nukePrepared) {
                 this.game.queueCommand(new Lemmings.CommandNuke());
                 this.nukePrepared = false;
-            }
-            else {
+            } else {
                 this.nukePrepared = true;
+            }
+            if (this.skills.clearSelectedSkill()) {
+                this.skillSelectionChanged = true;
             }
             this.skillSelectionChanged = true;
             return;
         }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
-        if (this.skills.getSkill(newSkill) <= 0) return;
+        if (this.skills.getSkill(newSkill) <= 0) {
+            if (this.skills.clearSelectedSkill()) this.skillSelectionChanged = true;
+            return;
+        }
         this.skills.setSelectedSkill(newSkill);
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
     }
@@ -488,6 +499,7 @@ class GameGui {
     }
 
     drawSelection(d, panelIdx) {
+        if (panelIdx < 0) return;
         d.drawMarchingAntRect(
             16 * panelIdx,
             16,
@@ -499,7 +511,14 @@ class GameGui {
     }
 
     drawPaused(d) {
-        d.drawRect(16 * 10, 16, 16, 23, 255, 255, 255);
+        d.drawMarchingAntRect(
+            16 * 10,
+            16,
+            16,
+            23,
+            this.selectionDashLen,
+            this._selectionOffset
+        );
     }
 
     drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {

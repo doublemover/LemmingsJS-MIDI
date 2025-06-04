@@ -57,6 +57,15 @@ class GameSkills {
                 this.onCountChanged.trigger(i);
             }
         }
+
+        clearSelectedSkill() {
+            if (this.selectedSkill !== Lemmings.SkillTypes.UNKNOWN) {
+                this.selectedSkill = Lemmings.SkillTypes.UNKNOWN;
+                this.onSelectionChanged.trigger();
+                return true;
+            }
+            return false;
+        }
     }
     Lemmings.GameSkills = GameSkills;
 
