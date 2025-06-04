@@ -18,7 +18,7 @@ function loadDefaultPack() {
 
 (async () => {
     const pack = process.argv[2] || loadDefaultPack();
-    const outDir = process.argv[3] || 'panel_export';
+    const outDir = process.argv[3] || path.join('exports', 'panel_export');
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: pack, level: { groups: [] }});
     const pal = new Lemmings.ColorPalette();
