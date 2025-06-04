@@ -199,15 +199,18 @@ class MiniMap {
     }
 
     addDeath(x, y) {
-        const dx = (x * this.scaleX) | 0;
-        const dy = (y * this.scaleY) | 0;
+        let dx = (x * this.scaleX) | 0;
+        let dy = (y * this.scaleY) | 0;
+        // clamp to minimap bounds so off-screen deaths still show
+        if (dx < 0) dx = 0; else if (dx >= this.width) dx = this.width - 1;
+        if (dy < 0) dy = 0; else if (dy >= this.height) dy = this.height - 1;
         const newDots = new Uint8Array(this.deadDots.length + 2);
         newDots.set(this.deadDots);
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // 4 on/off flashes => 16 total frames; start on
-        newTTLs[this.deadTTLs.length] = 16;
+        // 4+ on/off flashes => 20 total frames; start on
+        newTTLs[this.deadTTLs.length] = 20;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
