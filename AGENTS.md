@@ -24,13 +24,13 @@ This repository hosts a JavaScript/Node implementation of **Lemmings**. The foll
 
 <!--
 Additional suggestions for the agent or future maintainers:
+- High performance and intelligent memory usage are top priorities; profile critical code paths and watch memory allocations.
 - You can extend the tests in `test/` to cover more of the tools in `tools/`.
 - When publishing to GitHub Pages, `npm start` may be replaced by a dedicated build step.
 - The repository includes many sample assets; keeping them out of commits can reduce repo size.
 - If Node 18+ is required in the future, update these guidelines accordingly.
 - Try running `npm run list-sprites` to preview sprite names and counts.
 - To export all sprite assets use `npm run export-all-sprites` or `export-all-packs`.
-- High performance and intelligent memory usage are top priorities; profile critical code paths and watch memory allocations.
 - Create and maintain a `.agentInfo/` directory at the repository root.
 - Within `.agentInfo/`, store short notes about design decisions or TODOs using a tag-based system. Keep an index (e.g., `tags.json` or `index.md`) to search notes by tag.
 - Regularly review this index to locate relevant notes before starting new work.
