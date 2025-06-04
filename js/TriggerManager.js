@@ -39,6 +39,10 @@ class TriggerManager {
 
     this._triggers = new Set();
 
+    /* debug bookkeeping */
+    this._lastCheckTick = new Uint32Array(slots);
+    this._lastHitTick   = new Uint32Array(slots);
+
     /* handy bounds */
     this._maxX = levelW;
     this._maxY = levelH;
@@ -81,15 +85,37 @@ class TriggerManager {
     const cell = this._grid[bucket];
     const tick = this.gameTimer.getGameTicks();
 
+    this._lastCheckTick[bucket] = tick;
+
     for (const trig of cell) {
       const val = trig.trigger(x, y, tick);
-      if (val !== Lemmings.TriggerTypes.NO_TRIGGER) return val;
+      if (val !== Lemmings.TriggerTypes.NO_TRIGGER) {
+        this._lastHitTick[bucket] = tick;
+        return val;
+      }
     }
     return Lemmings.TriggerTypes.NO_TRIGGER;
   }
 
   /** Draw rectangles in debug overlay */
   renderDebug (g) {
+    const cs   = this._cellSize;
+    const tick = this.gameTimer.getGameTicks();
+    for (let r = 0; r < this._rows; ++r) {
+      const base = r * this._cols;
+      for (let c = 0; c < this._cols; ++c) {
+        const idx = base + c;
+        if (this._lastHitTick[idx] === tick) {
+          g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 255, 0, 0);
+        } else if (this._lastCheckTick[idx] === tick) {
+          g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 255, 255, 255);
+        } else if (this._grid[idx].size === 0) {
+          g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 128, 128, 128);
+        } else {
+          g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 0, 0, 255);
+        }
+      }
+    }
     for (const tr of this._triggers) tr.draw(g);
   }
 
