@@ -21,6 +21,7 @@
   "type": "module",
   "devDependencies": {
     "http-server": "^14.0.1",
-    "mocha": "^11.5.0"
+    "mocha": "^11.5.0",
+    "chai": "^4.3.7"
   }
 }
