@@ -171,6 +171,13 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - `rar a export_lemmings.rar export_lemmings`
   - `npm run clean-exports` *(remove `export_*` folders)*
   - `npm start`
+- Other useful scripts:
+  - `npm run export-panel-sprite` – export the skill panel sprite as `exports/panel_export`
+  - `npm run export-lemmings-sprites` – export all lemming animations to `exports/<pack>_sprites`
+  - `npm run export-ground-images` – export ground and object images from a single ground set
+  - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
+  - `npm run list-sprites` – list sprite names with sizes and frame counts
+  - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
 - Browser: `localhost:8080`
 
 ### Running Tests
