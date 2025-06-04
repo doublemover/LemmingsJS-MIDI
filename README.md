@@ -178,6 +178,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
+  - `npm test`
   - `npm start`
 - Browser: `localhost:8080`
 
