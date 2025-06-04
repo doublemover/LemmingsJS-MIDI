@@ -66,6 +66,9 @@ function frameToPNG(frame) {
     // Ensure steel sprite metadata is loaded for accurate terrain flags
     await Lemmings.loadSteelSprites();
 
+    // Ensure steel sprite metadata is loaded for accurate terrain flags
+    await Lemmings.loadSteelSprites();
+
     // --- Panel background and letters/numbers ---
     const panelSprites = await res.getSkillPanelSprite(pal);
 
