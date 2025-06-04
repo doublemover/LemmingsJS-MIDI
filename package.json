@@ -13,7 +13,8 @@
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
     "export-all-sprites": "node tools/exportAllSprites.js",
-    "export-all-packs": "node tools/exportAllPacks.js"
+    "export-all-packs": "node tools/exportAllPacks.js",
+    "clean-exports": "node tools/cleanExports.js"
   },
   "repository": {
     "type": "git",
