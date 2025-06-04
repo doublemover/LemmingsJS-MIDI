@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
+import { parseDocument, DomUtils } from 'htmlparser2';
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -116,16 +117,14 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
@@ -162,22 +161,33 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+const args = process.argv.slice(2);
+let jsFiles, htmlFiles;
+if (args.length) {
+  jsFiles = [];
+  htmlFiles = [];
+  for (const file of args) {
+    if (file.endsWith('.html')) htmlFiles.push(file);
+    else jsFiles.push(file);
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
+for (const file of jsFiles) processJSFile(file, args.length > 0);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
 for (const call of calls) {
   if (call.type === 'function') {
     if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined function ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   } else if (call.type === 'method') {
     if (builtinObjects.has(call.object)) continue;
     if (!definedMethods.has(call.name) && !builtinMethods.has(call.name)) {
-      errors.push(`${call.file}:${call.line} - Undefined method ${call.name}`);
+      errors.push(`${call.file}:${call.line} - ${call.name} is not defined`);
     }
   }
 }
