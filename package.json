@@ -20,7 +20,8 @@
     "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "depcheck": "depcheck"
   },
   "repository": {
     "type": "git",
@@ -40,6 +41,7 @@
     "adm-zip": "^0.5.10",
     "chai": "^4.3.7",
     "cheerio": "^1.0.0",
+    "depcheck": "^1.4.7",
     "eslint": "^9.28.0",
     "htmlparser2": "^10.0.0",
     "http-server": "^14.0.1",
