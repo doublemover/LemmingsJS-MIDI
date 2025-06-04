@@ -1,6 +1,15 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
-import '../js/LemmingsBootstrap.js';
+import { Lemmings } from '../js/LemmingsNamespace.js';
+import '../js/LogHandler.js';
+import '../js/SkillTypes.js';
+import '../js/LevelProperties.js';
+import '../js/DrawProperties.js';
+import '../js/LevelElement.js';
+import '../js/Range.js';
+import '../js/BitReader.js';
+import '../js/BitWriter.js';
+import '../js/UnpackFilePart.js';
 import { BinaryReader } from '../js/BinaryReader.js';
 import { FileContainer } from '../js/FileContainer.js';
 import { LevelReader } from '../js/LevelReader.js';

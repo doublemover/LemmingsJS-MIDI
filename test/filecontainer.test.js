@@ -56,7 +56,12 @@ function runTest(bad) {
   }
 }
 
-runTest(false);
-runTest(true);
+describe('FileContainer', function () {
+  it('unpacks a valid part', function () {
+    runTest(false);
+  });
 
-console.log('All tests passed.');
+  it('detects invalid checksum', function () {
+    runTest(true);
+  });
+});
