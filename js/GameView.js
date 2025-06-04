@@ -22,6 +22,7 @@ class GameView extends Lemmings.BaseLogger {
         this.steps = 0;
         this.applyQuery();
         this.elementGameState = null;
+        this.autoMoveTimer = null;
         this.elementSelectGameType = null;
         this.elementSelectLevelGroup = null;
         this.elementSelectLevel = null;
@@ -68,8 +69,8 @@ class GameView extends Lemmings.BaseLogger {
     onGameEnd(gameResult) {
         this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
         this.stage.startFadeOut();
-        this.log.debug(gameResult);
-        window.setTimeout(() => {
+        console.dir(gameResult);
+        this.autoMoveTimer = window.setTimeout(() => {
             if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
                 /// move to next level
                 this.moveToLevel(1);
@@ -77,6 +78,7 @@ class GameView extends Lemmings.BaseLogger {
                 /// redo this level
                 this.moveToLevel(0);
             }
+            this.autoMoveTimer = null;
         }, 2500);
     }
 
@@ -356,6 +358,10 @@ async moveToLevel(moveInterval = 0) {
     }
     /** load a level and render it to the display */
     async loadLevel() {
+        if (this.autoMoveTimer !== null) {
+            window.clearTimeout(this.autoMoveTimer);
+            this.autoMoveTimer = null;
+        }
         if (!this.gameResources) return;
         if (this.game) {
             this.game.stop();
