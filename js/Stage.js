@@ -117,7 +117,7 @@ class Stage {
                 let oldScale = stageImage.viewPoint.scale;
                 let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
 
-                stageImage.viewPoint.scale = this.limitValue(.25, newScale, 4);
+                stageImage.viewPoint.scale = this.snapScale(this.limitValue(.25, newScale, 4));
 
                 // Re-center so the same world point stays under the cursor
                 stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
@@ -159,6 +159,24 @@ class Stage {
             let useMax = Math.max(minLimit, maxLimit);
             return Math.min(Math.max(minLimit, value), useMax);
         }
+
+        snapScale(scale) {
+            const width = this.gameImgProps.width;
+            const height = this.gameImgProps.height;
+            const candidates = [];
+            for (let i = 1; i <= 4; i++) {
+                if (width % i === 0 && height % i === 0) candidates.push(i);
+                if (width % i === 0 && height % i === 0 && 1 / i >= 0.25) candidates.push(1 / i);
+            }
+            if (!candidates.length) return this.limitValue(0.25, scale, 4);
+            let best = candidates[0];
+            let bestDiff = Math.abs(scale - best);
+            for (const c of candidates) {
+                const diff = Math.abs(scale - c);
+                if (diff < bestDiff) { bestDiff = diff; best = c; }
+            }
+            return this.limitValue(0.25, best, 4);
+        }
         updateStageSize() {
             let ctx = this.stageCav.getContext("2d", { alpha: false });
             let stageHeight = ctx.canvas.height;
@@ -199,7 +217,7 @@ class Stage {
             this.clear(this.gameImgProps);
 
             if (lemmings.scale > 0) {
-                this.gameImgProps.viewPoint.scale = lemmings.scale;
+                this.gameImgProps.viewPoint.scale = this.snapScale(lemmings.scale);
                 this.gameImgProps.viewPoint.x = x;
                 this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
                 this.redraw();
