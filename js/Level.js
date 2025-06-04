@@ -314,7 +314,7 @@ class Level {
   render(gameDisplay) {
     gameDisplay.initSize(this.width, this.height);
     const bg = this.combinedImage || this.groundImage;
-    gameDisplay.setBackground(bg, this.groundMask);
+    gameDisplay.setBackground(bg, this.groundMask, this.steelMask);
   }
 
   renderDebug(gameDisplay) {
