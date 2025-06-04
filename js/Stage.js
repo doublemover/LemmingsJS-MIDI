@@ -91,9 +91,7 @@ class Stage {
       this.cursorY = e.y;
       if (e.button) {
         let stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
-        if (stageImage == null)
-          return;
-        if (stageImage.display == null)
+        if (stageImage == null || stageImage.display == null)
           return;
         if (stageImage == this.gameImgProps) {
           this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);
