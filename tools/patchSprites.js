@@ -5,6 +5,7 @@ import { PNG } from 'pngjs';
 import fs from 'fs';
 import path from 'path';
 import { PackFilePart } from '../js/PackFilePart.js';
+import { NodeFileProvider } from './NodeFileProvider.js';
 
 function usage() {
   console.log('Usage: node tools/patchSprites.js [--sheet-orientation=horizontal|vertical] <target DAT> <png dir> <out DAT>');
@@ -141,4 +142,4 @@ async function main() {
   console.log(`Wrote ${outFile}`);
 }
 
-main();
+await main();
