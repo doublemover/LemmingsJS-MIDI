@@ -8,6 +8,7 @@ class GameDisplay {
             this.objectManager = objectManager;
             this.triggerManager = triggerManager;
             this.display = null;
+            this.highlightLemming = null;
         }
         setGuiDisplay(display) {
             this.display = display;
@@ -17,6 +18,9 @@ class GameDisplay {
                 if (!lem)
                     return;
                 this.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+            });
+            this.display.onMouseMove.on((e) => {
+                this.highlightLemming = this.lemmingManager.getNearestLemming(e.x, e.y);
             });
         }
         render() {
@@ -32,6 +36,12 @@ class GameDisplay {
             this.level.renderDebug(this.display);
             this.lemmingManager.renderDebug(this.display);
             this.triggerManager.renderDebug(this.display);
+            if (this.highlightLemming) {
+                const lem = this.highlightLemming;
+                const x = lem.x - 5;
+                const y = lem.y - 11;
+                this.display.drawDashedRect(x, y, 10, 13, 255, 255, 0);
+            }
         }
     }
     Lemmings.GameDisplay = GameDisplay;

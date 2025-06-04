@@ -198,13 +198,33 @@ class LemmingManager {
     }
 
     getLemmingAt(x, y, radius = 6) {
-        const halfW = radius;
-        const halfH = radius * 2;
+        let best = radius * radius;
+        let found = null;
         for (const lem of this.lemmings) {
             if (lem.removed) continue;
-            if (x >= lem.x - halfW && x <= lem.x + halfW && y >= lem.y - halfH && y <= lem.y + halfH) return lem;
+            const dist = lem.getClickDistance(x, y);
+            if (dist >= 0 && dist <= best) {
+                best = dist;
+                found = lem;
+            }
         }
-        return null;
+        return found;
+    }
+
+    getNearestLemming(x, y) {
+        let best = Infinity;
+        let found = null;
+        for (const lem of this.lemmings) {
+            if (lem.removed) continue;
+            const dx = x - lem.x;
+            const dy = y - lem.y;
+            const dist = dx * dx + dy * dy;
+            if (dist < best) {
+                best = dist;
+                found = lem;
+            }
+        }
+        return found;
     }
 
     getLemmingsInMask(mask, x, y) {
