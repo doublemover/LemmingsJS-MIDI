@@ -9,6 +9,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <p align=center><img src="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" width=50% height=50%></img></p>
 
 ## New Features
+  - [Keyboard Shortcuts](https://github.com/doublemover/LemmingsJS-MIDI/blob/master/README.md#keyboard-shortcuts)
   - Speed is displayed at the bottom of the Paws (Pause) button
     - Click `f` for faster, `-` for slower
     - Right clicking Paws resets the Speed to 1
@@ -190,29 +191,17 @@ URL parameters (shortcut in brackets):
 
 ## Keyboard Shortcuts
 
-- `1`: Decrease Release Rate
-- `Shift+1`: Minimize Release Rate
-- `2`: Increase Release Rate
-- `Shift+2`: Maximize Release Rate
-- `3`: Select Climber
-- `4`: Select Floater
-- `5`: Select Bomber
-- `6`: Select Blocker
-- `Q`: Select Builder
-- `W`: Select Basher
-- `E`: Select Miner
-- `R`: Select Digger
+- `(Shift+)1`: Decrease Release Rate (Minimum)
+- `(Shift+)2`: Increase Release Rate (Maximum)
+- `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
+- `Q, W, E, R`: Select Builder, Basher, Miner, Digger
 - `Space`: Pause
-- `T`: Nuke
-- `Shift+T`: Instant nuke
+- `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
-- Arrow Keys: Move viewport
-- `Shift` + Arrow Keys: Move viewport 2.5× faster
-- `Z` / `X`: Zoom in / out
-- `Shift+Z` / `Shift+X`: 1.5× Zoom in / out
+- `(Shift+)←↑↓→`: Move viewport (More)
+- `(Shift+)Z` / `X`: Zoom in / out (More)
 - `V`: Reset zoom to 2
-- `-` / `=`: Decrease / Increase game speed
-- `Shift+-` / `Shift+=`: Bigger game speed change
+- `(Shift+)-` / `=`: Decrease / Increase game speed (More)
 - `,` / `.`: Previous / Next level
 - `Shift+,` / `Shift+.`: Previous / Next group
 - `Tab`: Cycle through skills
