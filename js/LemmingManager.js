@@ -268,6 +268,20 @@ class LemmingManager extends Lemmings.BaseLogger {
     return null;
   }
 
+  getNearestLemming(x, y) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const lem of this.lemmings) {
+      if (lem.removed) continue;
+      const dist = lem.getClickDistance(x, y);
+      if (dist >= 0 && dist < bestDist) {
+        bestDist = dist;
+        best = lem;
+      }
+    }
+    return best;
+  }
+
   getLemmingsInMask(mask, x, y) {
     const out = [];
     const lems = this.lemmings;
