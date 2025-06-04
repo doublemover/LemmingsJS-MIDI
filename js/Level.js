@@ -1,7 +1,23 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './ColorPalette.js';
 
-class Level {
+// Palette remapping for the fire shooter trap. 
+const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
+const ICE_COLORS   = Object.freeze([
+  Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
+  Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
+  Lemmings.ColorPalette.colorFromRGB(72, 192, 255),
+  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),
+  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
+  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
+  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
+  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
+  Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
+]);
+
+class Level extends Lemmings.BaseLogger {
   constructor(width, height) {
+    super();
     this.width = width | 0;
     this.height = height | 0;
     this.groundMask = new Lemmings.SolidLayer(this.width, this.height);
@@ -23,17 +39,44 @@ class Level {
     this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
     this.screenPositionX = 0;
     this.isSuperLemming = false;
+
+    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
+    this._debugFrame = null;
   }
 
   setMapObjects(objects, objectImg) {
-    // const start = performance.now();
+    Lemmings.withPerformance(
+      'setMapObjects',
+      {
+        track: 'Level',
+        trackGroup: 'Game State',
+        color: 'primary-light',
+        tooltipText: 'setMapObjects'
+      },
+      () => {
     this.objects.length = 0;
     this.entrances.length = 0;
     this.triggers.length = 0;
-    let arrowRects = [];
+    const arrowRects = [];
     for (const ob of objects) {
       const info = objectImg[ob.id];
       if (info == null) continue;
+
+      // // Ice palette swap for fire shooter traps
+      // if (ob.id === 8 || ob.id === 10) {
+      //   const pal = new Lemmings.ColorPalette();
+      //   for (let i = 0; i < 16; ++i) {
+      //     pal.setColorInt(i, info.palette.getColor(i));
+      //   }
+      //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
+      //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+      //   }
+
+      //   const clone = new Lemmings.ObjectImageInfo();
+      //   Object.assign(clone, info);
+      //   clone.palette = pal;
+      //   info = clone;
+      // }
       let tfxID = info.trigger_effect_id;
 
       if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
@@ -56,10 +99,10 @@ class Level {
           }
         }
 
-        let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
+        const trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
 
         if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
-          var newRange = new Lemmings.Range();
+          const newRange = new Lemmings.Range();
           newRange.x = ob.x + info.trigger_left;
           newRange.y = ob.y + info.trigger_top;
           newRange.width = info.trigger_width;
@@ -75,7 +118,8 @@ class Level {
     if (arrowRects.length > 0) {
       this.setArrowAreas(arrowRects);
     }
-    // performance.measure(`setMapObjects`, { start, detail: { devtools: { track: "Level", trackGroup: "Game State", color: "primary-light", properties: [["Objects", `${this.objects.length}`],["Entrances", `${this.entrances.length}`],["Triggers", `${this.triggers.length}`]], tooltipText: `setMapObjects` } } });
+    this._debugFrame = null; // invalidate cached debug overlay
+      })();
   }
 
   getGroundMaskLayer() { return this.groundMask; }
@@ -136,6 +180,7 @@ class Level {
       buf[o+4] = r.direction;
     }
     this.arrowRanges = buf;
+    this._debugFrame = null; // invalidate cached debug overlay
   }
 
   isArrowAt(x, y, direction) {
@@ -163,6 +208,15 @@ class Level {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
+    Lemmings.withPerformance(
+      'newSetSteelAreas',
+      {
+        track: 'Level',
+        trackGroup: 'Game State',
+        color: 'secondary-light',
+        tooltipText: 'newSetSteelAreas'
+      },
+      () => {
     if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
       this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
     } else {
@@ -170,13 +224,13 @@ class Level {
       this.steelMask.mask.fill(0);
     }
     const { levelWidth, levelHeight, terrains } = levelReader;
-    let newSteelRanges = [];
+    const newSteelRanges = [];
     if (this.steelRanges.length == 0) return;
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];
       const terImg = terrainImages[tObj.id];
       if (terImg.isSteel == true) {
-        var newRange = new Lemmings.Range();
+        const newRange = new Lemmings.Range();
         newRange.x = tObj.x;
         newRange.y = tObj.y;
         newRange.width = terImg.steelWidth;
@@ -195,6 +249,7 @@ class Level {
       this.steelRanges = new Int32Array(0);
       this.setSteelAreas(newSteelRanges);
     }
+      })();
   }
 
   setSteelAreas(ranges = []) {
@@ -207,6 +262,7 @@ class Level {
       buf[o+3] = r.height;
     }
     this.steelRanges = buf;
+    this._debugFrame = null; // invalidate cached debug overlay
   }
 
   isSteelAt(x, y, loading = false) {
@@ -255,18 +311,28 @@ class Level {
   }
 
   renderDebug(gameDisplay) {
+    if (!this._debugFrame) this.#buildDebugFrame();
+    gameDisplay.drawFrame(this._debugFrame, 0, 0);
+  }
+
+  #buildDebugFrame() {
+    const frame = new Lemmings.Frame(this.width, this.height);
+    const steelColor  = Lemmings.ColorPalette.colorFromRGB(0, 255, 255);
+    const arrowRColor = Lemmings.ColorPalette.colorFromRGB(128, 255, 0);
+    const arrowLColor = Lemmings.ColorPalette.colorFromRGB(255, 128, 0);
+
     const s = this.steelRanges;
     for (let i = 0, len = s.length; i < len; i += 4) {
-      gameDisplay.drawRect(s[i], s[i+1], s[i+2], s[i+3], 0, 255, 255);
+      frame.drawRect(s[i], s[i+1], s[i+2], s[i+3], steelColor);
     }
+
     const a = this.arrowRanges;
     for (let i = 0, len = a.length; i < len; i += 5) {
-      if (a[i+4]) {
-        gameDisplay.drawRect(a[i], a[i+1], a[i+2], a[i+3], 128, 255, 0);
-      } else {
-        gameDisplay.drawRect(a[i], a[i+1], a[i+2], a[i+3], 255, 128, 0);
-      }
+      const col = a[i+4] ? arrowRColor : arrowLColor;
+      frame.drawRect(a[i], a[i+1], a[i+2], a[i+3], col);
     }
+
+    this._debugFrame = frame;
   }
 }
 

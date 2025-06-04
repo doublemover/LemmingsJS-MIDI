@@ -9,6 +9,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <p align=center><img src="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" width=50% height=50%></img></p>
 
 ## New Features
+  - [Keyboard Shortcuts](https://github.com/doublemover/LemmingsJS-MIDI/blob/master/README.md#keyboard-shortcuts)
   - Speed is displayed at the bottom of the Paws (Pause) button
     - Click `f` for faster, `-` for slower
     - Right clicking Paws resets the Speed to 1
@@ -18,7 +19,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Traps animate, are deadly, and have cooldowns
   - Frying, Jumping, Hoisting animations
   - Improved Steel terrain
-    - Using magic numbers based on level pack & ground#.dat to flag steel images and calculate opaque size for precise placement
+    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack
+      to calculate opaque size for precise placement
   - Arrow Walls function
   - Minimap
     - Accumulates ground at full resolution for enhanced accuracy
@@ -105,21 +107,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] debounce/toggle
     - [ ] html needs size set
     - [ ] better level nav buttons/pack & diff dropdowns
-  - [ ] Keyboard shortcuts
-    - [ ] Decrease Release Rate
-    - [ ] Min Release Rate
-    - [ ] Increase Release Rate
-    - [ ] Max Release Rate
-    - [ ] Climb/Float/Bomb/Block/Build/Bash/Mine/Dig
-    - [ ] Pause
-    - [ ] Nuke
-    - [ ] Reset Speed
-    - [ ] Increase Speed
-    - [ ] Decrease Speed
-    - [ ] Restart
-    - [ ] Debug
-    - [ ] Skill/Lem Cycle
-    - [ ] Viewport Movement, Zoom, Reset, Focus Lem/D
   - [ ] Tick Step
 </details>
 
@@ -178,8 +165,40 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
+  - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs
+    - `zip -r export_lemmings.zip export_lemmings`
+    - `tar -czf export_lemmings.tgz export_lemmings`
+    - `rar a export_lemmings.rar export_lemmings`
+- `npm run clean-exports` *(remove `export_*` folders)*
   - `npm start`
+- Other useful scripts:
+  - `npm run export-panel-sprite` – export the skill panel sprite as `exports/panel_export`
+  - `npm run export-lemmings-sprites` – export all lemming animations to `exports/<pack>_sprites`
+  - `npm run export-ground-images` – export ground and object images from a single ground set
+  - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
+  - `npm run list-sprites` – list sprite names with sizes and frame counts
+  - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+  - `npm run pack-levels` – pack a folder of 2048-byte level files into a DAT
 - Browser: `localhost:8080`
+
+### NodeFileProvider
+
+The Node scripts in the `tools` directory use `NodeFileProvider` to read level
+packs. This provider can load files directly from folders or from archives such
+as `.zip`, `.tar`, `.tar.gz`, `.tgz`, and `.rar`, so you can keep level packs
+packed while running scripts with Node.
+
+### Running Tests
+
+- After `npm install`, run `npm test` to execute the Mocha test suite.
+- Mocha is installed automatically as part of the project's `devDependencies`.
+
+## Progressive Web App
+
+This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
+as a **Progressive Web App (PWA)**. Installing adds the game to your device's
+app list and launches it fullscreen in landscape mode. Touch input still needs
+polish, so the mobile experience may be rough.
 
 ## Options
 
@@ -195,13 +214,31 @@ URL parameters (shortcut in brackets):
 - `difficulty (d)`: Difficulty 1-5 (default: 1)
 - `level (l)`: Level 1-30 (default: 1)
 - `speed (s)`: Control speed 0-100 (default: 1)
-- `cheat (c)`: Enable cheat mode (99 for all actions) (default: false)
+- `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
 - `bench (b)`: Enable bench mode, lemmings never stop spawning (default: false)
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
+
+## Keyboard Shortcuts
+
+- `(Shift+)1`: Decrease Release Rate (Minimum)
+- `(Shift+)2`: Increase Release Rate (Maximum)
+- `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
+- `Q, W, E, R`: Select Builder, Basher, Miner, Digger
+- `Space`: Pause
+- `(Shift+)T`: Nuke (Instant)
+- `Backspace`: Restart level
+- `(Shift+)←↑↓→`: Move viewport (More)
+- `(Shift+)Z` / `X`: Zoom in / out (More)
+- `V`: Reset zoom to 2
+- `(Shift+)-` / `=`: Decrease / Increase game speed (More)
+- `,` / `.`: Previous / Next level
+- `Shift+,` / `Shift+.`: Previous / Next group
+- `Tab`: Cycle through skills
+- `\`: Toggle debug mode
   
 ## Credits
 

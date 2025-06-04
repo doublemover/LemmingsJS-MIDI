@@ -1,9 +1,9 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class OddTableReader {
+class OddTableReader extends Lemmings.BaseLogger {
         constructor(oddfile) {
+            super();
             this.levelProperties = [];
-            this.log = new Lemmings.LogHandler("OddTableReader");
             this.read(oddfile);
         }
         /** return the Level for a given levelNumber - LevelNumber is counting all levels from first to last of the game

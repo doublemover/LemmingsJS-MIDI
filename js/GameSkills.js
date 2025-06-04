@@ -6,22 +6,40 @@ class GameSkills {
             this.onCountChanged = new Lemmings.EventHandler();
             this.onSelectionChanged = new Lemmings.EventHandler();
             this.skills = level.skills;
+            this.cheatMode = false;
+            this.selectFirstAvailable();
+        }
+
+        selectFirstAvailable() {
+            for (let i = Lemmings.SkillTypes.CLIMBER; i <= Lemmings.SkillTypes.DIGGER; i++) {
+                if (this.skills[i] > 0) {
+                    this.selectedSkill = i;
+                    break;
+                }
+            }
         }
         /** return true if the skill can be reused / used */
         canReuseSkill(type) {
+            if (this.cheatMode) return true;
             return (this.skills[type] > 0);
         }
         reuseSkill(type) {
+            if (this.cheatMode) return true;
             if (this.skills[type] <= 0)
                 return false;
             this.skills[type]--;
             this.onCountChanged.trigger(type);
+            if (this.skills[type] <= 0 && this.selectedSkill === type) {
+                this.selectFirstAvailable();
+            }
             return true;
         }
         getSkill(type) {
             if (!Lemmings.SkillTypes[Object.keys(Lemmings.SkillTypes)[type]])
                 return 0;
-            return this.skills[type];
+            const val = this.skills[type];
+            if (val === Infinity) return 99;
+            return val;
         }
         getSelectedSkill() {
             return this.selectedSkill;
@@ -39,10 +57,20 @@ class GameSkills {
         }
         /** increase the amount of actions for all skills */
         cheat() {
+            this.cheatMode = true;
             for (let i = 0; i < this.skills.length; i++) {
-                this.skills[i] = 99;
+                this.skills[i] = Infinity;
                 this.onCountChanged.trigger(i);
             }
+        }
+
+        clearSelectedSkill() {
+            if (this.selectedSkill !== Lemmings.SkillTypes.UNKNOWN) {
+                this.selectedSkill = Lemmings.SkillTypes.UNKNOWN;
+                this.onSelectionChanged.trigger();
+                return true;
+            }
+            return false;
         }
     }
     Lemmings.GameSkills = GameSkills;

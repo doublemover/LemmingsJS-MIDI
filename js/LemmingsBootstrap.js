@@ -1,5 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+import './LogHandler.js';
+
 import './ActionBashSystem.js';
 import './ActionBlockerSystem.js';
 import './ActionBuildSystem.js';
@@ -65,7 +67,6 @@ import './LevelIndexType.js';
 import './LevelLoader.js';
 import './LevelProperties.js';
 import './LevelReader.js';
-import './LogHandler.js';
 import './MapObject.js';
 import './Mask.js';
 import './MaskList.js';
@@ -91,6 +92,7 @@ import './Trigger.js';
 import './TriggerManager.js';
 import './TriggerTypes.js';
 import './UnpackFilePart.js';
+import './PackFilePart.js';
 import './UserInputManager.js';
 import './VGASpecReader.js';
 import './ViewPoint.js';

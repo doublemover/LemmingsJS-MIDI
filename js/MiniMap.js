@@ -224,8 +224,11 @@ class MiniMap {
             frame.mask[idx] = 1;
         }
 
-        const vpX = (lemmings.stage.getGameViewRect().x * this.scaleX) | 0;
-        let vpW = (lemmings.stage.getGameViewRect().w * this.scaleX) | 0;
+        const viewRect = lemmings.stage.getGameViewRect();
+        const vpX = (viewRect.x * this.scaleX) | 0;
+        let vpW = (viewRect.w * this.scaleX) | 0;
+        const vpY = (viewRect.y * this.scaleY) | 0;
+        const vpH = (viewRect.h * this.scaleY) | 0;
         let vpXW = vpX + vpW;
         // dumb fix to keep right edge of viewport rect visible
         if (vpXW == this.width) {
@@ -234,6 +237,10 @@ class MiniMap {
         const vpRectColor = 0xFFFFFFFF;
         frame.drawRect(vpX, 0, 0, this.height - 1, vpRectColor, false, false);
         frame.drawRect(vpX + vpW, 0, 0, this.height - 1, vpRectColor, false, false);
+        if (vpH < this.height) {
+            frame.drawRect(vpX, vpY, vpW, 0, vpRectColor, false, false);
+            frame.drawRect(vpX, vpY + vpH, vpW, 0, vpRectColor, false, false);
+        }
 
         /* Entrances / Exits */
         for (const obj of this.level.objects) {
