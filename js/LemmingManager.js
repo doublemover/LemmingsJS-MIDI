@@ -18,7 +18,39 @@ class LemmingManager extends Lemmings.BaseLogger {
         } else {
             this.lemmings = [];
         }
-        this.minimapDots = new Uint8Array(0);
+            LemmingManager.log = this.log;
+            })();
+        const tickNum = this.mmTickCounter;
+        Lemmings.withPerformance(
+            'tick',
+            {
+                track: 'LemmingManager',
+                trackGroup: 'Game State',
+                color: 'tertiary-dark',
+                tooltipText: `tick ${tickNum}`
+            },
+            () => {
+        })();
+        Lemmings.withPerformance(
+            'addLemming',
+            {
+                track: 'LemmingManager',
+                trackGroup: 'Game State',
+                color: 'primary-light',
+                tooltipText: `addLemming ${x},${y}`
+            },
+            () => {
+
+        const extraCount = lemmings.extraLemmings | 0;
+        if (extraCount > 0) {
+            const action = this.actions[Lemmings.LemmingStateType.FALLING];
+            const extras = new Array(extraCount);
+            for (let i = 0; i < extraCount; i++) {
+                const extra = new Lemmings.Lemming(x, y, startingLemLength + 1 + i);
+                extra.setAction(action);
+                extras[i] = extra;
+            Array.prototype.push.apply(this.lemmings, extras);
+        })();
         if (!LemmingManager.log) {
             LemmingManager.log = this.log;
         }
@@ -154,8 +186,16 @@ class LemmingManager extends Lemmings.BaseLogger {
             const extras = new Array(extraCount);
             for (let i = 0; i < extraCount; i++) {
                 const extra = new Lemmings.Lemming(x, y, startingLemLength + 1 + i);
-                extra.setAction(action);
-                extras[i] = extra;
+        Lemmings.withPerformance(
+            'render',
+            {
+                track: 'LemmingManager',
+                trackGroup: 'Render',
+                color: 'tertiary-dark',
+                tooltipText: 'render'
+            },
+            () => {
+            })();
             }
             Array.prototype.push.apply(this.lemmings, extras);
         }
@@ -263,26 +303,71 @@ class LemmingManager extends Lemmings.BaseLogger {
         return lem && !lem.removed ? lem : null;
     }
 
-    cycleSelection(dir = 1) {
-        const count = this.lemmings.length;
-        if (!count) { this.selectedIndex = -1; if (this.miniMap) this.miniMap.setSelectedLemming(null); return null; }
-        let i = this.selectedIndex;
-        for (let step = 0; step < count; step++) {
-            i = (i + dir + count) % count;
-            const lem = this.lemmings[i];
-            if (lem && !lem.removed) { this.selectedIndex = i; if (this.miniMap) this.miniMap.setSelectedLemming(lem); return lem; }
+        Lemmings.withPerformance(
+            'setLemmingState',
+            {
+                track: 'LemmingManager',
+                trackGroup: 'Game State',
+                color: 'secondary-light',
+                tooltipText: `setLemmingState ${lem.id}`
+            },
+            () => {
+        if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
+            Lemmings.withPerformance(
+                'removeOne',
+                {
+                    track: 'LemmingManager',
+                    trackGroup: 'Game State',
+                    color: 'secondary-dark',
+                    tooltipText: `removeOne ${lem.id}`
+                },
+                () => {
+                    lem.remove();
+                    this._clearSelectedIf(lem);
+                    this.gameVictoryCondition.removeOne();
+                }
+            )();
+            return;
         }
-        this.selectedIndex = -1;
-        if (this.miniMap) this.miniMap.setSelectedLemming(null);
-        return null;
-    }
-
-    getLemmingAt(x, y, radius = 6) {
-        let best = radius * radius;
-        let found = null;
-        for (const lem of this.lemmings) {
-            if (lem.removed) continue;
-            if (lem.action === this.actions[Lemmings.LemmingStateType.OHNO] ||
+        const actionSystem = this.actions[stateType];
+        if (!actionSystem) {
+            lem.remove();
+            this.logging.log(lem.id + " Action: Error not an action: " + Lemmings.LemmingStateType[stateType]);
+        } else {
+            if (this.lemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
+                this.logging.debug(lem.id + " Action: " + actionSystem.getActionName());
+            }
+        })();
+        return Lemmings.withPerformance(
+            'doLemmingAction',
+            {
+                track: 'LemmingManager',
+                trackGroup: 'Game State',
+                color: 'secondary-dark',
+                tooltipText: `doLemmingAction ${skillType}`
+            },
+            () => {
+        const result = ok;
+        return result;
+            }).call(this);
+        this.logging = new Lemmings.Logger("LemmingManager");
+        if (typeof lemmings !== 'undefined' &&
+            lemmings.perfMetrics === true &&
+            lemmings.debug === true &&
+            typeof performance !== 'undefined' &&
+            typeof performance.measure === 'function') {
+            performance.measure(`LemmingManager Dispose`, {
+                start,
+                detail: {
+                    devtools: {
+                        track: 'LemmingManager',
+                        trackGroup: 'Game State',
+                        color: 'error',
+                        tooltipText: 'LemmingManager Dispose'
+                    }
+                }
+            });
+        }
                 lem.action === this.actions[Lemmings.LemmingStateType.EXPLODING]) {
                 continue;
             }
