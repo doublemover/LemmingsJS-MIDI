@@ -41,6 +41,9 @@ function frameToPNG(frame) {
     const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
     const pal = new Lemmings.ColorPalette();
 
+    // Ensure steel sprite metadata is loaded for accurate terrain flags
+    await Lemmings.loadSteelSprites();
+
     // --- Panel background and letters/numbers ---
     const panelSprites = await res.getSkillPanelSprite(pal);
 
