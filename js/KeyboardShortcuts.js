@@ -259,14 +259,23 @@ class KeyboardShortcuts {
                 break;
             case 'Comma':
                 if (e.shiftKey) {
-                    if (this.view.levelGroupIndex > 0) this.view.selectLevelGroup(this.view.levelGroupIndex - 1);
+                    if (this.view.levelGroupIndex > 0) {
+                        this.view.selectLevelGroup(this.view.levelGroupIndex - 1);
+                    } else if (this.view.gameType > 1) {
+                        this.view.selectGameType(this.view.gameType - 1);
+                    }
                 } else {
                     this.view.moveToLevel(-1);
                 }
                 break;
             case 'Period':
                 if (e.shiftKey) {
-                    this.view.selectLevelGroup(this.view.levelGroupIndex + 1);
+                    const totalGroups = this.view.gameResources?.getLevelGroups().length || 0;
+                    if (this.view.levelGroupIndex + 1 < totalGroups) {
+                        this.view.selectLevelGroup(this.view.levelGroupIndex + 1);
+                    } else {
+                        this.view.selectGameType(this.view.gameType + 1);
+                    }
                 } else {
                     this.view.moveToLevel(1);
                 }

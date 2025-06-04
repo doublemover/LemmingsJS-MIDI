@@ -319,6 +319,11 @@ async moveToLevel(moveInterval = 0) {
     }
     /** switch the selected level group */
     async selectLevelGroup(newLevelGroupIndex) {
+        if (!this.gameResources) return;
+        const groups = this.gameResources.getLevelGroups();
+        const max = groups.length - 1;
+        if (newLevelGroupIndex < 0) newLevelGroupIndex = 0;
+        else if (newLevelGroupIndex > max) newLevelGroupIndex = max;
         this.levelGroupIndex = newLevelGroupIndex;
         this.levelIndex = 0;
         await this.populateLevelSelect();
