@@ -49,10 +49,11 @@ class LemmingManager {
                     ? -1
                     : this.nextNukingLemmingsIndex + 1;
 
-            if (
-                lem.removed &&
-                lem.action !== this.actions[Lemmings.LemmingStateType.EXPLODING]
-            ) {
+            if (this.nextNukingLemmingsIndex + 1 >= count) {
+                this.nextNukingLemmingsIndex = -1;
+            } else {
+                this.nextNukingLemmingsIndex += 1;
+            }
                 continue;
             }
 
