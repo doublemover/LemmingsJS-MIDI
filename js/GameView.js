@@ -50,13 +50,13 @@ class GameView extends Lemmings.BaseLogger {
     try {
       const game = await this.gameFactory.getGame(this.gameType, this.gameResources);
       await game.loadLevel(this.levelGroupIndex, this.levelIndex);
-      game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
       if (replayString != null) {
         game.getCommandManager().loadReplay(replayString);
       }
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
+      game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
       game.start();
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));

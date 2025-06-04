@@ -7,13 +7,6 @@ class GameSkills {
     this.onSelectionChanged = new Lemmings.EventHandler();
     this.skills = level.skills;
     this.cheatMode = false;
-    if (this.cheatMode) return true;
-    if (this.cheatMode) return true;
-    const val = this.skills[type];
-    if (val === Infinity) return 99;
-    return val;
-    this.cheatMode = true;
-    this.skills[i] = Infinity;
   }
 
   selectFirstAvailable() {

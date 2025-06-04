@@ -13,9 +13,13 @@ class ConfigReader extends Lemmings.BaseLogger {
   }
   /** return the game config for a given GameType */
   getConfig(gameType) {
+    if (gameType == 0) {
+      this.log.log('tried to get gametype 0?')
+      return;
+    }
     return new Promise((resolve, reject) => {
       this.configs.then((configs) => {
-        let config = configs.find((type) => type.gametype == gameType);
+        const config = configs.find((config) => config.gametype == gameType);
         if (config == null) {
           this.log.log('config for GameTypes:' + Lemmings.GameTypes.toString(gameType) + ' not found!');
           reject();

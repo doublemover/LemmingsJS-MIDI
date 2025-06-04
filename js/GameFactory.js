@@ -14,7 +14,6 @@ class GameFactory {
         resolve(new Lemmings.Game(gameResources));
         return;
       }
-      /// load resources
       this.getGameResources(gameType)
         .then((res) => resolve(new Lemmings.Game(res)))
         .catch(reject);
