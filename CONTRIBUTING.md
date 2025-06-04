@@ -8,6 +8,7 @@ Development uses ESLint to keep code consistent.
 
 Run `npm run lint` to check formatting. Run `npm run format` to automatically fix style.
 
+
 ## Before committing
 
 - Add a changelog entry in `CHANGELOG.md` for any user-visible change.
