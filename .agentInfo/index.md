@@ -8,3 +8,6 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **example, doc**: [notes/initial.md](notes/initial.md)
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md)
+- **resources, caching**: [notes/game-resources.md](notes/game-resources.md)
+- **tools, cli**: [notes/tools.md](notes/tools.md)
+- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md)
