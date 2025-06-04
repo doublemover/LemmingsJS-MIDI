@@ -40,7 +40,7 @@ class CommandManager extends Lemmings.BaseLogger {
         for (let i = 0; i < parts.length; i++) {
             let commandStr = parts[i].split("=", 2);
             if (commandStr.length != 2) continue;
-            let tick = (+commandStr[0]) | 0;
+            let tick = parseInt(commandStr[0], 10);
             this.runCommands[tick] = this.parseCommand(commandStr[1]);
         }
     }

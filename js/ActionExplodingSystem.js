@@ -17,6 +17,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
     }
 
 
+            level.clearGroundWithMask(this.masks.get("both").GetMask(0), lem.x, lem.y);
     triggerLemAction(lem) {
         return false;
     }

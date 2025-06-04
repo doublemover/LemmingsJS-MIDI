@@ -310,6 +310,22 @@ class MiniMap {
         this.guiDisplay.drawFrame(frame, destX, destY);
     }
 
+    dispose() {
+        if (this.guiDisplay && this._displayListeners) {
+            for (const [event, handler] of this._displayListeners) {
+                this.guiDisplay[event].off(handler);
+            }
+            this._displayListeners = null;
+        }
+        this.gameDisplay = null;
+        this.level = null;
+        this.guiDisplay = null;
+        this.terrain = null;
+        this.fog = null;
+        this.liveDots = null;
+        this.deadDots = null;
+        this.frame = null;
+    }
 }
 Lemmings.MiniMap = MiniMap;
 
