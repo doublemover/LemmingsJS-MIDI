@@ -15,7 +15,7 @@ class GameGui {
 
         /* change-tracking flags (original names) */
         this.gameTimeChanged       = true;
-        this.skillsCountChangd     = true;
+        this.skillsCountChanged    = true;
         this.skillSelectionChanged = true;
         this.backgroundChanged     = true;
         this.releaseRateChanged    = true;
@@ -34,6 +34,18 @@ class GameGui {
         this.display          = null;
         this.miniMap          = null;
         this.deltaReleaseRate = 0;
+
+        /* marching ants selection animation settings */
+        this.selectionDashLen   = 4;   // length of dash segments (1px longer)
+        this.selectionAnimDelay = 60;  // frames between offset increments (slower)
+        this.selectionAnimStep  = 1;   // pixels per animation step
+        this._selectionOffset   = 0;
+        this._selectionCounter  = 0;
+
+        /* hover state */
+        this._hoverPanelIdx   = -1;
+        this._hoverSpeedUp    = false;
+        this._hoverSpeedDown  = false;
 
         this._guiBound = this._guiLoop.bind(this);
         this._guiRafId        = 0;
@@ -64,7 +76,8 @@ class GameGui {
         });
 
         skills.onSelectionChanged.on(() => {
-            this.backgroundChanged     = true;
+            this.backgroundChanged = true;
+            this._selectionOffset  = 0;
         });
     }
 
@@ -101,11 +114,17 @@ class GameGui {
 
         if (panelIndex === 0 || panelIndex === 1) {
             const step = panelIndex === 0 ? -3 : +3;
+            const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
+            const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
+            const cur = this.gameVictoryCondition.getCurrentReleaseRate();
+            if ((step < 0 && cur <= min) || (step > 0 && cur >= max)) {
+                if (this.skills.clearSelectedSkill()) {
+                    this.skillSelectionChanged = true;
+                }
+                return;
+            }
             if (this.gameTimer.isRunning?.()) {
-                const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
-                const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
-                const cur = this.gameVictoryCondition.getCurrentReleaseRate();
-                let   neu = cur + step;
+                let neu = cur + step;
                 if (neu < min) neu = min;
                 if (neu > max) neu = max;
                 this.lastGameSpeed = neu;
@@ -166,18 +185,25 @@ class GameGui {
             if (this.nukePrepared) {
                 this.game.queueCommand(new Lemmings.CommandNuke());
                 this.nukePrepared = false;
-            }
-            else {
+            } else {
                 this.nukePrepared = true;
+            }
+            if (this.skills.clearSelectedSkill()) {
+                this.skillSelectionChanged = true;
             }
             this.skillSelectionChanged = true;
             return;
         }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
+        if (this.skills.getSkill(newSkill) <= 0) {
+            if (this.skills.clearSelectedSkill()) this.skillSelectionChanged = true;
+            return;
+        }
         this.skills.setSelectedSkill(newSkill);
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
         this.game.applySkillToSelected(newSkill);
+        this.skillSelectionChanged = true;
     }
 
     handleSkillMouseRightDown(e) {
@@ -220,6 +246,46 @@ class GameGui {
             this.game.queueCommand(new Lemmings.CommandNuke());
     }
 
+    handleMouseMove(e) {
+        const rawIdx = e.y > 15 ? Math.trunc(e.x / 16) : -1;
+        let idx = rawIdx;
+
+        if (!this.gameTimer.isRunning?.() && rawIdx !== 11) {
+            idx = -1;
+        }
+
+        if (rawIdx === 0 || rawIdx === 1) {
+            const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
+            const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
+            const rrCur = this.gameVictoryCondition.getCurrentReleaseRate?.() ?? 0;
+            if ((rawIdx === 0 && rrCur <= rrMin) || (rawIdx === 1 && rrCur >= rrMax)) {
+                idx = -1;
+            }
+        } else if (rawIdx >= 2 && rawIdx <= 9) {
+            const skill = this.getSkillByPanelIndex(rawIdx);
+            if (this.skills.getSkill(skill) <= 0) idx = -1;
+        }
+
+        const wasIdx = this._hoverPanelIdx;
+        if (idx !== wasIdx) {
+            this._hoverPanelIdx = idx;
+            this.backgroundChanged = true;
+        }
+
+        let up = false, down = false;
+        if (rawIdx === 10 && e.y >= 32) {
+            const pauseIndex = Math.trunc((e.x - 159) / 9);
+            const speedFac = this.gameTimer.speedFactor;
+            if (pauseIndex === 1 && speedFac < 120) up = true;
+            if (pauseIndex === 0 && speedFac > 0.1) down = true;
+        }
+        if (up !== this._hoverSpeedUp || down !== this._hoverSpeedDown) {
+            this._hoverSpeedUp = up;
+            this._hoverSpeedDown = down;
+            this.gameSpeedChanged = true;
+        }
+    }
+
     setGuiDisplay(display) {
         if (this.display && this._displayListeners) {
             for (const [event, handler] of this._displayListeners) {
@@ -237,13 +303,13 @@ class GameGui {
             ['onMouseRightDown', e => { if (e.y > 15) this.handleSkillMouseRightDown(e); }],
             ['onMouseRightUp', () => { }],
             ['onDoubleClick', e => { if (e.y > 15) this.handleSkillDoubleClick(e); }],
-            ['onMouseMove', e => { /*this.handleMouseMove(e);*/ }],
+            ['onMouseMove', e => { this.handleMouseMove(e); }],
         ];
         for (const [event, handler] of this._displayListeners) {
             display[event].on(handler);
         }
 
-        this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
+        this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
 
 
         this._guiRafId = window.requestAnimationFrame(this._guiBound);
@@ -289,7 +355,7 @@ class GameGui {
             d.initSize(this._panelSprite.width, this._panelSprite.height);
             d.setBackground(this._panelSprite.getData());
 
-            this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
+            this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
         }
 
         if (this.gameTimeChanged) {
@@ -343,35 +409,76 @@ class GameGui {
                 d.drawFrameResized(small, 164, 33, 8, 6);
                 d.drawHorizontalLine(169, 33, 175, 0, 0, 0);
             }
+
+            if (this._hoverSpeedUp) {
+                d.drawHorizontalLine(172, 32, 175, 0, 166, 0);
+                d.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+            } else if (this._hoverSpeedDown) {
+                d.drawHorizontalLine(161, 32, 164, 0, 166, 0);
+                d.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+            }
         }
 
 
-        if (this.skillsCountChangd) {
-            this.skillsCountChangd = false;
-            for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s)
-                this.drawPanelNumber(d, this.skills.getSkill(s), this.getPanelIndexBySkill(s));
+        if (this.skillsCountChanged) {
+            this.skillsCountChanged = false;
+            for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+                const panel = this.getPanelIndexBySkill(s);
+                const count = this.skills.getSkill(s);
+                this.drawPanelNumber(d, count, panel);
+            }
+        }
+        for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+            if (this.skills.getSkill(s) <= 0) {
+                const panel = this.getPanelIndexBySkill(s);
+                d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+            }
         }
         if (this.skillSelectionChanged) {
             this.skillSelectionChanged = false;
-            this.drawSelection(d, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
-            if (this.nukePrepared) {
-                this.drawNukeConfirm(d);
+        }
+
+        if (!this.gameTimer.isRunning?.()) {
+            this.drawPaused(d);
+        }
+        if (this.nukePrepared) {
+            this.drawNukeConfirm(d);
+        }
+
+        if (this._hoverPanelIdx >= 0) {
+            if (this._hoverPanelIdx === 11 && this.nukePrepared) {
+                this.drawNukeHover(d);
+            } else if (this._hoverPanelIdx === 11) {
+                this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
+            } else {
+                this.drawSkillHover(d, this._hoverPanelIdx);
             }
         }
+
+        // update marching ants animation
+        if (++this._selectionCounter >= this.selectionAnimDelay) {
+            this._selectionCounter = 0;
+            this._selectionOffset += this.selectionAnimStep;
+        }
+
+        this.drawSelection(d, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
         if (this.releaseRateChanged) {
             this.releaseRateChanged = false;
             this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
             this.drawPanelNumber(d, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
         }
 
+        const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
+        const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
+        const rrCur = this.gameVictoryCondition.getCurrentReleaseRate?.() ?? 0;
+        if (rrCur <= rrMin) d.drawStippleRect(0, 16, 16, 23, 160, 160, 160);
+        if (rrCur >= rrMax) d.drawStippleRect(16, 16, 16, 23, 160, 160, 160);
+
         if (this.miniMap) {
             const viewX = this.game.level.screenPositionX;
             const viewW = d.getWidth();
             this.miniMap.render(viewX, viewW);
         }
-                    if (!this.gameTimer.isRunning?.()) {
-                this.drawPaused(d);
-            }
     }
 
     _pad(v, len) { const s = String(v); return s.length >= len ? s : ' '.repeat(len - s.length) + s; }
@@ -393,16 +500,36 @@ class GameGui {
         }
     }
 
-    drawSelection(d, panelIdx) { 
-        d.drawRect(16 * panelIdx, 16, 16, 23, 255, 255, 255); 
+    drawSelection(d, panelIdx) {
+        if (panelIdx < 0) return;
+        d.drawMarchingAntRect(
+            16 * panelIdx,
+            16,
+            16,
+            23,
+            this.selectionDashLen,
+            this._selectionOffset
+        );
     }
 
-    drawPaused(d) { 
-        d.drawRect(16 * 10, 16, 16, 23, 255, 255, 255); 
+    drawPaused(d) {
+        d.drawMarchingAntRect(
+            16 * 10,
+            16,
+            16,
+            23,
+            this.selectionDashLen,
+            this._selectionOffset
+        );
+    }
+
+    drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {
+        if (panelIdx < 0) return;
+        d.drawRect(16 * panelIdx, 16, 16, 23, r, g, b);
     }
 
     drawSpeedChange(upDown, reset = false) {
-        if (reset == false) {
+        if (!reset) {
             if (upDown) {
                 this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
                 this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
@@ -414,11 +541,33 @@ class GameGui {
             this.display.drawHorizontalLine(161, 32, 175, 111, 0, 0);
             this.display.drawHorizontalLine(161, 38, 175, 111, 0, 0);
         }
+
+        if (this._hoverSpeedUp) {
+            this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
+            this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+        } else if (this._hoverSpeedDown) {
+            this.display.drawHorizontalLine(161, 32, 164, 0, 166, 0);
+            this.display.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+        }
+
         this.gameSpeedChanged = true;
     }
 
-    drawNukeConfirm(d) { 
-        d.drawRect(16 * 11, 16, 16, 23, 255, 0, 0); 
+    drawNukeConfirm(d) {
+        d.drawRect(16 * 11, 16, 16, 23, 255, 0, 0);
+    }
+
+    drawNukeHover(d) {
+        d.drawMarchingAntRect(
+            16 * 11,
+            16,
+            16,
+            23,
+            this.selectionDashLen,
+            this._selectionOffset,
+            0xFF0080FF,
+            0xFF00FFFF
+        );
     }
 
     drawPanelNumber(d, num, panelIdx) { 

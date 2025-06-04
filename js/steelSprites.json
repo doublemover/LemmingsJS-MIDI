@@ -1,0 +1,14 @@
+{
+  "lemmings": {
+    "GROUND0O.DAT": [22, 23, 24, 25, 26],
+    "GROUND1O.DAT": [12, 13, 14, 15, 16, 17],
+    "GROUND2O.DAT": [5, 57, 58, 59],
+    "GROUND3O.DAT": [27, 48, 49, 50],
+    "GROUND4O.DAT": [31, 32, 34]
+  },
+  "lemmings_ohNo": {
+    "GROUND0O.DAT": [51, 52, 53, 54],
+    "GROUND1O.DAT": [56, 57, 58, 59],
+    "GROUND2O.DAT": [29, 30, 31, 32]
+  }
+}

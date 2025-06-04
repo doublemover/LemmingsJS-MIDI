@@ -268,6 +268,13 @@ class Stage {
                 }
             }, 40);
         }
+        dispose() {
+            this.resetFade();
+            if (this.controller && this.controller.dispose) {
+                this.controller.dispose();
+            }
+            this.controller = null;
+        }
         /** draw everything to the stage/display */
         draw(display, img) {
             if (display.ctx == null)
@@ -284,11 +291,11 @@ class Stage {
             let outW = display.width;
             ctx.globalAlpha = 1;
             //- Display Layers
-            var dW = img.width - display.viewPoint.x; //- display width
+            let dW = img.width - display.viewPoint.x; //- display width
             if ((dW * display.viewPoint.scale) > outW) {
                 dW = outW / display.viewPoint.scale;
             }
-            var dH = img.height - display.viewPoint.y; //- display height
+            let dH = img.height - display.viewPoint.y; //- display height
             if ((dH * display.viewPoint.scale) > outH) {
                 dH = outH / display.viewPoint.scale;
             }

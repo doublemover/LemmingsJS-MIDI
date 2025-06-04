@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class Game {
+class Game extends Lemmings.BaseLogger {
   constructor (gameResources) {
-    this.log           = new Lemmings.LogHandler('Game');
+    super();
     this.gameResources = gameResources;
 
     // runtime refs (null until loadLevel resolves)

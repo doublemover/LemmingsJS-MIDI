@@ -1,23 +1,21 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionExplodingSystem {
-    static sprites = new Map();
-    static masks = new Map();
+class ActionExplodingSystem extends ActionBaseSystem {
 
     constructor(sprites, masks, triggerManager, particleTable) {
+        super({
+            sprites,
+            spriteType: Lemmings.SpriteTypes.EXPLODING,
+            singleSprite: true,
+            masks,
+            maskTypes: Lemmings.MaskTypes.EXPLODING,
+            actionName: 'exploding'
+        });
         this.triggerManager = triggerManager;
         this.particleTable = particleTable;
-        if (ActionExplodingSystem.sprites.size == 0) {
-            ActionExplodingSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.EXPLODING, false));
-        }
-        if (ActionExplodingSystem.masks.size == 0) {
-            ActionExplodingSystem.masks.set("both", masks.GetMask(Lemmings.MaskTypes.EXPLODING));
-        }
     }
 
-    getActionName() {
-        return "exploding";
-    }
 
     triggerLemAction(lem) {
         return false;
@@ -25,7 +23,7 @@ class ActionExplodingSystem {
 
     draw(gameDisplay, lem) {
         if (lem.frameIndex == 0) {
-            const ani = ActionExplodingSystem.sprites.get("both");
+            const ani = this.sprites.get("both");
             const frame = ani.getFrame(lem.frameIndex);
             gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
         } else {
@@ -38,7 +36,7 @@ class ActionExplodingSystem {
         lem.frameIndex++;
         if (lem.frameIndex == 1) {
             this.triggerManager.removeByOwner(lem);
-            level.clearGroundWithMask(ActionExplodingSystem.masks.get("both").GetMask(0), lem.x, lem.y);
+            level.clearGroundWithMask(this.masks.get("both").GetMask(0), lem.x, lem.y);
         }
         if (lem.frameIndex == 52) {
             return Lemmings.LemmingStateType.OUT_OF_LEVEL;
