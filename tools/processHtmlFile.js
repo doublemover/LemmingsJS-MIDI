@@ -10,25 +10,33 @@ import { load } from 'cheerio';
  */
 export function processHtmlFile(filePath) {
   const html = fs.readFileSync(filePath, 'utf8');
-  const $ = load(html, { withStartIndices: true, withEndIndices: true });
+  const $ = load(html, { sourceCodeLocationInfo: true });
   const snippets = [];
 
   $('script').each((i, elem) => {
     const src = $(elem).attr('src');
-    if (src) return; // external script
+    if (src) return; // ignore external scripts
+
     const code = $(elem).html() || '';
     const loc = {};
-    if (typeof elem.startIndex === 'number') loc.start = elem.startIndex;
-    if (typeof elem.endIndex === 'number') loc.end = elem.endIndex;
+    const info = elem.sourceCodeLocation;
+    if (info) {
+      loc.start = info.startTag.endOffset;
+      loc.end = info.endTag.startOffset;
+    }
     snippets.push({ code, loc, type: 'script' });
   });
 
   $('*').each((i, elem) => {
-    for (const [name, value] of Object.entries(elem.attribs)) {
+    const attribs = elem.attribs || {};
+    for (const [name, value] of Object.entries(attribs)) {
       if (/^on[a-z]+/i.test(name)) {
         const loc = {};
-        if (typeof elem.startIndex === 'number') loc.start = elem.startIndex;
-        if (typeof elem.endIndex === 'number') loc.end = elem.endIndex;
+        const info = elem.sourceCodeLocation?.attrs?.[name];
+        if (info) {
+          loc.start = info.startOffset;
+          loc.end = info.endOffset;
+        }
         snippets.push({ code: value, loc, type: 'handler', attr: name });
       }
     }
