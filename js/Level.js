@@ -14,41 +14,6 @@ const ICE_COLORS   = Object.freeze([
   Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
 ]);
 
-    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
-    this._debugFrame = null;
-    const arrowRects = [];
-
-      // // Ice palette swap for fire shooter traps
-      // if (ob.id === 8 || ob.id === 10) {
-      //   const pal = new Lemmings.ColorPalette();
-      //   for (let i = 0; i < 16; ++i) {
-      //     pal.setColorInt(i, info.palette.getColor(i));
-      //   }
-      //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
-      //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
-      //   }
-
-      //   const clone = new Lemmings.ObjectImageInfo();
-      //   Object.assign(clone, info);
-      //   clone.palette = pal;
-      //   info = clone;
-      // }
-
-        const trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
-          const newRange = new Lemmings.Range();
-    this._debugFrame = null; // invalidate cached debug overlay
-const ICE_COLORS   = Object.freeze([
-  Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
-  Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
-  Lemmings.ColorPalette.colorFromRGB(72, 192, 255),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),
-  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
-]);
-
 class Level extends Lemmings.BaseLogger {
   constructor(width, height) {
     super();
@@ -153,46 +118,9 @@ class Level extends Lemmings.BaseLogger {
       this.setArrowAreas(arrowRects);
     }
     this._debugFrame = null; // invalidate cached debug overlay
-      })();
+    });
   }
 
-    this._debugFrame = null; // invalidate cached debug overlay
-    const newSteelRanges = [];
-        const newRange = new Lemmings.Range();
-
-    this._debugFrame = null; // invalidate cached debug overlay
-    if (!this._debugFrame) this.#buildDebugFrame();
-    gameDisplay.drawFrame(this._debugFrame, 0, 0);
-  }
-
-  #buildDebugFrame() {
-    const frame = new Lemmings.Frame(this.width, this.height);
-    const steelColor  = Lemmings.ColorPalette.colorFromRGB(0, 255, 255);
-    const arrowRColor = Lemmings.ColorPalette.colorFromRGB(128, 255, 0);
-    const arrowLColor = Lemmings.ColorPalette.colorFromRGB(255, 128, 0);
-
-      frame.drawRect(s[i], s[i+1], s[i+2], s[i+3], steelColor);
-
-      const col = a[i+4] ? arrowRColor : arrowLColor;
-      frame.drawRect(a[i], a[i+1], a[i+2], a[i+3], col);
-
-    this._debugFrame = frame;
-    );
-    const img = this.groundImage;
-    const w = this.width;
-    const { offsetX, offsetY, width: mw, height: mh } = mask;
-    for (let dy = 0; dy < mh; ++dy) {
-      for (let dx = 0; dx < mw; ++dx) {
-        if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
-        const px = x + offsetX + dx;
-        const py = y + offsetY + dy;
-        if (this.isSteelAt(px, py)) continue;
-        if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
-        const idx = (py * w + px) * 4;
-        img[idx] = img[idx + 1] = img[idx + 2] = 0;
-      }
-    }
-  }
 
   setGroundAt(x, y, paletteIndex) {
     this.groundMask.setGroundAt(x, y);

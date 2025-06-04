@@ -9,8 +9,13 @@ class ActionBashSystem extends ActionBaseSystem {
             maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
             actionName: 'bashing'
         });
-        // apply mask
-        if ((state > 1) && (state < 6)) {
+    }
+
+    process(level, lem) {
+        lem.frameIndex = (lem.frameIndex + 1) % 32;
+        const state = Math.floor(lem.frameIndex / 6);
+
+        if (state > 1 && state < 6) {
             const subMask = this.masks.get(lem.getDirection()).GetMask(state - 2);
             if (state === 3) {
                 if (level.hasSteelUnderMask(subMask, lem.x, lem.y) ||
@@ -20,8 +25,9 @@ class ActionBashSystem extends ActionBaseSystem {
             }
             level.clearGroundWithMask(subMask, lem.x, lem.y);
         }
-        /// check if end of solid?
+
         if (state == 5) {
+            const groundMask = level.getGroundMaskLayer();
             if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8), lem.y - 6, lem.lookRight) == 4) {
                 return Lemmings.LemmingStateType.WALKING;
             }
