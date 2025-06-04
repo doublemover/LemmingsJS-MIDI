@@ -84,13 +84,10 @@ class Level {
   isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
   clearGroundWithMask(mask, x, y) {
-    this.groundMask.clearGroundWithMask(
-      mask, x, y,
-      (px, py) => this.isSteelAt(px, py)
-    );
     const img = this.groundImage;
     const w = this.width;
     const { offsetX, offsetY, width: mw, height: mh } = mask;
+    let changed = false;
     for (let dy = 0; dy < mh; ++dy) {
       for (let dx = 0; dx < mw; ++dx) {
         if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
@@ -98,17 +95,22 @@ class Level {
         const py = y + offsetY + dy;
         if (this.isSteelAt(px, py)) continue;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
+        if (!this.groundMask.hasGroundAt(px, py)) continue;
+        this.groundMask.clearGroundAt(px, py);
         const idx = (py * w + px) * 4;
         img[idx] = img[idx + 1] = img[idx + 2] = 0;
+        changed = true;
       }
     }
-    // refresh minimap for the affected region
-    lemmings.game.lemmingManager?.miniMap?.invalidateRegion(
-      x + offsetX,
-      y + offsetY,
-      mw,
-      mh
-    );
+    if (changed) {
+      // refresh minimap for the affected region
+      lemmings.game.lemmingManager?.miniMap?.invalidateRegion(
+        x + offsetX,
+        y + offsetY,
+        mw,
+        mh
+      );
+    }
   }
 
   setGroundAt(x, y, paletteIndex) {

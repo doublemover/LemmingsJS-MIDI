@@ -209,8 +209,8 @@ class MiniMap {
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // show for ~8 flashes (32 frames) starting visible
-        newTTLs[this.deadTTLs.length] = 32;
+        // show for four flashes (16 frames) starting visible
+        newTTLs[this.deadTTLs.length] = 16;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
