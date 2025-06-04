@@ -67,7 +67,7 @@ class CommandManager extends Lemmings.BaseLogger {
 
   queueCommand(newCommand) {
     const currentTick = this.gameTimer?.getGameTicks();
-    if (!currentTick) return;
+    if (currentTick == null) return;
 
     let ok = false;
     if (typeof newCommand.execute === 'function') {
