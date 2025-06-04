@@ -425,6 +425,13 @@ class GameGui {
             this.skillSelectionChanged = false;
         }
 
+        if (!this.gameTimer.isRunning?.()) {
+            this.drawPaused(d);
+        }
+        if (this.nukePrepared) {
+            this.drawNukeConfirm(d);
+        }
+
         if (this._hoverPanelIdx >= 0) {
             if (this._hoverPanelIdx === 11 && this.nukePrepared) {
                 this.drawNukeHover(d);
@@ -442,9 +449,6 @@ class GameGui {
         }
 
         this.drawSelection(d, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
-        if (this.nukePrepared) {
-            this.drawNukeConfirm(d);
-        }
         if (this.releaseRateChanged) {
             this.releaseRateChanged = false;
             this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
@@ -462,9 +466,6 @@ class GameGui {
             const viewW = d.getWidth();
             this.miniMap.render(viewX, viewW);
         }
-                    if (!this.gameTimer.isRunning?.()) {
-                this.drawPaused(d);
-            }
     }
 
     _pad(v, len) { const s = String(v); return s.length >= len ? s : ' '.repeat(len - s.length) + s; }
