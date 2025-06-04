@@ -8,6 +8,7 @@ import { BitWriter } from '../js/BitWriter.js';
 import { PackFilePart } from '../js/PackFilePart.js';
 import { UnpackFilePart } from '../js/UnpackFilePart.js';
 import { FileContainer } from '../js/FileContainer.js';
+import { randomFillSync } from 'crypto';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -92,6 +93,23 @@ describe('PackFilePart', function () {
   it('handles large raw blocks', function () {
     const arr = Uint8Array.from({length:300}, (_,i)=>i%256);
     const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
+  });
+
+  it('compresses and decompresses >4KB of random data', function () {
+    const arr = new Uint8Array(5000);
+    randomFillSync(arr);
+    const packed = PackFilePart.pack(arr);
+    expect(packed.initialBits).to.equal(8);
+    const br = new BinaryReader(packed.data);
+    const part = new UnpackFilePart(br);
+    part.offset = 0;
+    part.compressedSize = br.length;
+    part.initialBufferLen = packed.initialBits;
+    part.checksum = packed.checksum;
+    part.decompressedSize = arr.length;
+    const out = part.unpack();
+    const result = out.data.slice(0, out.length);
     expect(Array.from(result)).to.eql(Array.from(arr));
   });
 });
