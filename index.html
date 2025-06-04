@@ -53,10 +53,21 @@
     let lemmings;
     function init() {
       lemmings = new Lemmings.GameView();
-      lemmings.elementLevelName = document.getElementById("levelName");
+      lemmings.elementSelectGameType = document.getElementById("gameTypeSelect");
+      lemmings.elementSelectLevelGroup = document.getElementById("levelGroupSelect");
+      lemmings.elementSelectLevel = document.getElementById("levelIndexSelect");
       lemmings.gameCanvas = document.getElementById("gameCanvas");
       lemmings.setup();
       lemmings.midiOut = WebMidi.outputs[0];
+      lemmings.elementSelectGameType.addEventListener("change", (e) => {
+        lemmings.selectGameType(lemmings.strToNum(e.target.value));
+      });
+      lemmings.elementSelectLevelGroup.addEventListener("change", (e) => {
+        lemmings.selectLevelGroup(lemmings.strToNum(e.target.value));
+      });
+      lemmings.elementSelectLevel.addEventListener("change", (e) => {
+        lemmings.selectLevel(lemmings.strToNum(e.target.value));
+      });
     }
 
     function setSize() {
@@ -104,7 +115,11 @@
   <div class="game">
     <div class="game_container">
       <canvas height="480" width="800" id="gameCanvas"></canvas>
-      <span id="levelName" class="level_name"></span>
+      <div id="levelSelects" class="level_name">
+        <select id="gameTypeSelect"></select>
+        <select id="levelGroupSelect"></select>
+        <select id="levelIndexSelect"></select>
+      </div>
       <img class="arrow_l" src="img/arrow_l.png" onclick="lemmings.moveToLevel(-1)"/>
       <img class="arrow_r" src="img/arrow_r.png" onclick="lemmings.moveToLevel(1)"/>
     </div>
