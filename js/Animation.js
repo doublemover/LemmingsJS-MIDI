@@ -41,7 +41,6 @@ class Animation {
     });
   }
 
-
   /**
    * Load animation frames while applying a simple palette swap.
    *
@@ -76,6 +75,7 @@ class Animation {
     this.loadFromFile(fr, bitsPerPixel, width, height, frames,
                       newPal, offsetX, offsetY);
   }
+
   restart (startTick = 0) {
     this.firstFrameIndex = startTick;
     this.isFinished      = false;
