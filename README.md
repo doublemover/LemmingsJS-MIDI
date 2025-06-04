@@ -137,7 +137,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ## Play Locally, Export & Patch Sprites
 
-- Install [Node.js](https://nodejs.org)
+ - Install [Node.js 16 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
