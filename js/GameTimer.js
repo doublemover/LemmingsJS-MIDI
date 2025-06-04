@@ -15,6 +15,7 @@ class GameTimer {
         this.onBeforeGameTick = new Lemmings.EventHandler();
         this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
         this._autoPaused = false;
+        this._normTickCount = 0;
         this._visHandler = () => {
             const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
             if (hidden) {
@@ -71,7 +72,7 @@ class GameTimer {
 
     _loop(now) {
         if (!this.isRunning()) return;
-        window.cancelAnimationFrame(this._rafId);
+        // window.cancelAnimationFrame(this._rafId);
         const gameSeconds = (this._lastTime / this.TIME_PER_FRAME_MS) | 0;
         if (gameSeconds > this._lastGameSecond) {
             if (this.eachGameSecond) {
@@ -96,26 +97,54 @@ class GameTimer {
         this._rafId = window.requestAnimationFrame(this._loopBound);
     }
 
-    _benchSpeedAdjust(stepsMissed) {
-        if (stepsMissed > 24) {
-            window.cancelAnimationFrame(this._rafId);
+    _benchSpeedAdjust(steps) {
+        lemmings.steps = steps;
+        if (steps > 100) {
+            this.suspend();
+            this._normTickCount = 0;
+            this._speedFactor = 1;
+
+            if (this._speedFactor >= 1) {
+                this._speedFactor = 0.1;
+            }
+        } 
+        else if (steps > 16) {
+            this.suspend();
+            this._normTickCount = 0;
             const sf = this._speedFactor;
-            if (sf > 30) {
-                this.speedFactor = 30;
+            if (sf > 60) {
+                this._speedFactor = 60
+            }
+            else if (sf > 40) {
+                this._speedFactor -= 10;
             }
             else if (sf > 10) {
-                this._speedFactor = 10;
+                this._speedFactor -= 9;
             } 
             else if (sf <= 10 && sf > 1) {
-                this._speedFactor = 1;
-                this.suspend();
+                this._speedFactor -= 1;
             }
-            else if (sf <= 1 && sf > 0.5) {
-                this._speedFactor = ((this.speedFactor*10)-2)/10;
-                this.suspend();
+            else if (sf <= 1 && sf > 0.2) {
+                this._speedFactor = ((this._speedFactor*10)-1)/10;;
             }
-            this._updateFrameTime();
         }
+        if (steps > 4) {
+            this._normTickCount -= 32;
+        }
+
+        if (steps <= 2) {
+            this._normTickCount++;
+        }
+
+        if (this._normTickCount > 32 && this._speedFactor < 60) {
+            this._normTickCount = 0;
+            this._speedFactor += 1;
+        }
+        if (this._normTickCount > 2 && this._speedFactor < 1) {
+            this._normTickCount = 0;
+            this._speedFactor = ((this._speedFactor*10)+1)/10;
+        }
+        this._updateFrameTime();
     }
 
     stop() {
