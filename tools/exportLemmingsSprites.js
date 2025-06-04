@@ -34,11 +34,14 @@ function frameToPNG(frame) {
 
 (async () => {
     const dataPath = process.argv[2] || loadDefaultPack();
-    const outDir = process.argv[3] || `${dataPath.replace(/\W+/g, '_')}_sprites`;
+    const outDir = process.argv[3] || path.join('exports', `${dataPath.replace(/\W+/g, '_')}_sprites`);
     fs.mkdirSync(outDir, { recursive: true });
 
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
+
+    // Ensure steel metadata is loaded before reading ground palettes
+    await Lemmings.loadSteelSprites();
 
     // Load a colour palette from a ground set so sprites are coloured
     let pal = new Lemmings.ColorPalette();

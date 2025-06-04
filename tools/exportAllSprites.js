@@ -34,11 +34,14 @@ function frameToPNG(frame) {
 
 (async () => {
     const dataPath = process.argv[2] || loadDefaultPack();
-    const outDir   = process.argv[3] || `${dataPath.replace(/\W+/g, '_')}_all`;
+    const outDir   = process.argv[3] || path.join('exports', `${dataPath.replace(/\W+/g, '_')}_all`);
     fs.mkdirSync(outDir, { recursive: true });
 
     const provider = new NodeFileProvider('.');
     const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
+
+    // Load steel metadata before reading ground files for palettes
+    await Lemmings.loadSteelSprites();
 
     // Grab a colour palette from the first ground set so lemming sprites
     // render correctly.  Fallback to a blank palette if loading fails.
@@ -59,9 +62,6 @@ function frameToPNG(frame) {
             // try next ground set
         }
     }
-
-    // Ensure steel sprite metadata is loaded for accurate terrain flags
-    await Lemmings.loadSteelSprites();
 
     // --- Panel background and letters/numbers ---
     const panelSprites = await res.getSkillPanelSprite(pal);

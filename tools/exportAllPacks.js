@@ -24,7 +24,7 @@ if (process.argv.length > 2) {
 }
 
 for (const pack of packs) {
-    const outDir = `export_${pack.name.replace(/\W+/g, '_')}`;
+    const outDir = path.join('exports', pack.name.replace(/\W+/g, '_'));
     fs.mkdirSync(outDir, { recursive: true });
     console.log(`Exporting ${pack.path} -> ${outDir}`);
     spawnSync('node', ['tools/exportAllSprites.js', pack.path, outDir], { stdio: 'inherit' });
