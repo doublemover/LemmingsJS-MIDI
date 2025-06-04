@@ -1,5 +1,4 @@
 import assert from 'assert';
-import sinon from 'sinon';
 import { FileProvider } from '../js/FileProvider.js';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 
