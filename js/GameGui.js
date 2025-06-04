@@ -175,8 +175,9 @@ class GameGui {
         }
         const newSkill = this.getSkillByPanelIndex(panelIndex);
         if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
-            this.skills.setSelectedSkill(newSkill);
+        this.skills.setSelectedSkill(newSkill);
         this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
+        this.game.applySkillToSelected(newSkill);
     }
 
     handleSkillMouseRightDown(e) {

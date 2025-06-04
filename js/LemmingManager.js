@@ -18,6 +18,7 @@ class LemmingManager {
         this.miniMap = null;
         this.mmTickCounter = 0;
         this.nextNukingLemmingsIndex = -1;
+        this.selectedIndex = -1;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
         this.actions[Lemmings.LemmingStateType.FALLING]    = new Lemmings.ActionFallSystem(lemmingsSprite);
@@ -195,6 +196,30 @@ class LemmingManager {
 
     getLemmings() {
         return this.lemmings;
+    }
+
+    setSelectedLemming(lem) {
+        if (!lem) { this.selectedIndex = -1; return; }
+        this.selectedIndex = this.lemmings.indexOf(lem);
+    }
+
+    getSelectedLemming() {
+        if (this.selectedIndex < 0) return null;
+        const lem = this.lemmings[this.selectedIndex];
+        return lem && !lem.removed ? lem : null;
+    }
+
+    cycleSelection(dir = 1) {
+        const count = this.lemmings.length;
+        if (!count) { this.selectedIndex = -1; return null; }
+        let i = this.selectedIndex;
+        for (let step = 0; step < count; step++) {
+            i = (i + dir + count) % count;
+            const lem = this.lemmings[i];
+            if (lem && !lem.removed) { this.selectedIndex = i; return lem; }
+        }
+        this.selectedIndex = -1;
+        return null;
     }
 
     getLemmingAt(x, y, radius = 6) {

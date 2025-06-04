@@ -21,6 +21,9 @@ class GameView {
         this.applyQuery();
         this.elementGameState = null;
 
+        this._keyHandler = this._onKeyDown.bind(this);
+        this._keysAdded = false;
+
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
 
@@ -45,6 +48,10 @@ class GameView {
             game.setGuiDisplay(this.stage.getGuiDisplay());
             game.getGameTimer().speedFactor = this.gameSpeedFactor;
             game.start();
+            if (!this._keysAdded) {
+                document.addEventListener('keydown', this._keyHandler);
+                this._keysAdded = true;
+            }
             this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
             game.onGameEnd.on(state => this.onGameEnd(state));
             this.game = game;
@@ -344,6 +351,31 @@ async moveToLevel(moveInterval = 0) {
         this.updateQuery();
         console.dir(level);
         return this.start();
+    }
+
+    _onKeyDown(e) {
+        if (!this.game) return;
+        const lm = this.game.getLemmingManager();
+        const skills = {
+            '1': Lemmings.SkillTypes.CLIMBER,
+            '2': Lemmings.SkillTypes.FLOATER,
+            '3': Lemmings.SkillTypes.BOMBER,
+            '4': Lemmings.SkillTypes.BLOCKER,
+            '5': Lemmings.SkillTypes.BUILDER,
+            '6': Lemmings.SkillTypes.BASHER,
+            '7': Lemmings.SkillTypes.MINER,
+            '8': Lemmings.SkillTypes.DIGGER
+        };
+        if (e.key === '`') {
+            lm.cycleSelection(e.shiftKey ? -1 : 1);
+            return;
+        }
+        const skill = skills[e.key];
+        if (skill) {
+            this.game.getGameSkills().setSelectedSkill(skill);
+            this.game.queueCommand(new Lemmings.CommandSelectSkill(skill));
+            this.game.applySkillToSelected(skill);
+        }
     }
 }
 Lemmings.GameView = GameView;
