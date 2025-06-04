@@ -3,9 +3,12 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import '../js/SolidLayer.js';
+import '../js/LemmingStateType.js';
+import '../js/SkillTypes.js';
+import '../js/Lemming.js';
 
-// enable debug logging
-globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+// minimal sprite and mask providers so the constructor doesn't fail
 
 // minimal sprite and mask providers so the constructor doesn't fail
 const spriteStub = {
@@ -24,7 +27,19 @@ const triggerStub = { trigger() { return Lemmings.TriggerTypes.NO_TRIGGER; }, re
 const particleStub = {};
 
 describe('LemmingManager', function() {
+  beforeEach(function() {
+    globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+  });
+  afterEach(function() { delete globalThis.lemmings; });
   it('logs state changes when lemmings transition actions', function() {
+    const stub = class {};
+    [
+      'ActionWalkSystem','ActionFallSystem','ActionJumpSystem','ActionDiggSystem',
+      'ActionExitingSystem','ActionFloatingSystem','ActionBlockerSystem',
+      'ActionMineSystem','ActionClimbSystem','ActionHoistSystem','ActionBashSystem',
+      'ActionBuildSystem','ActionShrugSystem','ActionExplodingSystem','ActionOhNoSystem',
+      'ActionSplatterSystem','ActionDrowningSystem','ActionFryingSystem','ActionCountdownSystem'
+    ].forEach(n => { Lemmings[n] = stub; });
     const level = new Level(10, 10);
     level.entrances = [{ x: 0, y: 0 }];
     const gvc = new GameVictoryCondition(level);

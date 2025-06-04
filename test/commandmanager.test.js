@@ -41,11 +41,12 @@ describe('CommandManager', function() {
 
   it('queueCommand logs command and serializes', function() {
     const timer = new MockTimer();
+    timer.tick = 1;
     const cm = new TestCommandManager(game, timer);
     const cmd = new StubCommand();
     cm.queueCommand(cmd);
     expect(cmd.execCount).to.equal(1);
-    expect(cm.serialize()).to.equal('0=x1');
+    expect(cm.serialize()).to.equal('1=x1');
   });
 
   it('loadReplay schedules commands for future ticks', function() {

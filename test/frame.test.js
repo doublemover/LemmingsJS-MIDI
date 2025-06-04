@@ -9,7 +9,7 @@ describe('Frame', function () {
   it('fills entire frame with a color', function () {
     const frame = new Frame(2, 2);
     frame.fill(1, 2, 3);
-    const color = ColorPalette.colorFromRGB(1, 2, 3);
+    const color = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
     expect(Array.from(frame.data)).to.eql([color, color, color, color]);
     expect(Array.from(frame.mask)).to.eql([1, 1, 1, 1]);
   });
@@ -17,8 +17,8 @@ describe('Frame', function () {
   it('setPixel and clearPixel update data with bounds checks', function () {
     const frame = new Frame(2, 2);
     frame.fill(10, 20, 30);
-    const color1 = ColorPalette.colorFromRGB(10, 20, 30);
-    const color2 = ColorPalette.colorFromRGB(4, 5, 6);
+    const color1 = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
+    const color2 = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
 
     frame.setPixel(1, 0, color2);
     expect(frame.data[1]).to.equal(color2);
@@ -49,8 +49,8 @@ describe('Frame', function () {
     frame.clear();
     frame.drawPaletteImage(img, 2, 2, palette, 0, 0);
 
-    const c0 = ColorPalette.colorFromRGB(1, 2, 3);
-    const c1 = ColorPalette.colorFromRGB(4, 5, 6);
+    const c0 = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
+    const c1 = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
     expect(Array.from(frame.data)).to.eql([
       c0, c1,
       ColorPalette.black, c0
