@@ -71,7 +71,7 @@ class Stage {
             this.controller.onMouseMove.on((e) => {
                 if (e.button) {
                     let stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
-                    if (stageImage == null)
+                    if (stageImage == null || stageImage.display == null)
                         return;
                     if (stageImage == this.gameImgProps) {
                         this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);

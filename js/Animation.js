@@ -41,7 +41,41 @@ class Animation {
     });
   }
 
-  /** Resets playback so the next call to getFrame() starts over. */
+  /**
+   * Load animation frames while applying a simple palette swap.
+   *
+   * A few colour indices are replaced with different ones from the
+   * supplied palette before the frames are generated.  The indices are
+   * defined by the const arrays FIRE_INDICES and ICE_INDICES below.
+   *
+   * @param {Lemmings.BinaryReader} fr - Frame data source
+   * @param {number} bitsPerPixel     - Bits per pixel of the source data
+   * @param {number} width            - Frame width
+   * @param {number} height           - Frame height
+   * @param {number} frames           - Number of frames to read
+   * @param {any}    palette          - Base colour palette
+   * @param {number} [offsetX=null]   - Optional X offset
+   * @param {number} [offsetY=null]   - Optional Y offset
+   */
+  loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
+                               offsetX = null, offsetY = null) {
+    const newPal = new Lemmings.ColorPalette();
+    // Copy existing palette colours
+    for (let i = 0; i < 16; i++) {
+      newPal.setColorInt(i, palette.getColor(i));
+    }
+
+    // Replace selected indices with icy colours pulled from the ONML
+    // object palette.  The ICE_COLORS array mirrors FIRE_INDICES by
+    // position rather than by colour index.
+    for (let i = 0; i < FIRE_INDICES.length; i++) {
+      newPal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+    }
+
+    this.loadFromFile(fr, bitsPerPixel, width, height, frames,
+                      newPal, offsetX, offsetY);
+  }
+
   restart (startTick = 0) {
     this.firstFrameIndex = startTick;
     this.isFinished      = false;
@@ -91,40 +125,6 @@ class Animation {
     this.isFinished = false;
   }
 
-  /**
-   * Load animation frames while applying a simple palette swap.
-   *
-   * A few colour indices are replaced with different ones from the
-   * supplied palette before the frames are generated.  The indices are
-   * defined by the const arrays FIRE_INDICES and ICE_INDICES below.
-   *
-   * @param {Lemmings.BinaryReader} fr - Frame data source
-   * @param {number} bitsPerPixel     - Bits per pixel of the source data
-   * @param {number} width            - Frame width
-   * @param {number} height           - Frame height
-   * @param {number} frames           - Number of frames to read
-   * @param {any}    palette          - Base colour palette
-   * @param {number} [offsetX=null]   - Optional X offset
-   * @param {number} [offsetY=null]   - Optional Y offset
-   */
-  loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
-                               offsetX = null, offsetY = null) {
-    const newPal = new Lemmings.ColorPalette();
-    // Copy existing palette colours
-    for (let i = 0; i < 16; i++) {
-      newPal.setColorInt(i, palette.getColor(i));
-    }
-
-    // Replace selected indices with icy colours pulled from the ONML
-    // object palette.  The ICE_COLORS array mirrors FIRE_INDICES by
-    // position rather than by colour index.
-    for (let i = 0; i < FIRE_INDICES.length; i++) {
-      newPal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
-    }
-
-    this.loadFromFile(fr, bitsPerPixel, width, height, frames,
-                      newPal, offsetX, offsetY);
-  }
 }
 Lemmings.Animation = Animation;
 export { Animation };
