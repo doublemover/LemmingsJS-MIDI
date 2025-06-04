@@ -7,6 +7,8 @@ class GameSkills {
     this.onSelectionChanged = new Lemmings.EventHandler();
     this.skills = level.skills;
     this.cheatMode = false;
+    // automatically select a valid skill when a level loads
+    this.selectFirstAvailable();
   }
 
   selectFirstAvailable() {

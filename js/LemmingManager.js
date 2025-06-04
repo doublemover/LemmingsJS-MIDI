@@ -294,7 +294,13 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   getSelectedLemming() {
-    return this.getLemming(this.selectedIndex);
+    const lem = this.getLemming(this.selectedIndex);
+    if (!lem || lem.removed || lem.disabled) return null;
+    return lem;
+  }
+
+  setSelectedLemming(lem) {
+    this.selectedIndex = lem?.id ?? -1;
   }
 
   getLemmings() {
@@ -364,15 +370,14 @@ class LemmingManager extends Lemmings.BaseLogger {
               tooltipText: `removeOne ${lem.id}`
             },
             () => {
-              lem.remove();
-              this.gameVictoryCondition.removeOne();
+              this.removeOne(lem);
             }
           )();
           return;
         }
         const actionSystem = this.actions[stateType];
         if (!actionSystem) {
-          lem.remove();
+          this.removeOne(lem);
           this.logging.log(lem.id + ' Action: Error not an action: ' + Lemmings.LemmingStateType[stateType]);
           return;
         } else {
@@ -443,19 +448,29 @@ class LemmingManager extends Lemmings.BaseLogger {
   isNuking() { return this.nextNukingLemmingsIndex >= 0; }
   doNukeAllLemmings() { this.nextNukingLemmingsIndex = 0; }
 
+  removeOne(lem) {
+    if (this.miniMap &&
+            lem.action !== this.actions[Lemmings.LemmingStateType.EXITING]) {
+      this.miniMap.addDeath(lem.x, lem.y);
+    }
+    lem.remove();
+    this.gameVictoryCondition.removeOne();
+  }
+
   cycleSelection(dir = 1) {
-    if (!this.lemmings?.length) return;
+    if (!this.lemmings?.length) return null;
     const total = this.lemmings.length;
     let idx = this.selectedIndex;
     for (let i = 0; i < total; i++) {
       idx = (idx + dir + total) % total;
       const lem = this.lemmings[idx];
       if (!lem.removed && !lem.disabled) {
-        this.selectedIndex = idx;
-        return;
+        this.setSelectedLemming(lem);
+        return lem;
       }
     }
     this.selectedIndex = -1;
+    return null;
   }
 
   dispose() {

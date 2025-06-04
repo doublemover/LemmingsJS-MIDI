@@ -56,7 +56,9 @@ class GameView extends Lemmings.BaseLogger {
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
-      game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
+      // The stage previously set a custom cursor sprite here, but we now keep
+      // the system cursor visible so no sprite is loaded.
+      // game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
       game.start();
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
@@ -100,6 +102,27 @@ class GameView extends Lemmings.BaseLogger {
       return;
     }
     this.game.getGameTimer().suspend();
+  }
+
+  suspendWithColor(color) {
+    if (this.game == null) {
+      return;
+    }
+    this.game.getGameTimer().suspend();
+    if (this.stage?.startOverlayFade) {
+      let rect = null;
+      if (this.bench) {
+        const gui = this.stage.guiImgProps;
+        const scale = gui.viewPoint.scale;
+        rect = {
+          x: gui.x + 160 * scale,
+          y: gui.y + 32 * scale,
+          width: 16 * scale,
+          height: 10 * scale
+        };
+      }
+      this.stage.startOverlayFade(color, rect);
+    }
   }
 
   continue () {
@@ -231,13 +254,17 @@ class GameView extends Lemmings.BaseLogger {
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
     this.gameSpeedFactor = this.parseNumber(query, ['speed', 's'], 1, 0, 100);
+    // values above normal correspond to discrete steps
+    if (this.gameSpeedFactor > 1) {
+      this.gameSpeedFactor = Math.round(this.gameSpeedFactor);
+    }
     this.cheat = this.parseBool(query, ['cheat', 'c']);
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
-    this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 5);
+    this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 8);
     this.laggedOut = 0;
         
     this.shortcut = false;
@@ -353,6 +380,10 @@ class GameView extends Lemmings.BaseLogger {
   }
   /** switch the selected game type */
   async selectGameType(newGameType) {
+    // dropdown values correspond to config array indices
+    if (this.configs && this.configs[newGameType]) {
+      newGameType = this.configs[newGameType].gametype;
+    }
     this.gameType = newGameType;
     this.levelGroupIndex = 0;
     this.levelIndex = 0;
@@ -414,6 +445,18 @@ class GameView extends Lemmings.BaseLogger {
     this.updateQuery();
     this.log.debug(level);
     return this.start();
+  }
+
+  /** cleanup keyboard and stage handlers */
+  dispose() {
+    if (this.shortcuts) {
+      this.shortcuts.dispose();
+      this.shortcuts = null;
+    }
+    if (this.stage && this.stage.dispose) {
+      this.stage.dispose();
+      this.stage = null;
+    }
   }
 }
 Lemmings.GameView = GameView;

@@ -5,6 +5,11 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
+    this.overlayColor = 'black';
+    this.overlayAlpha = 0;
+    this.overlayRect = null;
+    this.overlayTimer = 0;
+    this.overlayRect = null;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -12,6 +17,8 @@ class Stage {
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
+    // track raw (unsnapped) scale value for smooth zooming
+    this._rawScale = this.gameImgProps.viewPoint.scale;
     this.getGameDisplay();
     this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
@@ -133,10 +140,11 @@ class Stage {
       let sceneY = stageImage.viewPoint.getSceneY(screenY);
 
       // Zoom around that point
-      let oldScale = stageImage.viewPoint.scale;
-      let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
-
-      stageImage.viewPoint.scale = this.limitValue(.25, newScale, 4);
+      const oldScale = stageImage.viewPoint.scale;
+      // accumulate zoom on the raw scale value then snap for crisp pixels
+      this._rawScale = this.limitValue(.25, this._rawScale * (1 + deltaZoom / 1500), 8);
+      const newScale = this.snapScale(this._rawScale);
+      stageImage.viewPoint.scale = newScale;
 
       // Re-center so the same world point stays under the cursor
       stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
@@ -153,17 +161,18 @@ class Stage {
       this.draw(stageImage, gameImg);
     }
 
-    const xCeiling = Math.max(0, stageImage.viewPoint.x);
-    const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-    const xFloor = Math.min(xCeiling, xFloorLimit);
+    const scale = stageImage.viewPoint.scale;
+    const maxX = stageImage.display.getWidth() - stageImage.width / scale;
+    const maxY = stageImage.display.getHeight() - stageImage.height / scale;
 
-    stageImage.viewPoint.x = xFloor;
-
-    const yCeiling = Math.max(0, stageImage.viewPoint.y);
-    const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-    const yFloor = Math.min(yCeiling, yFloorLimit);
-
-    stageImage.viewPoint.y = yFloor;
+    if (scale < 1) {
+      const wDiff = stageImage.width - stageImage.display.getWidth() * scale;
+      if (wDiff > 0) stageImage.viewPoint.x = -wDiff / (2 * scale);
+      stageImage.viewPoint.y = stageImage.height - stageImage.display.getHeight() / scale;
+    } else {
+      stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x), maxX);
+      stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y), maxY);
+    }
 
     // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
     // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
@@ -178,16 +187,44 @@ class Stage {
     let useMax = Math.max(minLimit, maxLimit);
     return Math.min(Math.max(minLimit, value), useMax);
   }
+
+  /**
+   * Snap a raw scale value so that the scaled output aligns to whole pixels.
+   * Snapping uses the display size to calculate the minimal scale step.
+   */
+  snapScale(scale) {
+    const w = this.gameImgProps.width | 0;
+    const h = this.gameImgProps.height | 0;
+    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+    const step = 1 / gcd(w, h);
+    const clamped = this.limitValue(0.25, scale, 8);
+    return Math.round(clamped / step) * step;
+  }
+
+
   updateStageSize() {
-    let ctx = this.stageCav.getContext('2d', { alpha: false });
-    let stageHeight = ctx.canvas.height;
-    let stageWidth = ctx.canvas.width;
-    this.gameImgProps.y = 0;
-    this.gameImgProps.height = stageHeight - 100;
+    const stageHeight = this.stageCav.height;
+    const stageWidth = this.stageCav.width;
+    const scale = this.guiImgProps.viewPoint.scale;
+    const rawHeight = this.guiImgProps.display?.getHeight() || 80;
+    const rawWidth = this.guiImgProps.display?.getWidth() || 720;
+
+    const panelHeight = rawHeight * scale;
+    const panelWidth = rawWidth * scale;
+    const gamePanelOffset = stageHeight - panelHeight - 20;
+    this.gameImgProps.y = -20;
+    this.gameImgProps.x = 0;
+    this.gameImgProps.height = stageHeight - panelHeight;
     this.gameImgProps.width = stageWidth;
-    this.guiImgProps.y = stageHeight - 100;
-    this.guiImgProps.height = 100;
-    this.guiImgProps.width = stageWidth;
+    this.guiImgProps.y = gamePanelOffset;
+    this.guiImgProps.height = panelHeight;
+    this.guiImgProps.width = panelWidth;
+    if (this.guiImgProps.display) {
+      this.guiImgProps.x = (stageWidth - panelWidth) / 2;
+    }
+    if (this.gameImgProps.display) {
+      this.redraw();
+    }
   }
   getStageImageAt(x, y) {
     if (this.isPositionInStageImage(this.gameImgProps, x, y))
@@ -200,16 +237,19 @@ class Stage {
     return ((stageImage.x <= x) && ((stageImage.x + stageImage.width) >= x) &&
                 (stageImage.y <= y) && ((stageImage.y + stageImage.height) >= y));
   }
+
   getGameDisplay() {
     if (this.gameImgProps.display != null)
       return this.gameImgProps.display;
     this.gameImgProps.display = new Lemmings.DisplayImage(this);
     return this.gameImgProps.display;
   }
+
   getGuiDisplay() {
     if (this.guiImgProps.display != null) {
       return this.guiImgProps.display;
     }
+
     this.guiImgProps.display = new Lemmings.DisplayImage(this);
     return this.guiImgProps.display;
   }
@@ -218,29 +258,37 @@ class Stage {
     this.clear(this.gameImgProps);
 
     if (lemmings.scale > 0) {
-      this.gameImgProps.viewPoint.scale = lemmings.scale;
+      this._rawScale = lemmings.scale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = x;
-      this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+      const displayHeight = this.gameImgProps.display.getHeight();
+      const gameHeight = this.gameImgProps.height;
+      const scale = this.gameImgProps.viewPoint.scale;
+      this.gameImgProps.viewPoint.y = Math.max(0, displayHeight - gameHeight / scale);
       this.redraw();
       return;
     }
 
     let scale = this.gameImgProps.viewPoint.scale;
     if (scale == 2) {
+      this._rawScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.x = x;
-      this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+      const displayHeight = this.gameImgProps.display.getHeight();
+      const gameHeight = this.gameImgProps.height;
+      const newScale = this.gameImgProps.viewPoint.scale;
+      this.gameImgProps.viewPoint.y = Math.max(0, displayHeight - gameHeight / newScale);
       this.redraw();
       return;
     } else {
 
       let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
       let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
-      this.gameImgProps.viewPoint.scale = 2;
+      this._rawScale = 2;
+      this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = sceneX - x / scale;
       this.gameImgProps.viewPoint.y = sceneY - y / scale;
-
+      this.redraw();
     }
-    // this.redraw();
   }
   /** redraw everything */
   redraw() {
@@ -273,9 +321,25 @@ class Stage {
   }
   resetFade() {
     this.fadeAlpha = 0;
+    this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+  }
+
+
+  resetOverlayFade() {
+    this.overlayAlpha = 0;
+    this.overlayRect = null;
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
   }
   startFadeOut() {
@@ -288,11 +352,34 @@ class Stage {
       }
     }, 40);
   }
+
+  startOverlayFade(color, rect = null) {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayColor = color;
+    this.overlayRect = rect;
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+        this.overlayRect = null;
+      }
+    }, 40);
+  }
+
   dispose() {
     this.resetFade();
     if (this.fadeTimer) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
@@ -320,21 +407,66 @@ class Stage {
     let outW = display.width;
     ctx.globalAlpha = 1;
     //- Display Layers
-    let dW = img.width - display.viewPoint.x; //- display width
-    if ((dW * display.viewPoint.scale) > outW) {
-      dW = outW / display.viewPoint.scale;
+    // Source rectangle
+    let sx = display.viewPoint.x;
+    let sy = display.viewPoint.y;
+    let sw = img.width - sx;
+    let sh = img.height - sy;
+    // Clamp against negative offsets
+    if (sx < 0) {
+      sw += sx;
+      sx = 0;
     }
-    let dH = img.height - display.viewPoint.y; //- display height
-    if ((dH * display.viewPoint.scale) > outH) {
-      dH = outH / display.viewPoint.scale;
+    if (sy < 0) {
+      sh += sy;
+      sy = 0;
+    }
+    // Clamp to image bounds
+    sw = Math.min(sw, img.width - sx);
+    sh = Math.min(sh, img.height - sy);
+    // Destination rectangle
+    let dx = display.x + Math.max(-display.viewPoint.x, 0) * display.viewPoint.scale;
+    let dy = display.y + Math.max(-display.viewPoint.y, 0) * display.viewPoint.scale;
+    let dw = sw * display.viewPoint.scale;
+    let dh = sh * display.viewPoint.scale;
+    if (dw > outW) {
+      sw = outW / display.viewPoint.scale;
+      dw = outW;
+    }
+    if (dh > outH) {
+      sh = outH / display.viewPoint.scale;
+      dh = outH;
     }
     //- drawImage(image,sx,sy,sw,sh,dx,dy,dw,dh)
-    ctx.drawImage(display.cav, display.viewPoint.x, display.viewPoint.y, dW, dH, display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+    ctx.drawImage(display.cav, sx, sy, sw, sh, dx, dy, Math.trunc(dw), Math.trunc(dh));
     //- apply fading
     if (this.fadeAlpha != 0) {
       ctx.globalAlpha = this.fadeAlpha;
       ctx.fillStyle = 'black';
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.fillRect(display.x, display.y, Math.trunc(dw), Math.trunc(dh));
+      ctx.globalAlpha = 1;
+    }
+    if (this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      const r = this.overlayRect;
+      if (r) {
+        ctx.fillRect(r.x, r.y, r.width, r.height);
+      } else {
+        ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      }
+      ctx.globalAlpha = 1;
+    }
+    if (display === this.gameImgProps && this.overlayAlpha > 0 && !this.overlayRect) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
     }
   }
 

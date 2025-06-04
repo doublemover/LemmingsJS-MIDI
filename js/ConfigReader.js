@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import { packMechanics } from './packMechanics.js';
 
 class ConfigReader extends Lemmings.BaseLogger {
   constructor(configFile) {
@@ -51,9 +52,15 @@ class ConfigReader extends Lemmings.BaseLogger {
       if (configData['level.useoddtable'] != null) {
         newConfig.level.useOddTable = (!!configData['level.useoddtable']);
       }
+      if (configData.mechanics != null) {
+        newConfig.mechanics = configData.mechanics;
+      }
       newConfig.level.order = configData['level.order'];
       newConfig.level.filePrefix = configData['level.filePrefix'];
       newConfig.level.groups = configData['level.groups'];
+      const defaults = packMechanics[newConfig.path] || {};
+      const overrides = configData.mechanics || {};
+      newConfig.mechanics = { ...defaults, ...overrides };
       gameConfigs.push(newConfig);
     }
     return gameConfigs;

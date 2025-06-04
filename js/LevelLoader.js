@@ -42,6 +42,7 @@ class LevelLoader {
     level.levelMode            = levelMode;
     level.screenPositionX      = levelReader.screenPositionX;
     level.isSuperLemming       = levelReader.isSuperLemming;
+    level.mechanics            = this.config.mechanics;
 
     let levelProperties        = levelReader.levelProperties;
     if (useOddTable && oddBuf) {
@@ -59,6 +60,7 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     // 3 · Fetch graphics set(s) in parallel                                   //
     // ----------------------------------------------------------------------- //
+    await Lemmings.loadSteelSprites();
     const vgagrFile    = this.fileProvider.loadBinary(
       this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
     const groundFile   = this.fileProvider.loadBinary(
@@ -72,7 +74,6 @@ class LevelLoader {
     // 4 · Decode terrain / objects and render background                      //
     // ----------------------------------------------------------------------- //
     const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
-    await Lemmings.loadSteelSprites();
     const groundReader = new Lemmings.GroundReader(
       groundBuf,
       vgaContainer.getPart(0),

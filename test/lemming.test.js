@@ -1,12 +1,13 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
+import '../js/SolidLayer.js';
+import '../js/LemmingStateType.js';
+import '../js/Lemming.js';
+import '../js/SkillTypes.js';
 import { Level } from '../js/Level.js';
 import { LemmingManager } from '../js/LemmingManager.js';
 import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
-// LemmingsBootstrap loads jquery, which isn't needed for unit tests.
-// Avoid importing it here to prevent Node from trying to parse the
-// non-ESM jquery.js file.
-// Instead, import only the modules required by these tests.
+import '../js/LemmingsBootstrap.js';
 import '../js/SolidLayer.js';
 import '../js/LemmingStateType.js';
 import '../js/SkillTypes.js';

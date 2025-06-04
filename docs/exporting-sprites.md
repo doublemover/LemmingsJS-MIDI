@@ -5,10 +5,10 @@
 - Terminal:
   - `npm install`
   - `npm run`
-  - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs
-    - `zip -r export_lemmings.zip export_lemmings`
-    - `tar -czf export_lemmings.tgz export_lemmings`
-    - `rar a export_lemmings.rar export_lemmings`
+  - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs under `exports/`
+    - `zip -r export_lemmings.zip exports/export_lemmings`
+    - `tar -czf export_lemmings.tgz exports/export_lemmings`
+    - `rar a export_lemmings.rar exports/export_lemmings`
     - `npm run clean-exports` *(remove `export_*` folders)*
 - Other useful scripts:
   - `npm run export-panel-sprite` – export the skill panel sprite as `exports/panel_export`
@@ -17,6 +17,8 @@
   - `npm run export-all-sprites` – export the panel, lemmings and ground sprites for one level pack
   - `npm run list-sprites` – list sprite names with sizes and frame counts
   - `npm run patch-sprites` – verify a directory of edited sprites (patching not yet implemented)
+
+All exported assets now reside under the `exports/` directory.
 
 ### NodeFileProvider
 

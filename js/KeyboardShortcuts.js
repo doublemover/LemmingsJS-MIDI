@@ -15,8 +15,16 @@ class KeyboardShortcuts {
   }
 
   dispose() {
+    if (this._raf) {
+      window.cancelAnimationFrame(this._raf);
+      this._raf = null;
+    }
     window.removeEventListener('keydown', this._down);
     window.removeEventListener('keyup', this._up);
+    if (this._raf !== null) {
+      cancelAnimationFrame(this._raf);
+      this._raf = null;
+    }
   }
 
   _startLoop() {
@@ -82,7 +90,8 @@ class KeyboardShortcuts {
       this.zoom.v *= 0.9;
       const dz = this.zoom.v;
       if (Math.abs(dz) > 0.001) {
-        const newScale = Math.max(0.25, Math.min(4, vp.scale * (1 + dz / 1500)));
+        stage._rawScale = stage.limitValue(0.25, stage._rawScale * (1 + dz / 1500), 8);
+        const newScale = stage.snapScale(stage._rawScale);
         const nx = centerX - cx / newScale;
         const ny = centerY - cy / newScale;
         const maxX = img.display.getWidth()  - img.width  / newScale;
@@ -93,7 +102,8 @@ class KeyboardShortcuts {
         stage.redraw();
         again = true;
       } else if (this.zoom.reset !== null) {
-        vp.scale = this.zoom.reset;
+        stage._rawScale = this.zoom.reset;
+        vp.scale = stage.snapScale(stage._rawScale);
         this.zoom.reset = null;
         stage.redraw();
         this.zoom.v = 0;
@@ -108,11 +118,12 @@ class KeyboardShortcuts {
     }
   }
 
-  _cycleSkill() {
+  _cycleSkill(dir = 1) {
     const skills = this.view.game.getGameSkills();
-    let next = skills.getSelectedSkill() + 1;
+    let next = skills.getSelectedSkill() + dir;
     if (next > Lemmings.SkillTypes.DIGGER) next = Lemmings.SkillTypes.CLIMBER;
-    this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next));
+    if (next < Lemmings.SkillTypes.CLIMBER) next = Lemmings.SkillTypes.DIGGER;
+    this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next, false));
     this.view.game.gameGui.skillSelectionChanged = true;
   }
 
@@ -244,7 +255,15 @@ class KeyboardShortcuts {
       this.zoom.reset = 2; this._startLoop();
       break;
     case 'Tab':
-      this._cycleSkill();
+      this._cycleSkill(e.shiftKey ? -1 : 1);
+      break;
+    case 'KeyK': {
+      const mgr = this.view.game.getLemmingManager?.();
+      const lem = mgr?.getSelectedLemming?.();
+      if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+      break; }
+    case 'KeyN':
+      this.view.game.getLemmingManager()?.setSelectedLemming(null);
       break;
     case 'Backquote':
       this.view.game.getLemmingManager()?.cycleSelection(e.shiftKey ? -1 : 1);

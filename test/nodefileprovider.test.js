@@ -86,4 +86,22 @@ describe('NodeFileProvider', function () {
       });
     }
   });
+
+  it('calls node-unrar-js with resolved paths', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-'));
+    const data = Uint8Array.from([9, 8, 7]);
+    let seen = null;
+    class MockProvider extends NodeFileProvider {
+      async _getRar(rarPath) {
+        seen = path.resolve(this.rootPath, rarPath);
+        return new Map([['foo.txt', Buffer.from(data)]]);
+      }
+    }
+    const provider = new MockProvider(dir);
+    const br = await provider.loadBinary('pack.rar', 'foo.txt');
+    await br.ready;
+    assert.deepStrictEqual(Array.from(br.data), Array.from(data));
+    assert.strictEqual(seen, path.resolve(dir, 'pack.rar'));
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
