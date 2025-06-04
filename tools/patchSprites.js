@@ -28,7 +28,8 @@ function usage() {
     return;
   }
 
-  const provider = new NodeFileProvider('.');
+  // Use an empty root path so absolute input paths work correctly
+  const provider = new NodeFileProvider('');
   const datReader = await provider.loadBinary(path.dirname(datFile), path.basename(datFile));
   const container = new Lemmings.FileContainer(datReader);
 
