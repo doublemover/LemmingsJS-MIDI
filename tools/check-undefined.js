@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -116,10 +119,10 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
 function processHtmlFile(file) {
@@ -162,10 +165,28 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+let jsFiles = [];
+let htmlFiles = [];
 
-for (const file of jsFiles) processJSFile(file);
+const includeCalls = process.argv.length > 2;
+if (includeCalls) {
+  const targets = process.argv.slice(2);
+  for (const t of targets) {
+    const stat = fs.statSync(t);
+    if (stat.isDirectory()) {
+      jsFiles.push(...gatherFiles(t, ['.js']));
+      htmlFiles.push(...gatherFiles(t, ['.html']));
+    } else {
+      if (t.endsWith('.js')) jsFiles.push(t);
+      if (t.endsWith('.html')) htmlFiles.push(t);
+    }
+  }
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
+
+for (const file of jsFiles) processJSFile(file, includeCalls);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
@@ -184,7 +205,11 @@ for (const call of calls) {
 
 if (errors.length) {
   console.error('Undefined calls found:');
-  for (const err of errors) console.error('  ' + err);
+  for (const err of errors) {
+    console.error('  ' + err);
+    const m = /Undefined (?:function|method) (.+)$/.exec(err);
+    if (m) console.error(`${m[1]} is not defined`);
+  }
   process.exit(1);
 } else {
   console.log('No undefined calls detected.');
