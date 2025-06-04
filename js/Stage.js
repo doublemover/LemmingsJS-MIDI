@@ -164,10 +164,10 @@ class Stage {
         }
 
         _applyZoom(rawScale, worldX, worldY, screenX, screenY, finalize = false) {
-            this._rawScale = rawScale;
             const img = this.gameImgProps;
             const vp = img.viewPoint;
             const newScale = finalize ? this.snapScale(rawScale) : rawScale;
+            this._rawScale = finalize ? newScale : rawScale;
             const nx = worldX - screenX / newScale;
             const ny = worldY - screenY / newScale;
             const maxX = img.display.getWidth() - img.width / newScale;
