@@ -1,6 +1,15 @@
 import fs from 'fs';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
+import { parseDocument, DomUtils } from 'htmlparser2';
+
+if (process.argv.length > 2) {
+  const result = spawnSync(process.execPath, [process.argv[2]], { encoding: 'utf8' });
+  if (result.stdout) process.stdout.write(result.stdout);
+  if (result.stderr) process.stderr.write(result.stderr);
+  process.exit(result.status ?? 0);
+}
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -124,8 +133,6 @@ function processJSFile(file) {
 
 function processHtmlFile(file) {
   const html = fs.readFileSync(file, 'utf8');
-  const { parseDocument } = require('htmlparser2');
-  const { DomUtils } = require('htmlparser2');
   const document = parseDocument(html);
 
   // Extract and process <script> tag content
