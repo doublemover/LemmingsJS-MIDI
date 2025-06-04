@@ -49,7 +49,10 @@ class ConfigReader {
                 newConfig.level.order = configData["level.order"];
                 newConfig.level.filePrefix = configData["level.filePrefix"];
                 newConfig.level.groups = configData["level.groups"];
-                gameConfigs.push(newConfig);
+
+                const mechs = configData["mechanics"] || [];
+                for (const m of mechs) newConfig.mechanics[m] = true;
+               gameConfigs.push(newConfig);
             }
             return gameConfigs;
         }

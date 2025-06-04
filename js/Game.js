@@ -104,7 +104,7 @@ class Game {
     );
     if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
-    this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
+    this.objectManager = new Lemmings.ObjectManager(this.gameTimer, level.mechanics);
     this.objectManager.addRange(level.objects);
 
     this.gameDisplay = new Lemmings.GameDisplay(
