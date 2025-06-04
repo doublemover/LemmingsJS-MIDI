@@ -54,7 +54,7 @@ describe('tools/patchSprites.js', function () {
 
     const origArgv = process.argv;
     process.argv = ['node', tempScript, datFile, pngDir, outFile];
-    await import(`${pathToFileURL(tempScript).href}?${Date.now()}`);
+    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
     process.argv = origArgv;
     fs.unlinkSync(tempScript);
 
@@ -128,7 +128,7 @@ describe('tools/patchSprites.js', function () {
 
     const origArgv = process.argv;
     process.argv = ['node', tempScript, '--sheet-orientation=vertical', datFile, pngDir, outFile];
-    await import(`${pathToFileURL(tempScript).href}?${Date.now()}`);
+    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
     process.argv = origArgv;
     fs.unlinkSync(tempScript);
 
