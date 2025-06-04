@@ -105,21 +105,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] debounce/toggle
     - [ ] html needs size set
     - [ ] better level nav buttons/pack & diff dropdowns
-  - [X] Keyboard shortcuts
-    - [X] Decrease Release Rate
-    - [X] Min Release Rate
-    - [X] Increase Release Rate
-    - [X] Max Release Rate
-    - [X] Climb/Float/Bomb/Block/Build/Bash/Mine/Dig
-    - [X] Pause
-    - [X] Nuke
-    - [X] Reset Speed
-    - [X] Increase Speed
-    - [X] Decrease Speed
-    - [X] Restart
-    - [X] Debug
-    - [ ] Skill/Lem Cycle
-    - [ ] Viewport Movement, Zoom, Reset, Focus Lem/D
   - [ ] Tick Step
 </details>
 
@@ -224,7 +209,7 @@ URL parameters (shortcut in brackets):
 - Arrow Keys: Move viewport
 - `Shift` + Arrow Keys: Move viewport 2.5× faster
 - `Z` / `X`: Zoom in / out
-- `Shift+Z` / `Shift+X`: 1.5× zoom in / out
+- `Shift+Z` / `Shift+X`: 1.5× Zoom in / out
 - `V`: Reset zoom to 2
 - `-` / `=`: Decrease / Increase game speed
 - `Shift+-` / `Shift+=`: Bigger game speed change
