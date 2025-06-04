@@ -1,19 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
         
-class ActionSplatterSystem {
-        static sprites = new Map();
+class ActionSplatterSystem extends ActionBaseSystem {
         constructor(sprites) {
-            ActionSplatterSystem.sprites.set("both", sprites.getAnimation(Lemmings.SpriteTypes.SPLATTING, false));
-        }
-        getActionName() {
-            return "splatter";
+            super({ sprites, spriteType: Lemmings.SpriteTypes.SPLATTING, singleSprite: true, actionName: 'splatter' });
         }
         triggerLemAction(lem) {
             return false;
         }
         draw(gameDisplay, lem) {
-            const frame = ActionSplatterSystem.sprites.get("both").getFrame(lem.frameIndex);
-            gameDisplay.drawFrame(frame, lem.x, lem.y);
+            super.draw(gameDisplay, lem);
             if (lem.frameIndex >= 15) {
                 lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
             }

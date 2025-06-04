@@ -1,31 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { ActionBaseSystem } from './ActionBaseSystem.js';
 
-class ActionBashSystem {
-    static sprites = new Map();
-    static masks = new Map();
+class ActionBashSystem extends ActionBaseSystem {
     constructor(sprites, masks) {
-        if (ActionBashSystem.sprites.size == 0) {
-            ActionBashSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.BASHING, false));
-            ActionBashSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.BASHING, true));
-        }
-        if (ActionBashSystem.masks.size == 0) {
-            ActionBashSystem.masks.set("left", masks.GetMask(Lemmings.MaskTypes.BASHING_L));
-            ActionBashSystem.masks.set("right", masks.GetMask(Lemmings.MaskTypes.BASHING_R));
-        }
-    }
-    getActionName() {
-        return "bashing";
-    }
-
-    triggerLemAction(lem) {
-        lem.setAction(this);
-        return true;
-    }
-
-    draw(gameDisplay, lem) {
-        const ani = ActionBashSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super({
+            sprites,
+            spriteType: Lemmings.SpriteTypes.BASHING,
+            masks,
+            maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
+            actionName: 'bashing'
+        });
     }
 
     process(level, lem) {
@@ -43,7 +27,7 @@ class ActionBashSystem {
         }
         // apply mask
         if ((state > 1) && (state < 6)) {
-            const subMask = ActionBashSystem.masks.get(lem.getDirection()).GetMask(state - 2);
+            const subMask = this.masks.get(lem.getDirection()).GetMask(state - 2);
             if (state === 3) {
                 if (level.hasSteelUnderMask(subMask, lem.x, lem.y) ||
                     level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {

@@ -1,23 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
-class ActionFallSystem {
-    static sprites = new Map();
+import { ActionBaseSystem } from './ActionBaseSystem.js';
+class ActionFallSystem extends ActionBaseSystem {
     constructor(sprites) {
-        if (ActionFallSystem.sprites.size == 0) {
-            ActionFallSystem.sprites.set("left", sprites.getAnimation(Lemmings.SpriteTypes.FALLING, false));
-            ActionFallSystem.sprites.set("right", sprites.getAnimation(Lemmings.SpriteTypes.FALLING, true));
-        }
-    }
-    getActionName() {
-        return "falling";
+        super({ sprites, spriteType: Lemmings.SpriteTypes.FALLING, actionName: 'falling' });
     }
     triggerLemAction(lem) {
         return false;
     }
     /** render Lemming to gamedisplay */
     draw(gameDisplay, lem) {
-        const ani = ActionFallSystem.sprites.get(lem.getDirection());
-        const frame = ani.getFrame(lem.frameIndex);
-        gameDisplay.drawFrame(frame, lem.x, lem.y);
+        super.draw(gameDisplay, lem);
     }
     process(level, lem) {
         lem.frameIndex++;
