@@ -20,9 +20,9 @@
     "adm-zip": "^0.5.10",
     "tar": "^7.4.3",
     "node-unrar-js": "^2.0.2",
-    "list-sprites": "node tools/listSprites.js",
-    "patch-sprites": "node tools/patchSprites.js",
-    "pack-levels": "node tools/packLevels.js"
+    "pack-levels": "node tools/packLevels.js",
+    "format": "eslint . --fix",
+    "lint": "eslint ."
   },
   "repository": {
     "type": "git",
@@ -34,12 +34,13 @@
   "homepage": "https://github.com/doublemover/LemmingsJS-MIDI#readme",
   "type": "module",
   "devDependencies": {
+    "adm-zip": "^0.5.10",
     "chai": "^4.3.7",
+    "eslint": "^9.28.0",
     "http-server": "^14.0.1",
     "mocha": "^11.5.0",
+    "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
-    "adm-zip": "^0.5.10",
-    "tar": "^7.4.3",
-    "node-unrar-js": "^2.0.2"
+    "tar": "^7.4.3"
   }
 }
