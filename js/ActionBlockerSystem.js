@@ -2,10 +2,12 @@ import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 
 class ActionBlockerSystem extends ActionBaseSystem {
+
   constructor(sprites, triggerManager) {
     super({ sprites, spriteType: Lemmings.SpriteTypes.BLOCKING, singleSprite: true, actionName: 'blocking' });
     this.triggerManager = triggerManager;
   }
+
   process(level, lem) {
     if (lem.state == 0) {
       const trigger1 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_LEFT, lem.x - 6, lem.y + 4, lem.x - 3, lem.y - 10, 0, 0, lem);
@@ -22,6 +24,6 @@ class ActionBlockerSystem extends ActionBaseSystem {
     return Lemmings.LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionBlockerSystem = ActionBlockerSystem;
 
+Lemmings.ActionBlockerSystem = ActionBlockerSystem;
 export { ActionBlockerSystem };

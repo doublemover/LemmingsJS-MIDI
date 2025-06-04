@@ -9,6 +9,10 @@ class ActionBashSystem extends ActionBaseSystem {
       maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
       actionName: 'bashing'
     });
+  }
+
+  process(level, lem) {
+    const state = lem.state;
     // apply mask
     if ((state > 1) && (state < 6)) {
       const subMask = this.masks.get(lem.getDirection()).GetMask(state - 2);
@@ -28,6 +32,7 @@ class ActionBashSystem extends ActionBaseSystem {
     }
     return Lemmings.LemmingStateType.NO_STATE_TYPE;
   }
+  
   findGapDelta(groundMask, x, y) {
     for (let i = 0; i < 3; i++) {
       if (groundMask.hasGroundAt(x, y + i)) {
