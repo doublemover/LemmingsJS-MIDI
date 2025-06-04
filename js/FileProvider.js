@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 
 /**
  * FileProvider with transparent in‑memory caching.
@@ -216,10 +217,21 @@ class FileProvider extends Lemmings.BaseLogger {
   }
 
   async _hashBuffer(buffer) {
-    const hashBuf = await crypto.subtle.digest('SHA-256', buffer);
-    return Array.from(new Uint8Array(hashBuf))
-      .map(b => b.toString(16).padStart(2, '0'))
-      .join('');
+    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
+      const hashBuf = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+      return Array.from(new Uint8Array(hashBuf))
+        .map(b => b.toString(16).padStart(2, '0'))
+        .join('');
+    }
+
+    try {
+      const { createHash } = await import('node:crypto');
+      const hash = createHash('sha256');
+      hash.update(Buffer.from(buffer));
+      return hash.digest('hex');
+    } catch (e) {
+      throw new Error('crypto API not available');
+    }
   }
 
   async _hashString(str) {

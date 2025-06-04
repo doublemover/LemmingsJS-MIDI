@@ -151,4 +151,48 @@ describe('FileProvider', function () {
     await assert.rejects(p);
     assert.ok(provider.log.logged.some(m => m.includes('error load file')));
   });
+
+  it('loadBinary bypasses cache when forceReload is true', async function () {
+    let calls = 0;
+    provider._fetchBinary = async () => {
+      calls++;
+      return new MockBinaryReader();
+    };
+    const url = provider._buildUrl('data', 'file.bin');
+
+    const p1 = provider.loadBinary('data', 'file.bin');
+    assert.strictEqual(calls, 1);
+    await p1;
+
+    const p2 = provider.loadBinary('data', 'file.bin');
+    assert.strictEqual(p2, p1);
+    assert.strictEqual(calls, 1);
+    await p2;
+
+    const p3 = provider.loadBinary('data', 'file.bin', { forceReload: true });
+    assert.notStrictEqual(p3, p1);
+    assert.strictEqual(calls, 2);
+    await p3;
+
+    assert.strictEqual(provider._cache.get(url), p1);
+  });
+
+  it('_verifyCache refreshes stale entries', async function () {
+    let headCalls = 0;
+    let fetchCalls = 0;
+    provider._fetchHead = async () => {
+      headCalls++;
+      return { etag: 'new', lastModified: 'new' };
+    };
+    provider._fetchBinary = async () => {
+      fetchCalls++;
+      return new MockBinaryReader();
+    };
+
+    const entry = { type: 'binary', etag: 'old', lastModified: 'old' };
+    await provider._verifyCache('some/url', entry);
+
+    assert.strictEqual(headCalls, 1);
+    assert.strictEqual(fetchCalls, 1);
+  });
 });

@@ -78,7 +78,7 @@ class Animation {
   }
 
   loadFromFile (fr, bitsPerPixel, width, height, frames, palette,
-                offsetX = null, offsetY = null) {
+    offsetX = null, offsetY = null) {
     const arr = new Array(frames);
     for (let i = 0; i < frames; ++i) {
       const paletteImg = new Lemmings.PaletteImage(width, height);
@@ -108,7 +108,7 @@ class Animation {
    * @param {number} [offsetY=null]   - Optional Y offset
    */
   loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
-                               offsetX = null, offsetY = null) {
+    offsetX = null, offsetY = null) {
     const newPal = new Lemmings.ColorPalette();
     // Copy existing palette colours
     for (let i = 0; i < 16; i++) {
@@ -123,7 +123,7 @@ class Animation {
     }
 
     this.loadFromFile(fr, bitsPerPixel, width, height, frames,
-                      newPal, offsetX, offsetY);
+      newPal, offsetX, offsetY);
   }
 }
 Lemmings.Animation = Animation;

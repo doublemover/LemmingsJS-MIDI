@@ -2,9 +2,7 @@ import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { BitWriter } from '../js/BitWriter.js';
 import { BinaryReader } from '../js/BinaryReader.js';
-import '../js/LogHandler.js';
-
-// minimal global used by LogHandler
+// minimal global environment for logging
 globalThis.lemmings = { game: { showDebug: false } };
 
 class StubReader {
@@ -32,5 +30,46 @@ describe('BitWriter', function () {
     assert.deepStrictEqual(Array.from(fr.data), Array.from(writer.outData));
 
     assert.ok(writer.eof());
+  });
+
+  it('truncates copyRawData when length exceeds buffer', function () {
+    class MockLogHandler {
+      constructor() { this.logged = []; }
+      log(msg) { this.logged.push(msg); }
+    }
+    const origHandler = Lemmings.LogHandler;
+    Lemmings.LogHandler = MockLogHandler;
+
+    const stub = new StubReader([0x01, 0x02, 0x03]);
+    const writer = new BitWriter(stub, 2);
+    const log = writer.log;
+
+    writer.copyRawData(3);
+
+    assert.deepStrictEqual(Array.from(writer.outData), [0x02, 0x01]);
+    assert.ok(log.logged.some(m => m.includes('out of out buffer')));
+
+    Lemmings.LogHandler = origHandler;
+  });
+
+  it('truncates copyReferencedData when length exceeds buffer', function () {
+    class MockLogHandler {
+      constructor() { this.logged = []; }
+      log(msg) { this.logged.push(msg); }
+    }
+    const origHandler = Lemmings.LogHandler;
+    Lemmings.LogHandler = MockLogHandler;
+
+    const stub = new StubReader([0xAA, 0xBB, 0x00]);
+    const writer = new BitWriter(stub, 3);
+    const log = writer.log;
+
+    writer.copyRawData(2);
+    writer.copyReferencedData(3, 1); // offset=0 -> 1
+
+    assert.deepStrictEqual(Array.from(writer.outData), [0xBB, 0xBB, 0xAA]);
+    assert.ok(log.logged.some(m => m.includes('out of out buffer')));
+
+    Lemmings.LogHandler = origHandler;
   });
 });

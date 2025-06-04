@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './LogHandler.js';
 let steelSprites = null;
 
 async function loadSteelSprites() {
@@ -175,9 +176,9 @@ class GroundReader extends Lemmings.BaseLogger {
 
       const filename = fr.filename;
       const foldername = fr.foldername;
-      if (foldername === "[unknown]") {
+      if (foldername === '[unknown]') {
         console.log(
-          "folder name for " + filename + " is unknown, unable to use magic numbers to make perfect steel"
+          'folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel'
         );
       } else {
         const gameData = steelSprites[foldername];

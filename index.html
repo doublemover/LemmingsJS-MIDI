@@ -59,6 +59,7 @@
       lemmings.gameCanvas = document.getElementById("gameCanvas");
       lemmings.setup();
       lemmings.midiOut = WebMidi.outputs[0];
+      // use GameView.strToNum to parse dropdown values
       lemmings.elementSelectGameType.addEventListener("change", (e) => {
         lemmings.selectGameType(lemmings.strToNum(e.target.value));
       });
@@ -114,7 +115,7 @@
   </div>
   <div class="game">
     <div class="game_container">
-      <canvas height="480" width="800" id="gameCanvas"></canvas>
+      <canvas height="480" width="800" id="gameCanvas" class="gameCanvas"></canvas>
       <div id="levelSelects" class="level_name">
         <select id="gameTypeSelect"></select>
         <select id="levelGroupSelect"></select>
