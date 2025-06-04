@@ -94,7 +94,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - [ ] packname or vnum/difficulty name or number/level title or number nav
   - [ ] Display selection rect around lemming nearest to cursor on hover
   - [ ] Minimap
-    - [ ] switch to uint8
+    - [X] switch to uint8
     - [ ] dots broken
     - [ ] Full vp rect
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
