@@ -52,7 +52,6 @@ class GameDisplay {
 
             if (this.highlightLemming) {
                 if (this.highlightLemming.removed ||
-                    this.highlightLemming.countdownAction ||
                     this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.OHNO] ||
                     this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.EXPLODING]) {
                     this.highlightLemming = null;
@@ -73,9 +72,18 @@ class GameDisplay {
                 const x = selected.x - 6;
                 const y = selected.y - 12;
                 const fade = this.flashTicks / this.flashDuration;
-                const r = Math.round(40 + 80 * fade);
-                const g = Math.round(160 + 95 * fade);
-                const b = Math.round(40 + 80 * fade);
+                let r = 40 + 80 * fade;
+                let g = 160 + 95 * fade;
+                let b = 40 + 80 * fade;
+                const skill = this.game.getGameSkills()?.getSelectedSkill?.();
+                if (skill === Lemmings.SkillTypes.CLIMBER && selected.canClimb) {
+                    g += 30; r += 15; b += 15;
+                } else if (skill === Lemmings.SkillTypes.FLOATER && selected.hasParachute) {
+                    g += 30; r += 15; b += 15;
+                }
+                r = Math.min(255, Math.round(r));
+                g = Math.min(255, Math.round(g));
+                b = Math.min(255, Math.round(b));
                 this.display.drawCornerRect(x, y, size, r, g, b, 2);
             }
             if (this.flashTicks > 0) this.flashTicks--;
@@ -85,7 +93,6 @@ class GameDisplay {
                 return;
             if (this.highlightLemming) {
                 if (this.highlightLemming.removed ||
-                    this.highlightLemming.countdownAction ||
                     this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.OHNO] ||
                     this.highlightLemming.action === this.lemmingManager.actions[Lemmings.LemmingStateType.EXPLODING]) {
                     this.highlightLemming = null;
