@@ -9,7 +9,7 @@ class KeyboardShortcuts {
         window.addEventListener('keyup', this._up);
         this.mod = { shift:false };
         this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0 };
-        this.zoom = { dir:0,v:0,reset:null };
+        this.zoom = { anim:null };
         this._raf = null;
         this._last = 0;
     }
@@ -62,31 +62,17 @@ class KeyboardShortcuts {
             }
 
             // ----- zooming -----
-            // anchor zooming around the current screen centre without
-            // drifting the viewpoint. Using updateViewPoint() directly was
-            // causing the camera to slide left as the scale changed.
-            const cx = img.width / 2;
-            const cy = img.height / 2;
-            const centerX = vp.x + cx / vp.scale;
-            const centerY = vp.y + cy / vp.scale;
-            let targetZ = 0;
-            if (this.zoom.reset !== null) {
-                targetZ = (this.zoom.reset - vp.scale) * 0.2;
-            } else {
-                // smaller default zoom step; shift increases it only modestly
-                const baseZ = 20 * (this.mod.shift ? 1.5 : 1);
-                targetZ = this.zoom.dir * baseZ;
-            }
-            // gentler acceleration for zooming
-            this.zoom.v += (targetZ - this.zoom.v) * 0.07 * dt;
-            this.zoom.v *= 0.9;
-            const dz = this.zoom.v;
-            if (Math.abs(dz) > 0.001) {
-                const desired = stage._rawScale * (1 + dz / 1500);
-                stage._rawScale = stage.limitValue(0.25, desired, 4);
-                const newScale = stage.snapScale(stage._rawScale);
-                const nx = centerX - cx / newScale;
-                const ny = centerY - cy / newScale;
+            if (this.zoom.anim) {
+                const a = this.zoom.anim;
+                const p = Math.min(1, (t - a.startTime) / a.duration);
+                const ease = 1 - Math.pow(1 - p, 2);
+                const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+                stage._rawScale = raw;
+                const newScale = stage.snapScale(raw);
+                const cx = img.width / 2;
+                const cy = img.height / 2;
+                const nx = a.centerX - cx / newScale;
+                const ny = a.centerY - cy / newScale;
                 const maxX = img.display.getWidth()  - img.width  / newScale;
                 const maxY = img.display.getHeight() - img.height / newScale;
                 vp.x = Math.min(Math.max(0, nx), maxX);
@@ -94,14 +80,7 @@ class KeyboardShortcuts {
                 vp.scale = newScale;
                 stage.redraw();
                 again = true;
-            } else if (this.zoom.reset !== null) {
-                stage._rawScale = stage.limitValue(0.25, this.zoom.reset, 4);
-                vp.scale = stage.snapScale(stage._rawScale);
-                this.zoom.reset = null;
-                stage.redraw();
-                this.zoom.v = 0;
-            } else {
-                this.zoom.v = 0;
+                if (p >= 1) this.zoom.anim = null;
             }
         }
         if (again) {
@@ -151,6 +130,34 @@ class KeyboardShortcuts {
                 }
             }
         }
+    }
+
+    _startZoomTo(scale) {
+        const stage = this.view.stage;
+        if (!stage) return;
+        const img = stage.gameImgProps;
+        const vp = img.viewPoint;
+        const cx = img.width / 2;
+        const cy = img.height / 2;
+        const target = stage.limitValue(0.25, scale, 4);
+        if (Math.abs(target - stage._rawScale) < 0.001) return;
+        this.zoom.anim = {
+            startScale: stage._rawScale,
+            targetScale: target,
+            centerX: vp.x + cx / vp.scale,
+            centerY: vp.y + cy / vp.scale,
+            startTime: performance.now(),
+            duration: 250
+        };
+        this._startLoop();
+    }
+
+    _zoomStep(dir) {
+        const stage = this.view.stage;
+        if (!stage) return;
+        const factor = this.mod.shift ? 4 : 2;
+        const target = stage._rawScale * (dir > 0 ? factor : 1 / factor);
+        this._startZoomTo(target);
     }
 
     _onKeyDown(e) {
@@ -238,13 +245,13 @@ class KeyboardShortcuts {
                 this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
-                this.zoom.dir = 1; this._startLoop();
+                this._zoomStep(1);
                 break;
             case 'KeyX':
-                this.zoom.dir = -1; this._startLoop();
+                this._zoomStep(-1);
                 break;
             case 'KeyV':
-                this.zoom.reset = 2; this._startLoop();
+                this._startZoomTo(2);
                 break;
             case 'Tab':
                 this._cycleSkill();
@@ -291,8 +298,6 @@ class KeyboardShortcuts {
             case 'ArrowRight': this.pan.right = false; break;
             case 'ArrowUp': this.pan.up = false; break;
             case 'ArrowDown': this.pan.down = false; break;
-            case 'KeyZ': if (this.zoom.dir > 0) this.zoom.dir = 0; break;
-            case 'KeyX': if (this.zoom.dir < 0) this.zoom.dir = 0; break;
             case 'ShiftLeft':
             case 'ShiftRight':
                 this.mod.shift = false; break;
