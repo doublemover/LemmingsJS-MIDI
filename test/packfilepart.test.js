@@ -25,13 +25,13 @@ describe('PackFilePart', function () {
     return out.data.slice(0, out.length);
   }
 
-  it.skip('compresses and decompresses a short byte array', function () {
+  it('compresses and decompresses a short byte array', function () {
     const arr = Uint8Array.from([1, 2, 3, 4, 5, 6, 7, 8]);
     const result = roundTrip(arr);
     expect(Array.from(result)).to.eql(Array.from(arr));
   });
 
-  it.skip('round-trips first chunk of LEVEL000.DAT', function () {
+  it('round-trips first chunk of LEVEL000.DAT', function () {
     const dat = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const container = new FileContainer(new BinaryReader(new Uint8Array(dat)));
     const part = container.getPart(0);
@@ -40,7 +40,7 @@ describe('PackFilePart', function () {
     expect(Array.from(result)).to.eql(Array.from(original));
   });
 
-  it.skip('recompresses a chunk and produces a consistent stream', function () {
+  it('recompresses a chunk and produces a consistent stream', function () {
     const dat = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const container = new FileContainer(new BinaryReader(new Uint8Array(dat)));
     const unpacked = container.getPart(0);
@@ -63,5 +63,35 @@ describe('PackFilePart', function () {
     const calc = packed.data.reduce((a, b) => a ^ b, 0);
     expect(calc).to.equal(packed.checksum);
     expect(part.initialBufferLen).to.equal(packed.initialBits);
+  });
+
+  it('handles short raw blocks', function () {
+    const arr = Uint8Array.from([1,2,3,4,5,6,7,8]);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
+  });
+
+  it('handles short references of length 2-4', function () {
+    const cases = [
+      Uint8Array.from([1,2,1,2]),
+      Uint8Array.from([1,2,3,1,2,3]),
+      Uint8Array.from([1,2,3,4,1,2,3,4])
+    ];
+    for (const arr of cases) {
+      const result = roundTrip(arr);
+      expect(Array.from(result)).to.eql(Array.from(arr));
+    }
+  });
+
+  it('handles generic references', function () {
+    const arr = Uint8Array.from([1,2,3,4,5,6,1,2,3,4,5,6]);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
+  });
+
+  it('handles large raw blocks', function () {
+    const arr = Uint8Array.from({length:300}, (_,i)=>i%256);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
   });
 });

@@ -117,7 +117,9 @@ class NodeFileProvider {
             const arr = new Uint8Array(buf);
             return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
         }
-        const fullPath = path.join(this.rootPath, dir, filename);
+        const fullPath = path.isAbsolute(dir)
+            ? path.join(dir, filename)
+            : path.join(this.rootPath, dir, filename);
         const data = fs.readFileSync(fullPath);
         const arr = new Uint8Array(data);
         return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
