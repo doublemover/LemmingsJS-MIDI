@@ -12,7 +12,6 @@ class Stage {
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
-    // Ensure displays exist before any user input is processed
     this.getGameDisplay();
     this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
@@ -91,9 +90,7 @@ class Stage {
       this.cursorY = e.y;
       if (e.button) {
         let stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
-        if (stageImage == null)
-          return;
-        if (stageImage.display == null)
+        if (stageImage == null || stageImage.display == null)
           return;
         if (stageImage == this.gameImgProps) {
           this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);
