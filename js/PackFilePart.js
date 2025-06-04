@@ -30,7 +30,6 @@ class PackFilePart {
     if (!(buffer instanceof Uint8Array)) buffer = new Uint8Array(buffer);
 
     const bits = [];
-
     const pushBits = (val, count) => {
       for (let i = count - 1; i >= 0; i--) {
         bits.push((val >> i) & 1);
@@ -51,10 +50,18 @@ class PackFilePart {
         pushBits(chunk - 9, 8);
       }
       for (let i = 0; i < chunk; i++) {
-        pushBits(buffer[--pos], 8);
+        pushBits(buffer[pos - 1 - i], 8);
       }
-      remain -= chunk;
+      pos -= chunk;
     }
+
+    const byteGroups = [];
+    for (let i = 0; i < bits.length; i += 8) {
+      let v = 0;
+      for (let b = 0; b < 8 && i + b < bits.length; b++) v |= bits[i + b] << b;
+        pushBits(buffer[--pos], 8);
+    }
+    remain -= chunk;
 
     // Convert bits to bytes.  Bits are produced in the order the BitReader
     // will consume them, so each group of 8 bits forms one byte with the first
@@ -76,7 +83,6 @@ class PackFilePart {
       for (let i = 0; i < pad; i++) bits.push(0);
     }
     const initialBits = 8;
-
     return { data, checksum, initialBits };
   }
 }

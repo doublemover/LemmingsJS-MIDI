@@ -113,7 +113,6 @@ class LevelReader extends Lemmings.BaseLogger {
       // each nibble is “blocks − 1”, one block = 4 px
       const width = (((size >> 4) & 0x0F) + 1) * 4; 
       const height = ((size & 0x0F) + 1) * 4;
-
       const newRange = new Lemmings.Range();
       newRange.x = x;
       newRange.y = y;

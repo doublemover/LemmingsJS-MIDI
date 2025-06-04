@@ -6,6 +6,7 @@ import './LogHandler.js';
  * @class
  */
 class VGASpecReader extends Lemmings.BaseLogger {
+
   /** @type {number} */
   #width;
   /** @type {number} */
@@ -22,15 +23,15 @@ class VGASpecReader extends Lemmings.BaseLogger {
      * @param {number} width
      * @param {number} height
      */
-  constructor(vgaspecFile, width, height) {
-    super();
-    this.#log = this.log;
-    this.#width = width | 0;
-    this.#height = height | 0;
-    this.#groundPalette = new Lemmings.ColorPalette();
-    this.#img = new Lemmings.Frame(this.#width, this.#height);
-    this.#read(vgaspecFile);
-  }
+    constructor(vgaspecFile, width, height) {
+        super();
+        this.#log = this.log;
+        this.#width = width | 0;
+        this.#height = height | 0;
+        this.#groundPalette = new Lemmings.ColorPalette();
+        this.#img = new Lemmings.Frame(this.#width, this.#height);
+        this.#read(vgaspecFile);
+    }
 
   /** @returns {number} */
   get width() { return this.#width; }

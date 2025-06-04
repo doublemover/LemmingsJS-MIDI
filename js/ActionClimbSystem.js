@@ -2,7 +2,6 @@ import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
     
 class ActionClimbSystem extends ActionBaseSystem {
-
   constructor(sprites) {
     super({ sprites, spriteType: Lemmings.SpriteTypes.CLIMBING, actionName: 'climbing' });
   }

@@ -55,6 +55,7 @@ class Level extends Lemmings.BaseLogger {
         tooltipText: 'setMapObjects'
       },
       () => {
+
         this.objects.length = 0;
         this.entrances.length = 0;
         this.triggers.length = 0;
@@ -116,6 +117,7 @@ class Level extends Lemmings.BaseLogger {
             this.triggers.push(trigger);
           }
         }
+
         if (arrowRects.length > 0) {
           this.setArrowAreas(arrowRects);
         }
@@ -218,38 +220,38 @@ class Level extends Lemmings.BaseLogger {
         tooltipText: 'newSetSteelAreas'
       },
       () => {
-        if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
-          this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
-        } else {
-          // Clear all
-          this.steelMask.mask.fill(0);
-        }
-        const { levelWidth, levelHeight, terrains } = levelReader;
-        let newSteelRanges = [];
-        if (this.steelRanges.length == 0) return;
-        for (let i = 0, len = terrains.length; i < len; ++i) {
-          const tObj = terrains[i];
-          const terImg = terrainImages[tObj.id];
-          if (terImg.isSteel == true) {
-            const newRange = new Lemmings.Range();
-            newRange.x = tObj.x;
-            newRange.y = tObj.y;
-            newRange.width = terImg.steelWidth;
-            newRange.height = terImg.steelHeight;
-            for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
-              for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
-                if (this.isSteelAt(dx,dy, true)) {
-                  newSteelRanges.push(newRange);
-                  this.steelMask.setMaskAt(dx, dy);
-                }
-              }
+    if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
+      this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+    } else {
+      // Clear all
+      this.steelMask.mask.fill(0);
+    }
+    const { levelWidth, levelHeight, terrains } = levelReader;
+    const newSteelRanges = [];
+    if (this.steelRanges.length == 0) return;
+    for (let i = 0, len = terrains.length; i < len; ++i) {
+      const tObj = terrains[i];
+      const terImg = terrainImages[tObj.id];
+      if (terImg.isSteel == true) {
+        const newRange = new Lemmings.Range();
+        newRange.x = tObj.x;
+        newRange.y = tObj.y;
+        newRange.width = terImg.steelWidth;
+        newRange.height = terImg.steelHeight;
+        for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
+          for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
+            if (this.isSteelAt(dx,dy, true)) {
+              newSteelRanges.push(newRange);
+              this.steelMask.setMaskAt(dx, dy);
             }
           }
         }
-        if (newSteelRanges.length > 0) {
-          this.steelRanges = new Int32Array(0);
-          this.setSteelAreas(newSteelRanges);
-        }
+      }
+    }
+    if (newSteelRanges.length > 0) {
+      this.steelRanges = new Int32Array(0);
+      this.setSteelAreas(newSteelRanges);
+    }
       })();
   }
 

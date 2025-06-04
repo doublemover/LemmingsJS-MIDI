@@ -59,12 +59,12 @@ class BinaryReader extends Lemmings.BaseLogger {
       // Modern browsers: Blobs must be async-read; fallback for now
       this.#data = new Uint8Array(0);
       dataLength = 0;
-      this.log.log('BinaryReader from Blob: async not implemented; size: 0');
+      this.log.log("BinaryReader from Blob: async not implemented; size: 0");
     } else {
       // Generic object: treat as array-like
       this.#data = new Uint8Array(dataArray);
       dataLength = this.#data.length;
-      this.log.log('BinaryReader from unknown: ' + dataArray + '; size:' + dataLength);
+      this.log.log("BinaryReader from unknown: " + dataArray + "; size:" + dataLength);
     }
 
     if (length == null) length = dataLength - offset;

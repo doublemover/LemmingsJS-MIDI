@@ -419,7 +419,6 @@ class GameGui {
       }
     }
 
-
     if (this.skillsCountChanged) {
       this.skillsCountChanged = false;
       for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {

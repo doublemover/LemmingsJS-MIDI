@@ -2,7 +2,6 @@ import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { BitWriter } from '../js/BitWriter.js';
 import { BinaryReader } from '../js/BinaryReader.js';
-// minimal global environment for logging
 globalThis.lemmings = { game: { showDebug: false } };
 
 class StubReader {

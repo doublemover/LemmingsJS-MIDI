@@ -2,7 +2,6 @@ import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 
 class ActionExplodingSystem extends ActionBaseSystem {
-
   constructor(sprites, masks, triggerManager, particleTable) {
     super({
       sprites,

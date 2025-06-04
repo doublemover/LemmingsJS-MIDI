@@ -62,5 +62,4 @@ class ActionWalkSystem extends ActionBaseSystem {
   }
 }
 Lemmings.ActionWalkSystem = ActionWalkSystem;
-
 export { ActionWalkSystem };

@@ -34,13 +34,13 @@
     "node": ">=16"
   },
   "devDependencies": {
-    "adm-zip": "^0.5.10",
     "chai": "^4.3.7",
-    "eslint": "^9.28.0",
     "http-server": "^14.0.1",
     "mocha": "^11.5.0",
-    "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
-    "tar": "^7.4.3"
+    "adm-zip": "^0.5.10",
+    "tar": "^7.4.3",
+    "node-unrar-js": "^2.0.2",
+    "eslint": "^9.28.0",
   }
 }
