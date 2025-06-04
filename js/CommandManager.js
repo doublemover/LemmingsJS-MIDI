@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class CommandManager {
+class CommandManager extends Lemmings.BaseLogger {
     constructor(game, gameTimer) {
-        this.log = new Lemmings.LogHandler("CommandManager");
+        super();
         if (game == null || gameTimer == null) {
             this.log.log("error! game/timer is null");
             return;

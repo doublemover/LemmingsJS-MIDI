@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-class ConfigReader {
+class ConfigReader extends Lemmings.BaseLogger {
         constructor(configFile) {
-            this.log = new Lemmings.LogHandler("ConfigReader");
+            super();
             this.configs = new Promise((resolve, reject) => {
                 configFile.then((jsonString) => {
                     let configJson = this.parseConfig(jsonString);
