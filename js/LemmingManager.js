@@ -44,38 +44,48 @@ class LemmingManager {
                 lems[this.nextNukingLemmingsIndex],
                 Lemmings.SkillTypes.BOMBER
             );
-            this.nextNukingLemmingsIndex =
-                this.nextNukingLemmingsIndex + 1 >= count
-                    ? -1
-                    : this.nextNukingLemmingsIndex + 1;
-
-            if (this.nextNukingLemmingsIndex + 1 >= count) {
-                this.nextNukingLemmingsIndex = -1;
-            } else {
-                this.nextNukingLemmingsIndex += 1;
-            }
-                continue;
+        this._processNuking(lems, count);
             }
 
 
-        if (this.miniMap && (++this.mmTickCounter % 10) === 0) {
-            const dots = new Uint8Array(count * 2);
-            const { scaleX, scaleY } = this.miniMap;
-            this.miniMap.setSelectedLemming(this.getSelectedLemming());
-        this.skillActions[Lemmings.SkillTypes.CLIMBER] = this.actions[Lemmings.LemmingStateType.CLIMBING];
-        this.skillActions[Lemmings.SkillTypes.BASHER]  = this.actions[Lemmings.LemmingStateType.BASHING];
-        this.skillActions[Lemmings.SkillTypes.BUILDER] = this.actions[Lemmings.LemmingStateType.BUILDING];
-        this.skillActions[Lemmings.SkillTypes.BOMBER]  = new Lemmings.ActionCountdownSystem(masks);
-
-        this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
-            })();
+        this._updateMiniMap(lems, count);
     }
 
-    setMiniMap(miniMap) {
-        this.miniMap = miniMap;
+    _processNuking(lems, count) {
+        if (!this.isNuking() || !count) return;
+
+        this.doLemmingAction(
+            lems[this.nextNukingLemmingsIndex],
+            Lemmings.SkillTypes.BOMBER
+        );
+
+        if (this.nextNukingLemmingsIndex + 1 >= count) {
+            this.nextNukingLemmingsIndex = -1;
+        } else {
+            this.nextNukingLemmingsIndex += 1;
+        }
     }
 
-    processNewAction(lem, newAction) {
+    _updateMiniMap(lems, count) {
+        if (!this.miniMap) return;
+        if ((++this.mmTickCounter % 10) !== 0) return;
+
+        const dots = new Uint8Array(count * 2);
+        const visited = new Set();
+        const { scaleX, scaleY } = this.miniMap;
+        let idx = 0;
+        for (const lem of lems) {
+            if (lem.removed || lem.disabled) continue;
+            const x = (lem.x * scaleX) | 0;
+            const y = (lem.y * scaleY) | 0;
+            const key = (y << 8) | x;
+            if (visited.has(key)) continue;
+            visited.add(key);
+            dots[idx++] = x;
+            dots[idx++] = y;
+        this.minimapDots = dots.subarray(0, idx);
+        this.miniMap.setLiveDots(this.minimapDots);
+        this.miniMap.setSelectedLemming(this.getSelectedLemming());
         if (newAction == Lemmings.LemmingStateType.NO_STATE_TYPE) return false;
         this.setLemmingState(lem, newAction);
         return true;
