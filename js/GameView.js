@@ -211,6 +211,12 @@ class GameView extends Lemmings.BaseLogger {
     return def;
   }
 
+  /** convert a string to a number or return 0 if NaN */
+  strToNum(value) {
+    const num = Number(value);
+    return isNaN(num) ? 0 : num;
+  }
+
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;

@@ -59,6 +59,7 @@
       lemmings.gameCanvas = document.getElementById("gameCanvas");
       lemmings.setup();
       lemmings.midiOut = WebMidi.outputs[0];
+      // use GameView.strToNum to parse dropdown values
       lemmings.elementSelectGameType.addEventListener("change", (e) => {
         lemmings.selectGameType(lemmings.strToNum(e.target.value));
       });
