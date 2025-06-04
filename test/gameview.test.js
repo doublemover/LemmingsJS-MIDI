@@ -2,16 +2,7 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
-import { GameView } from '../js/GameView.js';
-
 // minimal window for GameView.applyQuery and KeyboardShortcuts stub
-global.window = {
-  location: { search: '' },
-  setTimeout,
-  clearTimeout,
-  addEventListener() {},
-  removeEventListener() {}
-};
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
@@ -85,6 +76,14 @@ global.lemmings = { game: { showDebug: false } };
 
 describe('GameView', function () {
   it('initializes stage and connects displays', async function () {
+    global.window = {
+      location: { search: '' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     const canvas = {
       addEventListener() {},

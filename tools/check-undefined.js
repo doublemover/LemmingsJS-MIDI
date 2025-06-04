@@ -1,10 +1,7 @@
 import fs from 'fs';
 import path from 'path';
-import { spawnSync } from 'child_process';
 import { parse } from 'acorn';
-import { createRequire } from 'module';
-
-const require = createRequire(import.meta.url);
+import { parseDocument, DomUtils } from 'htmlparser2';
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
