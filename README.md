@@ -179,6 +179,9 @@ node tools/patchSprites.js holiday94.rar edited_sprites holiday94_patched.DAT
 For internal details see
 [.agentInfo/notes/node-file-provider.md](.agentInfo/notes/node-file-provider.md).
 
+For details on the GitHub Actions workflow that runs `npm install`, `npm run lint`,
+and `npm test` using Node 18, see [docs/ci.md](docs/ci.md).
+
 ### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
