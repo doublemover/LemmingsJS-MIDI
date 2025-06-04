@@ -40,4 +40,29 @@ describe('PackFilePart', function () {
     const result = roundTrip(original);
     expect(Array.from(result)).to.eql(Array.from(original));
   });
+
+  it('recompresses a chunk and produces a consistent stream', function () {
+    const dat = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
+    const container = new FileContainer(new BinaryReader(new Uint8Array(dat)));
+    const unpacked = container.getPart(0);
+    const bytes = unpacked.data.slice(0, unpacked.length);
+
+    const packed = PackFilePart.pack(bytes);
+
+    const br = new BinaryReader(packed.data);
+    const part = new UnpackFilePart(br);
+    part.offset = 0;
+    part.compressedSize = br.length;
+    part.initialBufferLen = packed.initialBits;
+    part.checksum = packed.checksum;
+    part.decompressedSize = bytes.length;
+    const out = part.unpack();
+    const result = out.data.slice(0, out.length);
+
+    expect(Array.from(result)).to.eql(Array.from(bytes));
+
+    const calc = packed.data.reduce((a, b) => a ^ b, 0);
+    expect(calc).to.equal(packed.checksum);
+    expect(part.initialBufferLen).to.equal(packed.initialBits);
+  });
 });
