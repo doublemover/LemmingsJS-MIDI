@@ -54,4 +54,24 @@ describe('LevelWriter', function() {
     expect(lr2.steel.length).to.equal(lr.steel.length);
     expect(lr2.levelProperties.levelName).to.equal(lr.levelProperties.levelName);
   });
+
+  it('writes and reads an empty level', function() {
+    const level = { levelProperties: new Lemmings.LevelProperties() };
+    const writer = new LevelWriter();
+    const out = writer.write(level);
+
+    const lr = new LevelReader(new BinaryReader(out));
+    expect(lr.levelProperties.releaseRate).to.equal(0);
+    expect(lr.levelProperties.releaseCount).to.equal(0);
+    expect(lr.levelProperties.needCount).to.equal(0);
+    expect(lr.levelProperties.timeLimit).to.equal(0);
+    expect(lr.screenPositionX).to.equal(0);
+    expect(lr.graphicSet1).to.equal(0);
+    expect(lr.graphicSet2).to.equal(0);
+    expect(lr.isSuperLemming).to.equal(false);
+    expect(lr.objects.length).to.equal(0);
+    expect(lr.terrains.length).to.equal(0);
+    expect(lr.steel.length).to.equal(0);
+    expect(lr.levelProperties.levelName).to.equal('\x00'.repeat(32));
+  });
 });
