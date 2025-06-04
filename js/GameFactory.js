@@ -36,6 +36,14 @@ class GameFactory {
       });
     });
   }
+
+  /** create and load a game from a provided config */
+  async createFromConfig(config, groupIndex = 0, levelIndex = 0) {
+    const res = new Lemmings.GameResources(this.fileProvider, config);
+    const game = new Lemmings.Game(res);
+    await game.loadLevel(groupIndex, levelIndex);
+    return game;
+  }
 }
 Lemmings.GameFactory = GameFactory;
 
