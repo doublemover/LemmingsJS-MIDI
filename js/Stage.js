@@ -116,8 +116,8 @@ class Stage {
 
                 // Zoom around that point using the un-snapped scale
                 const oldScale = this._rawScale;
-                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 3000), 4);
-                this._rawScale += (target - this._rawScale) * 0.6;
+                const target = this.limitValue(.25, oldScale * (1 + deltaZoom / 1200), 4);
+                this._rawScale += (target - this._rawScale) * 0.8;
                 stageImage.viewPoint.scale = this.snapScale(this._rawScale);
 
                 // Re-center so the same world point stays under the cursor

@@ -82,6 +82,7 @@ class KeyboardShortcuts {
                 vp.x = Math.min(Math.max(0, nx), maxX);
                 vp.y = Math.min(Math.max(0, ny), maxY);
                 vp.scale = newScale;
+                stage.clear(img);
                 stage.redraw();
                 again = true;
                 if (p >= 1) this.zoom.anim = null;
@@ -151,7 +152,7 @@ class KeyboardShortcuts {
             centerX: vp.x + cx / vp.scale,
             centerY: vp.y + cy / vp.scale,
             startTime: performance.now(),
-            duration: 400
+            duration: 200
         };
         this._startLoop();
     }
@@ -249,13 +250,13 @@ class KeyboardShortcuts {
                 this.pan.down = true; this._startLoop();
                 break;
             case 'KeyZ':
-                this._zoomStep(1);
+                if (!e.repeat) this._zoomStep(1);
                 break;
             case 'KeyX':
-                this._zoomStep(-1);
+                if (!e.repeat) this._zoomStep(-1);
                 break;
             case 'KeyV':
-                this._startZoomTo(2);
+                if (!e.repeat) this._startZoomTo(2);
                 break;
             case 'Tab':
                 this._cycleSkill();
