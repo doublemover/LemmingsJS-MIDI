@@ -206,8 +206,8 @@ class MiniMap {
         newDots.set([dx, dy], this.deadDots.length);
         const newTTLs = new Uint8Array(this.deadTTLs.length + 1);
         newTTLs.set(this.deadTTLs);
-        // 4 on/off flashes => 32 total frames; start on
-        newTTLs[this.deadTTLs.length] = 32;
+        // 4 on/off flashes => 16 total frames; start on
+        newTTLs[this.deadTTLs.length] = 16;
         this.deadDots = newDots;
         this.deadTTLs = newTTLs;
     }
@@ -277,7 +277,8 @@ class MiniMap {
             for (let i = 0, j = 0; i < oldDots.length; i += 2, ++j) {
                 let ttl = oldTTLs[j] - 1;
                 if (ttl <= 0) continue;
-                if (ttl & 4) frame.setPixel(oldDots[i], oldDots[i + 1], 0xFF0000FF);
+                // toggle visibility every 2 frames using bit 1
+                if (ttl & 2) frame.setPixel(oldDots[i], oldDots[i + 1], 0xFFFF0000);
                 newDots[idx++] = oldDots[i];
                 newDots[idx++] = oldDots[i + 1];
                 newTTLs[tIdx++] = ttl;
