@@ -249,6 +249,17 @@ class DisplayImage {
         });
     }
 
+    drawDashedRect(x, y, width, height, r = 255, g = 255, b = 0, dash = 2) {
+        for (let dx = 0; dx <= width; dx += dash * 2) {
+            this.drawHorizontalLine(x + dx, y, Math.min(x + dx + dash - 1, x + width), r, g, b);
+            this.drawHorizontalLine(x + dx, y + height, Math.min(x + dx + dash - 1, x + width), r, g, b);
+        }
+        for (let dy = 0; dy <= height; dy += dash * 2) {
+            this.drawVerticalLine(x, y + dy, Math.min(y + dy + dash - 1, y + height), r, g, b);
+            this.drawVerticalLine(x + width, y + dy, Math.min(y + dy + dash - 1, y + height), r, g, b);
+        }
+    }
+
     /* ---------- misc utilities ---------- */
     setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFFFF0000; }
 
