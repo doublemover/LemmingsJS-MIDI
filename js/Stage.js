@@ -161,21 +161,17 @@ class Stage {
         }
 
         snapScale(scale) {
-            const width = this.gameImgProps.width;
-            const height = this.gameImgProps.height;
-            const candidates = [];
-            for (let i = 1; i <= 4; i++) {
-                if (width % i === 0 && height % i === 0) candidates.push(i);
-                if (width % i === 0 && height % i === 0 && 1 / i >= 0.25) candidates.push(1 / i);
-            }
-            if (!candidates.length) return this.limitValue(0.25, scale, 4);
-            let best = candidates[0];
-            let bestDiff = Math.abs(scale - best);
-            for (const c of candidates) {
-                const diff = Math.abs(scale - c);
-                if (diff < bestDiff) { bestDiff = diff; best = c; }
-            }
-            return this.limitValue(0.25, best, 4);
+            const disp = this.gameImgProps.display;
+            if (!disp) return this.limitValue(0.25, scale, 4);
+
+            const stepX = this.gameImgProps.width  / disp.getWidth();
+            const stepY = this.gameImgProps.height / disp.getHeight();
+            const step  = Math.min(stepX, stepY);
+
+            if (step <= 0) return this.limitValue(0.25, scale, 4);
+
+            const snapped = Math.round(scale / step) * step;
+            return this.limitValue(0.25, snapped, 4);
         }
         updateStageSize() {
             let ctx = this.stageCav.getContext("2d", { alpha: false });
