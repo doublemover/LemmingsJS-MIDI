@@ -17,60 +17,56 @@ class ActionWalkSystem {
         triggerLemAction(lem) {
             return false;
         }
-        getGroundStepDelta(groundMask, x, y) {
-            for (let i = 0; i <= 6; i++) {
-                if (!groundMask.hasGroundAt(x, y - i)) {
-                    return i;
-                }
+        getGroundStepHeight(groundMask, x, y) {
+            let h = 0;
+            while (h <= 6 && groundMask.hasGroundAt(x, y - h)) {
+                h++;
             }
-            return 7;
+            return h; // 0..7 (7 means obstacle higher than 6)
         }
-        getGroudGapDelta(groundMask, x, y) {
-            for (let i = 1; i < 4; i++) {
-                if (groundMask.hasGroundAt(x, y + i)) {
-                    return i;
-                }
+
+        getGroundGapDepth(groundMask, x, y) {
+            let d = 1;
+            while (d <= 3 && !groundMask.hasGroundAt(x, y + d)) {
+                d++;
             }
-            return 4;
+            return d; // 1..4 (4 means gap deeper than 3)
         }
         process(level, lem) {
             lem.frameIndex++;
             lem.x += (lem.lookRight ? 1 : -1);
 
-            const groundMask = level.getGroundMaskLayer();
+            const gm = level.getGroundMaskLayer();
 
-            if (groundMask.hasGroundAt(lem.x, lem.y)) {
-                let dy = 0;
-                let newY = lem.y;
-                while (dy <= 6 && groundMask.hasGroundAt(lem.x, newY - 1)) {
-                    dy++;
-                    newY--;
-                }
+            if (gm.hasGroundAt(lem.x, lem.y)) {
+                let h = this.getGroundStepHeight(gm, lem.x, lem.y);
 
-                if (dy > 6) {
+                if (h > 6) {
                     if (lem.canClimb) {
                         return Lemmings.LemmingStateType.CLIMBING;
-                    } else {
-                        lem.lookRight = !lem.lookRight;
-                        return Lemmings.LemmingStateType.NO_STATE_TYPE;
                     }
+                    lem.lookRight = !lem.lookRight;
+                    return Lemmings.LemmingStateType.NO_STATE_TYPE;
                 }
 
-                if (dy >= 3) {
+                if (h >= 3) {
                     lem.y -= 2;
+                    lem.state = 0;
                     return Lemmings.LemmingStateType.JUMPING;
                 }
 
-                lem.y = newY;
+                lem.y -= h;
+                if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
+                    lem.y = Lemmings.Lemming.LEM_MIN_Y;
+                }
                 return Lemmings.LemmingStateType.NO_STATE_TYPE;
             }
 
-            const downDelta = this.getGroudGapDelta(groundMask, lem.x, lem.y);
-            lem.y += downDelta;
-            if (downDelta == 4) {
+            const d = this.getGroundGapDepth(gm, lem.x, lem.y);
+            lem.y += d;
+            if (d == 4) {
                 return Lemmings.LemmingStateType.FALLING;
             }
-
             return Lemmings.LemmingStateType.NO_STATE_TYPE;
         }
     }
