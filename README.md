@@ -169,6 +169,7 @@ as a **Progressive Web App (PWA)**. Installing adds the game to your device's
 app list and launches it fullscreen in landscape mode. Touch input still needs
 polish, so the mobile experience may be rough.
 
+
 ## Options
 
 URL parameters (shortcut in brackets):
@@ -217,3 +218,5 @@ URL parameters (shortcut in brackets):
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
