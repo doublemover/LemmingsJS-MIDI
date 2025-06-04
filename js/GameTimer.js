@@ -1,15 +1,27 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class GameTimer {
+    #speedFactor;
+    #frameTime;
+    #rafId;
+    #lastTime;
+    #lastGameSecond;
+    #tickIndex;
+    #loopBound;
+    #autoPaused;
+    #normTickCount;
+    #catchupSlow;
+    #visHandler;
+
     constructor(level) {
         this.TIME_PER_FRAME_MS = 60;
-        this._speedFactor = 1;
-        this._frameTime = this.TIME_PER_FRAME_MS;
-        this._rafId = 0;
-        this._lastTime = 0;
-        this._lastGameSecond = 0;
-        this.tickIndex = 0;
-        this._loopBound = this._loop.bind(this);
+        this.#speedFactor = 1;
+        this.#frameTime = this.TIME_PER_FRAME_MS;
+        this.#rafId = 0;
+        this.#lastTime = 0;
+        this.#lastGameSecond = 0;
+        this.#tickIndex = 0;
+        this.#loopBound = this.#loop.bind(this);
         this.onGameTick = new Lemmings.EventHandler();
         this.eachGameSecond = new Lemmings.EventHandler();
         this.onBeforeGameTick = new Lemmings.EventHandler();
@@ -20,36 +32,56 @@ class GameTimer {
             const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
             if (hidden) {
                 if (this.isRunning()) {
-                    this._autoPaused = true;
+                    this.#autoPaused = true;
                     this.suspend();
                 }
-            } else if (this._autoPaused) {
-                this._autoPaused = false;
+            } else if (this.#autoPaused) {
+                this.#autoPaused = false;
                 this.continue();
             }
         };
-        document.addEventListener('visibilitychange', this._visHandler, false);
-        window.addEventListener('blur',  this._visHandler, false);
-        window.addEventListener('focus', this._visHandler, false);
-        this._updateFrameTime();
+        document.addEventListener('visibilitychange', this.#visHandler, false);
+        window.addEventListener('blur',  this.#visHandler, false);
+        window.addEventListener('focus', this.#visHandler, false);
+        this.#updateFrameTime();
     }
 
-    isRunning() { return this._rafId !== 0; }
+    isRunning() { return this.#rafId !== 0; }
 
-    get speedFactor() { return this._speedFactor; }
+    get tickIndex() { return this.#tickIndex; }
+    set tickIndex(v) {
+        if (v >= Lemmings.COUNTER_LIMIT) {
+            console.warn('tickIndex wrapped, resetting to 0');
+            this.#tickIndex = 0;
+        } else {
+            this.#tickIndex = v;
+        }
+    }
+
+    get normTickCount() { return this.#normTickCount; }
+    set normTickCount(v) {
+        if (v >= Lemmings.COUNTER_LIMIT) {
+            console.warn('normTickCount wrapped, resetting to 0');
+            this.normTickCount = 0;
+        } else {
+            this.#normTickCount = v;
+        }
+    }
+
+    get speedFactor() { return this.#speedFactor; }
     set speedFactor(value) {
         if (value <= 0) return;
-        if (this._speedFactor === value) return;
-        this._speedFactor = value;
-        this._updateFrameTime();
+        if (this.#speedFactor === value) return;
+        this.#speedFactor = value;
+        this.#updateFrameTime();
         if (this.isRunning()) {
             this.suspend();
             this.continue();
         }
     }
 
-    _updateFrameTime() {
-        this._frameTime = this.TIME_PER_FRAME_MS / this._speedFactor;
+    #updateFrameTime() {
+        this.#frameTime = this.TIME_PER_FRAME_MS / this.#speedFactor;
     }
 
     toggle() {
@@ -59,42 +91,46 @@ class GameTimer {
 
     continue() {
         if (this.isRunning()) return;
-        this._lastTime = performance.now();
-        this._rafId = window.requestAnimationFrame(this._loopBound);
+        this.#lastTime = performance.now();
+        this.#rafId = window.requestAnimationFrame(this.#loopBound);
     }
 
     suspend() {
-        if (this._rafId) {
-            window.cancelAnimationFrame(this._rafId);
-            this._rafId = 0;
+        if (this.#rafId) {
+            window.cancelAnimationFrame(this.#rafId);
+            this.#rafId = 0;
         }
     }
 
-    _loop(now) {
+    #loop(now) {
         if (!this.isRunning()) return;
         // window.cancelAnimationFrame(this._rafId);
         const gameSeconds = (this._lastTime / this.TIME_PER_FRAME_MS) | 0;
         if (gameSeconds > this._lastGameSecond) {
             if (this.eachGameSecond) {
-                this._lastGameSecond = gameSeconds;
+                this.#lastGameSecond = gameSeconds;
                 this.eachGameSecond.trigger();
             }
         }
-        let delta = now - this._lastTime;
-        if (delta >= this._frameTime) {
-            const steps = Math.floor(delta / this._frameTime);
+        let delta = now - this.#lastTime;
+        if (delta >= this.#frameTime) {
+            const steps = Math.floor(delta / this.#frameTime);
             if (lemmings.bench == true) {
-                this._benchSpeedAdjust(steps);
+                this.#benchSpeedAdjust(steps);
+            } else if (steps > 1) {
+                this.#catchupSpeedAdjust(steps);
+            } else if (this.#catchupSlow) {
+                this.#restoreSpeed();
             }
-            delta -= steps * this._frameTime;
-            this._lastTime = now - delta;
+            delta -= steps * this.#frameTime;
+            this.#lastTime = now - delta;
             for (let i = 0; i < steps; ++i) {
                 if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
                 ++this.tickIndex;
                 if (this.onGameTick) this.onGameTick.trigger();
             }
         }
-        this._rafId = window.requestAnimationFrame(this._loopBound);
+        this.#rafId = window.requestAnimationFrame(this.#loopBound);
     }
 
     _benchSpeedAdjust(steps) {
@@ -149,9 +185,9 @@ class GameTimer {
 
     stop() {
         this.suspend();
-        document.removeEventListener('visibilitychange', this._visHandler, false);
-        window.removeEventListener('blur', this._visHandler, false);
-        window.removeEventListener('focus', this._visHandler, false);
+        document.removeEventListener('visibilitychange', this.#visHandler, false);
+        window.removeEventListener('blur', this.#visHandler, false);
+        window.removeEventListener('focus', this.#visHandler, false);
 
         // Dispose all event handlers to prevent leaks across level reloads
         if (this.onBeforeGameTick && this.onBeforeGameTick.dispose)

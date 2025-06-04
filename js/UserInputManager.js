@@ -149,8 +149,8 @@ class UserInputManager {
     handleMouseMove(position) {
         //- Move Point of View
         if (this.mouseButton) {
-            let deltaX = (this.lastMouseX - position.x);
-            let deltaY = (this.lastMouseY - position.y);
+            let deltaX = this.lastMouseX - position.x;
+            let deltaY = this.lastMouseY - position.y;
             //- save start of Mousedown
             this.lastMouseX = position.x;
             this.lastMouseY = position.y;
@@ -204,8 +204,8 @@ class UserInputManager {
     /** Zoom view
      * todo: zoom to mouse pointer */
     handleWheel(position, deltaY) {
-        let dX = (this.lastMouseX - position.x);
-        let dY = (this.lastMouseY - position.y);
+        let dX = this.lastMouseX - position.x;
+        let dY = this.lastMouseY - position.y;
         this.lastMouseX = position.x;
         this.lastMouseY = position.y;
         let mouseDragArguments = new MouseMoveEventArguements(position.x, position.y, dX, dY, true);

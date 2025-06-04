@@ -122,10 +122,14 @@ class Level extends Lemmings.BaseLogger {
       })();
   }
 
-  getGroundMaskLayer() { return this.groundMask; }
-  setGroundMaskLayer(solidLayer) { this.groundMask = solidLayer; }
+    this._debugFrame = null; // invalidate cached debug overlay
+    const newSteelRanges = [];
+        const newRange = new Lemmings.Range();
 
-  isOutOfLevel(y) { return y < 0 || y >= this.height; }
+    this._debugFrame = null; // invalidate cached debug overlay
+    if (!this._debugFrame) this.#buildDebugFrame();
+    gameDisplay.drawFrame(this._debugFrame, 0, 0);
+  }
 
   clearGroundWithMask(mask, x, y) {
     const img = this.groundImage;

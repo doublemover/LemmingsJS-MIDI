@@ -341,6 +341,8 @@ class GameGui {
         this._numLeftCache = null;
         this._panelSprite = null;
         this._numEmptySprite = null;
+        if (this.miniMap?.dispose) this.miniMap.dispose();
+        this.miniMap = null;
 
     }
 

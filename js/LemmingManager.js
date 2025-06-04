@@ -27,10 +27,8 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.gameVictoryCondition = gameVictoryCondition;
         this.actions = [];
         this.skillActions = [];
-        this.releaseTickIndex = 0;
         this.logging = LemmingManager.log;
         this.miniMap = null;
-        this.mmTickCounter = 0;
         this.nextNukingLemmingsIndex = -1;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
@@ -385,7 +383,7 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.releaseTickIndex = null;
         this.logging = new Lemmings.Logger("LemmingManager");
         this.miniMap = null;
-        this.mmTickCounter = null;
+        this.#mmTickCounter = null;
         this.nextNukingLemmingsIndex = null;
         if (typeof lemmings !== 'undefined' &&
             lemmings.perfMetrics === true &&

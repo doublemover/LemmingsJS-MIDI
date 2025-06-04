@@ -51,6 +51,11 @@ class TriggerManager {
     this._debugFrame = null;
   }
 
+
+    this._debugFrame = null;
+  }
+
+    this._debugFrame = null;
   /* ───────────────────────── public API ───────────────────────── */
 
   /** Register a single trigger */
