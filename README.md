@@ -144,6 +144,20 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
 
+## Running Tests
+
+`npm test` runs the automated checks. The command first executes
+`npm run check-undefined` and then launches the Mocha suite with
+`js/LogHandler.js` preloaded. The CI workflow on GitHub Actions runs this on
+**Node&nbsp;18** and performs `npm run lint` before the tests.
+
+To match the CI environment locally:
+
+```bash
+npm run lint
+npm test
+```
+
 ### Progressive Web App
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
