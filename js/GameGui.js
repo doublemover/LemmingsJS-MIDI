@@ -50,8 +50,13 @@ class GameGui {
                     this.nukePrepared = false;
                 }
             }
-            this.backgroundChanged = true;
-            this._guiRafId = window.requestAnimationFrame(this._guiBound);
+            if (((this.gameTimer.getGameTime()|0) % 2) == 0) {
+                this.backgroundChanged = true;
+            }
+
+            if (this._guiRafId == 0) {
+                this._guiRafId = window.requestAnimationFrame(this._guiBound);
+            }
         })
 
         skills.onCountChanged.on(() => {
@@ -148,7 +153,6 @@ class GameGui {
                     if (speedFac < 10) {
                         this.gameTimer.speedFactor++;
                         this.drawSpeedChange(true);
-
                         return;
                     }
                 }
@@ -260,6 +264,7 @@ class GameGui {
         if (this._guiRafId) {
             window.cancelAnimationFrame(this._guiRafId);
             this._guiRafId = 0;
+            this.gameTimer.eachGameSecond.off();
         }
         if (this.display && this._displayListeners) {
             for (const [event, handler] of this._displayListeners) {
@@ -286,19 +291,20 @@ class GameGui {
             this.gameTimeChanged = this.skillsCountChangd = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
         }
 
-        if (this.gameTimeChanged || lemmings.debugOrBench) {
+        if (this.gameTimeChanged) {
             this.gameTimeChanged = false;
-            this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
-
+            
             if (lemmings.bench == false) {
+                this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
                 const outCount = this.gameVictoryCondition.getOutCount();
                 if (outCount >= 0) {
                     this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
                 }
-            } else if (lemmings.bench == true) {
-                this.drawGreenString(d, ' ' + lemmings.laggedOut + '  ', 112, 0);
+                this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
+            } else if (lemmings.bench == true && this.gameSpeedChanged) {
+                this.drawGreenString(d, ' L' + lemmings.laggedOut + '  ', 112, 0);
+                this.drawGreenString(d, ' T' + lemmings.steps + '  ', 0, 0);
             }
-            this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
         }
 
         if (this.gameSpeedChanged) {
