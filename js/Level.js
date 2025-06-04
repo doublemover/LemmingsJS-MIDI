@@ -102,6 +102,13 @@ class Level {
         img[idx] = img[idx + 1] = img[idx + 2] = 0;
       }
     }
+    // refresh minimap for the affected region
+    lemmings.game.lemmingManager?.miniMap?.invalidateRegion(
+      x + offsetX,
+      y + offsetY,
+      mw,
+      mh
+    );
   }
 
   setGroundAt(x, y, paletteIndex) {
