@@ -145,6 +145,7 @@ class Stage {
             }
         }
 
+
         _applyZoom(vp, nx, ny, scale, maxX, maxY) {
             vp.scale = scale;
             vp.x = this.limitValue(0, nx, maxX);
