@@ -14,5 +14,4 @@ class GameConfig {
   }
 }
 Lemmings.GameConfig = GameConfig;
-
 export { GameConfig };

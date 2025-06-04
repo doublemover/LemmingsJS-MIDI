@@ -64,6 +64,9 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.logging = LemmingManager.log;
         this.miniMap = null;
         this.nextNukingLemmingsIndex = -1;
+        this._startTime = performance.now();
+        this._spawnSeq = [];
+        this._spawnIdx = 0;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
         this.actions[Lemmings.LemmingStateType.FALLING]    = new Lemmings.ActionFallSystem(lemmingsSprite);
@@ -234,7 +237,7 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   addNewLemmings() {
     if (lemmings.bench == true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
-            
+      
     } else {
       if (this.gameVictoryCondition.getLeftCount() <= 0) return;
     }
@@ -444,6 +447,11 @@ class LemmingManager extends Lemmings.BaseLogger {
             redundant[skillType] && (lem.action instanceof redundant[skillType]);
         if (alreadyDoingIt) {
           return false;
+        }
+        if (skillType === Lemmings.SkillTypes.CLIMBER &&
+            this.level.mechanics?.AssignClimberShruggerActionBug &&
+            lem.action instanceof Lemmings.ActionShrugSystem) {
+            this.setLemmingState(lem, Lemmings.LemmingStateType.WALKING);
         }
         const wasBlocking = (lem.action instanceof Lemmings.ActionBlockerSystem);
         const ok = actionSystem.triggerLemAction(lem);

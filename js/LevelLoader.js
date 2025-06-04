@@ -34,7 +34,7 @@ class LevelLoader {
     levelReader           = new Lemmings.LevelReader(
       levelsContainer.getPart(levelInfo.partIndex));
 
-    level                      = new Lemmings.Level(
+      level                    = new Lemmings.Level(
       levelReader.levelWidth,
       levelReader.levelHeight);
     level.gameType             = this.config.gametype;

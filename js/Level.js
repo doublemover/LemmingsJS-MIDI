@@ -76,7 +76,6 @@ class Level extends Lemmings.BaseLogger {
           //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
           //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
           //   }
-
           //   const clone = new Lemmings.ObjectImageInfo();
           //   Object.assign(clone, objectInfo);
           //   clone.palette = pal;
@@ -193,8 +192,9 @@ class Level extends Lemmings.BaseLogger {
   isArrowAt(x, y, direction) {
     const a = this.arrowRanges;
     for (let i = 0, len = a.length; i < len; i += 5) {
-      if (x >= a[i] && x < a[i] + a[i+2] && y >= a[i+1] && y < a[i+1] + a[i+3] && direction != a[i+4]) {
-        return true;
+      if (x >= a[i] && x < a[i] + a[i+2] && y >= a[i+1] && y < a[i+1] + a[i+3]) {
+        if (direction != a[i+4]) return true;
+        if (this.mechanics.MinerOneWayRightBug && a[i+4] === 1) return true;
       }
     }
     return false;
