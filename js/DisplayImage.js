@@ -260,6 +260,22 @@ class DisplayImage {
         }
     }
 
+    drawCornerRect(x, y, size, r = 255, g = 255, b = 0, len = 3) {
+        const x2 = x + size;
+        const y2 = y + size;
+        this.drawHorizontalLine(x, y, x + len, r, g, b);
+        this.drawVerticalLine(x, y, y + len, r, g, b);
+
+        this.drawHorizontalLine(x2 - len, y, x2, r, g, b);
+        this.drawVerticalLine(x2, y, y + len, r, g, b);
+
+        this.drawHorizontalLine(x, y2, x + len, r, g, b);
+        this.drawVerticalLine(x, y2 - len, y2, r, g, b);
+
+        this.drawHorizontalLine(x2 - len, y2, x2, r, g, b);
+        this.drawVerticalLine(x2, y2 - len, y2, r, g, b);
+    }
+
     /* ---------- misc utilities ---------- */
     setDebugPixel(x, y) { if (this.buffer32) this.buffer32[y * this.imgData.width + x] = 0xFFFF0000; }
 
