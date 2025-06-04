@@ -18,6 +18,8 @@ class Stage {
             this.guiImgProps = new Lemmings.StageImageProperties();
             this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
             this._rawScale = this.gameImgProps.viewPoint.scale;
+            this._wheelAnim = null;
+            this._wheelRaf = null;
             this.updateStageSize();
             this.clear();
         }
@@ -93,12 +95,71 @@ class Stage {
         }
         handleOnZoom() {
             this.controller.onZoom.on((e) => {
-                let stageImage = this.getStageImageAt(e.x, e.y);
+                const stageImage = this.getStageImageAt(e.x, e.y);
                 if (stageImage == null || stageImage.display.getWidth() != 1600)
                     return;
-                let pos = this.calcPosition2D(stageImage, e);
-                this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, pos.x, pos.y);
+                const pos = this.calcPosition2D(stageImage, e);
+                const oldScale = this._rawScale;
+                const rawTarget = oldScale * (1 + -e.deltaZoom / 1200);
+                this._startWheelZoom(rawTarget, pos.x, pos.y);
             });
+        }
+
+        _startWheelZoom(scale, centerX, centerY) {
+            const img = this.gameImgProps;
+            const target = this.limitValue(.25, scale, 4);
+            if (Math.abs(target - this._rawScale) < 0.001) return;
+            this._wheelAnim = {
+                startScale: this._rawScale,
+                targetScale: target,
+                centerX,
+                centerY,
+                startTime: performance.now(),
+                duration: 120
+            };
+            if (!this._wheelRaf) {
+                this._wheelRaf = requestAnimationFrame(t => this._stepWheelZoom(t));
+            }
+        }
+
+        _stepWheelZoom(t) {
+            if (!this._wheelAnim) {
+                this._wheelRaf = null;
+                return;
+            }
+            const a = this._wheelAnim;
+            const p = Math.min(1, (t - a.startTime) / a.duration);
+            const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+            const raw = a.startScale + (a.targetScale - a.startScale) * ease;
+            this._applyZoom(raw, a.centerX, a.centerY);
+            if (p < 1) {
+                this._wheelRaf = requestAnimationFrame(tt => this._stepWheelZoom(tt));
+            } else {
+                this._wheelAnim = null;
+                this._wheelRaf = null;
+            }
+        }
+
+        _applyZoom(rawScale, centerX, centerY) {
+            this._rawScale = rawScale;
+            const img = this.gameImgProps;
+            const vp = img.viewPoint;
+            const newScale = this.snapScale(rawScale);
+            const cx = img.width / 2;
+            const cy = img.height / 2;
+            const nx = centerX - cx / newScale;
+            const ny = centerY - cy / newScale;
+            const maxX = img.width / newScale - img.display.getWidth();
+            const maxY = img.height / newScale - img.display.getHeight();
+            vp.x = this.limitValue(0, nx, maxX);
+            vp.y = this.limitValue(0, ny, maxY);
+            vp.scale = newScale;
+            if (img.display != null) {
+                this.clear(img);
+                const gameImg = img.display.getImageData();
+                this.draw(img, gameImg);
+            }
+            this.redraw();
         }
         updateViewPoint(stageImage, deltaX, deltaY, deltaZoom, zx = 0, zy = 0) {
             if ((stageImage == null) || (stageImage.display == null))
@@ -135,17 +196,10 @@ class Stage {
                 this.draw(stageImage, gameImg);
             }
 
-            const xCeiling = Math.max(0, stageImage.viewPoint.x);
-            const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-            const xFloor = Math.min(xCeiling, xFloorLimit);
-
-            stageImage.viewPoint.x = xFloor;
-
-            const yCeiling = Math.max(0, stageImage.viewPoint.y);
-            const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-            const yFloor = Math.min(yCeiling, yFloorLimit);
-
-            stageImage.viewPoint.y = yFloor;
+            const maxX = stageImage.width  / stageImage.viewPoint.scale - stageImage.display.getWidth();
+            const maxY = stageImage.height / stageImage.viewPoint.scale - stageImage.display.getHeight();
+            stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, maxX);
+            stageImage.viewPoint.y = this.limitValue(0, stageImage.viewPoint.y, maxY);
 
             // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
             // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);

@@ -68,8 +68,8 @@ class KeyboardShortcuts {
             const a = this.zoom.anim;
             const p = Math.min(1, (t - a.startTime) / a.duration);
             const ease = p < 0.5
-                ? 4 * p * p * p
-                : 1 - Math.pow(-2 * p + 2, 3) / 2;
+                ? 8 * p * p * p * p
+                : 1 - Math.pow(-2 * p + 2, 4) / 2;
             const raw = a.startScale + (a.targetScale - a.startScale) * ease;
                 stage._rawScale = raw;
                 const newScale = stage.snapScale(raw);
@@ -152,7 +152,7 @@ class KeyboardShortcuts {
             centerX: vp.x + cx / vp.scale,
             centerY: vp.y + cy / vp.scale,
             startTime: performance.now(),
-            duration: 200
+            duration: 300
         };
         this._startLoop();
     }
