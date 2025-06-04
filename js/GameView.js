@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import './KeyboardShortcuts.js';
 
 class GameView {
     constructor() {
@@ -24,6 +25,7 @@ class GameView {
         this.elementSelectLevelGroup = null;
         this.elementSelectLevel = null;
         this.configs = null;
+        this.shortcuts = new Lemmings.KeyboardShortcuts(this);
 
         this.log.log("selected level: " + Lemmings.GameTypes.toString(this.gameType) + " : " + this.levelIndex + " / " + this.levelGroupIndex);
     }
