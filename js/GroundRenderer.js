@@ -12,8 +12,8 @@ class GroundRenderer {
   }
 
   /** Build ground bitmap once per level */
-  createGroundMap (levelReader, terrainImages) {
-    const { levelWidth, levelHeight, terrains } = levelReader;
+  createGroundMap (levelReader, terrainImages, objectImages = null) {
+    const { levelWidth, levelHeight, terrains, objects } = levelReader;
 
     // Final combined image (steel beneath normal ground)
     this.img = new Lemmings.Frame(levelWidth, levelHeight);
@@ -29,6 +29,20 @@ class GroundRenderer {
       if (img.isSteel) {
         this._blit(img, tObj, 0, this.steelImg);
         this._blit(img, tObj, 0, this.img);
+      }
+    }
+
+    // Steel objects behave like additional steel terrain. Draw them to the
+    // steel layer and the final image before normal terrain.
+    if (objectImages && Array.isArray(objects)) {
+      for (let i = 0, len = objects.length; i < len; ++i) {
+        const ob = objects[i];
+        const info = objectImages[ob.id];
+        if (!info) continue;
+        if (info.trigger_effect_id === Lemmings.TriggerTypes.STEEL) {
+          this._blit(info, ob, info.firstFrameIndex || 0, this.steelImg);
+          this._blit(info, ob, info.firstFrameIndex || 0, this.img);
+        }
       }
     }
 
