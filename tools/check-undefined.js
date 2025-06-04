@@ -1,6 +1,9 @@
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'acorn';
+import { createRequire } from 'module';
+
+const require = createRequire(import.meta.url);
 
 const definedFunctions = new Set();
 const definedMethods = new Set();
@@ -116,10 +119,10 @@ function parseJS(code, file) {
   }
 }
 
-function processJSFile(file) {
+function processJSFile(file, withCalls = false) {
   const code = fs.readFileSync(file, 'utf8');
   const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, false);
+  if (ast) collectFromAst(ast, file, withCalls);
 }
 
 function processHtmlFile(file) {
@@ -162,10 +165,18 @@ function gatherFiles(dir, exts, results = []) {
   return results;
 }
 
-const jsFiles = gatherFiles('js', ['.js']);
-const htmlFiles = gatherFiles('.', ['.html']);
+const args = process.argv.slice(2);
+let jsFiles = [];
+let htmlFiles = [];
+if (args.length) {
+  jsFiles = args.filter(f => f.endsWith('.js'));
+  htmlFiles = args.filter(f => f.endsWith('.html'));
+} else {
+  jsFiles = gatherFiles('js', ['.js']);
+  htmlFiles = gatherFiles('.', ['.html']);
+}
 
-for (const file of jsFiles) processJSFile(file);
+for (const file of jsFiles) processJSFile(file, args.length > 0);
 for (const file of htmlFiles) processHtmlFile(file);
 
 const errors = [];
@@ -183,8 +194,16 @@ for (const call of calls) {
 }
 
 if (errors.length) {
-  console.error('Undefined calls found:');
-  for (const err of errors) console.error('  ' + err);
+  if (args.length) {
+    for (const err of errors) {
+      const match = /Undefined (?:function|method) (\S+)/.exec(err);
+      const name = match ? match[1] : err;
+      console.error(`${name} is not defined`);
+    }
+  } else {
+    console.error('Undefined calls found:');
+    for (const err of errors) console.error('  ' + err);
+  }
   process.exit(1);
 } else {
   console.log('No undefined calls detected.');
