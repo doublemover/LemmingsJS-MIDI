@@ -4,7 +4,6 @@ import assert from 'assert';
 global.lemmings = { game: { showDebug: false } };
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import '../js/BinaryReader.js';
 import '../js/BitReader.js';
 import '../js/BitWriter.js';
@@ -56,7 +55,12 @@ function runTest(bad) {
   }
 }
 
-runTest(false);
-runTest(true);
+describe('FileContainer', function () {
+  it('unpacks a valid part', function () {
+    runTest(false);
+  });
 
-console.log('All tests passed.');
+  it('detects invalid checksum', function () {
+    runTest(true);
+  });
+});

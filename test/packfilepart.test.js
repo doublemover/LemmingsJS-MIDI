@@ -2,7 +2,6 @@ import { expect } from 'chai';
 import { readFileSync } from 'fs';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
 import { BitReader } from '../js/BitReader.js';
 import { BitWriter } from '../js/BitWriter.js';
@@ -64,5 +63,35 @@ describe('PackFilePart', function () {
     const calc = packed.data.reduce((a, b) => a ^ b, 0);
     expect(calc).to.equal(packed.checksum);
     expect(part.initialBufferLen).to.equal(packed.initialBits);
+  });
+
+  it('handles short raw blocks', function () {
+    const arr = Uint8Array.from([1,2,3,4,5,6,7,8]);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
+  });
+
+  it('handles short references of length 2-4', function () {
+    const cases = [
+      Uint8Array.from([1,2,1,2]),
+      Uint8Array.from([1,2,3,1,2,3]),
+      Uint8Array.from([1,2,3,4,1,2,3,4])
+    ];
+    for (const arr of cases) {
+      const result = roundTrip(arr);
+      expect(Array.from(result)).to.eql(Array.from(arr));
+    }
+  });
+
+  it('handles generic references', function () {
+    const arr = Uint8Array.from([1,2,3,4,5,6,1,2,3,4,5,6]);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
+  });
+
+  it('handles large raw blocks', function () {
+    const arr = Uint8Array.from({length:300}, (_,i)=>i%256);
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(Array.from(arr));
   });
 });
