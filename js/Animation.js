@@ -1,14 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
-// Palette indices for the fire shooter trap that will be remapped when creating
-// an ice version of the animation. These correspond to the warm reds/oranges
-// and the bright yellow core of the flame.
-const FIRE_INDICES = Object.freeze([4, 5, 7, 8, 9, 10, 11]);
+// Palette indices for the fire shooter trap that will be remapped when
+// creating an ice version of the animation.  They cover the full gradient
+// from the bright yellow core through orange to the darkest reds.
+const FIRE_INDICES = Object.freeze([4, 5, 7, 8, 9, 10, 11, 12]);
 
-// Destination indices holding cooler blue tones within the same palette. Each
-// entry at the same position in FIRE_INDICES will be replaced with the colour
-// found at this index.
-const ICE_INDICES  = Object.freeze([1, 1, 12, 12, 13, 1, 12]);
+// Destination indices holding icy blue tones taken from the ice-level
+// graphics set.  They roughly match the brightness of the original
+// colours so the animation still looks natural.  Each entry maps to the
+// index at the same position in FIRE_INDICES.
+const ICE_INDICES  = Object.freeze([4, 4, 3, 2, 3, 2, 2, 2]);
 
 class Animation {
   constructor (_compat = null, loop = true) {
