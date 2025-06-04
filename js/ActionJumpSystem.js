@@ -26,17 +26,30 @@ class ActionJumpSystem {
     process(level, lem) {
         lem.frameIndex++;
         lem.x += (lem.lookRight ? 1 : -1);
-        let i = 0;
-        for (; i < 2; i++) {
-            if (!level.hasGroundAt(lem.x, lem.y - i - 1)) {
+
+        let moved = 0;
+        for (; moved < 2; moved++) {
+            if (!level.hasGroundAt(lem.x, lem.y - moved - 1)) {
                 break;
             }
         }
-        lem.y -= i;
-        if (i < 2) { // stop jumping
+        lem.y -= moved;
+
+        lem.state += moved;
+        if (moved < 2 || lem.state >= 2) {
+            lem.state = 0;
             return Lemmings.LemmingStateType.WALKING;
         }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE; // this.check_top_collision(lem); <no idea what this is for
+
+        if (!level.hasGroundAt(lem.x, lem.y + 1)) {
+            return Lemmings.LemmingStateType.FALLING;
+        }
+
+        if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
+            lem.y = Lemmings.Lemming.LEM_MIN_Y;
+        }
+
+        return Lemmings.LemmingStateType.NO_STATE_TYPE;
     }
 }
 
