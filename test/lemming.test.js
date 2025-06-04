@@ -75,6 +75,7 @@ describe('LemmingManager', function() {
     ].forEach(n => { Lemmings[n] = stub; });
   });
   it('logs state changes when lemmings transition actions', function() {
+    globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
     const level = new Level(10, 10);
     level.entrances = [{ x: 0, y: 0 }];
     const gvc = new GameVictoryCondition(level);

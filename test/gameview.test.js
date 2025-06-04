@@ -29,7 +29,6 @@ afterEach(function() { delete globalThis.window; });
 
 import { GameView } from '../js/GameView.js';
 
-
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
   constructor() {}
