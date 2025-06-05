@@ -18,6 +18,7 @@ level-writer.md: level-writing
 level-loader.md: level-loading
 mechanics-config.md: config
 level-reader.md: level-parsing
+level-format.md: level-format doc
 drawMarchingAntRect.md: ui
 game-display.md: display
 display-image.md: canvas
