@@ -73,4 +73,21 @@ describe('Stage overlay fade', function() {
     expect(stage.overlayAlpha).to.equal(0);
     expect(stage.overlayTimer).to.equal(0);
   });
+
+  it('uses provided rectangle for overlay color', function() {
+    const rectCalls = [];
+    const canvas = createStubCanvas();
+    canvas.getContext().fillRect = (x, y, w, h) => { rectCalls.push({ x, y, w, h }); };
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.guiImgProps.display.initSize(10, 10);
+
+    const rect = { x: 5, y: 6, width: 7, height: 8 };
+    stage.startOverlayFade('red', rect);
+    stage.overlayAlpha = 1;
+    stage.draw(stage.guiImgProps, stage.guiImgProps.display.getImageData());
+
+    const match = rectCalls.some(r => r.x === rect.x && r.y === rect.y && r.w === rect.width && r.h === rect.height);
+    expect(match).to.equal(true);
+  });
 });

@@ -8,6 +8,7 @@ class Stage {
     this.overlayColor = 'black';
     this.overlayAlpha = 0;
     this.overlayTimer = 0;
+    this.overlayRect = null;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -316,6 +317,7 @@ class Stage {
   resetFade() {
     this.fadeAlpha = 0;
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
@@ -343,6 +345,7 @@ class Stage {
 
   resetOverlayFade() {
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.overlayTimer != 0) {
       clearInterval(this.overlayTimer);
       this.overlayTimer = 0;
@@ -359,18 +362,20 @@ class Stage {
     }, 40);
   }
 
-  startOverlayFade(color) {
+  startOverlayFade(color, rect = null) {
     if (this.overlayTimer) {
       clearInterval(this.overlayTimer);
       this.overlayTimer = 0;
     }
     this.overlayColor = color;
+    this.overlayRect = rect;
     this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
       this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
+        this.overlayRect = null;
       }
     }, 40);
   }
@@ -430,10 +435,15 @@ class Stage {
     if (this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      const r = this.overlayRect;
+      if (r) {
+        ctx.fillRect(r.x, r.y, r.width, r.height);
+      } else {
+        ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      }
       ctx.globalAlpha = 1;
     }
-    if (display === this.gameImgProps && this.overlayAlpha > 0) {
+    if (display === this.gameImgProps && this.overlayAlpha > 0 && !this.overlayRect) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
