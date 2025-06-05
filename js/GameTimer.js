@@ -97,6 +97,28 @@ class GameTimer {
     this.#running = false;
   }
 
+  /**
+   * Advance or rewind the game state by a number of ticks without
+   * starting the animation loop. Negative values rewind if possible.
+   * @param {number} steps
+   */
+  tick(steps = 1) {
+    if (this.isRunning()) return;
+    const count = Math.trunc(Math.abs(steps));
+    const dir = Math.sign(steps);
+    for (let i = 0; i < count; i++) {
+      if (dir >= 0) {
+        if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
+        ++this.tickIndex;
+        if (this.onGameTick) this.onGameTick.trigger();
+      } else if (this.tickIndex > 0) {
+        --this.tickIndex;
+        if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
+        if (this.onGameTick) this.onGameTick.trigger();
+      }
+    }
+  }
+
   #loop(now) {
     if (!this.isRunning()) return;
     window.cancelAnimationFrame(this.#rafId);

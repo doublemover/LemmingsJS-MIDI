@@ -18,6 +18,7 @@ level-writer.md: level-writing
 level-loader.md: level-loading
 mechanics-config.md: config
 level-reader.md: level-parsing
+level-format.md: level-format doc
 drawMarchingAntRect.md: ui
 game-display.md: display
 display-image.md: canvas
@@ -34,6 +35,7 @@ bit-writer.md: bit-writer
 file-container.md: file-container
 unpack-file-part.md: unpack-file-part
 pack-mechanics.md: mechanics
+config.md: config mechanics doc
 todo-review.md: todo
 keyboard-shortcuts.md: keyboard
 webmidi-overview.md: webmidi doc overview
@@ -41,8 +43,11 @@ webmidi-overview.md: webmidi midi doc
 note-review.md: todo
 webmidi-tasks.md: webmidi-todo
 level-packs.md: level-packs resources doc
-
+userinput-zoom.md: stage input tests
 pause-overlay.md: bench-mode gui
-
 webmidi.md: webmidi doc
 webmidi-environments.md: webmidi environment doc
+webmidi-enumerations.md: webmidi enumerations doc
+easing-functions.md: easing animation
+nl-objects.md: nl-objects doc
+nl-skills.md: nl-skills doc
