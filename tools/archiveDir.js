@@ -16,7 +16,9 @@ export async function archiveDir(dir, format) {
     await tar.c({ gzip: true, cwd, file: `${dir}.tar.gz` }, [base]);
   } else if (format === 'rar') {
     const res = spawnSync('rar', ['a', `${base}.rar`, base], { cwd, stdio: 'inherit' });
-    if (res.error) throw new Error('rar command failed');
+    if (res.error || res.status !== 0) {
+      throw new Error('rar command failed');
+    }
   } else {
     throw new Error(`Unsupported archive format ${format}`);
   }

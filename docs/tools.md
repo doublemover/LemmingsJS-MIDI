@@ -15,7 +15,7 @@ node tools/exportAllPacks.js [pack1 pack2 ...]
 
 Exports panel, lemming and ground sprites for each pack. If no pack names are
 provided it reads `config.json` to determine pack paths. Assets are saved in
-`export_<pack>` directories.
+`exports/export_<pack>` directories.
 
 ## exportAllSprites.js
 
@@ -25,7 +25,7 @@ node tools/exportAllSprites.js [packPath] [outDir]
 
 Exports the skill panel, lemming animations and ground object sprites for a
 single pack. `packPath` defaults to the first entry in `config.json`. Output goes
-to `outDir` (`<pack>_all` by default).
+to `outDir` (`exports/<pack>_all` by default).
 
 ## exportPanelSprite.js
 
@@ -42,7 +42,7 @@ node tools/exportLemmingsSprites.js [packPath] [outDir]
 ```
 
 Exports every lemming animation as individual PNGs plus sprite sheets. The files
-are placed in `outDir` (`<pack>_sprites` by default).
+are placed in `outDir` (`exports/<pack>_sprites` by default).
 
 ## exportGroundImages.js
 
@@ -99,6 +99,6 @@ Removes all `export_*` directories created by the other scripts.
 
 ---
 
-Exported assets go in folders starting with `export_` or `exports/`. The game can
-load levels directly from packed archives, so you may keep your level packs
-compressed while still running these tools.
+Exported assets now live under the `exports/` directory. The game can load levels
+directly from packed archives, so you may keep your level packs compressed while
+still running these tools.
