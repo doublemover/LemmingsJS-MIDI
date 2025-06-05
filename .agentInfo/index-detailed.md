@@ -35,3 +35,4 @@ This expanded listing preserves the original bullet format with short descriptio
 - **tools, cli**: [notes/tools.md](notes/tools.md) - The tools/ directory contains small command-line utilities for working with level packs and sprites.
 - **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md) - TriggerManager maintains spatial triggers such as exits, traps and blocker
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md) - UnpackFilePart represents a single compressed chunk inside a container. It
+- **todo, gui, stage**: [notes/gui-stage-tasks.md](notes/gui-stage-tasks.md) - Collection of UI fixes: panel placement, viewport scaling, selection visuals, skill auto-apply, cursor alignment, and cursor removal.
