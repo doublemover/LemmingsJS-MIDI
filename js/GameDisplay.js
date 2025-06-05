@@ -42,9 +42,18 @@ class GameDisplay {
     if (!this.game.showDebug) {
       const sel = this.lemmingManager.getSelectedLemming();
       if (sel && !sel.removed) this.#drawSelection(sel);
-      if (this.hoverIndex >= 0 && this.hoverIndex !== this.lemmingManager.selectedIndex) {
-        const h = this.lemmingManager.getLemming(this.hoverIndex);
-        if (h && !h.removed) this.#drawHover(h);
+
+      if (this.hoverLemming && !this.hoverLemming.removed) {
+        const selected = this.hoverLemming.id === this.lemmingManager.selectedIndex;
+        const color = selected ? [255, 255, 255] : [64, 64, 64];
+        this.display.drawCornerRect(
+          this.hoverLemming.x - 5,
+          this.hoverLemming.y - 6,
+          { width: 10, height: 13 },
+          color[0],
+          color[1],
+          color[2]
+        );
       }
     }
   }
@@ -67,14 +76,14 @@ class GameDisplay {
   }
 
   #drawSelection(lem) {
-    const x1 = lem.x - 5;
-    const y1 = lem.y - 6;
-    const x2 = lem.x + 5 - 2;
-    const y2 = lem.y + 7 - 2;
-    this.#drawCorner(x1, y1, 255, 255, 255);
-    this.#drawCorner(x2, y1, 255, 255, 255);
-    this.#drawCorner(x1, y2, 255, 255, 255);
-    this.#drawCorner(x2, y2, 255, 255, 255);
+    this.display.drawCornerRect(
+      lem.x - 5,
+      lem.y - 6,
+      { width: 10, height: 13 },
+      255,
+      255,
+      255
+    );
   }
 
   #drawHover(lem) {
