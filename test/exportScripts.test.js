@@ -97,7 +97,7 @@ describe('export scripts', function () {
     const script = patchScript('exportPanelSprite.js');
     try {
       await runScript(script, [pack, outDir]);
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 150));
       expect(fs.existsSync(path.join(outDir, 'panelSprite.png'))).to.be.true;
     } finally {
       fs.rmSync(pack, { recursive: true, force: true });
@@ -111,7 +111,7 @@ describe('export scripts', function () {
     const script = patchScript('exportGroundImages.js');
     try {
       await runScript(script, [pack, '0', outDir]);
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 150));
       expect(fs.existsSync(path.join(outDir, 'terrain_0_0.png')) || fs.existsSync(path.join(outDir, 'object_0_0.png'))).to.be.true;
     } finally {
       fs.rmSync(pack, { recursive: true, force: true });
@@ -125,7 +125,7 @@ describe('export scripts', function () {
     const script = patchScript('exportAllSprites.js');
     try {
       await runScript(script, [pack, outDir]);
-      await new Promise(r => setTimeout(r, 50));
+      await new Promise(r => setTimeout(r, 150));
       expect(fs.existsSync(path.join(outDir, 'panel.png'))).to.be.true;
     } finally {
       fs.rmSync(pack, { recursive: true, force: true });
