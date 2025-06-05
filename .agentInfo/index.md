@@ -41,8 +41,5 @@ webmidi-overview.md: webmidi midi doc
 note-review.md: todo
 webmidi-tasks.md: webmidi-todo
 level-packs.md: level-packs resources doc
-
 pause-overlay.md: bench-mode gui
-
-webmidi.md: webmidi doc
-editor-mode.md: editor-mode gui level-editor
+nl-skills.md: nl-skills doc
