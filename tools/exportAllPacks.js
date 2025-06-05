@@ -13,6 +13,7 @@ function loadConfig() {
 }
 
 const defaultPacks = loadConfig().map(p => ({ name: p.name, path: p.path }));
+const BASE = 'exports';
 
 let packs;
 if (process.argv.length > 2) {
@@ -24,7 +25,7 @@ if (process.argv.length > 2) {
 }
 
 for (const pack of packs) {
-  const outDir = `export_${pack.name.replace(/\W+/g, '_')}`;
+  const outDir = path.join(BASE, `export_${pack.name.replace(/\W+/g, '_')}`);
   fs.mkdirSync(outDir, { recursive: true });
   console.log(`Exporting ${pack.path} -> ${outDir}`);
   const res = spawnSync('node', ['tools/exportAllSprites.js', pack.path, outDir], {
