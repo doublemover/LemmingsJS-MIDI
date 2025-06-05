@@ -22,6 +22,7 @@ async function loadSteelSprites() {
 }
 
 Lemmings.loadSteelSprites = loadSteelSprites;
+Lemmings.resetSteelSprites = () => { steelSprites = null; };
 
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
