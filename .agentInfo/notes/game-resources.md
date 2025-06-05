@@ -15,4 +15,5 @@ The holiday packs share some graphics files. For example the `xmas92` entry in
 the config to `xmas91` avoids 404 errors when the loader requests missing
 assets.
 
-The cursor graphic from `MAIN.DAT` uses a 16×16 `PaletteImage`. A 17×17 size causes smearing at the edges.
+The cursor graphic from `MAIN.DAT` uses a 14×14 `PaletteImage` maybe, user is checking it. Anything larger smears at the edges.
+
