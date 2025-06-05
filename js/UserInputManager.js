@@ -40,6 +40,8 @@ class UserInputManager {
     this.onZoom = new Lemmings.EventHandler();
     this.listenElement = listenElement;
     this._listeners = [];
+    this.twoTouch = false;
+    this.lastTouchDistance = 0;
 
     this._addListener('mousemove', (e) => {
       let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
@@ -49,26 +51,59 @@ class UserInputManager {
       return false;
     });
     this._addListener('touchmove', (e) => {
-      if (e.touches.length !== 1) {
+      if (e.touches.length === 1 && !this.twoTouch) {
+        let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
+        this.handleMouseMove(relativePos);
+        e.stopPropagation();
         e.preventDefault();
-        return;
+        return false;
       }
-      let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
-      this.handleMouseMove(relativePos);
-      e.stopPropagation();
+
+      if (e.touches.length === 2) {
+        const p1 = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
+        const p2 = this.getRelativePosition(this.listenElement, e.touches[1].clientX, e.touches[1].clientY);
+        const mid = new Lemmings.Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+
+        if (!this.twoTouch) {
+          this.twoTouch = true;
+          this.lastTouchDistance = dist;
+          this.handleMouseDown(mid);
+        } else {
+          this.handleMouseMove(mid);
+          this.handleWheel(mid, this.lastTouchDistance - dist);
+          this.lastTouchDistance = dist;
+        }
+
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
+      }
+
       e.preventDefault();
-      return false;
+      return;
     });
     this._addListener('touchstart', (e) => {
-      if (e.touches.length !== 1) {
+      if (e.touches.length === 1) {
+        const relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
+        this.handleMouseDown(relativePos);
+        e.stopPropagation();
         e.preventDefault();
-        return;
+        return false;
       }
-      let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
-      this.handleMouseDown(relativePos);
-      e.stopPropagation();
+      if (e.touches.length === 2) {
+        const p1 = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
+        const p2 = this.getRelativePosition(this.listenElement, e.touches[1].clientX, e.touches[1].clientY);
+        const mid = new Lemmings.Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        this.twoTouch = true;
+        this.lastTouchDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        this.handleMouseDown(mid);
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
+      }
       e.preventDefault();
-      return false;
+      return;
     });
     this._addListener('mousedown', (e) => {
       e.stopPropagation();
@@ -97,6 +132,21 @@ class UserInputManager {
       this.handleMouseClear();
     });
     this._addListener('touchend', (e) => {
+      if (this.twoTouch) {
+        if (e.touches.length === 1) {
+          const remaining = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
+          this.twoTouch = false;
+          this.handleMouseDown(remaining);
+          e.stopPropagation();
+          e.preventDefault();
+          return false;
+        }
+        this.twoTouch = false;
+        this.handleMouseUp(new Lemmings.Position2D(this.lastMouseX, this.lastMouseY));
+        e.stopPropagation();
+        e.preventDefault();
+        return false;
+      }
       if (e.changedTouches.length !== 1) {
         e.preventDefault();
         return;
@@ -107,10 +157,14 @@ class UserInputManager {
     });
     this._addListener('touchleave', (e) => {
       this.handleMouseClear();
+      this.twoTouch = false;
+      this.lastTouchDistance = 0;
       return false;
     });
     this._addListener('touchcancel', (e) => {
       this.handleMouseClear();
+      this.twoTouch = false;
+      this.lastTouchDistance = 0;
       return false;
     });
     this._addListener('dblclick', (e) => {
@@ -192,6 +246,8 @@ class UserInputManager {
     this.mouseDownY = 0;
     this.lastMouseX = 0;
     this.lastMouseY = 0;
+    this.twoTouch = false;
+    this.lastTouchDistance = 0;
   }
   handleMouseUp(position) {
     this.handleMouseClear();
