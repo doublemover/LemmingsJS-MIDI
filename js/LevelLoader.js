@@ -60,6 +60,7 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     // 3 · Fetch graphics set(s) in parallel                                   //
     // ----------------------------------------------------------------------- //
+    await Lemmings.loadSteelSprites();
     const vgagrFile    = this.fileProvider.loadBinary(
       this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
     const groundFile   = this.fileProvider.loadBinary(

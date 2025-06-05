@@ -45,6 +45,7 @@ function frameToPNG(frame) {
   fs.mkdirSync(outDir, { recursive: true });
 
   const provider = new NodeFileProvider('.');
+  await Lemmings.loadSteelSprites();
   const groundBuf = await provider.loadBinary(dataPath, `GROUND${index}O.DAT`);
   const vgagrBuf = await provider.loadBinary(dataPath, `VGAGR${index}.DAT`);
   const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
