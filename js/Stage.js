@@ -156,17 +156,25 @@ class Stage {
       this.draw(stageImage, gameImg);
     }
 
-    const xCeiling = Math.max(0, stageImage.viewPoint.x);
-    const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-    const xFloor = Math.min(xCeiling, xFloorLimit);
+    if (stageImage.viewPoint.scale < 1) {
+      const scale = stageImage.viewPoint.scale;
+      const wDiff = stageImage.width - stageImage.display.getWidth() * scale;
+      const hDiff = stageImage.height - stageImage.display.getHeight() * scale;
+      if (wDiff > 0) stageImage.viewPoint.x = -wDiff / (2 * scale);
+      if (hDiff > 0) stageImage.viewPoint.y = -hDiff / (2 * scale);
+    } else {
+      const xCeiling = Math.max(0, stageImage.viewPoint.x);
+      const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
+      const xFloor = Math.min(xCeiling, xFloorLimit);
 
-    stageImage.viewPoint.x = xFloor;
+      stageImage.viewPoint.x = xFloor;
 
-    const yCeiling = Math.max(0, stageImage.viewPoint.y);
-    const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-    const yFloor = Math.min(yCeiling, yFloorLimit);
+      const yCeiling = Math.max(0, stageImage.viewPoint.y);
+      const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
+      const yFloor = Math.min(yCeiling, yFloorLimit);
 
-    stageImage.viewPoint.y = yFloor;
+      stageImage.viewPoint.y = yFloor;
+    }
 
     // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
     // stageImage.viewPoint.y = this.limitValue(0, stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale, stageImage.viewPoint.y);
