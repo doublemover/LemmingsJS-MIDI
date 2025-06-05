@@ -208,11 +208,13 @@ class Stage {
   updateStageSize() {
     const stageHeight = this.stageCav.height;
     const stageWidth = this.stageCav.width;
+    const panelRawHeight = this.guiImgProps.display?.getHeight() || 40;
+    const panelH = panelRawHeight * this.guiImgProps.viewPoint.scale;
     this.gameImgProps.y = 0;
-    this.gameImgProps.height = stageHeight - 100;
+    this.gameImgProps.height = stageHeight - panelH;
     this.gameImgProps.width = stageWidth;
-    this.guiImgProps.y = stageHeight - 100;
-    this.guiImgProps.height = 100;
+    this.guiImgProps.y = stageHeight - panelH;
+    this.guiImgProps.height = panelRawHeight;
     this.guiImgProps.width = this.guiImgProps.display
       ? this.guiImgProps.display.getWidth()
       : stageWidth;
