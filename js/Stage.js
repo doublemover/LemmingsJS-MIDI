@@ -5,9 +5,9 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
-    this.overlayTimer = 0;
+    this.overlayColor = 'black';
     this.overlayAlpha = 0;
-    this.overlayColor = 'rgba(0,0,0,0)';
+    this.overlayTimer = 0;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -307,10 +307,30 @@ class Stage {
   }
   resetFade() {
     this.fadeAlpha = 0;
+    this.overlayAlpha = 0;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
     }
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+  }
+
+  startOverlayFade() {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+      }
+    }, 40);
   }
 
   resetOverlayFade() {
@@ -332,12 +352,14 @@ class Stage {
   }
 
   startOverlayFade(color) {
-    this.resetOverlayFade();
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
     this.overlayColor = color;
-    const match = /rgba\([^,]+,[^,]+,[^,]+,([0-9.]+)\)/.exec(color);
-    this.overlayAlpha = match ? parseFloat(match[1]) : 1;
+    this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
-      this.overlayAlpha = Math.max(0, this.overlayAlpha - 0.05);
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
@@ -349,6 +371,10 @@ class Stage {
     if (this.fadeTimer) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
@@ -398,6 +424,11 @@ class Stage {
       ctx.fillStyle = this.overlayColor;
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
       ctx.globalAlpha = 1;
+    }
+    if (display === this.gameImgProps && this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
     }
   }
 
