@@ -61,7 +61,6 @@ class GameTimer {
     }
   }
 
-
   get speedFactor() { return this.#speedFactor; }
   set speedFactor(value) {
     if (value <= 0) return;
@@ -131,6 +130,10 @@ class GameTimer {
   }
 
   #benchSpeedAdjust(steps) {
+    // dynamically adjust speed based on how far we fall behind
+    // slowThreshold scales with current speedFactor so faster games tolerate
+    // fewer queued frames. minimum 10 frames before slowing down.
+    // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
     if (steps > 100) {
@@ -182,7 +185,7 @@ class GameTimer {
         : `rgba(255,0,0,${intensity})`;
       lemmings.suspendWithColor(color);
     }
-    this.#updateFrameTime();
+    this.normTickCount = this.#stableTicks;
   }
 
   #catchupSpeedAdjust(steps) {
