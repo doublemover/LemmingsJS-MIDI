@@ -15,6 +15,10 @@ class KeyboardShortcuts {
   }
 
   dispose() {
+    if (this._raf) {
+      window.cancelAnimationFrame(this._raf);
+      this._raf = null;
+    }
     window.removeEventListener('keydown', this._down);
     window.removeEventListener('keyup', this._up);
   }
