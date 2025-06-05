@@ -38,3 +38,4 @@ todo-review.md: todo
 keyboard-shortcuts.md: keyboard
 note-review.md: todo
 
+pause-overlay.md: bench-mode gui
