@@ -178,12 +178,16 @@ class GameTimer {
       this.#speedFactor = ((this.#speedFactor*10)+1)/10;
     }
     const diff = this.#speedFactor - oldSpeed;
-    if (diff !== 0 && typeof lemmings?.suspendWithColor === 'function') {
-      const intensity = Math.min(Math.abs(diff) / 5, 1);
-      const color = diff > 0
-        ? `rgba(0,255,0,${intensity})`
-        : `rgba(255,0,0,${intensity})`;
-      lemmings.suspendWithColor(color);
+    if (diff !== 0) {
+      if (typeof lemmings?.suspendWithColor === 'function') {
+        const intensity = Math.min(Math.abs(diff) / 5, 1);
+        const color = diff > 0
+          ? `rgba(0,255,0,${intensity})`
+          : `rgba(255,0,0,${intensity})`;
+        lemmings.suspendWithColor(color);
+      } else {
+        this.suspend();
+      }
     }
     this.normTickCount = this.#stableTicks;
   }
