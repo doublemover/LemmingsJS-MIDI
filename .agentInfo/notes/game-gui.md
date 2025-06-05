@@ -19,3 +19,6 @@ tags: gui, input
 
 ## Mini-map synchronization
 `setMiniMap` stores a MiniMap instance and passes it to the lemming manager. During `render`, after updating the panel, `miniMap.render` is called with the current `level.screenPositionX` and display width so the map matches the view.
+
+## Automatic skill selection
+`GameSkills.selectFirstAvailable` runs on level load so the panel highlights the first usable skill automatically.
