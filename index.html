@@ -73,19 +73,32 @@
 
     function setSize() {
       const ratio = 800 / 480;
-      const width = window.innerWidth;
-      const height = width / ratio;
       const gameContainer = jQuery(".game_container");
-      gameContainer.width(width);
-      gameContainer.height(height);
-      gameContainer.css("margin-left", "");
-      gameContainer.css("margin-top", (window.innerHeight - height) / 2);
-      gameContainer.removeClass("small");
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      let containerWidth, containerHeight;
+
+      if (width >= height * ratio) {
+        containerWidth = height * ratio;
+        containerHeight = height;
+        gameContainer.css("margin-top", "");
+        gameContainer.css("margin-left", (width - containerWidth) / 2);
+        gameContainer.removeClass("small");
+      } else {
+        containerWidth = width;
+        containerHeight = width / ratio;
+        gameContainer.css("margin-top", (height - containerHeight) / 2);
+        gameContainer.css("margin-left", "");
+        gameContainer.addClass("small");
+      }
+
+      gameContainer.width(containerWidth);
+      gameContainer.height(containerHeight);
 
       const canvas = document.getElementById("gameCanvas");
       if (canvas) {
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = containerWidth;
+        canvas.height = containerHeight;
       }
 
       if (window.lemmings && window.lemmings.stage) {
