@@ -366,6 +366,14 @@ class GameGui {
       this.gameTimeChanged = false;
             
       if (lemmings.bench == false) {
+        const sel = this.skills.getSelectedSkill();
+        if (sel !== Lemmings.SkillTypes.UNKNOWN) {
+          const key = Object.keys(Lemmings.SkillTypes)[sel];
+          if (key) {
+            const name = key.charAt(0) + key.slice(1).toLowerCase();
+            this.drawGreenString(d, name, 0, 0);
+          }
+        }
         this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
         const outCount = this.gameVictoryCondition.getOutCount();
         if (outCount >= 0) {
@@ -447,13 +455,12 @@ class GameGui {
     }
     if (this.nukePrepared) {
       this.drawNukeConfirm(d);
+      this.drawNukeHover(d);
     }
 
     if (this._hoverPanelIdx >= 0) {
-      if (this._hoverPanelIdx === 11 && this.nukePrepared) {
-        this.drawNukeHover(d);
-      } else if (this._hoverPanelIdx === 11) {
-        this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
+      if (this._hoverPanelIdx === 11) {
+        if (!this.nukePrepared) this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
       } else {
         this.drawSkillHover(d, this._hoverPanelIdx);
       }
@@ -543,10 +550,10 @@ class GameGui {
   }
 
   _drawLockEdge(d, panelIdx) {
-    const x = 16 * panelIdx;
-    const y = 16;
-    const w = 15; // inclusive width for 16px panel
-    const h = 22; // inclusive height for 23px panel
+    const x = 16 * panelIdx + 2;
+    const y = 18;
+    const w = 11; // narrower than full panel
+    const h = 18; // shorter than full panel
     d.drawStippleRect(x, y, w, 0, 160, 160, 160);       // top
     d.drawStippleRect(x, y + h, w, 0, 160, 160, 160);    // bottom
     d.drawStippleRect(x, y, 0, h, 160, 160, 160);        // left
@@ -589,7 +596,7 @@ class GameGui {
       16,
       23,
       this.selectionDashLen,
-      this._selectionOffset,
+      this._selectionOffset * 2,
       0xFF0080FF,
       0xFF00FFFF
     );
