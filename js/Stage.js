@@ -12,6 +12,8 @@ class Stage {
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
+    // track raw (unsnapped) scale value for smooth zooming
+    this._rawScale = this.gameImgProps.viewPoint.scale;
     this.getGameDisplay();
     this.getGuiDisplay();
     this.controller = new Lemmings.UserInputManager(canvasForOutput);
@@ -133,10 +135,11 @@ class Stage {
       let sceneY = stageImage.viewPoint.getSceneY(screenY);
 
       // Zoom around that point
-      let oldScale = stageImage.viewPoint.scale;
-      let newScale = Math.fround(oldScale * (1 + deltaZoom / 1500));
-
-      stageImage.viewPoint.scale = this.limitValue(.25, newScale, 4);
+      const oldScale = stageImage.viewPoint.scale;
+      // accumulate zoom on the raw scale value then snap for crisp pixels
+      this._rawScale = this.limitValue(.25, this._rawScale * (1 + deltaZoom / 1500), 4);
+      const newScale = this.snapScale(this._rawScale);
+      stageImage.viewPoint.scale = newScale;
 
       // Re-center so the same world point stays under the cursor
       stageImage.viewPoint.x = sceneX - screenX / stageImage.viewPoint.scale;
@@ -178,6 +181,19 @@ class Stage {
     let useMax = Math.max(minLimit, maxLimit);
     return Math.min(Math.max(minLimit, value), useMax);
   }
+
+  /**
+   * Snap a raw scale value so that the scaled output aligns to whole pixels.
+   * Snapping uses the display size to calculate the minimal scale step.
+   */
+  snapScale(scale) {
+    const w = this.gameImgProps.width | 0;
+    const h = this.gameImgProps.height | 0;
+    const gcd = (a, b) => b ? gcd(b, a % b) : a;
+    const step = 1 / gcd(w, h);
+    const clamped = this.limitValue(0.25, scale, 4);
+    return Math.round(clamped / step) * step;
+  }
   updateStageSize() {
     let ctx = this.stageCav.getContext('2d', { alpha: false });
     let stageHeight = ctx.canvas.height;
@@ -218,7 +234,8 @@ class Stage {
     this.clear(this.gameImgProps);
 
     if (lemmings.scale > 0) {
-      this.gameImgProps.viewPoint.scale = lemmings.scale;
+      this._rawScale = lemmings.scale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = x;
       this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
       this.redraw();
@@ -227,6 +244,7 @@ class Stage {
 
     let scale = this.gameImgProps.viewPoint.scale;
     if (scale == 2) {
+      this._rawScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.x = x;
       this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
       this.redraw();
@@ -235,7 +253,8 @@ class Stage {
 
       let sceneX = this.gameImgProps.viewPoint.getSceneX(x);
       let sceneY = this.gameImgProps.viewPoint.getSceneY(y);
-      this.gameImgProps.viewPoint.scale = 2;
+      this._rawScale = 2;
+      this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = sceneX - x / scale;
       this.gameImgProps.viewPoint.y = sceneY - y / scale;
 
