@@ -38,6 +38,7 @@ describe('GameTimer', function() {
     delete globalThis.window;
     delete globalThis.document;
     visHandler = undefined;
+    delete lemmings.suspendWithColor;
   });
 
   it('emits ticks and stops when paused', function() {
@@ -80,6 +81,7 @@ describe('GameTimer', function() {
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     const timer = new GameTimer({ timeLimit: 1 });
+    lemmings.suspendWithColor = () => timer.suspend();
     timer.continue();
     clock.tick(1200);
     raf(clock.now);
