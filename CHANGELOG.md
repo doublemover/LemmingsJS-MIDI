@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Node tools export sprites and package levels.
 - Complete Mocha test suite with GitHub Actions workflows.
 - Bench mode shows a color-coded overlay and recovers speed dynamically.
+- `Stage.startOverlayFade()` highlights the pause button rectangle when bench mode adjusts speed.
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
