@@ -5,6 +5,9 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
+    this.overlayTimer = 0;
+    this.overlayAlpha = 0;
+    this.overlayColor = 'rgba(0,0,0,0)';
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -309,6 +312,14 @@ class Stage {
       this.fadeTimer = 0;
     }
   }
+
+  resetOverlayFade() {
+    this.overlayAlpha = 0;
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+  }
   startFadeOut() {
     this.resetFade();
     this.fadeTimer = setInterval(() => {
@@ -316,6 +327,20 @@ class Stage {
       if (this.fadeAlpha >= 1) {
         clearInterval(this.fadeTimer);
         this.fadeTimer = 0;
+      }
+    }, 40);
+  }
+
+  startOverlayFade(color) {
+    this.resetOverlayFade();
+    this.overlayColor = color;
+    const match = /rgba\([^,]+,[^,]+,[^,]+,([0-9.]+)\)/.exec(color);
+    this.overlayAlpha = match ? parseFloat(match[1]) : 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(0, this.overlayAlpha - 0.05);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
       }
     }, 40);
   }
@@ -366,6 +391,13 @@ class Stage {
       ctx.globalAlpha = this.fadeAlpha;
       ctx.fillStyle = 'black';
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
+    }
+    if (this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
     }
   }
 

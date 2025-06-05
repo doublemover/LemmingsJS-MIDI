@@ -141,17 +141,12 @@ class GameTimer {
 
   #benchSpeedAdjust(steps) {
     lemmings.steps = steps;
+    const oldSpeed = this.#speedFactor;
     if (steps > 100) {
-      this.suspend();
       this.normTickCount = 0;
-      this.#speedFactor = 1;
-
-      if (this.#speedFactor >= 1) {
-        this.#speedFactor = 0.1;
-      }
+      this.#speedFactor = 0.1;
     }
     else if (steps > 16) {
-      this.suspend();
       this.normTickCount = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
@@ -185,6 +180,14 @@ class GameTimer {
     if (this.normTickCount > 2 && this.#speedFactor < 1) {
       this.normTickCount = 0;
       this.#speedFactor = ((this.#speedFactor*10)+1)/10;
+    }
+    const diff = this.#speedFactor - oldSpeed;
+    if (diff !== 0 && typeof lemmings?.suspendWithColor === 'function') {
+      const intensity = Math.min(Math.abs(diff) / 5, 1);
+      const color = diff > 0
+        ? `rgba(0,255,0,${intensity})`
+        : `rgba(255,0,0,${intensity})`;
+      lemmings.suspendWithColor(color);
     }
     this.#updateFrameTime();
   }
