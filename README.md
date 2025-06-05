@@ -195,6 +195,7 @@ URL parameters (shortcut in brackets):
 
 - All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
 - [Lemmings Forums](https://www.lemmingsforums.net/)
+- [Camanis.net Lemmings Archives](https://www.camanis.net/lemmings/) 
 - [tomsoftware](https://github.com/tomsoftware)
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
