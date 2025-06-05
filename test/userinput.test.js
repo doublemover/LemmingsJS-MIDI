@@ -5,49 +5,26 @@ import '../js/Position2D.js';
 import { UserInputManager } from '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
 
-// minimal element stub
-const element = {
-  addEventListener() {},
-  removeEventListener() {},
-  getBoundingClientRect() {
-    return { left: 0, top: 0, width: 800, height: 480 };
-  }
-};
-
 globalThis.lemmings = { game: { showDebug: false } };
 
 describe('UserInputManager', function() {
-  function createStubCanvas(width = 800, height = 600) {
-    const ctx = {
-      canvas: { width, height },
-      fillRect() {},
-      drawImage() {},
-      putImageData() {}
-    };
-    return {
-      width,
-      height,
-      getContext() { return ctx; },
+  it('emits zoom events with cursor position', function(done) {
+    const element = {
       addEventListener() {},
-      removeEventListener() {}
+      removeEventListener() {},
+      getBoundingClientRect() {
+        return { left: 0, top: 0, width: 800, height: 480 };
+      }
     };
-  }
-
-  function createDocumentStub() {
-    return {
-      createElement() {
-        const ctx = {
-          canvas: {},
-          fillRect() {},
-          drawImage() {},
-          putImageData() {},
-          createImageData(w, h) { return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }; }
-        };
-        return {
-          width: 0,
-          height: 0,
-          getContext() { ctx.canvas = this; return ctx; }
-        };
+    const uim = new UserInputManager(element);
+    uim.onZoom.on((e) => {
+      try {
+        expect(e.x).to.equal(100);
+        expect(e.y).to.equal(50);
+        expect(e.deltaZoom).to.equal(120);
+        done();
+      } catch (err) {
+        done(err);
       }
     };
   }
