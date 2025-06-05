@@ -8,15 +8,14 @@ globalThis.lemmings = { game: { showDebug: false } };
 
 describe('KeyboardShortcuts', function() {
   function createShortcuts(timer, manager, lemMgr = null) {
+    const lm = lemMgr || { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
     const game = {
       commandManager: manager,
       gameGui: { drawSpeedChange() {}, skillSelectionChanged: false },
       getGameTimer() { return timer; },
       queueCommand(cmd) { manager.queueCommand(cmd); },
       getGameSkills() { return { getSelectedSkill() { return Lemmings.SkillTypes.CLIMBER; }, setSelectedSkill() {} }; },
-      getLemmingManager() {
-        return lemMgr || { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
-      }
+      getLemmingManager() { return lm; }
     };
     const view = { game };
     global.window = { addEventListener() {}, removeEventListener() {} };

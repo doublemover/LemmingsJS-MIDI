@@ -72,4 +72,51 @@ describe('GameDisplay drawFrame', function() {
     const yellow = Lemmings.ColorPalette.colorFromRGB(255, 255, 0) >>> 0;
     expect(buf[1 + 1 * w]).to.equal(yellow);
   });
+
+  it('selects nearest lemming on click', function() {
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+
+    let selected = null;
+    const lem = { id: 1 };
+    const lm = {
+      getNearestLemming() { return lem; },
+      setSelectedLemming(l) { selected = l; },
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return selected; }
+    };
+    const lvl = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const obj = { render() {} };
+    const trg = { renderDebug() {} };
+    const gd = new Lemmings.GameDisplay({ showDebug: false }, lvl, lm, obj, trg);
+    gd.setGuiDisplay(display);
+
+    display.onMouseDown.trigger({ x: 1, y: 1 });
+
+    expect(selected).to.equal(lem);
+  });
+
+  it('clears selection when clicking empty space', function() {
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+
+    let selected = { id: 1 };
+    const lm = {
+      getNearestLemming() { return null; },
+      setSelectedLemming(l) { selected = l; },
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return selected; }
+    };
+    const lvl = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const obj = { render() {} };
+    const trg = { renderDebug() {} };
+    const gd = new Lemmings.GameDisplay({ showDebug: false }, lvl, lm, obj, trg);
+    gd.setGuiDisplay(display);
+
+    display.onMouseDown.trigger({ x: 2, y: 2 });
+
+    expect(selected).to.equal(null);
+  });
 });
