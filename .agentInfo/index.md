@@ -34,3 +34,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md)
 - **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
+- **tests, nodefileprovider, listsprites**: [notes/test-coverage.md](notes/test-coverage.md)
