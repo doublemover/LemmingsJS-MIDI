@@ -262,6 +262,9 @@ class KeyboardShortcuts {
       const lem = mgr?.getSelectedLemming?.();
       if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
       break; }
+    case 'KeyN':
+      this.view.game.getLemmingManager()?.setSelectedLemming(null);
+      break;
     case 'Backquote':
       this.view.game.getLemmingManager()?.cycleSelection(e.shiftKey ? -1 : 1);
       break;

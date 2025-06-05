@@ -7,7 +7,7 @@ import '../js/CommandLemmingsAction.js';
 globalThis.lemmings = { game: { showDebug: false } };
 
 describe('KeyboardShortcuts', function() {
-  function createShortcuts(timer, manager) {
+  function createShortcuts(timer, manager, lemMgr = null) {
     const game = {
       commandManager: manager,
       gameGui: { drawSpeedChange() {}, skillSelectionChanged: false },
@@ -80,5 +80,15 @@ describe('KeyboardShortcuts', function() {
     ks._onKeyDown(evt);
     expect(log).to.have.lengthOf(1);
     expect(log[0]).to.be.instanceOf(Lemmings.CommandLemmingsAction);
+  it('clears selected lemming with KeyN', function() {
+    const manager = { queueCommand() {} };
+    let selected = 'foo';
+    const lemMgr = { setSelectedLemming(arg) { selected = arg; } };
+    const timer = { speedFactor: 1 };
+    const ks = createShortcuts(timer, manager, lemMgr);
+
+    const evt = { code: 'KeyN', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(selected).to.equal(null);
   });
 });
