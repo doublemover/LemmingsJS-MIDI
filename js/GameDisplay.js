@@ -44,16 +44,7 @@ class GameDisplay {
       if (sel && !sel.removed) this.#drawSelection(sel);
 
       if (this.hoverLemming && !this.hoverLemming.removed) {
-        const selected = this.hoverLemming.id === this.lemmingManager.selectedIndex;
-        const color = selected ? [255, 255, 255] : [64, 64, 64];
-        this.display.drawCornerRect(
-          this.hoverLemming.x - 5,
-          this.hoverLemming.y - 6,
-          { width: 10, height: 13 },
-          color[0],
-          color[1],
-          color[2]
-        );
+        this.#drawHover(this.hoverLemming);
       }
     }
   }
@@ -106,6 +97,14 @@ class GameDisplay {
     const color = 0xff555555; // mid-dark gray
 
     this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0xff000000);
+    this.display.drawCornerRect(
+      x,
+      y,
+      3,
+      (color >> 16) & 0xff,
+      (color >> 8) & 0xff,
+      color & 0xff
+    );
   }
 
   dispose() {
