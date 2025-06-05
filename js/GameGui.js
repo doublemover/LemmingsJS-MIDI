@@ -47,6 +47,10 @@ class GameGui {
     this._hoverSpeedUp    = false;
     this._hoverSpeedDown  = false;
 
+    /* release rate lock state */
+    this._rrLockMin = false;
+    this._rrLockMax = false;
+
     this._guiBound = this._guiLoop.bind(this);
     this._guiRafId        = 0;
 
@@ -471,8 +475,18 @@ class GameGui {
     const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
     const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
     const rrCur = this.gameVictoryCondition.getCurrentReleaseRate?.() ?? 0;
-    if (rrCur <= rrMin) d.drawStippleRect(0, 16, 16, 23, 160, 160, 160);
-    if (rrCur >= rrMax) d.drawStippleRect(16, 16, 16, 23, 160, 160, 160);
+
+    const lockMin = rrCur <= rrMin;
+    const lockMax = rrCur >= rrMax;
+
+    if (lockMin) this._drawLockEdge(d, 0);
+    if (lockMax) this._drawLockEdge(d, 1);
+
+    if (this._rrLockMin && !lockMin) this.backgroundChanged = true;
+    if (this._rrLockMax && !lockMax) this.backgroundChanged = true;
+
+    this._rrLockMin = lockMin;
+    this._rrLockMax = lockMax;
 
     if (this.miniMap) {
       const viewX = this.game.level.screenPositionX;
@@ -526,6 +540,17 @@ class GameGui {
   drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {
     if (panelIdx < 0) return;
     d.drawRect(16 * panelIdx, 16, 16, 23, r, g, b);
+  }
+
+  _drawLockEdge(d, panelIdx) {
+    const x = 16 * panelIdx;
+    const y = 16;
+    const w = 15; // inclusive width for 16px panel
+    const h = 22; // inclusive height for 23px panel
+    d.drawStippleRect(x, y, w, 0, 160, 160, 160);       // top
+    d.drawStippleRect(x, y + h, w, 0, 160, 160, 160);    // bottom
+    d.drawStippleRect(x, y, 0, h, 160, 160, 160);        // left
+    d.drawStippleRect(x + w, y, 0, h, 160, 160, 160);    // right
   }
 
   drawSpeedChange(upDown, reset = false) {
