@@ -41,8 +41,8 @@ function frameToPNG(frame) {
   const br = await provider.loadBinary(pack, 'MAIN.DAT');
   const fc = new Lemmings.FileContainer(br);
   const fr = fc.getPart(5);
-  const minSize = 4;
-  const maxSize = 32;
+  const minSize = 10;
+  const maxSize = 64;
   for (let width = minSize; width <= maxSize; width++) {
     for (let height = minSize; height <= maxSize; height++) {
       fr.setOffset(0); // reset reader for each run
