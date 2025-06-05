@@ -20,7 +20,7 @@ describe('KeyboardShortcuts', function() {
         return lemMgr || { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
       }
     };
-    const view = { game };
+    const view = { game, nextFrame() {}, prevFrame() {} };
     global.window = { addEventListener() {}, removeEventListener() {} };
     return new KeyboardShortcuts(view);
   }
@@ -96,5 +96,33 @@ describe('KeyboardShortcuts', function() {
     const evt = { code: 'KeyN', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
     ks._onKeyDown(evt);
     expect(selected).to.equal(null);
+  });
+
+  it('steps forward one tick with BracketRight when paused', function() {
+    let count = 0;
+    const timer = {
+      speedFactor: 1,
+      isRunning() { return false; },
+      tick() { count++; }
+    };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    ks.view.nextFrame = () => { timer.tick(); };
+    const evt = { code: 'BracketRight', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(count).to.equal(1);
+  });
+
+  it('steps backward one tick with BracketLeft when paused', function() {
+    let count = 0;
+    const timer = {
+      speedFactor: 1,
+      isRunning() { return false; },
+      tick(arg) { count += arg; }
+    };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    ks.view.prevFrame = () => { timer.tick(-1); };
+    const evt = { code: 'BracketLeft', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(count).to.equal(-1);
   });
 });

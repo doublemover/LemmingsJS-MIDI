@@ -102,4 +102,19 @@ describe('GameTimer', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.equal(1);
   });
+
+  it('tick steps once without starting the loop', function() {
+    let rafCalled = false;
+    window.requestAnimationFrame = () => { rafCalled = true; return 1; };
+    const timer = new GameTimer({ timeLimit: 1 });
+    let before = 0;
+    let after = 0;
+    timer.onBeforeGameTick.on(() => { before++; });
+    timer.onGameTick.on(() => { after++; });
+    timer.tick();
+    expect(before).to.equal(1);
+    expect(after).to.equal(1);
+    expect(timer.isRunning()).to.equal(false);
+    expect(rafCalled).to.equal(false);
+  });
 });

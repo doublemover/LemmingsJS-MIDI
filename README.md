@@ -147,7 +147,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 ### Progressive Web App
 
-
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
 and launches it fullscreen in landscape mode. Touch input still needs
@@ -179,6 +178,7 @@ URL parameters (shortcut in brackets):
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
 - `Space`: Pause
+- `[` / `]`: Step backward / forward one tick when paused
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
