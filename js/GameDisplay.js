@@ -76,22 +76,36 @@ class GameDisplay {
   }
 
   #drawSelection(lem) {
-    this.display.drawCornerRect(
-      lem.x - 5,
-      lem.y - 6,
-      { width: 10, height: 13 },
-      255,
-      255,
-      255
-    );
+    const dashLen = 2;
+    const x = lem.x - 5;
+    const y = lem.y - 9; // slight upward offset
+
+    let color = 0xff00ff00; // bright green
+    const skills = this.game?.getGameSkills?.();
+    if (skills) {
+      const selectedSkill = skills.getSelectedSkill();
+      const redundant = {
+        [Lemmings.SkillTypes.BASHER]: Lemmings.ActionBashSystem,
+        [Lemmings.SkillTypes.BLOCKER]: Lemmings.ActionBlockerSystem,
+        [Lemmings.SkillTypes.DIGGER]: Lemmings.ActionDiggSystem,
+        [Lemmings.SkillTypes.MINER]: Lemmings.ActionMineSystem
+      };
+      const ActionClass = redundant[selectedSkill];
+      if (ActionClass && lem.action instanceof ActionClass) {
+        color = 0xffffff00; // yellow tint for redundant action
+      }
+    }
+
+    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0xff000000);
   }
 
   #drawHover(lem) {
-    const x1 = lem.x - 5;
-    const y1 = lem.y - 6;
-    const width = 10;
-    const height = 13;
-    this.display.drawRect(x1, y1, width, height, 64, 64, 64);
+    const dashLen = 2;
+    const x = lem.x - 5;
+    const y = lem.y - 9; // slight upward offset
+    const color = 0xff555555; // mid-dark gray
+
+    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0xff000000);
   }
 
   dispose() {
