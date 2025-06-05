@@ -21,9 +21,14 @@ describe('ConfigReader', function () {
     const cfg = await reader.getConfig(Lemmings.GameTypes.LEMMINGS);
     expect(cfg.mechanics).to.deep.equal({ fallDistance: 50 });
 
-    const cr = new ConfigReader(Promise.resolve(json));
-    const cfg = await cr.getConfig(Lemmings.GameTypes.LEMMINGS);
-    expect(cfg.mechanics).to.eql(packMechanics.lemmings);
+    const jsonDefault = `[
+      { "name": "t", "path": "lemmings", "gametype": "LEMMINGS",
+        "level.filePrefix": "LEVEL", "level.groups": ["Fun"],
+        "level.order": [[0]], "level.useOddTable": false }
+    ]`;
+    const cr = new ConfigReader(Promise.resolve(jsonDefault));
+    const cfgDefault = await cr.getConfig(Lemmings.GameTypes.LEMMINGS);
+    expect(cfgDefault.mechanics).to.eql(packMechanics.lemmings);
   });
 
   it('overrides defaults from config', async function () {

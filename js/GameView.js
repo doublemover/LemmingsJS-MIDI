@@ -353,6 +353,10 @@ class GameView extends Lemmings.BaseLogger {
   }
   /** switch the selected game type */
   async selectGameType(newGameType) {
+    // dropdown values correspond to config array indices
+    if (this.configs && this.configs[newGameType]) {
+      newGameType = this.configs[newGameType].gametype;
+    }
     this.gameType = newGameType;
     this.levelGroupIndex = 0;
     this.levelIndex = 0;
