@@ -13,3 +13,4 @@ Run `npm run depcheck` to list unused dependencies.
 
 - Add a changelog entry in `CHANGELOG.md` for any user-visible change.
 - Run `npm run format` and `npm test` to ensure consistent style and passing tests.
+- Run `npm run check-undefined` before committing.
