@@ -178,6 +178,11 @@ URL parameters (shortcut in brackets):
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
 
+## Level Packs
+
+See [docs/levelpacks.md](docs/levelpacks.md) for how packs are organized.
+
+
 ## Keyboard Shortcuts
 
 - `(Shift+)1`: Decrease Release Rate (Minimum)
