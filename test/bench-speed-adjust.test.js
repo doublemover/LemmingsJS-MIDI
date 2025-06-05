@@ -39,23 +39,33 @@ describe('benchSpeedAdjust recovery', function() {
   it('lowers speed when far behind and restores after stable ticks', function() {
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
     const timer = new GameTimer({ timeLimit: 1 });
-    lemmings.suspendWithColor = () => {};
     timer.continue();
 
     clock.tick(1200); // more than 16 steps
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
 
-    // resume the timer after the bench adjustment suspended it
+  });
+
+  it('scales thresholds with speedFactor', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.speedFactor = 2; // faster game, lower slow threshold but min 10
     timer.continue();
 
+    clock.tick(330); // 11 steps at 30ms
+    raf(clock.now);
+    expect(timer.speedFactor).to.be.below(2);
+    timer.suspend();
+    timer.speedFactor = 0.5;
+    timer.continue();
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
-    for (let i = 0; i < 40; ++i) {
-      clock.tick(80);
-      raf(clock.now);
-      window.requestAnimationFrame = cb => { raf = cb; return 1; };
-    }
-    expect(timer.speedFactor).to.be.closeTo(1, 0.1);
+    clock.tick(1200); // 10 steps < threshold 32
+    raf(clock.now);
+    expect(timer.speedFactor).to.equal(0.5);
   });
 });

@@ -4,7 +4,7 @@
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
-  - `npm run`
+  - `npm start`
   - `npm run export-all-packs` *(optional)* – exports sprite folders for all level packs under `exports/`
     - `zip -r export_lemmings.zip exports/export_lemmings`
     - `tar -czf export_lemmings.tgz exports/export_lemmings`

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
+import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
 class StageMock {
@@ -49,7 +50,7 @@ describe('GameView suspendWithColor', function() {
     const view = new GameView();
     view.bench = true;
     view.gameCanvas = {};
-    view.game = { getGameTimer() { return { suspend() {} }; } };
+    view.game = { getGameTimer() { return { suspend() {}, continue() {} }; } };
     const stage = view.stage;
 
     view.suspendWithColor('red');
@@ -61,5 +62,22 @@ describe('GameView suspendWithColor', function() {
       height: 10 * stage.guiImgProps.viewPoint.scale
     };
     expect(stage.called.rect).to.deep.equal(expected);
+  });
+
+  it('resumes timer after overlay fade', async function() {
+    const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    window.setTimeout = setTimeout;
+    window.clearTimeout = clearTimeout;
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameCanvas = {};
+    const timer = { suspendCalled: 0, continueCalled: 0, suspend() { this.suspendCalled++; }, continue() { this.continueCalled++; } };
+    view.game = { getGameTimer() { return timer; } };
+
+    view.suspendWithColor('red');
+    expect(timer.suspendCalled).to.equal(1);
+    clock.tick(2000);
+    expect(timer.continueCalled).to.equal(1);
+    clock.uninstall();
   });
 });

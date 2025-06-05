@@ -24,6 +24,7 @@ class GameView extends Lemmings.BaseLogger {
     this.applyQuery();
     this.elementGameState = null;
     this.autoMoveTimer = null;
+    this.resumeTimer = null;
     this.elementSelectGameType = null;
     this.elementSelectLevelGroup = null;
     this.elementSelectLevel = null;
@@ -123,6 +124,14 @@ class GameView extends Lemmings.BaseLogger {
       }
       this.stage.startOverlayFade(color, rect);
     }
+    if (this.resumeTimer) {
+      window.clearTimeout(this.resumeTimer);
+      this.resumeTimer = null;
+    }
+    this.resumeTimer = window.setTimeout(() => {
+      if (this.game) this.game.getGameTimer().continue();
+      this.resumeTimer = null;
+    }, 2000);
   }
 
   continue () {
