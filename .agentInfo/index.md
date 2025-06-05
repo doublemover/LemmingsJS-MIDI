@@ -34,6 +34,7 @@ bit-writer.md: bit-writer
 file-container.md: file-container
 unpack-file-part.md: unpack-file-part
 pack-mechanics.md: mechanics
+config.md: config mechanics doc
 todo-review.md: todo
 keyboard-shortcuts.md: keyboard
 webmidi-overview.md: webmidi doc overview
