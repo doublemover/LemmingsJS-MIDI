@@ -37,5 +37,6 @@ pack-mechanics.md: mechanics
 todo-review.md: todo
 keyboard-shortcuts.md: keyboard
 note-review.md: todo
+webmidi-tasks.md: webmidi-todo
 
 pause-overlay.md: bench-mode gui
