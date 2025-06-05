@@ -47,6 +47,9 @@ describe('benchSpeedAdjust recovery', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
 
+    // resume the timer after the bench adjustment suspended it
+    timer.continue();
+
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     for (let i = 0; i < 40; ++i) {
       clock.tick(80);
