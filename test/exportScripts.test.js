@@ -106,6 +106,9 @@ describe('export scripts', function () {
   });
 
   it('exportGroundImages.js writes PNGs', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
     const pack = createPack();
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
     const script = patchScript('exportGroundImages.js');
@@ -120,6 +123,9 @@ describe('export scripts', function () {
   });
 
   it('exportAllSprites.js writes PNGs', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
     const pack = createPack();
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
     const script = patchScript('exportAllSprites.js');

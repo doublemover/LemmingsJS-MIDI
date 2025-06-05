@@ -6,6 +6,7 @@ import '../js/BitWriter.js';
 import '../js/PaletteImage.js';
 import '../js/Frame.js';
 import '../js/ColorPalette.js';
+import '../js/ObjectImageInfo.js';
 import { GroundReader } from '../js/GroundReader.js';
 
 // Silence debug output
