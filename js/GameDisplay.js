@@ -76,11 +76,11 @@ class GameDisplay {
   }
 
   #drawSelection(lem) {
-    const dashLen = 2;
+    const dashLen = 1;
     const x = lem.x - 5;
     const y = lem.y - 9; // slight upward offset
 
-    let color = 0xff00ff00; // bright green
+    let color = 0xff30ff30; // lighter green
     const skills = this.game?.getGameSkills?.();
     if (skills) {
       const selectedSkill = skills.getSelectedSkill();
