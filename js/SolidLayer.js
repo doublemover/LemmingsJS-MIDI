@@ -45,6 +45,31 @@ class SolidLayer extends Lemmings.BaseLogger {
   }
 
   /**
+     * Return a new SolidLayer representing a rectangular region of this mask.
+     * Out-of-bounds coordinates are treated as empty.
+     * @param {number} x - left coordinate of region
+     * @param {number} y - top coordinate of region
+     * @param {number} w - width of region
+     * @param {number} h - height of region
+     * @return {SolidLayer}
+     */
+  getSubLayer(x, y, w, h) {
+    const sub = new SolidLayer(w, h);
+    for (let dy = 0; dy < h; ++dy) {
+      const srcY = y + dy;
+      if (srcY < 0 || srcY >= this.height) continue;
+      const srcRow = srcY * this.width;
+      const dstRow = dy * w;
+      for (let dx = 0; dx < w; ++dx) {
+        const srcX = x + dx;
+        if (srcX < 0 || srcX >= this.width) continue;
+        sub.mask[dstRow + dx] = this.mask[srcRow + srcX];
+      }
+    }
+    return sub;
+  }
+
+  /**
      * Clear ground using a mask at a given map position.
      * @param {Mask} mask
      * @param {number} x - top-left X position in map where mask will be applied (includes mask.offsetX)
