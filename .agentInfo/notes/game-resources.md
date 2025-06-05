@@ -12,3 +12,5 @@ The holiday packs share some graphics files. For example the `xmas92` entry in
 `config.json` reuses `VGAGR0.DAT` from `xmas91`. Copying that file or pointing
 the config to `xmas91` avoids 404 errors when the loader requests missing
 assets.
+
+The cursor graphic from `MAIN.DAT` uses a 16×16 `PaletteImage`. A 17×17 size causes smearing at the edges.
