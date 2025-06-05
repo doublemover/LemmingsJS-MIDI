@@ -73,21 +73,23 @@
 
     function setSize() {
       const ratio = 800 / 480;
-      const gameContainer = jQuery(".game_container");
       const width = window.innerWidth;
-      const height = window.innerHeight;
-      if (width >= height * ratio) {
-        gameContainer.width(height * ratio);
-        gameContainer.height(height);
-        gameContainer.css("margin-top", "");
-        gameContainer.css("margin-left", (width - height * ratio) / 2);
-        gameContainer.removeClass("small");
-      } else {
-        gameContainer.width(width);
-        gameContainer.height(width / ratio);
-        gameContainer.css("margin-top", (height - width / ratio) / 2);
-        gameContainer.css("margin-left", "");
-        gameContainer.addClass("small");
+      const height = width / ratio;
+      const gameContainer = jQuery(".game_container");
+      gameContainer.width(width);
+      gameContainer.height(height);
+      gameContainer.css("margin-left", "");
+      gameContainer.css("margin-top", (window.innerHeight - height) / 2);
+      gameContainer.removeClass("small");
+
+      const canvas = document.getElementById("gameCanvas");
+      if (canvas) {
+        canvas.width = width;
+        canvas.height = height;
+      }
+
+      if (window.lemmings && window.lemmings.stage) {
+        window.lemmings.stage.updateStageSize();
       }
     }
 
