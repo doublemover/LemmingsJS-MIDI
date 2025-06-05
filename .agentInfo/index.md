@@ -14,6 +14,7 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md)
 - **level-writing**: [notes/level-writer.md](notes/level-writer.md)
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md)
+- **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md)
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md)
 - **ui, debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
 - **render, display**: [notes/game-display.md](notes/game-display.md)

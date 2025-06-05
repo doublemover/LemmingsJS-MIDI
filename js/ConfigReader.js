@@ -51,6 +51,9 @@ class ConfigReader extends Lemmings.BaseLogger {
       if (configData['level.useoddtable'] != null) {
         newConfig.level.useOddTable = (!!configData['level.useoddtable']);
       }
+      if (configData.mechanics != null) {
+        newConfig.mechanics = configData.mechanics;
+      }
       newConfig.level.order = configData['level.order'];
       newConfig.level.filePrefix = configData['level.filePrefix'];
       newConfig.level.groups = configData['level.groups'];
