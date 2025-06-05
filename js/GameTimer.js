@@ -136,13 +136,15 @@ class GameTimer {
     // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
+
+    const slowThreshold = Math.max(10, 16 / this.#speedFactor);
+    const recoverThreshold = Math.max(4, 4 / this.#speedFactor);
+
     if (steps > 100) {
       this.suspend();
       this.#stableTicks = 0;
       this.#speedFactor = 0.1;
-    }
-    else if (steps > 16) {
-      this.suspend();
+    } else if (steps > slowThreshold) {
       this.#stableTicks = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
@@ -158,14 +160,15 @@ class GameTimer {
         this.#speedFactor -= 1;
       }
       else if (sf <= 1 && sf > 0.2) {
-        this.#speedFactor = ((this.#speedFactor*10)-1)/10;;
+        this.#speedFactor = ((this.#speedFactor * 10) - 1) / 10;
       }
     }
-    if (steps > 4) {
+
+    if (steps > recoverThreshold) {
       this.#stableTicks -= 32;
     }
 
-    if (steps <= 2) {
+    if (steps <= recoverThreshold / 2) {
       this.#stableTicks += 1;
     }
 
@@ -175,18 +178,29 @@ class GameTimer {
     }
     if (this.#stableTicks > 2 && this.#speedFactor < 1) {
       this.#stableTicks = 0;
-      this.#speedFactor = ((this.#speedFactor*10)+1)/10;
+      this.#speedFactor = ((this.#speedFactor * 10) + 1) / 10;
     }
+
     const diff = this.#speedFactor - oldSpeed;
     if (diff !== 0) {
-      if (typeof lemmings?.suspendWithColor === 'function') {
-        const intensity = Math.min(Math.abs(diff) / 5, 1);
-        const color = diff > 0
-          ? `rgba(0,255,0,${intensity})`
-          : `rgba(255,0,0,${intensity})`;
-        lemmings.suspendWithColor(color);
-      } else {
-        this.suspend();
+      const intensity = Math.min(Math.abs(diff) / 5, 1);
+      const color = diff > 0
+        ? `rgba(0,255,0,${intensity})`
+        : `rgba(255,0,0,${intensity})`;
+      const stage = lemmings?.stage;
+      if (stage?.startOverlayFade) {
+        let rect = null;
+        if (lemmings.bench) {
+          const gui = stage.guiImgProps;
+          const scale = gui.viewPoint.scale;
+          rect = {
+            x: gui.x + 160 * scale,
+            y: gui.y + 32 * scale,
+            width: 16 * scale,
+            height: 10 * scale
+          };
+        }
+        stage.startOverlayFade(color, rect);
       }
     }
     this.normTickCount = this.#stableTicks;
