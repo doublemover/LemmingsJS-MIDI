@@ -7,7 +7,7 @@ Run `npm run format` before committing to automatically fix indentation,
 quotes, and semicolons across the JavaScript codebase.
 
 ## Environment
-- Use **Node.js 16 or later**.
+- Use **Node.js 18 or later**.
 - Run `npm install` before running any tests or scripts.
 
 ## Tests
