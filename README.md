@@ -45,6 +45,10 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - `&debug=true` enables debug mode (Console is noisy)
     - `&speed=x` sets game speed (0-120)
   - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
+    - Each skipped frame increments **missedTicks** (`T` display) while stable frames increment **stableTicks**
+    - Speed decreases once `missedTicks` exceed the slow threshold and rises again after enough `stableTicks`
+    - Thresholds will scale with `speedFactor` once [Issue 1](https://github.com/doublemover/LemmingsJS-MIDI/issues/1) is implemented
+    - The "T" indicator shows missed ticks and "L" shows the current lemming count
     - Speed modulates smoothly when lagging and shows a color-coded overlay
     - Extreme backlog triggers the new `suspendWithColor` behaviour
     - `&endless=true` disables time limit

@@ -38,6 +38,7 @@ describe('GameTimer', function() {
     delete globalThis.window;
     delete globalThis.document;
     visHandler = undefined;
+    delete lemmings.suspendWithColor;
   });
 
   it('emits ticks and stops when paused', function() {
