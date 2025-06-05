@@ -68,6 +68,23 @@ describe('UserInputManager', function() {
     expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
   });
 
+  it('emits zoom events without stage set', function(done) {
+    delete globalThis.lemmings.stage;
+    const uim = new UserInputManager(element);
+    uim.onZoom.on((e) => {
+      try {
+        expect(e.x).to.equal(25);
+        expect(e.y).to.equal(75);
+        expect(e.deltaZoom).to.equal(-20);
+        done();
+      } catch (err) {
+        done(err);
+      }
+    });
+
+    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
+  });
+
   it('converts pointer position based on canvas size', function() {
     const scaledElement = {
       width: 400,
