@@ -110,7 +110,7 @@ class GameView extends Lemmings.BaseLogger {
     }
     this.game.getGameTimer().suspend();
     if (this.stage?.startOverlayFade) {
-      this.stage.startOverlayFade(color);
+      this.stage.startOverlayFade(color, { x: 160, y: 32, w: 16, h: 10 });
     }
   }
 
