@@ -24,7 +24,22 @@ function createLevel(width, height) {
     height,
     data: new Uint8Array(width * height),
     hasGroundAt(x, y) { return this.data[y * this.width + x] !== 0; },
-    setGroundAt(x, y) { this.data[y * this.width + x] = 1; }
+    setGroundAt(x, y) { this.data[y * this.width + x] = 1; },
+    getSubLayer(x, y, w, h) {
+      const sub = { width: w, height: h, mask: new Uint8Array(w * h) };
+      for (let dy = 0; dy < h; ++dy) {
+        const sy = y + dy;
+        if (sy < 0 || sy >= this.height) continue;
+        const srcRow = sy * this.width;
+        const dstRow = dy * w;
+        for (let dx = 0; dx < w; ++dx) {
+          const sx = x + dx;
+          if (sx < 0 || sx >= this.width) continue;
+          sub.mask[dstRow + dx] = this.data[srcRow + sx];
+        }
+      }
+      return sub;
+    }
   };
   return {
     width,
