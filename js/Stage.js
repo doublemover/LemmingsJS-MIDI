@@ -5,6 +5,9 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
+    this.overlayColor = 'black';
+    this.overlayAlpha = 0;
+    this.overlayTimer = 0;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -216,6 +219,14 @@ class Stage {
     this.guiImgProps.y = stageHeight - 100;
     this.guiImgProps.height = 100;
     this.guiImgProps.width = stageWidth;
+    if (this.guiImgProps.display) {
+      const guiW = this.guiImgProps.display.getWidth() * this.guiImgProps.viewPoint.scale;
+      this.guiImgProps.x = Math.floor((stageWidth - guiW) / 2);
+    }
+    if (this.gameImgProps.display) {
+      this.setGameViewPointPosition(0, 0);
+      this.redraw();
+    }
   }
   getStageImageAt(x, y) {
     if (this.isPositionInStageImage(this.gameImgProps, x, y))
@@ -249,7 +260,10 @@ class Stage {
       this._rawScale = lemmings.scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = x;
-      this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+      const displayHeight = this.gameImgProps.display.getHeight();
+      const gameHeight = this.gameImgProps.height;
+      const scale = this.gameImgProps.viewPoint.scale;
+      this.gameImgProps.viewPoint.y = Math.max(0, displayHeight - gameHeight / scale);
       this.redraw();
       return;
     }
@@ -258,7 +272,10 @@ class Stage {
     if (scale == 2) {
       this._rawScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.x = x;
-      this.gameImgProps.viewPoint.y = this.gameImgProps.display.getHeight() - this.gameImgProps.height / this.gameImgProps.viewPoint.scale;
+      const displayHeight = this.gameImgProps.display.getHeight();
+      const gameHeight = this.gameImgProps.height;
+      const newScale = this.gameImgProps.viewPoint.scale;
+      this.gameImgProps.viewPoint.y = Math.max(0, displayHeight - gameHeight / newScale);
       this.redraw();
       return;
     } else {
@@ -304,9 +321,37 @@ class Stage {
   }
   resetFade() {
     this.fadeAlpha = 0;
+    this.overlayAlpha = 0;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+  }
+
+  startOverlayFade() {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+      }
+    }, 40);
+  }
+
+  resetOverlayFade() {
+    this.overlayAlpha = 0;
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
   }
   startFadeOut() {
@@ -319,11 +364,31 @@ class Stage {
       }
     }, 40);
   }
+
+  startOverlayFade(color) {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayColor = color;
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+      }
+    }, 40);
+  }
   dispose() {
     this.resetFade();
     if (this.fadeTimer) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
@@ -365,6 +430,18 @@ class Stage {
     if (this.fadeAlpha != 0) {
       ctx.globalAlpha = this.fadeAlpha;
       ctx.fillStyle = 'black';
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
+    }
+    if (this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
+    }
+    if (display === this.gameImgProps && this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
     }
   }

@@ -1,5 +1,6 @@
 # .agentInfo index
 
+
 Short table for quick lookup (see `index-detailed.md` for descriptions).
 
 path: tags
@@ -34,3 +35,4 @@ pack-mechanics.md: mechanics
 todo-review.md: todo
 keyboard-shortcuts.md: keyboard
 note-review.md: todo
+

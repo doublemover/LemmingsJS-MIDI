@@ -44,8 +44,13 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Extended URL Parameters
     - `&debug=true` enables debug mode (Console is noisy)
     - `&speed=x` sets game speed (0-120)
-    - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
-      - Auto reduces game speed if more than 24 ticks behind, pausing in the worst cases to finish working through the delayed ticks
+  - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
+    - Each skipped frame increments **missedTicks** (`T` display) while stable frames increment **stableTicks**
+    - Speed decreases once `missedTicks` exceed the slow threshold and rises again after enough `stableTicks`
+    - Thresholds will scale with `speedFactor` once [Issue 1](https://github.com/doublemover/LemmingsJS-MIDI/issues/1) is implemented
+    - The "T" indicator shows missed ticks and "L" shows the current lemming count
+    - Speed modulates smoothly when lagging and shows a color-coded overlay
+    - Extreme backlog triggers the new `suspendWithColor` behaviour
     - `&endless=true` disables time limit
     - `&nukeAfter=x` automatically nukes after x*10
     - `&scale=x` adjusts zoom scale (0.0125-5)
@@ -86,9 +91,9 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 </details>
 
 <details open>
-  <summary>In Progress (11)</summary>
+<summary>In Progress (10)</summary>
   
-  - [ ] Indicate bench speed adjustment with rect color
+  - [X] Bench speed adjustment shows color-coded overlay via `suspendWithColor`
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
@@ -167,7 +172,7 @@ URL parameters (shortcut in brackets):
 - `speed (s)`: Control speed 0-100 (default: 1)
 - `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
-- `bench (b)`: Enable bench mode, lemmings never stop spawning (default: false)
+- `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation and color-coded overlay via `suspendWithColor` (default: false)
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)

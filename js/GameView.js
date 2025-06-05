@@ -102,6 +102,16 @@ class GameView extends Lemmings.BaseLogger {
     this.game.getGameTimer().suspend();
   }
 
+  suspendWithColor(color) {
+    if (this.game == null) {
+      return;
+    }
+    this.game.getGameTimer().suspend();
+    if (this.stage?.startOverlayFade) {
+      this.stage.startOverlayFade(color);
+    }
+  }
+
   continue () {
     if (this.game == null) {
       return;
@@ -231,6 +241,10 @@ class GameView extends Lemmings.BaseLogger {
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
     this.gameSpeedFactor = this.parseNumber(query, ['speed', 's'], 1, 0, 100);
+    // values above normal correspond to discrete steps
+    if (this.gameSpeedFactor > 1) {
+      this.gameSpeedFactor = Math.round(this.gameSpeedFactor);
+    }
     this.cheat = this.parseBool(query, ['cheat', 'c']);
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);

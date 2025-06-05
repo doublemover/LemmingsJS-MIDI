@@ -32,16 +32,19 @@ class MiniMap {
     // render target (drawn into the GUI canvas once per frame)
     this.frame = new Lemmings.Frame(this.width, this.height);
     //this.renderFrame = new Lemmings.Frame(this.renderWidth, this.renderHeight);
-        
+
     if (!MiniMap.palette) {
       MiniMap.palette = new Uint32Array(129);
       for (let i = 1; i <= 128; ++i) {
         MiniMap.palette[i] = 0xFF000000 | ((i*2) << 8);
       }
     }
-        
+
     this._displayListeners = null;
     this._mouseDown = false;
+    this.viewportDashOffset = 0;
+    this._viewportCounter = 0;
+    this.viewportDashDelay = 100;
     if (this.guiDisplay) this.#hookPointer();
   }
 
@@ -224,6 +227,11 @@ class MiniMap {
   render() {
     if (!this.guiDisplay) return;
 
+    if (++this._viewportCounter >= this.viewportDashDelay) {
+      this._viewportCounter = 0;
+      this.viewportDashOffset += 1;
+    }
+
     const {
       width: W,
       height: H,
@@ -252,13 +260,16 @@ class MiniMap {
     if (vpXW == this.width) {
       vpW -= 1;
     }
-    const vpRectColor = 0xFFFFFFFF;
-    frame.drawRect(vpX, vpY, 0, vpH, vpRectColor, false, false);
-    frame.drawRect(vpX + vpW, vpY, 0, vpH, vpRectColor, false, false);
-    if (vpH < this.height) {
-      frame.drawRect(vpX, vpY, vpW, 0, vpRectColor, false, false);
-      frame.drawRect(vpX, vpY + vpH, vpW, 0, vpRectColor, false, false);
-    }
+    frame.drawMarchingAntRect(
+      vpX,
+      vpY,
+      vpW,
+      vpH,
+      2,
+      this.viewportDashOffset,
+      0xFF00FF00,
+      0xFF005500
+    );
 
     /* Entrances / Exits */
     for (const obj of this.level.objects) {
