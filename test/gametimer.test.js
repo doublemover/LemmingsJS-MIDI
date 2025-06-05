@@ -76,17 +76,17 @@ describe('GameTimer', function() {
     expect(timer.isRunning()).to.equal(true);
   });
 
-  it('benchSpeedAdjust lowers speed and suspends when far behind', function() {
+  it('benchSpeedAdjust lowers speed without pausing when far behind', function() {
     lemmings.bench = true;
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
     const timer = new GameTimer({ timeLimit: 1 });
-    lemmings.suspendWithColor = () => { timer.suspend(); };
     timer.continue();
     clock.tick(1200);
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
-    expect(timer.isRunning()).to.equal(false);
+    expect(timer.isRunning()).to.equal(true);
   });
 
   it('catchupSpeedAdjust restores normal speed after delay', function() {
