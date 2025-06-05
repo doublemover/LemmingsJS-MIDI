@@ -49,7 +49,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
     - Speed decreases once `missedTicks` exceed the slow threshold and rises again after enough `stableTicks`
     - Thresholds will scale with `speedFactor` once [Issue 1](https://github.com/doublemover/LemmingsJS-MIDI/issues/1) is implemented
     - The "T" indicator shows missed ticks and "L" shows the current lemming count
-    - Speed modulates smoothly when lagging and shows a color-coded overlay
+    - Speed modulates smoothly when lagging and shows a color-coded overlay that fades out automatically. Only the pause button flashes red or green during adjustments
     - Extreme backlog triggers the new `suspendWithColor` behaviour
     - `&endless=true` disables time limit
     - `&nukeAfter=x` automatically nukes after x*10
@@ -172,7 +172,7 @@ URL parameters (shortcut in brackets):
 - `speed (s)`: Control speed 0-100 (default: 1)
 - `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
-- `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation and color-coded overlay via `suspendWithColor` (default: false)
+- `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation. The overlay fades out automatically and only the pause button flashes red/green via `suspendWithColor` during adjustments (default: false)
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
