@@ -250,8 +250,8 @@ class MiniMap {
       vpW -= 1;
     }
     const vpRectColor = 0xFFFFFFFF;
-    frame.drawRect(vpX, 0, 0, this.height - 1, vpRectColor, false, false);
-    frame.drawRect(vpX + vpW, 0, 0, this.height - 1, vpRectColor, false, false);
+    frame.drawRect(vpX, vpY, 0, vpH, vpRectColor, false, false);
+    frame.drawRect(vpX + vpW, vpY, 0, vpH, vpRectColor, false, false);
     if (vpH < this.height) {
       frame.drawRect(vpX, vpY, vpW, 0, vpRectColor, false, false);
       frame.drawRect(vpX, vpY + vpH, vpW, 0, vpRectColor, false, false);
