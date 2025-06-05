@@ -9,8 +9,8 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "mocha",
-    "coverage": "c8 mocha",
+    "test": "mocha --recursive",
+    "coverage": "c8 mocha --recursive",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -23,7 +23,8 @@
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
     "lint": "eslint .",
-    "depcheck": "depcheck"
+    "depcheck": "depcheck",
+    "index": "node tools/build_index.js --root . --out embeddings.json"
   },
   "repository": {
     "type": "git",
