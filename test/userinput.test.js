@@ -105,6 +105,48 @@ function createDocumentStub() {
   };
 }
 
+function createStubCanvas(width = 800, height = 600) {
+  const ctx = {
+    canvas: { width, height },
+    fillRect() {},
+    drawImage() {},
+    putImageData() {}
+  };
+  return {
+    width,
+    height,
+    getContext() {
+      return ctx;
+    },
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
+
+function createDocumentStub() {
+  return {
+    createElement() {
+      const ctx = {
+        canvas: {},
+        fillRect() {},
+        drawImage() {},
+        putImageData() {},
+        createImageData(w, h) {
+          return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+        }
+      };
+      return {
+        width: 0,
+        height: 0,
+        getContext() {
+          ctx.canvas = this;
+          return ctx;
+        }
+      };
+    }
+  };
+}
+
 globalThis.lemmings = { game: { showDebug: false } };
 
 function createStubCanvas(width = 800, height = 600) {
@@ -182,6 +224,7 @@ describe('UserInputManager', function() {
       removeEventListener() {}
     };
   }
+
 
 
   function createDocumentStub() {
