@@ -41,6 +41,7 @@ webmidi-overview.md: webmidi midi doc
 note-review.md: todo
 webmidi-tasks.md: webmidi-todo
 level-packs.md: level-packs resources doc
+userinput-zoom.md: stage input tests
 
 pause-overlay.md: bench-mode gui
 
