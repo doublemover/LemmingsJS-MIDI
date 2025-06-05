@@ -219,8 +219,12 @@ class Stage {
     this.guiImgProps.y = stageHeight - 100;
     this.guiImgProps.height = 100;
     this.guiImgProps.width = stageWidth;
+    if (this.guiImgProps.display) {
+      const guiW = this.guiImgProps.display.getWidth() * this.guiImgProps.viewPoint.scale;
+      this.guiImgProps.x = Math.floor((stageWidth - guiW) / 2);
+    }
     if (this.gameImgProps.display) {
-      this.setGameViewPointPosition(this.gameImgProps.viewPoint.x, 0);
+      this.setGameViewPointPosition(0, 0);
       this.redraw();
     }
   }
