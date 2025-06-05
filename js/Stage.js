@@ -214,7 +214,7 @@ class Stage {
     this.guiImgProps.width = this.guiImgProps.display?.getWidth() || 720;
     if (this.guiImgProps.display) {
       const guiW = this.guiImgProps.display.getWidth();
-      this.guiImgProps.x = (stageWidth/4);
+      this.guiImgProps.x = Math.floor((stageWidth - guiW) / 2);
     }
     if (this.gameImgProps.display) {
       this.redraw();

@@ -6,7 +6,9 @@ import '../js/BitWriter.js';
 import '../js/PaletteImage.js';
 import '../js/Frame.js';
 import '../js/ColorPalette.js';
-import { GroundReader } from '../js/GroundReader.js';
+import '../js/BaseImageInfo.js';
+import '../js/ObjectImageInfo.js';
+import '../js/TerrainImageInfo.js';
 
 // Silence debug output
 globalThis.lemmings = { game: { showDebug: false } };
@@ -15,7 +17,9 @@ describe('GroundReader', function() {
   it('reads palettes and detects steel', async function() {
     const origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({ json: async () => ({ lemmings: { 'GROUND0O.DAT': [0] } }) });
+    const mod = await import('../js/GroundReader.js?' + Date.now());
     await Lemmings.loadSteelSprites();
+    const { GroundReader } = mod;
     globalThis.fetch = origFetch;
 
     const buf = new Uint8Array(1056);
