@@ -14,7 +14,9 @@ describe('KeyboardShortcuts', function() {
       getGameTimer() { return timer; },
       queueCommand(cmd) { manager.queueCommand(cmd); },
       getGameSkills() { return { getSelectedSkill() { return Lemmings.SkillTypes.CLIMBER; }, setSelectedSkill() {} }; },
-      getLemmingManager() { return { getSelectedLemming() { return { id: 1 }; } }; }
+      getLemmingManager() {
+        return lemMgr || { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
+      }
     };
     const view = { game };
     global.window = { addEventListener() {}, removeEventListener() {} };
@@ -80,6 +82,8 @@ describe('KeyboardShortcuts', function() {
     ks._onKeyDown(evt);
     expect(log).to.have.lengthOf(1);
     expect(log[0]).to.be.instanceOf(Lemmings.CommandLemmingsAction);
+  });
+
   it('clears selected lemming with KeyN', function() {
     const manager = { queueCommand() {} };
     let selected = 'foo';

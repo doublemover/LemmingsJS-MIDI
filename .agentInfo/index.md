@@ -39,3 +39,5 @@ keyboard-shortcuts.md: keyboard
 note-review.md: todo
 
 pause-overlay.md: bench-mode gui
+
+webmidi.md: webmidi doc
