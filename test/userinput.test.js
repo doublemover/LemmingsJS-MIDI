@@ -18,6 +18,7 @@ const element = {
 };
 
 // Minimal canvas/context stubs used by Stage and UserInputManager tests
+
 function createStubCanvas(width = 800, height = 600) {
   const ctx = {
     canvas: { width, height },
@@ -95,6 +96,13 @@ function createDocumentStub() {
 }
 
 describe('UserInputManager', function() {
+  it('emits zoom events with cursor position', function (done) {
+    const element = {
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect() {
+        return { left: 0, top: 0, width: 800, height: 480 };
+      }
   function createStubCanvas(width = 800, height = 600) {
     const ctx = {
       canvas: { width, height },
@@ -104,7 +112,7 @@ describe('UserInputManager', function() {
     };
 
     const uim = new UserInputManager(element);
-    uim.onZoom.on((e) => {
+    uim.onZoom.on(e => {
       try {
         expect(e.x).to.equal(100);
         expect(e.y).to.equal(50);
@@ -116,6 +124,7 @@ describe('UserInputManager', function() {
     });
     uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
   });
+
   
     return {
       width,
