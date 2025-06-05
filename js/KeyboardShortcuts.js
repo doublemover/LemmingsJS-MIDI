@@ -222,6 +222,12 @@ class KeyboardShortcuts {
       game.getGameTimer().toggle();
       game.gameGui.skillSelectionChanged = true;
       break;
+    case 'BracketRight':
+      if (!game.getGameTimer().isRunning()) this.view.nextFrame();
+      break;
+    case 'BracketLeft':
+      if (!game.getGameTimer().isRunning()) this.view.prevFrame();
+      break;
     case 'KeyT':
       if (e.shiftKey) this._instantNuke();
       else game.queueCommand(new Lemmings.CommandNuke());
