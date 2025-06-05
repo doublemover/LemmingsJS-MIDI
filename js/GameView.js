@@ -415,6 +415,18 @@ class GameView extends Lemmings.BaseLogger {
     this.log.debug(level);
     return this.start();
   }
+
+  /** cleanup keyboard and stage handlers */
+  dispose() {
+    if (this.shortcuts) {
+      this.shortcuts.dispose();
+      this.shortcuts = null;
+    }
+    if (this.stage && this.stage.dispose) {
+      this.stage.dispose();
+      this.stage = null;
+    }
+  }
 }
 Lemmings.GameView = GameView;
 
