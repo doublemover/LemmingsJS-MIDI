@@ -2,9 +2,11 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/Position2D.js';
+import '../js/ViewPoint.js';
+import '../js/StageImageProperties.js';
+import '../js/DisplayImage.js';
 import { UserInputManager } from '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
-
 
 // minimal element stub
 const element = {
@@ -14,6 +16,7 @@ const element = {
     return { left: 0, top: 0, width: 800, height: 480 };
   }
 };
+
 
 function createStubCanvas(width = 800, height = 600) {
   const ctx = {
@@ -62,6 +65,20 @@ describe('UserInputManager', function() {
       drawImage() {},
       putImageData() {}
     };
+
+    const uim = new UserInputManager(element);
+    uim.onZoom.on((e) => {
+      try {
+        expect(e.x).to.equal(100);
+        expect(e.y).to.equal(50);
+        expect(e.deltaZoom).to.equal(120);
+        done();
+      } catch (err) {
+        done(err);
+      }
+    });
+    uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
+
     return {
       width,
       height,

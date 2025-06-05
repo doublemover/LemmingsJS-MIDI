@@ -9,8 +9,8 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "mocha \"test/**/*.js\"",
-    "coverage": "c8 mocha",
+    "test": "mocha \"test/**/*.test.js\"",
+    "coverage": "c8 mocha \"test/**/*.test.js\"",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
