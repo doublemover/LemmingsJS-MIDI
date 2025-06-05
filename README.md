@@ -156,10 +156,21 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ### Progressive Web App
 
+
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
 and launches it fullscreen in landscape mode. Touch input still needs
-polish, so please file bugs for any issues you have! 
+polish, so please file bugs for any issues you have!
+
+### WebMIDI
+
+WebMIDI only works when the game is served via HTTPS or on localhost. You must
+call `WebMidi.enable()` to prompt the user for MIDI device access.
+
+- System‑exclusive messages require `WebMidi.enable({sysex: true})`.
+
+See [.agentInfo/notes/webmidi-overview.md](.agentInfo/notes/webmidi-overview.md)
+for detailed examples and API summaries.
 
 ## Options
 
