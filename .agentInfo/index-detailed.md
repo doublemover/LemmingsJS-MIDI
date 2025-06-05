@@ -39,3 +39,5 @@ This expanded listing preserves the original bullet format with short descriptio
 - **bench-mode, gui**: [notes/pause-overlay.md](notes/pause-overlay.md) - Bench mode highlights the pause button rectangle with `startOverlayFade(rect)` instead of flashing the entire stage.
 - **webmidi-todo**: [notes/webmidi-tasks.md](notes/webmidi-tasks.md) - Follow-ups on WebMIDI TODOs such as master tuning and browser support for `Output.clear()`.
 
+
+- **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
