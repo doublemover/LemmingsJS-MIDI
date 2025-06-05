@@ -213,4 +213,5 @@ URL parameters (shortcut in brackets):
 
 The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
 See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
---> 
+WebMIDI docs live in [`.agentInfo/notes/webmidi-overview.md`](.agentInfo/notes/webmidi-overview.md) and the environment summary in [`.agentInfo/notes/webmidi-environments.md`](.agentInfo/notes/webmidi-environments.md).
+-->

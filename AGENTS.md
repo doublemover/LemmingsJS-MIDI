@@ -28,6 +28,7 @@ Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md]
 - Call `WebMidi.enable({sysex: true})` if you need to send or receive
 - `.agentInfo/notes/webmidi-overview.md` provides detailed usage examples
   and API summaries.
+- `.agentInfo/notes/webmidi-environments.md` lists supported browsers, Node.js and Electron setup.
 - The call in `index.html` lines 22-24 is commented out; enable it for MIDI tests.
 
 

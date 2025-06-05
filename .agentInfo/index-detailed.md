@@ -45,6 +45,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **stage, input, tests**: [notes/userinput-zoom.md](notes/userinput-zoom.md) - Mouse wheel zooms around the cursor. stage.updateviewpoint.test.js checks that the cursor's world position remains the same.
 - **nl-objects, doc**: [notes/nl-objects.md](notes/nl-objects.md) - Short reference for additional NeoLemmix objects such as teleporters and pickup skills.
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
+- **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - Supported browsers, Node.js usage and Electron setup.
 - **webmidi, enumerations, doc**: [notes/webmidi-enumerations.md](notes/webmidi-enumerations.md) - Summary of CHANNEL_MESSAGES and other enumerations.
 - **easing, animation**: [notes/easing-functions.md](notes/easing-functions.md) - Summary of linear, quadratic, elastic and other easing curves for smooth motion.
 - **editor-mode, gui, level-editor**: [notes/editor-mode.md](notes/editor-mode.md) - Editor mode disables game over, spawns lemmings endlessly, and draws a black panel with terrain and trigger controls.
