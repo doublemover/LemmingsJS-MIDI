@@ -8,29 +8,33 @@ class ActionWalkSystem extends ActionBaseSystem {
   triggerLemAction(lem) {
     return false;
   }
-  getGroundStepHeight(groundMask, x, y) {
-    for (let i = 0; i < 8; i++) {
-      if (!groundMask.hasGroundAt(x, y - i)) {
+  getGroundStepHeight(slice) {
+    const { height } = slice;
+    for (let i = 0; i < height; i++) {
+      const y = height - 1 - i;
+      if (!slice.hasGroundAt(0, y)) {
         return i;
       }
     }
-    return 8;
+    return height;
   }
 
-  getGroundGapDepth(groundMask, x, y) {
-    for (let i = 1; i < 4; i++) {
-      if (groundMask.hasGroundAt(x, y + i)) {
-        return i;
+  getGroundGapDepth(slice) {
+    const { height } = slice;
+    for (let i = 0; i < height; i++) {
+      if (slice.hasGroundAt(0, i)) {
+        return i + 1;
       }
     }
-    return 4;
+    return height + 1;
   }
   process(level, lem) {
     lem.frameIndex++;
     lem.x += (lem.lookRight ? 1 : -1);
 
     const groundMask = level.getGroundMaskLayer();
-    const upDelta = this.getGroundStepHeight(groundMask, lem.x, lem.y);
+    const stepSlice = groundMask.getSubLayer(lem.x, lem.y - 7, 1, 8);
+    const upDelta = this.getGroundStepHeight(stepSlice);
     if (upDelta == 8) {
       // collision with obstacle
       if (lem.canClimb) {
@@ -51,7 +55,8 @@ class ActionWalkSystem extends ActionBaseSystem {
         return Lemmings.LemmingStateType.NO_STATE_TYPE;
       }
     } else {
-      let downDelta = this.getGroundGapDepth(groundMask, lem.x, lem.y);
+      const gapSlice = groundMask.getSubLayer(lem.x, lem.y + 1, 1, 3);
+      let downDelta = this.getGroundGapDepth(gapSlice);
       lem.y += downDelta;
       if (downDelta == 4) {
         return Lemmings.LemmingStateType.FALLING;
