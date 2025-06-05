@@ -35,7 +35,6 @@ describe('tools/exportAllPacks.js', function () {
     delete globalThis.spawnSync;
     fs.rmSync(tempDir, { recursive: true, force: true });
     fs.rmSync(path.join(path.dirname(tempDir), '..', 'config.json'), { force: true });
-
     const config = JSON.parse(fs.readFileSync(cfgPath, 'utf8'));
     expect(calls.length).to.equal(config.length);
     calls.forEach((args, idx) => {
