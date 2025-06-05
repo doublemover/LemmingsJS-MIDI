@@ -6,7 +6,6 @@ This note lists lines across the repository containing TODO-like markers. They c
 
 ## Locations
 - `js/webmidi.js` lines 3597, 3640, 3760, 3831, 4626 – improvements for passing MSB/LSB values.
-- `js/BinaryReader.js` line 73 – asynchronous Blob reading now works.
 - `js/UserInputManager.js` line 205 – zoom should center on the pointer.
 
 `AGENTS.md` and `.agentInfo/index.md` mention TODOs in documentation and can be ignored for code cleanup.
