@@ -144,7 +144,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
-  - `npm run`
+  - `npm start`
 - The Node tools rely on [NodeFileProvider](tools/NodeFileProvider.js) to load
   resources from folders or `.zip`, `.tar.gz`, `.tgz` and `.rar` archives.
 - See [docs/tools.md](docs/tools.md) for detailed usage of each script.
