@@ -30,6 +30,7 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **binary-reader**: [notes/binary-reader.md](notes/binary-reader.md)
 - **bit-reader**: [notes/bit-reader.md](notes/bit-reader.md)
 - **bit-writer**: [notes/bit-writer.md](notes/bit-writer.md)
+- **tests, solidlayer, geometry**: [notes/test-coverage.md](notes/test-coverage.md)
 - **file-container**: [notes/file-container.md](notes/file-container.md)
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md)
 - **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md)
