@@ -135,11 +135,13 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ## Play Locally, Export & Patch Sprites
 
- - Install [Node.js 16 or later](https://nodejs.org)
+- Install [Node.js 16 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
   - `npm run`
+- The Node tools rely on [NodeFileProvider](tools/NodeFileProvider.js) to load
+  resources from folders or `.zip`, `.tar.gz`, `.tgz` and `.rar` archives.
 - See [docs/tools.md](docs/tools.md) for detailed usage of each script.
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
