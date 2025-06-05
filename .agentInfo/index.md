@@ -34,6 +34,7 @@ Try to always make sure to update this comprehensively
 - **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md)
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
 - **bench-mode, benchmarking, performance testing, optimization, speed-control**: [notes/bench-mode.md](notes/bench-mode.md)
+- **cleanup, game-timer**: [notes/norm-tick-count-removal.md](notes/norm-tick-count-removal.md)
 - **tools, cli**: [notes/tools.md](notes/tools.md)
 - **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md)
 - **tests, stage, gameresult, gametimer, groundreader, vgaspec, nodefileprovider, listsprites, solidlayer, geometry, tools, exports**: [notes/test-coverage.md](notes/test-coverage.md)

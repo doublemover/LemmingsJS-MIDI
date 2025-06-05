@@ -10,7 +10,7 @@ class GameTimer {
   #tickIndex;
   #loopBound;
   #autoPaused;
-  #normTickCount;
+  #stableTicks;
   #catchupSlow;
   #visHandler;
 
@@ -29,7 +29,7 @@ class GameTimer {
     this.onBeforeGameTick = new Lemmings.EventHandler();
     this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
     this.#autoPaused = false;
-    this.#normTickCount = 0;
+    this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#visHandler = () => {
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
@@ -61,15 +61,6 @@ class GameTimer {
     }
   }
 
-  get normTickCount() { return this.#normTickCount; }
-  set normTickCount(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
-      console.warn('normTickCount wrapped, resetting to 0');
-      this.normTickCount = 0;
-    } else {
-      this.#normTickCount = v;
-    }
-  }
 
   get speedFactor() { return this.#speedFactor; }
   set speedFactor(value) {
@@ -143,11 +134,13 @@ class GameTimer {
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
     if (steps > 100) {
-      this.normTickCount = 0;
+      this.suspend();
+      this.#stableTicks = 0;
       this.#speedFactor = 0.1;
     }
     else if (steps > 16) {
-      this.normTickCount = 0;
+      this.suspend();
+      this.#stableTicks = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
         this.#speedFactor = 60;
@@ -166,19 +159,19 @@ class GameTimer {
       }
     }
     if (steps > 4) {
-      this.normTickCount = this.normTickCount - 32;
+      this.#stableTicks -= 32;
     }
 
     if (steps <= 2) {
-      this.normTickCount = this.normTickCount + 1;
+      this.#stableTicks += 1;
     }
 
-    if (this.normTickCount > 32 && this.#speedFactor < 60) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 32 && this.#speedFactor < 60) {
+      this.#stableTicks = 0;
       this.#speedFactor += 1;
     }
-    if (this.normTickCount > 2 && this.#speedFactor < 1) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 2 && this.#speedFactor < 1) {
+      this.#stableTicks = 0;
       this.#speedFactor = ((this.#speedFactor*10)+1)/10;
     }
     const diff = this.#speedFactor - oldSpeed;
