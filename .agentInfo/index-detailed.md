@@ -43,3 +43,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
+- **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - Supported browsers, Node.js usage and Electron setup.
