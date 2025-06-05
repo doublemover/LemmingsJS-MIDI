@@ -78,11 +78,23 @@ function patchScript(name) {
   return fileURLToPath(new URL(`../tools/${name}`, import.meta.url));
 }
 
-async function runScript(script, args) {
+async function runScript(script, args, options = {}) {
   const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
   process.argv = ['node', script, ...args];
-  await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-  process.argv = origArgv;
+  process.once('unhandledRejection', handler);
+  try {
+    await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
 }
 
 describe('export scripts', function () {
@@ -105,6 +117,38 @@ describe('export scripts', function () {
     }
   });
 
+  it('exportPanelSprite.js uses default directory', async function () {
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportPanelSprite.js');
+    try {
+      await runScript(script, [pack], { cwd });
+      await new Promise(r => setTimeout(r, 50));
+      const file = path.join(cwd, 'exports', 'panel_export', 'panelSprite.png');
+      expect(fs.existsSync(file)).to.be.true;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('exportPanelSprite.js errors when output directory creation fails', async function () {
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportPanelSprite.js');
+    fs.writeFileSync(path.join(cwd, 'exports'), 'not a dir');
+    let err = null;
+    try {
+      await runScript(script, [pack], { cwd });
+    } catch (e) {
+      err = e;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+    expect(err).to.be.instanceOf(Error);
+  });
+
   it('exportGroundImages.js writes PNGs', async function () {
     if (parseInt(process.versions.node) >= 20) {
       this.skip();
@@ -122,6 +166,45 @@ describe('export scripts', function () {
     }
   });
 
+  it('exportGroundImages.js uses default directory', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportGroundImages.js');
+    try {
+      await runScript(script, [pack, '0'], { cwd });
+      await new Promise(r => setTimeout(r, 50));
+      const base = `${pack.replace(/\W+/g, '_')}_ground_0`;
+      const terrain = path.join(cwd, 'exports', base, 'terrain_0_0.png');
+      const object = path.join(cwd, 'exports', base, 'object_0_0.png');
+      expect(fs.existsSync(terrain) || fs.existsSync(object)).to.be.true;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('exportGroundImages.js errors on invalid index', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportGroundImages.js');
+    let err = null;
+    try {
+      await runScript(script, [pack, '1'], { cwd });
+    } catch (e) {
+      err = e;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+    expect(err).to.be.instanceOf(Error);
+  });
+
   it('exportAllSprites.js writes PNGs', async function () {
     if (parseInt(process.versions.node) >= 20) {
       this.skip();
@@ -137,5 +220,44 @@ describe('export scripts', function () {
       fs.rmSync(pack, { recursive: true, force: true });
       fs.rmSync(outDir, { recursive: true, force: true });
     }
+  });
+
+  it('exportAllSprites.js uses default directory', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportAllSprites.js');
+    try {
+      await runScript(script, [pack], { cwd });
+      await new Promise(r => setTimeout(r, 50));
+      const base = `${pack.replace(/\W+/g, '_')}_all`;
+      const file = path.join(cwd, 'exports', base, 'panel.png');
+      expect(fs.existsSync(file)).to.be.true;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
+  it('exportAllSprites.js errors when output directory creation fails', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
+    const pack = createPack();
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportAllSprites.js');
+    fs.writeFileSync(path.join(cwd, 'exports'), 'not a dir');
+    let err = null;
+    try {
+      await runScript(script, [pack], { cwd });
+    } catch (e) {
+      err = e;
+    } finally {
+      fs.rmSync(pack, { recursive: true, force: true });
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+    expect(err).to.be.instanceOf(Error);
   });
 });

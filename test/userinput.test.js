@@ -17,7 +17,7 @@ const element = {
   }
 };
 
-
+// Minimal canvas/context stubs used by Stage and UserInputManager tests
 function createStubCanvas(width = 800, height = 600) {
   const ctx = {
     canvas: { width, height },
@@ -115,6 +115,7 @@ describe('UserInputManager', function() {
       }
     });
     uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
+  });
 
     return {
       width,
