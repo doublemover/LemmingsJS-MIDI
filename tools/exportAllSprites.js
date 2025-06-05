@@ -101,6 +101,7 @@ function frameToPNG(frame) {
     }
     fs.mkdirSync(`${outDir}/ground${g}`, { recursive: true });
     const vgaContainer = new Lemmings.FileContainer(vgaBuf);
+    await Lemmings.loadSteelSprites();
     const groundReader = new Lemmings.GroundReader(
       groundBuf,
       vgaContainer.getPart(0),
@@ -119,4 +120,5 @@ function frameToPNG(frame) {
       }
     }
   }
+  Lemmings.resetSteelSprites();
 })();
