@@ -140,13 +140,20 @@ class GameTimer {
   }
 
   #benchSpeedAdjust(steps) {
+    // dynamically adjust speed based on how far we fall behind
+    // slowThreshold scales with current speedFactor so faster games tolerate
+    // fewer queued frames. minimum 10 frames before slowing down.
+    // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
+    const slowThreshold = Math.max(16 / this.#speedFactor, 10);
+    const recoverThreshold = Math.max(4 / this.#speedFactor, 2);
+
     if (steps > 100) {
       this.normTickCount = 0;
       this.#speedFactor = 0.1;
     }
-    else if (steps > 16) {
+    else if (steps > slowThreshold) {
       this.normTickCount = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
@@ -165,11 +172,11 @@ class GameTimer {
         this.#speedFactor = ((this.#speedFactor*10)-1)/10;;
       }
     }
-    if (steps > 4) {
+    if (steps > recoverThreshold) {
       this.normTickCount = this.normTickCount - 32;
     }
 
-    if (steps <= 2) {
+    if (steps <= Math.max(recoverThreshold / 2, 1)) {
       this.normTickCount = this.normTickCount + 1;
     }
 
