@@ -13,6 +13,7 @@ mechanics-flags.md: mechanics
 game-view.md: game-view
 game-gui.md: gui
 ground-renderer.md: render
+gui-stage-tasks.md: todo
 level-writer.md: level-writing
 level-loader.md: level-loading
 mechanics-config.md: config
