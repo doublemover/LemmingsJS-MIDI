@@ -49,7 +49,7 @@ class GameResources extends Lemmings.BaseLogger {
     return new Promise((resolve) => {
       this.getMainDat().then((container) => {
         const fr = container.getPart(5);
-        const pimg = new Lemmings.PaletteImage(17, 17);
+        const pimg = new Lemmings.PaletteImage(16, 16);
         pimg.processImage(fr, 1);
         pimg.processTransparentByColorIndex(0);
         const pal = new Lemmings.ColorPalette();
