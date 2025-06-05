@@ -151,6 +151,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
+- See [docs/nl-skills.md](docs/nl-skills.md) for a breakdown of NeoLemmix skills.
 - Run `npm run coverage` to generate a report. Current automated test
   coverage is around **64%** of lines.
 

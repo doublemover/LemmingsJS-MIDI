@@ -44,3 +44,4 @@ webmidi-tasks.md: webmidi-todo
 pause-overlay.md: bench-mode gui
 
 webmidi.md: webmidi doc
+nl-skills.md: nl-skills doc
