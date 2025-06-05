@@ -38,4 +38,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md) - UnpackFilePart represents a single compressed chunk inside a container. It
 - **todo, gui, stage**: [notes/gui-stage-tasks.md](notes/gui-stage-tasks.md) - Collection of UI fixes: panel placement, viewport scaling, selection visuals, skill auto-apply, cursor alignment, and cursor removal.
 - **bench-mode, gui**: [notes/pause-overlay.md](notes/pause-overlay.md) - Bench mode highlights the pause button rectangle with `startOverlayFade(rect)` instead of flashing the entire stage.
+- **webmidi-todo**: [notes/webmidi-tasks.md](notes/webmidi-tasks.md) - Follow-ups on WebMIDI TODOs such as master tuning and browser support for `Output.clear()`.
 
+
+- **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
