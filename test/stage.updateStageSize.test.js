@@ -59,14 +59,35 @@ describe('Stage.updateStageSize', function() {
     stage.draw = () => {};
 
     const display = stage.getGuiDisplay();
-    display.initSize(160, 20);
+    display.initSize(160, 40);
 
     canvas.width = 800;
     canvas.getContext().canvas.width = 800;
     stage.updateStageSize();
 
     const guiW = display.getWidth() * stage.guiImgProps.viewPoint.scale;
+    const panelH = display.getHeight() * stage.guiImgProps.viewPoint.scale;
     expect(stage.guiImgProps.x).to.equal(Math.floor((800 - guiW) / 2));
+    expect(stage.guiImgProps.y).to.equal(600 - panelH);
+    expect(stage.gameImgProps.height).to.equal(600 - panelH);
+    expect(stage.guiImgProps.height).to.equal(display.getHeight());
     expect(stage.guiImgProps.width).to.equal(display.getWidth());
+  });
+
+  it('keeps panel at bottom for different zoom levels', function() {
+    const canvas = createStubCanvas(400, 600);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGuiDisplay();
+    display.initSize(160, 40);
+
+    stage.guiImgProps.viewPoint.scale = 3;
+    stage.updateStageSize();
+
+    const panelH = display.getHeight() * stage.guiImgProps.viewPoint.scale;
+    expect(stage.guiImgProps.y).to.equal(600 - panelH);
+    expect(stage.gameImgProps.height).to.equal(600 - panelH);
   });
 });
