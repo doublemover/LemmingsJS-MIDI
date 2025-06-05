@@ -142,6 +142,10 @@ class GameTimer {
   }
 
   #benchSpeedAdjust(steps) {
+    // dynamically adjust speed based on how far we fall behind
+    // slowThreshold scales with current speedFactor so faster games tolerate
+    // fewer queued frames. minimum 10 frames before slowing down.
+    // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
     if (steps > 1) {
       this.#missedTicks += steps - 1;
