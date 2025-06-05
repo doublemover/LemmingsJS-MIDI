@@ -2,8 +2,22 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/Position2D.js';
+import '../js/ViewPoint.js';
+import '../js/StageImageProperties.js';
+import '../js/DisplayImage.js';
 import { UserInputManager } from '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
+
+// minimal element stub
+const element = {
+  addEventListener() {},
+  removeEventListener() {},
+  getBoundingClientRect() {
+    return { left: 0, top: 0, width: 800, height: 480 };
+  }
+};
+
+// Minimal canvas/context stubs used by Stage and UserInputManager tests
 
 function createStubCanvas(width = 800, height = 600) {
   const ctx = {
@@ -44,6 +58,43 @@ function createDocumentStub() {
 
 globalThis.lemmings = { game: { showDebug: false } };
 
+function createStubCanvas(width = 800, height = 600) {
+  const ctx = {
+    canvas: { width, height },
+    fillRect() {},
+    drawImage() {},
+    putImageData() {}
+  };
+  return {
+    width,
+    height,
+    getContext() { return ctx; },
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
+
+function createDocumentStub() {
+  return {
+    createElement() {
+      const ctx = {
+        canvas: {},
+        fillRect() {},
+        drawImage() {},
+        putImageData() {},
+        createImageData(w, h) {
+          return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+        }
+      };
+      return {
+        width: 0,
+        height: 0,
+        getContext() { ctx.canvas = this; return ctx; }
+      };
+    }
+  };
+}
+
 describe('UserInputManager', function() {
   it('emits zoom events with cursor position', function (done) {
     const element = {
@@ -52,7 +103,14 @@ describe('UserInputManager', function() {
       getBoundingClientRect() {
         return { left: 0, top: 0, width: 800, height: 480 };
       }
+  function createStubCanvas(width = 800, height = 600) {
+    const ctx = {
+      canvas: { width, height },
+      fillRect() {},
+      drawImage() {},
+      putImageData() {}
     };
+
     const uim = new UserInputManager(element);
     uim.onZoom.on(e => {
       try {
@@ -65,6 +123,37 @@ describe('UserInputManager', function() {
       }
     });
     uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
+  });
+
+  
+    return {
+      width,
+      height,
+      getContext() { return ctx; },
+      addEventListener() {},
+      removeEventListener() {}
+    };
+  }
+
+  function createDocumentStub() {
+    return {
+      createElement() {
+        const ctx = {
+          canvas: {},
+          fillRect() {},
+          drawImage() {},
+          putImageData() {},
+          createImageData(w, h) { return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }; }
+        };
+        return {
+          width: 0,
+          height: 0,
+          getContext() { ctx.canvas = this; return ctx; }
+        };
+      }
+    });
+    const pos = new Lemmings.Position2D(100, 50);
+    uim.handleWheel(pos, 120);
   });
 
   before(function() {
@@ -104,6 +193,23 @@ describe('UserInputManager', function() {
 
     expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
     expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+  });
+
+  it('emits zoom events without stage set', function(done) {
+    delete globalThis.lemmings.stage;
+    const uim = new UserInputManager(element);
+    uim.onZoom.on((e) => {
+      try {
+        expect(e.x).to.equal(25);
+        expect(e.y).to.equal(75);
+        expect(e.deltaZoom).to.equal(-20);
+        done();
+      } catch (err) {
+        done(err);
+      }
+    });
+
+    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
   });
 
   it('converts pointer position based on canvas size', function() {
