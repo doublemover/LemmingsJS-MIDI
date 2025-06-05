@@ -213,7 +213,9 @@ class Stage {
     this.gameImgProps.width = stageWidth;
     this.guiImgProps.y = stageHeight - 100;
     this.guiImgProps.height = 100;
-    this.guiImgProps.width = stageWidth;
+    this.guiImgProps.width = this.guiImgProps.display
+      ? this.guiImgProps.display.getWidth()
+      : stageWidth;
     if (this.guiImgProps.display) {
       const guiW = this.guiImgProps.display.getWidth() * this.guiImgProps.viewPoint.scale;
       this.guiImgProps.x = Math.floor((stageWidth - guiW) / 2);
