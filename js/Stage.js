@@ -7,6 +7,7 @@ class Stage {
     this.fadeAlpha = 0;
     this.overlayColor = 'black';
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     this.overlayTimer = 0;
     this.overlayRect = null;
     this.cursorCanvas = null;
@@ -332,26 +333,10 @@ class Stage {
     }
   }
 
-  startOverlayFade(color, rect = null) {
-    if (this.overlayTimer) {
-      clearInterval(this.overlayTimer);
-      this.overlayTimer = 0;
-    }
-    if (color) this.overlayColor = color;
-    this.overlayRect = rect;
-    this.overlayAlpha = 1;
-    this.overlayTimer = setInterval(() => {
-      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
-      if (this.overlayAlpha <= 0) {
-        clearInterval(this.overlayTimer);
-        this.overlayTimer = 0;
-        this.overlayRect = null;
-      }
-    }, 40);
-  }
 
   resetOverlayFade() {
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.overlayTimer != 0) {
       clearInterval(this.overlayTimer);
       this.overlayTimer = 0;
@@ -364,6 +349,23 @@ class Stage {
       if (this.fadeAlpha >= 1) {
         clearInterval(this.fadeTimer);
         this.fadeTimer = 0;
+      }
+    }, 40);
+  }
+
+  startOverlayFade(color, rect) {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayColor = color;
+    this.overlayRect = rect || null;
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
       }
     }, 40);
   }
@@ -446,17 +448,25 @@ class Stage {
     if (this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
-      if (this.overlayRect) {
-        const scale = display.viewPoint.scale;
-        const x = display.x + Math.trunc(this.overlayRect.x * scale);
-        const y = display.y + Math.trunc(this.overlayRect.y * scale);
-        const w = Math.trunc(this.overlayRect.w * scale);
-        const h = Math.trunc(this.overlayRect.h * scale);
-        ctx.fillRect(x, y, w, h);
-      } else {
-        ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
-      }
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
+    }
+    if (display === this.gameImgProps && this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
     }
   }
 

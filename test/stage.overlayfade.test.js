@@ -67,7 +67,7 @@ describe('Stage overlay fade', function() {
     stage.draw = () => {};
 
     stage.overlayAlpha = 1;
-    stage.startOverlayFade();
+    stage.startOverlayFade('black');
     clock.tick(2000);
 
     expect(stage.overlayAlpha).to.equal(0);
