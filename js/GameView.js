@@ -110,7 +110,18 @@ class GameView extends Lemmings.BaseLogger {
     }
     this.game.getGameTimer().suspend();
     if (this.stage?.startOverlayFade) {
-      this.stage.startOverlayFade(color, { x: 160, y: 32, w: 16, h: 10 });
+      let rect = null;
+      if (this.bench) {
+        const gui = this.stage.guiImgProps;
+        const scale = gui.viewPoint.scale;
+        rect = {
+          x: gui.x + 160 * scale,
+          y: gui.y + 32 * scale,
+          width: 16 * scale,
+          height: 10 * scale
+        };
+      }
+      this.stage.startOverlayFade(color, rect);
     }
   }
 
