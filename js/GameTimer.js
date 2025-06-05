@@ -189,7 +189,6 @@ class GameTimer {
         this.suspend();
       }
     }
-    this.normTickCount = this.#stableTicks;
   }
 
   #catchupSpeedAdjust(steps) {
