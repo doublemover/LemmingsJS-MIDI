@@ -144,6 +144,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
+- See [docs/level-file-format.md](docs/level-file-format.md) for the `.lvl` file structure.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
 ### Progressive Web App
