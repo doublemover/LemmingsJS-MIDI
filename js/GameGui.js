@@ -320,15 +320,11 @@ class GameGui {
     }
 
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
-
-
     this._guiRafId = window.requestAnimationFrame(this._guiBound);
   }
 
   _guiLoop(now) {
     if (!this.display) {
-      window.cancelAnimationFrame(this._guiRafId);
-      this._guiRafId = 0;
       return;
     }
     window.cancelAnimationFrame(this._guiRafId);

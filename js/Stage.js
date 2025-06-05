@@ -198,25 +198,24 @@ class Stage {
     const clamped = this.limitValue(0.25, scale, 8);
     return Math.round(clamped / step) * step;
   }
+
+
   updateStageSize() {
     const stageHeight = this.stageCav.height;
     const stageWidth = this.stageCav.width;
-    const panelRawHeight = this.guiImgProps.display?.getHeight() || 40;
-    const panelH = panelRawHeight * this.guiImgProps.viewPoint.scale;
-    this.gameImgProps.y = 0;
-    this.gameImgProps.height = stageHeight - panelH;
+    const panelRawHeight = this.guiImgProps.display?.getHeight() || 80;
+    const gamePanelOffset = (stageHeight - panelRawHeight - 20)
+    this.gameImgProps.y = -20;
+    this.gameImgProps.height = stageHeight - panelRawHeight;
     this.gameImgProps.width = stageWidth;
-    this.guiImgProps.y = stageHeight - panelH;
+    this.guiImgProps.y = gamePanelOffset
     this.guiImgProps.height = panelRawHeight;
-    this.guiImgProps.width = this.guiImgProps.display
-      ? this.guiImgProps.display.getWidth()
-      : stageWidth;
+    this.guiImgProps.width = this.guiImgProps.display?.getWidth() || 720;
     if (this.guiImgProps.display) {
-      const guiW = this.guiImgProps.display.getWidth() * this.guiImgProps.viewPoint.scale;
-      this.guiImgProps.x = Math.floor((stageWidth - guiW) / 2);
+      const guiW = this.guiImgProps.display.getWidth();
+      this.guiImgProps.x = (stageWidth/4);
     }
     if (this.gameImgProps.display) {
-      this.setGameViewPointPosition(0, 0);
       this.redraw();
     }
   }
@@ -231,16 +230,19 @@ class Stage {
     return ((stageImage.x <= x) && ((stageImage.x + stageImage.width) >= x) &&
                 (stageImage.y <= y) && ((stageImage.y + stageImage.height) >= y));
   }
+
   getGameDisplay() {
     if (this.gameImgProps.display != null)
       return this.gameImgProps.display;
     this.gameImgProps.display = new Lemmings.DisplayImage(this);
     return this.gameImgProps.display;
   }
+
   getGuiDisplay() {
     if (this.guiImgProps.display != null) {
       return this.guiImgProps.display;
     }
+
     this.guiImgProps.display = new Lemmings.DisplayImage(this);
     return this.guiImgProps.display;
   }
@@ -278,9 +280,8 @@ class Stage {
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.x = sceneX - x / scale;
       this.gameImgProps.viewPoint.y = sceneY - y / scale;
-
+      this.redraw();
     }
-    // this.redraw();
   }
   /** redraw everything */
   redraw() {
