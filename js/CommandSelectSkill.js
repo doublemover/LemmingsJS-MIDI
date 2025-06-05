@@ -14,7 +14,14 @@ class CommandSelectSkill extends Lemmings.BaseLogger {
   execute(game) {
     const gameSkills = game.getGameSkills();
     if (!gameSkills) return false;
-    return gameSkills.setSelectedSkill(this.skill);
+    const lemmingManager = game.getLemmingManager?.();
+    const changed = gameSkills.setSelectedSkill(this.skill);
+    const lem = lemmingManager?.getSelectedLemming?.();
+    if (lem && gameSkills.canReuseSkill(this.skill) &&
+        lemmingManager.doLemmingAction?.(lem, this.skill)) {
+      gameSkills.reuseSkill(this.skill);
+    }
+    return changed;
   }
 
   load(values) {
