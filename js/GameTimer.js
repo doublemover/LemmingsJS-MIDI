@@ -203,7 +203,6 @@ class GameTimer {
         stage.startOverlayFade(color, rect);
       }
     }
-    this.normTickCount = this.#stableTicks;
   }
 
   #catchupSpeedAdjust(steps) {
