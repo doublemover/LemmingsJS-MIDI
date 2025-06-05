@@ -51,7 +51,8 @@ class GameResources extends Lemmings.BaseLogger {
         pimg.processImage(fr, 1);
         pimg.processTransparentByColorIndex(0);
         const pal = new Lemmings.ColorPalette();
-        pal.setColorRGB(1, 255, 255, 255);
+        // Colorize the cursor sprite to test non-white output.
+        pal.setColorRGB(1, 0, 255, 0); // bright green
         resolve(pimg.createFrame(pal));
       });
     });

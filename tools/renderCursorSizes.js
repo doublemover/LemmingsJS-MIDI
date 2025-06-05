@@ -41,21 +41,25 @@ function frameToPNG(frame) {
   const br = await provider.loadBinary(pack, 'MAIN.DAT');
   const fc = new Lemmings.FileContainer(br);
   const fr = fc.getPart(5);
-  const minSize = 2;
-  const maxSize = 96;
-  for (let width = minSize; width <= maxSize; width++) {
-    for (let height = minSize; height <= maxSize; height++) {
-      fr.setOffset(0); // reset reader for each run
-      const pimg = new Lemmings.PaletteImage(width, height);
-      pimg.processImage(fr, 1);
-      pimg.processTransparentByColorIndex(0);
-      const pal = new Lemmings.ColorPalette();
-      pal.setColorRGB(1, 255, 255, 255);
-      const frame = pimg.createFrame(pal);
-      const png = frameToPNG(frame);
-      const name = `cursor_${width}x${height}.png`;
-      await new Promise(res =>
-        png.pack().pipe(fs.createWriteStream(path.join(outDir, name))).on('finish', res));
+  const minSize = 8;
+  const maxSize = 24;
+  const offsets = [];
+  for (let o = 0; o < fr.length; o += 32) offsets.push(o);
+  for (const off of offsets) {
+    for (let width = minSize; width <= maxSize; width++) {
+      for (let height = minSize; height <= maxSize; height++) {
+        fr.setOffset(off); // examine different sections
+        const pimg = new Lemmings.PaletteImage(width, height);
+        pimg.processImage(fr, 1);
+        pimg.processTransparentByColorIndex(0);
+        const pal = new Lemmings.ColorPalette();
+        pal.setColorRGB(1, 0, 255, 0); // green
+        const frame = pimg.createFrame(pal);
+        const png = frameToPNG(frame);
+        const name = `cursor_${off}_${width}x${height}.png`;
+        await new Promise(res =>
+          png.pack().pipe(fs.createWriteStream(path.join(outDir, name))).on('finish', res));
+      }
     }
   }
 })();
