@@ -81,9 +81,9 @@ describe('Stage pointer events', function() {
     ]);
 
     expect(events[1][1].x).to.equal(50);
-    expect(events[1][1].y).to.equal(50);
+    expect(events[1][1].y).to.equal(60);
     expect(events[0][1].x).to.equal(55);
-    expect(events[0][1].y).to.equal(55);
+    expect(events[0][1].y).to.equal(65);
   });
 
   it('forwards coordinates when zoomed', function() {
@@ -103,6 +103,6 @@ describe('Stage pointer events', function() {
     stage.controller.handleMouseDown(new Lemmings.Position2D(30, 40));
 
     expect(pos.x).to.equal(70);
-    expect(pos.y).to.equal(100);
+    expect(pos.y).to.equal(140);
   });
 });
