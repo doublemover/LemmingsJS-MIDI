@@ -88,7 +88,7 @@ class GameGui {
 
   _applyReleaseRateAuto() {
     if (!this.deltaReleaseRate) return;
-    if (this.gameTimer.isRunning?.()) {
+    if (this.gameTimer.isRunning()) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
       const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
       const cur = this.gameVictoryCondition.getCurrentReleaseRate();
@@ -123,7 +123,7 @@ class GameGui {
         }
         return;
       }
-      if (this.gameTimer.isRunning?.()) {
+      if (this.gameTimer.isRunning()) {
         let neu = cur + step;
         if (neu < min) neu = min;
         if (neu > max) neu = max;
@@ -248,7 +248,7 @@ class GameGui {
     const rawIdx = e.y > 15 ? Math.trunc(e.x / 16) : -1;
     let idx = rawIdx;
 
-    if (!this.gameTimer.isRunning?.() && rawIdx !== 11) {
+    if (!this.gameTimer.isRunning() && rawIdx !== 11) {
       idx = -1;
     }
 
@@ -438,7 +438,7 @@ class GameGui {
       this.skillSelectionChanged = false;
     }
 
-    if (!this.gameTimer.isRunning?.()) {
+    if (!this.gameTimer.isRunning()) {
       this.drawPaused(d);
     }
     if (this.nukePrepared) {
