@@ -10,3 +10,4 @@ The `tools/` directory contains small command-line utilities for working with le
 - **renderCursorSizes.js** – scans `MAIN.DAT` part 5 and saves cursor images with every width/height from 8×8 to 24×24. It colors index `1` green and tests offsets every 32 bytes to look for hidden cursor data. Usage: `node tools/renderCursorSizes.js [pack] [out dir]`.
 
 Most export scripts instantiate `NodeFileProvider` so they can read level packs from plain directories or archives like `.zip`, `.tar.gz`, or `.rar`. Keep pack archives next to the repo and the provider will find files automatically.
+- **findCursorByPalette.js** – loads a sample cursor PNG to get its palette then scans `MAIN.DAT` part 5 for 16×16 images using that palette. Saves any matches as PNGs. Usage: `node tools/findCursorByPalette.js [sample.png] [pack] [out dir]`.
