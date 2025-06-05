@@ -23,6 +23,7 @@ quotes, and semicolons across the JavaScript codebase.
 ## Commit policy
 - Keep commit messages concise.
 - Run `npm test` and ensure all tests pass before committing.
+- Run `npm run check-undefined` before committing major changes to catch missing or renamed functions.
 
 ## Pull Requests
 - Summarize major changes and reference relevant files or lines.
