@@ -90,7 +90,7 @@ class KeyboardShortcuts {
       this.zoom.v *= 0.9;
       const dz = this.zoom.v;
       if (Math.abs(dz) > 0.001) {
-        stage._rawScale = stage.limitValue(0.25, stage._rawScale * (1 + dz / 1500), 4);
+        stage._rawScale = stage.limitValue(0.25, stage._rawScale * (1 + dz / 1500), 8);
         const newScale = stage.snapScale(stage._rawScale);
         const nx = centerX - cx / newScale;
         const ny = centerY - cy / newScale;

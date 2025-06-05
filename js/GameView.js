@@ -251,7 +251,7 @@ class GameView extends Lemmings.BaseLogger {
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
-    this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 5);
+    this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 8);
     this.laggedOut = 0;
         
     this.shortcut = false;

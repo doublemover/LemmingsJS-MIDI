@@ -140,7 +140,7 @@ class Stage {
       // Zoom around that point
       const oldScale = stageImage.viewPoint.scale;
       // accumulate zoom on the raw scale value then snap for crisp pixels
-      this._rawScale = this.limitValue(.25, this._rawScale * (1 + deltaZoom / 1500), 4);
+      this._rawScale = this.limitValue(.25, this._rawScale * (1 + deltaZoom / 1500), 8);
       const newScale = this.snapScale(this._rawScale);
       stageImage.viewPoint.scale = newScale;
 
@@ -159,24 +159,17 @@ class Stage {
       this.draw(stageImage, gameImg);
     }
 
-    if (stageImage.viewPoint.scale < 1) {
-      const scale = stageImage.viewPoint.scale;
+    const scale = stageImage.viewPoint.scale;
+    const maxX = stageImage.display.getWidth() - stageImage.width / scale;
+    const maxY = stageImage.display.getHeight() - stageImage.height / scale;
+
+    if (scale < 1) {
       const wDiff = stageImage.width - stageImage.display.getWidth() * scale;
       if (wDiff > 0) stageImage.viewPoint.x = -wDiff / (2 * scale);
-      stageImage.viewPoint.y =
-        stageImage.height - stageImage.display.getHeight() / scale;
+      stageImage.viewPoint.y = stageImage.height - stageImage.display.getHeight() / scale;
     } else {
-      const xCeiling = Math.max(0, stageImage.viewPoint.x);
-      const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
-      const xFloor = Math.min(xCeiling, xFloorLimit);
-
-      stageImage.viewPoint.x = xFloor;
-
-      const yCeiling = Math.max(0, stageImage.viewPoint.y);
-      const yFloorLimit = stageImage.display.getHeight() - stageImage.height / stageImage.viewPoint.scale;
-      const yFloor = Math.min(yCeiling, yFloorLimit);
-
-      stageImage.viewPoint.y = yFloor;
+      stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x), maxX);
+      stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y), maxY);
     }
 
     // stageImage.viewPoint.x = this.limitValue(0, stageImage.viewPoint.x, stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale);
@@ -202,7 +195,7 @@ class Stage {
     const h = this.gameImgProps.height | 0;
     const gcd = (a, b) => b ? gcd(b, a % b) : a;
     const step = 1 / gcd(w, h);
-    const clamped = this.limitValue(0.25, scale, 4);
+    const clamped = this.limitValue(0.25, scale, 8);
     return Math.round(clamped / step) * step;
   }
   updateStageSize() {
