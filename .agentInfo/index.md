@@ -30,3 +30,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **file-container**: [notes/file-container.md](notes/file-container.md)
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md)
 - **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
+- **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
