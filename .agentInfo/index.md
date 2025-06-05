@@ -1,36 +1,36 @@
 # .agentInfo index
 
-This directory stores short notes about design decisions, TODOs, or debugging details.
-The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
+Short table for quick lookup (see `index-detailed.md` for descriptions).
 
-## Notes by tag
-
-- **example, doc**: [notes/initial.md](notes/initial.md)
-- **lemming-manager, actions, spawning lemmings, processing lemmings, lemming triggers, lemming actions**: [notes/lemming-manager.md](notes/lemming-manager.md)
-- **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md)
-- **game, main-loop**: [notes/game.md](notes/game.md)
-- **game, config, mechanics**: [notes/mechanics-flags.md](notes/mechanics-flags.md)
-- **game-view, setup, stage**: [notes/game-view.md](notes/game-view.md)
-- **gui, input, skill selection, release rate, nuke, pause button, speed control, minimap, game text display**: [notes/game-gui.md](notes/game-gui.md)
-- **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md)
-- **level-writing**: [notes/level-writer.md](notes/level-writer.md)
-- **level-loading**: [notes/level-loader.md](notes/level-loader.md)
-- **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md)
-- **level-parsing**: [notes/level-reader.md](notes/level-reader.md)
-- **ui, debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md)
-- **render, display**: [notes/game-display.md](notes/game-display.md)
-- **display, canvas**: [notes/display-image.md](notes/display-image.md)
-- **stage, canvas, input**: [notes/stage.md](notes/stage.md)
-- **commands, replay, events**: [notes/command-manager.md](notes/command-manager.md)
-- **resources, caching**: [notes/game-resources.md](notes/game-resources.md)
-- **tools, cli**: [notes/tools.md](notes/tools.md)
-- **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md)
-- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md)
-- **binary-reader**: [notes/binary-reader.md](notes/binary-reader.md)
-- **bit-reader**: [notes/bit-reader.md](notes/bit-reader.md)
-- **bit-writer**: [notes/bit-writer.md](notes/bit-writer.md)
-- **file-container**: [notes/file-container.md](notes/file-container.md)
-- **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md)
-- **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md)
-- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
-- **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
+path: tags
+overview.md: overview doc
+initial.md: example
+lemming-manager.md: lemming-manager
+trigger-manager.md: trigger-system
+game.md: game
+mechanics-flags.md: mechanics
+game-view.md: game-view
+game-gui.md: gui
+ground-renderer.md: render
+level-writer.md: level-writing
+level-loader.md: level-loading
+mechanics-config.md: config
+level-reader.md: level-parsing
+drawMarchingAntRect.md: ui
+game-display.md: display
+display-image.md: canvas
+stage.md: stage
+command-manager.md: commands
+game-resources.md: resources
+tools.md: tools
+check-undefined.md: validation
+node-file-provider.md: archives
+binary-reader.md: binary-reader
+bit-reader.md: bit-reader
+bit-writer.md: bit-writer
+file-container.md: file-container
+unpack-file-part.md: unpack-file-part
+pack-mechanics.md: mechanics
+todo-review.md: todo
+keyboard-shortcuts.md: keyboard
+note-review.md: todo
