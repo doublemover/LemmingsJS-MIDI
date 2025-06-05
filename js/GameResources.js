@@ -7,6 +7,8 @@ class GameResources extends Lemmings.BaseLogger {
     super();
     this.fileProvider = fileProvider;
     this.config = config;
+    /** mechanics settings for gameplay */
+    this.mechanics = config.mechanics || {};
     this.mainDat = null;
   }
   /** return the main.dat file container */

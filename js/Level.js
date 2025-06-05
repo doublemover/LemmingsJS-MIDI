@@ -42,6 +42,8 @@ class Level extends Lemmings.BaseLogger {
     this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
     this.screenPositionX = 0;
     this.isSuperLemming = false;
+    /** mechanics customization */
+    this.mechanics = {};
 
     /** @type {Lemmings.Frame|null} prebuilt debug overlay */
     this._debugFrame = null;

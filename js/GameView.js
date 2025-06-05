@@ -102,6 +102,16 @@ class GameView extends Lemmings.BaseLogger {
     this.game.getGameTimer().suspend();
   }
 
+  suspendWithColor(color) {
+    if (this.game == null) {
+      return;
+    }
+    this.game.getGameTimer().suspend();
+    if (this.stage?.startOverlayFade) {
+      this.stage.startOverlayFade(color);
+    }
+  }
+
   continue () {
     if (this.game == null) {
       return;
@@ -353,6 +363,10 @@ class GameView extends Lemmings.BaseLogger {
   }
   /** switch the selected game type */
   async selectGameType(newGameType) {
+    // dropdown values correspond to config array indices
+    if (this.configs && this.configs[newGameType]) {
+      newGameType = this.configs[newGameType].gametype;
+    }
     this.gameType = newGameType;
     this.levelGroupIndex = 0;
     this.levelIndex = 0;
