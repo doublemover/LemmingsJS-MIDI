@@ -43,3 +43,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
+- **webmidi, enumerations, doc**: [notes/webmidi-enumerations.md](notes/webmidi-enumerations.md) - Summary of CHANNEL_MESSAGES and other enumerations.
