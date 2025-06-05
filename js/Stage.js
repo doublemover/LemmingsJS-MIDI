@@ -5,8 +5,9 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
-    this.overlayTimer = 0;
+    this.overlayColor = 'black';
     this.overlayAlpha = 0;
+    this.overlayTimer = 0;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -306,9 +307,14 @@ class Stage {
   }
   resetFade() {
     this.fadeAlpha = 0;
+    this.overlayAlpha = 0;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
   }
 
@@ -333,6 +339,22 @@ class Stage {
       if (this.fadeAlpha >= 1) {
         clearInterval(this.fadeTimer);
         this.fadeTimer = 0;
+      }
+    }, 40);
+  }
+
+  startOverlayFade(color) {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayColor = color;
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
       }
     }, 40);
   }
@@ -388,9 +410,9 @@ class Stage {
       ctx.fillStyle = 'black';
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
     }
-    if (this.overlayAlpha != 0) {
+    if (display === this.gameImgProps && this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
-      ctx.fillStyle = 'black';
+      ctx.fillStyle = this.overlayColor;
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
     }
   }
