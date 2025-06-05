@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import { packMechanics } from './packMechanics.js';
 
 class ConfigReader extends Lemmings.BaseLogger {
   constructor(configFile) {
@@ -57,6 +58,9 @@ class ConfigReader extends Lemmings.BaseLogger {
       newConfig.level.order = configData['level.order'];
       newConfig.level.filePrefix = configData['level.filePrefix'];
       newConfig.level.groups = configData['level.groups'];
+      const defaults = packMechanics[newConfig.path] || {};
+      const overrides = configData.mechanics || {};
+      newConfig.mechanics = { ...defaults, ...overrides };
       gameConfigs.push(newConfig);
     }
     return gameConfigs;

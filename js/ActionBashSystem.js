@@ -24,9 +24,13 @@ class ActionBashSystem extends ActionBaseSystem {
       }
       level.clearGroundWithMask(subMask, lem.x, lem.y);
     }
+    const groundMask = level.getGroundMaskLayer();
     /// check if end of solid?
     if (state == 5) {
-      if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8), lem.y - 6, lem.lookRight) == 4) {
+      const offset = lem.lookRight ? 0 : 3;
+      const sliceX = lem.x + (lem.lookRight ? 8 : -8) - offset;
+      const slice = groundMask.getSubLayer(sliceX, lem.y - 6, 4, 1);
+      if (this.findHorizontalSpace(slice, offset, 0, lem.lookRight) == 4) {
         return Lemmings.LemmingStateType.WALKING;
       }
     }
