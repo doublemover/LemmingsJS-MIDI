@@ -34,7 +34,8 @@ function frameToPNG(frame) {
 
 (async () => {
   const dataPath = process.argv[2] || loadDefaultPack();
-  const outDir   = process.argv[3] || `${dataPath.replace(/\W+/g, '_')}_all`;
+  const BASE = 'exports';
+  const outDir   = process.argv[3] || path.join(BASE, `${dataPath.replace(/\W+/g, '_')}_all`);
   fs.mkdirSync(outDir, { recursive: true });
 
   const provider = new NodeFileProvider('.');
@@ -57,10 +58,10 @@ function frameToPNG(frame) {
     const frame = panelSprites.getLetterSprite(letter);
     const safe = encodeURIComponent(letter === ' ' ? 'space' : letter);
     await new Promise(res =>
-      frameToPNG(frame).pack()
+      frameToPNG(frame)
+        .pack()
         .pipe(fs.createWriteStream(`${outDir}/letter_${safe}.png`))
-        .on('finish', res)
-    );
+        .on('finish', res));
   }
 
   for (let i = 0; i < 10; i++) {
@@ -68,14 +69,12 @@ function frameToPNG(frame) {
       frameToPNG(panelSprites.getNumberSpriteLeft(i))
         .pack()
         .pipe(fs.createWriteStream(`${outDir}/num_left_${i}.png`))
-        .on('finish', res)
-    );
+        .on('finish', res));
     await new Promise(res =>
       frameToPNG(panelSprites.getNumberSpriteRight(i))
         .pack()
         .pipe(fs.createWriteStream(`${outDir}/num_right_${i}.png`))
-        .on('finish', res)
-    );
+        .on('finish', res));
   }
 
   // --- Lemming sprites ---
@@ -106,6 +105,7 @@ function frameToPNG(frame) {
   }
 
   // --- Map object sprites from ground files ---
+  await Lemmings.loadSteelSprites();
   for (let g = 0; g < 5; g++) {
     const groundFile = `GROUND${g}O.DAT`;
     const vgaFile    = `VGAGR${g}.DAT`;

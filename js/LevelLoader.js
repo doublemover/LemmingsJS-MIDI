@@ -74,7 +74,6 @@ class LevelLoader {
     // 4 · Decode terrain / objects and render background                      //
     // ----------------------------------------------------------------------- //
     const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
-    await Lemmings.loadSteelSprites();
     const groundReader = new Lemmings.GroundReader(
       groundBuf,
       vgaContainer.getPart(0),
