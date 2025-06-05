@@ -4,6 +4,7 @@ class GameTimer {
   #speedFactor;
   #frameTime;
   #rafId;
+  #running;
   #lastTime;
   #lastGameSecond;
   #tickIndex;
@@ -18,6 +19,7 @@ class GameTimer {
     this.#speedFactor = 1;
     this.#frameTime = this.TIME_PER_FRAME_MS;
     this.#rafId = 0;
+    this.#running = false;
     this.#lastTime = 0;
     this.#lastGameSecond = 0;
     this.#tickIndex = 0;
@@ -47,7 +49,7 @@ class GameTimer {
     this.#updateFrameTime();
   }
 
-  isRunning() { return this.#rafId !== 0; }
+  isRunning() { return this.#running; }
 
   get tickIndex() { return this.#tickIndex; }
   set tickIndex(v) {
@@ -93,6 +95,7 @@ class GameTimer {
   continue() {
     if (this.isRunning()) return;
     this.#lastTime = performance.now();
+    this.#running = true;
     this.#rafId = window.requestAnimationFrame(this.#loopBound);
   }
 
@@ -101,6 +104,7 @@ class GameTimer {
       window.cancelAnimationFrame(this.#rafId);
       this.#rafId = 0;
     }
+    this.#running = false;
   }
 
   #loop(now) {

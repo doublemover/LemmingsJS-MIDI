@@ -18,6 +18,7 @@ If the chosen skill has zero remaining uses, `handleSkillMouseDown` calls `skill
 
 ## Skill panel updates
 `render` refreshes the panel whenever flags like `gameTimeChanged` or `skillsCountChanged` are set. It draws remaining skill counts, highlights the selected skill via `drawSelection`, and applies grey stippling when a skill or release-rate button is unavailable. Hover states and the nuke confirmation are drawn every frame. The marching-ants offset increments in `_guiLoop` so the selection outline animates even while paused.
+- Pause border visibility now relies on `gameTimer.isRunning()` which reads a `#running` flag maintained by `GameTimer`.
 
 When the release rate reaches its minimum or maximum, panels 0 and 1 show a stippled border rather than covering the digits. Once the lock is released the GUI refreshes the background so any leftover dots disappear.
 
