@@ -2,8 +2,48 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/Position2D.js';
+import '../js/ViewPoint.js';
+import '../js/StageImageProperties.js';
+import '../js/DisplayImage.js';
 import { UserInputManager } from '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
+
+function createStubCanvas(width = 800, height = 600) {
+  const ctx = {
+    canvas: { width, height },
+    fillRect() {},
+    drawImage() {},
+    putImageData() {}
+  };
+  return {
+    width,
+    height,
+    getContext() { return ctx; },
+    addEventListener() {},
+    removeEventListener() {}
+  };
+}
+
+function createDocumentStub() {
+  return {
+    createElement() {
+      const ctx = {
+        canvas: {},
+        fillRect() {},
+        drawImage() {},
+        putImageData() {},
+        createImageData(w, h) {
+          return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+        }
+      };
+      return {
+        width: 0,
+        height: 0,
+        getContext() { ctx.canvas = this; return ctx; }
+      };
+    }
+  };
+}
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -26,8 +66,9 @@ describe('UserInputManager', function() {
       } catch (err) {
         done(err);
       }
-    };
-  }
+    });
+    uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
+  });
 
   before(function() {
     global.document = createDocumentStub();
