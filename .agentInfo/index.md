@@ -36,7 +36,7 @@ unpack-file-part.md: unpack-file-part
 pack-mechanics.md: mechanics
 todo-review.md: todo
 keyboard-shortcuts.md: keyboard
-webmidi-overview.md: webmidi midi doc
+webmidi-overview.md: webmidi doc overview
 note-review.md: todo
 webmidi-tasks.md: webmidi-todo
 
