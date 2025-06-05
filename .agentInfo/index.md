@@ -40,3 +40,5 @@ note-review.md: todo
 webmidi-tasks.md: webmidi-todo
 
 pause-overlay.md: bench-mode gui
+
+webmidi.md: webmidi doc
