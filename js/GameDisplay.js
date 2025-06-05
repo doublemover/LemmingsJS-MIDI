@@ -19,11 +19,12 @@ class GameDisplay {
   setGuiDisplay(display) {
     this.display = display;
     this._mouseHandler = (e) => {
-      //console.log(e.x +" "+ e.y);
-      let lem = this.lemmingManager.getNearestLemming(e.x, e.y);
-      if (!lem)
-        return;
-      this.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+      const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
+      if (lem) {
+        this.lemmingManager.setSelectedLemming(lem);
+      } else {
+        this.lemmingManager.setSelectedLemming(null);
+      }
     };
     this.display.onMouseDown.on(this._mouseHandler);
     this._mouseMoveHandler = (e) => {
@@ -67,11 +68,10 @@ class GameDisplay {
   }
 
   #drawSelection(lem) {
-    const dashLen = 1;
     const x = lem.x - 5;
-    const y = lem.y - 9; // slight upward offset
+    const y = lem.y - 11; // sits a bit higher
 
-    let color = 0xff30ff30; // lighter green
+    let color = 0x00ff00; // bright green
     const skills = this.game?.getGameSkills?.();
     if (skills) {
       const selectedSkill = skills.getSelectedSkill();
@@ -87,16 +87,15 @@ class GameDisplay {
       }
     }
 
-    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0x00000000);
+    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
   }
 
   #drawHover(lem) {
-    const dashLen = 2;
     const x = lem.x - 5;
-    const y = lem.y - 9; // slight upward offset
-    const color = 0xff555555; // mid-dark gray
+    const y = lem.y - 11; // sits a bit higher
+    const color = 0x5e5e5e; // slightly lighter grey
 
-    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0x00000000);
+    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
   }
 
   dispose() {

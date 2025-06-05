@@ -7,6 +7,7 @@ class Stage {
     this.fadeAlpha = 0;
     this.overlayColor = 'black';
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     this.overlayTimer = 0;
     this.overlayRect = null;
     this.cursorCanvas = null;
@@ -204,18 +205,22 @@ class Stage {
   updateStageSize() {
     const stageHeight = this.stageCav.height;
     const stageWidth = this.stageCav.width;
-    const panelRawHeight = this.guiImgProps.display?.getHeight() || 80;
-    const gamePanelOffset = (stageHeight - panelRawHeight - 20);
+    const scale = this.guiImgProps.viewPoint.scale;
+    const rawHeight = this.guiImgProps.display?.getHeight() || 80;
+    const rawWidth = this.guiImgProps.display?.getWidth() || 720;
+
+    const panelHeight = rawHeight * scale;
+    const panelWidth = rawWidth * scale;
+    const gamePanelOffset = stageHeight - panelHeight - 20;
     this.gameImgProps.y = -20;
     this.gameImgProps.x = 0;
-    this.gameImgProps.height = stageHeight - panelRawHeight;
+    this.gameImgProps.height = stageHeight - panelHeight;
     this.gameImgProps.width = stageWidth;
     this.guiImgProps.y = gamePanelOffset;
-    this.guiImgProps.height = panelRawHeight;
-    this.guiImgProps.width = this.guiImgProps.display?.getWidth() || 720;
+    this.guiImgProps.height = panelHeight;
+    this.guiImgProps.width = panelWidth;
     if (this.guiImgProps.display) {
-      const guiW = this.guiImgProps.display.getWidth();
-      this.guiImgProps.x = (stageWidth/4);
+      this.guiImgProps.x = (stageWidth - panelWidth) / 2;
     }
     if (this.gameImgProps.display) {
       this.redraw();
@@ -328,20 +333,6 @@ class Stage {
     }
   }
 
-  startOverlayFade() {
-    if (this.overlayTimer) {
-      clearInterval(this.overlayTimer);
-      this.overlayTimer = 0;
-    }
-    this.overlayAlpha = 1;
-    this.overlayTimer = setInterval(() => {
-      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
-      if (this.overlayAlpha <= 0) {
-        clearInterval(this.overlayTimer);
-        this.overlayTimer = 0;
-      }
-    }, 40);
-  }
 
   resetOverlayFade() {
     this.overlayAlpha = 0;
@@ -379,6 +370,7 @@ class Stage {
       }
     }, 40);
   }
+
   dispose() {
     this.resetFade();
     if (this.fadeTimer) {
@@ -415,21 +407,43 @@ class Stage {
     let outW = display.width;
     ctx.globalAlpha = 1;
     //- Display Layers
-    let dW = img.width - display.viewPoint.x; //- display width
-    if ((dW * display.viewPoint.scale) > outW) {
-      dW = outW / display.viewPoint.scale;
+    // Source rectangle
+    let sx = display.viewPoint.x;
+    let sy = display.viewPoint.y;
+    let sw = img.width - sx;
+    let sh = img.height - sy;
+    // Clamp against negative offsets
+    if (sx < 0) {
+      sw += sx;
+      sx = 0;
     }
-    let dH = img.height - display.viewPoint.y; //- display height
-    if ((dH * display.viewPoint.scale) > outH) {
-      dH = outH / display.viewPoint.scale;
+    if (sy < 0) {
+      sh += sy;
+      sy = 0;
+    }
+    // Clamp to image bounds
+    sw = Math.min(sw, img.width - sx);
+    sh = Math.min(sh, img.height - sy);
+    // Destination rectangle
+    let dx = display.x + Math.max(-display.viewPoint.x, 0) * display.viewPoint.scale;
+    let dy = display.y + Math.max(-display.viewPoint.y, 0) * display.viewPoint.scale;
+    let dw = sw * display.viewPoint.scale;
+    let dh = sh * display.viewPoint.scale;
+    if (dw > outW) {
+      sw = outW / display.viewPoint.scale;
+      dw = outW;
+    }
+    if (dh > outH) {
+      sh = outH / display.viewPoint.scale;
+      dh = outH;
     }
     //- drawImage(image,sx,sy,sw,sh,dx,dy,dw,dh)
-    ctx.drawImage(display.cav, display.viewPoint.x, display.viewPoint.y, dW, dH, display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+    ctx.drawImage(display.cav, sx, sy, sw, sh, dx, dy, Math.trunc(dw), Math.trunc(dh));
     //- apply fading
     if (this.fadeAlpha != 0) {
       ctx.globalAlpha = this.fadeAlpha;
       ctx.fillStyle = 'black';
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.fillRect(display.x, display.y, Math.trunc(dw), Math.trunc(dh));
       ctx.globalAlpha = 1;
     }
     if (this.overlayAlpha > 0) {
@@ -446,7 +460,13 @@ class Stage {
     if (display === this.gameImgProps && this.overlayAlpha > 0 && !this.overlayRect) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
     }
   }
 
