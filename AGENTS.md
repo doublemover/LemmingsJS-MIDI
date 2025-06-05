@@ -24,7 +24,6 @@ quotes, and semicolons across the JavaScript codebase.
 - Running `WebMidi.enable()` prompts the user to allow MIDI device access.
 - See `.agentInfo/notes/webmidi.md` for details.
 - Call `WebMidi.enable({sysex: true})` if you need to send or receive
-  system‑exclusive messages.
 - `.agentInfo/notes/webmidi-overview.md` provides detailed usage examples
   and API summaries.
 - The call in `index.html` lines 22-24 is commented out; enable it for MIDI tests.
