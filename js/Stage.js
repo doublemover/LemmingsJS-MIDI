@@ -332,6 +332,14 @@ class Stage {
       }
     }, 40);
   }
+
+  resetOverlayFade() {
+    this.overlayAlpha = 0;
+    if (this.overlayTimer != 0) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+  }
   startFadeOut() {
     this.resetFade();
     this.fadeTimer = setInterval(() => {
@@ -409,6 +417,13 @@ class Stage {
       ctx.globalAlpha = this.fadeAlpha;
       ctx.fillStyle = 'black';
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
+    }
+    if (this.overlayAlpha > 0) {
+      ctx.globalAlpha = this.overlayAlpha;
+      ctx.fillStyle = this.overlayColor;
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      ctx.globalAlpha = 1;
     }
     if (display === this.gameImgProps && this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
