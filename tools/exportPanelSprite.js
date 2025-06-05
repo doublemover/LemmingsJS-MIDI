@@ -38,5 +38,7 @@ function loadDefaultPack() {
   }
   fs.mkdirSync(outDir, { recursive: true });
   const outFile = `${outDir}/panelSprite.png`;
-  png.pack().pipe(fs.createWriteStream(outFile));
+  await new Promise(res =>
+    png.pack().pipe(fs.createWriteStream(outFile)).on('finish', res)
+  );
 })();
