@@ -2,6 +2,7 @@ import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import { GameResources } from '../js/GameResources.js';
+import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -22,19 +23,25 @@ describe('GameResources', function () {
   beforeEach(function () {
     loadCount = 0;
     partIndices = [];
-    config = { path: 'data', level: { groups: [] } };
+    config = { path: 'lemmings', level: { groups: [] } };
 
-    class FakeFileContainer {
-      constructor(data) {
-        this.data = data;
-      }
+    origFileContainer = Lemmings.FileContainer;
+    class SpyFileContainer extends origFileContainer {
       getPart(i) {
         partIndices.push(i);
-        return { idx: i };
+        return super.getPart(i);
       }
     }
-    origFileContainer = Lemmings.FileContainer;
-    Lemmings.FileContainer = FakeFileContainer;
+    Lemmings.FileContainer = SpyFileContainer;
+
+    fileProvider = new NodeFileProvider('.');
+    const origLoad = fileProvider.loadBinary.bind(fileProvider);
+    fileProvider.loadBinary = async (path, file) => {
+      assert.strictEqual(file, 'MAIN.DAT');
+      assert.strictEqual(path, config.path);
+      loadCount++;
+      return origLoad(path, file);
+    };
 
     origLemmingsSprite = Lemmings.LemmingsSprite;
     Lemmings.LemmingsSprite = class { constructor(part) { this.part = part; } };
@@ -61,15 +68,6 @@ describe('GameResources', function () {
       drawPaletteImage(buf, w, h, pal) { this.drawn.push({ buf, w, h, pal }); }
     };
 
-
-    fileProvider = {
-      loadBinary(path, file) {
-        assert.strictEqual(file, 'MAIN.DAT');
-        assert.strictEqual(path, config.path);
-        loadCount++;
-        return Promise.resolve('buf');
-      }
-    };
   });
 
   afterEach(function () {
@@ -89,7 +87,7 @@ describe('GameResources', function () {
     assert.strictEqual(p1, p2);
 
     const container = await p1;
-    assert.strictEqual(container.data, 'buf');
+    assert.ok(container instanceof Lemmings.FileContainer);
     assert.strictEqual(loadCount, 1);
   });
 
