@@ -4,7 +4,7 @@
  * Build a local TF-IDF search index 
  *
  * Usage:
- *   node scripts/build_index.js --root . --out embeddings.json --chunk 750
+ *   node tools/build_index.js --root . --out embeddings.json --chunk 750
  */
 
 import fs from 'node:fs/promises';
