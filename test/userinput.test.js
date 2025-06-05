@@ -31,4 +31,22 @@ describe('UserInputManager', function() {
 
     uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
   });
+
+  it('converts pointer position based on canvas size', function() {
+    const scaledElement = {
+      width: 400,
+      height: 240,
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect() {
+        return { left: 0, top: 0, width: 200, height: 120 };
+      }
+    };
+
+    const uim = new UserInputManager(scaledElement);
+    const pos = uim.getRelativePosition(scaledElement, 100, 60);
+
+    expect(pos.x).to.equal(200);
+    expect(pos.y).to.equal(120);
+  });
 });
