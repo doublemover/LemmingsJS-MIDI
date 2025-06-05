@@ -44,7 +44,7 @@ class MiniMap {
     this._mouseDown = false;
     this.viewportDashOffset = 0;
     this._viewportCounter = 0;
-    this.viewportDashDelay = 20;
+    this.viewportDashDelay = 100;
     if (this.guiDisplay) this.#hookPointer();
   }
 
@@ -265,7 +265,7 @@ class MiniMap {
       vpY,
       vpW,
       vpH,
-      1,
+      2,
       this.viewportDashOffset,
       0xFF00FF00,
       0xFF005500
