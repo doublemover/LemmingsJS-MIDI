@@ -204,11 +204,12 @@ class Stage {
     const stageHeight = this.stageCav.height;
     const stageWidth = this.stageCav.width;
     const panelRawHeight = this.guiImgProps.display?.getHeight() || 80;
-    const gamePanelOffset = (stageHeight - panelRawHeight - 20)
+    const gamePanelOffset = (stageHeight - panelRawHeight - 20);
     this.gameImgProps.y = -20;
+    this.gameImgProps.x = 0;
     this.gameImgProps.height = stageHeight - panelRawHeight;
     this.gameImgProps.width = stageWidth;
-    this.guiImgProps.y = gamePanelOffset
+    this.guiImgProps.y = gamePanelOffset;
     this.guiImgProps.height = panelRawHeight;
     this.guiImgProps.width = this.guiImgProps.display?.getWidth() || 720;
     if (this.guiImgProps.display) {
