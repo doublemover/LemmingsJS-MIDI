@@ -210,9 +210,8 @@ class Stage {
     return Math.round(clamped / step) * step;
   }
   updateStageSize() {
-    let ctx = this.stageCav.getContext('2d', { alpha: false });
-    let stageHeight = ctx.canvas.height;
-    let stageWidth = ctx.canvas.width;
+    const stageHeight = this.stageCav.height;
+    const stageWidth = this.stageCav.width;
     this.gameImgProps.y = 0;
     this.gameImgProps.height = stageHeight - 100;
     this.gameImgProps.width = stageWidth;
