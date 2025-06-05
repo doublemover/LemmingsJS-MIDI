@@ -41,8 +41,8 @@ function frameToPNG(frame) {
   const br = await provider.loadBinary(pack, 'MAIN.DAT');
   const fc = new Lemmings.FileContainer(br);
   const fr = fc.getPart(5);
-  const minSize = 8;
-  const maxSize = 24;
+  const minSize = 4;
+  const maxSize = 16;
   for (let width = minSize; width <= maxSize; width++) {
     for (let height = minSize; height <= maxSize; height++) {
       const pimg = new Lemmings.PaletteImage(width, height);
