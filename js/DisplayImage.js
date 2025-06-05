@@ -286,40 +286,19 @@ class DisplayImage extends Lemmings.BaseLogger {
     }
 
     // Scaled path – nearest‑neighbour sampling
-    const scaleX = srcW / dstW;
-    const scaleY = srcH / dstH;
-
-    for (let dy = 0; dy < dstH; dy++) {
-      let srcY = Math.floor(dy * scaleY);
-      if (upsideDown) srcY = srcH - 1 - srcY;
-      const outY = dy + baseY;
-      if (outY < 0 || outY >= destH) continue;
-
-      const srcYBase = srcY * srcW;
-      const destYBase = outY * destW;
-
-      for (let dx = 0; dx < dstW; dx++) {
-        const outX = dx + baseX;
-        if (outX < 0 || outX >= destW) continue;
-
-        const srcX = Math.floor(dx * scaleX);
-        const srcIdx = srcYBase + srcX;
-        const destIdx = destYBase + outX;
-
-        if (!srcMask[srcIdx]) {
-          if (nullColor32 !== null) dest32[destIdx] = nullColor32;
-          continue;
-        }
-
-        if (checkGround) {
-          const hasGround = groundMask?.hasGroundAt(outX, outY);
-          if (noOverwrite && hasGround)    continue;
-          if (onlyOverwrite && !hasGround) continue;
-        }
-
-        dest32[destIdx] = srcBuf[srcIdx];
-      }
-    }
+    scaleNearest(frame, dstW, dstH, {
+      dest32,
+      destW,
+      destH,
+      baseX,
+      baseY,
+      nullColor32,
+      checkGround,
+      onlyOverwrite,
+      noOverwrite,
+      upsideDown,
+      groundMask
+    });
   }
 
   drawFrame(frame, x, y,) {
@@ -371,6 +350,68 @@ class DisplayImage extends Lemmings.BaseLogger {
   }
 }
 Lemmings.DisplayImage = DisplayImage;
+
+function scaleNearest(
+  frame,
+  dstWidth,
+  dstHeight,
+  opts = {}
+) {
+  const {
+    dest32,
+    destW,
+    destH,
+    baseX,
+    baseY,
+    nullColor32 = null,
+    checkGround = false,
+    onlyOverwrite = false,
+    noOverwrite = false,
+    upsideDown = false,
+    groundMask = null
+  } = opts;
+
+  if (!dest32) return;
+
+  const { width: srcW, height: srcH } = frame;
+  const srcBuf = frame.getBuffer();
+  const srcMask = frame.getMask();
+
+  const scaleX = srcW / dstWidth;
+  const scaleY = srcH / dstHeight;
+
+  for (let dy = 0; dy < dstHeight; dy++) {
+    let srcY = Math.floor(dy * scaleY);
+    if (upsideDown) srcY = srcH - 1 - srcY;
+    const outY = dy + baseY;
+    if (outY < 0 || outY >= destH) continue;
+
+    const srcYBase = srcY * srcW;
+    const destYBase = outY * destW;
+
+    for (let dx = 0; dx < dstWidth; dx++) {
+      const outX = dx + baseX;
+      if (outX < 0 || outX >= destW) continue;
+
+      const srcX = Math.floor(dx * scaleX);
+      const srcIdx = srcYBase + srcX;
+      const destIdx = destYBase + outX;
+
+      if (!srcMask[srcIdx]) {
+        if (nullColor32 !== null) dest32[destIdx] = nullColor32;
+        continue;
+      }
+
+      if (checkGround) {
+        const hasGround = groundMask?.hasGroundAt(outX, outY);
+        if (noOverwrite && hasGround) continue;
+        if (onlyOverwrite && !hasGround) continue;
+      }
+
+      dest32[destIdx] = srcBuf[srcIdx];
+    }
+  }
+}
 
 function drawMarchingAntRect(
   display,
