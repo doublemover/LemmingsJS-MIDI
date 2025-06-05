@@ -203,18 +203,22 @@ class Stage {
   updateStageSize() {
     const stageHeight = this.stageCav.height;
     const stageWidth = this.stageCav.width;
-    const panelRawHeight = this.guiImgProps.display?.getHeight() || 80;
-    const gamePanelOffset = (stageHeight - panelRawHeight - 20);
+    const scale = this.guiImgProps.viewPoint.scale;
+    const rawHeight = this.guiImgProps.display?.getHeight() || 80;
+    const rawWidth = this.guiImgProps.display?.getWidth() || 720;
+
+    const panelHeight = rawHeight * scale;
+    const panelWidth = rawWidth * scale;
+    const gamePanelOffset = stageHeight - panelHeight - 20;
     this.gameImgProps.y = -20;
     this.gameImgProps.x = 0;
-    this.gameImgProps.height = stageHeight - panelRawHeight;
+    this.gameImgProps.height = stageHeight - panelHeight;
     this.gameImgProps.width = stageWidth;
     this.guiImgProps.y = gamePanelOffset;
-    this.guiImgProps.height = panelRawHeight;
-    this.guiImgProps.width = this.guiImgProps.display?.getWidth() || 720;
+    this.guiImgProps.height = panelHeight;
+    this.guiImgProps.width = panelWidth;
     if (this.guiImgProps.display) {
-      const guiW = this.guiImgProps.display.getWidth();
-      this.guiImgProps.x = (stageWidth/4);
+      this.guiImgProps.x = (stageWidth - panelWidth) / 2;
     }
     if (this.gameImgProps.display) {
       this.redraw();
