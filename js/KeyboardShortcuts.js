@@ -256,6 +256,9 @@ class KeyboardShortcuts {
     case 'Tab':
       this._cycleSkill();
       break;
+    case 'KeyN':
+      this.view.game.getLemmingManager()?.setSelectedLemming(null);
+      break;
     case 'Backquote':
       this.view.game.getLemmingManager()?.cycleSelection(e.shiftKey ? -1 : 1);
       break;
