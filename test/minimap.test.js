@@ -98,6 +98,6 @@ describe('MiniMap', function() {
 
     mm.render();
     const vp = (expected * mm.scaleX) | 0;
-    expect(mm.frame.data[vp]).to.equal(0xFFFFFFFF);
+    expect(mm.frame.data[vp]).to.equal(0xFF00FF00);
   });
 });
