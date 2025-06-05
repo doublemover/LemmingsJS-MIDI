@@ -148,6 +148,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ### Progressive Web App
 
+
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
 and launches it fullscreen in landscape mode. Touch input still needs
