@@ -9,9 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `NodeFileProvider` can load files from `.zip`, `.tar.gz`, `.tgz`, and `.rar` archives and exposes `clearCache()`.
-- Detailed index of `.agentInfo` notes for easier browsing.
-- Bench mode spawns endless lemmings and modulates speed based on backlog.
-- `site.webmanifest` enables Progressive Web App installation.
+- Node tools export sprites and package levels.
+- Complete Mocha test suite with GitHub Actions workflows.
+- Bench mode shows a color-coded overlay and recovers speed dynamically.
+- Progressive Web App support via `site.webmanifest` and touch icons.
+- Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
 
 ### Changed
