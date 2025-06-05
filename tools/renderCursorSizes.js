@@ -42,9 +42,10 @@ function frameToPNG(frame) {
   const fc = new Lemmings.FileContainer(br);
   const fr = fc.getPart(5);
   const minSize = 4;
-  const maxSize = 16;
+  const maxSize = 32;
   for (let width = minSize; width <= maxSize; width++) {
     for (let height = minSize; height <= maxSize; height++) {
+      fr.setOffset(0); // reset reader for each run
       const pimg = new Lemmings.PaletteImage(width, height);
       pimg.processImage(fr, 1);
       pimg.processTransparentByColorIndex(0);
