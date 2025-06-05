@@ -198,6 +198,7 @@ URL parameters (shortcut in brackets):
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
 - `Space`: Pause
+- `[` / `]`: Step backward / forward one tick when paused
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
