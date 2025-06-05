@@ -48,6 +48,7 @@ function frameToPNG(frame) {
   const groundBuf = await provider.loadBinary(dataPath, `GROUND${index}O.DAT`);
   const vgagrBuf = await provider.loadBinary(dataPath, `VGAGR${index}.DAT`);
   const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
+  await Lemmings.loadSteelSprites();
   const groundReader = new Lemmings.GroundReader(
     groundBuf,
     vgaContainer.getPart(0),
