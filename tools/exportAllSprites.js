@@ -38,6 +38,7 @@ function frameToPNG(frame) {
   fs.mkdirSync(outDir, { recursive: true });
 
   const provider = new NodeFileProvider('.');
+  await Lemmings.loadSteelSprites();
   const res = new Lemmings.GameResources(provider, { path: dataPath, level: { groups: [] }});
   const pal = new Lemmings.ColorPalette();
 
@@ -45,20 +46,36 @@ function frameToPNG(frame) {
   const panelSprites = await res.getSkillPanelSprite(pal);
 
   const panel = panelSprites.getPanelSprite();
-  frameToPNG(panel).pack().pipe(fs.createWriteStream(`${outDir}/panel.png`));
+  await new Promise(res =>
+    frameToPNG(panel).pack()
+      .pipe(fs.createWriteStream(`${outDir}/panel.png`))
+      .on('finish', res)
+  );
 
   const letters = ['%', '0','1','2','3','4','5','6','7','8','9','-','A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',' '];
   for (const letter of letters) {
     const frame = panelSprites.getLetterSprite(letter);
     const safe = encodeURIComponent(letter === ' ' ? 'space' : letter);
-    frameToPNG(frame).pack().pipe(fs.createWriteStream(`${outDir}/letter_${safe}.png`));
+    await new Promise(res =>
+      frameToPNG(frame).pack()
+        .pipe(fs.createWriteStream(`${outDir}/letter_${safe}.png`))
+        .on('finish', res)
+    );
   }
 
   for (let i = 0; i < 10; i++) {
-    frameToPNG(panelSprites.getNumberSpriteLeft(i))
-      .pack().pipe(fs.createWriteStream(`${outDir}/num_left_${i}.png`));
-    frameToPNG(panelSprites.getNumberSpriteRight(i))
-      .pack().pipe(fs.createWriteStream(`${outDir}/num_right_${i}.png`));
+    await new Promise(res =>
+      frameToPNG(panelSprites.getNumberSpriteLeft(i))
+        .pack()
+        .pipe(fs.createWriteStream(`${outDir}/num_left_${i}.png`))
+        .on('finish', res)
+    );
+    await new Promise(res =>
+      frameToPNG(panelSprites.getNumberSpriteRight(i))
+        .pack()
+        .pipe(fs.createWriteStream(`${outDir}/num_right_${i}.png`))
+        .on('finish', res)
+    );
   }
 
   // --- Lemming sprites ---
