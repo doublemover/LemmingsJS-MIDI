@@ -3,6 +3,7 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/Position2D.js';
 import { UserInputManager } from '../js/UserInputManager.js';
+import { Stage } from '../js/Stage.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -25,9 +26,46 @@ describe('UserInputManager', function() {
       } catch (err) {
         done(err);
       }
-    });
+    };
+  }
 
-    uim.handleWheel(new Lemmings.Position2D(100, 50), 120);
+  before(function() {
+    global.document = createDocumentStub();
+  });
+
+  after(function() {
+    if (global.document) delete global.document;
+    if (globalThis.lemmings) delete globalThis.lemmings.stage;
+  });
+
+  it('adjusts viewport when zooming', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+    stage.getGameDisplay().initSize(1600, 1200);
+    globalThis.lemmings.stage = stage;
+
+    stage.gameImgProps.viewPoint.scale = 2;
+    stage._rawScale = 2;
+    stage.gameImgProps.viewPoint.x = 10;
+    stage.gameImgProps.viewPoint.y = 20;
+
+    const uim = stage.controller;
+    const cursor = new Lemmings.Position2D(100, 50);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    const beforeX = vp.getSceneX(cursor.x - img.x);
+    const beforeY = vp.getSceneY(cursor.y - img.y);
+
+    uim.handleWheel(cursor, -120);
+
+    const afterX = vp.getSceneX(cursor.x - img.x);
+    const afterY = vp.getSceneY(cursor.y - img.y);
+
+    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
+    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
   });
 
   it('converts pointer position based on canvas size', function() {
