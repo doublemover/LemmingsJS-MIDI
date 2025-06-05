@@ -8,9 +8,6 @@ The method `initSize(width, height)` (re)allocates this `ImageData` and buffer. 
 
 `DisplayImage` exposes several event handlers – `onMouseDown`, `onMouseUp`, `onMouseRightDown`, `onMouseRightUp`, `onMouseMove` and `onDoubleClick`.  `Stage` forwards pointer events to these handlers so the rest of the engine can listen for input relative to the offscreen canvas.
 
-GameDisplay now draws hover and selection rectangles using `drawDashedRect` with
-`dashLen` 2. Hover uses a mid-dark grey (`0xFF555555`) while the selected
-lemming gets a bright green outline (`0xFF00FF00`). If the selected skill would
-be redundant (basher, blocker, digger or miner) the outline turns yellow
-(`0xFFFFFF00`). The rectangle sits three pixels higher than before so more of the
-lemming is visible.
+GameDisplay highlights lemmings with dashed outlines. Hover uses a dark grey rectangle while the selected lemming gets a brighter green (`0xFF30FF30`). Both use `drawDashedRect` with 1 px dashes and sit slightly above the feet. A redundant skill switches the selection outline to yellow (`0xFFFFFF00`).
+
+`drawCornerRect(x, y, size, r, g, b, cornerSize = 2)` paints filled corner squares. The optional `cornerSize` lets callers use larger corners, such as the 3 px squares on hover.

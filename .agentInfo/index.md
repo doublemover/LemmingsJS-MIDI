@@ -20,6 +20,7 @@ level-reader.md: level-parsing
 drawMarchingAntRect.md: ui
 game-display.md: display
 display-image.md: canvas
+draw-corner-rect.md: canvas
 stage.md: stage
 command-manager.md: commands
 game-resources.md: resources
