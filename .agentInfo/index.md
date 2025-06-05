@@ -35,3 +35,4 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
 - **tests, gametimer**: [notes/test-coverage.md](notes/test-coverage.md)
+- **tests, groundreader, vgaspec**: [notes/test-coverage.md](notes/test-coverage.md)

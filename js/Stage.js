@@ -161,7 +161,11 @@ class Stage {
       const wDiff = stageImage.width - stageImage.display.getWidth() * scale;
       const hDiff = stageImage.height - stageImage.display.getHeight() * scale;
       if (wDiff > 0) stageImage.viewPoint.x = -wDiff / (2 * scale);
-      if (hDiff > 0) stageImage.viewPoint.y = -hDiff / (2 * scale);
+      if (hDiff > 0) {
+        stageImage.viewPoint.y = stageImage.height - stageImage.display.getHeight() / scale;
+      } else {
+        stageImage.viewPoint.y = 0;
+      }
     } else {
       const xCeiling = Math.max(0, stageImage.viewPoint.x);
       const xFloorLimit = stageImage.display.getWidth() - stageImage.width / stageImage.viewPoint.scale;
