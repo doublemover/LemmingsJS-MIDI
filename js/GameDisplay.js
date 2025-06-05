@@ -96,15 +96,7 @@ class GameDisplay {
     const y = lem.y - 9; // slight upward offset
     const color = 0xff555555; // mid-dark gray
 
-    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0xff000000);
-    this.display.drawCornerRect(
-      x,
-      y,
-      3,
-      (color >> 16) & 0xff,
-      (color >> 8) & 0xff,
-      color & 0xff
-    );
+    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0x00000000);
   }
 
   dispose() {
