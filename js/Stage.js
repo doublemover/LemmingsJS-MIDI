@@ -317,6 +317,21 @@ class Stage {
       this.overlayTimer = 0;
     }
   }
+
+  startOverlayFade() {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+      }
+    }, 40);
+  }
   startFadeOut() {
     this.resetFade();
     this.fadeTimer = setInterval(() => {
