@@ -40,6 +40,7 @@ webmidi-overview.md: webmidi doc overview
 webmidi-overview.md: webmidi midi doc
 note-review.md: todo
 webmidi-tasks.md: webmidi-todo
+level-packs.md: level-packs resources doc
 
 pause-overlay.md: bench-mode gui
 
