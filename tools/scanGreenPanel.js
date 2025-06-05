@@ -54,5 +54,6 @@ function loadDefaultPack() {
   fs.mkdirSync(outDir, { recursive: true });
   const outPath = path.join(outDir, 'green_map.png');
   await new Promise(res =>
-    png.pack().pipe(fs.createWriteStream(outPath)).on('finish', res));
+    png.pack().pipe(fs.createWriteStream(outPath)).on('finish', res)
+  );
 })();
