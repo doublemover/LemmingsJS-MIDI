@@ -263,6 +263,17 @@ class UserInputManager {
   handleWheel(position, deltaY) {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
+
+    const stage = globalThis?.lemmings?.stage;
+    if (stage && stage.getStageImageAt) {
+      const stageImage = stage.getStageImageAt(position.x, position.y);
+      if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
+        const worldPos = stage.calcPosition2D(stageImage, position);
+        stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, worldPos.x, worldPos.y);
+        return;
+      }
+    }
+
     const zea = new ZoomEventArgs(position.x, position.y, deltaY);
     this.onZoom.trigger(zea);
   }

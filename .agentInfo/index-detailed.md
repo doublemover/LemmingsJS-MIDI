@@ -43,3 +43,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
+- **editor-mode, gui, level-editor**: [notes/editor-mode.md](notes/editor-mode.md) - Editor mode disables game over, spawns lemmings endlessly, and draws a black panel with terrain and trigger controls.
