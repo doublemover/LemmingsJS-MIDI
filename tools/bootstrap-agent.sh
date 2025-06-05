@@ -24,8 +24,7 @@ fi
 
 # Ensure local semantic index exists – small & fast.
 if [ ! -f embeddings.json ]; then
-  echo "🧠  Building local TF-IDF index (embeddings.json)..."
-  npm run index   # calls scripts/build_index.js
+  echo "🧠  ⚠️ missing local embeddings."
 fi
 
 echo "✅  Bootstrap complete. Ready to code!"
