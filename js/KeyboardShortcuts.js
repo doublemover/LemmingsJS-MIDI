@@ -118,11 +118,12 @@ class KeyboardShortcuts {
     }
   }
 
-  _cycleSkill() {
+  _cycleSkill(dir = 1) {
     const skills = this.view.game.getGameSkills();
-    let next = skills.getSelectedSkill() + 1;
+    let next = skills.getSelectedSkill() + dir;
     if (next > Lemmings.SkillTypes.DIGGER) next = Lemmings.SkillTypes.CLIMBER;
-    this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next));
+    if (next < Lemmings.SkillTypes.CLIMBER) next = Lemmings.SkillTypes.DIGGER;
+    this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next, false));
     this.view.game.gameGui.skillSelectionChanged = true;
   }
 
@@ -254,8 +255,13 @@ class KeyboardShortcuts {
       this.zoom.reset = 2; this._startLoop();
       break;
     case 'Tab':
-      this._cycleSkill();
+      this._cycleSkill(e.shiftKey ? -1 : 1);
       break;
+    case 'KeyK': {
+      const mgr = this.view.game.getLemmingManager?.();
+      const lem = mgr?.getSelectedLemming?.();
+      if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+      break; }
     case 'KeyN':
       this.view.game.getLemmingManager()?.setSelectedLemming(null);
       break;
