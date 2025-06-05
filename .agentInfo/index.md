@@ -2,10 +2,12 @@
 
 This directory stores short notes about design decisions, TODOs, or debugging details.
 The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
+Try to always make sure to update this comprehensively
 
 ## Notes by tag
 
 - **example, doc**: [notes/initial.md](notes/initial.md)
+- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
 - **lemming-manager, actions, spawning lemmings, processing lemmings, lemming triggers, lemming actions**: [notes/lemming-manager.md](notes/lemming-manager.md)
 - **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md)
 - **game, main-loop**: [notes/game.md](notes/game.md)
@@ -32,6 +34,5 @@ The root [AGENTS.md](../AGENTS.md) explains this tag-based note system.
 - **file-container**: [notes/file-container.md](notes/file-container.md)
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md)
 - **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md)
-- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md)
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md)
-- **tests, nodefileprovider, listsprites**: [notes/test-coverage.md](notes/test-coverage.md)
+- **tests, stage, gameresult, gametimer, groundreader, vgaspec, nodefileprovider, listsprites, solidlayer, geometry**: [notes/test-coverage.md](notes/test-coverage.md)
