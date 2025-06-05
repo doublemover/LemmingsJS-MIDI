@@ -10,3 +10,4 @@ A collection of fixes requested by users:
 5. When a skill is chosen with a lemming selected, apply it immediately if valid.
 6. Correct input scaling in `UserInputManager.getRelativePosition()` so cursor position matches the pointer.
 7. Remove the custom cursor and display the system pointer instead.
+8. Verify clicking a lemming selects it and add unit tests for `GameDisplay`.
