@@ -44,3 +44,4 @@ webmidi-tasks.md: webmidi-todo
 pause-overlay.md: bench-mode gui
 
 webmidi.md: webmidi doc
+editor-mode.md: editor-mode gui level-editor
