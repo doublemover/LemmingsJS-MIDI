@@ -85,4 +85,24 @@ describe('Stage pointer events', function() {
     expect(events[0][1].x).to.equal(55);
     expect(events[0][1].y).to.equal(55);
   });
+
+  it('forwards coordinates when zoomed', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    stage.gameImgProps.viewPoint.scale = 0.5;
+    stage.gameImgProps.viewPoint.x = 10;
+    stage.gameImgProps.viewPoint.y = 20;
+
+    let pos = null;
+    display.onMouseDown.on(p => { pos = p; });
+
+    stage.controller.handleMouseDown(new Lemmings.Position2D(30, 40));
+
+    expect(pos.x).to.equal(70);
+    expect(pos.y).to.equal(100);
+  });
 });
