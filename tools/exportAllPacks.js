@@ -28,12 +28,8 @@ for (const pack of packs) {
   const outDir = path.join(BASE, `export_${pack.name.replace(/\W+/g, '_')}`);
   fs.mkdirSync(outDir, { recursive: true });
   console.log(`Exporting ${pack.path} -> ${outDir}`);
-  const res = spawnSync('node', ['tools/exportAllSprites.js', pack.path, outDir], {
-    stdio: 'inherit'
-  });
-  if (res.error) {
-    console.error(`Failed to run export for ${pack.path}:`, res.error);
-  } else if (res.status !== 0) {
-    console.error(`Export failed for ${pack.path} with status ${res.status}`);
+  const res = spawnSync('node', ['tools/exportAllSprites.js', pack.path, outDir], { stdio: 'inherit' });
+  if (res.status !== 0) {
+    console.error(`Export failed for ${pack.name}`);
   }
 }
