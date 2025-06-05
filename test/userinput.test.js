@@ -4,19 +4,17 @@ import '../js/EventHandler.js';
 import '../js/Position2D.js';
 import { UserInputManager } from '../js/UserInputManager.js';
 
-// minimal element stub
-const element = {
-  addEventListener() {},
-  removeEventListener() {},
-  getBoundingClientRect() {
-    return { left: 0, top: 0, width: 800, height: 480 };
-  }
-};
-
 globalThis.lemmings = { game: { showDebug: false } };
 
 describe('UserInputManager', function() {
   it('emits zoom events with cursor position', function(done) {
+    const element = {
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect() {
+        return { left: 0, top: 0, width: 800, height: 480 };
+      }
+    };
     const uim = new UserInputManager(element);
     uim.onZoom.on((e) => {
       try {
