@@ -27,6 +27,7 @@ describe('LevelLoader', function () {
     const config = {
       path: 'lemmings',
       gametype: Lemmings.GameTypes.LEMMINGS,
+      mechanics: { gravity: 9.8 },
       level: { filePrefix: 'LEVEL', useOddTable: true, order: [[0]] }
     };
 
@@ -38,5 +39,6 @@ describe('LevelLoader', function () {
     expect(level.objects.length).to.equal(lr.objects.length);
     expect(level.steelRanges.length / 4).to.equal(lr.steel.length);
     expect(level.groundImage.length).to.be.above(0);
+    expect(level.mechanics).to.deep.equal(config.mechanics);
   });
 });

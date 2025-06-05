@@ -42,6 +42,7 @@ class LevelLoader {
     level.levelMode            = levelMode;
     level.screenPositionX      = levelReader.screenPositionX;
     level.isSuperLemming       = levelReader.isSuperLemming;
+    level.mechanics            = this.config.mechanics;
 
     let levelProperties        = levelReader.levelProperties;
     if (useOddTable && oddBuf) {

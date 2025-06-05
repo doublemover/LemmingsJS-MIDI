@@ -9,7 +9,7 @@ class GameConfig {
     /** unique GameType Name */
     this.gametype = Lemmings.GameTypes.UNKNOWN;
     this.level = new Lemmings.LevelConfig();
-    /** Glitch mechanic flags merged from pack defaults */
+    /** mechanics customization */
     this.mechanics = {};
   }
 }

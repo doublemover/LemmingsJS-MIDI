@@ -102,4 +102,10 @@ describe('GameResources', function () {
     assert.strictEqual(loadCount, 1);
     assert.deepStrictEqual(partIndices, [0, 2, 6, 5, 1]);
   });
+
+  it('stores mechanics from config', function () {
+    const cfg = { path: 'data', mechanics: { speed: 1 }, level: { groups: [] } };
+    const gr = new GameResources(fileProvider, cfg);
+    assert.deepStrictEqual(gr.mechanics, { speed: 1 });
+  });
 });
