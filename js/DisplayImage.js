@@ -198,6 +198,18 @@ class DisplayImage extends Lemmings.BaseLogger {
     }
   }
 
+  /** Draw filled corner squares around a rectangle. */
+  drawCornerRect(x, y, size, r, g, b) {
+    const w = typeof size === 'object' ? size.width : size;
+    const h = typeof size === 'object' ? size.height : size;
+    const x2 = x + w - 2;
+    const y2 = y + h - 2;
+    this.drawRect(x, y, 2, 2, r, g, b, true);
+    this.drawRect(x2, y, 2, 2, r, g, b, true);
+    this.drawRect(x, y2, 2, 2, r, g, b, true);
+    this.drawRect(x2, y2, 2, 2, r, g, b, true);
+  }
+
   /* ---------- blitting helpers ---------- */
   /** Write sprite mask (white) */
   drawMask(mask, posX, posY) {
