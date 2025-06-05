@@ -45,3 +45,4 @@ level-packs.md: level-packs resources doc
 pause-overlay.md: bench-mode gui
 
 webmidi.md: webmidi doc
+easing-functions.md: easing animation
