@@ -87,7 +87,7 @@ class GameDisplay {
       }
     }
 
-    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0xff000000);
+    this.display.drawDashedRect(x, y, 10, 13, dashLen, 0, color, 0x00000000);
   }
 
   #drawHover(lem) {
