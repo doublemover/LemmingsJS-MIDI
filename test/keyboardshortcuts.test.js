@@ -8,6 +8,8 @@ globalThis.lemmings = { game: { showDebug: false } };
 
 describe('KeyboardShortcuts', function() {
   function createShortcuts(timer, manager, lemMgr = null) {
+
+    const lm = lemMgr || { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
     const game = {
       commandManager: manager,
       gameGui: { drawSpeedChange() {}, skillSelectionChanged: false },

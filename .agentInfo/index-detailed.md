@@ -21,6 +21,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **example, doc**: [notes/initial.md](notes/initial.md) - This sample note demonstrates the tagging system used in .agentInfo/.
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts hooks global key events and lets the player pan and zoom the gameplay view. Gam...
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
+- **webmidi, midi, doc**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Overview of WebMIDI.js classes, initialization and TODOs.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - js/LevelReader.js consumes a 2048 byte .DAT level file. The first 0x20 bytes contain the release ...
