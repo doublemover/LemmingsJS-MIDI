@@ -145,7 +145,16 @@ class GameView extends Lemmings.BaseLogger {
     if (this.game == null) {
       return;
     }
-    this.game.getGameTimer().tick();
+    this.game.getGameTimer().tick(1);
+    this.game.render();
+  }
+
+  prevFrame() {
+    if (this.game == null) {
+      return;
+    }
+    this.game.getGameTimer().tick(-1);
+    this.game.render();
   }
 
   selectSpeedFactor(newSpeed) {
