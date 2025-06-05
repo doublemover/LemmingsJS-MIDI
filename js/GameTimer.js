@@ -10,7 +10,7 @@ class GameTimer {
   #tickIndex;
   #loopBound;
   #autoPaused;
-  #normTickCount;
+  #stableTicks;
   #catchupSlow;
   #visHandler;
 
@@ -29,7 +29,7 @@ class GameTimer {
     this.onBeforeGameTick = new Lemmings.EventHandler();
     this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
     this.#autoPaused = false;
-    this.#normTickCount = 0;
+    this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#visHandler = () => {
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
@@ -58,16 +58,6 @@ class GameTimer {
       this.#tickIndex = 0;
     } else {
       this.#tickIndex = v;
-    }
-  }
-
-  get normTickCount() { return this.#normTickCount; }
-  set normTickCount(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
-      console.warn('normTickCount wrapped, resetting to 0');
-      this.normTickCount = 0;
-    } else {
-      this.#normTickCount = v;
     }
   }
 
@@ -146,15 +136,14 @@ class GameTimer {
     // recoverThreshold likewise scales and controls when we start speeding up.
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
-    const slowThreshold = Math.max(16 / this.#speedFactor, 10);
-    const recoverThreshold = Math.max(4 / this.#speedFactor, 2);
-
     if (steps > 100) {
-      this.normTickCount = 0;
+      this.suspend();
+      this.#stableTicks = 0;
       this.#speedFactor = 0.1;
     }
-    else if (steps > slowThreshold) {
-      this.normTickCount = 0;
+    else if (steps > 16) {
+      this.suspend();
+      this.#stableTicks = 0;
       const sf = this.#speedFactor;
       if (sf > 60) {
         this.#speedFactor = 60;
@@ -172,20 +161,20 @@ class GameTimer {
         this.#speedFactor = ((this.#speedFactor*10)-1)/10;;
       }
     }
-    if (steps > recoverThreshold) {
-      this.normTickCount = this.normTickCount - 32;
+    if (steps > 4) {
+      this.#stableTicks -= 32;
     }
 
-    if (steps <= Math.max(recoverThreshold / 2, 1)) {
-      this.normTickCount = this.normTickCount + 1;
+    if (steps <= 2) {
+      this.#stableTicks += 1;
     }
 
-    if (this.normTickCount > 32 && this.#speedFactor < 60) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 32 && this.#speedFactor < 60) {
+      this.#stableTicks = 0;
       this.#speedFactor += 1;
     }
-    if (this.normTickCount > 2 && this.#speedFactor < 1) {
-      this.normTickCount = 0;
+    if (this.#stableTicks > 2 && this.#speedFactor < 1) {
+      this.#stableTicks = 0;
       this.#speedFactor = ((this.#speedFactor*10)+1)/10;
     }
     const diff = this.#speedFactor - oldSpeed;
@@ -200,7 +189,7 @@ class GameTimer {
         this.suspend();
       }
     }
-    this.#updateFrameTime();
+    this.normTickCount = this.#stableTicks;
   }
 
   #catchupSpeedAdjust(steps) {

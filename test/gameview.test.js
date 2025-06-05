@@ -139,4 +139,43 @@ describe('GameView', function () {
     expect(game.setGuiDisplayArgs).to.equal(guiDisplay);
     expect(game.startCalled).to.be.true;
   });
+
+  it('rounds speed factor up when fraction is above .5', async function () {
+    global.window = {
+      location: { search: '?speed=2.6' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.gameSpeedFactor).to.equal(3);
+  });
+
+  it('rounds speed factor down when fraction is below .5', async function () {
+    global.window = {
+      location: { search: '?speed=2.2' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.gameSpeedFactor).to.equal(2);
+  });
+
+  it('keeps speed factor below or equal to one', async function () {
+    global.window = {
+      location: { search: '?speed=0.8' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.gameSpeedFactor).to.equal(0.8);
+  });
 });
