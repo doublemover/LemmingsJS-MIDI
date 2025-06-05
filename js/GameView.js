@@ -56,7 +56,9 @@ class GameView extends Lemmings.BaseLogger {
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
-      game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
+      // The stage previously set a custom cursor sprite here, but we now keep
+      // the system cursor visible so no sprite is loaded.
+      // game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
       game.start();
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
