@@ -133,18 +133,25 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - [ ] The ability to place flags or something to trigger different midi events as they are walked by
 </details>
 
-## Play Locally, Export & Patch Sprites
+## Play Locally
 
 - Install [Node.js 16 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
   - `npm start`
+- Then open http://127.0.0.1:8080 in your browser
+- If you encounter any issues please [https://github.com/doublemover/LemmingsJS-MIDI/issues](let us know here)
+
+
+## Tools, Testing, Additional info
+
 - See [docs/tools.md](docs/tools.md) for detailed usage of each script.
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
 - See [docs/level-file-format.md](docs/level-file-format.md) for the `.lvl` file structure.
+- See [docs/config.md](docs/config.md) for configuration details.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
 ### Progressive Web App
@@ -180,6 +187,7 @@ URL parameters (shortcut in brackets):
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
 - `Space`: Pause
+- `[` / `]`: Step backward / forward one tick when paused
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
@@ -195,6 +203,7 @@ URL parameters (shortcut in brackets):
 
 - All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
 - [Lemmings Forums](https://www.lemmingsforums.net/)
+- [Camanis.net Lemmings Archives](https://www.camanis.net/lemmings/) 
 - [tomsoftware](https://github.com/tomsoftware)
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
