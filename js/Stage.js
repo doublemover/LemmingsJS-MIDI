@@ -7,6 +7,7 @@ class Stage {
     this.fadeAlpha = 0;
     this.overlayColor = 'black';
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     this.overlayTimer = 0;
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -316,6 +317,7 @@ class Stage {
   resetFade() {
     this.fadeAlpha = 0;
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.fadeTimer != 0) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
@@ -326,23 +328,10 @@ class Stage {
     }
   }
 
-  startOverlayFade() {
-    if (this.overlayTimer) {
-      clearInterval(this.overlayTimer);
-      this.overlayTimer = 0;
-    }
-    this.overlayAlpha = 1;
-    this.overlayTimer = setInterval(() => {
-      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
-      if (this.overlayAlpha <= 0) {
-        clearInterval(this.overlayTimer);
-        this.overlayTimer = 0;
-      }
-    }, 40);
-  }
 
   resetOverlayFade() {
     this.overlayAlpha = 0;
+    this.overlayRect = null;
     if (this.overlayTimer != 0) {
       clearInterval(this.overlayTimer);
       this.overlayTimer = 0;
@@ -359,12 +348,13 @@ class Stage {
     }, 40);
   }
 
-  startOverlayFade(color) {
+  startOverlayFade(color, rect) {
     if (this.overlayTimer) {
       clearInterval(this.overlayTimer);
       this.overlayTimer = 0;
     }
     this.overlayColor = color;
+    this.overlayRect = rect || null;
     this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
       this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
@@ -430,13 +420,25 @@ class Stage {
     if (this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
     }
     if (display === this.gameImgProps && this.overlayAlpha > 0) {
       ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = this.overlayColor;
-      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+      const r = this.overlayRect || {
+        x: display.x,
+        y: display.y,
+        width: Math.trunc(dW * display.viewPoint.scale),
+        height: Math.trunc(dH * display.viewPoint.scale)
+      };
+      ctx.fillRect(r.x, r.y, r.width, r.height);
     }
   }
 
