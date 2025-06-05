@@ -2,6 +2,6 @@
 
 tags: render, display
 
-`js/GameDisplay.js` binds the game state to a GUI display. `setGuiDisplay()` attaches mouse handlers that select the nearest lemming on click and track the mouse position for debugging. The `render()` method draws the level, objects, and lemmings. When debug is off it also highlights the selected lemming with white corners and the hovered one with a grey rectangle. `renderDebug()` paints debug information for the level, lemmings and triggers and draws a marching-ants rectangle around the nearest lemming to the mouse.
+`js/GameDisplay.js` binds the game state to a GUI display. `setGuiDisplay()` attaches mouse handlers that select the nearest lemming on click and track the mouse position for debugging. The `render()` method draws the level, objects, and lemmings. When debug is off it highlights the selected lemming and the one under the cursor. `renderDebug()` paints additional debug information and shows a marching-ants rectangle around the nearest lemming.
 
-Selection is drawn by `#drawSelection()` which calls `#drawCorner()` four times to paint tiny white rectangles at the lemming's corners. Hover uses `#drawHover()` which fills a 10×13 grey box. These helpers provide visual feedback without intruding on normal gameplay.
+`#drawSelection()` now uses `drawDashedRect` and `drawCornerRect` to outline the current lemming with a bright green (`0xFF30FF30`) 1 px dashed rectangle. The dashes use length 1 so the box is thin. Hover outlines call `#drawHover()` which draws a dark grey rectangle raised slightly higher and adds 3 px corner squares via `drawCornerRect`.
