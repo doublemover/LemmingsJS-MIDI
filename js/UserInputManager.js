@@ -196,8 +196,10 @@ class UserInputManager {
   }
   getRelativePosition(element, clientX, clientY) {
     const rect = element.getBoundingClientRect();
-    const x = (clientX - rect.left) / rect.width * element.width;
-    const y = (clientY - rect.top) / rect.height * element.height;
+    const scaleX = element.width / rect.width;
+    const scaleY = element.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
     return new Lemmings.Position2D(x, y);
   }
   handleMouseMove(position) {

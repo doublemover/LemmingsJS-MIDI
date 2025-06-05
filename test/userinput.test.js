@@ -49,4 +49,20 @@ describe('UserInputManager', function() {
     expect(pos.x).to.equal(200);
     expect(pos.y).to.equal(120);
   });
+
+  it('accounts for offset rects', function() {
+    const offsetElement = {
+      width: 400,
+      height: 240,
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect() {
+        return { left: 50, top: 20, width: 200, height: 120 };
+      }
+    };
+    const uim = new UserInputManager(offsetElement);
+    const pos = uim.getRelativePosition(offsetElement, 150, 80);
+    expect(pos.x).to.equal(200);
+    expect(pos.y).to.equal(120);
+  });
 });
