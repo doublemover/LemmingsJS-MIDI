@@ -13,7 +13,8 @@ The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/t
 The CI job performs the following steps:
 
 1. `npm install`
-2. `npm run lint`
-3. `npm test`
+2. `npm run check-undefined`
+3. `npm run lint`
+4. `npm test`
 
 All tests must pass before code is merged.
