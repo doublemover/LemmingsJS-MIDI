@@ -114,6 +114,7 @@ class GameGui {
     if (panelIndex !== 11) {
       this.nukePrepared = false;
       this.backgroundChanged = true;
+      this.gameTimeChanged = true;
     }
 
     if (panelIndex === 0 || panelIndex === 1) {
@@ -137,6 +138,7 @@ class GameGui {
       }
       this.deltaReleaseRate = step;
       this._applyReleaseRateAuto();
+      this.gameTimeChanged = true;
       return;
     }
     if (panelIndex === 10) {
@@ -183,14 +185,17 @@ class GameGui {
         this.gameTimer.toggle();
       }
       this.skillSelectionChanged = true;
-      return; 
+      this.gameTimeChanged = true;
+      return;
     }
     if (panelIndex === 11) {
       if (this.nukePrepared) {
         this.game.queueCommand(new Lemmings.CommandNuke());
         this.nukePrepared = false;
+        this.gameTimeChanged = true;
       } else {
         this.nukePrepared = true;
+        this.gameTimeChanged = true;
       }
       if (this.skills.clearSelectedSkill()) {
         this.skillSelectionChanged = true;
@@ -212,6 +217,7 @@ class GameGui {
     const panelIndex = Math.trunc(e.x / 16);
 
     this.nukePrepared = false; // always cancel nuke confirmation on right click
+    this.gameTimeChanged = true;
 
     if (panelIndex === 0) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
@@ -272,6 +278,7 @@ class GameGui {
     if (idx !== wasIdx) {
       this._hoverPanelIdx = idx;
       this.backgroundChanged = true;
+      this.gameTimeChanged = true;
     }
 
     let up = false, down = false;
@@ -285,6 +292,7 @@ class GameGui {
       this._hoverSpeedUp = up;
       this._hoverSpeedDown = down;
       this.gameSpeedChanged = true;
+      this.gameTimeChanged = true;
     }
   }
 
@@ -364,15 +372,30 @@ class GameGui {
 
     if (this.gameTimeChanged) {
       this.gameTimeChanged = false;
-            
+
       if (lemmings.bench == false) {
-        const sel = this.skills.getSelectedSkill();
-        if (sel !== Lemmings.SkillTypes.UNKNOWN) {
-          const key = Object.keys(Lemmings.SkillTypes)[sel];
-          if (key) {
-            const name = key.charAt(0) + key.slice(1).toLowerCase();
-            this.drawGreenString(d, name, 0, 0);
+        let text = '';
+        if (this._hoverPanelIdx >= 0) {
+          text = this._getPanelName(this._hoverPanelIdx);
+          if (this._hoverPanelIdx === 10) {
+            if (this._hoverSpeedUp) text = 'Increase';
+            else if (this._hoverSpeedDown) text = 'Decrease';
           }
+        } else if (this.nukePrepared) {
+          text = 'Nuke';
+        } else if (!this.gameTimer.isRunning()) {
+          text = 'Pause';
+        } else {
+          const sel = this.skills.getSelectedSkill();
+          if (sel !== Lemmings.SkillTypes.UNKNOWN) {
+            const key = Object.keys(Lemmings.SkillTypes)[sel];
+            if (key) {
+              text = key.charAt(0) + key.slice(1).toLowerCase();
+            }
+          }
+        }
+        if (text) {
+          this.drawGreenString(d, text, 0, 0);
         }
         this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
         const outCount = this.gameVictoryCondition.getOutCount();
@@ -547,6 +570,22 @@ class GameGui {
   drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {
     if (panelIdx < 0) return;
     d.drawRect(16 * panelIdx, 16, 16, 23, r, g, b);
+  }
+
+  _getPanelName(idx) {
+    switch (idx) {
+    case 0:  return 'Decrease';
+    case 1:  return 'Increase';
+    case 10: return 'Pause';
+    case 11: return 'Nuke';
+    default:
+      const skill = this.getSkillByPanelIndex(idx);
+      if (skill !== Lemmings.SkillTypes.UNKNOWN) {
+        const key = Object.keys(Lemmings.SkillTypes)[skill];
+        if (key) return key.charAt(0) + key.slice(1).toLowerCase();
+      }
+      return '';
+    }
   }
 
   _drawLockEdge(d, panelIdx) {
