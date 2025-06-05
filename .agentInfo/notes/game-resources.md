@@ -13,4 +13,4 @@ The holiday packs share some graphics files. For example the `xmas92` entry in
 the config to `xmas91` avoids 404 errors when the loader requests missing
 assets.
 
-The cursor graphic from `MAIN.DAT` uses a 16×16 `PaletteImage`. Anything larger smears at the edges.
+The cursor graphic from `MAIN.DAT` uses a 16×16 `PaletteImage`. Anything larger smears at the edges. Color index `1` holds the visible pixels so changing that index, e.g. to green, can help debug the sprite.
