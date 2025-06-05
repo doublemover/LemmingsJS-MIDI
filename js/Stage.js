@@ -5,6 +5,8 @@ class Stage {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
+    this.overlayTimer = 0;
+    this.overlayAlpha = 0;
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -309,6 +311,21 @@ class Stage {
       this.fadeTimer = 0;
     }
   }
+
+  startOverlayFade() {
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
+    }
+    this.overlayAlpha = 1;
+    this.overlayTimer = setInterval(() => {
+      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      if (this.overlayAlpha <= 0) {
+        clearInterval(this.overlayTimer);
+        this.overlayTimer = 0;
+      }
+    }, 40);
+  }
   startFadeOut() {
     this.resetFade();
     this.fadeTimer = setInterval(() => {
@@ -324,6 +341,10 @@ class Stage {
     if (this.fadeTimer) {
       clearInterval(this.fadeTimer);
       this.fadeTimer = 0;
+    }
+    if (this.overlayTimer) {
+      clearInterval(this.overlayTimer);
+      this.overlayTimer = 0;
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose) this.guiImgProps.display.dispose();
@@ -364,6 +385,11 @@ class Stage {
     //- apply fading
     if (this.fadeAlpha != 0) {
       ctx.globalAlpha = this.fadeAlpha;
+      ctx.fillStyle = 'black';
+      ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
+    }
+    if (this.overlayAlpha != 0) {
+      ctx.globalAlpha = this.overlayAlpha;
       ctx.fillStyle = 'black';
       ctx.fillRect(display.x, display.y, Math.trunc(dW * display.viewPoint.scale), Math.trunc(dH * display.viewPoint.scale));
     }
