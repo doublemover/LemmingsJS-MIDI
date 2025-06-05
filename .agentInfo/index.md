@@ -46,6 +46,7 @@ level-packs.md: level-packs resources doc
 userinput-zoom.md: stage input tests
 pause-overlay.md: bench-mode gui
 webmidi.md: webmidi doc
+webmidi-environments.md: webmidi environment doc
 webmidi-enumerations.md: webmidi enumerations doc
 easing-functions.md: easing animation
 nl-objects.md: nl-objects doc
