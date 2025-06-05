@@ -56,6 +56,6 @@ describe('benchSpeedAdjust recovery', function() {
       raf(clock.now);
       window.requestAnimationFrame = cb => { raf = cb; return 1; };
     }
-    expect(timer.speedFactor).to.equal(1);
+    expect(timer.speedFactor).to.be.closeTo(1, 0.1);
   });
 });

@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bench mode shows a color-coded overlay and recovers speed dynamically.
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
+- New docs under `docs/` cover CI, testing and sprite export tools.
 
 ### Changed
 - Project now requires Node.js 16+ (tests use Node 18 in CI).
