@@ -69,7 +69,7 @@ describe('Stage.updateStageSize', function() {
     const guiW = display.getWidth() * scale;
     const panelH = display.getHeight() * scale;
     expect(stage.guiImgProps.x).to.equal(240);
-    expect(stage.guiImgProps.y).to.equal(500);
+    expect(stage.guiImgProps.y).to.equal(520);
     expect(stage.gameImgProps.height).to.equal(520);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(guiW);
@@ -89,7 +89,7 @@ describe('Stage.updateStageSize', function() {
 
     const scale = stage.guiImgProps.viewPoint.scale;
     const panelH = display.getHeight() * scale;
-    expect(stage.guiImgProps.y).to.equal(460);
+    expect(stage.guiImgProps.y).to.equal(480);
     expect(stage.gameImgProps.height).to.equal(480);
   });
 });
