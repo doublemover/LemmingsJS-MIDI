@@ -9,7 +9,7 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "mocha --recursive",
+    "test": "npm run agent-update-searchmetrics && mocha --recursive",
     "coverage": "c8 mocha --recursive",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
@@ -24,7 +24,8 @@
     "format": "eslint . --fix",
     "lint": "eslint .",
     "depcheck": "depcheck",
-    "index": "node tools/build_index.js"
+    "index": "node tools/build_index.js",
+    "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js"
   },
   "repository": {
     "type": "git",
