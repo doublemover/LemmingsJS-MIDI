@@ -55,3 +55,4 @@ nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
+dat-source.md: dat-source compression cpp

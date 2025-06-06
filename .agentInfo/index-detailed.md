@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
