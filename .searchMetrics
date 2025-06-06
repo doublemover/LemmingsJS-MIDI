@@ -1,6 +1,6 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 21,
+    "md": 22,
     "code": 0,
     "terms": [
       "rect",
@@ -12,72 +12,80 @@
       "spawn",
       "bench",
       "ants",
-      "line"
+      "line",
+      "selection"
     ]
   },
   ".agentInfo/index.md": {
-    "md": 16,
+    "md": 17,
     "code": 0,
     "terms": [
       "rect",
       "marching",
       "bench",
-      "ants"
+      "ants",
+      "selection"
     ]
   },
   ".agentInfo/notes/display-image.md": {
-    "md": 5,
+    "md": 6,
     "code": 0,
     "terms": [
       "rect",
       "x",
-      "y"
+      "y",
+      "selection"
     ]
   },
   ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 5,
+    "md": 6,
     "code": 0,
     "terms": [
       "rect",
       "x",
-      "y"
+      "y",
+      "selection"
     ]
   },
   ".agentInfo/notes/drawMarchingAntRect.md": {
-    "md": 6,
+    "md": 7,
     "code": 0,
     "terms": [
       "rect",
       "marching",
-      "ants"
+      "ants",
+      "selection"
     ]
   },
   ".agentInfo/notes/game-display.md": {
-    "md": 6,
+    "md": 7,
     "code": 0,
     "terms": [
       "rect",
       "marching",
-      "ants"
+      "ants",
+      "selection"
     ]
   },
   ".agentInfo/notes/game-view.md": {
-    "md": 4,
-    "code": 0,
-    "terms": [
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/pause-overlay.md": {
-    "md": 14,
+    "md": 5,
     "code": 0,
     "terms": [
       "rect",
-      "bench"
+      "selection"
+    ]
+  },
+  ".agentInfo/notes/pause-overlay.md": {
+    "md": 15,
+    "code": 0,
+    "terms": [
+      "rect",
+      "bench",
+      "selection"
     ]
   },
   "docs/nl-file-format.md": {
-    "md": 8,
+    "md": 9,
     "code": 0,
     "terms": [
       "rect",
@@ -85,12 +93,13 @@
       "y",
       "if",
       "else",
-      "line"
+      "line",
+      "selection"
     ]
   },
   "js/DisplayImage.js": {
     "md": 0,
-    "code": 11,
+    "code": 12,
     "terms": [
       "rect",
       "marching",
@@ -100,50 +109,54 @@
       "if",
       "else",
       "ants",
-      "line"
+      "line",
+      "selection"
     ]
   },
   "js/Stage.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "selection"
+    ]
+  },
+  "js/GameGui.js": {
+    "md": 0,
+    "code": 21,
+    "terms": [
+      "rect",
+      "marching",
+      "x",
+      "y",
+      "if",
+      "else",
+      "bench",
+      "ants",
+      "line",
+      "selection"
+    ]
+  },
+  "js/Level.js": {
     "md": 0,
     "code": 8,
     "terms": [
       "rect",
       "x",
       "y",
-      "pos",
-      "if",
-      "else"
-    ]
-  },
-  "js/GameGui.js": {
-    "md": 0,
-    "code": 20,
-    "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
       "if",
       "else",
-      "bench",
-      "ants",
-      "line"
-    ]
-  },
-  "js/Level.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else"
+      "selection"
     ]
   },
   "js/Frame.js": {
     "md": 0,
-    "code": 11,
+    "code": 12,
     "terms": [
       "rect",
       "marching",
@@ -153,33 +166,23 @@
       "if",
       "else",
       "ants",
-      "line"
+      "line",
+      "selection"
     ]
   },
   "js/GameDisplay.js": {
     "md": 0,
-    "code": 7,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else"
-    ]
-  },
-  "js/GameTimer.js": {
-    "md": 0,
-    "code": 17,
+    "code": 8,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "bench"
+      "selection"
     ]
   },
-  "js/GameView.js": {
+  "js/GameTimer.js": {
     "md": 0,
     "code": 18,
     "terms": [
@@ -188,13 +191,27 @@
       "y",
       "if",
       "else",
+      "bench",
+      "selection"
+    ]
+  },
+  "js/GameView.js": {
+    "md": 0,
+    "code": 19,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
       "spawn",
-      "bench"
+      "bench",
+      "selection"
     ]
   },
   "js/MiniMap.js": {
     "md": 0,
-    "code": 9,
+    "code": 10,
     "terms": [
       "rect",
       "marching",
@@ -202,172 +219,190 @@
       "y",
       "if",
       "else",
-      "ants"
+      "ants",
+      "selection"
     ]
   },
   "js/Trigger.js": {
     "md": 0,
-    "code": 7,
+    "code": 8,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "selection"
     ]
   },
   "js/TriggerManager.js": {
     "md": 0,
-    "code": 7,
+    "code": 8,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "selection"
     ]
   },
   "js/UserInputManager.js": {
     "md": 0,
-    "code": 8,
+    "code": 9,
     "terms": [
       "rect",
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "selection"
     ]
   },
   "test/displayimage.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "line"
-    ]
-  },
-  "test/gameview.suspendWithColor.test.js": {
-    "md": 0,
-    "code": 15,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "bench"
-    ]
-  },
-  "test/gameview.test.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "rect"
-    ]
-  },
-  "test/geometry.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos"
-    ]
-  },
-  "test/minimap.test.js": {
     "md": 0,
     "code": 7,
     "terms": [
       "rect",
       "x",
       "y",
-      "if",
-      "else"
+      "line",
+      "selection"
     ]
   },
-  "test/rectangle.test.js": {
+  "test/gameview.suspendWithColor.test.js": {
     "md": 0,
-    "code": 4,
-    "terms": [
-      "rect"
-    ]
-  },
-  "test/stage.overlayfade.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "rect",
-      "x",
-      "y"
-    ]
-  },
-  "test/stage.test.js": {
-    "md": 0,
-    "code": 6,
+    "code": 16,
     "terms": [
       "rect",
       "x",
       "y",
-      "pos"
+      "bench",
+      "selection"
     ]
   },
-  "test/stage.updateStageSize.test.js": {
+  "test/gameview.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
       "rect",
-      "x",
-      "y"
+      "selection"
     ]
   },
-  "test/stage.updateviewpoint.test.js": {
+  "test/geometry.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 7,
     "terms": [
       "rect",
       "x",
-      "y"
+      "y",
+      "pos",
+      "selection"
     ]
   },
-  "test/stageimageprops.test.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "rect"
-    ]
-  },
-  "test/trigger.test.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "rect"
-    ]
-  },
-  "test/triggermanager.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "rect",
-      "x",
-      "y"
-    ]
-  },
-  "test/userinput.test.js": {
+  "test/minimap.test.js": {
     "md": 0,
     "code": 8,
     "terms": [
       "rect",
       "x",
       "y",
+      "if",
+      "else",
+      "selection"
+    ]
+  },
+  "test/rectangle.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "rect",
+      "selection"
+    ]
+  },
+  "test/stage.overlayfade.test.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection"
+    ]
+  },
+  "test/stage.test.js": {
+    "md": 0,
+    "code": 7,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "pos",
+      "selection"
+    ]
+  },
+  "test/stage.updateStageSize.test.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection"
+    ]
+  },
+  "test/stageimageprops.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "rect",
+      "selection"
+    ]
+  },
+  "test/trigger.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "rect",
+      "selection"
+    ]
+  },
+  "test/triggermanager.test.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "rect",
+      "x",
+      "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "selection"
     ]
   },
   ".agentInfo/notes/game-gui.md": {
-    "md": 5,
+    "md": 6,
     "code": 0,
     "terms": [
       "marching",
@@ -375,7 +410,9 @@
       "y",
       "if",
       "else",
-      "ants"
+      "ants",
+      "selection",
+      "rect"
     ]
   },
   ".agentInfo/notes/level-reader.md": {
@@ -398,7 +435,7 @@
     ]
   },
   "README.md": {
-    "md": 15,
+    "md": 16,
     "code": 0,
     "terms": [
       "x",
@@ -407,7 +444,9 @@
       "else",
       "spawn",
       "bench",
-      "line"
+      "line",
+      "selection",
+      "rect"
     ]
   },
   ".agentInfo/notes/trigger-manager.md": {
@@ -420,14 +459,16 @@
   },
   "js/LemmingManager.js": {
     "md": 0,
-    "code": 14,
+    "code": 15,
     "terms": [
       "x",
       "y",
       "if",
       "else",
       "spawn",
-      "bench"
+      "bench",
+      "selection",
+      "rect"
     ]
   },
   "js/SolidLayer.js": {
@@ -474,12 +515,14 @@
   },
   "js/KeyboardShortcuts.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/LevelReader.js": {
@@ -547,12 +590,14 @@
   },
   "js/Animation.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "test/solidlayer.test.js": {
@@ -724,12 +769,14 @@
   },
   "test/gamedisplay.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "test/getNearestLemming.test.js": {
@@ -1213,11 +1260,13 @@
     ]
   },
   ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   ".agentInfo/notes/note-review.md": {
@@ -1245,11 +1294,13 @@
     ]
   },
   "docs/tools.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "tools/check-undefined.js": {
@@ -1295,10 +1346,12 @@
   },
   "index.html": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/UnpackFilePart.js": {
@@ -1319,10 +1372,12 @@
   },
   "js/CommandManager.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/LogHandler.js": {
@@ -1344,10 +1399,12 @@
   },
   "js/GameSkills.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/GameVictoryCondition.js": {
@@ -1386,10 +1443,12 @@
   },
   "js/CommandSelectSkill.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/ConfigReader.js": {
@@ -1443,10 +1502,12 @@
   },
   "js/CommandLemmingsAction.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "js/CommandNuke.js": {
@@ -1539,10 +1600,12 @@
   },
   "test/gameskills.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "selection",
+      "rect"
     ]
   },
   "test/gamevictory.test.js": {
@@ -1594,10 +1657,12 @@
     ]
   },
   ".agentInfo/notes/lemming-manager.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
-      "spawn"
+      "spawn",
+      "selection",
+      "rect"
     ]
   },
   ".agentInfo/notes/overview.md": {
@@ -1695,10 +1760,12 @@
     ]
   },
   "CHANGELOG.md": {
-    "md": 10,
+    "md": 11,
     "code": 0,
     "terms": [
-      "bench"
+      "bench",
+      "selection",
+      "rect"
     ]
   },
   ".agentInfo/notes/webmidi-overview.md": {
@@ -1748,6 +1815,54 @@
     "code": 1,
     "terms": [
       "line"
+    ]
+  },
+  ".agentInfo/notes/game.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "selection",
+      "rect"
+    ]
+  },
+  "docs/levelpacks.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "selection",
+      "rect"
+    ]
+  },
+  "test/keyboardshortcuts.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "selection",
+      "rect"
+    ]
+  },
+  "css/game.css": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "selection",
+      "rect"
+    ]
+  },
+  "js/LemmingsBootstrap.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "selection",
+      "rect"
+    ]
+  },
+  "test/commandselectskill.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "selection",
+      "rect"
     ]
   }
 }
