@@ -35,6 +35,7 @@ level-writer.md: level-writing
 main-dat-format.md: main-dat doc
 mechanics-config.md: config
 mechanics-flags.md: mechanics
+naming-cleanup.md: naming cleanup
 nl-file-format.md: nl-file-format doc
 nl-objects.md: nl-objects doc - summarizes NeoLemmix object logic with references to source files
 nl-skills.md: nl-skills doc
