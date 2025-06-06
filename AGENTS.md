@@ -30,7 +30,9 @@ quotes, and semicolons across the JavaScript codebase.
 - The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
 
 ### Level packs
-Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md](docs/levelpacks.md).
+Level packs follow the NeoLemmix folder layout described in
+[docs/levelpacks.md](docs/levelpacks.md), which lists the expected
+`levels/`, `music/`, `styles/` and other directories.
 The [NeoLemmix Pack Toolkit](docs/nl-pack-toolkit.md) explains how
 these folders are structured and bundled.
 

@@ -155,15 +155,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/config.md](docs/config.md) for configuration details.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
-## Level Packs
-
-The directories `lemmings/`, `lemmings_ohNo/`, `xmas91/`, `xmas92/`,
-`holiday93/` and `holiday94/` are extracted NeoLemmix packs. They use a
-simple folder structure so the Node tools can load files directly from
-directories or archives. See [docs/levelpacks.md](docs/levelpacks.md)
-for a short description of the layout and
-[docs/nl-pack-toolkit.md](docs/nl-pack-toolkit.md) for a summary of the
-NeoLemmix Pack Toolkit.
 
 ### Progressive Web App
 
