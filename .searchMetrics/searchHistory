@@ -1,3 +1,9 @@
 {"time":"2025-06-06T16:43:11.777Z","query":"test","mdFiles":15,"codeFiles":17,"ms":145}
 {"time":"2025-06-06T17:35:21.213Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":2309}
 {"time":"2025-06-06T17:35:26.033Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":1427}
+{"time":"2025-06-06T17:35:40.857Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":78}
+{"time":"2025-06-06T17:35:44.508Z","query":"GameTimer","mdFiles":37,"codeFiles":119,"ms":184}
+{"time":"2025-06-06T17:35:48.226Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":135}
+{"time":"2025-06-06T17:35:50.310Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":118}
+{"time":"2025-06-06T17:42:52.743Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":38}
+{"time":"2025-06-06T17:42:56.088Z","query":"bench TPS","mdFiles":13,"codeFiles":10,"ms":268}

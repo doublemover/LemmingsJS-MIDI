@@ -100,11 +100,40 @@ describe('Stage.updateStageSize', function() {
     expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
     expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
     expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
-    expect(stage.gameImgProps.height).to.equal(480);
+    expect(stage.gameImgProps.height).to.equal(520);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(display.getWidth() * scale);
     const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
     const worldH = gameDisplay.getHeight();
     expect(stage.gameImgProps.viewPoint.y).to.equal(worldH - viewH);
+  });
+
+  it('updates dimensions when canvas size changes', function() {
+    const canvas = createStubCanvas(400, 600);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGuiDisplay();
+    display.initSize(160, 40);
+    const gameDisplay = stage.getGameDisplay();
+    gameDisplay.initSize(1000, 1000);
+
+    canvas.width = 500;
+    canvas.height = 700;
+    const ctx = canvas.getContext();
+    ctx.canvas.width = 500;
+    ctx.canvas.height = 700;
+    stage.updateStageSize();
+
+    const scale = stage.guiImgProps.viewPoint.scale;
+    const panelW = display.getWidth() * scale;
+    const panelH = display.getHeight() * scale;
+    expect(stage.gameImgProps.width).to.equal(canvas.width);
+    expect(stage.gameImgProps.height).to.equal(canvas.height - panelH);
+    expect(stage.guiImgProps.width).to.equal(panelW);
+    expect(stage.guiImgProps.height).to.equal(panelH);
+    expect(stage.guiImgProps.x).to.equal((canvas.width - panelW) / 2);
+    expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
   });
 });

@@ -273,6 +273,9 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
+    const evt = new ZoomEventArgs(position.x, position.y, deltaY);
+    this.onZoom.trigger(evt);
+
     const stage = globalThis?.lemmings?.stage;
     if (stage && stage.getStageImageAt) {
       const stageImage = stage.getStageImageAt(position.x, position.y);
