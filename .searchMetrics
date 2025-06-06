@@ -1,3024 +1,1546 @@
 {
   ".agentInfo/index-detailed.md": {
-
-    "md": 32,
+    "md": 2,
     "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
-      "if",
-      "else",
-      "spawn",
-      "bench",
-      "ants",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  ".agentInfo/index.md": {
-    "md": 26,
+  "README.md": {
+    "md": 2,
     "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "bench",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/display-image.md": {
-    "md": 16,
-    "code": 0,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 15,
-    "code": 0,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/drawMarchingAntRect.md": {
-    "md": 16,
-    "code": 0,
-    "terms": [
-      "rect",
-      "marching",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/game-display.md": {
-    "md": 17,
-    "md": 13,
-    "code": 0,
-    "terms": [
-      "rect",
-      "marching",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/game-view.md": {
-    "md": 9,
-    "code": 0,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
   ".agentInfo/notes/pause-overlay.md": {
-    "md": 19,
+    "md": 2,
     "code": 0,
     "terms": [
-      "rect",
-      "bench",
-      "selection",
-      "draw",
-      "corner"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "docs/level-file-format.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
     ]
   },
   "docs/nl-file-format.md": {
-    "md": 19,
-    "md": 15,
+    "md": 2,
     "code": 0,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "js/DisplayImage.js": {
-    "md": 0,
-    "code": 21,
-    "code": 18,
+  "AGENTS.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "ants",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/Stage.js": {
-    "md": 0,
-    "code": 19,
-    "code": 14,
+  ".agentInfo/notes/easing-functions.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/GameGui.js": {
-    "md": 0,
-    "code": 31,
+  ".agentInfo/notes/game-view.md": {
+    "md": 2,
+    "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
-      "if",
-      "else",
-      "bench",
-      "ants",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "js/Level.js": {
-    "md": 0,
-    "code": 17,
+  ".agentInfo/notes/game.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/Frame.js": {
-    "md": 0,
-    "code": 21,
+  ".agentInfo/notes/level-reader.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "ants",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/GameDisplay.js": {
-    "md": 0,
-    "code": 18,
-    "code": 14,
+  ".agentInfo/notes/mechanics-flags.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/GameTimer.js": {
-    "md": 0,
-    "code": 27,
-    "code": 23,
+  ".agentInfo/notes/overview.md": {
+    "md": 1,
+    "code": 0,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "bench",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/stage.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/webmidi-overview.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/compression-format.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/config.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/exporting-sprites.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/nl-objects.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/nl-skills.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/index.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/trigger-manager.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "CHANGELOG.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
   "js/GameView.js": {
     "md": 0,
-    "code": 29,
-    "code": 24,
+    "code": 2,
     "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "spawn",
-      "bench",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/MiniMap.js": {
-    "md": 0,
-    "code": 20,
-    "code": 15,
-    "terms": [
-      "rect",
-      "marching",
-      "x",
-      "y",
-      "if",
-      "else",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/Trigger.js": {
-    "md": 0,
-    "code": 17,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/TriggerManager.js": {
-    "md": 0,
-    "code": 17,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/UserInputManager.js": {
-    "md": 0,
-    "code": 19,
-    "code": 14,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/displayimage.test.js": {
-    "md": 0,
-    "code": 16,
-    "code": 12,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "line",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/gameview.suspendWithColor.test.js": {
-    "md": 0,
-    "code": 26,
-    "code": 21,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "bench",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/gameview.test.js": {
-    "md": 0,
-    "code": 15,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "test/geometry.test.js": {
-    "md": 0,
-    "code": 16,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/minimap.test.js": {
-    "md": 0,
-    "code": 17,
-    "code": 13,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/rectangle.test.js": {
-    "md": 0,
-    "code": 14,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/stage.overlayfade.test.js": {
-    "md": 0,
-    "code": 15,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/stage.test.js": {
-    "md": 0,
-    "code": 16,
-    "code": 12,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/stage.updateStageSize.test.js": {
-    "md": 0,
-    "code": 15,
-    "code": 11,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/stage.updateviewpoint.test.js": {
-    "md": 0,
-    "code": 15,
-    "code": 11,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/stageimageprops.test.js": {
-    "md": 0,
-    "code": 14,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/trigger.test.js": {
-    "md": 0,
-    "code": 14,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/triggermanager.test.js": {
-    "md": 0,
-    "code": 15,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/userinput.test.js": {
-    "md": 0,
-    "code": 19,
-    "code": 14,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/game-gui.md": {
-    "md": 16,
-    "code": 0,
-    "terms": [
-      "marching",
-      "x",
-      "y",
-      "if",
-      "else",
-      "ants",
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/level-reader.md": {
-    "md": 10,
-    "code": 0,
-    "terms": [
-      "x",
-      "y",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "docs/level-file-format.md": {
-    "md": 13,
-    "md": 10,
-    "code": 0,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "README.md": {
-    "md": 22,
-      "scale",
-      "nearest"
-    ]
-  },
-  "README.md": {
-    "md": 17,
-    "code": 0,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "spawn",
-      "bench",
-      "line",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/trigger-manager.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "x",
-      "y",
-      "draw",
-      "corner",
+      "start",
+      "overlay",
+      "fade",
       "rect"
     ]
   },
-  "js/LemmingManager.js": {
+  "js/Stage.js": {
     "md": 0,
-    "code": 21,
-    "code": 17,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "spawn",
-      "bench",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "js/SolidLayer.js": {
+  "js/GameTimer.js": {
     "md": 0,
-    "code": 9,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ParticleTable.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/xbrz/xbrz.js": {
-    "md": 0,
-    "code": 10,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "line",
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/SkillPanelSprites.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/KeyboardShortcuts.js": {
-    "md": 0,
-    "code": 14,
-    "code": 9,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/LevelReader.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Lemming.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LemmingsSprite.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/exportAllSprites.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "fileformat.txt": {
-    "md": 0,
-    "code": 13,
-    "code": 10,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/ActionBashSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Animation.js": {
-    "md": 0,
-    "code": 10,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "test/solidlayer.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionDiggSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionWalkSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LevelWriter.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Mask.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/mask.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/exportLemmingsSprites.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionBlockerSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionBuildSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionClimbSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionDrowningSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionFryingSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionJumpSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionOhNoSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/GroundReader.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/GroundRenderer.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
   "test/bench-speed-adjust.test.js": {
     "md": 0,
-    "code": 16,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "bench",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/gamedisplay.test.js": {
-    "md": 0,
-    "code": 14,
-    "code": 10,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/getNearestLemming.test.js": {
-    "md": 0,
-    "code": 16,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "bench",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/groundrenderer.test.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/lemming.test.js": {
-    "md": 0,
-    "code": 16,
-    "terms": [
-      "x",
-      "y",
-      "bench",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/walk-wall-collision.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/scanGreenPanel.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionExplodingSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionHoistSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ViewPoint.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
     "code": 2,
     "terms": [
-      "x",
-      "y",
-      "scale",
-      "nearest"
-    ]
-  },
-  "tools/renderCursorSizes.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionBaseSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionCountdownSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionFallSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionFloatingSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionMineSystem.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionSplatterSystem.js": {
-    "md": 0,
-    "code": 12,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LevelElement.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/MapObject.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "spawn",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/MaskList.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ObjectManager.js": {
-    "md": 0,
-    "code": 10,
-    "terms": [
-      "x",
-      "y",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/PaletteImage.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Position2D.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Range.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Rectangle.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/StageImageProperties.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/VGASpecReader.js": {
-    "md": 0,
-    "code": 14,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "line",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
   "test/gametimer.test.js": {
     "md": 0,
-    "code": 18,
-    "code": 14,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "bench",
-      "select",
-      "lemming"
-      "scale",
-      "nearest"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "test/levelwriter.test.js": {
+  "test/gameview.suspendWithColor.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "test/range.test.js": {
+  "test/stage.overlayfade.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
-  "test/tools/scanGreenPanel.test.js": {
+  "fileformat.txt": {
     "md": 0,
-    "code": 8,
+    "code": 1,
     "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "tools/exportGroundImages.js": {
+  "test/gameview.test.js": {
     "md": 0,
-    "code": 12,
+    "code": 2,
     "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/exportPanelSprite.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "x",
-      "y",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/Game.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LevelLoader.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/commandmanager.test.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/listSprites.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/patchSprites.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/search.js": {
-    "md": 0,
-    "code": 10,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "ants",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/BinaryReader.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/BitWriter.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/BitReader.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/FileContainer.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/oddtable.test.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/PackFilePart.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/vgaspecreader.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "pos",
-      "select",
-      "lemming"
-    ]
-  },
-  "docs/compression-format.md": {
-    "md": 18,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "bench",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "AGENTS.md": {
-    "md": 8,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/webmidi-environments.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  "docs/nl-skills.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/AGENTS.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/bench-mode.md": {
-    "md": 18,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "spawn",
-      "bench",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/check-undefined.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  ".agentInfo/notes/command-manager.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 13,
-    "md": 8,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/note-review.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  ".agentInfo/notes/pack-mechanics.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "docs/nl-objects.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "docs/tools.md": {
-    "md": 9,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "tools/check-undefined.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "line"
-    ]
-  },
-  "tools/NodeFileProvider.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/FileProvider.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade",
+      "rect"
     ]
   },
   "tools/build_index.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "scale",
-      "nearest"
-    ]
-  },
-  "test/exportScripts.test.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "index.html": {
-    "md": 0,
-    "code": 9,
-    "code": 4,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/UnpackFilePart.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/processHtmlFile.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  "js/CommandManager.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/LogHandler.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/archiveDir.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "spawn"
-    ]
-  },
-  "js/GameSkills.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/GameVictoryCondition.js": {
-    "md": 0,
-    "code": 17,
-    "terms": [
-      "if",
-      "else",
-      "bench",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/filecontainer.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/fileprovider.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/exportAllPacks.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "if",
-      "else",
-      "spawn",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/CommandSelectSkill.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/ConfigReader.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/GameFactory.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/bitstream.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/nodefileprovider.test.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "spawn"
-    ]
-  },
-  "js/ActionExitingSystem.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ActionShrugSystem.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/CommandLemmingsAction.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/CommandNuke.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/CommandReleaseRateDecrease.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/CommandReleaseRateIncrease.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/DrawProperties.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/EventHandler.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/GameResources.js": {
-    "md": 0,
-    "code": 8,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/GameTypes.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LemmingsNamespace.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LevelConfig.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/LevelIndexResolve.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "js/OddTableReader.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/gameskills.test.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "if",
-      "else",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "test/gamevictory.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "if",
-      "else",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/tools/archiveDir.test.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "spawn"
-    ]
-  },
-  "test/tools/exportGroundImages.test.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
-    ]
-  },
-  "tools/cleanExports.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  "tools/packLevels.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  ".agentInfo/notes/editor-mode.md": {
-    "md": 6,
+    "md": 5,
     "code": 0,
     "terms": [
-      "spawn",
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/lemming-manager.md": {
-    "md": 8,
+  ".agentInfo/notes/game-gui.md": {
+    "md": 5,
     "code": 0,
     "terms": [
-      "spawn",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/overview.md": {
-    "md": 17,
+  "README.md": {
+    "md": 5,
     "code": 0,
     "terms": [
-      "spawn",
-      "bench",
-      "select",
-      "lemming",
-      "cursor"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/check-undefined.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "spawn"
-    ]
-  },
-  "test/listSprites.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "spawn",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/packLevels.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "spawn",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/tools/cleanExports.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "spawn"
-    ]
-  },
-  "test/tools/exportAllPacks.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "spawn"
-    ]
-  },
-  "test/tools/listSprites.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "spawn",
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  "test/tools/packLevels.test.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "spawn",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/bench-mode-docs.md": {
-    "md": 11,
+  "docs/nl-file-format.md": {
+    "md": 5,
     "code": 0,
     "terms": [
-      "bench",
-      "scale",
-      "nearest"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/bench-speed-adjust.md": {
-    "md": 11,
+  ".agentInfo/notes/display-image.md": {
+    "md": 5,
     "code": 0,
     "terms": [
-      "bench",
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/norm-tick-count-removal.md": {
-    "md": 10,
-    "code": 0,
-    "terms": [
-      "bench"
-    ]
-  },
-  ".agentInfo/notes/test-bench-speed-adjust.md": {
-    "md": 10,
-    "code": 0,
-    "terms": [
-      "bench"
-    ]
-  },
-  ".agentInfo/notes/test-coverage.md": {
-    "md": 10,
-    "code": 0,
-    "terms": [
-      "bench"
-    ]
-  },
-  "CHANGELOG.md": {
-    "md": 17,
-    "code": 0,
-    "terms": [
-      "bench",
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/webmidi-overview.md": {
-    "md": 6,
-    "code": 0,
-    "terms": [
-      "line",
-      "select",
-      "lemming"
-    ]
-  },
-  ".agentInfo/notes/todo-review.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "line"
-    ]
-  },
-  ".agentInfo/notes/tools.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "line",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  ".agentInfo/notes/webmidi-tasks.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "line"
-    ]
-  },
-  "js/xbrz/scalers/Scaler2x.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "line",
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/xbrz/scalers/Scaler3x.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "line",
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest"
-    ]
-  },
-  "js/xbrz/scalers/Scaler4x.js": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "line",
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/game.md": {
-    "md": 7,
-    "code": 0,
-    "terms": [
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "docs/levelpacks.md": {
-    "md": 6,
-    "code": 0,
-    "terms": [
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "test/keyboardshortcuts.test.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "css/game.css": {
-    "md": 0,
-    "code": 6,
-    "terms": [
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "js/LemmingsBootstrap.js": {
-    "md": 0,
-    "code": 11,
-    "terms": [
-      "selection",
-      "rect",
-      "draw",
-      "corner",
-      "select",
-      "lemming",
-      "cursor"
-    ]
-  },
-  "test/commandselectskill.test.js": {
-    "md": 0,
-    "code": 7,
-    "terms": [
-      "selection",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
+      "display",
+      "width",
+      "height"
     ]
   },
   ".agentInfo/notes/ground-renderer.md": {
-    "md": 4,
+    "md": 5,
     "code": 0,
     "terms": [
-      "draw",
-      "corner",
-      "rect"
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/index.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/bench-mode-docs.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/draw-corner-rect.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/game-display.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/game-view.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/game.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/gui-stage-tasks.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
     ]
   },
   ".agentInfo/notes/stage.md": {
     "md": 5,
     "code": 0,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/exportLemmingsSprites.test.js": {
+  ".agentInfo/notes/webmidi-overview.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "CHANGELOG.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  ".agentInfo/notes/level-reader.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "docs/level-file-format.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Stage.js": {
     "md": 0,
-    "code": 9,
+    "code": 5,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/frame.test.js": {
+  "js/DisplayImage.js": {
     "md": 0,
-    "code": 9,
+    "code": 5,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/gameresources.test.js": {
+  "js/MiniMap.js": {
     "md": 0,
-    "code": 10,
+    "code": 5,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming",
-      "cursor"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/levelreader.test.js": {
+  "js/GameGui.js": {
     "md": 0,
-    "code": 9,
+    "code": 5,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/tools/exportAllSprites.test.js": {
+  "js/Level.js": {
     "md": 0,
-    "code": 9,
+    "code": 5,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/bit-writer.md": {
-    "md": 5,
-    "code": 0,
+  "index.html": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/game-resources.md": {
-    "md": 6,
-    "code": 0,
+  "js/GameView.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming",
-      "cursor"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/level-format.md": {
-    "md": 5,
-    "code": 0,
+  "js/KeyboardShortcuts.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/mechanics-flags.md": {
-    "md": 5,
-    "code": 0,
+  "js/Animation.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/nl-objects.md": {
-    "md": 5,
-    "code": 0,
+  "js/GameDisplay.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "docs/exporting-sprites.md": {
-    "md": 5,
-    "code": 0,
+  "js/UserInputManager.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "docs/TESTING.md": {
-    "md": 5,
-    "code": 0,
+  "test/gamedisplay.test.js": {
+    "md": 0,
+    "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/gameview.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/minimap.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/xbrz/xbrz.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "css/game.css": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "fileformat.txt": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionExplodingSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Game.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Lemming.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LemmingManager.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/StageImageProperties.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/TriggerManager.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/displayimage.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/gameview.suspendWithColor.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/groundrenderer.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/stage.overlayfade.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/stage.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/stage.updateStageSize.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Frame.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/GroundReader.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LemmingsSprite.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LevelReader.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
     ]
   },
   "test/patchSprites.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/skillpanelsprites.test.js": {
+  "test/tools/exportAllSprites.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "config.json": {
+  "test/tools/scanGreenPanel.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "eslint.config.js": {
+  "tools/exportAllSprites.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionBaseSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionCountdownSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionDrowningSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionExitingSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionFallSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionFloatingSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionFryingSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionHoistSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionJumpSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionOhNoSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionShrugSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ActionSplatterSystem.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LemmingsBootstrap.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LogHandler.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/search.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ObjectManager.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Level.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ParticleTable.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/BinaryReader.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Trigger.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/LemmingManager.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/ViewPoint.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/ActionBuildSystem.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/trigger.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Animation.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
   "js/BaseImageInfo.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "start",
+      "overlay",
+      "fade"
     ]
   },
-  "js/ColorPalette.js": {
+  "js/FileProvider.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Game.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/BitWriter.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "display",
+      "width"
+    ]
+  },
+  "js/GameTimer.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/LogHandler.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/GroundRenderer.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/PackFilePart.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LevelLoader.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/PaletteImage.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/LevelWriter.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/UserInputManager.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/MapObject.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/VGASpecReader.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Mask.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "test/processHtmlFile.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/MaskList.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/check-undefined.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/PaletteImage.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/patchSprites.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/Range.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/processHtmlFile.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/TriggerManager.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/SkillPanelSprites.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "display",
+      "width"
+    ]
+  },
+  "js/SolidLayer.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/display-image.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/draw-corner-rect.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/drawMarchingAntRect.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/game-display.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/DisplayImage.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "js/VGASpecReader.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "js/GameConfig.js": {
+  "test/exportLemmingsSprites.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "js/GameResult.js": {
+  "test/exportScripts.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "js/GameStateTypes.js": {
+  "test/gameresources.test.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  "js/LemmingStateType.js": {
+  "test/geometry.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "overlay",
+      "rect"
     ]
   },
-  "js/LevelIndexType.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
+  "js/GameGui.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
-  "js/LevelProperties.js": {
+  "test/getNearestLemming.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "overlay",
+      "rect"
     ]
   },
-  "js/MaskProvider.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/MaskTypes.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/ObjectImageInfo.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/packMechanics.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/SkillTypes.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/SpriteTypes.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/steelSprites.json": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/TerrainImageInfo.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "js/TriggerTypes.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/animation.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/binaryreader.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/bitreader.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/bitwriter.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/colorpalette.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/configreader.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/eventhandler.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/filecontainer-errors.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/game.queuecommand.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/gamefactory.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
-    ]
-  },
-  "test/gameresult.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
+  "test/userinput.test.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
   "test/groundreader.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "overlay",
+      "rect"
     ]
   },
-  "test/levelloader.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
+  "js/Frame.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/maskprovider.test.js": {
+  "test/lemming.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "overlay",
+      "rect"
     ]
   },
-  "test/packfilepart.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "select",
-      "lemming"
+  "js/GameDisplay.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
-  "test/tools/exportScripts.test.js": {
+  "test/range.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming",
-      "cursor"
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/MiniMap.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/solidlayer.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/Trigger.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/stageimageprops.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/displayimage.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "test/tools/exportGroundImages.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/geometry.test.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
   "test/tools/patchSprites.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
-      "select",
-      "lemming"
+      "overlay",
+      "rect"
     ]
   },
-  "test/unpackfilepart.test.js": {
+  "test/minimap.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/exportGroundImages.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/rectangle.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/exportLemmingsSprites.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/exportPanelSprite.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.updateStageSize.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/listSprites.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stageimageprops.test.js": {
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/patchSprites.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "select",
-      "lemming"
+      "display",
+      "width",
+      "height"
     ]
   },
-  ".agentInfo/notes/userinput-zoom.md": {
+  "tools/renderCursorSizes.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/trigger.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/triggermanager.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "tools/scanGreenPanel.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "display",
+      "width",
+      "height"
+    ]
+  },
+  "docs/nl-objects.md": {
     "md": 1,
     "code": 0,
     "terms": [
-      "select",
-      "cursor"
+      "display",
+      "height"
     ]
   },
-  ".agentInfo/notes/userinput-zoom.md": {
+  "docs/nl-skills.md": {
     "md": 1,
     "code": 0,
     "terms": [
-      "scale",
-      "nearest"
+      "display",
+      "height"
     ]
   },
-  ".agentInfo/notes/game-speed-input.md": {
-    "md": 2,
-    "code": 0,
+  "js/ActionWalkSystem.js": {
+    "md": 0,
+    "code": 1,
     "terms": [
-      "scale",
-      "nearest"
+      "display",
+      "height"
     ]
   }
 }
