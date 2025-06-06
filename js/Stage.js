@@ -306,9 +306,7 @@ class Stage {
     this.guiImgProps.y = gameH;
     this.guiImgProps.height = panelH;
     this.guiImgProps.width = panelW;
-    if (this.guiImgProps.display) {
-      this.guiImgProps.x = (stageW - panelW) / 2;
-    }
+    this.guiImgProps.x = (stageW - panelW) / 2;
   }
   getStageImageAt(x, y) {
     if (
