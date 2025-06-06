@@ -9,7 +9,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md) - tools/check-undefined.js scans JavaScript and HTML files for function calls. If a call cannot be ...
 - **commands, replay**: [notes/command-manager.md](notes/command-manager.md) - js/CommandManager.js manages player commands and replay data. It registers a listener on gameTime...
 - **display, canvas**: [notes/display-image.md](notes/display-image.md) - DisplayImage is an offscreen canvas that Stage uses for both the game area and the GUI layer. Eac...
-- **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - drawCornerRect paints filled squares at each corner and now accepts a cornerSize.
+ - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - drawCornerRect paints L-shaped corners and can add centered side lines.
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - drawMarchingAntRect draws a dashed rectangle whose dashes alternate between two colors. The dashL...
 - **file-container**: [notes/file-container.md](notes/file-container.md) - FileContainer parses a resource file containing multiple compressed parts. Each
 - **render, display**: [notes/game-display.md](notes/game-display.md) - js/GameDisplay.js binds the game state to a GUI display. setGuiDisplay() attaches mouse handlers ...
@@ -21,7 +21,6 @@ This expanded listing preserves the original bullet format with short descriptio
 - **example, doc**: [notes/initial.md](notes/initial.md) - This sample note demonstrates the tagging system used in .agentInfo/.
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts hooks global key events and lets the player pan and zoom the gameplay view. Gam...
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
-- **webmidi, midi, doc**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Overview of WebMIDI.js classes, initialization and TODOs.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - js/LevelReader.js consumes a 2048 byte .DAT level file. The first 0x20 bytes contain the release ...
@@ -43,3 +42,28 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
+- **pack-toolkit, resources, doc**: [notes/nl-pack-toolkit.md](notes/nl-pack-toolkit.md) - Overview of the NeoLemmix Flexi Toolkit features and how the pack folders here follow a similar layout for Node tools.
+- **doc, bench-mode**: [notes/bench-mode-docs.md](notes/bench-mode-docs.md) - Expanded README bench-mode section detailing `missedTicks`, `stableTicks`, speed adjustments, and the meaning of the "T"/"L" displays. Noted that thresholds will scale with `speedFactor` after Issue 1.
+- **bench-mode, speed-control**: [notes/bench-mode.md](notes/bench-mode.md) - Bench mode enables performance testing by spawning lemmings without limit and automatically adjusting the game speed. `LemmingManager.addNewLemmings()` skips the remaining-count check so new lemmings always appear. `GameTimer.#benchSpeedAdjust()` modifies `speedFactor` whenever the game falls behind, slowing to 0.1 if more than 100 ticks are pending and gradually increasing again when caught up.
+- **game-timer, bench-mode**: [notes/bench-speed-adjust.md](notes/bench-speed-adjust.md) - `GameTimer.#benchSpeedAdjust()` now scales its slow and recovery thresholds by the current `speedFactor`. The game slows down when pending frames exceed `16 / speedFactor` (clamped to at least 10) and speeds back up when the backlog drops below `4 / speedFactor`. This keeps bench mode responsive at different speeds.
+- **config, mechanics, doc**: [notes/config.md](notes/config.md) - `config.json` lists available level packs and key fields like `level.filePrefix`, `level.groups` and `level.order`. Each pack may also include a `mechanics` object. `packMechanics.js` provides defaults for these mechanic flags which `ConfigReader` merges with the pack entries. See [docs/config.md](../docs/config.md) for a full description.
+- **display, canvas**: [notes/display-image.md](notes/display-image.md) - `DisplayImage` is an offscreen canvas that `Stage` uses for both the game area and the GUI layer.  Each instance owns an `ImageData` buffer which is created through `Stage.createImage()`.  A `Uint32Array` view (`buffer32`) aliases this buffer so drawing routines can operate on 32‑bit pixels directly.
+ - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - `DisplayImage.drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corners. When `midLine` is true it also adds centered side lines.
+- **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - `drawMarchingAntRect` draws a dashed rectangle whose dashes alternate between two colors. The `dashLen` and `offset` arguments control the length of each dash and its animated offset. GameGui uses this helper when highlighting UI elements like skill selections or the nuke button.
+- **easing, animation**: [notes/easing-functions.md](notes/easing-functions.md) - This note summarizes commonly used easing equations for smooth animations:
+- **editor-mode, gui, level-editor**: [notes/editor-mode.md](notes/editor-mode.md) - Editor mode disables game-over checks so the game never ends. LemmingManager keeps spawning new lemmings indefinitely and a black GUI panel appears at the bottom with controls for terrain and trigger editing. This behavior serves as the basis for the level editor.
+- **game-view, speed**: [notes/game-speed-input.md](notes/game-speed-input.md) - `GameView.applyQuery` reads the `speed` URL parameter to set `gameSpeedFactor`. Values greater than `1` represent integer speed steps, so the query value is rounded to the nearest whole number. Fractional speeds at or below `1` are left untouched.
+- **level-format, doc**: [notes/level-format.md](notes/level-format.md) - `docs/level-file-format.md` explains the 2048-byte `.lvl` layout produced by LemEdit. It lists all field offsets along with object IDs for each graphics set.
+- **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
+- **nl-file-format, doc**: [notes/nl-file-format.md](notes/nl-file-format.md) - `docs/nl-file-format.md` details the NeoLemmix level and pack formats: `.nxlv` text-based levels, the 4 KB binary `.lvl` layout, high-res folders, `alias.nxmi`, pack files like `info.nxmi`, and legacy `.NXP` archives.
+- **nl-objects, doc**: [notes/nl-objects.md](notes/nl-objects.md) - `docs/nl-objects.md` summarizes NeoLemmix object logic with references to the source files implementing teleporters, locked exits, pickup-skills, single-use traps, updrafts and splat pads.
+- **nl-skills, doc, resources**: [notes/nl-skills.md](notes/nl-skills.md) - Short note summarizing the `docs/nl-skills.md` reference for the nine
+- **cleanup, game-timer**: [notes/norm-tick-count-removal.md](notes/norm-tick-count-removal.md) - The obsolete `normTickCount` field in `GameTimer` was folded into
+- **tests, bench-mode**: [notes/test-bench-speed-adjust.md](notes/test-bench-speed-adjust.md) - Adds a unit test that simulates dropped and normal ticks using fake timers. The test verifies `GameTimer.#benchSpeedAdjust()` lowers `speedFactor` when the timer falls behind and restores it once stable again.
+- **tests, tools, exports**: [notes/test-coverage.md](notes/test-coverage.md) - Small Mocha tests create dummy packs and run the export tools via `node`.
+- **stage, input, tests**: [notes/userinput-zoom.md](notes/userinput-zoom.md) - The mouse wheel now zooms around the pointer by converting the cursor's screen
+- **webmidi, enumerations, doc**: [notes/webmidi-enumerations.md](notes/webmidi-enumerations.md) - `js/webmidi.js` defines several tables describing MIDI message codes.
+- **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - The official "Supported Environments" page outlines where WebMIDI.js works:
+- **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
+- **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
+

@@ -222,6 +222,12 @@ class KeyboardShortcuts {
       game.getGameTimer().toggle();
       game.gameGui.skillSelectionChanged = true;
       break;
+    case 'BracketRight':
+      if (!game.getGameTimer().isRunning()) this.view.nextFrame();
+      break;
+    case 'BracketLeft':
+      if (!game.getGameTimer().isRunning()) this.view.prevFrame();
+      break;
     case 'KeyT':
       if (e.shiftKey) this._instantNuke();
       else game.queueCommand(new Lemmings.CommandNuke());
@@ -263,10 +269,10 @@ class KeyboardShortcuts {
       if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
       break; }
     case 'KeyN':
-      this.view.game.getLemmingManager()?.setSelectedLemming(null);
+      // selection cleared via keyboard no longer supported
       break;
     case 'Backquote':
-      this.view.game.getLemmingManager()?.cycleSelection(e.shiftKey ? -1 : 1);
+      // cycling lemming selection removed
       break;
     case 'Backslash':
       game.showDebug = !game.showDebug;

@@ -1,6 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
 import './KeyboardShortcuts.js';
+import { createCrosshairFrame } from './CrosshairCursor.js';
 
 class GameView extends Lemmings.BaseLogger {
   constructor() {
@@ -57,9 +58,8 @@ class GameView extends Lemmings.BaseLogger {
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
-      // The stage previously set a custom cursor sprite here, but we now keep
-      // the system cursor visible so no sprite is loaded.
-      // game.gameResources.getCursorSprite().then(f => this.stage.setCursorSprite(f));
+      // Display a custom crosshair cursor sized relative to a lemming
+      this.stage.setCursorSprite(createCrosshairFrame(24));
       game.start();
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
@@ -145,7 +145,16 @@ class GameView extends Lemmings.BaseLogger {
     if (this.game == null) {
       return;
     }
-    this.game.getGameTimer().tick();
+    this.game.getGameTimer().tick(1);
+    this.game.render();
+  }
+
+  prevFrame() {
+    if (this.game == null) {
+      return;
+    }
+    this.game.getGameTimer().tick(-1);
+    this.game.render();
   }
 
   selectSpeedFactor(newSpeed) {
