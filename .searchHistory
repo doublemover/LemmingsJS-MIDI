@@ -79,3 +79,16 @@
 {"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
 {"time":"2025-06-06T16:30:16.514Z","query":"parseNumber","mdFiles":18,"codeFiles":56,"ms":193}
+{"time":"2025-06-06T16:27:27.923Z","query":"SkillPanelSprites","mdFiles":29,"codeFiles":83,"ms":315}
+{"time":"2025-06-06T16:27:31.352Z","query":"SkillPanelSprite","mdFiles":29,"codeFiles":83,"ms":475}
+{"time":"2025-06-06T16:27:44.914Z","query":"new Frame","mdFiles":22,"codeFiles":161,"ms":244}
+{"time":"2025-06-06T16:27:47.010Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":298}
+{"time":"2025-06-06T16:27:49.162Z","query":"Frame","mdFiles":11,"codeFiles":76,"ms":164}
+{"time":"2025-06-06T16:27:51.446Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":296}
+{"time":"2025-06-06T16:27:53.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":183}
+{"time":"2025-06-06T16:27:55.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":372}
+{"time":"2025-06-06T16:28:22.964Z","query":"UserInputManager dispose","mdFiles":26,"codeFiles":53,"ms":429}
+{"time":"2025-06-06T16:32:41.889Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":123}
+{"time":"2025-06-06T16:32:44.532Z","query":"stagePixW","mdFiles":12,"codeFiles":51,"ms":181}
+{"time":"2025-06-06T16:32:48.902Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":144}
+{"time":"2025-06-06T16:32:52.070Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":350}
