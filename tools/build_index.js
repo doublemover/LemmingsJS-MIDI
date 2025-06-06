@@ -1,144 +1,148 @@
 #!/usr/bin/env node
 /**
- * scripts/build_index.js
- * ----------------------------------------------------
- * Build a local TF-IDF search index that is **bit-for-bit
- * identical** across Windows, Linux, or macOS.
+ * build_index.js — Pure‑JavaScript compact index builder
+ * ======================================================
  *
- * Usage:
- *   node scripts/build_index.js --root . --out embeddings.json --chunk 750
+ * Outputs (repo root):
+ *   · sparse_postings.json      – BM25 inverted lists (gap‑encoded)
+ *   · dense_vectors_uint8.json  – 128‑dim int‑8 vectors (LSI)
+ *   · chunk_meta.json           – id → file/start/end
+ *
+ * Tailored for JavaScript:
+ *   · CamelCase + dot‑path splitting
+ *   · Porter stemming, uni + bigram
+ *
+ * No native addons, no Python: SVD via ml‑matrix (pure JS).
+ *
+ * Dependencies:
+ *   npm i ml-matrix snowball-stemmers minimist pretty-bytes
  */
-
 import fs from 'node:fs/promises';
 import path from 'node:path';
+import minimist from 'minimist';
+import Snowball from 'snowball-stemmers';
+import prettyBytes from 'pretty-bytes';
+import { Matrix, SVD } from 'ml-matrix';
 
-// ---------- CLI args ----------
-const args = Object.fromEntries(
-  process.argv.slice(2)
-    .filter(a => a.startsWith('--'))
-    .map(a => a.slice(2).split('='))               // ['root', '.']
-);
-const ROOT       = args.root  || '.';
-const OUT        = args.out   || 'embeddings.json';
-const CHUNK_SIZE = Number(args.chunk) || 750;
+// ----- CLI & constants -----
+const argv = minimist(process.argv.slice(2), { default:{ chunk:750 } });
+const CHUNK = Number(argv.chunk);
+const ROOT  = argv.root || '.';
+const DIMS  = 128;
+const VALID_EXT=/\.(jsx?|tsx?|mjs|cjs|json|md|txt|html|css)$/i;
+const SKIP=new Set(['node_modules','.git', 'img', '.github', 'dist','coverage','exports','.github', 'lemmings', 'lemmings_all', 'lemmings_ohNo', 'xmas91', 'xmas92', 'holiday93', 'holiday94']);
 
-// ---------- Config ----------
-const VALID_EXT = /\.(js|ts|jsx|tsx|mjs|cjs|json|md|txt|html|css)$/i;
-const SKIP_DIRS = new Set([
-  'node_modules', '.git', '.idea', 'dist', 'coverage',
-  '.agentInfo', '.github'
-]);
+// ----- Tokeniser -----
+const stemmer=Snowball.newStemmer('english');
+const stem=w=>stemmer.stem(w);
+const splitCamel=s=>s.replace(/([a-z])([A-Z])/g,'$1 $2');
+const tokenize=txt=>splitCamel(txt.replace(/\./g,' '))
+  .toLowerCase().split(/[^a-z0-9_]+/u).filter(Boolean);
 
-// ---------- Data holders ----------
-const df       = new Map();      // token → document frequency
-const chunks   = [];             // {file,start,end,tokens}
-const allWords = new Set();      // collect tokens for deterministic vocab
-let chunkId    = 0;
-
-// ---------- Helpers ----------
-const tokenize = txt =>
-  txt.toLowerCase().split(/[^a-z0-9_]+/u).filter(Boolean);
-
-/** POSIX-style relative path (src/foo.js) regardless of OS */
-const relPosix = abs =>
-  path.relative(ROOT, abs).split(path.sep).join('/');
-
-/** Recursively walk directory in **sorted** order for determinism */
-async function walk(dir) {
-  const entries = (await fs.readdir(dir, { withFileTypes: true }))
-                      .sort((a, b) => a.name.localeCompare(b.name, 'en'));
-
-  for (const entry of entries) {
-    const full = path.join(dir, entry.name);
-
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) await walk(full);
-      continue;
-    }
-
-    if (!VALID_EXT.test(entry.name)) continue;
-
-    const data  = await fs.readFile(full, 'utf8');
-    const words = tokenize(data);
-
-    for (let i = 0; i < words.length; i += CHUNK_SIZE) {
-      const slice   = words.slice(i, i + CHUNK_SIZE);
-      const tfLocal = new Map();
-
-      slice.forEach(w => tfLocal.set(w, (tfLocal.get(w) || 0) + 1));
-
-      // doc-frequency & global vocab
-      new Set(slice).forEach(tok => {
-        df.set(tok, (df.get(tok) || 0) + 1);
-        allWords.add(tok);
-      });
-
-      chunks.push({
-        id: chunkId++,
-        file: relPosix(full),
-        start: i,
-        end: Math.min(i + CHUNK_SIZE, words.length),
-        tokens: tfLocal            // temp – converted later
-      });
+// ----- Quick estimate -----
+let totalBytes=0,fileCountEst=0;
+async function quick(dir){
+  for(const e of await fs.readdir(dir,{withFileTypes:true})){
+    const abs=path.join(dir,e.name);
+    if(e.isDirectory()){
+      if(!SKIP.has(e.name)) await quick(abs);
+    } else if(VALID_EXT.test(e.name)){
+      totalBytes += (await fs.stat(abs)).size;
+      fileCountEst++;
     }
   }
 }
+await quick(path.resolve(ROOT));
+const tokenEst=Math.round(totalBytes/5);
+const chunkEst=Math.round(tokenEst/CHUNK);
+const vocabEst=Math.round(tokenEst*0.15);
+console.log(`⚡ Est: files ${fileCountEst}, tokens ${tokenEst.toLocaleString()}, chunks ${chunkEst}, vocab ~${vocabEst}`);
 
-// ---------- Build deterministic vocab ----------
-function buildVocab() {
-  return Array.from(allWords).sort();              // α-order
-}
+// ----- Build data -----
+const df=new Map();
+const chunks=[];
+let fileCt=0,tokens=0;
 
-// ---------- Vector builder ----------
-function vectorise(tfMap, vocab, numDocs) {
-  const vec = new Float32Array(vocab.length);
-  let norm = 0;
+function rel(p){return path.relative(ROOT,p).split(path.sep).join('/');}
 
-  for (const [tok, tf] of tfMap) {
-    const idx = vocab.indexOf(tok);                // O(v) but small tfMap
-    if (idx === -1) continue;
-    const idf = Math.log((numDocs + 1) / ((df.get(tok) || 0) + 1)) + 1;
-    const val = tf * idf;
-    vec[idx] = val;
-    norm += val * val;
+async function scan(dir){
+  const entries=(await fs.readdir(dir,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name));
+  for(const e of entries){
+    const abs=path.join(dir,e.name);
+    if(e.isDirectory()){
+      if(!SKIP.has(e.name)) await scan(abs);
+    } else if(VALID_EXT.test(e.name)){
+      await handle(abs);
+      if(++fileCt%50===0) process.stdout.write(`\r📄  ${fileCt} files…`);
+    }
   }
-  norm = Math.sqrt(norm) || 1;
-  for (let i = 0; i < vec.length; i++) vec[i] /= norm;
-  return Array.from(vec);                          // serialisable
+}
+async function handle(abs){
+  const words=tokenize(await fs.readFile(abs,'utf8'));
+  for(let off=0; off<words.length; off+=CHUNK){
+    const slice=words.slice(off,off+CHUNK);
+    const grams=[];
+    for(let i=0;i<slice.length;i++){
+      const a=stem(slice[i]);
+      grams.push(a);
+      if(i<slice.length-1) grams.push(a+'_'+stem(slice[i+1]));
+    }
+    const tf=new Map();
+    grams.forEach(t=>tf.set(t,(tf.get(t)||0)+1));
+    new Set(grams).forEach(t=>df.set(t,(df.get(t)||0)+1));
+    chunks.push({file:abs,start:off,len:grams.length,tf});
+    tokens += grams.length;
+  }
 }
 
-// ---------- MAIN ----------
-(async () => {
-  console.time('build-index');
-  await walk(path.resolve(ROOT));
+await scan(path.resolve(ROOT));
+console.log(`\n📚 Parsed ${fileCt} files → ${chunks.length} chunks`);
 
-  const vocab = buildVocab();
-  const numDocs = chunks.length;
+// ----- Build inverted & dense -----
+const vocab=Array.from(df.keys()).sort();
+const vmap=new Map(vocab.map((t,i)=>[t,i]));
+const rows=chunks.length, cols=vocab.length;
+const avgLen=tokens/rows;
 
-  const finished = chunks
-    .map(c => ({
-      id: c.id,
-      file: c.file,
-      start: c.start,
-      end: c.end,
-      vector: vectorise(c.tokens, vocab, numDocs)
-    }))
-    .sort((a, b) =>
-      a.file === b.file ? a.start - b.start
-                        : a.file.localeCompare(b.file, 'en')
-    );
+const BM=Matrix.zeros(rows,cols);
+const postings=Array.from({length:cols},()=>[]);
+const k1=1.5,b=0.75,N=rows;
 
-  const out = {
-    numDocs,
-    vocab: Object.fromEntries(vocab.map((t, i) => [t, i])),
-    chunks: finished
-  };
+chunks.forEach((c,r)=>{
+  c.tf.forEach((freq,tok)=>{
+    const col=vmap.get(tok);
+    postings[col].push(r);
+    const idf=Math.log((N-df.get(tok)+0.5)/(df.get(tok)+0.5)+1);
+    BM.set(r,col, idf*((freq*(k1+1))/(freq+k1*(1-b+b*(c.len/avgLen)))));
+  });
+  if(r%Math.ceil(rows/10)===0) process.stdout.write(`\r⚙️  BM25 ${(r/rows*100).toFixed(0)}%…`);
+});
+console.log('\r⚙️  BM25 100%   ');
 
-  await fs.writeFile(
-    OUT,
-    JSON.stringify(out, null, 0) + '\n',          // final \n for git diff
-    'utf8'
-  );
-  console.timeEnd('build-index');
-  console.log(`Wrote ${numDocs} chunks → ${OUT}`);
-})();
+// ----- SVD -------------
+console.log('⚙️  SVD (128‑D, JS)…');
+const svd=new SVD(BM,{autoTranspose:true});
+const U=svd.leftSingularVectors.subMatrix(0,rows-1,0,DIMS-1);
+const S=Matrix.diag(svd.diagonal.slice(0,DIMS));
+const dense=U.mmul(S);
+
+// ----- Quantise -------
+const SCALE=32;
+const qVec=[];
+dense.to2DArray().forEach((row,i)=>{
+  if(i%Math.ceil(rows/20)===0) process.stdout.write(`\r   quantise ${(i/rows*100).toFixed(0)}%…`);
+  qVec.push(row.map(v=>Math.max(0,Math.min(255,Math.round((v+8)*SCALE)))));
+});
+console.log('\r   quantise 100%   ');
+
+// gap encode
+const gapPost=postings.map(list=>{
+  list.sort((a,b)=>a-b);
+  let prev=0; return list.map(id=>{const g=id-prev; prev=id; return g;});
+});
+
+// ----- Write files -----
+await fs.writeFile('sparse_postings.json', JSON.stringify({vocab,postings:gapPost})+'\n');
+await fs.writeFile('dense_vectors_uint8.json', JSON.stringify({dims:DIMS,scale:SCALE,vectors:qVec})+'\n');
+await fs.writeFile('chunk_meta.json', JSON.stringify(chunks.map((c,i)=>({id:i,file:rel(c.file),start:c.start,end:c.start+CHUNK})))+'\n');
+console.log('🎉  compact index built (pure JS).');
