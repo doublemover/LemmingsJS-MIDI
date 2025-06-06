@@ -54,6 +54,8 @@ class GameGui {
     this._guiBound = this._guiLoop.bind(this);
     this._guiRafId        = 0;
 
+    this.smoothScroller = new Lemmings.SmoothScroller();
+
     this._nukeAfterCountdown = 0;
 
 
@@ -327,6 +329,11 @@ class GameGui {
     if (!this.display) {
       return;
     }
+    const ss = this.smoothScroller;
+    if (ss) {
+      ss.update();
+    }
+
     window.cancelAnimationFrame(this._guiRafId);
     this.render();
     this.display.redraw();
@@ -351,6 +358,7 @@ class GameGui {
     this._numEmptySprite = null;
     if (this.miniMap?.dispose) this.miniMap.dispose();
     this.miniMap = null;
+    this.smoothScroller = null;
 
   }
 
@@ -699,5 +707,70 @@ class GameGui {
   }
 }
 
+class SmoothScroller {
+  static minZoom = 0.25;
+  static maxZoom = 8;
+
+  constructor() {
+    this.velocity = 0;     // pixels/frame (or units/frame)
+    this.friction = 0.985;
+    this.minVelocity = 0.0001;
+    this._lastVelocity = 0;
+
+    this.onHasVelocity = new Lemmings.EventHandler();
+  }
+
+  hasVelocity() {
+    if (this.velocity < this.minVelocity || this.velocity == 0) {
+      return false;
+    }
+    return true;
+  }
+
+  // call this whenever a wheel event fires:
+  addImpulse(delta) {
+    if (delta == 0) {
+      console.log("error: trying to add 0 impulse")
+      return;
+    }
+    if (delta > 50) {
+      delta = 50;
+    }
+    if (delta < -50) {
+      delta = -50;
+    }
+
+    if (this.velocity+delta > 500) {
+      this.velocity = 500;
+      return;
+    }
+    if (this.velocity-delta < -500) {
+      this.velocity = -500;
+      return;
+    }
+
+    this.velocity += delta; 
+  }
+
+  update() {
+    // decay the velocity:
+    this.velocity = this.velocity * this.friction;
+
+
+    // stop if below threshold:
+    if (Math.abs(this.velocity) < this.minVelocity) {
+      this.velocity = 0;
+      if (this._lastVelocity != 0) {
+        this._lastVelocity = 0;
+        this.onHasVelocity.trigger(this.velocity);
+      }
+      return;
+    }
+    this._lastVelocity = this.velocity;
+    this.onHasVelocity.trigger(this.velocity);
+  }
+}
+
+Lemmings.SmoothScroller = SmoothScroller;
 Lemmings.GameGui = GameGui;
-export { GameGui };
+export { GameGui, SmoothScroller };
