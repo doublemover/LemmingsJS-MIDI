@@ -78,6 +78,8 @@
 {"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
 {"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
+{"time":"2025-06-06T20:47:34.006Z","query":"L2SS","mdFiles":0,"codeFiles":0,"ms":43}
+{"time":"2025-06-06T20:47:36.798Z","query":"l2ss","mdFiles":0,"codeFiles":0,"ms":30}
 {"time":"2025-06-06T16:07:35.621Z","query":"l2gfx","mdFiles":0,"codeFiles":0,"ms":82}
 {"time":"2025-06-06T16:07:37.410Z","query":"style","mdFiles":5,"codeFiles":8,"ms":122}
 {"time":"2025-06-06T16:07:39.581Z","query":"style","mdFiles":5,"codeFiles":8,"ms":76}
@@ -112,4 +114,11 @@
 {"time":"2025-06-06T17:35:50.310Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":118}
 {"time":"2025-06-06T17:42:52.743Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":38}
 {"time":"2025-06-06T17:42:56.088Z","query":"bench TPS","mdFiles":13,"codeFiles":10,"ms":268}
-
+{"time":"2025-06-06T21:06:55.008Z","query":"l2bitmap","mdFiles":0,"codeFiles":0,"ms":164}
+{"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
+{"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
+{"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
+{"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
+{"time":"2025-06-06T20:54:32.218Z","query":"scale 2","mdFiles":21,"codeFiles":151,"ms":638}
+{"time":"2025-06-06T21:41:09.905Z","query":"worldDataSize","mdFiles":27,"codeFiles":116,"ms":312}
+{"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}

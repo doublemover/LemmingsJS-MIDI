@@ -5,7 +5,7 @@ import {
   writeFileSync,
   mkdirSync,
   statSync,
-  unlinkSync,
+  unlinkSync
 } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -13,25 +13,49 @@ import { spawnSync } from 'node:child_process';
 const METRICS_FILE = path.join('.searchMetrics', 'metrics.json');
 mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
 
+function parseMetrics(data, label) {
+  data = (data || '').trim();
+  if (!data) return {};
+  try {
+    const parsed = JSON.parse(data);
+    return normalizeMetrics(parsed);
+  } catch {
+    const repaired = data
+      .replace(/[\r\n]+/g, '')
+      .replace(/\]\s*\[/g, ',');
+    try {
+      const parsed = JSON.parse(repaired);
+      return normalizeMetrics(parsed);
+    } catch {
+      if (label) console.warn(`Warning: unable to parse ${label} .searchMetrics`);
+      return {};
+    }
+  }
+}
+
+function normalizeMetrics(parsed) {
+  if (Array.isArray(parsed)) {
+    const flat = parsed.flat(Infinity);
+    return Object.assign({}, ...flat);
+  }
+  return parsed || {};
+}
+
 function loadMasterMetrics() {
   const res = spawnSync('git', ['show', `master:${METRICS_FILE}`], { encoding: 'utf8' });
   if (res.status !== 0) return {};
-  try {
-    return JSON.parse(res.stdout.trim() || '{}');
-  } catch {
-    console.warn('Warning: unable to parse master .searchMetrics');
-    return {};
-  }
+  return parseMetrics(res.stdout, 'master');
 }
 
 function loadLocalMetrics() {
   if (!existsSync(METRICS_FILE)) return {};
-  try {
-    return JSON.parse(readFileSync(METRICS_FILE, 'utf8'));
-  } catch {
+  const data = readFileSync(METRICS_FILE, 'utf8');
+  const parsed = parseMetrics(data, 'local');
+  if (Object.keys(parsed).length === 0 && data.trim()) {
     console.error('Local .searchMetrics is invalid JSON');
     process.exit(1);
   }
+  return parsed;
 }
 
 function mergeMetrics(base, extra) {
