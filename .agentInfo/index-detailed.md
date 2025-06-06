@@ -69,6 +69,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - The official "Supported Environments" page outlines where WebMIDI.js works:
 - **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
+- **replays, commands, doc**: [notes/replays.md](notes/replays.md) - docs/replays.md summarizes replay serialization and playback.
 - **vgagrx, groundxo, planar-bitmaps**: [notes/vgagrx-groundxo-format.md](notes/vgagrx-groundxo-format.md) - VGAGR and GROUND files store 4-bit planar bitmaps with a separate mask plane; loader does not use plane 4 for terrain.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
 - **l2ss, sprite-parsing, doc**: [notes/l2ss-cpp.md](notes/l2ss-cpp.md) - Summarizes `js/L2ssSpriteDecoder.js` and notes the repo still lacks a loader.
