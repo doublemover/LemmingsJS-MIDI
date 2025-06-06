@@ -25,6 +25,7 @@ gui-stage-tasks.md: todo
 initial.md: example
 keyboard-shortcuts.md: keyboard
 lemming-manager.md: lemming-manager
+l2-level-format.md: l2-level-format doc
 level-format.md: level-format doc
 level-loader.md: level-loading
 level-packs.md: level-packs resources doc
