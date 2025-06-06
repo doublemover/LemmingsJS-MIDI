@@ -270,8 +270,8 @@ class Stage {
     const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
     const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
-    const panelH = rawHUDH * scaleHUD;
-    const panelW = rawHUDW * scaleHUD;
+    const panelH = Math.trunc(rawHUDH * scaleHUD);
+    const panelW = Math.trunc(rawHUDW * scaleHUD);
     const gameH = stageH - panelH; // everything above the HUD
 
     // 1) The game area fills x=0..stageW, y=0..gameH
@@ -301,7 +301,7 @@ class Stage {
       // Compute world vs. viewport in world units
       const worldH = displayHeight;
       const worldW = displayWidth;
-      const viewH_world = gameH / scale;
+      const viewH_world = this.gameImgProps.height / scale;
       const viewW_world = stageW / scale;
 
       // Glue Y: bottom of level flush against HUD top
