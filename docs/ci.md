@@ -10,6 +10,9 @@ The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/t
     node-version: 20
 ```
 
+After checking out the repository, each workflow refreshes the `tools/` folder
+from `origin/master` so helper scripts are always up to date.
+
 The CI job performs the following steps:
 
 1. `npm install`
