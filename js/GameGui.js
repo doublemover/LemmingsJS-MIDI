@@ -730,7 +730,7 @@ class SmoothScroller {
   // call this whenever a wheel event fires:
   addImpulse(delta) {
     if (delta == 0) {
-      console.log("error: trying to add 0 impulse")
+      console.log('error: trying to add 0 impulse');
       return;
     }
     if (delta > 50) {

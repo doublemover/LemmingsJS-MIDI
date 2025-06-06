@@ -284,19 +284,19 @@ class UserInputManager {
         return;
       }
 
-// todo: integrate this properly, the velocity handlder needs to be bound once from gamgui when its initalized
-// 
-//     const smoothScroller = lemmings.game.gameGui.smoothScroller;
-//     if (smoothScroller) {
-//       smoothScroller.addImpulse(deltaY);
-//     }
-//     if (this.once == false) {
-//       this.once = true;
-//       smoothScroller.onHasVelocity.on((v) => {
-//           const zea = new ZoomEventArgs(position.x, position.y, v);
-//           zea.velocity = true;
-//           this.onZoom.trigger(zea);
-//       });
+      // todo: integrate this properly, the velocity handlder needs to be bound once from gamgui when its initalized
+      // 
+      //     const smoothScroller = lemmings.game.gameGui.smoothScroller;
+      //     if (smoothScroller) {
+      //       smoothScroller.addImpulse(deltaY);
+      //     }
+      //     if (this.once == false) {
+      //       this.once = true;
+      //       smoothScroller.onHasVelocity.on((v) => {
+      //           const zea = new ZoomEventArgs(position.x, position.y, v);
+      //           zea.velocity = true;
+      //           this.onZoom.trigger(zea);
+      //       });
 
     }
   }
