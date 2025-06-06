@@ -713,8 +713,8 @@ class SmoothScroller {
 
   constructor() {
     this.velocity = 0;     // pixels/frame (or units/frame)
-    this.friction = 0.985;
-    this.minVelocity = 0.0001;
+    this.friction = 0.99;
+    this.minVelocity = 0.7;       //0.0175;
     this._lastVelocity = 0;
 
     this.onHasVelocity = new Lemmings.EventHandler();

@@ -140,7 +140,7 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom);
+      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
     });
   }
 
@@ -164,7 +164,7 @@ class Stage {
    *   2) viewPoint.x −= worldDX
    *      viewPoint.y −= worldDY
    */
-  updateViewPoint(stageImage, argX, argY, deltaZoom) {
+  updateViewPoint(stageImage, argX, argY, deltaZoom, veloUpdate = false) {
     if (!stageImage || !stageImage.display) return;
 
     // ZOOM
@@ -180,7 +180,7 @@ class Stage {
       const sceneY_pre = stageImage.viewPoint.getSceneY(screenY_rel);
 
       // Compute new scale additively
-      const zoomSensitivity = 0.002; // smaller → slower zoom
+      const zoomSensitivity = 0.0001; // smaller → slower zoom
       let newScale = oldScale + deltaZoom * zoomSensitivity;
 
       // Clamp to [0.25, 8]
@@ -193,10 +193,11 @@ class Stage {
       newScale = this.snapScale(newScale);
       stageImage.viewPoint.scale = newScale;
 
-      // Recenter so (sceneX_pre,sceneY_pre) stays under cursor
-      stageImage.viewPoint.x = sceneX_pre - screenX_rel / newScale;
-      stageImage.viewPoint.y = sceneY_pre - screenY_rel / newScale;
-
+      //Recenter so (sceneX_pre,sceneY_pre) stays under cursor
+      if (!veloUpdate) {
+        stageImage.viewPoint.x = sceneX_pre - screenX_rel / newScale;
+        stageImage.viewPoint.y = sceneY_pre - screenY_rel / newScale;
+      }
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
       this.draw(stageImage, imgData);
@@ -204,16 +205,31 @@ class Stage {
       this.clear(this.guiImgProps);
       const guiImgData = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImgData);
-      return;
     }
-
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
-    const scale = stageImage.viewPoint.scale || 1;
+    const scale = stageImage.viewPoint.scale;
     const worldDX = argX / scale;
     const worldDY = argY / scale;
-    stageImage.viewPoint.x -= worldDX;
-    stageImage.viewPoint.y -= worldDY;
+    if (!veloUpdate) {
+      stageImage.viewPoint.x += worldDX;
+      stageImage.viewPoint.y += worldDY;
+    }
+
+    const gameH = stageImage.display.getHeight();
+    const gameW = stageImage.display.getWidth();
+    const winH = stageImage.height;
+    const winW = stageImage.width;
+    // viewH_world = viewport height in world units
+    const viewH_world = winH / scale;
+    const viewW_world = winW / scale;
+    // To glue bottom: viewPoint.y = worldH - viewH_world
+
+    if (!veloUpdate) {
+      stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y + worldDY), gameH-viewH_world);
+      // stageImage.viewPoint.x = Math.max(0, stageImage.viewPoint.x + worldDX)
+      stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x + worldDX), gameW-viewW_world)
+    }
 
     this.clear(stageImage);
     const imgData = stageImage.display.getImageData();
