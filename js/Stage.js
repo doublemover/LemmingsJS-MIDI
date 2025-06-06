@@ -208,16 +208,15 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
-    const scale = stageImage.viewPoint.scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
+    const scalePan = stageImage.viewPoint.scale;
+    const worldDX = argX / scalePan;
+    const worldDY = argY / scalePan;
     if (!veloUpdate) {
       stageImage.viewPoint.x += worldDX;
       stageImage.viewPoint.y += worldDY;
     }
 
-    // Now clamp or recenter viewPoint:
-    // Clamp Y so the camera never leaves the level vertically
+    // Clamp the viewPoint so the viewport never shows space outside the level
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
@@ -227,9 +226,9 @@ class Stage {
     const viewH_world = winH / scale;
     // Clamp Y within [0, worldH - viewH_world]
     stageImage.viewPoint.y = this.limitValue(
-      0,
+      worldH - viewH_world,
       stageImage.viewPoint.y,
-      worldH - viewH_world
+      0
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
@@ -238,26 +237,10 @@ class Stage {
     const viewW_world = winW / scale;
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
-    if (scale >= 2) {
-      // Clamp between [0 .. (worldW - viewW_world)]
-      stageImage.viewPoint.x = this.limitValue(
-        0,
-        stageImage.viewPoint.x,
-        worldW - viewW_world
-      );
-    } else {
-      // Center the level when zoomed out
-      if (worldW * scale < winW) {
-        const wDiff = winW - worldW * scale;
-        stageImage.viewPoint.x = -wDiff / (2 * scale);
-      } else {
-        // Still clamp if the level exceeds the viewport
-        stageImage.viewPoint.x = this.limitValue(
-          0,
-          stageImage.viewPoint.x,
-          worldW - viewW_world
-        );
-      }
+    if (!veloUpdate) {
+      stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y + worldDY), gameH-viewH_world);
+      // stageImage.viewPoint.x = Math.max(0, stageImage.viewPoint.x + worldDX)
+      stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x + worldDX), gameW-viewW_world);
     }
 
     this.clear(stageImage);
@@ -315,6 +298,8 @@ class Stage {
     }
 
     if (this.gameImgProps.display) {
+      const worldHDisp = this.gameImgProps.display.getHeight();
+      const worldWDisp = this.gameImgProps.display.getWidth();
       const worldH = this.gameImgProps.display.getHeight();
       const worldW = this.gameImgProps.display.getWidth();
 
@@ -475,9 +460,7 @@ class Stage {
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
-        setTimeout(() => {
-          if (!this.overlayTimer) this.overlayRect = null;
-        }, 0);
+        this.overlayRect = null;
       }
     }, 40);
   }

@@ -133,6 +133,8 @@ describe('UserInputManager', function() {
     expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
   });
 
+  });
+
   it('emits zoom events without stage set', function(done) {
     delete globalThis.lemmings.stage;
     const uim = new UserInputManager(element);
