@@ -1,6 +1,6 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 22,
+    "md": 26,
     "code": 0,
     "terms": [
       "rect",
@@ -13,93 +13,111 @@
       "bench",
       "ants",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/index.md": {
-    "md": 17,
+    "md": 21,
     "code": 0,
     "terms": [
       "rect",
       "marching",
       "bench",
       "ants",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/display-image.md": {
-    "md": 6,
+    "md": 10,
     "code": 0,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 6,
+    "md": 10,
     "code": 0,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/drawMarchingAntRect.md": {
-    "md": 7,
+    "md": 11,
     "code": 0,
     "terms": [
       "rect",
       "marching",
       "ants",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/game-display.md": {
-    "md": 7,
+    "md": 11,
     "code": 0,
     "terms": [
       "rect",
       "marching",
       "ants",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/game-view.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "rect",
-      "selection"
-    ]
-  },
-  ".agentInfo/notes/pause-overlay.md": {
-    "md": 15,
-    "code": 0,
-    "terms": [
-      "rect",
-      "bench",
-      "selection"
-    ]
-  },
-  "docs/nl-file-format.md": {
     "md": 9,
     "code": 0,
     "terms": [
       "rect",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  ".agentInfo/notes/pause-overlay.md": {
+    "md": 19,
+    "code": 0,
+    "terms": [
+      "rect",
+      "bench",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  "docs/nl-file-format.md": {
+    "md": 13,
+    "code": 0,
+    "terms": [
+      "rect",
       "x",
       "y",
       "if",
       "else",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/DisplayImage.js": {
     "md": 0,
-    "code": 12,
+    "code": 16,
     "terms": [
       "rect",
       "marching",
@@ -110,12 +128,14 @@
       "else",
       "ants",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/Stage.js": {
     "md": 0,
-    "code": 9,
+    "code": 13,
     "terms": [
       "rect",
       "x",
@@ -123,12 +143,14 @@
       "pos",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/GameGui.js": {
     "md": 0,
-    "code": 21,
+    "code": 25,
     "terms": [
       "rect",
       "marching",
@@ -139,24 +161,28 @@
       "bench",
       "ants",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/Level.js": {
     "md": 0,
-    "code": 8,
+    "code": 12,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/Frame.js": {
     "md": 0,
-    "code": 12,
+    "code": 16,
     "terms": [
       "rect",
       "marching",
@@ -167,24 +193,28 @@
       "else",
       "ants",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/GameDisplay.js": {
     "md": 0,
-    "code": 8,
+    "code": 12,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/GameTimer.js": {
     "md": 0,
-    "code": 18,
+    "code": 22,
     "terms": [
       "rect",
       "x",
@@ -192,12 +222,14 @@
       "if",
       "else",
       "bench",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/GameView.js": {
     "md": 0,
-    "code": 19,
+    "code": 23,
     "terms": [
       "rect",
       "x",
@@ -206,12 +238,14 @@
       "else",
       "spawn",
       "bench",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/MiniMap.js": {
     "md": 0,
-    "code": 10,
+    "code": 14,
     "terms": [
       "rect",
       "marching",
@@ -220,36 +254,42 @@
       "if",
       "else",
       "ants",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/Trigger.js": {
     "md": 0,
-    "code": 8,
+    "code": 12,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/TriggerManager.js": {
     "md": 0,
-    "code": 8,
+    "code": 12,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "js/UserInputManager.js": {
     "md": 0,
-    "code": 9,
+    "code": 13,
     "terms": [
       "rect",
       "x",
@@ -257,140 +297,168 @@
       "pos",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/displayimage.test.js": {
     "md": 0,
-    "code": 7,
+    "code": 11,
     "terms": [
       "rect",
       "x",
       "y",
       "line",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/gameview.suspendWithColor.test.js": {
     "md": 0,
-    "code": 16,
+    "code": 20,
     "terms": [
       "rect",
       "x",
       "y",
       "bench",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/gameview.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
       "rect",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/geometry.test.js": {
     "md": 0,
-    "code": 7,
+    "code": 11,
     "terms": [
       "rect",
       "x",
       "y",
       "pos",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/minimap.test.js": {
     "md": 0,
-    "code": 8,
+    "code": 12,
     "terms": [
       "rect",
       "x",
       "y",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/rectangle.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
       "rect",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/stage.overlayfade.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 10,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/stage.test.js": {
     "md": 0,
-    "code": 7,
+    "code": 11,
     "terms": [
       "rect",
       "x",
       "y",
       "pos",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/stage.updateStageSize.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 10,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/stage.updateviewpoint.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 10,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/stageimageprops.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
       "rect",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/trigger.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
       "rect",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/triggermanager.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 10,
     "terms": [
       "rect",
       "x",
       "y",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   "test/userinput.test.js": {
     "md": 0,
-    "code": 9,
+    "code": 13,
     "terms": [
       "rect",
       "x",
@@ -398,11 +466,13 @@
       "pos",
       "if",
       "else",
-      "selection"
+      "selection",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/game-gui.md": {
-    "md": 6,
+    "md": 10,
     "code": 0,
     "terms": [
       "marching",
@@ -412,26 +482,34 @@
       "else",
       "ants",
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/level-reader.md": {
-    "md": 1,
+    "md": 5,
     "code": 0,
     "terms": [
       "x",
-      "y"
+      "y",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "docs/level-file-format.md": {
-    "md": 4,
+    "md": 8,
     "code": 0,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "README.md": {
@@ -450,11 +528,14 @@
     ]
   },
   ".agentInfo/notes/trigger-manager.md": {
-    "md": 1,
+    "md": 5,
     "code": 0,
     "terms": [
       "x",
-      "y"
+      "y",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/LemmingManager.js": {
@@ -484,25 +565,31 @@
   },
   "js/ParticleTable.js": {
     "md": 0,
-    "code": 4,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else"
-    ]
-  },
-  "js/xbrz/xbrz.js": {
-    "md": 0,
-    "code": 5,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
       "else",
-      "line"
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "js/xbrz/xbrz.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "line",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/SkillPanelSprites.js": {
@@ -515,35 +602,43 @@
   },
   "js/KeyboardShortcuts.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   "js/LevelReader.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/Lemming.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/LemmingsSprite.js": {
@@ -559,23 +654,29 @@
   },
   "tools/exportAllSprites.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "fileformat.txt": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionBashSystem.js": {
@@ -630,13 +731,16 @@
   },
   "js/LevelWriter.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/Mask.js": {
@@ -699,42 +803,54 @@
   },
   "js/ActionDrowningSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionFryingSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionJumpSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionOhNoSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/GroundReader.js": {
@@ -750,12 +866,15 @@
   },
   "js/GroundRenderer.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "test/bench-speed-adjust.test.js": {
@@ -769,14 +888,16 @@
   },
   "test/gamedisplay.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   "test/getNearestLemming.test.js": {
@@ -790,12 +911,15 @@
   },
   "test/groundrenderer.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "test/lemming.test.js": {
@@ -827,22 +951,28 @@
   },
   "js/ActionExplodingSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionHoistSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ViewPoint.js": {
@@ -863,42 +993,54 @@
   },
   "js/ActionBaseSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionCountdownSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionFallSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionFloatingSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionMineSystem.js": {
@@ -913,12 +1055,15 @@
   },
   "js/ActionSplatterSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/LevelElement.js": {
@@ -931,13 +1076,16 @@
   },
   "js/MapObject.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
       "else",
-      "spawn"
+      "spawn",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/MaskList.js": {
@@ -952,21 +1100,27 @@
   },
   "js/ObjectManager.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
       "x",
-      "y"
+      "y",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/PaletteImage.js": {
     "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/Position2D.js": {
@@ -1003,14 +1157,17 @@
   },
   "js/VGASpecReader.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
       "else",
-      "line"
+      "line",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "test/gametimer.test.js": {
@@ -1026,10 +1183,13 @@
   },
   "test/levelwriter.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
       "x",
-      "y"
+      "y",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "test/range.test.js": {
@@ -1052,12 +1212,15 @@
   },
   "tools/exportGroundImages.js": {
     "md": 0,
-    "code": 3,
+    "code": 7,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "tools/exportPanelSprite.js": {
@@ -1260,13 +1423,15 @@
     ]
   },
   ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 3,
+    "md": 7,
     "code": 0,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   ".agentInfo/notes/note-review.md": {
@@ -1338,10 +1503,13 @@
   },
   "test/exportScripts.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 6,
     "terms": [
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "index.html": {
@@ -1486,18 +1654,24 @@
   },
   "js/ActionExitingSystem.js": {
     "md": 0,
-    "code": 2,
+    "code": 6,
     "terms": [
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/ActionShrugSystem.js": {
     "md": 0,
-    "code": 2,
+    "code": 6,
     "terms": [
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/CommandLemmingsAction.js": {
@@ -1536,10 +1710,13 @@
   },
   "js/DrawProperties.js": {
     "md": 0,
-    "code": 2,
+    "code": 6,
     "terms": [
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/EventHandler.js": {
@@ -1627,10 +1804,13 @@
   },
   "test/tools/exportGroundImages.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 6,
     "terms": [
       "if",
-      "else"
+      "else",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "tools/cleanExports.js": {
@@ -1798,23 +1978,32 @@
   },
   "js/xbrz/scalers/Scaler2x.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
-      "line"
+      "line",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/xbrz/scalers/Scaler3x.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
-      "line"
+      "line",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   "js/xbrz/scalers/Scaler4x.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
-      "line"
+      "line",
+      "draw",
+      "corner",
+      "rect"
     ]
   },
   ".agentInfo/notes/game.md": {
@@ -1835,10 +2024,12 @@
   },
   "test/keyboardshortcuts.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   "css/game.css": {
@@ -1851,10 +2042,12 @@
   },
   "js/LemmingsBootstrap.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "draw",
+      "corner"
     ]
   },
   "test/commandselectskill.test.js": {
@@ -1862,6 +2055,69 @@
     "code": 1,
     "terms": [
       "selection",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/ground-renderer.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/stage.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "test/exportLemmingsSprites.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "test/frame.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "test/gameresources.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "test/levelreader.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "draw",
+      "corner",
+      "rect"
+    ]
+  },
+  "test/tools/exportAllSprites.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "draw",
+      "corner",
       "rect"
     ]
   }

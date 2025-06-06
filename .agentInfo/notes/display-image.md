@@ -10,4 +10,4 @@ The method `initSize(width, height)` (re)allocates this `ImageData` and buffer. 
 
 GameDisplay highlights lemmings with dashed outlines. Hover uses a dark grey rectangle while the selected lemming gets a brighter green (`0xFF30FF30`). Both use `drawDashedRect` with 1 px dashes and sit slightly above the feet. A redundant skill switches the selection outline to yellow (`0xFFFFFF00`).
 
-`drawCornerRect(x, y, size, r, g, b, cornerSize = 2)` paints filled corner squares. The optional `cornerSize` lets callers use larger corners, such as the 3 px squares on hover.
+`drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corner marks. The `length` parameter controls the size of the corner arms while `midLine` and `midLen` can add centered side lines. GameDisplay uses the defaults so only the corners are drawn.
