@@ -56,3 +56,4 @@ third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
 l2bitmap-cpp.md: lemmings2 file-format bitmap
+l2-save-format.md: l2-save doc todo
