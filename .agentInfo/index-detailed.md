@@ -68,4 +68,5 @@ This expanded listing preserves the original bullet format with short descriptio
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
 - **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.
+- **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
