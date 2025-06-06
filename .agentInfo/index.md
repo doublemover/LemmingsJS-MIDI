@@ -16,6 +16,7 @@ draw-corner-rect.md: canvas
 drawMarchingAntRect.md: ui
 easing-functions.md: easing animation
 file-container.md: file-container
+display-image.md: display canvas scaling image
 game-display.md: display
 game-gui.md: gui
 game-resources.md: resources
@@ -63,7 +64,6 @@ vgaspecx-format.md: vgaspecx compression palette doc todo
 revolution-box-format.md: revolution-box archives
 dat-source.md: dat-source compression cpp
 l2ss-overview.md: l2ss sprite-chunks doc
-l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2-save-format.md: l2 savegame doc
