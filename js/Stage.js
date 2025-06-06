@@ -167,6 +167,9 @@ class Stage {
   updateViewPoint(stageImage, argX, argY, deltaZoom, veloUpdate = false) {
     if (!stageImage || !stageImage.display) return;
 
+    const worldW = stageImage.display.getWidth ? stageImage.display.getWidth() : stageImage.width;
+    const worldH = stageImage.display.getHeight ? stageImage.display.getHeight() : stageImage.height;
+
     // ZOOM
     if (deltaZoom !== 0) {
       const oldScale = stageImage.viewPoint.scale || 1;
