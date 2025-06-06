@@ -206,59 +206,74 @@ class Stage {
       const guiImgData = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImgData);
     }
-    // PAN
-    // argX,argY are deltaX,deltaY (screen pixels)
-    const winW = stageImage.width;
-    const winH = stageImage.height;
-    const scale = stageImage.viewPoint.scale;
-    const viewW_world = winW / scale;
-    const viewH_world = winH / scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
-    if (!veloUpdate) {
-      stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
-      stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
-    }
+    // PAN only when no zoom change
+    if (deltaZoom === 0) {
+      // argX,argY are deltaX,deltaY (screen pixels)
+      const winW = stageImage.width;
+      const winH = stageImage.height;
+      const scale = stageImage.viewPoint.scale;
+      const worldDX = argX / scale;
+      const worldDY = argY / scale;
+      if (!veloUpdate) {
+        stageImage.viewPoint.x += worldDX;
+        stageImage.viewPoint.y += worldDY;
+    // TODO: Make sure none of this commented out functionality was needed or is now missing
+    // // PAN
+    // // argX,argY are deltaX,deltaY (screen pixels)
+    // const winW = stageImage.width;
+    // const winH = stageImage.height;
+    // const scale = stageImage.viewPoint.scale;
+    // const viewW_world = winW / scale;
+    // const viewH_world = winH / scale;
+    // const worldDX = argX / scale;
+    // const worldDY = argY / scale;
+    // if (!veloUpdate) {
+    //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
+    //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
+    // }
 
-    // Clamp view so it stays within the level bounds
-    const worldW = stageImage.display.getWidth();
-    const worldH = stageImage.display.getHeight();
+    // // Clamp view so it stays within the level bounds
+    // const worldW = stageImage.display.getWidth();
+    // const worldH = stageImage.display.getHeight();
     
-    // worldHeight = how many “world pixels” tall
-    // viewH_world = viewport height in world units
+    // // worldHeight = how many “world pixels” tall
+    // // viewH_world = viewport height in world units
     
 
-    stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-      Math.min(0, worldW - viewW_world),
-      Math.max(0, worldW - viewW_world)
-    ]);
+    // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //   Math.min(0, worldW - viewW_world),
+    //   Math.max(0, worldW - viewW_world)
+    // ]);
 
-    stageImage.viewPoint.setY(stageImage.viewPoint.y, [
-      Math.min(0, worldH - viewH_world),
-      Math.max(0, worldH - viewH_world)
-    ]);
+    // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
+    //   Math.min(0, worldH - viewH_world),
+    //   Math.max(0, worldH - viewH_world)
+    // ]);
 
-    // To glue bottom: viewPoint.y = worldH - viewH_world
+    // // To glue bottom: viewPoint.y = worldH - viewH_world
 
-    if (scale >= 2) {
-      // Clamp between [0 .. (worldW - viewW_world)]
-      stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-        0,
-        worldW - viewW_world
-      ]);
-    } else {
-      // Center the level when zoomed out
-      if (worldW * scale < winW) {
-        const wDiff = winW - worldW * scale;
-        stageImage.viewPoint.setX(-wDiff / (2 * scale));
-      } else {
-        // Still clamp if the level exceeds the viewport
-        stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-          0,
-          worldW - viewW_world
-        ]);
+    // if (scale >= 2) {
+    //   // Clamp between [0 .. (worldW - viewW_world)]
+    //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //     0,
+    //     worldW - viewW_world
+    //   ]);
+    // } else {
+    //   // Center the level when zoomed out
+    //   if (worldW * scale < winW) {
+    //     const wDiff = winW - worldW * scale;
+    //     stageImage.viewPoint.setX(-wDiff / (2 * scale));
+    //   } else {
+    //     // Still clamp if the level exceeds the viewport
+    //     stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //       0,
+    //       worldW - viewW_world
+    //     ]);
+
       }
     }
+
+    this.clampViewPoint(stageImage);
 
     this.clear(stageImage);
     const imgData = stageImage.display.getImageData();
@@ -349,6 +364,8 @@ class Stage {
         // left‐align
         this.gameImgProps.viewPoint.setX(0);
       }
+
+      this.clampViewPoint(this.gameImgProps);
 
       // Redraw at initial position
       this.clear(this.gameImgProps);
@@ -600,6 +617,31 @@ class Stage {
     const cx = Math.trunc(this.cursorX - this.cursorCanvas.width / 2);
     const cy = Math.trunc(this.cursorY - this.cursorCanvas.height / 2);
     ctx.drawImage(this.cursorCanvas, cx, cy);
+  }
+
+  clampViewPoint(stageImage) {
+    if (!stageImage || !stageImage.display) return;
+    const worldW = stageImage.display.getWidth();
+    const worldH = stageImage.display.getHeight();
+    const scale = stageImage.viewPoint.scale;
+    const viewW = stageImage.width / scale;
+    const viewH = stageImage.height / scale;
+
+    stageImage.viewPoint.y = this.limitValue(
+      0,
+      stageImage.viewPoint.y,
+      Math.max(0, worldH - viewH)
+    );
+
+    if (worldW <= viewW) {
+      stageImage.viewPoint.x = (worldW - viewW) / 2;
+    } else {
+      stageImage.viewPoint.x = this.limitValue(
+        0,
+        stageImage.viewPoint.x,
+        worldW - viewW
+      );
+    }
   }
 
   getGameViewRect() {

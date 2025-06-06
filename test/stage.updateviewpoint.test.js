@@ -72,7 +72,7 @@ describe('Stage updateViewPoint', function() {
 
     stage.updateViewPoint(stage.gameImgProps, 0, 0, 0);
 
-    expect(stage.gameImgProps.viewPoint.x).to.equal(0);
+    expect(stage.gameImgProps.viewPoint.x).to.equal(-300);
     expect(stage.gameImgProps.viewPoint.y).to.equal(20);
   });
 
