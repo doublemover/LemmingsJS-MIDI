@@ -135,14 +135,28 @@ describe('UserInputManager', function() {
 
 });
 
-it('emits zoom events without stage set', function(done) {
-  delete globalThis.lemmings.stage;
-  const uim = new UserInputManager(element);
+it('emits zoom events with stage set', function(done) {
+  const canvas = createStubCanvas();
+  const stage = new Stage(canvas);
+  stage.clear = () => {};
+  stage.draw = () => {};
+  stage.getGameDisplay().initSize(1600, 1200);
+  globalThis.lemmings.stage = stage;
+
+  stage.gameImgProps.viewPoint.scale = 1;
+  stage._rawScale = 1;
+  stage.gameImgProps.viewPoint.x = 0;
+  stage.gameImgProps.viewPoint.y = 0;
+
+  const uim = stage.controller;
+  const oldScale = stage.gameImgProps.viewPoint.scale;
+
   uim.onZoom.on((e) => {
     try {
       expect(e.x).to.equal(25);
       expect(e.y).to.equal(75);
       expect(e.deltaZoom).to.equal(-20);
+      expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(oldScale);
       done();
     } catch (err) {
       done(err);
