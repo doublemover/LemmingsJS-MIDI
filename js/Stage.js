@@ -222,7 +222,6 @@ class Stage {
     const winW = stageImage.width;
     const winH = stageImage.height;
     // worldHeight = how many “world pixels” tall
-    const worldH = gameH;
     // viewH_world = viewport height in world units
     const viewH_world = winH / scale;
 
