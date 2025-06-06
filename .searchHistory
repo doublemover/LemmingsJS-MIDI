@@ -35,6 +35,7 @@
 {"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
 {"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
+{"time":"2025-06-06T08:17:28.599Z","query":"check-undefined","mdFiles":20,"codeFiles":22,"ms":73}
 {"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
 {"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
 {"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
@@ -51,3 +52,6 @@
 {"time":"2025-06-06T14:37:37.635Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":358}
 {"time":"2025-06-06T14:37:40.700Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":89}
 {"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
+{"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
+{"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
+{"time":"2025-06-06T14:48:04.770Z","query":"updateStageSize","mdFiles":27,"codeFiles":61,"ms":122}
