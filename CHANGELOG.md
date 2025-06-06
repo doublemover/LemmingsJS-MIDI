@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
 
+### Fixed
+- Zoom near the level origin now centers on the pointer instead of the
+  upper-left corner.
+
 ### Changed
 - Project now requires Node.js 16+ (tests use Node 18 in CI).
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
