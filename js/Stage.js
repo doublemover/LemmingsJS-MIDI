@@ -210,6 +210,8 @@ class Stage {
     // argX,argY are deltaX,deltaY (screen pixels)
     const winW = stageImage.width;
     const winH = stageImage.height;
+    const worldW = stageImage.display.getWidth();
+    const worldH = stageImage.display.getHeight();
     const scale = stageImage.viewPoint.scale;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;

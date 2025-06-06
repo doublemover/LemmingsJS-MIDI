@@ -73,6 +73,8 @@ class GameTimer {
     }
   }
 
+  get frameTime() { return this.#frameTime; }
+
   #updateFrameTime() {
     this.#frameTime = this.TIME_PER_FRAME_MS / this.#speedFactor;
   }
@@ -205,6 +207,7 @@ class GameTimer {
 
     const diff = this.#speedFactor - oldSpeed;
     if (diff !== 0) {
+      this.#updateFrameTime();
       const intensity = Math.min(Math.abs(diff) / 5, 1);
       const color = diff > 0
         ? `rgba(0,255,0,${intensity})`
