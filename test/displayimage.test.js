@@ -3,7 +3,6 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import '../js/ViewPoint.js';
 import '../js/StageImageProperties.js';
-import { Stage } from '../js/Stage.js';
 import { DisplayImage, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
 import { Frame } from '../js/Frame.js';
 import '../js/ColorPalette.js';
@@ -43,15 +42,31 @@ class SimpleImageData {
   }
 }
 
+class StageStub {
+  constructor(canvas) {
+    this.stageCav = canvas;
+    this.gameImgProps = { display: null, viewPoint: new Lemmings.ViewPoint(0, 0, 1) };
+  }
+  createImage(_, w, h) {
+    return new SimpleImageData(w, h);
+  }
+  getGameDisplay() {
+    if (!this.gameImgProps.display) {
+      this.gameImgProps.display = new DisplayImage(this);
+    }
+    return this.gameImgProps.display;
+  }
+  dispose() {
+    this.gameImgProps.display = null;
+  }
+}
+
 describe('DisplayImage primitives', function() {
   let stage, display;
 
   beforeEach(function() {
     const canvas = createCanvasStub(8, 8);
-    stage = new Stage(canvas);
-    stage.createImage = function(d, w, h) {
-      return new SimpleImageData(w, h);
-    };
+    stage = new StageStub(canvas);
     display = stage.getGameDisplay();
     display.initSize(4, 4);
     display.clear(color32(0, 0, 0));
