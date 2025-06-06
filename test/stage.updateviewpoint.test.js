@@ -115,4 +115,99 @@ describe('Stage updateViewPoint', function() {
     expect(vp.y).to.be.at.least(Math.min(0, worldH - viewH));
     expect(vp.y).to.be.at.most(Math.max(0, worldH - viewH));
   });
+
+  it('preserves world coords at multiple cursor positions', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 1;
+    vp.x = 100;
+    vp.y = 80;
+
+    const positions = [
+      [50, 40],
+      [200, 100],
+      [750, 550]
+    ];
+
+    for (const [cx, cy] of positions) {
+      const preX = vp.getSceneX(cx - img.x);
+      const preY = vp.getSceneY(cy - img.y);
+
+      stage.updateViewPoint(img, cx, cy, 120);
+      let postX = vp.getSceneX(cx - img.x);
+      let postY = vp.getSceneY(cy - img.y);
+      expect(Math.abs(postX - preX)).to.be.at.most(1);
+      expect(Math.abs(postY - preY)).to.be.at.most(1);
+
+      const worldW = display.getWidth();
+      const worldH = display.getHeight();
+      const viewW = img.width / vp.scale;
+      const viewH = img.height / vp.scale;
+      expect(vp.x).to.be.at.least(0);
+      expect(vp.x).to.be.at.most(worldW - viewW);
+      expect(vp.y).to.be.at.least(0);
+      expect(vp.y).to.be.at.most(worldH - viewH);
+
+      stage.updateViewPoint(img, cx, cy, -120);
+      postX = vp.getSceneX(cx - img.x);
+      postY = vp.getSceneY(cy - img.y);
+      expect(Math.abs(postX - preX)).to.be.at.most(1);
+      expect(Math.abs(postY - preY)).to.be.at.most(1);
+
+      expect(vp.x).to.be.at.least(0);
+      expect(vp.x).to.be.at.most(worldW - viewW);
+      expect(vp.y).to.be.at.least(0);
+      expect(vp.y).to.be.at.most(worldH - viewH);
+    }
+  });
+
+  it('clamps viewpoint during repeated pan and zoom', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 2;
+
+    const checkClamp = () => {
+      const worldW = display.getWidth();
+      const worldH = display.getHeight();
+      const viewW = img.width / vp.scale;
+      const viewH = img.height / vp.scale;
+      expect(vp.x).to.be.at.least(0);
+      expect(vp.x).to.be.at.most(worldW - viewW);
+      expect(vp.y).to.be.at.least(0);
+      expect(vp.y).to.be.at.most(worldH - viewH);
+    };
+
+    for (let i = 0; i < 5; i++) {
+      stage.updateViewPoint(img, 100, 100, 120);
+      checkClamp();
+      stage.updateViewPoint(img, 100, 100, -120);
+      checkClamp();
+    }
+
+    for (let i = 0; i < 20; i++) {
+      stage.updateViewPoint(img, 30, 20, 0);
+      checkClamp();
+    }
+
+    for (let i = 0; i < 20; i++) {
+      stage.updateViewPoint(img, -30, -20, 0);
+      checkClamp();
+    }
+  });
 });
