@@ -30,6 +30,7 @@ level-loader.md: level-loading
 level-packs.md: level-packs resources doc
 level-reader.md: level-parsing
 level-writer.md: level-writing
+main-dat-format.md: main-dat doc
 mechanics-config.md: config
 mechanics-flags.md: mechanics
 nl-file-format.md: nl-file-format doc
