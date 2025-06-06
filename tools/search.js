@@ -476,7 +476,7 @@ const inc = (f, key) => {
 };
 mdHitsAll.forEach((h) => inc(h.file, 'md'));
 codeHitsAll.forEach((h) => inc(h.file, 'code'));
-await fs.writeFile(metricsPath, JSON.stringify(data, null, 2));
+await fs.writeFile(metricsPath, JSON.stringify(data) + '\n');
 
 await fs.appendFile(
   '.searchHistory',
