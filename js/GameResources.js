@@ -1,6 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
 import './Frame.js';
+import './FileContainer.js';
 
 class GameResources extends Lemmings.BaseLogger {
   constructor(fileProvider, config) {
