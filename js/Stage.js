@@ -232,7 +232,7 @@ class Stage {
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
-    const scale = stageImage.viewPoint.scale;
+    // reuse existing scale variable
     // worldHeight = how many “world pixels” tall
     const worldH = gameH;
     // viewH_world = viewport height in world units
@@ -245,7 +245,6 @@ class Stage {
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    const gameW = stageImage.display.getWidth();
     const winW = stageImage.width;
     const worldW = gameW;
     const viewW_world = winW / scale;
@@ -307,91 +306,24 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
-    const scaleHUD = this.guiImgProps.viewPoint.scale; // always = 2 by default
+    const scaleHUD = this.guiImgProps.viewPoint.scale;
     const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
     const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
     const panelH = Math.trunc(rawHUDH * scaleHUD);
     const panelW = Math.trunc(rawHUDW * scaleHUD);
-    const gameH = stageH - panelH; // everything above the HUD
+    const gameH = stageH - panelH;
 
-    // 1) The game area fills x=0..stageW, y=0..gameH
     this.gameImgProps.x = 0;
     this.gameImgProps.y = 0;
     this.gameImgProps.width = stageW;
     this.gameImgProps.height = gameH;
 
-    // 2) The HUD sits at bottom, height=panelH, width=panelW, centered horizontally
-    this.guiImgProps.y = gameH; // so the top of HUD = bottom of game area
+    this.guiImgProps.y = gameH;
     this.guiImgProps.height = panelH;
     this.guiImgProps.width = panelW;
     if (this.guiImgProps.display) {
       this.guiImgProps.x = (stageW - panelW) / 2;
-    }
-
-    if (this.gameImgProps.display) {
-      const worldH = this.gameImgProps.display.getHeight();
-      const worldW = this.gameImgProps.display.getWidth();
-
-
-      const startingScale = this.gameImgProps.viewPoint.scale || 2;
-      this._rawScale = startingScale;
-      this.gameImgProps.viewPoint.scale = this.snapScale(startingScale);
-
-      // Compute world vs. viewport in world units
-      const worldH = displayHeight;
-      const worldW = displayWidth;
-      const viewH_world = this.gameImgProps.height / scale;
-      const viewW_world = stageW / scale;
-
-
-      if (worldH === 0 || worldW === 0) {
-        // If the display is not yet sized, default to the origin
-        this.gameImgProps.viewPoint.x = 0;
-        this.gameImgProps.viewPoint.y = 0;
-      } else {
-      this.gameImgProps.viewPoint.y = worldH - viewH_world;
-
-      if (worldW * this.gameImgProps.viewPoint.scale <= stagePixW) {
-        this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
-      } else {
-        this.gameImgProps.viewPoint.x = 0;
-        this.gameImgProps.viewPoint.y = 0;
-      } else {
-        // Force scale to whatever it was (or default = 2 if unset)
-        const scale = this.gameImgProps.viewPoint.scale || 2;
-        this._rawScale = scale;
-        this.gameImgProps.viewPoint.scale = this.snapScale(scale);
-
-        // Compute world vs. viewport in world units
-        const worldH = displayHeight;
-        const worldW = displayWidth;
-        const viewH_world = gameH / scale;
-        const viewW_world = stageW / scale;
-
-        // Glue Y: bottom of level flush against HUD top
-        this.gameImgProps.viewPoint.y = worldH - viewH_world;
-
-        // For X: if level is already narrower than viewport at this scale,
-        // center it; otherwise, clamp to left edge.
-        if (worldW * scale <= stageW) {
-          // center
-          this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
-        } else {
-          // left‐align
-          this.gameImgProps.viewPoint.x = 0;
-        }
-      }
-
-      this.clear(this.gameImgProps);
-      const gameImg = this.gameImgProps.display.getImageData();
-      this.draw(this.gameImgProps, gameImg);
-    }
-
-    if (this.guiImgProps.display) {
-      this.clear(this.guiImgProps);
-      const guiImg = this.guiImgProps.display.getImageData();
-      this.draw(this.guiImgProps, guiImg);
     }
   }
 
