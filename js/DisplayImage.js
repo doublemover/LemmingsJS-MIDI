@@ -2,6 +2,8 @@
 import './LogHandler.js';
 import { Lemmings } from './LemmingsNamespace.js';
 import { scaleImage } from './xbrz/xbrz.js';
+import { hqxScale, initHqx } from './vendor/hqx/index.js';
+initHqx();
 
 // a simple but high quality 53-bit hash
 const cyrb53 = (str, seed = 0) => {
@@ -540,14 +542,75 @@ function scaleHqx(
   dstHeight,
   opts = {}
 ) {
-  // Placeholder HQX implementation using xBRZ scaler
+  const {
+    dest32,
+    destW,
+    destH,
+    baseX,
+    baseY,
+    nullColor32 = null,
+    checkGround = false,
+    onlyOverwrite = false,
+    noOverwrite = false,
+    upsideDown = false,
+    groundMask = null
+  } = opts;
+
+  if (!dest32) return;
+
   const { width: srcW, height: srcH } = frame;
   const scale = Math.round(dstWidth / srcW);
-  if (scale < 2 || scale > 3 || dstWidth !== srcW * scale || dstHeight !== srcH * scale) {
+  if (scale < 2 || scale > 4 || dstWidth !== srcW * scale || dstHeight !== srcH * scale) {
     scaleNearest(frame, dstWidth, dstHeight, opts);
     return;
   }
-  scaleXbrz(frame, dstWidth, dstHeight, opts);
+
+  const srcBuf = frame.getBuffer();
+  const srcMask = frame.getMask();
+  const temp = new Uint32Array(srcBuf.length);
+  for (let i = 0; i < srcBuf.length; i++) {
+    temp[i] = srcMask[i] ? srcBuf[i] : 0;
+  }
+
+  const scaled = hqxScale(temp, srcW, srcH, scale);
+
+  const scaledMask = new Uint8Array(dstWidth * dstHeight);
+  for (let dy = 0; dy < dstHeight; dy++) {
+    const sy = Math.floor(dy / scale);
+    const srcRow = sy * srcW;
+    const dstRow = dy * dstWidth;
+    for (let dx = 0; dx < dstWidth; dx++) {
+      const sx = Math.floor(dx / scale);
+      scaledMask[dstRow + dx] = srcMask[srcRow + sx];
+    }
+  }
+
+  for (let dy = 0; dy < dstHeight; dy++) {
+    const srcY = upsideDown ? dstHeight - 1 - dy : dy;
+    const outY = dy + baseY;
+    if (outY < 0 || outY >= destH) continue;
+
+    let srcRow = srcY * dstWidth;
+    let destRow = outY * destW + baseX;
+
+    for (let dx = 0; dx < dstWidth; dx++, srcRow++, destRow++) {
+      const outX = dx + baseX;
+      if (outX < 0 || outX >= destW) continue;
+
+      if (!scaledMask[srcRow]) {
+        if (nullColor32 !== null) dest32[destRow] = nullColor32;
+        continue;
+      }
+
+      if (checkGround) {
+        const hasGround = groundMask?.hasGroundAt(outX, outY);
+        if (noOverwrite && hasGround) continue;
+        if (onlyOverwrite && !hasGround) continue;
+      }
+
+      dest32[destRow] = scaled[srcRow];
+    }
+  }
 }
 
 function drawMarchingAntRect(
