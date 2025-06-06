@@ -67,3 +67,5 @@ This expanded listing preserves the original bullet format with short descriptio
 - **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
 
+
+- **replays, commands, doc**: [notes/replays.md](notes/replays.md) - docs/replays.md summarizes replay serialization and playback.
