@@ -39,3 +39,4 @@ The known bitmap archives and their palettes are:
 | `introdat/bckgrnds/cosyroom.dat` | `waking.iff` (ID 2) | 320×200 | |
 | `introdat/bckgrnds/nightvil.dat` | `intro.iff` (ID 2) | 320×200 | |
 | `introdat/bckgrnds/vilscene.dat` | `talis2.iff` (ID 2) | 320×200 | |
+
