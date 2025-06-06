@@ -20,6 +20,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md) - js/GroundRenderer.js builds the bitmap used as the level background. createGroundMap allocates a ...
 - **example, doc**: [notes/initial.md](notes/initial.md) - This sample note demonstrates the tagging system used in .agentInfo/.
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts hooks global key events and lets the player pan and zoom the gameplay view. Gam...
+- **l2, file-format, doc**: [notes/l2-guyperfect.md](notes/l2-guyperfect.md) - GuyPerfect's L2 file format notes covering compression, FORM archives and style resources.
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
