@@ -304,6 +304,8 @@ class DisplayImage extends Lemmings.BaseLogger {
 
     if (scaleMode === 'xbrz') {
       scaleXbrz(frame, dstW, dstH, scaleOpts);
+    } else if (scaleMode === 'hqx') {
+      scaleHqx(frame, dstW, dstH, scaleOpts);
     } else {
       scaleNearest(frame, dstW, dstH, scaleOpts);
     }
@@ -499,6 +501,22 @@ function scaleXbrz(
   }
 }
 
+function scaleHqx(
+  frame,
+  dstWidth,
+  dstHeight,
+  opts = {}
+) {
+  // Placeholder HQX implementation using xBRZ scaler
+  const { width: srcW, height: srcH } = frame;
+  const scale = Math.round(dstWidth / srcW);
+  if (scale < 2 || scale > 3 || dstWidth !== srcW * scale || dstHeight !== srcH * scale) {
+    scaleNearest(frame, dstWidth, dstHeight, opts);
+    return;
+  }
+  scaleXbrz(frame, dstWidth, dstHeight, opts);
+}
+
 function drawMarchingAntRect(
   display,
   x,
@@ -553,4 +571,5 @@ function drawDashedRect(
 Lemmings.drawMarchingAntRect = drawMarchingAntRect;
 Lemmings.drawDashedRect = drawDashedRect;
 Lemmings.scaleXbrz = scaleXbrz;
-export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleXbrz };
+Lemmings.scaleHqx = scaleHqx;
+export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleXbrz, scaleHqx };
