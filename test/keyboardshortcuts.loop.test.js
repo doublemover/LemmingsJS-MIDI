@@ -17,7 +17,8 @@ class StageStub {
       height: 100,
       display: {
         getWidth() { return 200; },
-        getHeight() { return 200; }
+        getHeight() { return 200; },
+        get worldDataSize() { return { width: 200, height: 200 }; }
       },
       viewPoint: { x: 0, y: 0, scale: 1 }
     };

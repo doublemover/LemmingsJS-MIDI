@@ -13,6 +13,7 @@ function createDisplay(width, height) {
     onMouseMove: new Lemmings.EventHandler(),
     getWidth() { return this.width; },
     getHeight() { return this.height; },
+    get worldDataSize() { return { width: this.width, height: this.height }; },
     drawFrame(frame, x, y) { this.drawFrameCalls.push({ frame, x, y }); },
     setScreenPosition(x, y) { this.lastScreenPosition = [x, y]; }
   };
@@ -53,7 +54,7 @@ function createLevel(width, height) {
 function makeStage(level, display) {
   return {
     getGameViewRect() {
-      return { x: level.screenPositionX, y: 0, w: display.getWidth(), h: display.getHeight() };
+      return { x: level.screenPositionX, y: 0, w: display.worldDataSize.width, h: display.worldDataSize.height };
     }
   };
 }
