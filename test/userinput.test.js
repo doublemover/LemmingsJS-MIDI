@@ -136,6 +136,7 @@ describe('UserInputManager', function() {
 });
 
 it('emits zoom events with stage set', function(done) {
+  global.document = createDocumentStub();
   const canvas = createStubCanvas();
   const stage = new Stage(canvas);
   stage.clear = () => {};
