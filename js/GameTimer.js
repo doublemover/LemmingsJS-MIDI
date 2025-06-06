@@ -66,6 +66,7 @@ class GameTimer {
   }
 
   get speedFactor() { return this.#speedFactor; }
+  get tps() { return 1000 / this.#frameTime; }
   set speedFactor(value) {
     if (value <= 0) return;
     if (this.#speedFactor === value) return;
@@ -127,6 +128,7 @@ class GameTimer {
     if (!this.isRunning()) return;
     window.cancelAnimationFrame(this.#rafId);
     this.#rafId = 0;
+    lemmings.tps = this.tps;
     const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
     if (gameSeconds > this.#lastGameSecond) {
       if (this.eachGameSecond) {
