@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **lemmings2, object-files**: [notes/l2-object-files.md](notes/l2-object-files.md) - Summary of guesses for Lemmings 2 object data; no parser implemented yet.
