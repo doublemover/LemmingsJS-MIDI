@@ -47,3 +47,8 @@
 {"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
 {"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
 {"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
+{"time":"2025-06-06T14:38:31.189Z","query":"CommandNuke","mdFiles":16,"codeFiles":21,"ms":223}
+{"time":"2025-06-06T14:38:33.888Z","query":"CommandLemmingsAction","mdFiles":36,"codeFiles":187,"ms":943}
+{"time":"2025-06-06T14:38:35.377Z","query":"CommandLemmingsAction","mdFiles":36,"codeFiles":187,"ms":554}
+{"time":"2025-06-06T14:38:38.320Z","query":"CommandReleaseRateIncrease","mdFiles":19,"codeFiles":31,"ms":428}
+{"time":"2025-06-06T14:38:40.436Z","query":"CommandReleaseRateDecrease","mdFiles":17,"codeFiles":30,"ms":233}
