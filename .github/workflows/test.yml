@@ -13,12 +13,12 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v4.2.2
+      - uses: actions/setup-node@v4.2.0
         with:
           node-version: 18
-      - uses: actions/download-artifact@v4
-        with: {name: build-cache}
-      - run: npm run check-undefined
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
       - run: npm run lint
       - run: npm test
