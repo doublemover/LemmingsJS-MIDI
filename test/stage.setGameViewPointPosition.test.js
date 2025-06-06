@@ -72,7 +72,7 @@ describe('Stage.setGameViewPointPosition', function() {
     const expectedScale = stage.snapScale(1.37);
     const expectedY = Math.max(
       0,
-      display.getHeight() - stage.gameImgProps.height / expectedScale
+      display.worldDataSize.height - stage.gameImgProps.height / expectedScale
     );
 
     expect(stage.gameImgProps.viewPoint.scale).to.equal(expectedScale);
