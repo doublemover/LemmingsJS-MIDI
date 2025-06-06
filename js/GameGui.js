@@ -408,8 +408,8 @@ class GameGui {
         }
         this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
       } else if (lemmings.bench == true && this.gameSpeedChanged) {
-        this.drawGreenString(d, ' L' + lemmings.laggedOut + '  ', 112, 0);
-        this.drawGreenString(d, ' T' + lemmings.steps + '  ', 0, 0);
+        this.drawGreenString(d, 'T' + lemmings.steps, 120, 0);
+        this.drawGreenString(d, 'TPS ' + Math.round(lemmings.tps), 152, 0);
       }
     }
 
