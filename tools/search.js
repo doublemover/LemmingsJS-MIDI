@@ -462,6 +462,7 @@ if (argv.stats) {
 /* ---------- Update .searchMetrics and .searchHistory ---------- */
 const metricsPath = path.join(ROOT, '.searchMetrics', 'metrics.json');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
+
 let data = {};
 try {
   data = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
@@ -480,7 +481,7 @@ codeHitsAll.forEach((h) => inc(h.file, 'code'));
 await fs.writeFile(metricsPath, JSON.stringify(data) + '\n');
 
 await fs.appendFile(
-  '.searchHistory',
+  path.join(metricsDir, 'searchHistory'),
   JSON.stringify({
     time: new Date().toISOString(),
     query,

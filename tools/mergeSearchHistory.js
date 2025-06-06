@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 import fs from 'fs';
+import path from 'path';
 import { fileURLToPath } from 'url';
 
 export function mergeSearchHistory(baseFile, targetFile) {
   if (!fs.existsSync(baseFile)) return;
-  if (!fs.existsSync(targetFile)) fs.writeFileSync(targetFile, '');
+  if (!fs.existsSync(targetFile)) {
+    fs.mkdirSync(path.dirname(targetFile), { recursive: true });
+    fs.writeFileSync(targetFile, '');
+  }
   const baseLines = fs.readFileSync(baseFile, 'utf8').split(/\r?\n/).filter(Boolean);
   const targetLines = fs.readFileSync(targetFile, 'utf8').split(/\r?\n/).filter(Boolean);
   const seen = new Set(targetLines);
@@ -20,6 +24,6 @@ export function mergeSearchHistory(baseFile, targetFile) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'base_history';
-  const dest = process.argv[3] || '.searchHistory';
+  const dest = process.argv[3] || '.searchMetrics/searchHistory';
   mergeSearchHistory(base, dest);
 }

@@ -15,6 +15,9 @@ quotes, and semicolons across the JavaScript codebase.
  - `.searchMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
  - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
  - Run `npm run agent-precommit` to update metrics and history and stage the results
+- `.searchMetrics/metrics.json` stores counters in compact JSON and
+  `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
+- `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
 
 ## Environment

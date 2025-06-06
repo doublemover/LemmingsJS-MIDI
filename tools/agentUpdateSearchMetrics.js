@@ -50,6 +50,10 @@ try {
   process.exit(1);
 }
 
+if (existsSync('.searchMetrics') && !statSync('.searchMetrics').isDirectory()) {
+  unlinkSync('.searchMetrics');
+}
+mkdirSync('.searchMetrics', { recursive: true });
 writeFileSync(METRICS_FILE, json + '\n');
 console.log('Updated .searchMetrics');
 
