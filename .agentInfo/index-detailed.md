@@ -40,8 +40,6 @@ This expanded listing preserves the original bullet format with short descriptio
 - **todo, gui, stage**: [notes/gui-stage-tasks.md](notes/gui-stage-tasks.md) - Collection of UI fixes: panel placement, viewport scaling, selection visuals, skill auto-apply, cursor alignment, and cursor removal.
  - **bench-mode, gui**: [notes/pause-overlay.md](notes/pause-overlay.md) - Bench mode highlights the pause button rectangle with `startOverlayFade(rect, dashLen)` so the outline animates with marching ants.
 - **webmidi-todo**: [notes/webmidi-tasks.md](notes/webmidi-tasks.md) - Follow-ups on WebMIDI TODOs such as master tuning and browser support for `Output.clear()`.
-
-
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
 - **pack-toolkit, resources, doc**: [notes/nl-pack-toolkit.md](notes/nl-pack-toolkit.md) - Overview of the NeoLemmix Flexi Toolkit features and how the pack folders here follow a similar layout for Node tools.
 - **doc, bench-mode**: [notes/bench-mode-docs.md](notes/bench-mode-docs.md) - Expanded README bench-mode section detailing `missedTicks`, `stableTicks`, speed adjustments, and the meaning of the "T"/"L" displays. Noted that thresholds will scale with `speedFactor` after Issue 1.
@@ -68,7 +66,6 @@ This expanded listing preserves the original bullet format with short descriptio
 - **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - The official "Supported Environments" page outlines where WebMIDI.js works:
 - **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
-
-
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
