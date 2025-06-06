@@ -29,6 +29,7 @@ l2-guyperfect.md: l2 file-format doc
 lemming-manager.md: lemming-manager
 l2-level-format.md: l2-level-format doc
 level-format.md: level-format doc
+lvl-format.md: lvl-format doc todo
 level-loader.md: level-loading
 level-packs.md: level-packs resources doc
 level-reader.md: level-parsing
