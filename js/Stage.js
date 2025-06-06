@@ -301,6 +301,8 @@ class Stage {
     if (this.gameImgProps.display) {
       const worldHDisp = this.gameImgProps.display.getHeight();
       const worldWDisp = this.gameImgProps.display.getWidth();
+      const worldH = this.gameImgProps.display.getHeight();
+      const worldW = this.gameImgProps.display.getWidth();
 
       const startingScale = this.gameImgProps.viewPoint.scale || 2;
       this._rawScale = startingScale;
@@ -316,6 +318,7 @@ class Stage {
 
       if (worldW2 * this.gameImgProps.viewPoint.scale <= stagePixW) {
         this.gameImgProps.viewPoint.x = (worldW2 - viewW_world) / 2;
+
       } else {
         this.gameImgProps.viewPoint.x = 0;
       }
