@@ -56,6 +56,8 @@ webmidi-overview.md: webmidi doc overview
 webmidi-tasks.md: webmidi-todo
 webmidi.md: webmidi doc
 third-party-policy.md: policy third-party
+display-image.md: display canvas scaling image
+replays.md: replays commands doc
 vgagrx-groundxo-format.md: vgagrx groundxo planar-bitmaps
 vgaspecx-format.md: vgaspecx compression palette doc todo
 revolution-box-format.md: revolution-box archives
@@ -66,6 +68,7 @@ l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2-save-format.md: l2 savegame doc
 l2-save-format.md: l2-save doc todo
+naming-cleanup.md: naming cleanup
 l2ss-cpp.md: l2ss sprite-parsing doc
 l2-guyperfect.md: l2 file-format doc
 l2-level-format.md: l2-level-format doc
