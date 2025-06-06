@@ -216,12 +216,23 @@ class Stage {
       stageImage.viewPoint.y += worldDY;
     }
 
+    // Clamp the viewPoint so the viewport never shows space outside the level
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
+    const scale = stageImage.viewPoint.scale;
+    const worldH = gameH; // world height in world units
+    const viewH_world = winH / scale; // viewport height in world units
+    stageImage.viewPoint.y = this.limitValue(
+      worldH - viewH_world,
+      stageImage.viewPoint.y,
+      0
+    );
+
+    // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
+    const gameW = stageImage.display.getWidth();
     const winW = stageImage.width;
-    // viewH_world = viewport height in world units
-    const viewH_world = winH / scale;
+    const worldW = gameW;
     const viewW_world = winW / scale;
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
