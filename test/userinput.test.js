@@ -112,54 +112,76 @@ describe('UserInputManager', function() {
     expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
   });
 
-  it('emits zoom events without stage set', function(done) {
-    delete globalThis.lemmings.stage;
-    const uim = new UserInputManager(element);
-    uim.onZoom.on((e) => {
-      try {
-        expect(e.x).to.equal(25);
-        expect(e.y).to.equal(75);
-        expect(e.deltaZoom).to.equal(-20);
-        done();
-      } catch (err) {
-        done(err);
-      }
-    });
+  it('zooms when cursor is at the world origin', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+    stage.getGameDisplay().initSize(1600, 1200);
+    globalThis.lemmings.stage = stage;
 
-    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
+    stage.gameImgProps.viewPoint.scale = 1;
+    stage._rawScale = 1;
+    stage.gameImgProps.viewPoint.x = 0;
+    stage.gameImgProps.viewPoint.y = 0;
+
+    const uim = stage.controller;
+    const cursor = new Lemmings.Position2D(0, 0);
+
+    uim.handleWheel(cursor, -120);
+
+    expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
   });
 
-  it('converts pointer position based on canvas size', function() {
-    const scaledElement = {
-      width: 400,
-      height: 240,
-      addEventListener() {},
-      removeEventListener() {},
-      getBoundingClientRect() {
-        return { left: 0, top: 0, width: 200, height: 120 };
-      }
-    };
+});
 
-    const uim = new UserInputManager(scaledElement);
-    const pos = uim.getRelativePosition(scaledElement, 100, 60);
-
-    expect(pos.x).to.equal(200);
-    expect(pos.y).to.equal(120);
+it('emits zoom events without stage set', function(done) {
+  delete globalThis.lemmings.stage;
+  const uim = new UserInputManager(element);
+  uim.onZoom.on((e) => {
+    try {
+      expect(e.x).to.equal(25);
+      expect(e.y).to.equal(75);
+      expect(e.deltaZoom).to.equal(-20);
+      done();
+    } catch (err) {
+      done(err);
+    }
   });
 
-  it('accounts for offset rects', function() {
-    const offsetElement = {
-      width: 400,
-      height: 240,
-      addEventListener() {},
-      removeEventListener() {},
-      getBoundingClientRect() {
-        return { left: 50, top: 20, width: 200, height: 120 };
-      }
-    };
-    const uim = new UserInputManager(offsetElement);
-    const pos = uim.getRelativePosition(offsetElement, 150, 80);
-    expect(pos.x).to.equal(200);
-    expect(pos.y).to.equal(120);
-  });
+  uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
+});
+
+it('converts pointer position based on canvas size', function() {
+  const scaledElement = {
+    width: 400,
+    height: 240,
+    addEventListener() {},
+    removeEventListener() {},
+    getBoundingClientRect() {
+      return { left: 0, top: 0, width: 200, height: 120 };
+    }
+  };
+
+  const uim = new UserInputManager(scaledElement);
+  const pos = uim.getRelativePosition(scaledElement, 100, 60);
+
+  expect(pos.x).to.equal(200);
+  expect(pos.y).to.equal(120);
+});
+
+it('accounts for offset rects', function() {
+  const offsetElement = {
+    width: 400,
+    height: 240,
+    addEventListener() {},
+    removeEventListener() {},
+    getBoundingClientRect() {
+      return { left: 50, top: 20, width: 200, height: 120 };
+    }
+  };
+  const uim = new UserInputManager(offsetElement);
+  const pos = uim.getRelativePosition(offsetElement, 150, 80);
+  expect(pos.x).to.equal(200);
+  expect(pos.y).to.equal(120);
 });
