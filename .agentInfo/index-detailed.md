@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **l2ss, sprite-parsing, doc**: [notes/l2ss-cpp.md](notes/l2ss-cpp.md) - Summarizes `js/L2ssSpriteDecoder.js` and notes the repo still lacks a loader.
