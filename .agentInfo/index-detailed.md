@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
