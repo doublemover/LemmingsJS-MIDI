@@ -1,8 +1,10 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const METRICS_FILE = '.searchMetrics';
+const METRICS_FILE = path.join('.searchMetrics', 'metrics.json');
+mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
 
 function loadMasterMetrics() {
   const res = spawnSync('git', ['show', `master:${METRICS_FILE}`], { encoding: 'utf8' });
