@@ -1,0 +1,37 @@
+name: Sync search history
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Fetch master history
+        run: |
+          git fetch origin master
+          git show origin/master:.searchHistory > base_history || touch base_history
+      - name: Merge base lines
+        run: |
+          touch .searchHistory
+          while IFS= read -r line; do
+            grep -Fxq "$line" .searchHistory || echo "$line" >> .searchHistory
+          done < base_history
+      - name: Commit and push if changed
+        run: |
+          if ! git diff --quiet -- .searchHistory; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add .searchHistory
+            git commit -m "chore: sync search history"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
