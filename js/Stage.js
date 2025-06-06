@@ -1,5 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+function colorStringTo32(str) {
+  const m = /rgba?\((\d+),(\d+),(\d+),(\d*(?:\.\d+)?)\)/.exec(str);
+  if (!m) return 0xffffffff;
+  const r = parseInt(m[1]);
+  const g = parseInt(m[2]);
+  const b = parseInt(m[3]);
+  const a = m[4] === undefined ? 1 : parseFloat(m[4]);
+  return ((Math.round(a * 255) & 0xff) << 24) | (b << 16) | (g << 8) | r;
+}
+
 class Stage {
   constructor(canvasForOutput) {
     this.controller = null;
@@ -9,6 +19,9 @@ class Stage {
     this.overlayAlpha = 0;
     this.overlayRect = null;
     this.overlayTimer = 0;
+    this.overlayDashLen = 0;
+    this.overlayDashColor = 0;
+    this.overlayDashOffset = 0;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -211,6 +224,8 @@ class Stage {
     const winW = stageImage.width;
     const winH = stageImage.height;
     const scale = stageImage.viewPoint.scale;
+    const worldW = stageImage.display.getWidth();
+    const worldH = stageImage.display.getHeight();
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
     const worldDX = argX / scale;
@@ -431,17 +446,22 @@ class Stage {
     }, 40);
   }
 
-  startOverlayFade(color, rect = null) {
+  startOverlayFade(color, rect = null, dashLen = 0) {
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayColor = color;
     this.overlayRect = rect;
+    this.overlayDashLen = dashLen;
+    this.overlayDashColor = colorStringTo32(color);
+    this.overlayDashOffset = 0;
     this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
       this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      this.overlayDashOffset = (this.overlayDashOffset + 1) % ((this.overlayDashLen || 1) * 2);
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
         this.overlayRect = null;
+        this.overlayDashLen = 0;
       }
     }, 40);
   }
@@ -449,6 +469,7 @@ class Stage {
   resetOverlayFade() {
     this.overlayAlpha = 0;
     this.overlayRect = null;
+    this.overlayDashLen = 0;
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayTimer = 0;
   }
@@ -532,6 +553,23 @@ class Stage {
       };
       ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
+      if (this.overlayDashLen > 0) {
+        const octx = this.stageCav.getContext('2d', { alpha: true });
+        const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
+        const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+        Lemmings.drawMarchingAntRect(
+          disp,
+          0,
+          0,
+          r.width,
+          r.height,
+          this.overlayDashLen,
+          this.overlayDashOffset,
+          this.overlayDashColor,
+          0x00000000
+        );
+        octx.putImageData(img, r.x, r.y);
+      }
     }
   }
 
