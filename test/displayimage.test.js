@@ -4,7 +4,7 @@ import '../js/LogHandler.js';
 import '../js/ViewPoint.js';
 import '../js/StageImageProperties.js';
 import { Stage } from '../js/Stage.js';
-import { DisplayImage } from '../js/DisplayImage.js';
+import { DisplayImage, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
 import { Frame } from '../js/Frame.js';
 import '../js/ColorPalette.js';
 
@@ -150,6 +150,156 @@ describe('DisplayImage primitives', function() {
       BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
       GREEN, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, GREEN,
       GREEN, GREEN, BLACK, GREEN, GREEN, BLACK, GREEN, GREEN
+    ]);
+  });
+
+  it('scaleNearest replicates pixels', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    display.clear(color32(0, 0, 0));
+    display._blit(frame, 0, 0, { size: { width: 4, height: 4 }, scaleMode: 'nearest' });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    const BLUE  = color32(0, 0, 255);
+    const YELL  = color32(255, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, RED, GREEN, GREEN,
+      BLUE, BLUE, YELL, YELL,
+      BLUE, BLUE, YELL, YELL
+    ]);
+  });
+
+  it('scaleNearest respects nullColor and mask', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    display._blit(frame, 0, 0, {
+      size: { width: 4, height: 4 },
+      scaleMode: 'nearest',
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, RED, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN
+    ]);
+  });
+
+  it('scaleXbrz scales and honors mask', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    display.clear(color32(0, 0, 0));
+    scaleXbrz(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    const BLUE  = color32(0, 0, 255);
+    const YELL  = color32(255, 255, 0);
+    const M1    = color32(127, 255, 0);
+    const M2    = color32(127, 0, 127);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, RED, M1,   GREEN,
+      BLUE, M2, YELL, YELL,
+      BLUE, BLUE, YELL, YELL
+    ]);
+  });
+
+  it('scaleXbrz applies nullColor for masked pixels', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    scaleXbrz(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    const M3    = color32(127, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, M3, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN
+    ]);
+  });
+
+  it('scaleHqx scales and respects mask', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    display.clear(color32(0, 0, 0));
+    scaleHqx(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    const BLUE  = color32(0, 0, 255);
+    const YELL  = color32(255, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, RED, GREEN, GREEN,
+      BLUE, BLUE, YELL, YELL,
+      BLUE, BLUE, YELL, YELL
+    ]);
+  });
+
+  it('scaleHqx applies nullColor for masked pixels', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    scaleHqx(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN, GREEN,
+      RED, RED, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN,
+      NULL, NULL, GREEN, GREEN
     ]);
   });
 });
