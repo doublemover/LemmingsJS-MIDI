@@ -37,3 +37,13 @@
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
 {"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
 {"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
+{"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
+{"time":"2025-06-06T13:17:40.001Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":225}
+{"time":"2025-06-06T13:17:48.131Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":377}
+{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
+{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
+{"time":"2025-06-06T13:18:04.991Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":228}
+{"time":"2025-06-06T13:18:11.006Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":208}
+{"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
+{"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
+{"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
