@@ -238,7 +238,6 @@ class Stage {
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    const worldW = gameW;
     const viewW_world = winW / scale;
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
