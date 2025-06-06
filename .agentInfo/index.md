@@ -33,7 +33,7 @@ level-writer.md: level-writing
 mechanics-config.md: config
 mechanics-flags.md: mechanics
 nl-file-format.md: nl-file-format doc
-nl-objects.md: nl-objects doc # summarizes NeoLemmix object logic with references to source files
+nl-objects.md: nl-objects doc - summarizes NeoLemmix object logic with references to source files
 nl-skills.md: nl-skills doc
 node-file-provider.md: archives
 note-review.md: todo
