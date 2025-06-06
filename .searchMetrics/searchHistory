@@ -1,4 +1,101 @@
+{"time":"2025-06-06T05:55:56.825Z","query":"rect","mdFiles":9,"codeFiles":26,"ms":29}
+{"time":"2025-06-06T05:57:17.605Z","query":"rect","mdFiles":9,"codeFiles":26,"ms":31}
+{"time":"2025-06-06T06:08:14.924Z","query":"rect","mdFiles":9,"codeFiles":26,"ms":29}
+{"time":"2025-06-06T06:08:43.912Z","query":"marching","mdFiles":5,"codeFiles":4,"ms":22}
+{"time":"2025-06-06T06:08:49.553Z","query":"x,y","mdFiles":9,"codeFiles":89,"ms":41}
+{"time":"2025-06-06T06:09:03.571Z","query":"pos(","mdFiles":1,"codeFiles":24,"ms":26}
+{"time":"2025-06-06T06:09:16.470Z","query":"+=","mdFiles":0,"codeFiles":0,"ms":16}
+{"time":"2025-06-06T06:09:23.143Z","query":"if else","mdFiles":18,"codeFiles":111,"ms":68}
+{"time":"2025-06-06T06:09:33.363Z","query":"if (!","mdFiles":18,"codeFiles":111,"ms":48}
+{"time":"2025-06-06T06:13:21.925Z","query":"spawnlemming","mdFiles":0,"codeFiles":0,"ms":18}
+{"time":"2025-06-06T06:13:24.800Z","query":"spawn","mdFiles":6,"codeFiles":14,"ms":25}
+{"time":"2025-06-06T06:13:40.366Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:13:43.431Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:14:22.779Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:14:25.362Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:14:31.526Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:14:37.555Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:14:56.119Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":27}
+{"time":"2025-06-06T06:15:13.329Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:15:41.299Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":25}
+{"time":"2025-06-06T06:15:47.386Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":26}
+{"time":"2025-06-06T06:15:51.900Z","query":"rect","mdFiles":9,"codeFiles":26,"ms":28}
+{"time":"2025-06-06T06:15:57.709Z","query":"ants","mdFiles":5,"codeFiles":5,"ms":23}
+{"time":"2025-06-06T06:16:02.396Z","query":"line","mdFiles":8,"codeFiles":15,"ms":26}
+{"time":"2025-06-06T06:35:59.412Z","query":"selection rect","mdFiles":17,"codeFiles":40,"ms":99}
+{"time":"2025-06-06T06:51:09.819Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":243}
+{"time":"2025-06-06T07:09:06.594Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":133}
+{"time":"2025-06-06T07:09:10.566Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":218}
+{"time":"2025-06-06T07:09:13.505Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":178}
+{"time":"2025-06-06T07:47:01.121Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":234}
+{"time":"2025-06-06T07:47:03.815Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":117}
+{"time":"2025-06-06T07:47:15.212Z","query":"lemming","mdFiles":32,"codeFiles":185,"ms":645}
+{"time":"2025-06-06T07:47:17.462Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":279}
+{"time":"2025-06-06T07:47:19.956Z","query":"select cursor","mdFiles":19,"codeFiles":27,"ms":121}
+{"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
+{"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
+{"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
+{"time":"2025-06-06T08:17:28.599Z","query":"check-undefined","mdFiles":20,"codeFiles":22,"ms":73}
+{"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
+{"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
+{"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
+{"time":"2025-06-06T13:17:40.001Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":225}
+{"time":"2025-06-06T13:17:48.131Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":377}
+{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
+{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
+{"time":"2025-06-06T13:18:04.991Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":228}
+{"time":"2025-06-06T13:18:11.006Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":208}
+{"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
+{"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
+{"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
+{"time":"2025-06-06T14:48:22.649Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":138}
+{"time":"2025-06-06T15:22:25.673Z","query":"node-version","mdFiles":20,"codeFiles":38,"ms":686}
+{"time":"2025-06-06T15:21:43.636Z","query":"dependency-review-action","mdFiles":15,"codeFiles":38,"ms":309}
+{"time":"2025-06-06T14:49:45.520Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":223}
+{"time":"2025-06-06T14:49:48.716Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":229}
+{"time":"2025-06-06T14:49:50.573Z","query":"snapScale","mdFiles":8,"codeFiles":24,"ms":129}
+{"time":"2025-06-06T14:47:43.263Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":1019}
+{"time":"2025-06-06T14:47:50.147Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":843}
+{"time":"2025-06-06T14:47:51.959Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":836}
+{"time":"2025-06-06T14:58:53.797Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":334}
+{"time":"2025-06-06T14:54:30.664Z","query":"test","mdFiles":15,"codeFiles":17,"ms":262}
+{"time":"2025-06-06T14:38:10.919Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":768}
+{"time":"2025-06-06T14:38:13.429Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":476}
+{"time":"2025-06-06T14:38:16.750Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1571}
+{"time":"2025-06-06T14:38:19.130Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":890}
+{"time":"2025-06-06T14:38:22.014Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":527}
+{"time":"2025-06-06T14:38:23.608Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":339}
+{"time":"2025-06-06T14:38:26.832Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1814}
+{"time":"2025-06-06T14:38:29.174Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":582}
+{"time":"2025-06-06T14:38:08.593Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":908}
+{"time":"2025-06-06T14:38:13.220Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":2066}
+{"time":"2025-06-06T14:38:17.113Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1907}
+{"time":"2025-06-06T14:38:20.734Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1475}
+{"time":"2025-06-06T14:38:25.814Z","query":"LevelIndexType","mdFiles":43,"codeFiles":137,"ms":2666}
+{"time":"2025-06-06T14:37:35.062Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":220}
+{"time":"2025-06-06T14:37:37.635Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":358}
+{"time":"2025-06-06T14:37:40.700Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":89}
+{"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
+{"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
+{"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
+{"time":"2025-06-06T16:30:16.514Z","query":"parseNumber","mdFiles":18,"codeFiles":56,"ms":193}
+{"time":"2025-06-06T16:27:27.923Z","query":"SkillPanelSprites","mdFiles":29,"codeFiles":83,"ms":315}
+{"time":"2025-06-06T16:27:31.352Z","query":"SkillPanelSprite","mdFiles":29,"codeFiles":83,"ms":475}
+{"time":"2025-06-06T16:27:44.914Z","query":"new Frame","mdFiles":22,"codeFiles":161,"ms":244}
+{"time":"2025-06-06T16:27:47.010Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":298}
+{"time":"2025-06-06T16:27:49.162Z","query":"Frame","mdFiles":11,"codeFiles":76,"ms":164}
+{"time":"2025-06-06T16:27:51.446Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":296}
+{"time":"2025-06-06T16:27:53.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":183}
+{"time":"2025-06-06T16:27:55.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":372}
+{"time":"2025-06-06T16:28:22.964Z","query":"UserInputManager dispose","mdFiles":26,"codeFiles":53,"ms":429}
+{"time":"2025-06-06T16:32:41.889Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":123}
+{"time":"2025-06-06T16:32:44.532Z","query":"stagePixW","mdFiles":12,"codeFiles":51,"ms":181}
+{"time":"2025-06-06T16:32:48.902Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":144}
+{"time":"2025-06-06T16:32:52.070Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":350}
+
 {"time":"2025-06-06T16:43:11.777Z","query":"test","mdFiles":15,"codeFiles":17,"ms":145}
+{"time":"2025-06-06T17:35:21.213Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":2309}
+{"time":"2025-06-06T17:35:26.033Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":1427}
 {"time":"2025-06-06T17:35:40.857Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":78}
 {"time":"2025-06-06T17:35:44.508Z","query":"GameTimer","mdFiles":37,"codeFiles":119,"ms":184}
 {"time":"2025-06-06T17:35:48.226Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":135}

@@ -1,5 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+function colorStringTo32(str) {
+  const m = /rgba?\((\d+),(\d+),(\d+),(\d*(?:\.\d+)?)\)/.exec(str);
+  if (!m) return 0xffffffff;
+  const r = parseInt(m[1]);
+  const g = parseInt(m[2]);
+  const b = parseInt(m[3]);
+  const a = m[4] === undefined ? 1 : parseFloat(m[4]);
+  return ((Math.round(a * 255) & 0xff) << 24) | (b << 16) | (g << 8) | r;
+}
+
 class Stage {
   constructor(canvasForOutput) {
     this.controller = null;
@@ -9,6 +19,9 @@ class Stage {
     this.overlayAlpha = 0;
     this.overlayRect = null;
     this.overlayTimer = 0;
+    this.overlayDashLen = 0;
+    this.overlayDashColor = 0;
+    this.overlayDashOffset = 0;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -129,7 +142,10 @@ class Stage {
         const localY = e.y - stageImage.y;
         const worldX = stageImage.viewPoint.getSceneX(localX);
         const worldY = stageImage.viewPoint.getSceneY(localY);
-        stageImage.display.onMouseMove.trigger(new Lemmings.Position2D(worldX, worldY));
+        stageImage.display.onMouseMove.trigger(
+          new Lemmings.Position2D(worldX, worldY)
+        );
+        this.redraw();
       }
     });
   }
@@ -277,6 +293,92 @@ class Stage {
       }
     }
 
+      // TODO: Make sure none of this commented out functionality was needed or is now missing
+    // PAN
+    // argX,argY are deltaX,deltaY (screen pixels)
+//     const winW = stageImage.width;
+//     const winH = stageImage.height;
+//     const scale = stageImage.viewPoint.scale;
+//     const worldW = stageImage.display.getWidth();
+//     const worldH = stageImage.display.getHeight();
+//     const viewW_world = winW / scale;
+//     const viewH_world = winH / scale;
+//     const worldDX = argX / scale;
+//     const worldDY = argY / scale;
+//     if (!veloUpdate) {
+//       stageImage.viewPoint.x += worldDX;
+//       stageImage.viewPoint.y += worldDY;
+//     }
+
+//     stageImage.viewPoint.x = this.limitValue(
+//       Math.min(0, worldW - viewW_world),
+//       stageImage.viewPoint.x,
+//       Math.max(0, worldW - viewW_world)
+//     );
+
+//     stageImage.viewPoint.y = this.limitValue(
+//       Math.min(0, worldH - viewH_world),
+//       stageImage.viewPoint.y,
+//       Math.max(0, worldH - viewH_world)
+//     );
+      
+
+    // To glue bottom: viewPoint.y = worldH - viewH_world
+    // PAN only when no zoom change
+    //     if (deltaZoom === 0) {
+    //       // argX,argY are deltaX,deltaY (screen pixels)
+    //       const winW = stageImage.width;
+    //       const winH = stageImage.height;
+    //       const scale = stageImage.viewPoint.scale;
+    //       const worldDX = argX / scale;
+    //       const worldDY = argY / scale;
+    //       if (!veloUpdate) {
+    //         stageImage.viewPoint.x += worldDX;
+    //         stageImage.viewPoint.y += worldDY;
+    // // PAN
+    // // argX,argY are deltaX,deltaY (screen pixels)
+    // const winW = stageImage.width;
+    // const winH = stageImage.height;
+    // const scale = stageImage.viewPoint.scale;
+    // const viewW_world = winW / scale;
+    // const viewH_world = winH / scale;
+    // const worldDX = argX / scale;
+    // const worldDY = argY / scale;
+    // if (!veloUpdate) {
+    //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
+    //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
+    // }
+    // // Clamp view so it stays within the level bounds
+    // const worldW = stageImage.display.getWidth();
+    // const worldH = stageImage.display.getHeight();
+    // // worldHeight = how many “world pixels” tall
+    // // viewH_world = viewport height in world units
+    // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //   Math.min(0, worldW - viewW_world),
+    //   Math.max(0, worldW - viewW_world)
+    // ]);
+    // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
+    //   Math.min(0, worldH - viewH_world),
+    //   Math.max(0, worldH - viewH_world)
+    // ]);
+    // // To glue bottom: viewPoint.y = worldH - viewH_world
+    // if (scale >= 2) {
+    //   // Clamp between [0 .. (worldW - viewW_world)]
+    //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //     0,
+    //     worldW - viewW_world
+    //   ]);
+    // } else {
+    //   // Center the level when zoomed out
+    //   if (worldW * scale < winW) {
+    //     const wDiff = winW - worldW * scale;
+    //     stageImage.viewPoint.setX(-wDiff / (2 * scale));
+    //   } else {
+    //     // Still clamp if the level exceeds the viewport
+    //     stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+    //       0,
+    //       worldW - viewW_world
+    //     ]);
     this.clampViewPoint(stageImage);
 
     this.clear(stageImage);
@@ -505,17 +607,22 @@ class Stage {
     }, 40);
   }
 
-  startOverlayFade(color, rect = null) {
+  startOverlayFade(color, rect = null, dashLen = 0) {
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayColor = color;
     this.overlayRect = rect;
+    this.overlayDashLen = dashLen;
+    this.overlayDashColor = colorStringTo32(color);
+    this.overlayDashOffset = 0;
     this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
       this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      this.overlayDashOffset = (this.overlayDashOffset + 1) % ((this.overlayDashLen || 1) * 2);
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
         this.overlayRect = null;
+        this.overlayDashLen = 0;
       }
     }, 40);
   }
@@ -523,6 +630,7 @@ class Stage {
   resetOverlayFade() {
     this.overlayAlpha = 0;
     this.overlayRect = null;
+    this.overlayDashLen = 0;
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayTimer = 0;
   }
@@ -606,6 +714,23 @@ class Stage {
       };
       ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
+      if (this.overlayDashLen > 0) {
+        const octx = this.stageCav.getContext('2d', { alpha: true });
+        const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
+        const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+        Lemmings.drawMarchingAntRect(
+          disp,
+          0,
+          0,
+          r.width,
+          r.height,
+          this.overlayDashLen,
+          this.overlayDashOffset,
+          this.overlayDashColor,
+          0x00000000
+        );
+        octx.putImageData(img, r.x, r.y);
+      }
     }
   }
 

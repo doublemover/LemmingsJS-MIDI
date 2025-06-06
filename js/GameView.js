@@ -38,9 +38,14 @@ class GameView extends Lemmings.BaseLogger {
 
   set gameCanvas(el) {
     if (this.stage && this.stage.dispose) {
+      window.removeEventListener('resize', this._stageResize);
+      window.removeEventListener('orientationchange', this._stageResize);
       this.stage.dispose();
     }
     this.stage = new Lemmings.Stage(el);
+    this._stageResize = () => this.stage.updateStageSize();
+    window.addEventListener('resize', this._stageResize);
+    window.addEventListener('orientationchange', this._stageResize);
   }
 
   /** start or continue the game */
@@ -517,6 +522,8 @@ class GameView extends Lemmings.BaseLogger {
       this.shortcuts = null;
     }
     if (this.stage && this.stage.dispose) {
+      window.removeEventListener('resize', this._stageResize);
+      window.removeEventListener('orientationchange', this._stageResize);
       this.stage.dispose();
       this.stage = null;
     }
