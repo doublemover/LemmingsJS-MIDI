@@ -44,3 +44,4 @@ webmidi-tasks.md: webmidi-todo
 pause-overlay.md: bench-mode gui
 
 webmidi.md: webmidi doc
+nl-pack-toolkit.md: pack-toolkit resources doc

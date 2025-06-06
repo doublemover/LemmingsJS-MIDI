@@ -20,7 +20,11 @@ quotes, and semicolons across the JavaScript codebase.
 - JavaScript code uses **two-space indentation** (see `js/BitReader.js` for examples).
 - The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
 ### Level packs
-Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md](docs/levelpacks.md). Node tools rely on `NodeFileProvider` so packs can be read from directories or archives such as `.zip` or `.tar`. See the doc for full details.
+Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md](docs/levelpacks.md).
+The [NeoLemmix Pack Toolkit](docs/nl-pack-toolkit.md) explains how
+these folders are structured and bundled. Node tools rely on
+`NodeFileProvider` so packs can be read from directories or archives
+such as `.zip` or `.tar`.
 ### WebMIDI
 - Browsers only enable WebMIDI on HTTPS or localhost.
 - Running `WebMidi.enable()` prompts the user to allow MIDI device access.
