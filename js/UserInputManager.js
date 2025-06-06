@@ -273,6 +273,7 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
+
     const stage = globalThis?.lemmings?.stage;
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
 
@@ -285,6 +286,7 @@ class UserInputManager {
         const zx = worldPos.x === 0 ? 0.0001 : worldPos.x;
         const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
         stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, zx, zy);
+        return;
       }
     } else {
       this.onZoom.trigger(evt);
