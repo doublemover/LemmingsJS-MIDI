@@ -35,3 +35,5 @@
 {"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
 {"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
+{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
+{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
