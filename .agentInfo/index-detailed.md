@@ -82,3 +82,4 @@ This expanded listing preserves the original bullet format with short descriptio
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
 - **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
 - **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.
+- **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Clarify variables that confuse viewport size with world data size.
