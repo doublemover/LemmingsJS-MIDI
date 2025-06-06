@@ -1,5 +1,15 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+function colorStringTo32(str) {
+  const m = /rgba?\((\d+),(\d+),(\d+),(\d*(?:\.\d+)?)\)/.exec(str);
+  if (!m) return 0xffffffff;
+  const r = parseInt(m[1]);
+  const g = parseInt(m[2]);
+  const b = parseInt(m[3]);
+  const a = m[4] === undefined ? 1 : parseFloat(m[4]);
+  return ((Math.round(a * 255) & 0xff) << 24) | (b << 16) | (g << 8) | r;
+}
+
 class Stage {
   constructor(canvasForOutput) {
     this.controller = null;
@@ -9,6 +19,9 @@ class Stage {
     this.overlayAlpha = 0;
     this.overlayRect = null;
     this.overlayTimer = 0;
+    this.overlayDashLen = 0;
+    this.overlayDashColor = 0;
+    this.overlayDashOffset = 0;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -47,7 +60,7 @@ class Stage {
     const c = document.createElement('canvas');
     c.width = frame.width;
     c.height = frame.height;
-    const ictx = c.getContext('2d');
+    const ictx = c.getContext('2d', { alpha: true, willReadFrequently: true});
     ictx.putImageData(
       new ImageData(frame.getData(), frame.width, frame.height),
       0,
@@ -129,7 +142,10 @@ class Stage {
         const localY = e.y - stageImage.y;
         const worldX = stageImage.viewPoint.getSceneX(localX);
         const worldY = stageImage.viewPoint.getSceneY(localY);
-        stageImage.display.onMouseMove.trigger(new Lemmings.Position2D(worldX, worldY));
+        stageImage.display.onMouseMove.trigger(
+          new Lemmings.Position2D(worldX, worldY)
+        );
+        this.redraw();
       }
     });
   }
@@ -140,7 +156,8 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
+      // Negative wheel delta zooms in
+      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
     });
   }
 
@@ -166,6 +183,9 @@ class Stage {
    */
   updateViewPoint(stageImage, argX, argY, deltaZoom, veloUpdate = false) {
     if (!stageImage || !stageImage.display) return;
+
+    const worldW = stageImage.display.getWidth ? stageImage.display.getWidth() : stageImage.width;
+    const worldH = stageImage.display.getHeight ? stageImage.display.getHeight() : stageImage.height;
 
     // ZOOM
     if (deltaZoom !== 0) {
@@ -195,8 +215,8 @@ class Stage {
 
       //Recenter so (sceneX_pre,sceneY_pre) stays under cursor
       if (!veloUpdate) {
-        stageImage.viewPoint.x = sceneX_pre - screenX_rel / newScale;
-        stageImage.viewPoint.y = sceneY_pre - screenY_rel / newScale;
+        stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
+        stageImage.viewPoint.setY(sceneY_pre - screenY_rel / newScale);
       }
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
@@ -258,6 +278,8 @@ class Stage {
       }
     }
 
+    this.clampViewPoint(stageImage);
+
     this.clear(stageImage);
     const imgData = stageImage.display.getImageData();
     this.draw(stageImage, imgData);
@@ -292,24 +314,67 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
-    const scaleHUD = this.guiImgProps.viewPoint.scale;
+
+    // TODO UPDATE ANY DOCS THAT SAY THIS SHOULD BE TWO
+    // HUD always renders at 4× scale
+    const hudScale = 4;
+    this.guiImgProps.viewPoint.scale = hudScale;
+
     const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
     const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
-    const panelH = Math.trunc(rawHUDH * scaleHUD);
-    const panelW = Math.trunc(rawHUDW * scaleHUD);
-    const gameH = stageH - panelH;
+    const hudH = (this.guiImgProps.display?.getHeight() || 80) * hudScale;
+    const hudW = (this.guiImgProps.display?.getWidth() || 720) * hudScale;
+    const gameH = stageH - hudH;
 
-    this.gameImgProps.x = 0;
-    this.gameImgProps.y = 0;
-    this.gameImgProps.width = stageW;
-    this.gameImgProps.height = gameH;
+    Object.assign(this.gameImgProps, { x: 0, y: 0, width: stageW, height: gameH });
+    Object.assign(this.guiImgProps, {
+      x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
+      y: gameH,
+      width: hudW,
+      height: hudH
+    });
 
-    this.guiImgProps.y = gameH;
-    this.guiImgProps.height = panelH;
-    this.guiImgProps.width = panelW;
+    if (this.gameImgProps.display) {
+      const worldH = this.gameImgProps.display.getHeight();
+      const worldW = this.gameImgProps.display.getWidth();
+
+      const scale = this.gameImgProps.viewPoint.scale || 2;
+      this._rawScale = scale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
+
+      const viewH_world = gameH / scale;
+      const viewW_world = stageW / scale;
+
+      this.gameImgProps.viewPoint.y = worldH - viewH_world;
+      this.gameImgProps.viewPoint.x =
+        worldW * scale <= stageW ? (worldW - viewW_world) / 2 : 0;
+
+
+      // Glue Y: bottom of level flush against HUD top
+      this.gameImgProps.viewPoint.setY(worldH - viewH_world);
+
+      // For X: if level is already narrower than viewport at this scale,
+      // center it; otherwise, clamp to left edge.
+      if (worldW * scale <= stageW) {
+        // center
+        this.gameImgProps.viewPoint.setX((worldW - viewW_world) / 2);
+      } else {
+        // left‐align
+        this.gameImgProps.viewPoint.setX(0);
+      }
+
+      this.clampViewPoint(this.gameImgProps);
+
+      // Redraw at initial position
+      this.clear(this.gameImgProps);
+      const gameImg = this.gameImgProps.display.getImageData();
+      this.draw(this.gameImgProps, gameImg);
+    }
+
     if (this.guiImgProps.display) {
-      this.guiImgProps.x = (stageW - panelW) / 2;
+      const guiImg = this.guiImgProps.display.getImageData();
+      this.draw(this.guiImgProps, guiImg);
     }
   }
   getStageImageAt(x, y) {
@@ -350,12 +415,14 @@ class Stage {
     if (lemmings.scale > 0) {
       this._rawScale = lemmings.scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
-      this.gameImgProps.viewPoint.x = x;
+      this.gameImgProps.viewPoint.setX(x);
 
       const dispH = this.gameImgProps.display.getHeight();
       const winH  = this.gameImgProps.height;
       const newScale = this.gameImgProps.viewPoint.scale;
-      this.gameImgProps.viewPoint.y = Math.max(0, dispH - winH / newScale);
+      this.gameImgProps.viewPoint.setY(
+        Math.max(0, dispH - winH / newScale)
+      );
 
       this.redraw();
       return;
@@ -365,11 +432,13 @@ class Stage {
     if (scale === 2) {
       this._rawScale = scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
-      this.gameImgProps.viewPoint.x = x;
+      this.gameImgProps.viewPoint.setX(x);
 
       const dispH = this.gameImgProps.display.getHeight();
       const winH  = this.gameImgProps.height;
-      this.gameImgProps.viewPoint.y = Math.min(0, dispH - winH / scale);
+      this.gameImgProps.viewPoint.setY(
+        Math.min(0, dispH - winH / scale)
+      );
 
       this.redraw();
       return;
@@ -379,8 +448,12 @@ class Stage {
     const sceneY = this.gameImgProps.viewPoint.getSceneY(y - this.gameImgProps.y);
     this._rawScale = 2;
     this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
-    this.gameImgProps.viewPoint.x = sceneX - (x - this.gameImgProps.x) / this.gameImgProps.viewPoint.scale;
-    this.gameImgProps.viewPoint.y = sceneY - (y - this.gameImgProps.y) / this.gameImgProps.viewPoint.scale;
+    this.gameImgProps.viewPoint.setX(
+      sceneX - (x - this.gameImgProps.x) / this.gameImgProps.viewPoint.scale
+    );
+    this.gameImgProps.viewPoint.setY(
+      sceneY - (y - this.gameImgProps.y) / this.gameImgProps.viewPoint.scale
+    );
 
     this.redraw();
   }
@@ -404,7 +477,7 @@ class Stage {
   }
 
   clear(stageImage) {
-    const ctx = this.stageCav.getContext('2d', { alpha: false });
+    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#000900';
     if (!stageImage) {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -433,17 +506,22 @@ class Stage {
     }, 40);
   }
 
-  startOverlayFade(color, rect = null) {
+  startOverlayFade(color, rect = null, dashLen = 0) {
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayColor = color;
     this.overlayRect = rect;
+    this.overlayDashLen = dashLen;
+    this.overlayDashColor = colorStringTo32(color);
+    this.overlayDashOffset = 0;
     this.overlayAlpha = 1;
     this.overlayTimer = setInterval(() => {
       this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
+      this.overlayDashOffset = (this.overlayDashOffset + 1) % ((this.overlayDashLen || 1) * 2);
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
         this.overlayRect = null;
+        this.overlayDashLen = 0;
       }
     }, 40);
   }
@@ -451,6 +529,7 @@ class Stage {
   resetOverlayFade() {
     this.overlayAlpha = 0;
     this.overlayRect = null;
+    this.overlayDashLen = 0;
     if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayTimer = 0;
   }
@@ -471,7 +550,7 @@ class Stage {
 
     display.ctx.putImageData(img, 0, 0);
 
-    const ctx = this.stageCav.getContext('2d', { alpha: false });
+    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
 
@@ -534,15 +613,57 @@ class Stage {
       };
       ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
+      if (this.overlayDashLen > 0) {
+        const octx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
+        const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
+        const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+        Lemmings.drawMarchingAntRect(
+          disp,
+          0,
+          0,
+          r.width,
+          r.height,
+          this.overlayDashLen,
+          this.overlayDashOffset,
+          this.overlayDashColor,
+          0x00000000
+        );
+        octx.putImageData(img, r.x, r.y);
+      }
     }
   }
 
   drawCursor() {
     if (!this.cursorCanvas) return;
-    const ctx = this.stageCav.getContext('2d', { alpha: true });
+    const ctx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
     const cx = Math.trunc(this.cursorX - this.cursorCanvas.width / 2);
     const cy = Math.trunc(this.cursorY - this.cursorCanvas.height / 2);
     ctx.drawImage(this.cursorCanvas, cx, cy);
+  }
+
+  clampViewPoint(stageImage) {
+    if (!stageImage || !stageImage.display) return;
+    const worldW = stageImage.display.getWidth();
+    const worldH = stageImage.display.getHeight();
+    const scale = stageImage.viewPoint.scale;
+    const viewW = stageImage.width / scale;
+    const viewH = stageImage.height / scale;
+
+    stageImage.viewPoint.y = this.limitValue(
+      0,
+      stageImage.viewPoint.y,
+      Math.max(0, worldH - viewH)
+    );
+
+    if (worldW <= viewW) {
+      stageImage.viewPoint.x = (worldW - viewW) / 2;
+    } else {
+      stageImage.viewPoint.x = this.limitValue(
+        0,
+        stageImage.viewPoint.x,
+        worldW - viewW
+      );
+    }
   }
 
   getGameViewRect() {

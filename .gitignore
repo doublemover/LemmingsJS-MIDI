@@ -6,13 +6,28 @@
 **/.project
 **/.settings
 *.code-workspace
+
+# Build output
+dist/
+build/
+coverage/
+node_modules/
+exports/
 coverage/
 
-# package managers
-bower_components/
-node_modules/
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor folders
 .jshintconfig
 .jshintignore
-exports/
 
-.searchMetrics/
+# Test output
+*.log
+*.tap
