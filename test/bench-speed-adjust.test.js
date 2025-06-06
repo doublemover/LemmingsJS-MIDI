@@ -94,8 +94,10 @@ describe('benchSpeedAdjust recovery', function() {
       height: 10 * gui.viewPoint.scale
     });
     expect(dashLen).to.be.at.least(2);
+  });
 
   });
+
 
   it('updates frameTime when speed changes', function() {
     let raf;

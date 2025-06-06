@@ -275,21 +275,6 @@ class UserInputManager {
 
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
     this.onZoom.trigger(evt);
-
-    const stage = globalThis?.lemmings?.stage;
-    if (stage && stage.getStageImageAt) {
-      const stageImage = stage.getStageImageAt(position.x, position.y);
-      if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
-        const worldPos = stage.calcPosition2D(stageImage, position);
-        const zx = worldPos.x === 0 ? 0.0001 : worldPos.x;
-        const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
-        stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, zx, zy);
-      }
-      return;
-    }
-
-    const zea = new ZoomEventArgs(position.x, position.y, deltaY);
-    this.onZoom.trigger(zea);
   }
 }
 
