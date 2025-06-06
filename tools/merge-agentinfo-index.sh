@@ -1,28 +1,48 @@
 #!/bin/bash
 # tools/merge-agentinfo-index.sh
-# Merges .agentInfo/index.md and index-detailed.md in a stable way
+# Merges .agentInfo/index.md and index-detailed.md preserving duplicates as nested bullets
 
-# Args: %O %A %B
 ANCESTOR="$1"
 CURRENT="$2"
 OTHER="$3"
 
 TMPFILE=$(mktemp)
-
-# Combine all versions
 cat "$ANCESTOR" "$CURRENT" "$OTHER" > "$TMPFILE"
 
-# Extract unique list entries (lines starting with - or *)
-grep '^[-*] ' "$TMPFILE" | sort -u > merged_list.txt
+if grep -q '^[-*] ' "$TMPFILE"; then
+  awk '
+    /^[-*] / {
+      line=substr($0,3)
+      if (match(line,/\[([^]]+)\]/,arr)) { path=arr[1] } else { path=line }
+      key=path FS line
+      if (!(path in first)) { first[path]="- " line; order[++count]=path }
+      else if (!(key in seen)) { extra[path]=extra[path] "\n  - " line }
+      seen[key]=1
+      next
+    }
+    { header=header $0 "\n" }
+    END {
+      printf "%s", header;
+      for(i=1;i<=count;i++){ p=order[i]; print first[p]; if(extra[p]) printf "%s", extra[p] }
+    }
+  ' "$TMPFILE" > "$CURRENT"
+else
+  awk '
+    /^[^#].*:/ {
+      path=$1; sub(/:/,"",path); tags=substr($0, index($0,":")+2)
+      key=path ":" tags
+      if (!(path in first)) { first[path]=path ": " tags; order[++count]=path }
+      else if (!(key in seen)) { extra[path]=extra[path] "\n- " tags }
+      seen[key]=1
+      next
+    }
+    { header=header $0 "\n" }
+    END {
+      printf "%s", header;
+      for(i=1;i<=count;i++){ p=order[i]; print first[p]; if(extra[p]) printf "%s", extra[p] }
+    }
+  ' "$TMPFILE" > "$CURRENT"
+fi
 
-# Reconstruct the file: keep header from CURRENT, append merged list
-{
-    # Keep header (first block of non-list lines)
-    awk '/^[-*] /{exit} {print}' "$CURRENT"
-    echo
-    cat merged_list.txt
-} > "$CURRENT"
-
-# Clean up
-rm -f "$TMPFILE" merged_list.txt
+rm -f "$TMPFILE"
 exit 0
