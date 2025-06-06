@@ -78,8 +78,8 @@
 {"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
 {"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
-{"time":"2025-06-06T16:28:29.547Z","query":"isArrowAt","mdFiles":41,"codeFiles":84,"ms":455}
-{"time":"2025-06-06T16:27:38.433Z","query":"_step","mdFiles":0,"codeFiles":1,"ms":147}
-{"time":"2025-06-06T16:27:41.716Z","query":"_step","mdFiles":0,"codeFiles":1,"ms":83}
-{"time":"2025-06-06T16:27:49.697Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":217}
-{"time":"2025-06-06T16:27:52.375Z","query":"class Stage","mdFiles":16,"codeFiles":134,"ms":237}
+{"time":"2025-06-06T16:28:10.104Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":1317}
+{"time":"2025-06-06T16:28:12.804Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":549}
+{"time":"2025-06-06T16:28:17.496Z","query":"class LogHandler","mdFiles":17,"codeFiles":161,"ms":1908}
+{"time":"2025-06-06T16:28:19.260Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":481}
+{"time":"2025-06-06T16:28:23.318Z","query":"BaseLogger","mdFiles":11,"codeFiles":65,"ms":679}
