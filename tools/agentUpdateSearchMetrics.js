@@ -1,8 +1,15 @@
 #!/usr/bin/env node
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  readFileSync,
+  writeFileSync,
+  mkdirSync,
+  statSync,
+  unlinkSync,
+} from 'node:fs';
 import { spawnSync } from 'node:child_process';
 
-const METRICS_FILE = '.searchMetrics';
+const METRICS_FILE = '.searchMetrics/metrics.json';
 
 function loadMasterMetrics() {
   const res = spawnSync('git', ['show', `master:${METRICS_FILE}`], { encoding: 'utf8' });
@@ -48,6 +55,10 @@ try {
   process.exit(1);
 }
 
+if (existsSync('.searchMetrics') && !statSync('.searchMetrics').isDirectory()) {
+  unlinkSync('.searchMetrics');
+}
+mkdirSync('.searchMetrics', { recursive: true });
 writeFileSync(METRICS_FILE, json + '\n');
 console.log('Updated .searchMetrics');
 
