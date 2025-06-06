@@ -56,7 +56,7 @@ describe('Stage updateViewPoint', function() {
     delete global.document;
   });
 
-  it('centers horizontally and bottom aligns when zoomed out', function() {
+  it('clamps the view when zoomed out', function() {
     const canvas = createStubCanvas();
     const stage = new Stage(canvas);
     stage.clear = () => {};
@@ -72,11 +72,47 @@ describe('Stage updateViewPoint', function() {
 
     stage.updateViewPoint(stage.gameImgProps, 0, 0, 0);
 
-    const wDiff = stage.gameImgProps.width - display.getWidth() * scale;
-    const expectedX = -wDiff / (2 * scale);
-    const expectedY = 20;
+    expect(stage.gameImgProps.viewPoint.x).to.equal(0);
+    expect(stage.gameImgProps.viewPoint.y).to.equal(20);
+  });
 
-    expect(stage.gameImgProps.viewPoint.x).to.equal(expectedX);
-    expect(stage.gameImgProps.viewPoint.y).to.equal(expectedY);
+  it('keeps cursor position stable while zooming', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    stage.gameImgProps.viewPoint.scale = 1;
+    stage.gameImgProps.viewPoint.x = 100;
+    stage.gameImgProps.viewPoint.y = 50;
+
+    const cursorX = 200;
+    const cursorY = 100;
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+
+    const beforeX = vp.getSceneX(cursorX - img.x);
+    const beforeY = vp.getSceneY(cursorY - img.y);
+
+    stage.updateViewPoint(img, cursorX, cursorY, 240);
+
+    const afterX = vp.getSceneX(cursorX - img.x);
+    const afterY = vp.getSceneY(cursorY - img.y);
+
+    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
+    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+
+    const worldW = display.getWidth();
+    const worldH = display.getHeight();
+    const viewW = img.width / vp.scale;
+    const viewH = img.height / vp.scale;
+
+    expect(vp.x).to.be.at.least(Math.min(0, worldW - viewW));
+    expect(vp.x).to.be.at.most(Math.max(0, worldW - viewW));
+    expect(vp.y).to.be.at.least(Math.min(0, worldH - viewH));
+    expect(vp.y).to.be.at.most(Math.max(0, worldH - viewH));
   });
 });
