@@ -1,6 +1,7 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\AGENTS.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\index-detailed.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\index.md"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\baseimageinfo-search.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-mode-docs.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-mode.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-speed-adjust.md"}
@@ -36,6 +37,7 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\mechanics-flags.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-file-format.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-objects.md"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-pack-toolkit.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-skills.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\node-file-provider.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\norm-tick-count-removal.md"}
@@ -46,6 +48,7 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\stage.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\test-bench-speed-adjust.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\test-coverage.md"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\third-party-policy.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\todo-review.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\tools.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\trigger-manager.md"}
@@ -61,7 +64,6 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.jshintconfig"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.jshintignore"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.searchHistory"}
-{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.searchMetrics"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\AGENTS.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\CHANGELOG.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\CONTRIBUTING.md"}
@@ -73,10 +75,12 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\levelpacks.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-file-format.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-objects.md"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-pack-toolkit.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-skills.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\TESTING.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\tools.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\jquery.js"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\README.md"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\webmidi.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\package-lock.json"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\package.json"}
