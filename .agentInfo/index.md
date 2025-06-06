@@ -24,7 +24,9 @@ ground-renderer.md: render
 gui-stage-tasks.md: todo
 initial.md: example
 keyboard-shortcuts.md: keyboard
+l2-guyperfect.md: l2 file-format doc
 lemming-manager.md: lemming-manager
+l2-level-format.md: l2-level-format doc
 level-format.md: level-format doc
 level-loader.md: level-loading
 level-packs.md: level-packs resources doc
@@ -56,3 +58,4 @@ third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
 l2gfx-format.md: l2gfx-format doc
+l2bitmap-cpp.md: lemmings2 file-format bitmap
