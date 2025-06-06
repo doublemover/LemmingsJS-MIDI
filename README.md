@@ -44,13 +44,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Extended URL Parameters
     - `&debug=true` enables debug mode (Console is noisy)
     - `&speed=x` sets game speed (0-120)
-  - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
-    - Each skipped frame increments **missedTicks** (`T` display) while stable frames increment **stableTicks**
-    - Speed decreases once `missedTicks` exceed the slow threshold and rises again after enough `stableTicks`
-    - Thresholds will scale with `speedFactor` once [Issue 1](https://github.com/doublemover/LemmingsJS-MIDI/issues/1) is implemented
-    - The "T" indicator shows missed ticks and "L" shows the current lemming count
-    - Speed modulates smoothly when lagging and shows a color-coded overlay that fades out automatically. The timer resumes once the fade completes so bench mode keeps running. Only the pause button flashes red or green during adjustments
-    - Extreme backlog triggers the new `suspendWithColor` behaviour
+    - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
     - `&endless=true` disables time limit
     - `&nukeAfter=x` automatically nukes after x*10
     - `&scale=x` adjusts zoom scale (0.0125-5)
@@ -60,7 +54,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
      
 <details open>
   <summary> <b>Fixed Bugs</b> </summary>
-    
+
+  - Current automated test coverage is around **64%** of lines
   - Various crashes
   - Invisible blockers left behind when a blocker stops blocking
   - Invisible lemmings consuming actions after dying
@@ -138,21 +133,27 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - [ ] The ability to place flags or something to trigger different midi events as they are walked by
 </details>
 
-## Play Locally, Export & Patch Sprites
+## Play Locally
 
 - Install [Node.js 16 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
   - `npm start`
-- The Node tools rely on [NodeFileProvider](tools/NodeFileProvider.js) to load
-  resources from folders or `.zip`, `.tar.gz`, `.tgz` and `.rar` archives.
+
+- Then open http://127.0.0.1:8080 in your browser
+- If you encounter any issues please [https://github.com/doublemover/LemmingsJS-MIDI/issues](let us know here)
+
+
+## Tools, Testing, Additional info
+
 - See [docs/tools.md](docs/tools.md) for detailed usage of each script.
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
-- See [docs/TESTING.md](docs/TESTING.md) for how to run the Mocha test suite.
+- See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
-- Run `npm run coverage` to generate a report. Current automated test
-  coverage is around **64%** of lines.
+- See [docs/level-file-format.md](docs/level-file-format.md) for the `.lvl` file structure.
+- See [docs/config.md](docs/config.md) for configuration details.
+- See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
 ## Level Packs
 
@@ -171,16 +172,6 @@ This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
 and launches it fullscreen in landscape mode. Touch input still needs
 polish, so please file bugs for any issues you have!
-
-### WebMIDI
-
-WebMIDI only works when the game is served via HTTPS or on localhost. You must
-call `WebMidi.enable()` to prompt the user for MIDI device access.
-
-- System‑exclusive messages require `WebMidi.enable({sysex: true})`.
-
-See [.agentInfo/notes/webmidi-overview.md](.agentInfo/notes/webmidi-overview.md)
-for detailed examples and API summaries.
 
 ## Options
 
@@ -208,6 +199,7 @@ URL parameters (shortcut in brackets):
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
 - `Space`: Pause
+- `[` / `]`: Step backward / forward one tick when paused
 - `(Shift+)T`: Nuke (Instant)
 - `Backspace`: Restart level
 - `(Shift+)←↑↓→`: Move viewport (More)
@@ -223,14 +215,15 @@ URL parameters (shortcut in brackets):
 
 - All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
 - [Lemmings Forums](https://www.lemmingsforums.net/)
+- [Camanis.net Lemmings Archives](https://www.camanis.net/lemmings/) 
 - [tomsoftware](https://github.com/tomsoftware)
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution guidelines.
-
-## .agentInfo Notes
+<!-- .agentInfo Notes
 
 The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
 See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
+WebMIDI docs live in [`.agentInfo/notes/webmidi-overview.md`](.agentInfo/notes/webmidi-overview.md) and the environment summary in [`.agentInfo/notes/webmidi-environments.md`](.agentInfo/notes/webmidi-environments.md).
+-->
