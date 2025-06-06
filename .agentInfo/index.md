@@ -55,3 +55,4 @@ nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
+l2gfx-format.md: l2gfx-format doc
