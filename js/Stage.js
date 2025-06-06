@@ -220,9 +220,11 @@ class Stage {
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
-    const scale = stageImage.viewPoint.scale;
-    const worldH = gameH; // world height in world units
-    const viewH_world = winH / scale; // viewport height in world units
+    // worldHeight = how many “world pixels” tall
+    const worldH = gameH;
+    // viewH_world = viewport height in world units
+    const viewH_world = winH / scale;
+    // Clamp Y within [0, worldH - viewH_world]
     stageImage.viewPoint.y = this.limitValue(
       worldH - viewH_world,
       stageImage.viewPoint.y,
@@ -230,7 +232,6 @@ class Stage {
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    const gameW2 = stageImage.display.getWidth();
     const winW = stageImage.width;
     const worldW = gameW;
     const viewW_world = winW / scale;
@@ -284,14 +285,12 @@ class Stage {
     const panelW = Math.trunc(rawHUDW * scaleHUD);
     const gameH = stageH - panelH; // everything above the HUD
 
-    // 1) The game area fills x=0..stageW, y=0..gameH
     this.gameImgProps.x = 0;
     this.gameImgProps.y = 0;
     this.gameImgProps.width = stageW;
     this.gameImgProps.height = gameH;
 
-    // 2) The HUD sits at bottom, height=panelH, width=panelW, centered horizontally
-    this.guiImgProps.y = gameH; // so the top of HUD = bottom of game area
+    this.guiImgProps.y = gameH;
     this.guiImgProps.height = panelH;
     this.guiImgProps.width = panelW;
     if (this.guiImgProps.display) {
@@ -304,21 +303,16 @@ class Stage {
       const worldH = this.gameImgProps.display.getHeight();
       const worldW = this.gameImgProps.display.getWidth();
 
-      const startingScale = this.gameImgProps.viewPoint.scale || 2;
-      this._rawScale = startingScale;
-      this.gameImgProps.viewPoint.scale = this.snapScale(startingScale);
+      const scale = this.gameImgProps.viewPoint.scale || 2;
+      this._rawScale = scale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
 
-      // Compute world vs. viewport in world units
-      const worldH2 = displayHeight;
-      const worldW2 = displayWidth;
       const viewH_world = this.gameImgProps.height / scale;
       const viewW_world = stageW / scale;
 
-      this.gameImgProps.viewPoint.y = worldH2 - viewH_world;
-
-      if (worldW2 * this.gameImgProps.viewPoint.scale <= stagePixW) {
-        this.gameImgProps.viewPoint.x = (worldW2 - viewW_world) / 2;
-
+      this.gameImgProps.viewPoint.y = worldH - viewH_world;
+      if (worldW * scale <= stageW) {
+        this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
       } else {
         this.gameImgProps.viewPoint.x = 0;
       }

@@ -48,6 +48,9 @@
 {"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
 {"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
 {"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
+{"time":"2025-06-06T14:49:45.520Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":223}
+{"time":"2025-06-06T14:49:48.716Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":229}
+{"time":"2025-06-06T14:49:50.573Z","query":"snapScale","mdFiles":8,"codeFiles":24,"ms":129}
 {"time":"2025-06-06T14:47:43.263Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":1019}
 {"time":"2025-06-06T14:47:50.147Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":843}
 {"time":"2025-06-06T14:47:51.959Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":836}
