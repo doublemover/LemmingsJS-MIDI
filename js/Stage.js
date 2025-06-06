@@ -178,8 +178,7 @@ class Stage {
     }
 
     // Now clamp or recenter viewPoint:
-    // — Y should always sit so the bottom of the level is flush with the HUD,
-    //   i.e. “glued” to the top of the HUD panel.
+    // Clamp Y so the camera never leaves the level vertically
     const gameH = stageImage.display.getHeight();
     const winH = stageImage.height;
     const scale = stageImage.viewPoint.scale;
@@ -187,8 +186,12 @@ class Stage {
     const worldH = gameH;
     // viewH_world = viewport height in world units
     const viewH_world = winH / scale;
-    // To glue bottom: viewPoint.y = worldH - viewH_world
-    stageImage.viewPoint.y = worldH - viewH_world;
+    // Clamp Y within [0, worldH - viewH_world]
+    stageImage.viewPoint.y = this.limitValue(
+      0,
+      stageImage.viewPoint.y,
+      worldH - viewH_world
+    );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
     const gameW = stageImage.display.getWidth();
@@ -197,28 +200,19 @@ class Stage {
     const viewW_world = winW / scale;
 
     if (scale >= 2) {
-      // clamp between [0 .. (worldW - viewW_world)]
+      // Clamp between [0 .. (worldW - viewW_world)]
       stageImage.viewPoint.x = this.limitValue(
         0,
         stageImage.viewPoint.x,
         worldW - viewW_world
       );
-    }
-    // — If scale < 2, then “worldW * scale < winW” eventually. We want to interpolate
-    //   from left-align (at scale=2) to fully centered (at scale=0.25).
-    else {
-      // minimalScale is 0.25 in our snapScale
-      const minimalScale = 0.25;
-      // If the level is not wide enough to fill the viewport:
+    } else {
+      // Center the level when zoomed out
       if (worldW * scale < winW) {
-        // t goes from 0 at scale=2 to 1 at scale=minimalScale
-        const t = Math.max(0, Math.min(1, (2 - scale) / (2 - minimalScale)));
-        // desiredX_center = (worldW - viewW_world) / 2
-        const desiredX_center = (worldW - viewW_world) / 2;
-        // Interpolate: when t=0 -> x=0 (left-aligned); when t=1 -> x=centered
-        stageImage.viewPoint.x = desiredX_center * t;
+        const wDiff = winW - worldW * scale;
+        stageImage.viewPoint.x = -wDiff / (2 * scale);
       } else {
-        // if worldW*scale ≥ winW but scale<2, we still clamp:
+        // Still clamp if the level exceeds the viewport
         stageImage.viewPoint.x = this.limitValue(
           0,
           stageImage.viewPoint.x,
@@ -293,28 +287,33 @@ class Stage {
       const displayHeight = this.gameImgProps.display.getHeight();
       const displayWidth = this.gameImgProps.display.getWidth();
 
-      // Force scale to whatever it was (or default = 2 if unset)
-      const scale = this.gameImgProps.viewPoint.scale || 2;
-      this._rawScale = scale;
-      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
-
-      // Compute world vs. viewport in world units
-      const worldH = displayHeight;
-      const worldW = displayWidth;
-      const viewH_world = gameH / scale;
-      const viewW_world = stageW / scale;
-
-      // Glue Y: bottom of level flush against HUD top
-      this.gameImgProps.viewPoint.y = worldH - viewH_world;
-
-      // For X: if level is already narrower than viewport at this scale,
-      // center it; otherwise, clamp to left edge.
-      if (worldW * scale <= stageW) {
-        // center
-        this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
-      } else {
-        // left‐align
+      if (displayWidth === 0 || displayHeight === 0) {
         this.gameImgProps.viewPoint.x = 0;
+        this.gameImgProps.viewPoint.y = 0;
+      } else {
+        // Force scale to whatever it was (or default = 2 if unset)
+        const scale = this.gameImgProps.viewPoint.scale || 2;
+        this._rawScale = scale;
+        this.gameImgProps.viewPoint.scale = this.snapScale(scale);
+
+        // Compute world vs. viewport in world units
+        const worldH = displayHeight;
+        const worldW = displayWidth;
+        const viewH_world = gameH / scale;
+        const viewW_world = stageW / scale;
+
+        // Glue Y: bottom of level flush against HUD top
+        this.gameImgProps.viewPoint.y = worldH - viewH_world;
+
+        // For X: if level is already narrower than viewport at this scale,
+        // center it; otherwise, clamp to left edge.
+        if (worldW * scale <= stageW) {
+          // center
+          this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
+        } else {
+          // left‐align
+          this.gameImgProps.viewPoint.x = 0;
+        }
       }
 
       // Redraw at initial position
