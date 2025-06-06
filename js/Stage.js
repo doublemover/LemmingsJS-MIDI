@@ -210,9 +210,9 @@ class Stage {
     // argX,argY are deltaX,deltaY (screen pixels)
     const winW = stageImage.width;
     const winH = stageImage.height;
+    const scale = stageImage.viewPoint.scale;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
-    const scale = stageImage.viewPoint.scale;
     const worldDX = argX / scale;
     const worldDY = argY / scale;
     if (!veloUpdate) {
