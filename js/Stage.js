@@ -156,7 +156,8 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
+      // Negative wheel delta zooms in
+      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
     });
   }
 
@@ -225,35 +226,103 @@ class Stage {
       const guiImgData = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImgData);
     }
-    // PAN
-    // argX,argY are deltaX,deltaY (screen pixels)
-    const winW = stageImage.width;
-    const winH = stageImage.height;
-    const scale = stageImage.viewPoint.scale;
-    const worldW = stageImage.display.getWidth();
-    const worldH = stageImage.display.getHeight();
-    const viewW_world = winW / scale;
-    const viewH_world = winH / scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
-    if (!veloUpdate) {
-      stageImage.viewPoint.x += worldDX;
-      stageImage.viewPoint.y += worldDY;
+    // PAN only when no zoom change
+    if (deltaZoom === 0) {
+      // argX,argY are deltaX,deltaY (screen pixels)
+      const winW = stageImage.width;
+      const winH = stageImage.height;
+      const scale = stageImage.viewPoint.scale;
+      const worldDX = argX / scale;
+      const worldDY = argY / scale;
+      if (!veloUpdate) {
+        stageImage.viewPoint.x += worldDX;
+        stageImage.viewPoint.y += worldDY;
+        // TODO: Make sure none of this commented out functionality was needed or is now missing
+        // // PAN
+        // // argX,argY are deltaX,deltaY (screen pixels)
+        // const winW = stageImage.width;
+        // const winH = stageImage.height;
+        // const scale = stageImage.viewPoint.scale;
+        // const viewW_world = winW / scale;
+        // const viewH_world = winH / scale;
+        // const worldDX = argX / scale;
+        // const worldDY = argY / scale;
+        // if (!veloUpdate) {
+        //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
+        //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
+        // }
+
+        // // Clamp view so it stays within the level bounds
+        // const worldW = stageImage.display.getWidth();
+        // const worldH = stageImage.display.getHeight();
+    
+        // // worldHeight = how many “world pixels” tall
+        // // viewH_world = viewport height in world units
+    
+
+        // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+        //   Math.min(0, worldW - viewW_world),
+        //   Math.max(0, worldW - viewW_world)
+        // ]);
+
+        // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
+        //   Math.min(0, worldH - viewH_world),
+        //   Math.max(0, worldH - viewH_world)
+        // ]);
+
+        // // To glue bottom: viewPoint.y = worldH - viewH_world
+
+        // if (scale >= 2) {
+        //   // Clamp between [0 .. (worldW - viewW_world)]
+        //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+        //     0,
+        //     worldW - viewW_world
+        //   ]);
+        // } else {
+        //   // Center the level when zoomed out
+        //   if (worldW * scale < winW) {
+        //     const wDiff = winW - worldW * scale;
+        //     stageImage.viewPoint.setX(-wDiff / (2 * scale));
+        //   } else {
+        //     // Still clamp if the level exceeds the viewport
+        //     stageImage.viewPoint.setX(stageImage.viewPoint.x, [
+        //       0,
+        //       worldW - viewW_world
+        //     ]);
+
+      }
     }
 
-    stageImage.viewPoint.x = this.limitValue(
-      Math.min(0, worldW - viewW_world),
-      stageImage.viewPoint.x,
-      Math.max(0, worldW - viewW_world)
-    );
+      // TODO: Make sure none of this commented out functionality was needed or is now missing
+    // PAN
+    // argX,argY are deltaX,deltaY (screen pixels)
+//     const winW = stageImage.width;
+//     const winH = stageImage.height;
+//     const scale = stageImage.viewPoint.scale;
+//     const worldW = stageImage.display.getWidth();
+//     const worldH = stageImage.display.getHeight();
+//     const viewW_world = winW / scale;
+//     const viewH_world = winH / scale;
+//     const worldDX = argX / scale;
+//     const worldDY = argY / scale;
+//     if (!veloUpdate) {
+//       stageImage.viewPoint.x += worldDX;
+//       stageImage.viewPoint.y += worldDY;
+//     }
 
-    stageImage.viewPoint.y = this.limitValue(
-      Math.min(0, worldH - viewH_world),
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH_world)
-    );
+//     stageImage.viewPoint.x = this.limitValue(
+//       Math.min(0, worldW - viewW_world),
+//       stageImage.viewPoint.x,
+//       Math.max(0, worldW - viewW_world)
+//     );
+
+//     stageImage.viewPoint.y = this.limitValue(
+//       Math.min(0, worldH - viewH_world),
+//       stageImage.viewPoint.y,
+//       Math.max(0, worldH - viewH_world)
+//     );
       
-    // TODO: Make sure none of this commented out functionality was needed or is now missing
+
     // To glue bottom: viewPoint.y = worldH - viewH_world
     // PAN only when no zoom change
     //     if (deltaZoom === 0) {
@@ -352,18 +421,62 @@ class Stage {
     const hudScale = 4;
     this.guiImgProps.viewPoint.scale = hudScale;
 
-    const scaleHUD = this.guiImgProps.viewPoint.scale;
     const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
     const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
-    const panelH = Math.trunc(rawHUDH * scaleHUD);
-    const panelW = Math.trunc(rawHUDW * scaleHUD);
-    const gameH = stageH - panelH;
+    const hudH = (this.guiImgProps.display?.getHeight() || 80) * hudScale;
+    const hudW = (this.guiImgProps.display?.getWidth() || 720) * hudScale;
+    const gameH = stageH - hudH;
 
-    this.guiImgProps.y = gameH;
-    this.guiImgProps.height = panelH;
-    this.guiImgProps.width = panelW;
-    this.guiImgProps.x = (stageW - panelW) / 2;
+    Object.assign(this.gameImgProps, { x: 0, y: 0, width: stageW, height: gameH });
+    Object.assign(this.guiImgProps, {
+      x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
+      y: gameH,
+      width: hudW,
+      height: hudH
+    });
+
+    if (this.gameImgProps.display) {
+      const worldH = this.gameImgProps.display.getHeight();
+      const worldW = this.gameImgProps.display.getWidth();
+
+      const scale = this.gameImgProps.viewPoint.scale || 2;
+      this._rawScale = scale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
+
+      const viewH_world = gameH / scale;
+      const viewW_world = stageW / scale;
+
+      this.gameImgProps.viewPoint.y = worldH - viewH_world;
+      this.gameImgProps.viewPoint.x =
+        worldW * scale <= stageW ? (worldW - viewW_world) / 2 : 0;
+
+
+      // Glue Y: bottom of level flush against HUD top
+      this.gameImgProps.viewPoint.setY(worldH - viewH_world);
+
+      // For X: if level is already narrower than viewport at this scale,
+      // center it; otherwise, clamp to left edge.
+      if (worldW * scale <= stageW) {
+        // center
+        this.gameImgProps.viewPoint.setX((worldW - viewW_world) / 2);
+      } else {
+        // left‐align
+        this.gameImgProps.viewPoint.setX(0);
+      }
+
+      this.clampViewPoint(this.gameImgProps);
+
+      // Redraw at initial position
+      this.clear(this.gameImgProps);
+      const gameImg = this.gameImgProps.display.getImageData();
+      this.draw(this.gameImgProps, gameImg);
+    }
+
+    if (this.guiImgProps.display) {
+      const guiImg = this.guiImgProps.display.getImageData();
+      this.draw(this.guiImgProps, guiImg);
+    }
   }
   getStageImageAt(x, y) {
     if (
