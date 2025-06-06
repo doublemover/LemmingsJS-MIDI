@@ -24,7 +24,7 @@
     "format": "eslint . --fix",
     "lint": "eslint .",
     "depcheck": "depcheck",
-    "index": "node tools/build_index.js --root . --out embeddings.json"
+    "index": "node tools/build_index.js"
   },
   "repository": {
     "type": "git",
