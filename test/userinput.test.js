@@ -59,12 +59,15 @@ globalThis.lemmings = { game: { showDebug: false } };
 describe('UserInputManager', function() {
   it('emits zoom events with cursor position', function(done) {
     const uim = new UserInputManager(element);
+    let count = 0;
     uim.onZoom.on(e => {
       try {
         expect(e.x).to.equal(100);
         expect(e.y).to.equal(50);
         expect(e.deltaZoom).to.equal(120);
-        done();
+        count += 1;
+        if (count === 1) done();
+        else done(new Error('zoom triggered more than once'));
       } catch (err) {
         done(err);
       }
@@ -133,37 +136,40 @@ describe('UserInputManager', function() {
     expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
   });
 
-});
+  it('emits zoom events with stage set', function(done) {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+    stage.getGameDisplay().initSize(1600, 1200);
+    globalThis.lemmings.stage = stage;
 
-it('emits zoom events with stage set', function(done) {
-  const canvas = createStubCanvas();
-  const stage = new Stage(canvas);
-  stage.clear = () => {};
-  stage.draw = () => {};
-  stage.getGameDisplay().initSize(1600, 1200);
-  globalThis.lemmings.stage = stage;
+    stage.gameImgProps.viewPoint.scale = 1;
+    stage._rawScale = 1;
+    stage.gameImgProps.viewPoint.x = 0;
+    stage.gameImgProps.viewPoint.y = 0;
 
-  stage.gameImgProps.viewPoint.scale = 1;
-  stage._rawScale = 1;
-  stage.gameImgProps.viewPoint.x = 0;
-  stage.gameImgProps.viewPoint.y = 0;
+    const uim = stage.controller;
+    const oldScale = stage.gameImgProps.viewPoint.scale;
 
-  const uim = stage.controller;
-  const oldScale = stage.gameImgProps.viewPoint.scale;
+    let count = 0;
+    uim.onZoom.on((e) => {
+      try {
+        expect(e.x).to.equal(25);
+        expect(e.y).to.equal(75);
+        expect(e.deltaZoom).to.equal(-20);
+        expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(oldScale);
+        count += 1;
+        if (count === 1) done();
+        else done(new Error('zoom triggered more than once'));
+      } catch (err) {
+        done(err);
+      }
+    });
 
-  uim.onZoom.on((e) => {
-    try {
-      expect(e.x).to.equal(25);
-      expect(e.y).to.equal(75);
-      expect(e.deltaZoom).to.equal(-20);
-      expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(oldScale);
-      done();
-    } catch (err) {
-      done(err);
-    }
+    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
   });
 
-  uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
 });
 
 it('converts pointer position based on canvas size', function() {

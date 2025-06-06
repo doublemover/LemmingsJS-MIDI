@@ -273,11 +273,12 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
-    const evt = new ZoomEventArgs(position.x, position.y, deltaY);
-    this.onZoom.trigger(evt);
-
     const stage = globalThis?.lemmings?.stage;
+    const evt = new ZoomEventArgs(position.x, position.y, deltaY);
+
     if (stage && stage.getStageImageAt) {
+      this.onZoom.trigger(evt);
+
       const stageImage = stage.getStageImageAt(position.x, position.y);
       if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
         const worldPos = stage.calcPosition2D(stageImage, position);
@@ -285,11 +286,9 @@ class UserInputManager {
         const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
         stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, zx, zy);
       }
-      return;
+    } else {
+      this.onZoom.trigger(evt);
     }
-
-    const zea = new ZoomEventArgs(position.x, position.y, deltaY);
-    this.onZoom.trigger(zea);
   }
 }
 
