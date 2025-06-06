@@ -208,6 +208,8 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
+    const winW = stageImage.width;
+    const winH = stageImage.height;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
     const scale = stageImage.viewPoint.scale;
@@ -221,8 +223,7 @@ class Stage {
     // Clamp view so it stays within the level bounds
     const worldW = stageImage.display.getWidth();
     const worldH = stageImage.display.getHeight();
-    const winW = stageImage.width;
-    const winH = stageImage.height;
+    
     // worldHeight = how many “world pixels” tall
     // viewH_world = viewport height in world units
     
