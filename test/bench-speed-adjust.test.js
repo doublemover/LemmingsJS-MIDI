@@ -107,6 +107,5 @@ describe('benchSpeedAdjust recovery', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
     expect(timer.frameTime).to.equal(timer.TIME_PER_FRAME_MS / timer.speedFactor);
-
   });
 });
