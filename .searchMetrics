@@ -1,4 +1,106 @@
 {
+  "js/Stage.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "js/UserInputManager.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "css/game.css": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/filecontainer.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/packfilepart.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "js/LemmingsBootstrap.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "js/Position2D.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/geometry.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/stage.overlayfade.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/stage.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/stage.updateStageSize.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
   ".agentInfo/index-detailed.md": {
     "md": 2,
     "code": 0,
