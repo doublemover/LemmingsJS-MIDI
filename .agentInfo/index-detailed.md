@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
