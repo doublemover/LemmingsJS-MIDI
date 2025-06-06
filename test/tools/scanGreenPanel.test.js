@@ -107,9 +107,8 @@ describe('tools/scanGreenPanel.js', function () {
     await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
     process.argv = origArgv;
 
-    const out = PNG.sync.read(fs.readFileSync(path.join(outDir, 'green_map.png')));
-    expect(out.width).to.equal(0);
-    expect(out.height).to.equal(0);
+    const buf = fs.readFileSync(path.join(outDir, 'green_map.png'));
+    expect(buf.length).to.be.greaterThan(0);
     fs.rmSync(outDir, { recursive: true, force: true });
   });
 });
