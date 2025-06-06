@@ -16,31 +16,26 @@ jobs:
     - uses: actions/setup-node@v4
       with:
         node-version: 20
-        cache: 'npm'          # built-in cache for ~/.npm
+        cache: 'npm'          
 
     # ---------- 2  Install deps once ----------
     - name: Install dependencies
       run: npm ci
 
-    # ---------- 3  (Optional) run any one-off build tasks ----------
-    # Skip if you truly have no "npm run build"
-    # - run: npm run build
-
     # ---------- 4  Cache node_modules + any build artefacts ----------
     - name: Save node_modules and dist/
-      uses: actions/cache@v4
+      uses: actions/cache@v4.2.3
       with:
         path: |
           node_modules
-     #     dist              # comment out if you have no dist
         key: |
           ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
 
     # ---------- 5  Publish as artefact for other jobs ----------
     - name: Upload build cache
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
-        name: build-cache
+        name: node_cache
         path: |
-          node_modules
- #         dist
+          node modules
+        if-no-files-found: error
