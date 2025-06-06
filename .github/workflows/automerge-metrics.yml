@@ -1,0 +1,75 @@
+name: Auto-merge search metrics
+
+on:
+  pull_request:
+    types: [synchronize, reopened]
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout PR branch
+        uses: actions/checkout@v4
+        with:
+          # Checkout the PR’s head branch, not just the SHA
+          ref: ${{ github.event.pull_request.head.ref }}
+          fetch-depth: 0
+
+      - name: Set Git identity
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Fetch base branch
+        run: |
+          git fetch origin ${{ github.event.pull_request.base.ref }}:${{ github.event.pull_request.base.ref }}
+
+      - name: Compute merge-base
+        id: mergebase
+        run: |
+          echo "MERGE_BASE=$(git merge-base HEAD origin/${{ github.event.pull_request.base.ref }})" >> $GITHUB_OUTPUT
+
+      - name: Merge metrics.json
+        run: |
+          mkdir -p tmp_merge
+          # Extract the three “ancestors” of metrics.json (base, ours, theirs). If missing, fall back to `{}` so jq still works.
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/metrics.json > tmp_merge/base_metrics.json 2>/dev/null || echo '{}' > tmp_merge/base_metrics.json
+          git show HEAD:.searchMetrics/metrics.json > tmp_merge/ours_metrics.json 2>/dev/null || echo '{}' > tmp_merge/ours_metrics.json
+          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/metrics.json > tmp_merge/theirs_metrics.json 2>/dev/null || echo '{}' > tmp_merge/theirs_metrics.json
+
+          # Run our custom merge driver (must be executable in `scripts/merge-metrics.sh`)
+          bash tools/merge-metrics.sh \
+            tmp_merge/base_metrics.json \
+            tmp_merge/ours_metrics.json \
+            tmp_merge/theirs_metrics.json
+
+          # Copy the merged result back into place
+          mv tmp_merge/ours_metrics.json .searchMetrics/metrics.json
+
+      - name: Merge searchHistory
+        run: |
+          mkdir -p tmp_merge
+          # Extract the three “ancestors” of searchHistory (base, ours, theirs). If missing, fall back to an empty file.
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/searchHistory > tmp_merge/base_history.txt 2>/dev/null || echo '' > tmp_merge/base_history.txt
+          git show HEAD:.searchMetrics/searchHistory > tmp_merge/ours_history.txt 2>/dev/null || echo '' > tmp_merge/ours_history.txt
+          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/searchHistory > tmp_merge/theirs_history.txt 2>/dev/null || echo '' > tmp_merge/theirs_history.txt
+
+          # Run our custom merge driver (must be executable in `scripts/merge-history.sh`)
+          bash tools/merge-history.sh \
+            tmp_merge/base_history.txt \
+            tmp_merge/ours_history.txt \
+            tmp_merge/theirs_history.txt
+
+          # Copy the merged result back into place
+          mv tmp_merge/ours_history.txt .searchMetrics/searchHistory
+
+      - name: Commit merged changes
+        run: |
+          git add .searchMetrics/metrics.json .searchMetrics/searchHistory
+          # If there are staged changes, commit and push back to the PR branch
+          if ! git diff --cached --quiet; then
+            git commit -m "Auto-merge .searchMetrics/metrics.json and searchHistory"
+            git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          else
+            echo "No changes detected in metrics.json or searchHistory"
+          fi
