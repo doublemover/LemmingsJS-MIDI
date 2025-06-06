@@ -68,4 +68,44 @@ describe('benchSpeedAdjust recovery', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.equal(0.5);
   });
+
+
+  it('calls startOverlayFade with pause rect when slowing', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    const gui = { x: 5, y: 10, viewPoint: { scale: 2 } };
+    const calls = [];
+    lemmings.stage = {
+      guiImgProps: gui,
+      startOverlayFade(color, rect, dashLen) { calls.push({ color, rect, dashLen }); }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(1200);
+    raf(clock.now);
+
+    expect(calls.length).to.equal(1);
+    const { rect, dashLen } = calls[0];
+    expect(rect).to.deep.equal({
+      x: gui.x + 160 * gui.viewPoint.scale,
+      y: gui.y + 32 * gui.viewPoint.scale,
+      width: 16 * gui.viewPoint.scale,
+      height: 10 * gui.viewPoint.scale
+    });
+    expect(dashLen).to.be.at.least(2);
+  });
+
+  it('updates frameTime when speed changes', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(1200); // trigger slowdown
+    raf(clock.now);
+    expect(timer.speedFactor).to.be.below(1);
+    expect(timer.frameTime).to.equal(timer.TIME_PER_FRAME_MS / timer.speedFactor);
+  });
 });

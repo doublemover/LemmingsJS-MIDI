@@ -10,7 +10,7 @@ The command uses Mocha and is launched with Node's `--import` option so that `js
 
 ## npm test workflow
 
-Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 18** during the CI job after running `npm run lint`.
+Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.
 
 To mirror the CI environment locally:
 

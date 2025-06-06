@@ -135,7 +135,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ## Play Locally
 
-- Install [Node.js 16 or later](https://nodejs.org)
+- Install [Node.js 20 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`
@@ -178,6 +178,7 @@ URL parameters (shortcut in brackets):
 - `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
 - `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation. The overlay fades out automatically and the timer resumes afterward. Only the pause button flashes red/green via `suspendWithColor` during adjustments (default: false)
+- `benchSequence (bs)`: Run automated bench tests with 10, 5, 2 and 1 random entrances (default: false)
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)

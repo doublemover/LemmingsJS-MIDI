@@ -19,9 +19,9 @@ const CHUNK = +argv.chunk;
 const DIMS = +argv.dims;
 const ROOT = process.cwd();
 const SKIP_DIRS = new Set([
-  'node_modules','.git','dist','coverage','index-code','index-prose',
+  'node_modules', '.git', 'dist', 'coverage', 'index-code', 'index-prose',
   'lemmings', 'lemmings_all', 'lemmings_ohNo', 'holiday93', 'holiday94',
-  'xmas91', 'xmas92', 'img', '.github'
+  'xmas91', 'xmas92', 'img', '.github', '.searchMetrics'
 ]);
 
 
@@ -105,7 +105,6 @@ async function build(mode) {
     'wordInfo.json',
     'package.json',
     'package-lock.json',
-    '.searchMetrics',
     'searchHistory',
     '.gitignore',
     '.gitattributes',

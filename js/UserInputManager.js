@@ -272,7 +272,6 @@ class UserInputManager {
   handleWheel(position, deltaY) {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
-
     const stage = globalThis?.lemmings?.stage;
     if (stage && stage.getStageImageAt) {
       const stageImage = stage.getStageImageAt(position.x, position.y);
@@ -299,7 +298,6 @@ class UserInputManager {
       //       });
 
     }
-  }
 }
 
 Lemmings.UserInputManager = UserInputManager;

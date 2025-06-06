@@ -3,7 +3,6 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import '../js/ViewPoint.js';
 import '../js/StageImageProperties.js';
-import { Stage } from '../js/Stage.js';
 import { DisplayImage, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
 import { Frame } from '../js/Frame.js';
 import '../js/ColorPalette.js';
@@ -43,15 +42,31 @@ class SimpleImageData {
   }
 }
 
+class StageStub {
+  constructor(canvas) {
+    this.stageCav = canvas;
+    this.gameImgProps = { display: null, viewPoint: new Lemmings.ViewPoint(0, 0, 1) };
+  }
+  createImage(_, w, h) {
+    return new SimpleImageData(w, h);
+  }
+  getGameDisplay() {
+    if (!this.gameImgProps.display) {
+      this.gameImgProps.display = new DisplayImage(this);
+    }
+    return this.gameImgProps.display;
+  }
+  dispose() {
+    this.gameImgProps.display = null;
+  }
+}
+
 describe('DisplayImage primitives', function() {
   let stage, display;
 
   beforeEach(function() {
     const canvas = createCanvasStub(8, 8);
-    stage = new Stage(canvas);
-    stage.createImage = function(d, w, h) {
-      return new SimpleImageData(w, h);
-    };
+    stage = new StageStub(canvas);
     display = stage.getGameDisplay();
     display.initSize(4, 4);
     display.clear(color32(0, 0, 0));
@@ -193,6 +208,75 @@ describe('DisplayImage primitives', function() {
       RED, RED, GREEN, GREEN,
       NULL, NULL, GREEN, GREEN,
       NULL, NULL, GREEN, GREEN
+    ]);
+  });
+
+  it('_blit scales with fractional factors using nearest mask', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.initSize(3, 3);
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    display._blit(frame, 0, 0, {
+      size: { width: 3, height: 3 },
+      scaleMode: 'nearest',
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN,
+      RED, RED, GREEN,
+      NULL, NULL, GREEN
+    ]);
+  });
+
+  it('_blit fractional scale falls back to nearest for scaleXbrz', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.initSize(3, 3);
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    display._blit(frame, 0, 0, {
+      size: { width: 3, height: 3 },
+      scaleMode: 'xbrz',
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN,
+      RED, RED, GREEN,
+      NULL, NULL, GREEN
+    ]);
+  });
+
+  it('_blit fractional scale falls back to nearest for scaleHqx', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.clearPixel(0, 1);
+    frame.setPixel(1, 1, color32(0, 255, 0));
+    display.initSize(3, 3);
+    display.clear(color32(10, 10, 10));
+    const NULL = color32(5, 5, 5);
+    display._blit(frame, 0, 0, {
+      size: { width: 3, height: 3 },
+      scaleMode: 'hqx',
+      nullColor32: NULL
+    });
+    const RED   = color32(255, 0, 0);
+    const GREEN = color32(0, 255, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, GREEN,
+      RED, RED, GREEN,
+      NULL, NULL, GREEN
     ]);
   });
 
