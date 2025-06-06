@@ -69,3 +69,4 @@ This expanded listing preserves the original bullet format with short descriptio
 
 
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.

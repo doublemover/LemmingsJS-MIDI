@@ -55,3 +55,4 @@ nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
+l2ss-overview.md: l2ss sprite-chunks doc
