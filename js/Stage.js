@@ -208,6 +208,8 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
+    const viewW_world = winW / scale;
+    const viewH_world = winH / scale;
     const scale = stageImage.viewPoint.scale;
     const worldDX = argX / scale;
     const worldDY = argY / scale;
@@ -223,7 +225,7 @@ class Stage {
     const winH = stageImage.height;
     // worldHeight = how many “world pixels” tall
     // viewH_world = viewport height in world units
-    const viewH_world = winH / scale;
+    
 
     stageImage.viewPoint.x = this.limitValue(
       Math.min(0, worldW - viewW_world),
@@ -238,7 +240,7 @@ class Stage {
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    const viewW_world = winW / scale;
+    
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
     if (scale >= 2) {
