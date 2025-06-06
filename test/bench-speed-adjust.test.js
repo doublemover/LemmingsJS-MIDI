@@ -68,4 +68,17 @@ describe('benchSpeedAdjust recovery', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.equal(0.5);
   });
+
+  it('updates frameTime when speed changes', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(1200); // trigger slowdown
+    raf(clock.now);
+    expect(timer.speedFactor).to.be.below(1);
+    expect(timer.frameTime).to.equal(timer.TIME_PER_FRAME_MS / timer.speedFactor);
+  });
 });
