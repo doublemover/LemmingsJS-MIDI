@@ -6,6 +6,7 @@
 **/.project
 **/.settings
 *.code-workspace
+coverage/
 
 # package managers
 bower_components/
