@@ -86,3 +86,8 @@
 {"time":"2025-06-06T16:27:51.446Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":296}
 {"time":"2025-06-06T16:27:53.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":183}
 {"time":"2025-06-06T16:27:55.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":372}
+{"time":"2025-06-06T16:28:22.964Z","query":"UserInputManager dispose","mdFiles":26,"codeFiles":53,"ms":429}
+{"time":"2025-06-06T16:32:41.889Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":123}
+{"time":"2025-06-06T16:32:44.532Z","query":"stagePixW","mdFiles":12,"codeFiles":51,"ms":181}
+{"time":"2025-06-06T16:32:48.902Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":144}
+{"time":"2025-06-06T16:32:52.070Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":350}
