@@ -16,7 +16,7 @@ body * {
     overflow: hidden;
 }
 .gameCanvas {
-    /* cursor: none; keep the system cursor */
+    cursor: none;
 }
 
 @media (orientation: landscape) {
