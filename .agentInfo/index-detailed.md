@@ -70,6 +70,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
 - **vgagrx, groundxo, planar-bitmaps**: [notes/vgagrx-groundxo-format.md](notes/vgagrx-groundxo-format.md) - VGAGR and GROUND files store 4-bit planar bitmaps with a separate mask plane; loader does not use plane 4 for terrain.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
 - **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
 - **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.
 - **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
