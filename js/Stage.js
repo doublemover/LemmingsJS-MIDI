@@ -57,11 +57,22 @@ class Stage {
   }
 
   calcPosition2D(stageImage, e) {
+    // Allow calls as calcPosition2D(event) by auto-selecting the stage image
+    if (e === undefined && stageImage && stageImage.x !== undefined) {
+      e = stageImage;
+      stageImage = this.getStageImageAt(e.x, e.y);
+    }
+
+    if (!stageImage || !e) return new Lemmings.Position2D(0, 0);
+
     const localX = e.x - stageImage.x;
     const localY = e.y - stageImage.y;
-    const worldX = stageImage.viewPoint.getSceneX(localX);
-    const worldY = stageImage.viewPoint.getSceneY(localY);
-    return new Lemmings.Position2D(worldX, worldY);
+    const vp = stageImage.viewPoint;
+    // Use the same scale for both axes so coordinates map correctly
+    const sceneX = vp.getSceneX(localX);
+    const sceneY = vp.getSceneY(localY);
+
+    return new Lemmings.Position2D(sceneX, sceneY);
   }
 
   handleOnDoubleClick() {
