@@ -31,6 +31,7 @@ if (!query) {
 
 const t0 = Date.now();
 const ROOT = process.cwd();
+const metricsDir = path.join(ROOT, '.searchMetrics');
 
 /* --- Tokeniser + regex for highlighting --- */
 const stemmer = Snowball.newStemmer('english');
@@ -460,7 +461,10 @@ if (argv.stats) {
 }
 
 /* ---------- Update .searchMetrics and .searchHistory ---------- */
-const metricsPath = path.join(ROOT, '.searchMetrics');
+const metricsPath = path.join(metricsDir, 'metrics.json');
+const historyPath = path.join(metricsDir, 'searchHistory');
+await fs.mkdir(path.dirname(metricsPath), { recursive: true });
+
 let data = {};
 try {
   data = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
@@ -479,7 +483,7 @@ codeHitsAll.forEach((h) => inc(h.file, 'code'));
 await fs.writeFile(metricsPath, JSON.stringify(data) + '\n');
 
 await fs.appendFile(
-  '.searchHistory',
+  historyPath,
   JSON.stringify({
     time: new Date().toISOString(),
     query,

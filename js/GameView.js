@@ -15,6 +15,7 @@ class GameView extends Lemmings.BaseLogger {
     this.stage = null;
     this.gameSpeedFactor = 1;
     this.bench = false; // just keep spawning lems
+    this.benchSequence = false;
     this.endless = false; // time doesn't run out, game doesn't end
     this.nukeAfter = 0; // nuke after x seconds
     this.scale = 0; // zoom 
@@ -37,9 +38,14 @@ class GameView extends Lemmings.BaseLogger {
 
   set gameCanvas(el) {
     if (this.stage && this.stage.dispose) {
+      window.removeEventListener('resize', this._stageResize);
+      window.removeEventListener('orientationchange', this._stageResize);
       this.stage.dispose();
     }
     this.stage = new Lemmings.Stage(el);
+    this._stageResize = () => this.stage.updateStageSize();
+    window.addEventListener('resize', this._stageResize);
+    window.addEventListener('orientationchange', this._stageResize);
   }
 
   /** start or continue the game */
@@ -279,6 +285,7 @@ class GameView extends Lemmings.BaseLogger {
     this.cheat = this.parseBool(query, ['cheat', 'c']);
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);
+    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
@@ -316,6 +323,7 @@ class GameView extends Lemmings.BaseLogger {
     // optional flags only appear when non-default
     setParam('debug', 'dbg', this.debug, false);
     setParam('bench', 'b', this.bench, false);
+    setParam('benchSequence', 'bs', this.benchSequence, false);
     setParam('endless', 'e', this.endless, false);
     setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
     setParam('extra', 'ex', this.extraLemmings, 0);
@@ -431,6 +439,9 @@ class GameView extends Lemmings.BaseLogger {
     this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
     await this.populateLevelSelect();
     await this.loadLevel();
+    if (this.benchSequence) {
+      await this.benchSequenceStart();
+    }
   }
   /** load a level and render it to the display */
   async loadLevel() {
@@ -465,6 +476,45 @@ class GameView extends Lemmings.BaseLogger {
     return this.start();
   }
 
+  async benchStart(entrances) {
+    this.bench = true;
+    await this.loadLevel();
+    const level = this.game.level;
+    level.entrances.length = 0;
+    for (let i = 0; i < entrances; i++) {
+      level.entrances.push({ x: (Math.random() * level.width) | 0, y: 0 });
+    }
+    if (this.game.getLemmingManager) {
+      const lm = this.game.getLemmingManager();
+      if (lm) lm.spawnCount = entrances;
+    }
+    const timer = this.game.getGameTimer();
+    timer.speedFactor = 6;
+    timer.benchStartupFrames = 600;
+    timer.benchStableFactor = 4;
+    if (this.benchSequence) {
+      if (this._benchMonitor) timer.eachGameSecond.off(this._benchMonitor);
+      this._benchMonitor = async () => {
+        if (timer.speedFactor < 1) {
+          timer.eachGameSecond.off(this._benchMonitor);
+          timer.suspend();
+          console.log(this.game.getLemmingManager().getLemmings().length);
+          this._benchIndex++;
+          if (this._benchIndex < this._benchCounts.length) {
+            await this.benchStart(this._benchCounts[this._benchIndex]);
+          }
+        }
+      };
+      timer.eachGameSecond.on(this._benchMonitor);
+    }
+  }
+
+  async benchSequenceStart() {
+    this._benchCounts = [10, 5, 2, 1];
+    this._benchIndex = 0;
+    await this.benchStart(this._benchCounts[0]);
+  }
+
   /** cleanup keyboard and stage handlers */
   dispose() {
     if (this.shortcuts) {
@@ -472,6 +522,8 @@ class GameView extends Lemmings.BaseLogger {
       this.shortcuts = null;
     }
     if (this.stage && this.stage.dispose) {
+      window.removeEventListener('resize', this._stageResize);
+      window.removeEventListener('orientationchange', this._stageResize);
       this.stage.dispose();
       this.stage = null;
     }
