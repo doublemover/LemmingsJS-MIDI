@@ -25,6 +25,8 @@
     "lint": "eslint .",
     "depcheck": "depcheck",
     "index": "node tools/build_index.js",
+    "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js",
+    "agent-update-searchhistory": "node tools/mergeSearchHistory.js",
     "test-workflows": "mocha test/search-history-workflow.test.js"
   },
   "repository": {
