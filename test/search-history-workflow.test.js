@@ -8,7 +8,8 @@ describe('mergeSearchHistory', function () {
   it('appends missing lines from the base file', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
     const base = path.join(dir, 'base_history');
-    const target = path.join(dir, '.searchHistory');
+    const target = path.join(dir, '.searchMetrics', 'searchHistory');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(base, 'a\nb\nc\n');
     fs.writeFileSync(target, 'b\nc\nd\n');
 

@@ -17,19 +17,20 @@ jobs:
       - name: Fetch master history
         run: |
           git fetch origin master
-          git show origin/master:.searchHistory > base_history || touch base_history
+          git show origin/master:.searchMetrics/searchHistory > base_history || touch base_history
       - name: Merge base lines
         run: |
-          touch .searchHistory
+          mkdir -p .searchMetrics
+          touch .searchMetrics/searchHistory
           while IFS= read -r line; do
-            grep -Fxq "$line" .searchHistory || echo "$line" >> .searchHistory
+            grep -Fxq "$line" .searchMetrics/searchHistory || echo "$line" >> .searchMetrics/searchHistory
           done < base_history
       - name: Commit and push if changed
         run: |
-          if ! git diff --quiet -- .searchHistory; then
+          if ! git diff --quiet -- .searchMetrics/searchHistory; then
             git config user.name "github-actions"
             git config user.email "github-actions@github.com"
-            git add .searchHistory
+            git add .searchMetrics/searchHistory
             git commit -m "chore: sync search history"
             git push origin HEAD:${{ github.head_ref }}
           fi
