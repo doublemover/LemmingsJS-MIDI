@@ -57,22 +57,11 @@ class Stage {
   }
 
   calcPosition2D(stageImage, e) {
-    // Allow calls as calcPosition2D(event) by auto-selecting the stage image
-    if (e === undefined && stageImage && stageImage.x !== undefined) {
-      e = stageImage;
-      stageImage = this.getStageImageAt(e.x, e.y);
-    }
-
-    if (!stageImage || !e) return new Lemmings.Position2D(0, 0);
-
     const localX = e.x - stageImage.x;
     const localY = e.y - stageImage.y;
-    const vp = stageImage.viewPoint;
-    // Use the same scale for both axes so coordinates map correctly
-    const sceneX = vp.getSceneX(localX);
-    const sceneY = vp.getSceneY(localY);
-
-    return new Lemmings.Position2D(sceneX, sceneY);
+    const worldX = stageImage.viewPoint.getSceneX(localX);
+    const worldY = stageImage.viewPoint.getSceneY(localY);
+    return new Lemmings.Position2D(worldX, worldY);
   }
 
   handleOnDoubleClick() {
@@ -219,16 +208,15 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
-    const scale = stageImage.viewPoint.scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
+    const scalePan = stageImage.viewPoint.scale;
+    const worldDX = argX / scalePan;
+    const worldDY = argY / scalePan;
     if (!veloUpdate) {
       stageImage.viewPoint.x += worldDX;
       stageImage.viewPoint.y += worldDY;
     }
 
-    // Now clamp or recenter viewPoint:
-    // Clamp Y so the camera never leaves the level vertically
+    // Clamp the viewPoint so the viewport never shows space outside the level
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
@@ -238,9 +226,9 @@ class Stage {
     const viewH_world = winH / scale;
     // Clamp Y within [0, worldH - viewH_world]
     stageImage.viewPoint.y = this.limitValue(
-      0,
+      worldH - viewH_world,
       stageImage.viewPoint.y,
-      worldH - viewH_world
+      0
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
@@ -249,26 +237,10 @@ class Stage {
     const viewW_world = winW / scale;
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
-    if (scale >= 2) {
-      // Clamp between [0 .. (worldW - viewW_world)]
-      stageImage.viewPoint.x = this.limitValue(
-        0,
-        stageImage.viewPoint.x,
-        worldW - viewW_world
-      );
-    } else {
-      // Center the level when zoomed out
-      if (worldW * scale < winW) {
-        const wDiff = winW - worldW * scale;
-        stageImage.viewPoint.x = -wDiff / (2 * scale);
-      } else {
-        // Still clamp if the level exceeds the viewport
-        stageImage.viewPoint.x = this.limitValue(
-          0,
-          stageImage.viewPoint.x,
-          worldW - viewW_world
-        );
-      }
+    if (!veloUpdate) {
+      stageImage.viewPoint.y = Math.min(Math.max(0, stageImage.viewPoint.y + worldDY), gameH-viewH_world);
+      // stageImage.viewPoint.x = Math.max(0, stageImage.viewPoint.x + worldDX)
+      stageImage.viewPoint.x = Math.min(Math.max(0, stageImage.viewPoint.x + worldDX), gameW-viewW_world);
     }
 
     this.clear(stageImage);
@@ -324,6 +296,8 @@ class Stage {
     this.guiImgProps.x      = Math.floor((stagePixW - panelPixW) / 2);
 
     if (this.gameImgProps.display) {
+      const worldHDisp = this.gameImgProps.display.getHeight();
+      const worldWDisp = this.gameImgProps.display.getWidth();
       const worldH = this.gameImgProps.display.getHeight();
       const worldW = this.gameImgProps.display.getWidth();
 
@@ -335,8 +309,7 @@ class Stage {
       const viewW_world = stagePixW / this.gameImgProps.viewPoint.scale;
 
       this.gameImgProps.viewPoint.y = worldH - viewH_world;
-
-      if (worldW * this.gameImgProps.viewPoint.scale <= stagePixW) {
+      if (worldW * scale <= stageW) {
         this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
       } else {
         this.gameImgProps.viewPoint.x = 0;
