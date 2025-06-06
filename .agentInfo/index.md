@@ -24,6 +24,7 @@ ground-renderer.md: render
 gui-stage-tasks.md: todo
 initial.md: example
 keyboard-shortcuts.md: keyboard
+l3-level-format.md: level-format l3 doc
 lemming-manager.md: lemming-manager
 level-format.md: level-format doc
 level-loader.md: level-loading
