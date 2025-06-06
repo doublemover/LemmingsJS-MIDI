@@ -118,4 +118,38 @@ describe('DisplayImage primitives', function() {
     const RED = color32(255, 0, 0);
     expect(Array.from(display.buffer32)).to.eql(new Array(16).fill(RED));
   });
+
+  it('drawCornerRect draws L-shaped corners', function() {
+    display.initSize(6, 6);
+    display.clear(color32(0, 0, 0));
+    display.drawCornerRect(0, 0, { width: 6, height: 6 }, 255, 0, 0, 1);
+    const RED = color32(255, 0, 0);
+    const BLACK = color32(0, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      RED, RED, BLACK, BLACK, RED, RED,
+      RED, BLACK, BLACK, BLACK, BLACK, RED,
+      BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+      BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+      RED, BLACK, BLACK, BLACK, BLACK, RED,
+      RED, RED, BLACK, BLACK, RED, RED
+    ]);
+  });
+
+  it('drawCornerRect with midLine fills edges', function() {
+    display.initSize(8, 8);
+    display.clear(color32(0, 0, 0));
+    display.drawCornerRect(0, 0, { width: 8, height: 8 }, 0, 255, 0, 1, true, 2);
+    const GREEN = color32(0, 255, 0);
+    const BLACK = color32(0, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      GREEN, GREEN, BLACK, GREEN, GREEN, BLACK, GREEN, GREEN,
+      GREEN, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, GREEN,
+      BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+      GREEN, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, GREEN,
+      GREEN, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, GREEN,
+      BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK,
+      GREEN, BLACK, BLACK, BLACK, BLACK, BLACK, BLACK, GREEN,
+      GREEN, GREEN, BLACK, GREEN, GREEN, BLACK, GREEN, GREEN
+    ]);
+  });
 });

@@ -199,16 +199,49 @@ class DisplayImage extends Lemmings.BaseLogger {
     }
   }
 
-  /** Draw filled corner squares around a rectangle. */
-  drawCornerRect(x, y, size, r, g, b, cornerSize = 2) {
+  /**
+     * Draw L‑shaped corners around a rectangle.
+     * @param {number} x        Top-left x position
+     * @param {number} y        Top-left y position
+     * @param {number|Object} size  Width/height or { width, height }
+     * @param {number} r        Red component
+     * @param {number} g        Green component
+     * @param {number} b        Blue component
+     * @param {number} length   Length of the corner arms
+     * @param {boolean} midLine Draw centered lines on each edge
+     * @param {number} midLen   Length of the centered lines
+     */
+  drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0) {
     const w = typeof size === 'object' ? size.width : size;
     const h = typeof size === 'object' ? size.height : size;
-    const x2 = x + w - cornerSize;
-    const y2 = y + h - cornerSize;
-    this.drawRect(x, y, cornerSize, cornerSize, r, g, b, true);
-    this.drawRect(x2, y, cornerSize, cornerSize, r, g, b, true);
-    this.drawRect(x, y2, cornerSize, cornerSize, r, g, b, true);
-    this.drawRect(x2, y2, cornerSize, cornerSize, r, g, b, true);
+    const x2 = x + w - 1;
+    const y2 = y + h - 1;
+
+    const len = Math.max(1, length);
+
+    // top-left
+    this.drawHorizontalLine(x, y, Math.min(x + len, x2), r, g, b);
+    this.drawVerticalLine(x, y, Math.min(y + len, y2), r, g, b);
+    // top-right
+    this.drawHorizontalLine(Math.max(x2 - len, x), y, x2, r, g, b);
+    this.drawVerticalLine(x2, y, Math.min(y + len, y2), r, g, b);
+    // bottom-left
+    this.drawHorizontalLine(x, y2, Math.min(x + len, x2), r, g, b);
+    this.drawVerticalLine(x, Math.max(y2 - len, y), y2, r, g, b);
+    // bottom-right
+    this.drawHorizontalLine(Math.max(x2 - len, x), y2, x2, r, g, b);
+    this.drawVerticalLine(x2, Math.max(y2 - len, y), y2, r, g, b);
+
+    if (midLine && midLen > 0) {
+      const hx1 = Math.max(x + Math.floor((w - midLen) / 2), x);
+      const hx2 = Math.min(hx1 + midLen - 1, x2);
+      const hy1 = Math.max(y + Math.floor((h - midLen) / 2), y);
+      const hy2 = Math.min(hy1 + midLen - 1, y2);
+      this.drawHorizontalLine(hx1, y, hx2, r, g, b);
+      this.drawHorizontalLine(hx1, y2, hx2, r, g, b);
+      this.drawVerticalLine(x, hy1, hy2, r, g, b);
+      this.drawVerticalLine(x2, hy1, hy2, r, g, b);
+    }
   }
 
   /* ---------- blitting helpers ---------- */

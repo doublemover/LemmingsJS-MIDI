@@ -23,3 +23,7 @@
 {"time":"2025-06-06T06:15:57.709Z","query":"ants","mdFiles":5,"codeFiles":5,"ms":23}
 {"time":"2025-06-06T06:16:02.396Z","query":"line","mdFiles":8,"codeFiles":15,"ms":26}
 {"time":"2025-06-06T06:35:59.412Z","query":"selection rect","mdFiles":17,"codeFiles":40,"ms":99}
+{"time":"2025-06-06T06:51:09.819Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":243}
+{"time":"2025-06-06T07:09:06.594Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":133}
+{"time":"2025-06-06T07:09:10.566Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":218}
+{"time":"2025-06-06T07:09:13.505Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":178}
