@@ -29,6 +29,11 @@ quotes, and semicolons across the JavaScript codebase.
 - JavaScript code uses **two-space indentation** (see `js/BitReader.js` for examples).
 - The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
 
+### Level packs
+Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md](docs/levelpacks.md).
+The [NeoLemmix Pack Toolkit](docs/nl-pack-toolkit.md) explains how
+these folders are structured and bundled.
+
 ## Commit policy
 - Keep commit messages concise.
 - Run `npm test` and ensure all tests pass before committing.
