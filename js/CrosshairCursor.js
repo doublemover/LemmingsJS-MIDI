@@ -2,6 +2,8 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 function createCrosshairFrame(size = 24) {
   const frame = new Lemmings.Frame(size, size);
+  frame.data.fill(0);
+  frame.mask.fill(0);
   const center = Math.floor(size / 2);
   const cw = Lemmings.ColorPalette.colorFromRGB(144, 238, 144); // light green
   const ccw = Lemmings.ColorPalette.colorFromRGB(255, 255, 255); // white
