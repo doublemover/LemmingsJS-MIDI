@@ -129,7 +129,10 @@ class Stage {
         const localY = e.y - stageImage.y;
         const worldX = stageImage.viewPoint.getSceneX(localX);
         const worldY = stageImage.viewPoint.getSceneY(localY);
-        stageImage.display.onMouseMove.trigger(new Lemmings.Position2D(worldX, worldY));
+        stageImage.display.onMouseMove.trigger(
+          new Lemmings.Position2D(worldX, worldY)
+        );
+        this.redraw();
       }
     });
   }
