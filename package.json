@@ -24,7 +24,8 @@
     "format": "eslint . --fix",
     "lint": "eslint .",
     "depcheck": "depcheck",
-    "index": "node tools/build_index.js"
+    "index": "node tools/build_index.js",
+    "test-workflows": "mocha test/search-history-workflow.test.js"
   },
   "repository": {
     "type": "git",
