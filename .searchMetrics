@@ -1,6 +1,6 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 28,
+    "md": 29,
     "code": 0,
     "terms": [
       "rect",
@@ -17,11 +17,13 @@
       "draw",
       "corner",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/index.md": {
-    "md": 21,
+    "md": 22,
     "code": 0,
     "terms": [
       "rect",
@@ -30,7 +32,9 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/notes/display-image.md": {
@@ -123,7 +127,7 @@
   },
   "js/DisplayImage.js": {
     "md": 0,
-    "code": 18,
+    "code": 19,
     "terms": [
       "rect",
       "marching",
@@ -138,7 +142,9 @@
       "draw",
       "corner",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "js/Stage.js": {
@@ -243,7 +249,7 @@
   },
   "js/GameView.js": {
     "md": 0,
-    "code": 24,
+    "code": 25,
     "terms": [
       "rect",
       "x",
@@ -256,7 +262,9 @@
       "draw",
       "corner",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "js/MiniMap.js": {
@@ -293,7 +301,7 @@
   },
   "js/TriggerManager.js": {
     "md": 0,
-    "code": 12,
+    "code": 13,
     "terms": [
       "rect",
       "x",
@@ -302,7 +310,9 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "check",
+      "undefined"
     ]
   },
   "js/UserInputManager.js": {
@@ -566,19 +576,21 @@
     ]
   },
   ".agentInfo/notes/trigger-manager.md": {
-    "md": 5,
+    "md": 6,
     "code": 0,
     "terms": [
       "x",
       "y",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "check",
+      "undefined"
     ]
   },
   "js/LemmingManager.js": {
     "md": 0,
-    "code": 17,
+    "code": 18,
     "terms": [
       "x",
       "y",
@@ -589,23 +601,27 @@
       "selection",
       "rect",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "js/SolidLayer.js": {
     "md": 0,
-    "code": 4,
+    "code": 5,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/ParticleTable.js": {
     "md": 0,
-    "code": 8,
+    "code": 9,
     "terms": [
       "x",
       "y",
@@ -614,7 +630,9 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "check",
+      "undefined"
     ]
   },
   "js/xbrz/xbrz.js": {
@@ -727,12 +745,14 @@
   },
   "js/ActionBashSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/Animation.js": {
@@ -839,12 +859,14 @@
   },
   "js/ActionClimbSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/ActionDrowningSystem.js": {
@@ -1226,7 +1248,7 @@
   },
   "test/gametimer.test.js": {
     "md": 0,
-    "code": 14,
+    "code": 15,
     "terms": [
       "x",
       "y",
@@ -1234,7 +1256,9 @@
       "else",
       "bench",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "test/levelwriter.test.js": {
@@ -1289,12 +1313,14 @@
   },
   "js/Game.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/LevelLoader.js": {
@@ -1351,20 +1377,24 @@
   },
   "js/BinaryReader.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/BitWriter.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/BitReader.js": {
@@ -1378,11 +1408,13 @@
   },
   "js/FileContainer.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "test/oddtable.test.js": {
@@ -1411,37 +1443,45 @@
     ]
   },
   "docs/compression-format.md": {
-    "md": 12,
+    "md": 13,
     "code": 0,
     "terms": [
       "if",
       "else",
-      "bench"
+      "bench",
+      "check",
+      "undefined"
     ]
   },
   "AGENTS.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "line",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/webmidi-environments.md": {
     "md": 3,
     "code": 0,
     "terms": [
       "if",
       "else",
-      "line"
-    ]
-  },
-  ".agentInfo/notes/webmidi-environments.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "if",
-      "else"
+      "check",
+      "undefined"
     ]
   },
   "docs/nl-skills.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/AGENTS.md": {
@@ -1453,21 +1493,25 @@
     ]
   },
   ".agentInfo/notes/bench-mode.md": {
-    "md": 13,
+    "md": 14,
     "code": 0,
     "terms": [
       "if",
       "else",
       "spawn",
-      "bench"
+      "bench",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/notes/check-undefined.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/notes/command-manager.md": {
@@ -1493,27 +1537,33 @@
     ]
   },
   ".agentInfo/notes/note-review.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/notes/pack-mechanics.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "docs/nl-objects.md": {
-    "md": 2,
+    "md": 3,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "docs/tools.md": {
@@ -1528,11 +1578,13 @@
   },
   "tools/check-undefined.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "if",
       "else",
-      "line"
+      "line",
+      "check",
+      "undefined"
     ]
   },
   "tools/NodeFileProvider.js": {
@@ -1545,20 +1597,24 @@
   },
   "js/FileProvider.js": {
     "md": 0,
-    "code": 2,
-    "terms": [
-      "if",
-      "else"
-    ]
-  },
-  "tools/build_index.js": {
-    "md": 0,
     "code": 3,
     "terms": [
       "if",
       "else",
+      "check",
+      "undefined"
+    ]
+  },
+  "tools/build_index.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "test/exportScripts.test.js": {
@@ -1612,10 +1668,12 @@
   },
   "js/LogHandler.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "tools/archiveDir.js": {
@@ -1707,11 +1765,13 @@
   },
   "test/nodefileprovider.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "if",
       "else",
-      "spawn"
+      "spawn",
+      "check",
+      "undefined"
     ]
   },
   "js/ActionExitingSystem.js": {
@@ -1807,10 +1867,12 @@
   },
   "js/LemmingsNamespace.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "check",
+      "undefined"
     ]
   },
   "js/LevelConfig.js": {
@@ -1857,11 +1919,13 @@
   },
   "test/tools/archiveDir.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "if",
       "else",
-      "spawn"
+      "spawn",
+      "check",
+      "undefined"
     ]
   },
   "test/tools/exportGroundImages.test.js": {
@@ -1892,10 +1956,12 @@
     ]
   },
   ".agentInfo/notes/editor-mode.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
-      "spawn"
+      "spawn",
+      "check",
+      "undefined"
     ]
   },
   ".agentInfo/notes/lemming-manager.md": {
@@ -1917,9 +1983,11 @@
   },
   "test/check-undefined.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 2,
     "terms": [
-      "spawn"
+      "spawn",
+      "check",
+      "undefined"
     ]
   },
   "test/listSprites.test.js": {
@@ -2036,10 +2104,12 @@
     ]
   },
   ".agentInfo/notes/webmidi-tasks.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
-      "line"
+      "line",
+      "check",
+      "undefined"
     ]
   },
   "js/xbrz/scalers/Scaler2x.js": {
@@ -2079,11 +2149,13 @@
     ]
   },
   ".agentInfo/notes/game.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "check",
+      "undefined"
     ]
   },
   "docs/levelpacks.md": {
@@ -2140,14 +2212,16 @@
     ]
   },
   ".agentInfo/notes/stage.md": {
-    "md": 5,
+    "md": 6,
     "code": 0,
     "terms": [
       "draw",
       "corner",
       "rect",
       "scale",
-      "nearest"
+      "nearest",
+      "check",
+      "undefined"
     ]
   },
   "test/exportLemmingsSprites.test.js": {
@@ -2161,11 +2235,13 @@
   },
   "test/frame.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 5,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "check",
+      "undefined"
     ]
   },
   "test/gameresources.test.js": {
@@ -2209,6 +2285,38 @@
     "terms": [
       "scale",
       "nearest"
+    ]
+  },
+  "CONTRIBUTING.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/ci.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/TESTING.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/game-resources.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
     ]
   }
 }
