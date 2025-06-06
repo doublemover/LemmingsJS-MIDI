@@ -232,7 +232,6 @@ class Stage {
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
-    const scale = stageImage.viewPoint.scale;
     // worldHeight = how many “world pixels” tall
     const worldH = gameH;
     // viewH_world = viewport height in world units
@@ -245,7 +244,6 @@ class Stage {
     );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    const gameW = stageImage.display.getWidth();
     const winW = stageImage.width;
     const worldW = gameW;
     const viewW_world = winW / scale;
