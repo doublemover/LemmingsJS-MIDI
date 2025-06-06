@@ -4,50 +4,50 @@
 Short table for quick lookup (see `index-detailed.md` for descriptions).
 
 path: tags
-overview.md: overview doc
-initial.md: example
-lemming-manager.md: lemming-manager
-trigger-manager.md: trigger-system
-game.md: game
-mechanics-flags.md: mechanics
-game-view.md: game-view
-game-gui.md: gui
-ground-renderer.md: render
-gui-stage-tasks.md: todo
-level-writer.md: level-writing
-level-loader.md: level-loading
-mechanics-config.md: config
-level-reader.md: level-parsing
-level-format.md: level-format doc
-drawMarchingAntRect.md: ui
-game-display.md: display
-display-image.md: canvas
-draw-corner-rect.md: canvas
-stage.md: stage
-command-manager.md: commands
-game-resources.md: resources
-tools.md: tools
-check-undefined.md: validation
-node-file-provider.md: archives
 binary-reader.md: binary-reader
 bit-reader.md: bit-reader
 bit-writer.md: bit-writer
-file-container.md: file-container
-unpack-file-part.md: unpack-file-part
-pack-mechanics.md: mechanics
+check-undefined.md: validation
+command-manager.md: commands
 config.md: config mechanics doc
-todo-review.md: todo
-keyboard-shortcuts.md: keyboard
-webmidi-overview.md: webmidi doc overview
-webmidi-overview.md: webmidi midi doc
-note-review.md: todo
-webmidi-tasks.md: webmidi-todo
-level-packs.md: level-packs resources doc
-userinput-zoom.md: stage input tests
-pause-overlay.md: bench-mode gui
-webmidi.md: webmidi doc
-webmidi-environments.md: webmidi environment doc
-webmidi-enumerations.md: webmidi enumerations doc
+display-image.md: canvas
+draw-corner-rect.md: canvas
+drawMarchingAntRect.md: ui
 easing-functions.md: easing animation
+file-container.md: file-container
+game-display.md: display
+game-gui.md: gui
+game-resources.md: resources
+game-view.md: game-view
+game.md: game
+ground-renderer.md: render
+gui-stage-tasks.md: todo
+initial.md: example
+keyboard-shortcuts.md: keyboard
+lemming-manager.md: lemming-manager
+level-format.md: level-format doc
+level-loader.md: level-loading
+level-packs.md: level-packs resources doc
+level-reader.md: level-parsing
+level-writer.md: level-writing
+mechanics-config.md: config
+mechanics-flags.md: mechanics
+nl-file-format.md: nl-file-format doc
 nl-objects.md: nl-objects doc
 nl-skills.md: nl-skills doc
+node-file-provider.md: archives
+note-review.md: todo
+overview.md: overview doc
+pack-mechanics.md: mechanics
+pause-overlay.md: bench-mode gui
+stage.md: stage
+todo-review.md: todo
+tools.md: tools
+trigger-manager.md: trigger-system
+unpack-file-part.md: unpack-file-part
+userinput-zoom.md: stage input tests
+webmidi-enumerations.md: webmidi enumerations doc
+webmidi-environments.md: webmidi environment doc
+webmidi-overview.md: webmidi doc overview
+webmidi-tasks.md: webmidi-todo
+webmidi.md: webmidi doc
