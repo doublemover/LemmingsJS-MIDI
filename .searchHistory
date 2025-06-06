@@ -48,6 +48,8 @@
 {"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
 {"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
 {"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
+{"time":"2025-06-06T14:39:08.875Z","query":"GameGui","mdFiles":39,"codeFiles":119,"ms":556}
+{"time":"2025-06-06T14:39:10.688Z","query":"GameGui","mdFiles":39,"codeFiles":119,"ms":226}
 {"time":"2025-06-06T14:48:22.649Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":138}
 {"time":"2025-06-06T15:22:25.673Z","query":"node-version","mdFiles":20,"codeFiles":38,"ms":686}
 {"time":"2025-06-06T15:21:43.636Z","query":"dependency-review-action","mdFiles":15,"codeFiles":38,"ms":309}
