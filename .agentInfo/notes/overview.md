@@ -17,7 +17,7 @@ Browser modules live under `js/` and Node tools under `tools/`.
 - Notes for agents live in `.agentInfo/` (see `index.md`).
 
 ## Development workflow
-- Requires Node 16+ (`package.json` uses ES modules). CI tests on Node 18.
+- Requires Node 20+ (`package.json` uses ES modules). CI tests on Node 20.
 - `npm install` brings in ESLint and Mocha.
 - Run `npm run format` then `npm run lint` and `npm test` before commits.
 - `npm start` launches `http-server` for local play.

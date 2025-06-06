@@ -2,12 +2,12 @@
 
 This project uses GitHub Actions to run tests on every push and pull request targeting the `master` branch.
 
-The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/test.yml). Although the `package.json` requires Node 16 or newer, the workflow installs **Node 18**:
+The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/test.yml). Although the `package.json` requires Node 20 or newer, the workflow installs **Node 20**:
 
 ```yaml
 - uses: actions/setup-node@v4
   with:
-    node-version: 18
+    node-version: 20
 ```
 
 The CI job performs the following steps:
@@ -18,3 +18,9 @@ The CI job performs the following steps:
 4. `npm test`
 
 All tests must pass before code is merged.
+
+The repository also runs [`search-history.yml`](../.github/workflows/search-history.yml).
+This job keeps `.searchHistory` in sync with the history from `master` whenever
+a pull request is opened or updated. It fetches the file from
+`origin/master`, appends any missing lines and commits the change back to the
+PR branch.

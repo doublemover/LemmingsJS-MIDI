@@ -104,9 +104,6 @@ describe('Stage overlay fade', function() {
 
     clock.tick(1500); // finish fade
     expect(stage.overlayTimer).to.equal(0);
-    expect(stage.overlayRect).to.equal(rect);
-
-    clock.tick(1); // allow cleanup timeout
     expect(stage.overlayRect).to.equal(null);
   });
 });
