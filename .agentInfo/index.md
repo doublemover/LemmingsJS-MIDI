@@ -51,3 +51,4 @@ webmidi-environments.md: webmidi environment doc
 webmidi-overview.md: webmidi doc overview
 webmidi-tasks.md: webmidi-todo
 webmidi.md: webmidi doc
+nl-pack-toolkit.md: pack-toolkit resources doc
