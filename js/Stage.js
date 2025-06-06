@@ -13,6 +13,8 @@ class Stage {
     this.cursorX = 0;
     this.cursorY = 0;
     this.stageCav = canvasForOutput;
+    this.displayWidth = canvasForOutput.width;
+    this.displayHeight = canvasForOutput.height;
     this.gameImgProps = new Lemmings.StageImageProperties();
     this.guiImgProps = new Lemmings.StageImageProperties();
     // HUD always starts at scale = 2
@@ -274,6 +276,10 @@ class Stage {
     const panelW = rawHUDW * scaleHUD;
     const gameH = stageH - panelH; // everything above the HUD
 
+    // Refresh cached stage size on resize
+    this.displayWidth = stageW;
+    this.displayHeight = stageH;
+
     // 1) The game area fills x=0..stageW, y=0..gameH
     this.gameImgProps.x = 0;
     this.gameImgProps.y = 0;
@@ -284,9 +290,7 @@ class Stage {
     this.guiImgProps.y = gameH; // so the top of HUD = bottom of game area
     this.guiImgProps.height = panelH;
     this.guiImgProps.width = panelW;
-    if (this.guiImgProps.display) {
-      this.guiImgProps.x = (stageW - panelW) / 2;
-    }
+    this.guiImgProps.x = (stageW - panelW) / 2;
 
     // 3) Now that both have dimensions, initialize the game’s viewPoint
     if (this.gameImgProps.display) {
