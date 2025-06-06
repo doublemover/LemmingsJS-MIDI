@@ -57,5 +57,7 @@ nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 baseimageinfo-search.md: search
+l2ss-overview.md: l2ss sprite-chunks doc
+l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
