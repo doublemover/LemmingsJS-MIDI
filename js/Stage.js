@@ -238,8 +238,6 @@ class Stage {
       Math.max(0, worldH - viewH_world)
     ]);
 
-    // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
-    
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
     if (scale >= 2) {
@@ -296,13 +294,13 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
-    const scaleHUD = this.guiImgProps.viewPoint.scale; // always = 2 by default
+    const scaleHUD = this.guiImgProps.viewPoint.scale;
     const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
     const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
-    const panelH = rawHUDH * scaleHUD;
-    const panelW = rawHUDW * scaleHUD;
-    const gameH = stageH - panelH; // everything above the HUD
+    const panelH = Math.trunc(rawHUDH * scaleHUD);
+    const panelW = Math.trunc(rawHUDW * scaleHUD);
+    const gameH = stageH - panelH;
 
     this.gameImgProps.x = 0;
     this.gameImgProps.y = 0;
