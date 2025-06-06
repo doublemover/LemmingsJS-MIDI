@@ -304,17 +304,23 @@ class Stage {
       const viewH_world = gameH / scale;
       const viewW_world = stageW / scale;
 
-      // Glue Y: bottom of level flush against HUD top
-      this.gameImgProps.viewPoint.y = worldH - viewH_world;
-
-      // For X: if level is already narrower than viewport at this scale,
-      // center it; otherwise, clamp to left edge.
-      if (worldW * scale <= stageW) {
-        // center
-        this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
-      } else {
-        // left‐align
+      if (worldH === 0 || worldW === 0) {
+        // If the display is not yet sized, default to the origin
         this.gameImgProps.viewPoint.x = 0;
+        this.gameImgProps.viewPoint.y = 0;
+      } else {
+        // Glue Y: bottom of level flush against HUD top
+        this.gameImgProps.viewPoint.y = worldH - viewH_world;
+
+        // For X: if level is already narrower than viewport at this scale,
+        // center it; otherwise, clamp to left edge.
+        if (worldW * scale <= stageW) {
+          // center
+          this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
+        } else {
+          // left‐align
+          this.gameImgProps.viewPoint.x = 0;
+        }
       }
 
       // Redraw at initial position
