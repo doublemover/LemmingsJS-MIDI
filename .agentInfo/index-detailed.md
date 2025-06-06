@@ -9,7 +9,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md) - tools/check-undefined.js scans JavaScript and HTML files for function calls. If a call cannot be ...
 - **commands, replay**: [notes/command-manager.md](notes/command-manager.md) - js/CommandManager.js manages player commands and replay data. It registers a listener on gameTime...
 - **display, canvas**: [notes/display-image.md](notes/display-image.md) - DisplayImage is an offscreen canvas that Stage uses for both the game area and the GUI layer. Eac...
- - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - drawCornerRect paints L-shaped corners and can add centered side lines.
+- **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - drawCornerRect paints L-shaped corners and can add centered side lines.
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - drawMarchingAntRect draws a dashed rectangle whose dashes alternate between two colors. The dashL...
 - **file-container**: [notes/file-container.md](notes/file-container.md) - FileContainer parses a resource file containing multiple compressed parts. Each
 - **render, display**: [notes/game-display.md](notes/game-display.md) - js/GameDisplay.js binds the game state to a GUI display. setGuiDisplay() attaches mouse handlers ...
@@ -20,6 +20,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md) - js/GroundRenderer.js builds the bitmap used as the level background. createGroundMap allocates a ...
 - **example, doc**: [notes/initial.md](notes/initial.md) - This sample note demonstrates the tagging system used in .agentInfo/.
 - **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts hooks global key events and lets the player pan and zoom the gameplay view. Gam...
+- **l2, file-format, doc**: [notes/l2-guyperfect.md](notes/l2-guyperfect.md) - GuyPerfect's L2 file format notes covering compression, FORM archives and style resources.
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
@@ -37,10 +38,8 @@ This expanded listing preserves the original bullet format with short descriptio
 - **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md) - TriggerManager maintains spatial triggers such as exits, traps and blocker
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md) - UnpackFilePart represents a single compressed chunk inside a container. It
 - **todo, gui, stage**: [notes/gui-stage-tasks.md](notes/gui-stage-tasks.md) - Collection of UI fixes: panel placement, viewport scaling, selection visuals, skill auto-apply, cursor alignment, and cursor removal.
-- **bench-mode, gui**: [notes/pause-overlay.md](notes/pause-overlay.md) - Bench mode highlights the pause button rectangle with `startOverlayFade(rect)` instead of flashing the entire stage.
+- **bench-mode, gui**: [notes/pause-overlay.md](notes/pause-overlay.md) - Bench mode highlights the pause button rectangle with `startOverlayFade(rect, dashLen)` so the outline animates with marching ants.
 - **webmidi-todo**: [notes/webmidi-tasks.md](notes/webmidi-tasks.md) - Follow-ups on WebMIDI TODOs such as master tuning and browser support for `Output.clear()`.
-
-
 - **webmidi, browser**: [notes/webmidi.md](notes/webmidi.md) - WebMIDI works only in secure contexts and requires user permission for device access.
 - **pack-toolkit, resources, doc**: [notes/nl-pack-toolkit.md](notes/nl-pack-toolkit.md) - Overview of the NeoLemmix Flexi Toolkit features and how the pack folders here follow a similar layout for Node tools.
 - **doc, bench-mode**: [notes/bench-mode-docs.md](notes/bench-mode-docs.md) - Expanded README bench-mode section detailing `missedTicks`, `stableTicks`, speed adjustments, and the meaning of the "T"/"L" displays. Noted that thresholds will scale with `speedFactor` after Issue 1.
@@ -48,13 +47,17 @@ This expanded listing preserves the original bullet format with short descriptio
 - **game-timer, bench-mode**: [notes/bench-speed-adjust.md](notes/bench-speed-adjust.md) - `GameTimer.#benchSpeedAdjust()` now scales its slow and recovery thresholds by the current `speedFactor`. The game slows down when pending frames exceed `16 / speedFactor` (clamped to at least 10) and speeds back up when the backlog drops below `4 / speedFactor`. This keeps bench mode responsive at different speeds.
 - **config, mechanics, doc**: [notes/config.md](notes/config.md) - `config.json` lists available level packs and key fields like `level.filePrefix`, `level.groups` and `level.order`. Each pack may also include a `mechanics` object. `packMechanics.js` provides defaults for these mechanic flags which `ConfigReader` merges with the pack entries. See [docs/config.md](../docs/config.md) for a full description.
 - **display, canvas**: [notes/display-image.md](notes/display-image.md) - `DisplayImage` is an offscreen canvas that `Stage` uses for both the game area and the GUI layer.  Each instance owns an `ImageData` buffer which is created through `Stage.createImage()`.  A `Uint32Array` view (`buffer32`) aliases this buffer so drawing routines can operate on 32‑bit pixels directly.
- - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - `DisplayImage.drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corners. When `midLine` is true it also adds centered side lines.
+- **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - `DisplayImage.drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corners. When `midLine` is true it also adds centered side lines.
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - `drawMarchingAntRect` draws a dashed rectangle whose dashes alternate between two colors. The `dashLen` and `offset` arguments control the length of each dash and its animated offset. GameGui uses this helper when highlighting UI elements like skill selections or the nuke button.
 - **easing, animation**: [notes/easing-functions.md](notes/easing-functions.md) - This note summarizes commonly used easing equations for smooth animations:
 - **editor-mode, gui, level-editor**: [notes/editor-mode.md](notes/editor-mode.md) - Editor mode disables game-over checks so the game never ends. LemmingManager keeps spawning new lemmings indefinitely and a black GUI panel appears at the bottom with controls for terrain and trigger editing. This behavior serves as the basis for the level editor.
 - **game-view, speed**: [notes/game-speed-input.md](notes/game-speed-input.md) - `GameView.applyQuery` reads the `speed` URL parameter to set `gameSpeedFactor`. Values greater than `1` represent integer speed steps, so the query value is rounded to the nearest whole number. Fractional speeds at or below `1` are left untouched.
 - **level-format, doc**: [notes/level-format.md](notes/level-format.md) - `docs/level-file-format.md` explains the 2048-byte `.lvl` layout produced by LemEdit. It lists all field offsets along with object IDs for each graphics set.
+- **lvl-format, doc, todo**: [notes/lvl-format.md](notes/lvl-format.md) - `docs/camanis/lemmings_lvl_file_format.md` mirrors the original plain-text spec and notes an unknown flag at `0x001E`.
+- **level-format, l3, doc**: [notes/l3-level-format.md](notes/l3-level-format.md) - `docs/camanis/lemmings_3_level_file_format.md` outlines the Lemmings 3 header and object tables with extra lemming and enemy fields.
+- **l2-level-format, doc, level-format**: [notes/l2-level-format.md](notes/l2-level-format.md) - Outline of the Lemmings 2 `L2LV` format and fields missing from our reader.
 - **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
+- **main-dat, doc**: [notes/main-dat-format.md](notes/main-dat-format.md) - Summary of MAIN.DAT sections and how GameResources loads them
 - **nl-file-format, doc**: [notes/nl-file-format.md](notes/nl-file-format.md) - `docs/nl-file-format.md` details the NeoLemmix level and pack formats: `.nxlv` text-based levels, the 4 KB binary `.lvl` layout, high-res folders, `alias.nxmi`, pack files like `info.nxmi`, and legacy `.NXP` archives.
 - **nl-objects, doc**: [notes/nl-objects.md](notes/nl-objects.md) - `docs/nl-objects.md` summarizes NeoLemmix object logic with references to the source files implementing teleporters, locked exits, pickup-skills, single-use traps, updrafts and splat pads.
 - **nl-skills, doc, resources**: [notes/nl-skills.md](notes/nl-skills.md) - Short note summarizing the `docs/nl-skills.md` reference for the nine
@@ -66,6 +69,16 @@ This expanded listing preserves the original bullet format with short descriptio
 - **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - The official "Supported Environments" page outlines where WebMIDI.js works:
 - **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
-
-
 - **replays, commands, doc**: [notes/replays.md](notes/replays.md) - docs/replays.md summarizes replay serialization and playback.
+- **vgagrx, groundxo, planar-bitmaps**: [notes/vgagrx-groundxo-format.md](notes/vgagrx-groundxo-format.md) - VGAGR and GROUND files store 4-bit planar bitmaps with a separate mask plane; loader does not use plane 4 for terrain.
+- **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **l2ss, sprite-parsing, doc**: [notes/l2ss-cpp.md](notes/l2ss-cpp.md) - Summarizes `js/L2ssSpriteDecoder.js` and notes the repo still lacks a loader.
+- **l2bitmap, doc**: [notes/l2bitmap-overview.md](notes/l2bitmap-overview.md) - Summary of L2 bitmap file layout and palette info.
+- **vgaspecx, compression, palette, doc, todo**: [notes/vgaspecx-format.md](notes/vgaspecx-format.md) - Summarizes second-level compression and palette usage for vgaspecX.dat files.
+- **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
+- **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
+- **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.
+- **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
+- **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
+- **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
+- **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.

@@ -7,9 +7,27 @@
 **/.settings
 *.code-workspace
 
-# package managers
-bower_components/
+# Build output
+dist/
+build/
+coverage/
 node_modules/
+exports/
+coverage/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor folders
 .jshintconfig
 .jshintignore
-exports/
+
+# Test output
+*.log
+*.tap
