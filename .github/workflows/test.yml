@@ -20,6 +20,9 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
+      - run: npm run agent-update-searchmetrics 
+      - run: npm run agent-update-searchhistory
+      - run: git add .
       - run: npm run format
       - run: git diff --exit-code
       - run: npm run check-undefined
