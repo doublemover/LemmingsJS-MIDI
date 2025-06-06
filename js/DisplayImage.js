@@ -612,6 +612,7 @@ function scaleHqx(
     }
   }
 }
+
 function drawMarchingAntRect(
   display,
   x,
@@ -668,4 +669,3 @@ Lemmings.drawDashedRect = drawDashedRect;
 Lemmings.scaleXbrz = scaleXbrz;
 Lemmings.scaleHqx = scaleHqx;
 export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleXbrz, scaleHqx };
-
