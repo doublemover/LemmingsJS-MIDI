@@ -272,18 +272,32 @@ class UserInputManager {
   handleWheel(position, deltaY) {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
-    
-    const smoothScroller = lemmings.game.gameGui.smoothScroller;
-    if (smoothScroller) {
-      smoothScroller.addImpulse(deltaY);
-    }
-    if (this.once == false) {
-      this.once = true;
-      smoothScroller.onHasVelocity.on((v) => {
-          const zea = new ZoomEventArgs(position.x, position.y, v);
-          zea.velocity = true;
-          this.onZoom.trigger(zea);
-      });
+
+    const stage = globalThis?.lemmings?.stage;
+    if (stage && stage.getStageImageAt) {
+      const stageImage = stage.getStageImageAt(position.x, position.y);
+      if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
+        const worldPos = stage.calcPosition2D(stageImage, position);
+        const zx = worldPos.x === 0 ? 0.0001 : worldPos.x;
+        const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
+        stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, zx, zy);
+        return;
+      }
+
+// todo: integrate this properly, the velocity handlder needs to be bound once from gamgui when its initalized
+// 
+//     const smoothScroller = lemmings.game.gameGui.smoothScroller;
+//     if (smoothScroller) {
+//       smoothScroller.addImpulse(deltaY);
+//     }
+//     if (this.once == false) {
+//       this.once = true;
+//       smoothScroller.onHasVelocity.on((v) => {
+//           const zea = new ZoomEventArgs(position.x, position.y, v);
+//           zea.velocity = true;
+//           this.onZoom.trigger(zea);
+//       });
+
     }
   }
 }
