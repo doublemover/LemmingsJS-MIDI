@@ -78,8 +78,4 @@
 {"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
 {"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
-{"time":"2025-06-06T16:28:10.104Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":1317}
-{"time":"2025-06-06T16:28:12.804Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":549}
-{"time":"2025-06-06T16:28:17.496Z","query":"class LogHandler","mdFiles":17,"codeFiles":161,"ms":1908}
-{"time":"2025-06-06T16:28:19.260Z","query":"LogHandler","mdFiles":11,"codeFiles":85,"ms":481}
-{"time":"2025-06-06T16:28:23.318Z","query":"BaseLogger","mdFiles":11,"codeFiles":65,"ms":679}
+{"time":"2025-06-06T16:31:33.367Z","query":"GameGui","mdFiles":39,"codeFiles":119,"ms":291}
