@@ -48,6 +48,7 @@
 {"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
 {"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
 {"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
+{"time":"2025-06-06T14:48:22.649Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":138}
 {"time":"2025-06-06T15:22:25.673Z","query":"node-version","mdFiles":20,"codeFiles":38,"ms":686}
 {"time":"2025-06-06T15:21:43.636Z","query":"dependency-review-action","mdFiles":15,"codeFiles":38,"ms":309}
 {"time":"2025-06-06T14:49:45.520Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":223}
@@ -79,3 +80,37 @@
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
 {"time":"2025-06-06T20:47:34.006Z","query":"L2SS","mdFiles":0,"codeFiles":0,"ms":43}
 {"time":"2025-06-06T20:47:36.798Z","query":"l2ss","mdFiles":0,"codeFiles":0,"ms":30}
+{"time":"2025-06-06T16:07:35.621Z","query":"l2gfx","mdFiles":0,"codeFiles":0,"ms":82}
+{"time":"2025-06-06T16:07:37.410Z","query":"style","mdFiles":5,"codeFiles":8,"ms":122}
+{"time":"2025-06-06T16:07:39.581Z","query":"style","mdFiles":5,"codeFiles":8,"ms":76}
+{"time":"2025-06-06T16:07:48.208Z","query":"guyperfect","mdFiles":0,"codeFiles":0,"ms":129}
+{"time":"2025-06-06T16:07:50.635Z","query":"camanis","mdFiles":2,"codeFiles":0,"ms":130}
+{"time":"2025-06-06T16:07:52.819Z","query":"camanis","mdFiles":2,"codeFiles":0,"ms":112}
+{"time":"2025-06-06T16:09:29.311Z","query":"L2CL","mdFiles":0,"codeFiles":0,"ms":193}
+{"time":"2025-06-06T16:09:33.662Z","query":"Lemmings 2","mdFiles":38,"codeFiles":193,"ms":1601}
+{"time":"2025-06-06T16:09:59.853Z","query":"GSCM","mdFiles":0,"codeFiles":0,"ms":207}
+{"time":"2025-06-06T16:10:02.884Z","query":"FORM","mdFiles":1,"codeFiles":1,"ms":139}
+{"time":"2025-06-06T16:10:06.141Z","query":"FORM","mdFiles":1,"codeFiles":1,"ms":146}
+{"time":"2025-06-06T16:30:16.514Z","query":"parseNumber","mdFiles":18,"codeFiles":56,"ms":193}
+{"time":"2025-06-06T16:27:27.923Z","query":"SkillPanelSprites","mdFiles":29,"codeFiles":83,"ms":315}
+{"time":"2025-06-06T16:27:31.352Z","query":"SkillPanelSprite","mdFiles":29,"codeFiles":83,"ms":475}
+{"time":"2025-06-06T16:27:44.914Z","query":"new Frame","mdFiles":22,"codeFiles":161,"ms":244}
+{"time":"2025-06-06T16:27:47.010Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":298}
+{"time":"2025-06-06T16:27:49.162Z","query":"Frame","mdFiles":11,"codeFiles":76,"ms":164}
+{"time":"2025-06-06T16:27:51.446Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":296}
+{"time":"2025-06-06T16:27:53.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":183}
+{"time":"2025-06-06T16:27:55.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":372}
+{"time":"2025-06-06T16:28:22.964Z","query":"UserInputManager dispose","mdFiles":26,"codeFiles":53,"ms":429}
+{"time":"2025-06-06T16:32:41.889Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":123}
+{"time":"2025-06-06T16:32:44.532Z","query":"stagePixW","mdFiles":12,"codeFiles":51,"ms":181}
+{"time":"2025-06-06T16:32:48.902Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":144}
+{"time":"2025-06-06T16:32:52.070Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":350}
+{"time":"2025-06-06T16:43:11.777Z","query":"test","mdFiles":15,"codeFiles":17,"ms":145}
+{"time":"2025-06-06T17:35:21.213Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":2309}
+{"time":"2025-06-06T17:35:26.033Z","query":"metricsDir","mdFiles":2,"codeFiles":38,"ms":1427}
+{"time":"2025-06-06T17:35:40.857Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":78}
+{"time":"2025-06-06T17:35:44.508Z","query":"GameTimer","mdFiles":37,"codeFiles":119,"ms":184}
+{"time":"2025-06-06T17:35:48.226Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":135}
+{"time":"2025-06-06T17:35:50.310Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":118}
+{"time":"2025-06-06T17:42:52.743Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":38}
+{"time":"2025-06-06T17:42:56.088Z","query":"bench TPS","mdFiles":13,"codeFiles":10,"ms":268}
