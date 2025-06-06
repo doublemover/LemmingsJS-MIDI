@@ -29,3 +29,4 @@
 {"time":"2025-06-06T07:09:13.505Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":178}
 {"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
+{"time":"2025-06-06T08:17:28.599Z","query":"check-undefined","mdFiles":20,"codeFiles":22,"ms":73}

@@ -363,16 +363,16 @@ async function build(mode) {
     ),
     mode === 'code'
       ? fs.writeFile(
-          path.join(OUT, 'char3_postings.json'),
-          JSON.stringify(
-            {
-              vocab: Array.from(triPost.keys()).sort(),
-              postings: Array.from(triPost.values()).map((s) => [...s]),
-            },
-            null,
-            0
-          ) + '\n'
-        )
+        path.join(OUT, 'char3_postings.json'),
+        JSON.stringify(
+          {
+            vocab: Array.from(triPost.keys()).sort(),
+            postings: Array.from(triPost.values()).map((s) => [...s]),
+          },
+          null,
+          0
+        ) + '\n'
+      )
       : Promise.resolve(),
   ]);
 
