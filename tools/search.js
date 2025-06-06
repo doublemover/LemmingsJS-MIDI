@@ -459,10 +459,10 @@ if (argv.stats) {
   );
 }
 
-/* ---------- Update .searchMetrics/metrics.json and searchHistory ---------- */
-const metricsDir = path.join(ROOT, '.searchMetrics');
-const metricsPath = path.join(metricsDir, 'metrics.json');
-await fs.mkdir(metricsDir, { recursive: true });
+/* ---------- Update .searchMetrics and .searchHistory ---------- */
+const metricsPath = path.join(ROOT, '.searchMetrics', 'metrics.json');
+await fs.mkdir(path.dirname(metricsPath), { recursive: true });
+
 let data = {};
 try {
   data = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
