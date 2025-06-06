@@ -152,6 +152,9 @@ class Game extends Lemmings.BaseLogger {
   }
 
   getGameState () {
+    if (typeof lemmings !== 'undefined' && lemmings.bench) {
+      return Lemmings.GameStateTypes.RUNNING;
+    }
     if (this.finalGameState !== Lemmings.GameStateTypes.UNKNOWN) {
       return this.finalGameState;
     }
@@ -166,7 +169,7 @@ class Game extends Lemmings.BaseLogger {
       return won ? Lemmings.GameStateTypes.SUCCEEDED
         : Lemmings.GameStateTypes.FAILED_LESS_LEMMINGS;
     }
-    if (this.gameTimer?.getGameLeftTime() <= 0) {
+    if (!lemmings?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
       return won ? Lemmings.GameStateTypes.SUCCEEDED
         : Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
     }
@@ -174,6 +177,7 @@ class Game extends Lemmings.BaseLogger {
   }
 
   checkForGameOver () {
+    if (typeof lemmings !== 'undefined' && lemmings.bench) return;
     if (this.finalGameState !== Lemmings.GameStateTypes.UNKNOWN) return;
 
     const state = this.getGameState();
