@@ -1,5 +1,16 @@
 * text=auto eol=lf
-*.png binary
+
 *.gif binary
 *.jpg binary
-*.dat binary
+
+*.png filter=lfs diff=lfs merge=lfs -text
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+*.dat filter=lfs diff=lfs mergs=lfs -text
+
+# Tell Git to invoke our “merge‐metrics” driver on metrics.json
+.searchMetrics/metrics.json    merge=merge_metrics
+
+# For searchHistory, we’ll just do a “union” merge: conflicting lines are
+# concatenated instead of failing. (Optionally, you could point this to a
+# custom script if you need deduplication.)
+.searchMetrics/searchHistory   merge=union
