@@ -94,6 +94,7 @@ describe('benchSpeedAdjust recovery', function() {
       height: 10 * gui.viewPoint.scale
     });
     expect(dashLen).to.be.at.least(2);
+  });
 
 
   });
