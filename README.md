@@ -135,7 +135,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ## Play Locally
 
-- Install [Node.js 16 or later](https://nodejs.org)
+- Install [Node.js 20 or later](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Terminal:
   - `npm install`

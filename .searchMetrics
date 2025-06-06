@@ -1,7 +1,220 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 3,
     "code": 0,
+    "md": 32,
+    "code": 0,
+    "terms": [
+      "rect",
+      "marching",
+      "x",
+      "y",
+      "if",
+      "else",
+      "spawn",
+      "bench",
+      "ants",
+      "line",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/index.md": {
+    "md": 22,
+    "code": 0,
+    "terms": [
+      "rect",
+      "marching",
+      "bench",
+      "ants",
+      "selection",
+      "draw",
+      "corner",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/display-image.md": {
+    "md": 10,
+    "code": 0,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  ".agentInfo/notes/draw-corner-rect.md": {
+    "md": 10,
+    "code": 0,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  ".agentInfo/notes/drawMarchingAntRect.md": {
+    "md": 11,
+    "code": 0,
+    "terms": [
+      "rect",
+      "marching",
+      "ants",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  ".agentInfo/notes/game-display.md": {
+    "md": 13,
+    "code": 0,
+    "terms": [
+      "rect",
+      "marching",
+      "ants",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest"
+    ]
+  },
+  ".agentInfo/notes/game-view.md": {
+    "md": 9,
+    "code": 0,
+    "terms": [
+      "rect",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  ".agentInfo/notes/pause-overlay.md": {
+    "md": 19,
+    "code": 0,
+    "terms": [
+      "rect",
+      "bench",
+      "selection",
+      "draw",
+      "corner"
+    ]
+  },
+  "docs/nl-file-format.md": {
+    "md": 15,
+    "code": 0,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
+      "line",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest"
+    ]
+  },
+  "js/DisplayImage.js": {
+    "md": 0,
+    "code": 19,
+    "terms": [
+      "rect",
+      "marching",
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "ants",
+      "line",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    ]
+  },
+
+  "js/Stage.js": {
+    "md": 0,
+    "code": 2,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "js/UserInputManager.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "js/UserInputManager.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 25,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
+      "spawn",
+      "bench",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    ]
+  },
+  "js/MiniMap.js": {
+    "code": 2,
+  "css/game.css": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "css/game.css": {
+    "md": 0,
+    "code": 2,
     "terms": [
       "map",
       "object",
@@ -13,6 +226,30 @@
   "docs/nl-file-format.md": {
     "md": 3,
     "code": 0,
+  "test/filecontainer.test.js": {
+    "md": 0,
+    "code": 13,
+    "terms": [
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
+      "selection",
+      "draw",
+      "corner",
+      "check",
+      "undefined"
+    ]
+  },
+  "js/UserInputManager.js": {
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
+  "test/filecontainer.test.js": {
+    "md": 0,
+    "code": 3,
     "terms": [
       "map",
       "object",
@@ -149,6 +386,65 @@
     ]
   },
   ".agentInfo/notes/game-resources.md": {
+  ".agentInfo/notes/trigger-manager.md": {
+    "md": 6,
+    "code": 0,
+    "terms": [
+      "x",
+      "y",
+      "draw",
+      "corner",
+      "rect",
+      "check",
+      "undefined"
+    ]
+  },
+  "js/LemmingManager.js": {
+    "md": 0,
+    "code": 18,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "spawn",
+      "bench",
+      "selection",
+      "rect",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    ]
+  },
+  "js/SolidLayer.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    ]
+  },
+  "js/ParticleTable.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "draw",
+      "corner",
+      "rect",
+      "check",
+      "undefined"
+  ".agentInfo/notes/game-view.md": {
     "md": 2,
     "code": 0,
     "terms": [
@@ -241,6 +537,18 @@
   },
   ".agentInfo/notes/tools.md": {
     "md": 3,
+  "js/ActionBashSystem.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "check",
+      "undefined"
+  "docs/nl-skills.md": {
+    "md": 1,
     "code": 0,
     "terms": [
       "map",
@@ -336,6 +644,14 @@
   },
   "js/LevelLoader.js": {
     "md": 0,
+    "code": 4,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "check",
+      "undefined"
     "code": 2,
     "terms": [
       "map",
@@ -489,6 +805,18 @@
   "tools/NodeFileProvider.js": {
     "md": 0,
     "code": 2,
+    "code": 15,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "bench",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -543,6 +871,15 @@
   "test/tools/exportGroundImages.test.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -594,6 +931,14 @@
   "js/ActionSplatterSystem.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -602,6 +947,14 @@
   "js/GroundRenderer.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -618,6 +971,14 @@
   "js/SolidLayer.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -654,6 +1015,47 @@
     ]
   },
   "test/oddtable.test.js": {
+  "docs/compression-format.md": {
+    "md": 13,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "bench",
+      "check",
+      "undefined"
+    ]
+  },
+  "AGENTS.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "line",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/webmidi-environments.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/nl-skills.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+  "js/GroundReader.js": {
     "md": 0,
     "code": 3,
     "terms": [
@@ -703,6 +1105,27 @@
     ]
   },
   "tools/patchSprites.js": {
+  ".agentInfo/notes/bench-mode.md": {
+    "md": 14,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "spawn",
+      "bench",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/check-undefined.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+  "test/tools/scanGreenPanel.test.js": {
     "md": 0,
     "code": 3,
     "terms": [
@@ -744,6 +1167,35 @@
     ]
   },
   "js/DisplayImage.js": {
+  ".agentInfo/notes/note-review.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/pack-mechanics.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/nl-objects.md": {
+    "md": 3,
+    "code": 0,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+  "js/ActionDrowningSystem.js": {
     "md": 0,
     "code": 3,
     "terms": [
@@ -784,6 +1236,14 @@
   "js/GameStateTypes.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
+      "line",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -800,6 +1260,13 @@
   "js/LemmingStateType.js": {
     "md": 0,
     "code": 2,
+    "code": 3,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -808,6 +1275,15 @@
   "js/LevelProperties.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "map",
       "object"
@@ -862,6 +1338,13 @@
   "js/ObjectImageInfo.js": {
     "md": 0,
     "code": 2,
+    "code": 3,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+    "code": 1,
     "terms": [
       "map",
       "object"
@@ -975,6 +1458,14 @@
   "test/levelloader.test.js": {
     "md": 0,
     "code": 2,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
+      "spawn",
+      "check",
+      "undefined"
+    "code": 1,
     "terms": [
       "map",
       "object"
@@ -1072,6 +1563,18 @@
       "update",
       "stage",
       "size"
+  "js/LemmingsNamespace.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "if",
+      "else",
+      "check",
+      "undefined"
+  "test/processHtmlFile.test.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
   ".agentInfo/notes/test-coverage.md": {
@@ -1122,6 +1625,16 @@
   ".agentInfo/notes/bench-mode-docs.md": {
     "md": 1,
     "code": 0,
+  "tools/processHtmlFile.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
+      "spawn",
+      "check",
+      "undefined"
+    "code": 1,
     "terms": [
       "update",
       "stage",
@@ -1164,6 +1677,13 @@
       "size"
     ]
   },
+  ".agentInfo/notes/editor-mode.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "spawn",
+      "check",
+      "undefined"
   ".agentInfo/notes/draw-corner-rect.md": {
     "md": 1,
     "code": 0,
@@ -1203,6 +1723,12 @@
   "js/Stage.js": {
     "md": 0,
     "code": 1,
+    "code": 2,
+    "terms": [
+      "spawn",
+      "check",
+      "undefined"
+    "code": 5,
     "terms": [
       "update",
       "stage",
@@ -1317,6 +1843,13 @@
       "size"
     ]
   },
+  ".agentInfo/notes/webmidi-tasks.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "line",
+      "check",
+      "undefined"
   "test/stageimageprops.test.js": {
     "md": 0,
     "code": 1,
@@ -1336,6 +1869,15 @@
     ]
   },
   "test/packfilepart.test.js": {
+  ".agentInfo/notes/game.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "selection",
+      "rect",
+      "check",
+      "undefined"
+  "test/tools/patchSprites.test.js": {
     "md": 0,
     "code": 1,
     "terms": [
@@ -1405,6 +1947,21 @@
       "update",
       "stage",
       "size"
+  ".agentInfo/notes/stage.md": {
+    "md": 6,
+    "code": 0,
+    "terms": [
+      "draw",
+      "corner",
+      "rect",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+  "test/stageimageprops.test.js": {
+      "display",
+      "width",
+      "height"
     ]
   },
   "test/filecontainer-errors.test.js": {
@@ -1418,6 +1975,13 @@
   },
   "test/filecontainer.test.js": {
     "md": 0,
+    "code": 5,
+    "terms": [
+      "draw",
+      "corner",
+      "rect",
+      "check",
+      "undefined"
     "code": 1,
     "terms": [
       "update",
@@ -1477,6 +2041,38 @@
       "update",
       "stage",
       "size"
+    ]
+  },
+  "CONTRIBUTING.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/ci.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  "docs/TESTING.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/game-resources.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "check",
+      "undefined"
     ]
   }
 }
