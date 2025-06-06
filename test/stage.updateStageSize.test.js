@@ -70,10 +70,10 @@ describe('Stage.updateStageSize', function() {
     const scale = stage.guiImgProps.viewPoint.scale;
     const guiW = display.getWidth() * scale;
     const panelH = display.getHeight() * scale;
-    expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
+    expect(stage.guiImgProps.viewPoint.scale).to.equal(4);
     expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
     expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
-    expect(stage.gameImgProps.height).to.equal(520);
+    expect(stage.gameImgProps.height).to.equal(440);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(guiW);
     const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
@@ -97,10 +97,10 @@ describe('Stage.updateStageSize', function() {
 
     const scale = stage.guiImgProps.viewPoint.scale;
     const panelH = display.getHeight() * scale;
-    expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
+    expect(stage.guiImgProps.viewPoint.scale).to.equal(4);
     expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
     expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
-    expect(stage.gameImgProps.height).to.equal(520);
+    expect(stage.gameImgProps.height).to.equal(440);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(display.getWidth() * scale);
     const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
