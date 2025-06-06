@@ -96,8 +96,6 @@ describe('benchSpeedAdjust recovery', function() {
     expect(dashLen).to.be.at.least(2);
   });
 
-
-
   it('updates frameTime when speed changes', function() {
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };

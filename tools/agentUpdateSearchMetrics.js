@@ -5,7 +5,7 @@ import {
   writeFileSync,
   mkdirSync,
   statSync,
-  unlinkSync,
+  unlinkSync
 } from 'node:fs';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
