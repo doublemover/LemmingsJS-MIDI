@@ -113,3 +113,5 @@
 {"time":"2025-06-06T17:42:52.743Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":38}
 {"time":"2025-06-06T17:42:56.088Z","query":"bench TPS","mdFiles":13,"codeFiles":10,"ms":268}
 
+{"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
+{"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
