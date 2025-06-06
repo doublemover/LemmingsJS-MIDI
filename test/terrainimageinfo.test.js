@@ -2,8 +2,9 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { TerrainImageInfo } from '../js/TerrainImageInfo.js';
 import { BaseImageInfo } from '../js/BaseImageInfo.js';
-import '../js/ColorPalette.js';
+import { ColorPalette } from '../js/ColorPalette.js';
 import { Frame } from '../js/Frame.js';
+globalThis.lemmings = Lemmings;
 
 // Simple helper replicates GroundReader steel cropping
 function computeSteelSize(info) {
@@ -28,10 +29,6 @@ function computeSteelSize(info) {
   return { width: widest, height: tallest };
 }
 
-
-
-globalThis.lemmings = Lemmings;
-
 describe('TerrainImageInfo', function() {
   it('calculates steel cropping dimensions', function() {
     const info = new TerrainImageInfo();
@@ -44,6 +41,7 @@ describe('TerrainImageInfo', function() {
         1,  2,  1,  128
       ])
     ];
+
     info.isSteel = true;
 
     const { width, height } = computeSteelSize(info);
@@ -79,6 +77,8 @@ describe('TerrainImageInfo', function() {
     expect(mask[2]).to.equal(1);
     expect(buf[3]).to.equal(Lemmings.ColorPalette.black);
     expect(mask[3]).to.equal(0);
+  });
+
   it('extends BaseImageInfo', function() {
     const terrain = new TerrainImageInfo();
     expect(terrain).to.be.instanceOf(BaseImageInfo);
