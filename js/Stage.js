@@ -177,18 +177,17 @@ class Stage {
       this.draw(stageImage, imgData);
     }
 
-    // Now clamp or recenter viewPoint:
-    // — Y should always sit so the bottom of the level is flush with the HUD,
-    //   i.e. “glued” to the top of the HUD panel.
+    // Clamp the viewPoint so the viewport never shows space outside the level
     const gameH = stageImage.display.getHeight();
     const winH = stageImage.height;
     const scale = stageImage.viewPoint.scale;
-    // worldHeight = how many “world pixels” tall
-    const worldH = gameH;
-    // viewH_world = viewport height in world units
-    const viewH_world = winH / scale;
-    // To glue bottom: viewPoint.y = worldH - viewH_world
-    stageImage.viewPoint.y = worldH - viewH_world;
+    const worldH = gameH; // world height in world units
+    const viewH_world = winH / scale; // viewport height in world units
+    stageImage.viewPoint.y = this.limitValue(
+      worldH - viewH_world,
+      stageImage.viewPoint.y,
+      0
+    );
 
     // — X: if scale ≥ 2, simply clamp so nothing goes offscreen
     const gameW = stageImage.display.getWidth();
