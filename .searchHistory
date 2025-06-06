@@ -35,6 +35,8 @@
 {"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
 {"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
+{"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
+{"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
 {"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
 {"time":"2025-06-06T13:17:40.001Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":225}
 {"time":"2025-06-06T13:17:48.131Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":377}

@@ -1,6 +1,7 @@
 {
   "js/Stage.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -23,6 +24,17 @@
       "position2d"
     ]
   },
+  "js/UserInputManager.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 2,
   "css/game.css": {
     "md": 0,
     "code": 3,
@@ -31,6 +43,20 @@
       "position2d"
     ]
   },
+  "css/game.css": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
+    ]
+  },
+  "test/filecontainer.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
   "test/filecontainer.test.js": {
     "md": 0,
     "code": 3,
@@ -41,6 +67,7 @@
   },
   "test/packfilepart.test.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -49,6 +76,7 @@
   },
   "js/LemmingsBootstrap.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -57,6 +85,7 @@
   },
   "js/Position2D.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -65,6 +94,7 @@
   },
   "test/geometry.test.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -73,6 +103,7 @@
   },
   "test/stage.overlayfade.test.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -81,6 +112,7 @@
   },
   "test/stage.test.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -89,6 +121,7 @@
   },
   "test/stage.updateStageSize.test.js": {
     "md": 0,
+    "code": 2,
     "code": 3,
     "terms": [
       "calc",
@@ -97,6 +130,10 @@
   },
   "test/stage.updateviewpoint.test.js": {
     "md": 0,
+    "code": 2,
+    "terms": [
+      "calc",
+      "position2d"
     "code": 3,
     "terms": [
       "calc",
