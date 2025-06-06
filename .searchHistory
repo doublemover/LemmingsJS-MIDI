@@ -27,6 +27,24 @@
 {"time":"2025-06-06T07:09:06.594Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":133}
 {"time":"2025-06-06T07:09:10.566Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":218}
 {"time":"2025-06-06T07:09:13.505Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":178}
+{"time":"2025-06-06T07:47:01.121Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":234}
+{"time":"2025-06-06T07:47:03.815Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":117}
+{"time":"2025-06-06T07:47:15.212Z","query":"lemming","mdFiles":32,"codeFiles":185,"ms":645}
+{"time":"2025-06-06T07:47:17.462Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":279}
+{"time":"2025-06-06T07:47:19.956Z","query":"select cursor","mdFiles":19,"codeFiles":27,"ms":121}
+{"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
 {"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
 {"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
 {"time":"2025-06-06T08:17:28.599Z","query":"check-undefined","mdFiles":20,"codeFiles":22,"ms":73}
+{"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
+{"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
+{"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
+{"time":"2025-06-06T13:17:40.001Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":225}
+{"time":"2025-06-06T13:17:48.131Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":377}
+{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
+{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
+{"time":"2025-06-06T13:18:04.991Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":228}
+{"time":"2025-06-06T13:18:11.006Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":208}
+{"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
+{"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
+{"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}

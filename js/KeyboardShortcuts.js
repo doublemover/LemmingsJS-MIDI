@@ -269,10 +269,10 @@ class KeyboardShortcuts {
       if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
       break; }
     case 'KeyN':
-      this.view.game.getLemmingManager()?.setSelectedLemming(null);
+      // selection cleared via keyboard no longer supported
       break;
     case 'Backquote':
-      this.view.game.getLemmingManager()?.cycleSelection(e.shiftKey ? -1 : 1);
+      // cycling lemming selection removed
       break;
     case 'Backslash':
       game.showDebug = !game.showDebug;

@@ -73,7 +73,7 @@ describe('GameDisplay drawFrame', function() {
     expect(buf[1 + 1 * w]).to.equal(yellow);
   });
 
-  it('selects nearest lemming on click', function() {
+  it('does not modify selection on click', function() {
     const stage = new MockStage();
     const display = stage.getGameDisplay();
 
@@ -94,10 +94,10 @@ describe('GameDisplay drawFrame', function() {
 
     display.onMouseDown.trigger({ x: 1, y: 1 });
 
-    expect(selected).to.equal(lem);
+    expect(selected).to.equal(null);
   });
 
-  it('clears selection when clicking empty space', function() {
+  it('keeps selection when clicking empty space', function() {
     const stage = new MockStage();
     const display = stage.getGameDisplay();
 
@@ -117,6 +117,6 @@ describe('GameDisplay drawFrame', function() {
 
     display.onMouseDown.trigger({ x: 2, y: 2 });
 
-    expect(selected).to.equal(null);
+    expect(selected).to.deep.equal({ id: 1 });
   });
 });

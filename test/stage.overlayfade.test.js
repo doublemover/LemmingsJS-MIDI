@@ -90,4 +90,23 @@ describe('Stage overlay fade', function() {
     const match = rectCalls.some(r => r.x === rect.x && r.y === rect.y && r.w === rect.width && r.h === rect.height);
     expect(match).to.equal(true);
   });
+
+  it('retains overlayRect until fade completes', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+
+    const rect = { x: 1, y: 2, width: 3, height: 4 };
+    stage.startOverlayFade('blue', rect);
+
+    clock.tick(500);
+    expect(stage.overlayRect).to.equal(rect);
+
+    clock.tick(1500); // finish fade
+    expect(stage.overlayTimer).to.equal(0);
+    expect(stage.overlayRect).to.equal(rect);
+
+    clock.tick(1); // allow cleanup timeout
+    expect(stage.overlayRect).to.equal(null);
+  });
 });

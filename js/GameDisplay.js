@@ -18,15 +18,8 @@ class GameDisplay {
   }
   setGuiDisplay(display) {
     this.display = display;
-    this._mouseHandler = (e) => {
-      const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
-      if (lem) {
-        this.lemmingManager.setSelectedLemming(lem);
-      } else {
-        this.lemmingManager.setSelectedLemming(null);
-      }
-    };
-    this.display.onMouseDown.on(this._mouseHandler);
+    // Selecting lemmings by clicking has been removed
+    this._mouseHandler = null;
     this._mouseMoveHandler = (e) => {
       this._mouseX = e.x;
       this._mouseY = e.y;
