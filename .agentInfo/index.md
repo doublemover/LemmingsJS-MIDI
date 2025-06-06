@@ -69,6 +69,7 @@ l2bitmap-overview.md: l2bitmap file-format bitmap doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
+l2-save-format.md: l2 savegame doc todo
 l2-save-format.md: l2 savegame slots doc
 l2-save-format.md: l2 savegame todo loader
 l2-save-format.md: l2 savegame doc
