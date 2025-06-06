@@ -1,8 +1,762 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 29,
+    "md": 9,
     "code": 0,
     "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "docs/nl-file-format.md": {
+    "md": 32,
+    "code": 13,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
+      "line",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "check",
+      "undefined"
+    ]
+  },
+  "README.md": {
+    "md": 15,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/notes/ground-renderer.md": {
+    "md": 20,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "docs/tools.md": {
+    "md": 19,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/level-loader.md": {
+    "md": 15,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/overview.md": {
+    "md": 20,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "CHANGELOG.md": {
+    "md": 15,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "docs/nl-skills.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "js/GroundReader.js",
+      "md",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/index.md": {
+    "md": 43,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "rect",
+      "marching",
+      "bench",
+      "ants",
+      "selection",
+      "draw",
+      "corner",
+      "check",
+      "undefined",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "docs/levelpacks.md": {
+    "md": 17,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  ".agentInfo/notes/editor-mode.md": {
+    "md": 10,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "spawn",
+      "check",
+      "undefined",
+      ".agentInfo/notes/draw-corner-rect.md",
+      "md",
+      "code",
+      "terms",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/level-reader.md": {
+    "md": 19,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/level-writer.md": {
+    "md": 10,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "md",
+      "code",
+      "terms",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/level-packs.md": {
+    "md": 17,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  ".agentInfo/notes/note-review.md": {
+    "md": 19,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "update",
+      "stage",
+      "size",
+      "js/LemmingsNamespace.js",
+      "md",
+      "code",
+      "terms",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "test/processHtmlFile.test.js",
+      "display",
+      "width",
+      "height",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/notes/test-coverage.md": {
+    "md": 18,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "docs/level-file-format.md": {
+    "md": 12,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "README.md",
+      "md",
+      "code",
+      "terms",
+      "base",
+      "image",
+      "info",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/notes/webmidi-overview.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  "AGENTS.md": {
+    "md": 23,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "if",
+      "else",
+      "line",
+      "check",
+      "undefined",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "docs/compression-format.md": {
+    "md": 15,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/config.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/game-display.md": {
+    "md": 20,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "rect",
+      "marching",
+      "ants",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/game-gui.md": {
+    "md": 8,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/game-resources.md": {
+    "md": 24,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "x",
+      "y",
+      "draw",
+      "corner",
+      "rect",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/game-view.md": {
+    "md": 17,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "rect",
+      "selection",
+      "draw",
+      "corner",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/game.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/lemming-manager.md": {
+    "md": 17,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "map",
+      "object",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/notes/level-format.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/mechanics-config.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/mechanics-flags.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/nl-file-format.md": {
+    "md": 17,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  ".agentInfo/notes/pack-mechanics.md": {
+    "md": 10,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "if",
+      "else",
+      "check",
+      "undefined"
+    ]
+  },
+  ".agentInfo/notes/stage.md": {
+    "md": 20,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/tools.md": {
+    "md": 5,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "x",
+      "y",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "docs/nl-skills.md",
+      "md",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/trigger-manager.md": {
+    "md": 6,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "docs/config.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object"
+    ]
+  },
+  "docs/exporting-sprites.md": {
+    "md": 20,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "docs/nl-objects.md": {
+    "md": 13,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "CHANGELOG.md",
+      "md",
+      "code",
+      "terms",
+      "base",
+      "image",
+      "info",
+      "map",
+      "object",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "js/ActionDrowningSystem.js",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/AGENTS.md": {
+    "md": 18,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/file-container.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  ".agentInfo/notes/todo-review.md": {
+    "md": 18,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "code",
+      "md",
+      "terms",
       "rect",
       "marching",
       "x",
@@ -19,28 +773,83 @@
       "scale",
       "nearest",
       "check",
-      "undefined"
+      "undefined",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  ".agentInfo/index.md": {
-    "md": 22,
+  ".agentInfo/notes/webmidi.md": {
+    "md": 5,
     "code": 0,
     "terms": [
-      "rect",
-      "marching",
-      "bench",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  ".agentInfo/notes/binary-reader.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve"
+    ]
+  },
+  ".agentInfo/notes/check-undefined.md": {
+    "md": 7,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "md",
+      "code",
+      "terms",
+      "base",
+      "image",
+      "info",
+      "if",
+      "else",
       "check",
-      "undefined"
+      "undefined",
+      "test/tools/scanGreenPanel.test.js",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
     ]
   },
   ".agentInfo/notes/display-image.md": {
-    "md": 10,
+    "md": 23,
     "code": 0,
     "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "rect",
+      "x",
+      "y",
+      "selection",
+      "draw",
+      "corner",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/draw-corner-rect.md": {
+    "md": 22,
+    "code": 0,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
       "rect",
       "x",
       "y",
@@ -49,16 +858,71 @@
       "corner"
     ]
   },
-  ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 10,
+  ".agentInfo/notes/initial.md": {
+    "md": 12,
     "code": 0,
     "terms": [
-      "rect",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/GroundReader.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/Level.js": {
+    "md": 0,
+    "code": 16,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/LevelLoader.js": {
+    "md": 4,
+    "code": 13,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
       "x",
       "y",
-      "selection",
-      "draw",
-      "corner"
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "code",
+      "terms",
+      "map",
+      "object"
     ]
   },
   ".agentInfo/notes/drawMarchingAntRect.md": {
@@ -73,60 +937,22 @@
       "corner"
     ]
   },
-  ".agentInfo/notes/game-display.md": {
-    "md": 13,
-    "code": 0,
-    "terms": [
-      "rect",
-      "marching",
-      "ants",
-      "selection",
-      "draw",
-      "corner",
-      "scale",
-      "nearest"
-    ]
-  },
-  ".agentInfo/notes/game-view.md": {
-    "md": 9,
-    "code": 0,
-    "terms": [
-      "rect",
-      "selection",
-      "draw",
-      "corner"
-    ]
-  },
   ".agentInfo/notes/pause-overlay.md": {
-    "md": 19,
+    "md": 20,
     "code": 0,
     "terms": [
       "rect",
       "bench",
       "selection",
       "draw",
-      "corner"
-    ]
-  },
-  "docs/nl-file-format.md": {
-    "md": 15,
-    "code": 0,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "line",
-      "selection",
-      "draw",
       "corner",
-      "scale",
-      "nearest"
+      "update",
+      "stage",
+      "size"
     ]
   },
   "js/DisplayImage.js": {
-    "md": 0,
+    "md": 3,
     "code": 19,
     "terms": [
       "rect",
@@ -147,264 +973,35 @@
       "undefined"
     ]
   },
-
   "js/Stage.js": {
     "md": 0,
-    "code": 2,
-    "code": 3,
+    "code": 11,
     "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "js/UserInputManager.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/userinput.test.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "js/UserInputManager.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/userinput.test.js": {
-    "md": 0,
-    "code": 25,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
       "spawn",
-      "bench",
-      "selection",
-      "draw",
-      "corner",
-      "scale",
-      "nearest",
       "check",
-      "undefined"
-    ]
-  },
-  "js/MiniMap.js": {
-    "code": 2,
-  "css/game.css": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "css/game.css": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/filecontainer.test.js": {
-    "md": 0,
-    "code": 13,
-    "terms": [
-      "rect",
-      "x",
-      "y",
-      "if",
-      "else",
-      "selection",
-      "draw",
-      "corner",
-      "check",
-      "undefined"
-    ]
-  },
-  "js/UserInputManager.js": {
-    "code": 2,
-    "terms": [
-      "calc",
-      "position2d"
-  "test/filecontainer.test.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/packfilepart.test.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "js/LemmingsBootstrap.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "js/Position2D.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/geometry.test.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/stage.overlayfade.test.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/stage.test.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/stage.updateStageSize.test.js": {
-    "md": 0,
-    "code": 2,
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-    ]
-  },
-  "test/stage.updateviewpoint.test.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "calc",
-      "position2d"
-    "code": 3,
-    "terms": [
-      "calc",
-      "position2d"
-  ".agentInfo/index-detailed.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "README.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/pause-overlay.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "docs/level-file-format.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "docs/nl-file-format.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "AGENTS.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/easing-functions.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/trigger-manager.md": {
-    "md": 6,
-    "code": 0,
-    "terms": [
-      "x",
-      "y",
-      "draw",
-      "corner",
-      "rect",
-      "check",
-      "undefined"
+      "undefined",
+      "code",
+      "terms",
+      "update",
+      "stage",
+      "size"
     ]
   },
   "js/LemmingManager.js": {
     "md": 0,
-    "code": 18,
+    "code": 35,
     "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
       "x",
       "y",
       "if",
@@ -416,564 +1013,821 @@
       "scale",
       "nearest",
       "check",
-      "undefined"
-    ]
-  },
-  "js/SolidLayer.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "check",
-      "undefined"
-    ]
-  },
-  "js/ParticleTable.js": {
-    "md": 0,
-    "code": 9,
-    "terms": [
-      "x",
-      "y",
-      "pos",
-      "if",
-      "else",
-      "draw",
-      "corner",
-      "rect",
-      "check",
-      "undefined"
-  ".agentInfo/notes/game-view.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/game.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/level-reader.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/mechanics-flags.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/overview.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/stage.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/notes/webmidi-overview.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "docs/compression-format.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "docs/config.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "docs/exporting-sprites.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "docs/nl-objects.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/ActionBashSystem.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "check",
-      "undefined"
-  "docs/nl-skills.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  ".agentInfo/index.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/trigger-manager.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "CHANGELOG.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "js/GameView.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "js/Stage.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "js/GameTimer.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "test/bench-speed-adjust.test.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "test/gametimer.test.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "test/gameview.suspendWithColor.test.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "test/stage.overlayfade.test.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "fileformat.txt": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "test/gameview.test.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "tools/build_index.js": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/game-gui.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "README.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "docs/nl-file-format.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/display-image.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/ground-renderer.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/index.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/bench-mode-docs.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/game-display.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/game-view.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/game.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/stage.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/webmidi-overview.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "CHANGELOG.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/level-reader.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "docs/level-file-format.md": {
-    "md": 5,
-    "code": 0,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Stage.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/DisplayImage.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/MiniMap.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "undefined",
+      "map",
+      "object",
+      "code",
+      "terms",
+      "dependency",
+      "review",
+      "action"
     ]
   },
   "js/GameGui.js": {
     "md": 0,
-    "code": 5,
+    "code": 8,
     "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Level.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
     ]
   },
   "index.html": {
     "md": 0,
-    "code": 5,
+    "code": 18,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "update",
+      "stage",
+      "size",
+      "terrain"
     ]
   },
-  "js/GameView.js": {
+  "js/Game.js": {
     "md": 0,
-    "code": 5,
+    "code": 16,
     "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/KeyboardShortcuts.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Animation.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/GameDisplay.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "code",
+      "terms",
+      "calc",
+      "position2d",
+      "base",
+      "image",
+      "info",
+      "map",
+      "object"
     ]
   },
   "js/UserInputManager.js": {
     "md": 0,
-    "code": 5,
+    "code": 30,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "calc",
+      "position2d",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "test/filecontainer.test.js",
+      "md",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "terrain",
+      "image",
+      "info",
+      "base"
     ]
   },
-  "test/gamedisplay.test.js": {
+  "test/userinput.test.js": {
+    "md": 0,
+    "code": 46,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "rect",
+      "x",
+      "y",
+      "if",
+      "else",
+      "spawn",
+      "bench",
+      "selection",
+      "draw",
+      "corner",
+      "scale",
+      "nearest",
+      "check",
+      "undefined",
+      "base",
+      "image",
+      "info",
+      "terrain"
+    ]
+  },
+  "js/LemmingsBootstrap.js": {
+    "md": 0,
+    "code": 19,
+    "terms": [
+      "calc",
+      "position2d",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info",
+      "terrain",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/LevelIndexResolve.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "test/gameview.test.js": {
+  "js/GameDisplay.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "map",
+      "object",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/MiniMap.js": {
+    "md": 0,
+    "code": 23,
+    "terms": [
+      "calc",
+      "position2d",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "css/game.css": {
+    "md": 0,
+    "code": 21,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info",
+      "terrain",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/GameFactory.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/GameResources.js": {
+    "md": 0,
+    "code": 17,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "terrain"
+    ]
+  },
+  "js/KeyboardShortcuts.js": {
+    "md": 0,
+    "code": 19,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "test/vgaspecreader.test.js",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/LevelIndexType.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/LevelReader.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "tools/search.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/FileProvider.js": {
+    "md": 0,
+    "code": 13,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "fileformat.txt": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/ActionBashSystem.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionBlockerSystem.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionBuildSystem.js": {
+    "md": 0,
+    "code": 11,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionClimbSystem.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionDiggSystem.js": {
+    "md": 0,
+    "code": 10,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionDrowningSystem.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionExitingSystem.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionExplodingSystem.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionFallSystem.js": {
+    "md": 0,
+    "code": 11,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionFloatingSystem.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionFryingSystem.js": {
+    "md": 0,
+    "code": 13,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "map",
+      "object",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionHoistSystem.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  ".agentInfo/notes/webmidi-enumerations.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/node-file-provider.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "map",
+      "object"
+    ]
+  },
+  ".agentInfo/notes/easing-functions.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "map",
+      "object"
+    ]
+  },
+  "js/SolidLayer.js": {
+    "md": 0,
+    "code": 17,
+    "terms": [
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/ParticleTable.js": {
+    "md": 0,
+    "code": 17,
+    "terms": [
+      "x",
+      "y",
+      "pos",
+      "if",
+      "else",
+      "draw",
+      "corner",
+      "rect",
+      "check",
+      "undefined",
+      ".agentInfo/notes/game-view.md",
+      "md",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  ".agentInfo/notes/nl-objects.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "map",
+      "object"
+    ]
+  },
+  "docs/TESTING.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "map",
+      "object",
+      "check",
+      "undefined",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/LemmingsSprite.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "tools/build_index.js": {
+    "md": 0,
+    "code": 7,
+    "terms": [
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "tools/exportAllSprites.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "map",
+      "object",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/GameView.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/MapObject.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/ObjectManager.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "map",
+      "object"
+    ]
+  },
+  "tools/check-undefined.js": {
+    "md": 0,
+    "code": 13,
+    "terms": [
+      "map",
+      "object",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/ActionBaseSystem.js": {
+    "md": 0,
+    "code": 17,
+    "terms": [
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "test/gamedisplay.test.js",
+      "update",
+      "stage",
+      "size",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/CommandManager.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "code",
+      "terms",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionJumpSystem.js": {
+    "md": 0,
+    "code": 10,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/BaseImageInfo.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/ObjectImageInfo.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain"
+    ]
+  },
+  "js/TerrainImageInfo.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "terrain"
     ]
   },
   "test/minimap.test.js": {
     "md": 0,
-    "code": 15,
+    "code": 3,
+    "terms": [
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "test/patchSprites.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "tools/NodeFileProvider.js": {
+    "md": 0,
+    "code": 20,
     "terms": [
       "x",
       "y",
@@ -983,223 +1837,288 @@
       "scale",
       "nearest",
       "check",
-      "undefined"
-    "code": 5,
+      "undefined",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/Animation.js": {
+    "md": 0,
+    "code": 14,
     "terms": [
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "terrain"
+    ]
+  },
+  "js/BinaryReader.js": {
+    "md": 6,
+    "code": 7,
+    "terms": [
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "draw",
+      "corner",
+      "rect",
+      "scale",
+      "nearest",
+      "test/stageimageprops.test.js",
       "display",
       "width",
       "height"
     ]
   },
-  "test/userinput.test.js": {
+  "test/exportScripts.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 20,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "terrain"
     ]
   },
-  "js/xbrz/xbrz.js": {
+  "test/tools/exportGroundImages.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 12,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "terrain"
     ]
   },
-  "css/game.css": {
+  "test/groundreader.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 15,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain"
     ]
   },
-  "fileformat.txt": {
+  "js/Frame.js": {
     "md": 0,
-    "code": 5,
+    "code": 17,
     "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionExplodingSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Game.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
       "x",
       "y",
       "if",
       "else",
       "check",
-      "undefined"
-    "code": 5,
+      "undefined",
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain"
+    ]
+  },
+  "js/ActionCountdownSystem.js": {
+    "md": 0,
+    "code": 8,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionOhNoSystem.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/ActionSplatterSystem.js": {
+    "md": 0,
+    "code": 14,
+    "terms": [
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "js/GroundRenderer.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "pos",
+      "if",
+      "else",
+      "check",
+      "undefined",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "terrain",
+      "image",
+      "info",
+      "base"
     ]
   },
   "js/Lemming.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "js/LemmingManager.js": {
+  "test/fileprovider.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 12,
     "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/StageImageProperties.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
   "js/TriggerManager.js": {
     "md": 0,
-    "code": 5,
+    "code": 12,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info"
     ]
   },
-  "test/displayimage.test.js": {
+  "js/VGASpecReader.js": {
     "md": 0,
-    "code": 5,
+    "code": 12,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "terrain"
     ]
   },
-  "test/gameview.suspendWithColor.test.js": {
+  "test/tools/exportScripts.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 17,
     "terms": [
-      "pos",
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "terrain"
     ]
   },
-  "test/groundrenderer.test.js": {
+  "test/gameview.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 12,
     "terms": [
-      "pos",
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "test/stage.overlayfade.test.js": {
+  "test/nodefileprovider.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 6,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve"
     ]
   },
-  "test/stage.test.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "pos",
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/stage.updateStageSize.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/stage.updateviewpoint.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Frame.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "docs/compression-format.md": {
+  "test/oddtable.test.js": {
     "md": 13,
     "code": 0,
     "terms": [
       "if",
       "else",
       "bench",
-      "check",
-      "undefined"
-    ]
-  },
-  "AGENTS.md": {
-    "md": 4,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "line",
       "check",
       "undefined"
     ]
@@ -1214,985 +2133,1190 @@
       "undefined"
     ]
   },
-  "docs/nl-skills.md": {
-    "md": 3,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-  "js/GroundReader.js": {
+  "test/stage.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "terrain",
+      "image",
+      "info",
+      "base"
     ]
   },
-  "js/LemmingsSprite.js": {
+  "test/tools/listSprites.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 7,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "js/LevelReader.js": {
+  "test/tools/patchSprites.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 3,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size"
     ]
   },
-  "test/patchSprites.test.js": {
+  "tools/exportAllPacks.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
-  "test/tools/exportAllSprites.test.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/bench-mode.md": {
+  "tools/patchSprites.js": {
     "md": 14,
-    "code": 0,
+    "code": 8,
     "terms": [
       "if",
       "else",
       "spawn",
       "bench",
       "check",
-      "undefined"
+      "undefined",
+      "terrain",
+      "image",
+      "info",
+      "base"
     ]
   },
-  ".agentInfo/notes/check-undefined.md": {
-    "md": 3,
-    "code": 0,
+  "js/BitReader.js": {
+    "md": 0,
+    "code": 8,
     "terms": [
-      "if",
-      "else",
+      "map",
+      "object",
+      "update",
+      "stage",
+      "size",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/BitWriter.js": {
+    "md": 0,
+    "code": 19,
+    "terms": [
+      "map",
+      "object",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/FileContainer.js": {
+    "md": 0,
+    "code": 18,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "draw",
+      "corner",
+      "rect",
       "check",
-      "undefined"
-  "test/tools/scanGreenPanel.test.js": {
+      "undefined",
+      "code",
+      "terms",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "js/GameSkills.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "map",
+      "object",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "tools/exportAllSprites.js": {
+  "js/GameStateTypes.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionBaseSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionCountdownSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/note-review.md": {
-    "md": 3,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-    ]
-  },
-  ".agentInfo/notes/pack-mechanics.md": {
-    "md": 3,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-    ]
-  },
-  "docs/nl-objects.md": {
-    "md": 3,
-    "code": 0,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-  "js/ActionDrowningSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionExitingSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionFallSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionFloatingSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionFryingSystem.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
       "if",
       "else",
       "line",
       "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "undefined",
+      "map",
+      "object",
+      "level",
+      "index",
+      "type"
     ]
   },
-  "js/ActionHoistSystem.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionJumpSystem.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ActionOhNoSystem.js": {
+  "js/GameTypes.js": {
     "md": 0,
     "code": 4,
     "terms": [
-      "if",
-      "else",
-      "scale",
-      "nearest",
-      "check",
-      "undefined"
+      "base",
+      "image",
+      "info",
+      "code",
+      "terms",
+      "map",
+      "object"
+    ]
+  },
+  "js/LemmingStateType.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/ActionMineSystem.js": {
+    "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
     ]
   },
   "js/ActionShrugSystem.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "js/ActionSplatterSystem.js": {
+  "js/ActionWalkSystem.js": {
     "md": 0,
-    "code": 5,
+    "code": 10,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "js/LemmingsBootstrap.js": {
-    "md": 0,
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/LogHandler.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "tools/search.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ObjectManager.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/Level.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ParticleTable.js": {
-    "md": 0,
-    "code": 2,
-    "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
-    ]
-  },
-  "js/BinaryReader.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Trigger.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/LemmingManager.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/ViewPoint.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/ActionBuildSystem.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/trigger.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/Animation.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/BaseImageInfo.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/FileProvider.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/Game.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/BitWriter.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "display",
-      "width"
-    ]
-  },
-  "js/GameTimer.js": {
+  "js/LevelProperties.js": {
     "md": 0,
     "code": 4,
     "terms": [
       "if",
       "else",
-      "spawn",
+      "scale",
+      "nearest",
       "check",
-      "undefined"
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/LogHandler.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/GroundRenderer.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/PackFilePart.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/LevelLoader.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/PaletteImage.js": {
-      "display",
-      "width",
-      "height"
+      "undefined",
+      "code",
+      "terms",
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
   "js/LevelWriter.js": {
     "md": 0,
-    "code": 1,
+    "code": 7,
     "terms": [
-      "start",
-      "overlay",
-      "fade"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "js/UserInputManager.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/MapObject.js": {
+  "js/LogHandler.js": {
     "md": 0,
-    "code": 2,
+    "code": 10,
     "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
-  "js/VGASpecReader.js": {
-      "display",
-      "width",
-      "height"
+  "js/ConfigReader.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
   "js/Mask.js": {
     "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/LemmingsNamespace.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "if",
-      "else",
-      "check",
-      "undefined"
-  "test/processHtmlFile.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/MaskList.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "tools/check-undefined.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/PaletteImage.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "tools/patchSprites.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/Range.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "tools/processHtmlFile.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "if",
-      "else",
-      "spawn",
-      "check",
-      "undefined"
-    "code": 1,
-    "terms": [
-      "start",
-      "overlay",
-      "fade"
-    ]
-  },
-  "js/TriggerManager.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/SkillPanelSprites.js": {
-    "md": 0,
-    "code": 4,
-    "terms": [
-      "display",
-      "width"
-    ]
-  },
-  "js/SolidLayer.js": {
-    "md": 0,
     "code": 2,
     "terms": [
-      "start",
-      "overlay",
-      "fade",
-      "rect"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  ".agentInfo/notes/display-image.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/editor-mode.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "spawn",
-      "check",
-      "undefined"
-  ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/drawMarchingAntRect.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/game-display.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "js/DisplayImage.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "js/VGASpecReader.js": {
+  "js/MaskTypes.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
-      "spawn",
-      "check",
-      "undefined"
-    "code": 5,
-    "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
-  "test/exportLemmingsSprites.test.js": {
+  "js/LevelConfig.js": {
     "md": 0,
-    "code": 5,
+    "code": 0,
+    "terms": []
+  },
+  "js/LevelElement.js": {
+    "md": 0,
+    "code": 1,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "map",
+      "object"
     ]
   },
-  "test/exportScripts.test.js": {
+  "js/PackFilePart.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "tools/check-undefined.js",
+      "md",
+      "code",
+      "terms"
+    ]
+  },
+  "js/Trigger.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "js/CommandSelectSkill.js": {
+    "md": 0,
+    "code": 14,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "test/configreader.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/gamefactory.test.js": {
+    "md": 0,
+    "code": 7,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
   "test/gameresources.test.js": {
     "md": 0,
+    "code": 13,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/levelloader.test.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "terrain"
+    ]
+  },
+  "test/levelwriter.test.js": {
+    "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "update",
+      "stage",
+      "size"
     ]
   },
-  "test/geometry.test.js": {
+  "js/SkillTypes.js": {
     "md": 0,
-    "code": 1,
+    "code": 2,
     "terms": [
-      "overlay",
-      "rect"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "js/GameGui.js": {
-      "display",
-      "width",
-      "height"
+  "test/packLevels.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "js/SpriteTypes.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/tools/packLevels.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/TriggerTypes.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "tools/listSprites.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/UnpackFilePart.js": {
+    "md": 0,
+    "code": 7,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/exportLemmingsSprites.test.js": {
+    "md": 0,
+    "code": 15,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/SkillPanelSprites.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/gameskills.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/gamevictory.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/check-undefined.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "config.json": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "js/GameConfig.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/levelreader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info"
+    ]
+  },
+  "js/GameVictoryCondition.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/tools/exportAllSprites.test.js": {
+    "md": 0,
+    "code": 3,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/OddTableReader.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "tools/exportGroundImages.js": {
+    "md": 0,
+    "code": 10,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/packMechanics.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "tools/exportLemmingsSprites.js": {
+    "md": 0,
+    "code": 11,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "tools/processHtmlFile.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
   "test/getNearestLemming.test.js": {
     "md": 0,
     "code": 1,
     "terms": [
-      "overlay",
-      "rect"
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "test/userinput.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/groundreader.test.js": {
+  "test/groundrenderer.test.js": {
     "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "js/Frame.js": {
-      "display",
-      "width",
-      "height"
-    ]
+    "code": 0,
+    "terms": []
   },
   "test/lemming.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 5,
     "terms": [
-      "overlay",
-      "rect"
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "js/GameDisplay.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/range.test.js": {
+  "test/stage.updateStageSize.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 16,
     "terms": [
-      "overlay",
-      "rect"
+      "terrain",
+      "image",
+      "info",
+      "base"
     ]
   },
-  "js/MiniMap.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/solidlayer.test.js": {
+  "test/tools/scanGreenPanel.test.js": {
     "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "js/Trigger.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/webmidi-tasks.md": {
-    "md": 2,
     "code": 0,
+    "terms": []
+  },
+  "test/maskprovider.test.js": {
+    "md": 0,
+    "code": 16,
     "terms": [
-      "line",
-      "check",
-      "undefined"
-  "test/stageimageprops.test.js": {
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "update",
+      "stage",
+      "size",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "test/walk-wall-collision.test.js": {
     "md": 0,
     "code": 1,
     "terms": [
-      "overlay",
-      "rect"
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "test/displayimage.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "test/tools/exportGroundImages.test.js": {
+  "test/skillpanelsprites.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 13,
     "terms": [
-      "overlay",
-      "rect"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "test/geometry.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  ".agentInfo/notes/game.md": {
-    "md": 2,
-    "code": 0,
-    "terms": [
-      "selection",
-      "rect",
-      "check",
-      "undefined"
-  "test/tools/patchSprites.test.js": {
+  "tools/archiveDir.js": {
     "md": 0,
-    "code": 1,
+    "code": 9,
     "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/minimap.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "tools/exportGroundImages.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/rectangle.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "tools/exportLemmingsSprites.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/stage.test.js": {
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type",
+      "base",
+      "image",
+      "info"
     ]
   },
   "tools/exportPanelSprite.js": {
     "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/stage.updateStageSize.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "tools/listSprites.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/stage.updateviewpoint.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  ".agentInfo/notes/stage.md": {
-    "md": 6,
-    "code": 0,
-    "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "scale",
-      "nearest",
-      "check",
-      "undefined"
-  "test/stageimageprops.test.js": {
-      "display",
-      "width",
-      "height"
-    ]
-  },
-  "tools/patchSprites.js": {
-    "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "tools/renderCursorSizes.js": {
+  "tools/packLevels.js": {
     "md": 0,
-    "code": 5,
+    "code": 9,
     "terms": [
-      "draw",
-      "corner",
-      "rect",
-      "check",
-      "undefined"
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/trigger.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-    ]
-  },
-  "test/triggermanager.test.js": {
-    "md": 0,
-    "code": 1,
-    "terms": [
-      "overlay",
-      "rect"
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
   "tools/scanGreenPanel.js": {
     "md": 0,
     "code": 5,
     "terms": [
-      "display",
-      "width",
-      "height"
+      "level",
+      "index",
+      "resolve",
+      "type"
     ]
   },
-  "docs/nl-objects.md": {
+  "js/ColorPalette.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/MaskList.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/xbrz/xbrz.js": {
+    "md": 0,
+    "code": 21,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "js/PaletteImage.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  ".agentInfo/notes/gui-stage-tasks.md": {
     "md": 1,
     "code": 0,
     "terms": [
-      "display",
-      "height"
+      "update",
+      "stage",
+      "size"
     ]
   },
-  "docs/nl-skills.md": {
+  ".agentInfo/notes/userinput-zoom.md": {
     "md": 1,
     "code": 0,
     "terms": [
-      "display",
-      "height"
+      "update",
+      "stage",
+      "size"
     ]
   },
-  "js/ActionWalkSystem.js": {
+  ".agentInfo/notes/bench-mode-docs.md": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "if",
+      "else",
+      "spawn",
+      "check",
+      "undefined",
+      "code",
+      "terms",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/norm-tick-count-removal.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/keyboard-shortcuts.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  ".agentInfo/notes/unpack-file-part.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "test/gameview.suspendWithColor.test.js": {
+    "md": 0,
+    "code": 13,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/frame.test.js": {
+    "md": 0,
+    "code": 17,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/processHtmlFile.test.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/tools/processHtmlFile.test.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "tools/renderCursorSizes.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "js/StageImageProperties.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/animation.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "js/GameTimer.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "update",
+      "stage",
+      "size"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "base",
+      "image",
+      "info",
+      "terrain"
+    ]
+  },
+  "test/listSprites.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "level",
+      "index",
+      "resolve",
+      "type"
+    ]
+  },
+  "test/tools/cleanExports.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/displayimage.test.js": {
+    "md": 0,
+    "code": 16,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/gamedisplay.test.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/stage.overlayfade.test.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base"
+    ]
+  },
+  "test/tools/exportAllPacks.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "resolve"
+    ]
+  },
+  ".agentInfo/notes/webmidi-tasks.md": {
+    "md": 4,
+    "code": 0,
+    "terms": [
+      "level",
+      "index",
+      "type",
+      "line",
+      "check",
+      "undefined",
+      "test/stageimageprops.test.js",
+      "md",
+      "code",
+      "terms",
+      "base",
+      "image",
+      "info",
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "test/stageimageprops.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "eslint.config.js": {
     "md": 0,
     "code": 1,
     "terms": [
-      "display",
-      "height"
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/vgaspecreader.test.js": {
+    "md": 0,
+    "code": 12,
+    "terms": [
+      "terrain",
+      "image",
+      "info",
+      "base",
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/packfilepart.test.js": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "selection",
+      "rect",
+      "check",
+      "undefined",
+      "test/tools/patchSprites.test.js",
+      "md",
+      "code",
+      "terms",
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "test/solidlayer.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "js/MaskProvider.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/bench-speed-adjust.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "test/gametimer.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/filecontainer-errors.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/filecontainer.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "base",
+      "image",
+      "info"
+    ]
+  },
+  "test/unpackfilepart.test.js": {
+    "md": 0,
+    "code": 4,
+    "terms": [
+      "level",
+      "index",
+      "type"
+    ]
+  },
+  "test/commandmanager.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/commandselectskill.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "dependency",
+      "review",
+      "action"
+    ]
+  },
+  "test/enums.test.js": {
+    "md": 0,
+    "code": 0,
+    "terms": []
+  },
+  "test/keyboardshortcuts.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "dependency",
+      "review",
+      "action"
     ]
   },
   "CONTRIBUTING.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
       "check",
-      "undefined"
+      "undefined",
+      "dependency",
+      "review",
+      "action"
     ]
   },
   "docs/ci.md": {
-    "md": 1,
+    "md": 2,
     "code": 0,
     "terms": [
       "check",
-      "undefined"
+      "undefined",
+      "dependency",
+      "review",
+      "action"
     ]
   },
-  "docs/TESTING.md": {
-    "md": 1,
-    "code": 0,
+  "js/CommandLemmingsAction.js": {
+    "md": 0,
+    "code": 1,
     "terms": [
-      "check",
-      "undefined"
-    ]
-  },
-  ".agentInfo/notes/game-resources.md": {
-    "md": 1,
-    "code": 0,
-    "terms": [
-      "check",
-      "undefined"
+      "dependency",
+      "review",
+      "action"
     ]
   }
 }
