@@ -64,4 +64,5 @@ This expanded listing preserves the original bullet format with short descriptio
 - **stage, input, tests**: [notes/userinput-zoom.md](notes/userinput-zoom.md) - The mouse wheel now zooms around the pointer by converting the cursor's screen
 - **webmidi, enumerations, doc**: [notes/webmidi-enumerations.md](notes/webmidi-enumerations.md) - `js/webmidi.js` defines several tables describing MIDI message codes.
 - **webmidi, environment, doc**: [notes/webmidi-environments.md](notes/webmidi-environments.md) - The official "Supported Environments" page outlines where WebMIDI.js works:
+- **policy, third-party**: [notes/third-party-policy.md](notes/third-party-policy.md) - Avoid modifying or formatting libraries under `js/vendor/` or other vendor folders.
 
