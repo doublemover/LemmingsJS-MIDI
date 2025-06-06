@@ -53,6 +53,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **editor-mode, gui, level-editor**: [notes/editor-mode.md](notes/editor-mode.md) - Editor mode disables game-over checks so the game never ends. LemmingManager keeps spawning new lemmings indefinitely and a black GUI panel appears at the bottom with controls for terrain and trigger editing. This behavior serves as the basis for the level editor.
 - **game-view, speed**: [notes/game-speed-input.md](notes/game-speed-input.md) - `GameView.applyQuery` reads the `speed` URL parameter to set `gameSpeedFactor`. Values greater than `1` represent integer speed steps, so the query value is rounded to the nearest whole number. Fractional speeds at or below `1` are left untouched.
 - **level-format, doc**: [notes/level-format.md](notes/level-format.md) - `docs/level-file-format.md` explains the 2048-byte `.lvl` layout produced by LemEdit. It lists all field offsets along with object IDs for each graphics set.
+- **lvl-format, doc, todo**: [notes/lvl-format.md](notes/lvl-format.md) - `docs/camanis/lemmings_lvl_file_format.md` mirrors the original plain-text spec and notes an unknown flag at `0x001E`.
 - **level-format, l3, doc**: [notes/l3-level-format.md](notes/l3-level-format.md) - `docs/camanis/lemmings_3_level_file_format.md` outlines the Lemmings 3 header and object tables with extra lemming and enemy fields.
 - **l2-level-format, doc, level-format**: [notes/l2-level-format.md](notes/l2-level-format.md) - Outline of the Lemmings 2 `L2LV` format and fields missing from our reader.
 - **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
@@ -70,9 +71,11 @@ This expanded listing preserves the original bullet format with short descriptio
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
 - **vgagrx, groundxo, planar-bitmaps**: [notes/vgagrx-groundxo-format.md](notes/vgagrx-groundxo-format.md) - VGAGR and GROUND files store 4-bit planar bitmaps with a separate mask plane; loader does not use plane 4 for terrain.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **vgaspecx, compression, palette, doc, todo**: [notes/vgaspecx-format.md](notes/vgaspecx-format.md) - Summarizes second-level compression and palette usage for vgaspecX.dat files.
 - **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
 - **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
 - **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.
 - **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
 - **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
+- **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.
