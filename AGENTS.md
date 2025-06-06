@@ -36,6 +36,11 @@ Level packs follow the NeoLemmix folder layout described in
 The [NeoLemmix Pack Toolkit](docs/nl-pack-toolkit.md) explains how
 these folders are structured and bundled.
 
+## Third-party Code
+External libraries live in folders such as `js/vendor/` or other vendor
+directories. Do **not** modify these files, and do not run formatting
+tools on them.
+
 ## Commit policy
 - Keep commit messages concise.
 - Run `npm test` and ensure all tests pass before committing.
