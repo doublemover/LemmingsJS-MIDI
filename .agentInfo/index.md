@@ -40,6 +40,7 @@ nl-objects.md: nl-objects doc - summarizes NeoLemmix object logic with reference
 nl-skills.md: nl-skills doc
 nl-pack-toolkit.md: pack-toolkit resources doc
 node-file-provider.md: archives
+naming-cleanup.md: cleanup naming
 note-review.md: todo
 overview.md: overview doc
 pack-mechanics.md: mechanics
