@@ -71,6 +71,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **display, canvas, scaling, image**: [notes/display-image.md](notes/display-image.md) - `scaleNearest`, `scaleXbrz` and `scaleHqx` resize frames. `_blit()` picks one via `scaleMode`.
 - **vgagrx, groundxo, planar-bitmaps**: [notes/vgagrx-groundxo-format.md](notes/vgagrx-groundxo-format.md) - VGAGR and GROUND files store 4-bit planar bitmaps with a separate mask plane; loader does not use plane 4 for terrain.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
+- **l2ss, sprite-parsing, doc**: [notes/l2ss-cpp.md](notes/l2ss-cpp.md) - Summarizes `js/L2ssSpriteDecoder.js` and notes the repo still lacks a loader.
 - **vgaspecx, compression, palette, doc, todo**: [notes/vgaspecx-format.md](notes/vgaspecx-format.md) - Summarizes second-level compression and palette usage for vgaspecX.dat files.
 - **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
 - **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
