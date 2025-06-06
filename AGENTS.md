@@ -12,7 +12,11 @@ quotes, and semicolons across the JavaScript codebase.
 - Try using this often when referring to the code
 - Do not regenerate or rebuild the indexes if they are missing
 - After you use the tool commit the stats it generates as part of your next commit
-- `.searchMetrics` stores counters in compact JSON; do not reformat this file
+ - `.searchMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
+ - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
+ - Run `npm run agent-precommit` to update metrics and history and stage the results
+- `.searchMetrics/metrics.json` stores counters in compact JSON and
+  `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
 

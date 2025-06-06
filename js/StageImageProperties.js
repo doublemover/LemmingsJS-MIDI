@@ -13,7 +13,7 @@ class StageImageProperties {
     this.cav = document.createElement('canvas');
     this.cav.width = width;
     this.cav.height = height;
-    this.ctx = this.cav.getContext('2d', { alpha: false });
+    this.ctx = this.cav.getContext('2d', { willReadFrequently: true , desynchronized: true, alpha: true});
     return this.ctx.createImageData(width, height);
   }
 }
