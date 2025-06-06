@@ -140,6 +140,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - Terminal:
   - `npm install`
   - `npm start`
+
 - Then open http://127.0.0.1:8080 in your browser
 - If you encounter any issues please [https://github.com/doublemover/LemmingsJS-MIDI/issues](let us know here)
 
@@ -154,7 +155,18 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/config.md](docs/config.md) for configuration details.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
+## Level Packs
+
+The directories `lemmings/`, `lemmings_ohNo/`, `xmas91/`, `xmas92/`,
+`holiday93/` and `holiday94/` are extracted NeoLemmix packs. They use a
+simple folder structure so the Node tools can load files directly from
+directories or archives. See [docs/levelpacks.md](docs/levelpacks.md)
+for a short description of the layout and
+[docs/nl-pack-toolkit.md](docs/nl-pack-toolkit.md) for a summary of the
+NeoLemmix Pack Toolkit.
+
 ### Progressive Web App
+
 
 This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
 as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen

@@ -6,9 +6,13 @@ This repository uses ESLint for code style.
 Run `npm run format` before committing to automatically fix indentation,
 quotes, and semicolons across the JavaScript codebase.
 
-## Index & Searching
-- Use `node tools/search.js "SEARCH TERM HERE" --json | jq .` to search local TF-IDX index (embeddings.json)
-- If embeddings.json is not present, mention it to the User, you can create it with `build_index.js` (usage documented at the top of the js file)
+-## Index & Searching
+- The indexes live in `index-prose/` and `index-code/` at the repository root. They store TF‑IDF vectors for text chunks across the repo.
+- Query them with `node tools/search.js "SEARCH TERM" --json | jq .` for machine-readable results. Omit `--json` for a human readable listing.
+- Try using this often when referring to the code
+- Do not regenerate or rebuild the indexes if they are missing
+- After you use the tool commit the stats it generates as part of your next commit
+- Both tools require **Node.js 18+** and rely on files present in the working tree.
 
 ## Environment
 - Use **Node.js 18 or later**.
@@ -24,6 +28,11 @@ quotes, and semicolons across the JavaScript codebase.
 - `npm run lint` checks source files with ESLint.
 - JavaScript code uses **two-space indentation** (see `js/BitReader.js` for examples).
 - The `js/` directory runs in the browser, so avoid Node-only modules like `fs`, `path`, or `process` in that code.
+
+### Level packs
+Level packs follow the NeoLemmix folder layout described in [docs/levelpacks.md](docs/levelpacks.md).
+The [NeoLemmix Pack Toolkit](docs/nl-pack-toolkit.md) explains how
+these folders are structured and bundled.
 
 ## Commit policy
 - Keep commit messages concise.
