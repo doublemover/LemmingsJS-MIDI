@@ -7,5 +7,6 @@ The index lists many short notes. Review each file to remove duplicate sentences
 - `game-gui.md` and `keyboard-shortcuts.md` – avoid repeating input details already covered in README.
 - `game-view.md` and `stage.md` – clarify responsibilities and cross-link rather than duplicate descriptions of the canvas setup.
 - `overview.md` – keep it high-level and link to docs for details rather than repeating entire README sections.
+- Avoid trailing ellipses (`...`) in index summaries or note descriptions.
 
 After editing, update `.agentInfo/index.md` if any notes are merged or renamed.
