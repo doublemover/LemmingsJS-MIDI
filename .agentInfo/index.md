@@ -53,3 +53,4 @@ webmidi-tasks.md: webmidi-todo
 webmidi.md: webmidi doc
 nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
+display-image.md: display canvas scaling image

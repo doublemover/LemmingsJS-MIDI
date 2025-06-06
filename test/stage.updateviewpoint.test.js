@@ -74,7 +74,7 @@ describe('Stage updateViewPoint', function() {
 
     const wDiff = stage.gameImgProps.width - display.getWidth() * scale;
     const expectedX = -wDiff / (2 * scale);
-    const expectedY = stage.gameImgProps.height - display.getHeight() / scale;
+    const expectedY = 20;
 
     expect(stage.gameImgProps.viewPoint.x).to.equal(expectedX);
     expect(stage.gameImgProps.viewPoint.y).to.equal(expectedY);

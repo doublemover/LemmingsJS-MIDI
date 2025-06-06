@@ -112,6 +112,26 @@ describe('UserInputManager', function() {
     expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
   });
 
+  it('zooms when cursor is at the world origin', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+    stage.getGameDisplay().initSize(1600, 1200);
+    globalThis.lemmings.stage = stage;
+
+    stage.gameImgProps.viewPoint.scale = 1;
+    stage._rawScale = 1;
+    stage.gameImgProps.viewPoint.x = 0;
+    stage.gameImgProps.viewPoint.y = 0;
+
+    const uim = stage.controller;
+    const cursor = new Lemmings.Position2D(0, 0);
+
+    uim.handleWheel(cursor, -120);
+
+    expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
+
   it('emits zoom events without stage set', function(done) {
     delete globalThis.lemmings.stage;
     const uim = new UserInputManager(element);
