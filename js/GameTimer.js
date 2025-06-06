@@ -13,6 +13,8 @@ class GameTimer {
   #stableTicks;
   #catchupSlow;
   #visHandler;
+  benchStartupFrames = 0;
+  benchStableFactor = 1;
 
   constructor(level) {
     this.TIME_PER_FRAME_MS = 60;
@@ -47,6 +49,8 @@ class GameTimer {
     window.addEventListener('blur',  this.#visHandler, false);
     window.addEventListener('focus', this.#visHandler, false);
     this.#updateFrameTime();
+    this.benchStartupFrames = 0;
+    this.benchStableFactor = 1;
   }
 
   isRunning() { return this.#running; }
@@ -62,6 +66,7 @@ class GameTimer {
   }
 
   get speedFactor() { return this.#speedFactor; }
+  get tps() { return 1000 / this.#frameTime; }
   set speedFactor(value) {
     if (value <= 0) return;
     if (this.#speedFactor === value) return;
@@ -72,6 +77,8 @@ class GameTimer {
       this.continue();
     }
   }
+
+  get frameTime() { return this.#frameTime; }
 
   #updateFrameTime() {
     this.#frameTime = this.TIME_PER_FRAME_MS / this.#speedFactor;
@@ -123,6 +130,7 @@ class GameTimer {
     if (!this.isRunning()) return;
     window.cancelAnimationFrame(this.#rafId);
     this.#rafId = 0;
+    lemmings.tps = this.tps;
     const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
     if (gameSeconds > this.#lastGameSecond) {
       if (this.eachGameSecond) {
@@ -159,70 +167,59 @@ class GameTimer {
     lemmings.steps = steps;
     const oldSpeed = this.#speedFactor;
 
+    const mult = this.benchStartupFrames > 0 ? this.benchStableFactor : 1;
     const slowThreshold = Math.max(10, 16 / this.#speedFactor);
     const recoverThreshold = Math.max(4, 4 / this.#speedFactor);
 
-    if (steps > 100) {
-      this.suspend();
-      this.#stableTicks = 0;
-      this.#speedFactor = 0.1;
-    } else if (steps > slowThreshold) {
-      this.#stableTicks = 0;
-      const sf = this.#speedFactor;
-      if (sf > 60) {
-        this.#speedFactor = 60;
-      }
-      else if (sf > 40) {
-        this.#speedFactor -= 10;
-      }
-      else if (sf > 10) {
-        this.#speedFactor -= 9;
-      }
-      else if (sf <= 10 && sf > 1) {
-        this.#speedFactor -= 1;
-      }
-      else if (sf <= 1 && sf > 0.2) {
-        this.#speedFactor = ((this.#speedFactor * 10) - 1) / 10;
-      }
+    if (steps > recoverThreshold) this.#stableTicks -= 32;
+    if (steps <= recoverThreshold / 2) this.#stableTicks += 1;
+
+    if (this.benchStartupFrames > 0) {
+      this.benchStartupFrames -= steps;
     }
 
-    if (steps > recoverThreshold) {
-      this.#stableTicks -= 32;
-    }
+    if (this.benchStartupFrames <= 0) {
+      if (steps > 100) {
+        this.suspend();
+        this.#stableTicks = 0;
+        this.#speedFactor = 0.1;
+      } else if (steps > slowThreshold) {
+        this.#stableTicks = 0;
+        const sf = this.#speedFactor;
+        if (sf > 60) this.#speedFactor = 60;
+        else if (sf > 40) this.#speedFactor -= 10;
+        else if (sf > 10) this.#speedFactor -= 9;
+        else if (sf <= 10 && sf > 1) this.#speedFactor -= 1;
+        else if (sf <= 1 && sf > 0.2) this.#speedFactor = ((this.#speedFactor * 10) - 1) / 10;
+      }
 
-    if (steps <= recoverThreshold / 2) {
-      this.#stableTicks += 1;
-    }
-
-    if (this.#stableTicks > 32 && this.#speedFactor < 60) {
-      this.#stableTicks = 0;
-      this.#speedFactor += 1;
-    }
-    if (this.#stableTicks > 2 && this.#speedFactor < 1) {
-      this.#stableTicks = 0;
-      this.#speedFactor = ((this.#speedFactor * 10) + 1) / 10;
+      if (this.#stableTicks > 32 * mult && this.#speedFactor < 60) {
+        this.#stableTicks = 0;
+        this.#speedFactor += 1;
+      }
+      if (this.#stableTicks > 2 * mult && this.#speedFactor < 1) {
+        this.#stableTicks = 0;
+        this.#speedFactor = ((this.#speedFactor * 10) + 1) / 10;
+      }
     }
 
     const diff = this.#speedFactor - oldSpeed;
     if (diff !== 0) {
+      this.#updateFrameTime();
       const intensity = Math.min(Math.abs(diff) / 5, 1);
       const color = diff > 0
         ? `rgba(0,255,0,${intensity})`
         : `rgba(255,0,0,${intensity})`;
+      const dashLen = Math.max(2, Math.min(steps, 20));
       const stage = lemmings?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
         if (lemmings.bench) {
           const gui = stage.guiImgProps;
           const scale = gui.viewPoint.scale;
-          rect = {
-            x: gui.x + 160 * scale,
-            y: gui.y + 32 * scale,
-            width: 16 * scale,
-            height: 10 * scale
-          };
+          rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };
         }
-        stage.startOverlayFade(color, rect);
+        stage.startOverlayFade(color, rect, dashLen);
       }
     }
   }
