@@ -31,7 +31,7 @@ describe('GameDisplay drawFrame', function() {
     gd.drawFrame(redFrame, 1, 1);
 
     const buf = gd.buffer32;
-    const w = gd.getWidth();
+    const { width: w } = gd.worldDataSize;
     const red = Lemmings.ColorPalette.colorFromRGB(255, 0, 0) >>> 0;
     expect(buf[1 + 1 * w]).to.equal(red);
     expect(buf[2 + 1 * w]).to.equal(red);
@@ -49,7 +49,7 @@ describe('GameDisplay drawFrame', function() {
     gd.drawFrame(blueFrame, 0, 0); // should draw at (1,1)
 
     const buf = gd.buffer32;
-    const w = gd.getWidth();
+    const { width: w } = gd.worldDataSize;
     const blue = Lemmings.ColorPalette.colorFromRGB(0, 0, 255) >>> 0;
     expect(buf[1 + 1 * w]).to.equal(blue);
   });
@@ -68,7 +68,7 @@ describe('GameDisplay drawFrame', function() {
     gd.drawFrame(yellowFrame, 1, 1);
 
     const buf = gd.buffer32;
-    const w = gd.getWidth();
+    const { width: w } = gd.worldDataSize;
     const yellow = Lemmings.ColorPalette.colorFromRGB(255, 255, 0) >>> 0;
     expect(buf[1 + 1 * w]).to.equal(yellow);
   });
