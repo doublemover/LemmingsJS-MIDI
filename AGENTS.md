@@ -7,8 +7,9 @@ Run `npm run format` before committing to automatically fix indentation,
 quotes, and semicolons across the JavaScript codebase.
 
 ## Index & Searching
-- Use `node tools/search.js "SEARCH TERM HERE" --json | jq .` to search local TF-IDX index (embeddings.json)
-- If embeddings.json is not present, mention it to the User, you can create it with `build_index.js` (usage documented at the top of the js file)
+- Use `node tools/search.js "SEARCH TERM HERE" --json | jq .` to search the local TF‑IDF indexes.
+- Index files live in the `index-prose/` and `index-code/` directories.
+- If those directories are missing, regenerate them with `npm run index` (which calls `node tools/build_index.js`).
 
 ## Environment
 - Use **Node.js 18 or later**.
