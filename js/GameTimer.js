@@ -207,7 +207,10 @@ class GameTimer {
     if (diff !== 0) {
       this.#updateFrameTime();
       const intensity = Math.min(Math.abs(diff) / 5, 1);
-      const color = diff > 0 ? `rgba(0,255,0,${intensity})` : `rgba(255,0,0,${intensity})`;
+      const color = diff > 0
+        ? `rgba(0,255,0,${intensity})`
+        : `rgba(255,0,0,${intensity})`;
+      const dashLen = Math.max(2, Math.min(steps, 20));
       const stage = lemmings?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
@@ -216,7 +219,7 @@ class GameTimer {
           const scale = gui.viewPoint.scale;
           rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };
         }
-        stage.startOverlayFade(color, rect);
+        stage.startOverlayFade(color, rect, dashLen);
       }
     }
   }
