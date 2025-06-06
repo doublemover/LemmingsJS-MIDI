@@ -95,6 +95,7 @@ describe('benchSpeedAdjust recovery', function() {
     });
     expect(dashLen).to.be.at.least(2);
 
+
   });
 
   it('updates frameTime when speed changes', function() {
@@ -108,6 +109,5 @@ describe('benchSpeedAdjust recovery', function() {
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
     expect(timer.frameTime).to.equal(timer.TIME_PER_FRAME_MS / timer.speedFactor);
-
   });
 });
