@@ -55,6 +55,7 @@ function createDocumentStub() {
 }
 
 globalThis.lemmings = { game: { showDebug: false } };
+
 describe('UserInputManager', function() {
   it('emits zoom events with cursor position', function(done) {
     const uim = new UserInputManager(element);

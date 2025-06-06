@@ -1,9 +1,6 @@
-import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LemmingsBootstrap.js';
-import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';
 import path from 'path';
-import { PNG } from 'pngjs';
+import { pathToFileURL } from 'url';
 
 function loadDefaultPack() {
   try {
@@ -16,12 +13,29 @@ function loadDefaultPack() {
   }
 }
 
-(async () => {
+const main = async () => {
+  const { Lemmings } = await import(
+    pathToFileURL(path.join(process.cwd(), 'js', 'LemmingsNamespace.js')).href
+  );
+  await import(
+    pathToFileURL(path.join(process.cwd(), 'js', 'LemmingsBootstrap.js')).href
+  );
+  const { NodeFileProvider } = await import(
+    pathToFileURL(path.join(process.cwd(), 'tools', 'NodeFileProvider.js')).href
+  );
+  const { PNG } = await import(
+    pathToFileURL(
+      path.join(process.cwd(), 'node_modules', 'pngjs', 'lib', 'png.js')
+    ).href
+  );
   const pack = process.argv[2] || loadDefaultPack();
   const outDir = process.argv[3] || path.join('exports', 'panel_green_map');
   const provider = new NodeFileProvider('.');
   const pal = new Lemmings.ColorPalette();
-  const res = new Lemmings.GameResources(provider, { path: pack, level: { groups: [] }});
+  const res = new Lemmings.GameResources(provider, {
+    path: pack,
+    level: { groups: [] },
+  });
   const sprites = await res.getSkillPanelSprite(pal);
   const panel = sprites.getPanelSprite();
   const w = Math.min(40, panel.width);
@@ -53,7 +67,12 @@ function loadDefaultPack() {
 
   fs.mkdirSync(outDir, { recursive: true });
   const outPath = path.join(outDir, 'green_map.png');
-  await new Promise(res =>
-    png.pack().pipe(fs.createWriteStream(outPath)).on('finish', res)
-  );
-})();
+  if (w === 0 || h === 0) {
+    fs.writeFileSync(outPath, PNG.sync.write(png));
+  } else {
+    await new Promise((res) =>
+      png.pack().pipe(fs.createWriteStream(outPath)).on('finish', res)
+    );
+  }
+};
+await main();

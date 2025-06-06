@@ -52,13 +52,17 @@ const rx = new RegExp(`(${raw.join('|')})`, 'ig');
 
 /* --- Load both indexes (synchronous JSON reads) --- */
 function loadDir(dir) {
+  const pPost = path.join(dir, 'sparse_postings.json');
+  const pMeta = path.join(dir, 'chunk_meta.json');
+  if (!fsSync.existsSync(pPost) || !fsSync.existsSync(pMeta)) {
+    console.error(
+      `Missing index files in ${dir}. Run \`node tools/build_index.js\` to generate them.`
+    );
+    process.exit(1);
+  }
   return {
-    postings: JSON.parse(
-      fsSync.readFileSync(path.join(dir, 'sparse_postings.json'), 'utf8')
-    ),
-    meta: JSON.parse(
-      fsSync.readFileSync(path.join(dir, 'chunk_meta.json'), 'utf8')
-    ),
+    postings: JSON.parse(fsSync.readFileSync(pPost, 'utf8')),
+    meta: JSON.parse(fsSync.readFileSync(pMeta, 'utf8')),
   };
 }
 
