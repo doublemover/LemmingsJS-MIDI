@@ -463,7 +463,9 @@ class Stage {
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
-        this.overlayRect = null;
+        setTimeout(() => {
+          if (!this.overlayTimer) this.overlayRect = null;
+        }, 0);
       }
     }, 40);
   }

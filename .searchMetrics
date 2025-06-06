@@ -1,5 +1,300 @@
 {
   ".agentInfo/index-detailed.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "README.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/pause-overlay.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "docs/level-file-format.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/nl-file-format.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "AGENTS.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/easing-functions.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/game-view.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/game.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/level-reader.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/mechanics-flags.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/overview.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/stage.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/notes/webmidi-overview.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/compression-format.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/config.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/exporting-sprites.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/nl-objects.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "docs/nl-skills.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  ".agentInfo/index.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/trigger-manager.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "CHANGELOG.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/GameView.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/Stage.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/GameTimer.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "test/bench-speed-adjust.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "test/gametimer.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "test/gameview.suspendWithColor.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "test/stage.overlayfade.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "fileformat.txt": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "test/gameview.test.js": {
+    "md": 0,
+    "code": 2,
+    "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "tools/build_index.js": {
     "md": 5,
     "code": 0,
     "terms": [
@@ -631,8 +926,14 @@
   },
   "js/LogHandler.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/search.js": {
       "display",
       "width",
       "height"
@@ -640,8 +941,14 @@
   },
   "js/ObjectManager.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Level.js": {
       "display",
       "width",
       "height"
@@ -649,8 +956,15 @@
   },
   "js/ParticleTable.js": {
     "md": 0,
-    "code": 5,
+    "code": 2,
     "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/BinaryReader.js": {
       "display",
       "width",
       "height"
@@ -658,8 +972,14 @@
   },
   "js/Trigger.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/LemmingManager.js": {
       "display",
       "width",
       "height"
@@ -667,8 +987,14 @@
   },
   "js/ViewPoint.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/ActionBuildSystem.js": {
       "display",
       "width",
       "height"
@@ -676,8 +1002,14 @@
   },
   "test/trigger.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Animation.js": {
       "display",
       "width",
       "height"
@@ -685,8 +1017,23 @@
   },
   "js/BaseImageInfo.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/FileProvider.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/Game.js": {
       "display",
       "width",
       "height"
@@ -702,8 +1049,14 @@
   },
   "js/GameTimer.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/LogHandler.js": {
       "display",
       "width",
       "height"
@@ -711,8 +1064,14 @@
   },
   "js/GroundRenderer.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/PackFilePart.js": {
       "display",
       "width",
       "height"
@@ -720,8 +1079,14 @@
   },
   "js/LevelLoader.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/PaletteImage.js": {
       "display",
       "width",
       "height"
@@ -729,8 +1094,14 @@
   },
   "js/LevelWriter.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/UserInputManager.js": {
       "display",
       "width",
       "height"
@@ -738,8 +1109,15 @@
   },
   "js/MapObject.js": {
     "md": 0,
-    "code": 5,
+    "code": 2,
     "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  "js/VGASpecReader.js": {
       "display",
       "width",
       "height"
@@ -747,8 +1125,14 @@
   },
   "js/Mask.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "test/processHtmlFile.test.js": {
       "display",
       "width",
       "height"
@@ -756,8 +1140,14 @@
   },
   "js/MaskList.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/check-undefined.js": {
       "display",
       "width",
       "height"
@@ -765,8 +1155,14 @@
   },
   "js/PaletteImage.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/patchSprites.js": {
       "display",
       "width",
       "height"
@@ -774,8 +1170,23 @@
   },
   "js/Range.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "tools/processHtmlFile.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "start",
+      "overlay",
+      "fade"
+    ]
+  },
+  "js/TriggerManager.js": {
       "display",
       "width",
       "height"
@@ -791,8 +1202,47 @@
   },
   "js/SolidLayer.js": {
     "md": 0,
-    "code": 5,
+    "code": 2,
     "terms": [
+      "start",
+      "overlay",
+      "fade",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/display-image.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/draw-corner-rect.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/drawMarchingAntRect.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  ".agentInfo/notes/game-display.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/DisplayImage.js": {
       "display",
       "width",
       "height"
@@ -836,8 +1286,13 @@
   },
   "test/geometry.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/GameGui.js": {
       "display",
       "width",
       "height"
@@ -845,8 +1300,13 @@
   },
   "test/getNearestLemming.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/userinput.test.js": {
       "display",
       "width",
       "height"
@@ -854,8 +1314,13 @@
   },
   "test/groundreader.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/Frame.js": {
       "display",
       "width",
       "height"
@@ -863,8 +1328,13 @@
   },
   "test/lemming.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/GameDisplay.js": {
       "display",
       "width",
       "height"
@@ -872,8 +1342,13 @@
   },
   "test/range.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/MiniMap.js": {
       "display",
       "width",
       "height"
@@ -881,8 +1356,13 @@
   },
   "test/solidlayer.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "js/Trigger.js": {
       "display",
       "width",
       "height"
@@ -890,8 +1370,13 @@
   },
   "test/stageimageprops.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/displayimage.test.js": {
       "display",
       "width",
       "height"
@@ -899,8 +1384,13 @@
   },
   "test/tools/exportGroundImages.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/geometry.test.js": {
       "display",
       "width",
       "height"
@@ -908,8 +1398,13 @@
   },
   "test/tools/patchSprites.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/minimap.test.js": {
       "display",
       "width",
       "height"
@@ -917,8 +1412,13 @@
   },
   "tools/exportGroundImages.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/rectangle.test.js": {
       "display",
       "width",
       "height"
@@ -926,8 +1426,13 @@
   },
   "tools/exportLemmingsSprites.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.test.js": {
       "display",
       "width",
       "height"
@@ -935,8 +1440,13 @@
   },
   "tools/exportPanelSprite.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.updateStageSize.test.js": {
       "display",
       "width",
       "height"
@@ -944,8 +1454,21 @@
   },
   "tools/listSprites.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stage.updateviewpoint.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/stageimageprops.test.js": {
       "display",
       "width",
       "height"
@@ -962,8 +1485,26 @@
   },
   "tools/renderCursorSizes.js": {
     "md": 0,
-    "code": 5,
+    "code": 1,
     "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/trigger.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
+    ]
+  },
+  "test/triggermanager.test.js": {
+    "md": 0,
+    "code": 1,
+    "terms": [
+      "overlay",
+      "rect"
       "display",
       "width",
       "height"
