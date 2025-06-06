@@ -18,3 +18,9 @@ The CI job performs the following steps:
 4. `npm test`
 
 All tests must pass before code is merged.
+
+The repository also runs [`search-history.yml`](../.github/workflows/search-history.yml).
+This job keeps `.searchHistory` in sync with the history from `master` whenever
+a pull request is opened or updated. It fetches the file from
+`origin/master`, appends any missing lines and commits the change back to the
+PR branch.
