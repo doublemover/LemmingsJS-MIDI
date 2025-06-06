@@ -300,62 +300,43 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
-    const scaleHUD = this.guiImgProps.viewPoint.scale; // always = 2 by default
-    const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
-    const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
 
-    const panelH = rawHUDH * scaleHUD;
-    const panelW = rawHUDW * scaleHUD;
-    const gameH = stageH - panelH; // everything above the HUD
+    // HUD always renders at 2× scale
+    const hudScale = 2;
+    this.guiImgProps.viewPoint.scale = hudScale;
 
-    this.gameImgProps.x = 0;
-    this.gameImgProps.y = 0;
-    this.gameImgProps.width = stageW;
-    this.gameImgProps.height = gameH;
+    const hudH = (this.guiImgProps.display?.getHeight() || 80) * hudScale;
+    const hudW = (this.guiImgProps.display?.getWidth() || 720) * hudScale;
+    const gameH = stageH - hudH;
 
-    this.guiImgProps.y = gameH;
-    this.guiImgProps.height = panelH;
-    this.guiImgProps.width = panelW;
-    if (this.guiImgProps.display) {
-      this.guiImgProps.x = (stageW - panelW) / 2;
-    }
+    Object.assign(this.gameImgProps, { x: 0, y: 0, width: stageW, height: gameH });
+    Object.assign(this.guiImgProps, {
+      x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
+      y: gameH,
+      width: hudW,
+      height: hudH
+    });
 
-    // 3) Now that both have dimensions, initialize the game’s viewPoint
     if (this.gameImgProps.display) {
-      const displayHeight = this.gameImgProps.display.getHeight();
-      const displayWidth = this.gameImgProps.display.getWidth();
+      const worldH = this.gameImgProps.display.getHeight();
+      const worldW = this.gameImgProps.display.getWidth();
 
-      // Force scale to whatever it was (or default = 2 if unset)
       const scale = this.gameImgProps.viewPoint.scale || 2;
       this._rawScale = scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(scale);
 
-      // Compute world vs. viewport in world units
-      const worldH = displayHeight;
-      const worldW = displayWidth;
       const viewH_world = gameH / scale;
       const viewW_world = stageW / scale;
 
-      // Glue Y: bottom of level flush against HUD top
       this.gameImgProps.viewPoint.y = worldH - viewH_world;
+      this.gameImgProps.viewPoint.x =
+        worldW * scale <= stageW ? (worldW - viewW_world) / 2 : 0;
 
-      // For X: if level is already narrower than viewport at this scale,
-      // center it; otherwise, clamp to left edge.
-      if (worldW * scale <= stageW) {
-        // center
-        this.gameImgProps.viewPoint.x = (worldW - viewW_world) / 2;
-      } else {
-        // left‐align
-        this.gameImgProps.viewPoint.x = 0;
-      }
-
-      // Redraw at initial position
       this.clear(this.gameImgProps);
       const gameImg = this.gameImgProps.display.getImageData();
       this.draw(this.gameImgProps, gameImg);
     }
 
-    // Redraw HUD as well
     if (this.guiImgProps.display) {
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
