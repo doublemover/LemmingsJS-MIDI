@@ -58,8 +58,10 @@ webmidi.md: webmidi doc
 nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
+vgagrx-groundxo-format.md: vgagrx groundxo planar-bitmaps
 baseimageinfo-search.md: search
 revolution-box-format.md: revolution-box archives
+dat-source.md: dat-source compression cpp
 l2ss-overview.md: l2ss sprite-chunks doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
