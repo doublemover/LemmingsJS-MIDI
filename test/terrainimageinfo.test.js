@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { TerrainImageInfo } from '../js/TerrainImageInfo.js';
+import { BaseImageInfo } from '../js/BaseImageInfo.js';
 import '../js/ColorPalette.js';
 import { Frame } from '../js/Frame.js';
 
@@ -26,6 +27,8 @@ function computeSteelSize(info) {
   }
   return { width: widest, height: tallest };
 }
+
+
 
 globalThis.lemmings = Lemmings;
 
@@ -76,5 +79,25 @@ describe('TerrainImageInfo', function() {
     expect(mask[2]).to.equal(1);
     expect(buf[3]).to.equal(Lemmings.ColorPalette.black);
     expect(mask[3]).to.equal(0);
+  it('extends BaseImageInfo', function() {
+    const terrain = new TerrainImageInfo();
+    expect(terrain).to.be.instanceOf(BaseImageInfo);
+  });
+
+  it('does not override BaseImageInfo defaults', function() {
+    const base = new BaseImageInfo();
+    const terrain = new TerrainImageInfo();
+    for (const prop of [
+      'width',
+      'height',
+      'imageLoc',
+      'maskLoc',
+      'vgaLoc',
+      'frameDataSize',
+      'frameCount',
+      'palette'
+    ]) {
+      expect(terrain[prop]).to.equal(base[prop]);
+    }
   });
 });
