@@ -64,8 +64,8 @@ l2ss-overview.md: l2ss sprite-chunks doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
-l2-save-format.md: l2 savegame doc
-l2-save-format.md: l2-save doc todo
+l2-save-format.md: l2 savegame slots doc
+l2-save-format.md: l2 savegame todo loader
 l2ss-cpp.md: l2ss sprite-parsing doc
 l2-guyperfect.md: l2 file-format doc
 l2-level-format.md: l2-level-format doc
