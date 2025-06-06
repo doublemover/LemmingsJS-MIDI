@@ -68,4 +68,5 @@ l2ss-overview.md: l2ss sprite-chunks doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
+l2-save-format.md: l2 savegame doc
 l2-save-format.md: l2-save doc todo
