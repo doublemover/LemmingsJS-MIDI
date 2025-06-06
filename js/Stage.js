@@ -216,8 +216,6 @@ class Stage {
     // argX,argY are deltaX,deltaY (screen pixels)
     const winW = stageImage.width;
     const winH = stageImage.height;
-    const worldW = stageImage.display.getWidth();
-    const worldH = stageImage.display.getHeight();
     const scale = stageImage.viewPoint.scale;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
@@ -239,21 +237,20 @@ class Stage {
       stageImage.viewPoint.y,
       Math.max(0, worldH - viewH_world)
     );
-
+      
     // TODO: Make sure none of this commented out functionality was needed or is now missing
     // To glue bottom: viewPoint.y = worldH - viewH_world
     // PAN only when no zoom change
-//     if (deltaZoom === 0) {
-//       // argX,argY are deltaX,deltaY (screen pixels)
-//       const winW = stageImage.width;
-//       const winH = stageImage.height;
-//       const scale = stageImage.viewPoint.scale;
-//       const worldDX = argX / scale;
-//       const worldDY = argY / scale;
-//       if (!veloUpdate) {
-//         stageImage.viewPoint.x += worldDX;
-//         stageImage.viewPoint.y += worldDY;
-    
+    //     if (deltaZoom === 0) {
+    //       // argX,argY are deltaX,deltaY (screen pixels)
+    //       const winW = stageImage.width;
+    //       const winH = stageImage.height;
+    //       const scale = stageImage.viewPoint.scale;
+    //       const worldDX = argX / scale;
+    //       const worldDY = argY / scale;
+    //       if (!veloUpdate) {
+    //         stageImage.viewPoint.x += worldDX;
+    //         stageImage.viewPoint.y += worldDY;
     // // PAN
     // // argX,argY are deltaX,deltaY (screen pixels)
     // const winW = stageImage.width;
@@ -267,27 +264,20 @@ class Stage {
     //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
     //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
     // }
-
     // // Clamp view so it stays within the level bounds
     // const worldW = stageImage.display.getWidth();
     // const worldH = stageImage.display.getHeight();
-    
     // // worldHeight = how many “world pixels” tall
     // // viewH_world = viewport height in world units
-    
-
     // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
     //   Math.min(0, worldW - viewW_world),
     //   Math.max(0, worldW - viewW_world)
     // ]);
-
     // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
     //   Math.min(0, worldH - viewH_world),
     //   Math.max(0, worldH - viewH_world)
     // ]);
-
     // // To glue bottom: viewPoint.y = worldH - viewH_world
-
     // if (scale >= 2) {
     //   // Clamp between [0 .. (worldW - viewW_world)]
     //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
@@ -305,10 +295,6 @@ class Stage {
     //       0,
     //       worldW - viewW_world
     //     ]);
-
-      }
-    }
-
     this.clampViewPoint(stageImage);
 
     this.clear(stageImage);
