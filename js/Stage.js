@@ -344,6 +344,12 @@ class Stage {
       const viewH_world = this.gameImgProps.height / scale;
       const viewW_world = stageW / scale;
 
+
+      if (worldH === 0 || worldW === 0) {
+        // If the display is not yet sized, default to the origin
+        this.gameImgProps.viewPoint.x = 0;
+        this.gameImgProps.viewPoint.y = 0;
+      } else {
       this.gameImgProps.viewPoint.y = worldH - viewH_world;
 
       if (worldW * this.gameImgProps.viewPoint.scale <= stagePixW) {
