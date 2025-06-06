@@ -60,7 +60,7 @@ class Stage {
     const c = document.createElement('canvas');
     c.width = frame.width;
     c.height = frame.height;
-    const ictx = c.getContext('2d');
+    const ictx = c.getContext('2d', { alpha: true, willReadFrequently: true});
     ictx.putImageData(
       new ImageData(frame.getData(), frame.width, frame.height),
       0,
@@ -237,148 +237,9 @@ class Stage {
       if (!veloUpdate) {
         stageImage.viewPoint.x += worldDX;
         stageImage.viewPoint.y += worldDY;
-        // TODO: Make sure none of this commented out functionality was needed or is now missing
-        // // PAN
-        // // argX,argY are deltaX,deltaY (screen pixels)
-        // const winW = stageImage.width;
-        // const winH = stageImage.height;
-        // const scale = stageImage.viewPoint.scale;
-        // const viewW_world = winW / scale;
-        // const viewH_world = winH / scale;
-        // const worldDX = argX / scale;
-        // const worldDY = argY / scale;
-        // if (!veloUpdate) {
-        //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
-        //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
-        // }
-
-        // // Clamp view so it stays within the level bounds
-        // const worldW = stageImage.display.getWidth();
-        // const worldH = stageImage.display.getHeight();
-    
-        // // worldHeight = how many “world pixels” tall
-        // // viewH_world = viewport height in world units
-    
-
-        // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-        //   Math.min(0, worldW - viewW_world),
-        //   Math.max(0, worldW - viewW_world)
-        // ]);
-
-        // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
-        //   Math.min(0, worldH - viewH_world),
-        //   Math.max(0, worldH - viewH_world)
-        // ]);
-
-        // // To glue bottom: viewPoint.y = worldH - viewH_world
-
-        // if (scale >= 2) {
-        //   // Clamp between [0 .. (worldW - viewW_world)]
-        //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-        //     0,
-        //     worldW - viewW_world
-        //   ]);
-        // } else {
-        //   // Center the level when zoomed out
-        //   if (worldW * scale < winW) {
-        //     const wDiff = winW - worldW * scale;
-        //     stageImage.viewPoint.setX(-wDiff / (2 * scale));
-        //   } else {
-        //     // Still clamp if the level exceeds the viewport
-        //     stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-        //       0,
-        //       worldW - viewW_world
-        //     ]);
-
       }
     }
 
-      // TODO: Make sure none of this commented out functionality was needed or is now missing
-    // PAN
-    // argX,argY are deltaX,deltaY (screen pixels)
-//     const winW = stageImage.width;
-//     const winH = stageImage.height;
-//     const scale = stageImage.viewPoint.scale;
-//     const worldW = stageImage.display.getWidth();
-//     const worldH = stageImage.display.getHeight();
-//     const viewW_world = winW / scale;
-//     const viewH_world = winH / scale;
-//     const worldDX = argX / scale;
-//     const worldDY = argY / scale;
-//     if (!veloUpdate) {
-//       stageImage.viewPoint.x += worldDX;
-//       stageImage.viewPoint.y += worldDY;
-//     }
-
-//     stageImage.viewPoint.x = this.limitValue(
-//       Math.min(0, worldW - viewW_world),
-//       stageImage.viewPoint.x,
-//       Math.max(0, worldW - viewW_world)
-//     );
-
-//     stageImage.viewPoint.y = this.limitValue(
-//       Math.min(0, worldH - viewH_world),
-//       stageImage.viewPoint.y,
-//       Math.max(0, worldH - viewH_world)
-//     );
-      
-
-    // To glue bottom: viewPoint.y = worldH - viewH_world
-    // PAN only when no zoom change
-    //     if (deltaZoom === 0) {
-    //       // argX,argY are deltaX,deltaY (screen pixels)
-    //       const winW = stageImage.width;
-    //       const winH = stageImage.height;
-    //       const scale = stageImage.viewPoint.scale;
-    //       const worldDX = argX / scale;
-    //       const worldDY = argY / scale;
-    //       if (!veloUpdate) {
-    //         stageImage.viewPoint.x += worldDX;
-    //         stageImage.viewPoint.y += worldDY;
-    // // PAN
-    // // argX,argY are deltaX,deltaY (screen pixels)
-    // const winW = stageImage.width;
-    // const winH = stageImage.height;
-    // const scale = stageImage.viewPoint.scale;
-    // const viewW_world = winW / scale;
-    // const viewH_world = winH / scale;
-    // const worldDX = argX / scale;
-    // const worldDY = argY / scale;
-    // if (!veloUpdate) {
-    //   stageImage.viewPoint.setX(stageImage.viewPoint.x + worldDX);
-    //   stageImage.viewPoint.setY(stageImage.viewPoint.y + worldDY);
-    // }
-    // // Clamp view so it stays within the level bounds
-    // const worldW = stageImage.display.getWidth();
-    // const worldH = stageImage.display.getHeight();
-    // // worldHeight = how many “world pixels” tall
-    // // viewH_world = viewport height in world units
-    // stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-    //   Math.min(0, worldW - viewW_world),
-    //   Math.max(0, worldW - viewW_world)
-    // ]);
-    // stageImage.viewPoint.setY(stageImage.viewPoint.y, [
-    //   Math.min(0, worldH - viewH_world),
-    //   Math.max(0, worldH - viewH_world)
-    // ]);
-    // // To glue bottom: viewPoint.y = worldH - viewH_world
-    // if (scale >= 2) {
-    //   // Clamp between [0 .. (worldW - viewW_world)]
-    //   stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-    //     0,
-    //     worldW - viewW_world
-    //   ]);
-    // } else {
-    //   // Center the level when zoomed out
-    //   if (worldW * scale < winW) {
-    //     const wDiff = winW - worldW * scale;
-    //     stageImage.viewPoint.setX(-wDiff / (2 * scale));
-    //   } else {
-    //     // Still clamp if the level exceeds the viewport
-    //     stageImage.viewPoint.setX(stageImage.viewPoint.x, [
-    //       0,
-    //       worldW - viewW_world
-    //     ]);
     this.clampViewPoint(stageImage);
 
     this.clear(stageImage);
@@ -578,7 +439,7 @@ class Stage {
   }
 
   clear(stageImage) {
-    const ctx = this.stageCav.getContext('2d', { alpha: false });
+    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#000900';
     if (!stageImage) {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -651,7 +512,7 @@ class Stage {
 
     display.ctx.putImageData(img, 0, 0);
 
-    const ctx = this.stageCav.getContext('2d', { alpha: false });
+    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
 
@@ -715,7 +576,7 @@ class Stage {
       ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
       if (this.overlayDashLen > 0) {
-        const octx = this.stageCav.getContext('2d', { alpha: true });
+        const octx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
         const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
         const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
         Lemmings.drawMarchingAntRect(
@@ -736,7 +597,7 @@ class Stage {
 
   drawCursor() {
     if (!this.cursorCanvas) return;
-    const ctx = this.stageCav.getContext('2d', { alpha: true });
+    const ctx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
     const cx = Math.trunc(this.cursorX - this.cursorCanvas.width / 2);
     const cy = Math.trunc(this.cursorY - this.cursorCanvas.height / 2);
     ctx.drawImage(this.cursorCanvas, cx, cy);
