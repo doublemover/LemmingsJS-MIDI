@@ -43,6 +43,8 @@ class UserInputManager {
     this.twoTouch = false;
     this.lastTouchDistance = 0;
 
+    this.once = false;
+
     this._addListener('mousemove', (e) => {
       let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
       this.handleMouseMove(relativePos);
@@ -129,6 +131,8 @@ class UserInputManager {
       return false;
     });
     this._addListener('mouseleave', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       this.handleMouseClear();
     });
     this._addListener('touchend', (e) => {
@@ -156,29 +160,33 @@ class UserInputManager {
       return false;
     });
     this._addListener('touchleave', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       this.handleMouseClear();
       this.twoTouch = false;
       this.lastTouchDistance = 0;
       return false;
     });
     this._addListener('touchcancel', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
       this.handleMouseClear();
       this.twoTouch = false;
       this.lastTouchDistance = 0;
       return false;
     });
     this._addListener('dblclick', (e) => {
-      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
-      this.handleMouseDoubleClick(relativePos);
       e.stopPropagation();
       e.preventDefault();
+      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
+      this.handleMouseDoubleClick(relativePos);
       return false;
     });
     this._addListener('wheel', (e) => {
-      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
-      this.handleWheel(relativePos, e.deltaY);
-      e.stopPropagation();
       e.preventDefault();
+      e.stopPropagation();
+      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
+      this.handleWheel(relativePos, -e.deltaY);
       return false;
     });
   }
@@ -260,24 +268,26 @@ class UserInputManager {
     this.onMouseRightUp.trigger(new Lemmings.Position2D(position.x, position.y));
   }
   /** Zoom view around the cursor */
+
   handleWheel(position, deltaY) {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
-
-    const stage = globalThis?.lemmings?.stage;
-    if (stage && stage.getStageImageAt) {
-      const stageImage = stage.getStageImageAt(position.x, position.y);
-      if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
-        const worldPos = stage.calcPosition2D(stageImage, position);
-        stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, worldPos.x, worldPos.y);
-        return;
-      }
+    
+    const smoothScroller = lemmings.game.gameGui.smoothScroller;
+    if (smoothScroller) {
+      smoothScroller.addImpulse(deltaY);
     }
-
-    const zea = new ZoomEventArgs(position.x, position.y, deltaY);
-    this.onZoom.trigger(zea);
+    if (this.once == false) {
+      this.once = true;
+      smoothScroller.onHasVelocity.on((v) => {
+          const zea = new ZoomEventArgs(position.x, position.y, v);
+          zea.velocity = true;
+          this.onZoom.trigger(zea);
+      });
+    }
   }
 }
+
 Lemmings.UserInputManager = UserInputManager;
 
 export { UserInputManager };
