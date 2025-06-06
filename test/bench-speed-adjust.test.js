@@ -97,7 +97,6 @@ describe('benchSpeedAdjust recovery', function() {
   });
 
 
-  });
 
   it('updates frameTime when speed changes', function() {
     let raf;
