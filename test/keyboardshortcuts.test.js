@@ -86,7 +86,7 @@ describe('KeyboardShortcuts', function() {
     expect(log[0]).to.be.instanceOf(Lemmings.CommandLemmingsAction);
   });
 
-  it('clears selected lemming with KeyN', function() {
+  it('ignores KeyN for lemming selection', function() {
     const manager = { queueCommand() {} };
     let selected = 'foo';
     const lemMgr = { setSelectedLemming(arg) { selected = arg; } };
@@ -95,7 +95,7 @@ describe('KeyboardShortcuts', function() {
 
     const evt = { code: 'KeyN', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
     ks._onKeyDown(evt);
-    expect(selected).to.equal(null);
+    expect(selected).to.equal('foo');
   });
 
   it('steps forward one tick with BracketRight when paused', function() {
