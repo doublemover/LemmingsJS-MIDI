@@ -36,7 +36,6 @@ This project bundles WebMIDI.js (`js/webmidi.js`), a library for interacting wit
 
 `index.html` loads `js/webmidi.js` and defines an `onEnabled()` callback to populate MIDI input/output lists. The call to `WebMidi.enable()` is currently commented out at lines 22‑24. Game initialization assigns the first detected output to `lemmings.midiOut` at line 61.
 
-
 ### TODOs and limitations
 
 `js/webmidi.js` contains several TODO markers about MSB/LSB handling:
@@ -51,11 +50,4 @@ This project bundles WebMIDI.js (`js/webmidi.js`), a library for interacting wit
 The library also warns that `Output.clear()` is defined in the Web MIDI spec
 but may be unavailable in some browsers. Calls to `enable()` mention that
 requesting access to software synths is not implemented by browsers as of 2021.
-
-- `sendMasterTuning()` wants to allow MSB/LSB pairs (line 3597).
-- `sendModulationRange()` notes similar MSB/LSB support (line 3640).
-- `sendPitchBend()` intends to standardize MSB/LSB parameters (line 3760).
-- `sendPitchBendRange()` suggests accepting a single value or MSB/LSB pair (line 3831).
-- `sendSongPosition()` could accept a two‑value array for MSB/LSB (line 4626).
-
 
