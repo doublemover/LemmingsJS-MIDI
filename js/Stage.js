@@ -275,27 +275,25 @@ class Stage {
   }
 
   updateStageSize() {
-    const stageH = this.stageCav.height;
-    const stageW = this.stageCav.width;
-    const scaleHUD = this.guiImgProps.viewPoint.scale; // always = 2 by default
-    const rawHUDH = this.guiImgProps.display?.getHeight() || 80;
-    const rawHUDW = this.guiImgProps.display?.getWidth() || 720;
+    const stagePixW = this.stageCav.width;
+    const stagePixH = this.stageCav.height;
 
-    const panelH = Math.trunc(rawHUDH * scaleHUD);
-    const panelW = Math.trunc(rawHUDW * scaleHUD);
-    const gameH = stageH - panelH; // everything above the HUD
+    const hudScale = 2;
+    const rawHUDH = this.guiImgProps.display.getHeight() || 80;
+    const rawHUDW = this.guiImgProps.display.getWidth()  || 720;
+    const panelPixH = rawHUDH * hudScale;
+    const panelPixW = rawHUDW * hudScale;
+    const gamePixH  = stagePixH - panelPixH;
 
-    this.gameImgProps.x = 0;
-    this.gameImgProps.y = 0;
-    this.gameImgProps.width = stageW;
-    this.gameImgProps.height = gameH;
+    this.gameImgProps.x      = 0;
+    this.gameImgProps.y      = 0;
+    this.gameImgProps.width  = stagePixW;
+    this.gameImgProps.height = gamePixH;
 
-    this.guiImgProps.y = gameH;
-    this.guiImgProps.height = panelH;
-    this.guiImgProps.width = panelW;
-    if (this.guiImgProps.display) {
-      this.guiImgProps.x = (stageW - panelW) / 2;
-    }
+    this.guiImgProps.y      = gamePixH;
+    this.guiImgProps.height = panelPixH;
+    this.guiImgProps.width  = panelPixW;
+    this.guiImgProps.x      = Math.floor((stagePixW - panelPixW) / 2);
 
     if (this.gameImgProps.display) {
       const worldHDisp = this.gameImgProps.display.getHeight();
@@ -303,12 +301,12 @@ class Stage {
       const worldH = this.gameImgProps.display.getHeight();
       const worldW = this.gameImgProps.display.getWidth();
 
-      const scale = this.gameImgProps.viewPoint.scale || 2;
-      this._rawScale = scale;
-      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
+      const startingScale = this.gameImgProps.viewPoint.scale || 2;
+      this._rawScale = startingScale;
+      this.gameImgProps.viewPoint.scale = this.snapScale(startingScale);
 
-      const viewH_world = this.gameImgProps.height / scale;
-      const viewW_world = stageW / scale;
+      const viewH_world = gamePixH / this.gameImgProps.viewPoint.scale;
+      const viewW_world = stagePixW / this.gameImgProps.viewPoint.scale;
 
       this.gameImgProps.viewPoint.y = worldH - viewH_world;
       if (worldW * scale <= stageW) {
@@ -328,7 +326,6 @@ class Stage {
       this.draw(this.guiImgProps, guiImg);
     }
   }
-
   getStageImageAt(x, y) {
     if (
       x >= this.gameImgProps.x &&
