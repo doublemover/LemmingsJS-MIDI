@@ -1,6 +1,6 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 26,
+    "md": 28,
     "code": 0,
     "terms": [
       "rect",
@@ -15,7 +15,9 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/index.md": {
@@ -68,7 +70,7 @@
     ]
   },
   ".agentInfo/notes/game-display.md": {
-    "md": 11,
+    "md": 13,
     "code": 0,
     "terms": [
       "rect",
@@ -76,7 +78,9 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/game-view.md": {
@@ -101,7 +105,7 @@
     ]
   },
   "docs/nl-file-format.md": {
-    "md": 13,
+    "md": 15,
     "code": 0,
     "terms": [
       "rect",
@@ -112,12 +116,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/DisplayImage.js": {
     "md": 0,
-    "code": 16,
+    "code": 18,
     "terms": [
       "rect",
       "marching",
@@ -130,12 +136,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/Stage.js": {
     "md": 0,
-    "code": 13,
+    "code": 14,
     "terms": [
       "rect",
       "x",
@@ -145,7 +153,9 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/GameGui.js": {
@@ -200,7 +210,7 @@
   },
   "js/GameDisplay.js": {
     "md": 0,
-    "code": 12,
+    "code": 14,
     "terms": [
       "rect",
       "x",
@@ -209,12 +219,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/GameTimer.js": {
     "md": 0,
-    "code": 22,
+    "code": 23,
     "terms": [
       "rect",
       "x",
@@ -224,12 +236,14 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/GameView.js": {
     "md": 0,
-    "code": 23,
+    "code": 24,
     "terms": [
       "rect",
       "x",
@@ -240,12 +254,14 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/MiniMap.js": {
     "md": 0,
-    "code": 14,
+    "code": 15,
     "terms": [
       "rect",
       "marching",
@@ -256,7 +272,9 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/Trigger.js": {
@@ -289,7 +307,7 @@
   },
   "js/UserInputManager.js": {
     "md": 0,
-    "code": 13,
+    "code": 14,
     "terms": [
       "rect",
       "x",
@@ -299,12 +317,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/displayimage.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 12,
     "terms": [
       "rect",
       "x",
@@ -312,12 +332,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/gameview.suspendWithColor.test.js": {
     "md": 0,
-    "code": 20,
+    "code": 21,
     "terms": [
       "rect",
       "x",
@@ -325,7 +347,9 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/gameview.test.js": {
@@ -353,7 +377,7 @@
   },
   "test/minimap.test.js": {
     "md": 0,
-    "code": 12,
+    "code": 13,
     "terms": [
       "rect",
       "x",
@@ -362,7 +386,9 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/rectangle.test.js": {
@@ -389,7 +415,7 @@
   },
   "test/stage.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 12,
     "terms": [
       "rect",
       "x",
@@ -397,31 +423,37 @@
       "pos",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/stage.updateStageSize.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 11,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/stage.updateviewpoint.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 11,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/stageimageprops.test.js": {
@@ -458,7 +490,7 @@
   },
   "test/userinput.test.js": {
     "md": 0,
-    "code": 13,
+    "code": 14,
     "terms": [
       "rect",
       "x",
@@ -468,7 +500,9 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/game-gui.md": {
@@ -499,7 +533,7 @@
     ]
   },
   "docs/level-file-format.md": {
-    "md": 8,
+    "md": 10,
     "code": 0,
     "terms": [
       "x",
@@ -509,11 +543,13 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "README.md": {
-    "md": 16,
+    "md": 17,
     "code": 0,
     "terms": [
       "x",
@@ -524,7 +560,9 @@
       "bench",
       "line",
       "selection",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/trigger-manager.md": {
@@ -540,7 +578,7 @@
   },
   "js/LemmingManager.js": {
     "md": 0,
-    "code": 15,
+    "code": 17,
     "terms": [
       "x",
       "y",
@@ -549,7 +587,9 @@
       "spawn",
       "bench",
       "selection",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/SolidLayer.js": {
@@ -579,7 +619,7 @@
   },
   "js/xbrz/xbrz.js": {
     "md": 0,
-    "code": 9,
+    "code": 10,
     "terms": [
       "x",
       "y",
@@ -589,7 +629,9 @@
       "line",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/SkillPanelSprites.js": {
@@ -602,7 +644,7 @@
   },
   "js/KeyboardShortcuts.js": {
     "md": 0,
-    "code": 8,
+    "code": 9,
     "terms": [
       "x",
       "y",
@@ -611,7 +653,9 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "js/LevelReader.js": {
@@ -667,7 +711,7 @@
   },
   "fileformat.txt": {
     "md": 0,
-    "code": 8,
+    "code": 10,
     "terms": [
       "x",
       "y",
@@ -676,7 +720,9 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/ActionBashSystem.js": {
@@ -879,16 +925,18 @@
   },
   "test/bench-speed-adjust.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 12,
     "terms": [
       "x",
       "y",
-      "bench"
+      "bench",
+      "scale",
+      "nearest"
     ]
   },
   "test/gamedisplay.test.js": {
     "md": 0,
-    "code": 8,
+    "code": 10,
     "terms": [
       "x",
       "y",
@@ -897,16 +945,20 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   "test/getNearestLemming.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 13,
     "terms": [
       "x",
       "y",
-      "bench"
+      "bench",
+      "scale",
+      "nearest"
     ]
   },
   "test/groundrenderer.test.js": {
@@ -977,10 +1029,12 @@
   },
   "js/ViewPoint.js": {
     "md": 0,
-    "code": 1,
+    "code": 2,
     "terms": [
       "x",
-      "y"
+      "y",
+      "scale",
+      "nearest"
     ]
   },
   "tools/renderCursorSizes.js": {
@@ -1172,13 +1226,15 @@
   },
   "test/gametimer.test.js": {
     "md": 0,
-    "code": 13,
+    "code": 14,
     "terms": [
       "x",
       "y",
       "if",
       "else",
-      "bench"
+      "bench",
+      "scale",
+      "nearest"
     ]
   },
   "test/levelwriter.test.js": {
@@ -1423,7 +1479,7 @@
     ]
   },
   ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 7,
+    "md": 8,
     "code": 0,
     "terms": [
       "if",
@@ -1431,7 +1487,9 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/note-review.md": {
@@ -1495,10 +1553,12 @@
   },
   "tools/build_index.js": {
     "md": 0,
-    "code": 2,
+    "code": 3,
     "terms": [
       "if",
-      "else"
+      "else",
+      "scale",
+      "nearest"
     ]
   },
   "test/exportScripts.test.js": {
@@ -1514,12 +1574,14 @@
   },
   "index.html": {
     "md": 0,
-    "code": 3,
+    "code": 4,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/UnpackFilePart.js": {
@@ -1905,17 +1967,21 @@
     ]
   },
   ".agentInfo/notes/bench-mode-docs.md": {
-    "md": 10,
+    "md": 11,
     "code": 0,
     "terms": [
-      "bench"
+      "bench",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/bench-speed-adjust.md": {
-    "md": 10,
+    "md": 11,
     "code": 0,
     "terms": [
-      "bench"
+      "bench",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/norm-tick-count-removal.md": {
@@ -1978,32 +2044,38 @@
   },
   "js/xbrz/scalers/Scaler2x.js": {
     "md": 0,
-    "code": 5,
+    "code": 6,
     "terms": [
       "line",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/xbrz/scalers/Scaler3x.js": {
     "md": 0,
-    "code": 5,
+    "code": 6,
     "terms": [
       "line",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "js/xbrz/scalers/Scaler4x.js": {
     "md": 0,
-    "code": 5,
+    "code": 6,
     "terms": [
       "line",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   ".agentInfo/notes/game.md": {
@@ -2068,12 +2140,14 @@
     ]
   },
   ".agentInfo/notes/stage.md": {
-    "md": 4,
+    "md": 5,
     "code": 0,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "scale",
+      "nearest"
     ]
   },
   "test/exportLemmingsSprites.test.js": {
@@ -2119,6 +2193,22 @@
       "draw",
       "corner",
       "rect"
+    ]
+  },
+  ".agentInfo/notes/userinput-zoom.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "scale",
+      "nearest"
+    ]
+  },
+  ".agentInfo/notes/game-speed-input.md": {
+    "md": 2,
+    "code": 0,
+    "terms": [
+      "scale",
+      "nearest"
     ]
   }
 }
