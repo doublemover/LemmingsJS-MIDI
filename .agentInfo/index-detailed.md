@@ -76,6 +76,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **dat-source, compression, cpp**: [notes/dat-source.md](notes/dat-source.md) - C++ reference for the Lemmings `.DAT` compressor and decompressor.
 - **l2ss, sprite-chunks, doc**: [notes/l2ss-overview.md](notes/l2ss-overview.md) - docs/camanis/lemmings_2_sprite_file_format_l2ss.md outlines the L2SS sprite container and related sections. Stripped/raw/VLEMMS variants are unimplemented and one opcode is undocumented.
 - **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
+- **l2bitmap, file-format, bitmap, doc**: [notes/l2bitmap-overview.md](notes/l2bitmap-overview.md) - Overview of `.l2bitmap` containers and their palettes.
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
 - **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
 - **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.
