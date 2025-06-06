@@ -359,60 +359,10 @@ class Stage {
     const panelW = Math.trunc(rawHUDW * scaleHUD);
     const gameH = stageH - panelH;
 
-
-    const hudH = (this.guiImgProps.display?.getHeight() || 80) * hudScale;
-    const hudW = (this.guiImgProps.display?.getWidth() || 720) * hudScale;
-    const gameH = stageH - hudH;
-
-    Object.assign(this.gameImgProps, { x: 0, y: 0, width: stageW, height: gameH });
-    Object.assign(this.guiImgProps, {
-      x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
-      y: gameH,
-      width: hudW,
-      height: hudH
-    });
-
-    if (this.gameImgProps.display) {
-      const worldH = this.gameImgProps.display.getHeight();
-      const worldW = this.gameImgProps.display.getWidth();
-
-      const scale = this.gameImgProps.viewPoint.scale || 2;
-      this._rawScale = scale;
-      this.gameImgProps.viewPoint.scale = this.snapScale(scale);
-
-      const viewH_world = gameH / scale;
-      const viewW_world = stageW / scale;
-
-      this.gameImgProps.viewPoint.y = worldH - viewH_world;
-      this.gameImgProps.viewPoint.x =
-        worldW * scale <= stageW ? (worldW - viewW_world) / 2 : 0;
-
-
-      // Glue Y: bottom of level flush against HUD top
-      this.gameImgProps.viewPoint.setY(worldH - viewH_world);
-
-      // For X: if level is already narrower than viewport at this scale,
-      // center it; otherwise, clamp to left edge.
-      if (worldW * scale <= stageW) {
-        // center
-        this.gameImgProps.viewPoint.setX((worldW - viewW_world) / 2);
-      } else {
-        // left‐align
-        this.gameImgProps.viewPoint.setX(0);
-      }
-
-      this.clampViewPoint(this.gameImgProps);
-
-      // Redraw at initial position
-      this.clear(this.gameImgProps);
-      const gameImg = this.gameImgProps.display.getImageData();
-      this.draw(this.gameImgProps, gameImg);
-    }
-
-    if (this.guiImgProps.display) {
-      const guiImg = this.guiImgProps.display.getImageData();
-      this.draw(this.guiImgProps, guiImg);
-    }
+    this.guiImgProps.y = gameH;
+    this.guiImgProps.height = panelH;
+    this.guiImgProps.width = panelW;
+    this.guiImgProps.x = (stageW - panelW) / 2;
   }
   getStageImageAt(x, y) {
     if (
