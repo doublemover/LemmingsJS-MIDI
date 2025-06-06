@@ -56,6 +56,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **level-format, l3, doc**: [notes/l3-level-format.md](notes/l3-level-format.md) - `docs/camanis/lemmings_3_level_file_format.md` outlines the Lemmings 3 header and object tables with extra lemming and enemy fields.
 - **l2-level-format, doc, level-format**: [notes/l2-level-format.md](notes/l2-level-format.md) - Outline of the Lemmings 2 `L2LV` format and fields missing from our reader.
 - **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
+- **main-dat, doc**: [notes/main-dat-format.md](notes/main-dat-format.md) - Summary of MAIN.DAT sections and how GameResources loads them
 - **nl-file-format, doc**: [notes/nl-file-format.md](notes/nl-file-format.md) - `docs/nl-file-format.md` details the NeoLemmix level and pack formats: `.nxlv` text-based levels, the 4 KB binary `.lvl` layout, high-res folders, `alias.nxmi`, pack files like `info.nxmi`, and legacy `.NXP` archives.
 - **nl-objects, doc**: [notes/nl-objects.md](notes/nl-objects.md) - `docs/nl-objects.md` summarizes NeoLemmix object logic with references to the source files implementing teleporters, locked exits, pickup-skills, single-use traps, updrafts and splat pads.
 - **nl-skills, doc, resources**: [notes/nl-skills.md](notes/nl-skills.md) - Short note summarizing the `docs/nl-skills.md` reference for the nine
