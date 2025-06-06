@@ -54,4 +54,5 @@ webmidi.md: webmidi doc
 nl-pack-toolkit.md: pack-toolkit resources doc
 third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
+vgagrx-groundxo-format.md: vgagrx groundxo planar-bitmaps
 baseimageinfo-search.md: search
