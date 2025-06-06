@@ -100,7 +100,7 @@ describe('Stage.updateStageSize', function() {
     expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
     expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
     expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
-    expect(stage.gameImgProps.height).to.equal(480);
+    expect(stage.gameImgProps.height).to.equal(520);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(display.getWidth() * scale);
     const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
