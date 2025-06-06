@@ -87,7 +87,15 @@ class GameDisplay {
       }
     }
 
-    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
+    this.display.drawCornerRect(
+      x,
+      y,
+      { width: 10, height: 13 },
+      color & 0xff,
+      (color >> 8) & 0xff,
+      (color >> 16) & 0xff,
+      1
+    );
   }
 
   #drawHover(lem) {
