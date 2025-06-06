@@ -2,6 +2,7 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.gitignore"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.jshintconfig"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.jshintignore"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.searchMetrics~HEAD"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\config.json"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\css\\game.css"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\eslint.config.js"}
@@ -197,6 +198,7 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\objectmanager.render.test.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtable.test.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtablereader.test.js"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\overlay-ants.test.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packfilepart.test.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packLevels.test.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\particletable.test.js"}
@@ -250,7 +252,9 @@
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\exportLemmingsSprites.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\exportPanelSprite.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\listSprites.js"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\merge-history.sh"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\mergeSearchHistory.js"}
+{"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\merge‐metrics.sh"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\NodeFileProvider.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\packLevels.js"}
 {"file":"C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\tools\\patchSprites.js"}
