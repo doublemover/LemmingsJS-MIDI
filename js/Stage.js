@@ -220,8 +220,11 @@ class Stage {
     const gameH = stageImage.display.getHeight();
     const gameW = stageImage.display.getWidth();
     const winH = stageImage.height;
-    const worldH = gameH; // world height in world units
-    const viewH_world = winH / scale; // viewport height in world units
+    // worldHeight = how many “world pixels” tall
+    const worldH = gameH;
+    // viewH_world = viewport height in world units
+    const viewH_world = winH / scale;
+    // Clamp Y within [0, worldH - viewH_world]
     stageImage.viewPoint.y = this.limitValue(
       worldH - viewH_world,
       stageImage.viewPoint.y,
