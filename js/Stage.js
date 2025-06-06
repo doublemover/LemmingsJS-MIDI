@@ -57,22 +57,11 @@ class Stage {
   }
 
   calcPosition2D(stageImage, e) {
-    // Allow calls as calcPosition2D(event) by auto-selecting the stage image
-    if (e === undefined && stageImage && stageImage.x !== undefined) {
-      e = stageImage;
-      stageImage = this.getStageImageAt(e.x, e.y);
-    }
-
-    if (!stageImage || !e) return new Lemmings.Position2D(0, 0);
-
     const localX = e.x - stageImage.x;
     const localY = e.y - stageImage.y;
-    const vp = stageImage.viewPoint;
-    // Use the same scale for both axes so coordinates map correctly
-    const sceneX = vp.getSceneX(localX);
-    const sceneY = vp.getSceneY(localY);
-
-    return new Lemmings.Position2D(sceneX, sceneY);
+    const worldX = stageImage.viewPoint.getSceneX(localX);
+    const worldY = stageImage.viewPoint.getSceneY(localY);
+    return new Lemmings.Position2D(worldX, worldY);
   }
 
   handleOnDoubleClick() {
@@ -219,9 +208,9 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
-    const scale = stageImage.viewPoint.scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
+    const scalePan = stageImage.viewPoint.scale;
+    const worldDX = argX / scalePan;
+    const worldDY = argY / scalePan;
     if (!veloUpdate) {
       stageImage.viewPoint.x += worldDX;
       stageImage.viewPoint.y += worldDY;
@@ -330,7 +319,6 @@ class Stage {
       this.draw(this.guiImgProps, guiImg);
     }
   }
-
   getStageImageAt(x, y) {
     if (
       x >= this.gameImgProps.x &&
@@ -462,9 +450,7 @@ class Stage {
       if (this.overlayAlpha <= 0) {
         clearInterval(this.overlayTimer);
         this.overlayTimer = 0;
-        setTimeout(() => {
-          if (!this.overlayTimer) this.overlayRect = null;
-        }, 0);
+        this.overlayRect = null;
       }
     }, 40);
   }
