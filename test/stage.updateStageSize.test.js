@@ -60,6 +60,8 @@ describe('Stage.updateStageSize', function() {
 
     const display = stage.getGuiDisplay();
     display.initSize(160, 40);
+    const gameDisplay = stage.getGameDisplay();
+    gameDisplay.initSize(1000, 1000);
 
     canvas.width = 800;
     canvas.getContext().canvas.width = 800;
@@ -68,11 +70,15 @@ describe('Stage.updateStageSize', function() {
     const scale = stage.guiImgProps.viewPoint.scale;
     const guiW = display.getWidth() * scale;
     const panelH = display.getHeight() * scale;
-    expect(stage.guiImgProps.x).to.equal(240);
-    expect(stage.guiImgProps.y).to.equal(520);
+    expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
+    expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
+    expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
     expect(stage.gameImgProps.height).to.equal(520);
     expect(stage.guiImgProps.height).to.equal(panelH);
     expect(stage.guiImgProps.width).to.equal(guiW);
+    const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
+    const worldH = gameDisplay.getHeight();
+    expect(stage.gameImgProps.viewPoint.y).to.equal(worldH - viewH);
   });
 
   it('keeps panel at bottom for different zoom levels', function() {
@@ -83,13 +89,22 @@ describe('Stage.updateStageSize', function() {
 
     const display = stage.getGuiDisplay();
     display.initSize(160, 40);
+    const gameDisplay = stage.getGameDisplay();
+    gameDisplay.initSize(1000, 1000);
 
     stage.guiImgProps.viewPoint.scale = 3;
     stage.updateStageSize();
 
     const scale = stage.guiImgProps.viewPoint.scale;
     const panelH = display.getHeight() * scale;
-    expect(stage.guiImgProps.y).to.equal(480);
+    expect(stage.guiImgProps.viewPoint.scale).to.equal(2);
+    expect(stage.guiImgProps.x).to.equal((canvas.width - stage.guiImgProps.width) / 2);
+    expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
     expect(stage.gameImgProps.height).to.equal(480);
+    expect(stage.guiImgProps.height).to.equal(panelH);
+    expect(stage.guiImgProps.width).to.equal(display.getWidth() * scale);
+    const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
+    const worldH = gameDisplay.getHeight();
+    expect(stage.gameImgProps.viewPoint.y).to.equal(worldH - viewH);
   });
 });
