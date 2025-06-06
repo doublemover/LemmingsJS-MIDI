@@ -2,6 +2,7 @@
 
 tags: l2, savegame, doc, todo
 
+
 `docs/camanis/lemmings_2_save_file_format.md` explains the DOS save structure. A file stores **eight slots**. Each slot begins with a 25-byte name followed by 482 bytes of data:
 
 * 12 tribe records appear first (40 bytes each) ordered Classic to Sports.

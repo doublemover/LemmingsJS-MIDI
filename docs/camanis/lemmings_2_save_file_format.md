@@ -1,6 +1,6 @@
 # Lemmings 2 - Savegame File Format
 
-This document originates from [camanis.net](https://www.camanis.net/lemmings/files/docs/lemmings_2_save_file_format.txt). It describes how DOS Lemmings 2 records progress.
+Source: <https://www.camanis.net/lemmings/files/docs/lemmings_2_save_file_format.txt>
 
 ```text
 Lemmings 2 - savegame file format
@@ -29,8 +29,6 @@ Appendix A: tribe order
 0x09 Shadow
 0x0a Space
 0x0b Sports
-
-Appendix B: medal value table
 0x03 gold
 0x02 silver
 0x01 bronze
