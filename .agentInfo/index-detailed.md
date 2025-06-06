@@ -6,34 +6,33 @@ This expanded listing preserves the original bullet format with short descriptio
 - **binary-reader**: [notes/binary-reader.md](notes/binary-reader.md) - BinaryReader abstracts sequential and random-access reads from a Uint8Array.
 - **bit-reader**: [notes/bit-reader.md](notes/bit-reader.md) - BitReader reads bits in reverse order from a BinaryReader. It maintains a
 - **bit-writer**: [notes/bit-writer.md](notes/bit-writer.md) - BitWriter builds an output buffer backwards while reading bits from a
-- **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md) - tools/check-undefined.js scans JavaScript and HTML files for function calls. If a call cannot be ...
-- **commands, replay**: [notes/command-manager.md](notes/command-manager.md) - js/CommandManager.js manages player commands and replay data. It registers a listener on gameTime...
-- **display, canvas**: [notes/display-image.md](notes/display-image.md) - DisplayImage is an offscreen canvas that Stage uses for both the game area and the GUI layer. Eac...
+- **tools, validation**: [notes/check-undefined.md](notes/check-undefined.md) - tools/check-undefined.js scans JS and HTML for calls to missing functions.
+- **commands, replay**: [notes/command-manager.md](notes/command-manager.md) - js/CommandManager.js manages command playback and executes queued commands each tick.
 - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - drawCornerRect paints L-shaped corners and can add centered side lines.
-- **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - drawMarchingAntRect draws a dashed rectangle whose dashes alternate between two colors. The dashL...
+- **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - drawMarchingAntRect draws alternating-color dashed rectangles with a configurable dash length.
 - **file-container**: [notes/file-container.md](notes/file-container.md) - FileContainer parses a resource file containing multiple compressed parts. Each
-- **render, display**: [notes/game-display.md](notes/game-display.md) - js/GameDisplay.js binds the game state to a GUI display. setGuiDisplay() attaches mouse handlers ...
+- **render, display**: [notes/game-display.md](notes/game-display.md) - js/GameDisplay.js binds the game state to the GUI and highlights selected lemmings.
 - **gui, input**: [notes/game-gui.md](notes/game-gui.md) - GameGui drives the skill panel and handles player input for the in-game GUI.
-- **resources, caching**: [notes/game-resources.md](notes/game-resources.md) - GameResources centralizes asset loading. getMainDat() fetches MAIN.DAT only once using FileProvid...
-- **game-view, setup, stage**: [notes/game-view.md](notes/game-view.md) - GameView orchestrates the page's startup sequence. Assigning to the .gameCanvas property construc...
-- **game, main-loop**: [notes/game.md](notes/game.md) - Game in js/Game.js coordinates level setup and the main loop. loadLevel() resets any previous sta...
-- **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md) - js/GroundRenderer.js builds the bitmap used as the level background. createGroundMap allocates a ...
+- **resources, caching**: [notes/game-resources.md](notes/game-resources.md) - GameResources centralizes asset loading. getMainDat() fetches MAIN.DAT once and caches it.
+- **game-view, setup, stage**: [notes/game-view.md](notes/game-view.md) - GameView orchestrates startup and builds the Stage when gameCanvas is assigned.
+- **game, main-loop**: [notes/game.md](notes/game.md) - Game.js coordinates level setup and the main loop. loadLevel() resets prior state and creates managers.
+- **render, ground**: [notes/ground-renderer.md](notes/ground-renderer.md) - GroundRenderer builds the background bitmap and blits terrain into a Frame.
 - **example, doc**: [notes/initial.md](notes/initial.md) - This sample note demonstrates the tagging system used in .agentInfo/.
-- **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts hooks global key events and lets the player pan and zoom the gameplay view. Gam...
+- **keyboard, input, game-view**: [notes/keyboard-shortcuts.md](notes/keyboard-shortcuts.md) - KeyboardShortcuts handles global keys for panning and zooming the gameplay view.
 - **l2, file-format, doc**: [notes/l2-guyperfect.md](notes/l2-guyperfect.md) - GuyPerfect's L2 file format notes covering compression, FORM archives and style resources.
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
-- **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - js/LevelReader.js consumes a 2048 byte .DAT level file. The first 0x20 bytes contain the release ...
-- **level-writing**: [notes/level-writer.md](notes/level-writer.md) - js/LevelWriter.js converts a level object back into the original 2048‑byte binary format used by ...
-- **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md) - Configuration entries may include an optional **mechanics** object that tweaks gameplay behavior ...
-- **game, config, mechanics**: [notes/mechanics-flags.md](notes/mechanics-flags.md) - ConfigReader parses config.json into GameConfig objects but currently does not expose any mechani...
-- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md) - tools/NodeFileProvider.js allows the rest of the project to read files from
-- **todo, notes**: [notes/note-review.md](notes/note-review.md) - The index lists many short notes. Review each file to remove duplicate sentences and keep the inf...
-- **overview, doc**: [notes/overview.md](notes/overview.md) - **LemmingsJS-MIDI** reimplements the classic game in modern JavaScript with optional WebMIDI sequ...
-- **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md) - packMechanics.js enumerates glitch flag defaults for each level pack. When ConfigReader builds a ...
-- **stage, canvas, input**: [notes/stage.md](notes/stage.md) - js/Stage.js creates a Stage bound to a canvas element. The constructor sets up a UserInputManager...
-- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md) - This note lists lines across the repository containing TODO-like markers. They can guide future w...
+- **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - LevelReader parses the 2048-byte DAT format into objects, terrain and steel tables.
+- **level-writing**: [notes/level-writer.md](notes/level-writer.md) - LevelWriter converts a Level object back into the 2048-byte binary format.
+- **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md) - Configuration entries may include a mechanics object that tweaks gameplay behavior.
+- **game, config, mechanics**: [notes/mechanics-flags.md](notes/mechanics-flags.md) - ConfigReader builds GameConfig objects but only exposes isSuperLemming for now.
+- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md) - NodeFileProvider reads from directories or archives with zip, tar and rar caching.
+- **todo, notes**: [notes/note-review.md](notes/note-review.md) - Lists cleanup tasks for notes: deduplicate content and shorten summaries.
+- **overview, doc**: [notes/overview.md](notes/overview.md) - Overview of LemmingsJS-MIDI with optional WebMIDI support.
+- **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md) - packMechanics.js lists glitch flag defaults per pack and merges them with config.json.
+- **stage, canvas, input**: [notes/stage.md](notes/stage.md) - Stage creates a canvas-backed display and sets up UserInputManager for mouse events.
+- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md) - Records TODO markers across the repo to guide future cleanup.
 - **tools, cli**: [notes/tools.md](notes/tools.md) - The tools/ directory contains small command-line utilities for working with level packs and sprites.
 - **trigger-system, grid**: [notes/trigger-manager.md](notes/trigger-manager.md) - TriggerManager maintains spatial triggers such as exits, traps and blocker
 - **unpack-file-part**: [notes/unpack-file-part.md](notes/unpack-file-part.md) - UnpackFilePart represents a single compressed chunk inside a container. It
@@ -46,7 +45,6 @@ This expanded listing preserves the original bullet format with short descriptio
 - **bench-mode, speed-control**: [notes/bench-mode.md](notes/bench-mode.md) - Bench mode enables performance testing by spawning lemmings without limit and automatically adjusting the game speed. `LemmingManager.addNewLemmings()` skips the remaining-count check so new lemmings always appear. `GameTimer.#benchSpeedAdjust()` modifies `speedFactor` whenever the game falls behind, slowing to 0.1 if more than 100 ticks are pending and gradually increasing again when caught up.
 - **game-timer, bench-mode**: [notes/bench-speed-adjust.md](notes/bench-speed-adjust.md) - `GameTimer.#benchSpeedAdjust()` now scales its slow and recovery thresholds by the current `speedFactor`. The game slows down when pending frames exceed `16 / speedFactor` (clamped to at least 10) and speeds back up when the backlog drops below `4 / speedFactor`. This keeps bench mode responsive at different speeds.
 - **config, mechanics, doc**: [notes/config.md](notes/config.md) - `config.json` lists available level packs and key fields like `level.filePrefix`, `level.groups` and `level.order`. Each pack may also include a `mechanics` object. `packMechanics.js` provides defaults for these mechanic flags which `ConfigReader` merges with the pack entries. See [docs/config.md](../docs/config.md) for a full description.
-- **display, canvas**: [notes/display-image.md](notes/display-image.md) - `DisplayImage` is an offscreen canvas that `Stage` uses for both the game area and the GUI layer.  Each instance owns an `ImageData` buffer which is created through `Stage.createImage()`.  A `Uint32Array` view (`buffer32`) aliases this buffer so drawing routines can operate on 32‑bit pixels directly.
 - **canvas, helper**: [notes/draw-corner-rect.md](notes/draw-corner-rect.md) - `DisplayImage.drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corners. When `midLine` is true it also adds centered side lines.
 - **debug, render**: [notes/drawMarchingAntRect.md](notes/drawMarchingAntRect.md) - `drawMarchingAntRect` draws a dashed rectangle whose dashes alternate between two colors. The `dashLen` and `offset` arguments control the length of each dash and its animated offset. GameGui uses this helper when highlighting UI elements like skill selections or the nuke button.
 - **easing, animation**: [notes/easing-functions.md](notes/easing-functions.md) - This note summarizes commonly used easing equations for smooth animations:
@@ -83,3 +81,4 @@ This expanded listing preserves the original bullet format with short descriptio
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
 - **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
 - **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.
+- **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Clarify variables that confuse viewport size with world data size.
