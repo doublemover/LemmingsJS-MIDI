@@ -26,6 +26,7 @@ initial.md: example
 keyboard-shortcuts.md: keyboard
 lemming-manager.md: lemming-manager
 level-format.md: level-format doc
+lvl-format.md: lvl-format doc todo
 level-loader.md: level-loading
 level-packs.md: level-packs resources doc
 level-reader.md: level-parsing
