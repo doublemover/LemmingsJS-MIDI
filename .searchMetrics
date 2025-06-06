@@ -1,6 +1,6 @@
 {
   ".agentInfo/index-detailed.md": {
-    "md": 26,
+    "md": 32,
     "code": 0,
     "terms": [
       "rect",
@@ -15,11 +15,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/index.md": {
-    "md": 21,
+    "md": 26,
     "code": 0,
     "terms": [
       "rect",
@@ -28,11 +31,13 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/display-image.md": {
-    "md": 10,
+    "md": 16,
     "code": 0,
     "terms": [
       "rect",
@@ -40,11 +45,14 @@
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/draw-corner-rect.md": {
-    "md": 10,
+    "md": 15,
     "code": 0,
     "terms": [
       "rect",
@@ -52,11 +60,14 @@
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/drawMarchingAntRect.md": {
-    "md": 11,
+    "md": 16,
     "code": 0,
     "terms": [
       "rect",
@@ -64,11 +75,14 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/game-display.md": {
-    "md": 11,
+    "md": 17,
     "code": 0,
     "terms": [
       "rect",
@@ -76,7 +90,10 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/game-view.md": {
@@ -101,7 +118,7 @@
     ]
   },
   "docs/nl-file-format.md": {
-    "md": 13,
+    "md": 19,
     "code": 0,
     "terms": [
       "rect",
@@ -112,12 +129,15 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/DisplayImage.js": {
     "md": 0,
-    "code": 16,
+    "code": 21,
     "terms": [
       "rect",
       "marching",
@@ -130,12 +150,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/Stage.js": {
     "md": 0,
-    "code": 13,
+    "code": 19,
     "terms": [
       "rect",
       "x",
@@ -145,12 +167,15 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/GameGui.js": {
     "md": 0,
-    "code": 25,
+    "code": 31,
     "terms": [
       "rect",
       "marching",
@@ -163,12 +188,15 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/Level.js": {
     "md": 0,
-    "code": 12,
+    "code": 17,
     "terms": [
       "rect",
       "x",
@@ -177,12 +205,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/Frame.js": {
     "md": 0,
-    "code": 16,
+    "code": 21,
     "terms": [
       "rect",
       "marching",
@@ -195,12 +225,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/GameDisplay.js": {
     "md": 0,
-    "code": 12,
+    "code": 18,
     "terms": [
       "rect",
       "x",
@@ -209,12 +241,15 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/GameTimer.js": {
     "md": 0,
-    "code": 22,
+    "code": 27,
     "terms": [
       "rect",
       "x",
@@ -224,12 +259,14 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/GameView.js": {
     "md": 0,
-    "code": 23,
+    "code": 29,
     "terms": [
       "rect",
       "x",
@@ -240,12 +277,15 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/MiniMap.js": {
     "md": 0,
-    "code": 14,
+    "code": 20,
     "terms": [
       "rect",
       "marching",
@@ -256,12 +296,15 @@
       "ants",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/Trigger.js": {
     "md": 0,
-    "code": 12,
+    "code": 17,
     "terms": [
       "rect",
       "x",
@@ -270,12 +313,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/TriggerManager.js": {
     "md": 0,
-    "code": 12,
+    "code": 17,
     "terms": [
       "rect",
       "x",
@@ -284,12 +329,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "js/UserInputManager.js": {
     "md": 0,
-    "code": 13,
+    "code": 19,
     "terms": [
       "rect",
       "x",
@@ -299,12 +346,15 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/displayimage.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "rect",
       "x",
@@ -312,12 +362,14 @@
       "line",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/gameview.suspendWithColor.test.js": {
     "md": 0,
-    "code": 20,
+    "code": 26,
     "terms": [
       "rect",
       "x",
@@ -325,22 +377,28 @@
       "bench",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/gameview.test.js": {
     "md": 0,
-    "code": 9,
+    "code": 15,
     "terms": [
       "rect",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/geometry.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "rect",
       "x",
@@ -348,12 +406,14 @@
       "pos",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/minimap.test.js": {
     "md": 0,
-    "code": 12,
+    "code": 17,
     "terms": [
       "rect",
       "x",
@@ -362,34 +422,40 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/rectangle.test.js": {
     "md": 0,
-    "code": 9,
+    "code": 14,
     "terms": [
       "rect",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/stage.overlayfade.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 15,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/stage.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "rect",
       "x",
@@ -397,68 +463,80 @@
       "pos",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/stage.updateStageSize.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 15,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/stage.updateviewpoint.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 15,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/stageimageprops.test.js": {
     "md": 0,
-    "code": 9,
+    "code": 14,
     "terms": [
       "rect",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/trigger.test.js": {
     "md": 0,
-    "code": 9,
+    "code": 14,
     "terms": [
       "rect",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/triggermanager.test.js": {
     "md": 0,
-    "code": 10,
+    "code": 15,
     "terms": [
       "rect",
       "x",
       "y",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming"
     ]
   },
   "test/userinput.test.js": {
     "md": 0,
-    "code": 13,
+    "code": 19,
     "terms": [
       "rect",
       "x",
@@ -468,11 +546,14 @@
       "else",
       "selection",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/game-gui.md": {
-    "md": 10,
+    "md": 16,
     "code": 0,
     "terms": [
       "marching",
@@ -484,22 +565,27 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/level-reader.md": {
-    "md": 5,
+    "md": 10,
     "code": 0,
     "terms": [
       "x",
       "y",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "docs/level-file-format.md": {
-    "md": 8,
+    "md": 13,
     "code": 0,
     "terms": [
       "x",
@@ -509,11 +595,13 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "README.md": {
-    "md": 16,
+    "md": 22,
     "code": 0,
     "terms": [
       "x",
@@ -524,7 +612,10 @@
       "bench",
       "line",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/trigger-manager.md": {
@@ -540,7 +631,7 @@
   },
   "js/LemmingManager.js": {
     "md": 0,
-    "code": 15,
+    "code": 21,
     "terms": [
       "x",
       "y",
@@ -549,23 +640,28 @@
       "spawn",
       "bench",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/SolidLayer.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ParticleTable.js": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -574,7 +670,9 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/xbrz/xbrz.js": {
@@ -594,15 +692,17 @@
   },
   "js/SkillPanelSprites.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/KeyboardShortcuts.js": {
     "md": 0,
-    "code": 8,
+    "code": 14,
     "terms": [
       "x",
       "y",
@@ -611,12 +711,15 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/LevelReader.js": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -625,12 +728,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/Lemming.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -638,23 +743,27 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/LemmingsSprite.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "x",
       "y",
       "if",
       "else",
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   "tools/exportAllSprites.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -662,12 +771,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "fileformat.txt": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -676,62 +787,75 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionBashSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/Animation.js": {
     "md": 0,
-    "code": 4,
+    "code": 10,
     "terms": [
       "x",
       "y",
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/solidlayer.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionDiggSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionWalkSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/LevelWriter.js": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -740,70 +864,84 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/Mask.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/mask.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "tools/exportLemmingsSprites.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionBlockerSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionBuildSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionClimbSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionDrowningSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -811,12 +949,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionFryingSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -824,12 +964,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionJumpSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -837,12 +979,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionOhNoSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -850,23 +994,27 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/GroundReader.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "x",
       "y",
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/GroundRenderer.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -874,21 +1022,25 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/bench-speed-adjust.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "x",
       "y",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   "test/gamedisplay.test.js": {
     "md": 0,
-    "code": 8,
+    "code": 14,
     "terms": [
       "x",
       "y",
@@ -897,21 +1049,26 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/getNearestLemming.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "x",
       "y",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   "test/groundrenderer.test.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -919,39 +1076,47 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/lemming.test.js": {
     "md": 0,
-    "code": 11,
+    "code": 16,
     "terms": [
       "x",
       "y",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   "test/walk-wall-collision.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "tools/scanGreenPanel.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionExplodingSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -959,12 +1124,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionHoistSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -972,28 +1139,34 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ViewPoint.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "tools/renderCursorSizes.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionBaseSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1001,12 +1174,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionCountdownSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1014,12 +1189,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionFallSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1027,12 +1204,14 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionFloatingSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1040,22 +1219,26 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionMineSystem.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionSplatterSystem.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1063,20 +1246,24 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/LevelElement.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/MapObject.js": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -1085,33 +1272,39 @@
       "spawn",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/MaskList.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/ObjectManager.js": {
     "md": 0,
-    "code": 5,
+    "code": 10,
     "terms": [
       "x",
       "y",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/PaletteImage.js": {
     "md": 0,
-    "code": 8,
+    "code": 13,
     "terms": [
       "x",
       "y",
@@ -1120,44 +1313,54 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/Position2D.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/Range.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/Rectangle.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/StageImageProperties.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/VGASpecReader.js": {
     "md": 0,
-    "code": 9,
+    "code": 14,
     "terms": [
       "x",
       "y",
@@ -1167,52 +1370,62 @@
       "line",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/gametimer.test.js": {
     "md": 0,
-    "code": 13,
+    "code": 18,
     "terms": [
       "x",
       "y",
       "if",
       "else",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   "test/levelwriter.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 10,
     "terms": [
       "x",
       "y",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/range.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "test/tools/scanGreenPanel.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/exportGroundImages.js": {
     "md": 0,
-    "code": 7,
+    "code": 12,
     "terms": [
       "x",
       "y",
@@ -1220,156 +1433,192 @@
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "tools/exportPanelSprite.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "x",
-      "y"
+      "y",
+      "select",
+      "lemming"
     ]
   },
   "js/Game.js": {
     "md": 0,
-    "code": 3,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else"
-    ]
-  },
-  "js/LevelLoader.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else"
-    ]
-  },
-  "test/commandmanager.test.js": {
-    "md": 0,
-    "code": 3,
-    "terms": [
-      "x",
-      "y",
-      "if",
-      "else"
-    ]
-  },
-  "tools/listSprites.js": {
-    "md": 0,
-    "code": 4,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
       "else",
-      "line"
+      "select",
+      "lemming"
     ]
   },
-  "tools/patchSprites.js": {
+  "js/LevelLoader.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "x",
       "y",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
+    ]
+  },
+  "test/commandmanager.test.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "select",
+      "lemming"
+    ]
+  },
+  "tools/listSprites.js": {
+    "md": 0,
+    "code": 9,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "line",
+      "select",
+      "lemming"
+    ]
+  },
+  "tools/patchSprites.js": {
+    "md": 0,
+    "code": 8,
+    "terms": [
+      "x",
+      "y",
+      "if",
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/search.js": {
     "md": 0,
-    "code": 5,
+    "code": 10,
     "terms": [
       "pos",
       "if",
       "else",
       "ants",
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   "js/BinaryReader.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/BitWriter.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/BitReader.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/FileContainer.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/oddtable.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/PackFilePart.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "pos",
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/vgaspecreader.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
-      "pos"
+      "pos",
+      "select",
+      "lemming"
     ]
   },
   "docs/compression-format.md": {
-    "md": 12,
+    "md": 18,
     "code": 0,
     "terms": [
       "if",
       "else",
-      "bench"
+      "bench",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "AGENTS.md": {
-    "md": 3,
+    "md": 8,
     "code": 0,
     "terms": [
       "if",
       "else",
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/webmidi-environments.md": {
@@ -1381,29 +1630,35 @@
     ]
   },
   "docs/nl-skills.md": {
-    "md": 2,
+    "md": 7,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/AGENTS.md": {
-    "md": 2,
+    "md": 7,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/bench-mode.md": {
-    "md": 13,
+    "md": 18,
     "code": 0,
     "terms": [
       "if",
       "else",
       "spawn",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/check-undefined.md": {
@@ -1423,7 +1678,7 @@
     ]
   },
   ".agentInfo/notes/gui-stage-tasks.md": {
-    "md": 7,
+    "md": 13,
     "code": 0,
     "terms": [
       "if",
@@ -1431,7 +1686,10 @@
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/note-review.md": {
@@ -1443,29 +1701,36 @@
     ]
   },
   ".agentInfo/notes/pack-mechanics.md": {
-    "md": 2,
+    "md": 7,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "docs/nl-objects.md": {
-    "md": 2,
+    "md": 7,
     "code": 0,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "docs/tools.md": {
-    "md": 3,
+    "md": 9,
     "code": 0,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "tools/check-undefined.js": {
@@ -1479,55 +1744,68 @@
   },
   "tools/NodeFileProvider.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/FileProvider.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/build_index.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/exportScripts.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 11,
     "terms": [
       "if",
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "index.html": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/UnpackFilePart.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/processHtmlFile.js": {
@@ -1540,20 +1818,25 @@
   },
   "js/CommandManager.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/LogHandler.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/archiveDir.js": {
@@ -1567,80 +1850,100 @@
   },
   "js/GameSkills.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/GameVictoryCondition.js": {
     "md": 0,
-    "code": 12,
+    "code": 17,
     "terms": [
       "if",
       "else",
-      "bench"
+      "bench",
+      "select",
+      "lemming"
     ]
   },
   "test/filecontainer.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/fileprovider.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "tools/exportAllPacks.js": {
     "md": 0,
-    "code": 3,
+    "code": 8,
     "terms": [
       "if",
       "else",
-      "spawn"
+      "spawn",
+      "select",
+      "lemming"
     ]
   },
   "js/CommandSelectSkill.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/ConfigReader.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/GameFactory.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/bitstream.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/nodefileprovider.test.js": {
@@ -1654,143 +1957,178 @@
   },
   "js/ActionExitingSystem.js": {
     "md": 0,
-    "code": 6,
+    "code": 11,
     "terms": [
       "if",
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/ActionShrugSystem.js": {
     "md": 0,
-    "code": 6,
+    "code": 11,
     "terms": [
       "if",
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/CommandLemmingsAction.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/CommandNuke.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/CommandReleaseRateDecrease.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/CommandReleaseRateIncrease.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/DrawProperties.js": {
     "md": 0,
-    "code": 6,
+    "code": 11,
     "terms": [
       "if",
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "js/EventHandler.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/GameResources.js": {
     "md": 0,
-    "code": 2,
+    "code": 8,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/GameTypes.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/LemmingsNamespace.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/LevelConfig.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/LevelIndexResolve.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "js/OddTableReader.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/gameskills.test.js": {
     "md": 0,
-    "code": 3,
+    "code": 9,
     "terms": [
       "if",
       "else",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/gamevictory.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "if",
-      "else"
+      "else",
+      "select",
+      "lemming"
     ]
   },
   "test/tools/archiveDir.test.js": {
@@ -1804,13 +2142,15 @@
   },
   "test/tools/exportGroundImages.test.js": {
     "md": 0,
-    "code": 6,
+    "code": 11,
     "terms": [
       "if",
       "else",
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "tools/cleanExports.js": {
@@ -1830,27 +2170,35 @@
     ]
   },
   ".agentInfo/notes/editor-mode.md": {
-    "md": 1,
+    "md": 6,
     "code": 0,
     "terms": [
-      "spawn"
+      "spawn",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/lemming-manager.md": {
-    "md": 2,
+    "md": 8,
     "code": 0,
     "terms": [
       "spawn",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/overview.md": {
-    "md": 11,
+    "md": 17,
     "code": 0,
     "terms": [
       "spawn",
-      "bench"
+      "bench",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/check-undefined.test.js": {
@@ -1862,17 +2210,21 @@
   },
   "test/listSprites.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "spawn",
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   "test/packLevels.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
-      "spawn"
+      "spawn",
+      "select",
+      "lemming"
     ]
   },
   "test/tools/cleanExports.test.js": {
@@ -1891,17 +2243,21 @@
   },
   "test/tools/listSprites.test.js": {
     "md": 0,
-    "code": 2,
+    "code": 7,
     "terms": [
       "spawn",
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   "test/tools/packLevels.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
-      "spawn"
+      "spawn",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/bench-mode-docs.md": {
@@ -1940,19 +2296,24 @@
     ]
   },
   "CHANGELOG.md": {
-    "md": 11,
+    "md": 17,
     "code": 0,
     "terms": [
       "bench",
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/webmidi-overview.md": {
-    "md": 1,
+    "md": 6,
     "code": 0,
     "terms": [
-      "line"
+      "line",
+      "select",
+      "lemming"
     ]
   },
   ".agentInfo/notes/todo-review.md": {
@@ -1963,10 +2324,13 @@
     ]
   },
   ".agentInfo/notes/tools.md": {
-    "md": 1,
+    "md": 7,
     "code": 0,
     "terms": [
-      "line"
+      "line",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/webmidi-tasks.md": {
@@ -2007,55 +2371,73 @@
     ]
   },
   ".agentInfo/notes/game.md": {
-    "md": 1,
+    "md": 7,
     "code": 0,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "docs/levelpacks.md": {
-    "md": 1,
+    "md": 6,
     "code": 0,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/keyboardshortcuts.test.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "css/game.css": {
     "md": 0,
-    "code": 1,
+    "code": 6,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "js/LemmingsBootstrap.js": {
     "md": 0,
-    "code": 5,
+    "code": 11,
     "terms": [
       "selection",
       "rect",
       "draw",
-      "corner"
+      "corner",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/commandselectskill.test.js": {
     "md": 0,
-    "code": 1,
+    "code": 7,
     "terms": [
       "selection",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   ".agentInfo/notes/ground-renderer.md": {
@@ -2078,47 +2460,436 @@
   },
   "test/exportLemmingsSprites.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/frame.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/gameresources.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 10,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming",
+      "cursor"
     ]
   },
   "test/levelreader.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
     ]
   },
   "test/tools/exportAllSprites.test.js": {
     "md": 0,
-    "code": 4,
+    "code": 9,
     "terms": [
       "draw",
       "corner",
-      "rect"
+      "rect",
+      "select",
+      "lemming"
+    ]
+  },
+  ".agentInfo/notes/bit-writer.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  ".agentInfo/notes/game-resources.md": {
+    "md": 6,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming",
+      "cursor"
+    ]
+  },
+  ".agentInfo/notes/level-format.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  ".agentInfo/notes/mechanics-flags.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  ".agentInfo/notes/nl-objects.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "docs/exporting-sprites.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "docs/TESTING.md": {
+    "md": 5,
+    "code": 0,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/patchSprites.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/skillpanelsprites.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "config.json": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "eslint.config.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/BaseImageInfo.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/ColorPalette.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/GameConfig.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/GameResult.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/GameStateTypes.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/LemmingStateType.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/LevelIndexType.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/LevelProperties.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/MaskProvider.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/MaskTypes.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/ObjectImageInfo.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/packMechanics.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/SkillTypes.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/SpriteTypes.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/steelSprites.json": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/TerrainImageInfo.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "js/TriggerTypes.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/animation.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/binaryreader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/bitreader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/bitwriter.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/colorpalette.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/configreader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/eventhandler.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/filecontainer-errors.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/game.queuecommand.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/gamefactory.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/gameresult.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/groundreader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/levelloader.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/maskprovider.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/packfilepart.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/tools/exportScripts.test.js": {
+    "md": 0,
+    "code": 6,
+    "terms": [
+      "select",
+      "lemming",
+      "cursor"
+    ]
+  },
+  "test/tools/patchSprites.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  "test/unpackfilepart.test.js": {
+    "md": 0,
+    "code": 5,
+    "terms": [
+      "select",
+      "lemming"
+    ]
+  },
+  ".agentInfo/notes/userinput-zoom.md": {
+    "md": 1,
+    "code": 0,
+    "terms": [
+      "select",
+      "cursor"
     ]
   }
 }
