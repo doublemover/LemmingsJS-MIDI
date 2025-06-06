@@ -29,6 +29,7 @@ l2-guyperfect.md: l2 file-format doc
 lemming-manager.md: lemming-manager
 l2-level-format.md: l2-level-format doc
 level-format.md: level-format doc
+lvl-format.md: lvl-format doc todo
 level-loader.md: level-loading
 level-packs.md: level-packs resources doc
 level-reader.md: level-parsing
@@ -60,6 +61,7 @@ third-party-policy.md: policy third-party
 display-image.md: display canvas scaling image
 vgagrx-groundxo-format.md: vgagrx groundxo planar-bitmaps
 baseimageinfo-search.md: search
+vgaspecx-format.md: vgaspecx compression palette doc todo
 revolution-box-format.md: revolution-box archives
 dat-source.md: dat-source compression cpp
 l2ss-overview.md: l2ss sprite-chunks doc
@@ -67,3 +69,4 @@ l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2-save-format.md: l2 savegame doc
+l2-save-format.md: l2-save doc todo
