@@ -3,6 +3,8 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/ColorPalette.js';
 import { Frame } from '../js/Frame.js';
 import { DisplayImage } from '../js/DisplayImage.js';
+import '../js/EventHandler.js';
+import '../js/SkillTypes.js';
 
 // minimal global env for logging
 globalThis.lemmings = { game: { showDebug: false } };
@@ -118,5 +120,78 @@ describe('GameDisplay drawFrame', function() {
     display.onMouseDown.trigger({ x: 2, y: 2 });
 
     expect(selected).to.deep.equal({ id: 1 });
+  });
+});
+
+describe('GameDisplay hover and selection rendering', function() {
+  function createDisplay() {
+    return {
+      onMouseMove: new Lemmings.EventHandler(),
+      drawCornerRectCalls: [],
+      drawCornerRect(...args) { this.drawCornerRectCalls.push(args); }
+    };
+  }
+
+  it('draws hover rectangle with correct color and tracks mouse', function() {
+    const { render, renderDebug, screenPositionX } = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const hovered = { x: 10, y: 20, removed: false };
+    const lm = {
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return null; },
+      getNearestLemming(x, y) { return x === hovered.x && y === hovered.y ? hovered : null; }
+    };
+    const gd = new Lemmings.GameDisplay({ showDebug: false }, { render, renderDebug, screenPositionX }, lm, { render() {} }, { renderDebug() {} });
+    const display = createDisplay();
+    gd.setGuiDisplay(display);
+
+    display.onMouseMove.trigger({ x: 10, y: 20 });
+    expect(gd.hoverLemming).to.equal(hovered);
+    expect(gd._mouseX).to.equal(10);
+    expect(gd._mouseY).to.equal(20);
+
+    gd.render();
+    expect(display.drawCornerRectCalls).to.have.lengthOf(1);
+    const args = display.drawCornerRectCalls[0];
+    expect(args[0]).to.equal(5);
+    expect(args[1]).to.equal(9);
+    expect(args[2]).to.eql({ width: 10, height: 13 });
+    expect(args.slice(3, 6)).to.eql([0x5e, 0x5e, 0x5e]);
+  });
+
+  it('draws selection rectangle for selected lemming', function() {
+    const selected = { x: 15, y: 25, removed: false, action: {} };
+    const lm = {
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return selected; },
+      getNearestLemming() { return null; }
+    };
+    const level = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const gd = new Lemmings.GameDisplay({
+      showDebug: false,
+      getGameSkills() { return { getSelectedSkill() { return Lemmings.SkillTypes.UNKNOWN; } }; }
+    }, level, lm, { render() {} }, { renderDebug() {} });
+    const display = createDisplay();
+    gd.setGuiDisplay(display);
+
+    gd.render();
+    expect(display.drawCornerRectCalls).to.have.lengthOf(1);
+    const args = display.drawCornerRectCalls[0];
+    expect(args[0]).to.equal(10);
+    expect(args[1]).to.equal(14);
+    expect(args[2]).to.eql({ width: 10, height: 13 });
+    expect(args.slice(3, 6)).to.eql([0x00, 0xff, 0x00]);
+  });
+
+  it('dispose removes mouse listeners', function() {
+    const gd = new Lemmings.GameDisplay({ showDebug: false }, { render() {}, renderDebug() {}, screenPositionX: 0 }, { render() {}, renderDebug() {}, getSelectedLemming() { return null; }, getNearestLemming() { return null; } }, { render() {} }, { renderDebug() {} });
+    const display = createDisplay();
+
+    gd.setGuiDisplay(display);
+    expect(display.onMouseMove.handlers.size).to.equal(1);
+    gd.dispose();
+    expect(display.onMouseMove.handlers.size).to.equal(0);
+    expect(gd._mouseMoveHandler).to.equal(null);
   });
 });
