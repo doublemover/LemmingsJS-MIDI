@@ -1,0 +1,47 @@
+name: Sync no result queries
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Sync tools from master
+        run: |
+          git fetch origin master
+          git checkout origin/master -- tools
+      - uses: actions/setup-node@v4.2.0
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Fetch master history
+        run: |
+          git fetch origin master
+          git show origin/master:.searchMetrics/noResultQueries > base_history || touch base_history
+      - name: Merge base lines
+        run: |
+          mkdir -p .searchMetrics
+          touch .searchMetrics/noResultQueries
+          while IFS= read -r line; do
+            grep -Fxq "$line" .searchMetrics/noResultQueries || echo "$line" >> .searchMetrics/noResultQueries
+          done < base_history
+      - name: Commit and push if changed
+        run: |
+          if ! git diff --quiet -- .searchMetrics/noResultQueries; then
+            git config user.name "github-actions"
+            git config user.email "github-actions@github.com"
+            git add .searchMetrics/noResultQueries
+            git commit -m "chore: sync no-result queries"
+            git push origin HEAD:${{ github.head_ref }}
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -481,7 +481,7 @@ if (argv.stats) {
 /* ---------- Update .searchMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
-const noResPath = path.join(metricsDir, 'noResultQueries');
+const noResultPath = path.join(metricsDir, 'noResultQueries');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
 let metrics = {};
@@ -513,5 +513,8 @@ await fs.appendFile(
 );
 
 if (totalMdFiles === 0 && totalCodeFiles === 0) {
-  await fs.appendFile(noResPath, query + '\n');
+  await fs.appendFile(
+    noResultPath,
+    JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
+  );
 }
