@@ -46,6 +46,7 @@ class GameView extends Lemmings.BaseLogger {
     this._stageResize = () => this.stage.updateStageSize();
     window.addEventListener('resize', this._stageResize);
     window.addEventListener('orientationchange', this._stageResize);
+    this._stageResize();
   }
 
   /** start or continue the game */
