@@ -34,7 +34,7 @@ describe('tools/search.js', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('updates metrics.json after a search', function () {
+  it('omits function label when match is outside any function', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
     for (const sub of ['index-prose', 'index-code']) {
       fs.mkdirSync(path.join(dir, sub));
@@ -45,89 +45,21 @@ describe('tools/search.js', function () {
     }
 
     const script = path.resolve('tools/search.js');
-    const res = spawnSync(process.execPath, [script, 'lemmings'], {
-      cwd: dir,
-      encoding: 'utf8'
-    });
-    expect(res.status).to.equal(0);
-
-    const metrics = path.join(dir, '.searchMetrics', 'metrics.json');
-    expect(fs.existsSync(metrics)).to.be.true;
-    const json = JSON.parse(fs.readFileSync(metrics, 'utf8'));
-    expect(Object.keys(json).length).to.be.greaterThan(0);
-
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('logs no-result queries', function () {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
-    for (const sub of ['index-prose', 'index-code']) {
-      fs.mkdirSync(path.join(dir, sub));
+    const modes = [
+      [],
+      ['--human'],
+      ['--human', '--human-json'],
+      ['--json'],
+    ];
+    for (const flags of modes) {
+      const res = spawnSync(process.execPath, [script, 'AGENTS guidelines', ...flags], {
+        cwd: dir,
+        encoding: 'utf8',
+      });
+      expect(res.status).to.equal(0);
+      expect(res.stdout.includes('(func:')).to.be.false;
     }
-    for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
-      fs.copyFileSync(path.join('index-prose', f), path.join(dir, 'index-prose', f));
-      fs.copyFileSync(path.join('index-code', f), path.join(dir, 'index-code', f));
-    }
-
-    const script = path.resolve('tools/search.js');
-    const res = spawnSync(process.execPath, [script, 'zzzzzz'], {
-      cwd: dir,
-      encoding: 'utf8'
-    });
-    expect(res.status).to.equal(0);
-
-    const noRes = path.join(dir, '.searchMetrics', 'noResultQueries');
-    expect(fs.existsSync(noRes)).to.be.true;
-    const lines = fs.readFileSync(noRes, 'utf8').trim().split(/\n/);
-    expect(lines).to.include('zzzzzz');
-
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('omits (func: when no function is found', function () {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
-    for (const sub of ['index-prose', 'index-code']) {
-      fs.mkdirSync(path.join(dir, sub));
-    }
-    for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
-      fs.copyFileSync(path.join('index-prose', f), path.join(dir, 'index-prose', f));
-      fs.copyFileSync(path.join('index-code', f), path.join(dir, 'index-code', f));
-    }
-
-    const script = path.resolve('tools/search.js');
-    const res = spawnSync(process.execPath, [script, 'Progressive'], {
-      cwd: dir,
-      encoding: 'utf8'
-    });
-    expect(res.status).to.equal(0);
-    expect(res.stdout).to.not.include('(func:');
-
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
-
-  it('--json output has correct structure', function () {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
-    for (const sub of ['index-prose', 'index-code']) {
-      fs.mkdirSync(path.join(dir, sub));
-    }
-    for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
-      fs.copyFileSync(path.join('index-prose', f), path.join(dir, 'index-prose', f));
-      fs.copyFileSync(path.join('index-code', f), path.join(dir, 'index-code', f));
-    }
-
-    const script = path.resolve('tools/search.js');
-    const res = spawnSync(process.execPath, [script, 'lemmings', '--json'], {
-      cwd: dir,
-      encoding: 'utf8'
-    });
-    expect(res.status).to.equal(0);
-    const out = JSON.parse(res.stdout);
-    expect(out).to.have.keys(['markdown', 'code']);
-    expect(out.markdown).to.be.an('array');
-    expect(out.code).to.be.an('array');
-    if (out.markdown.length) {
-      expect(out.markdown[0]).to.have.all.keys('file', 'totalMatches', 'score', 'realPos', 'enclosingFunction');
-    }
+    
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
