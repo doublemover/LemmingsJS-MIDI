@@ -94,8 +94,8 @@ class KeyboardShortcuts {
         const newScale = stage.snapScale(stage._rawScale);
         const nx = centerX - cx / newScale;
         const ny = centerY - cy / newScale;
-        const maxX = img.display.getWidth()  - img.width  / newScale;
-        const maxY = img.display.getHeight() - img.height / newScale;
+        const maxX = img.display.worldDataSize.width  - img.canvasViewportSize.width  / newScale;
+        const maxY = img.display.worldDataSize.height - img.canvasViewportSize.height / newScale;
         vp.x = Math.min(Math.max(0, nx), maxX);
         vp.y = Math.min(Math.max(0, ny), maxY);
         vp.scale = newScale;
