@@ -79,15 +79,15 @@ class Animation {
 
   loadFromFile (fr, bitsPerPixel, width, height, frames, palette,
     offsetX = null, offsetY = null) {
-    const arr = new Array(frames);
+    const frameArray = new Array(frames);
     for (let i = 0; i < frames; ++i) {
       const paletteImg = new Lemmings.PaletteImage(width, height);
       paletteImg.processImage(fr, bitsPerPixel);
       paletteImg.processTransparentByColorIndex(0);
-      arr[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
     }
-    this.frames     = arr;
-    this._lastFrame = arr[frames-1];
+    this.frames     = frameArray;
+    this._lastFrame = frameArray[frames-1];
     this.isFinished = false;
   }
 
