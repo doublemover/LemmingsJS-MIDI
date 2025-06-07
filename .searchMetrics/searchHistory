@@ -132,4 +132,15 @@
 {"time":"2025-06-07T05:42:53.925Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":82}
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:52:52.120Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":653}
+{"time":"2025-06-07T22:53:16.163Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":588}
+{"time":"2025-06-07T22:53:20.716Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":626}
+{"time":"2025-06-07T22:53:33.817Z","query":"skillpane","mdFiles":0,"codeFiles":0,"ms":69}
+{"time":"2025-06-07T22:53:36.966Z","query":"skillpane","mdFiles":0,"codeFiles":0,"ms":121}
+{"time":"2025-06-07T22:53:40.460Z","query":"skillpanel","mdFiles":0,"codeFiles":0,"ms":146}
+{"time":"2025-06-07T22:53:43.860Z","query":"skill","mdFiles":24,"codeFiles":47,"ms":213}
+{"time":"2025-06-07T22:53:47.263Z","query":"bitreader","mdFiles":0,"codeFiles":1,"ms":119}
+{"time":"2025-06-07T22:53:50.652Z","query":"bitrea","mdFiles":0,"codeFiles":0,"ms":113}
+{"time":"2025-06-07T22:53:53.937Z","query":"bitreader","mdFiles":0,"codeFiles":1,"ms":113}
+{"time":"2025-06-07T22:53:57.495Z","query":"BitReader","mdFiles":27,"codeFiles":73,"ms":259}
+{"time":"2025-06-07T22:54:02.775Z","query":"chunkScore","mdFiles":7,"codeFiles":9,"ms":162}
