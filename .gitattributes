@@ -2,12 +2,10 @@
 
 *.gif binary
 *.jpg binary
+*.png binary
+*.dat binary
 
-*.png filter=lfs diff=lfs merge=lfs -text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
-*.dat filter=lfs diff=lfs mergs=lfs -text
-
-# Tell Git to invoke our “merge‐metrics” driver on metrics.json
+# Tell Git to invoke our "merge-metrics" driver on metrics.json
 .searchMetrics/metrics.json    merge=merge_metrics
 .searchMetrics/searchHistory   merge=merge_history
 .agentInfo/index.md             merge=merge_agentinfo_index

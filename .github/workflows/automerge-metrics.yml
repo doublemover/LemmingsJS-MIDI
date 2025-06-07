@@ -13,6 +13,10 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+      - name: Sync tools from master
+        run: |
+          git fetch origin master
+          git checkout origin/master -- tools
 
       - name: Set Git identity
         run: |

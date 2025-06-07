@@ -9,6 +9,8 @@ import '../../js/LogHandler.js';
 import { BinaryReader } from '../../js/BinaryReader.js';
 import { PackFilePart } from '../../js/PackFilePart.js';
 import '../../js/UnpackFilePart.js';
+import '../../js/BitReader.js';
+import '../../js/BitWriter.js';
 import { FileContainer } from '../../js/FileContainer.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
@@ -26,7 +28,7 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
     ];
     const parts = raws.map(raw => {
       const packed = PackFilePart.pack(raw);
-      const size = packed.data.length + 10;
+      const size = packed.byteArray.length + 10;
       const header = new Uint8Array([
         packed.initialBits,
         packed.checksum,
@@ -36,7 +38,7 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
         (size >> 8) & 0xFF,
         size & 0xFF
       ]);
-      return { header, packed: packed.data, size };
+      return { header, packed: packed.byteArray, size };
     });
     const total = parts.reduce((s, p) => s + p.size, 0);
     const datBuf = new Uint8Array(total);
@@ -60,6 +62,10 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
       .replace('import { PNG } from \'pngjs\';', 'import { PNG } from \'./pngjs-stub.js\';');
     const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
     fs.writeFileSync(tempScript, code);
+    expect(fs.existsSync(tempScript)).to.be.true;
+
+    fs.mkdirSync(path.dirname(outFile), { recursive: true });
+    expect(fs.existsSync(path.dirname(outFile))).to.be.true;
 
     const { __setReadResults } = await import(pathToFileURL(stubPath).href);
     const new1 = Uint8Array.from(raws[1].map(v => v + 1));
@@ -77,6 +83,7 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
     fs.unlinkSync(tempScript);
     fs.unlinkSync(stubPath);
 
+    expect(fs.existsSync(outFile)).to.be.true;
     const outBuf = fs.readFileSync(outFile);
     const fc = new FileContainer(new BinaryReader(new Uint8Array(outBuf)));
     expect(fc.count()).to.equal(3);

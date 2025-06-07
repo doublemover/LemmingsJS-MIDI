@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
+import '../js/SkillTypes.js';
 import { KeyboardShortcuts } from '../js/KeyboardShortcuts.js';
 import '../js/CommandSelectSkill.js';
 import '../js/CommandLemmingsAction.js';
@@ -15,6 +16,22 @@ import fakeTimers from '@sinonjs/fake-timers';
 globalThis.lemmings = { game: { showDebug: false } };
 
 describe('KeyboardShortcuts', function() {
+  let windowStub;
+
+  beforeEach(function() {
+    windowStub = {
+      addEventListener() {},
+      removeEventListener() {},
+      requestAnimationFrame(cb) { return 1; }
+    };
+    global.window = windowStub;
+    global.requestAnimationFrame = windowStub.requestAnimationFrame;
+  });
+
+  afterEach(function() {
+    delete global.window;
+    delete global.requestAnimationFrame;
+  });
   function createStubCanvas(width = 800, height = 600) {
     const ctx = {
       canvas: { width, height },
@@ -199,8 +216,19 @@ describe('KeyboardShortcuts', function() {
     win.requestAnimationFrame = (cb) => { raf = cb; return 1; };
     win.cancelAnimationFrame = () => {};
     global.window = win;
+    global.requestAnimationFrame = win.requestAnimationFrame;
     const view = { game, stage, nextFrame() {}, prevFrame() {} };
-    const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    const clock = fakeTimers.withGlobal(globalThis).install({
+      now: 0,
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+        'performance'
+      ]
+    });
 
     const ks = new KeyboardShortcuts(view);
     const startX = stage.gameImgProps.viewPoint.x;
@@ -215,5 +243,6 @@ describe('KeyboardShortcuts', function() {
     win.cancelAnimationFrame = origCancel;
     delete global.document;
     delete global.window;
+    delete global.requestAnimationFrame;
   });
 });

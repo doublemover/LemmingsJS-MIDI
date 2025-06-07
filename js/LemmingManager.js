@@ -46,6 +46,7 @@ class LemmingManager extends Lemmings.BaseLogger {
           this.lemmings = [];
         }
         this.minimapDots = new Uint8Array(0);
+        this.spawnTotal = 0;
         this.selectedIndex = -1;
         const maxDots = (gameVictoryCondition.getReleaseCount() +
           (lemmings.extraLemmings | 0)) * 2;
@@ -202,19 +203,31 @@ class LemmingManager extends Lemmings.BaseLogger {
       () => {
         const startingLemLength = this.lemmings.length;
         const lem = new Lemmings.Lemming(x, y, startingLemLength);
+        if (lemmings.bench) {
+          lem.lookRight = Math.random() < 0.5;
+        }
         this.setLemmingState(lem, Lemmings.LemmingStateType.FALLING);
         this.lemmings.push(lem);
+        this.spawnTotal += 1;
 
         const extraCount = lemmings.extraLemmings | 0;
         if (extraCount > 0) {
           const action = this.actions[Lemmings.LemmingStateType.FALLING];
           const extras = new Array(extraCount);
           for (let i = 0; i < extraCount; i++) {
-            const extra = new Lemmings.Lemming(x, y, startingLemLength + 1 + i);
+            const extra = new Lemmings.Lemming(
+              x,
+              y,
+              startingLemLength + 1 + i
+            );
+            if (lemmings.bench) {
+              extra.lookRight = Math.random() < 0.5;
+            }
             extra.setAction(action);
             extras[i] = extra;
           }
           Array.prototype.push.apply(this.lemmings, extras);
+          this.spawnTotal += extraCount;
         }
       })();
   }
