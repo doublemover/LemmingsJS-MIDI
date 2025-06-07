@@ -2,10 +2,8 @@
 
 *.gif binary
 *.jpg binary
-
-*.png filter=lfs diff=lfs merge=lfs -text
-*.mp4 filter=lfs diff=lfs merge=lfs -text
-*.dat filter=lfs diff=lfs mergs=lfs -text
+*.png binary
+*.dat binary
 
 # Tell Git to invoke our "merge-metrics" driver on metrics.json
 .searchMetrics/metrics.json    merge=merge_metrics
