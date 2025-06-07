@@ -81,4 +81,5 @@ l2-guyperfect.md: l2 file-format doc
 l2-level-format.md: l2-level-format doc
 l3-level-format.md: level-format l3 doc
 l2bitmap-overview.md: l2bitmap doc
+search-tool-doc.md: search doc
 bench-sequence.md: bench-sequence bench-mode
