@@ -16,4 +16,13 @@ describe('tools/check-undefined.js', function () {
     expect(result.status).to.not.equal(0);
     expect(result.stderr || result.stdout).to.match(/missingCall|require is not defined/);
   });
+
+  it('detects global leaks assigned without var/let', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    const file = path.join(dir, 'leak.js');
+    fs.writeFileSync(file, 'leakFn = function(){}; leakFn();');
+    const result = spawnSync('node', [script, file], { encoding: 'utf8' });
+    expect(result.status).to.not.equal(0);
+    expect(result.stderr || result.stdout).to.match(/leakFn is not defined/);
+  });
 });
