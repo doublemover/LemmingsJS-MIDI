@@ -59,7 +59,7 @@ describe('tools/search.js', function () {
       expect(res.status).to.equal(0);
       expect(res.stdout.includes('(func:')).to.be.false;
     }
-
+    
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

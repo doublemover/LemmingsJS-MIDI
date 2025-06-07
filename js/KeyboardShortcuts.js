@@ -132,6 +132,10 @@ class KeyboardShortcuts {
     const mgr = this.view.game.getLemmingManager?.();
     if (!mgr || !mgr.lemmings) return;
     for (const lem of mgr.lemmings) {
+      if (lem.removed) continue;
+      if (lem.countdownAction) continue;
+      if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.EXPLODING]) continue;
+      if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.OHNO]) continue;
       mgr.setLemmingState(lem, Lemmings.LemmingStateType.EXPLODING);
     }
   }
