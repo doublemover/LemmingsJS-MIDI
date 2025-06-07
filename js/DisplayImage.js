@@ -43,10 +43,11 @@ class DisplayImage extends Lemmings.BaseLogger {
   getWidth()  { return this.imgData?.width  ?? 0; }
   getHeight() { return this.imgData?.height ?? 0; }
 
-  /** Pixel dimensions of the backing image buffer. */
+  /** Size of the ImageData backing this DisplayImage. */
   get worldDataSize() {
     return { width: this.getWidth(), height: this.getHeight() };
   }
+
   set worldDataSize({ width, height }) {
     this.initSize(width, height);
   }

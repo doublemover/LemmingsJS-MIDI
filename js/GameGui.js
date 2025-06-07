@@ -524,7 +524,8 @@ class GameGui {
 
     if (this.miniMap) {
       const viewX = this.game.level.screenPositionX;
-      const { width: viewW } = d.worldDataSize;
+      const viewW = d.worldDataSize.width;
+
       this.miniMap.render(viewX, viewW);
     }
   }
