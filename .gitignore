@@ -1,7 +1,6 @@
 # IDEs
 .idea/
 .vscode/
-.DS_Store
 *.iml
 **/.project
 **/.settings
@@ -13,7 +12,6 @@ build/
 coverage/
 node_modules/
 exports/
-coverage/
 
 # Logs
 npm-debug.log*
