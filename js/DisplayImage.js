@@ -3,6 +3,7 @@ import './LogHandler.js';
 import { Lemmings } from './LemmingsNamespace.js';
 import { scaleImage } from './xbrz/xbrz.js';
 import { hqxScale, initHqx } from './vendor/hqx/index.js';
+import './EventHandler.js';
 initHqx();
 
 // a simple but high quality 53-bit hash
