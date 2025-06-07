@@ -8,6 +8,7 @@ import { spawnSync } from 'child_process';
 import * as tar from 'tar';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { archiveDir } from '../tools/archiveDir.js';
+import { createExtractorFromData } from 'node-unrar-js';
 import '../js/BinaryReader.js';
 
 const rarCheck = spawnSync('rar', ['--version'], { stdio: 'ignore' });
@@ -102,6 +103,54 @@ describe('NodeFileProvider', function () {
     await br.ready;
     assert.deepStrictEqual(Array.from(br.data), Array.from(data));
     assert.strictEqual(seen, path.resolve(dir, 'pack.rar'));
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  describe('nested rar archives', function () {
+    const NESTED_RAR_BASE64 =
+      'UmFyIRoHAQAzkrXlCgEFBgAFAQGAgAAxjDKDLQIDC9EABNEApIMCwa2wAoAAAQ9vdXRlci9pbm5lci5y' +
+      'YXIKAxP0xURonbd2BVJhciEaBwEAM5K15QoBBQYABQEBgIAAwyhVFScCAwuGAASGAKSDAoxNAtCAAAEJ' +
+      'aW5uZXIudHh0CgMT9MVEaB0qpgFpbm5lcgodd1ZRAwUEAEiIFwQtAgMLhgAEhgCkgwIgMDo2gAABD291' +
+      'dGVyL2hlbGxvLnR4dAoDE/TFRGjFrjkFaGVsbG8K54su8x0CAwsAAQDtgwGAAAEFb3V0ZXIKAxP0xURo' +
+      'nbd2BR13VlEDBQQA';
+    let dir;
+    let provider;
+    before(async function () {
+      dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-nested-'));
+      fs.writeFileSync(path.join(dir, 'outer.rar'), Buffer.from(NESTED_RAR_BASE64, 'base64'));
+      provider = new NodeFileProvider(dir);
+    });
+    after(function () {
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+
+    it('reads files from nested rar', async function () {
+      const br = await provider.loadBinary('outer.rar', 'outer/inner.rar');
+      await br.ready;
+      const extractor = await createExtractorFromData({ data: br.data });
+      const res = extractor.extract({ files: ['inner.txt'] });
+      const file = [...res.files][0];
+      assert.strictEqual(Buffer.from(file.extraction).toString(), 'inner\n');
+    });
+
+    it('fails on missing archive', async function () {
+      await assert.rejects(provider.loadBinary('missing.rar', 'foo.txt'));
+    });
+
+    it('fails on missing entry', async function () {
+      await assert.rejects(provider.loadBinary('outer.rar', 'nope.txt'));
+    });
+  });
+
+  it('handles path separators', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-path-'));
+    const zip = new AdmZip();
+    zip.addFile('bar.txt', Buffer.from('x', 'utf8'));
+    zip.writeZip(path.join(dir, 'p.zip'));
+    const provider = new NodeFileProvider(dir);
+    const a = await provider.loadString('p.zip/bar.txt');
+    const b = await provider.loadString('p.zip\\bar.txt');
+    assert.strictEqual(a, b);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
