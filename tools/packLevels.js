@@ -27,9 +27,9 @@ function usage() {
       console.warn(`Skipping ${file}: expected 2048 bytes, got ${buf.length}`);
       continue;
     }
-    const { data, checksum, initialBits } = PackFilePart.pack(buf);
+    const { byteArray, checksum, initialBits } = PackFilePart.pack(buf);
     const decompressedSize = buf.length;
-    const size = data.length + HEADER_SIZE;
+    const size = byteArray.length + HEADER_SIZE;
     const header = new Uint8Array([
       initialBits,
       checksum,
@@ -40,16 +40,16 @@ function usage() {
       (size >> 8) & 0xFF,
       size & 0xFF
     ]);
-    parts.push({ header, data });
+    parts.push({ header, byteArray });
     totalSize += size;
   }
 
   const out = new Uint8Array(totalSize);
   let offset = 0;
-  for (const { header, data } of parts) {
+  for (const { header, byteArray } of parts) {
     out.set(header, offset);
-    out.set(data, offset + HEADER_SIZE);
-    offset += header.length + data.length;
+    out.set(byteArray, offset + HEADER_SIZE);
+    offset += header.length + byteArray.length;
   }
 
   fs.writeFileSync(outFile, out);
