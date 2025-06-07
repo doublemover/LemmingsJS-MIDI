@@ -15,7 +15,7 @@ class MockLogHandler {
 describe('UnpackFilePart', function () {
   function roundTrip(data) {
     const packed = PackFilePart.pack(data);
-    const br = new BinaryReader(packed.data);
+    const br = new BinaryReader(packed.byteArray);
     const part = new UnpackFilePart(br);
     part.offset = 0;
     part.compressedSize = br.length;
@@ -42,7 +42,7 @@ describe('UnpackFilePart', function () {
     Lemmings.LogHandler = MockLogHandler;
     const arr = Uint8Array.from([9, 8, 7]);
     const packed = PackFilePart.pack(arr);
-    const br = new BinaryReader(packed.data);
+    const br = new BinaryReader(packed.byteArray);
     const part = new UnpackFilePart(br);
     part.offset = 0;
     part.compressedSize = br.length;

@@ -28,7 +28,7 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
     ];
     const parts = raws.map(raw => {
       const packed = PackFilePart.pack(raw);
-      const size = packed.data.length + 10;
+      const size = packed.byteArray.length + 10;
       const header = new Uint8Array([
         packed.initialBits,
         packed.checksum,
@@ -38,7 +38,7 @@ describe('tools/patchSprites.js (mocked PNG)', function () {
         (size >> 8) & 0xFF,
         size & 0xFF
       ]);
-      return { header, packed: packed.data, size };
+      return { header, packed: packed.byteArray, size };
     });
     const total = parts.reduce((s, p) => s + p.size, 0);
     const datBuf = new Uint8Array(total);

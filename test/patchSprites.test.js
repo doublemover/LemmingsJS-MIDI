@@ -24,7 +24,7 @@ describe('tools/patchSprites.js', function () {
 
     const raw = Uint8Array.from({ length: 16 }, (_, i) => i);
     const packed = PackFilePart.pack(raw);
-    const size = packed.data.length + 10;
+    const size = packed.byteArray.length + 10;
     const header = new Uint8Array([
       packed.initialBits,
       packed.checksum,
@@ -36,7 +36,7 @@ describe('tools/patchSprites.js', function () {
     ]);
     const datBuf = new Uint8Array(size);
     datBuf.set(header, 0);
-    datBuf.set(packed.data, 10);
+    datBuf.set(packed.byteArray, 10);
     const datFile = path.join(dir, 'orig.dat');
     fs.writeFileSync(datFile, datBuf);
 
@@ -84,7 +84,7 @@ describe('tools/patchSprites.js', function () {
 
     const parts = raws.map((raw, idx) => {
       const packed = PackFilePart.pack(raw);
-      const size = packed.data.length + 10;
+      const size = packed.byteArray.length + 10;
       const header = new Uint8Array([
         packed.initialBits,
         packed.checksum,
@@ -94,7 +94,7 @@ describe('tools/patchSprites.js', function () {
         (size >> 8) & 0xFF,
         size & 0xFF
       ]);
-      return { header, packed: packed.data, size };
+      return { header, packed: packed.byteArray, size };
     });
 
     const total = parts.reduce((s, p) => s + p.size, 0);
