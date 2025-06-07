@@ -202,6 +202,9 @@ class LemmingManager extends Lemmings.BaseLogger {
       () => {
         const startingLemLength = this.lemmings.length;
         const lem = new Lemmings.Lemming(x, y, startingLemLength);
+        if (lemmings.bench) {
+          lem.lookRight = Math.random() < 0.5;
+        }
         this.setLemmingState(lem, Lemmings.LemmingStateType.FALLING);
         this.lemmings.push(lem);
 
@@ -210,7 +213,14 @@ class LemmingManager extends Lemmings.BaseLogger {
           const action = this.actions[Lemmings.LemmingStateType.FALLING];
           const extras = new Array(extraCount);
           for (let i = 0; i < extraCount; i++) {
-            const extra = new Lemmings.Lemming(x, y, startingLemLength + 1 + i);
+            const extra = new Lemmings.Lemming(
+              x,
+              y,
+              startingLemLength + 1 + i
+            );
+            if (lemmings.bench) {
+              extra.lookRight = Math.random() < 0.5;
+            }
             extra.setAction(action);
             extras[i] = extra;
           }
