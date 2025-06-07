@@ -23,10 +23,10 @@ export function processHtmlFile(filePath, options = {}) {
 
     const code = $(elem).html() || '';
     const loc = {};
-    const info = elem.sourceCodeLocation;
-    if (info) {
-      loc.start = info.startTag.endOffset;
-      loc.end = info.endTag.startOffset;
+    const sourceInfo = elem.sourceCodeLocation;
+    if (sourceInfo) {
+      loc.start = sourceInfo.startTag.endOffset;
+      loc.end = sourceInfo.endTag.startOffset;
     }
     snippets.push({ code, loc, type: 'script' });
   });
@@ -36,10 +36,10 @@ export function processHtmlFile(filePath, options = {}) {
     for (const [name, value] of Object.entries(attribs)) {
       if (/^on[a-z]+/i.test(name)) {
         const loc = {};
-        const info = elem.sourceCodeLocation?.attrs?.[name];
-        if (info) {
-          loc.start = info.startOffset;
-          loc.end = info.endOffset;
+        const sourceInfo = elem.sourceCodeLocation?.attrs?.[name];
+        if (sourceInfo) {
+          loc.start = sourceInfo.startOffset;
+          loc.end = sourceInfo.endOffset;
         }
         snippets.push({ code: value, loc, type: 'handler', attr: name });
       }
