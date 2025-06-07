@@ -28,7 +28,7 @@
     "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js",
     "agent-update-searchhistory": "node tools/mergeSearchHistory.js",
     "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .searchMetrics/metrics.json",
-    "test-workflows": "mocha test/search-history-workflow.test.js"
+    "test-workflows": "mocha test/search-history-workflow.test.js test/no-result-queries-workflow.test.js test/no-result-queries-ci-workflow.test.js test/search-history-ci-workflow.test.js"
   },
   "repository": {
     "type": "git",
