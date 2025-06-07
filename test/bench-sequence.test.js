@@ -78,6 +78,7 @@ describe('bench sequence', function() {
 
     let timer = view.game.getGameTimer();
     expect(timer.speedFactor).to.equal(6);
+    // speeds below 6 use a scaled threshold, so drop just below 1x
     timer.speedFactor = 0.9;
     timer.eachGameSecond.trigger();
     await Promise.resolve();
