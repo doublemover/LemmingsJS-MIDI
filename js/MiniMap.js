@@ -96,6 +96,7 @@ class MiniMap {
     if (!this.guiDisplay) return;
     if (!this._mouseDown) return;
     const gd = this.guiDisplay;
+    const { width: gdW, height: gdH } = gd.worldDataSize;
 
     const destX = gd.worldDataSize.width  - this.width;
     const destY = gd.worldDataSize.height - this.height - 1;

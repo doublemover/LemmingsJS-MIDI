@@ -46,7 +46,6 @@ describe('benchSpeedAdjust recovery', function() {
     clock.tick(1200); // more than 16 steps
     raf(clock.now);
     expect(timer.speedFactor).to.be.below(1);
-
   });
 
   it('scales thresholds with speedFactor', function() {

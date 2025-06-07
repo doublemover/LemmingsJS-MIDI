@@ -105,8 +105,8 @@ describe('Stage updateViewPoint', function() {
     expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
     expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
 
-    const worldW = display.getWidth();
-    const worldH = display.getHeight();
+    const worldW = display.worldDataSize.width;
+    const worldH = display.worldDataSize.height;
     const viewW = img.width / vp.scale;
     const viewH = img.height / vp.scale;
 
@@ -147,8 +147,8 @@ describe('Stage updateViewPoint', function() {
       expect(Math.abs(postX - preX)).to.be.at.most(1);
       expect(Math.abs(postY - preY)).to.be.at.most(1);
 
-      const worldW = display.getWidth();
-      const worldH = display.getHeight();
+      const worldW = display.worldDataSize.width;
+      const worldH = display.worldDataSize.height;
       const viewW = img.width / vp.scale;
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);
@@ -183,8 +183,8 @@ describe('Stage updateViewPoint', function() {
     vp.scale = 2;
 
     const checkClamp = () => {
-      const worldW = display.getWidth();
-      const worldH = display.getHeight();
+      const worldW = display.worldDataSize.width;
+      const worldH = display.worldDataSize.height;
       const viewW = img.width / vp.scale;
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);

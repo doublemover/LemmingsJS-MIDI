@@ -19,5 +19,10 @@ describe('GitHub test workflow', function () {
       'npm run lint',
       'npm test'
     ]);
+
+    const syncStep = steps.find(
+      s => s.run && s.run.includes('git checkout origin/master -- tools')
+    );
+    expect(syncStep, 'sync tools step missing').to.exist;
   });
 });

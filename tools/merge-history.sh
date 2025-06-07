@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# scripts/merge-history.sh
+# tools/merge-history.sh
 #
 # A small wrapper that takes three arguments:
 #   $1 = path/to/base_searchHistory
@@ -11,7 +11,7 @@
 # using mergeSearchHistory.js.  The result is written back to “ours” ($2).
 #
 # Usage (Git will call this with):
-#   scripts/merge-history.sh <base> <ours> <theirs>
+#   tools/merge-history.sh <base> <ours> <theirs>
 #
 
 set -euo pipefail

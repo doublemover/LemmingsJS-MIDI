@@ -17,7 +17,8 @@ class StageStub {
       height: 100,
       display: {
         getWidth() { return 200; },
-        getHeight() { return 200; }
+        getHeight() { return 200; },
+        get worldDataSize() { return { width: 200, height: 200 }; }
       },
       viewPoint: { x: 0, y: 0, scale: 1 }
     };
@@ -56,7 +57,18 @@ describe('KeyboardShortcuts _step loop', function() {
   beforeEach(function() {
     windowStub = createWindowStub();
     global.window = windowStub;
-    clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    global.requestAnimationFrame = windowStub.requestAnimationFrame;
+    clock = fakeTimers.withGlobal(globalThis).install({
+      now: 0,
+      toFake: [
+        'setTimeout',
+        'clearTimeout',
+        'setInterval',
+        'clearInterval',
+        'Date',
+        'performance'
+      ]
+    });
     stage = new StageStub();
     const timer = { speedFactor: 1 };
     const game = { gameGui: { drawSpeedChange() {} }, getGameTimer() { return timer; } };
@@ -67,6 +79,7 @@ describe('KeyboardShortcuts _step loop', function() {
   afterEach(function() {
     clock.uninstall();
     delete global.window;
+    delete global.requestAnimationFrame;
   });
 
   it('updates view when panning', function() {

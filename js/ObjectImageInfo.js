@@ -1,3 +1,4 @@
+import './BaseImageInfo.js';
 import { Lemmings } from './LemmingsNamespace.js';
 
 class ObjectImageInfo extends Lemmings.BaseImageInfo {

@@ -1,5 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import './ObjectImageInfo.js';
+import './TerrainImageInfo.js';
 let steelSprites = null;
 
 async function loadSteelSprites() {

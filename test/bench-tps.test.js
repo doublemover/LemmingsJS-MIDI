@@ -22,6 +22,7 @@ class DisplayImageStub {
   setBackground(bg) { this.background = bg; }
   getWidth() { return this.width; }
   getHeight() { return this.height; }
+  get worldDataSize() { return { width: this.width, height: this.height }; }
   drawFrame(frame, x, y) { this.calls.push({ op: 'drawFrame', frame, x, y }); }
   drawFrameCovered(frame, x, y) { this.calls.push({ op: 'drawFrameCovered', frame, x, y }); }
   drawFrameResized(frame, x, y, w, h) { this.calls.push({ op: 'drawFrameResized', frame, x, y, w, h }); }

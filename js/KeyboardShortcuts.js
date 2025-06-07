@@ -73,8 +73,9 @@ class KeyboardShortcuts {
       // anchor zooming around the current screen centre without
       // drifting the viewpoint. Using updateViewPoint() directly was
       // causing the camera to slide left as the scale changed.
-      const cx = img.width / 2;
-      const cy = img.height / 2;
+      const { width: vpW, height: vpH } = img.canvasViewportSize;
+      const cx = vpW / 2;
+      const cy = vpH / 2;
       const centerX = vp.x + cx / vp.scale;
       const centerY = vp.y + cy / vp.scale;
       let targetZ = 0;

@@ -14,6 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
+      - name: Sync tools from master
+        run: |
+          git fetch origin master
+          git checkout origin/master -- tools
       - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20
