@@ -465,22 +465,22 @@ const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
-let data = {};
+let metrics = {};
 try {
-  data = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
+  metrics = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
 } catch {
-  data = {};
+  metrics = {};
 }
 const inc = (f, key) => {
-  if (!data[f]) data[f] = { md: 0, code: 0, terms: [] };
-  data[f][key]++;
+  if (!metrics[f]) metrics[f] = { md: 0, code: 0, terms: [] };
+  metrics[f][key]++;
   raw.forEach((t) => {
-    if (!data[f].terms.includes(t)) data[f].terms.push(t);
+    if (!metrics[f].terms.includes(t)) metrics[f].terms.push(t);
   });
 };
 mdHitsAll.forEach((h) => inc(h.file, 'md'));
 codeHitsAll.forEach((h) => inc(h.file, 'code'));
-await fs.writeFile(metricsPath, JSON.stringify(data) + '\n');
+await fs.writeFile(metricsPath, JSON.stringify(metrics) + '\n');
 
 await fs.appendFile(
   historyPath,
