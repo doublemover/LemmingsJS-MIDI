@@ -27,7 +27,7 @@ describe('VGASpecReader', function() {
     part[pos++] = 128;  // end chunk
 
     const packed = Lemmings.PackFilePart.pack(part);
-    const size = packed.data.length + 10;
+    const size = packed.byteArray.length + 10;
     const header = new Uint8Array([
       packed.initialBits,
       packed.checksum,
@@ -40,7 +40,7 @@ describe('VGASpecReader', function() {
     ]);
     const container = new Uint8Array(size);
     container.set(header, 0);
-    container.set(packed.data, 10);
+    container.set(packed.byteArray, 10);
     const br = new BinaryReader(container);
     const reader = new VGASpecReader(br, 320, 40);
 

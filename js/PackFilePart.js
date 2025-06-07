@@ -24,7 +24,7 @@ class PackFilePart {
    * backreferences mirroring the semantics of {@link UnpackFilePart#doUnpacking}.
    *
    * @param {Uint8Array} buffer Decompressed bytes to encode
-   * @returns {{data:Uint8Array, checksum:number, initialBits:number}}
+   * @returns {{byteArray:Uint8Array, checksum:number, initialBits:number}}
    */
   static pack(buffer) {
     if (!(buffer instanceof Uint8Array)) buffer = new Uint8Array(buffer);
@@ -69,15 +69,15 @@ class PackFilePart {
       byteGroups.push(v);
     }
     byteGroups.reverse();
-    const data = Uint8Array.from(byteGroups);
-    const checksum = data.reduce((a, b) => a ^ b, 0);
+    const byteArray = Uint8Array.from(byteGroups);
+    const checksum = byteArray.reduce((a, b) => a ^ b, 0);
     if (bits.length % 8 !== 0) {
       const pad = 8 - (bits.length % 8);
       for (let i = 0; i < pad; i++) bits.push(0);
     }
     const initialBits = 8;
 
-    return { data, checksum, initialBits };
+    return { byteArray, checksum, initialBits };
   }
 }
 
