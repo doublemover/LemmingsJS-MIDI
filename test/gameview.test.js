@@ -56,6 +56,7 @@ class StageMock {
     this.controller.onMouseRightUp.on(e => this.gameDisplay.onMouseRightUp.trigger(e));
     this.controller.onMouseMove.on(e => this.gameDisplay.onMouseMove.trigger(e));
     this.controller.onDoubleClick.on(e => this.gameDisplay.onDoubleClick.trigger(e));
+    this.updateStageSize();
   }
   getGameDisplay() { return this.gameDisplay; }
   getGuiDisplay() { return this.guiDisplay; }
@@ -138,6 +139,25 @@ describe('GameView', function () {
     expect(game.setGameDisplayArgs).to.equal(gameDisplay);
     expect(game.setGuiDisplayArgs).to.equal(guiDisplay);
     expect(game.startCalled).to.be.true;
+  });
+
+  it('calls updateStageSize when canvas is set', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    let called = 0;
+    const orig = StageMock.prototype.updateStageSize;
+    StageMock.prototype.updateStageSize = function () { called++; };
+
+    const canvas = {
+      addEventListener() {},
+      removeEventListener() {},
+      getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 100 }; }
+    };
+
+    view.gameCanvas = canvas;
+
+    expect(called).to.equal(1);
+    StageMock.prototype.updateStageSize = orig;
   });
 
   it('rounds speed factor up when fraction is above .5', async function () {
