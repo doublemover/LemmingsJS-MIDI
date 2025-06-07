@@ -121,4 +121,90 @@ describe('Skill panel action sprites', function () {
     expect(m.label).to.equal(`mask-${Lemmings.MaskTypes.NUMBERS}`);
     expect(m.GetMask(2)).to.equal(`mask-${Lemmings.MaskTypes.NUMBERS}-2`);
   });
+
+  it('maps every skill to the correct sprite directions', function () {
+    const sprites = new FakeSprites();
+    const masks = new FakeMasks();
+
+    ActionCountdownSystem.numberMasks.clear();
+
+    const cases = {
+      [Lemmings.SkillTypes.CLIMBER]: {
+        type: Lemmings.SpriteTypes.CLIMBING,
+        left: 'left',
+        right: 'right'
+      },
+      [Lemmings.SkillTypes.FLOATER]: {
+        type: Lemmings.SpriteTypes.UMBRELLA,
+        left: 'left',
+        right: 'right'
+      },
+      [Lemmings.SkillTypes.BOMBER]: {
+        countdown: true
+      },
+      [Lemmings.SkillTypes.BLOCKER]: {
+        type: Lemmings.SpriteTypes.BLOCKING,
+        single: true
+      },
+      [Lemmings.SkillTypes.BUILDER]: {
+        type: Lemmings.SpriteTypes.BUILDING,
+        left: 'left',
+        right: 'right'
+      },
+      [Lemmings.SkillTypes.BASHER]: {
+        type: Lemmings.SpriteTypes.BASHING,
+        masks: {
+          left: Lemmings.MaskTypes.BASHING_L,
+          right: Lemmings.MaskTypes.BASHING_R
+        }
+      },
+      [Lemmings.SkillTypes.MINER]: {
+        type: Lemmings.SpriteTypes.MINING,
+        masks: {
+          left: Lemmings.MaskTypes.MINING_L,
+          right: Lemmings.MaskTypes.MINING_R
+        }
+      },
+      [Lemmings.SkillTypes.DIGGER]: {
+        type: Lemmings.SpriteTypes.DIGGING,
+        left: 'left',
+        right: 'right'
+      }
+    };
+
+    for (const [skill, info] of Object.entries(cases)) {
+      let sys;
+      if (info.countdown) {
+        sys = new ActionCountdownSystem(masks);
+        const mask = ActionCountdownSystem.numberMasks.get('numbers');
+        expect(mask.GetMask(1)).to.equal(`mask-${Lemmings.MaskTypes.NUMBERS}-1`);
+        continue;
+      }
+
+      const opts = { sprites, spriteType: info.type };
+      if (info.single) opts.singleSprite = true;
+      if (info.masks) {
+        opts.masks = masks;
+        opts.maskTypes = info.masks;
+      }
+      sys = new ActionBaseSystem(opts);
+
+      if (info.single) {
+        expect(sys.sprites.get('both').label)
+          .to.equal(`anim-${info.type}-false`);
+      } else {
+        expect(sys.sprites.get('left').label)
+          .to.equal(`anim-${info.type}-false`);
+        expect(sys.sprites.get('right').label)
+          .to.equal(`anim-${info.type}-true`);
+      }
+
+      if (info.masks) {
+        expect(sys.masks.get('left').label)
+          .to.equal(`mask-${info.masks.left}`);
+        expect(sys.masks.get('right').label)
+          .to.equal(`mask-${info.masks.right}`);
+      }
+    }
+  });
 });
