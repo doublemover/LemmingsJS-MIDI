@@ -410,6 +410,8 @@ class GameGui {
       } else if (lemmings.bench == true && this.gameSpeedChanged) {
         this.drawGreenString(d, 'T' + lemmings.steps, 120, 0);
         this.drawGreenString(d, 'TPS ' + Math.round(lemmings.tps), 152, 0);
+        const count = this.game.getLemmingManager?.().spawnTotal ?? 0;
+        this.drawGreenString(d, 'Spawn ' + count, 192, 0);
       }
     }
 
