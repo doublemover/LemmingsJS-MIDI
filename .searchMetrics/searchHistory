@@ -121,6 +121,7 @@
 {"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
 {"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
 {"time":"2025-06-06T20:54:32.218Z","query":"scale 2","mdFiles":21,"codeFiles":151,"ms":638}
+{"time":"2025-06-06T21:19:33.257Z","query":"EventHandler","mdFiles":14,"codeFiles":97,"ms":135}
 {"time":"2025-06-06T21:41:09.905Z","query":"worldDataSize","mdFiles":27,"codeFiles":116,"ms":312}
 {"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}
 {"time":"2025-06-07T21:20:38.998Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":260}
@@ -131,6 +132,7 @@
 {"time":"2025-06-07T05:42:48.124Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T05:42:53.925Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":82}
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
+{"time":"2025-06-07T22:05:19.362Z","query":"instant nuke","mdFiles":9,"codeFiles":12,"ms":806}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
 {"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:52:52.120Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":653}
 {"time":"2025-06-07T22:53:16.163Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":588}
@@ -144,3 +146,43 @@
 {"time":"2025-06-07T22:53:53.937Z","query":"bitreader","mdFiles":0,"codeFiles":1,"ms":113}
 {"time":"2025-06-07T22:53:57.495Z","query":"BitReader","mdFiles":27,"codeFiles":73,"ms":259}
 {"time":"2025-06-07T22:54:02.775Z","query":"chunkScore","mdFiles":7,"codeFiles":9,"ms":162}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:29.314Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":232}
+{"time":"2025-06-07T23:00:32.185Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":189}
+{"time":"2025-06-07T23:00:35.214Z","query":"drawCornerRect","mdFiles":18,"codeFiles":89,"ms":297}
+{"time":"2025-06-07T23:00:40.368Z","query":"hoverLemming","mdFiles":37,"codeFiles":222,"ms":277}
+{"time":"2025-06-07T23:00:42.556Z","query":"GameDisplay","mdFiles":45,"codeFiles":156,"ms":244}
+{"time":"2025-06-07T23:00:44.603Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":128}
+{"time":"2025-06-07T23:00:47.011Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":238}
+{"time":"2025-06-07T23:00:49.243Z","query":"drawSelection","mdFiles":23,"codeFiles":89,"ms":198}
+{"time":"2025-06-07T23:00:54.088Z","query":"GameDisplay drawFrame","mdFiles":50,"codeFiles":182,"ms":265}
+{"time":"2025-06-07T23:00:59.853Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":231}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:26.829Z","query":"GameGui drawPaused","mdFiles":48,"codeFiles":161,"ms":407}
+{"time":"2025-06-07T23:00:30.621Z","query":"handleSkillMouseDown","mdFiles":34,"codeFiles":78,"ms":343}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:37.855Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":136}
+{"time":"2025-06-07T22:59:40.080Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":117}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:03.758Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":340}
+{"time":"2025-06-07T23:00:05.947Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":427}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:06.504Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":126}
+{"time":"2025-06-07T22:59:10.125Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":270}
+{"time":"2025-06-07T23:01:16.040Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":128}
+{"time":"2025-06-07T23:01:19.348Z","query":"panel","mdFiles":12,"codeFiles":22,"ms":70}
+{"time":"2025-06-07T23:01:22.372Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":140}
+{"time":"2025-06-07T23:02:00.975Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":147}
+{"time":"2025-06-07T23:02:04.340Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":233}
+{"time":"2025-06-07T23:02:29.352Z","query":"skill panel","mdFiles":27,"codeFiles":49,"ms":95}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:51:32.761Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":300}
+{"time":"2025-06-07T22:51:34.958Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":590}
+{"time":"2025-06-07T22:51:36.603Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":315}
+{"time":"2025-06-07T22:51:44.210Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":331}
+{"time":"2025-06-07T22:51:46.639Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":640}
+{"time":"2025-06-07T22:52:56.587Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
+{"time":"2025-06-07T22:52:58.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":134}
+{"time":"2025-06-07T22:53:01.913Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":135}
+{"time":"2025-06-07T22:53:04.024Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
+{"time":"2025-06-07T22:53:06.393Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":123}
+{"time":"2025-06-07T22:53:08.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":153}
+{"time":"2025-06-07T22:53:10.733Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":190}
+{"time":"2025-06-07T22:53:12.877Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":141}
+{"time":"2025-06-07T22:53:18.416Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":138}
+{"time":"2025-06-07T22:53:20.731Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":160}
+{"time":"2025-06-07T22:53:23.742Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":173}

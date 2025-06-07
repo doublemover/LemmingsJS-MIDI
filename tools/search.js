@@ -299,7 +299,8 @@ function agentText() {
       const scoreMd1 = colorScore(md1.score, maxMdScore).padEnd(4);
       out += `[${scoreMd1}] ` +
         c.magentaBright(path.basename(md1.file)) +
-        ` (func: ${md1.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       for (let i = st1; i < en1; i++) {
         const num = c.green(String(i + 1).padStart(4));
         const hl = linesMd[i].replace(rx, (m) => c.bold.yellowBright(m));
@@ -347,11 +348,11 @@ function agentText() {
       const zc = lc - 1;
       const stC = Math.max(0, zc - contextLines);
       const enC = Math.min(linesC.length, zc + contextLines + 1);
-
       const sc = colorScore(h.score, maxCodeScore).padEnd(4);
       out += `[${sc}] ` +
         c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       for (let j = stC; j < enC; j++) {
         const num = c.green(String(j + 1).padStart(4));
         const hl = linesC[j].replace(rx, (m) => c.bold.yellowBright(m));
@@ -425,6 +426,7 @@ function humanText() {
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
         ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
@@ -459,6 +461,7 @@ function humanText() {
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
         ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
@@ -544,6 +547,7 @@ if (argv.stats) {
 /* ---------- Update .searchMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
+const noResultPath = path.join(metricsDir, 'noResultQueries');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
 let metrics = {};
@@ -573,3 +577,10 @@ await fs.appendFile(
     ms: Date.now() - t0,
   }) + '\n'
 );
+
+if (totalMdFiles === 0 && totalCodeFiles === 0) {
+  await fs.appendFile(
+    noResultPath,
+    JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
+  );
+}
