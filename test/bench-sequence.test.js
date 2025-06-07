@@ -16,10 +16,17 @@ class StageMock {
   startOverlayFade() {}
 }
 
+class LemmingManagerMock {
+  constructor() { this._spawnCount = 0; this.spawnTotal = 0; }
+  get spawnCount() { return this._spawnCount; }
+  set spawnCount(v) { this._spawnCount = v; this.spawnTotal += v; }
+  getLemmings() { return new Array(this._spawnCount); }
+}
+
 class GameMock {
   constructor() {
     this.timer = new GameTimer({ timeLimit: 1 });
-    this.lemmingManager = { spawnCount:0, getLemmings: () => new Array(this.lemmingManager.spawnCount) };
+    this.lemmingManager = new LemmingManagerMock();
     this.level = { width:100, height:50, entrances:[], screenPositionX:0, render(){} };
     this.onGameEnd = new Lemmings.EventHandler();
   }
@@ -76,17 +83,23 @@ describe('bench sequence', function() {
     const orig = console.log; console.log = m => logs.push(m);
     await view.setup();
 
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(10);
+
     let timer = view.game.getGameTimer();
     expect(timer.speedFactor).to.equal(6);
     timer.speedFactor = 0.9;
     timer.eachGameSecond.trigger();
     await Promise.resolve();
 
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(15);
+
     expect(logs[0]).to.equal(10);
     timer = view.game.getGameTimer();
     timer.speedFactor = 0.9;
     timer.eachGameSecond.trigger();
     await Promise.resolve();
+
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(17);
     expect(logs[1]).to.equal(5);
 
     console.log = orig;
