@@ -482,8 +482,44 @@ class GameView extends Lemmings.BaseLogger {
     await this.loadLevel();
     const level = this.game.level;
     level.entrances.length = 0;
-    for (let i = 0; i < entrances; i++) {
-      level.entrances.push({ x: (Math.random() * level.width) | 0, y: 0 });
+
+    const gm = level.getGroundMaskLayer();
+    const hazard = new Set([
+      Lemmings.TriggerTypes.DROWN,
+      Lemmings.TriggerTypes.FRYING,
+      Lemmings.TriggerTypes.KILL,
+      Lemmings.TriggerTypes.TRAP,
+    ]);
+
+    const chooseSpot = () => {
+      const x = (Math.random() * level.width) | 0;
+      if (gm.hasGroundAt(x, 0)) return null;
+      let groundY = -1;
+      for (let y = 0; y < level.height; y++) {
+        if (gm.hasGroundAt(x, y)) { groundY = y; break; }
+      }
+      if (groundY < 0) return null;
+      let spawnY = groundY - ((Math.random() * 55) | 0);
+      if (spawnY < 0) spawnY = 0;
+      for (let y = spawnY; y <= groundY; y++) {
+        if (gm.hasGroundAt(x, y)) return null;
+      }
+      for (const t of level.triggers) {
+        if (hazard.has(t.type) &&
+            x >= t.x1 && x <= t.x2 &&
+            groundY >= t.y1 && groundY <= t.y2) {
+          return null;
+        }
+      }
+      if (spawnY >= level.height) return null;
+      return { x: x - 24, y: spawnY - 14 };
+    };
+
+    let attempts = 0;
+    while (level.entrances.length < entrances && attempts < entrances * 50) {
+      const spot = chooseSpot();
+      if (spot) level.entrances.push(spot);
+      attempts++;
     }
     if (this.game.getLemmingManager) {
       const lm = this.game.getLemmingManager();
