@@ -270,12 +270,13 @@ function agentText() {
       const en1 = Math.min(linesMd.length, z1 + 3);
 
       const scoreMd1 = colorScore(md1.totalMatches, maxMdMatches).padEnd(4);
+      const fnPart = md1.enclosingFunction
+        ? ` (func: ${md1.enclosingFunction})`
+        : '';
       out += `[${scoreMd1}] ` +
-        c.magentaBright(path.basename(md1.file));
-      if (md1.enclosingFunction) {
-        out += ` (func: ${md1.enclosingFunction})`;
-      }
-      out += '\n';
+        c.magentaBright(path.basename(md1.file)) +
+        fnPart +
+        '\n';
       for (let i = st1; i < en1; i++) {
         const num = c.green(String(i + 1).padStart(4));
         const hl = linesMd[i].replace(rx, (m) => c.bold.yellowBright(m));
@@ -288,12 +289,11 @@ function agentText() {
     for (let i = SHOW_SNIPPET_MD; i < SHOW_SNIPPET_MD + LIST_MD; i++) {
       const h = mdHitsAll[i];
       const sc = colorScore(h.totalMatches, maxMdMatches).padEnd(4);
+      const fnPart = h.enclosingFunction ? ` (func: ${h.enclosingFunction})` : '';
       out += `[${sc}] ` +
-        c.magentaBright(path.basename(h.file));
-      if (h.enclosingFunction) {
-        out += ` (func: ${h.enclosingFunction})`;
-      }
-      out += '\n';
+        c.magentaBright(path.basename(h.file)) +
+        fnPart +
+        '\n';
     }
     out += '\n';
   }
@@ -315,12 +315,11 @@ function agentText() {
       const enC = Math.min(linesC.length, zc + 3);
 
       const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
+      const fnPart = h.enclosingFunction ? ` (func: ${h.enclosingFunction})` : '';
       out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file));
-      if (h.enclosingFunction) {
-        out += ` (func: ${h.enclosingFunction})`;
-      }
-      out += '\n';
+        c.blueBright(path.basename(h.file)) +
+        fnPart +
+        '\n';
       for (let j = stC; j < enC; j++) {
         const num = c.green(String(j + 1).padStart(4));
         const hl = linesC[j].replace(rx, (m) => c.bold.yellowBright(m));
@@ -333,12 +332,11 @@ function agentText() {
     for (let i = SHOW_SNIPPET_CODE; i < SHOW_SNIPPET_CODE + LIST_CODE; i++) {
       const h = codeHitsAll[i];
       const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
+      const fnPart = h.enclosingFunction ? ` (func: ${h.enclosingFunction})` : '';
       out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file));
-      if (h.enclosingFunction) {
-        out += ` (func: ${h.enclosingFunction})`;
-      }
-      out += '\n';
+        c.blueBright(path.basename(h.file)) +
+        fnPart +
+        '\n';
     }
     out += '\n';
   }
@@ -384,13 +382,10 @@ function humanText() {
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}`;
-      if (h.enclosingFunction) {
-        out += `, func: ${h.enclosingFunction}`;
-      }
-      out += '\n';
+        ` — hits: ${sc}, lines: ${pos}${fnPart}\n`;
     }
     if (mdHitsAll.length > 10) {
       out += `... and ${mdHitsAll.length - 10} more Markdown files.\n`;
@@ -409,13 +404,10 @@ function humanText() {
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}`;
-      if (h.enclosingFunction) {
-        out += `, func: ${h.enclosingFunction}`;
-      }
-      out += '\n';
+        ` — hits: ${sc}, lines: ${pos}${fnPart}\n`;
     }
     if (codeHitsAll.length > 10) {
       out += `... and ${codeHitsAll.length - 10} more code files.\n`;
@@ -430,21 +422,27 @@ function humanJSON() {
   // Human‐friendly JSON (truncated to top 10 each)
   return JSON.stringify(
     {
-      markdown: mdHitsAll.slice(0, 10).map((h) => ({
-        file: path.basename(h.file),
-        path: path.dirname(h.file),
-        hits: h.totalMatches,
-        lines: h.realPos,
-        function: h.enclosingFunction || null,
-      })),
+      markdown: mdHitsAll.slice(0, 10).map((h) => {
+        const obj = {
+          file: path.basename(h.file),
+          path: path.dirname(h.file),
+          hits: h.totalMatches,
+          lines: h.realPos,
+        };
+        if (h.enclosingFunction) obj.function = h.enclosingFunction;
+        return obj;
+      }),
       more_md: Math.max(0, mdHitsAll.length - 10),
-      code: codeHitsAll.slice(0, 10).map((h) => ({
-        file: path.basename(h.file),
-        path: path.dirname(h.file),
-        hits: h.totalMatches,
-        lines: h.realPos,
-        function: h.enclosingFunction || null,
-      })),
+      code: codeHitsAll.slice(0, 10).map((h) => {
+        const obj = {
+          file: path.basename(h.file),
+          path: path.dirname(h.file),
+          hits: h.totalMatches,
+          lines: h.realPos,
+        };
+        if (h.enclosingFunction) obj.function = h.enclosingFunction;
+        return obj;
+      }),
       more_code: Math.max(0, codeHitsAll.length - 10),
     },
     null,
