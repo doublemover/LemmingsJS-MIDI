@@ -142,7 +142,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm start`
 
 - Then open http://127.0.0.1:8080 in your browser
-- If you encounter any issues please [https://github.com/doublemover/LemmingsJS-MIDI/issues](let us know here)
+- If you encounter any issues [please let us know here](https://github.com/doublemover/LemmingsJS-MIDI/issues)
 
 
 ## Tools, Testing, Additional info
