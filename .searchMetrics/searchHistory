@@ -134,4 +134,10 @@
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T22:05:19.362Z","query":"instant nuke","mdFiles":9,"codeFiles":12,"ms":806}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:31.992Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":125}
+{"time":"2025-06-07T22:59:34.753Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":150}
+{"time":"2025-06-07T22:59:37.786Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":221}
+{"time":"2025-06-07T22:59:40.243Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":141}
+{"time":"2025-06-07T22:59:43.143Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":119}
+{"time":"2025-06-07T22:59:46.213Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":344}
+{"time":"2025-06-07T22:59:49.074Z","query":"getNearestLemming","mdFiles":41,"codeFiles":227,"ms":545}
