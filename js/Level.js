@@ -64,54 +64,54 @@ class Level extends Lemmings.BaseLogger {
         this.triggers.length = 0;
         let arrowRects = [];
         for (const ob of objects) {
-          let info = objectImg[ob.id];
-          if (info == null) continue;
+          let objectInfo = objectImg[ob.id];
+          if (objectInfo == null) continue;
 
           // // Ice palette swap for fire shooter traps
           // if (ob.id === 8 || ob.id === 10) {
           //   const pal = new Lemmings.ColorPalette();
           //   for (let i = 0; i < 16; ++i) {
-          //     pal.setColorInt(i, info.palette.getColor(i));
+          //     pal.setColorInt(i, objectInfo.palette.getColor(i));
           //   }
           //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
           //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
           //   }
 
           //   const clone = new Lemmings.ObjectImageInfo();
-          //   Object.assign(clone, info);
+          //   Object.assign(clone, objectInfo);
           //   clone.palette = pal;
-          //   info = clone;
+          //   objectInfo = clone;
           // }
-          let tfxID = info.trigger_effect_id;
+          let tfxID = objectInfo.trigger_effect_id;
 
           if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
             tfxID = 12;
           }
 
-          const mapOb = new Lemmings.MapObject(ob, info, new Lemmings.Animation(), tfxID);
+          const mapOb = new Lemmings.MapObject(ob, objectInfo, new Lemmings.Animation(), tfxID);
           this.objects.push(mapOb);
           if (ob.id === 1) this.entrances.push(ob);
 
           if (tfxID !== 0) {
-            const x1 = ob.x + info.trigger_left;
-            const y1 = ob.y + info.trigger_top;
-            const x2 = x1 + info.trigger_width;
-            const y2 = y1 + info.trigger_height;
+            const x1 = ob.x + objectInfo.trigger_left;
+            const y1 = ob.y + objectInfo.trigger_top;
+            const x2 = x1 + objectInfo.trigger_width;
+            const y2 = y1 + objectInfo.trigger_height;
             let repeatDelay = 0;
             if (tfxID != 1) {
               if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) {
-                repeatDelay = info.frameCount;
+                repeatDelay = objectInfo.frameCount;
               }
             }
 
-            let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, info.trap_sound_effect_id, mapOb);
+            let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
 
             if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
               const newRange = new Lemmings.Range();
-              newRange.x = ob.x + info.trigger_left;
-              newRange.y = ob.y + info.trigger_top;
-              newRange.width = info.trigger_width;
-              newRange.height = info.trigger_height;
+              newRange.x = ob.x + objectInfo.trigger_left;
+              newRange.y = ob.y + objectInfo.trigger_top;
+              newRange.width = objectInfo.trigger_width;
+              newRange.height = objectInfo.trigger_height;
               newRange.direction = mapOb.triggerType == 8 ? 1 : 0;
               arrowRects.push(newRange);
               this.arrowTriggers.push(trigger);
