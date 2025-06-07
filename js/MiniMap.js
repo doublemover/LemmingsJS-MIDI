@@ -63,15 +63,15 @@ class MiniMap {
     if (!this.guiDisplay) return;
     this._mouseDown = true;
     const gd = this.guiDisplay;
-    const destX = gd.getWidth()  - this.width;
-    const destY = gd.getHeight() - this.height - 1;
+    const destX = gd.worldDataSize.width  - this.width;
+    const destY = gd.worldDataSize.height - this.height - 1;
 
     const mx = event.x - destX;
     const my = event.y - destY;
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
         
     const pct = mx / this.width;
-    const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
+    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0);
   }
@@ -80,14 +80,14 @@ class MiniMap {
     if (!this.guiDisplay) return;
     this._mouseDown = false;
     const gd = this.guiDisplay;
-    const destX = gd.getWidth()  - this.width;
-    const destY = gd.getHeight() - this.height - 1;
+    const destX = gd.worldDataSize.width  - this.width;
+    const destY = gd.worldDataSize.height - this.height - 1;
 
     const mx = event.x - destX;
     const my = event.y - destY;
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
     const pct = mx / this.width;
-    const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
+    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0);
   }
@@ -97,15 +97,15 @@ class MiniMap {
     if (!this._mouseDown) return;
     const gd = this.guiDisplay;
 
-    const destX = gd.getWidth()  - this.width;
-    const destY = gd.getHeight() - this.height - 1;
+    const destX = gd.worldDataSize.width  - this.width;
+    const destY = gd.worldDataSize.height - this.height - 1;
 
     const mx = event.x - destX;
     const my = event.y - destY;
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
 
     const pct = mx / this.width;
-    const newX = ((this.level.width - gd.getWidth()) * pct) | 0;
+    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0);
   }
@@ -313,8 +313,8 @@ class MiniMap {
     }
 
     /* Blit */
-    const destX = this.guiDisplay.getWidth() - W;
-    const destY = this.guiDisplay.getHeight() - H;
+    const destX = this.guiDisplay.worldDataSize.width  - W;
+    const destY = this.guiDisplay.worldDataSize.height - H;
     this.guiDisplay.drawFrame(frame, destX, destY);
   }
 
