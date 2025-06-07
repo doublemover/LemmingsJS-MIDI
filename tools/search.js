@@ -271,8 +271,11 @@ function agentText() {
 
       const scoreMd1 = colorScore(md1.totalMatches, maxMdMatches).padEnd(4);
       out += `[${scoreMd1}] ` +
-        c.magentaBright(path.basename(md1.file)) +
-        ` (func: ${md1.enclosingFunction || '‹none›'})\n`;
+        c.magentaBright(path.basename(md1.file));
+      if (md1.enclosingFunction) {
+        out += ` (func: ${md1.enclosingFunction})`;
+      }
+      out += '\n';
       for (let i = st1; i < en1; i++) {
         const num = c.green(String(i + 1).padStart(4));
         const hl = linesMd[i].replace(rx, (m) => c.bold.yellowBright(m));
@@ -286,8 +289,11 @@ function agentText() {
       const h = mdHitsAll[i];
       const sc = colorScore(h.totalMatches, maxMdMatches).padEnd(4);
       out += `[${sc}] ` +
-        c.magentaBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        c.magentaBright(path.basename(h.file));
+      if (h.enclosingFunction) {
+        out += ` (func: ${h.enclosingFunction})`;
+      }
+      out += '\n';
     }
     out += '\n';
   }
@@ -310,8 +316,11 @@ function agentText() {
 
       const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
       out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        c.blueBright(path.basename(h.file));
+      if (h.enclosingFunction) {
+        out += ` (func: ${h.enclosingFunction})`;
+      }
+      out += '\n';
       for (let j = stC; j < enC; j++) {
         const num = c.green(String(j + 1).padStart(4));
         const hl = linesC[j].replace(rx, (m) => c.bold.yellowBright(m));
@@ -325,8 +334,11 @@ function agentText() {
       const h = codeHitsAll[i];
       const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
       out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        c.blueBright(path.basename(h.file));
+      if (h.enclosingFunction) {
+        out += ` (func: ${h.enclosingFunction})`;
+      }
+      out += '\n';
     }
     out += '\n';
   }
@@ -374,7 +386,11 @@ function humanText() {
         : '(no matches)';
       out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+        ` — hits: ${sc}, lines: ${pos}`;
+      if (h.enclosingFunction) {
+        out += `, func: ${h.enclosingFunction}`;
+      }
+      out += '\n';
     }
     if (mdHitsAll.length > 10) {
       out += `... and ${mdHitsAll.length - 10} more Markdown files.\n`;
@@ -395,7 +411,11 @@ function humanText() {
         : '(no matches)';
       out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+        ` — hits: ${sc}, lines: ${pos}`;
+      if (h.enclosingFunction) {
+        out += `, func: ${h.enclosingFunction}`;
+      }
+      out += '\n';
     }
     if (codeHitsAll.length > 10) {
       out += `... and ${codeHitsAll.length - 10} more code files.\n`;
@@ -463,6 +483,7 @@ if (argv.stats) {
 /* ---------- Update .searchMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
+const noResPath = path.join(metricsDir, 'noResultQueries');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
 let metrics = {};
@@ -492,3 +513,7 @@ await fs.appendFile(
     ms: Date.now() - t0,
   }) + '\n'
 );
+
+if (totalMdFiles === 0 && totalCodeFiles === 0) {
+  await fs.appendFile(noResPath, query + '\n');
+}
