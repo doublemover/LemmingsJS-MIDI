@@ -36,11 +36,13 @@ level-writer.md: level-writing
 main-dat-format.md: main-dat doc
 mechanics-config.md: config
 mechanics-flags.md: mechanics
+naming-cleanup.md: naming cleanup
 nl-file-format.md: nl-file-format doc
 nl-objects.md: nl-objects doc - summarizes NeoLemmix object logic with references to source files
 nl-skills.md: nl-skills doc
 nl-pack-toolkit.md: pack-toolkit resources doc
 node-file-provider.md: archives
+naming-cleanup.md: cleanup naming
 note-review.md: todo
 overview.md: overview doc
 pack-mechanics.md: mechanics
@@ -68,6 +70,9 @@ l2bitmap-overview.md: l2bitmap file-format bitmap doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
 l2gfx-format.md: l2gfx-format doc
 l2bitmap-cpp.md: lemmings2 file-format bitmap
+l2-save-format.md: l2 savegame doc todo
+l2-save-format.md: l2 savegame slots doc
+l2-save-format.md: l2 savegame todo loader
 l2-save-format.md: l2 savegame doc
 l2-save-format.md: l2-save doc todo
 naming-cleanup.md: naming cleanup

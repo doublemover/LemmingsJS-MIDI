@@ -23,6 +23,17 @@ This expanded listing preserves the original bullet format with short descriptio
 - **webmidi, doc, overview**: [notes/webmidi-overview.md](notes/webmidi-overview.md) - Summary of the getting-started docs with enable(), device listing and environment support.
 - **lemming-manager, actions**: [notes/lemming-manager.md](notes/lemming-manager.md) - LemmingManager orchestrates all lemming entities. The constructor receives the
 - **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
+- **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - js/LevelReader.js consumes a 2048 byte .DAT level file. The first 0x20 bytes contain the release ...
+- **level-writing**: [notes/level-writer.md](notes/level-writer.md) - js/LevelWriter.js converts a level object back into the original 2048‑byte binary format used by ...
+- **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md) - Configuration entries may include an optional **mechanics** object that tweaks gameplay behavior ...
+- **game, config, mechanics**: [notes/mechanics-flags.md](notes/mechanics-flags.md) - ConfigReader parses config.json into GameConfig objects but currently does not expose any mechani...
+- **file-system, archives**: [notes/node-file-provider.md](notes/node-file-provider.md) - tools/NodeFileProvider.js allows the rest of the project to read files from
+- **cleanup, naming**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - List of generic variables like `data` and `info` that need clearer names.
+- **todo, notes**: [notes/note-review.md](notes/note-review.md) - The index lists many short notes. Review each file to remove duplicate sentences and keep the inf...
+- **overview, doc**: [notes/overview.md](notes/overview.md) - **LemmingsJS-MIDI** reimplements the classic game in modern JavaScript with optional WebMIDI sequ...
+- **config, mechanics**: [notes/pack-mechanics.md](notes/pack-mechanics.md) - packMechanics.js enumerates glitch flag defaults for each level pack. When ConfigReader builds a ...
+- **stage, canvas, input**: [notes/stage.md](notes/stage.md) - js/Stage.js creates a Stage bound to a canvas element. The constructor sets up a UserInputManager...
+- **todo, cleanup, code-review**: [notes/todo-review.md](notes/todo-review.md) - This note lists lines across the repository containing TODO-like markers. They can guide future w...
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - LevelReader parses the 2048-byte DAT format into objects, terrain and steel tables.
 - **level-writing**: [notes/level-writer.md](notes/level-writer.md) - LevelWriter converts a Level object back into the 2048-byte binary format.
 - **mechanics, config, level-loading**: [notes/mechanics-config.md](notes/mechanics-config.md) - Configuration entries may include a mechanics object that tweaks gameplay behavior.
@@ -56,6 +67,7 @@ This expanded listing preserves the original bullet format with short descriptio
 - **l2-level-format, doc, level-format**: [notes/l2-level-format.md](notes/l2-level-format.md) - Outline of the Lemmings 2 `L2LV` format and fields missing from our reader.
 - **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
 - **main-dat, doc**: [notes/main-dat-format.md](notes/main-dat-format.md) - Summary of MAIN.DAT sections and how GameResources loads them
+- **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Rename ambiguous viewport vs world size variables.
 - **nl-file-format, doc**: [notes/nl-file-format.md](notes/nl-file-format.md) - `docs/nl-file-format.md` details the NeoLemmix level and pack formats: `.nxlv` text-based levels, the 4 KB binary `.lvl` layout, high-res folders, `alias.nxmi`, pack files like `info.nxmi`, and legacy `.NXP` archives.
 - **nl-objects, doc**: [notes/nl-objects.md](notes/nl-objects.md) - `docs/nl-objects.md` summarizes NeoLemmix object logic with references to the source files implementing teleporters, locked exits, pickup-skills, single-use traps, updrafts and splat pads.
 - **nl-skills, doc, resources**: [notes/nl-skills.md](notes/nl-skills.md) - Short note summarizing the `docs/nl-skills.md` reference for the nine
@@ -79,7 +91,11 @@ This expanded listing preserves the original bullet format with short descriptio
 - **l2gfx-format, doc**: [notes/l2gfx-format.md](notes/l2gfx-format.md) - docs/camanis/lemmings_2_style_file_format_l2gfx.md describes palette entries and each section.
 - **l2bitmap, file-format, bitmap, doc**: [notes/l2bitmap-overview.md](notes/l2bitmap-overview.md) - Overview of `.l2bitmap` containers and their palettes.
 - **lemmings2, file-format, bitmap**: [notes/l2bitmap-cpp.md](notes/l2bitmap-cpp.md) - C++ example converting Lemmings 2 bitmaps to TGA; not implemented in js/.
+- **l2, savegame, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - eight slots store per-tribe progress; loader and writer remain unimplemented.
+- **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md explains the eight slot layout and per-tribe records.
+- **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - implement a loader/writer and research the unknown bytes in each tribe record.
 - **l2, savegame, doc**: [notes/l2-save-format.md](notes/l2-save-format.md) - docs/camanis/lemmings_2_save_file_format.md outlines eight save slots with per-tribe progress; loader/writer not implemented.
 - **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - 8 slots hold tribe progress and medal info; not yet supported.
 - **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Clarify variables that confuse viewport size with world data size.
 - **todo, index**: [notes/index-tasks.md](notes/index-tasks.md) - Encourages nested bullet lists for repeated notes.
+- **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Clarify variables that confuse viewport size with world data size.
