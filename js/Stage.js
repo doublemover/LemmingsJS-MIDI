@@ -225,13 +225,11 @@ class Stage {
     }
     // PAN
     // argX,argY are deltaX,deltaY (screen pixels)
-    const { width: winW, height: winH } = stageImage.canvasViewportSize;
     const scale = stageImage.viewPoint.scale;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
     const worldDX = argX / scale;
     const worldDY = argY / scale;
-    const { width: worldW, height: worldH } = stageImage.display.worldDataSize;
     if (!veloUpdate) {
       stageImage.viewPoint.x += worldDX;
       stageImage.viewPoint.y += worldDY;

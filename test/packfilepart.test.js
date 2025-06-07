@@ -15,7 +15,7 @@ globalThis.lemmings = { game: { showDebug: false } };
 describe('PackFilePart', function () {
   function roundTrip(data) {
     const packed = PackFilePart.pack(data);
-    const br = new BinaryReader(packed.data);
+    const br = new BinaryReader(packed.byteArray);
     const part = new UnpackFilePart(br);
     part.offset = 0;
     part.compressedSize = br.length;
@@ -49,7 +49,7 @@ describe('PackFilePart', function () {
 
     const packed = PackFilePart.pack(bytes);
 
-    const br = new BinaryReader(packed.data);
+    const br = new BinaryReader(packed.byteArray);
     const part = new UnpackFilePart(br);
     part.offset = 0;
     part.compressedSize = br.length;
@@ -61,7 +61,7 @@ describe('PackFilePart', function () {
 
     expect(Array.from(result)).to.eql(Array.from(bytes));
 
-    const calc = packed.data.reduce((a, b) => a ^ b, 0);
+    const calc = packed.byteArray.reduce((a, b) => a ^ b, 0);
     expect(calc).to.equal(packed.checksum);
     expect(part.initialBufferLen).to.equal(packed.initialBits);
   });
@@ -101,7 +101,7 @@ describe('PackFilePart', function () {
     randomFillSync(arr);
     const packed = PackFilePart.pack(arr);
     expect(packed.initialBits).to.equal(8);
-    const br = new BinaryReader(packed.data);
+    const br = new BinaryReader(packed.byteArray);
     const part = new UnpackFilePart(br);
     part.offset = 0;
     part.compressedSize = br.length;

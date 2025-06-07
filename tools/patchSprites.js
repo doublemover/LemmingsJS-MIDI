@@ -107,8 +107,8 @@ async function main() {
     part.initialBufferLen = packed.initialBits;
     part.checksum = packed.checksum;
     part.decompressedSize = buf.length;
-    part.compressedSize = packed.data.length;
-    part._compressedData = packed.data; // store temporarily
+    part.compressedSize = packed.byteArray.length;
+    part._compressedData = packed.byteArray; // store temporarily
   }
 
   // Serialize new container

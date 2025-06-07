@@ -134,7 +134,7 @@ class FileProvider extends Lemmings.BaseLogger {
   }
 
   async _fetchBinary(url, path) {
-    const data = await new Promise((resolve, reject) => {
+    const response = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -159,15 +159,15 @@ class FileProvider extends Lemmings.BaseLogger {
       xhr.send();
     });
 
-    const buf = data.buffer;
+    const buf = response.buffer;
     const reader = new Lemmings.BinaryReader(buf, 0, null, this._filenameFromUrl(url), path);
     const hash = await this._hashBuffer(buf);
-    this._storeInLocalStorage(url, { type: 'binary', data: this._arrayBufferToBase64(buf), hash, ...data.headers });
+    this._storeInLocalStorage(url, { type: 'binary', data: this._arrayBufferToBase64(buf), hash, ...response.headers });
     return reader;
   }
 
   async _fetchText(url) {
-    const data = await new Promise((resolve, reject) => {
+    const response = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
@@ -192,9 +192,9 @@ class FileProvider extends Lemmings.BaseLogger {
       xhr.send();
     });
 
-    const text = data.text;
+    const text = response.text;
     const hash = await this._hashString(text);
-    this._storeInLocalStorage(url, { type: 'text', data: text, hash, ...data.headers });
+    this._storeInLocalStorage(url, { type: 'text', data: text, hash, ...response.headers });
     return text;
   }
 

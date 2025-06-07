@@ -110,8 +110,8 @@ class NodeFileProvider {
       const zip = this._getZip(dir);
       const entry = this._findZipEntry(zip, filename);
       if (!entry) throw new Error(`File ${filename} not found in ${dir}`);
-      const data = entry.getData();
-      const arr = new Uint8Array(data);
+      const buffer = entry.getData();
+      const arr = new Uint8Array(buffer);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
     } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
       const map = await this._getTar(dir);
@@ -129,8 +129,8 @@ class NodeFileProvider {
     const fullPath = path.isAbsolute(dir)
       ? path.join(dir, filename)
       : path.join(this.rootPath, dir, filename);
-    const data = fs.readFileSync(fullPath);
-    const arr = new Uint8Array(data);
+    const buffer = fs.readFileSync(fullPath);
+    const arr = new Uint8Array(buffer);
     return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
   }
 
