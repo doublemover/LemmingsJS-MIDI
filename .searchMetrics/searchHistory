@@ -134,4 +134,13 @@
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T22:05:19.362Z","query":"instant nuke","mdFiles":9,"codeFiles":12,"ms":806}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:29.314Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":232}
+{"time":"2025-06-07T23:00:32.185Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":189}
+{"time":"2025-06-07T23:00:35.214Z","query":"drawCornerRect","mdFiles":18,"codeFiles":89,"ms":297}
+{"time":"2025-06-07T23:00:40.368Z","query":"hoverLemming","mdFiles":37,"codeFiles":222,"ms":277}
+{"time":"2025-06-07T23:00:42.556Z","query":"GameDisplay","mdFiles":45,"codeFiles":156,"ms":244}
+{"time":"2025-06-07T23:00:44.603Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":128}
+{"time":"2025-06-07T23:00:47.011Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":238}
+{"time":"2025-06-07T23:00:49.243Z","query":"drawSelection","mdFiles":23,"codeFiles":89,"ms":198}
+{"time":"2025-06-07T23:00:54.088Z","query":"GameDisplay drawFrame","mdFiles":50,"codeFiles":182,"ms":265}
+{"time":"2025-06-07T23:00:59.853Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":231}
