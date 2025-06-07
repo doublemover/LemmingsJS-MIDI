@@ -281,7 +281,11 @@ class UserInputManager {
       this.onZoom.trigger(evt);
 
       const stageImage = stage.getStageImageAt(position.x, position.y);
-      if (stageImage && stageImage.display && stageImage.display.getWidth() === 1600) {
+      if (
+        stageImage &&
+        stageImage.display &&
+        stageImage.display.worldDataSize.width === 1600
+      ) {
         const worldPos = stage.calcPosition2D(stageImage, position);
         const zx = worldPos.x === 0 ? 0.0001 : worldPos.x;
         const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
