@@ -58,4 +58,17 @@ describe('GameSkills', function() {
     }
     expect(triggered).to.deep.equal([...Array(gs.skills.length).keys()]);
   });
+
+  it('caps displayed skill counts at 99', function() {
+    const gs = createGameSkills({ CLIMBER: Infinity });
+    expect(gs.getSkill(Lemmings.SkillTypes.CLIMBER)).to.equal(99);
+  });
+
+  it('auto-selects next available skill when current runs out', function() {
+    const gs = createGameSkills({ CLIMBER: 1, FLOATER: 2 });
+    gs.setSelectedSkill(Lemmings.SkillTypes.CLIMBER);
+    gs.reuseSkill(Lemmings.SkillTypes.CLIMBER);
+    expect(gs.getSkill(Lemmings.SkillTypes.CLIMBER)).to.equal(0);
+    expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.FLOATER);
+  });
 });
