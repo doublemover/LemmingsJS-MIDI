@@ -79,12 +79,12 @@ class ParticleTable {
     const frames = [];
     let pos = 0;
     for (let f = 0; f < 51; f++) {
-      const arr = new Int8Array(160);
+      const frameArray = new Int8Array(160);
       for (let p = 0; p < 80; p++) {
-        arr[p * 2]     = bin.charCodeAt(pos++);
-        arr[p * 2 + 1] = bin.charCodeAt(pos++);
+        frameArray[p * 2]     = bin.charCodeAt(pos++);
+        frameArray[p * 2 + 1] = bin.charCodeAt(pos++);
       }
-      frames.push(arr);
+      frames.push(frameArray);
     }
     return frames;
   }
