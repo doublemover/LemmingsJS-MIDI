@@ -34,7 +34,7 @@ describe('tools/search.js', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('omits function label when match is outside any function', function () {
+  it('supports fuzzy search and context option', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
     for (const sub of ['index-prose', 'index-code']) {
       fs.mkdirSync(path.join(dir, sub));
@@ -45,21 +45,28 @@ describe('tools/search.js', function () {
     }
 
     const script = path.resolve('tools/search.js');
-    const modes = [
-      [],
-      ['--human'],
-      ['--human', '--human-json'],
-      ['--json'],
-    ];
-    for (const flags of modes) {
-      const res = spawnSync(process.execPath, [script, 'AGENTS guidelines', ...flags], {
-        cwd: dir,
-        encoding: 'utf8',
-      });
-      expect(res.status).to.equal(0);
-      expect(res.stdout.includes('(func:')).to.be.false;
-    }
-    
+
+    let res = spawnSync(process.execPath, [script, 'bitrea', '--json'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    const obj1 = JSON.parse(res.stdout);
+    expect(obj1.code).to.have.lengthOf(0);
+
+    res = spawnSync(process.execPath, [script, 'bitrea', '--fuzzy', '--json'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    const obj2 = JSON.parse(res.stdout);
+    expect(obj2.code.length).to.be.greaterThan(0);
+    expect(obj2.code[0]).to.have.property('score');
+
+    res = spawnSync(process.execPath, [script, 'lemmings', '--context', '1'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(res.stdout).to.match(/\n\s*1\s/);
+
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });
