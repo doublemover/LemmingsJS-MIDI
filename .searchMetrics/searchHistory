@@ -123,6 +123,9 @@
 {"time":"2025-06-06T20:54:32.218Z","query":"scale 2","mdFiles":21,"codeFiles":151,"ms":638}
 {"time":"2025-06-06T21:41:09.905Z","query":"worldDataSize","mdFiles":27,"codeFiles":116,"ms":312}
 {"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}
+{"time":"2025-06-07T21:20:38.998Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":260}
+{"time":"2025-06-07T21:20:41.431Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":403}
+{"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}
 {"time":"2025-06-07T05:42:43.376Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":80}
 {"time":"2025-06-07T05:42:45.819Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":84}
 {"time":"2025-06-07T05:42:48.124Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
