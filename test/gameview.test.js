@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
+import fakeTimers from '@sinonjs/fake-timers';
 // prepare a minimal window object for GameView.applyQuery
 function createWindowStub() {
   return {
@@ -50,6 +51,7 @@ class StageMock {
     };
     this.gameDisplay = new Lemmings.DisplayImage(this);
     this.guiDisplay = new Lemmings.DisplayImage(this);
+    this.guiImgProps = { x: 10, y: 20, viewPoint: { scale: 2 } };
     this.controller.onMouseDown.on(e => this.gameDisplay.onMouseDown.trigger(e));
     this.controller.onMouseUp.on(e => this.gameDisplay.onMouseUp.trigger(e));
     this.controller.onMouseRightDown.on(e => this.gameDisplay.onMouseRightDown.trigger(e));
@@ -64,6 +66,8 @@ class StageMock {
   updateStageSize() {}
   clear() {}
   startFadeOut() {}
+  startOverlayFade(color, rect) { this.overlayArgs = { color, rect }; }
+  resetFade() { this.resetCalled = true; }
 }
 
 // simple Game stub used by GameFactory
@@ -95,6 +99,7 @@ describe('GameView', function () {
   before(function () {
     setupWindow();
     // override engine classes after all modules loaded
+    this.origStage = Lemmings.Stage;
     Lemmings.Stage = StageMock;
     Lemmings.GameFactory = GameFactoryMock;
     Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
@@ -105,6 +110,7 @@ describe('GameView', function () {
 
   after(function () {
     delete global.window;
+    Lemmings.Stage = this.origStage;
   });
   it('initializes stage and connects displays', async function () {
     global.window = {
@@ -197,5 +203,87 @@ describe('GameView', function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(0.8);
+  });
+
+  it('parses short speed flag from url', async function() {
+    global.window = {
+      location: { search: '?s=5' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.gameSpeedFactor).to.equal(5);
+  });
+
+  it('defaults to 1 when speed is out of range', async function() {
+    global.window = {
+      location: { search: '?speed=150' },
+      setTimeout,
+      clearTimeout,
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.gameSpeedFactor).to.equal(1);
+  });
+
+  it('suspendWithColor fades and resumes timer', async function() {
+    const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.bench = true;
+    view.gameCanvas = {};
+    const timer = { suspendCalled: 0, continueCalled: 0, suspend() { this.suspendCalled++; }, continue() { this.continueCalled++; } };
+    view.game = { getGameTimer() { return timer; } };
+
+    const stage = view.stage;
+    view.suspendWithColor('green');
+
+    const expected = {
+      x: stage.guiImgProps.x + 160 * stage.guiImgProps.viewPoint.scale,
+      y: stage.guiImgProps.y + 32 * stage.guiImgProps.viewPoint.scale,
+      width: 16 * stage.guiImgProps.viewPoint.scale,
+      height: 10 * stage.guiImgProps.viewPoint.scale
+    };
+    expect(stage.overlayArgs.rect).to.deep.equal(expected);
+    expect(timer.suspendCalled).to.equal(1);
+    clock.tick(2000);
+    expect(timer.continueCalled).to.equal(1);
+    clock.uninstall();
+  });
+
+  it('pointer to world coordinates respect scale', function() {
+    const e = { x: 50, y: 70 };
+    const scales = [1, 2, 0.5];
+    const results = scales.map(sc => {
+      const img = { x: 10, y: 20, viewPoint: new Lemmings.ViewPoint(3, 4, sc) };
+      const localX = e.x - img.x;
+      const localY = e.y - img.y;
+      const x = Math.trunc(localX / sc) + Math.trunc(img.viewPoint.x);
+      const y = Math.trunc(localY / sc) + Math.trunc(img.viewPoint.y);
+      return { scale: sc, x, y };
+    });
+
+    expect(results[0]).to.deep.equal({ scale: 1, x: 43, y: 54 });
+    expect(results[1]).to.deep.equal({ scale: 2, x: 23, y: 29 });
+    expect(results[2]).to.deep.equal({ scale: 0.5, x: 83, y: 104 });
+  });
+
+  it('resetFade is called when loading a level', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameCanvas = {};
+    view.updateQuery = () => {};
+    view.start = async () => {};
+    view.gameResources = {
+      getLevel: async () => ({ render() {}, screenPositionX: 0 }),
+      getLevelGroups: () => []
+    };
+    await view.loadLevel();
+    expect(view.stage.resetCalled).to.equal(true);
   });
 });
