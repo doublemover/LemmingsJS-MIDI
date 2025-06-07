@@ -4,6 +4,8 @@ import '../js/EventHandler.js';
 import '../js/SkillTypes.js';
 import '../js/CommandReleaseRateIncrease.js';
 import '../js/CommandReleaseRateDecrease.js';
+import '../js/CommandSelectSkill.js';
+import '../js/CommandNuke.js';
 import { GameGui } from '../js/GameGui.js';
 
 class DisplayImageStub {
@@ -42,6 +44,7 @@ class GameTimerStub {
     this.running = true;
   }
   isRunning() { return this.running; }
+  toggle() { this.running = !this.running; }
   getGameLeftTimeString() { return '1:00'; }
   getGameTime() { return 0; }
 }
@@ -177,6 +180,54 @@ describe('GameGui', function() {
     const select = display.calls.find(c => c.op === 'drawMarchingAntRect');
     expect(speedLines.length).to.be.greaterThan(0);
     expect(select).to.exist;
+  });
+
+  it('pauses and resumes with pause button', function() {
+    const { gui, display, timer } = makeGui();
+    display.onMouseDown.trigger({ x: 161, y: 20 });
+    expect(timer.running).to.equal(false);
+    display.calls = [];
+    gui.render();
+    const paused = display.calls.find(c => c.op === 'drawMarchingAntRect' && c.args[0] === 160);
+    expect(paused).to.exist;
+  });
+
+  it('changes speed with fast-forward buttons', function() {
+    const { gui, display, timer } = makeGui();
+    display.onMouseDown.trigger({ x: 170, y: 33 });
+    expect(timer.speedFactor).to.equal(2);
+    let lines = display.calls.filter(c => c.op === 'drawHorizontalLine');
+    expect(lines.length).to.be.greaterThan(0);
+
+    display.calls = [];
+    display.onMouseDown.trigger({ x: 161, y: 33 });
+    expect(timer.speedFactor).to.equal(1);
+    lines = display.calls.filter(c => c.op === 'drawHorizontalLine');
+    expect(lines.length).to.be.greaterThan(0);
+  });
+
+  it('queues nuke command after confirmation', function() {
+    const { gui, display, game } = makeGui();
+    const cmds = [];
+    game.queueCommand = c => cmds.push(c);
+    display.onMouseDown.trigger({ x: 177, y: 20 });
+    expect(gui.nukePrepared).to.equal(true);
+    display.calls = [];
+    gui.render();
+    const confirm = display.calls.find(c => c.op === 'drawRect' && c.args[0] === 176);
+    expect(confirm).to.exist;
+    display.onMouseDown.trigger({ x: 177, y: 20 });
+    expect(gui.nukePrepared).to.equal(false);
+    expect(cmds[0]).to.be.instanceOf(Lemmings.CommandNuke);
+  });
+
+  it('selects skills and dispatches command', function() {
+    const { gui, display, skills, game } = makeGui();
+    const cmds = [];
+    game.queueCommand = c => cmds.push(c);
+    display.onMouseDown.trigger({ x: 16 * 7 + 1, y: 20 });
+    expect(skills.getSelectedSkill()).to.equal(Lemmings.SkillTypes.BASHER);
+    expect(cmds[0]).to.be.instanceOf(Lemmings.CommandSelectSkill);
   });
 
   it('renders minimap view', function() {
