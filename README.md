@@ -88,8 +88,24 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <details open>
 <summary>In Progress (10)</summary>
   
-  - [X] Bench speed adjustment shows color-coded overlay via `suspendWithColor`
+  - [ ] Letting LLM Agents loose on the codebase in the pursuit of:
+    - [ ] 100% test coverage
+      - [X] Currently at "80%", many features and tests are broken
+      - [ ] Once at 'full coverage' the state will rapidly improve again
+    - [X] All major features established
+    - [ ] A full pack decompression-patch-compression asset pipeline
+      - [ ] With compatability for as many other formats as possible
+    - [X] Three different options for sprite upscaling
+    - [ ] High resolution and 32 bit color sprite support
+    - [X] Palette swapped animated sprites
+    - [X] Marching ants, gotta have marching ants
+    - [X] Scrolling with momentum
+    - [ ] Full touch interaction support
+    - [ ] Full support for 'glitches' per pack
+    - [ ] Support for other popular pack types
+    - [ ] Procedural endless level generation
   - [X] Partial support for xmas91/92 and holiday93/94 level packs
+    - [ ] Documenting the shit out of everything
     - [ ] Needs steel sprite magic numbers
     - [ ] New triggers probably
     - [ ] Pallete? whatever else, some things look off
@@ -142,7 +158,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - `npm start`
 
 - Then open http://127.0.0.1:8080 in your browser
-- If you encounter any issues please [https://github.com/doublemover/LemmingsJS-MIDI/issues](let us know here)
+- If you encounter any issues [please let us know here](https://github.com/doublemover/LemmingsJS-MIDI/issues)
 
 
 ## Tools, Testing, Additional info
@@ -151,7 +167,6 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
 - See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
-- See [docs/level-file-format.md](docs/level-file-format.md) for the `.lvl` file structure.
 - See [docs/config.md](docs/config.md) for configuration details.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
