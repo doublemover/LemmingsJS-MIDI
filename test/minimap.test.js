@@ -13,6 +13,7 @@ function createDisplay(width, height) {
     onMouseMove: new Lemmings.EventHandler(),
     getWidth() { return this.width; },
     getHeight() { return this.height; },
+    get worldDataSize() { return { width: this.width, height: this.height }; },
     drawFrame(frame, x, y) { this.drawFrameCalls.push({ frame, x, y }); },
     setScreenPosition(x, y) { this.lastScreenPosition = [x, y]; }
   };
@@ -53,7 +54,7 @@ function createLevel(width, height) {
 function makeStage(level, display) {
   return {
     getGameViewRect() {
-      return { x: level.screenPositionX, y: 0, w: display.getWidth(), h: display.getHeight() };
+      return { x: level.screenPositionX, y: 0, w: display.worldDataSize.width, h: display.worldDataSize.height };
     }
   };
 }
@@ -74,8 +75,8 @@ describe('MiniMap', function() {
     expect(mm.frame.data[idx]).to.equal(0x5500FFFF);
 
     const call = display.drawFrameCalls[0];
-    expect(call.x).to.equal(display.getWidth() - mm.width);
-    expect(call.y).to.equal(display.getHeight() - mm.height);
+    expect(call.x).to.equal(display.worldDataSize.width - mm.width);
+    expect(call.y).to.equal(display.worldDataSize.height - mm.height);
   });
 
   it('updates viewport when dragging', function() {
@@ -84,16 +85,16 @@ describe('MiniMap', function() {
     globalThis.lemmings = { stage: makeStage(level, display) };
     const mm = new MiniMap(null, level, display);
 
-    const destX = display.getWidth() - mm.width;
-    const destY = display.getHeight() - mm.height - 1;
+    const destX = display.worldDataSize.width - mm.width;
+    const destY = display.worldDataSize.height - mm.height - 1;
 
     display.onMouseDown.trigger({ x: destX + mm.width / 2, y: destY + 1 });
-    const first = ((level.width - display.getWidth()) * 0.5) | 0;
+    const first = ((level.width - display.worldDataSize.width) * 0.5) | 0;
     expect(level.screenPositionX).to.equal(first);
 
     display.onMouseMove.trigger({ x: destX + mm.width * 0.75, y: destY + 1 });
     display.onMouseUp.trigger({ x: destX + mm.width * 0.75, y: destY + 1 });
-    const expected = ((level.width - display.getWidth()) * 0.75) | 0;
+    const expected = ((level.width - display.worldDataSize.width) * 0.75) | 0;
     expect(level.screenPositionX).to.equal(expected);
 
     mm.render();

@@ -184,6 +184,8 @@ class Stage {
   updateViewPoint(stageImage, argX, argY, deltaZoom, veloUpdate = false) {
     if (!stageImage || !stageImage.display) return;
 
+    const { width: worldW, height: worldH } = stageImage.display.worldDataSize;
+    const { width: winW, height: winH } = stageImage.canvasViewportSize;
 
     // ZOOM
     if (deltaZoom !== 0) {
@@ -372,19 +374,23 @@ class Stage {
     }
   }
   getStageImageAt(x, y) {
+    const { width: gameW, height: gameH } =
+      this.gameImgProps.canvasViewportSize;
     if (
       x >= this.gameImgProps.x &&
-      x <  this.gameImgProps.x + this.gameImgProps.width &&
+      x <  this.gameImgProps.x + gameW &&
       y >= this.gameImgProps.y &&
-      y <  this.gameImgProps.y + this.gameImgProps.height
+      y <  this.gameImgProps.y + gameH
     ) {
       return this.gameImgProps;
     }
+    const { width: guiW, height: guiH } =
+      this.guiImgProps.canvasViewportSize;
     if (
       x >= this.guiImgProps.x &&
-      x <  this.guiImgProps.x + this.guiImgProps.width &&
+      x <  this.guiImgProps.x + guiW &&
       y >= this.guiImgProps.y &&
-      y <  this.guiImgProps.y + this.guiImgProps.height
+      y <  this.guiImgProps.y + guiH
     ) {
       return this.guiImgProps;
     }
@@ -413,6 +419,7 @@ class Stage {
 
       const dispH = this.gameImgProps.display.worldDataSize.height;
       const winH  = this.gameImgProps.canvasViewportSize.height;
+
       const newScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.setY(
         Math.max(0, dispH - winH / newScale)
@@ -666,6 +673,7 @@ class Stage {
       y: this.gameImgProps.viewPoint.y,
       w: this.gameImgProps.canvasViewportSize.width  / this.gameImgProps.viewPoint.scale,
       h: this.gameImgProps.canvasViewportSize.height / this.gameImgProps.viewPoint.scale
+
     };
   }
 
