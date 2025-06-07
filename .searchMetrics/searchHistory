@@ -134,6 +134,8 @@
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T22:05:19.362Z","query":"instant nuke","mdFiles":9,"codeFiles":12,"ms":806}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:03.758Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":340}
+{"time":"2025-06-07T23:00:05.947Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":427}
 {"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:06.504Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":126}
 {"time":"2025-06-07T22:59:10.125Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":270}
 {"time":"2025-06-07T23:01:16.040Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":128}
