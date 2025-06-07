@@ -39,6 +39,9 @@ describe('GameTimer', function() {
     delete globalThis.document;
     visHandler = undefined;
     delete lemmings.suspendWithColor;
+    lemmings.bench = false;
+    lemmings.endless = false;
+    delete lemmings.stage;
   });
 
   it('emits ticks and stops when paused', function() {
@@ -101,6 +104,67 @@ describe('GameTimer', function() {
     clock.tick(960);
     raf(clock.now);
     expect(timer.speedFactor).to.equal(1);
+  });
+
+  it('pause/resume via visibilitychange stops ticks', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    const timer = new GameTimer({ timeLimit: 1 });
+    const handler = visHandler;
+    let count = 0;
+    timer.onGameTick.on(() => { count++; });
+    timer.continue();
+    clock.tick(240);
+    raf(clock.now);
+    expect(count).to.equal(4);
+
+    document.visibilityState = 'hidden';
+    handler();
+    clock.tick(240);
+    expect(count).to.equal(4);
+
+    document.visibilityState = 'visible';
+    handler();
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    clock.tick(240);
+    raf(clock.now);
+    expect(count).to.equal(8);
+  });
+
+  it('catchupSpeedAdjust scales across repeated delays', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(120);
+    raf(clock.now);
+    expect(timer.speedFactor).to.be.closeTo(0.5, 0.0001);
+
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    clock.tick(240);
+    raf(clock.now);
+    expect(timer.speedFactor).to.be.closeTo(0.25, 0.0001);
+
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    clock.tick(60);
+    raf(clock.now);
+    expect(timer.speedFactor).to.equal(1);
+  });
+
+  it('benchSpeedAdjust pauses when over 100 queued frames', function() {
+    lemmings.bench = true;
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(6100);
+    raf(clock.now);
+
+    expect(timer.isRunning()).to.equal(false);
+    expect(timer.speedFactor).to.be.closeTo(0.1, 0.0001);
   });
 
   it('tick steps once without starting the loop', function() {
