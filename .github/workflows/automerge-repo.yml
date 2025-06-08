@@ -2,7 +2,8 @@ name: Auto-merge repository history and agent info
 
 on:
   pull_request:
-    types: [synchronize, reopened]
+    branches: [main, master] # adjust to your target branches if needed
+    types: [opened, synchronize, reopened, ready_for_review]
 
 jobs:
   auto-merge:
@@ -39,10 +40,6 @@ jobs:
           tools/merge-metrics.sh \
             ${{ env.MERGE_BASE }} .repoMetrics/metrics.json .repoMetrics/metrics.json
 
-      - name: Auto-merge usageCounts.json
-        run: |
-          tools/merge-usagecounts.sh \
-            ${{ env.MERGE_BASE }} .repoMetrics/usageCounts.json .repoMetrics/usageCounts.json
 
       - name: Auto-merge searchHistory
         run: |
