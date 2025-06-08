@@ -828,5 +828,44 @@ describe('Action Systems process()', function() {
     sys.process(level, lem);
     expect(lem.y).to.equal(-1);
   });
+
+  it('getGroundStepHeight counts ground from bottom', function() {
+    const sys = new ActionWalkSystem(stubSprites);
+    const slice = { height: 4, hasGroundAt: (x, y) => y >= 3 };
+    expect(sys.getGroundStepHeight(slice)).to.equal(1);
+    const slice2 = { height: 4, hasGroundAt: () => true };
+    expect(sys.getGroundStepHeight(slice2)).to.equal(4);
+    const slice3 = { height: 4, hasGroundAt: () => false };
+    expect(sys.getGroundStepHeight(slice3)).to.equal(0);
+  });
+
+  it('getGroundGapDepth counts gap from top', function() {
+    const sys = new ActionWalkSystem(stubSprites);
+    const slice = { height: 3, hasGroundAt: (x, y) => y === 2 };
+    expect(sys.getGroundGapDepth(slice)).to.equal(3);
+    const slice2 = { height: 3, hasGroundAt: () => false };
+    expect(sys.getGroundGapDepth(slice2)).to.equal(4);
+  });
+
+  it('ActionWalkSystem clamps position to LEM_MIN_Y', function() {
+    const sys = new ActionWalkSystem(stubSprites);
+    const level = new StubLevel();
+    level.ground.add(level.key(1, -5));
+    level.ground.add(level.key(1, -6));
+    const lem = new StubLemming();
+    lem.y = Lemmings.Lemming.LEM_MIN_Y;
+    sys.process(level, lem);
+    expect(lem.y).to.equal(Lemmings.Lemming.LEM_MIN_Y);
+  });
+
+  it('ActionWalkSystem walks over shallow gaps', function() {
+    const sys = new ActionWalkSystem(stubSprites);
+    const level = new StubLevel();
+    level.ground.add(level.key(1, 1));
+    const lem = new StubLemming();
+    const res = sys.process(level, lem);
+    expect(res).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.y).to.equal(1);
+  });
 });
 
