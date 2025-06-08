@@ -428,4 +428,7 @@
 {"time":"2025-06-08T19:42:48.268Z","query":"Stage.updateStageSize","mdFiles":15,"codeFiles":15,"ms":247}
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
-{"time":"2025-06-08T22:03:15.859Z","query":"victory","mdFiles":0,"codeFiles":18,"ms":950}
+{"time":"2025-06-08T22:02:31.506Z","query":"mask","mdFiles":1,"codeFiles":20,"ms":513}
+{"time":"2025-06-08T22:02:33.731Z","query":"mask draw","mdFiles":2,"codeFiles":20,"ms":601}
+{"time":"2025-06-08T22:03:26.932Z","query":"drawMask","mdFiles":0,"codeFiles":0,"ms":768}
+{"time":"2025-06-08T22:04:13.013Z","query":"drawMask(","mdFiles":2,"codeFiles":5,"ms":577}
