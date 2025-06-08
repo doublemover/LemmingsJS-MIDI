@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 function parseFile(file) {
   if (!fs.existsSync(file)) return [];
@@ -39,4 +40,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'base_history';
   const dest = process.argv[3] || '.repoMetrics/searchHistory';
   mergeSearchHistory(base, dest);
+  updateUsageCounts('merge_search_history');
 }
