@@ -668,7 +668,7 @@ class GameView extends Lemmings.BaseLogger {
           this.extraLemmings = extras;
           lemmings.extraLemmings = extras;
         }
-        if (timer.speedFactor < 1 || timer.getGameTime() >= 60) {
+        if (timer.speedFactor < 1 || timer.getGameTime() >= 30) {
           timer.eachGameSecond.off(monitor);
           timer.suspend();
           this._benchMeasureExtras = false;
