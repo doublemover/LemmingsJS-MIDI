@@ -492,20 +492,19 @@ class GameView extends Lemmings.BaseLogger {
       Lemmings.TriggerTypes.TRAP,
     ]);
 
-    let attempts = 0;
-    while (level.entrances.length < entrances && attempts < entrances * 10) {
-      attempts++;
-      let spawnX;
-      if (baseEntrances.length > 0) {
-        const base = baseEntrances[(Math.random() * baseEntrances.length) | 0];
-        const dist = 10 + Math.random() * 590;
-        const dir = Math.random() < 0.5 ? -1 : 1;
-        spawnX = base.x + 24 + dir * dist;
-        if (spawnX < 0) spawnX = 0;
-        if (spawnX >= level.width) spawnX = level.width - 1;
-      } else {
-        spawnX = (Math.random() * level.width) | 0;
+    const increments = [100, 50, 25, 12, 6];
+    const ENTRANCE_HEIGHT = 28;
+
+    const clearHeight = (x, y) => {
+      if (y < 0 || y + ENTRANCE_HEIGHT > level.height) return false;
+      for (let i = 0; i < ENTRANCE_HEIGHT; i++) {
+        if (groundMask.hasGroundAt(x, y + i)) return false;
       }
+      return true;
+    };
+
+    const trySpawn = spawnX => {
+      if (spawnX < 0 || spawnX >= level.width) return false;
       let groundY = -1;
       for (let y = 0; y < level.height; y++) {
         if (groundMask.hasGroundAt(spawnX, y)) {
@@ -513,28 +512,51 @@ class GameView extends Lemmings.BaseLogger {
           break;
         }
       }
-      if (groundY < 0) continue;
+      if (groundY < 0) return false;
 
-      const spawnY = Math.max(0, groundY - ((Math.random() * 55) | 0));
+      let entY = groundY - ENTRANCE_HEIGHT;
+      if (entY < 0) entY = 0;
+      while (!clearHeight(spawnX, entY) && entY + ENTRANCE_HEIGHT < groundY) {
+        entY++;
+      }
+      if (!clearHeight(spawnX, entY)) return false;
 
-      if (spawnY >= level.height || groundMask.hasGroundAt(spawnX, spawnY)) continue;
-
-      let blocked = false;
       for (const tr of level.triggers) {
         if (badTriggers.has(tr.type) &&
             spawnX >= tr.x1 && spawnX <= tr.x2 &&
-            groundY >= tr.y1 && groundY <= tr.y2) {
-          blocked = true;
-          break;
+            entY + ENTRANCE_HEIGHT > tr.y1 && entY < tr.y2) {
+          return false;
         }
       }
-      if (blocked) continue;
 
       const entX = spawnX - 24;
-      const entY = spawnY - 14;
-      if (entX < 0 || entX >= level.width || entY < 0 || entY >= level.height) continue;
+      if (entX < 0 || entX >= level.width || entY < 0 || entY >= level.height) return false;
+
+      for (const ent of level.entrances) {
+        if (ent.x === entX && ent.y === entY) return false;
+      }
 
       level.entrances.push({ x: entX, y: entY });
+      return true;
+    };
+
+    for (const step of increments) {
+      let offset = 0;
+      while (level.entrances.length < entrances && offset <= level.width) {
+        for (const base of baseEntrances) {
+          if (level.entrances.length >= entrances) break;
+          const center = base.x + 24;
+          if (offset === 0) {
+            trySpawn(center);
+            continue;
+          }
+          trySpawn(center + offset);
+          if (level.entrances.length >= entrances) break;
+          trySpawn(center - offset);
+        }
+        offset += step;
+      }
+      if (level.entrances.length >= entrances) break;
     }
     if (this.game.getLemmingManager) {
       const lm = this.game.getLemmingManager();
