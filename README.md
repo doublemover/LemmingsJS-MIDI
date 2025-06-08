@@ -64,6 +64,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
   - Explosion sprite misalignment
   - Arrow Wall animations
   - Fall height was incorrect
+  - Bench entrances spawn no higher than a safe 45-pixel drop
   - Trap cooldown was missing
   - Prevent wasted actions on falling lemmings (only floater, climber, builder, and bomber can be applied)
   - Prevent redundant actions (cannot re-apply basher, blocker, digger, or miner)
@@ -199,7 +200,8 @@ URL parameters (shortcut in brackets):
 - `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
 - `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation. The overlay fades out automatically and the timer resumes afterward. Only the pause button flashes red/green via `suspendWithColor` during adjustments (default: false)
-- `benchSequence (bs)`: Run automated bench tests with 50, 40, 30, 25, 20, 10, 5 and 1 random entrances (default: false)
+- `benchSequence (bs)`: Automatically measure extra lemming capacity then run bench tests with 50, 25, 10 and 1 additional entrances, repeating with half and then zero extra lemmings (default: false)
+  - The threshold search runs at the slowest release rate
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
