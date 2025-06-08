@@ -57,6 +57,8 @@ tools on them.
 ## Commit policy
 - Keep commit messages concise.
 - Run `npm test` and ensure all tests pass before committing.
+- Documentation-only updates (README or docs changes) should not be listed in
+  `CHANGELOG.md`.
 
 ## Pull Requests
 - Summarize major changes and reference relevant files or lines.
