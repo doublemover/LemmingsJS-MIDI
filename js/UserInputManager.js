@@ -110,9 +110,13 @@ class UserInputManager {
     this._addListener('mousedown', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
-      if (e.button == 2) {
+      const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
+      if (e.button === 2) {
         this.handleMouseRightDown(relativePos);
+        return false;
+      }
+      if (e.button === 1) {
+        this.handleMouseMiddleDown(relativePos);
         return false;
       }
       this.handleMouseDown(relativePos);
@@ -122,9 +126,13 @@ class UserInputManager {
     this._addListener('mouseup', (e) => {
       e.stopPropagation();
       e.preventDefault();
-      let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
-      if (e.button == 2) {
+      const relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
+      if (e.button === 2) {
         this.handleMouseRightUp(relativePos);
+        return false;
+      }
+      if (e.button === 1) {
+        this.handleMouseMiddleUp(relativePos);
         return false;
       }
       this.handleMouseUp(relativePos);
@@ -202,6 +210,16 @@ class UserInputManager {
     }
     this._listeners.length = 0;
   }
+
+  #setMouseDownState(position, buttonNum) {
+    this.mouseButton = true;
+    this.mouseButtonNumber = buttonNum;
+    this.mouseDownX = position.x;
+    this.mouseDownY = position.y;
+    this.lastMouseX = position.x;
+    this.lastMouseY = position.y;
+  }
+
   getRelativePosition(element, clientX, clientY) {
     const rect = element.getBoundingClientRect();
     const scaleX = element.width / rect.width;
@@ -229,29 +247,24 @@ class UserInputManager {
     }
   }
   handleMouseDown(position) {
-    //- save start of Mousedown
-    this.mouseButton = true;
-    this.mouseDownX = position.x;
-    this.mouseDownY = position.y;
-    this.lastMouseX = position.x;
-    this.lastMouseY = position.y;
+    this.#setMouseDownState(position, 0);
 
     this.onMouseDown.trigger(position);
   }
   handleMouseRightDown(position) {
-    this.mouseButton = true;
-    this.mouseDownX = position.x;
-    this.mouseDownY = position.y;
-    this.lastMouseX = position.x;
-    this.lastMouseY = position.y;
+    this.#setMouseDownState(position, 2);
 
     this.onMouseRightDown.trigger(position);
+  }
+  handleMouseMiddleDown(position) {
+    this.#setMouseDownState(position, 1);
   }
   handleMouseDoubleClick(position) {
     this.onDoubleClick.trigger(position);
   }
   handleMouseClear() {
     this.mouseButton = false;
+    this.mouseButtonNumber = 0;
     this.mouseDownX = 0;
     this.mouseDownY = 0;
     this.lastMouseX = 0;
@@ -266,6 +279,9 @@ class UserInputManager {
   handleMouseRightUp(position) {
     this.handleMouseClear();
     this.onMouseRightUp.trigger(new Lemmings.Position2D(position.x, position.y));
+  }
+  handleMouseMiddleUp() {
+    this.handleMouseClear();
   }
   /** Zoom view around the cursor */
 
