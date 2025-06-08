@@ -574,9 +574,11 @@ class GameView extends Lemmings.BaseLogger {
       return true;
     };
 
-    if (!this._benchEntrancePool) {
-      level.entrances = baseEntrances.slice();
-      const target = Math.max(...this._benchCounts);
+    if (!this._benchEntrancePool || this._benchEntrancePool.length < entrances) {
+      level.entrances = this._benchEntrancePool
+        ? this._benchEntrancePool.slice()
+        : baseEntrances.slice();
+      const target = entrances;
       for (const step of increments) {
         let offset = 0;
         while (level.entrances.length < target && offset <= level.width) {
