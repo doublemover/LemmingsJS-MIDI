@@ -170,7 +170,8 @@ class GameTimer {
     // When speedFactor is below 6 the thresholds become huge and the game never
     // slows down. Scale using `speedFactor * 1.5` so lower speeds still react.
     const factor = this.#speedFactor < 6 ? this.#speedFactor * 1.5 : this.#speedFactor;
-    const slowThreshold = Math.max(10, 16 / factor);
+    let slowThreshold = Math.max(10, 16 / factor);
+    if (this.#speedFactor > 8) slowThreshold += (this.#speedFactor - 8) * 2;
     const recoverThreshold = Math.max(4, 4 / factor);
 
     if (steps > recoverThreshold) this.#stableTicks -= 32;
@@ -198,7 +199,9 @@ class GameTimer {
         else if (sf <= 1 && sf > 0.2) this.#speedFactor = ((this.#speedFactor * 10) - 1) / 10;
       }
 
-      if (this.#stableTicks > 32 * mult && this.#speedFactor < 60) {
+      let incThresh = 32 * mult;
+      if (this.#speedFactor > 6) incThresh *= 2;
+      if (this.#stableTicks > incThresh && this.#speedFactor < 60) {
         this.#stableTicks = 0;
         this.#speedFactor += 1;
       }
