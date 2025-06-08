@@ -286,7 +286,7 @@
 {"time":"2025-06-08T05:42:19.704Z","query":"ActionClimbSystem","mdFiles":20,"codeFiles":51,"ms":183}
 {"time":"2025-06-08T05:42:22.877Z","query":"climb","mdFiles":2,"codeFiles":15,"ms":136}
 {"time":"2025-06-08T05:42:25.250Z","query":"HOISTING","mdFiles":2,"codeFiles":10,"ms":136}
-{"time":"2025-06-08T06:25:06.445Z","query":"changeHtmlText","mdFiles":28,"codeFiles":51,"ms":145}
-{"time":"2025-06-08T06:25:43.140Z","query":"arrayToSelect","mdFiles":78,"codeFiles":195,"ms":635}
-{"time":"2025-06-08T06:25:44.707Z","query":"clearHtmlList","mdFiles":46,"codeFiles":73,"ms":231}
-{"time":"2025-06-08T06:25:46.731Z","query":"changeHtmlText","mdFiles":28,"codeFiles":51,"ms":237}
+{"time":"2025-06-08T06:24:20.097Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":179}
+{"time":"2025-06-08T06:24:22.751Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":166}
+{"time":"2025-06-08T06:24:24.587Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":149}
+{"time":"2025-06-08T06:24:26.530Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":169}
