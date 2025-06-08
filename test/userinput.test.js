@@ -123,10 +123,10 @@ describe('UserInputManager', function() {
     uim.handleWheel(cursor, 120);
 
     const afterX = vp.getSceneX(cursor.x - img.x);
-    const afterY = vp.getSceneY(cursor.y - img.y);
-
+    const viewH = img.height / vp.scale;
+    const worldH = stage.getGameDisplay().worldDataSize.height;
     expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
-    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('zooms when cursor is at the world origin', function() {
@@ -147,7 +147,11 @@ describe('UserInputManager', function() {
 
     uim.handleWheel(cursor, 120);
 
-    expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
+    const vp = stage.gameImgProps.viewPoint;
+    const worldH = stage.getGameDisplay().worldDataSize.height;
+    const viewH = stage.gameImgProps.height / vp.scale;
+    expect(vp.scale).to.be.greaterThan(1);
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('emits zoom events with stage set', function(done) {
