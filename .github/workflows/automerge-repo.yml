@@ -37,34 +37,34 @@ jobs:
 
       - name: Auto-merge metrics.json
         run: |
-          tools/merge-metrics.sh \
+          bash tools/merge-metrics.sh \
             ${{ env.MERGE_BASE }} .repoMetrics/metrics.json .repoMetrics/metrics.json
 
 
       - name: Auto-merge searchHistory
         run: |
-          tools/merge-history.sh \
+          bash tools/merge-history.sh \
             ${{ env.MERGE_BASE }} .repoMetrics/searchHistory .repoMetrics/searchHistory
 
       - name: Auto-merge noResultQueries
         run: |
-          tools/merge-no-results.sh \
+          bash tools/merge-no-results.sh \
             ${{ env.MERGE_BASE }} .repoMetrics/noResultQueries .repoMetrics/noResultQueries
 
       - name: Auto-merge agentInfo index.md
         run: |
-          tools/merge-agentinfo-index.sh \
+          bash tools/merge-agentinfo-index.sh \
             ${{ env.MERGE_BASE }} .agentInfo/index.md .agentInfo/index.md
 
       - name: Auto-merge agentInfo index-detailed.md
         run: |
-          tools/merge-agentinfo-index.sh \
+          bash tools/merge-agentinfo-index.sh \
             ${{ env.MERGE_BASE }} .agentInfo/index-detailed.md .agentInfo/index-detailed.md
 
       - name: Auto-merge agentInfo notes
         run: |
           find .agentInfo/notes -name '*.md' -print0 | while IFS= read -r -d '' file; do
-            tools/merge-agentinfo-notes.sh \
+            bash tools/merge-agentinfo-notes.sh \
               ${{ env.MERGE_BASE }} "$file" "$file"
           done
 
