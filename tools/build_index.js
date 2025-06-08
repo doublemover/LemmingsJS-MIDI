@@ -8,6 +8,7 @@ import seedrandom from 'seedrandom';
 import { SVD } from 'svd-js';
 import strip from 'strip-comments';
 const listComments = strip.list;
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 /* -------- CLI & constants -------- */
 const argv = minimist(process.argv.slice(2), {
@@ -384,3 +385,5 @@ async function build(mode) {
 for (const m of MODES) {
   await build(m);
 }
+
+updateUsageCounts('build_index');
