@@ -80,6 +80,20 @@ describe('UserInputManager', function() {
     global.document = createDocumentStub();
   });
 
+  beforeEach(function() {
+    global.winW = 1600;
+    global.winH = 1200;
+    global.worldW = 1600;
+    global.worldH = 1200;
+  });
+
+  afterEach(function() {
+    delete global.winW;
+    delete global.winH;
+    delete global.worldW;
+    delete global.worldH;
+  });
+
   after(function() {
     if (global.document) delete global.document;
     if (globalThis.lemmings) delete globalThis.lemmings.stage;

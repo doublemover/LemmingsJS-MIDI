@@ -52,6 +52,20 @@ describe('Stage updateViewPoint', function() {
     global.document = createDocumentStub();
   });
 
+  beforeEach(function() {
+    global.winW = 1000;
+    global.winH = 1200;
+    global.worldW = 1000;
+    global.worldH = 1200;
+  });
+
+  afterEach(function() {
+    delete global.winW;
+    delete global.winH;
+    delete global.worldW;
+    delete global.worldH;
+  });
+
   after(function() {
     delete global.document;
   });
