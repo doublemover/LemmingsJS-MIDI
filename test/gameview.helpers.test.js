@@ -126,7 +126,7 @@ describe('GameView helper methods', function () {
     view.levelGroupIndex = 1;
     view.levelIndex = 5;
     view.gameSpeedFactor = 3;
-    view.cheat = true;
+    view.cheatEnabled = true;
     view.debug = true;
     view.bench = true;
     view.nukeAfter = 20;
