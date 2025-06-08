@@ -137,4 +137,40 @@ describe('MiniMap extra', function() {
     expect(mm.deadTTLs).to.equal(null);
     expect(mm.frame).to.equal(null);
   });
+
+  it('existing dead dots expire across renders then dispose clears all', function() {
+    const level = createLevel(127, 24);
+    const display = createDisplay(150, 50);
+    globalThis.lemmings = { stage: makeStage(level, display) };
+    const mm = new MiniMap(null, level, display);
+
+    const sx1 = (10 * mm.scaleX) | 0;
+    const sy1 = (5 * mm.scaleY) | 0;
+    const sx2 = (30 * mm.scaleX) | 0;
+    const sy2 = (8 * mm.scaleY) | 0;
+    mm.deadDots = Uint8Array.from([sx1, sy1, sx2, sy2]);
+    mm.deadTTLs = Uint8Array.from([2, 1]);
+
+    mm.render();
+    expect(Array.from(mm.deadDots)).to.eql([sx1, sy1]);
+    expect(Array.from(mm.deadTTLs)).to.eql([1]);
+
+    mm.render();
+    expect(mm.deadDots.length).to.equal(0);
+    expect(mm.deadTTLs.length).to.equal(0);
+
+    mm.dispose();
+
+    expect(mm._displayListeners).to.equal(null);
+    expect(mm.gameDisplay).to.equal(null);
+    expect(mm.level).to.equal(null);
+    expect(mm.guiDisplay).to.equal(null);
+    expect(mm.terrain).to.equal(null);
+    expect(mm.fog).to.equal(null);
+    expect(mm.liveDots).to.equal(null);
+    expect(mm.selectedDot).to.equal(null);
+    expect(mm.deadDots).to.equal(null);
+    expect(mm.deadTTLs).to.equal(null);
+    expect(mm.frame).to.equal(null);
+  });
 });

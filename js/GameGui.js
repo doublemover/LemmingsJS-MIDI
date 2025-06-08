@@ -755,11 +755,12 @@ class SmoothScroller {
       delta = -50;
     }
 
-    if (this.velocity+delta > 500) {
+    if (this.velocity + delta > 500) {
       this.velocity = 500;
       return;
     }
-    if (this.velocity-delta < -500) {
+
+    if (this.velocity + delta < -500) {
       this.velocity = -500;
       return;
     }

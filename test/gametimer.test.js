@@ -167,6 +167,33 @@ describe('GameTimer', function() {
     expect(timer.speedFactor).to.be.closeTo(0.1, 0.0001);
   });
 
+  it('benchSpeedAdjust triggers overlay fade with a color', function() {
+    lemmings.bench = true;
+    let raf;
+    const calls = [];
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = {
+      guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+      startOverlayFade(color) { calls.push(color); }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    clock.tick(1200);
+    raf(clock.now);
+
+    expect(calls.length).to.equal(1);
+    expect(calls[0]).to.match(/^rgba\(/);
+  });
+
+  it('stop disposes and nulls event handlers', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.stop();
+    expect(timer.onBeforeGameTick).to.equal(null);
+    expect(timer.onGameTick).to.equal(null);
+    expect(timer.eachGameSecond).to.equal(null);
+  });
+
   it('tick steps once without starting the loop', function() {
     let rafCalled = false;
     window.requestAnimationFrame = () => { rafCalled = true; return 1; };
