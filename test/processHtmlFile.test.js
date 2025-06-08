@@ -1,25 +1,48 @@
 import assert from 'assert';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { pathToFileURL } from 'url';
 import { processHtmlFile } from '../tools/processHtmlFile.js';
 
-describe('processHtmlFile', function () {
-  it('extracts inline scripts and event handlers', function () {
-    const snippets = processHtmlFile('index.html');
-    assert.ok(snippets.length >= 4);
-    const inline = snippets.find(s => s.type === 'script');
-    assert.ok(inline.code.includes('function onEnabled'));
-    assert.ok(inline.loc.start < inline.loc.end);
+describe('processHtmlFile options', function () {
+  it('rewrites relative asset links to file URLs', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
+    const jsPath = path.join(dir, 'app.js');
+    const cssPath = path.join(dir, 'style.css');
+    fs.writeFileSync(jsPath, 'console.log("hi");');
+    fs.writeFileSync(cssPath, 'body{color:red;}');
+    const html = `<!DOCTYPE html><html><head>
+      <link rel="stylesheet" href="style.css">
+      <script src="app.js"></script>
+    </head><body></body></html>`;
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const result = processHtmlFile(file, { rewritePaths: true });
+    assert.ok(result.html.includes(pathToFileURL(cssPath).href));
+    assert.ok(result.html.includes(pathToFileURL(jsPath).href));
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('extracts inline event handler attributes', function () {
-    const fs = require('fs');
-    const os = require('os');
-    const path = require('path');
+  it('inlines scripts and styles when requested', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
-    const file = path.join(dir, 't.html');
-    fs.writeFileSync(file, '<div onclick="doIt()" onmouseover="hover()"></div>');
-    const snippets = processHtmlFile(file);
+    const jsPath = path.join(dir, 'app.js');
+    const cssPath = path.join(dir, 'style.css');
+    fs.writeFileSync(jsPath, 'console.log("hi");');
+    fs.writeFileSync(cssPath, 'body{color:red;}');
+    const html = `<!DOCTYPE html><html><head>
+      <link rel="stylesheet" href="style.css">
+      <script src="app.js"></script>
+    </head><body></body></html>`;
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const result = processHtmlFile(file, { inline: true });
+    assert.ok(/<style>body\{color:red;\}<\/style>/.test(result.html));
+    assert.ok(/<script>console.log\("hi"\);<\/script>/.test(result.html));
+    assert.ok(!/href="style.css"/.test(result.html));
+    assert.ok(!/src="app.js"/.test(result.html));
     fs.rmSync(dir, { recursive: true, force: true });
-    const codes = snippets.filter(s=>s.type==='handler').map(s=>s.code.trim());
-    assert.deepStrictEqual(codes.sort(), ['doIt()', 'hover()']);
   });
 });
