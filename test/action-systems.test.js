@@ -787,6 +787,30 @@ describe('Action Systems process()', function() {
     expect(lem.state).to.be.above(16);
   });
 
+  it('ActionFallSystem lands with parachute when ground one step below', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    lem.hasParachute = true;
+    level.ground.add(level.key(lem.x, lem.y + 1));
+    const state = sys.process(level, lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(1);
+    expect(lem.state).to.equal(0);
+  });
+
+  it('ActionFallSystem lands with parachute when ground two steps below', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    lem.hasParachute = true;
+    level.ground.add(level.key(lem.x, lem.y + 2));
+    const state = sys.process(level, lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(2);
+    expect(lem.state).to.equal(0);
+  });
+
   it('ActionFallSystem walks or splats depending on fall distance', function() {
     const level = new StubLevel();
     const sys = new ActionFallSystem(new Map());
