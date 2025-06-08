@@ -8,7 +8,7 @@ class KeyboardShortcuts {
     window.addEventListener('keydown', this._down);
     window.addEventListener('keyup', this._up);
     this.mod = { shift:false };
-    this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0 };
+    this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0,changed:false };
     this.zoom = { dir:0,v:0,reset:null };
     this._raf = null;
     this._last = 0;
@@ -50,12 +50,18 @@ class KeyboardShortcuts {
       // tweak distance per frame; previous values felt too large
       const baseX = 25 * scale;
       const baseY = 12 * scale;
-      // slow the acceleration a touch for smoother motion
-      const accel = 0.05 / scale * dt;
+      // faster acceleration with immediate jump when direction changes
+      const accel = 0.25 / scale * dt;
       const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
       const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
-      this.pan.vx += (targetVX - this.pan.vx) * accel;
-      this.pan.vy += (targetVY - this.pan.vy) * accel;
+      if (this.pan.changed) {
+        this.pan.vx = targetVX;
+        this.pan.vy = targetVY;
+        this.pan.changed = false;
+      } else {
+        this.pan.vx += (targetVX - this.pan.vx) * accel;
+        this.pan.vy += (targetVY - this.pan.vy) * accel;
+      }
       // extend easing so velocity decays more gradually
       this.pan.vx *= 0.9;
       this.pan.vy *= 0.9;
@@ -240,19 +246,19 @@ class KeyboardShortcuts {
       break;
     case 'ArrowLeft':
       if (this.pan.vx > 0) this.pan.vx = 0;
-      this.pan.left = true; this._startLoop();
+      this.pan.left = true; this.pan.changed = true; this._startLoop();
       break;
     case 'ArrowRight':
       if (this.pan.vx < 0) this.pan.vx = 0;
-      this.pan.right = true; this._startLoop();
+      this.pan.right = true; this.pan.changed = true; this._startLoop();
       break;
     case 'ArrowUp':
       if (this.pan.vy > 0) this.pan.vy = 0;
-      this.pan.up = true; this._startLoop();
+      this.pan.up = true; this.pan.changed = true; this._startLoop();
       break;
     case 'ArrowDown':
       if (this.pan.vy < 0) this.pan.vy = 0;
-      this.pan.down = true; this._startLoop();
+      this.pan.down = true; this.pan.changed = true; this._startLoop();
       break;
     case 'KeyZ':
       this.zoom.dir = 1; this._startLoop();
@@ -324,10 +330,10 @@ class KeyboardShortcuts {
 
   _onKeyUp(e) {
     switch (e.code) {
-    case 'ArrowLeft': this.pan.left = false; break;
-    case 'ArrowRight': this.pan.right = false; break;
-    case 'ArrowUp': this.pan.up = false; break;
-    case 'ArrowDown': this.pan.down = false; break;
+    case 'ArrowLeft': this.pan.left = false; this.pan.changed = true; break;
+    case 'ArrowRight': this.pan.right = false; this.pan.changed = true; break;
+    case 'ArrowUp': this.pan.up = false; this.pan.changed = true; break;
+    case 'ArrowDown': this.pan.down = false; this.pan.changed = true; break;
     case 'KeyZ': if (this.zoom.dir > 0) this.zoom.dir = 0; break;
     case 'KeyX': if (this.zoom.dir < 0) this.zoom.dir = 0; break;
     case 'ShiftLeft':
