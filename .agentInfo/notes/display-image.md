@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_display-image.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_display-image.md
+=======
 # DisplayImage overview
 
 tags: display, canvas, scaling, image
@@ -19,6 +21,7 @@ GameDisplay highlights lemmings with dashed outlines. Hover uses a dark grey rec
 `drawCornerRect(x, y, size, r, g, b, length = 1, midLine = false, midLen = 0)` draws L-shaped corner marks. The `length` parameter controls the size of the corner arms while `midLine` and `midLen` can add centered side lines. GameDisplay uses the defaults so only the corners are drawn.
 
 `js/DisplayImage.js` now exposes three scaling helpers – `scaleNearest`, `scaleXbrz` and `scaleHqx`.  `_blit()` chooses between them using its `scaleMode` option which defaults to `'nearest'`.  The XBRZ and HQX paths require even scaling factors of 2–4 and fall back to nearest-neighbour otherwise.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_display-image.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_display-image.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_display-image.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_display-image.md

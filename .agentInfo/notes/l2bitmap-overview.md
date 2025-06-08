@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_l2bitmap-overview.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2bitmap-overview.md
+=======
 # L2Bitmap format overview
 
 tags: l2bitmap, file-format, bitmap, doc
@@ -21,6 +23,7 @@ tags: l2bitmap, doc
 - Write a parser that reads the column-major format and applies the chosen palette.
 - Support automatic `GCSM` decompression when loading `.dat` resources.
 - Add tests verifying that decoded images match the reference PNGs from camanis.net.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2bitmap-overview.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2bitmap-overview.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2bitmap-overview.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2bitmap-overview.md

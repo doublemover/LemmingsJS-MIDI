@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_naming-cleanup.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_naming-cleanup.md
+=======
 # Ambiguous naming cleanup
 
 tags: cleanup, naming
@@ -21,6 +23,7 @@ These could be renamed or wrapped in helper functions for clarity.
 7. `js/Animation.js` and `js/ParticleTable.js` use `arr` for temporary arrays. More descriptive names like `frameArray` or `frameData` improve readability.
 
 These spots can guide small refactoring tasks focused solely on naming.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_naming-cleanup.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_naming-cleanup.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_naming-cleanup.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_naming-cleanup.md
