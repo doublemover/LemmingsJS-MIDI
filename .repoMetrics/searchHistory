@@ -303,3 +303,4 @@
 {"time":"2025-06-08T10:12:30.484Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":95}
 {"time":"2025-06-08T10:35:12.410Z","query":"replay","mdFiles":6,"codeFiles":8,"ms":135}
 {"time":"2025-06-08T10:35:15.751Z","query":"replay","mdFiles":6,"codeFiles":8,"ms":100}
+{"time":"2025-06-08T11:18:38.369Z","query":"bench sequence","mdFiles":18,"codeFiles":21,"ms":332}
