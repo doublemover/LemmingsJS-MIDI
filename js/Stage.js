@@ -216,6 +216,11 @@ class Stage {
       if (!veloUpdate) {
         stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
         stageImage.viewPoint.setY(sceneY_pre - screenY_rel / newScale);
+
+        const viewH_after = winH / newScale;
+        if (viewH_after >= worldH) {
+          stageImage.viewPoint.setY(worldH - viewH_after);
+        }
       }
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
@@ -648,11 +653,15 @@ class Stage {
     const viewW = vpW / scale;
     const viewH = vpH / scale;
 
-    stageImage.viewPoint.y = this.limitValue(
-      0,
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH)
-    );
+    if (viewH >= worldH) {
+      stageImage.viewPoint.y = worldH - viewH;
+    } else {
+      stageImage.viewPoint.y = this.limitValue(
+        0,
+        stageImage.viewPoint.y,
+        worldH - viewH
+      );
+    }
 
     if (worldW <= viewW) {
       stageImage.viewPoint.x = (worldW - viewW) / 2;

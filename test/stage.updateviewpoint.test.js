@@ -130,6 +130,30 @@ describe('Stage updateViewPoint', function() {
     expect(vp.y).to.be.at.most(Math.max(0, worldH - viewH));
   });
 
+  it('keeps level bottom glued to the HUD when zooming', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 600);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 1;
+    vp.x = 0;
+    vp.y = display.worldDataSize.height - img.height / vp.scale;
+
+    stage.updateViewPoint(img, 100, 100, -10000);
+    let viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(display.worldDataSize.height - viewH);
+
+    stage.updateViewPoint(img, 100, 100, (1 - vp.scale) / 0.0001);
+    viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(display.worldDataSize.height - viewH);
+  });
+
   it('preserves world coords at multiple cursor positions', function() {
     const canvas = createStubCanvas();
     const stage = new Stage(canvas);
