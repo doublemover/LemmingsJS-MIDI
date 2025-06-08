@@ -7,7 +7,7 @@ import { spawnSync } from 'child_process';
 import '../js/LogHandler.js';
 
 describe('tools/search.js', function () {
-  it('writes search history under .searchMetrics', function () {
+  it('writes search history under .repoMetrics', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
     for (const sub of ['index-prose', 'index-code']) {
       fs.mkdirSync(path.join(dir, sub));
@@ -24,7 +24,7 @@ describe('tools/search.js', function () {
     });
     expect(res.status).to.equal(0);
 
-    const hist = path.join(dir, '.searchMetrics', 'searchHistory');
+    const hist = path.join(dir, '.repoMetrics', 'searchHistory');
     expect(fs.existsSync(hist)).to.be.true;
     const lines = fs.readFileSync(hist, 'utf8').trim().split(/\n/);
     expect(lines).to.have.lengthOf(1);
@@ -88,8 +88,8 @@ describe('tools/search.js', function () {
     expect(res.status).to.equal(0);
     expect(res.stdout).to.include('--- Markdown Results ---');
 
-    const metrics = path.join(dir, '.searchMetrics', 'metrics.json');
-    const history = path.join(dir, '.searchMetrics', 'searchHistory');
+    const metrics = path.join(dir, '.repoMetrics', 'metrics.json');
+    const history = path.join(dir, '.repoMetrics', 'searchHistory');
     expect(fs.existsSync(metrics)).to.be.true;
     expect(fs.existsSync(history)).to.be.true;
     fs.rmSync(dir, { recursive: true, force: true });
@@ -117,7 +117,7 @@ describe('tools/search.js', function () {
       expect(out.markdown[0]).to.have.all.keys('file', 'path', 'hits', 'lines', 'function');
     }
 
-    const metrics = path.join(dir, '.searchMetrics', 'metrics.json');
+    const metrics = path.join(dir, '.repoMetrics', 'metrics.json');
     expect(fs.existsSync(metrics)).to.be.true;
     fs.rmSync(dir, { recursive: true, force: true });
   });
@@ -151,7 +151,7 @@ describe('tools/search.js', function () {
     });
     expect(res.status).to.not.equal(0);
     expect(res.stderr).to.include('Missing index files');
-    expect(fs.existsSync(path.join(dir, '.searchMetrics'))).to.be.false;
+    expect(fs.existsSync(path.join(dir, '.repoMetrics'))).to.be.false;
     fs.rmSync(dir, { recursive: true, force: true });
   });
 });

@@ -8,7 +8,7 @@ describe('mergeNoResultQueries', function () {
   it('appends missing lines from the base file', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
     const base = path.join(dir, 'base_no_results');
-    const target = path.join(dir, '.searchMetrics', 'noResultQueries');
+    const target = path.join(dir, '.repoMetrics', 'noResultQueries');
     fs.mkdirSync(path.dirname(target), { recursive: true });
     fs.writeFileSync(base, 'a\nb\nc\n');
     fs.writeFileSync(target, 'b\nc\nd\n');
