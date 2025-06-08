@@ -380,6 +380,45 @@ describe('Action Systems process()', function() {
     expect(level.clearedMasks).to.have.length(0);
   });
 
+  it('ActionBashSystem stops on steel under mask', function() {
+    const level = new StubLevel();
+    level.steelUnder = true;
+    const sys = new TestBashSystem(0, 0);
+    const lem = new StubLemming();
+    lem.frameIndex = 2; // ->3
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
+    expect(level.clearedMasks).to.have.length(0);
+  });
+
+  it('ActionBashSystem finishes when no horizontal space found', function() {
+    const level = new StubLevel();
+    const sys = new ActionBashSystem(stubSprites, stubMasks());
+    const lem = new StubLemming();
+    lem.frameIndex = 4; // ->5
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+  });
+
+  it('ActionBashSystem helper functions inspect ground', function() {
+    const level = new StubLevel();
+    const sys = new ActionBashSystem(stubSprites, stubMasks());
+    const gm = level.getGroundMaskLayer();
+
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(3);
+    level.ground.add(level.key(0, 2));
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(2);
+    level.ground.add(level.key(0, 0));
+    level.ground.delete(level.key(0, 2));
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(0);
+
+    level.ground.clear();
+    expect(sys.findHorizontalSpace(gm, 0, 0, true)).to.equal(4);
+    level.ground.add(level.key(1, 0));
+    expect(sys.findHorizontalSpace(gm, 0, 0, true)).to.equal(1);
+    level.ground.clear();
+    level.ground.add(level.key(-3, 0));
+    expect(sys.findHorizontalSpace(gm, 0, 0, false)).to.equal(3);
+  });
+
   it('ActionBuildSystem turns around when hitting wall', function() {
     const level = new StubLevel();
     const sys = new ActionBuildSystem(new Map());
@@ -486,6 +525,59 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
     expect(lem.y).to.equal(1);
     expect(calls).to.equal(1);
+  });
+
+  it('ActionDiggSystem falls when digging out of level', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.y = 49;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = y => y >= 50;
+    sys.digRow = () => true;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+  });
+
+  it('ActionDiggSystem falls when dig row removes nothing', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = () => false;
+    sys.digRow = () => false;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+  });
+
+  it('ActionDiggSystem cycles animation frames', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    level.isOutOfLevel = () => false;
+    let calls = 0;
+    sys.digRow = () => { calls++; return true; };
+    for (let i = 0; i < 16; i++) {
+      sys.process(level, lem);
+    }
+    expect(lem.frameIndex).to.equal(0);
+    expect(lem.y).to.equal(2);
+    expect(calls).to.equal(2);
+  });
+
+  it('ActionDiggSystem shrugs when steel appears below', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = () => false;
+    sys.digRow = () => true;
+    level.steelGround = () => false;
+    sys.process(level, lem); // dig first row
+    level.steelGround = k => k === level.key(lem.x, lem.y);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
   });
 
   it('ActionDrowningSystem moves when no wall', function() {
