@@ -8,7 +8,7 @@ describe('mergeSearchHistory', function () {
   it('merges records and sorts by time', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
     const base = path.join(dir, 'base_history');
-    const target = path.join(dir, '.searchMetrics', 'searchHistory');
+    const target = path.join(dir, '.repoMetrics', 'searchHistory');
     fs.mkdirSync(path.dirname(target), { recursive: true });
 
     const rec1 = { time: '2020-01-03T00:00:00Z', query: 'A' };
@@ -27,7 +27,7 @@ describe('mergeSearchHistory', function () {
   it('splits concatenated records and deduplicates', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
     const base = path.join(dir, 'base_history');
-    const target = path.join(dir, '.searchMetrics', 'searchHistory');
+    const target = path.join(dir, '.repoMetrics', 'searchHistory');
     fs.mkdirSync(path.dirname(target), { recursive: true });
 
     const rec1 = { time: '2020-01-01T00:00:00Z', query: 'foo' };
