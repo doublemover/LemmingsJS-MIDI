@@ -71,4 +71,22 @@ describe('Frame', function () {
       0, 1
     ]);
   });
+
+  it('respects noOverwrite and onlyOverwrite flags', function () {
+    const frame = new Frame(1, 1);
+    const base = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
+    const other = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
+    const third = ColorPalette.colorFromRGB(7, 8, 9) >>> 0;
+    frame.setPixel(0, 0, base);
+    frame.setPixel(0, 0, other, true);
+    expect(frame.data[0]).to.equal(base);
+    frame.clearPixel(0, 0);
+    frame.setPixel(0, 0, other, false, true);
+    expect(frame.data[0]).to.equal(ColorPalette.black >>> 0);
+    expect(frame.mask[0]).to.equal(0);
+    frame.setPixel(0, 0, third);
+    frame.setPixel(0, 0, other, false, true);
+    expect(frame.data[0]).to.equal(other);
+    expect(frame.mask[0]).to.equal(1);
+  });
 });
