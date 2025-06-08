@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
+- Search metrics moved to `.repoMetrics`, removing usageCounts tracking. The
+  auto-merge workflows now consolidate under `automerge-repo.yml`.
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
