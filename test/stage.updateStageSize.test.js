@@ -98,11 +98,19 @@ describe('Stage.updateStageSize', function() {
       removeEventListener() {}
     };
     Lemmings.MiniMap = MiniMapStub;
+    Lemmings.DisplayImage.prototype._blit = () => {};
+    Lemmings.DisplayImage.prototype.drawRect = () => {};
+    Lemmings.DisplayImage.prototype.drawHorizontalLine = () => {};
+    Lemmings.DisplayImage.prototype.setPixel = () => {};
   });
 
   after(function() {
     delete globalThis.window;
     delete Lemmings.MiniMap;
+    delete Lemmings.DisplayImage.prototype._blit;
+    delete Lemmings.DisplayImage.prototype.drawRect;
+    delete Lemmings.DisplayImage.prototype.drawHorizontalLine;
+    delete Lemmings.DisplayImage.prototype.setPixel;
   });
 
   it('centers GUI panel after canvas resize', function() {
@@ -209,6 +217,7 @@ describe('Stage.updateStageSize', function() {
     const gui = new GameGui(game, sprites, skills, timer, victory);
 
     gui.setGuiDisplay(display);
+    gui.render();
 
     const scale = stage.guiImgProps.viewPoint.scale;
     const panelW = display.worldDataSize.width * scale;
