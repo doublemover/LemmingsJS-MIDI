@@ -411,12 +411,13 @@ class GameGui {
         const stats = [
           'T' + lemmings.steps,
           'TPS ' + Math.round(lemmings.tps),
-          'Spawn ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
+          'Spawned ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
         ];
         let x = 0;
-        for (const s of stats) {
+        for (let i = 0; i < stats.length; i++) {
+          const s = stats[i];
           this.drawGreenString(d, s, x, 0);
-          x += s.length * 8;
+          x += (s.length+1) * 8;
         }
       }
     }
