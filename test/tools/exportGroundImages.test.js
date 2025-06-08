@@ -15,7 +15,8 @@ import '../../js/BitReader.js';
 import '../../js/BitWriter.js';
 import '../../js/UnpackFilePart.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+globalThis.lemmings = Lemmings;
+globalThis.lemmings.game = { showDebug: false };
 
 let orig;
 function setupStubs() {
@@ -192,6 +193,61 @@ describe('tools/exportGroundImages.js', function () {
         fs.rmSync(tmpdir, { recursive: true, force: true });
         fs.unlinkSync(script);
         delete globalThis.MockNodeFileProvider;
+      }
+      expect(err).to.be.instanceOf(Error);
+    });
+
+    it('defaults to lemmings when config.json is unreadable', async function () {
+      const files = {
+        'lemmings/GROUND0O.DAT': new Uint8Array([0]),
+        'lemmings/VGAGR0.DAT': new Uint8Array([0])
+      };
+      class MockProvider {
+        async loadBinary(dir, file) {
+          const key = `${dir}/${file}`;
+          const arr = files[key];
+          if (!arr) throw new Error('missing ' + key);
+          return new Lemmings.BinaryReader(arr, 0, arr.length, file, dir);
+        }
+      }
+      globalThis.MockNodeFileProvider = MockProvider;
+
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'cwd-'));
+      const script = patchScript();
+      const cfg = fileURLToPath(new URL('../../config.json', import.meta.url));
+      const cfgBak = `${cfg}.bak`;
+      fs.renameSync(cfg, cfgBak);
+      try {
+        await runScript(script, [], { cwd: tmpdir });
+        await new Promise(r => setTimeout(r, 150));
+        const base = path.join(tmpdir, 'exports', 'lemmings_ground_0');
+        const pngs = fs.existsSync(base) ? fs.readdirSync(base).filter(f => f.endsWith('.png')) : [];
+        expect(pngs.length).to.be.greaterThan(0);
+      } finally {
+        fs.renameSync(cfgBak, cfg);
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+        fs.unlinkSync(script);
+        delete globalThis.MockNodeFileProvider;
+      }
+    });
+
+    it('handles missing files without output', async function () {
+      class RejectProvider { async loadBinary() { throw new Error('missing'); } }
+      globalThis.MockNodeFileProvider = RejectProvider;
+
+      const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+      const script = patchScript();
+      let err = null;
+      try {
+        await runScript(script, ['lemmings', '99', outDir]);
+      } catch (e) {
+        err = e;
+      } finally {
+        const pngs = fs.existsSync(outDir) ? fs.readdirSync(outDir).filter(f => f.endsWith('.png')) : [];
+        fs.rmSync(outDir, { recursive: true, force: true });
+        fs.unlinkSync(script);
+        delete globalThis.MockNodeFileProvider;
+        expect(pngs.length).to.equal(0);
       }
       expect(err).to.be.instanceOf(Error);
     });
