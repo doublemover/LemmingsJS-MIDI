@@ -76,6 +76,8 @@ describe('GameView menu interactions', function() {
     view.levelGroupIndex = 0;
     view.levelIndex = 1;
     view.elementSelectLevel = createSelect();
+    view.elementSelectLevelGroup = createSelect();
+    view.elementSelectGameType = createSelect();
 
     await view.populateLevelSelect();
 
@@ -97,6 +99,8 @@ describe('GameView menu interactions', function() {
     view.gameFactory = new GameFactoryMock();
     view.gameResources = new GameResourcesMock();
     view.elementSelectLevel = createSelect();
+    view.elementSelectLevelGroup = createSelect();
+    view.elementSelectGameType = createSelect();
     let populate = 0;
     view.populateLevelSelect = async () => { populate++; };
     let loaded = 0;
@@ -123,6 +127,8 @@ describe('GameView menu interactions', function() {
     view.gameFactory = new GameFactoryMock();
     view.configs = configs;
     view.elementSelectLevelGroup = createSelect();
+    view.elementSelectLevel = createSelect();
+    view.elementSelectGameType = createSelect();
     let populate = 0;
     view.populateLevelSelect = async () => { populate++; };
     let loaded = 0;
@@ -144,6 +150,9 @@ describe('GameView menu interactions', function() {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
+    view.elementSelectLevel = createSelect();
+    view.elementSelectLevelGroup = createSelect();
+    view.elementSelectGameType = createSelect();
     let loaded = 0;
     view.loadLevel = () => { loaded++; };
     view.selectLevel(2);

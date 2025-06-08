@@ -206,6 +206,46 @@ describe('LemmingManager core behavior', function() {
     nearest = manager.getNearestLemming(19, 19);
     expect(nearest).to.equal(lem3);
   });
+
+  it('cycleSelection skips removed and disabled lemmings', function() {
+    const level = new Level(20, 20);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+
+    manager.addLemming(1, 1);
+    manager.addLemming(2, 2);
+    manager.addLemming(3, 3);
+
+    const [lem1, lem2, lem3] = manager.lemmings;
+    lem1.remove();
+    lem2.disable();
+
+    const sel = manager.cycleSelection();
+    expect(sel).to.equal(lem3);
+
+    lem3.remove();
+    const none = manager.cycleSelection();
+    expect(none).to.equal(null);
+    expect(manager.selectedIndex).to.equal(-1);
+  });
+
+  it('dispose resets key fields', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(5, 5);
+
+    const mm = { scaleX: 1, scaleY: 1, setLiveDots() {}, setSelectedDot() {} };
+    manager.setMiniMap(mm);
+
+    manager.dispose();
+
+    expect(manager.level).to.equal(null);
+    expect(manager.miniMap).to.equal(null);
+    expect(manager.lemmings.length).to.equal(0);
+  });
 });
 
 describe('LemmingManager additional', function() {

@@ -40,4 +40,28 @@ describe('KeyboardShortcuts _instantNuke', function () {
     expect(lemmingsList[3].calls).to.be.undefined;
     expect(lemmingsList[4].calls).to.be.undefined;
   });
+
+  it('ignores lemmings that have already exploded', function () {
+    const explodingAction = {};
+    const lemmingsList = [
+      { removed: false, action: {}, setAction() {}, hasExploded: true },
+      { removed: false, action: {}, setAction() {} }
+    ];
+    const manager = {
+      lemmings: lemmingsList,
+      actions: { [Lemmings.LemmingStateType.EXPLODING]: explodingAction },
+      setLemmingState(lem) {
+        lem.calls = (lem.calls || 0) + 1;
+        lem.action = explodingAction;
+      }
+    };
+    const game = { getLemmingManager() { return manager; } };
+    const view = { game };
+    const ks = new KeyboardShortcuts(view);
+
+    ks._instantNuke();
+
+    expect(lemmingsList[0].calls).to.be.undefined;
+    expect(lemmingsList[1].calls).to.equal(1);
+  });
 });

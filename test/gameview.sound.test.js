@@ -2,6 +2,8 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 
 class GameFactoryStub { constructor() {} }
 
+class KeyboardShortcutsMock { constructor() {} dispose() {} }
+
 globalThis.lemmings = { game: { showDebug: false } };
 
 function createWindow() {
@@ -19,11 +21,17 @@ describe('GameView audio methods', function() {
     global.window = createWindow();
     global.history = { replaceState() {} };
     Lemmings.GameFactory = GameFactoryStub;
+    this.origKeyboard = Lemmings.KeyboardShortcuts;
+    this.origGameTypes = Lemmings.GameTypes;
+    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    Lemmings.GameTypes = { toString: () => '' };
   });
 
   afterEach(function() {
     delete global.window;
     delete global.history;
+    Lemmings.KeyboardShortcuts = this.origKeyboard;
+    Lemmings.GameTypes = this.origGameTypes;
   });
 
   it('playMusic and sound stubs execute without error', async function() {
