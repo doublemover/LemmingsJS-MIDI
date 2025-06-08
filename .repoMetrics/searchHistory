@@ -298,3 +298,5 @@
 {"time":"2025-06-08T09:42:11.293Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
 {"time":"2025-06-08T09:55:07.852Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
 {"time":"2025-06-08T09:55:09.800Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
+{"time":"2025-06-08T10:07:56.771Z","query":"GroundReader","mdFiles":31,"codeFiles":95,"ms":247}
+{"time":"2025-06-08T10:07:59.139Z","query":"_readTerrainImages","mdFiles":42,"codeFiles":75,"ms":139}
