@@ -1,5 +1,3 @@
-# Test categories
-
 tags: tests, categories
 
 Tests are organized into categories so you can run only the relevant suites during development. This speeds up iteration when touching specific subsystems.
