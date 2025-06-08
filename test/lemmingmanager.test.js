@@ -51,6 +51,14 @@ class MineAction extends DummyAction {}
 
 beforeEach(function() {
   globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+  this._winW = global.winW;
+  this._winH = global.winH;
+  this._worldW = global.worldW;
+  this._worldH = global.worldH;
+  global.winW = 1600;
+  global.winH = 1200;
+  global.worldW = 1600;
+  global.worldH = 1200;
   for (const key of actionKeys) Lemmings[key] = DummyAction;
   Lemmings.ActionBashSystem = BashAction;
   Lemmings.ActionBlockerSystem = BlockAction;
@@ -143,5 +151,59 @@ describe('LemmingManager core behavior', function() {
     manager.tick();
 
     expect(mm.dots.length).to.equal(2);
+  });
+
+  it('spawns and removes lemmings mid-level', function() {
+    const level = new Level(50, 50);
+    level.entrances = [{ x: 0, y: 0 }];
+    level.releaseCount = 1;
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+
+    const mm = { scaleX: 1, scaleY: 1, setLiveDots(arr) { this.dots = arr; }, setSelectedDot() {}, addDeath(x, y) { this.deaths = [x, y]; } };
+    manager.setMiniMap(mm);
+
+    manager.releaseTickIndex = 103;
+    manager.addNewLemmings();
+    manager.mmTickCounter = 9;
+    manager.tick();
+
+    expect(manager.lemmings.length).to.equal(1);
+    expect(gvc.getOutCount()).to.equal(1);
+    expect(mm.dots.length).to.equal(2);
+
+    manager.removeOne(manager.lemmings[0]);
+    expect(gvc.getOutCount()).to.equal(0);
+    expect(mm.deaths).to.eql([24, 14]);
+
+    manager.addLemming(30, 30);
+    manager.mmTickCounter = 9;
+    manager.tick();
+
+    expect(mm.dots.length).to.equal(2);
+    expect(manager.lemmings[0].removed).to.be.true;
+  });
+
+  it('getNearestLemming picks closest active lemming', function() {
+    const level = new Level(60, 60);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+
+    manager.addLemming(5, 5);
+    manager.addLemming(20, 20);
+
+    const lem1 = manager.lemmings[0];
+    const lem2 = manager.lemmings[1];
+
+    manager.removeOne(lem2);
+
+    let nearest = manager.getNearestLemming(6, 6);
+    expect(nearest).to.equal(lem1);
+
+    manager.addLemming(18, 18);
+    const lem3 = manager.lemmings[2];
+    nearest = manager.getNearestLemming(19, 19);
+    expect(nearest).to.equal(lem3);
   });
 });
