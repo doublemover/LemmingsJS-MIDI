@@ -1,3 +1,7 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_mechanics-flags.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_mechanics-flags.md
+=======
 # Mechanics flags
 
 tags: game, config, mechanics
@@ -9,3 +13,5 @@ Planned flags might include physics variations or other rule tweaks. Once implem
 Existing flag:
 - `isSuperLemming` (stored per level)
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_mechanics-flags.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_mechanics-flags.md

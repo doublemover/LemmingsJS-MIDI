@@ -1,3 +1,7 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2-save-format.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2-save-format.md
+=======
 # L2 savegame format
 
 tags: l2, savegame, doc, todo
@@ -16,3 +20,5 @@ TODO
 - implement read/write support for these slots
 - figure out the purpose of the unknown bytes
 - allow editing slot names and last tribe index
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-save-format.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-save-format.md

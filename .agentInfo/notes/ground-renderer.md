@@ -1,3 +1,7 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_ground-renderer.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_ground-renderer.md
+=======
 # GroundRenderer note
 
 tags: render, ground
@@ -9,3 +13,5 @@ tags: render, ground
 
 `createVgaspecMap` simply reuses a predecoded frame for VGASPEC levels.
 After rendering, `GroundRenderer.img` holds the complete ground bitmap and its mask, which the loader passes to `Level.setGroundImage` for display.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_ground-renderer.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_ground-renderer.md

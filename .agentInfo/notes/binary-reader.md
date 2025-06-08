@@ -1,3 +1,7 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_binary-reader.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_binary-reader.md
+=======
 # BinaryReader note
 
 tags: binary-reader
@@ -9,3 +13,5 @@ logical window so multiple readers can share data. Position setters/getters allo
 seek-like access when decoding resource files. The constructor also accepts a
 `Blob`; when provided, it loads the blob asynchronously and the `ready` promise
 resolves with the resulting `Uint8Array`.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_binary-reader.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_binary-reader.md
