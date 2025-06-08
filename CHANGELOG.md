@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bench mode spawns entrances near originals and tracks the total spawned.
 - HQX and xBRZ scaling options.
 - Frame step controls for debug playback.
+- Skill usage can be triggered by clicking a lemming.
 - Enchanced bench mode. Determines a maximum number of lemmings that can be spawned at a time before going through a series of spawn volume tests.
 - Search tool for agents uses TF‑IDF weighting and supports fuzzy search to augment their ability to search the codebase.
 - Documentation covers configuration, compression formats, level file formats and WebMIDI setup.
@@ -44,6 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
 - Bench spawn thresholds refined and spawn counts tracked.
+- Mouse wheel zoom sensitivity adjusted for smoother control.
 
 ## [0.0.2] - 2025-06-04
 ### Added
