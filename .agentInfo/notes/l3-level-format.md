@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_l3-level-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l3-level-format.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l3-level-format.md
+=======
 # Lemmings 3 level format note
 
 tags: level-format, l3, doc
@@ -16,5 +20,7 @@ Compared to the Lemmings 2 (`L2LV`) format:
 - L3 adds a lemming style separate from the level style plus a release delay and enemy count.
 
 Features potentially worth porting include the extra‑lemming count and release delay fields for richer level scripting, and enemy objects if support is added later.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l3-level-format.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l3-level-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l3-level-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l3-level-format.md

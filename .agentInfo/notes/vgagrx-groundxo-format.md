@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_vgagrx-groundxo-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_vgagrx-groundxo-format.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_vgagrx-groundxo-format.md
+=======
 # VGAGR/GROUND format note
 
 tags: vgagrx, groundxo, planar-bitmaps
@@ -20,5 +24,7 @@ usually duplicates the mask.
 However the loader still reads the mask plane from a separate offset rather than
 reusing the fourth plane for terrain.  The reference hints at extra bitmaps in
 `VGAGR?.DAT` which are currently ignored by the code.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_vgagrx-groundxo-format.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_vgagrx-groundxo-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_vgagrx-groundxo-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_vgagrx-groundxo-format.md
