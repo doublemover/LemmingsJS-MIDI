@@ -5,11 +5,12 @@ import path from 'node:path';
 import minimist from 'minimist';
 import Snowball from 'snowball-stemmers';
 import c from 'ansi-colors';
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 const argv = minimist(process.argv.slice(2), {
-  boolean: ['json', 'human', 'stats'],
-  alias: { n: 'top', 'human-json': 'hj' },
-  default: { n: 10 }
+  boolean: ['json', 'human', 'stats', 'fuzzy'],
+  alias: { n: 'top', 'human-json': 'hj', c: 'context', f: 'fuzzy' },
+  default: { n: 10, context: 0, fuzzy: false }
 });
 
 // If no flags, we emit agent‐optimized text by default.
@@ -31,7 +32,8 @@ if (!query) {
 
 const t0 = Date.now();
 const ROOT = process.cwd();
-const metricsDir = path.join(ROOT, '.searchMetrics');
+const metricsDir = path.join(ROOT, '.repoMetrics');
+const contextLines = Math.max(0, parseInt(argv.context, 10) || 0);
 
 /* --- Tokeniser + regex for highlighting --- */
 const stemmer = Snowball.newStemmer('english');
@@ -70,6 +72,25 @@ function loadDir(dir) {
 const prose = loadDir('index-prose');
 const code = loadDir('index-code');
 
+function expandTokens(idx, tokens) {
+  if (!argv.fuzzy) return tokens.filter((t) => idx.postings.vocab.includes(t));
+  const set = new Set();
+  tokens.forEach((t) => {
+    idx.postings.vocab.forEach((v) => {
+      if (v.includes(t)) set.add(v);
+    });
+  });
+  return Array.from(set);
+}
+
+function idf(idx, token) {
+  const col = idx.postings.vocab.indexOf(token);
+  if (col === -1) return 0;
+  const df = idx.postings.postings[col].length;
+  const N = idx.meta.length;
+  return Math.log((N + 1) / (df + 1)) + 1;
+}
+
 /* ---------- ENCAPSULATED HELPER: find enclosing function name ---------- */
 function getEnclosingFunction(lines, lineNum) {
   for (let i = lineNum - 1; i >= 0; i--) {
@@ -102,15 +123,17 @@ function colorScore(score, max) {
 
 /* ---------- BUILD MD INDEX RESULTS ---------- */
 const mdScores = new Map(); // file → { chunkScore }
-qTokens.forEach((tokStr) => {
+const mdTokens = expandTokens(prose, qTokens);
+mdTokens.forEach((tokStr) => {
   const col = prose.postings.vocab.indexOf(tokStr);
   if (col === -1) return;
+  const weight = idf(prose, tokStr);
   let id = 0;
   for (const gap of prose.postings.postings[col]) {
     id += gap;
     const m = prose.meta[id];
     const entry = mdScores.get(m.file) || { chunkScore: 0 };
-    entry.chunkScore++;
+    entry.chunkScore += weight;
     mdScores.set(m.file, entry);
   }
 });
@@ -144,12 +167,14 @@ await Promise.all(
   })
 );
 
+mdHitsAll.forEach((h) => { h.score = h.chunkScore; });
+const maxMdScore = mdHitsAll.reduce((m, h) => Math.max(m, h.score), 1);
 const maxMdMatches = mdHitsAll.reduce((max, h) => Math.max(max, h.totalMatches), 1);
 
 /* ---------- BUILD CODE INDEX RESULTS ---------- */
-function chunkCandidates(idx) {
+function chunkCandidates(idx, tokens) {
   const cand = new Set();
-  qTokens.forEach((tokStr) => {
+  tokens.forEach((tokStr) => {
     const col = idx.postings.vocab.indexOf(tokStr);
     if (col === -1) return;
     let id = 0;
@@ -161,19 +186,20 @@ function chunkCandidates(idx) {
   return cand;
 }
 
-const candChunks = chunkCandidates(code);
+const codeTokens = expandTokens(code, qTokens);
+const candChunks = chunkCandidates(code, codeTokens);
 const codeScores = new Map(); // file → { chunkScore }
 for (const id of candChunks) {
   const m = code.meta[id];
   let sc = codeScores.get(m.file)?.chunkScore || 0;
-  qTokens.forEach((tokStr) => {
+  codeTokens.forEach((tokStr) => {
     const col = code.postings.vocab.indexOf(tokStr);
     if (col === -1) return;
     let cur = 0;
     for (const gap of code.postings.postings[col]) {
       cur += gap;
       if (cur === id) {
-        sc++;
+        sc += idf(code, tokStr);
         break;
       }
       if (cur > id) break;
@@ -213,6 +239,8 @@ await Promise.all(
   })
 );
 
+codeHitsAll.forEach((h) => { h.score = h.chunkScore; });
+const maxCodeScore = codeHitsAll.reduce((m, h) => Math.max(m, h.score), 1);
 const maxCodeMatches = codeHitsAll.reduce(
   (max, h) => Math.max(max, h.totalMatches),
   1
@@ -263,19 +291,27 @@ function agentText() {
     if (SHOW_SNIPPET_MD) {
       const md1 = mdHitsAll[0];
       const [l1] = md1.realPos.length ? md1.realPos[0] : [1, 1];
-      const textMd = fsSync.readFileSync(path.join(ROOT, md1.file), 'utf8');
-      const linesMd = textMd.split(/\r?\n/);
+      let linesMd = [];
+      if (fsSync.existsSync(path.join(ROOT, md1.file))) {
+        const textMd = fsSync.readFileSync(path.join(ROOT, md1.file), 'utf8');
+        linesMd = textMd.split(/\r?\n/);
+      }
       const z1 = l1 - 1;
-      const st1 = Math.max(0, z1 - 2);
-      const en1 = Math.min(linesMd.length, z1 + 3);
+      const st1 = Math.max(0, z1 - contextLines);
+      const en1 = Math.min(linesMd.length, z1 + contextLines + 1);
 
-      const scoreMd1 = colorScore(md1.totalMatches, maxMdMatches).padEnd(4);
+      const scoreMd1 = colorScore(md1.score, maxMdScore).padEnd(4);
+      const fnPart = md1.enclosingFunction
+        ? ` (func: ${md1.enclosingFunction})`
+        : '';
       out += `[${scoreMd1}] ` +
         c.magentaBright(path.basename(md1.file)) +
-        ` (func: ${md1.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       for (let i = st1; i < en1; i++) {
         const num = c.green(String(i + 1).padStart(4));
-        const hl = linesMd[i].replace(rx, (m) => c.bold.yellowBright(m));
+        const line = linesMd[i] || '';
+        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
         out += num + ' ' + hl + '\n';
       }
       out += '\n';
@@ -284,10 +320,23 @@ function agentText() {
     // List next MD hits
     for (let i = SHOW_SNIPPET_MD; i < SHOW_SNIPPET_MD + LIST_MD; i++) {
       const h = mdHitsAll[i];
-      const sc = colorScore(h.totalMatches, maxMdMatches).padEnd(4);
+      const sc = colorScore(h.score, maxMdScore).padEnd(4);
       out += `[${sc}] ` +
         c.magentaBright(path.basename(h.file)) +
         ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+      if (contextLines) {
+        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        const lines = text.split(/\r?\n/);
+        const [l] = h.realPos.length ? h.realPos[0] : [1];
+        const z = l - 1;
+        const st = Math.max(0, z - contextLines);
+        const en = Math.min(lines.length, z + contextLines + 1);
+        for (let j = st; j < en; j++) {
+          const num = c.green(String(j + 1).padStart(4));
+          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
+          out += num + ' ' + hl + '\n';
+        }
+      }
     }
     out += '\n';
   }
@@ -302,19 +351,26 @@ function agentText() {
     for (let i = 0; i < SHOW_SNIPPET_CODE; i++) {
       const h = codeHitsAll[i];
       const [lc] = h.realPos.length ? h.realPos[0] : [1, 1];
-      const textC = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-      const linesC = textC.split(/\r?\n/);
+      let linesC = [];
+      if (fsSync.existsSync(path.join(ROOT, h.file))) {
+        const textC = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        linesC = textC.split(/\r?\n/);
+      }
       const zc = lc - 1;
-      const stC = Math.max(0, zc - 2);
-      const enC = Math.min(linesC.length, zc + 3);
-
-      const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
+      const stC = Math.max(0, zc - contextLines);
+      const enC = Math.min(linesC.length, zc + contextLines + 1);
+      const sc = colorScore(h.score, maxCodeScore).padEnd(4);
+      const fnPart = h.enclosingFunction
+        ? ` (func: ${h.enclosingFunction})`
+        : '';
       out += `[${sc}] ` +
         c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       for (let j = stC; j < enC; j++) {
         const num = c.green(String(j + 1).padStart(4));
-        const hl = linesC[j].replace(rx, (m) => c.bold.yellowBright(m));
+        const line = linesC[j] || '';
+        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
         out += num + ' ' + hl + '\n';
       }
       out += '\n';
@@ -323,10 +379,23 @@ function agentText() {
     // List next code hits
     for (let i = SHOW_SNIPPET_CODE; i < SHOW_SNIPPET_CODE + LIST_CODE; i++) {
       const h = codeHitsAll[i];
-      const sc = colorScore(h.totalMatches, maxCodeMatches).padEnd(4);
+      const sc = colorScore(h.score, maxCodeScore).padEnd(4);
       out += `[${sc}] ` +
         c.blueBright(path.basename(h.file)) +
         ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+      if (contextLines) {
+        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        const lines = text.split(/\r?\n/);
+        const [l] = h.realPos.length ? h.realPos[0] : [1];
+        const z = l - 1;
+        const st = Math.max(0, z - contextLines);
+        const en = Math.min(lines.length, z + contextLines + 1);
+        for (let j = st; j < en; j++) {
+          const num = c.green(String(j + 1).padStart(4));
+          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
+          out += num + ' ' + hl + '\n';
+        }
+      }
     }
     out += '\n';
   }
@@ -341,14 +410,14 @@ function agentJSON() {
       markdown: mdHitsAll.map((h) => ({
         file: h.file,
         totalMatches: h.totalMatches,
-        score: h.totalMatches,
+        score: h.score,
         realPos: h.realPos,
         enclosingFunction: h.enclosingFunction,
       })),
       code: codeHitsAll.map((h) => ({
         file: h.file,
         totalMatches: h.totalMatches,
-        score: h.totalMatches,
+        score: h.score,
         realPos: h.realPos,
         enclosingFunction: h.enclosingFunction,
       })),
@@ -368,13 +437,27 @@ function humanText() {
     const toShow = Math.min(10, mdHitsAll.length);
     for (let i = 0; i < toShow; i++) {
       const h = mdHitsAll[i];
-      const sc = colorScore(h.totalMatches, maxMdMatches);
+      const sc = colorScore(h.score, maxMdScore);
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
         ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+      if (contextLines) {
+        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        const lines = text.split(/\r?\n/);
+        const [l] = h.realPos.length ? h.realPos[0] : [1];
+        const z = l - 1;
+        const st = Math.max(0, z - contextLines);
+        const en = Math.min(lines.length, z + contextLines + 1);
+        for (let j = st; j < en; j++) {
+          const num = c.green(String(j + 1).padStart(4));
+          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
+          out += num + ' ' + hl + '\n';
+        }
+      }
     }
     if (mdHitsAll.length > 10) {
       out += `... and ${mdHitsAll.length - 10} more Markdown files.\n`;
@@ -389,13 +472,27 @@ function humanText() {
     const toShow = Math.min(10, codeHitsAll.length);
     for (let i = 0; i < toShow; i++) {
       const h = codeHitsAll[i];
-      const sc = colorScore(h.totalMatches, maxCodeMatches);
+      const sc = colorScore(h.score, maxCodeScore);
       const pos = h.realPos.length
         ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
         : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
         ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+      if (contextLines) {
+        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        const lines = text.split(/\r?\n/);
+        const [l] = h.realPos.length ? h.realPos[0] : [1];
+        const z = l - 1;
+        const st = Math.max(0, z - contextLines);
+        const en = Math.min(lines.length, z + contextLines + 1);
+        for (let j = st; j < en; j++) {
+          const num = c.green(String(j + 1).padStart(4));
+          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
+          out += num + ' ' + hl + '\n';
+        }
+      }
     }
     if (codeHitsAll.length > 10) {
       out += `... and ${codeHitsAll.length - 10} more code files.\n`;
@@ -414,6 +511,7 @@ function humanJSON() {
         file: path.basename(h.file),
         path: path.dirname(h.file),
         hits: h.totalMatches,
+        score: h.score,
         lines: h.realPos,
         function: h.enclosingFunction || null,
       })),
@@ -422,6 +520,7 @@ function humanJSON() {
         file: path.basename(h.file),
         path: path.dirname(h.file),
         hits: h.totalMatches,
+        score: h.score,
         lines: h.realPos,
         function: h.enclosingFunction || null,
       })),
@@ -460,9 +559,10 @@ if (argv.stats) {
   );
 }
 
-/* ---------- Update .searchMetrics and .searchHistory ---------- */
+/* ---------- Update .repoMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
+const noResultPath = path.join(metricsDir, 'noResultQueries');
 await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
 let metrics = {};
@@ -492,3 +592,12 @@ await fs.appendFile(
     ms: Date.now() - t0,
   }) + '\n'
 );
+
+if (totalMdFiles === 0 && totalCodeFiles === 0) {
+  await fs.appendFile(
+    noResultPath,
+    JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
+  );
+}
+
+updateUsageCounts('search');

@@ -9,8 +9,12 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "mocha --recursive",
-    "coverage": "c8 mocha --recursive",
+    "test": "node tools/runTests.js",
+    "test-core": "mocha \"test/*game*.test.js\"",
+    "test-bench": "mocha \"test/bench*.test.js\"",
+    "test-workflow": "mocha \"test/*workflow*.test.js\"",
+    "test-tools": "mocha \"test/tools/*.test.js\"",
+    "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -27,8 +31,8 @@
     "index": "node tools/build_index.js",
     "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js",
     "agent-update-searchhistory": "node tools/mergeSearchHistory.js",
-    "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .searchMetrics/metrics.json",
-    "test-workflows": "mocha test/search-history-workflow.test.js"
+    "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .repoMetrics/metrics.json",
+    "test-workflows": "mocha test/search-history-workflow.test.js test/no-result-queries-workflow.test.js test/no-result-queries-ci-workflow.test.js test/search-history-ci-workflow.test.js"
   },
   "repository": {
     "type": "git",
@@ -61,6 +65,7 @@
     "snowball-stemmers": "^0.6.0",
     "strip-comments": "^2.0.1",
     "svd-js": "^1.1.1",
+    "cross-env": "^7.0.3",
     "tar": "^7.4.3"
   },
   "dependencies": {

@@ -3,6 +3,7 @@ import './LogHandler.js';
 import { Lemmings } from './LemmingsNamespace.js';
 import { scaleImage } from './xbrz/xbrz.js';
 import { hqxScale, initHqx } from './vendor/hqx/index.js';
+import './EventHandler.js';
 initHqx();
 
 // a simple but high quality 53-bit hash
@@ -675,6 +676,7 @@ function drawDashedRect(
 
 Lemmings.drawMarchingAntRect = drawMarchingAntRect;
 Lemmings.drawDashedRect = drawDashedRect;
+Lemmings.scaleNearest = scaleNearest;
 Lemmings.scaleXbrz = scaleXbrz;
 Lemmings.scaleHqx = scaleHqx;
-export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleXbrz, scaleHqx };
+export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleNearest, scaleXbrz, scaleHqx };

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# merge-metrics.sh: a Git merge driver for .searchMetrics/metrics.json
+# merge-metrics.sh: a Git merge driver for .repoMetrics/metrics.json
 #
 # Git will invoke this with three positional arguments:
 #   $1 = “base” (common ancestor)
@@ -60,5 +60,6 @@ jq -s '
 
 # Overwrite “ours” with the merged result
 mv "${OURS}.merged" "${OURS}"
+node "$(dirname "$0")/updateUsageCounts.js" merge_metrics >/dev/null 2>&1 || true
 
 exit 0

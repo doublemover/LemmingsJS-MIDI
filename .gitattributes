@@ -6,8 +6,9 @@
 *.dat binary
 
 # Tell Git to invoke our "merge-metrics" driver on metrics.json
-.searchMetrics/metrics.json    merge=merge_metrics
-.searchMetrics/searchHistory   merge=merge_history
+.repoMetrics/metrics.json    merge=merge_metrics
+.repoMetrics/searchHistory   merge=merge_history
+.repoMetrics/noResultQueries merge=merge_no_results
 .agentInfo/index.md             merge=merge_agentinfo_index
 .agentInfo/index-detailed.md    merge=merge_agentinfo_index
 .agentInfo/notes/*.md           merge=merge_agentinfo_notes

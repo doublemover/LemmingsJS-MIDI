@@ -1,12 +1,21 @@
 # Testing
 
-Run `npm test` to execute the project's automated tests:
+Run `npm test` to execute the project's automated tests. Dedicated scripts run
+common subsets of the suite:
 
 ```bash
-npm test
+npm test                # runs all tests
+npm run test-core       # core game logic
+npm run test-bench      # performance benchmarks
+npm run test-workflow   # GitHub workflow helpers
+npm run test-tools      # command line tools
 ```
 
-The command uses Mocha and is launched with Node's `--import` option so that `js/LogHandler.js` is loaded before the test runner. No special environment variables are needed. The suite creates a minimal `lemmings` object and writes temporary files under your operating system's temp directory.
+Categories are described in `.agentInfo/notes/test-categories.md`.
+
+The tests require no special environment variables. A minimal `lemmings` object
+is created and temporary files are written under your operating system's temp
+directory.
 
 ## npm test workflow
 

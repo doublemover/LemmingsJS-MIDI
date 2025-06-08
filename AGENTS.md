@@ -5,20 +5,26 @@ This repository hosts a JavaScript/Node implementation of **Lemmings**. The foll
 This repository uses ESLint for code style.
 Run `npm run format` before committing to automatically fix indentation,
 quotes, and semicolons across the JavaScript codebase.
+Run `source .bash_aliases` from the repository root at the start of each
+session to activate the custom `grep` and `gitgrep` aliases used
+throughout these instructions.
+Choose a short agent name for your session and pass it with `--name=YOURNAME`
+to any repo scripts that support a name flag.
 
 -## Index & Searching
-- The indexes live in `index-prose/` and `index-code/` at the repository root. They store TF‑IDF vectors for text chunks across the repo.
+- The indexes live in `index-prose/` and `index-code/` at the repository root. They store TF‑IDF vectors for text chunks across the repo. Do not access them directly!
 - Query them with `node tools/search.js "SEARCH TERM" --json | jq .` for machine-readable results. Omit `--json` for a human readable listing.
 - Try using this often when referring to the code
 - Do not regenerate or rebuild the indexes if they are missing
 - After you use the tool commit the stats it generates as part of your next commit
- - `.searchMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
+ - `.repoMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
  - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
  - Run `npm run agent-precommit` to update metrics and history and stage the results
-- `.searchMetrics/metrics.json` stores counters in compact JSON and
-  `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
+ - `.repoMetrics/metrics.json` stores counters in compact JSON and
+  `.repoMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
+ - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
 
 ## Environment
 - Use **Node.js 18 or later**.
@@ -26,7 +32,7 @@ quotes, and semicolons across the JavaScript codebase.
 - Run `npm ci` if you do not
 
 ## Tests
-- Run `npm test` to execute the Mocha test suite.
+- Run `npm test [category...]` to execute the Mocha test suite. Categories are optional.
 
 ## Development
 - `npm start` launches `http-server` for local testing.
@@ -54,22 +60,15 @@ tools on them.
 ## Pull Requests
 - Summarize major changes and reference relevant files or lines.
 - Try pulling in master and making sure everything merges in without ruining your work before committing.
-- If pulling in master is too complicated, undo it and let the user know
 
 <!--
 Additional suggestions for the agent or future maintainers:
 - Don't forget to use the search tool 
 - High performance and intelligent memory usage are top priorities; profile critical code paths and watch memory allocations.
-- You can extend the tests in `test/` to cover more of the tools in `tools/`.
-- The repository includes many sample assets; keeping them out of commits can reduce repo size.
 - You are unable to commit binaries so do not try
-- Try running `npm run list-sprites` to preview sprite names and counts.
-- To export all sprite assets use `npm run export-all-sprites` or `export-all-packs`.
 - Create and maintain a `.agentInfo/` directory at the repository root.
 - Within `.agentInfo/`, store short notes about design decisions or TODOs using a tag-based system. Keep an index (e.g., `tags.json` or `index.md`) to search notes by tag.
-- Do not use "..." at the end of summaries in your index
 - Regularly review this index to locate relevant notes before starting new work.
-- Try and generate as many additional tasks to handle things as you can to maximize your potential
 - If you are unable to do something complicated, leave what you have but didn't work in comments with an explanation of what you were trying to do and why it didn't work
 -->
 

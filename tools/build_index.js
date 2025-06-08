@@ -8,6 +8,7 @@ import seedrandom from 'seedrandom';
 import { SVD } from 'svd-js';
 import strip from 'strip-comments';
 const listComments = strip.list;
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 /* -------- CLI & constants -------- */
 const argv = minimist(process.argv.slice(2), {
@@ -21,7 +22,7 @@ const ROOT = process.cwd();
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'coverage', 'index-code', 'index-prose',
   'lemmings', 'lemmings_all', 'lemmings_ohNo', 'holiday93', 'holiday94',
-  'xmas91', 'xmas92', 'img', '.github', '.searchMetrics'
+  'xmas91', 'xmas92', 'img', '.github', '.repoMetrics', 'exports', 'css'
 ]);
 
 
@@ -112,8 +113,11 @@ async function build(mode) {
     '.jshintignore',
     '.eslint.config.js',
     'site.webmanifest',
-    'jquery',
-    'webmidi.js'
+    'jquery.js',
+    'webmidi.js',
+    'noresultqueries',
+    'metrics.json',
+    'fileformat.txt'
   ]);
 
   /* -- INGEST A SINGLE FILE: read/normalize/extract text, THEN build chunks -- */
@@ -384,3 +388,5 @@ async function build(mode) {
 for (const m of MODES) {
   await build(m);
 }
+
+updateUsageCounts('build_index');
