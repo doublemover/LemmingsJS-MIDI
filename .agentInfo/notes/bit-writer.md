@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_bit-writer.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_bit-writer.md
+=======
 # BitWriter note
 
 tags: bit-writer
@@ -10,5 +12,6 @@ tags: bit-writer
 `BitReader`. Its `copyRawData` and `copyReferencedData` helpers mirror the
 LZ-style format used by Lemmings files. `getFileReader` returns a `BinaryReader`
 over the decompressed data.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_bit-writer.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_bit-writer.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_bit-writer.md

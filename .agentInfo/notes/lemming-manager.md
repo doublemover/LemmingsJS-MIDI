@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_lemming-manager.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_lemming-manager.md
+=======
 # LemmingManager overview
 
 tags: lemming-manager, actions
@@ -24,5 +26,6 @@ The manager tracks selected lemmings for user interaction and maintains minimap
 dots. Nuking all lemmings iterates through the array, applying the bomber skill
 to each in turn.
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_lemming-manager.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_lemming-manager.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_lemming-manager.md

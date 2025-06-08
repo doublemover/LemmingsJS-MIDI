@@ -431,6 +431,59 @@ describe('Action Systems process()', function() {
     expect(calls).to.equal(1);
   });
 
+  it('ActionDiggSystem falls when digging out of level', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.y = 49;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = y => y >= 50;
+    sys.digRow = () => true;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+  });
+
+  it('ActionDiggSystem falls when dig row removes nothing', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = () => false;
+    sys.digRow = () => false;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+  });
+
+  it('ActionDiggSystem cycles animation frames', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    level.isOutOfLevel = () => false;
+    let calls = 0;
+    sys.digRow = () => { calls++; return true; };
+    for (let i = 0; i < 16; i++) {
+      sys.process(level, lem);
+    }
+    expect(lem.frameIndex).to.equal(0);
+    expect(lem.y).to.equal(2);
+    expect(calls).to.equal(2);
+  });
+
+  it('ActionDiggSystem shrugs when steel appears below', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = 1;
+    lem.frameIndex = 7; // ->8
+    level.isOutOfLevel = () => false;
+    sys.digRow = () => true;
+    level.steelGround = () => false;
+    sys.process(level, lem); // dig first row
+    level.steelGround = k => k === level.key(lem.x, lem.y);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
+  });
+
   it('ActionDrowningSystem moves when no wall', function() {
     const level = new StubLevel();
     const sys = new ActionDrowningSystem(new Map());
