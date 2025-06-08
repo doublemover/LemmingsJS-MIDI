@@ -629,6 +629,31 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
   });
 
+  it('digRow returns false when no ground present', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.x = 10;
+    const res = sys.digRow(level, lem, 0);
+    expect(res).to.equal(false);
+    expect(level.clearedPoints).to.have.length(0);
+  });
+
+  it('digRow clears boundary ground points', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.x = 10;
+    level.setGroundAt(lem.x - 4, 0);
+    level.setGroundAt(lem.x + 4, 0);
+    const res = sys.digRow(level, lem, 0);
+    expect(res).to.equal(true);
+    expect(level.clearedPoints).to.have.members([
+      level.key(lem.x - 4, 0),
+      level.key(lem.x + 4, 0)
+    ]);
+  });
+
   it('ActionDrowningSystem moves when no wall', function() {
     const level = new StubLevel();
     const sys = new ActionDrowningSystem(new Map());
