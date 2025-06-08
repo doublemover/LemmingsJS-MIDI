@@ -1,0 +1,462 @@
+[
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-mode-docs.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\index.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\baseimageinfo-search.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-sequence.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-speed-adjust.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bench-mode.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\binary-reader.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bit-reader.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\check-undefined.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\bit-writer.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\command-manager.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\config.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\dat-source.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\display-image.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\draw-corner-rect.md",
+    "duration_ms": 161
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\drawMarchingAntRect.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\easing-functions.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\editor-mode.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\file-container.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game-display.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game-gui.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game-resources.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game-speed-input.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game-view.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\game.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\ground-renderer.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\gui-stage-tasks.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\initial.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\keyboard-shortcuts.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2-guyperfect.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2-save-format.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2-level-format.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2bitmap-cpp.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2bitmap-overview.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2gfx-format.md",
+    "duration_ms": 160
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2ss-cpp.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l2ss-overview.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\l3-level-format.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\lemming-manager.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\level-format.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\level-loader.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\level-packs.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\level-reader.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\level-writer.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\lvl-format.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\main-dat-format.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\mechanics-config.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\mechanics-flags.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\naming-cleanup.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-file-format.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-objects.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-skills.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\node-file-provider.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\norm-tick-count-removal.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\note-review.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\overview.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\pack-mechanics.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\nl-pack-toolkit.md",
+    "duration_ms": 159
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\pause-overlay.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\replays.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\revolution-box-format.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\search-tool-doc.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\stage.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\test-bench-speed-adjust.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\test-categories.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\test-coverage.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\third-party-policy.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\todo-review.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\tools.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\trigger-manager.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\unpack-file-part.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\userinput-zoom.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\vgagrx-groundxo-format.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\vgaspecx-format.md",
+    "duration_ms": 158
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\webmidi-enumerations.md",
+    "duration_ms": 157
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\webmidi-environments.md",
+    "duration_ms": 157
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\webmidi-overview.md",
+    "duration_ms": 157
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\webmidi-tasks.md",
+    "duration_ms": 157
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\notes\\webmidi.md",
+    "duration_ms": 157
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\fixable-tests.md",
+    "duration_ms": 3247
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\config.md",
+    "duration_ms": 3309
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\.agentInfo\\index-detailed.md",
+    "duration_ms": 3419
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_save_file_format.md",
+    "duration_ms": 3504
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_bitmap_file_format_l2bitmap.cpp.md",
+    "duration_ms": 3537
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_save_file_format.txt",
+    "duration_ms": 3644
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_sprite_file_format_l2ss.md",
+    "duration_ms": 3666
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_style_file_format_l2gfx.md",
+    "duration_ms": 3708
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_vgagrx_dat_groundxo_dat_file_format.md",
+    "duration_ms": 3867
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\ci.md",
+    "duration_ms": 3867
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_vgaspecx_dat_file_format.md",
+    "duration_ms": 3867
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\README.md",
+    "duration_ms": 4933
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\broken-tests.md",
+    "duration_ms": 5320
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_3_level_file_format.md",
+    "duration_ms": 5605
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_dat_source_summary.md",
+    "duration_ms": 5634
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_file_formats_guyperfect.md",
+    "duration_ms": 5702
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_bitmap_file_format_l2bitmap.md",
+    "duration_ms": 5915
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-pack-toolkit.md",
+    "duration_ms": 6142
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\TESTING.md",
+    "duration_ms": 6321
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_level_file_format.txt",
+    "duration_ms": 6441
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\levelpacks.md",
+    "duration_ms": 6773
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\reading-list\\particle-handling.md",
+    "duration_ms": 7267
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_revolution_box_file_format.md",
+    "duration_ms": 7600
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\exporting-sprites.md",
+    "duration_ms": 7697
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_level_file_format.md",
+    "duration_ms": 8626
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\replays.md",
+    "duration_ms": 8778
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-skills.md",
+    "duration_ms": 9006
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_main_dat_file_format.md",
+    "duration_ms": 9236
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-objects.md",
+    "duration_ms": 9412
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_lvl_file_format.md",
+    "duration_ms": 9749
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\README.md",
+    "duration_ms": 9908
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\compression-format.md",
+    "duration_ms": 9945
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\level-file-format.md",
+    "duration_ms": 10284
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\tools.md",
+    "duration_ms": 10284
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\camanis\\lemmings_2_style_file_format_l2gfx.txt",
+    "duration_ms": 10688
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\docs\\nl-file-format.md",
+    "duration_ms": 10946
+  }
+]

@@ -70,4 +70,36 @@ describe('GameVictoryCondition methods', function () {
     vc.doNuke();
     expect(vc.leftCount).to.equal(10);
   });
+
+  it('returns the max bench rate when benchmarking', function () {
+    const vc = makeVC();
+    lemmings.bench = true;
+    lemmings._benchMeasureExtras = false;
+    expect(vc.getCurrentReleaseRate()).to.equal(99);
+    lemmings.bench = false;
+  });
+
+  it('calculates survivor percentage', function () {
+    const vc = makeVC();
+    vc.releaseCount = 10;
+    vc.survivorCount = 3;
+    expect(vc.getSurvivorPercentage()).to.equal(30);
+  });
+
+  it('removeOne does nothing after finalize', function () {
+    const vc = makeVC();
+    vc.releaseOne();
+    expect(vc.outCount).to.equal(1);
+    vc.doFinalize();
+    vc.removeOne();
+    expect(vc.outCount).to.equal(1);
+  });
+
+  it('doFinalize is idempotent', function () {
+    const vc = makeVC();
+    vc.doFinalize();
+    expect(vc.isFinalize).to.be.true;
+    vc.doFinalize();
+    expect(vc.isFinalize).to.be.true;
+  });
 });

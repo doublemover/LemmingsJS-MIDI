@@ -107,4 +107,37 @@ describe('benchSpeedAdjust recovery', function() {
     expect(timer.speedFactor).to.be.below(1);
     expect(timer.frameTime).to.equal(timer.TIME_PER_FRAME_MS / timer.speedFactor);
   });
+
+  it('raises speed after many stable ticks', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.benchStartupFrames = 0;
+    timer.continue();
+
+    for (let i = 0; i < 33; i++) {
+      window.requestAnimationFrame = cb => { raf = cb; return 1; };
+      clock.tick(60);
+      raf(clock.now);
+    }
+    expect(timer.speedFactor).to.equal(2);
+  });
+
+  it('recovers toward normal speed when below one', function() {
+    let raf;
+    window.requestAnimationFrame = cb => { raf = cb; return 1; };
+    lemmings.stage = { guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } }, startOverlayFade() {} };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.benchStartupFrames = 0;
+    timer.speedFactor = 0.5;
+    timer.continue();
+
+    for (let i = 0; i < 3; i++) {
+      window.requestAnimationFrame = cb => { raf = cb; return 1; };
+      clock.tick(timer.frameTime);
+      raf(clock.now);
+    }
+    expect(timer.speedFactor).to.be.closeTo(0.6, 0.0001);
+  });
 });

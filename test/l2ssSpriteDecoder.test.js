@@ -94,4 +94,41 @@ describe('L2ssSpriteDecoder', function () {
 
     expect(getPx(2, 0)).to.eql([6, 6, 6]);
   });
+
+  it('exercises remindL branch and special opcodes', function () {
+    const width = 8;
+    const height = 1;
+    const header = new Uint8Array([
+      0x00, width,
+      0x00, height,
+      0x00, 0x00, 0x00, 0x14, // pointer plane 0
+      0x00, 0x00, 0x00, 0x17, // pointer plane 1
+      0x00, 0x00, 0x00, 0x19, // pointer plane 2
+      0x00, 0x00, 0x00, 0x1a  // pointer plane 3
+    ]);
+    const plane0 = new Uint8Array([
+      PAL_DIFF + 7, // draw one pixel
+      0x00, // newline
+      0xff
+    ]);
+    const plane1 = new Uint8Array([
+      0xe8, // x offset opcode
+      0xff
+    ]);
+    const plane2 = new Uint8Array([0xff]);
+    const plane3 = new Uint8Array([0xff]);
+    const data = new Uint8Array([
+      ...header,
+      ...plane0,
+      ...plane1,
+      ...plane2,
+      ...plane3
+    ]);
+
+    const palette = new Array(256).fill(null).map((_, i) => [i, i, i]);
+    const debug = [{ l: 1, remindL: true }, null, null, null];
+    const frame = decodeFrame(data, 0, 0, palette, debug);
+    const px0 = Array.from(frame.pixels.slice(0, 3));
+    expect(px0).to.eql([7, 7, 7]);
+  });
 });
