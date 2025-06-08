@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_level-loader.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_level-loader.md
+=======
 # LevelLoader phases
 
 tags: level-loading
@@ -13,5 +15,6 @@ tags: level-loading
 3. **Fetch graphics** sets (`VGAGR`, `GROUND`, and optional `VGASPEC`) in parallel.
 4. **Decode terrain/objects** using `GroundReader` and `GroundRenderer` to build the map.
 5. **Build the `Level` instance** with ground image, mask, objects, palettes, and steel areas.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_level-loader.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_level-loader.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_level-loader.md

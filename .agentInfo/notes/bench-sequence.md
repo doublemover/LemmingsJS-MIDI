@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_bench-sequence.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_bench-sequence.md
+=======
 # Bench sequence updates
 
 tags: bench-sequence, bench-mode
@@ -14,5 +16,6 @@ tags: bench-sequence, bench-mode
 - `GameGui` shows "Spawn N" indicating how many lemmings have appeared so far.
 
 `benchSequence` cycles through a list of spawn counts automatically to measure performance.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_bench-sequence.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_bench-sequence.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_bench-sequence.md

@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_vgaspecx-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_vgaspecx-format.md
+=======
 # vgaspecX.dat format
 
 tags: vgaspecx, compression, palette, doc, todo
@@ -20,5 +22,6 @@ TODO:
 
 * Verify how the 16 EGA bytes are used.
 * Check whether terrain placement depends on the level's starting X position.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_vgaspecx-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_vgaspecx-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_vgaspecx-format.md

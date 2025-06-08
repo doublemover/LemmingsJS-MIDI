@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_test-coverage.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_test-coverage.md
+=======
 # Export scripts test coverage
 
 tags: tests, tools, exports
@@ -46,5 +48,6 @@ tags: tests, groundreader, vgaspec
 Added unit tests for `GroundReader` and `VGASpecReader` covering palette parsing,
 steel detection and basic RLE decoding. This increases confidence in the binary
 parsers for ground data and VGASPEC levels.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_test-coverage.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_test-coverage.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_test-coverage.md
