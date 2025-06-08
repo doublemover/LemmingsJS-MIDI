@@ -40,6 +40,50 @@ describe('NodeFileProvider', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('re-reads tar.gz and rar archives after clearCache', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-'));
+    const sample = path.join(dir, 'sample');
+    fs.mkdirSync(sample);
+    const tarPath = path.join(dir, 'test.tar.gz');
+    const writeTar = async text => {
+      fs.writeFileSync(path.join(sample, 'foo.txt'), text, 'utf8');
+      await tar.c({ gzip: true, cwd: sample, file: tarPath }, ['foo.txt']);
+    };
+    await writeTar('one');
+    if (hasRar) {
+      await archiveDir(sample, 'rar');
+    }
+    const provider = new NodeFileProvider(dir);
+
+    let out = await provider.loadString('test.tar.gz/foo.txt');
+    assert.strictEqual(out, 'one');
+    if (hasRar) {
+      const r = await provider.loadString('sample.rar/foo.txt');
+      assert.strictEqual(r, 'one');
+    }
+
+    await writeTar('two');
+    if (hasRar) {
+      await archiveDir(sample, 'rar');
+    }
+    out = await provider.loadString('test.tar.gz/foo.txt');
+    assert.strictEqual(out, 'one');
+    if (hasRar) {
+      const r = await provider.loadString('sample.rar/foo.txt');
+      assert.strictEqual(r, 'one');
+    }
+
+    provider.clearCache();
+    out = await provider.loadString('test.tar.gz/foo.txt');
+    assert.strictEqual(out, 'two');
+    if (hasRar) {
+      const r = await provider.loadString('sample.rar/foo.txt');
+      assert.strictEqual(r, 'two');
+    }
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   describe('archive reading', function () {
     const text = 'hello world';
     const binData = Uint8Array.from([1, 2, 3, 4]);
