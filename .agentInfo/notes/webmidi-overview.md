@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-overview.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-overview.md
+=======
 
 # WebMIDI.js quick start overview
 
@@ -55,5 +57,6 @@ The library also warns that `Output.clear()` is defined in the Web MIDI spec
 but may be unavailable in some browsers. Calls to `enable()` mention that
 requesting access to software synths is not implemented by browsers as of 2021.
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-overview.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-overview.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-overview.md

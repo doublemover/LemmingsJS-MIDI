@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_trigger-manager.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_trigger-manager.md
+=======
 # TriggerManager notes
 
 tags: trigger-system, grid
@@ -19,5 +21,6 @@ Removal uses the stored bucket indices to efficiently delete triggers from the
 grid. When rendering debug overlays `renderDebug()` highlights visited cells and
 draws trigger rectangles via a prebuilt `Frame`.
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_trigger-manager.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_trigger-manager.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_trigger-manager.md

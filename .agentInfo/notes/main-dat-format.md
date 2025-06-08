@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_main-dat-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_main-dat-format.md
+=======
 # MAIN.DAT sections
 
 tags: main-dat, doc
@@ -26,5 +28,6 @@ getCursorSprite()        // part 5
 ```
 
 Sections 3 and 4 are currently unused by the loader.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_main-dat-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_main-dat-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_main-dat-format.md
