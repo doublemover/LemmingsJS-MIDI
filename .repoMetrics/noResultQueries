@@ -2,3 +2,6 @@
 {"time":"2025-06-08T00:28:01.978Z","query":"benchseries"}
 {"time":"2025-06-08T00:28:22.798Z","query":"benchseries"}
 {"time":"2025-06-08T02:51:25.546Z","query":"MAX_FALLING"}
+{"time":"2025-06-08T05:04:14.267Z","query":"thisshouldnotexist"}
+{"time":"2025-06-08T04:58:35.286Z","query":"drawrect"}
+{"time":"2025-06-08T04:58:36.947Z","query":"drawrect"}

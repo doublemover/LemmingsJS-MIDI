@@ -5,6 +5,7 @@ import path from 'node:path';
 import minimist from 'minimist';
 import Snowball from 'snowball-stemmers';
 import c from 'ansi-colors';
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 const argv = minimist(process.argv.slice(2), {
   boolean: ['json', 'human', 'stats', 'fuzzy'],

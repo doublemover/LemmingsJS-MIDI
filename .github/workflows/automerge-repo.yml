@@ -72,16 +72,16 @@ jobs:
       - name: Merge noResultQueries
         run: |
           mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/noResultQueries > tmp_merge/base_no_results.txt 2>/dev/null || echo '' > tmp_merge/base_no_results.txt
-          git show HEAD:.searchMetrics/noResultQueries > tmp_merge/ours_no_results.txt 2>/dev/null || echo '' > tmp_merge/ours_no_results.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/noResultQueries > tmp_merge/theirs_no_results.txt 2>/dev/null || echo '' > tmp_merge/theirs_no_results.txt
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/noResultQueries > tmp_merge/base_no_results.txt 2>/dev/null || echo '' > tmp_merge/base_no_results.txt
+          git show HEAD:.repoMetrics/noResultQueries > tmp_merge/ours_no_results.txt 2>/dev/null || echo '' > tmp_merge/ours_no_results.txt
+          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/noResultQueries > tmp_merge/theirs_no_results.txt 2>/dev/null || echo '' > tmp_merge/theirs_no_results.txt
 
           bash tools/merge-no-results.sh \
             tmp_merge/base_no_results.txt \
             tmp_merge/ours_no_results.txt \
             tmp_merge/theirs_no_results.txt
 
-          mv tmp_merge/ours_no_results.txt .searchMetrics/noResultQueries
+          mv tmp_merge/ours_no_results.txt .repoMetrics/noResultQueries
 
       - name: Merge agentInfo Index
         run: |
