@@ -123,10 +123,13 @@ describe('UserInputManager', function() {
     uim.handleWheel(cursor, 120);
 
     const afterX = vp.getSceneX(cursor.x - img.x);
-    const viewH = img.height / vp.scale;
-    const worldH = stage.getGameDisplay().worldDataSize.height;
-    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
-    expect(vp.y).to.equal(worldH - viewH);
+    const afterY = vp.getSceneY(cursor.y - img.y);
+
+    const expectedDx = Math.trunc(cursor.x / vp.scale);
+    const expectedDy = Math.trunc(cursor.y / vp.scale);
+
+    expect(afterX - beforeX).to.equal(expectedDx);
+    expect(afterY - beforeY).to.equal(expectedDy);
   });
 
   it('zooms when cursor is at the world origin', function() {
