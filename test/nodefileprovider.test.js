@@ -153,4 +153,18 @@ describe('NodeFileProvider', function () {
     assert.strictEqual(a, b);
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  it('_validateEntry rejects absolute or parent paths', function () {
+    const provider = new NodeFileProvider('.');
+    expect(() => provider._validateEntry('/abs.txt')).to.throw();
+    expect(() => provider._validateEntry('..\\foo')).to.throw();
+  });
+
+  it('_findZipEntry matches case-insensitively', function () {
+    const zip = new AdmZip();
+    zip.addFile('Folder/FILE.TXT', Buffer.from('x'));
+    const provider = new NodeFileProvider('.');
+    const entry = provider._findZipEntry(zip, 'file.txt');
+    expect(entry).to.be.an('object');
+  });
 });

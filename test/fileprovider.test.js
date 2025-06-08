@@ -195,4 +195,24 @@ describe('FileProvider', function () {
     assert.strictEqual(headCalls, 1);
     assert.strictEqual(fetchCalls, 1);
   });
+
+  it('_hashBuffer falls back to node crypto when web crypto missing', async function () {
+    provider = new FileProvider(rootPath);
+    const buf = Uint8Array.from([1,2,3]).buffer;
+    const orig = global.crypto;
+    delete global.crypto;
+    const hash = await provider._hashBuffer(buf);
+    global.crypto = orig;
+    const { createHash } = await import('node:crypto');
+    const expected = createHash('sha256').update(Buffer.from(buf)).digest('hex');
+    assert.strictEqual(hash, expected);
+  });
+
+  it('base64 conversion roundtrips', function () {
+    provider = new FileProvider(rootPath);
+    const buf = Uint8Array.from([65,66,67]).buffer;
+    const b64 = provider._arrayBufferToBase64(buf);
+    const out = provider._base64ToArrayBuffer(b64);
+    assert.deepStrictEqual(Array.from(new Uint8Array(out)), [65,66,67]);
+  });
 });
