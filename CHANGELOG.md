@@ -17,21 +17,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New docs under `docs/` cover CI, testing and sprite export tools.
 - HQX and xBRZ scaling options for smoother graphics.
 - Frame step controls for debug playback.
-- Bench mode spawns entrances near originals, shows TPS and has improved HUD layout.
-- Optional custom crosshair cursor.
-- `.bash_aliases` with search-friendly `grep` helpers.
-- Search tool supports TF‑IDF weighting and fuzzy search.
+- Enchanced bench mode. Determines a maximum number of lemmings that can be spawned at a time before going through a series of spawn volume tests.
+- Search tool for agents uses TF‑IDF weighting and supports fuzzy search to augment their ability to search the codebase.
 - Documentation covers configuration, compression formats, level file formats and WebMIDI setup.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
   upper-left corner.
-- Bench timers, overlay color and text spacing.
 - Zoom direction, pan clamping and bottom clamp issues.
 - Viewport panning and centering calculations.
 - Crosshair transparency and HUD alignment during resize.
-- Stage resize handling on zero-size displays.
-- HUD initialization and cheat controls.
+- Stage and GUI alignment.
 - Instant nuke ignores lemmings that already exploded.
 - Stage layout reserves a bottom margin for the HUD.
 
