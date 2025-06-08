@@ -380,6 +380,45 @@ describe('Action Systems process()', function() {
     expect(level.clearedMasks).to.have.length(0);
   });
 
+  it('ActionBashSystem stops on steel under mask', function() {
+    const level = new StubLevel();
+    level.steelUnder = true;
+    const sys = new TestBashSystem(0, 0);
+    const lem = new StubLemming();
+    lem.frameIndex = 2; // ->3
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
+    expect(level.clearedMasks).to.have.length(0);
+  });
+
+  it('ActionBashSystem finishes when no horizontal space found', function() {
+    const level = new StubLevel();
+    const sys = new ActionBashSystem(stubSprites, stubMasks());
+    const lem = new StubLemming();
+    lem.frameIndex = 4; // ->5
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+  });
+
+  it('ActionBashSystem helper functions inspect ground', function() {
+    const level = new StubLevel();
+    const sys = new ActionBashSystem(stubSprites, stubMasks());
+    const gm = level.getGroundMaskLayer();
+
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(3);
+    level.ground.add(level.key(0, 2));
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(2);
+    level.ground.add(level.key(0, 0));
+    level.ground.delete(level.key(0, 2));
+    expect(sys.findGapDelta(gm, 0, 0)).to.equal(0);
+
+    level.ground.clear();
+    expect(sys.findHorizontalSpace(gm, 0, 0, true)).to.equal(4);
+    level.ground.add(level.key(1, 0));
+    expect(sys.findHorizontalSpace(gm, 0, 0, true)).to.equal(1);
+    level.ground.clear();
+    level.ground.add(level.key(-3, 0));
+    expect(sys.findHorizontalSpace(gm, 0, 0, false)).to.equal(3);
+  });
+
   it('ActionBuildSystem turns around when hitting wall', function() {
     const level = new StubLevel();
     const sys = new ActionBuildSystem(new Map());
