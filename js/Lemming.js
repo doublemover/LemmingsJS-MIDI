@@ -12,6 +12,7 @@ class Lemming extends Lemmings.BaseLogger {
     this.countdown = 0;
     this.action = 0;
     this.state = 0;
+    this.hasExploded = false;
     this.disabled = false;
     this.x = x;
     this.y = y;
@@ -109,6 +110,7 @@ class Lemming extends Lemmings.BaseLogger {
     this.action = null;
     this.countdownAction = null;
     this.removed = true;
+    this.hasExploded = false;
     this.id = null;
   }
 
