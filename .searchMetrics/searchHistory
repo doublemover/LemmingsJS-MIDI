@@ -246,3 +246,13 @@
 {"time":"2025-06-08T01:50:49.902Z","query":"bench mode","mdFiles":22,"codeFiles":29,"ms":123}
 {"time":"2025-06-08T01:50:52.692Z","query":"benchMode","mdFiles":22,"codeFiles":29,"ms":89}
 {"time":"2025-06-08T01:50:54.372Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":64}
+{"time":"2025-06-08T02:10:09.988Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":235}
+{"time":"2025-06-08T02:10:12.535Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":189}
+{"time":"2025-06-08T02:10:14.828Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":113}
+{"time":"2025-06-08T02:10:18.803Z","query":"bench mode","mdFiles":22,"codeFiles":29,"ms":387}
+{"time":"2025-06-08T02:40:34.354Z","query":"benchStart","mdFiles":27,"codeFiles":44,"ms":293}
+{"time":"2025-06-08T02:40:36.830Z","query":"benchStart","mdFiles":27,"codeFiles":44,"ms":391}
+{"time":"2025-06-08T02:40:56.803Z","query":"benchStart","mdFiles":27,"codeFiles":44,"ms":292}
+{"time":"2025-06-08T02:51:25.543Z","query":"MAX_FALLING","mdFiles":0,"codeFiles":0,"ms":143}
+{"time":"2025-06-08T02:51:28.781Z","query":"Lemming.LEM_MAX_FALLING","mdFiles":36,"codeFiles":222,"ms":230}
+{"time":"2025-06-08T03:25:42.037Z","query":"benchMeasureExtras","mdFiles":16,"codeFiles":24,"ms":101}
