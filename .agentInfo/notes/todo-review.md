@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_todo-review.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_todo-review.md
+=======
 # TODO review
 
 tags: todo, cleanup, code-review
@@ -17,6 +19,7 @@ This note lists lines across the repository containing TODO-like markers. They c
 
 ## Priority suggestions
 1. **WebMIDI value passing** – lower priority; library works without it.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_todo-review.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_todo-review.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_todo-review.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_todo-review.md

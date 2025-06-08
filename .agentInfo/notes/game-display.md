@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_game-display.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_game-display.md
+=======
 # GameDisplay overview
 
 tags: render, display
@@ -12,6 +14,7 @@ tags: render, display
 
 `#drawSelection()` now draws bright green corner rectangles using `drawCornerRect`. Each corner uses a 1 px square so the outline looks thinner but still visible. Hover outlines call `#drawHover()` which draws lighter grey corners to indicate the focused lemming without the vivid green.
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_game-display.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_game-display.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_game-display.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_game-display.md

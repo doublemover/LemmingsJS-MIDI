@@ -1,7 +1,6 @@
 {
-  "merge_search_history": 1,
-  "merge_search_history": 2,
-  "merge_history": 1,
-  "merge_no_result_queries": 1,
-  "merge_no_results": 1
+  "merge_search_history": 7,
+  "merge_history": 4,
+  "merge_no_result_queries": 4,
+  "merge_no_results": 4
 }
