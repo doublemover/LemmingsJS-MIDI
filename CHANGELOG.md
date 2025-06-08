@@ -15,14 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
+
+### Fixed
+
+### Changed
+- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
+- `packLevels.js` creates DAT archives from 2048-byte level files.
+- These tools rely on `NodeFileProvider` to read packs from folders or archives.
+
+## [0.0.3] - 2025-06-08
+### Added
 - HQX and xBRZ scaling options for smoother graphics.
 - Frame step controls for debug playback.
-- Bench mode spawns entrances near originals, shows TPS and has improved HUD layout.
+- Bench mode records spawn totals, spawns entrances near originals, randomizes direction and shows TPS.
+- Search tools track usage counts, capture no-result queries and support fuzzy matching.
 - Optional custom crosshair cursor.
 
 ### Fixed
-- Zoom near the level origin now centers on the pointer instead of the
-  upper-left corner.
+- Zoom near the level origin centers on the pointer.
 - Bench timers, overlay color and text spacing.
 - Zoom direction, pan clamping and bottom clamp issues.
 - Viewport panning and centering calculations.
@@ -30,11 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage resize handling on zero-size displays.
 
 ### Changed
-- Project now requires Node.js 20+ (tests use Node 20 in CI).
-- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
-- `packLevels.js` creates DAT archives from 2048-byte level files.
-- These tools rely on `NodeFileProvider` to read packs from folders or archives.
-
+- Project now requires Node.js 20+.
 
 ## [0.0.2] - 2025-06-04
 ### Added
