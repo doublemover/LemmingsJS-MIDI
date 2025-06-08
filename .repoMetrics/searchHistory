@@ -428,7 +428,6 @@
 {"time":"2025-06-08T19:42:48.268Z","query":"Stage.updateStageSize","mdFiles":15,"codeFiles":15,"ms":247}
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
-{"time":"2025-06-08T22:02:45.467Z","query":"step","mdFiles":0,"codeFiles":0,"ms":1156}
-{"time":"2025-06-08T22:02:48.884Z","query":"gap","mdFiles":0,"codeFiles":0,"ms":1114}
-{"time":"2025-06-08T22:02:52.413Z","query":"step","mdFiles":0,"codeFiles":0,"ms":1414}
-{"time":"2025-06-08T22:02:56.028Z","query":"Step","mdFiles":0,"codeFiles":0,"ms":1180}
+{"time":"2025-06-08T22:02:57.613Z","query":"BitWriter","mdFiles":15,"codeFiles":15,"ms":876}
+{"time":"2025-06-08T22:03:00.402Z","query":"BitWriter","mdFiles":0,"codeFiles":0,"ms":814}
+{"time":"2025-06-08T22:03:03.097Z","query":"BitWriter","mdFiles":15,"codeFiles":15,"ms":645}
