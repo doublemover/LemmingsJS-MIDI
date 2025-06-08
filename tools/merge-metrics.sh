@@ -60,6 +60,5 @@ jq -s '
 
 # Overwrite “ours” with the merged result
 mv "${OURS}.merged" "${OURS}"
-node "$(dirname "$0")/updateUsageCounts.js" merge_metrics >/dev/null 2>&1 || true
 
 exit 0

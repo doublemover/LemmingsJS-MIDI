@@ -28,6 +28,5 @@ This job keeps `.repoMetrics/searchHistory` in sync with the history from
 `origin/master`, appends any missing lines and commits the change back to the PR
 branch.
 
-`automerge-repo.yml` performs a similar merge for `.repoMetrics/metrics.json`,
-`.repoMetrics/usageCounts.json`, and `.agentInfo` files to reduce merge
-conflicts.
+`automerge-repo.yml` performs a similar merge for `.repoMetrics/metrics.json`
+and `.agentInfo` files to reduce merge conflicts.
