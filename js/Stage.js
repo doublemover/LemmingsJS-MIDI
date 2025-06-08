@@ -248,11 +248,15 @@ class Stage {
       Math.max(0, worldW - viewW_world)
     );
 
-    stageImage.viewPoint.y = this.limitValue(
-      Math.min(0, worldH - viewH_world),
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH_world)
-    );
+    if (viewH_world > worldH) {
+      stageImage.viewPoint.y = worldH - viewH_world;
+    } else {
+      stageImage.viewPoint.y = this.limitValue(
+        0,
+        stageImage.viewPoint.y,
+        worldH - viewH_world
+      );
+    }
 
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
@@ -655,7 +659,7 @@ class Stage {
     const viewW = vpW / scale;
     const viewH = vpH / scale;
 
-    if (viewH >= worldH) {
+    if (viewH > worldH) {
       stageImage.viewPoint.y = worldH - viewH;
     } else {
       stageImage.viewPoint.y = this.limitValue(
