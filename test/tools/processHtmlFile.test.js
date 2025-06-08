@@ -29,4 +29,27 @@ describe('tools/processHtmlFile', function () {
     expect(processed).to.include(pathToFileURL(path.join(dir, 'js', 'app.js')).href);
     expect(processed).to.include(pathToFileURL(path.join(dir, 'img', 'pic.png')).href);
   });
+
+  it('inlines scripts and styles when requested', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
+    fs.mkdirSync(path.join(dir, 'js'));
+    fs.mkdirSync(path.join(dir, 'css'));
+    const jsPath = path.join(dir, 'js', 'app.js');
+    const cssPath = path.join(dir, 'css', 'style.css');
+    fs.writeFileSync(jsPath, 'console.log("hi");');
+    fs.writeFileSync(cssPath, 'body{color:red;}');
+    const html = `<!DOCTYPE html><html><head>
+      <link rel="stylesheet" href="css/style.css">
+      <script src="js/app.js"></script>
+    </head><body></body></html>`;
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const result = processHtmlFile(file, { inline: true });
+    const processed = result.html;
+    expect(processed).to.include('<style>body{color:red;}</style>');
+    expect(processed).to.include('<script>console.log("hi");</script>');
+    expect(processed).to.not.match(/href="css\/style.css"/);
+    expect(processed).to.not.match(/src="js\/app.js"/);
+  });
 });
