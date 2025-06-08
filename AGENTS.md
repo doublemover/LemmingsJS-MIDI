@@ -5,6 +5,11 @@ This repository hosts a JavaScript/Node implementation of **Lemmings**. The foll
 This repository uses ESLint for code style.
 Run `npm run format` before committing to automatically fix indentation,
 quotes, and semicolons across the JavaScript codebase.
+Run `source .bash_aliases` from the repository root at the start of each
+session to activate the custom `grep` and `gitgrep` aliases used
+throughout these instructions.
+Choose a short agent name for your session and pass it with `--name=YOURNAME`
+to any repo scripts that support a name flag.
 
 -## Index & Searching
 - The indexes live in `index-prose/` and `index-code/` at the repository root. They store TF‑IDF vectors for text chunks across the repo.
@@ -19,6 +24,7 @@ quotes, and semicolons across the JavaScript codebase.
   `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
+- Ignore `.searchMetrics/` when using command line tools to search git diffs or the repository.
 
 ## Environment
 - Use **Node.js 18 or later**.
