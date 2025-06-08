@@ -12,6 +12,7 @@ class StageStub {
     this._rawScale = 1;
     this.redrawCount = 0;
     this.updateCalls = [];
+    this.clears = [];
     this.gameImgProps = {
       width: 100,
       height: 100,
@@ -29,6 +30,7 @@ class StageStub {
     this.gameImgProps.viewPoint.y += dy;
   }
   redraw() { this.redrawCount++; }
+  clear(img) { this.clears.push(img); }
   snapScale(s) { return s; }
   limitValue(min, val, max) { return Math.min(Math.max(val, min), max); }
 }
@@ -97,6 +99,13 @@ describe('KeyboardShortcuts _step loop', function() {
     window.lastCallback(clock.now);
     expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
     expect(stage.redrawCount).to.equal(1);
+  });
+
+  it('clears frames when zooming via keyboard', function() {
+    ks._onKeyDown({ code: 'KeyZ', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} });
+    clock.tick(16);
+    window.lastCallback(clock.now);
+    expect(stage.clears.length).to.be.at.least(1);
   });
 
   it('changeSpeed adjusts speedFactor without shift', function() {

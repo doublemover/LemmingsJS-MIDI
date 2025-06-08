@@ -156,8 +156,8 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      // Negative wheel delta zooms in
-      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
+      // Positive wheel delta zooms in
+      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
     });
   }
 
@@ -216,8 +216,9 @@ class Stage {
       //Recenter so (sceneX_pre,sceneY_pre) stays under cursor
       if (!veloUpdate) {
         stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
-        stageImage.viewPoint.setY(sceneY_pre - screenY_rel / newScale);
       }
+      const viewH_world_zoom = winH / newScale;
+      stageImage.viewPoint.setY(Math.max(0, worldH - viewH_world_zoom));
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
       this.draw(stageImage, imgData);
@@ -232,10 +233,8 @@ class Stage {
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
     const worldDX = argX / scale;
-    const worldDY = argY / scale;
     if (!veloUpdate) {
       stageImage.viewPoint.x += worldDX;
-      stageImage.viewPoint.y += worldDY;
     }
 
     stageImage.viewPoint.x = this.limitValue(
@@ -244,11 +243,7 @@ class Stage {
       Math.max(0, worldW - viewW_world)
     );
 
-    stageImage.viewPoint.y = this.limitValue(
-      Math.min(0, worldH - viewH_world),
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH_world)
-    );
+    stageImage.viewPoint.y = Math.max(0, worldH - viewH_world);
 
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
@@ -320,7 +315,8 @@ class Stage {
 
     const hudH = rawHUDH * hudScale;
     const hudW = rawHUDW * hudScale;
-    const gameH = stageH - hudH;
+    const hudOffset = 20;
+    const gameH = stageH - hudH - hudOffset;
 
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
     this.gameImgProps.canvasViewportSize = { width: stageW, height: gameH };
@@ -459,10 +455,12 @@ class Stage {
 
   redraw() {
     if (this.gameImgProps.display) {
+      this.clear(this.gameImgProps);
       const gameImg = this.gameImgProps.display.getImageData();
       this.draw(this.gameImgProps, gameImg);
     }
     if (this.guiImgProps.display) {
+      this.clear(this.guiImgProps);
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }

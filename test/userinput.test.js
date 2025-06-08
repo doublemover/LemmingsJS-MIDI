@@ -120,7 +120,7 @@ describe('UserInputManager', function() {
     const beforeX = vp.getSceneX(cursor.x - img.x);
     const beforeY = vp.getSceneY(cursor.y - img.y);
 
-    uim.handleWheel(cursor, -120);
+    uim.handleWheel(cursor, 120);
 
     const afterX = vp.getSceneX(cursor.x - img.x);
     const afterY = vp.getSceneY(cursor.y - img.y);
@@ -171,7 +171,7 @@ describe('UserInputManager', function() {
       try {
         expect(e.x).to.equal(25);
         expect(e.y).to.equal(75);
-        expect(e.deltaZoom).to.equal(-20);
+        expect(e.deltaZoom).to.equal(20);
         expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(oldScale);
         count += 1;
         if (count === 1) done();
@@ -181,7 +181,7 @@ describe('UserInputManager', function() {
       }
     });
 
-    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
+    uim.handleWheel(new Lemmings.Position2D(25, 75), 20);
   });
 
 });
