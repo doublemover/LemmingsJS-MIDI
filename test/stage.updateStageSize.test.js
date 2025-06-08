@@ -7,6 +7,8 @@ import '../js/StageImageProperties.js';
 import '../js/DisplayImage.js';
 import '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
+import '../js/SkillTypes.js';
+import { GameGui } from '../js/GameGui.js';
 
 function createStubCanvas(width = 800, height = 600) {
   const ctx = {
@@ -45,11 +47,62 @@ function createDocumentStub() {
   };
 }
 
+class GameTimerStub {
+  constructor() {
+    this.eachGameSecond = new Lemmings.EventHandler();
+    this.speedFactor = 1;
+  }
+  isRunning() { return true; }
+}
+
+class GameVictoryConditionStub {
+  getMinReleaseRate() { return 1; }
+  getMaxReleaseRate() { return 10; }
+  getCurrentReleaseRate() { return 5; }
+}
+
+class GameSkillsStub {
+  constructor() {
+    this.onCountChanged = new Lemmings.EventHandler();
+    this.onSelectionChanged = new Lemmings.EventHandler();
+  }
+  getSkill() { return 1; }
+  getSelectedSkill() { return 1; }
+}
+
+class SkillPanelSpritesStub {
+  constructor() {
+    this.panel = { width: 176, height: 40, getData() { return [0]; } };
+  }
+  getPanelSprite() { return this.panel; }
+  getNumberSpriteLeft(n) { return 'L' + n; }
+  getNumberSpriteRight(n) { return 'R' + n; }
+  getNumberSpriteEmpty() { return 'E'; }
+  getLetterSprite(ch) { return 'ch-' + ch; }
+}
+
+class MiniMapStub {
+  render() {}
+  dispose() {}
+}
+
 globalThis.lemmings = { game: { showDebug: false } };
 
 describe('Stage.updateStageSize', function() {
   before(function() {
-    global.document = createDocumentStub();
+    globalThis.document = createDocumentStub();
+    globalThis.window = {
+      requestAnimationFrame(cb) { return 1; },
+      cancelAnimationFrame() {},
+      addEventListener() {},
+      removeEventListener() {}
+    };
+    Lemmings.MiniMap = MiniMapStub;
+  });
+
+  after(function() {
+    delete globalThis.window;
+    delete Lemmings.MiniMap;
   });
 
   it('centers GUI panel after canvas resize', function() {
@@ -133,6 +186,32 @@ describe('Stage.updateStageSize', function() {
     expect(stage.gameImgProps.height).to.equal(canvas.height - panelH);
     expect(stage.guiImgProps.width).to.equal(panelW);
     expect(stage.guiImgProps.height).to.equal(panelH);
+    expect(stage.guiImgProps.x).to.equal((canvas.width - panelW) / 2);
+    expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
+  });
+
+  it('centers HUD when GameGui attaches display', function() {
+    const canvas = createStubCanvas(400, 600);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGuiDisplay();
+    display.initSize(160, 40);
+    const gameDisplay = stage.getGameDisplay();
+    gameDisplay.initSize(1000, 1000);
+
+    const game = { stage, gameDisplay, level: { width: 200, height: 100 }, queueCommand() {} };
+    const timer = new GameTimerStub();
+    const victory = new GameVictoryConditionStub();
+    const skills = new GameSkillsStub();
+    const sprites = new SkillPanelSpritesStub();
+    const gui = new GameGui(game, sprites, skills, timer, victory);
+
+    gui.setGuiDisplay(display);
+
+    const scale = stage.guiImgProps.viewPoint.scale;
+    const panelW = display.worldDataSize.width * scale;
     expect(stage.guiImgProps.x).to.equal((canvas.width - panelW) / 2);
     expect(stage.guiImgProps.y).to.equal(stage.gameImgProps.height);
   });

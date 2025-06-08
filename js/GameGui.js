@@ -323,6 +323,7 @@ class GameGui {
 
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
     this._guiRafId = window.requestAnimationFrame(this._guiBound);
+    this.game?.stage?.updateStageSize?.();
   }
 
   _guiLoop(now) {
