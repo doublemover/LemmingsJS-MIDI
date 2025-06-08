@@ -245,3 +245,4 @@
 {"time":"2025-06-08T01:50:49.902Z","query":"bench mode","mdFiles":22,"codeFiles":29,"ms":123}
 {"time":"2025-06-08T01:50:52.692Z","query":"benchMode","mdFiles":22,"codeFiles":29,"ms":89}
 {"time":"2025-06-08T01:50:54.372Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":64}
+{"time":"2025-06-08T01:50:09.333Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":66}

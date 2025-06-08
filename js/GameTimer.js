@@ -34,6 +34,9 @@ class GameTimer {
     this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#visHandler = () => {
+      const skip = typeof lemmings !== 'undefined' &&
+        (lemmings.bench || lemmings.benchSequence);
+      if (skip) return;
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
       if (hidden) {
         if (this.isRunning()) {
@@ -186,6 +189,9 @@ class GameTimer {
         this.suspend();
         this.#stableTicks = 0;
         this.#speedFactor = 0.1;
+        window.setTimeout(() => {
+          if (!this.isRunning()) this.continue();
+        }, 500);
       } else if (steps > slowThreshold) {
         this.#stableTicks = 0;
         const sf = this.#speedFactor;
