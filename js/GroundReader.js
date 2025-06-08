@@ -194,7 +194,8 @@ class GroundReader extends Lemmings.BaseLogger {
           'folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel'
         );
       } else {
-        const gameData = steelSprites[foldername];
+        const sprites = steelSprites ?? {};
+        const gameData = sprites[foldername];
         const steelList = gameData ? gameData[filename] : null;
         if (steelList && steelList.includes(i)) {
           img.isSteel = true;
