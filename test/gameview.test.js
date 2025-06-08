@@ -11,7 +11,9 @@ function createWindowStub() {
     setTimeout,
     clearTimeout,
     addEventListener() {},
-    removeEventListener() {}
+    removeEventListener() {},
+    requestAnimationFrame() {},
+    cancelAnimationFrame() {}
   };
 }
 
@@ -22,12 +24,32 @@ function setupWindow() {
     setTimeout,
     clearTimeout,
     addEventListener() {},
-    removeEventListener() {}
+    removeEventListener() {},
+    requestAnimationFrame() {},
+    cancelAnimationFrame() {}
+  };
+  global.document = createDocumentStub();
+}
+
+function createDocumentStub() {
+  return {
+    createElement() { return {}; },
+    querySelector() { return null; },
+    addEventListener() {},
+    removeEventListener() {},
+    visibilityState: 'visible',
+    hasFocus() { return true; }
   };
 }
 
-beforeEach(function() { globalThis.window = createWindowStub(); });
-afterEach(function() { delete globalThis.window; });
+beforeEach(function() {
+  globalThis.window = createWindowStub();
+  globalThis.document = createDocumentStub();
+});
+afterEach(function() {
+  delete globalThis.window;
+  delete globalThis.document;
+});
 
 import { GameView } from '../js/GameView.js';
 
@@ -59,7 +81,8 @@ class StageMock {
     this.controller.onMouseRightUp.on(e => this.gameDisplay.onMouseRightUp.trigger(e));
     this.controller.onMouseMove.on(e => this.gameDisplay.onMouseMove.trigger(e));
     this.controller.onDoubleClick.on(e => this.gameDisplay.onDoubleClick.trigger(e));
-    this.updateStageSize();
+    // updateStageSize called when canvas assigned
+    this.gameImgProps = { viewPoint: { scale: 1 } };
   }
   getGameDisplay() { return this.gameDisplay; }
   getGuiDisplay() { return this.guiDisplay; }
@@ -71,6 +94,7 @@ class StageMock {
   startOverlayFade(color, rect) { this.overlayArgs = { color, rect }; }
   resetFade() { this.resetCalled = true; }
   setGameViewPointPosition() {}
+  applyViewport() {}
 }
 
 // simple Game stub used by GameFactory
@@ -113,6 +137,7 @@ describe('GameView', function () {
 
   after(function () {
     delete global.window;
+    delete global.document;
     Lemmings.Stage = this.origStage;
   });
   it('initializes stage and connects displays', async function () {
@@ -142,7 +167,13 @@ describe('GameView', function () {
 
     expect(view.stage.controller.onMouseDown.handlers.size).to.be.greaterThan(0);
     expect(gameDisplay.onMouseDown).to.be.instanceOf(Lemmings.EventHandler);
-
+    view.start = async function () {
+      const g = new GameMock();
+      g.setGameDisplay(this.stage.getGameDisplay());
+      g.setGuiDisplay(this.stage.getGuiDisplay());
+      g.start();
+      this.game = g;
+    };
     await view.start();
     const game = view.game;
     expect(game.setGameDisplayArgs).to.equal(gameDisplay);

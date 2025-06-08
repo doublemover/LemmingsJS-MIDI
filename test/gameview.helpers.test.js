@@ -14,20 +14,39 @@ function createWindow() {
     setTimeout,
     clearTimeout,
     addEventListener() {},
-    removeEventListener() {}
+    removeEventListener() {},
+    requestAnimationFrame() {},
+    cancelAnimationFrame() {}
+  };
+}
+
+function createDocumentStub() {
+  return {
+    createElement() { return {}; },
+    querySelector() { return null; },
+    addEventListener() {},
+    removeEventListener() {},
+    visibilityState: 'visible',
+    hasFocus() { return true; }
   };
 }
 
 describe('GameView helper methods', function () {
   beforeEach(function () {
     global.window = createWindow();
+    global.document = createDocumentStub();
     global.history = { replaceState() {} };
     Lemmings.GameFactory = GameFactoryStub;
+    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1, TYPE3: 2, toString: () => '' };
+    Lemmings.GameStateTypes = { toString: () => '' };
   });
 
   afterEach(function () {
     delete global.window;
+    delete global.document;
     delete global.history;
+    delete Lemmings.GameTypes;
+    delete Lemmings.GameStateTypes;
   });
 
   it('parseNumber handles ranges and defaults', async function () {
@@ -201,15 +220,19 @@ describe('moveToLevel transitions', function () {
   beforeEach(function () {
     requests = [];
     global.window = createWindow();
+    global.document = createDocumentStub();
     global.history = { replaceState() {} };
     Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1 };
+    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1, TYPE3: 2 };
+    Lemmings.GameStateTypes = { toString: () => '' };
     configs[1].level.order = [[0], [0]];
     configs[2].level.order = [[0]];
   });
   afterEach(function () {
     delete global.window;
+    delete global.document;
     delete global.history;
+    delete Lemmings.GameStateTypes;
   });
 
   it('advances to next group when level exceeds group length', async function () {
@@ -288,6 +311,7 @@ describe('moveToLevel transitions', function () {
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 2; // not in GameTypes keys
+    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1 };
     await view.moveToLevel(0);
     expect(view.gameType).to.equal(1);
     expect(view.levelGroupIndex).to.equal(0);
