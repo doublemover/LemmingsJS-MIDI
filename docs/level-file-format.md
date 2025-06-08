@@ -19,7 +19,7 @@ This document explains how to interpret the `.lvl` file used by the Windows vers
 | 0x0004–0x0005 | Num to rescue: should be less than or equal to number of lemmings |
 | 0x0006–0x0007 | Time Limit: max 0x00FF, 0x0001 to 0x0009 works best |
 | 0x0008–0x0017 | Num of skills (2 bytes each, only lower byte used). Order is Climber, Floater, Bomber, Blocker, Builder, Basher, Miner, Digger |
-| 0x0018–0x0019 | Start screen xpos: 0x0000 to 0x04F0 rounded to nearest multiple of 8 |
+| 0x0018–0x0019 | Start screen xpos: 0x0000 to 0x04F0 rounded to nearest multiple of 8. This determines the initial viewport when a level begins |
 | 0x001A–0x001B | Normal Graphic Set: 0x0000 dirt, 0x0001 fire, 0x0002 squasher, 0x0003 pillar, 0x0004 crystal, 0x0005 brick, 0x0006 rock, 0x0007 snow, 0x0008 bubble |
 | 0x001C–0x001D | Extended Graphic Set: apparently ignored in Windows version |
 | 0x001E–0x001F | Unknown: doesn't seem to matter, use 0x0000 |

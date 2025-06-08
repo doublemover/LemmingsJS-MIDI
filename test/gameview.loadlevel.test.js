@@ -9,19 +9,20 @@ class KeyboardShortcutsStub { constructor() {} dispose() {} }
 
 class StageStub {
   constructor() {
+    this.order = [];
     this.gameDisplay = {
       clearCalled: 0,
       redrawCalled: 0,
       setScreenPositionArgs: null,
       clear() { this.clearCalled++; },
-      setScreenPosition(x, y) { this.setScreenPositionArgs = [x, y]; },
+      setScreenPosition: (x, y) => { this.gameDisplay.setScreenPositionArgs = [x, y]; this.order.push('setScreenPosition'); },
       redraw() { this.redrawCalled++; }
     };
   }
   getGameDisplay() { return this.gameDisplay; }
   getGuiDisplay() { return {}; }
   setCursorSprite() {}
-  updateStageSize() {}
+  updateStageSize() { this.order.push('updateStageSize'); }
   resetFade() { this.resetCalled = (this.resetCalled || 0) + 1; }
 }
 
@@ -117,5 +118,21 @@ describe('GameView.loadLevel', function() {
     expect(view.elementSelectLevel.selectedIndex).to.equal(0);
     expect(updateCount).to.equal(1);
     expect(startCount).to.equal(1);
+  });
+
+  it('positions view after stage resize', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameCanvas = {};
+    view.updateQuery = () => {};
+    view.start = async () => {};
+    view.gameResources = {
+      getLevel: async () => ({ render() {}, screenPositionX: 7 }),
+      getLevelGroups: () => []
+    };
+    await view.loadLevel();
+    const order = view.stage.order.slice(-2);
+    expect(order).to.deep.equal(['updateStageSize', 'setScreenPosition']);
+    expect(view.stage.gameDisplay.setScreenPositionArgs).to.deep.equal([7, 0]);
   });
 });

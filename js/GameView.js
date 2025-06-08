@@ -481,8 +481,8 @@ class GameView extends Lemmings.BaseLogger {
       gameDisplay.clear();
       this.stage.resetFade();
       level.render(gameDisplay);
-      gameDisplay.setScreenPosition(level.screenPositionX, 0);
       this.stage.updateStageSize();
+      gameDisplay.setScreenPosition(level.screenPositionX, 0);
       gameDisplay.redraw();
     }
     this.updateQuery();
