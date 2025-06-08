@@ -28,6 +28,7 @@ class StageStub {
     this.gameImgProps.viewPoint.x += dx;
     this.gameImgProps.viewPoint.y += dy;
   }
+  clampViewPoint() {}
   redraw() { this.redrawCount++; }
   snapScale(s) { return s; }
   limitValue(min, val, max) { return Math.min(Math.max(val, min), max); }
