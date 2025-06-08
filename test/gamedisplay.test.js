@@ -167,6 +167,49 @@ describe('GameDisplay hover and selection rendering', function() {
     expect(args.slice(3, 6)).to.eql([0x5e, 0x5e, 0x5e]);
   });
 
+  it('marks GUI dirty when hover target changes', function() {
+    const lem1 = { x: 1, y: 1, removed: false, action: { getActionName() { return 'walk'; } } };
+    const lem2 = { x: 2, y: 2, removed: false, action: { getActionName() { return 'walk'; } } };
+    const lm = {
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return null; },
+      getNearestLemming(x) { return x === 1 ? lem1 : x === 2 ? lem2 : null; }
+    };
+    const gameGui = { backgroundChanged: false, gameTimeChanged: false };
+    const game = { showDebug: false, gameGui };
+    const level = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const gd = new Lemmings.GameDisplay(game, level, lm, { render() {} }, { renderDebug() {} });
+    const display = createDisplay();
+    gd.setGuiDisplay(display);
+
+    display.onMouseMove.trigger({ x: 1, y: 1 });
+    expect(gameGui.backgroundChanged).to.equal(true);
+    gameGui.backgroundChanged = false;
+    display.onMouseMove.trigger({ x: 1, y: 1 });
+    expect(gameGui.backgroundChanged).to.equal(false);
+    display.onMouseMove.trigger({ x: 2, y: 2 });
+    expect(gameGui.backgroundChanged).to.equal(true);
+  });
+
+  it('ignores exploding lemmings when hovering', function() {
+    const exploding = { x: 5, y: 5, removed: false, action: { getActionName() { return 'exploding'; } } };
+    const lm = {
+      render() {},
+      renderDebug() {},
+      getSelectedLemming() { return null; },
+      getNearestLemming() { return exploding; }
+    };
+    const game = { showDebug: false };
+    const level = { render() {}, renderDebug() {}, screenPositionX: 0 };
+    const gd = new Lemmings.GameDisplay(game, level, lm, { render() {} }, { renderDebug() {} });
+    const display = createDisplay();
+    gd.setGuiDisplay(display);
+
+    display.onMouseMove.trigger({ x: 5, y: 5 });
+    expect(gd.hoverLemming).to.equal(null);
+  });
+
   it('draws selection rectangle for selected lemming', function() {
     const selected = { x: 15, y: 25, removed: false, action: {} };
     const lm = {

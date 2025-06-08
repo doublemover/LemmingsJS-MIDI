@@ -237,4 +237,16 @@ describe('GameGui', function() {
     expect(gui.miniMap.renderCalls[0].x).to.equal(42);
     expect(gui.miniMap.renderCalls[0].w).to.equal(display.worldDataSize.width);
   });
+
+  it('shows hovered lemming action text', function() {
+    const { gui, game } = makeGui();
+    game.gameDisplay.hoverLemming = {
+      action: { getActionName() { return 'walk'; } }
+    };
+    const drawn = [];
+    gui.drawGreenString = (d, text) => { drawn.push(text); };
+    gui.gameTimeChanged = true;
+    gui.render();
+    expect(drawn).to.include('walk');
+  });
 });

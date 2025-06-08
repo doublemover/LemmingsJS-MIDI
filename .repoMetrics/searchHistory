@@ -301,12 +301,7 @@
 {"time":"2025-06-08T10:12:25.616Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":100}
 {"time":"2025-06-08T10:12:28.050Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":137}
 {"time":"2025-06-08T10:12:30.484Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":95}
-{"time":"2025-06-08T10:33:09.808Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":288}
-{"time":"2025-06-08T10:33:12.934Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":370}
-{"time":"2025-06-08T10:33:16.250Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":409}
-{"time":"2025-06-08T10:33:19.382Z","query":"middle","mdFiles":2,"codeFiles":0,"ms":239}
-{"time":"2025-06-08T10:33:21.646Z","query":"middle","mdFiles":2,"codeFiles":0,"ms":244}
-{"time":"2025-06-08T10:33:24.364Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":282}
-{"time":"2025-06-08T10:33:26.638Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":409}
-{"time":"2025-06-08T10:33:29.259Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":829}
-{"time":"2025-06-08T10:55:04.300Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":31,"ms":218}
+{"time":"2025-06-08T10:33:50.194Z","query":"lemming","mdFiles":54,"codeFiles":229,"ms":1216}
+{"time":"2025-06-08T10:33:51.714Z","query":"lemming","mdFiles":54,"codeFiles":229,"ms":466}
+{"time":"2025-06-08T10:33:54.829Z","query":"Lemming","mdFiles":54,"codeFiles":229,"ms":1241}
+{"time":"2025-06-08T10:48:34.888Z","query":"hover lemming","mdFiles":55,"codeFiles":229,"ms":295}
