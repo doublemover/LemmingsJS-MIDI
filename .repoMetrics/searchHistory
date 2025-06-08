@@ -286,3 +286,9 @@
 {"time":"2025-06-08T05:42:19.704Z","query":"ActionClimbSystem","mdFiles":20,"codeFiles":51,"ms":183}
 {"time":"2025-06-08T05:42:22.877Z","query":"climb","mdFiles":2,"codeFiles":15,"ms":136}
 {"time":"2025-06-08T05:42:25.250Z","query":"HOISTING","mdFiles":2,"codeFiles":10,"ms":136}
+{"time":"2025-06-08T06:24:18.931Z","query":"loadReplay","mdFiles":31,"codeFiles":66,"ms":381}
+{"time":"2025-06-08T06:24:21.708Z","query":"GameView","mdFiles":54,"codeFiles":161,"ms":585}
+{"time":"2025-06-08T06:24:57.492Z","query":"GameView loadReplay","mdFiles":65,"codeFiles":186,"ms":386}
+{"time":"2025-06-08T06:24:59.719Z","query":"GameView","mdFiles":54,"codeFiles":161,"ms":409}
+{"time":"2025-06-08T06:25:01.609Z","query":"loadReplay","mdFiles":31,"codeFiles":66,"ms":215}
+{"time":"2025-06-08T06:26:33.887Z","query":"loadReplay('foo')","mdFiles":31,"codeFiles":68,"ms":214}
