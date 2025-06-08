@@ -489,6 +489,7 @@ class GameView extends Lemmings.BaseLogger {
     if (!this._benchEntrancePool) {
       level.entrances = baseEntrances.slice();
       const target = Math.max(...this._benchCounts);
+    const SEGMENT_DURATION = 60;
       for (const step of increments) {
         let offset = 0;
         while (level.entrances.length < target && offset <= level.width) {
@@ -592,7 +593,9 @@ class GameView extends Lemmings.BaseLogger {
       for (const step of increments) {
         let offset = 0;
         while (level.entrances.length < target && offset <= level.width) {
-          for (const base of baseEntrances) {
+              timer.getGameTime() - this._benchStartTime >= SEGMENT_DURATION) {
+    const vc = this.game.getVictoryCondition();
+    if (vc) vc.releaseRate = vc.getMinReleaseRate();
             if (level.entrances.length >= target) break;
             const center = base.x + 24;
             if (offset === 0) {
