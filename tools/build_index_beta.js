@@ -948,12 +948,12 @@ async function build(mode) {
     path.join(OUT, '.skippedfiles.json'),
     JSON.stringify(skippedFiles, null, 2)
   );
-  log(`→ Wrote .scannedfiles.json and .skippedfiles.json`);
+  log('→ Wrote .scannedfiles.json and .skippedfiles.json');
 
   log('Writing index files...');
   await Promise.all([
     fs.writeFile(path.join(OUT, 'sparse_postings_varint.bin'), postingsBin),
-     fs.writeFile(
+    fs.writeFile(
       path.join(OUT, 'dense_vectors_uint8.json'),
       JSON.stringify({ dims, scale: 1.0, vectors: quantizedVectors  }) + '\n'
     ),
