@@ -120,7 +120,7 @@ describe('UserInputManager', function() {
     const beforeX = vp.getSceneX(cursor.x - img.x);
     const beforeY = vp.getSceneY(cursor.y - img.y);
 
-    uim.handleWheel(cursor, -120);
+    uim.handleWheel(cursor, 120);
 
     const afterX = vp.getSceneX(cursor.x - img.x);
     const afterY = vp.getSceneY(cursor.y - img.y);
@@ -148,9 +148,13 @@ describe('UserInputManager', function() {
     const uim = stage.controller;
     const cursor = new Lemmings.Position2D(0, 0);
 
-    uim.handleWheel(cursor, -120);
+    uim.handleWheel(cursor, 120);
 
-    expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
+    const vp = stage.gameImgProps.viewPoint;
+    const worldH = stage.getGameDisplay().worldDataSize.height;
+    const viewH = stage.gameImgProps.height / vp.scale;
+    expect(vp.scale).to.be.greaterThan(1);
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('emits zoom events with stage set', function(done) {
@@ -174,7 +178,7 @@ describe('UserInputManager', function() {
       try {
         expect(e.x).to.equal(25);
         expect(e.y).to.equal(75);
-        expect(e.deltaZoom).to.equal(-20);
+        expect(e.deltaZoom).to.equal(20);
         expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(oldScale);
         count += 1;
         if (count === 1) done();
@@ -184,7 +188,7 @@ describe('UserInputManager', function() {
       }
     });
 
-    uim.handleWheel(new Lemmings.Position2D(25, 75), -20);
+    uim.handleWheel(new Lemmings.Position2D(25, 75), 20);
   });
 
 });
