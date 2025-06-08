@@ -125,8 +125,11 @@ describe('UserInputManager', function() {
     const afterX = vp.getSceneX(cursor.x - img.x);
     const afterY = vp.getSceneY(cursor.y - img.y);
 
-    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
-    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+    const expectedDx = Math.trunc(cursor.x / vp.scale);
+    const expectedDy = Math.trunc(cursor.y / vp.scale);
+
+    expect(afterX - beforeX).to.equal(expectedDx);
+    expect(afterY - beforeY).to.equal(expectedDy);
   });
 
   it('zooms when cursor is at the world origin', function() {
