@@ -61,7 +61,7 @@ describe('Stage utilities', function() {
   });
 
   beforeEach(function() {
-    if (!globalThis.Date.isFake) {
+    if (!clock) {
       clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
     }
   });
@@ -69,7 +69,7 @@ describe('Stage utilities', function() {
   afterEach(function() {
     if (stage) stage.resetFade();
     stage = null;
-    if (clock && globalThis.Date.isFake) {
+    if (clock) {
       clock.uninstall();
       clock = null;
     }
