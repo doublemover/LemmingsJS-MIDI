@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frame step controls for debug playback.
 - Bench mode spawns entrances near originals, shows TPS and has improved HUD layout.
 - Optional custom crosshair cursor.
+- `.bash_aliases` with search-friendly `grep` helpers.
+- Search tool supports TF‑IDF weighting and fuzzy search.
+- Documentation covers configuration, compression formats, level file formats and WebMIDI setup.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
@@ -28,12 +31,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Viewport panning and centering calculations.
 - Crosshair transparency and HUD alignment during resize.
 - Stage resize handling on zero-size displays.
+- HUD initialization and cheat controls.
+- Instant nuke ignores lemmings that already exploded.
+- Stage layout reserves a bottom margin for the HUD.
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
+- Bench spawn thresholds refined and spawn counts tracked.
 
 
 ## [0.0.2] - 2025-06-04
