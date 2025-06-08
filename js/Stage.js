@@ -459,10 +459,12 @@ class Stage {
 
   redraw() {
     if (this.gameImgProps.display) {
+      this.clear(this.gameImgProps);
       const gameImg = this.gameImgProps.display.getImageData();
       this.draw(this.gameImgProps, gameImg);
     }
     if (this.guiImgProps.display) {
+      this.clear(this.guiImgProps);
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }
