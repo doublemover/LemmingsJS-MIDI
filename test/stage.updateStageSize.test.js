@@ -217,7 +217,6 @@ describe('Stage.updateStageSize', function() {
     const gui = new GameGui(game, sprites, skills, timer, victory);
 
     gui.setGuiDisplay(display);
-    gui.render();
 
     const scale = stage.guiImgProps.viewPoint.scale;
     const panelW = display.worldDataSize.width * scale;

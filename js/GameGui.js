@@ -321,6 +321,8 @@ class GameGui {
       display[event].on(handler);
     }
 
+    this.game?.stage?.updateStageSize?.();
+
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
     this._guiRafId = window.requestAnimationFrame(this._guiBound);
   }
@@ -370,7 +372,6 @@ class GameGui {
       this.backgroundChanged = false;
       d.initSize(this._panelSprite.width, this._panelSprite.height);
       d.setBackground(this._panelSprite.getData());
-      this.game?.stage?.updateStageSize?.();
 
       this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
     }
