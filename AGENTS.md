@@ -26,7 +26,7 @@ quotes, and semicolons across the JavaScript codebase.
 - Run `npm ci` if you do not
 
 ## Tests
-- Run `npm test` to execute the Mocha test suite.
+- Run `npm test [category...]` to execute the Mocha test suite. Categories are optional.
 
 ## Development
 - `npm start` launches `http-server` for local testing.
