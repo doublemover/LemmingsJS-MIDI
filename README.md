@@ -172,8 +172,8 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 
 ### Running tests
 
-`npm test` accepts optional category names. The full syntax lives in
-[docs/TESTING.md](docs/TESTING.md) and the category list is kept in
+`npm test` runs the full Mocha suite. Individual groups are available via
+dedicated scripts listed in [docs/TESTING.md](docs/TESTING.md) and
 [.agentInfo/notes/test-categories.md](.agentInfo/notes/test-categories.md).
 
 
