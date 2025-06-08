@@ -15,7 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
-- HQX and xBRZ scaling options for smoother graphics.
+- Search utility uses TF‑IDF weighting with optional fuzzy matching.
+- Bench mode spawns entrances near originals and tracks the total spawned.
+- HQX and xBRZ scaling options.
 - Frame step controls for debug playback.
 - Enchanced bench mode. Determines a maximum number of lemmings that can be spawned at a time before going through a series of spawn volume tests.
 - Search tool for agents uses TF‑IDF weighting and supports fuzzy search to augment their ability to search the codebase.
@@ -24,11 +26,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
   upper-left corner.
+- Instant nukes no longer trigger duplicate explosions.
+- GameView cheat controls execute correctly.
+- HUD elements initialize in the proper order.
+- Viewport calculations avoid erratic panning and clamp issues.
+- Stage size recalculates correctly on startup.
+- Bench timers, overlay color and text spacing.
 - Zoom direction, pan clamping and bottom clamp issues.
 - Viewport panning and centering calculations.
 - Crosshair transparency and HUD alignment during resize.
 - Stage and GUI alignment.
-- Instant nuke ignores lemmings that already exploded.
 - Stage layout reserves a bottom margin for the HUD.
 
 ### Changed
@@ -37,7 +44,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
 - Bench spawn thresholds refined and spawn counts tracked.
-
 
 ## [0.0.2] - 2025-06-04
 ### Added
