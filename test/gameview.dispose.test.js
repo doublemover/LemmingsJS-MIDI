@@ -65,4 +65,33 @@ describe('GameView.dispose', function() {
     delete global.window;
     delete global.history;
   });
+
+  it('cleans up pre-registered stage listeners', async function() {
+    const win = createWindowStub();
+    global.window = win;
+    global.history = { replaceState() {} };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const stage = new StageMock();
+    const shortcuts = new KeyboardShortcutsMock();
+    view.stage = stage;
+    view.shortcuts = shortcuts;
+    view._stageResize = () => {};
+    win.addEventListener('resize', view._stageResize);
+    win.addEventListener('orientationchange', view._stageResize);
+    const resizeHandler = view._stageResize;
+
+    view.dispose();
+
+    expect(win.removeCalls).to.deep.include.members([
+      ['resize', resizeHandler],
+      ['orientationchange', resizeHandler]
+    ]);
+    expect(stage.disposeCalled).to.equal(1);
+    expect(shortcuts.disposeCalled).to.equal(1);
+    expect(view.stage).to.equal(null);
+    expect(view.shortcuts).to.equal(null);
+    delete global.window;
+    delete global.history;
+  });
 });

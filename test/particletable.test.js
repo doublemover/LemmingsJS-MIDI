@@ -42,4 +42,24 @@ describe('ParticleTable', function() {
       [63, 106, 8, 18, 28, 255]
     ]);
   });
+
+  it('decodes shared data only once for multiple instances', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+    ParticleTable._sharedParticleData = undefined;
+    const pal = makePalette();
+    const pt1 = new ParticleTable(pal);
+    const shared = ParticleTable._sharedParticleData;
+    expect(pt1.particleData).to.equal(shared);
+    const pt2 = new ParticleTable(pal);
+    expect(ParticleTable._sharedParticleData).to.equal(shared);
+    expect(pt2.particleData).to.equal(shared);
+  });
+
+  it('draw() returns early when display is null', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+    ParticleTable._sharedParticleData = undefined;
+    const pal = makePalette();
+    const pt = new ParticleTable(pal);
+    expect(() => pt.draw(null, 0, 0, 0)).to.not.throw();
+  });
 });
