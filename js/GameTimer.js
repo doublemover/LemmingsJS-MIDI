@@ -263,6 +263,9 @@ class GameTimer {
       this.onGameTick.dispose();
     if (this.eachGameSecond && this.eachGameSecond.dispose)
       this.eachGameSecond.dispose();
+    this.onBeforeGameTick = null;
+    this.onGameTick = null;
+    this.eachGameSecond = null;
   }
 
   getGameTime() { return this.ticksToSeconds(this.tickIndex); }
