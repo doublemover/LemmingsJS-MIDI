@@ -73,6 +73,22 @@ describe('benchStart basics', function() {
     expect(timer.benchStartupFrames).to.equal(120);
     expect(timer.benchStableFactor).to.equal(8);
   });
+
+  it('limits entrance count to available locations', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const level = new LevelStub();
+    level.height = 30;
+    const timer = { speedFactor: 1, benchStartupFrames: 0, benchStableFactor: 1, getGameTime() { return 0; } };
+    const lm = new LMStub();
+    const view = new GameView();
+    view.gameResources = { getLevelGroups() { return ['grp']; } };
+    view.configs = [{ gametype: view.gameType, name: 'test' }];
+    view.levelGroupIndex = 0;
+    view.loadLevel = async () => { view.game = { level, getLemmingManager: () => lm, getGameTimer: () => timer }; };
+    await view.benchStart(50);
+    expect(level.entrances.length).to.equal(1);
+    expect(lm.spawnCount).to.equal(1);
+  });
 });
 
 after(function() {

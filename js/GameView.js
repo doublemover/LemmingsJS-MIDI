@@ -599,6 +599,9 @@ class GameView extends Lemmings.BaseLogger {
     } else {
       level.entrances = this._benchEntrancePool.slice();
     }
+    if (entrances > level.entrances.length) {
+      entrances = level.entrances.length;
+    }
     level.entrances.length = entrances;
     if (this.game.getLemmingManager) {
       const lm = this.game.getLemmingManager();
