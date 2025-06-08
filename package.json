@@ -14,6 +14,7 @@
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
     "coverage": "cross-env C8_FORK=1 c8 mocha",
+    "coverage-report": "npx c8 report --reporter=html",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -47,7 +48,6 @@
     "@sinonjs/fake-timers": "^14.0.0",
     "acorn": "^8.14.1",
     "adm-zip": "^0.5.16",
-    "ansi-colors": "^4.1.3",
     "c8": "^10.1.3",
     "chai": "^5.2.0",
     "cheerio": "^1.0.0",
@@ -62,7 +62,6 @@
     "seedrandom": "^3.0.5",
     "snowball-stemmers": "^0.6.0",
     "strip-comments": "^2.0.1",
-    "svd-js": "^1.1.1",
     "tar": "^7.4.3"
   },
   "dependencies": {
@@ -70,7 +69,6 @@
     "escomplex": "^2.0.0-alpha",
     "esprima": "^4.0.1",
     "js-yaml": "^4.1.0",
-    "jsonstream": "^1.0.3",
     "minhash": "^0.0.9",
     "simple-git": "^3.28.0",
     "varint": "^6.0.0",
