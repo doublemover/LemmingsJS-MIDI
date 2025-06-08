@@ -233,7 +233,7 @@ function printFullChunk(chunk, idx, mode, annScore, annType = 'bm25') {
   const secondLine = [headlinePart, lastModPart].filter(Boolean).join('   ');
   if (secondLine) out += '   ' + secondLine + '\n';
 
-  if (chunk.last_author && chunk.last_author !== "2xmvr")
+  if (chunk.last_author && chunk.last_author !== '2xmvr')
     out += c.gray('   Last Author: ') + c.green(chunk.last_author) + '\n';
 
   if (chunk.imports?.length)
@@ -327,17 +327,17 @@ function printFullChunk(chunk, idx, mode, annScore, annType = 'bm25') {
 
 function printShortChunk(chunk, idx, mode, annScore, annType = 'bm25') {
   if (!chunk || !chunk.file) {
-  return color.red(`   ${idx + 1}. [Invalid result — missing chunk or file]`) + '\n';
-}
+    return color.red(`   ${idx + 1}. [Invalid result — missing chunk or file]`) + '\n';
+  }
   let out = '';
   out += `${color.bold(color[mode === 'code' ? 'blue' : 'magenta'](`${idx + 1}. ${chunk.file}`))}`;
   out += color.yellow(` [${annScore.toFixed(2)}]`);
   if (chunk.name) out += ' ' + color.cyan(chunk.name);
   out += color.gray(` (${chunk.kind || 'unknown'})`);
-  if (chunk.last_author && chunk.last_author !== "2xmvr") out += color.green(` by ${chunk.last_author}`);
+  if (chunk.last_author && chunk.last_author !== '2xmvr') out += color.green(` by ${chunk.last_author}`);
   if (chunk.headline) out += ` - ${color.underline(chunk.headline)}`;
   else if (chunk.tokens && chunk.tokens.length)
-    out += ` - ` + chunk.tokens.slice(0, 10).join(' ').replace(rx, (m) => color.bold(color.yellow(m)));
+    out += ' - ' + chunk.tokens.slice(0, 10).join(' ').replace(rx, (m) => color.bold(color.yellow(m)));
 
   if (argv.matched) {
     const matchedTokens = tokens.filter(tok =>
@@ -416,10 +416,10 @@ function runSearch(idx, mode) {
   let showCode = 15;
 
   if (proseHits < 10) {
-    showCode += showProse
+    showCode += showProse;
   }
   if (codeHits < 10) {
-    showProse += showCode
+    showProse += showCode;
   }
 
   // Human output, enhanced formatting and summaries
@@ -431,7 +431,7 @@ function runSearch(idx, mode) {
       process.stdout.write(printShortChunk(h, i, 'prose', h.annScore, h.annType));
     }
   });
-  console.log('\n')
+  console.log('\n');
 
   console.log(color.bold('===== 🔨 Code Results ====='));
   codeHits.slice(0, showCode).forEach((h, i) => {
@@ -441,7 +441,7 @@ function runSearch(idx, mode) {
       process.stdout.write(printShortChunk(h, i, 'code', h.annScore, h.annType));
     }
   });
-  console.log('\n')
+  console.log('\n');
 
   // Optionally stats
   if (argv.stats) {
@@ -449,43 +449,43 @@ function runSearch(idx, mode) {
   }
 
   /* ---------- Update .repoMetrics and .searchHistory ---------- */
-const metricsPath = path.join(metricsDir, 'metrics.json');
-const historyPath = path.join(metricsDir, 'searchHistory');
-const noResultPath = path.join(metricsDir, 'noResultQueries');
-await fs.mkdir(path.dirname(metricsPath), { recursive: true });
+  const metricsPath = path.join(metricsDir, 'metrics.json');
+  const historyPath = path.join(metricsDir, 'searchHistory');
+  const noResultPath = path.join(metricsDir, 'noResultQueries');
+  await fs.mkdir(path.dirname(metricsPath), { recursive: true });
 
-let metrics = {};
-try {
-  metrics = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
-} catch {
-  metrics = {};
-}
-const inc = (f, key) => {
-  if (!metrics[f]) metrics[f] = { md: 0, code: 0, terms: [] };
-  metrics[f][key]++;
-  queryTokens.forEach((t) => {
-    if (!metrics[f].terms.includes(t)) metrics[f].terms.push(t);
-  });
-};
-proseHits.forEach((h) => inc(h.file, 'md'));
-codeHits.forEach((h) => inc(h.file, 'code'));
-await fs.writeFile(metricsPath, JSON.stringify(metrics) + '\n');
+  let metrics = {};
+  try {
+    metrics = JSON.parse(await fs.readFile(metricsPath, 'utf8'));
+  } catch {
+    metrics = {};
+  }
+  const inc = (f, key) => {
+    if (!metrics[f]) metrics[f] = { md: 0, code: 0, terms: [] };
+    metrics[f][key]++;
+    queryTokens.forEach((t) => {
+      if (!metrics[f].terms.includes(t)) metrics[f].terms.push(t);
+    });
+  };
+  proseHits.forEach((h) => inc(h.file, 'md'));
+  codeHits.forEach((h) => inc(h.file, 'code'));
+  await fs.writeFile(metricsPath, JSON.stringify(metrics) + '\n');
 
-await fs.appendFile(
-  historyPath,
-  JSON.stringify({
-    time: new Date().toISOString(),
-    query,
-    mdFiles: proseHits.length,
-    codeFiles: codeHits.length,
-    ms: Date.now() - t0,
-  }) + '\n'
-);
-
-if (proseHits.length === 0 && codeHits.length === 0) {
   await fs.appendFile(
-    noResultPath,
-    JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
+    historyPath,
+    JSON.stringify({
+      time: new Date().toISOString(),
+      query,
+      mdFiles: proseHits.length,
+      codeFiles: codeHits.length,
+      ms: Date.now() - t0,
+    }) + '\n'
   );
-}
+
+  if (proseHits.length === 0 && codeHits.length === 0) {
+    await fs.appendFile(
+      noResultPath,
+      JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
+    );
+  }
 })();
