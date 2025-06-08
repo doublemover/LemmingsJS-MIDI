@@ -100,3 +100,4 @@ This expanded listing preserves the original bullet format with short descriptio
 - **naming, cleanup**: [notes/naming-cleanup.md](notes/naming-cleanup.md) - Clarify variables that confuse viewport size with world data size.
 - **search, doc**: [notes/search-tool-doc.md](notes/search-tool-doc.md) - docs/ci.md lines 24-29 describe the search-history workflow and its new zeroResultHistory file.
 
+- **tests, categories**: [notes/test-categories.md](notes/test-categories.md) - Lists test groups so you can run subsets of the suite.
