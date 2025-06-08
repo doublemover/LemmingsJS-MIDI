@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Semantic Indexer & Analyzer for JS/Node/Bash Scripts/YAML & Prose (md/txt)
+ * Ultra-Complete Semantic Indexer & Analyzer for Code and Prose
  * Usage: node ./tools/build_index_new.js
  *
- * Pure Node/JS
+ * Pure Node/JS, no native calls, no Python/Go.
  *
  * Features:
  *  - Semantic (AST/heading) chunking
@@ -43,21 +43,6 @@ import * as varint from 'varint';
 import simpleGit from 'simple-git';
 import escomplex from 'escomplex';
 import { ESLint } from 'eslint';
-
-
-// --- DICTIONARY LOADER ---
-import readline from 'node:readline';
-import { createReadStream } from 'node:fs';
-
-const yourDict = new Set();
-const rl = readline.createInterface({
-  input: createReadStream('tools/words_alpha.txt'),
-  crlfDelay: Infinity
-});
-
-for await (const line of rl) {
-  yourDict.add(line.trim());
-}
 
 const argv = minimist(process.argv.slice(2), {
   default: { mode: 'all', chunk: 600, dims: 512, threads: os.cpus().length }
@@ -100,17 +85,13 @@ const SKIP_FILES = new Set([
   '.scannedfiles',
   '.searchhistory',
   '.skippedfiles',
-  'bash_aliases',
   'char3_postings.json',
   'chunk_meta.json',
   'dense_vectors',
   'fileformat.txt',
   'jquery.js',
   'metrics.json',
-  '.repoMetrics.old',
-  '.repoMetrics0.old',
-  '.repoMetrics1.old',
-  'noResultQueries',
+  'noresultqueries',
   'package-lock.json',
   'package.json',
   'searchHistory',
@@ -118,10 +99,7 @@ const SKIP_FILES = new Set([
   'sparse_postings.json',
   'webmidi.js',
   'wordInfo.json',
-  'CONTRIBUTING.md',
-  'CHANGELOG.md',
-  'words_alpha.txt',
-  'AGENTS.md'
+  'CONTRIBUTING'
 ]);
 
 const EXTS_PROSE = new Set([
@@ -243,7 +221,7 @@ function log(msg) {
 
 
 // --- HEADLINE GENERATOR ---
-function getHeadline(chunk, tokens, n = 7, tokenMaxLen = 30, headlineMaxLen = 120) {
+function getHeadline(chunk, tokens, n = 7, tokenMaxLen = 30, headlineMaxLen = 90) {
   // Prefer docmeta.doc if present
   if (chunk.docmeta && chunk.docmeta.doc) {
     return chunk.docmeta.doc.split(/\s+/).slice(0, n).join(' ');
@@ -744,7 +722,7 @@ async function build(mode) {
 
       if (mode === 'prose') {
         tokens = tokens.filter(w => !STOP.has(w));
-        tokens = tokens.flatMap(w => [w, stem(w)]);
+        tokens = tokens.map(stem);
       }
       const seq = [];
       for (const w of tokens) {
@@ -947,7 +925,7 @@ async function build(mode) {
   const minhashSigs = chunks.map(c => c.minhashSig);
   // (MinHash search logic will be in search.js)
 
-  // Chunk meta
+  // Chunk meta (super rich)
   const chunkMeta = chunks.map((c, i) => ({
     id: c.id,
     file: c.file,

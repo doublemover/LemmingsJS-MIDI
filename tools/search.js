@@ -1,653 +1,454 @@
 #!/usr/bin/env node
+/**
+ * Ultra-Complete Search Utility for Rich Semantic Index (Pretty Output)
+ * By: ChatGPT & Nick, 2025
+ *   [--calls function]  Filter for call relationships (calls to/from function)
+ *   [--uses ident]      Filter for usage of identifier
+ */
+
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
 import path from 'node:path';
 import minimist from 'minimist';
 import Snowball from 'snowball-stemmers';
-import c from 'ansi-colors';
+import Minhash from 'minhash';
 
 const argv = minimist(process.argv.slice(2), {
-  boolean: ['json', 'human', 'stats', 'fuzzy'],
-  alias: { n: 'top', 'human-json': 'hj', c: 'context', f: 'fuzzy' },
-  default: { n: 10, context: 0, fuzzy: false }
+  boolean: ['json', 'human', 'stats', 'ann', 'headline', 'lint', 'churn', 'matched'],
+  alias: { n: 'top', c: 'context', t: 'type' },
+  default: { n: 15, context: 4 },
+  string: ['calls', 'uses', 'signature', 'param'],
 });
-
-// If no flags, we emit agent‐optimized text by default.
-// --json       → agent‐optimized JSON
-// --human      → human‐friendly text
-// --human-json → human‐friendly JSON
-//
-// Example:
-//   node tools/search.js ants            # agent‐optimized text
-//   node tools/search.js ants --json     # agent‐optimized JSON
-//   node tools/search.js ants --human    # human‐friendly text
-//   node tools/search.js ants --human-json # human‐friendly JSON
-
-const query = argv._.join(' ').trim();
-if (!query) {
-  console.error('usage: search "query" [--json|--human|--human-json|--stats]');
-  process.exit(1);
-}
-
 const t0 = Date.now();
 const ROOT = process.cwd();
 const metricsDir = path.join(ROOT, '.repoMetrics');
+const query = argv._.join(' ').trim();
+if (!query) {
+  console.error('usage: search "query" [--json|--human|--stats|--ann|--context N|--type T|...]');
+  process.exit(1);
+}
 const contextLines = Math.max(0, parseInt(argv.context, 10) || 0);
+const searchType = argv.type || null;
+const searchAuthor = argv.author || null;
+const searchCall = argv.call || null;
+const searchImport = argv.import || null;
 
-/* --- Tokeniser + regex for highlighting --- */
 const stemmer = Snowball.newStemmer('english');
 const stem = (w) => stemmer.stem(w);
 const camel = (s) => s.replace(/([a-z])([A-Z])/g, '$1 $2');
-const tok = (t) =>
-  camel(t.replace(/\./g, ' '))
-    .toLowerCase()
-    .split(/[^a-z0-9_]+/u)
+const splitId = (s) =>
+  s.replace(/([a-z])([A-Z])/g, '$1 $2')        // split camelCase
+    .replace(/[_\-]+/g, ' ')                   // split on _ and -
+    .split(/[^a-zA-Z0-9]+/u)                   // split non-alphanum
+    .flatMap(tok => tok.split(/(?<=.)(?=[A-Z])/)) // split merged camel even if lowercase input
+    .map(t => t.toLowerCase())
     .filter(Boolean);
 
-const raw = tok(query);                          // e.g. ["lemmings","port"]
-const stems = raw.map(stem);                     // e.g. ["lemm","port"]
-const bigr = raw.slice(0, -1).map((w, i) =>       // e.g. ["lemm_port"]
-  stem(w) + '_' + stem(raw[i + 1])
-);
-const qTokens = Array.from(new Set([...stems, ...bigr]));
-const rx = new RegExp(`(${raw.join('|')})`, 'ig');
+// Load English wordlist
+const wordListPath = path.join('tools/', 'words_alpha.txt');
+const englishWords = fsSync.readFileSync(wordListPath, 'utf8')
+  .split('\n')
+  .map(w => w.trim().toLowerCase())
+  .filter(Boolean);
 
-/* --- Load both indexes (synchronous JSON reads) --- */
-function loadDir(dir) {
-  const pPost = path.join(dir, 'sparse_postings.json');
-  const pMeta = path.join(dir, 'chunk_meta.json');
-  if (!fsSync.existsSync(pPost) || !fsSync.existsSync(pMeta)) {
-    console.error(
-      `Missing index files in ${dir}. Run \`node tools/build_index.js\` to generate them.`
-    );
-    process.exit(1);
-  }
+const dict = new Set(englishWords);
+
+const color = {
+  green: (t) => `\x1b[32m${t}\x1b[0m`,
+  yellow: (t) => `\x1b[33m${t}\x1b[0m`,
+  red: (t) => `\x1b[31m${t}\x1b[0m`,
+  cyan: (t) => `\x1b[36m${t}\x1b[0m`,
+  magenta: (t) => `\x1b[35m${t}\x1b[0m`,
+  blue: (t) => `\x1b[34m${t}\x1b[0m`,
+  gray: (t) => `\x1b[90m${t}\x1b[0m`,
+  bold: (t) => `\x1b[1m${t}\x1b[0m`,
+  underline: (t) => `\x1b[4m${t}\x1b[0m`
+};
+
+// --- LOAD INDEX ---
+function loadIndex(dir) {
   return {
-    postings: JSON.parse(fsSync.readFileSync(pPost, 'utf8')),
-    meta: JSON.parse(fsSync.readFileSync(pMeta, 'utf8')),
+    chunkMeta: JSON.parse(fsSync.readFileSync(path.join(dir, 'chunk_meta.json'), 'utf8')),
+    denseVec: JSON.parse(fsSync.readFileSync(path.join(dir, 'dense_vectors_uint8.json'), 'utf8')),
+    minhash: JSON.parse(fsSync.readFileSync(path.join(dir, 'minhash_signatures.json'), 'utf8')),
+    phraseNgrams: JSON.parse(fsSync.readFileSync(path.join(dir, 'phrase_ngrams.json'), 'utf8')),
+    chargrams: JSON.parse(fsSync.readFileSync(path.join(dir, 'chargram_postings.json'), 'utf8'))
   };
 }
+const idxProse = loadIndex('index-prose');
+const idxCode = loadIndex('index-code');
 
-const prose = loadDir('index-prose');
-const code = loadDir('index-code');
-
-function expandTokens(idx, tokens) {
-  if (!argv.fuzzy) return tokens.filter((t) => idx.postings.vocab.includes(t));
-  const set = new Set();
-  tokens.forEach((t) => {
-    idx.postings.vocab.forEach((v) => {
-      if (v.includes(t)) set.add(v);
-    });
-  });
-  return Array.from(set);
-}
-
-function idf(idx, token) {
-  const col = idx.postings.vocab.indexOf(token);
-  if (col === -1) return 0;
-  const df = idx.postings.postings[col].length;
-  const N = idx.meta.length;
-  return Math.log((N + 1) / (df + 1)) + 1;
-}
-
-/* ---------- ENCAPSULATED HELPER: find enclosing function name ---------- */
-function getEnclosingFunction(lines, lineNum) {
-  for (let i = lineNum - 1; i >= 0; i--) {
-    const L = lines[i].trim();
-    // 1) function foo(...) { ... }
-    let m = L.match(/^\s*(?:async\s+)?function\s+([A-Za-z0-9_$]+)\s*\(/);
-    if (m) return m[1];
-    // 2) const foo = (...) => { ... }
-    m = L.match(
-      /^\s*(?:const|let|var)\s+([A-Za-z0-9_$]+)\s*=\s*(?:async\s+)?\([^\)]*\)\s*=>/
-    );
-    if (m) return m[1];
-    // 3) foo(...) { ... }  (method inside a class or standalone)
-    m = L.match(/^\s*([A-Za-z0-9_$]+)\s*\([^)]*\)\s*\{/);
-    if (m && !L.startsWith('if') && !L.startsWith('for') && !L.startsWith('while')) {
-      return m[1];
-    }
-  }
-  return null;
-}
-
-/* ---------- NORMALIZED, COLORIZED SCORE (1–10) ---------- */
-function colorScore(score, max) {
-  const ratio = max === 0 ? 0 : score / max;
-  const level = Math.max(1, Math.ceil(ratio * 10)); // 1..10
-  if (level > 7) return c.green(String(score));
-  if (level > 3) return c.yellow(String(score));
-  return c.red(String(score));
-}
-
-/* ---------- BUILD MD INDEX RESULTS ---------- */
-const mdScores = new Map(); // file → { chunkScore }
-const mdTokens = expandTokens(prose, qTokens);
-mdTokens.forEach((tokStr) => {
-  const col = prose.postings.vocab.indexOf(tokStr);
-  if (col === -1) return;
-  const weight = idf(prose, tokStr);
-  let id = 0;
-  for (const gap of prose.postings.postings[col]) {
-    id += gap;
-    const m = prose.meta[id];
-    const entry = mdScores.get(m.file) || { chunkScore: 0 };
-    entry.chunkScore += weight;
-    mdScores.set(m.file, entry);
-  }
-});
-
-let mdHitsAll = [...mdScores.entries()]
-  .map(([f, o]) => ({ file: f, chunkScore: o.chunkScore }))
-  .sort((a, b) => b.chunkScore - a.chunkScore);
-
-// Separate out entries from the agent index files
-const indexFiles = new Set([
-  path.join('.agentInfo', 'index.md'),
-  path.join('.agentInfo', 'index-detailed.md'),
-]);
-const indexHits = mdHitsAll.filter((h) => indexFiles.has(h.file));
-mdHitsAll = mdHitsAll.filter((h) => !indexFiles.has(h.file));
-
-// Recompute “realPos” and “totalMatches” for each MD hit
-await Promise.all(
-  mdHitsAll.map(async (hit) => {
-    hit.realPos = [];
-    hit.totalMatches = 0;
-    let text;
-    try {
-      text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    } catch {
-      return;
-    }
-    const lines = text.split(/\r?\n/);
-    const allMatches = text.match(rx);
-    hit.totalMatches = allMatches ? allMatches.length : 0;
-    for (let i = 0; i < lines.length && hit.realPos.length < 5; i++) {
-      let m;
-      while ((m = rx.exec(lines[i])) !== null) {
-        hit.realPos.push([i + 1, m.index + 1]);
-        if (hit.realPos.length >= 5) break;
-      }
-      rx.lastIndex = 0;
-    }
-  })
-);
-
-// Compute positions for hits inside the agent index files
-await Promise.all(
-  indexHits.map(async (hit) => {
-    hit.realPos = [];
-    hit.totalMatches = 0;
-    let text;
-    try {
-      text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    } catch {
-      return;
-    }
-    const lines = text.split(/\r?\n/);
-    const allMatches = text.match(rx);
-    hit.totalMatches = allMatches ? allMatches.length : 0;
-    for (let i = 0; i < lines.length && hit.realPos.length < 5; i++) {
-      let m;
-      while ((m = rx.exec(lines[i])) !== null) {
-        hit.realPos.push([i + 1, m.index + 1]);
-        if (hit.realPos.length >= 5) break;
-      }
-      rx.lastIndex = 0;
-    }
-  })
-);
-
-mdHitsAll.forEach((h) => { h.score = h.chunkScore; });
-indexHits.forEach((h) => { h.score = h.chunkScore; });
-const allMdHits = mdHitsAll.concat(indexHits);
-const maxMdScore = allMdHits.reduce((m, h) => Math.max(m, h.score), 1);
-const maxMdMatches = allMdHits.reduce((max, h) => Math.max(max, h.totalMatches), 1);
-
-/* ---------- BUILD CODE INDEX RESULTS ---------- */
-function chunkCandidates(idx, tokens) {
-  const cand = new Set();
-  tokens.forEach((tokStr) => {
-    const col = idx.postings.vocab.indexOf(tokStr);
-    if (col === -1) return;
-    let id = 0;
-    for (const gap of idx.postings.postings[col]) {
-      id += gap;
-      cand.add(id);
-    }
-  });
-  return cand;
-}
-
-const codeTokens = expandTokens(code, qTokens);
-const candChunks = chunkCandidates(code, codeTokens);
-const codeScores = new Map(); // file → { chunkScore }
-for (const id of candChunks) {
-  const m = code.meta[id];
-  let sc = codeScores.get(m.file)?.chunkScore || 0;
-  codeTokens.forEach((tokStr) => {
-    const col = code.postings.vocab.indexOf(tokStr);
-    if (col === -1) return;
-    let cur = 0;
-    for (const gap of code.postings.postings[col]) {
-      cur += gap;
-      if (cur === id) {
-        sc += idf(code, tokStr);
+// --- QUERY TOKENIZATION ---
+function splitWordsWithDict(token, dict) {
+  const result = [];
+  let i = 0;
+  while (i < token.length) {
+    let found = false;
+    for (let j = token.length; j > i; j--) {
+      const sub = token.slice(i, j);
+      if (dict.has(sub)) {
+        result.push(sub);
+        i = j;
+        found = true;
         break;
       }
-      if (cur > id) break;
+    }
+    if (!found) {
+      // fallback: add single char to avoid infinite loop
+      result.push(token[i]);
+      i++;
+    }
+  }
+  return result;
+}
+
+
+let queryTokens = splitId(query);
+
+queryTokens = queryTokens.flatMap(tok => {
+  if (tok.length <= 3 || dict.has(tok)) return [tok];
+  return splitWordsWithDict(tok, dict);
+});
+
+const rx = new RegExp(`(${queryTokens.join('|')})`, 'ig');
+
+// --- SEARCH BM25 TOKENS/PHRASES ---
+function rankBM25(idx, tokens, topN) {
+  const scores = new Map();
+  idx.chunkMeta.forEach((chunk, i) => {
+    let score = 0;
+    queryTokens.forEach(tok => {
+      if (chunk.ngrams && chunk.ngrams.includes(tok)) score += 2 * (chunk.weight || 1);
+      if (chunk.headline && chunk.headline.includes(tok)) score += 3 * (chunk.weight || 1);
+    });
+    scores.set(i, score);
+  });
+  return [...scores.entries()]
+    .filter(([i, s]) => s > 0)
+    .map(([i, s]) => ({ idx: i, score: s }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topN);
+}
+
+// --- SEARCH MINHASH ANN (for semantic embedding search) ---
+function minhashSigForTokens(tokens) {
+  const mh = new Minhash();
+  tokens.forEach(t => mh.update(t));
+  return mh.hashvalues;
+}
+function jaccard(sigA, sigB) {
+  let match = 0;
+  for (let i = 0; i < sigA.length; i++) if (sigA[i] === sigB[i]) match++;
+  return match / sigA.length;
+}
+function rankMinhash(idx, tokens, topN) {
+  const qSig = minhashSigForTokens(tokens);
+  const scored = idx.minhash.signatures
+    .map((sig, i) => ({ idx: i, sim: jaccard(qSig, sig) }))
+    .sort((a, b) => b.sim - a.sim)
+    .slice(0, topN);
+  return scored;
+}
+
+// --- ADVANCED FILTERING ---
+function filterChunks(meta, opts = {}) {
+  return meta.filter(c => {
+    if (opts.type && c.kind && c.kind.toLowerCase() !== opts.type.toLowerCase()) return false;
+    if (opts.author && c.last_author && !c.last_author.toLowerCase().includes(opts.author.toLowerCase())) return false;
+    if (opts.call && c.codeRelations && c.codeRelations.calls) {
+      const found = c.codeRelations.calls.find(([fn, call]) => call === opts.call || fn === opts.call);
+      if (!found) return false;
+    }
+    if (opts.import && c.codeRelations && c.codeRelations.imports) {
+      if (!c.codeRelations.imports.includes(opts.import)) return false;
+    }
+    if (opts.lint && (!c.lint || !c.lint.length)) return false;
+    if (opts.churn && (!c.churn || c.churn < opts.churn)) return false;
+    if (argv.calls && c.codeRelations && c.codeRelations.calls) {
+      const found = c.codeRelations.calls.find(([fn, call]) => fn === argv.calls || call === argv.calls);
+      if (!found) return false;
+    }
+    if (argv.uses && c.codeRelations && c.codeRelations.usages) {
+      if (!c.codeRelations.usages.includes(argv.uses)) return false;
+    }
+    if (argv.signature && c.docmeta?.signature) {
+      if (!c.docmeta.signature.includes(argv.signature)) return false;
+    }
+    if (argv.param && c.docmeta?.params) {
+      if (!c.docmeta.params.includes(argv.param)) return false;
+    }
+    return true;
+  });
+}
+
+function cleanContext(lines) {
+  return lines
+    .filter(l => {
+      const t = l.trim();
+      if (!t || t === '```') return false;
+      // Skip lines where there is no alphanumeric content
+      if (!/[a-zA-Z0-9]/.test(t)) return false;
+      return true;
+    })
+    .map(l => l.replace(/\s+/g, ' ').trim()); // <— normalize whitespace here
+}
+
+
+// --- FORMAT OUTPUT ---
+function getBodySummary(h, maxWords = 80) {
+  try {
+    const absPath = path.join(ROOT, h.file);
+    const text = fsSync.readFileSync(absPath, 'utf8');
+    const chunkText = text.slice(h.start, h.end)
+      .replace(/\s+/g, ' ') // normalize spaces
+      .trim();
+    const words = chunkText.split(/\s+/).slice(0, maxWords).join(' ');
+    return words;
+  } catch {
+    return '(Could not load summary)';
+  }
+}
+
+let lastCount = 0;
+function printFullChunk(chunk, idx, mode, annScore, annType = 'bm25') {
+  if (!chunk || !chunk.file) {
+    return color.red(`   ${idx + 1}. [Invalid result — missing chunk or file]`) + '\n';
+  }
+  const c = color;
+  let out = '';
+
+  const line1 = [
+    c.bold(c[mode === 'code' ? 'blue' : 'magenta'](`${idx + 1}. ${chunk.file}`)),
+    c.cyan(chunk.name || ''),
+    c.yellow(chunk.kind || ''),
+    c.green(`${annScore.toFixed(2)}`),
+    c.gray(`Start/End: ${chunk.start}/${chunk.end}`),
+    typeof chunk.churn === 'number' ? c.yellow(`Churn: ${chunk.churn}`) : ''
+  ].filter(Boolean).join('  ');
+
+  out += line1 + '\n';
+
+  const headlinePart = chunk.headline ? c.bold('Headline: ') + c.underline(chunk.headline) : '';
+  const lastModPart = chunk.last_modified ? c.gray('Last Modified: ') + c.bold(chunk.last_modified) : '';
+  const secondLine = [headlinePart, lastModPart].filter(Boolean).join('   ');
+  if (secondLine) out += '   ' + secondLine + '\n';
+
+  if (chunk.last_author && chunk.last_author !== "2xmvr")
+    out += c.gray('   Last Author: ') + c.green(chunk.last_author) + '\n';
+
+  if (chunk.imports?.length)
+    out += c.magenta('   Imports: ') + chunk.imports.join(', ') + '\n';
+  else if (chunk.codeRelations?.imports?.length)
+    out += c.magenta('   Imports: ') + chunk.codeRelations.imports.join(', ') + '\n';
+
+  if (chunk.exports?.length)
+    out += c.blue('   Exports: ') + chunk.exports.join(', ') + '\n';
+  else if (chunk.codeRelations?.exports?.length)
+    out += c.blue('   Exports: ') + chunk.codeRelations.exports.join(', ') + '\n';
+
+  if (chunk.codeRelations?.calls?.length)
+    out += c.yellow('   Calls: ') + chunk.codeRelations.calls.map(([a, b]) => `${a}→${b}`).join(', ') + '\n';
+
+  if (chunk.codeRelations?.importLinks?.length)
+    out += c.green('   ImportLinks: ') + chunk.codeRelations.importLinks.join(', ') + '\n';
+
+  // Usages
+  if (chunk.codeRelations?.usages?.length) {
+    const usageFreq = Object.create(null);
+    chunk.codeRelations.usages.forEach(uRaw => {
+      const u = typeof uRaw === 'string' ? uRaw.trim() : '';
+      if (!u) return;
+      usageFreq[u] = (usageFreq[u] || 0) + 1;
+    });
+
+    const usageEntries = Object.entries(usageFreq).sort((a, b) => b[1] - a[1]);
+    const maxCount = usageEntries[0]?.[1] || 0;
+
+    const usageStr = usageEntries.slice(0, 10).map(([u, count]) => {
+      if (count === 1) return u;
+      if (count === maxCount) return c.bold(c.yellow(`${u} (${count})`));
+      return c.cyan(`${u} (${count})`);
+    }).join(', ');
+
+    if (usageStr.length) out += c.cyan('   Usages: ') + usageStr + '\n';
+  }
+
+  const uniqueTokens = [...new Set((chunk.tokens || []).map(t => t.trim()).filter(t => t))];
+  if (uniqueTokens.length)
+    out += c.magenta('   Tokens: ') + uniqueTokens.slice(0, 10).join(', ') + '\n';
+
+  if (argv.matched) {
+    const matchedTokens = tokens.filter(tok =>
+      (chunk.tokens && chunk.tokens.includes(tok)) ||
+      (chunk.ngrams && chunk.ngrams.includes(tok)) ||
+      (chunk.headline && chunk.headline.includes(tok))
+    );
+    if (matchedTokens.length)
+      out += c.gray('   Matched: ') + matchedTokens.join(', ') + '\n';
+  }
+
+  if (chunk.docmeta?.signature)
+    out += c.cyan('   Signature: ') + chunk.docmeta.signature + '\n';
+
+  if (chunk.lint?.length)
+    out += c.red(`   Lint: ${chunk.lint.length} issues`) +
+      (chunk.lint.length ? c.gray(' | ') + chunk.lint.slice(0,2).map(l => JSON.stringify(l.message)).join(', ') : '') + '\n';
+
+  if (chunk.externalDocs?.length)
+    out += c.blue('   Docs: ') + chunk.externalDocs.join(', ') + '\n';
+
+  const cleanedPreContext = chunk.preContext ? cleanContext(chunk.preContext) : [];
+  if (cleanedPreContext.length)
+    out += c.gray('   preContext: ') + cleanedPreContext.map(l => c.green(l.trim())).join(' | ') + '\n';
+
+  const cleanedPostContext = chunk.postContext ? cleanContext(chunk.postContext) : [];
+  if (cleanedPostContext.length)
+    out += c.gray('   postContext: ') + cleanedPostContext.map(l => c.green(l.trim())).join(' | ') + '\n';
+
+  if (idx === 0) {
+    lastCount = 0;
+  }
+  if (idx < 5) {
+    let maxWords = 50;
+    let lessPer = 1;
+    maxWords -= (lessPer*idx);
+    const bodySummary = getBodySummary(chunk, maxWords);
+    if (lastCount < maxWords) {
+      maxWords = bodySummary.length; 
+    }
+    lastCount = bodySummary.length;
+    out += c.gray('   Summary: ') + `${getBodySummary(chunk, maxWords)}` + '\n';
+  }
+
+  out += c.gray(''.padEnd(60, '—')) + '\n';
+  return out;
+}
+
+
+function printShortChunk(chunk, idx, mode, annScore, annType = 'bm25') {
+  if (!chunk || !chunk.file) {
+  return color.red(`   ${idx + 1}. [Invalid result — missing chunk or file]`) + '\n';
+}
+  let out = '';
+  out += `${color.bold(color[mode === 'code' ? 'blue' : 'magenta'](`${idx + 1}. ${chunk.file}`))}`;
+  out += color.yellow(` [${annScore.toFixed(2)}]`);
+  if (chunk.name) out += ' ' + color.cyan(chunk.name);
+  out += color.gray(` (${chunk.kind || 'unknown'})`);
+  if (chunk.last_author && chunk.last_author !== "2xmvr") out += color.green(` by ${chunk.last_author}`);
+  if (chunk.headline) out += ` - ${color.underline(chunk.headline)}`;
+  else if (chunk.tokens && chunk.tokens.length)
+    out += ` - ` + chunk.tokens.slice(0, 10).join(' ').replace(rx, (m) => color.bold(color.yellow(m)));
+
+  if (argv.matched) {
+    const matchedTokens = tokens.filter(tok =>
+      (chunk.tokens && chunk.tokens.includes(tok)) ||
+      (chunk.ngrams && chunk.ngrams.includes(tok)) ||
+      (chunk.headline && chunk.headline.includes(tok))
+    );
+    if (matchedTokens.length)
+      out += color.gray(` Matched: ${matchedTokens.join(', ')}`);
+  }
+
+  out += '\n';
+  return out;
+}
+
+
+// --- MAIN SEARCH PIPELINE ---
+function runSearch(idx, mode) {
+  const meta = idx.chunkMeta;
+
+  // Filtering
+  const filteredMeta = filterChunks(meta, {
+    type: searchType,
+    author: searchAuthor,
+    call: searchCall,
+    import: searchImport,
+    lint: argv.lint,
+    churn: argv.churn
+  });
+  const allowedIdx = new Set(filteredMeta.map(c => c.id));
+
+  // Main search: BM25 token match
+  const bmHits = rankBM25(idx, queryTokens, argv.n * 3);
+  // MinHash (embedding) ANN, if requested
+  const annHits = argv.ann ? rankMinhash(idx, tokens, argv.n * 3) : [];
+
+  // Combine and dedup
+  let allHits = new Map();
+  bmHits.forEach(h => allHits.set(h.idx, { score: h.score, kind: 'bm25' }));
+  annHits.forEach(h => {
+    if (!allHits.has(h.idx) || h.sim > allHits.get(h.idx).score)
+      allHits.set(h.idx, { score: h.sim, kind: 'ann' });
+  });
+
+  // Sort and map to final results
+  const ranked = [...allHits.entries()]
+    .filter(([idx, _]) => allowedIdx.has(idx))
+    .sort((a, b) => b[1].score - a[1].score)
+    .slice(0, argv.n)
+    .map(([idxVal, obj]) => {
+      const chunk = meta[idxVal];
+      return chunk ? { ...chunk, annScore: obj.score, annType: obj.kind } : null;
+    })
+    .filter(x => x);
+
+  return ranked;
+}
+
+
+// --- MAIN ---
+(async () => {
+  let proseHits = runSearch(idxProse, 'prose');
+  let codeHits = runSearch(idxCode, 'code');
+
+  // Output
+  if (argv.json) {
+    // Full JSON
+    console.log(JSON.stringify({
+      prose: proseHits,
+      code: codeHits
+    }, null, 2));
+    process.exit(0);
+  }
+
+  let showProse = 15;
+  let showCode = 15;
+
+  if (proseHits < 10) {
+    showCode += showProse
+  }
+  if (codeHits < 10) {
+    showProse += showCode
+  }
+
+  // Human output, enhanced formatting and summaries
+  console.log(color.bold('\n===== 📖 Markdown Results ====='));
+  proseHits.slice(0, showProse).forEach((h, i) => {
+    if (i < 4) {
+      process.stdout.write(printFullChunk(h, i, 'prose', h.annScore, h.annType));
+    } else {
+      process.stdout.write(printShortChunk(h, i, 'prose', h.annScore, h.annType));
     }
   });
-  const entry = codeScores.get(m.file) || { chunkScore: 0 };
-  entry.chunkScore = Math.max(entry.chunkScore, sc);
-  codeScores.set(m.file, entry);
-}
+  console.log('\n')
 
-let codeHitsAll = [...codeScores.entries()]
-  .map(([f, o]) => ({ file: f, chunkScore: o.chunkScore }))
-  .sort((a, b) => b.chunkScore - a.chunkScore);
-
-// Recompute “realPos” and “totalMatches” for each Code hit
-await Promise.all(
-  codeHitsAll.map(async (hit) => {
-    hit.realPos = [];
-    hit.totalMatches = 0;
-    let text;
-    try {
-      text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    } catch {
-      return;
+  console.log(color.bold('===== 🔨 Code Results ====='));
+  codeHits.slice(0, showCode).forEach((h, i) => {
+    if (i < 6) {
+      process.stdout.write(printFullChunk(h, i, 'code', h.annScore, h.annType));
+    } else {
+      process.stdout.write(printShortChunk(h, i, 'code', h.annScore, h.annType));
     }
-    const lines = text.split(/\r?\n/);
-    const allMatches = text.match(rx);
-    hit.totalMatches = allMatches ? allMatches.length : 0;
-    for (let i = 0; i < lines.length && hit.realPos.length < 5; i++) {
-      let m;
-      while ((m = rx.exec(lines[i])) !== null) {
-        hit.realPos.push([i + 1, m.index + 1]);
-        if (hit.realPos.length >= 5) break;
-      }
-      rx.lastIndex = 0;
-    }
-  })
-);
+  });
+  console.log('\n')
 
-codeHitsAll.forEach((h) => { h.score = h.chunkScore; });
-const maxCodeScore = codeHitsAll.reduce((m, h) => Math.max(m, h.score), 1);
-const maxCodeMatches = codeHitsAll.reduce(
-  (max, h) => Math.max(max, h.totalMatches),
-  1
-);
-
-const totalIndexFiles = indexHits.length;
-const sumIndexMatches = indexHits.reduce((sum, h) => sum + h.totalMatches, 0);
-const totalMdFiles = mdHitsAll.length;
-const sumMdMatches = mdHitsAll.reduce((sum, h) => sum + h.totalMatches, 0);
-const totalCodeFiles = codeHitsAll.length;
-const sumCodeMatches = codeHitsAll.reduce((sum, h) => sum + h.totalMatches, 0);
-
-// ─── Compute enclosingFunction synchronously ───
-for (const hit of mdHitsAll) {
-  hit.enclosingFunction = null;
-  if (hit.realPos.length) {
-    const text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    const lines = text.split(/\r?\n/);
-    const [lineNum] = hit.realPos[0];
-    hit.enclosingFunction = getEnclosingFunction(lines, lineNum);
-  }
-}
-for (const hit of indexHits) {
-  hit.enclosingFunction = null;
-  if (hit.realPos.length) {
-    const text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    const lines = text.split(/\r?\n/);
-    const [lineNum] = hit.realPos[0];
-    hit.enclosingFunction = getEnclosingFunction(lines, lineNum);
-  }
-}
-for (const hit of codeHitsAll) {
-  hit.enclosingFunction = null;
-  if (hit.realPos.length) {
-    const text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
-    const lines = text.split(/\r?\n/);
-    const [lineNum] = hit.realPos[0];
-    hit.enclosingFunction = getEnclosingFunction(lines, lineNum);
-  }
-}
-
-/* Determine how many to show in each section */
-const SHOW_SNIPPET_MD = Math.min(1, totalMdFiles);
-const LIST_MD = Math.min(10, totalMdFiles - SHOW_SNIPPET_MD);
-const SHOW_SNIPPET_CODE = Math.min(5, totalCodeFiles);
-const LIST_CODE = Math.min(10, totalCodeFiles - SHOW_SNIPPET_CODE);
-
-/* ---------- OUTPUT MODES ---------- */
-function agentText() {
-  let out = '';
-
-  if (totalIndexFiles > 0) {
-    out += `${totalIndexFiles} entries found in agent index files\n`;
-    indexHits.forEach((hit) => {
-      const sc = colorScore(hit.score, maxMdScore).padEnd(4);
-      out += `[${sc}] ` +
-        c.magentaBright(path.basename(hit.file)) +
-        ` (func: ${hit.enclosingFunction || '‹none›'})\n`;
-    });
-    out += '\n';
+  // Optionally stats
+  if (argv.stats) {
+    console.log(color.gray(`Stats: prose chunks=${idxProse.chunkMeta.length}, code chunks=${idxCode.chunkMeta.length}`));
   }
 
-  // Markdown summary
-  if (totalMdFiles > 0) {
-    out +=
-      `${c.gray(sumMdMatches)} matches in ${c.gray(totalMdFiles)} total Markdown files\n` +
-      `Summarizing top ${c.white(SHOW_SNIPPET_MD)} → listing next ${c.white(LIST_MD)}\n\n`;
-
-    // Snippet for top MD hit
-    if (SHOW_SNIPPET_MD) {
-      const md1 = mdHitsAll[0];
-      const [l1] = md1.realPos.length ? md1.realPos[0] : [1, 1];
-      let linesMd = [];
-      if (fsSync.existsSync(path.join(ROOT, md1.file))) {
-        const textMd = fsSync.readFileSync(path.join(ROOT, md1.file), 'utf8');
-        linesMd = textMd.split(/\r?\n/);
-      }
-      const z1 = l1 - 1;
-      const st1 = Math.max(0, z1 - contextLines);
-      const en1 = Math.min(linesMd.length, z1 + contextLines + 1);
-
-      const scoreMd1 = colorScore(md1.score, maxMdScore).padEnd(4);
-      const fnPart = md1.enclosingFunction
-        ? ` (func: ${md1.enclosingFunction})`
-        : '';
-      out += `[${scoreMd1}] ` +
-        c.magentaBright(path.basename(md1.file)) +
-        fnPart +
-        '\n';
-      for (let i = st1; i < en1; i++) {
-        const num = c.green(String(i + 1).padStart(4));
-        const line = linesMd[i] || '';
-        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
-        out += num + ' ' + hl + '\n';
-      }
-      out += '\n';
-    }
-
-    // List next MD hits
-    for (let i = SHOW_SNIPPET_MD; i < SHOW_SNIPPET_MD + LIST_MD; i++) {
-      const h = mdHitsAll[i];
-      const sc = colorScore(h.score, maxMdScore).padEnd(4);
-      out += `[${sc}] ` +
-        c.magentaBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
-      if (contextLines) {
-        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-        const lines = text.split(/\r?\n/);
-        const [l] = h.realPos.length ? h.realPos[0] : [1];
-        const z = l - 1;
-        const st = Math.max(0, z - contextLines);
-        const en = Math.min(lines.length, z + contextLines + 1);
-        for (let j = st; j < en; j++) {
-          const num = c.green(String(j + 1).padStart(4));
-          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
-          out += num + ' ' + hl + '\n';
-        }
-      }
-    }
-    out += '\n';
-  }
-
-  // Code summary
-  if (totalCodeFiles > 0) {
-    out +=
-      `${c.gray(sumCodeMatches)} matches in ${c.gray(totalCodeFiles)} total code files\n` +
-      `Summarizing top ${c.white(SHOW_SNIPPET_CODE)} → listing next ${c.white(LIST_CODE)}\n\n`;
-
-    // Snippets for top code hits
-    for (let i = 0; i < SHOW_SNIPPET_CODE; i++) {
-      const h = codeHitsAll[i];
-      const [lc] = h.realPos.length ? h.realPos[0] : [1, 1];
-      let linesC = [];
-      if (fsSync.existsSync(path.join(ROOT, h.file))) {
-        const textC = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-        linesC = textC.split(/\r?\n/);
-      }
-      const zc = lc - 1;
-      const stC = Math.max(0, zc - contextLines);
-      const enC = Math.min(linesC.length, zc + contextLines + 1);
-      const sc = colorScore(h.score, maxCodeScore).padEnd(4);
-      const fnPart = h.enclosingFunction
-        ? ` (func: ${h.enclosingFunction})`
-        : '';
-      out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file)) +
-        fnPart +
-        '\n';
-      for (let j = stC; j < enC; j++) {
-        const num = c.green(String(j + 1).padStart(4));
-        const line = linesC[j] || '';
-        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
-        out += num + ' ' + hl + '\n';
-      }
-      out += '\n';
-    }
-
-    // List next code hits
-    for (let i = SHOW_SNIPPET_CODE; i < SHOW_SNIPPET_CODE + LIST_CODE; i++) {
-      const h = codeHitsAll[i];
-      const sc = colorScore(h.score, maxCodeScore).padEnd(4);
-      out += `[${sc}] ` +
-        c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
-      if (contextLines) {
-        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-        const lines = text.split(/\r?\n/);
-        const [l] = h.realPos.length ? h.realPos[0] : [1];
-        const z = l - 1;
-        const st = Math.max(0, z - contextLines);
-        const en = Math.min(lines.length, z + contextLines + 1);
-        for (let j = st; j < en; j++) {
-          const num = c.green(String(j + 1).padStart(4));
-          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
-          out += num + ' ' + hl + '\n';
-        }
-      }
-    }
-    out += '\n';
-  }
-
-  return out;
-}
-
-function agentJSON() {
-  // Agent‐optimized JSON: no truncation; top‐to‐bottom order
-  return JSON.stringify(
-    {
-      index: indexHits.map((h) => ({
-        file: h.file,
-        totalMatches: h.totalMatches,
-        score: h.score,
-        realPos: h.realPos,
-        enclosingFunction: h.enclosingFunction,
-      })),
-      markdown: mdHitsAll.map((h) => ({
-        file: h.file,
-        totalMatches: h.totalMatches,
-        score: h.score,
-        realPos: h.realPos,
-        enclosingFunction: h.enclosingFunction,
-      })),
-      code: codeHitsAll.map((h) => ({
-        file: h.file,
-        totalMatches: h.totalMatches,
-        score: h.score,
-        realPos: h.realPos,
-        enclosingFunction: h.enclosingFunction,
-      })),
-    },
-    null,
-    2
-  );
-}
-
-function humanText() {
-  let out = '';
-
-  if (totalIndexFiles > 0) {
-    out += '--- Agent Index Results ---\n';
-    out += `Found ${sumIndexMatches} total matches in ${totalIndexFiles} files.\n`;
-    indexHits.forEach((h, i) => {
-      const sc = colorScore(h.score, maxMdScore);
-      const pos = h.realPos.length
-        ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
-        : '(no matches)';
-      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
-      out += `${i + 1}. ${path.basename(h.file)}${fnPart} — hits: ${sc}, lines: ${pos}\n`;
-    });
-    out += '\n';
-  }
-
-  // Markdown section
-  if (totalMdFiles > 0) {
-    out += '--- Markdown Results ---\n';
-    out += `Found ${sumMdMatches} total matches in ${totalMdFiles} files.\n`;
-    const toShow = Math.min(10, mdHitsAll.length);
-    for (let i = 0; i < toShow; i++) {
-      const h = mdHitsAll[i];
-      const sc = colorScore(h.score, maxMdScore);
-      const pos = h.realPos.length
-        ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
-        : '(no matches)';
-      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
-      out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
-        c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
-      if (contextLines) {
-        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-        const lines = text.split(/\r?\n/);
-        const [l] = h.realPos.length ? h.realPos[0] : [1];
-        const z = l - 1;
-        const st = Math.max(0, z - contextLines);
-        const en = Math.min(lines.length, z + contextLines + 1);
-        for (let j = st; j < en; j++) {
-          const num = c.green(String(j + 1).padStart(4));
-          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
-          out += num + ' ' + hl + '\n';
-        }
-      }
-    }
-    if (mdHitsAll.length > 10) {
-      out += `... and ${mdHitsAll.length - 10} more Markdown files.\n`;
-    }
-    out += '\n';
-  }
-
-  // Code section
-  if (totalCodeFiles > 0) {
-    out += '--- Code Results ---\n';
-    out += `Found ${sumCodeMatches} total matches in ${totalCodeFiles} files.\n`;
-    const toShow = Math.min(10, codeHitsAll.length);
-    for (let i = 0; i < toShow; i++) {
-      const h = codeHitsAll[i];
-      const sc = colorScore(h.score, maxCodeScore);
-      const pos = h.realPos.length
-        ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
-        : '(no matches)';
-      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
-      out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
-        c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
-      if (contextLines) {
-        const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-        const lines = text.split(/\r?\n/);
-        const [l] = h.realPos.length ? h.realPos[0] : [1];
-        const z = l - 1;
-        const st = Math.max(0, z - contextLines);
-        const en = Math.min(lines.length, z + contextLines + 1);
-        for (let j = st; j < en; j++) {
-          const num = c.green(String(j + 1).padStart(4));
-          const hl = lines[j].replace(rx, (m) => c.bold.yellowBright(m));
-          out += num + ' ' + hl + '\n';
-        }
-      }
-    }
-    if (codeHitsAll.length > 10) {
-      out += `... and ${codeHitsAll.length - 10} more code files.\n`;
-    }
-    out += '\n';
-  }
-
-  return out;
-}
-
-function humanJSON() {
-  // Human‐friendly JSON (truncated to top 10 each)
-  return JSON.stringify(
-    {
-      index: indexHits.slice(0, 10).map((h) => ({
-        file: path.basename(h.file),
-        path: path.dirname(h.file),
-        hits: h.totalMatches,
-        score: h.score,
-        lines: h.realPos,
-        function: h.enclosingFunction || null,
-      })),
-      more_index: Math.max(0, indexHits.length - 10),
-      markdown: mdHitsAll.slice(0, 10).map((h) => ({
-        file: path.basename(h.file),
-        path: path.dirname(h.file),
-        hits: h.totalMatches,
-        score: h.score,
-        lines: h.realPos,
-        function: h.enclosingFunction || null,
-      })),
-      more_md: Math.max(0, mdHitsAll.length - 10),
-      code: codeHitsAll.slice(0, 10).map((h) => ({
-        file: path.basename(h.file),
-        path: path.dirname(h.file),
-        hits: h.totalMatches,
-        score: h.score,
-        lines: h.realPos,
-        function: h.enclosingFunction || null,
-      })),
-      more_code: Math.max(0, codeHitsAll.length - 10),
-    },
-    null,
-    2
-  );
-}
-
-/* Decide which mode to print */
-if (argv.json && !argv.human) {
-  // agent‐optimized JSON
-  console.log(agentJSON());
-} else if (argv.human && argv.hj) {
-  // human‐friendly JSON (--human-json)
-  console.log(humanJSON());
-} else if (argv.human) {
-  // human‐friendly text
-  process.stdout.write(humanText());
-} else {
-  // default: agent‐optimized text
-  process.stdout.write(agentText());
-}
-
-/* ---------- Stats ---------- */
-if (argv.stats) {
-  console.log(
-    '--stats--',
-    'indexFiles:', totalIndexFiles,
-    'sumIndexMatches:', sumIndexMatches,
-    'mdFiles:', totalMdFiles,
-    'sumMdMatches:', sumMdMatches,
-    'codeFiles:', totalCodeFiles,
-    'sumCodeMatches:', sumCodeMatches,
-    'candChunks:', candChunks.size,
-    'ms:', Date.now() - t0
-  );
-}
-
-/* ---------- Update .repoMetrics and .searchHistory ---------- */
+  /* ---------- Update .repoMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
 const noResultPath = path.join(metricsDir, 'noResultQueries');
@@ -662,12 +463,12 @@ try {
 const inc = (f, key) => {
   if (!metrics[f]) metrics[f] = { md: 0, code: 0, terms: [] };
   metrics[f][key]++;
-  raw.forEach((t) => {
+  queryTokens.forEach((t) => {
     if (!metrics[f].terms.includes(t)) metrics[f].terms.push(t);
   });
 };
-mdHitsAll.forEach((h) => inc(h.file, 'md'));
-codeHitsAll.forEach((h) => inc(h.file, 'code'));
+proseHits.forEach((h) => inc(h.file, 'md'));
+codeHits.forEach((h) => inc(h.file, 'code'));
 await fs.writeFile(metricsPath, JSON.stringify(metrics) + '\n');
 
 await fs.appendFile(
@@ -675,15 +476,16 @@ await fs.appendFile(
   JSON.stringify({
     time: new Date().toISOString(),
     query,
-    mdFiles: totalMdFiles,
-    codeFiles: totalCodeFiles,
+    mdFiles: proseHits.length,
+    codeFiles: codeHits.length,
     ms: Date.now() - t0,
   }) + '\n'
 );
 
-if (totalMdFiles === 0 && totalCodeFiles === 0) {
+if (proseHits.length === 0 && codeHits.length === 0) {
   await fs.appendFile(
     noResultPath,
     JSON.stringify({ time: new Date().toISOString(), query }) + '\n'
   );
 }
+})();
