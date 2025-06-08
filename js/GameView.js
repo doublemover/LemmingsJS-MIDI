@@ -16,7 +16,7 @@ class GameView extends Lemmings.BaseLogger {
     this.gameSpeedFactor = 1;
     this.bench = false; // just keep spawning lems
     this.benchSequence = false;
-    this.benchUseMinRate = false;
+    this._benchMeasureExtras = false;
     this.endless = false; // time doesn't run out, game doesn't end
     this.nukeAfter = 0; // nuke after x seconds
     this.scale = 0; // zoom 
@@ -466,7 +466,7 @@ class GameView extends Lemmings.BaseLogger {
     if (!this.gameResources) return;
     if (this.game) {
       this.game.stop();
-    this.benchUseMinRate = false;
+    this._benchMeasureExtras = false;
     const SPAWN_OFFSET_Y = 14;
     const SAFE_ENTRANCE_DROP = Lemmings.Lemming.LEM_MAX_FALLING - SPAWN_OFFSET_Y;
       const drop = Math.min(seg.height - ENTRANCE_HEIGHT, SAFE_ENTRANCE_DROP);
@@ -618,10 +618,10 @@ class GameView extends Lemmings.BaseLogger {
     }
     const timer = this.game.getGameTimer();
     timer.speedFactor = 6;
-    this.benchUseMinRate = true;
+    this._benchMeasureExtras = true;
     timer.benchStartupFrames = 600;
     timer.benchStableFactor = 4;
-          this.benchUseMinRate = false;
+          this._benchMeasureExtras = false;
     this._benchStartTime = timer.getGameTime();
     if (this.benchSequence) {
       if (this._benchMonitor) timer.eachGameSecond.off(this._benchMonitor);
