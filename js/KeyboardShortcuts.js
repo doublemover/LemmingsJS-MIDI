@@ -95,16 +95,16 @@ class KeyboardShortcuts {
         const newScale = stage.snapScale(stage._rawScale);
         const nx = centerX - cx / newScale;
         const ny = centerY - cy / newScale;
-        const maxX = img.display.worldDataSize.width  - img.canvasViewportSize.width  / newScale;
-        const maxY = img.display.worldDataSize.height - img.canvasViewportSize.height / newScale;
-        vp.x = Math.min(Math.max(0, nx), maxX);
-        vp.y = Math.min(Math.max(0, ny), maxY);
+        vp.x = nx;
+        vp.y = ny;
         vp.scale = newScale;
+        stage.clampViewPoint(img);
         stage.redraw();
         again = true;
       } else if (this.zoom.reset !== null) {
         stage._rawScale = this.zoom.reset;
         vp.scale = stage.snapScale(stage._rawScale);
+        stage.clampViewPoint(img);
         this.zoom.reset = null;
         stage.redraw();
         this.zoom.v = 0;
