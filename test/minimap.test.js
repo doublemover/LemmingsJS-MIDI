@@ -72,7 +72,7 @@ describe('MiniMap', function() {
     mm.render();
 
     const idx = dot[1] * mm.width + dot[0];
-    expect(mm.frame.data[idx]).to.equal(0x5500FFFF);
+    expect(mm.frame.data[idx]).to.equal(0xFF00FFFF);
 
     const call = display.drawFrameCalls[0];
     expect(call.x).to.equal(display.worldDataSize.width - mm.width);
