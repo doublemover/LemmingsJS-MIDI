@@ -18,6 +18,26 @@ function patchScript(tmpDir) {
   return tempScript;
 }
 
+async function runScript(script, args, options = {}) {
+  const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
+  process.argv = ['node', script, ...args];
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
+}
+
 describe('tools/exportAllPacks.js', function () {
   it('calls exportAllSprites.js for each configured pack', async function () {
     this.skip();
@@ -26,11 +46,8 @@ describe('tools/exportAllPacks.js', function () {
     const calls = [];
     globalThis.spawnSync = (...args) => { calls.push(args); return { status: 0 }; };
     const origCwd = process.cwd();
-    const origArgv = process.argv;
     process.chdir(tempDir);
-    process.argv = ['node', script];
-    await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-    process.argv = origArgv;
+    await runScript(script, []);
     process.chdir(origCwd);
     delete globalThis.spawnSync;
     fs.rmSync(tempDir, { recursive: true, force: true });

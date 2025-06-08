@@ -192,9 +192,10 @@ describe('KeyboardShortcuts', function() {
     stage.clear = () => {};
     stage.draw = () => {};
     stage.redraw = () => {};
-    stage.updateViewPoint = (img, dx, dy) => {
-      img.viewPoint.x += dx / img.viewPoint.scale;
-      img.viewPoint.y += dy / img.viewPoint.scale;
+    stage.applyViewport = (img, x, y, s) => {
+      img.viewPoint.x = x;
+      img.viewPoint.y = y;
+      img.viewPoint.scale = s;
     };
     stage.getGameDisplay().initSize(1000, 1000);
 
@@ -352,7 +353,7 @@ describe('KeyboardShortcuts', function() {
           viewPoint: { x: 0, y: 0, scale: 1 }
         };
       }
-      updateViewPoint() {}
+      applyViewport() {}
       redraw() {}
       snapScale(s) { return s; }
       limitValue(min, val, max) { return Math.min(Math.max(min, val), max); }
@@ -399,5 +400,25 @@ describe('KeyboardShortcuts', function() {
     clock.uninstall();
     delete global.window;
     delete global.requestAnimationFrame;
+  });
+
+  it('clamps speed factor within bounds', function() {
+    const timer = { speedFactor: 120 };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    ks._changeSpeed(1, false);
+    expect(timer.speedFactor).to.equal(120);
+    timer.speedFactor = 0.1;
+    ks._changeSpeed(-1, false);
+    expect(timer.speedFactor).to.equal(0.1);
+  });
+
+  it('ignores events with control keys held', function() {
+    const log = [];
+    const manager = { queueCommand(cmd) { log.push(cmd); } };
+    const timer = { speedFactor: 1 };
+    const ks = createShortcuts(timer, manager);
+    const evt = { code: 'Digit3', shiftKey: false, ctrlKey: true, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(log).to.have.lengthOf(0);
   });
 });

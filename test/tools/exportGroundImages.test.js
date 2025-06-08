@@ -80,11 +80,24 @@ function patchScript() {
   return temp;
 }
 
-async function runScript(script, args) {
+async function runScript(script, args, options = {}) {
   const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
   process.argv = ['node', script, ...args];
-  await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-  process.argv = origArgv;
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
 }
 
 describe('tools/exportGroundImages.js', function () {
@@ -121,6 +134,66 @@ describe('tools/exportGroundImages.js', function () {
         fs.unlinkSync(script);
         delete globalThis.MockNodeFileProvider;
       }
+    });
+
+    it('uses config.json when run without arguments', async function () {
+      const files = {
+        'lemmings/GROUND0O.DAT': new Uint8Array([0]),
+        'lemmings/VGAGR0.DAT': new Uint8Array([0])
+      };
+      class MockProvider {
+        async loadBinary(dir, file) {
+          const key = `${dir}/${file}`;
+          const arr = files[key];
+          if (!arr) throw new Error('missing ' + key);
+          return new Lemmings.BinaryReader(arr, 0, arr.length, file, dir);
+        }
+      }
+      globalThis.MockNodeFileProvider = MockProvider;
+
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'cwd-'));
+      const script = patchScript();
+      try {
+        await runScript(script, [], { cwd: tmpdir });
+        await new Promise(r => setTimeout(r, 50));
+        const base = path.join(tmpdir, 'exports', 'lemmings_ground_0');
+        const pngs = fs.existsSync(base) ? fs.readdirSync(base).filter(f => f.endsWith('.png')) : [];
+        expect(pngs.length).to.be.greaterThan(0);
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+        fs.unlinkSync(script);
+        delete globalThis.MockNodeFileProvider;
+      }
+    });
+
+    it('fails for an out-of-range index', async function () {
+      const files = {
+        'lemmings/GROUND0O.DAT': new Uint8Array([0]),
+        'lemmings/VGAGR0.DAT': new Uint8Array([0])
+      };
+      class MockProvider {
+        async loadBinary(dir, file) {
+          const key = `${dir}/${file}`;
+          const arr = files[key];
+          if (!arr) throw new Error('missing ' + key);
+          return new Lemmings.BinaryReader(arr, 0, arr.length, file, dir);
+        }
+      }
+      globalThis.MockNodeFileProvider = MockProvider;
+
+      const tmpdir = fs.mkdtempSync(path.join(os.tmpdir(), 'cwd-'));
+      const script = patchScript();
+      let err = null;
+      try {
+        await runScript(script, ['lemmings', '99'], { cwd: tmpdir });
+      } catch (e) {
+        err = e;
+      } finally {
+        fs.rmSync(tmpdir, { recursive: true, force: true });
+        fs.unlinkSync(script);
+        delete globalThis.MockNodeFileProvider;
+      }
+      expect(err).to.be.instanceOf(Error);
     });
   });
 
