@@ -592,6 +592,31 @@ describe('Action Systems process()', function() {
     expect(lem.state).to.equal(1);
   });
 
+  it('ActionBuildSystem lays bricks facing left', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming(10, 0);
+    lem.lookRight = false;
+    lem.frameIndex = 8; // ->9 brick
+    sys.process(level, lem);
+    expect(level.setGroundCalls).to.eql([
+      '6,-1','7,-1','8,-1','9,-1','10,-1','11,-1'
+    ]);
+  });
+
+  it('ActionBuildSystem steps forward without obstacles', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(new Map());
+    const lem = new StubLemming();
+    lem.frameIndex = 15; // ->0 step
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.x).to.equal(2);
+    expect(lem.y).to.equal(-1);
+    expect(lem.state).to.equal(1);
+    expect(lem.lookRight).to.equal(true);
+  });
+
   it('ActionClimbSystem continues with ceiling present', function() {
     const level = new StubLevel();
     const sys = new ActionClimbSystem(new Map());
