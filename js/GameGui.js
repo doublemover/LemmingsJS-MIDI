@@ -409,16 +409,15 @@ class GameGui {
         this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
       } else if (lemmings.bench == true && this.gameSpeedChanged) {
         const stats = [
-          'T' + lemmings.steps,
-          'TPS ' + Math.round(lemmings.tps),
-          'Spawn ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
+          'Tick Delay ' + lemmings.steps,
+          'TicksPerSecond ' + Math.round(lemmings.tps),
+          'Spawned ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
         ];
         let x = 0;
         for (let i = 0; i < stats.length; i++) {
           const s = stats[i];
           this.drawGreenString(d, s, x, 0);
-          x += s.length * 8;
-          if (i < stats.length - 1) x += 8; // space between stats
+          x += (s.length+1) * 8;
         }
       }
     }
