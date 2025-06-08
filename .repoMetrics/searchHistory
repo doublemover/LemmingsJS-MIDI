@@ -428,3 +428,6 @@
 {"time":"2025-06-08T19:42:48.268Z","query":"Stage.updateStageSize","mdFiles":15,"codeFiles":15,"ms":247}
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
+{"time":"2025-06-08T22:02:47.384Z","query":"blocker","mdFiles":0,"codeFiles":0,"ms":1283}
+{"time":"2025-06-08T22:02:51.309Z","query":"Blocker","mdFiles":0,"codeFiles":0,"ms":1469}
+{"time":"2025-06-08T22:08:52.553Z","query":"ActionBlockerSystem","mdFiles":4,"codeFiles":15,"ms":1303}
