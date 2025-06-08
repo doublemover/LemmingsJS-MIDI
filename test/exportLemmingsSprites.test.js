@@ -66,6 +66,26 @@ function patchScript() {
   return { script, stub };
 }
 
+async function runScript(script, args, options = {}) {
+  const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
+  process.argv = ['node', script, ...args];
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
+}
+
 describe('tools/exportLemmingsSprites.js', function () {
   before(setupStubs);
   after(function () {
@@ -75,11 +95,7 @@ describe('tools/exportLemmingsSprites.js', function () {
   it('writes separate PNGs for each animation', async function () {
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
     const { script, stub } = patchScript();
-    const origArgv = process.argv;
-    process.argv = ['node', script, 'dummy', outDir];
-    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-    await mod.main();
-    process.argv = origArgv;
+    await runScript(script, ['dummy', outDir]);
     fs.unlinkSync(script);
     fs.unlinkSync(stub);
 

@@ -86,7 +86,7 @@ async function runScript(script, args, options = {}) {
   process.once('unhandledRejection', handler);
   try {
     const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-    if (mod.main) await mod.main(args);
+    await mod.main?.(args);
     await new Promise(r => setTimeout(r, 20));
   } finally {
     process.off('unhandledRejection', handler);

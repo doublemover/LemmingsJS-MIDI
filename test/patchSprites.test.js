@@ -16,6 +16,26 @@ import { FileContainer } from '../js/FileContainer.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
+async function runScript(script, args, options = {}) {
+  const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
+  process.argv = ['node', script, ...args];
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
+}
+
 describe('tools/patchSprites.js', function () {
   it('patches sprite data using PNG files', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
@@ -52,10 +72,7 @@ describe('tools/patchSprites.js', function () {
     const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
     fs.writeFileSync(tempScript, patched);
 
-    const origArgv = process.argv;
-    process.argv = ['node', tempScript, datFile, pngDir, outFile];
-    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
-    process.argv = origArgv;
+    await runScript(tempScript, [datFile, pngDir, outFile]);
     fs.unlinkSync(tempScript);
 
     const outBuf = fs.readFileSync(outFile);
@@ -126,10 +143,7 @@ describe('tools/patchSprites.js', function () {
     const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
     fs.writeFileSync(tempScript, patched);
 
-    const origArgv = process.argv;
-    process.argv = ['node', tempScript, '--sheet-orientation=vertical', datFile, pngDir, outFile];
-    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
-    process.argv = origArgv;
+    await runScript(tempScript, ['--sheet-orientation=vertical', datFile, pngDir, outFile]);
     fs.unlinkSync(tempScript);
 
     const outBuf = fs.readFileSync(outFile);

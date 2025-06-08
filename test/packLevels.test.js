@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
+import { pathToFileURL } from 'url';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import { BinaryReader } from '../js/BinaryReader.js';
@@ -16,6 +17,26 @@ const script = path.resolve('tools/packLevels.js');
 
 globalThis.lemmings = { game: { showDebug: false } };
 
+async function runScript(scriptPath, args, options = {}) {
+  const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
+  process.argv = ['node', scriptPath, ...args];
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(scriptPath).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
+}
+
 describe('tools/packLevels.js', function () {
   it('packs a directory of levels into a DAT file', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'levels-'));
@@ -25,10 +46,7 @@ describe('tools/packLevels.js', function () {
     fs.writeFileSync(path.join(dir, 'B.bin'), b);
     const outFile = path.join(dir, 'out.dat');
 
-    const origArgv = process.argv;
-    process.argv = ['node', 'packLevels.js', dir, outFile];
-    await import('../tools/packLevels.js');
-    process.argv = origArgv;
+    await runScript(script, [dir, outFile]);
 
     const buf = fs.readFileSync(outFile);
     const fc = new FileContainer(new BinaryReader(new Uint8Array(buf)));
