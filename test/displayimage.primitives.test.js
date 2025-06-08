@@ -51,6 +51,21 @@ describe('DisplayImage primitives', function() {
     expect(Array.from(disp.buffer32)).to.eql([0xFF112233, 0xFF445566]);
   });
 
+  it('setBackground logs error for other array types', function() {
+    globalThis.lemmings = { game: { showDebug: true } };
+    const disp = new DisplayImage(stage);
+    disp.initSize(1, 1);
+    disp.clear(0);
+    const errors = [];
+    const origErr = console.error;
+    console.error = msg => errors.push(String(msg));
+    disp.setBackground(new Uint8Array([1, 2, 3, 4]));
+    console.error = origErr;
+    delete globalThis.lemmings;
+    expect(errors[0]).to.match(/setBackground fallback/);
+    expect(Array.from(disp.buffer32)).to.eql([0]);
+  });
+
   it('drawRect draws outlines and fills', function() {
     const disp = new DisplayImage(stage);
     disp.initSize(5, 5);
