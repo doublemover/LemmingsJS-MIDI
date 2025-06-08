@@ -122,11 +122,22 @@ describe('bench TPS', function() {
     const disp = new DisplayImageStub();
     gui.setGuiDisplay(disp);
     const drawn = [];
-    gui.drawGreenString = (d, text, x, y) => { drawn.push(text); };
+    gui.drawGreenString = (d, text, x) => { drawn.push({ text, x }); };
     gui.gameTimeChanged = true;
     gui.gameSpeedChanged = true;
     gui.render();
-    expect(drawn.some(t => t.startsWith('T'))).to.equal(true);
-    expect(drawn.some(t => t.startsWith('TPS'))).to.equal(true);
+    const spawnCount = game.getLemmingManager?.().spawnTotal ?? 0;
+    const strings = [
+      'T' + lemmings.steps,
+      'TPS ' + Math.round(lemmings.tps),
+      'Spawn ' + spawnCount
+    ];
+    let xpos = 0;
+    expect(drawn.length).to.equal(strings.length);
+    for (let i = 0; i < strings.length; i++) {
+      expect(drawn[i].text).to.equal(strings[i]);
+      expect(drawn[i].x).to.equal(xpos);
+      xpos += strings[i].length * 8;
+    }
   });
 });
