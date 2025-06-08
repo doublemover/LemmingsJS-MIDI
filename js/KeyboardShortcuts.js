@@ -62,7 +62,9 @@ class KeyboardShortcuts {
       const dx = this.pan.vx;
       const dy = this.pan.vy;
       if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
-        stage.updateViewPoint(img, dx, dy, 0);
+        const nx = vp.x + dx / vp.scale;
+        const ny = vp.y + dy / vp.scale;
+        stage.applyViewport(img, nx, ny, vp.scale);
         stage.redraw();
         again = true;
       } else {
@@ -95,16 +97,12 @@ class KeyboardShortcuts {
         const newScale = stage.snapScale(stage._rawScale);
         const nx = centerX - cx / newScale;
         const ny = centerY - cy / newScale;
-        const maxX = img.display.worldDataSize.width  - img.canvasViewportSize.width  / newScale;
-        const maxY = img.display.worldDataSize.height - img.canvasViewportSize.height / newScale;
-        vp.x = Math.min(Math.max(0, nx), maxX);
-        vp.y = Math.min(Math.max(0, ny), maxY);
-        vp.scale = newScale;
+        stage.applyViewport(img, nx, ny, newScale);
         stage.redraw();
         again = true;
       } else if (this.zoom.reset !== null) {
         stage._rawScale = this.zoom.reset;
-        vp.scale = stage.snapScale(stage._rawScale);
+        stage.applyViewport(img, vp.x, vp.y, stage._rawScale);
         this.zoom.reset = null;
         stage.redraw();
         this.zoom.v = 0;

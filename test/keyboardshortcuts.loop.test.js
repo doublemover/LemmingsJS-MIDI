@@ -31,6 +31,11 @@ class StageStub {
   redraw() { this.redrawCount++; }
   snapScale(s) { return s; }
   limitValue(min, val, max) { return Math.min(Math.max(val, min), max); }
+  applyViewport(img, x, y, scale) {
+    if (scale != null) img.viewPoint.scale = scale;
+    if (x != null) img.viewPoint.x = x;
+    if (y != null) img.viewPoint.y = y;
+  }
 }
 
 function createWindowStub() {
