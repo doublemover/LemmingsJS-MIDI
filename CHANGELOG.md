@@ -15,10 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
+- HQX scaling provides sharper pixel art.
+- Tools log usage counts in `usageCounts.json`.
+- Search utility uses TF‑IDF weighting with optional fuzzy matching.
+- Bench mode spawns entrances near originals and tracks the total spawned.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
   upper-left corner.
+- Instant nukes no longer trigger duplicate explosions.
+- GameView cheat controls execute correctly.
+- HUD elements initialize in the proper order.
+- Viewport calculations avoid erratic panning and clamp issues.
+- Stage size recalculates correctly on startup.
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
