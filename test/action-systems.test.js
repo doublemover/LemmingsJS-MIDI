@@ -616,6 +616,43 @@ describe('Action Systems process()', function() {
     expect(lem.state).to.equal(3);
   });
 
+  it('ActionFallSystem accumulates state over time', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    sys.process(level, lem); // state ->3
+    const result = sys.process(level, lem); // state ->6
+    expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.y).to.equal(6);
+    expect(lem.state).to.equal(6);
+  });
+
+  it('ActionFallSystem floats once fall distance exceeds 16 with parachute', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    lem.hasParachute = true;
+    let state;
+    for (let i = 0; i < 7; i++) {
+      state = sys.process(level, lem);
+    }
+    expect(state).to.equal(Lemmings.LemmingStateType.FLOATING);
+    expect(lem.state).to.be.above(16);
+  });
+
+  it('ActionFallSystem walks or splats depending on fall distance', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    level.ground.add(level.key(lem.x, lem.y));
+    lem.state = Lemmings.Lemming.LEM_MAX_FALLING;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+
+    level.ground.add(level.key(lem.x, lem.y));
+    lem.state = Lemmings.Lemming.LEM_MAX_FALLING + 1;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SPLATTING);
+  });
+
   it('ActionFloatingSystem lands when ground below', function() {
     const sys = new ActionFloatingSystem(new Map());
     const level = new StubLevel();
