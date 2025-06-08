@@ -231,11 +231,15 @@ class Stage {
     const scale = stageImage.viewPoint.scale;
     const viewW_world = winW / scale;
     const viewH_world = winH / scale;
-    const worldDX = argX / scale;
-    const worldDY = argY / scale;
-    if (!veloUpdate) {
-      stageImage.viewPoint.x += worldDX;
-      stageImage.viewPoint.y += worldDY;
+
+    if (deltaZoom === 0) {
+      const worldDX = argX / scale;
+      const worldDY = argY / scale;
+
+      if (!veloUpdate) {
+        stageImage.viewPoint.x += worldDX;
+        stageImage.viewPoint.y += worldDY;
+      }
     }
 
     stageImage.viewPoint.x = this.limitValue(
