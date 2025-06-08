@@ -192,6 +192,31 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
   });
 
+  it('ActionClimbSystem triggers HOISTING at the top', function() {
+    const level = new StubLevel();
+    const sys = new ActionClimbSystem(stubSprites);
+    const lem = new StubLemming();
+    // wall continues for two steps but top is clear
+    level.ground.add(level.key(lem.x, lem.y - 8));
+    level.ground.add(level.key(lem.x, lem.y - 9));
+    lem.frameIndex = 2; // ->3 near the top
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.HOISTING);
+    expect(lem.y).to.equal(-1);
+  });
+
+  it('ActionClimbSystem falls and flips when side blocked', function() {
+    const level = new StubLevel();
+    const sys = new ActionClimbSystem(stubSprites);
+    const lem = new StubLemming();
+    lem.frameIndex = 4; // ->5 climbing up the wall
+    level.ground.add(level.key(lem.x - 1, lem.y - 8));
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.FALLING);
+    expect(lem.lookRight).to.equal(false);
+    expect(lem.x).to.equal(-2);
+  });
+
   it('ActionCountdownSystem counts to explosion', function() {
     const sys = new ActionCountdownSystem({ GetMask() { return new DummyMask(); } });
     const lem = new StubLemming();
