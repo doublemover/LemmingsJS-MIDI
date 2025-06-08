@@ -145,7 +145,7 @@ class Stage {
         stageImage.display.onMouseMove.trigger(
           new Lemmings.Position2D(worldX, worldY)
         );
-        this.redraw();
+        
       }
     });
   }
@@ -205,21 +205,12 @@ class Stage {
       targetX += argX / targetScale;
       targetY += argY / targetScale;
     }
-    this.clear(stageImage);
     const imgData = stageImage.display.getImageData();
-    this.draw(stageImage, imgData);
-
-    this.clear(this.guiImgProps);
     const guiImgData = this.guiImgProps.display.getImageData();
-    this.draw(this.guiImgProps, guiImgData);
     this.applyViewport(stageImage, targetX, targetY, targetScale);
-
     this.clear(stageImage);
-    const imgData = stageImage.display.getImageData();
-    this.draw(stageImage, imgData);
-
     this.clear(this.guiImgProps);
-    const guiImgData = this.guiImgProps.display.getImageData();
+    this.draw(stageImage, imgData);
     this.draw(this.guiImgProps, guiImgData);
   }
 
