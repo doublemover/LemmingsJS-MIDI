@@ -1,6 +1,7 @@
 tags: tests, categories
 
-Tests are organized into categories so you can run only the relevant suites during development. This speeds up iteration when touching specific subsystems.
+Tests are organized into categories so you can run only the relevant suites during development. Dedicated npm scripts
+(`test-core`, `test-bench`, `test-workflow`, `test-tools`) execute the most common groups.
 
 - **core** – fundamental game logic such as `GameTimer` and `LemmingManager`. Example: `test/core/game-timer.js`.
 - **rendering** – verifies canvas drawing helpers and animation. Example: `test/rendering/game-display.js`.
