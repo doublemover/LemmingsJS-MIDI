@@ -286,6 +286,7 @@
 {"time":"2025-06-08T05:42:19.704Z","query":"ActionClimbSystem","mdFiles":20,"codeFiles":51,"ms":183}
 {"time":"2025-06-08T05:42:22.877Z","query":"climb","mdFiles":2,"codeFiles":15,"ms":136}
 {"time":"2025-06-08T05:42:25.250Z","query":"HOISTING","mdFiles":2,"codeFiles":10,"ms":136}
-{"time":"2025-06-08T06:25:07.723Z","query":"l2ss sprite","mdFiles":24,"codeFiles":77,"ms":326}
-{"time":"2025-06-08T06:25:10.126Z","query":"l2ss sprite","mdFiles":24,"codeFiles":77,"ms":321}
-{"time":"2025-06-08T06:25:12.700Z","query":"l2ss sprite","mdFiles":24,"codeFiles":77,"ms":371}
+{"time":"2025-06-08T06:17:03.108Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":157}
+{"time":"2025-06-08T06:17:04.988Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":174}
+{"time":"2025-06-08T06:17:06.998Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":328}
+{"time":"2025-06-08T06:17:08.708Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":189}
