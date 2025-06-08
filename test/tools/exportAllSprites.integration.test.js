@@ -104,11 +104,24 @@ function patchScript() {
   return fileURLToPath(new URL('../../tools/exportAllSprites.js', import.meta.url));
 }
 
-async function runScript(script, args) {
+async function runScript(script, args, options = {}) {
   const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
   process.argv = ['node', script, ...args];
-  await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-  process.argv = origArgv;
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
 }
 
 function readPNG(p) {
