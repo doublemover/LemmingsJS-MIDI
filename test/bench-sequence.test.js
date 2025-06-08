@@ -28,7 +28,15 @@ class GameMock {
   constructor() {
     this.timer = new GameTimer({ timeLimit: 1 });
     this.lemmingManager = new LemmingManagerMock();
-    this.level = { width:100, height:50, entrances:[], screenPositionX:0, render(){} };
+    this.level = {
+      width: 100,
+      height: 50,
+      entrances: [],
+      triggers: [],
+      screenPositionX: 0,
+      getGroundMaskLayer() { return { hasGroundAt() { return false; } }; },
+      render() {}
+    };
     this.onGameEnd = new Lemmings.EventHandler();
   }
   async loadLevel() {}
@@ -67,7 +75,15 @@ describe('bench sequence', function() {
       };
     }
     global.document = createDocumentStub();
-    global.window = { location:{ search:'' }, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
+    global.window = {
+      location: { search: '' },
+      setTimeout,
+      clearTimeout,
+      requestAnimationFrame() {},
+      cancelAnimationFrame() {},
+      addEventListener() {},
+      removeEventListener() {}
+    };
     global.history = { replaceState() {} };
     origStage = Lemmings.Stage;
     origKeyboard = Lemmings.KeyboardShortcuts;
@@ -90,7 +106,7 @@ describe('bench sequence', function() {
     Lemmings.GameFactory = origFactory;
   });
 
-  it.skip('pauses and logs before restarting', async function() {
+  it('pauses and logs before restarting', async function() {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
@@ -98,20 +114,35 @@ describe('bench sequence', function() {
     view.elementSelectLevelGroup = { options: [], remove() {}, appendChild() {}, selectedIndex: 0 };
     view.elementSelectLevel = { options: [], remove() {}, appendChild() {}, selectedIndex: 0 };
     view.benchSequence = false;
-    const logs = [];
-    const orig = console.log; console.log = m => logs.push(m);
     await view.setup();
 
     view.game = new GameMock();
     view.game.stop = function() {};
     view.benchSequence = true;
+    view._benchCounts = [50, 25];
+    view._benchIndex = 0;
     await view.benchStart(50);
-    const timer = view.game.getGameTimer();
-    timer.speedFactor = 0.9;
-    timer.eachGameSecond.trigger();
-    await Promise.resolve();
 
-    expect(logs[0]).to.match(/series finished for 50 entrances/);
-    console.log = orig;
+    const timer = view.game.getGameTimer();
+    timer.suspend();
+    let suspended = 0;
+    timer.suspend = () => { suspended++; };
+
+    let nextCount;
+    view.benchStart = async cnt => { nextCount = cnt; };
+
+    const id = setInterval(() => timer.eachGameSecond.trigger(), 1000);
+
+    timer.speedFactor = 8;
+    clock.tick(1000);
+    expect(view._benchMaxSpeed).to.equal(8);
+
+    timer.speedFactor = 0.9;
+    clock.tick(1000);
+
+    clearInterval(id);
+
+    expect(suspended).to.equal(1);
+    expect(nextCount).to.equal(25);
   });
 });
