@@ -154,4 +154,34 @@ describe('tools/search.js', function () {
     expect(fs.existsSync(path.join(dir, '.repoMetrics'))).to.be.false;
     fs.rmSync(dir, { recursive: true, force: true });
   });
+
+  it('records queries with no results', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
+    for (const sub of ['index-prose', 'index-code']) {
+      fs.mkdirSync(path.join(dir, sub));
+      for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
+        fs.writeFileSync(path.join(dir, sub, f), '[]');
+      }
+    }
+    const script = path.resolve('tools/search.js');
+    const res = spawnSync(process.execPath, [script, 'zzzz', '--json'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(res.status).to.equal(0);
+    const noRes = path.join(dir, '.repoMetrics', 'noResultQueries');
+    expect(fs.existsSync(noRes)).to.be.true;
+    const lines = fs.readFileSync(noRes, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.lengthOf(1);
+    const rec = JSON.parse(lines[0]);
+    expect(rec.query).to.equal('zzzz');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('fails when no query is provided', function () {
+    const script = path.resolve('tools/search.js');
+    const res = spawnSync(process.execPath, [script], { encoding: 'utf8' });
+    expect(res.status).to.equal(1);
+    expect(res.stderr).to.match(/usage: search/);
+  });
 });

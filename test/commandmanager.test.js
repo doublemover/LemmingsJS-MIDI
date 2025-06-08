@@ -60,4 +60,29 @@ describe('CommandManager', function() {
     timer.next();
     expect(cm.serialize()).to.equal('2=x5');
   });
+
+  it('handles missing gameTimer and failed commands gracefully', function() {
+    const timer = new MockTimer();
+    const cm = new TestCommandManager(game, timer);
+
+    cm.gameTimer = null;
+    const bad = new StubCommand();
+    cm.queueCommand(bad);
+    expect(bad.execCount).to.equal(0);
+
+    const empty = cm.parseCommand('');
+    expect(empty).to.equal(undefined);
+
+    const failCmd = new StubCommand();
+    failCmd.execute = () => false;
+    cm.gameTimer = timer;
+    cm.queueCommand(failCmd);
+    expect(Object.keys(cm.loggedCommads)).to.have.lengthOf(0);
+  });
+
+  it('early exits when constructed without dependencies', function() {
+    const cm = new TestCommandManager(null, null);
+    expect(cm.game).to.equal(undefined);
+    expect(cm.gameTimer).to.equal(undefined);
+  });
 });
