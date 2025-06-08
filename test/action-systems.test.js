@@ -286,6 +286,30 @@ describe('Action Systems process()', function() {
     expect(lem.frameIndex).to.equal(8);
   });
 
+  it('ActionFloatingSystem trigger sets hasParachute once', function() {
+    const sys = new ActionFloatingSystem(new Map());
+    const lem = new StubLemming();
+    expect(sys.triggerLemAction(lem)).to.equal(true);
+    expect(lem.hasParachute).to.equal(true);
+    expect(sys.triggerLemAction(lem)).to.equal(false);
+    expect(lem.hasParachute).to.equal(true);
+  });
+
+  it('opens umbrella mid fall and walks on landing', function() {
+    const fallSys = new ActionFallSystem(new Map());
+    const floatSys = new ActionFloatingSystem(new Map());
+    const level = new StubLevel();
+    const lem = new StubLemming();
+    lem.state = 17;
+    fallSys.process(level, lem); // fall one step
+    expect(lem.y).to.equal(3);
+    expect(floatSys.triggerLemAction(lem)).to.equal(true);
+    level.ground.add(level.key(lem.x, 5));
+    expect(fallSys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FLOATING);
+    expect(floatSys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(5);
+  });
+
   it('ActionFryingSystem burns then exits', function() {
     const level = new StubLevel();
     const sys = new ActionFryingSystem(stubSprites);
