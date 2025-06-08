@@ -52,10 +52,10 @@ describe('Stage utils', function() {
     global.document = createDocumentStub();
   });
 
-after(function() {
-  delete global.document;
-  delete globalThis.lemmings;
-});
+  after(function() {
+    delete global.document;
+    delete globalThis.lemmings;
+  });
 
   it('snapScale rounds to multiples of 1/gcd(width,height)', function() {
     const canvas = createStubCanvas();
