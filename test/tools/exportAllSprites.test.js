@@ -105,11 +105,24 @@ function patchScript(name) {
   return fileURLToPath(new URL(`../../tools/${name}`, import.meta.url));
 }
 
-async function runScript(script, args) {
+async function runScript(script, args, options = {}) {
   const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
   process.argv = ['node', script, ...args];
-  await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-  process.argv = origArgv;
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
 }
 
 function readPNG(p) {
@@ -180,6 +193,30 @@ describe('exportAllSprites tool', function () {
         expect(fs.existsSync(sheet)).to.be.true;
         expect(fs.existsSync(obj)).to.be.true;
       } finally {
+        fs.rmSync(pack, { recursive: true, force: true });
+        fs.rmSync(outDir, { recursive: true, force: true });
+      }
+    });
+
+    it('skips a ground pair when loadBinary throws', async function () {
+      const pack = createPack('missing');
+      const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'missing-'));
+      const script = patchScript('exportAllSprites.js');
+      const prev = providerModule.NodeFileProvider.prototype.loadBinary;
+      providerModule.NodeFileProvider.prototype.loadBinary = async function (dir, file) {
+        if (file === 'GROUND2O.DAT' || file === 'VGAGR2.DAT') {
+          throw new Error('missing');
+        }
+        return prev.call(this, dir, file);
+      };
+      try {
+        await runScript(script, [pack, outDir]);
+        await new Promise(r => setTimeout(r, 200));
+        expect(fs.existsSync(path.join(outDir, 'ground2'))).to.be.false;
+        expect(fs.existsSync(path.join(outDir, 'ground3', 'object_0_0.png'))).to.be.true;
+        expect(fs.existsSync(path.join(outDir, 'WALKING_right_sheet.png'))).to.be.true;
+      } finally {
+        providerModule.NodeFileProvider.prototype.loadBinary = prev;
         fs.rmSync(pack, { recursive: true, force: true });
         fs.rmSync(outDir, { recursive: true, force: true });
       }

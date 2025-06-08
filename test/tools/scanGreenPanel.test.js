@@ -46,6 +46,26 @@ describe('tools/scanGreenPanel.js', function () {
   const tempScript = path.join(os.tmpdir(), 'scanGreenPanel.test-run.js');
   fs.writeFileSync(tempScript, code);
 
+  async function runScript(script, args, options = {}) {
+    const origArgv = process.argv;
+    const origCwd = process.cwd();
+    let error;
+    const handler = e => { error = e; };
+    if (options.cwd) process.chdir(options.cwd);
+    process.argv = ['node', script, ...args];
+    process.once('unhandledRejection', handler);
+    try {
+      const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+      await mod.main?.(args);
+      await new Promise(r => setTimeout(r, 20));
+    } finally {
+      process.off('unhandledRejection', handler);
+      process.argv = origArgv;
+      if (options.cwd) process.chdir(origCwd);
+    }
+    if (error) throw error;
+  }
+
   before(function () {
     origGR = Lemmings.GameResources;
     origSP = Lemmings.SkillPanelSprites;
@@ -79,10 +99,7 @@ describe('tools/scanGreenPanel.js', function () {
     Lemmings.SkillPanelSprites = PanelSprites;
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'green-'));
-    const origArgv = process.argv;
-    process.argv = ['node', tempScript, 'pack', outDir];
-    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
-    process.argv = origArgv;
+    await runScript(tempScript, ['pack', outDir]);
 
     const out = PNG.sync.read(fs.readFileSync(path.join(outDir, 'green_map.png')));
     expect(out.width).to.equal(w);
@@ -103,10 +120,7 @@ describe('tools/scanGreenPanel.js', function () {
     Lemmings.SkillPanelSprites = EmptySprites;
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'green-'));
-    const origArgv = process.argv;
-    process.argv = ['node', tempScript, 'pack', outDir];
-    await import(pathToFileURL(tempScript).href + `?t=${Date.now()}`);
-    process.argv = origArgv;
+    await runScript(tempScript, ['pack', outDir]);
 
     const buf = fs.readFileSync(path.join(outDir, 'green_map.png'));
     expect(buf.length).to.be.greaterThan(0);

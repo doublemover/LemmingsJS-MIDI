@@ -34,6 +34,7 @@ class GameView extends Lemmings.BaseLogger {
     this._benchStartTime = 0;
     this._benchBaseEntrances = null;
     this._benchEntrancePool = null;
+    this.cheatEnabled = false;
     this.applyQuery();
     this.elementGameState = null;
     this.autoMoveTimer = null;
@@ -82,7 +83,7 @@ class GameView extends Lemmings.BaseLogger {
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
       this.game = game;
-      if (this.cheat) this.game.cheat();
+      if (this.cheatEnabled) this.game.cheat();
       if (this.debug) this.game.showDebug = true;
     } catch (e) {
       this.log.log('Error starting game:', e);
@@ -294,7 +295,7 @@ class GameView extends Lemmings.BaseLogger {
     if (this.gameSpeedFactor > 1) {
       this.gameSpeedFactor = Math.round(this.gameSpeedFactor);
     }
-    this.cheat = this.parseBool(query, ['cheat', 'c']);
+    this.cheatEnabled = this.parseBool(query, ['cheat', 'c']);
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
@@ -330,7 +331,7 @@ class GameView extends Lemmings.BaseLogger {
     setParam('difficulty', 'd', this.levelGroupIndex + 1, undefined, true);
     setParam('level', 'l', this.levelIndex + 1, undefined, true);
     setParam('speed', 's', this.gameSpeedFactor, undefined, true);
-    setParam('cheat', 'c', this.cheat, undefined, true);
+    setParam('cheat', 'c', this.cheatEnabled, undefined, true);
 
     // optional flags only appear when non-default
     setParam('debug', 'dbg', this.debug, false);

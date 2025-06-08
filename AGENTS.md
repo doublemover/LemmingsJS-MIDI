@@ -23,16 +23,17 @@ to any repo scripts that support a name flag.
  - `.repoMetrics/metrics.json` stores counters in compact JSON and
   `.repoMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
-- Both tools require **Node.js 18+** and rely on files present in the working tree.
+ - Both tools require **Node.js 20+** and rely on files present in the working tree.
  - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
 
 ## Environment
-- Use **Node.js 18 or later**.
+ - Use **Node.js 20 or later**.
 - You should have a cached version of the build dependencies
 - Run `npm ci` if you do not
 
 ## Tests
 - Run `npm test [category...]` to execute the Mocha test suite. Categories are optional.
+- Run `npm run coverage` to view test coverage. When adding tests, inspect coverage for the files you changed and suggest tasks to cover missing parts.
 
 ## Development
 - `npm start` launches `http-server` for local testing.
