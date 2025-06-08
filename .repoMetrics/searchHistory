@@ -293,3 +293,8 @@
 {"time":"2025-06-08T08:28:43.587Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":58}
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
+{"time":"2025-06-08T08:56:54.560Z","query":"autoMoveTimer","mdFiles":19,"codeFiles":53,"ms":405}
+{"time":"2025-06-08T08:56:56.158Z","query":"autoMoveTimer","mdFiles":19,"codeFiles":53,"ms":209}
+{"time":"2025-06-08T08:56:57.879Z","query":"autoMoveTimer","mdFiles":19,"codeFiles":53,"ms":150}
+{"time":"2025-06-08T08:59:18.440Z","query":"GameView.loadLevel","mdFiles":81,"codeFiles":204,"ms":815}
+{"time":"2025-06-08T08:59:22.240Z","query":"GameView.loadLevel","mdFiles":81,"codeFiles":204,"ms":669}
