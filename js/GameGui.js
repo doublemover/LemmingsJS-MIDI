@@ -390,6 +390,8 @@ class GameGui {
             if (this._hoverSpeedUp) text = 'Increase';
             else if (this._hoverSpeedDown) text = 'Decrease';
           }
+        } else if (this.game?.gameDisplay?.hoverLemming?.action) {
+          text = this.game.gameDisplay.hoverLemming.action.getActionName?.() || '';
         } else if (this.nukePrepared) {
           text = 'Nuke';
         } else if (!this.gameTimer.isRunning()) {
