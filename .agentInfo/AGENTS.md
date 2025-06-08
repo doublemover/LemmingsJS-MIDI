@@ -13,5 +13,6 @@ when running repo scripts that accept a name flag.
 - Try using this often when referring to the code
 - Do not regenerate or rebuild the indexes if they are missing
 - After you use the tool commit the stats it generates as part of your next commit
-- Both tools require **Node.js 18+** and rely on files present in the working tree.
+ - Both tools require **Node.js 20+** and rely on files present in the working tree.
  - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
+- Run `npm run coverage` to view test coverage. When adding tests, inspect coverage for your changes and create tasks for any uncovered sections.
