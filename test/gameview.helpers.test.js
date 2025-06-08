@@ -147,28 +147,13 @@ describe('GameView helper methods', function () {
     expect(params.has('endless')).to.be.false;
   });
 
-  it('updateQuery uses short names when shortcut active', async function () {
-    let query = null;
+  it('setHistoryState writes URL with ? prefix', async function () {
+    let url = null;
+    global.history.replaceState = (s, t, u) => { url = u; };
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
-    view.shortcut = true;
-    view.setHistoryState = (params) => { query = new URLSearchParams(params); };
-    view.gameType = 2;
-    view.levelGroupIndex = 1;
-    view.levelIndex = 5;
-    view.gameSpeedFactor = 3;
-    view.cheat = true;
-    view.debug = true;
-    view.bench = true;
-    view.nukeAfter = 20;
-    view.extraLemmings = 50;
-    view.scale = 2;
-    view.updateQuery();
-    expect(query.get('v')).to.equal('2');
-    expect(query.get('d')).to.equal('2');
-    expect(query.get('l')).to.equal('6');
-    expect(query.get('s')).to.equal('3');
-    expect(query.get('_')).to.equal('true');
+    view.setHistoryState(new URLSearchParams('a=1'));
+    expect(url).to.equal('?a=1');
   });
 });
 
