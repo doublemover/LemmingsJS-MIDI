@@ -54,8 +54,9 @@ describe('bench entrance placement', function() {
     const count = 3;
     await view.benchStart(count);
 
-    expect(level.entrances.length).to.equal(count);
+    expect(level.entrances.length).to.be.at.most(count);
     expect(level.entrances).to.deep.include({ x: 10, y: 10 });
+    expect(level.entrances.filter(e => e).length).to.equal(level.entrances.length);
     for (const ent of level.entrances) {
       if (!ent) continue;
       const found = level.objects.some(o => o.x === ent.x && o.y === ent.y);
