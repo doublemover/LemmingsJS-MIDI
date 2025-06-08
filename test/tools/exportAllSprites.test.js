@@ -8,9 +8,16 @@ import { Lemmings } from '../../js/LemmingsNamespace.js';
 
 let orig;
 let lastInitPath;
+let providerModule;
+let origLoadBinary;
 
 async function setupStubs() {
   await import('../../js/LemmingsBootstrap.js');
+  providerModule = await import('../../tools/NodeFileProvider.js');
+  origLoadBinary = providerModule.NodeFileProvider.prototype.loadBinary;
+  providerModule.NodeFileProvider.prototype.loadBinary = async function () {
+    return new Lemmings.BinaryReader(new Uint8Array(1), 0, 1, 'stub', 'stub');
+  };
   orig = {
     Frame: Lemmings.Frame,
     ColorPalette: Lemmings.ColorPalette,
@@ -83,6 +90,9 @@ async function setupStubs() {
 
 function restoreStubs() {
   Object.assign(Lemmings, orig);
+  if (providerModule) {
+    providerModule.NodeFileProvider.prototype.loadBinary = origLoadBinary;
+  }
 }
 
 function createPack(name = 'pack') {
@@ -136,6 +146,39 @@ describe('exportAllSprites tool', function () {
         expect(png.width).to.equal(1);
         expect(png.height).to.equal(1);
         expect(lastInitPath).to.equal(pack);
+      } finally {
+        fs.rmSync(pack, { recursive: true, force: true });
+        fs.rmSync(outDir, { recursive: true, force: true });
+      }
+    });
+
+    it('exports panel letters and numbers', async function () {
+      const pack = createPack('letters');
+      const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'letters-'));
+      const script = patchScript('exportAllSprites.js');
+      try {
+        await runScript(script, [pack, outDir]);
+        await new Promise(r => setTimeout(r, 200));
+        expect(fs.existsSync(path.join(outDir, 'letter_A.png'))).to.be.true;
+        expect(fs.existsSync(path.join(outDir, 'num_left_0.png'))).to.be.true;
+        expect(fs.existsSync(path.join(outDir, 'num_right_0.png'))).to.be.true;
+      } finally {
+        fs.rmSync(pack, { recursive: true, force: true });
+        fs.rmSync(outDir, { recursive: true, force: true });
+      }
+    });
+
+    it('exports lemming sheets and ground objects', async function () {
+      const pack = createPack('sprites');
+      const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
+      const script = patchScript('exportAllSprites.js');
+      try {
+        await runScript(script, [pack, outDir]);
+        await new Promise(r => setTimeout(r, 200));
+        const sheet = path.join(outDir, 'WALKING_right_sheet.png');
+        const obj   = path.join(outDir, 'ground0', 'object_0_0.png');
+        expect(fs.existsSync(sheet)).to.be.true;
+        expect(fs.existsSync(obj)).to.be.true;
       } finally {
         fs.rmSync(pack, { recursive: true, force: true });
         fs.rmSync(outDir, { recursive: true, force: true });
