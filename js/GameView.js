@@ -605,8 +605,8 @@ class GameView extends Lemmings.BaseLogger {
     }
     const timer = this.game.getGameTimer();
     timer.speedFactor = 6;
-    timer.benchStartupFrames = 600;
-    timer.benchStableFactor = 4;
+    timer.benchStartupFrames = 120;
+    timer.benchStableFactor = 8;
     this._benchStartTime = timer.getGameTime();
     if (this.benchSequence) {
       if (this._benchMonitor) timer.eachGameSecond.off(this._benchMonitor);
@@ -624,7 +624,7 @@ class GameView extends Lemmings.BaseLogger {
           timer.suspend();
           const count = this.game.getLemmingManager().getLemmings().length;
           const tps = (this._benchMaxSpeed * (1000 / timer.TIME_PER_FRAME_MS)).toFixed(1);
-          console.log(`series finished for ${entrances} entrances - ${count} lemmings spawned - ${this._benchMaxSpeed.toFixed(1)} was highest game speed achieved (${tps} ticks per second)`);
+          console.log(`series finished for ${entrances} entrances - ${count} lemmings - ${this._benchMaxSpeed.toFixed(1)} highest speed achieved (${tps} ticks per second)`);
           this._benchIndex++;
           if (this._benchIndex >= this._benchCounts.length) {
             this._benchIndex = 0;
@@ -651,9 +651,9 @@ class GameView extends Lemmings.BaseLogger {
     const vc = this.game.getVictoryCondition();
     if (vc) vc.releaseRate = vc.getMinReleaseRate();
     const timer = this.game.getGameTimer();
-    timer.speedFactor = 6;
-    timer.benchStartupFrames = 600;
-    timer.benchStableFactor = 4;
+    timer.speedFactor = 10;
+    timer.benchStartupFrames = 120;
+    timer.benchStableFactor = 2;
     let extras = 0;
     let prev = lm.spawnTotal;
     let spawned = 0;
@@ -663,12 +663,12 @@ class GameView extends Lemmings.BaseLogger {
         prev = lm.spawnTotal;
         spawned += delta / (extras + 1);
         while (spawned >= 10) {
-          spawned -= 10;
-          extras++;
+          spawned -= 1;
+          extras += 1;
           this.extraLemmings = extras;
           lemmings.extraLemmings = extras;
         }
-        if (timer.speedFactor < 1 || timer.getGameTime() >= 30) {
+        if (timer.speedFactor < 1 || timer.getGameTime() >= 120) {
           timer.eachGameSecond.off(monitor);
           timer.suspend();
           this._benchMeasureExtras = false;
