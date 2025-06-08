@@ -29,8 +29,11 @@ class GameDisplay {
       this._mouseX = e.x;
       this._mouseY = e.y;
       const prev = this.hoverLemming;
-      this.hoverLemming = this.lemmingManager.getNearestLemming(e.x, e.y);
+      let cand = this.lemmingManager.getNearestLemming(e.x, e.y);
+      if (cand?.action?.getActionName?.() === 'exploding') cand = null;
+      this.hoverLemming = cand;
       if (prev !== this.hoverLemming && this.game?.gameGui) {
+        this.game.gameGui.backgroundChanged = true;
         this.game.gameGui.gameTimeChanged = true;
       }
     };
