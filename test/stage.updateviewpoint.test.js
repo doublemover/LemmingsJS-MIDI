@@ -224,4 +224,90 @@ describe('Stage updateViewPoint', function() {
       checkClamp();
     }
   });
+
+  it('maintains cursor world point on wheel zoom', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 2;
+    stage._rawScale = 2;
+    vp.x = 150;
+    vp.y = 80;
+
+    const cursor = new Lemmings.Position2D(250, 150);
+
+    const preX = vp.x + (cursor.x - img.x) / vp.scale;
+    const preY = vp.y + (cursor.y - img.y) / vp.scale;
+
+    stage.controller.handleWheel(cursor, -120);
+
+    const postX = vp.x + (cursor.x - img.x) / vp.scale;
+    const postY = vp.y + (cursor.y - img.y) / vp.scale;
+
+    expect(Math.abs(postX - preX)).to.be.at.most(1);
+    expect(Math.abs(postY - preY)).to.be.at.most(1);
+
+    const worldH = display.worldDataSize.height;
+    const viewH = img.height / vp.scale;
+    expect(Math.abs(vp.y - (worldH - viewH))).to.be.at.most(1);
+  });
+
+  it('wheel zoom drifts minimally across positions', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 1;
+    stage._rawScale = 1;
+    vp.x = 50;
+    vp.y = 20;
+
+    const positions = [
+      [10, 10],
+      [200, 100],
+      [760, 560]
+    ];
+
+    for (const [cx, cy] of positions) {
+      const preX = vp.x + (cx - img.x) / vp.scale;
+      const preY = vp.y + (cy - img.y) / vp.scale;
+
+      stage.controller.handleWheel(new Lemmings.Position2D(cx, cy), -120);
+      let postX = vp.x + (cx - img.x) / vp.scale;
+      let postY = vp.y + (cy - img.y) / vp.scale;
+      expect(Math.abs(postX - preX)).to.be.at.most(1);
+      expect(Math.abs(postY - preY)).to.be.at.most(1);
+
+      const worldW = display.worldDataSize.width;
+      const worldH = display.worldDataSize.height;
+      const viewW = img.width / vp.scale;
+      const viewH = img.height / vp.scale;
+      expect(vp.x).to.be.at.least(0);
+      expect(vp.x).to.be.at.most(worldW - viewW);
+      expect(Math.abs(vp.y - (worldH - viewH))).to.be.at.most(1);
+
+      stage.controller.handleWheel(new Lemmings.Position2D(cx, cy), 120);
+      postX = vp.x + (cx - img.x) / vp.scale;
+      postY = vp.y + (cy - img.y) / vp.scale;
+      expect(Math.abs(postX - preX)).to.be.at.most(1);
+      expect(Math.abs(postY - preY)).to.be.at.most(1);
+
+      expect(vp.x).to.be.at.least(0);
+      expect(vp.x).to.be.at.most(worldW - viewW);
+      expect(Math.abs(vp.y - (worldH - viewH))).to.be.at.most(1);
+    }
+  });
 });

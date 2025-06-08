@@ -155,9 +155,27 @@ class Stage {
       const stageImage = this.gameImgProps;
       if (!stageImage || !stageImage.display) return;
 
-      // Always zoom around the cursor position e.x,e.y
+      const relX = e.x - stageImage.x;
+      const relY = e.y - stageImage.y;
+
+      const vp = stageImage.viewPoint;
+      const worldX = vp.x + relX / vp.scale;
+      const worldY = vp.y + relY / vp.scale;
+
       // Negative wheel delta zooms in
-      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
+      this._rawScale = this.limitValue(
+        0.25,
+        this._rawScale * (1 + (-e.deltaZoom) / 1500),
+        8
+      );
+      const newScale = this.snapScale(this._rawScale);
+      vp.scale = newScale;
+
+      vp.setX(worldX - relX / newScale);
+      vp.setY(worldY - relY / newScale);
+
+      this.clampViewPoint(stageImage);
+      this.redraw();
     });
   }
 
