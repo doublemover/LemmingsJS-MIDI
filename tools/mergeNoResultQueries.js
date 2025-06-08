@@ -2,6 +2,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { updateUsageCounts } from './updateUsageCounts.js';
 
 export function mergeNoResultQueries(baseFile, targetFile) {
   if (!fs.existsSync(baseFile)) return;
@@ -26,4 +27,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'base_no_results';
   const dest = process.argv[3] || '.repoMetrics/noResultQueries';
   mergeNoResultQueries(base, dest);
+  updateUsageCounts('merge_no_result_queries');
 }
