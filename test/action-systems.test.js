@@ -773,6 +773,32 @@ describe('Action Systems process()', function() {
     expect(lem.state).to.equal(0);
   });
 
+  it('ActionJumpSystem triggerLemAction refuses to activate', function() {
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    expect(sys.triggerLemAction(lem)).to.equal(false);
+  });
+
+  it('ActionJumpSystem draw delegates to base system', function() {
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    let called = false;
+    const display = { drawFrame() { called = true; } };
+    sys.draw(display, lem);
+    expect(called).to.equal(true);
+  });
+
+  it('ActionJumpSystem initializes state and keeps jumping', function() {
+    const level = new StubLevel();
+    level.hasGroundAt = () => true;
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    lem.state = -1;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.JUMPING);
+    expect(lem.state).to.equal(1);
+    expect(lem.y).to.equal(-2);
+  });
+
   it('ActionMineSystem shrugs on steel ground', function() {
     const level = new StubLevel();
     level.steelUnder = true;
