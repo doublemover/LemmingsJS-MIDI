@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_gui-stage-tasks.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_gui-stage-tasks.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_gui-stage-tasks.md
+=======
 # GUI and viewport tasks
 
 tags: todo, gui, stage
@@ -14,5 +18,7 @@ A collection of fixes requested by users:
 5. When a skill is chosen with a lemming selected, apply it immediately if valid.
 6. Correct input scaling in `UserInputManager.getRelativePosition()` so cursor position matches the pointer.
 7. Remove the custom cursor and display the system pointer instead.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_gui-stage-tasks.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_gui-stage-tasks.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_gui-stage-tasks.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_gui-stage-tasks.md
