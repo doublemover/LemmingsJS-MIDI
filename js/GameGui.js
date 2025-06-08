@@ -321,6 +321,11 @@ class GameGui {
       display[event].on(handler);
     }
 
+    // Initialize the HUD size immediately so Stage can center it
+    display.initSize(this._panelSprite.width, this._panelSprite.height);
+    display.setBackground(this._panelSprite.getData());
+    display.stage.updateStageSize();
+
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
     this._guiRafId = window.requestAnimationFrame(this._guiBound);
   }
