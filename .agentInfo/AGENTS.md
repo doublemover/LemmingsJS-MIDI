@@ -9,3 +9,4 @@ This folder stores design notes and metadata for Codex agents. The notes are sea
 - Do not regenerate or rebuild the indexes if they are missing
 - After you use the tool commit the stats it generates as part of your next commit
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
+- Ignore `.searchMetrics/` when using command line tools to search git diffs or the repository.

@@ -19,6 +19,7 @@ quotes, and semicolons across the JavaScript codebase.
   `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
+- Ignore `.searchMetrics/` when using command line tools to search git diffs or the repository.
 
 ## Environment
 - Use **Node.js 18 or later**.
