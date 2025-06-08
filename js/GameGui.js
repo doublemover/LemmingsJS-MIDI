@@ -408,10 +408,16 @@ class GameGui {
         }
         this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
       } else if (lemmings.bench == true && this.gameSpeedChanged) {
-        this.drawGreenString(d, 'T' + lemmings.steps, 120, 0);
-        this.drawGreenString(d, 'TPS ' + Math.round(lemmings.tps), 152, 0);
-        const count = this.game.getLemmingManager?.().spawnTotal ?? 0;
-        this.drawGreenString(d, 'Spawn ' + count, 192, 0);
+        const stats = [
+          'T' + lemmings.steps,
+          'TPS ' + Math.round(lemmings.tps),
+          'Spawn ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
+        ];
+        let x = 0;
+        for (const s of stats) {
+          this.drawGreenString(d, s, x, 0);
+          x += s.length * 8;
+        }
       }
     }
 
