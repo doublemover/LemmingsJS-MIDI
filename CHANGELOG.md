@@ -15,10 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
-- HQX scaling provides sharper pixel art.
-- Tools log usage counts in `usageCounts.json`.
 - Search utility uses TF‑IDF weighting with optional fuzzy matching.
 - Bench mode spawns entrances near originals and tracks the total spawned.
+- HQX and xBRZ scaling options.
+- Frame step controls for debug playback.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
@@ -28,13 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - HUD elements initialize in the proper order.
 - Viewport calculations avoid erratic panning and clamp issues.
 - Stage size recalculates correctly on startup.
+- Bench timers, overlay color and text spacing.
+- Zoom direction, pan clamping and bottom clamp issues.
+- Viewport panning and centering calculations.
+- Crosshair transparency and HUD alignment during resize.
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
-
 
 ## [0.0.2] - 2025-06-04
 ### Added
