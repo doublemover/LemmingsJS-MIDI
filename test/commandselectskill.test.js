@@ -44,6 +44,13 @@ describe('CommandSelectSkill', function() {
     expect(reusedRef()).to.be.false;
   });
 
+  it('execute returns false without GameSkills', function() {
+    const game = { getGameSkills() { return undefined; } };
+    const cmd = new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.CLIMBER, true);
+    const changed = cmd.execute(game);
+    expect(changed).to.be.false;
+  });
+
   it('load, save, and getCommandKey round-trip', function() {
     const cmd = new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BASHER, false);
     const saved = cmd.save();
@@ -53,5 +60,20 @@ describe('CommandSelectSkill', function() {
     expect(other.apply).to.equal(false);
     expect(other.save()).to.deep.equal(saved);
     expect(other.getCommandKey()).to.equal('s');
+  });
+
+  it('load defaults apply to true when missing', function() {
+    const cmd = new Lemmings.CommandSelectSkill();
+    cmd.load([Lemmings.SkillTypes.BASHER]);
+    expect(cmd.skill).to.equal(Lemmings.SkillTypes.BASHER);
+    expect(cmd.apply).to.be.true;
+  });
+
+  it('load interprets zero as false', function() {
+    const cmd = new Lemmings.CommandSelectSkill();
+    cmd.load([Lemmings.SkillTypes.DIGGER, 0]);
+    expect(cmd.apply).to.be.false;
+    cmd.load([Lemmings.SkillTypes.CLIMBER, 1]);
+    expect(cmd.apply).to.be.true;
   });
 });
