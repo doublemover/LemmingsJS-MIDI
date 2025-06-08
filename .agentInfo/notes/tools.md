@@ -1,3 +1,7 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_tools.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_tools.md
+=======
 # Tool scripts overview
 
 tags: tools, cli
@@ -10,3 +14,5 @@ The `tools/` directory contains small command-line utilities for working with le
 - **renderCursorSizes.js** – generates PNGs of the cursor sprite at several dimensions for debugging. Usage: `node tools/renderCursorSizes.js [pack] [out dir]`.
 
 Most export scripts instantiate `NodeFileProvider` so they can read level packs from plain directories or archives like `.zip`, `.tar.gz`, or `.rar`. Keep pack archives next to the repo and the provider will find files automatically.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_tools.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_tools.md
