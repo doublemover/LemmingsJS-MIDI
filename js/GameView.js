@@ -28,6 +28,9 @@ class GameView extends Lemmings.BaseLogger {
     this._benchMaxSpeed = 0;
     this._benchCounts = [];
     this._benchIndex = 0;
+    this._benchExtraList = null;
+    this._benchExtraIndex = 0;
+    this._benchStartTime = 0;
     this.applyQuery();
     this.elementGameState = null;
     this.autoMoveTimer = null;
@@ -584,6 +587,7 @@ class GameView extends Lemmings.BaseLogger {
     timer.speedFactor = 6;
     timer.benchStartupFrames = 600;
     timer.benchStableFactor = 4;
+    this._benchStartTime = timer.getGameTime();
     if (this.benchSequence) {
       if (this._benchMonitor) timer.eachGameSecond.off(this._benchMonitor);
       if (this._benchSpeedTrack) timer.eachGameSecond.off(this._benchSpeedTrack);
@@ -593,7 +597,8 @@ class GameView extends Lemmings.BaseLogger {
       };
       timer.eachGameSecond.on(this._benchSpeedTrack);
       this._benchMonitor = async () => {
-        if (timer.speedFactor < 1) {
+        if (timer.speedFactor < 1 ||
+            timer.getGameTime() - this._benchStartTime >= 60) {
           timer.eachGameSecond.off(this._benchMonitor);
           timer.eachGameSecond.off(this._benchSpeedTrack);
           timer.suspend();
@@ -601,18 +606,64 @@ class GameView extends Lemmings.BaseLogger {
           const tps = (this._benchMaxSpeed * (1000 / timer.TIME_PER_FRAME_MS)).toFixed(1);
           console.log(`series finished for ${entrances} entrances - ${count} lemmings spawned - ${this._benchMaxSpeed.toFixed(1)} was highest game speed achieved (${tps} ticks per second)`);
           this._benchIndex++;
-          if (this._benchIndex < this._benchCounts.length) {
-            await this.benchStart(this._benchCounts[this._benchIndex]);
+          if (this._benchIndex >= this._benchCounts.length) {
+            this._benchIndex = 0;
+            if (this._benchExtraList && ++this._benchExtraIndex < this._benchExtraList.length) {
+              this.extraLemmings = this._benchExtraList[this._benchExtraIndex];
+              lemmings.extraLemmings = this.extraLemmings;
+            } else if (this._benchExtraList) {
+              return;
+            }
           }
+          await this.benchStart(this._benchCounts[this._benchIndex]);
         }
       };
       timer.eachGameSecond.on(this._benchMonitor);
     }
   }
 
+  async benchMeasureExtras() {
+    this.bench = true;
+    await this.loadLevel();
+    const lm = this.game.getLemmingManager();
+    if (lm) lm.spawnCount = this.game.level.entrances.length;
+    const timer = this.game.getGameTimer();
+    timer.speedFactor = 6;
+    timer.benchStartupFrames = 600;
+    timer.benchStableFactor = 4;
+    let extras = 0;
+    let prev = lm.spawnTotal;
+    let spawned = 0;
+    return new Promise(resolve => {
+      const monitor = () => {
+        const delta = lm.spawnTotal - prev;
+        prev = lm.spawnTotal;
+        spawned += delta / (extras + 1);
+        while (spawned >= 10) {
+          spawned -= 10;
+          extras++;
+          this.extraLemmings = extras;
+          lemmings.extraLemmings = extras;
+        }
+        if (timer.speedFactor < 1 || timer.getGameTime() >= 60) {
+          timer.eachGameSecond.off(monitor);
+          timer.suspend();
+          console.log(`extra lemmings threshold reached at ${extras}`);
+          resolve(extras);
+        }
+      };
+      timer.eachGameSecond.on(monitor);
+    });
+  }
+
   async benchSequenceStart() {
-    this._benchCounts = [50, 40, 30, 25, 20, 10, 5, 1];
+    this._benchCounts = [50, 25, 10, 1];
     this._benchIndex = 0;
+    const extras = await this.benchMeasureExtras();
+    this._benchExtraList = [extras, Math.floor(extras / 2), 0];
+    this._benchExtraIndex = 0;
+    this.extraLemmings = this._benchExtraList[0];
+    lemmings.extraLemmings = this.extraLemmings;
     await this.benchStart(this._benchCounts[0]);
   }
 
