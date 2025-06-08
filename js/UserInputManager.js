@@ -273,7 +273,6 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
-
     const stage = globalThis?.lemmings?.stage;
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
 
@@ -286,7 +285,23 @@ class UserInputManager {
         stageImage.display &&
         stageImage.display.worldDataSize.width === 1600
       ) {
-        stage.updateViewPoint(stageImage, position.x, position.y, deltaY);
+        const vp = stageImage.viewPoint;
+        const relX = position.x - stageImage.x;
+        const relY = position.y - stageImage.y;
+        const worldX = vp.getSceneX(relX);
+        const worldY = vp.getSceneY(relY);
+
+        stage._rawScale = stage.limitValue(
+          0.25,
+          stage._rawScale * (1 + deltaY / 1500),
+          8
+        );
+        const newScale = stage.snapScale(stage._rawScale);
+        vp.scale = newScale;
+        vp.x = worldX - relX / newScale;
+        vp.y = worldY - relY / newScale;
+        stage.clampViewPoint(stageImage);
+        stage.redraw();
         return;
       }
     } else {
