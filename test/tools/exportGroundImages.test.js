@@ -81,10 +81,8 @@ function patchScript() {
 }
 
 async function runScript(script, args) {
-  const origArgv = process.argv;
-  process.argv = ['node', script, ...args];
-  await import(pathToFileURL(script).href + `?t=${Date.now()}`);
-  process.argv = origArgv;
+  const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+  await mod.main(args);
 }
 
 describe('tools/exportGroundImages.js', function () {
