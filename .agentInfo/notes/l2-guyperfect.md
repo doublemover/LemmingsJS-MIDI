@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_l2-guyperfect.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2-guyperfect.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2-guyperfect.md
+=======
 # Lemmings 2 file format notes
 
 tags: l2, file-format, doc
@@ -16,5 +20,7 @@ tags: l2, file-format, doc
 - **Style Sprites – L2SS** encoding sprites across four layers with nibble copy/skip instructions.
 
 This project currently targets DOS Lemmings/NeoLemmix and lacks readers for the L2 compression and `FORM` sections above.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-guyperfect.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-guyperfect.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-guyperfect.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-guyperfect.md
