@@ -275,8 +275,8 @@
 {"time":"2025-06-08T04:58:41.010Z","query":"draw rect","mdFiles":17,"codeFiles":85,"ms":57}
 {"time":"2025-06-08T04:58:44.280Z","query":"rect","mdFiles":9,"codeFiles":39,"ms":46}
 {"time":"2025-06-08T05:03:54.565Z","query":"rect","mdFiles":9,"codeFiles":40,"ms":48}
-{"time":"2025-06-08T05:18:39.750Z","query":"index","mdFiles":21,"codeFiles":88,"ms":399}
-{"time":"2025-06-08T05:18:42.224Z","query":"index","mdFiles":21,"codeFiles":88,"ms":179}
 {"time":"2025-06-08T05:03:57.682Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":237}
 {"time":"2025-06-08T05:04:00.176Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":428}
 {"time":"2025-06-08T05:04:14.266Z","query":"thisshouldnotexist","mdFiles":0,"codeFiles":0,"ms":238}
+{"time":"2025-06-08T05:18:39.750Z","query":"index","mdFiles":21,"codeFiles":88,"ms":399}
+{"time":"2025-06-08T05:18:42.224Z","query":"index","mdFiles":21,"codeFiles":88,"ms":179}
