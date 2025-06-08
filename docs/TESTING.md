@@ -13,6 +13,10 @@ npm run test-tools      # command line tools
 
 Categories are described in `.agentInfo/notes/test-categories.md`.
 
+Tests that require significant manual setup or large downloads are documented in
+[`excluded-tests.md`](excluded-tests.md). They are skipped in continuous
+integration.
+
 The tests require no special environment variables. A minimal `lemmings` object
 is created and temporary files are written under your operating system's temp
 directory.

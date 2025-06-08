@@ -11,13 +11,7 @@ function createGameSkills(initial) {
   for (const [skill, count] of Object.entries(initial)) {
     level.skills[Lemmings.SkillTypes[skill]] = count;
   }
-  const gs = Object.create(Lemmings.GameSkills.prototype);
-  gs.selectedSkill = Lemmings.SkillTypes.CLIMBER;
-  gs.onCountChanged = new Lemmings.EventHandler();
-  gs.onSelectionChanged = new Lemmings.EventHandler();
-  gs.skills = level.skills;
-  gs.cheatMode = false;
-  return gs;
+  return new Lemmings.GameSkills(level);
 }
 
 describe('GameSkills', function() {
@@ -70,5 +64,51 @@ describe('GameSkills', function() {
     gs.reuseSkill(Lemmings.SkillTypes.CLIMBER);
     expect(gs.getSkill(Lemmings.SkillTypes.CLIMBER)).to.equal(0);
     expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.FLOATER);
+  });
+
+  it('selectFirstAvailable picks the first non-zero skill', function() {
+    const gs = createGameSkills({ FLOATER: 0, BOMBER: 1 });
+    gs.selectedSkill = Lemmings.SkillTypes.UNKNOWN;
+    gs.selectFirstAvailable();
+    expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.BOMBER);
+  });
+
+  it('setSelectedSkill triggers selection changed events', function() {
+    const gs = createGameSkills({ CLIMBER: 1, FLOATER: 1 });
+    let triggered = 0;
+    gs.onSelectionChanged.on(() => triggered++);
+    expect(gs.setSelectedSkill(Lemmings.SkillTypes.FLOATER)).to.be.true;
+    expect(triggered).to.equal(1);
+    expect(gs.setSelectedSkill(Lemmings.SkillTypes.FLOATER)).to.be.false;
+    expect(triggered).to.equal(1);
+  });
+
+  it('clearSelectedSkill resets selection and triggers event', function() {
+    const gs = createGameSkills({ CLIMBER: 1 });
+    let triggered = 0;
+    gs.onSelectionChanged.on(() => triggered++);
+    expect(gs.clearSelectedSkill()).to.be.true;
+    expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.UNKNOWN);
+    expect(triggered).to.equal(1);
+    expect(gs.clearSelectedSkill()).to.be.false;
+    expect(triggered).to.equal(1);
+  });
+
+  it('canReuseSkill respects counts and cheat mode', function() {
+    const gs = createGameSkills({ CLIMBER: 0 });
+    expect(gs.canReuseSkill(Lemmings.SkillTypes.CLIMBER)).to.be.false;
+    gs.cheatMode = true;
+    expect(gs.canReuseSkill(Lemmings.SkillTypes.CLIMBER)).to.be.true;
+  });
+
+  it('setSelectedSkill ignores invalid skill indexes', function() {
+    const gs = createGameSkills({ CLIMBER: 1 });
+    gs.setSelectedSkill(Lemmings.SkillTypes.CLIMBER);
+    let triggered = 0;
+    gs.onSelectionChanged.on(() => triggered++);
+    const invalid = Object.keys(Lemmings.SkillTypes).length;
+    expect(gs.setSelectedSkill(invalid)).to.be.false;
+    expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.CLIMBER);
+    expect(triggered).to.equal(0);
   });
 });

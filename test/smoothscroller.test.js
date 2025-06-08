@@ -64,4 +64,32 @@ describe('SmoothScroller', function() {
     }
     expect(events.filter(v => v === 0)).to.have.lengthOf(1);
   });
+
+  it('applies friction factor each update', function() {
+    const ss = new SmoothScroller();
+    ss.friction = 0.5;
+    ss.addImpulse(10);
+    ss.update();
+    expect(ss.velocity).to.equal(5);
+  });
+
+  it('stops when velocity falls below threshold', function() {
+    const ss = new SmoothScroller();
+    ss.friction = 0.5;
+    ss.minVelocity = 2;
+    ss.addImpulse(3);
+    ss.update();
+    expect(ss.velocity).to.equal(0);
+  });
+
+  it('hasVelocity respects minVelocity', function() {
+    const ss = new SmoothScroller();
+    ss.minVelocity = 2;
+    ss.velocity = 0;
+    expect(ss.hasVelocity()).to.equal(false);
+    ss.velocity = 1.5;
+    expect(ss.hasVelocity()).to.equal(false);
+    ss.velocity = 2.5;
+    expect(ss.hasVelocity()).to.equal(true);
+  });
 });

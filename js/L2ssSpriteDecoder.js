@@ -13,7 +13,7 @@ function readU32BE(buf, off) {
   );
 }
 
-export function decodeFrame(data, base, index, palette) {
+export function decodeFrame(data, base, index, palette, debugStates = null) {
   let off = base;
   const width = readU16BE(data, off);
   off += 2;
@@ -38,6 +38,16 @@ export function decodeFrame(data, base, index, palette) {
     let remindM = false;
     let remindL = false;
     let remindL2 = false;
+    if (debugStates && debugStates[plane]) {
+      const st = debugStates[plane];
+      if (st.n !== undefined) n = st.n;
+      if (st.m !== undefined) m = st.m;
+      if (st.l !== undefined) l = st.l;
+      if (st.xAdd !== undefined) xAdd = st.xAdd;
+      if (st.remindM !== undefined) remindM = st.remindM;
+      if (st.remindL !== undefined) remindL = st.remindL;
+      if (st.remindL2 !== undefined) remindL2 = st.remindL2;
+    }
     while (true) {
       const byte = data[pos++];
       if (byte === 0xff) break;
