@@ -22,6 +22,7 @@ to any repo scripts that support a name flag.
  - Run `npm run agent-precommit` to update metrics and history and stage the results
  - `.repoMetrics/metrics.json` stores counters in compact JSON and
   `.repoMetrics/searchHistory` logs search queries. Do not reformat these files
+ - `.repoMetrics/usageCounts.json` tracks how often repo tools run
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
  - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
