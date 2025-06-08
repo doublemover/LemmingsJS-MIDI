@@ -1,0 +1,123 @@
+import { expect } from 'chai';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
+import { fileURLToPath, pathToFileURL } from 'url';
+import { PNG } from 'pngjs';
+
+import { Lemmings } from '../js/LemmingsNamespace.js';
+import '../js/LogHandler.js';
+import { BinaryReader } from '../js/BinaryReader.js';
+import { BitReader } from '../js/BitReader.js';
+import { BitWriter } from '../js/BitWriter.js';
+import { PackFilePart } from '../js/PackFilePart.js';
+import '../js/UnpackFilePart.js';
+import { FileContainer } from '../js/FileContainer.js';
+
+globalThis.lemmings = { game: { showDebug: false } };
+
+async function runScript(script, args, options = {}) {
+  const origArgv = process.argv;
+  const origCwd = process.cwd();
+  let error;
+  const handler = e => { error = e; };
+  if (options.cwd) process.chdir(options.cwd);
+  process.argv = ['node', script, ...args];
+  process.once('unhandledRejection', handler);
+  try {
+    const mod = await import(pathToFileURL(script).href + `?t=${Date.now()}`);
+    await mod.main?.(args);
+    await new Promise(r => setTimeout(r, 20));
+  } finally {
+    process.off('unhandledRejection', handler);
+    process.argv = origArgv;
+    if (options.cwd) process.chdir(origCwd);
+  }
+  if (error) throw error;
+}
+
+describe('tools/patchSprites.js horizontal sheets', function () {
+  it('slices sprite sheets horizontally', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
+    const pngDir = path.join(dir, 'png');
+    fs.mkdirSync(pngDir);
+
+    const raws = [
+      Uint8Array.from({ length: 16 }, (_, i) => i),
+      Uint8Array.from({ length: 16 }, (_, i) => i + 16),
+      Uint8Array.from({ length: 16 }, (_, i) => i + 32)
+    ];
+    const paletteOffsets = [1, 2, 3];
+
+    const parts = raws.map((raw, idx) => {
+      const packed = PackFilePart.pack(raw);
+      const size = packed.byteArray.length + 10;
+      const header = new Uint8Array([
+        packed.initialBits,
+        packed.checksum,
+        0, 0,
+        0, 16,
+        0, paletteOffsets[idx],
+        (size >> 8) & 0xFF,
+        size & 0xFF
+      ]);
+      return { header, packed: packed.byteArray, size };
+    });
+
+    const total = parts.reduce((s, p) => s + p.size, 0);
+    const datBuf = new Uint8Array(total);
+    let off = 0;
+    for (const p of parts) {
+      datBuf.set(p.header, off);
+      datBuf.set(p.packed, off + 10);
+      off += p.size;
+    }
+    const datFile = path.join(dir, 'orig.dat');
+    fs.writeFileSync(datFile, datBuf);
+
+    const png0 = new PNG({ width: 2, height: 2 });
+    png0.data = Buffer.from(raws[0].map(v => v + 1));
+    fs.writeFileSync(path.join(pngDir, '0.png'), PNG.sync.write(png0));
+
+    const new1 = Buffer.from(raws[1].map(v => v + 1));
+    const new2 = Buffer.from(raws[2].map(v => v + 1));
+    const sheet = new PNG({ width: 4, height: 2 });
+    sheet.data = Buffer.alloc(32);
+    for (let y = 0; y < 2; y++) {
+      sheet.data.set(new1.subarray(y * 8, y * 8 + 8), y * 16);
+      sheet.data.set(new2.subarray(y * 8, y * 8 + 8), y * 16 + 8);
+    }
+    fs.writeFileSync(path.join(pngDir, '1.png'), PNG.sync.write(sheet));
+
+    const outFile = path.join(dir, 'out.dat');
+
+    const origPath = new URL('../tools/patchSprites.js', import.meta.url);
+    const code = fs.readFileSync(fileURLToPath(origPath), 'utf8');
+    const patched = code.replace('import \'../js/LemmingsBootstrap.js\';', '');
+    const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
+    fs.writeFileSync(tempScript, patched);
+
+    await runScript(tempScript, ['--sheet-orientation=horizontal', datFile, pngDir, outFile]);
+    fs.unlinkSync(tempScript);
+
+    const outBuf = fs.readFileSync(outFile);
+    const fc = new FileContainer(new BinaryReader(new Uint8Array(outBuf)));
+    expect(fc.count()).to.equal(3);
+
+    const expectData = [
+      raws[0].map(v => v + 1),
+      raws[1].map(v => v + 1),
+      raws[2].map(v => v + 1)
+    ];
+
+    fc.parts.forEach((part, idx) => {
+      const unpacked = fc.getPart(idx);
+      expect(Array.from(unpacked.data.slice(0, unpacked.length)))
+        .to.eql(Array.from(expectData[idx]));
+      const repacked = PackFilePart.pack(Uint8Array.from(expectData[idx]));
+      expect(part.checksum).to.equal(repacked.checksum);
+      expect(part.initialBufferLen).to.equal(repacked.initialBits);
+      expect(part.unknown0).to.equal(paletteOffsets[idx]);
+    });
+  });
+});
