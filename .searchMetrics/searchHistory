@@ -233,6 +233,7 @@
 {"time":"2025-06-08T00:30:46.783Z","query":"entrances","mdFiles":4,"codeFiles":8,"ms":223}
 {"time":"2025-06-08T00:32:06.491Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":230}
 {"time":"2025-06-08T00:32:08.130Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":91}
+{"time":"2025-06-08T01:03:02.111Z","query":"benchStart","mdFiles":27,"codeFiles":44,"ms":212}
 {"time":"2025-06-08T00:59:46.457Z","query":"hud scale","mdFiles":10,"codeFiles":37,"ms":154}
 {"time":"2025-06-08T00:59:49.586Z","query":"hud scale","mdFiles":10,"codeFiles":37,"ms":95}
 {"time":"2025-06-08T00:59:51.668Z","query":"hud scale","mdFiles":10,"codeFiles":37,"ms":103}
