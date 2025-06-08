@@ -61,13 +61,18 @@ describe('Stage utilities', function() {
   });
 
   beforeEach(function() {
-    clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    if (!globalThis.Date.isFake) {
+      clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    }
   });
 
   afterEach(function() {
     if (stage) stage.resetFade();
     stage = null;
-    clock.uninstall();
+    if (clock && globalThis.Date.isFake) {
+      clock.uninstall();
+      clock = null;
+    }
   });
 
   it('snapScale clamps and snaps to gcd step', function() {
