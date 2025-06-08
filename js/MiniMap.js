@@ -287,7 +287,7 @@ class MiniMap {
     for (let i = 0; i < this.liveDots.length; i += 2) {
       const x = this.liveDots[i];
       const y = this.liveDots[i + 1];
-      frame.setPixel(x, y, 0x5500FFFF);
+      frame.setPixel(x, y, 0xFF00FFFF);
     }
     if (this.selectedDot) {
       frame.setPixel(this.selectedDot[0], this.selectedDot[1], 0xFFFFFFFF);

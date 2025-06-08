@@ -349,7 +349,9 @@ class GameGui {
     if (this._guiRafId) {
       window.cancelAnimationFrame(this._guiRafId);
       this._guiRafId = 0;
-      this.gameTimer.eachGameSecond.off();
+      if (this.gameTimer.eachGameSecond) {
+        this.gameTimer.eachGameSecond.off();
+      }
     }
     if (this.display && this._displayListeners) {
       for (const [event, handler] of this._displayListeners) {
