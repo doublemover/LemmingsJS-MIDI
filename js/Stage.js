@@ -308,6 +308,7 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
+    const margin = 20;
 
     // TODO UPDATE ANY DOCS THAT SAY THIS SHOULD BE TWO
     // HUD always renders at 4× scale
@@ -319,13 +320,13 @@ class Stage {
 
     const hudH = rawHUDH * hudScale;
     const hudW = rawHUDW * hudScale;
-    const gameH = stageH - hudH;
+    const gameH = stageH - hudH - margin;
 
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
     this.gameImgProps.canvasViewportSize = { width: stageW, height: gameH };
     Object.assign(this.guiImgProps, {
       x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
-      y: gameH
+      y: stageH - hudH - margin
     });
     this.guiImgProps.canvasViewportSize = { width: hudW, height: hudH };
 
