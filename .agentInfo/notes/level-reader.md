@@ -1,5 +1,7 @@
 <<<<<<< tmp_merge/ours_.agentInfo_notes_level-reader.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_level-reader.md
+=======
 # LevelReader
 
 tags: level-parsing
@@ -12,4 +14,5 @@ tags: level-parsing
 - **Level name (0x07E0..0x07FF)** – ASCII string padded with zeros.
 
 These structures populate the `objects`, `terrains` and `steel` arrays on the resulting LevelReader instance.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_level-reader.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_level-reader.md

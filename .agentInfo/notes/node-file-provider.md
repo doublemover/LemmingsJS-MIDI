@@ -1,5 +1,7 @@
 <<<<<<< tmp_merge/ours_.agentInfo_notes_node-file-provider.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_node-file-provider.md
+=======
 # NodeFileProvider note
 
 tags: file-system, archives
@@ -18,4 +20,5 @@ is parsed only once.
 
 Both `loadBinary` and `loadString` consult these caches so subsequent calls for
 the same archive do not re-read the archive from disk.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_node-file-provider.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_node-file-provider.md
