@@ -45,5 +45,5 @@ fi
 node "$(dirname "$0")/mergeNoResultQueries.js" "$THEIRS_FILE" "$OURS_FILE"
 
 # At this point, “ours” has been updated in place to include every unique line
-# from both “ours” and “theirs.”  Exit successfully.
+# from both “ours” and “theirs.”  Exit successfully
 exit 0
