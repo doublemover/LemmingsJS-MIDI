@@ -17,6 +17,7 @@ class DisplayImageStub {
     this.onMouseMove = new Lemmings.EventHandler();
     this.onDoubleClick = new Lemmings.EventHandler();
     this.calls = [];
+    this.stage = { updateStageSize() {} };
   }
   initSize(w, h) { this.initArgs = [w, h]; }
   setBackground(bg) { this.background = bg; }
