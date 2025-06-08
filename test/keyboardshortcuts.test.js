@@ -245,4 +245,159 @@ describe('KeyboardShortcuts', function() {
     delete global.window;
     delete global.requestAnimationFrame;
   });
+
+  it('handles all supported key codes', function() {
+    const timer = {
+      speedFactor: 1,
+      toggle() {},
+      isRunning() { return true; }
+    };
+    const manager = { queueCommand() {} };
+    const game = {
+      commandManager: manager,
+      gameGui: { drawSpeedChange() {}, releaseRateChanged: false, skillSelectionChanged: false },
+      getGameTimer() { return timer; },
+      queueCommand() {},
+      getGameSkills() {
+        return { getSelectedSkill() { return Lemmings.SkillTypes.CLIMBER; }, setSelectedSkill() {} };
+      },
+      getLemmingManager() {
+        return { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} };
+      },
+      getVictoryCondition() {
+        return {
+          getCurrentReleaseRate() { return 40; },
+          getMinReleaseRate() { return 1; },
+          getMaxReleaseRate() { return 99; }
+        };
+      },
+      showDebug: false
+    };
+    const view = {
+      game,
+      moveToLevel() {},
+      selectLevelGroup() {},
+      selectGameType() {},
+      levelGroupIndex: 0,
+      gameType: 1,
+      gameResources: { getLevelGroups() { return [1, 2]; } },
+      nextFrame() {},
+      prevFrame() {}
+    };
+    const ks = new KeyboardShortcuts(view);
+    const codes = [
+      'Digit1','Digit2','Digit3','Digit4','Digit5','Digit6',
+      'KeyQ','KeyW','KeyE','KeyR','Space','BracketRight','BracketLeft',
+      'KeyT','Backspace','ArrowLeft','ArrowRight','ArrowUp','ArrowDown',
+      'KeyZ','KeyX','KeyV','Tab','KeyK','KeyN','Backquote','Backslash',
+      'Minus','NumpadSubtract','Equal','NumpadAdd','Comma','Period',
+      'ShiftLeft','ShiftRight'
+    ];
+    for (const code of codes) {
+      const evt = { code, shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+      expect(() => ks._onKeyDown(evt)).to.not.throw();
+      expect(() => ks._onKeyUp({ code })).to.not.throw();
+    }
+  });
+
+  it('toggles timer with Space', function() {
+    let toggled = false;
+    const timer = { speedFactor: 1, toggle() { toggled = !toggled; }, isRunning() { return toggled; } };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    const evt = { code: 'Space', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(toggled).to.be.true;
+  });
+
+  it('toggles debug flag with Backslash', function() {
+    const manager = { queueCommand() {} };
+    const timer = { speedFactor: 1 };
+    const game = {
+      commandManager: manager,
+      gameGui: { drawSpeedChange() {} },
+      getGameTimer() { return timer; },
+      queueCommand() {},
+      getGameSkills() {
+        return { getSelectedSkill() { return Lemmings.SkillTypes.CLIMBER; }, setSelectedSkill() {} };
+      },
+      getLemmingManager() { return { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} }; },
+      showDebug: false
+    };
+    const ks = new KeyboardShortcuts({ game, nextFrame() {}, prevFrame() {} });
+    ks._onKeyDown({ code: 'Backslash', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} });
+    expect(game.showDebug).to.be.true;
+  });
+
+  it('adjusts speed with plus and minus keys', function() {
+    const manager = { queueCommand() {} };
+    const timer = { speedFactor: 1 };
+    const ks = createShortcuts(timer, manager);
+    ks._onKeyDown({ code: 'Equal', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} });
+    expect(timer.speedFactor).to.be.above(1);
+    timer.speedFactor = 1;
+    ks._onKeyDown({ code: 'NumpadAdd', shiftKey: true, ctrlKey: false, metaKey: false, preventDefault() {} });
+    expect(timer.speedFactor).to.equal(6);
+    timer.speedFactor = 1;
+    ks._onKeyDown({ code: 'NumpadSubtract', shiftKey: true, ctrlKey: false, metaKey: false, preventDefault() {} });
+    expect(timer.speedFactor).to.equal(0.5);
+  });
+
+  it('starts and stops loop when arrow key released', function() {
+    class StageStub {
+      constructor() {
+        this._rawScale = 1;
+        this.gameImgProps = {
+          canvasViewportSize: { width: 100, height: 100 },
+          display: { worldDataSize: { width: 200, height: 200 } },
+          viewPoint: { x: 0, y: 0, scale: 1 }
+        };
+      }
+      updateViewPoint() {}
+      redraw() {}
+      snapScale(s) { return s; }
+      limitValue(min, val, max) { return Math.min(Math.max(min, val), max); }
+    }
+    function createWindowStub() {
+      let rafCb;
+      const win = {
+        addEventListener() {},
+        removeEventListener() {},
+        requestAnimationFrame(cb) { rafCb = cb; return 1; },
+        cancelAnimationFrame() {},
+        get lastCallback() { return rafCb; }
+      };
+      return win;
+    }
+    const win = createWindowStub();
+    global.window = win;
+    global.requestAnimationFrame = win.requestAnimationFrame;
+    const clock = fakeTimers.withGlobal(globalThis).install({
+      now: 0,
+      toFake: ['setTimeout', 'clearTimeout', 'setInterval', 'clearInterval', 'Date', 'performance']
+    });
+    const stage = new StageStub();
+    const timer = { speedFactor: 1, isRunning() { return true; } };
+    const game = {
+      commandManager: { queueCommand() {} },
+      gameGui: {},
+      getGameTimer() { return timer; },
+      queueCommand() {},
+      getGameSkills() { return { getSelectedSkill() { return Lemmings.SkillTypes.CLIMBER; }, setSelectedSkill() {} }; },
+      getLemmingManager() { return { getSelectedLemming() { return { id: 1 }; }, setSelectedLemming() {} }; }
+    };
+    const ks = new KeyboardShortcuts({ game, stage, nextFrame() {}, prevFrame() {} });
+    ks._onKeyDown({ code: 'ArrowRight', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} });
+    expect(ks._raf).to.equal(1);
+    win.lastCallback(clock.now);
+    ks._onKeyUp({ code: 'ArrowRight' });
+    for (let i = 0; i < 20 && ks._raf !== null; i++) {
+      clock.tick(16);
+      win.lastCallback(clock.now);
+    }
+    expect(ks.pan.right).to.be.false;
+    expect(ks._raf).to.equal(null);
+    clock.uninstall();
+    delete global.window;
+    delete global.requestAnimationFrame;
+  });
 });
