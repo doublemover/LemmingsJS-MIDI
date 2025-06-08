@@ -1,5 +1,7 @@
 <<<<<<< tmp_merge/ours_.agentInfo_notes_easing-functions.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_easing-functions.md
+=======
 # Easing functions
 
 tags: easing, animation
@@ -19,4 +21,5 @@ This note summarizes commonly used easing equations for smooth animations:
 - **Bounce**: piecewise quadratic approximations that simulate a bouncing effect when an object falls and rebounds.
 
 Use these easing functions in CSS transitions, JavaScript animations or game tweens to give motion more personality. Choose stronger curves for dynamic effects and gentler ones for subtle moves.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_easing-functions.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_easing-functions.md
