@@ -2,24 +2,41 @@
 
 This document explains how game sessions are recorded and played back.
 
+## Recording commands
+
+Every action taken by the player results in a Command object. When
+`CommandManager.queueCommand()` executes a command successfully it
+stores the instance in `loggedCommads` keyed by the current game tick.
+The manager listens to `GameTimer.onBeforeGameTick` so queued commands
+run just before each frame is processed.
+
 ## CommandManager.serialize()
 
-`js/CommandManager.js` logs executed commands in `loggedCommads`. The
-`serialize()` method iterates over these entries and joins them into a
-single replay string. Each command is stored as `tick=type:values` where
-`type` is the command key returned by `getCommandKey()` and `values` are
-numbers from `save()`. All pairs are concatenated with `&`.
+`serialize()` converts `loggedCommads` into a compact string. Each entry
+is saved as `tick=type:values` where `tick` is the game tick, `type` is
+`command.getCommandKey()` and `values` are the numbers returned from
+`command.save()`. The pairs are joined with `&`.
+
+### Example
+
+```
+5=s0
+12=n
+20=l10:100
+```
+
+This becomes `5=s0&12=n&20=l10:100`.
 
 ## GameResult
 
-When a game ends `js/Game.js` creates a `GameResult` instance. The
-constructor stores the serialized replay on `gameResult.replay` so it can
-be saved or inspected later.
+When a game ends `GameResult` captures the current state. The serialized
+string is stored on its `replay` property so it can be saved or shared.
 
-## GameView.loadReplay()
+## Loading replays
 
-`js/GameView.js` exposes `loadReplay(replayString)` which calls
-`start(replayString)`. The `start` method loads the requested level and,
-if a replay string is provided, passes it to
-`game.getCommandManager().loadReplay()` before starting the game. This
-allows playback of the recorded session.
+`GameView.loadReplay(replayString)` simply calls `start(replayString)`.
+During `start` the level is loaded and the string is fed into
+`CommandManager.loadReplay()`. This method parses the
+`tick=type:values` pairs and rebuilds each command in `runCommands`.
+The manager then executes them at the appropriate ticks while the game
+runs, faithfully reproducing the original session.
