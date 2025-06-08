@@ -210,3 +210,13 @@
 {"time":"2025-06-07T23:07:35.800Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":115}
 {"time":"2025-06-08T00:32:06.491Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":230}
 {"time":"2025-06-08T00:32:08.130Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":91}
+{"time":"2025-06-08T00:27:57.757Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":95}
+{"time":"2025-06-08T00:27:59.642Z","query":"benchSeries","mdFiles":13,"codeFiles":18,"ms":96}
+{"time":"2025-06-08T00:28:01.977Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":95}
+{"time":"2025-06-08T00:28:04.603Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":114}
+{"time":"2025-06-08T00:28:06.957Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":266}
+{"time":"2025-06-08T00:28:22.797Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":62}
+{"time":"2025-06-08T00:28:31.199Z","query":"benchSequence","mdFiles":14,"codeFiles":18,"ms":184}
+{"time":"2025-06-08T00:30:44.526Z","query":"entrances","mdFiles":4,"codeFiles":8,"ms":107}
+{"time":"2025-06-08T00:30:46.783Z","query":"entrances","mdFiles":4,"codeFiles":8,"ms":223}
+{"time":"2025-06-08T00:29:10.615Z","query":"bench sequence","mdFiles":14,"codeFiles":18,"ms":64}
