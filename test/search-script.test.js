@@ -142,6 +142,26 @@ describe('tools/search.js', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('shows stats label when using --stats option', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
+    for (const sub of ['index-prose', 'index-code']) {
+      fs.mkdirSync(path.join(dir, sub));
+    }
+    for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
+      fs.copyFileSync(path.join('index-prose', f), path.join(dir, 'index-prose', f));
+      fs.copyFileSync(path.join('index-code', f), path.join(dir, 'index-code', f));
+    }
+
+    const script = path.resolve('tools/search.js');
+    const res = spawnSync(process.execPath, [script, 'lemmings', '--stats'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(res.status).to.equal(0);
+    expect(res.stdout).to.contain('--stats');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it('errors when indexes are missing', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
     const script = path.resolve('tools/search.js');
@@ -175,6 +195,35 @@ describe('tools/search.js', function () {
     expect(lines).to.have.lengthOf(1);
     const rec = JSON.parse(lines[0]);
     expect(rec.query).to.equal('zzzz');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('appends to noResultQueries on subsequent searches with no hits', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'search-'));
+    for (const sub of ['index-prose', 'index-code']) {
+      fs.mkdirSync(path.join(dir, sub));
+      for (const f of ['sparse_postings.json', 'chunk_meta.json']) {
+        fs.writeFileSync(path.join(dir, sub, f), '[]');
+      }
+    }
+    const script = path.resolve('tools/search.js');
+    let res = spawnSync(process.execPath, [script, 'aaaa', '--json'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(res.status).to.equal(0);
+    const noRes = path.join(dir, '.repoMetrics', 'noResultQueries');
+    let lines = fs.readFileSync(noRes, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.lengthOf(1);
+    res = spawnSync(process.execPath, [script, 'bbbb', '--json'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(res.status).to.equal(0);
+    lines = fs.readFileSync(noRes, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.lengthOf(2);
+    const last = JSON.parse(lines[1]);
+    expect(last.query).to.equal('bbbb');
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
