@@ -170,6 +170,12 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/config.md](docs/config.md) for configuration details.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 
+### Running tests
+
+`npm test` accepts optional category names. The full syntax lives in
+[docs/TESTING.md](docs/TESTING.md) and the category list is kept in
+[.agentInfo/notes/test-categories.md](.agentInfo/notes/test-categories.md).
+
 
 ### Progressive Web App
 
