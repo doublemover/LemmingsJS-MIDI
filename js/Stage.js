@@ -194,7 +194,7 @@ class Stage {
       const sceneX_pre = stageImage.viewPoint.getSceneX(screenX_rel);
       const sceneY_pre = stageImage.viewPoint.getSceneY(screenY_rel);
 
-      const zoomSensitivity = 0.0001;
+      const zoomSensitivity = 0.001125;
       targetScale += deltaZoom * zoomSensitivity;
 
       if (!veloUpdate) {
