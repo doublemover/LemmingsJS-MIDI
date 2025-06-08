@@ -43,7 +43,6 @@ fi
 
 # Invoke the Node script:
 node "$(dirname "$0")/mergeSearchHistory.js" "$THEIRS_FILE" "$OURS_FILE"
-node "$(dirname "$0")/updateUsageCounts.js" merge_history >/dev/null 2>&1 || true
 
 # At this point, “ours” has been updated in place to include every unique line
 # from both “ours” and “theirs.”  Exit successfully.
