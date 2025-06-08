@@ -66,6 +66,57 @@ describe('GameView helper methods', function () {
     expect(view.strToNum(' 8 ')).to.equal(8);
   });
 
+  it('changeHtmlText updates innerText if element provided', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const el = { innerText: 'old' };
+    view.changeHtmlText(el, 'new');
+    expect(el.innerText).to.equal('new');
+    view.changeHtmlText(null, 'ignored');
+    expect(el.innerText).to.equal('new');
+  });
+
+  it('prefixNumbers adds numeric prefixes', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const result = view.prefixNumbers(['A', 'B']);
+    expect(result).to.eql(['1 - A', '2 - B']);
+  });
+
+  it('second strToNum parses integers and invalid values', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.strToNum('10')).to.equal(10);
+    expect(view.strToNum('2.6')).to.equal(2);
+    expect(view.strToNum('foo')).to.equal(0);
+  });
+
+  it('clearHtmlList removes all options from a select', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const select = { options: [1, 2, 3], remove(i) { this.options.splice(i, 1); } };
+    view.clearHtmlList(select);
+    expect(select.options).to.have.lengthOf(0);
+  });
+
+  it('arrayToSelect populates a select element', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const select = {
+      options: [],
+      remove(i) { this.options.splice(i, 1); },
+      appendChild(el) { this.options.push(el); }
+    };
+    global.document = { createElement() { return {}; } };
+    view.arrayToSelect(select, ['Alice', 'Bob']);
+    expect(select.options).to.have.lengthOf(2);
+    expect(select.options[0].textContent).to.equal('Alice');
+    expect(select.options[0].value).to.equal('0');
+    expect(select.options[1].textContent).to.equal('Bob');
+    expect(select.options[1].value).to.equal('1');
+    delete global.document;
+  });
+
   it('updateQuery writes parameters to history', async function () {
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
@@ -94,6 +145,15 @@ describe('GameView helper methods', function () {
     expect(params.get('extra')).to.equal('50');
     expect(params.get('scale')).to.equal('2');
     expect(params.has('endless')).to.be.false;
+  });
+
+  it('setHistoryState writes URL with ? prefix', async function () {
+    let url = null;
+    global.history.replaceState = (s, t, u) => { url = u; };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.setHistoryState(new URLSearchParams('a=1'));
+    expect(url).to.equal('?a=1');
   });
 });
 
@@ -137,7 +197,8 @@ describe('moveToLevel transitions', function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 1;
@@ -146,13 +207,15 @@ describe('moveToLevel transitions', function () {
     expect(view.levelIndex).to.equal(0);
     expect(view.gameType).to.equal(1);
     expect(requests).to.eql([]);
+    expect(calls).to.equal(1);
   });
 
   it('advances to next game type when past last group', async function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 1;
@@ -162,18 +225,55 @@ describe('moveToLevel transitions', function () {
     expect(view.levelGroupIndex).to.equal(0);
     expect(view.levelIndex).to.equal(0);
     expect(requests).to.eql([2]);
+    expect(calls).to.equal(1);
   });
 
   it('moves to previous group when level goes negative', async function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 1;
     view.gameType = 1;
     await view.moveToLevel(-1);
     expect(view.levelGroupIndex).to.equal(0);
     expect(view.levelIndex).to.equal(0);
+    expect(calls).to.equal(1);
+  });
+
+  it('ignores backward move from the first level of the first group', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameFactory = new GameFactoryMock();
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
+    view.levelIndex = 0;
+    view.levelGroupIndex = 0;
+    view.gameType = 1;
+    await view.moveToLevel(-1);
+    expect(view.levelIndex).to.equal(0);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.gameType).to.equal(1);
+    expect(calls).to.equal(0);
+    expect(requests).to.eql([]);
+  });
+
+  it('resets invalid game type and reloads resources', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameFactory = new GameFactoryMock();
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
+    view.levelIndex = 0;
+    view.levelGroupIndex = 0;
+    view.gameType = 2; // not in GameTypes keys
+    await view.moveToLevel(0);
+    expect(view.gameType).to.equal(1);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.levelIndex).to.equal(0);
+    expect(calls).to.equal(1);
+    expect(requests).to.eql([1]);
   });
 });

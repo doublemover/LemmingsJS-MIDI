@@ -74,7 +74,7 @@
 - **revolution-box, archives**: [notes/revolution-box-format.md](notes/revolution-box-format.md) - Short note summarizing the BOX container from Lemmings Revolution.
 - **search, baseimageinfo**: [notes/baseimageinfo-search.md](notes/baseimageinfo-search.md) - Search for BaseImageInfo returned 94 matches in docs and 678 code files.
 - **search, doc**: [notes/search-tool-doc.md](notes/search-tool-doc.md) - docs/ci.md lines 24-29 describe the search-history workflow and its new zeroResultHistory file.
-- **stage, canvas, input**: [notes/stage.md](notes/stage.md) - GameView.gameCanvas calls `stage.updateStageSize()` after creating the stage so the HUD aligns immediately.
+- **stage, canvas, input**: [notes/stage.md](notes/stage.md) - HUD panel centers at the bottom (4× scale) and bottom anchoring keeps the level flush with the panel. `updateViewPoint` preserves cursor position when zooming; see `stage.updateStageSize.test.js` and `stage.updateviewpoint.test.js`.
 - **stage, canvas, input**: [notes/stage.md](notes/stage.md) - Stage creates a canvas-backed display and sets up UserInputManager for mouse events.
 - **stage, input, tests**: [notes/userinput-zoom.md](notes/userinput-zoom.md) - The mouse wheel now zooms around the pointer by converting the cursor's screen
 - **tests, bench-mode**: [notes/test-bench-speed-adjust.md](notes/test-bench-speed-adjust.md) - Adds a unit test that simulates dropped and normal ticks using fake timers. The test verifies `GameTimer.#benchSpeedAdjust()` lowers `speedFactor` when the timer falls behind and restores it once stable again.
