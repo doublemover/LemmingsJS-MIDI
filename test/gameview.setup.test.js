@@ -67,4 +67,37 @@ describe('GameView setup', function() {
     expect(view.elementSelectGameType.options.length).to.equal(configs.length);
     expect(view.elementSelectLevelGroup.options.length).to.equal(2);
   });
+
+  it('skips bench sequence when flag disabled', async function() {
+    const configs = [
+      { name: 'alpha', gametype: 1, level: { order: [['a'], ['b']], getGroupLength(i){ return this.order[i].length; } } },
+      { name: 'beta', gametype: 2, level: { order: [['a']], getGroupLength(i){ return this.order[i].length; } } }
+    ];
+    class GameFactoryMock {
+      constructor() { this.configReader = { configs: Promise.resolve(configs) }; }
+      async getConfig(type) { return configs.find(c => c.gametype === type); }
+      async getGameResources(type) { return { getLevelGroups: () => ['g1', 'g2'] }; }
+    }
+    Lemmings.GameFactory = GameFactoryMock;
+
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameFactory = new GameFactoryMock();
+    view.applyQuery = () => { view.gameType = 1; view.levelGroupIndex = 0; };
+    let populateCalled = 0; view.populateLevelSelect = async () => { populateCalled++; };
+    let loadCalled = 0; view.loadLevel = async () => { loadCalled++; };
+    let benchCalled = 0; view.benchSequenceStart = async () => { benchCalled++; };
+    view.elementSelectGameType = createSelect();
+    view.elementSelectLevelGroup = createSelect();
+    view.elementSelectLevel = createSelect();
+    view.benchSequence = false;
+
+    await view.setup();
+
+    expect(populateCalled).to.equal(1);
+    expect(loadCalled).to.equal(1);
+    expect(benchCalled).to.equal(0);
+    expect(view.elementSelectGameType.options.length).to.equal(configs.length);
+    expect(view.elementSelectLevelGroup.options.length).to.equal(2);
+  });
 });

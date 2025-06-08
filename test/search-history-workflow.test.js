@@ -43,4 +43,41 @@ describe('mergeSearchHistory', function () {
     expect(parsed[0].query).to.equal('foo');
     expect(parsed[1].query).to.equal('bar');
   });
+
+  it('does nothing when the base history file is missing', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
+    const base = path.join(dir, 'base_history');
+    const target = path.join(dir, '.repoMetrics', 'searchHistory');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+
+    const rec1 = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    fs.writeFileSync(target, JSON.stringify(rec1) + '\n');
+
+    mergeSearchHistory(base, target);
+
+    const lines = fs.readFileSync(target, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.length(1);
+    const parsed = JSON.parse(lines[0]);
+    expect(parsed.query).to.equal('foo');
+  });
+
+  it('ignores malformed lines in the base file', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
+    const base = path.join(dir, 'base_history');
+    const target = path.join(dir, '.repoMetrics', 'searchHistory');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+
+    const rec1 = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    const rec2 = { time: '2020-01-02T00:00:00Z', query: 'bar' };
+    fs.writeFileSync(base, 'invalid\n' + JSON.stringify(rec2) + '\n');
+    fs.writeFileSync(target, JSON.stringify(rec1) + '\n');
+
+    mergeSearchHistory(base, target);
+
+    const lines = fs.readFileSync(target, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.length(2);
+    const parsed = lines.map(l => JSON.parse(l));
+    expect(parsed[0].query).to.equal('foo');
+    expect(parsed[1].query).to.equal('bar');
+  });
 });

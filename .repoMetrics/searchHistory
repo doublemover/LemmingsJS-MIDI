@@ -293,6 +293,5 @@
 {"time":"2025-06-08T08:28:43.587Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":58}
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
-{"time":"2025-06-08T08:57:48.495Z","query":"nextFrame","mdFiles":26,"codeFiles":106,"ms":380}
-{"time":"2025-06-08T08:57:50.209Z","query":"nextFrame","mdFiles":26,"codeFiles":106,"ms":537}
-{"time":"2025-06-08T08:57:51.999Z","query":"nextFrame","mdFiles":26,"codeFiles":106,"ms":391}
+{"time":"2025-06-08T08:56:41.682Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":238}
+{"time":"2025-06-08T08:56:43.889Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":322}
