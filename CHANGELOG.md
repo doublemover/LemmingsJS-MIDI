@@ -15,23 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
-- Search utility uses TF‑IDF weighting with optional fuzzy matching.
-- Bench mode spawns entrances near originals and tracks the total spawned.
-- HQX and xBRZ scaling options.
-- Frame step controls for debug playback.
-- Skill usage can be triggered by clicking a lemming.
-- Enchanced bench mode. Determines a maximum number of lemmings that can be spawned at a time before going through a series of spawn volume tests.
-- Search tool for agents uses TF‑IDF weighting and supports fuzzy search to augment their ability to search the codebase.
-- Documentation covers configuration, compression formats, level file formats and WebMIDI setup.
 
 ### Fixed
-- Zoom near the level origin now centers on the pointer instead of the
-  upper-left corner.
-- Instant nukes no longer trigger duplicate explosions.
-- GameView cheat controls execute correctly.
-- HUD elements initialize in the proper order.
-- Viewport calculations avoid erratic panning and clamp issues.
-- Stage size recalculates correctly on startup.
+
+### Changed
+- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
+- `packLevels.js` creates DAT archives from 2048-byte level files.
+- These tools rely on `NodeFileProvider` to read packs from folders or archives.
+
+## [0.0.3] - 2025-06-08
+### Added
+- HQX and xBRZ scaling options for smoother graphics.
+- Frame step controls for debug playback.
+- Bench mode records spawn totals, spawns entrances near originals, randomizes direction and shows TPS.
+- Search tools track usage counts, capture no-result queries and support fuzzy matching.
+- Optional custom crosshair cursor.
+
+### Fixed
+- Zoom near the level origin centers on the pointer.
 - Bench timers, overlay color and text spacing.
 - Zoom direction, pan clamping and bottom clamp issues.
 - Viewport panning and centering calculations.
@@ -40,12 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stage layout reserves a bottom margin for the HUD.
 
 ### Changed
-- Project now requires Node.js 20+ (tests use Node 20 in CI).
-- `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
-- `packLevels.js` creates DAT archives from 2048-byte level files.
-- These tools rely on `NodeFileProvider` to read packs from folders or archives.
-- Bench spawn thresholds refined and spawn counts tracked.
-- Mouse wheel zoom sensitivity adjusted for smoother control.
+- Project now requires Node.js 20+.
 
 ## [0.0.2] - 2025-06-04
 ### Added
@@ -96,5 +92,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized hot loops and memory usage with typed arrays and caching.
 - Grid-based trigger management and requestAnimationFrame timing.
 - Better error propagation, modular code, and partial JSDoc coverage.
+
+## [0.0.0] - 2025-05-31
+### Added
+- First playable JavaScript port with level and sprite assets.
+- PWA manifest, icons and mobile layout improvements.
+- Early WebMIDI integration with device selection.
+- Basic minimap prototype and debug logging toggles.
+- Initial documentation including file format notes.
+
+### Fixed
+- Crash fixes for floating lemmings and arrow triggers.
+- Early steel detection and trap collision issues.
+
+### Changed
+- Removed incomplete sound and music code.
+- General performance and CSS tweaks.
 
 <!-- Keep this changelog updated with future changes. -->
