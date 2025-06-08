@@ -54,6 +54,17 @@ describe('Commands', function() {
     expect(result).to.be.false;
   });
 
+  it('CommandNuke returns false when no lemming manager is present', function() {
+    const gvc = { doNuke() { throw new Error('should not be called'); } };
+    const game = {
+      getLemmingManager() { return undefined; },
+      getVictoryCondition() { return gvc; }
+    };
+    const cmd = new Lemmings.CommandNuke();
+    const result = cmd.execute(game);
+    expect(result).to.be.false;
+  });
+
   it('CommandReleaseRateIncrease and Decrease forward values', function() {
     const calls = [];
     const gvc = { changeReleaseRate(n) { calls.push(n); return true; } };

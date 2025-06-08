@@ -144,6 +144,38 @@ describe('Action Systems process()', function() {
     expect(sys2.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
   });
 
+  it('ActionBashSystem moves horizontally after frame 10', function() {
+    const level = new StubLevel();
+    const sys = new TestBashSystem(0, 0);
+
+    const lem1 = new StubLemming();
+    lem1.frameIndex = 9; // ->10
+    const x1 = lem1.x;
+    sys.process(level, lem1);
+    expect(lem1.x).to.equal(x1);
+
+    const lem2 = new StubLemming();
+    lem2.frameIndex = 10; // ->11
+    const x2 = lem2.x;
+    expect(sys.process(level, lem2)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem2.x).to.equal(x2 + 1);
+
+    const lem3 = new StubLemming();
+    lem3.lookRight = false;
+    lem3.frameIndex = 10; // ->11
+    const x3 = lem3.x;
+    sys.process(level, lem3);
+    expect(lem3.x).to.equal(x3 - 1);
+  });
+
+  it('ActionBashSystem keeps bashing when space remains', function() {
+    const level = new StubLevel();
+    const sys = new TestBashSystem(0, 3); // horizontal space < 4
+    const lem = new StubLemming();
+    lem.frameIndex = 4; // ->5
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+  });
+
   it('ActionBlockerSystem adds and removes triggers', function() {
     const level = new StubLevel();
     const tm = new StubTriggerManager();
@@ -152,6 +184,22 @@ describe('Action Systems process()', function() {
     lem.state = 0;
     sys.process(level, lem);
     expect(tm.added.length).to.equal(2);
+    lem.state = 1;
+    level.ground.delete(level.key(lem.x, lem.y + 1));
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+    expect(tm.removed[0]).to.equal(lem);
+  });
+
+  it('ActionBlockerSystem keeps triggers until ground is lost', function() {
+    const level = new StubLevel();
+    const tm = new StubTriggerManager();
+    const sys = new ActionBlockerSystem(stubSprites, tm);
+    const lem = new StubLemming();
+    level.ground.add(level.key(lem.x, lem.y + 1));
+    lem.state = 0;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(tm.added.length).to.equal(2);
+    expect(tm.removed.length).to.equal(0);
     lem.state = 1;
     level.ground.delete(level.key(lem.x, lem.y + 1));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
@@ -544,6 +592,31 @@ describe('Action Systems process()', function() {
     expect(lem.state).to.equal(1);
   });
 
+  it('ActionBuildSystem lays bricks facing left', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming(10, 0);
+    lem.lookRight = false;
+    lem.frameIndex = 8; // ->9 brick
+    sys.process(level, lem);
+    expect(level.setGroundCalls).to.eql([
+      '6,-1','7,-1','8,-1','9,-1','10,-1','11,-1'
+    ]);
+  });
+
+  it('ActionBuildSystem steps forward without obstacles', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(new Map());
+    const lem = new StubLemming();
+    lem.frameIndex = 15; // ->0 step
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.x).to.equal(2);
+    expect(lem.y).to.equal(-1);
+    expect(lem.state).to.equal(1);
+    expect(lem.lookRight).to.equal(true);
+  });
+
   it('ActionClimbSystem continues with ceiling present', function() {
     const level = new StubLevel();
     const sys = new ActionClimbSystem(new Map());
@@ -629,6 +702,31 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
   });
 
+  it('digRow returns false when no ground present', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.x = 10;
+    const res = sys.digRow(level, lem, 0);
+    expect(res).to.equal(false);
+    expect(level.clearedPoints).to.have.length(0);
+  });
+
+  it('digRow clears boundary ground points', function() {
+    const level = new StubLevel();
+    const sys = new ActionDiggSystem(new Map());
+    const lem = new StubLemming();
+    lem.x = 10;
+    level.setGroundAt(lem.x - 4, 0);
+    level.setGroundAt(lem.x + 4, 0);
+    const res = sys.digRow(level, lem, 0);
+    expect(res).to.equal(true);
+    expect(level.clearedPoints).to.have.members([
+      level.key(lem.x - 4, 0),
+      level.key(lem.x + 4, 0)
+    ]);
+  });
+
   it('ActionDrowningSystem moves when no wall', function() {
     const level = new StubLevel();
     const sys = new ActionDrowningSystem(new Map());
@@ -687,6 +785,30 @@ describe('Action Systems process()', function() {
     }
     expect(state).to.equal(Lemmings.LemmingStateType.FLOATING);
     expect(lem.state).to.be.above(16);
+  });
+
+  it('ActionFallSystem lands with parachute when ground one step below', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    lem.hasParachute = true;
+    level.ground.add(level.key(lem.x, lem.y + 1));
+    const state = sys.process(level, lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(1);
+    expect(lem.state).to.equal(0);
+  });
+
+  it('ActionFallSystem lands with parachute when ground two steps below', function() {
+    const level = new StubLevel();
+    const sys = new ActionFallSystem(new Map());
+    const lem = new StubLemming();
+    lem.hasParachute = true;
+    level.ground.add(level.key(lem.x, lem.y + 2));
+    const state = sys.process(level, lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(2);
+    expect(lem.state).to.equal(0);
   });
 
   it('ActionFallSystem walks or splats depending on fall distance', function() {
