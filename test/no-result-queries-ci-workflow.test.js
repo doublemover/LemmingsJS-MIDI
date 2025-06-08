@@ -4,7 +4,7 @@ import yaml from 'js-yaml';
 
 describe('automerge-metrics workflow', function () {
   it('syncs tools from master', function () {
-    const text = fs.readFileSync('.github/workflows/automerge-metrics.yml', 'utf8');
+    const text = fs.readFileSync('.github/workflows/automerge-repo.yml', 'utf8');
     const config = yaml.load(text);
     const steps = config.jobs['auto-merge'].steps;
     const syncStep = steps.find(
