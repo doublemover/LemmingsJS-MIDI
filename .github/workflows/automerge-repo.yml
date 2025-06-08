@@ -1,4 +1,4 @@
-name: Auto-merge search metrics
+name: Auto-merge repository history
 
 on:
   pull_request:
@@ -59,6 +59,20 @@ jobs:
             tmp_merge/theirs_history.txt
 
           mv tmp_merge/ours_history.txt .repoMetrics/searchHistory
+
+      - name: Merge noResultQueries
+        run: |
+          mkdir -p tmp_merge
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/noResultQueries > tmp_merge/base_no_results.txt 2>/dev/null || echo '' > tmp_merge/base_no_results.txt
+          git show HEAD:.searchMetrics/noResultQueries > tmp_merge/ours_no_results.txt 2>/dev/null || echo '' > tmp_merge/ours_no_results.txt
+          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/noResultQueries > tmp_merge/theirs_no_results.txt 2>/dev/null || echo '' > tmp_merge/theirs_no_results.txt
+
+          bash tools/merge-no-results.sh \
+            tmp_merge/base_no_results.txt \
+            tmp_merge/ours_no_results.txt \
+            tmp_merge/theirs_no_results.txt
+
+          mv tmp_merge/ours_no_results.txt .searchMetrics/noResultQueries
 
       - name: Merge agentInfo Index
         run: |
@@ -121,4 +135,4 @@ jobs:
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           else
             echo "No changes detected in repoMetrics or agentInfo"
-
+          fi
