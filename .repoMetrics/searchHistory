@@ -294,3 +294,5 @@
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
 {"time":"2025-06-08T08:57:08.729Z","query":"setHistoryState","mdFiles":44,"codeFiles":154,"ms":538}
+{"time":"2025-06-08T09:39:40.115Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":190}
+{"time":"2025-06-08T09:39:42.103Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":231}
