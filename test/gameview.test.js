@@ -273,6 +273,38 @@ describe('GameView', function () {
     expect(results[2]).to.deep.equal({ scale: 0.5, x: 83, y: 104 });
   });
 
+  it('nextFrame ticks forward then renders', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const calls = [];
+    const timer = { tick(v) { calls.push(['tick', v]); }, speedFactor: 1 };
+    const game = { getGameTimer() { return timer; }, render() { calls.push(['render']); } };
+    view.game = game;
+    view.nextFrame();
+    expect(calls).to.deep.equal([[ 'tick', 1 ], [ 'render' ]]);
+  });
+
+  it('prevFrame ticks backward then renders', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const calls = [];
+    const timer = { tick(v) { calls.push(['tick', v]); }, speedFactor: 1 };
+    const game = { getGameTimer() { return timer; }, render() { calls.push(['render']); } };
+    view.game = game;
+    view.prevFrame();
+    expect(calls).to.deep.equal([[ 'tick', -1 ], [ 'render' ]]);
+  });
+
+  it('selectSpeedFactor updates timer speed', async function() {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const timer = { tick() {}, speedFactor: 1 };
+    view.game = { getGameTimer() { return timer; } };
+    view.selectSpeedFactor(5);
+    expect(view.gameSpeedFactor).to.equal(5);
+    expect(timer.speedFactor).to.equal(5);
+  });
+
   it('resetFade is called when loading a level', async function() {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();

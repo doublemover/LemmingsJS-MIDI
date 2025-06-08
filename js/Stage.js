@@ -156,8 +156,7 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      // Negative wheel delta zooms in
-      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
+      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
     });
   }
 
@@ -217,6 +216,11 @@ class Stage {
       if (!veloUpdate) {
         stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
         stageImage.viewPoint.setY(sceneY_pre - screenY_rel / newScale);
+
+        const viewH_after = winH / newScale;
+        if (viewH_after >= worldH) {
+          stageImage.viewPoint.setY(worldH - viewH_after);
+        }
       }
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
@@ -244,11 +248,15 @@ class Stage {
       Math.max(0, worldW - viewW_world)
     );
 
-    stageImage.viewPoint.y = this.limitValue(
-      Math.min(0, worldH - viewH_world),
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH_world)
-    );
+    if (viewH_world > worldH) {
+      stageImage.viewPoint.y = worldH - viewH_world;
+    } else {
+      stageImage.viewPoint.y = this.limitValue(
+        0,
+        stageImage.viewPoint.y,
+        worldH - viewH_world
+      );
+    }
 
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
@@ -309,6 +317,7 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
+    const margin = 20;
 
     // TODO UPDATE ANY DOCS THAT SAY THIS SHOULD BE TWO
     // HUD always renders at 4× scale
@@ -320,13 +329,13 @@ class Stage {
 
     const hudH = rawHUDH * hudScale;
     const hudW = rawHUDW * hudScale;
-    const gameH = stageH - hudH;
+    const gameH = stageH - hudH - margin;
 
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
     this.gameImgProps.canvasViewportSize = { width: stageW, height: gameH };
     Object.assign(this.guiImgProps, {
       x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
-      y: gameH
+      y: stageH - hudH - margin
     });
     this.guiImgProps.canvasViewportSize = { width: hudW, height: hudH };
 
@@ -459,10 +468,12 @@ class Stage {
 
   redraw() {
     if (this.gameImgProps.display) {
+      this.clear(this.gameImgProps);
       const gameImg = this.gameImgProps.display.getImageData();
       this.draw(this.gameImgProps, gameImg);
     }
     if (this.guiImgProps.display) {
+      this.clear(this.guiImgProps);
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }
@@ -648,11 +659,15 @@ class Stage {
     const viewW = vpW / scale;
     const viewH = vpH / scale;
 
-    stageImage.viewPoint.y = this.limitValue(
-      0,
-      stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH)
-    );
+    if (viewH > worldH) {
+      stageImage.viewPoint.y = worldH - viewH;
+    } else {
+      stageImage.viewPoint.y = this.limitValue(
+        0,
+        stageImage.viewPoint.y,
+        worldH - viewH
+      );
+    }
 
     if (worldW <= viewW) {
       stageImage.viewPoint.x = (worldW - viewW) / 2;
