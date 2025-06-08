@@ -75,10 +75,12 @@ describe('GameDisplay drawFrame', function() {
     expect(buf[1 + 1 * w]).to.equal(yellow);
   });
 
-  it('does not modify selection on click', function() {
+  it('queues lemming action on click', function() {
     const stage = new MockStage();
     const display = stage.getGameDisplay();
 
+    let queued = null;
+    const game = { showDebug: false, queueCommand(cmd) { queued = cmd; } };
     let selected = null;
     const lem = { id: 1 };
     const lm = {
@@ -91,19 +93,23 @@ describe('GameDisplay drawFrame', function() {
     const lvl = { render() {}, renderDebug() {}, screenPositionX: 0 };
     const obj = { render() {} };
     const trg = { renderDebug() {} };
-    const gd = new Lemmings.GameDisplay({ showDebug: false }, lvl, lm, obj, trg);
+    const gd = new Lemmings.GameDisplay(game, lvl, lm, obj, trg);
     gd.setGuiDisplay(display);
 
     display.onMouseDown.trigger({ x: 1, y: 1 });
 
     expect(selected).to.equal(null);
+    expect(queued).to.be.instanceOf(Lemmings.CommandLemmingsAction);
+    expect(queued.lemmingId).to.equal(1);
   });
 
   it('keeps selection when clicking empty space', function() {
     const stage = new MockStage();
     const display = stage.getGameDisplay();
 
+    let queued = null;
     let selected = { id: 1 };
+    const game = { showDebug: false, queueCommand(cmd) { queued = cmd; } };
     const lm = {
       getNearestLemming() { return null; },
       setSelectedLemming(l) { selected = l; },
@@ -114,18 +120,20 @@ describe('GameDisplay drawFrame', function() {
     const lvl = { render() {}, renderDebug() {}, screenPositionX: 0 };
     const obj = { render() {} };
     const trg = { renderDebug() {} };
-    const gd = new Lemmings.GameDisplay({ showDebug: false }, lvl, lm, obj, trg);
+    const gd = new Lemmings.GameDisplay(game, lvl, lm, obj, trg);
     gd.setGuiDisplay(display);
 
     display.onMouseDown.trigger({ x: 2, y: 2 });
 
     expect(selected).to.deep.equal({ id: 1 });
+    expect(queued).to.equal(null);
   });
 });
 
 describe('GameDisplay hover and selection rendering', function() {
   function createDisplay() {
     return {
+      onMouseDown: new Lemmings.EventHandler(),
       onMouseMove: new Lemmings.EventHandler(),
       drawCornerRectCalls: [],
       drawCornerRect(...args) { this.drawCornerRectCalls.push(args); }
@@ -190,8 +198,10 @@ describe('GameDisplay hover and selection rendering', function() {
 
     gd.setGuiDisplay(display);
     expect(display.onMouseMove.handlers.size).to.equal(1);
+    expect(display.onMouseDown.handlers.size).to.equal(1);
     gd.dispose();
     expect(display.onMouseMove.handlers.size).to.equal(0);
+    expect(display.onMouseDown.handlers.size).to.equal(0);
     expect(gd._mouseMoveHandler).to.equal(null);
   });
 });
