@@ -4,7 +4,6 @@ import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';
 import path from 'path';
 import { PNG } from 'pngjs';
-import { pathToFileURL } from 'url';
 
 function loadDefaultPack() {
   try {
@@ -39,11 +38,10 @@ function frameToPNG(frame) {
   return png;
 }
 
-export async function main(args = process.argv.slice(2)) {
-  const dataPath = args[0] || loadDefaultPack();
-  const index = parseInt(args[1] || '0', 10);
-  const outDir = args[2] ||
-    path.join('exports', `${dataPath.replace(/\W+/g, '_')}_ground_${index}`);
+(async () => {
+  const dataPath = process.argv[2] || loadDefaultPack();
+  const index = parseInt(process.argv[3] || '0', 10);
+  const outDir = process.argv[4] || path.join('exports', `${dataPath.replace(/\W+/g, '_')}_ground_${index}`);
   fs.mkdirSync(outDir, { recursive: true });
 
   const provider = new NodeFileProvider('.');
@@ -83,8 +81,4 @@ export async function main(args = process.argv.slice(2)) {
     }
   }
   Lemmings.resetSteelSprites();
-}
-
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  await main();
-}
+})();
