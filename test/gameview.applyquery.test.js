@@ -31,7 +31,7 @@ describe('GameView.applyQuery and updateQuery', function () {
     global.window = createWindow('?cheat=true&debug=true&speed=2.6');
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
-    expect(view.cheat).to.equal(true);
+    expect(view.cheatEnabled).to.equal(true);
     expect(view.debug).to.equal(true);
     expect(view.gameSpeedFactor).to.equal(3);
   });
