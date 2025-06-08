@@ -28,6 +28,32 @@ describe('Commands', function() {
     expect(nuked).to.equal(1);
   });
 
+  it('CommandNuke fails when nuking already in progress', function() {
+    const lemMgr = {
+      isNuking() { return true; },
+      doNukeAllLemmings() { throw new Error('should not be called'); }
+    };
+    const gvc = { doNuke() { throw new Error('should not be called'); } };
+    const game = {
+      getLemmingManager() { return lemMgr; },
+      getVictoryCondition() { return gvc; }
+    };
+    const cmd = new Lemmings.CommandNuke();
+    const result = cmd.execute(game);
+    expect(result).to.be.false;
+  });
+
+  it('CommandNuke returns false when no victory condition is present', function() {
+    const lemMgr = { isNuking() { return false; } };
+    const game = {
+      getLemmingManager() { return lemMgr; },
+      getVictoryCondition() { return undefined; }
+    };
+    const cmd = new Lemmings.CommandNuke();
+    const result = cmd.execute(game);
+    expect(result).to.be.false;
+  });
+
   it('CommandReleaseRateIncrease and Decrease forward values', function() {
     const calls = [];
     const gvc = { changeReleaseRate(n) { calls.push(n); return true; } };
