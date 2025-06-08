@@ -31,6 +31,8 @@ class GameView extends Lemmings.BaseLogger {
     this._benchExtraList = null;
     this._benchExtraIndex = 0;
     this._benchStartTime = 0;
+    this._benchBaseEntrances = null;
+    this._benchEntrancePool = null;
     this.applyQuery();
     this.elementGameState = null;
     this.autoMoveTimer = null;
@@ -493,9 +495,13 @@ class GameView extends Lemmings.BaseLogger {
     const cfg = this.configs?.find(c => c.gametype === this.gameType);
     const pack = cfg?.name || this.gameType;
     const group = this.gameResources.getLevelGroups()[this.levelGroupIndex];
-    console.log(`starting bench series for ${level.name} in ${group} in ${pack}, adding ${entrances} entrances`);
-    const baseEntrances = level.entrances.slice();
+    console.log(`starting bench series for ${level.name} in ${group} in ${pack}, adding ${entrances} entrances with ${this.extraLemmings} extra lemmings`);
+
+    if (!this._benchBaseEntrances) {
+      this._benchBaseEntrances = level.entrances.slice();
+    }
     level.entrances.length = 0;
+    const baseEntrances = this._benchBaseEntrances;
     const groundMask = level.getGroundMaskLayer();
     const badTriggers = new Set([
       Lemmings.TriggerTypes.DROWN,
@@ -543,11 +549,11 @@ class GameView extends Lemmings.BaseLogger {
       if (!clearHeight(spawnX, entY)) return false;
 
       for (const tr of level.triggers) {
-        if (badTriggers.has(tr.type) &&
-            spawnX >= tr.x1 && spawnX <= tr.x2 &&
-            entY + ENTRANCE_HEIGHT > tr.y1 && entY < tr.y2) {
-          return false;
-        }
+        if (!badTriggers.has(tr.type)) continue;
+        if (spawnX < tr.x1 || spawnX > tr.x2) continue;
+        // disallow if entrance intersects or is above a deadly trigger
+        if (entY + ENTRANCE_HEIGHT > tr.y1 && entY < tr.y2) return false;
+        if (entY + ENTRANCE_HEIGHT <= tr.y1 && seg.bottom >= tr.y1) return false;
       }
 
       const entX = spawnX - 24;
@@ -561,24 +567,32 @@ class GameView extends Lemmings.BaseLogger {
       return true;
     };
 
-    for (const step of increments) {
-      let offset = 0;
-      while (level.entrances.length < entrances && offset <= level.width) {
-        for (const base of baseEntrances) {
-          if (level.entrances.length >= entrances) break;
-          const center = base.x + 24;
-          if (offset === 0) {
-            trySpawn(center);
-            continue;
+    if (!this._benchEntrancePool) {
+      level.entrances = baseEntrances.slice();
+      const target = Math.max(...this._benchCounts);
+      for (const step of increments) {
+        let offset = 0;
+        while (level.entrances.length < target && offset <= level.width) {
+          for (const base of baseEntrances) {
+            if (level.entrances.length >= target) break;
+            const center = base.x + 24;
+            if (offset === 0) {
+              trySpawn(center);
+              continue;
+            }
+            trySpawn(center + offset);
+            if (level.entrances.length >= target) break;
+            trySpawn(center - offset);
           }
-          trySpawn(center + offset);
-          if (level.entrances.length >= entrances) break;
-          trySpawn(center - offset);
+          offset += step;
         }
-        offset += step;
+        if (level.entrances.length >= target) break;
       }
-      if (level.entrances.length >= entrances) break;
+      this._benchEntrancePool = level.entrances.slice();
+    } else {
+      level.entrances = this._benchEntrancePool.slice();
     }
+    level.entrances.length = entrances;
     if (this.game.getLemmingManager) {
       const lm = this.game.getLemmingManager();
       if (lm) lm.spawnCount = entrances;
@@ -598,7 +612,7 @@ class GameView extends Lemmings.BaseLogger {
       timer.eachGameSecond.on(this._benchSpeedTrack);
       this._benchMonitor = async () => {
         if (timer.speedFactor < 1 ||
-            timer.getGameTime() - this._benchStartTime >= 60) {
+            timer.getGameTime() - this._benchStartTime >= 10) {
           timer.eachGameSecond.off(this._benchMonitor);
           timer.eachGameSecond.off(this._benchSpeedTrack);
           timer.suspend();
@@ -662,6 +676,8 @@ class GameView extends Lemmings.BaseLogger {
     const extras = await this.benchMeasureExtras();
     this._benchExtraList = [extras, Math.floor(extras / 2), 0];
     this._benchExtraIndex = 0;
+    this._benchBaseEntrances = null;
+    this._benchEntrancePool = null;
     this.extraLemmings = this._benchExtraList[0];
     lemmings.extraLemmings = this.extraLemmings;
     await this.benchStart(this._benchCounts[0]);
