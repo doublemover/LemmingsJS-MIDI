@@ -511,6 +511,33 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 
+  it('ActionJumpSystem ends when no ceiling remains', function() {
+    const level = new StubLevel();
+    level.ground.add(level.key(1, -1));
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(-1);
+  });
+
+  it('ActionJumpSystem enforces LEM_MIN_Y', function() {
+    const level = new StubLevel();
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    lem.y = -6;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(Lemmings.Lemming.LEM_MIN_Y);
+  });
+
+  it('ActionJumpSystem resets state after jump', function() {
+    const level = new StubLevel();
+    level.ground.add(level.key(1, -1));
+    const sys = new ActionJumpSystem(stubSprites);
+    const lem = new StubLemming();
+    sys.process(level, lem);
+    expect(lem.state).to.equal(0);
+  });
+
   it('ActionMineSystem shrugs on steel ground', function() {
     const level = new StubLevel();
     level.steelGround = () => true;
