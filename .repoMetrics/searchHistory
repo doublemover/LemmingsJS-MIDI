@@ -428,7 +428,4 @@
 {"time":"2025-06-08T19:42:48.268Z","query":"Stage.updateStageSize","mdFiles":15,"codeFiles":15,"ms":247}
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
-{"time":"2025-06-08T22:02:34.925Z","query":"lines 18","mdFiles":2,"codeFiles":1,"ms":866}
-{"time":"2025-06-08T22:02:48.851Z","query":"lines 18","mdFiles":2,"codeFiles":1,"ms":750}
-{"time":"2025-06-08T22:04:28.366Z","query":"processHtmlFile","mdFiles":0,"codeFiles":0,"ms":931}
-{"time":"2025-06-08T22:04:31.538Z","query":"processHtmlFile","mdFiles":12,"codeFiles":15,"ms":857}
+{"time":"2025-06-08T22:03:15.859Z","query":"victory","mdFiles":0,"codeFiles":18,"ms":950}
