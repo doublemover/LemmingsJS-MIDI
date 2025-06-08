@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bench mode spawns entrances near originals and tracks the total spawned.
 - HQX and xBRZ scaling options.
 - Frame step controls for debug playback.
+- Enchanced bench mode. Determines a maximum number of lemmings that can be spawned at a time before going through a series of spawn volume tests.
+- Search tool for agents uses TF‑IDF weighting and supports fuzzy search to augment their ability to search the codebase.
+- Documentation covers configuration, compression formats, level file formats and WebMIDI setup.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
@@ -32,12 +35,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Zoom direction, pan clamping and bottom clamp issues.
 - Viewport panning and centering calculations.
 - Crosshair transparency and HUD alignment during resize.
+- Stage and GUI alignment.
+- Stage layout reserves a bottom margin for the HUD.
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
+- Bench spawn thresholds refined and spawn counts tracked.
 
 ## [0.0.2] - 2025-06-04
 ### Added
