@@ -130,6 +130,7 @@ class KeyboardShortcuts {
     if (!mgr || !mgr.lemmings) return;
     for (const lem of mgr.lemmings) {
       if (lem.removed) continue;
+      if (lem.hasExploded) continue;
       if (lem.countdownAction) continue;
       if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.EXPLODING]) continue;
       if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.OHNO]) continue;

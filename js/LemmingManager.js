@@ -398,6 +398,9 @@ class LemmingManager extends Lemmings.BaseLogger {
             this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
           }
         }
+        if (stateType === Lemmings.LemmingStateType.EXPLODING) {
+          lem.hasExploded = true;
+        }
         lem.setAction(actionSystem);
       })();
   }

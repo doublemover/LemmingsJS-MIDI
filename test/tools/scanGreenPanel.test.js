@@ -31,7 +31,8 @@ async function loadPalette(provider, dataPath) {
 }
 
 async function loadPanelFrame() {
-  const provider = new NodeFileProvider('.');
+  const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+  const provider = new NodeFileProvider(root);
   const pal = await loadPalette(provider, 'lemmings');
   const res = new Lemmings.GameResources(provider, { path: 'lemmings', level: { groups: [] } });
   const sprites = await res.getSkillPanelSprite(pal);
