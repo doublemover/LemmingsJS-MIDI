@@ -113,12 +113,17 @@ function getEnclosingFunction(lines, lineNum) {
 }
 
 /* ---------- NORMALIZED, COLORIZED SCORE (1–10) ---------- */
+function roundScore(score) {
+  return parseFloat(score.toFixed(2));
+}
+
 function colorScore(score, max) {
   const ratio = max === 0 ? 0 : score / max;
   const level = Math.max(1, Math.ceil(ratio * 10)); // 1..10
-  if (level > 7) return c.green(String(score));
-  if (level > 3) return c.yellow(String(score));
-  return c.red(String(score));
+  const s = score.toFixed(2);
+  if (level > 7) return c.green(s);
+  if (level > 3) return c.yellow(s);
+  return c.red(s);
 }
 
 /* ---------- BUILD MD INDEX RESULTS ---------- */
@@ -279,6 +284,10 @@ const LIST_CODE = Math.min(10, totalCodeFiles - SHOW_SNIPPET_CODE);
 
 /* ---------- OUTPUT MODES ---------- */
 function agentText() {
+  if (totalMdFiles === 0 && totalCodeFiles === 0) {
+    return `no results for ${query}\n`;
+  }
+
   let out = '';
 
   // Markdown summary
@@ -321,9 +330,11 @@ function agentText() {
     for (let i = SHOW_SNIPPET_MD; i < SHOW_SNIPPET_MD + LIST_MD; i++) {
       const h = mdHitsAll[i];
       const sc = colorScore(h.score, maxMdScore).padEnd(4);
+      const fnPart = h.enclosingFunction ? ` (func: ${h.enclosingFunction})` : '';
       out += `[${sc}] ` +
         c.magentaBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       if (contextLines) {
         const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
         const lines = text.split(/\r?\n/);
@@ -380,9 +391,11 @@ function agentText() {
     for (let i = SHOW_SNIPPET_CODE; i < SHOW_SNIPPET_CODE + LIST_CODE; i++) {
       const h = codeHitsAll[i];
       const sc = colorScore(h.score, maxCodeScore).padEnd(4);
+      const fnPart = h.enclosingFunction ? ` (func: ${h.enclosingFunction})` : '';
       out += `[${sc}] ` +
         c.blueBright(path.basename(h.file)) +
-        ` (func: ${h.enclosingFunction || '‹none›'})\n`;
+        fnPart +
+        '\n';
       if (contextLines) {
         const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
         const lines = text.split(/\r?\n/);
@@ -410,14 +423,14 @@ function agentJSON() {
       markdown: mdHitsAll.map((h) => ({
         file: h.file,
         totalMatches: h.totalMatches,
-        score: h.score,
+        score: roundScore(h.score),
         realPos: h.realPos,
         enclosingFunction: h.enclosingFunction,
       })),
       code: codeHitsAll.map((h) => ({
         file: h.file,
         totalMatches: h.totalMatches,
-        score: h.score,
+        score: roundScore(h.score),
         realPos: h.realPos,
         enclosingFunction: h.enclosingFunction,
       })),
@@ -428,6 +441,10 @@ function agentJSON() {
 }
 
 function humanText() {
+  if (totalMdFiles === 0 && totalCodeFiles === 0) {
+    return `no results for ${query}\n`;
+  }
+
   let out = '';
 
   // Markdown section
@@ -444,7 +461,7 @@ function humanText() {
       const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.magentaBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+        ` — hits: ${sc}, lines: ${pos}${fnPart}\n`;
       if (contextLines) {
         const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
         const lines = text.split(/\r?\n/);
@@ -479,7 +496,7 @@ function humanText() {
       const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
       out += `${i + 1}. ${c.blueBright(path.basename(h.file))} ` +
         c.dim(path.dirname(h.file)) +
-        ` — hits: ${sc}, lines: ${pos}, func: ${h.enclosingFunction || 'N/A'}\n`;
+        ` — hits: ${sc}, lines: ${pos}${fnPart}\n`;
       if (contextLines) {
         const text = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
         const lines = text.split(/\r?\n/);
@@ -511,7 +528,7 @@ function humanJSON() {
         file: path.basename(h.file),
         path: path.dirname(h.file),
         hits: h.totalMatches,
-        score: h.score,
+        score: roundScore(h.score),
         lines: h.realPos,
         function: h.enclosingFunction || null,
       })),
@@ -520,7 +537,7 @@ function humanJSON() {
         file: path.basename(h.file),
         path: path.dirname(h.file),
         hits: h.totalMatches,
-        score: h.score,
+        score: roundScore(h.score),
         lines: h.realPos,
         function: h.enclosingFunction || null,
       })),
