@@ -414,9 +414,11 @@ class GameGui {
           'Spawn ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
         ];
         let x = 0;
-        for (const s of stats) {
+        for (let i = 0; i < stats.length; i++) {
+          const s = stats[i];
           this.drawGreenString(d, s, x, 0);
           x += s.length * 8;
+          if (i < stats.length - 1) x += 8; // space between stats
         }
       }
     }
