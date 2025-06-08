@@ -190,6 +190,22 @@ describe('Action Systems process()', function() {
     expect(tm.removed[0]).to.equal(lem);
   });
 
+  it('ActionBlockerSystem keeps triggers until ground is lost', function() {
+    const level = new StubLevel();
+    const tm = new StubTriggerManager();
+    const sys = new ActionBlockerSystem(stubSprites, tm);
+    const lem = new StubLemming();
+    level.ground.add(level.key(lem.x, lem.y + 1));
+    lem.state = 0;
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(tm.added.length).to.equal(2);
+    expect(tm.removed.length).to.equal(0);
+    lem.state = 1;
+    level.ground.delete(level.key(lem.x, lem.y + 1));
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+    expect(tm.removed[0]).to.equal(lem);
+  });
+
   it('ActionBuildSystem lays bricks and shrugs when done', function() {
     const level = new StubLevel();
     const sys = new ActionBuildSystem(stubSprites);
