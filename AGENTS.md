@@ -17,14 +17,14 @@ to any repo scripts that support a name flag.
 - Try using this often when referring to the code
 - Do not regenerate or rebuild the indexes if they are missing
 - After you use the tool commit the stats it generates as part of your next commit
- - `.searchMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
+ - `.repoMetrics/metrics.json` stores counters in compact JSON; do not reformat this file
  - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
  - Run `npm run agent-precommit` to update metrics and history and stage the results
-- `.searchMetrics/metrics.json` stores counters in compact JSON and
-  `.searchMetrics/searchHistory` logs search queries. Do not reformat these files
+ - `.repoMetrics/metrics.json` stores counters in compact JSON and
+  `.repoMetrics/searchHistory` logs search queries. Do not reformat these files
 - `npm test` automatically runs `npm run agent-update-searchmetrics` to merge metrics
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
-- Ignore `.searchMetrics/` when using command line tools to search git diffs or the repository.
+ - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
 
 ## Environment
 - Use **Node.js 18 or later**.

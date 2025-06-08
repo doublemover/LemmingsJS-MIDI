@@ -24,6 +24,6 @@ export function mergeNoResultQueries(baseFile, targetFile) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'base_no_results';
-  const dest = process.argv[3] || '.searchMetrics/noResultQueries';
+  const dest = process.argv[3] || '.repoMetrics/noResultQueries';
   mergeNoResultQueries(base, dest);
 }

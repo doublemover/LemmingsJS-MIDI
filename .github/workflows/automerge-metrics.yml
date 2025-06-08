@@ -35,30 +35,30 @@ jobs:
       - name: Merge metrics.json
         run: |
           mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/metrics.json > tmp_merge/base_metrics.json 2>/dev/null || echo '{}' > tmp_merge/base_metrics.json
-          git show HEAD:.searchMetrics/metrics.json > tmp_merge/ours_metrics.json 2>/dev/null || echo '{}' > tmp_merge/ours_metrics.json
-          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/metrics.json > tmp_merge/theirs_metrics.json 2>/dev/null || echo '{}' > tmp_merge/theirs_metrics.json
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/metrics.json > tmp_merge/base_metrics.json 2>/dev/null || echo '{}' > tmp_merge/base_metrics.json
+          git show HEAD:.repoMetrics/metrics.json > tmp_merge/ours_metrics.json 2>/dev/null || echo '{}' > tmp_merge/ours_metrics.json
+          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/metrics.json > tmp_merge/theirs_metrics.json 2>/dev/null || echo '{}' > tmp_merge/theirs_metrics.json
 
           bash tools/merge-metrics.sh \
             tmp_merge/base_metrics.json \
             tmp_merge/ours_metrics.json \
             tmp_merge/theirs_metrics.json
 
-          mv tmp_merge/ours_metrics.json .searchMetrics/metrics.json
+          mv tmp_merge/ours_metrics.json .repoMetrics/metrics.json
 
       - name: Merge searchHistory
         run: |
           mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.searchMetrics/searchHistory > tmp_merge/base_history.txt 2>/dev/null || echo '' > tmp_merge/base_history.txt
-          git show HEAD:.searchMetrics/searchHistory > tmp_merge/ours_history.txt 2>/dev/null || echo '' > tmp_merge/ours_history.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.searchMetrics/searchHistory > tmp_merge/theirs_history.txt 2>/dev/null || echo '' > tmp_merge/theirs_history.txt
+          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/searchHistory > tmp_merge/base_history.txt 2>/dev/null || echo '' > tmp_merge/base_history.txt
+          git show HEAD:.repoMetrics/searchHistory > tmp_merge/ours_history.txt 2>/dev/null || echo '' > tmp_merge/ours_history.txt
+          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/searchHistory > tmp_merge/theirs_history.txt 2>/dev/null || echo '' > tmp_merge/theirs_history.txt
 
           bash tools/merge-history.sh \
             tmp_merge/base_history.txt \
             tmp_merge/ours_history.txt \
             tmp_merge/theirs_history.txt
 
-          mv tmp_merge/ours_history.txt .searchMetrics/searchHistory
+          mv tmp_merge/ours_history.txt .repoMetrics/searchHistory
 
       - name: Merge agentInfo Index
         run: |
@@ -115,10 +115,10 @@ jobs:
 
       - name: Commit merged changes
         run: |
-          git add .searchMetrics/metrics.json .searchMetrics/searchHistory .agentInfo/index.md .agentInfo/index-detailed.md $(git ls-files .agentInfo/notes)
+          git add .repoMetrics/metrics.json .repoMetrics/searchHistory .agentInfo/index.md .agentInfo/index-detailed.md $(git ls-files .agentInfo/notes)
           if ! git diff --cached --quiet; then
-            git commit -m "Auto-merge .searchMetrics and .agentInfo"
+            git commit -m "Auto-merge .repoMetrics and .agentInfo"
             git push origin HEAD:${{ github.event.pull_request.head.ref }}
           else
-            echo "No changes detected in searchMetrics or agentInfo"
+            echo "No changes detected in repoMetrics or agentInfo"
 
