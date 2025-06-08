@@ -83,7 +83,7 @@ describe('bench sequence', function() {
     const orig = console.log; console.log = m => logs.push(m);
     await view.setup();
 
-    expect(view.game.getLemmingManager().spawnTotal).to.equal(10);
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(50);
 
     let timer = view.game.getGameTimer();
     expect(timer.speedFactor).to.equal(6);
@@ -92,16 +92,16 @@ describe('bench sequence', function() {
     timer.eachGameSecond.trigger();
     await Promise.resolve();
 
-    expect(view.game.getLemmingManager().spawnTotal).to.equal(15);
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(90);
 
-    expect(logs[0]).to.equal(10);
+    expect(logs[0]).to.match(/series finished for 50 entrances/);
     timer = view.game.getGameTimer();
     timer.speedFactor = 0.9;
     timer.eachGameSecond.trigger();
     await Promise.resolve();
 
-    expect(view.game.getLemmingManager().spawnTotal).to.equal(17);
-    expect(logs[1]).to.equal(5);
+    expect(view.game.getLemmingManager().spawnTotal).to.equal(120);
+    expect(logs[1]).to.match(/series finished for 40 entrances/);
 
     console.log = orig;
   });

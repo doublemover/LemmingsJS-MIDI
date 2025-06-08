@@ -23,6 +23,11 @@ class GameView extends Lemmings.BaseLogger {
     this.extraLemmings = 0;
     this.perfMetrics = false;
     this.steps = 0;
+    this._benchMonitor = null;
+    this._benchSpeedTrack = null;
+    this._benchMaxSpeed = 0;
+    this._benchCounts = [];
+    this._benchIndex = 0;
     this.applyQuery();
     this.elementGameState = null;
     this.autoMoveTimer = null;
@@ -482,6 +487,10 @@ class GameView extends Lemmings.BaseLogger {
     this.bench = true;
     await this.loadLevel();
     const level = this.game.level;
+    const cfg = this.configs?.find(c => c.gametype === this.gameType);
+    const pack = cfg?.name || this.gameType;
+    const group = this.gameResources.getLevelGroups()[this.levelGroupIndex];
+    console.log(`starting bench series for ${level.name} in ${group} in ${pack}, adding ${entrances} entrances`);
     const baseEntrances = level.entrances.slice();
     level.entrances.length = 0;
     const groundMask = level.getGroundMaskLayer();
@@ -503,22 +512,31 @@ class GameView extends Lemmings.BaseLogger {
       return true;
     };
 
+    const findOpenSegment = x => {
+      let best = null;
+      let y = 0;
+      while (y < level.height) {
+        while (y < level.height && groundMask.hasGroundAt(x, y)) y++;
+        const start = y;
+        while (y < level.height && !groundMask.hasGroundAt(x, y)) y++;
+        const end = y;
+        if (end >= level.height) break;
+        const h = end - start;
+        if (h >= ENTRANCE_HEIGHT + 15 && (!best || h > best.height)) {
+          best = { top: start, bottom: end, height: h };
+        }
+        y++; // skip ground
+      }
+      return best;
+    };
+
     const trySpawn = spawnX => {
       if (spawnX < 0 || spawnX >= level.width) return false;
-      let groundY = -1;
-      for (let y = 0; y < level.height; y++) {
-        if (groundMask.hasGroundAt(spawnX, y)) {
-          groundY = y;
-          break;
-        }
-      }
-      if (groundY < 0) return false;
-
-      let entY = groundY - ENTRANCE_HEIGHT;
-      if (entY < 0) entY = 0;
-      while (!clearHeight(spawnX, entY) && entY + ENTRANCE_HEIGHT < groundY) {
-        entY++;
-      }
+      const seg = findOpenSegment(spawnX);
+      if (!seg) return false;
+      const drop = Math.min(seg.height - ENTRANCE_HEIGHT, Lemmings.Lemming.LEM_MAX_FALLING);
+      if (drop < 15) return false;
+      const entY = seg.bottom - ENTRANCE_HEIGHT - drop;
       if (!clearHeight(spawnX, entY)) return false;
 
       for (const tr of level.triggers) {
@@ -568,11 +586,20 @@ class GameView extends Lemmings.BaseLogger {
     timer.benchStableFactor = 4;
     if (this.benchSequence) {
       if (this._benchMonitor) timer.eachGameSecond.off(this._benchMonitor);
+      if (this._benchSpeedTrack) timer.eachGameSecond.off(this._benchSpeedTrack);
+      this._benchMaxSpeed = timer.speedFactor;
+      this._benchSpeedTrack = () => {
+        if (timer.speedFactor > this._benchMaxSpeed) this._benchMaxSpeed = timer.speedFactor;
+      };
+      timer.eachGameSecond.on(this._benchSpeedTrack);
       this._benchMonitor = async () => {
         if (timer.speedFactor < 1) {
           timer.eachGameSecond.off(this._benchMonitor);
+          timer.eachGameSecond.off(this._benchSpeedTrack);
           timer.suspend();
-          console.log(this.game.getLemmingManager().getLemmings().length);
+          const count = this.game.getLemmingManager().getLemmings().length;
+          const tps = (this._benchMaxSpeed * (1000 / timer.TIME_PER_FRAME_MS)).toFixed(1);
+          console.log(`series finished for ${entrances} entrances - ${count} lemmings spawned - ${this._benchMaxSpeed.toFixed(1)} was highest game speed achieved (${tps} ticks per second)`);
           this._benchIndex++;
           if (this._benchIndex < this._benchCounts.length) {
             await this.benchStart(this._benchCounts[this._benchIndex]);
@@ -584,7 +611,7 @@ class GameView extends Lemmings.BaseLogger {
   }
 
   async benchSequenceStart() {
-    this._benchCounts = [10, 5, 2, 1];
+    this._benchCounts = [50, 40, 30, 25, 20, 10, 5, 1];
     this._benchIndex = 0;
     await this.benchStart(this._benchCounts[0]);
   }
