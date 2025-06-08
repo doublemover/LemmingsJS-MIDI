@@ -142,6 +142,14 @@ let mdHitsAll = [...mdScores.entries()]
   .map(([f, o]) => ({ file: f, chunkScore: o.chunkScore }))
   .sort((a, b) => b.chunkScore - a.chunkScore);
 
+// Separate out entries from the agent index files
+const indexFiles = new Set([
+  path.join('.agentInfo', 'index.md'),
+  path.join('.agentInfo', 'index-detailed.md'),
+]);
+const indexHits = mdHitsAll.filter((h) => indexFiles.has(h.file));
+mdHitsAll = mdHitsAll.filter((h) => !indexFiles.has(h.file));
+
 // Recompute “realPos” and “totalMatches” for each MD hit
 await Promise.all(
   mdHitsAll.map(async (hit) => {
@@ -167,9 +175,36 @@ await Promise.all(
   })
 );
 
+// Compute positions for hits inside the agent index files
+await Promise.all(
+  indexHits.map(async (hit) => {
+    hit.realPos = [];
+    hit.totalMatches = 0;
+    let text;
+    try {
+      text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
+    } catch {
+      return;
+    }
+    const lines = text.split(/\r?\n/);
+    const allMatches = text.match(rx);
+    hit.totalMatches = allMatches ? allMatches.length : 0;
+    for (let i = 0; i < lines.length && hit.realPos.length < 5; i++) {
+      let m;
+      while ((m = rx.exec(lines[i])) !== null) {
+        hit.realPos.push([i + 1, m.index + 1]);
+        if (hit.realPos.length >= 5) break;
+      }
+      rx.lastIndex = 0;
+    }
+  })
+);
+
 mdHitsAll.forEach((h) => { h.score = h.chunkScore; });
-const maxMdScore = mdHitsAll.reduce((m, h) => Math.max(m, h.score), 1);
-const maxMdMatches = mdHitsAll.reduce((max, h) => Math.max(max, h.totalMatches), 1);
+indexHits.forEach((h) => { h.score = h.chunkScore; });
+const allMdHits = mdHitsAll.concat(indexHits);
+const maxMdScore = allMdHits.reduce((m, h) => Math.max(m, h.score), 1);
+const maxMdMatches = allMdHits.reduce((max, h) => Math.max(max, h.totalMatches), 1);
 
 /* ---------- BUILD CODE INDEX RESULTS ---------- */
 function chunkCandidates(idx, tokens) {
@@ -246,6 +281,8 @@ const maxCodeMatches = codeHitsAll.reduce(
   1
 );
 
+const totalIndexFiles = indexHits.length;
+const sumIndexMatches = indexHits.reduce((sum, h) => sum + h.totalMatches, 0);
 const totalMdFiles = mdHitsAll.length;
 const sumMdMatches = mdHitsAll.reduce((sum, h) => sum + h.totalMatches, 0);
 const totalCodeFiles = codeHitsAll.length;
@@ -253,6 +290,15 @@ const sumCodeMatches = codeHitsAll.reduce((sum, h) => sum + h.totalMatches, 0);
 
 // ─── Compute enclosingFunction synchronously ───
 for (const hit of mdHitsAll) {
+  hit.enclosingFunction = null;
+  if (hit.realPos.length) {
+    const text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
+    const lines = text.split(/\r?\n/);
+    const [lineNum] = hit.realPos[0];
+    hit.enclosingFunction = getEnclosingFunction(lines, lineNum);
+  }
+}
+for (const hit of indexHits) {
   hit.enclosingFunction = null;
   if (hit.realPos.length) {
     const text = await fs.readFile(path.join(ROOT, hit.file), 'utf8');
@@ -280,6 +326,17 @@ const LIST_CODE = Math.min(10, totalCodeFiles - SHOW_SNIPPET_CODE);
 /* ---------- OUTPUT MODES ---------- */
 function agentText() {
   let out = '';
+
+  if (totalIndexFiles > 0) {
+    out += `${totalIndexFiles} entries found in agent index files\n`;
+    indexHits.forEach((hit) => {
+      const sc = colorScore(hit.score, maxMdScore).padEnd(4);
+      out += `[${sc}] ` +
+        c.magentaBright(path.basename(hit.file)) +
+        ` (func: ${hit.enclosingFunction || '‹none›'})\n`;
+    });
+    out += '\n';
+  }
 
   // Markdown summary
   if (totalMdFiles > 0) {
@@ -407,6 +464,13 @@ function agentJSON() {
   // Agent‐optimized JSON: no truncation; top‐to‐bottom order
   return JSON.stringify(
     {
+      index: indexHits.map((h) => ({
+        file: h.file,
+        totalMatches: h.totalMatches,
+        score: h.score,
+        realPos: h.realPos,
+        enclosingFunction: h.enclosingFunction,
+      })),
       markdown: mdHitsAll.map((h) => ({
         file: h.file,
         totalMatches: h.totalMatches,
@@ -429,6 +493,20 @@ function agentJSON() {
 
 function humanText() {
   let out = '';
+
+  if (totalIndexFiles > 0) {
+    out += '--- Agent Index Results ---\n';
+    out += `Found ${sumIndexMatches} total matches in ${totalIndexFiles} files.\n`;
+    indexHits.forEach((h, i) => {
+      const sc = colorScore(h.score, maxMdScore);
+      const pos = h.realPos.length
+        ? h.realPos.map((p) => `[${p[0]}:${p[1]}]`).join(', ')
+        : '(no matches)';
+      const fnPart = h.enclosingFunction ? `, func: ${h.enclosingFunction}` : '';
+      out += `${i + 1}. ${path.basename(h.file)}${fnPart} — hits: ${sc}, lines: ${pos}\n`;
+    });
+    out += '\n';
+  }
 
   // Markdown section
   if (totalMdFiles > 0) {
@@ -507,6 +585,15 @@ function humanJSON() {
   // Human‐friendly JSON (truncated to top 10 each)
   return JSON.stringify(
     {
+      index: indexHits.slice(0, 10).map((h) => ({
+        file: path.basename(h.file),
+        path: path.dirname(h.file),
+        hits: h.totalMatches,
+        score: h.score,
+        lines: h.realPos,
+        function: h.enclosingFunction || null,
+      })),
+      more_index: Math.max(0, indexHits.length - 10),
       markdown: mdHitsAll.slice(0, 10).map((h) => ({
         file: path.basename(h.file),
         path: path.dirname(h.file),
@@ -550,6 +637,8 @@ if (argv.json && !argv.human) {
 if (argv.stats) {
   console.log(
     '--stats--',
+    'indexFiles:', totalIndexFiles,
+    'sumIndexMatches:', sumIndexMatches,
     'mdFiles:', totalMdFiles,
     'sumMdMatches:', sumMdMatches,
     'codeFiles:', totalCodeFiles,
