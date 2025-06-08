@@ -55,7 +55,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 <details open>
   <summary> <b>Fixed Bugs</b> </summary>
 
-  - Current automated test coverage is around **64%** of lines
+  - Current automated test coverage is around **80%** of lines
   - Various crashes
   - Invisible blockers left behind when a blocker stops blocking
   - Invisible lemmings consuming actions after dying
