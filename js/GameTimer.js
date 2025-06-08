@@ -146,10 +146,6 @@ class GameTimer {
       const steps = Math.floor(delta / this.#frameTime);
       if (lemmings.bench == true) {
         this.#benchSpeedAdjust(steps);
-      } else if (steps > 1) {
-        this.#catchupSpeedAdjust(steps);
-      } else if (this.#catchupSlow) {
-        this.#restoreSpeed();
       }
       delta -= steps * this.#frameTime;
       this.#lastTime = now - delta;
