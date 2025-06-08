@@ -32,8 +32,16 @@ class StubTriggerManager {
   removeByOwner(o) { this.removed.push(o); }
 }
 
+const stubSprites = { getAnimation() { return { getFrame() { return {}; } }; } };
+
 class DummyMask { constructor() { this.offsetX = 0; this.offsetY = 0; this.width = 1; this.height = 1; } }
-function stubMasks() { return new Map([['both', { GetMask() { return new DummyMask(); } }]]); }
+function stubMasks() {
+  return {
+    GetMask() {
+      return { GetMask() { return new DummyMask(); } };
+    }
+  };
+}
 
 // fake game environment
 before(() => {
@@ -43,7 +51,7 @@ before(() => {
 describe('ActionDrowningSystem behavior', function() {
   it('moves, turns and exits', function() {
     const level = new StubLevel();
-    const sys = new ActionDrowningSystem(new Map());
+    const sys = new ActionDrowningSystem(stubSprites);
     const lem = new StubLemming();
 
     // first step, no wall -> move
@@ -61,7 +69,7 @@ describe('ActionDrowningSystem behavior', function() {
   });
 
   it('draw records death once frame >= 15', function() {
-    const sys = new ActionDrowningSystem(new Map());
+    const sys = new ActionDrowningSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 15;
     sys.draw({ drawFrame() {} }, lem);
@@ -73,7 +81,7 @@ describe('ActionExplodingSystem behavior', function() {
   it('clears ground and exits at frame 52', function() {
     const level = new StubLevel();
     const tm = new StubTriggerManager();
-    const sys = new ActionExplodingSystem(new Map([['both', { getFrame() {} }]]), stubMasks(), tm, { draw() {} });
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), tm, { draw() {} });
     const lem = new StubLemming();
 
     // first frame triggers mask and trigger removal
@@ -104,7 +112,7 @@ describe('ActionExplodingSystem behavior', function() {
 
   it('draw switches from sprite to particles', function() {
     const particleCalls = [];
-    const sys = new ActionExplodingSystem(new Map([['both', { getFrame() { return {}; } }]]), stubMasks(), new StubTriggerManager(), { draw(...args) { particleCalls.push(args); } });
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), new StubTriggerManager(), { draw(...args) { particleCalls.push(args); } });
     const lem = new StubLemming();
     sys.draw({ drawFrame() {} }, lem); // frameIndex 0 uses sprite
     expect(particleCalls.length).to.equal(0);
