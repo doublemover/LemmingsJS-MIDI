@@ -438,6 +438,63 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 
+  it('ActionBuildSystem builds twelve bricks then shrugs', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming();
+
+    for (let i = 0; i < 11; i++) {
+      lem.frameIndex = 8; // ->9 lay brick
+      sys.process(level, lem);
+      lem.frameIndex = 15; // ->0 step up
+      sys.process(level, lem);
+    }
+
+    expect(lem.state).to.equal(11);
+    expect(lem.x).to.equal(22);
+    expect(lem.y).to.equal(-11);
+
+    lem.frameIndex = 8; // ->9 lay final brick
+    sys.process(level, lem);
+    lem.frameIndex = 15; // ->0 last step
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
+    expect(level.setGroundCalls).to.have.length(72);
+    expect(lem.x).to.equal(24);
+    expect(lem.y).to.equal(-12);
+  });
+
+  it('ActionBuildSystem turns around mid-step when ground blocks path', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(new Map());
+    const lem = new StubLemming();
+    lem.frameIndex = 8; // lay first brick
+    sys.process(level, lem);
+    lem.frameIndex = 15; // stepping forward
+    level.ground.add(level.key(lem.x + 1, lem.y - 1));
+    const res = sys.process(level, lem);
+    expect(res).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.lookRight).to.equal(false);
+    expect(lem.x).to.equal(1);
+    expect(lem.y).to.equal(-1);
+    expect(lem.state).to.equal(0);
+  });
+
+  it('ActionBuildSystem turns around when ceiling blocks next step', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(new Map());
+    const lem = new StubLemming();
+    lem.frameIndex = 8; // lay brick
+    sys.process(level, lem);
+    lem.frameIndex = 15; // step forward
+    level.ground.add(level.key(4, -10));
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.lookRight).to.equal(false);
+    expect(lem.x).to.equal(2);
+    expect(lem.y).to.equal(-1);
+    expect(lem.state).to.equal(1);
+  });
+
   it('ActionClimbSystem continues with ceiling present', function() {
     const level = new StubLevel();
     const sys = new ActionClimbSystem(new Map());
