@@ -94,13 +94,30 @@ describe('ActionExplodingSystem behavior', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
   });
 
+  it('triggerLemAction returns false', function() {
+    const sys = new ActionExplodingSystem(new Map(), stubMasks(), new StubTriggerManager(), { draw() {} });
+    const lem = new StubLemming();
+    expect(sys.triggerLemAction(lem)).to.equal(false);
+  });
+
+  it('process increments frameIndex and disables on first frame', function() {
+    const level = new StubLevel();
+    const tm = new StubTriggerManager();
+    const sys = new ActionExplodingSystem(new Map([['both', { getFrame() {} }]]), stubMasks(), tm, { draw() {} });
+    const lem = new StubLemming();
+    sys.process(level, lem); // frame 0 -> 1
+    expect(lem.frameIndex).to.equal(1);
+    expect(lem.disabled).to.equal(true);
+  });
+
   it('draw switches from sprite to particles', function() {
     const particleCalls = [];
     const sys = new ActionExplodingSystem(stubSprites, stubMasks(), new StubTriggerManager(), { draw(...args) { particleCalls.push(args); } });
     const lem = new StubLemming();
-    sys.draw({ drawFrame() {} }, lem); // frameIndex 0
+    sys.draw({ drawFrame() {} }, lem); // frameIndex 0 uses sprite
+    expect(particleCalls.length).to.equal(0);
     lem.frameIndex = 1;
-    sys.draw({ drawFrame() {} }, lem);
+    sys.draw({ drawFrame() {} }, lem); // now use particles
     expect(particleCalls.length).to.equal(1);
   });
 });
