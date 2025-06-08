@@ -294,9 +294,5 @@
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
 {"time":"2025-06-08T08:57:08.729Z","query":"setHistoryState","mdFiles":44,"codeFiles":154,"ms":538}
-{"time":"2025-06-08T09:36:14.312Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":317}
-{"time":"2025-06-08T09:42:11.293Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
-{"time":"2025-06-08T09:55:07.852Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
-{"time":"2025-06-08T09:55:09.800Z","query":"ParticleTable","mdFiles":19,"codeFiles":27,"ms":121}
-{"time":"2025-06-08T10:07:56.771Z","query":"GroundReader","mdFiles":31,"codeFiles":95,"ms":247}
-{"time":"2025-06-08T10:07:59.139Z","query":"_readTerrainImages","mdFiles":42,"codeFiles":75,"ms":139}
+{"time":"2025-06-08T09:39:40.115Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":190}
+{"time":"2025-06-08T09:39:42.103Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":231}
