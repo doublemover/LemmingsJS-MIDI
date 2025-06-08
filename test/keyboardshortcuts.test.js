@@ -192,9 +192,10 @@ describe('KeyboardShortcuts', function() {
     stage.clear = () => {};
     stage.draw = () => {};
     stage.redraw = () => {};
-    stage.updateViewPoint = (img, dx, dy) => {
-      img.viewPoint.x += dx / img.viewPoint.scale;
-      img.viewPoint.y += dy / img.viewPoint.scale;
+    stage.applyViewport = (img, x, y, s) => {
+      img.viewPoint.x = x;
+      img.viewPoint.y = y;
+      img.viewPoint.scale = s;
     };
     stage.getGameDisplay().initSize(1000, 1000);
 
@@ -352,7 +353,7 @@ describe('KeyboardShortcuts', function() {
           viewPoint: { x: 0, y: 0, scale: 1 }
         };
       }
-      updateViewPoint() {}
+      applyViewport() {}
       redraw() {}
       snapScale(s) { return s; }
       limitValue(min, val, max) { return Math.min(Math.max(min, val), max); }

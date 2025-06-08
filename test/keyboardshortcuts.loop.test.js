@@ -24,10 +24,11 @@ class StageStub {
       viewPoint: { x: 0, y: 0, scale: 1 }
     };
   }
-  updateViewPoint(img, dx, dy) {
-    this.updateCalls.push({ dx, dy });
-    this.gameImgProps.viewPoint.x += dx;
-    this.gameImgProps.viewPoint.y += dy;
+  applyViewport(img, x, y, s) {
+    this.updateCalls.push({ x, y, s });
+    this.gameImgProps.viewPoint.x = x;
+    this.gameImgProps.viewPoint.y = y;
+    this.gameImgProps.viewPoint.scale = s;
   }
   clampViewPoint() {}
   redraw() { this.redrawCount++; }
