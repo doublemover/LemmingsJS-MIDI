@@ -409,8 +409,8 @@ class GameGui {
         this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
       } else if (lemmings.bench == true && this.gameSpeedChanged) {
         const stats = [
-          'Tick Delay ' + lemmings.steps,
-          'TicksPerSecond ' + Math.round(lemmings.tps),
+          'T' + lemmings.steps,
+          'TPS ' + Math.round(lemmings.tps),
           'Spawned ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
         ];
         let x = 0;
