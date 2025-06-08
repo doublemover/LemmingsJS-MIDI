@@ -86,8 +86,29 @@ describe('Stage updateViewPoint', function() {
 
     stage.updateViewPoint(stage.gameImgProps, 0, 0, 0);
 
+    const viewH = stage.gameImgProps.height / stage.gameImgProps.viewPoint.scale;
+    const worldH = display.worldDataSize.height;
+
     expect(stage.gameImgProps.viewPoint.x).to.equal(-300);
-    expect(stage.gameImgProps.viewPoint.y).to.equal(20);
+    expect(stage.gameImgProps.viewPoint.y).to.equal(worldH - viewH);
+  });
+
+  it('wheel zoom direction scroll up zooms in', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    const before = vp.scale;
+    stage.updateViewPoint(img, 0, 0, 120);
+    expect(vp.scale).to.be.greaterThan(before);
+    stage.updateViewPoint(img, 0, 0, -120);
+    expect(vp.scale).to.be.below(before + 0.0001);
   });
 
   it('keeps cursor position stable while zooming', function() {
@@ -126,8 +147,7 @@ describe('Stage updateViewPoint', function() {
 
     expect(vp.x).to.be.at.least(Math.min(0, worldW - viewW));
     expect(vp.x).to.be.at.most(Math.max(0, worldW - viewW));
-    expect(vp.y).to.be.at.least(Math.min(0, worldH - viewH));
-    expect(vp.y).to.be.at.most(Math.max(0, worldH - viewH));
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('keeps level bottom glued to the HUD when zooming', function() {
@@ -191,8 +211,7 @@ describe('Stage updateViewPoint', function() {
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.be.at.least(0);
-      expect(vp.y).to.be.at.most(worldH - viewH);
+      expect(vp.y).to.equal(worldH - viewH);
 
       stage.updateViewPoint(img, cx, cy, -120);
       postX = vp.getSceneX(cx - img.x);
@@ -202,8 +221,7 @@ describe('Stage updateViewPoint', function() {
 
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.be.at.least(0);
-      expect(vp.y).to.be.at.most(worldH - viewH);
+      expect(vp.y).to.equal(worldH - viewH);
     }
   });
 
@@ -227,8 +245,7 @@ describe('Stage updateViewPoint', function() {
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.be.at.least(0);
-      expect(vp.y).to.be.at.most(worldH - viewH);
+      expect(vp.y).to.equal(worldH - viewH);
     };
 
     for (let i = 0; i < 5; i++) {

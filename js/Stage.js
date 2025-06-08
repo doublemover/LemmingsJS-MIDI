@@ -205,7 +205,13 @@ class Stage {
       targetX += argX / targetScale;
       targetY += argY / targetScale;
     }
+    this.clear(stageImage);
+    const imgData = stageImage.display.getImageData();
+    this.draw(stageImage, imgData);
 
+    this.clear(this.guiImgProps);
+    const guiImgData = this.guiImgProps.display.getImageData();
+    this.draw(this.guiImgProps, guiImgData);
     this.applyViewport(stageImage, targetX, targetY, targetScale);
 
     this.clear(stageImage);
@@ -252,9 +258,9 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
+    // this margin is for the level <select> elements in the html 
     const margin = 20;
 
-    // TODO UPDATE ANY DOCS THAT SAY THIS SHOULD BE TWO
     // HUD always renders at 4× scale
     const hudScale = 4;
     this.guiImgProps.viewPoint.scale = hudScale;
@@ -264,6 +270,7 @@ class Stage {
 
     const hudH = rawHUDH * hudScale;
     const hudW = rawHUDW * hudScale;
+
     const gameH = stageH - hudH - margin;
 
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
@@ -346,7 +353,7 @@ class Stage {
 
       const newScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.setY(
-        Math.max(0, dispH - winH / newScale)
+        dispH - winH / newScale
       );
 
       this.redraw();
@@ -362,7 +369,7 @@ class Stage {
       const dispH = this.gameImgProps.display.worldDataSize.height;
       const winH  = this.gameImgProps.canvasViewportSize.height;
       this.gameImgProps.viewPoint.setY(
-        Math.min(0, dispH - winH / scale)
+        dispH - winH / scale
       );
 
       this.redraw();
@@ -576,15 +583,13 @@ class Stage {
     const viewW = vpW / scale;
     const viewH = vpH / scale;
 
-    if (viewH > worldH) {
-      stageImage.viewPoint.y = worldH - viewH;
-    } else {
-      stageImage.viewPoint.y = this.limitValue(
-        0,
-        stageImage.viewPoint.y,
-        worldH - viewH
-      );
-    }
+    const minY = worldH - viewH;
+    const maxY = Math.max(minY, 0);
+    stageImage.viewPoint.y = this.limitValue(
+      minY,
+      stageImage.viewPoint.y,
+      maxY
+    );
 
     if (worldW <= viewW) {
       stageImage.viewPoint.x = (worldW - viewW) / 2;

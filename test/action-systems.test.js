@@ -210,7 +210,7 @@ describe('Action Systems process()', function() {
     const sys = new ActionClimbSystem(stubSprites);
     const lem = new StubLemming();
     lem.frameIndex = 4; // ->5 climbing up the wall
-    level.ground.add(level.key(lem.x - 1, lem.y - 8));
+    level.ground.add(level.key(lem.x - 1, lem.y - 9));
     const result = sys.process(level, lem);
     expect(result).to.equal(Lemmings.LemmingStateType.FALLING);
     expect(lem.lookRight).to.equal(false);
@@ -473,7 +473,7 @@ describe('Action Systems process()', function() {
     const sys = new ActionBuildSystem(new Map());
     const lem = new StubLemming();
     lem.frameIndex = 15; // ->0
-    level.ground.add(level.key(lem.x + 1, lem.y - 1));
+    level.ground.add(level.key(lem.x + 1, lem.y - 2));
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
     expect(lem.lookRight).to.equal(false);
   });
@@ -519,7 +519,7 @@ describe('Action Systems process()', function() {
     lem.frameIndex = 8; // lay first brick
     sys.process(level, lem);
     lem.frameIndex = 15; // stepping forward
-    level.ground.add(level.key(lem.x + 1, lem.y - 1));
+    level.ground.add(level.key(lem.x + 1, lem.y - 2));
     const res = sys.process(level, lem);
     expect(res).to.equal(Lemmings.LemmingStateType.WALKING);
     expect(lem.lookRight).to.equal(false);
@@ -775,7 +775,7 @@ describe('Action Systems process()', function() {
 
   it('ActionMineSystem shrugs on steel ground', function() {
     const level = new StubLevel();
-    level.steelGround = () => true;
+    level.steelUnder = true;
     const sys = new ActionMineSystem(new Map(), stubMasks());
     const lem = new StubLemming();
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
