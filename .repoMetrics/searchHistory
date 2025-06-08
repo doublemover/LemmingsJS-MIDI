@@ -293,6 +293,5 @@
 {"time":"2025-06-08T08:28:43.587Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":58}
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
-{"time":"2025-06-08T08:56:10.449Z","query":"cycleSelection","mdFiles":16,"codeFiles":27,"ms":285}
-{"time":"2025-06-08T08:56:12.419Z","query":"cycleSelection","mdFiles":16,"codeFiles":27,"ms":178}
-{"time":"2025-06-08T08:57:28.269Z","query":"cycleSelection","mdFiles":16,"codeFiles":27,"ms":139}
+{"time":"2025-06-08T08:57:58.584Z","query":"enableDebug","mdFiles":11,"codeFiles":110,"ms":722}
+{"time":"2025-06-08T08:58:01.186Z","query":"enableDebug","mdFiles":11,"codeFiles":110,"ms":409}
