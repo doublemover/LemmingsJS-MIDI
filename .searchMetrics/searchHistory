@@ -245,6 +245,8 @@
 {"time":"2025-06-08T01:50:49.902Z","query":"bench mode","mdFiles":22,"codeFiles":29,"ms":123}
 {"time":"2025-06-08T01:50:52.692Z","query":"benchMode","mdFiles":22,"codeFiles":29,"ms":89}
 {"time":"2025-06-08T01:50:54.372Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":64}
+{"time":"2025-06-08T02:46:15.017Z","query":"coverage","mdFiles":4,"codeFiles":2,"ms":53}
+{"time":"2025-06-08T02:46:17.583Z","query":"coverage","mdFiles":4,"codeFiles":2,"ms":77}
 {"time":"2025-06-08T02:10:09.988Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":235}
 {"time":"2025-06-08T02:10:12.535Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":189}
 {"time":"2025-06-08T02:10:14.828Z","query":"bench series","mdFiles":13,"codeFiles":18,"ms":113}
