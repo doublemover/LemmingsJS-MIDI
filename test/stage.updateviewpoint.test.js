@@ -150,6 +150,30 @@ describe('Stage updateViewPoint', function() {
     expect(vp.y).to.equal(worldH - viewH);
   });
 
+  it('keeps level bottom glued to the HUD when zooming', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 600);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 1;
+    vp.x = 0;
+    vp.y = display.worldDataSize.height - img.height / vp.scale;
+
+    stage.updateViewPoint(img, 100, 100, -10000);
+    let viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(display.worldDataSize.height - viewH);
+
+    stage.updateViewPoint(img, 100, 100, (1 - vp.scale) / 0.0001);
+    viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(display.worldDataSize.height - viewH);
+  });
+
   it('preserves world coords at multiple cursor positions', function() {
     const canvas = createStubCanvas();
     const stage = new Stage(canvas);
@@ -240,5 +264,47 @@ describe('Stage updateViewPoint', function() {
       stage.updateViewPoint(img, -30, -20, 0);
       checkClamp();
     }
+  });
+
+  it('glues bottom when view taller than world', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 0.5;
+    vp.x = 0;
+    vp.y = 0;
+
+    stage.updateViewPoint(img, 50, 50, 0);
+
+    const viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(200 - viewH);
+  });
+
+  it('clamps bottom edge when zoomed in', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 2;
+    vp.x = 0;
+    vp.y = 0;
+
+    stage.updateViewPoint(img, 0, -10000, 0);
+
+    const viewH = img.height / vp.scale;
+    expect(vp.y).to.equal(1200 - viewH);
   });
 });

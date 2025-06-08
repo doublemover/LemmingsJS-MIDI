@@ -29,6 +29,7 @@ class StageStub {
     this.gameImgProps.viewPoint.x += dx;
     this.gameImgProps.viewPoint.y += dy;
   }
+  clampViewPoint() {}
   redraw() { this.redrawCount++; }
   clear(img) { this.clears.push(img); }
   snapScale(s) { return s; }
