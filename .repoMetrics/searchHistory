@@ -428,3 +428,8 @@
 {"time":"2025-06-08T19:42:48.268Z","query":"Stage.updateStageSize","mdFiles":15,"codeFiles":15,"ms":247}
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
+{"time":"2025-06-08T22:02:18.829Z","query":"builder","mdFiles":1,"codeFiles":1,"ms":888}
+{"time":"2025-06-08T22:02:21.266Z","query":"Builder","mdFiles":1,"codeFiles":1,"ms":508}
+{"time":"2025-06-08T22:02:25.384Z","query":"frame 9","mdFiles":5,"codeFiles":5,"ms":753}
+{"time":"2025-06-08T22:02:26.996Z","query":"frame 0","mdFiles":5,"codeFiles":5,"ms":588}
+{"time":"2025-06-08T22:02:31.257Z","query":"builder","mdFiles":0,"codeFiles":0,"ms":1166}
