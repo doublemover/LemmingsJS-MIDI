@@ -15,26 +15,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
-- HQX and xBRZ scaling options for smoother graphics.
-- Frame step controls for debug playback.
-- Bench mode spawns entrances near originals, shows TPS and has improved HUD layout.
-- Optional custom crosshair cursor.
 
 ### Fixed
-- Zoom near the level origin now centers on the pointer instead of the
-  upper-left corner.
-- Bench timers, overlay color and text spacing.
-- Zoom direction, pan clamping and bottom clamp issues.
-- Viewport panning and centering calculations.
-- Crosshair transparency and HUD alignment during resize.
-- Stage resize handling on zero-size displays.
 
 ### Changed
-- Project now requires Node.js 20+ (tests use Node 20 in CI).
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
 
+## [0.0.3] - 2025-06-08
+### Added
+- HQX and xBRZ scaling options for smoother graphics.
+- Frame step controls for debug playback.
+- Bench mode records spawn totals, spawns entrances near originals, randomizes direction and shows TPS.
+- Search tools track usage counts, capture no-result queries and support fuzzy matching.
+- Optional custom crosshair cursor.
+
+### Fixed
+- Zoom near the level origin centers on the pointer.
+- Bench timers, overlay color and text spacing.
+- Zoom direction, pan clamping and bottom clamp issues.
+- Viewport panning and centering calculations.
+- Crosshair transparency and HUD alignment during resize.
+- Stage and GUI alignment.
+- Stage layout reserves a bottom margin for the HUD.
+
+### Changed
+- Project now requires Node.js 20+.
 
 ## [0.0.2] - 2025-06-04
 ### Added
@@ -85,5 +92,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Optimized hot loops and memory usage with typed arrays and caching.
 - Grid-based trigger management and requestAnimationFrame timing.
 - Better error propagation, modular code, and partial JSDoc coverage.
+
+## [0.0.0] - 2025-05-31
+### Added
+- First playable JavaScript port with level and sprite assets.
+- PWA manifest, icons and mobile layout improvements.
+- Early WebMIDI integration with device selection.
+- Basic minimap prototype and debug logging toggles.
+- Initial documentation including file format notes.
+
+### Fixed
+- Crash fixes for floating lemmings and arrow triggers.
+- Early steel detection and trap collision issues.
+
+### Changed
+- Removed incomplete sound and music code.
+- General performance and CSS tweaks.
 
 <!-- Keep this changelog updated with future changes. -->
