@@ -169,4 +169,36 @@ describe('Game', function() {
     expect(game.onGameEnd).to.equal(null);
     expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.UNKNOWN);
   });
+
+  it('logs and skips logic when ticking without a loaded level', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    let ticked = 0;
+    const msgs = [];
+    game.lemmingManager = { tick: () => { ticked++; } };
+    game.log.log = m => msgs.push(m);
+    game.onGameTimerTick();
+    expect(ticked).to.equal(0);
+    expect(msgs).to.eql(['level not loaded!']);
+  });
+
+  it('getGameState returns final state when already determined', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    game.finalGameState = Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
+    expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
+  });
+
+  it('checkForGameOver finalizes and triggers event', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    game.gameVictoryCondition = new Lemmings.GameVictoryCondition();
+    game.getGameState = () => Lemmings.GameStateTypes.SUCCEEDED;
+    let ended = 0;
+    game.onGameEnd.on(() => { ended++; });
+    game.checkForGameOver();
+    expect(game.gameVictoryCondition.finalizeCalled).to.equal(1);
+    expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.SUCCEEDED);
+    expect(ended).to.equal(1);
+  });
 });
