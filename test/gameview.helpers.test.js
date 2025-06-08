@@ -137,7 +137,8 @@ describe('moveToLevel transitions', function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 1;
@@ -146,13 +147,15 @@ describe('moveToLevel transitions', function () {
     expect(view.levelIndex).to.equal(0);
     expect(view.gameType).to.equal(1);
     expect(requests).to.eql([]);
+    expect(calls).to.equal(1);
   });
 
   it('advances to next game type when past last group', async function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 1;
@@ -162,18 +165,55 @@ describe('moveToLevel transitions', function () {
     expect(view.levelGroupIndex).to.equal(0);
     expect(view.levelIndex).to.equal(0);
     expect(requests).to.eql([2]);
+    expect(calls).to.equal(1);
   });
 
   it('moves to previous group when level goes negative', async function () {
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
-    view.loadLevel = async () => {};
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
     view.levelIndex = 0;
     view.levelGroupIndex = 1;
     view.gameType = 1;
     await view.moveToLevel(-1);
     expect(view.levelGroupIndex).to.equal(0);
     expect(view.levelIndex).to.equal(0);
+    expect(calls).to.equal(1);
+  });
+
+  it('ignores backward move from the first level of the first group', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameFactory = new GameFactoryMock();
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
+    view.levelIndex = 0;
+    view.levelGroupIndex = 0;
+    view.gameType = 1;
+    await view.moveToLevel(-1);
+    expect(view.levelIndex).to.equal(0);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.gameType).to.equal(1);
+    expect(calls).to.equal(0);
+    expect(requests).to.eql([]);
+  });
+
+  it('resets invalid game type and reloads resources', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.gameFactory = new GameFactoryMock();
+    let calls = 0;
+    view.loadLevel = async () => { calls++; };
+    view.levelIndex = 0;
+    view.levelGroupIndex = 0;
+    view.gameType = 2; // not in GameTypes keys
+    await view.moveToLevel(0);
+    expect(view.gameType).to.equal(1);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.levelIndex).to.equal(0);
+    expect(calls).to.equal(1);
+    expect(requests).to.eql([1]);
   });
 });
