@@ -498,6 +498,11 @@ class GameView extends Lemmings.BaseLogger {
     this._benchMeasureExtras = false;
     await this.loadLevel();
     const level = this.game.level;
+    if (this.stage) {
+      const stageImage = this.stage.gameImgProps;
+      this.stage.applyViewport(stageImage, level.screenPositionX, 0, 4);
+      this.stage.redraw();
+    }
     const cfg = this.configs?.find(c => c.gametype === this.gameType);
     const pack = cfg?.name || this.gameType;
     const group = this.gameResources.getLevelGroups()[this.levelGroupIndex];
