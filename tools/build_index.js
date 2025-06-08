@@ -19,17 +19,6 @@ const MODES = argv.mode === 'all' ? ['prose', 'code'] : [argv.mode];
 const CHUNK = +argv.chunk;
 const DIMS = +argv.dims;
 const ROOT = process.cwd();
-const metricsDir = path.join(ROOT, '.repoMetrics');
-await fs.mkdir(metricsDir, { recursive: true });
-const usagePath = path.join(metricsDir, 'usageCounts.json');
-let usage = {};
-try {
-  usage = JSON.parse(await fs.readFile(usagePath, 'utf8'));
-} catch {
-  usage = {};
-}
-usage.build_index = (usage.build_index || 0) + 1;
-await fs.writeFile(usagePath, JSON.stringify(usage) + '\n');
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'coverage', 'index-code', 'index-prose',
   'lemmings', 'lemmings_all', 'lemmings_ohNo', 'holiday93', 'holiday94',

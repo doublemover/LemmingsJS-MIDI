@@ -11,7 +11,6 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const METRICS_FILE = path.join('.repoMetrics', 'metrics.json');
-const USAGE_FILE = path.join('.repoMetrics', 'usageCounts.json');
 mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
 
 function parseMetrics(data, label) {
@@ -48,12 +47,6 @@ function loadMasterMetrics() {
   return parseMetrics(res.stdout, 'master');
 }
 
-function loadMasterUsage() {
-  const res = spawnSync('git', ['show', `master:${USAGE_FILE}`], { encoding: 'utf8' });
-  if (res.status !== 0) return {};
-  try { return JSON.parse(res.stdout); } catch { return {}; }
-}
-
 function loadLocalMetrics() {
   if (!existsSync(METRICS_FILE)) return {};
   const data = readFileSync(METRICS_FILE, 'utf8');
@@ -63,16 +56,6 @@ function loadLocalMetrics() {
     process.exit(1);
   }
   return parsed;
-}
-
-function loadLocalUsage() {
-  if (!existsSync(USAGE_FILE)) return {};
-  try {
-    return JSON.parse(readFileSync(USAGE_FILE, 'utf8'));
-  } catch {
-    console.error('Local usageCounts.json is invalid');
-    process.exit(1);
-  }
 }
 
 function mergeMetrics(base, extra) {
@@ -85,19 +68,9 @@ function mergeMetrics(base, extra) {
   }
 }
 
-function mergeUsage(base, extra) {
-  for (const [k, v] of Object.entries(extra)) {
-    base[k] = (base[k] || 0) + (v || 0);
-  }
-}
-
 const masterData = loadMasterMetrics();
 const localData = loadLocalMetrics();
 mergeMetrics(masterData, localData);
-
-const masterUsage = loadMasterUsage();
-const localUsage = loadLocalUsage();
-mergeUsage(masterUsage, localUsage);
 
 let json;
 try {
@@ -108,20 +81,10 @@ try {
   process.exit(1);
 }
 
-let usageJson;
-try {
-  usageJson = JSON.stringify(masterUsage);
-  JSON.parse(usageJson);
-} catch {
-  console.error('Merged usage counts not valid JSON');
-  process.exit(1);
-}
-
 if (existsSync('.repoMetrics') && !statSync('.repoMetrics').isDirectory()) {
   unlinkSync('.repoMetrics');
 }
 mkdirSync('.repoMetrics', { recursive: true });
 writeFileSync(METRICS_FILE, json + '\n');
-writeFileSync(USAGE_FILE, usageJson + '\n');
 console.log('Updated .repoMetrics');
 

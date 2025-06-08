@@ -600,13 +600,4 @@ if (totalMdFiles === 0 && totalCodeFiles === 0) {
   );
 }
 
-// Update usage counts
-const usagePath = path.join(metricsDir, 'usageCounts.json');
-let usage = {};
-try {
-  usage = JSON.parse(await fs.readFile(usagePath, 'utf8'));
-} catch {
-  usage = {};
-}
-usage.search = (usage.search || 0) + 1;
-await fs.writeFile(usagePath, JSON.stringify(usage) + '\n');
+updateUsageCounts('search');

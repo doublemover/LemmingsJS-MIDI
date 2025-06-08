@@ -1,5 +1,7 @@
 <<<<<<< tmp_merge/ours_.agentInfo_notes_game-resources.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_game-resources.md
+=======
 # GameResources note
 
 tags: resources, caching
@@ -19,4 +21,5 @@ assets.
 
 The cursor graphic from `MAIN.DAT` uses a 14×14 `PaletteImage` maybe, user is checking it. Anything larger smears at the edges.
 
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_game-resources.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_game-resources.md
