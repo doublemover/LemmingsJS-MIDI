@@ -294,6 +294,7 @@
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
 {"time":"2025-06-08T08:57:08.729Z","query":"setHistoryState","mdFiles":44,"codeFiles":154,"ms":538}
-{"time":"2025-06-08T09:40:26.542Z","query":"skill application","mdFiles":29,"codeFiles":49,"ms":286}
-{"time":"2025-06-08T09:40:28.486Z","query":"skill application","mdFiles":29,"codeFiles":49,"ms":323}
-{"time":"2025-06-08T10:04:32.275Z","query":"zoom sensitivity","mdFiles":8,"codeFiles":11,"ms":173}
+{"time":"2025-06-08T09:36:06.318Z","query":"loadLevel level","mdFiles":62,"codeFiles":142,"ms":264}
+{"time":"2025-06-08T09:36:08.721Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":395}
+{"time":"2025-06-08T09:53:04.707Z","query":"TODO","mdFiles":12,"codeFiles":1,"ms":205}
+{"time":"2025-06-08T09:53:07.552Z","query":"TODO","mdFiles":12,"codeFiles":1,"ms":378}
