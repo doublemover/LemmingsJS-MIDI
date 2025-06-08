@@ -470,7 +470,8 @@ class GameView extends Lemmings.BaseLogger {
     this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes[Lemmings.GameStateTypes.UNKNOWN]);
     const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
     if (!level) return;
-    console.log(`starting bench series for ${level.name} in ${group} in ${pack}, adding ${entrances} entrances with ${this.extraLemmings} extra lemmings`);
+    const lvlName = level.name ? level.name.trim() : '';
+    console.log(`starting bench series for ${lvlName} in ${group} in ${pack}, adding ${entrances} entrances with ${this.extraLemmings} extra lemmings`);
 
     if (!this._benchBaseEntrances) {
       this._benchBaseEntrances = level.entrances.slice();
