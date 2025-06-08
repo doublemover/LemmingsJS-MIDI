@@ -81,4 +81,15 @@ describe('SmoothScroller', function() {
     ss.update();
     expect(ss.velocity).to.equal(0);
   });
+
+  it('hasVelocity respects minVelocity', function() {
+    const ss = new SmoothScroller();
+    ss.minVelocity = 2;
+    ss.velocity = 0;
+    expect(ss.hasVelocity()).to.equal(false);
+    ss.velocity = 1.5;
+    expect(ss.hasVelocity()).to.equal(false);
+    ss.velocity = 2.5;
+    expect(ss.hasVelocity()).to.equal(true);
+  });
 });
