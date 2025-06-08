@@ -31,7 +31,7 @@ if (!query) {
 
 const t0 = Date.now();
 const ROOT = process.cwd();
-const metricsDir = path.join(ROOT, '.searchMetrics');
+const metricsDir = path.join(ROOT, '.repoMetrics');
 const contextLines = Math.max(0, parseInt(argv.context, 10) || 0);
 
 /* --- Tokeniser + regex for highlighting --- */
@@ -544,7 +544,7 @@ if (argv.stats) {
   );
 }
 
-/* ---------- Update .searchMetrics and .searchHistory ---------- */
+/* ---------- Update .repoMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
 const noResultPath = path.join(metricsDir, 'noResultQueries');

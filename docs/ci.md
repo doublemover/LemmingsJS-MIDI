@@ -22,7 +22,7 @@ The CI job performs the following steps:
 
 All tests must pass before code is merged.
 
-The repository also runs [`automerge-metrics.yml`](../.github/workflows/automerge-metrics.yml).
+The repository also runs [`automerge-history.yml`](../.github/workflows/automerge-history.yml).
 This job keeps `.repoMetrics/searchHistory` in sync with the history from
 `master` whenever a pull request is opened or updated. It fetches the file from
 `origin/master`, appends any missing lines and commits the change back to the PR

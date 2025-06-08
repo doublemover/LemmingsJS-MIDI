@@ -10,7 +10,7 @@ import {
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
-const METRICS_FILE = path.join('.searchMetrics', 'metrics.json');
+const METRICS_FILE = path.join('.repoMetrics', 'metrics.json');
 mkdirSync(path.dirname(METRICS_FILE), { recursive: true });
 
 function parseMetrics(data, label) {
@@ -27,7 +27,7 @@ function parseMetrics(data, label) {
       const parsed = JSON.parse(repaired);
       return normalizeMetrics(parsed);
     } catch {
-      if (label) console.warn(`Warning: unable to parse ${label} .searchMetrics`);
+      if (label) console.warn(`Warning: unable to parse ${label} .repoMetrics`);
       return {};
     }
   }
@@ -52,7 +52,7 @@ function loadLocalMetrics() {
   const data = readFileSync(METRICS_FILE, 'utf8');
   const parsed = parseMetrics(data, 'local');
   if (Object.keys(parsed).length === 0 && data.trim()) {
-    console.error('Local .searchMetrics is invalid JSON');
+    console.error('Local .repoMetrics is invalid JSON');
     process.exit(1);
   }
   return parsed;
@@ -81,10 +81,10 @@ try {
   process.exit(1);
 }
 
-if (existsSync('.searchMetrics') && !statSync('.searchMetrics').isDirectory()) {
-  unlinkSync('.searchMetrics');
+if (existsSync('.repoMetrics') && !statSync('.repoMetrics').isDirectory()) {
+  unlinkSync('.repoMetrics');
 }
-mkdirSync('.searchMetrics', { recursive: true });
+mkdirSync('.repoMetrics', { recursive: true });
 writeFileSync(METRICS_FILE, json + '\n');
-console.log('Updated .searchMetrics');
+console.log('Updated .repoMetrics');
 
