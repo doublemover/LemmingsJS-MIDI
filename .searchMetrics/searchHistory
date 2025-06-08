@@ -27,59 +27,57 @@
 {"time":"2025-06-06T07:09:06.594Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":133}
 {"time":"2025-06-06T07:09:10.566Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":218}
 {"time":"2025-06-06T07:09:13.505Z","query":"drawCornerRect","mdFiles":16,"codeFiles":69,"ms":178}
+{"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
+{"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
 {"time":"2025-06-06T07:47:01.121Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":234}
 {"time":"2025-06-06T07:47:03.815Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":117}
 {"time":"2025-06-06T07:47:15.212Z","query":"lemming","mdFiles":32,"codeFiles":185,"ms":645}
 {"time":"2025-06-06T07:47:17.462Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":279}
 {"time":"2025-06-06T07:47:19.956Z","query":"select cursor","mdFiles":19,"codeFiles":27,"ms":121}
 {"time":"2025-06-06T07:48:07.958Z","query":"select lemming","mdFiles":35,"codeFiles":186,"ms":549}
-{"time":"2025-06-06T07:41:48.183Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":184}
-{"time":"2025-06-06T07:41:50.563Z","query":"nearest","mdFiles":5,"codeFiles":6,"ms":83}
 {"time":"2025-06-06T08:17:28.599Z","query":"check-undefined","mdFiles":20,"codeFiles":22,"ms":73}
 {"time":"2025-06-06T13:16:16.584Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":88}
 {"time":"2025-06-06T13:16:18.527Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":140}
+{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
+{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
 {"time":"2025-06-06T13:17:32.782Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":269}
 {"time":"2025-06-06T13:17:40.001Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":225}
 {"time":"2025-06-06T13:17:48.131Z","query":"calcPosition2D","mdFiles":0,"codeFiles":13,"ms":377}
-{"time":"2025-06-06T13:16:40.635Z","query":"startOverlayFade","mdFiles":22,"codeFiles":28,"ms":133}
-{"time":"2025-06-06T13:16:56.735Z","query":"overlayRect","mdFiles":12,"codeFiles":28,"ms":157}
 {"time":"2025-06-06T13:18:04.991Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":228}
 {"time":"2025-06-06T13:18:11.006Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":208}
 {"time":"2025-06-06T13:18:13.381Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":155}
 {"time":"2025-06-06T13:18:16.629Z","query":"displayWidth","mdFiles":18,"codeFiles":91,"ms":132}
 {"time":"2025-06-06T13:18:18.767Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":139}
-{"time":"2025-06-06T14:48:22.649Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":138}
-{"time":"2025-06-06T15:22:25.673Z","query":"node-version","mdFiles":20,"codeFiles":38,"ms":686}
-{"time":"2025-06-06T15:21:43.636Z","query":"dependency-review-action","mdFiles":15,"codeFiles":38,"ms":309}
-{"time":"2025-06-06T14:49:45.520Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":223}
-{"time":"2025-06-06T14:49:48.716Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":229}
-{"time":"2025-06-06T14:49:50.573Z","query":"snapScale","mdFiles":8,"codeFiles":24,"ms":129}
-{"time":"2025-06-06T14:47:43.263Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":1019}
-{"time":"2025-06-06T14:47:50.147Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":843}
-{"time":"2025-06-06T14:47:51.959Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":836}
-{"time":"2025-06-06T14:58:53.797Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":334}
-{"time":"2025-06-06T14:54:30.664Z","query":"test","mdFiles":15,"codeFiles":17,"ms":262}
-{"time":"2025-06-06T14:38:10.919Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":768}
-{"time":"2025-06-06T14:38:13.429Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":476}
-{"time":"2025-06-06T14:38:16.750Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1571}
-{"time":"2025-06-06T14:38:19.130Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":890}
-{"time":"2025-06-06T14:38:22.014Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":527}
-{"time":"2025-06-06T14:38:23.608Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":339}
-{"time":"2025-06-06T14:38:26.832Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1814}
-{"time":"2025-06-06T14:38:29.174Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":582}
-{"time":"2025-06-06T14:38:08.593Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":908}
-{"time":"2025-06-06T14:38:13.220Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":2066}
-{"time":"2025-06-06T14:38:17.113Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1907}
-{"time":"2025-06-06T14:38:20.734Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1475}
-{"time":"2025-06-06T14:38:25.814Z","query":"LevelIndexType","mdFiles":43,"codeFiles":137,"ms":2666}
 {"time":"2025-06-06T14:37:35.062Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":220}
 {"time":"2025-06-06T14:37:37.635Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":358}
 {"time":"2025-06-06T14:37:40.700Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":89}
 {"time":"2025-06-06T14:37:52.439Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":357}
+{"time":"2025-06-06T14:38:08.593Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":908}
+{"time":"2025-06-06T14:38:10.919Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":768}
+{"time":"2025-06-06T14:38:13.220Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":2066}
+{"time":"2025-06-06T14:38:13.429Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":476}
+{"time":"2025-06-06T14:38:16.750Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1571}
+{"time":"2025-06-06T14:38:17.113Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1907}
+{"time":"2025-06-06T14:38:19.130Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":890}
+{"time":"2025-06-06T14:38:20.734Z","query":"LevelIndexResolve","mdFiles":44,"codeFiles":116,"ms":1475}
+{"time":"2025-06-06T14:38:22.014Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":527}
+{"time":"2025-06-06T14:38:23.608Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":339}
+{"time":"2025-06-06T14:38:25.814Z","query":"LevelIndexType","mdFiles":43,"codeFiles":137,"ms":2666}
+{"time":"2025-06-06T14:38:26.832Z","query":"BaseImageInfo","mdFiles":26,"codeFiles":98,"ms":1814}
+{"time":"2025-06-06T14:38:29.174Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":582}
 {"time":"2025-06-06T14:38:55.848Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":139}
 {"time":"2025-06-06T14:38:57.714Z","query":"MapObject","mdFiles":32,"codeFiles":84,"ms":81}
-{"time":"2025-06-06T20:47:34.006Z","query":"L2SS","mdFiles":0,"codeFiles":0,"ms":43}
-{"time":"2025-06-06T20:47:36.798Z","query":"l2ss","mdFiles":0,"codeFiles":0,"ms":30}
+{"time":"2025-06-06T14:47:43.263Z","query":"TerrainImageInfo","mdFiles":29,"codeFiles":56,"ms":1019}
+{"time":"2025-06-06T14:47:50.147Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":843}
+{"time":"2025-06-06T14:47:51.959Z","query":"ObjectImageInfo","mdFiles":42,"codeFiles":89,"ms":836}
+{"time":"2025-06-06T14:48:22.649Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":138}
+{"time":"2025-06-06T14:49:45.520Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":223}
+{"time":"2025-06-06T14:49:48.716Z","query":"setGameViewPointPosition","mdFiles":51,"codeFiles":158,"ms":229}
+{"time":"2025-06-06T14:49:50.573Z","query":"snapScale","mdFiles":8,"codeFiles":24,"ms":129}
+{"time":"2025-06-06T14:54:30.664Z","query":"test","mdFiles":15,"codeFiles":17,"ms":262}
+{"time":"2025-06-06T14:58:53.797Z","query":"scaleNearest","mdFiles":11,"codeFiles":28,"ms":334}
+{"time":"2025-06-06T15:21:43.636Z","query":"dependency-review-action","mdFiles":15,"codeFiles":38,"ms":309}
+{"time":"2025-06-06T15:22:25.673Z","query":"node-version","mdFiles":20,"codeFiles":38,"ms":686}
 {"time":"2025-06-06T16:07:35.621Z","query":"l2gfx","mdFiles":0,"codeFiles":0,"ms":82}
 {"time":"2025-06-06T16:07:37.410Z","query":"style","mdFiles":5,"codeFiles":8,"ms":122}
 {"time":"2025-06-06T16:07:39.581Z","query":"style","mdFiles":5,"codeFiles":8,"ms":76}
@@ -91,7 +89,6 @@
 {"time":"2025-06-06T16:09:59.853Z","query":"GSCM","mdFiles":0,"codeFiles":0,"ms":207}
 {"time":"2025-06-06T16:10:02.884Z","query":"FORM","mdFiles":1,"codeFiles":1,"ms":139}
 {"time":"2025-06-06T16:10:06.141Z","query":"FORM","mdFiles":1,"codeFiles":1,"ms":146}
-{"time":"2025-06-06T16:30:16.514Z","query":"parseNumber","mdFiles":18,"codeFiles":56,"ms":193}
 {"time":"2025-06-06T16:27:27.923Z","query":"SkillPanelSprites","mdFiles":29,"codeFiles":83,"ms":315}
 {"time":"2025-06-06T16:27:31.352Z","query":"SkillPanelSprite","mdFiles":29,"codeFiles":83,"ms":475}
 {"time":"2025-06-06T16:27:44.914Z","query":"new Frame","mdFiles":22,"codeFiles":161,"ms":244}
@@ -101,6 +98,7 @@
 {"time":"2025-06-06T16:27:53.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":183}
 {"time":"2025-06-06T16:27:55.194Z","query":"new Frame(","mdFiles":22,"codeFiles":161,"ms":372}
 {"time":"2025-06-06T16:28:22.964Z","query":"UserInputManager dispose","mdFiles":26,"codeFiles":53,"ms":429}
+{"time":"2025-06-06T16:30:16.514Z","query":"parseNumber","mdFiles":18,"codeFiles":56,"ms":193}
 {"time":"2025-06-06T16:32:41.889Z","query":"displayHeight","mdFiles":20,"codeFiles":90,"ms":123}
 {"time":"2025-06-06T16:32:44.532Z","query":"stagePixW","mdFiles":12,"codeFiles":51,"ms":181}
 {"time":"2025-06-06T16:32:48.902Z","query":"updateViewPoint","mdFiles":25,"codeFiles":36,"ms":144}
@@ -114,49 +112,60 @@
 {"time":"2025-06-06T17:35:50.310Z","query":"bench","mdFiles":13,"codeFiles":10,"ms":118}
 {"time":"2025-06-06T17:42:52.743Z","query":"TPS","mdFiles":0,"codeFiles":0,"ms":38}
 {"time":"2025-06-06T17:42:56.088Z","query":"bench TPS","mdFiles":13,"codeFiles":10,"ms":268}
-{"time":"2025-06-06T21:09:47.040Z","query":"KeyboardShortcuts loop","mdFiles":12,"codeFiles":21,"ms":319}
-{"time":"2025-06-06T21:06:55.008Z","query":"l2bitmap","mdFiles":0,"codeFiles":0,"ms":164}
+{"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
 {"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
 {"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
-{"time":"2025-06-06T20:40:13.600Z","query":"skip tests","mdFiles":18,"codeFiles":31,"ms":78}
 {"time":"2025-06-06T20:40:16.601Z","query":"ensure tests pass","mdFiles":27,"codeFiles":28,"ms":107}
+{"time":"2025-06-06T20:47:34.006Z","query":"L2SS","mdFiles":0,"codeFiles":0,"ms":43}
+{"time":"2025-06-06T20:47:36.798Z","query":"l2ss","mdFiles":0,"codeFiles":0,"ms":30}
 {"time":"2025-06-06T20:54:32.218Z","query":"scale 2","mdFiles":21,"codeFiles":151,"ms":638}
+{"time":"2025-06-06T21:06:55.008Z","query":"l2bitmap","mdFiles":0,"codeFiles":0,"ms":164}
+{"time":"2025-06-06T21:09:47.040Z","query":"KeyboardShortcuts loop","mdFiles":12,"codeFiles":21,"ms":319}
 {"time":"2025-06-06T21:19:33.257Z","query":"EventHandler","mdFiles":14,"codeFiles":97,"ms":135}
 {"time":"2025-06-06T21:41:09.905Z","query":"worldDataSize","mdFiles":27,"codeFiles":116,"ms":312}
 {"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}
-{"time":"2025-06-07T21:20:38.998Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":260}
-{"time":"2025-06-07T21:20:41.431Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":403}
 {"time":"2025-06-06T21:41:12.451Z","query":"getWidth","mdFiles":19,"codeFiles":167,"ms":215}
 {"time":"2025-06-07T05:42:43.376Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":80}
 {"time":"2025-06-07T05:42:45.819Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":84}
 {"time":"2025-06-07T05:42:48.124Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
 {"time":"2025-06-07T05:42:53.925Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":82}
 {"time":"2025-06-07T05:42:56.042Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":81}
+{"time":"2025-06-07T21:20:38.998Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":260}
+{"time":"2025-06-07T21:20:41.431Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":29,"ms":403}
 {"time":"2025-06-07T22:05:19.362Z","query":"instant nuke","mdFiles":9,"codeFiles":12,"ms":806}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
+{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}
 {"time":"2025-06-07T22:08:46.709Z","query":"updateStageSize","mdFiles":29,"codeFiles":84,"ms":113}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:31.992Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":125}
-{"time":"2025-06-07T22:59:34.753Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":150}
-{"time":"2025-06-07T22:59:37.786Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":221}
-{"time":"2025-06-07T22:59:40.243Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":141}
-{"time":"2025-06-07T22:59:43.143Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":119}
-{"time":"2025-06-07T22:59:46.213Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":344}
-{"time":"2025-06-07T22:59:49.074Z","query":"getNearestLemming","mdFiles":41,"codeFiles":227,"ms":545}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:12.945Z","query":"walking","mdFiles":4,"codeFiles":28,"ms":240}
-{"time":"2025-06-07T22:59:14.653Z","query":"walking","mdFiles":4,"codeFiles":28,"ms":130}
-{"time":"2025-06-07T22:59:16.519Z","query":"climbing state","mdFiles":8,"codeFiles":58,"ms":176}
-{"time":"2025-06-07T22:59:18.132Z","query":"explode","mdFiles":2,"codeFiles":16,"ms":85}
-{"time":"2025-06-07T22:59:28.734Z","query":"Lemming","mdFiles":36,"codeFiles":222,"ms":663}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:01:25.034Z","query":"scaleNearest","mdFiles":13,"codeFiles":42,"ms":102}
-{"time":"2025-06-07T23:01:31.127Z","query":"scaleNearest","mdFiles":13,"codeFiles":42,"ms":110}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:31.970Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":115}
-{"time":"2025-06-07T22:59:33.772Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":89}
-{"time":"2025-06-07T22:59:35.584Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":105}
-{"time":"2025-06-07T22:59:40.682Z","query":"log handler","mdFiles":12,"codeFiles":108,"ms":135}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:07:31.820Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":70}
-{"time":"2025-06-07T23:07:35.800Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":115}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:52:52.120Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":653}
+{"time":"2025-06-07T22:51:32.761Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":300}
+{"time":"2025-06-07T22:51:34.958Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":590}
+{"time":"2025-06-07T22:51:36.603Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":315}
+{"time":"2025-06-07T22:51:44.210Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":331}
+{"time":"2025-06-07T22:51:46.639Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":640}
+{"time":"2025-06-07T22:52:52.120Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":653}
+{"time":"2025-06-07T22:52:56.587Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
+{"time":"2025-06-07T22:52:58.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":134}
+{"time":"2025-06-07T22:53:01.913Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":135}
+{"time":"2025-06-07T22:53:04.024Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
+{"time":"2025-06-07T22:53:06.393Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":123}
+{"time":"2025-06-07T22:53:08.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":153}
+{"time":"2025-06-07T22:53:10.733Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":190}
+{"time":"2025-06-07T22:53:12.877Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":141}
 {"time":"2025-06-07T22:53:16.163Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":588}
+{"time":"2025-06-07T22:53:18.416Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":138}
 {"time":"2025-06-07T22:53:20.716Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":626}
+{"time":"2025-06-07T22:53:20.731Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":160}
+{"time":"2025-06-07T22:53:23.742Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":173}
 {"time":"2025-06-07T22:53:33.817Z","query":"skillpane","mdFiles":0,"codeFiles":0,"ms":69}
 {"time":"2025-06-07T22:53:36.966Z","query":"skillpane","mdFiles":0,"codeFiles":0,"ms":121}
 {"time":"2025-06-07T22:53:40.460Z","query":"skillpanel","mdFiles":0,"codeFiles":0,"ms":146}
@@ -166,7 +175,31 @@
 {"time":"2025-06-07T22:53:53.937Z","query":"bitreader","mdFiles":0,"codeFiles":1,"ms":113}
 {"time":"2025-06-07T22:53:57.495Z","query":"BitReader","mdFiles":27,"codeFiles":73,"ms":259}
 {"time":"2025-06-07T22:54:02.775Z","query":"chunkScore","mdFiles":7,"codeFiles":9,"ms":162}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:29.314Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":232}
+{"time":"2025-06-07T22:59:06.504Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":126}
+{"time":"2025-06-07T22:59:10.125Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":270}
+{"time":"2025-06-07T22:59:12.945Z","query":"walking","mdFiles":4,"codeFiles":28,"ms":240}
+{"time":"2025-06-07T22:59:14.653Z","query":"walking","mdFiles":4,"codeFiles":28,"ms":130}
+{"time":"2025-06-07T22:59:16.519Z","query":"climbing state","mdFiles":8,"codeFiles":58,"ms":176}
+{"time":"2025-06-07T22:59:18.132Z","query":"explode","mdFiles":2,"codeFiles":16,"ms":85}
+{"time":"2025-06-07T22:59:28.734Z","query":"Lemming","mdFiles":36,"codeFiles":222,"ms":663}
+{"time":"2025-06-07T22:59:31.970Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":115}
+{"time":"2025-06-07T22:59:31.992Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":125}
+{"time":"2025-06-07T22:59:33.772Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":89}
+{"time":"2025-06-07T22:59:34.753Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":150}
+{"time":"2025-06-07T22:59:35.584Z","query":"LogHandler","mdFiles":12,"codeFiles":108,"ms":105}
+{"time":"2025-06-07T22:59:37.786Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":221}
+{"time":"2025-06-07T22:59:37.855Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":136}
+{"time":"2025-06-07T22:59:40.080Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":117}
+{"time":"2025-06-07T22:59:40.243Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":141}
+{"time":"2025-06-07T22:59:40.682Z","query":"log handler","mdFiles":12,"codeFiles":108,"ms":135}
+{"time":"2025-06-07T22:59:43.143Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":119}
+{"time":"2025-06-07T22:59:46.213Z","query":"MiniMap","mdFiles":12,"codeFiles":51,"ms":344}
+{"time":"2025-06-07T22:59:49.074Z","query":"getNearestLemming","mdFiles":41,"codeFiles":227,"ms":545}
+{"time":"2025-06-07T23:00:03.758Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":340}
+{"time":"2025-06-07T23:00:05.947Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":427}
+{"time":"2025-06-07T23:00:26.829Z","query":"GameGui drawPaused","mdFiles":48,"codeFiles":161,"ms":407}
+{"time":"2025-06-07T23:00:29.314Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":232}
+{"time":"2025-06-07T23:00:30.621Z","query":"handleSkillMouseDown","mdFiles":34,"codeFiles":78,"ms":343}
 {"time":"2025-06-07T23:00:32.185Z","query":"drawHover","mdFiles":16,"codeFiles":76,"ms":189}
 {"time":"2025-06-07T23:00:35.214Z","query":"drawCornerRect","mdFiles":18,"codeFiles":89,"ms":297}
 {"time":"2025-06-07T23:00:40.368Z","query":"hoverLemming","mdFiles":37,"codeFiles":222,"ms":277}
@@ -176,40 +209,18 @@
 {"time":"2025-06-07T23:00:49.243Z","query":"drawSelection","mdFiles":23,"codeFiles":89,"ms":198}
 {"time":"2025-06-07T23:00:54.088Z","query":"GameDisplay drawFrame","mdFiles":50,"codeFiles":182,"ms":265}
 {"time":"2025-06-07T23:00:59.853Z","query":"#drawHover","mdFiles":16,"codeFiles":76,"ms":231}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:26.829Z","query":"GameGui drawPaused","mdFiles":48,"codeFiles":161,"ms":407}
-{"time":"2025-06-07T23:00:30.621Z","query":"handleSkillMouseDown","mdFiles":34,"codeFiles":78,"ms":343}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:37.855Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":136}
-{"time":"2025-06-07T22:59:40.080Z","query":"_onKeyDown","mdFiles":23,"codeFiles":51,"ms":117}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:00:03.758Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":340}
-{"time":"2025-06-07T23:00:05.947Z","query":"GameResult","mdFiles":49,"codeFiles":165,"ms":427}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:59:06.504Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":126}
-{"time":"2025-06-07T22:59:10.125Z","query":"GameSkills","mdFiles":50,"codeFiles":157,"ms":270}
 {"time":"2025-06-07T23:01:16.040Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":128}
 {"time":"2025-06-07T23:01:19.348Z","query":"panel","mdFiles":12,"codeFiles":22,"ms":70}
 {"time":"2025-06-07T23:01:22.372Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":140}
+{"time":"2025-06-07T23:01:25.034Z","query":"scaleNearest","mdFiles":13,"codeFiles":42,"ms":102}
+{"time":"2025-06-07T23:01:31.127Z","query":"scaleNearest","mdFiles":13,"codeFiles":42,"ms":110}
 {"time":"2025-06-07T23:02:00.975Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":147}
 {"time":"2025-06-07T23:02:04.340Z","query":"panel color","mdFiles":19,"codeFiles":80,"ms":233}
 {"time":"2025-06-07T23:02:29.352Z","query":"skill panel","mdFiles":27,"codeFiles":49,"ms":95}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T22:51:32.761Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":300}
-{"time":"2025-06-07T22:51:34.958Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":590}
-{"time":"2025-06-07T22:51:36.603Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":315}
-{"time":"2025-06-07T22:51:44.210Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":331}
-{"time":"2025-06-07T22:51:46.639Z","query":"lemmings","mdFiles":36,"codeFiles":222,"ms":640}
-{"time":"2025-06-07T22:52:56.587Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
-{"time":"2025-06-07T22:52:58.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":134}
-{"time":"2025-06-07T22:53:01.913Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":135}
-{"time":"2025-06-07T22:53:04.024Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":125}
-{"time":"2025-06-07T22:53:06.393Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":123}
-{"time":"2025-06-07T22:53:08.646Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":153}
-{"time":"2025-06-07T22:53:10.733Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":190}
-{"time":"2025-06-07T22:53:12.877Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":141}
-{"time":"2025-06-07T22:53:18.416Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":138}
-{"time":"2025-06-07T22:53:20.731Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":160}
-{"time":"2025-06-07T22:53:23.742Z","query":"AGENTS guidelines","mdFiles":12,"codeFiles":2,"ms":173}
-{"time":"2025-06-07T22:07:06.614Z","query":"Stage.updateStageSize","mdFiles":29,"codeFiles":84,"ms":264}{"time":"2025-06-07T23:07:31.820Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":70}
+{"time":"2025-06-07T23:07:31.820Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":70}
+{"time":"2025-06-07T23:07:31.820Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":70}
 {"time":"2025-06-07T23:07:35.800Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":115}
-{"time":"2025-06-08T00:32:06.491Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":230}
-{"time":"2025-06-08T00:32:08.130Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":91}
+{"time":"2025-06-07T23:07:35.800Z","query":"solidlayer","mdFiles":1,"codeFiles":1,"ms":115}
 {"time":"2025-06-08T00:27:57.757Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":95}
 {"time":"2025-06-08T00:27:59.642Z","query":"benchSeries","mdFiles":13,"codeFiles":18,"ms":96}
 {"time":"2025-06-08T00:28:01.977Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":95}
@@ -217,6 +228,8 @@
 {"time":"2025-06-08T00:28:06.957Z","query":"bench","mdFiles":13,"codeFiles":18,"ms":266}
 {"time":"2025-06-08T00:28:22.797Z","query":"benchseries","mdFiles":0,"codeFiles":0,"ms":62}
 {"time":"2025-06-08T00:28:31.199Z","query":"benchSequence","mdFiles":14,"codeFiles":18,"ms":184}
+{"time":"2025-06-08T00:29:10.615Z","query":"bench sequence","mdFiles":14,"codeFiles":18,"ms":64}
 {"time":"2025-06-08T00:30:44.526Z","query":"entrances","mdFiles":4,"codeFiles":8,"ms":107}
 {"time":"2025-06-08T00:30:46.783Z","query":"entrances","mdFiles":4,"codeFiles":8,"ms":223}
-{"time":"2025-06-08T00:29:10.615Z","query":"bench sequence","mdFiles":14,"codeFiles":18,"ms":64}
+{"time":"2025-06-08T00:32:06.491Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":230}
+{"time":"2025-06-08T00:32:08.130Z","query":"ActionBaseSystem","mdFiles":29,"codeFiles":93,"ms":91}
