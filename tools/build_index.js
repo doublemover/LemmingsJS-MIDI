@@ -22,7 +22,7 @@ const ROOT = process.cwd();
 const SKIP_DIRS = new Set([
   'node_modules', '.git', 'dist', 'coverage', 'index-code', 'index-prose',
   'lemmings', 'lemmings_all', 'lemmings_ohNo', 'holiday93', 'holiday94',
-  'xmas91', 'xmas92', 'img', '.github', '.searchMetrics'
+  'xmas91', 'xmas92', 'img', '.github', '.repoMetrics', 'exports', 'css'
 ]);
 
 
@@ -113,8 +113,11 @@ async function build(mode) {
     '.jshintignore',
     '.eslint.config.js',
     'site.webmanifest',
-    'jquery',
-    'webmidi.js'
+    'jquery.js',
+    'webmidi.js',
+    'noresultqueries',
+    'metrics.json',
+    'fileformat.txt'
   ]);
 
   /* -- INGEST A SINGLE FILE: read/normalize/extract text, THEN build chunks -- */

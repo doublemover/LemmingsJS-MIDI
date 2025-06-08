@@ -32,7 +32,7 @@ if (!query) {
 
 const t0 = Date.now();
 const ROOT = process.cwd();
-const metricsDir = path.join(ROOT, '.searchMetrics');
+const metricsDir = path.join(ROOT, '.repoMetrics');
 const contextLines = Math.max(0, parseInt(argv.context, 10) || 0);
 
 /* --- Tokeniser + regex for highlighting --- */
@@ -291,20 +291,27 @@ function agentText() {
     if (SHOW_SNIPPET_MD) {
       const md1 = mdHitsAll[0];
       const [l1] = md1.realPos.length ? md1.realPos[0] : [1, 1];
-      const textMd = fsSync.readFileSync(path.join(ROOT, md1.file), 'utf8');
-      const linesMd = textMd.split(/\r?\n/);
+      let linesMd = [];
+      if (fsSync.existsSync(path.join(ROOT, md1.file))) {
+        const textMd = fsSync.readFileSync(path.join(ROOT, md1.file), 'utf8');
+        linesMd = textMd.split(/\r?\n/);
+      }
       const z1 = l1 - 1;
       const st1 = Math.max(0, z1 - contextLines);
       const en1 = Math.min(linesMd.length, z1 + contextLines + 1);
 
       const scoreMd1 = colorScore(md1.score, maxMdScore).padEnd(4);
+      const fnPart = md1.enclosingFunction
+        ? ` (func: ${md1.enclosingFunction})`
+        : '';
       out += `[${scoreMd1}] ` +
         c.magentaBright(path.basename(md1.file)) +
         fnPart +
         '\n';
       for (let i = st1; i < en1; i++) {
         const num = c.green(String(i + 1).padStart(4));
-        const hl = linesMd[i].replace(rx, (m) => c.bold.yellowBright(m));
+        const line = linesMd[i] || '';
+        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
         out += num + ' ' + hl + '\n';
       }
       out += '\n';
@@ -344,19 +351,26 @@ function agentText() {
     for (let i = 0; i < SHOW_SNIPPET_CODE; i++) {
       const h = codeHitsAll[i];
       const [lc] = h.realPos.length ? h.realPos[0] : [1, 1];
-      const textC = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
-      const linesC = textC.split(/\r?\n/);
+      let linesC = [];
+      if (fsSync.existsSync(path.join(ROOT, h.file))) {
+        const textC = fsSync.readFileSync(path.join(ROOT, h.file), 'utf8');
+        linesC = textC.split(/\r?\n/);
+      }
       const zc = lc - 1;
       const stC = Math.max(0, zc - contextLines);
       const enC = Math.min(linesC.length, zc + contextLines + 1);
       const sc = colorScore(h.score, maxCodeScore).padEnd(4);
+      const fnPart = h.enclosingFunction
+        ? ` (func: ${h.enclosingFunction})`
+        : '';
       out += `[${sc}] ` +
         c.blueBright(path.basename(h.file)) +
         fnPart +
         '\n';
       for (let j = stC; j < enC; j++) {
         const num = c.green(String(j + 1).padStart(4));
-        const hl = linesC[j].replace(rx, (m) => c.bold.yellowBright(m));
+        const line = linesC[j] || '';
+        const hl = line.replace(rx, (m) => c.bold.yellowBright(m));
         out += num + ' ' + hl + '\n';
       }
       out += '\n';
@@ -545,7 +559,7 @@ if (argv.stats) {
   );
 }
 
-/* ---------- Update .searchMetrics and .searchHistory ---------- */
+/* ---------- Update .repoMetrics and .searchHistory ---------- */
 const metricsPath = path.join(metricsDir, 'metrics.json');
 const historyPath = path.join(metricsDir, 'searchHistory');
 const noResultPath = path.join(metricsDir, 'noResultQueries');

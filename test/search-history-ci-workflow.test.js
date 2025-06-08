@@ -2,11 +2,11 @@ import { expect } from 'chai';
 import fs from 'fs';
 import yaml from 'js-yaml';
 
-describe('automerge-history workflow', function () {
+describe('automerge-metrics workflow', function () {
   it('syncs tools from master', function () {
-    const text = fs.readFileSync('.github/workflows/automerge-history.yml', 'utf8');
+    const text = fs.readFileSync('.github/workflows/automerge-metrics.yml', 'utf8');
     const config = yaml.load(text);
-    const steps = config.jobs.sync.steps;
+    const steps = config.jobs['auto-merge'].steps;
     const syncStep = steps.find(
       s => s.run && s.run.includes('git checkout origin/master -- tools')
     );

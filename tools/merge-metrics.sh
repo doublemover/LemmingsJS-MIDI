@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# merge-metrics.sh: a Git merge driver for .searchMetrics/metrics.json
+# merge-metrics.sh: a Git merge driver for .repoMetrics/metrics.json
 #
 # Git will invoke this with three positional arguments:
 #   $1 = “base” (common ancestor)
