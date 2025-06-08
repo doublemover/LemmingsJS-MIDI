@@ -37,6 +37,6 @@ export function mergeSearchHistory(baseFile, targetFile) {
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const base = process.argv[2] || 'base_history';
-  const dest = process.argv[3] || '.searchMetrics/searchHistory';
+  const dest = process.argv[3] || '.repoMetrics/searchHistory';
   mergeSearchHistory(base, dest);
 }

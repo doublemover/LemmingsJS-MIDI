@@ -20,7 +20,7 @@ BASE_FILE="$1"
 OURS_FILE="$2"
 THEIRS_FILE="$3"
 
-# Ensure the directory for the “ours” file exists (e.g. .searchMetrics/)
+# Ensure the directory for the “ours” file exists (e.g. .repoMetrics/)
 mkdir -p "$(dirname "$OURS_FILE")"
 
 # If “ours” doesn’t exist yet, start with an empty file
