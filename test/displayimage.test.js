@@ -3,7 +3,7 @@ import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import '../js/ViewPoint.js';
 import '../js/StageImageProperties.js';
-import { DisplayImage, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
+import { DisplayImage, scaleNearest, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
 import { Frame } from '../js/Frame.js';
 import '../js/ColorPalette.js';
 
@@ -175,7 +175,13 @@ describe('DisplayImage primitives', function() {
     frame.setPixel(0, 1, color32(0, 0, 255));
     frame.setPixel(1, 1, color32(255, 255, 0));
     display.clear(color32(0, 0, 0));
-    display._blit(frame, 0, 0, { size: { width: 4, height: 4 }, scaleMode: 'nearest' });
+    scaleNearest(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0
+    });
     const RED   = color32(255, 0, 0);
     const GREEN = color32(0, 255, 0);
     const BLUE  = color32(0, 0, 255);
@@ -196,9 +202,12 @@ describe('DisplayImage primitives', function() {
     frame.setPixel(1, 1, color32(0, 255, 0));
     display.clear(color32(10, 10, 10));
     const NULL = color32(5, 5, 5);
-    display._blit(frame, 0, 0, {
-      size: { width: 4, height: 4 },
-      scaleMode: 'nearest',
+    scaleNearest(frame, 4, 4, {
+      dest32: display.buffer32,
+      destW: display.imgData.width,
+      destH: display.imgData.height,
+      baseX: 0,
+      baseY: 0,
       nullColor32: NULL
     });
     const RED   = color32(255, 0, 0);
@@ -385,5 +394,62 @@ describe('DisplayImage primitives', function() {
       NULL, NULL, GREEN, GREEN,
       NULL, NULL, GREEN, GREEN
     ]);
+  });
+
+  it('_blit uses scaleNearest when selected', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    const expected = new Uint32Array(16);
+    scaleNearest(frame, 4, 4, {
+      dest32: expected,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0
+    });
+    display.clear(color32(0, 0, 0));
+    display._blit(frame, 0, 0, { size: { width: 4, height: 4 }, scaleMode: 'nearest' });
+    expect(Array.from(display.buffer32)).to.eql(Array.from(expected));
+  });
+
+  it('_blit uses scaleXbrz when selected', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    const expected = new Uint32Array(16);
+    scaleXbrz(frame, 4, 4, {
+      dest32: expected,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0
+    });
+    display.clear(color32(0, 0, 0));
+    display._blit(frame, 0, 0, { size: { width: 4, height: 4 }, scaleMode: 'xbrz' });
+    expect(Array.from(display.buffer32)).to.eql(Array.from(expected));
+  });
+
+  it('_blit uses scaleHqx when selected', function() {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, color32(255, 0, 0));
+    frame.setPixel(1, 0, color32(0, 255, 0));
+    frame.setPixel(0, 1, color32(0, 0, 255));
+    frame.setPixel(1, 1, color32(255, 255, 0));
+    const expected = new Uint32Array(16);
+    scaleHqx(frame, 4, 4, {
+      dest32: expected,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0
+    });
+    display.clear(color32(0, 0, 0));
+    display._blit(frame, 0, 0, { size: { width: 4, height: 4 }, scaleMode: 'hqx' });
+    expect(Array.from(display.buffer32)).to.eql(Array.from(expected));
   });
 });

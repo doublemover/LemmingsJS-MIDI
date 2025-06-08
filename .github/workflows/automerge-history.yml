@@ -29,11 +29,7 @@ jobs:
           git show origin/master:.searchMetrics/searchHistory > base_history || touch base_history
       - name: Merge base lines
         run: |
-          mkdir -p .searchMetrics
-          touch .searchMetrics/searchHistory
-          while IFS= read -r line; do
-            grep -Fxq "$line" .searchMetrics/searchHistory || echo "$line" >> .searchMetrics/searchHistory
-          done < base_history
+          node tools/mergeSearchHistory.js base_history .searchMetrics/searchHistory
       - name: Commit and push if changed
         run: |
           if ! git diff --quiet -- .searchMetrics/searchHistory; then

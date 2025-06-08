@@ -10,14 +10,33 @@ class Logger {
             lemmings.game && lemmings.game.showDebug === true;
   }
 
-  /** log an error */
-  log(msg, exception) {
+  /** log an info message */
+  info(msg) {
     if (this._enabled()) {
-      console.log(`${this._moduleName}\t${msg}`);
+      console.info(`${this._moduleName}\t${msg}`);
+    }
+  }
+
+  /** log a warning */
+  warn(msg) {
+    if (this._enabled()) {
+      console.warn(`${this._moduleName}\t${msg}`);
+    }
+  }
+
+  /** log an error */
+  error(msg, exception) {
+    if (this._enabled()) {
+      console.error(`${this._moduleName}\t${msg}`);
       if (exception) {
-        console.log(`${this._moduleName}\t${exception.message}`);
+        console.error(`${this._moduleName}\t${exception.message}`);
       }
     }
+  }
+
+  // backwards compatibility
+  log(msg, exception) {
+    this.error(msg, exception);
   }
 
   /** write a debug message. If [msg] is not a String it is displayed: as {prop:value} */

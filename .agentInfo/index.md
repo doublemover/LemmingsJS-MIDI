@@ -83,4 +83,4 @@ l3-level-format.md: level-format l3 doc
 l2bitmap-overview.md: l2bitmap doc
 search-tool-doc.md: search doc
 bench-sequence.md: bench-sequence bench-mode
-test-categories.md: tests doc
+test-categories.md: test categories

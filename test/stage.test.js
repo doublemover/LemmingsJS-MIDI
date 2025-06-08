@@ -7,6 +7,7 @@ import '../js/StageImageProperties.js';
 import '../js/DisplayImage.js';
 import '../js/UserInputManager.js';
 import { Stage } from '../js/Stage.js';
+import fakeTimers from '@sinonjs/fake-timers';
 
 // Minimal canvas/context stubs
 function createStubCanvas(width = 800, height = 600) {
@@ -104,5 +105,61 @@ describe('Stage pointer events', function() {
 
     expect(pos.x).to.equal(70);
     expect(pos.y).to.equal(140);
+  });
+
+  it('translates coordinates for multiple zoom levels', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    const scales = [0.5, 1, 2];
+    const results = [];
+    display.onMouseDown.on(p => results.push({ x: p.x, y: p.y }));
+
+    for (const s of scales) {
+      stage.gameImgProps.viewPoint.scale = s;
+      stage.gameImgProps.viewPoint.x = 10;
+      stage.gameImgProps.viewPoint.y = 20;
+      stage.controller.handleMouseDown(new Lemmings.Position2D(30, 40));
+    }
+
+    expect(results).to.deep.equal([
+      { x: 70, y: 100 },
+      { x: 40, y: 60 },
+      { x: 25, y: 40 }
+    ]);
+  });
+
+  it('continues overlay fade after resizing', function() {
+    const canvas = createStubCanvas(200, 150);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+    stage.getGameDisplay().initSize(100, 100);
+    stage.getGuiDisplay().initSize(50, 10);
+
+    const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
+    const rect = { x: 5, y: 5, width: 10, height: 10 };
+    stage.startOverlayFade('black', rect);
+    const firstAlpha = stage.overlayAlpha;
+    clock.tick(120);
+    const alphaBeforeResize = stage.overlayAlpha;
+
+    canvas.width = 300;
+    canvas.height = 200;
+    canvas.getContext().canvas.width = 300;
+    canvas.getContext().canvas.height = 200;
+    stage.updateStageSize();
+
+    clock.tick(120);
+    const alphaAfterResize = stage.overlayAlpha;
+    clock.uninstall();
+
+    expect(firstAlpha).to.equal(1);
+    expect(alphaBeforeResize).to.be.below(1);
+    expect(alphaAfterResize).to.be.below(alphaBeforeResize);
+    expect(stage.overlayRect).to.deep.equal(rect);
   });
 });

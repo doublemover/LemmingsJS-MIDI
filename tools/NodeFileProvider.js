@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import * as tar from 'tar';
-import { createExtractorFromFile } from 'node-unrar-js';
+import { createExtractorFromFile, createExtractorFromData } from 'node-unrar-js';
 
 class NodeFileProvider {
   constructor(rootPath = '.') {
@@ -66,13 +66,15 @@ class NodeFileProvider {
     let map = this.rarCache.get(abs);
     if (!map) {
       map = new Map();
-      const extractor = await createExtractorFromFile({ filepath: abs });
+      const data = fs.readFileSync(abs);
+      const extractor = await createExtractorFromData({ data });
       const list = extractor.getFileList();
-      for (const h of list.fileHeaders) {
+      const headers = [...list.fileHeaders];
+      for (const h of headers) {
         if (h.flags.directory) continue;
         const res = extractor.extract({ files: [h.name] });
         const f = [...res.files][0];
-        if (f && f.state === 'SUCCESS') {
+        if (f && f.extraction) {
           map.set(h.name.replace(/\\/g, '/'), Buffer.from(f.extraction));
         }
       }
@@ -135,6 +137,7 @@ class NodeFileProvider {
   }
 
   async loadString(file) {
+    file = file.replace(/\\/g, '/');
     const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar))\/(.+)$/i);
     if (m) {
       const archive = m[1];
