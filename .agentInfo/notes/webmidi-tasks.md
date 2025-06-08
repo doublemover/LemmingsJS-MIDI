@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-tasks.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-tasks.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-tasks.md
+=======
 # WebMIDI follow-up tasks
 
 tags: webmidi-todo
@@ -15,5 +19,7 @@ Several TODOs remain in `js/webmidi.js`.
 4. **Review `going-further/performance.md`** – The WebMIDI docs include a performance guide with tips on message batching, per-channel calls and other optimizations. Review these suggestions and profile our usage for improvement opportunities.
 5. **Summarize `going-further/sysex.md`** – Gather best practices on system-exclusive messages including permission prompts and manufacturer IDs. Distill the key points for quick reference.
 6. **Check TypeScript definitions** – The docs mention `.d.ts` files providing typed WebMIDI APIs. Inspect these definitions for hints on optional parameters and method overloads.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-tasks.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-tasks.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-tasks.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-tasks.md
