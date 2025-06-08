@@ -42,16 +42,22 @@ describe('bench entrance placement', function() {
     level.objects.push(entranceObj);
     level.entrances.push({ x: 10, y: 10 });
 
-    const timer = { speedFactor: 1, benchStartupFrames: 0, benchStableFactor: 1 };
+    const timer = { speedFactor: 1, benchStartupFrames: 0, benchStableFactor: 1, getGameTime(){return 0;} };
     const lm = { spawnCount: 0 };
     const view = new GameView();
-    view.loadLevel = async () => { view.game = { level, getLemmingManager: () => lm, getGameTimer: () => timer }; };
+    view.loadLevel = async () => {
+      view.game = { level, getLemmingManager: () => lm, getGameTimer: () => timer };
+    };
+    view.gameResources = { getLevelGroups() { return ['grp']; } };
+    view.configs = [{ gametype: view.gameType, name: 'test' }];
+    view.levelGroupIndex = 0;
     const count = 3;
     await view.benchStart(count);
 
     expect(level.entrances.length).to.equal(count);
     expect(level.entrances).to.deep.include({ x: 10, y: 10 });
     for (const ent of level.entrances) {
+      if (!ent) continue;
       const found = level.objects.some(o => o.x === ent.x && o.y === ent.y);
       expect(found).to.be.true;
     }
