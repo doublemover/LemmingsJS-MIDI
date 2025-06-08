@@ -129,6 +129,16 @@ describe('KeyboardShortcuts _step loop', function() {
     expect(timer.speedFactor).to.equal(0.5);
   });
 
+  it('changeSpeed clamps to allowed range', function() {
+    const timer = ks.view.game.getGameTimer();
+    timer.speedFactor = 120;
+    ks._changeSpeed(1, false);
+    expect(timer.speedFactor).to.equal(120);
+    timer.speedFactor = 0.1;
+    ks._changeSpeed(-1, false);
+    expect(timer.speedFactor).to.equal(0.1);
+  });
+
   it('cancels animation frame on dispose', function() {
     ks._startLoop();
     ks.dispose();
