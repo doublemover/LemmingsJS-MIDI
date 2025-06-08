@@ -66,6 +66,57 @@ describe('GameView helper methods', function () {
     expect(view.strToNum(' 8 ')).to.equal(8);
   });
 
+  it('changeHtmlText updates innerText if element provided', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const el = { innerText: 'old' };
+    view.changeHtmlText(el, 'new');
+    expect(el.innerText).to.equal('new');
+    view.changeHtmlText(null, 'ignored');
+    expect(el.innerText).to.equal('new');
+  });
+
+  it('prefixNumbers adds numeric prefixes', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const result = view.prefixNumbers(['A', 'B']);
+    expect(result).to.eql(['1 - A', '2 - B']);
+  });
+
+  it('second strToNum parses integers and invalid values', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.strToNum('10')).to.equal(10);
+    expect(view.strToNum('2.6')).to.equal(2);
+    expect(view.strToNum('foo')).to.equal(0);
+  });
+
+  it('clearHtmlList removes all options from a select', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const select = { options: [1, 2, 3], remove(i) { this.options.splice(i, 1); } };
+    view.clearHtmlList(select);
+    expect(select.options).to.have.lengthOf(0);
+  });
+
+  it('arrayToSelect populates a select element', async function () {
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    const select = {
+      options: [],
+      remove(i) { this.options.splice(i, 1); },
+      appendChild(el) { this.options.push(el); }
+    };
+    global.document = { createElement() { return {}; } };
+    view.arrayToSelect(select, ['Alice', 'Bob']);
+    expect(select.options).to.have.lengthOf(2);
+    expect(select.options[0].textContent).to.equal('Alice');
+    expect(select.options[0].value).to.equal('0');
+    expect(select.options[1].textContent).to.equal('Bob');
+    expect(select.options[1].value).to.equal('1');
+    delete global.document;
+  });
+
   it('updateQuery writes parameters to history', async function () {
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
