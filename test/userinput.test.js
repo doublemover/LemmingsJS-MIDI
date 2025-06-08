@@ -226,3 +226,23 @@ it('accounts for offset rects', function() {
   expect(pos.x).to.equal(200);
   expect(pos.y).to.equal(120);
 });
+
+it('delegates zoom to stage when width matches', function() {
+  const elementStub = {
+    addEventListener() {},
+    removeEventListener() {},
+    getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 100 }; },
+    width: 100,
+    height: 100
+  };
+  const uim = new UserInputManager(elementStub);
+  const stage = {
+    updateCalls: [],
+    getStageImageAt() { return { display: { worldDataSize: { width: 1600 } } }; },
+    updateViewPoint(img, x, y, d) { this.updateCalls.push({ x, y, d }); }
+  };
+  globalThis.lemmings.stage = stage;
+  uim.handleWheel(new Lemmings.Position2D(10, 10), 30);
+  expect(stage.updateCalls).to.have.lengthOf(1);
+  delete globalThis.lemmings.stage;
+});

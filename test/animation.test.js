@@ -23,4 +23,20 @@ describe('Animation.loadFromFileWithPaletteSwap', function () {
     const expected = Lemmings.ColorPalette.colorFromRGB(64, 160, 255) >>> 0;
     expect(color).to.equal(expected);
   });
+
+  it('handles non-looping playback and restart', function() {
+    const anim = new Animation(null, false);
+    anim.frames = ['a','b','c'];
+
+    expect(anim.getFrame(-5)).to.equal('a');
+    expect(anim.isFinished).to.equal(false);
+
+    expect(anim.getFrame(10)).to.equal('c');
+    expect(anim.isFinished).to.equal(true);
+    expect(anim.getFrame(11)).to.equal('c');
+
+    anim.restart(3);
+    expect(anim.isFinished).to.equal(false);
+    expect(anim.firstFrameIndex).to.equal(3);
+  });
 });

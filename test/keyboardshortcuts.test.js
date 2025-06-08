@@ -401,4 +401,24 @@ describe('KeyboardShortcuts', function() {
     delete global.window;
     delete global.requestAnimationFrame;
   });
+
+  it('clamps speed factor within bounds', function() {
+    const timer = { speedFactor: 120 };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    ks._changeSpeed(1, false);
+    expect(timer.speedFactor).to.equal(120);
+    timer.speedFactor = 0.1;
+    ks._changeSpeed(-1, false);
+    expect(timer.speedFactor).to.equal(0.1);
+  });
+
+  it('ignores events with control keys held', function() {
+    const log = [];
+    const manager = { queueCommand(cmd) { log.push(cmd); } };
+    const timer = { speedFactor: 1 };
+    const ks = createShortcuts(timer, manager);
+    const evt = { code: 'Digit3', shiftKey: false, ctrlKey: true, metaKey: false, preventDefault() {} };
+    ks._onKeyDown(evt);
+    expect(log).to.have.lengthOf(0);
+  });
 });

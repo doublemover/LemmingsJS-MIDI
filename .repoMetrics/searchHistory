@@ -290,3 +290,6 @@
 {"time":"2025-06-08T06:17:04.988Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":174}
 {"time":"2025-06-08T06:17:06.998Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":328}
 {"time":"2025-06-08T06:17:08.708Z","query":"StageImageProperties","mdFiles":35,"codeFiles":90,"ms":189}
+{"time":"2025-06-08T08:28:43.587Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":58}
+{"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
+{"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
