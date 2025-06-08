@@ -1,3 +1,5 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_note-review.md
+=======
 # Note cleanup tasks
 
 tags: todo, notes
@@ -10,3 +12,4 @@ The index lists many short notes. Review each file to remove duplicate sentences
 - Avoid trailing ellipses (`...`) in index summaries or note descriptions.
 
 After editing, update `.agentInfo/index.md` if any notes are merged or renamed.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_note-review.md

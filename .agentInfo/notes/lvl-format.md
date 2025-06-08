@@ -1,3 +1,5 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_lvl-format.md
+=======
 # LVL format highlights
 
 tags: lvl-format, doc, todo
@@ -18,3 +20,4 @@ Notable fields include:
 TODOs:
 - confirm handling of the extended graphic set
 - expose any additional mechanics flags beyond `isSuperLemming`
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_lvl-format.md

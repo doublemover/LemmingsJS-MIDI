@@ -1,3 +1,5 @@
+<<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-environments.md
+=======
 # WebMIDI supported environments
 
 tags: webmidi, environment, doc
@@ -25,3 +27,4 @@ mainWindow.webContents.session.setPermissionCheckHandler((webContents, permissio
   return false;
 });
 ```
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-environments.md
