@@ -2,6 +2,10 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_userinput-zoom.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_userinput-zoom.md
+=======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_userinput-zoom.md
+=======
 # UserInputManager zoom updates
 
 tags: stage, input, tests
@@ -14,5 +18,7 @@ the view so the same world point stays under the cursor.
 The test [`test/stage.updateviewpoint.test.js`](../../test/stage.updateviewpoint.test.js)
 verifies this behavior by confirming that zooming preserves the cursor's world
 position.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_userinput-zoom.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_userinput-zoom.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_userinput-zoom.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_userinput-zoom.md

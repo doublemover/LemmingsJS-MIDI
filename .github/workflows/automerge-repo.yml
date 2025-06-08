@@ -1,19 +1,20 @@
-name: Auto-merge repository history
+name: Auto-merge repository history and agent info
 
 on:
   pull_request:
-    branches: [master]
-    types: [opened, synchronize, reopened, ready_for_review]
+    types: [synchronize, reopened]
 
 jobs:
   auto-merge:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout PR branch
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.ref }}
           fetch-depth: 0
+
       - name: Sync tools from master
         run: |
           git fetch origin master
@@ -31,118 +32,53 @@ jobs:
       - name: Compute merge-base
         id: mergebase
         run: |
-          echo "MERGE_BASE=$(git merge-base HEAD origin/${{ github.event.pull_request.base.ref }})" >> $GITHUB_OUTPUT
+          echo "MERGE_BASE=$(git merge-base HEAD origin/${{ github.event.pull_request.base.ref }})" >> $GITHUB_ENV
 
-      - name: Merge metrics.json
+      - name: Auto-merge metrics.json
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/metrics.json > tmp_merge/base_metrics.json 2>/dev/null || echo '{}' > tmp_merge/base_metrics.json
-          git show HEAD:.repoMetrics/metrics.json > tmp_merge/ours_metrics.json 2>/dev/null || echo '{}' > tmp_merge/ours_metrics.json
-          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/metrics.json > tmp_merge/theirs_metrics.json 2>/dev/null || echo '{}' > tmp_merge/theirs_metrics.json
+          tools/merge-metrics.sh \
+            ${{ env.MERGE_BASE }} .repoMetrics/metrics.json .repoMetrics/metrics.json
 
-          bash tools/merge-metrics.sh \
-            tmp_merge/base_metrics.json \
-            tmp_merge/ours_metrics.json \
-            tmp_merge/theirs_metrics.json
-
-          mv tmp_merge/ours_metrics.json .repoMetrics/metrics.json
-
-      - name: Merge usageCounts
+      - name: Auto-merge usageCounts.json
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/usageCounts.json > tmp_merge/base_usage.json 2>/dev/null || echo '{}' > tmp_merge/base_usage.json
-          git show HEAD:.repoMetrics/usageCounts.json > tmp_merge/ours_usage.json 2>/dev/null || echo '{}' > tmp_merge/ours_usage.json
-          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/usageCounts.json > tmp_merge/theirs_usage.json 2>/dev/null || echo '{}' > tmp_merge/theirs_usage.json
+          tools/merge-usagecounts.sh \
+            ${{ env.MERGE_BASE }} .repoMetrics/usageCounts.json .repoMetrics/usageCounts.json
 
-          node tools/sumUsageCounts.js tmp_merge/base_usage.json tmp_merge/ours_usage.json tmp_merge/theirs_usage.json .repoMetrics/usageCounts.json
-
-      - name: Merge searchHistory
+      - name: Auto-merge searchHistory
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/searchHistory > tmp_merge/base_history.txt 2>/dev/null || echo '' > tmp_merge/base_history.txt
-          git show HEAD:.repoMetrics/searchHistory > tmp_merge/ours_history.txt 2>/dev/null || echo '' > tmp_merge/ours_history.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/searchHistory > tmp_merge/theirs_history.txt 2>/dev/null || echo '' > tmp_merge/theirs_history.txt
+          tools/merge-history.sh \
+            ${{ env.MERGE_BASE }} .repoMetrics/searchHistory .repoMetrics/searchHistory
 
-          bash tools/merge-history.sh \
-            tmp_merge/base_history.txt \
-            tmp_merge/ours_history.txt \
-            tmp_merge/theirs_history.txt
-
-          mv tmp_merge/ours_history.txt .repoMetrics/searchHistory
-
-      - name: Merge noResultQueries
+      - name: Auto-merge noResultQueries
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.repoMetrics/noResultQueries > tmp_merge/base_no_results.txt 2>/dev/null || echo '' > tmp_merge/base_no_results.txt
-          git show HEAD:.repoMetrics/noResultQueries > tmp_merge/ours_no_results.txt 2>/dev/null || echo '' > tmp_merge/ours_no_results.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.repoMetrics/noResultQueries > tmp_merge/theirs_no_results.txt 2>/dev/null || echo '' > tmp_merge/theirs_no_results.txt
+          tools/merge-no-results.sh \
+            ${{ env.MERGE_BASE }} .repoMetrics/noResultQueries .repoMetrics/noResultQueries
 
-          bash tools/merge-no-results.sh \
-            tmp_merge/base_no_results.txt \
-            tmp_merge/ours_no_results.txt \
-            tmp_merge/theirs_no_results.txt
-
-          mv tmp_merge/ours_no_results.txt .repoMetrics/noResultQueries
-
-      - name: Merge agentInfo Index
+      - name: Auto-merge agentInfo index.md
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.agentInfo/index.md > tmp_merge/base_index.txt 2>/dev/null || echo '' > tmp_merge/base_index.txt
-          git show HEAD:.agentInfo/index.md > tmp_merge/ours_index.txt 2>/dev/null || echo '' > tmp_merge/ours_index.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.agentInfo/index.md > tmp_merge/theirs_index.txt 2>/dev/null || echo '' > tmp_merge/theirs_index.txt
+          tools/merge-agentinfo-index.sh \
+            ${{ env.MERGE_BASE }} .agentInfo/index.md .agentInfo/index.md
 
-          bash tools/merge-agentinfo-index.sh \
-            tmp_merge/base_index.txt \
-            tmp_merge/ours_index.txt \
-            tmp_merge/theirs_index.txt
-
-          mv tmp_merge/ours_index.txt .agentInfo/index.md
-
-      - name: Merge agentInfo Detailed Index
+      - name: Auto-merge agentInfo index-detailed.md
         run: |
-          mkdir -p tmp_merge
-          git show ${{ steps.mergebase.outputs.MERGE_BASE }}:.agentInfo/index-detailed.md > tmp_merge/base_index_detailed.txt 2>/dev/null || echo '' > tmp_merge/base_index_detailed.txt
-          git show HEAD:.agentInfo/index-detailed.md > tmp_merge/ours_index_detailed.txt 2>/dev/null || echo '' > tmp_merge/ours_index_detailed.txt
-          git show origin/${{ github.event.pull_request.base.ref }}:.agentInfo/index-detailed.md > tmp_merge/theirs_index_detailed.txt 2>/dev/null || echo '' > tmp_merge/theirs_index_detailed.txt
+          tools/merge-agentinfo-index.sh \
+            ${{ env.MERGE_BASE }} .agentInfo/index-detailed.md .agentInfo/index-detailed.md
 
-          bash tools/merge-agentinfo-index.sh \
-            tmp_merge/base_index_detailed.txt \
-            tmp_merge/ours_index_detailed.txt \
-            tmp_merge/theirs_index_detailed.txt
-
-          mv tmp_merge/ours_index_detailed.txt .agentInfo/index-detailed.md
-
-      - name: Merge agentInfo Notes
+      - name: Auto-merge agentInfo notes
         run: |
-          mkdir -p tmp_merge
-          NOTES_FILES=$( \
-            { git ls-tree -r --name-only ${{ steps.mergebase.outputs.MERGE_BASE }} .agentInfo/notes; \
-              git ls-tree -r --name-only HEAD .agentInfo/notes; \
-              git ls-tree -r --name-only origin/${{ github.event.pull_request.base.ref }} .agentInfo/notes; \
-            } | grep '\.md$' | sort -u \
-          )
-
-          for FILE in $NOTES_FILES; do
-            SAFE_NAME=$(echo "$FILE" | tr '/' '_')
-
-            git show ${{ steps.mergebase.outputs.MERGE_BASE }}:"$FILE" > tmp_merge/base_"$SAFE_NAME" 2>/dev/null || echo '' > tmp_merge/base_"$SAFE_NAME"
-            git show HEAD:"$FILE" > tmp_merge/ours_"$SAFE_NAME" 2>/dev/null || echo '' > tmp_merge/ours_"$SAFE_NAME"
-            git show origin/${{ github.event.pull_request.base.ref }}:"$FILE" > tmp_merge/theirs_"$SAFE_NAME" 2>/dev/null || echo '' > tmp_merge/theirs_"$SAFE_NAME"
-
-            bash tools/merge-agentinfo-notes.sh \
-              tmp_merge/base_"$SAFE_NAME" \
-              tmp_merge/ours_"$SAFE_NAME" \
-              tmp_merge/theirs_"$SAFE_NAME"
-
-            cp tmp_merge/ours_"$SAFE_NAME" "$FILE"
+          find .agentInfo/notes -name '*.md' -print0 | while IFS= read -r -d '' file; do
+            tools/merge-agentinfo-notes.sh \
+              ${{ env.MERGE_BASE }} "$file" "$file"
           done
 
-      - name: Commit merged changes
+      - name: Commit and push merged files
         run: |
-          git add .repoMetrics/metrics.json .repoMetrics/usageCounts.json .repoMetrics/searchHistory .agentInfo/index.md .agentInfo/index-detailed.md $(git ls-files .agentInfo/notes)
-          if ! git diff --cached --quiet; then
-            git commit -m "Auto-merge .repoMetrics and .agentInfo"
-            git push origin HEAD:${{ github.event.pull_request.head.ref }}
-          else
-            echo "No changes detected in repoMetrics or agentInfo"
-          fi
+          git add .repoMetrics/*.json
+          git add .repoMetrics/searchHistory
+          git add .repoMetrics/noResultQueries
+          git add .agentInfo/index.md
+          git add .agentInfo/index-detailed.md
+          git add .agentInfo/notes/*.md
+
+          git commit -m "Auto-merge repo metrics and agent info" || echo "Ay bruh"
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
