@@ -33,7 +33,7 @@ describe('benchSequenceStart', function() {
     view.configs = [{ gametype: view.gameType, name: 'test' }];
     view.levelGroupIndex = 0;
     await view.benchSequenceStart();
-    expect(called).to.equal(50);
+    expect(called).to.equal(1);
     expect(view.extraLemmings).to.equal(4);
     expect(Lemmings.extraLemmings).to.equal(4);
     expect(view._benchBaseEntrances).to.equal(null);

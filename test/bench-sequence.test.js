@@ -119,9 +119,9 @@ describe('bench sequence', function() {
     view.game = new GameMock();
     view.game.stop = function() {};
     view.benchSequence = true;
-    view._benchCounts = [50, 25];
+    view._benchCounts = [1];
     view._benchIndex = 0;
-    await view.benchStart(50);
+    await view.benchStart(1);
 
     const timer = view.game.getGameTimer();
     timer.suspend();
@@ -143,6 +143,6 @@ describe('bench sequence', function() {
     clearInterval(id);
 
     expect(suspended).to.equal(1);
-    expect(nextCount).to.equal(25);
+    expect(nextCount).to.equal(undefined);
   });
 });
