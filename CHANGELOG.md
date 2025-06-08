@@ -97,4 +97,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Grid-based trigger management and requestAnimationFrame timing.
 - Better error propagation, modular code, and partial JSDoc coverage.
 
+## [0.0.0] - 2025-05-31
+### Added
+- First playable JavaScript port with level and sprite assets.
+- PWA manifest, icons and mobile layout improvements.
+- Early WebMIDI integration with device selection.
+- Basic minimap prototype and debug logging toggles.
+- Initial documentation including file format notes.
+
+### Fixed
+- Crash fixes for floating lemmings and arrow triggers.
+- Early steel detection and trap collision issues.
+
+### Changed
+- Removed incomplete sound and music code.
+- General performance and CSS tweaks.
+
 <!-- Keep this changelog updated with future changes. -->
