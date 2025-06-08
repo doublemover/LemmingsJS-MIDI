@@ -100,4 +100,15 @@ describe('GameSkills', function() {
     gs.cheatMode = true;
     expect(gs.canReuseSkill(Lemmings.SkillTypes.CLIMBER)).to.be.true;
   });
+
+  it('setSelectedSkill ignores invalid skill indexes', function() {
+    const gs = createGameSkills({ CLIMBER: 1 });
+    gs.setSelectedSkill(Lemmings.SkillTypes.CLIMBER);
+    let triggered = 0;
+    gs.onSelectionChanged.on(() => triggered++);
+    const invalid = Object.keys(Lemmings.SkillTypes).length;
+    expect(gs.setSelectedSkill(invalid)).to.be.false;
+    expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.CLIMBER);
+    expect(triggered).to.equal(0);
+  });
 });
