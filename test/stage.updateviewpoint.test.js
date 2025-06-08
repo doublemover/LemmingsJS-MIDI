@@ -90,7 +90,7 @@ describe('Stage updateViewPoint', function() {
     const worldH = display.worldDataSize.height;
 
     expect(stage.gameImgProps.viewPoint.x).to.equal(-300);
-    expect(stage.gameImgProps.viewPoint.y).to.equal(Math.max(0, worldH - viewH));
+    expect(stage.gameImgProps.viewPoint.y).to.equal(worldH - viewH);
   });
 
   it('wheel zoom direction scroll up zooms in', function() {
@@ -147,7 +147,7 @@ describe('Stage updateViewPoint', function() {
 
     expect(vp.x).to.be.at.least(Math.min(0, worldW - viewW));
     expect(vp.x).to.be.at.most(Math.max(0, worldW - viewW));
-    expect(vp.y).to.equal(Math.max(0, worldH - viewH));
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('preserves world coords at multiple cursor positions', function() {
@@ -187,7 +187,7 @@ describe('Stage updateViewPoint', function() {
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.equal(Math.max(0, worldH - viewH));
+      expect(vp.y).to.equal(worldH - viewH);
 
       stage.updateViewPoint(img, cx, cy, -120);
       postX = vp.getSceneX(cx - img.x);
@@ -197,7 +197,7 @@ describe('Stage updateViewPoint', function() {
 
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.equal(Math.max(0, worldH - viewH));
+      expect(vp.y).to.equal(worldH - viewH);
     }
   });
 
@@ -221,7 +221,7 @@ describe('Stage updateViewPoint', function() {
       const viewH = img.height / vp.scale;
       expect(vp.x).to.be.at.least(0);
       expect(vp.x).to.be.at.most(worldW - viewW);
-      expect(vp.y).to.equal(Math.max(0, worldH - viewH));
+      expect(vp.y).to.equal(worldH - viewH);
     };
 
     for (let i = 0; i < 5; i++) {

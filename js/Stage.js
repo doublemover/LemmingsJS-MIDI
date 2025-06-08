@@ -218,7 +218,7 @@ class Stage {
         stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
       }
       const viewH_world_zoom = winH / newScale;
-      stageImage.viewPoint.setY(Math.max(0, worldH - viewH_world_zoom));
+      stageImage.viewPoint.setY(worldH - viewH_world_zoom);
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
       this.draw(stageImage, imgData);
@@ -243,7 +243,7 @@ class Stage {
       Math.max(0, worldW - viewW_world)
     );
 
-    stageImage.viewPoint.y = Math.max(0, worldH - viewH_world);
+    stageImage.viewPoint.y = worldH - viewH_world;
 
     // To glue bottom: viewPoint.y = worldH - viewH_world
 
@@ -416,7 +416,7 @@ class Stage {
 
       const newScale = this.gameImgProps.viewPoint.scale;
       this.gameImgProps.viewPoint.setY(
-        Math.max(0, dispH - winH / newScale)
+        dispH - winH / newScale
       );
 
       this.redraw();
@@ -432,7 +432,7 @@ class Stage {
       const dispH = this.gameImgProps.display.worldDataSize.height;
       const winH  = this.gameImgProps.canvasViewportSize.height;
       this.gameImgProps.viewPoint.setY(
-        Math.min(0, dispH - winH / scale)
+        dispH - winH / scale
       );
 
       this.redraw();
@@ -646,10 +646,12 @@ class Stage {
     const viewW = vpW / scale;
     const viewH = vpH / scale;
 
+    const minY = worldH - viewH;
+    const maxY = Math.max(minY, 0);
     stageImage.viewPoint.y = this.limitValue(
-      0,
+      minY,
       stageImage.viewPoint.y,
-      Math.max(0, worldH - viewH)
+      maxY
     );
 
     if (worldW <= viewW) {
