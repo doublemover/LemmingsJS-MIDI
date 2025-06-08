@@ -72,4 +72,48 @@ describe('BitWriter', function () {
 
     Lemmings.LogHandler = origHandler;
   });
+
+  it('validates constructor arguments', function () {
+    class MockReader { read() {} }
+    const stub = new MockReader();
+
+    assert.throws(() => new BitWriter(null, 1), TypeError);
+    assert.throws(() => new BitWriter({}, 1), TypeError);
+    assert.throws(() => new BitWriter(stub, 0), RangeError);
+    assert.throws(() => new BitWriter(stub, -1), RangeError);
+    assert.throws(() => new BitWriter(stub, 1.5), RangeError);
+  });
+
+  it('exposes internal state via getters', function () {
+    const stub = new StubReader([0x01]);
+    const writer = new BitWriter(stub, 1);
+
+    assert.strictEqual(writer.outPos, 1);
+    assert.strictEqual(writer.bitReader, stub);
+  });
+
+  it('handles out-of-range referenced copy', function () {
+    class MockLogHandler {
+      constructor() { this.logged = []; }
+      log(msg) { this.logged.push(msg); }
+    }
+    const origHandler = Lemmings.LogHandler;
+    Lemmings.LogHandler = MockLogHandler;
+
+    const stub = new StubReader([0xaa, 0xbb, 3]);
+    const writer = new BitWriter(stub, 3);
+    const log = writer.log;
+
+    writer.copyRawData(2);
+    const before = Array.from(writer.outData);
+    const posBefore = writer.outPos;
+
+    writer.copyReferencedData(1, 2); // offset=3 + 1 = 4 -> out of range
+
+    assert.deepStrictEqual(Array.from(writer.outData), before);
+    assert.strictEqual(writer.outPos, posBefore);
+    assert.ok(log.logged.some(m => m.includes('offset out of range')));
+
+    Lemmings.LogHandler = origHandler;
+  });
 });
