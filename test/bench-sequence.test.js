@@ -6,15 +6,20 @@ import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
 class StageMock {
-  constructor() { this.guiImgProps = { x:0, y:0, viewPoint:{ scale:1 }}; }
+  constructor() {
+    this.guiImgProps = { x:0, y:0, viewPoint:{ scale:1 }};
+    this.gameImgProps = { viewPoint: { scale: 1 } };
+  }
   getGameDisplay() { return { clear() {}, setScreenPosition() {}, redraw() {} }; }
   getGuiDisplay() { return {}; }
   setCursorSprite() {}
   updateStageSize() {}
   clear() {}
+  redraw() {}
   resetFade() {}
   startFadeOut() {}
   startOverlayFade() {}
+  applyViewport() {}
 }
 
 class LemmingManagerMock {
@@ -70,8 +75,11 @@ describe('bench sequence', function() {
           const ctx = { canvas:{}, fillRect() {}, drawImage() {}, putImageData() {}, createImageData(w, h) { return { width:w, height:h, data:new Uint8ClampedArray(w*h*4) }; } };
           return { width:0, height:0, getContext() { ctx.canvas = this; return ctx; } };
         },
+        querySelector() { return null; },
         addEventListener() {},
-        removeEventListener() {}
+        removeEventListener() {},
+        visibilityState: 'visible',
+        hasFocus() { return true; }
       };
     }
     global.document = createDocumentStub();
@@ -93,6 +101,8 @@ describe('bench sequence', function() {
     Lemmings.GameFactory = GameFactoryMock;
     Lemmings.GameTypes = { toString: () => '' };
     Lemmings.GameStateTypes = { toString: () => '' };
+    Lemmings.TriggerTypes = { DROWN: 0, FRYING: 1, KILL: 2, TRAP: 3 };
+    Lemmings.Lemming = { LEM_MAX_FALLING: 59 };
     global.lemmings = { game: { showDebug: false } };
   });
   beforeEach(function(){ clock = fakeTimers.withGlobal(globalThis).install({ now:0 }); });
@@ -118,6 +128,7 @@ describe('bench sequence', function() {
 
     view.game = new GameMock();
     view.game.stop = function() {};
+    view.loadLevel = async () => { view.game = new GameMock(); };
     view.benchSequence = true;
     view._benchCounts = [50, 25];
     view._benchIndex = 0;
