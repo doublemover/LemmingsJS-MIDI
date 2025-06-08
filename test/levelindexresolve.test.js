@@ -46,4 +46,28 @@ describe('LevelIndexResolve and LevelIndexType', function () {
     expect(result.levelNumber).to.equal(4);
     expect(result.useOddTable).to.be.true;
   });
+
+  it('returns null for negative levelMode', function () {
+    const resolver = new LevelIndexResolve(config);
+    const result = resolver.resolve(-1, 0);
+    expect(result).to.be.null;
+  });
+
+  it('returns null for negative levelIndex', function () {
+    const resolver = new LevelIndexResolve(config);
+    const result = resolver.resolve(0, -1);
+    expect(result).to.be.null;
+  });
+
+  it('returns null when levelMode is out of bounds', function () {
+    const resolver = new LevelIndexResolve(config);
+    const result = resolver.resolve(2, 0);
+    expect(result).to.be.null;
+  });
+
+  it('returns null when levelIndex is out of bounds', function () {
+    const resolver = new LevelIndexResolve(config);
+    const result = resolver.resolve(1, 2);
+    expect(result).to.be.null;
+  });
 });

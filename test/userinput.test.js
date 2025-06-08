@@ -125,8 +125,11 @@ describe('UserInputManager', function() {
     const afterX = vp.getSceneX(cursor.x - img.x);
     const afterY = vp.getSceneY(cursor.y - img.y);
 
-    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
-    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+    const expectedDx = Math.trunc(cursor.x / vp.scale);
+    const expectedDy = Math.trunc(cursor.y / vp.scale);
+
+    expect(afterX - beforeX).to.equal(expectedDx);
+    expect(afterY - beforeY).to.equal(expectedDy);
   });
 
   it('zooms when cursor is at the world origin', function() {
@@ -147,7 +150,11 @@ describe('UserInputManager', function() {
 
     uim.handleWheel(cursor, 120);
 
-    expect(stage.gameImgProps.viewPoint.scale).to.be.greaterThan(1);
+    const vp = stage.gameImgProps.viewPoint;
+    const worldH = stage.getGameDisplay().worldDataSize.height;
+    const viewH = stage.gameImgProps.height / vp.scale;
+    expect(vp.scale).to.be.greaterThan(1);
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('emits zoom events with stage set', function(done) {
@@ -218,4 +225,24 @@ it('accounts for offset rects', function() {
   const pos = uim.getRelativePosition(offsetElement, 150, 80);
   expect(pos.x).to.equal(200);
   expect(pos.y).to.equal(120);
+});
+
+it('delegates zoom to stage when width matches', function() {
+  const elementStub = {
+    addEventListener() {},
+    removeEventListener() {},
+    getBoundingClientRect() { return { left: 0, top: 0, width: 100, height: 100 }; },
+    width: 100,
+    height: 100
+  };
+  const uim = new UserInputManager(elementStub);
+  const stage = {
+    updateCalls: [],
+    getStageImageAt() { return { display: { worldDataSize: { width: 1600 } } }; },
+    updateViewPoint(img, x, y, d) { this.updateCalls.push({ x, y, d }); }
+  };
+  globalThis.lemmings.stage = stage;
+  uim.handleWheel(new Lemmings.Position2D(10, 10), 30);
+  expect(stage.updateCalls).to.have.lengthOf(1);
+  delete globalThis.lemmings.stage;
 });

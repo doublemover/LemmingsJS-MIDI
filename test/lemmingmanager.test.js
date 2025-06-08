@@ -207,3 +207,42 @@ describe('LemmingManager core behavior', function() {
     expect(nearest).to.equal(lem3);
   });
 });
+
+describe('LemmingManager additional', function() {
+
+  it('setLemmingState clears countdown on lethal state', function() {
+    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(1,1);
+    const lem = manager.lemmings[0];
+    lem.countdown = 5; lem.countdownAction = {};
+    manager.setLemmingState(lem, Lemmings.LemmingStateType.DROWNING);
+    expect(lem.countdown).to.equal(0);
+    expect(lem.countdownAction).to.equal(null);
+  });
+
+  it('setLemmingState OUT_OF_LEVEL calls removeOne', function() {
+    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(2,2);
+    const lem = manager.lemmings[0];
+    let removed=false; manager.removeOne=()=>{removed=true;};
+    manager.setLemmingState(lem, Lemmings.LemmingStateType.OUT_OF_LEVEL);
+    expect(removed).to.be.true;
+  });
+
+  it('doLemmingAction removes blocker wall when switching skills', function() {
+    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(3,3);
+    const lem = manager.lemmings[0];
+    manager.setLemmingState(lem, Lemmings.LemmingStateType.BLOCKING);
+    let removed=false; manager.triggerManager.removeByOwner=()=>{removed=true;};
+    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);
+    expect(ok).to.be.true;
+    expect(removed).to.be.true;
+  });
+});
