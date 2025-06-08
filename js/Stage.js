@@ -156,8 +156,7 @@ class Stage {
       if (!stageImage || !stageImage.display) return;
 
       // Always zoom around the cursor position e.x,e.y
-      // Negative wheel delta zooms in
-      this.updateViewPoint(stageImage, e.x, e.y, -e.deltaZoom, e.velocity);
+      this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
     });
   }
 
