@@ -17,6 +17,12 @@ describe('DisplayImage primitives', function() {
     stage = new StubStage();
   });
 
+  it('starts with null imgData and buffer32', function() {
+    const disp = new DisplayImage(stage);
+    expect(disp.imgData).to.equal(null);
+    expect(disp.buffer32).to.equal(null);
+  });
+
   it('initSize allocates image once', function() {
     const disp = new DisplayImage(stage);
     disp.initSize(2, 3);
@@ -43,6 +49,21 @@ describe('DisplayImage primitives', function() {
     const src = new Uint32Array([0xFF112233, 0xFF445566]);
     disp.setBackground(src);
     expect(Array.from(disp.buffer32)).to.eql([0xFF112233, 0xFF445566]);
+  });
+
+  it('setBackground logs error for other array types', function() {
+    globalThis.lemmings = { game: { showDebug: true } };
+    const disp = new DisplayImage(stage);
+    disp.initSize(1, 1);
+    disp.clear(0);
+    const errors = [];
+    const origErr = console.error;
+    console.error = msg => errors.push(String(msg));
+    disp.setBackground(new Uint8Array([1, 2, 3, 4]));
+    console.error = origErr;
+    delete globalThis.lemmings;
+    expect(errors[0]).to.match(/setBackground fallback/);
+    expect(Array.from(disp.buffer32)).to.eql([0]);
   });
 
   it('drawRect draws outlines and fills', function() {
@@ -87,5 +108,26 @@ describe('DisplayImage primitives', function() {
     const ch = 0xFF030201;
     for (let y=0; y<3; y++) expect(disp.buffer32[y*3 + 1]).to.equal(cv);
     for (let x=0; x<3; x++) expect(disp.buffer32[2*3 + x]).to.equal(ch);
+  });
+
+  it('drawMask writes white for set mask pixels', function() {
+    const disp = new DisplayImage(stage);
+    disp.initSize(3, 2);
+    disp.clear(0);
+    const mask = {
+      width: 2,
+      height: 2,
+      offsetX: 0,
+      offsetY: 0,
+      getMask() {
+        return Int8Array.from([1, 0, 0, 1]);
+      }
+    };
+    disp.drawMask(mask, 1, 0);
+    const WHITE = 0xFFFFFFFF;
+    expect(disp.buffer32[0*3 + 1]).to.equal(WHITE);
+    expect(disp.buffer32[0*3 + 2]).to.equal(0);
+    expect(disp.buffer32[1*3 + 1]).to.equal(0);
+    expect(disp.buffer32[1*3 + 2]).to.equal(WHITE);
   });
 });

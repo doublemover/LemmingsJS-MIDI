@@ -215,4 +215,64 @@ describe('FileProvider', function () {
     const out = provider._base64ToArrayBuffer(b64);
     assert.deepStrictEqual(Array.from(new Uint8Array(out)), [65,66,67]);
   });
+
+  it('_fetchText stores data and headers in localStorage', async function () {
+    provider._hashString = async () => 'h';
+    const url = rootPath + 'text.txt';
+    const promise = provider._fetchText(url);
+    requests[0].respond(200, 'hi');
+    const result = await promise;
+    assert.strictEqual(result, 'hi');
+    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    assert.strictEqual(entry.type, 'text');
+    assert.strictEqual(entry.data, 'hi');
+    assert.strictEqual(entry.hash, 'h');
+  });
+
+  it('_fetchText logs and rejects on failure', async function () {
+    const promise = provider._fetchText(rootPath + 'bad.txt');
+    requests[0].respond(404, 'err');
+    await assert.rejects(promise);
+    assert.ok(provider.log.logged.some(m => m.includes('error load file')));
+  });
+
+  it('_fetchHead handles missing fetch', async function () {
+    delete global.fetch;
+    const result = await provider._fetchHead('url');
+    assert.strictEqual(result, null);
+  });
+
+  it('_fetchHead returns headers and swallows errors', async function () {
+    global.fetch = async () => {
+      return { headers: { get: key => ({ ETag: 'v', 'Last-Modified': 'm' }[key]) } };
+    };
+    const success = await provider._fetchHead('url');
+    assert.deepStrictEqual(success, { etag: 'v', lastModified: 'm' });
+    global.fetch = async () => { throw new Error('fail'); };
+    const failure = await provider._fetchHead('url');
+    assert.strictEqual(failure, null);
+  });
+
+  it('_storeInLocalStorage ignores write errors', function () {
+    global.localStorage.setItem = () => { throw new Error('nope'); };
+    const logs = [];
+    const orig = console.log;
+    console.log = (...args) => logs.push(args);
+    provider._storeInLocalStorage('url', { a: 1 });
+    console.log = orig;
+    assert.ok(logs.length > 0);
+  });
+
+  it('_hashBuffer throws when crypto unavailable', async function () {
+    provider = new FileProvider(rootPath);
+    const buf = Uint8Array.from([1]).buffer;
+    const origCrypto = global.crypto;
+    delete global.crypto;
+    const cryptoMod = await import('node:crypto');
+    const origCreate = cryptoMod.createHash;
+    cryptoMod.createHash = () => { throw new Error('x'); };
+    await assert.rejects(provider._hashBuffer(buf), /crypto API not available/);
+    cryptoMod.createHash = origCreate;
+    global.crypto = origCrypto;
+  });
 });

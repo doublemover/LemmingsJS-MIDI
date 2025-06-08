@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import { ActionExitingSystem } from '../js/ActionExitingSystem.js';
 import { ActionFryingSystem } from '../js/ActionFryingSystem.js';
+import { ActionShrugSystem } from '../js/ActionShrugSystem.js';
 import '../js/LemmingStateType.js';
 import '../js/SpriteTypes.js';
 
@@ -51,5 +52,21 @@ describe('extra action system coverage', function() {
     sys.process(lvl, lem); // turn around
     expect(lem.lookRight).to.equal(false);
     expect(disp.calls).to.have.lengthOf(1);
+  });
+
+  it('ActionShrugSystem trigger and draw with correct timing', function() {
+    const sys = new ActionShrugSystem(stubSprites);
+    const lem = new StubLemming();
+    const disp = new StubDisplay();
+
+    expect(sys.triggerLemAction(lem)).to.equal(false);
+    sys.draw(disp, lem);
+    expect(disp.calls).to.have.lengthOf(1);
+
+    for (let i = 0; i < 7; i++) {
+      expect(sys.process(new StubLevel(), lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    }
+    expect(lem.frameIndex).to.equal(7);
+    expect(sys.process(new StubLevel(), lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 });
