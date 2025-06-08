@@ -120,4 +120,22 @@ describe('ActionExplodingSystem behavior', function() {
     sys.draw({ drawFrame() {} }, lem); // now use particles
     expect(particleCalls.length).to.equal(1);
   });
+
+  it('returns NO_STATE_TYPE until frame 52 after clearing ground', function() {
+    const level = new StubLevel();
+    const tm = new StubTriggerManager();
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), tm, { draw() {} });
+    const lem = new StubLemming();
+
+    // frame 0 -> 1 clears ground
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+
+    // advance frames until one before exit
+    for (let i = 0; i < 50; i++) {
+      expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    }
+
+    expect(lem.frameIndex).to.equal(51);
+    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
+  });
 });
