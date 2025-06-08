@@ -301,11 +301,5 @@
 {"time":"2025-06-08T10:12:25.616Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":100}
 {"time":"2025-06-08T10:12:28.050Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":137}
 {"time":"2025-06-08T10:12:30.484Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":95}
-{"time":"2025-06-08T10:33:09.808Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":288}
-{"time":"2025-06-08T10:33:12.934Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":370}
-{"time":"2025-06-08T10:33:16.250Z","query":"middle mouse","mdFiles":10,"codeFiles":15,"ms":409}
-{"time":"2025-06-08T10:33:19.382Z","query":"middle","mdFiles":2,"codeFiles":0,"ms":239}
-{"time":"2025-06-08T10:33:21.646Z","query":"middle","mdFiles":2,"codeFiles":0,"ms":244}
-{"time":"2025-06-08T10:33:24.364Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":282}
-{"time":"2025-06-08T10:33:26.638Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":409}
-{"time":"2025-06-08T10:33:29.259Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":829}
+{"time":"2025-06-08T10:35:12.410Z","query":"replay","mdFiles":6,"codeFiles":8,"ms":135}
+{"time":"2025-06-08T10:35:15.751Z","query":"replay","mdFiles":6,"codeFiles":8,"ms":100}
