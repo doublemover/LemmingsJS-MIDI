@@ -15,10 +15,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Progressive Web App support via `site.webmanifest` and touch icons.
 - Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
+- HQX and xBRZ scaling options for smoother graphics.
+- Frame step controls for debug playback.
+- Bench mode spawns entrances near originals, shows TPS and has improved HUD layout.
+- Optional custom crosshair cursor.
 
 ### Fixed
 - Zoom near the level origin now centers on the pointer instead of the
   upper-left corner.
+- Bench timers, overlay color and text spacing.
+- Zoom direction, pan clamping and bottom clamp issues.
+- Viewport panning and centering calculations.
+- Crosshair transparency and HUD alignment during resize.
+- Stage resize handling on zero-size displays.
 
 ### Changed
 - Project now requires Node.js 20+ (tests use Node 20 in CI).
