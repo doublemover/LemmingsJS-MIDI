@@ -39,4 +39,23 @@ describe('Animation.loadFromFileWithPaletteSwap', function () {
     expect(anim.isFinished).to.equal(false);
     expect(anim.firstFrameIndex).to.equal(3);
   });
+
+  it('wraps frame index when looping', function () {
+    const anim = new Animation();
+    anim.frames = ['a', 'b', 'c'];
+
+    expect(anim.getFrame(-1)).to.equal('c');
+    expect(anim.getFrame(4)).to.equal('b');
+  });
+
+  it('uses local index after restart when not looping', function () {
+    const anim = new Animation(null, false);
+    anim.frames = ['a', 'b', 'c'];
+
+    anim.getFrame(10); // finish playback
+    anim.restart(5);
+
+    expect(anim.isFinished).to.equal(false);
+    expect(anim.getFrame(6)).to.equal('b');
+  });
 });
