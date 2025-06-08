@@ -188,42 +188,23 @@ class Stage {
 
     // ZOOM
     if (deltaZoom !== 0) {
-      const oldScale = stageImage.viewPoint.scale || 1;
+      const relX = argX - stageImage.x;
+      const relY = argY - stageImage.y;
+      const worldX = stageImage.viewPoint.getSceneX(relX);
+      const worldY = stageImage.viewPoint.getSceneY(relY);
 
-      // Screen‐pixel offset inside game region
-      const screenX_rel = argX - stageImage.x;
-      const screenY_rel = argY - stageImage.y;
-
-      // World coordinates under cursor before zoom
-      const sceneX_pre = stageImage.viewPoint.getSceneX(screenX_rel);
-      const sceneY_pre = stageImage.viewPoint.getSceneY(screenY_rel);
-
-      // Compute new scale additively
-      const zoomSensitivity = 0.0001; // smaller → slower zoom
-      let newScale = oldScale + deltaZoom * zoomSensitivity;
-
-      // Clamp to [0.25, 8]
-      const minScale = 0.25;
-      const maxScale = 8;
-      if (newScale < minScale) newScale = minScale;
-      if (newScale > maxScale) newScale = maxScale;
-
-      // Snap so that (worldWidth × scale) and (worldHeight × scale) yield integers
-      newScale = this.snapScale(newScale);
+      this._rawScale = stageImage.viewPoint.scale || 1;
+      this._rawScale = this.limitValue(
+        0.25,
+        this._rawScale * (1 + deltaZoom / 1500),
+        8
+      );
+      const newScale = this.snapScale(this._rawScale);
       stageImage.viewPoint.scale = newScale;
+      stageImage.viewPoint.setX(worldX - relX / newScale);
+      stageImage.viewPoint.setY(worldY - relY / newScale);
 
-      //Recenter so (sceneX_pre,sceneY_pre) stays under cursor
-      if (!veloUpdate) {
-        stageImage.viewPoint.setX(sceneX_pre - screenX_rel / newScale);
-        stageImage.viewPoint.setY(sceneY_pre - screenY_rel / newScale);
-
-        const viewH_after = winH / newScale;
-        if (viewH_after >= worldH) {
-          stageImage.viewPoint.setY(worldH - viewH_after);
-        }
-      }
-      const viewH_world_zoom = winH / newScale;
-      stageImage.viewPoint.setY(worldH - viewH_world_zoom);
+      this.clampViewPoint(stageImage);
       this.clear(stageImage);
       const imgData = stageImage.display.getImageData();
       this.draw(stageImage, imgData);

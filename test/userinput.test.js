@@ -125,11 +125,16 @@ describe('UserInputManager', function() {
     const afterX = vp.getSceneX(cursor.x - img.x);
     const afterY = vp.getSceneY(cursor.y - img.y);
 
-    const expectedDx = Math.trunc(cursor.x / vp.scale);
-    const expectedDy = Math.trunc(cursor.y / vp.scale);
+    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
+    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
 
-    expect(afterX - beforeX).to.equal(expectedDx);
-    expect(afterY - beforeY).to.equal(expectedDy);
+    const worldW = stage.getGameDisplay().worldDataSize.width;
+    const worldH = stage.getGameDisplay().worldDataSize.height;
+    const viewW = img.width / vp.scale;
+    const viewH = img.height / vp.scale;
+    expect(vp.x).to.be.at.least(0);
+    expect(vp.x).to.be.at.most(worldW - viewW);
+    expect(vp.y).to.equal(worldH - viewH);
   });
 
   it('zooms when cursor is at the world origin', function() {

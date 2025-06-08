@@ -150,6 +150,44 @@ describe('Stage updateViewPoint', function() {
     expect(vp.y).to.equal(worldH - viewH);
   });
 
+  it('wheel zoom keeps cursor position stable', function() {
+    const canvas = createStubCanvas();
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    const display = stage.getGameDisplay();
+    display.initSize(1000, 1200);
+
+    globalThis.lemmings.stage = stage;
+
+    const img = stage.gameImgProps;
+    const vp = img.viewPoint;
+    vp.scale = 1;
+    vp.x = 100;
+    vp.y = 80;
+
+    const cursor = new Lemmings.Position2D(200, 100);
+    const beforeX = vp.getSceneX(cursor.x - img.x);
+    const beforeY = vp.getSceneY(cursor.y - img.y);
+
+    stage.controller.handleWheel(cursor, 120);
+
+    const afterX = vp.getSceneX(cursor.x - img.x);
+    const afterY = vp.getSceneY(cursor.y - img.y);
+
+    expect(Math.abs(afterX - beforeX)).to.be.at.most(1);
+    expect(Math.abs(afterY - beforeY)).to.be.at.most(1);
+
+    const worldW = display.worldDataSize.width;
+    const worldH = display.worldDataSize.height;
+    const viewW = img.width / vp.scale;
+    const viewH = img.height / vp.scale;
+    expect(vp.x).to.be.at.least(0);
+    expect(vp.x).to.be.at.most(worldW - viewW);
+    expect(vp.y).to.equal(worldH - viewH);
+  });
+
   it('keeps level bottom glued to the HUD when zooming', function() {
     const canvas = createStubCanvas();
     const stage = new Stage(canvas);
