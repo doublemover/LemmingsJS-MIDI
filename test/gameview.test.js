@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/EventHandler.js';
 import '../js/DisplayImage.js';
+import '../js/ViewPoint.js';
 import fakeTimers from '@sinonjs/fake-timers';
 // prepare a minimal window object for GameView.applyQuery
 function createWindowStub() {
@@ -65,9 +66,11 @@ class StageMock {
   setCursorSprite() {}
   updateStageSize() {}
   clear() {}
+  redraw() {}
   startFadeOut() {}
   startOverlayFade(color, rect) { this.overlayArgs = { color, rect }; }
   resetFade() { this.resetCalled = true; }
+  setGameViewPointPosition() {}
 }
 
 // simple Game stub used by GameFactory
@@ -235,6 +238,8 @@ describe('GameView', function () {
     const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
     const { GameView } = await import('../js/GameView.js');
     const view = new GameView();
+    window.setTimeout = setTimeout;
+    window.clearTimeout = clearTimeout;
     view.bench = true;
     view.gameCanvas = {};
     const timer = { suspendCalled: 0, continueCalled: 0, suspend() { this.suspendCalled++; }, continue() { this.continueCalled++; } };
