@@ -36,6 +36,22 @@ describe('GameView.applyQuery and updateQuery', function () {
     expect(view.gameSpeedFactor).to.equal(3);
   });
 
+  it('parses shortcut/perfMetrics flags', async function () {
+    global.window = { location: { search: '?_=true&pm=true' } };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.shortcut).to.equal(true);
+    expect(view.perfMetrics).to.equal(true);
+  });
+
+  it('defaults shortcut/perfMetrics to false', async function () {
+    global.window = { location: { search: '' } };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    expect(view.shortcut).to.equal(false);
+    expect(view.perfMetrics).to.equal(false);
+  });
+
   it('updateQuery writes short flag names when shortcut enabled', async function () {
     global.window = createWindow('?cheat=true&debug=true&speed=2.6');
     let url = null;
