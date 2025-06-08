@@ -95,6 +95,15 @@ describe('GameView helper methods', function () {
     expect(params.get('scale')).to.equal('2');
     expect(params.has('endless')).to.be.false;
   });
+
+  it('setHistoryState writes URL with ? prefix', async function () {
+    let url = null;
+    global.history.replaceState = (s, t, u) => { url = u; };
+    const { GameView } = await import('../js/GameView.js');
+    const view = new GameView();
+    view.setHistoryState(new URLSearchParams('a=1'));
+    expect(url).to.equal('?a=1');
+  });
 });
 
 describe('moveToLevel transitions', function () {
