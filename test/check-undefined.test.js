@@ -25,4 +25,19 @@ describe('tools/check-undefined.js', function () {
     expect(result.status).to.not.equal(0);
     expect(result.stderr || result.stdout).to.match(/leakFn is not defined/);
   });
+
+  it('returns success when all calls are defined', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    fs.mkdirSync(path.join(dir, 'js'));
+    fs.writeFileSync(
+      path.join(dir, 'js', 'main.js'),
+      'function foo(){}; foo();\n'
+    );
+    const html = '<html><body><script>function bar(){}</script>\n' +
+      '<script>bar();</script></body></html>';
+    fs.writeFileSync(path.join(dir, 'index.html'), html);
+    const result = spawnSync('node', [script], { cwd: dir, encoding: 'utf8' });
+    expect(result.status).to.equal(0);
+    expect(result.stdout).to.match(/No undefined calls/);
+  });
 });
