@@ -40,10 +40,6 @@ jobs:
           tools/merge-metrics.sh \
             ${{ env.MERGE_BASE }} .repoMetrics/metrics.json .repoMetrics/metrics.json
 
-      - name: Auto-merge usageCounts.json
-        run: |
-          tools/merge-usagecounts.sh \
-            ${{ env.MERGE_BASE }} .repoMetrics/usageCounts.json .repoMetrics/usageCounts.json
 
       - name: Auto-merge searchHistory
         run: |

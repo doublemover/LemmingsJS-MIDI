@@ -7,7 +7,6 @@
 
 # Tell Git to invoke our "merge-metrics" driver on metrics.json
 .repoMetrics/metrics.json      merge=merge_metrics
-.repoMetrics/usageCounts.json  merge=merge_usagecounts
 .repoMetrics/searchHistory     merge=merge_history
 .repoMetrics/noResultQueries   merge=merge_no_results
 .agentInfo/index.md             merge=merge_agentinfo_index

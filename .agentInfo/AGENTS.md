@@ -15,4 +15,3 @@ when running repo scripts that accept a name flag.
 - After you use the tool commit the stats it generates as part of your next commit
 - Both tools require **Node.js 18+** and rely on files present in the working tree.
  - Ignore `.repoMetrics/` when using command line tools to search git diffs or the repository.
- - `.repoMetrics/usageCounts.json` keeps usage counters for repository tools.

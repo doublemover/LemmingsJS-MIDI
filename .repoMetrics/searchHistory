@@ -280,3 +280,4 @@
 {"time":"2025-06-08T05:04:14.266Z","query":"thisshouldnotexist","mdFiles":0,"codeFiles":0,"ms":238}
 {"time":"2025-06-08T05:18:39.750Z","query":"index","mdFiles":21,"codeFiles":88,"ms":399}
 {"time":"2025-06-08T05:18:42.224Z","query":"index","mdFiles":21,"codeFiles":88,"ms":179}
+{"time":"2025-06-08T06:04:04.462Z","query":"usageCounts","mdFiles":27,"codeFiles":80,"ms":172}
