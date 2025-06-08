@@ -309,3 +309,4 @@
 {"time":"2025-06-08T10:33:24.364Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":282}
 {"time":"2025-06-08T10:33:26.638Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":409}
 {"time":"2025-06-08T10:33:29.259Z","query":"mouse","mdFiles":8,"codeFiles":15,"ms":829}
+{"time":"2025-06-08T10:55:04.300Z","query":"benchSpeedAdjust","mdFiles":20,"codeFiles":31,"ms":218}
