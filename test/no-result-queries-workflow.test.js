@@ -1,3 +1,4 @@
+import { spawnSync } from 'child_process';
 import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';
@@ -43,5 +44,23 @@ describe('mergeNoResultQueries', function () {
 
     const result = fs.readFileSync(target, 'utf8');
     expect(result).to.equal('x\ny\n');
+  });
+
+  it('works via merge-no-results.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
+    const base = path.join(dir, 'base_no_results');
+    const ours = path.join(dir, '.repoMetrics', 'noResultQueries');
+    const theirs = path.join(dir, 'theirs_no_results');
+    fs.mkdirSync(path.dirname(ours), { recursive: true });
+    fs.writeFileSync(base, '');
+    fs.writeFileSync(ours, 'x\n');
+    fs.writeFileSync(theirs, 'y\n');
+
+    const script = path.resolve('tools/merge-no-results.sh');
+    const res = spawnSync('bash', [script, base, ours, theirs], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+
+    const result = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
+    expect(result).to.eql(['x', 'y']);
   });
 });
