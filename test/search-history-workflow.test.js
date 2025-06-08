@@ -1,3 +1,4 @@
+import { spawnSync } from 'child_process';
 import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';
@@ -79,5 +80,24 @@ describe('mergeSearchHistory', function () {
     const parsed = lines.map(l => JSON.parse(l));
     expect(parsed[0].query).to.equal('foo');
     expect(parsed[1].query).to.equal('bar');
+  });
+
+  it('works via merge-history.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hist-'));
+    const base = path.join(dir, 'base_history');
+    const ours = path.join(dir, '.repoMetrics', 'searchHistory');
+    const theirs = path.join(dir, 'theirs_history');
+    fs.mkdirSync(path.dirname(ours), { recursive: true });
+    fs.writeFileSync(base, '');
+    const rec1 = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    fs.writeFileSync(ours, JSON.stringify(rec1) + '\n');
+    const rec2 = { time: '2020-01-02T00:00:00Z', query: 'bar' };
+    fs.writeFileSync(theirs, JSON.stringify(rec2) + '\n');
+    const script = path.resolve('tools/merge-history.sh');
+    const res = spawnSync('bash', [script, base, ours, theirs], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+    const lines = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
+    const queries = lines.map(l => JSON.parse(l).query);
+    expect(queries).to.eql(['foo', 'bar']);
   });
 });
