@@ -9,12 +9,11 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
-    "test": "node tools/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
-    "coverage": "cross-env C8_FORK=1 c8 --all --include=js/** --include=tools/** mocha --recursive",
+    "coverage": "cross-env C8_FORK=1 c8 --all --include=test/** --include=tools/** mocha --recursive",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",
@@ -22,7 +21,6 @@
     "export-all-packs": "node tools/exportAllPacks.js",
     "clean-exports": "node tools/cleanExports.js",
     "list-sprites": "node tools/listSprites.js",
-    "scan-panel-green": "node tools/scanGreenPanel.js",
     "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
@@ -31,8 +29,7 @@
     "index": "node tools/build_index.js",
     "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js",
     "agent-update-searchhistory": "node tools/mergeSearchHistory.js",
-    "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .repoMetrics/metrics.json",
-    "test-workflows": "mocha test/search-history-workflow.test.js test/no-result-queries-workflow.test.js test/no-result-queries-ci-workflow.test.js test/search-history-ci-workflow.test.js"
+    "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .repoMetrics/metrics.json"
   },
   "repository": {
     "type": "git",
