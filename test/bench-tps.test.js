@@ -130,14 +130,14 @@ describe('bench TPS', function() {
     const strings = [
       'T' + lemmings.steps,
       'TPS ' + Math.round(lemmings.tps),
-      'Spawn ' + spawnCount
+      'Spawned ' + spawnCount
     ];
     let xpos = 0;
     expect(drawn.length).to.equal(strings.length);
     for (let i = 0; i < strings.length; i++) {
       expect(drawn[i].text).to.equal(strings[i]);
       expect(drawn[i].x).to.equal(xpos);
-      xpos += strings[i].length * 8;
+      xpos += (strings[i].length + 1) * 8;
     }
   });
 });

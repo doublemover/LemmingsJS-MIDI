@@ -12,6 +12,7 @@ class StageStub {
     this._rawScale = 1;
     this.redrawCount = 0;
     this.updateCalls = [];
+    this.clears = [];
     this.gameImgProps = {
       width: 100,
       height: 100,
@@ -23,13 +24,15 @@ class StageStub {
       viewPoint: { x: 0, y: 0, scale: 1 }
     };
   }
-  updateViewPoint(img, dx, dy) {
-    this.updateCalls.push({ dx, dy });
-    this.gameImgProps.viewPoint.x += dx;
-    this.gameImgProps.viewPoint.y += dy;
+  applyViewport(img, x, y, s) {
+    this.updateCalls.push({ x, y, s });
+    this.gameImgProps.viewPoint.x = x;
+    this.gameImgProps.viewPoint.y = y;
+    this.gameImgProps.viewPoint.scale = s;
   }
   clampViewPoint() {}
   redraw() { this.redrawCount++; }
+  clear(img) { this.clears.push(img); }
   snapScale(s) { return s; }
   limitValue(min, val, max) { return Math.min(Math.max(val, min), max); }
 }
@@ -100,6 +103,13 @@ describe('KeyboardShortcuts _step loop', function() {
     expect(stage.redrawCount).to.equal(1);
   });
 
+  it('clears frames when zooming via keyboard', function() {
+    ks._onKeyDown({ code: 'KeyZ', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() {} });
+    clock.tick(16);
+    window.lastCallback(clock.now);
+    expect(stage.clears.length).to.be.at.least(1);
+  });
+
   it('changeSpeed adjusts speedFactor without shift', function() {
     const timer = ks.view.game.getGameTimer();
     timer.speedFactor = 5;
@@ -117,6 +127,16 @@ describe('KeyboardShortcuts _step loop', function() {
     timer.speedFactor = 1;
     ks._changeSpeed(-1, true);
     expect(timer.speedFactor).to.equal(0.5);
+  });
+
+  it('changeSpeed clamps to allowed range', function() {
+    const timer = ks.view.game.getGameTimer();
+    timer.speedFactor = 120;
+    ks._changeSpeed(1, false);
+    expect(timer.speedFactor).to.equal(120);
+    timer.speedFactor = 0.1;
+    ks._changeSpeed(-1, false);
+    expect(timer.speedFactor).to.equal(0.1);
   });
 
   it('cancels animation frame on dispose', function() {
