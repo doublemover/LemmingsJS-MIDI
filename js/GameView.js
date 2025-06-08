@@ -482,6 +482,7 @@ class GameView extends Lemmings.BaseLogger {
     this.bench = true;
     await this.loadLevel();
     const level = this.game.level;
+    const baseEntrances = level.entrances.slice();
     level.entrances.length = 0;
     const groundMask = level.getGroundMaskLayer();
     const badTriggers = new Set([
@@ -494,7 +495,17 @@ class GameView extends Lemmings.BaseLogger {
     let attempts = 0;
     while (level.entrances.length < entrances && attempts < entrances * 10) {
       attempts++;
-      const spawnX = (Math.random() * level.width) | 0;
+      let spawnX;
+      if (baseEntrances.length > 0) {
+        const base = baseEntrances[(Math.random() * baseEntrances.length) | 0];
+        const dist = 10 + Math.random() * 590;
+        const dir = Math.random() < 0.5 ? -1 : 1;
+        spawnX = base.x + 24 + dir * dist;
+        if (spawnX < 0) spawnX = 0;
+        if (spawnX >= level.width) spawnX = level.width - 1;
+      } else {
+        spawnX = (Math.random() * level.width) | 0;
+      }
       let groundY = -1;
       for (let y = 0; y < level.height; y++) {
         if (groundMask.hasGroundAt(spawnX, y)) {
