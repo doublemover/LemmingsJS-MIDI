@@ -293,5 +293,9 @@
 {"time":"2025-06-08T08:28:43.587Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":58}
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
-{"time":"2025-06-08T08:56:41.682Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":238}
-{"time":"2025-06-08T08:56:43.889Z","query":"applyQuery","mdFiles":16,"codeFiles":28,"ms":322}
+{"time":"2025-06-08T08:57:12.608Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":803}
+{"time":"2025-06-08T08:57:15.028Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":459}
+{"time":"2025-06-08T08:57:18.488Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":1170}
+{"time":"2025-06-08T08:57:21.260Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":904}
+{"time":"2025-06-08T08:57:26.299Z","query":"gameResources","mdFiles":58,"codeFiles":159,"ms":977}
+{"time":"2025-06-08T08:58:16.813Z","query":"moveToLevel","mdFiles":84,"codeFiles":217,"ms":1443}
