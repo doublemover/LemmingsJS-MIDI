@@ -39,6 +39,20 @@ describe('CommandManager', function() {
     }
   }
 
+  it('commandFactory creates stub commands', function() {
+    const cm = new TestCommandManager(game, new MockTimer());
+    const cmd = cm.commandFactory('x');
+    expect(cmd).to.be.instanceOf(StubCommand);
+    expect(cm.commandFactory('z')).to.equal(null);
+  });
+
+  it('parseCommand loads values correctly', function() {
+    const cm = new TestCommandManager(game, new MockTimer());
+    const cmd = cm.parseCommand('x2:3');
+    expect(cmd).to.be.instanceOf(StubCommand);
+    expect(cmd.values).to.deep.equal([2, 3]);
+  });
+
   it('queueCommand logs command and serializes', function() {
     const timer = new MockTimer();
     timer.tick = 1;
