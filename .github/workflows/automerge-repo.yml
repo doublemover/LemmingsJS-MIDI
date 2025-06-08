@@ -2,7 +2,7 @@ name: Auto-merge repository history
 
 on:
   pull_request:
-    types: [synchronize, reopened]
+    types: [opened, synchronize, reopened]
 
 jobs:
   auto-merge:
