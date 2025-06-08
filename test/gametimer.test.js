@@ -92,14 +92,14 @@ describe('GameTimer', function() {
     expect(timer.isRunning()).to.equal(true);
   });
 
-  it('catchupSpeedAdjust restores normal speed after delay', function() {
+  it('does not slow down after a delay when not in bench mode', function() {
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     const timer = new GameTimer({ timeLimit: 1 });
     timer.continue();
     clock.tick(240);
     raf(clock.now);
-    expect(timer.speedFactor).to.be.closeTo(0.25, 0.0001);
+    expect(timer.speedFactor).to.equal(1);
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     clock.tick(960);
     raf(clock.now);
@@ -131,7 +131,7 @@ describe('GameTimer', function() {
     expect(count).to.equal(8);
   });
 
-  it('catchupSpeedAdjust scales across repeated delays', function() {
+  it('maintains speed across repeated delays', function() {
     let raf;
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     const timer = new GameTimer({ timeLimit: 1 });
@@ -139,12 +139,12 @@ describe('GameTimer', function() {
 
     clock.tick(120);
     raf(clock.now);
-    expect(timer.speedFactor).to.be.closeTo(0.5, 0.0001);
+    expect(timer.speedFactor).to.equal(1);
 
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     clock.tick(240);
     raf(clock.now);
-    expect(timer.speedFactor).to.be.closeTo(0.25, 0.0001);
+    expect(timer.speedFactor).to.equal(1);
 
     window.requestAnimationFrame = cb => { raf = cb; return 1; };
     clock.tick(60);
