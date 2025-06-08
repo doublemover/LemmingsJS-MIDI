@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_l2-level-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2-level-format.md
+=======
 # Lemmings 2 level file format
 
 tags: l2-level-format, doc, level-format
@@ -16,6 +18,7 @@ tags: l2-level-format, doc, level-format
 - **L2BO** – object records containing id, position and extra counts for steel pieces or chains.
 
 Our current `LevelReader` only understands the original Lemmings `.DAT` layout (see `js/LevelReader.js`). It lacks fields such as style identifiers, screen cut‑offs, allowed deaths before gold, and the extra object counts present in the L2 format. It also does not parse skill ID tables or the map header section.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-level-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-level-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-level-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2-level-format.md

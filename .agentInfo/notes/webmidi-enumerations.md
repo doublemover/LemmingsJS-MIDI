@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-enumerations.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_webmidi-enumerations.md
+=======
 # WebMIDI.js enumerations
 
 tags: webmidi, enumerations, doc
@@ -16,6 +18,7 @@ tags: webmidi, enumerations, doc
 - Deprecated getters `MIDI_CHANNEL_MESSAGES`, `MIDI_CHANNEL_MODE_MESSAGES` and `MIDI_CONTROL_CHANGE_MESSAGES` alias the new constants and print a warning when used.
 
 Refer to the WebMIDI.js source for the complete listings.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-enumerations.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-enumerations.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-enumerations.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_webmidi-enumerations.md

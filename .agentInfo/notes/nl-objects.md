@@ -4,6 +4,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_nl-objects.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_nl-objects.md
+=======
 # NeoLemmix objects note
 
 tags: nl-objects, doc
@@ -22,5 +24,6 @@ tags: nl-objects, doc
 
 The original implementations reside in `LemGame.pas` and `LemGadgets.pas` from the NeoLemmix source.  This JavaScript port mirrors their behaviour.
  >>>>>>> tmp_merge/theirs_.agentInfo_notes_nl-objects.md
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_nl-objects.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_nl-objects.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_nl-objects.md
