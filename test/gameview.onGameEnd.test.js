@@ -6,13 +6,16 @@ import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
 class StageMock {
-  constructor() { this.fadeCalls = 0; this.guiImgProps = { x:0, y:0, viewPoint:{ scale:1 } }; }
+  constructor() {
+    this.fadeCalls = 0;
+    this.guiImgProps = { x: 0, y: 0, viewPoint: { scale: 1 } };
+    this.startFadeOut = () => { this.fadeCalls++; };
+  }
   getGameDisplay() { return {}; }
   getGuiDisplay() { return {}; }
   setCursorSprite() {}
   updateStageSize() {}
   clear() {}
-  startFadeOut() { this.fadeCalls++; }
 }
 
 describe('GameView onGameEnd', function() {
