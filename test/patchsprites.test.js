@@ -36,8 +36,58 @@ async function runScript(script, args, options = {}) {
   if (error) throw error;
 }
 
-describe('tools/patchSprites.js horizontal sheets', function () {
-  it('slices sprite sheets horizontally', async function () {
+describe('tools/patchSprites.js', function () {
+  it('patches sprite data using PNG files', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
+    const pngDir = path.join(dir, 'png');
+    fs.mkdirSync(pngDir);
+
+    const raw = Uint8Array.from({ length: 16 }, (_, i) => i);
+    const packed = PackFilePart.pack(raw);
+    const size = packed.byteArray.length + 10;
+    const header = new Uint8Array([
+      packed.initialBits,
+      packed.checksum,
+      0, 0,
+      0, 16,
+      0, 0,
+      (size >> 8) & 0xFF,
+      size & 0xFF
+    ]);
+    const datBuf = new Uint8Array(size);
+    datBuf.set(header, 0);
+    datBuf.set(packed.byteArray, 10);
+    const datFile = path.join(dir, 'orig.dat');
+    fs.writeFileSync(datFile, datBuf);
+
+    const png = new PNG({ width: 2, height: 2 });
+    png.data = Buffer.from(raw);
+    fs.writeFileSync(path.join(pngDir, '0.png'), PNG.sync.write(png));
+
+    const outFile = path.join(dir, 'out.dat');
+
+    const origPath = new URL('../tools/patchSprites.js', import.meta.url);
+    const code = fs.readFileSync(fileURLToPath(origPath), 'utf8');
+    const patched = code.replace('import \'../js/LemmingsBootstrap.js\';', '');
+    const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
+    fs.writeFileSync(tempScript, patched);
+
+    await runScript(tempScript, [datFile, pngDir, outFile]);
+    fs.unlinkSync(tempScript);
+
+    const outBuf = fs.readFileSync(outFile);
+    const fc = new FileContainer(new BinaryReader(new Uint8Array(outBuf)));
+    expect(fc.count()).to.equal(1);
+    const part = fc.parts[0];
+    const unpacked = fc.getPart(0);
+    expect(Array.from(unpacked.data.slice(0, unpacked.length)))
+      .to.eql(Array.from(raw));
+    const expected = PackFilePart.pack(raw);
+    expect(part.checksum).to.equal(expected.checksum);
+    expect(part.initialBufferLen).to.equal(expected.initialBits);
+  });
+
+  it('patches multiple sprites and preserves palette offsets', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'sprites-'));
     const pngDir = path.join(dir, 'png');
     fs.mkdirSync(pngDir);
@@ -79,14 +129,10 @@ describe('tools/patchSprites.js horizontal sheets', function () {
     png0.data = Buffer.from(raws[0].map(v => v + 1));
     fs.writeFileSync(path.join(pngDir, '0.png'), PNG.sync.write(png0));
 
-    const new1 = Buffer.from(raws[1].map(v => v + 1));
-    const new2 = Buffer.from(raws[2].map(v => v + 1));
-    const sheet = new PNG({ width: 4, height: 2 });
+    const sheet = new PNG({ width: 2, height: 4 });
     sheet.data = Buffer.alloc(32);
-    for (let y = 0; y < 2; y++) {
-      sheet.data.set(new1.subarray(y * 8, y * 8 + 8), y * 16);
-      sheet.data.set(new2.subarray(y * 8, y * 8 + 8), y * 16 + 8);
-    }
+    sheet.data.set(Buffer.from(raws[1].map(v => v + 1)), 0);
+    sheet.data.set(Buffer.from(raws[2].map(v => v + 1)), 16);
     fs.writeFileSync(path.join(pngDir, '1.png'), PNG.sync.write(sheet));
 
     const outFile = path.join(dir, 'out.dat');
@@ -97,7 +143,7 @@ describe('tools/patchSprites.js horizontal sheets', function () {
     const tempScript = path.join(path.dirname(fileURLToPath(origPath)), 'patchSprites.test-run.js');
     fs.writeFileSync(tempScript, patched);
 
-    await runScript(tempScript, ['--sheet-orientation=horizontal', datFile, pngDir, outFile]);
+    await runScript(tempScript, ['--sheet-orientation=vertical', datFile, pngDir, outFile]);
     fs.unlinkSync(tempScript);
 
     const outBuf = fs.readFileSync(outFile);
