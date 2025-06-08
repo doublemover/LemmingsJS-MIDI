@@ -676,6 +676,7 @@ function drawDashedRect(
 
 Lemmings.drawMarchingAntRect = drawMarchingAntRect;
 Lemmings.drawDashedRect = drawDashedRect;
+Lemmings.scaleNearest = scaleNearest;
 Lemmings.scaleXbrz = scaleXbrz;
 Lemmings.scaleHqx = scaleHqx;
-export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleXbrz, scaleHqx };
+export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleNearest, scaleXbrz, scaleHqx };
