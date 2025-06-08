@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_l2gfx-format.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_l2gfx-format.md
+=======
 # L2 style file format
 
 tags: l2gfx-format, doc
@@ -21,5 +23,6 @@ tags: l2gfx-format, doc
 - **L2BS** 2x1 preview sprites
 
 TODO: no parser exists for these sections yet. Unknown fields like `0x0008-0x0009` in `L2CL` and certain `L2OB` bitfields still need research.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_l2gfx-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2gfx-format.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_l2gfx-format.md

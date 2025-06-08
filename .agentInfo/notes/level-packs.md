@@ -2,6 +2,8 @@
 =======
 <<<<<<< tmp_merge/ours_.agentInfo_notes_level-packs.md
 =======
+<<<<<<< tmp_merge/ours_.agentInfo_notes_level-packs.md
+=======
 # Level packs summary
 
 tags: level-packs, resources, doc
@@ -20,5 +22,6 @@ Tools such as `exportAllPacks.js`, `exportGroundImages.js` or `packLevels.js`
 use this provider to export sprites, unpack DAT files or create new archives.
 Keeping packs compressed is fine because the provider caches archive entries and
 automatically resolves paths listed in `config.json`.
+>>>>>>> tmp_merge/theirs_.agentInfo_notes_level-packs.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_level-packs.md
 >>>>>>> tmp_merge/theirs_.agentInfo_notes_level-packs.md
