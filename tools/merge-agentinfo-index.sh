@@ -1,6 +1,6 @@
 #!/bin/bash
 # tools/merge-agentinfo-index.sh
-# Merges .agentInfo/index.md and index-detailed.md in a stable way
+# Merges .agentInfo/index.md and index-detailed.md in a stable way.
 
 # Args: %O %A %B
 ANCESTOR="$1"

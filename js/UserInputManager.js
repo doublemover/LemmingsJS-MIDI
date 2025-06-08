@@ -286,10 +286,7 @@ class UserInputManager {
         stageImage.display &&
         stageImage.display.worldDataSize.width === 1600
       ) {
-        const worldPos = stage.calcPosition2D(stageImage, position);
-        const zx = worldPos.x === 0 ? 0.0001 : worldPos.x;
-        const zy = worldPos.y === 0 ? 0.0001 : worldPos.y;
-        stage.updateViewPoint(stageImage, position.x, position.y, -deltaY, zx, zy);
+        stage.updateViewPoint(stageImage, position.x, position.y, deltaY);
         return;
       }
     } else {

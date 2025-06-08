@@ -35,7 +35,7 @@ fi
 #     picking “max(md)” and “max(code)” for each key.
 #
 # If you have a different policy (e.g. last‐modified wins, or sum them),
-# just adjust the jq expression accordingly.
+# just adjust the jq expression accordingly
 
 jq -s '
   # . is an array [base, ours, theirs]
