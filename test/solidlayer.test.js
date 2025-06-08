@@ -57,4 +57,36 @@ describe('SolidLayer', function() {
     expect(layer.hasGroundAt(3, 3)).to.equal(false);
     expect(layer.hasGroundAt(1, 1)).to.equal(true);
   });
+
+  it('clips mask edges at level bounds', function() {
+    const layer = new SolidLayer(3, 3);
+    for (let y = 0; y < 3; y++) for (let x = 0; x < 3; x++) layer.setGroundAt(x, y);
+    const mask = new Mask(null, 2, 2, 0, 0);
+    mask.data = new Int8Array([1, 1, 1, 1]);
+
+    layer.clearGroundWithMask(mask, -1, -1);
+    expect(layer.hasGroundAt(0, 0)).to.equal(false);
+    expect(layer.hasGroundAt(1, 0)).to.equal(true);
+    expect(layer.hasGroundAt(0, 1)).to.equal(true);
+
+    layer.clearGroundWithMask(mask, 2, 2);
+    expect(layer.hasGroundAt(2, 2)).to.equal(false);
+    expect(layer.hasGroundAt(1, 2)).to.equal(true);
+    expect(layer.hasGroundAt(2, 1)).to.equal(true);
+  });
+
+  it('clears ground on a sublayer', function() {
+    const layer = new SolidLayer(4, 4);
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) layer.setGroundAt(x, y);
+    const sub = layer.getSubLayer(1, 1, 2, 2);
+    const mask = new Mask(null, 2, 2, 0, 0);
+    mask.data = new Int8Array([1, 1, 1, 1]);
+
+    sub.clearGroundWithMask(mask, 0, 0);
+    expect(sub.hasGroundAt(0, 0)).to.equal(false);
+    expect(sub.hasGroundAt(1, 0)).to.equal(false);
+    expect(sub.hasGroundAt(0, 1)).to.equal(false);
+    expect(sub.hasGroundAt(1, 1)).to.equal(false);
+    expect(layer.hasGroundAt(1, 1)).to.equal(true);
+  });
 });
