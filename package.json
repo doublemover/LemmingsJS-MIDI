@@ -14,7 +14,7 @@
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
-    "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
+    "coverage": "cross-env C8_FORK=1 c8 --all --include=js/** --include=tools/** mocha --recursive",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
     "export-ground-images": "node tools/exportGroundImages.js",

@@ -294,5 +294,10 @@
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
 {"time":"2025-06-08T08:57:08.729Z","query":"setHistoryState","mdFiles":44,"codeFiles":154,"ms":538}
-{"time":"2025-06-08T09:39:40.115Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":190}
-{"time":"2025-06-08T09:39:42.103Z","query":"arrow","mdFiles":3,"codeFiles":12,"ms":231}
+{"time":"2025-06-08T09:36:06.318Z","query":"loadLevel level","mdFiles":62,"codeFiles":142,"ms":264}
+{"time":"2025-06-08T09:36:08.721Z","query":"loadLevel","mdFiles":62,"codeFiles":142,"ms":395}
+{"time":"2025-06-08T09:53:04.707Z","query":"TODO","mdFiles":12,"codeFiles":1,"ms":205}
+{"time":"2025-06-08T09:53:07.552Z","query":"TODO","mdFiles":12,"codeFiles":1,"ms":378}
+{"time":"2025-06-08T10:12:25.616Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":100}
+{"time":"2025-06-08T10:12:28.050Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":137}
+{"time":"2025-06-08T10:12:30.484Z","query":"coverage","mdFiles":3,"codeFiles":1,"ms":95}
