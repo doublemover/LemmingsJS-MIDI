@@ -199,7 +199,7 @@ URL parameters (shortcut in brackets):
 - `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
 - `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
 - `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation. The overlay fades out automatically and the timer resumes afterward. Only the pause button flashes red/green via `suspendWithColor` during adjustments (default: false)
-- `benchSequence (bs)`: Run automated bench tests with 50, 40, 30, 25, 20, 10, 5 and 1 random entrances (default: false)
+- `benchSequence (bs)`: Automatically measure extra lemming capacity then run bench tests with 50, 25, 10 and 1 additional entrances, repeating with half and then zero extra lemmings (default: false)
 - `endless (e)`: Disables time limit (default: false)
 - `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
 - `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
