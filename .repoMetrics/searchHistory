@@ -294,3 +294,5 @@
 {"time":"2025-06-08T08:28:46.073Z","query":"90%","mdFiles":0,"codeFiles":1,"ms":109}
 {"time":"2025-06-08T08:39:36.066Z","query":"runScript(","mdFiles":35,"codeFiles":54,"ms":142}
 {"time":"2025-06-08T08:57:08.729Z","query":"setHistoryState","mdFiles":44,"codeFiles":154,"ms":538}
+{"time":"2025-06-08T09:36:30.545Z","query":"GameView start","mdFiles":65,"codeFiles":179,"ms":889}
+{"time":"2025-06-08T09:36:33.701Z","query":"GameView start","mdFiles":65,"codeFiles":179,"ms":1417}
