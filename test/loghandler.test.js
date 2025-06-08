@@ -38,6 +38,53 @@ describe('LogHandler', function() {
   });
 });
 
+describe('Logger output levels', function() {
+  let origConsole;
+  beforeEach(function() {
+    globalThis.lemmings.game.showDebug = true;
+    origConsole = {
+      info: console.info,
+      warn: console.warn,
+      error: console.error,
+      log: console.log
+    };
+    this.infos = [];
+    this.warns = [];
+    this.errors = [];
+    this.logs = [];
+    console.info = msg => this.infos.push(String(msg));
+    console.warn = msg => this.warns.push(String(msg));
+    console.error = msg => this.errors.push(String(msg));
+    console.log = msg => this.logs.push(String(msg));
+  });
+  afterEach(function() {
+    console.info = origConsole.info;
+    console.warn = origConsole.warn;
+    console.error = origConsole.error;
+    console.log = origConsole.log;
+  });
+
+  it('formats info, warning and error messages', function() {
+    const logger = new Lemmings.Logger('Mod');
+    logger.info('hello');
+    logger.warn('caution');
+    logger.error('boom', new Error('bad'));
+    expect(this.infos).to.eql(['Mod\thello']);
+    expect(this.warns).to.eql(['Mod\tcaution']);
+    expect(this.errors).to.eql(['Mod\tboom', 'Mod\tbad']);
+  });
+
+  it('toggles debug logging based on environment', function() {
+    const logger = new Lemmings.Logger('Dbg');
+    globalThis.lemmings.game.showDebug = false;
+    logger.debug('off');
+    expect(this.logs).to.eql([]);
+    globalThis.lemmings.game.showDebug = true;
+    logger.debug('on');
+    expect(this.logs).to.eql(['Dbg\ton']);
+  });
+});
+
 describe('withPerformance', function() {
   let origPerf;
   before(function() {
