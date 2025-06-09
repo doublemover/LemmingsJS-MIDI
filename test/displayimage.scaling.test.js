@@ -55,6 +55,22 @@ describe('DisplayImage scaling helpers', function() {
         3, 3, 3, 4
       ]);
     });
+
+    it('scaleXbrz falls back to nearest for non-integer scale', function() {
+      const exp = new Uint32Array(9);
+      scaleNearest(frame, 3, 3, { dest32: exp, destW: 3, destH: 3, baseX: 0, baseY: 0 });
+      const dest = new Uint32Array(9);
+      scaleXbrz(frame, 3, 3, { dest32: dest, destW: 3, destH: 3, baseX: 0, baseY: 0 });
+      expect(Array.from(dest)).to.eql(Array.from(exp));
+    });
+
+    it('scaleHqx falls back to nearest for non-integer scale', function() {
+      const exp = new Uint32Array(9);
+      scaleNearest(frame, 3, 3, { dest32: exp, destW: 3, destH: 3, baseX: 0, baseY: 0 });
+      const dest = new Uint32Array(9);
+      scaleHqx(frame, 3, 3, { dest32: dest, destW: 3, destH: 3, baseX: 0, baseY: 0 });
+      expect(Array.from(dest)).to.eql(Array.from(exp));
+    });
   });
 
   describe('draw rect helpers', function() {
