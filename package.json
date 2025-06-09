@@ -9,6 +9,7 @@
   "scripts": {
     "start": "http-server --cors=*",
     "check-undefined": "node tools/check-undefined.js",
+    "test": "node tools/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
