@@ -429,9 +429,6 @@
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
-{"time":"2025-06-08T23:47:10.560Z","query":"bitmask","mdFiles":16,"codeFiles":20,"ms":567}
-{"time":"2025-06-08T23:47:13.469Z","query":"bitmask operations","mdFiles":16,"codeFiles":20,"ms":876}
-{"time":"2025-06-08T23:48:43.033Z","query":"bit","mdFiles":0,"codeFiles":0,"ms":1041}
-{"time":"2025-06-08T23:48:46.336Z","query":"bitmask","mdFiles":0,"codeFiles":0,"ms":784}
-{"time":"2025-06-08T23:48:50.124Z","query":"mask","mdFiles":0,"codeFiles":0,"ms":628}
-{"time":"2025-06-08T23:48:56.073Z","query":"mask","mdFiles":1,"codeFiles":15,"ms":976}
+{"time":"2025-06-08T23:48:22.843Z","query":"position","mdFiles":2,"codeFiles":5,"ms":456}
+{"time":"2025-06-08T23:48:25.572Z","query":"buffer","mdFiles":0,"codeFiles":0,"ms":598}
+{"time":"2025-06-08T23:48:29.036Z","query":"position","mdFiles":2,"codeFiles":5,"ms":590}

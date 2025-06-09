@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { DisplayImage } from '../js/DisplayImage.js';
+import { Frame } from '../js/Frame.js';
 
 class StubStage {
   constructor() { this.calls = []; }
@@ -137,5 +138,55 @@ describe('DisplayImage primitives', function() {
     expect(disp.buffer32[0*3 + 2]).to.equal(0);
     expect(disp.buffer32[1*3 + 1]).to.equal(0);
     expect(disp.buffer32[1*3 + 2]).to.equal(WHITE);
+  });
+
+  it('drawCornerRect draws corners and midlines correctly', function() {
+    const disp = new DisplayImage(stage);
+    disp.initSize(7, 7);
+    disp.clear(0);
+    disp.drawCornerRect(1, 1, { width: 5, height: 5 }, 1, 2, 3, 2, true, 3);
+    const c = 0xFF030201;
+    const expected = new Set();
+    for (let x = 1; x <= 5; x++) {
+      expected.add(`${x},1`);
+      expected.add(`${x},5`);
+    }
+    for (let y = 1; y <= 5; y++) {
+      expected.add(`1,${y}`);
+      expected.add(`5,${y}`);
+    }
+    const seen = new Set();
+    for (let y = 0; y < 7; y++) {
+      for (let x = 0; x < 7; x++) {
+        if (disp.buffer32[y * 7 + x] === c) seen.add(`${x},${y}`);
+        else expect(disp.buffer32[y * 7 + x]).to.equal(0);
+      }
+    }
+    expect(seen).to.eql(expected);
+  });
+
+  it('_blit writes pixels without scaling', function() {
+    const disp = new DisplayImage(stage);
+    disp.initSize(3, 2);
+    disp.clear(0);
+    const frame = new Frame(2, 2);
+    frame.data.set([1, 2, 3, 4]);
+    frame.mask.set([1, 0, 0, 1]);
+    disp._blit(frame, 1, 0, { nullColor32: 9 });
+    expect(Array.from(disp.buffer32)).to.eql([
+      0, 1, 9,
+      0, 9, 4
+    ]);
+  });
+
+  it('_blit flips vertically when upsideDown is true', function() {
+    const disp = new DisplayImage(stage);
+    disp.initSize(2, 2);
+    disp.clear(0);
+    const frame = new Frame(2, 2);
+    frame.data.set([1, 2, 3, 4]);
+    frame.mask.fill(1);
+    disp._blit(frame, 0, 0, { upsideDown: true });
+    expect(Array.from(disp.buffer32)).to.eql([3, 4, 1, 2]);
   });
 });
