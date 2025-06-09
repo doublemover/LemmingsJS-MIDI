@@ -89,4 +89,13 @@ describe('SolidLayer', function() {
     expect(sub.hasGroundAt(1, 1)).to.equal(false);
     expect(layer.hasGroundAt(1, 1)).to.equal(true);
   });
+
+  it('returns false for out-of-bounds queries', function() {
+    const layer = new SolidLayer(2, 2);
+    layer.setGroundAt(1, 1);
+    expect(layer.hasGroundAt(-1, 0)).to.equal(false);
+    expect(layer.hasGroundAt(2, 0)).to.equal(false);
+    expect(layer.hasGroundAt(0, -1)).to.equal(false);
+    expect(layer.hasGroundAt(0, 2)).to.equal(false);
+  });
 });
