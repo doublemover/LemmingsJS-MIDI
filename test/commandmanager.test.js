@@ -75,6 +75,21 @@ describe('CommandManager', function() {
     expect(cm.serialize()).to.equal('2=x5');
   });
 
+  it('serialize concatenates multiple logged commands', function() {
+    const timer = new MockTimer();
+    timer.tick = 1;
+
+    const cm = new TestCommandManager(game, timer);
+    const first = new StubCommand();
+    cm.queueCommand(first);
+    timer.tick = 2;
+    const second = new StubCommand();
+    second.load([5]);
+    cm.queueCommand(second);
+
+    expect(cm.serialize()).to.equal('1=x1&2=x5');
+  });
+
   it('handles missing gameTimer and failed commands gracefully', function() {
     const timer = new MockTimer();
     const cm = new TestCommandManager(game, timer);
@@ -109,9 +124,10 @@ describe('CommandManager', function() {
       if (fn === oldListener) removed = true;
       Lemmings.EventHandler.prototype.off.call(this, fn);
     };
-    TestCommandManager.call(cm, game, timer);
+    cm.dispose();
+    const fresh = new TestCommandManager(game, timer);
     expect(removed).to.equal(true);
-    expect(cm._tickListener).to.not.equal(oldListener);
+    expect(fresh._tickListener).to.not.equal(oldListener);
   });
 
   it('setGame assigns new game and clears state', function() {

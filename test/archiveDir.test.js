@@ -38,14 +38,16 @@ describe('archiveDir (patched)', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('creates a tar.gz archive', async function () {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arch-'));
-    fs.writeFileSync(path.join(dir, 'file.txt'), 'tar');
-    await archiveDir(dir, 'tar');
-    assert.ok(fs.existsSync(`${dir}.tar.gz`));
-    fs.rmSync(`${dir}.tar.gz`, { force: true });
-    fs.rmSync(dir, { recursive: true, force: true });
-  });
+  for (const fmt of ['tar', 'tar.gz', 'tgz']) {
+    it(`creates a ${fmt} archive`, async function () {
+      const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arch-'));
+      fs.writeFileSync(path.join(dir, 'file.txt'), 'tar');
+      await archiveDir(dir, fmt);
+      assert.ok(fs.existsSync(`${dir}.tar.gz`));
+      fs.rmSync(`${dir}.tar.gz`, { force: true });
+      fs.rmSync(dir, { recursive: true, force: true });
+    });
+  }
 
   it('uses spawnSync for rar archives', async function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'arch-'));

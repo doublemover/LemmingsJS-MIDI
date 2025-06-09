@@ -55,4 +55,24 @@ describe('BinaryReader', function () {
     assert.ok(reader.log.logged.filter(m => m.includes('read out of data')).length >= 2);
     Lemmings.LogHandler = origHandler;
   });
+
+  it('initializes with offset and default length for ArrayBuffer', function () {
+    const bytes = Uint8Array.from([10, 20, 30, 40]);
+    const reader = new BinaryReader(bytes.buffer, 1);
+    assert.strictEqual(reader.hiddenOffset, 1);
+    assert.strictEqual(reader.length, 3);
+    assert.strictEqual(reader.pos, 1);
+    assert.ok(reader.data instanceof Uint8Array);
+    assert.deepStrictEqual(Array.from(reader.data), [10, 20, 30, 40]);
+  });
+
+  it('initializes from array with explicit length', async function () {
+    const reader = new BinaryReader([5, 6, 7, 8], 2, 1);
+    const loaded = await reader.ready;
+    assert.ok(loaded instanceof Uint8Array);
+    assert.strictEqual(reader.hiddenOffset, 2);
+    assert.strictEqual(reader.length, 1);
+    assert.strictEqual(reader.pos, 2);
+    assert.deepStrictEqual(Array.from(reader.data), [5, 6, 7, 8]);
+  });
 });

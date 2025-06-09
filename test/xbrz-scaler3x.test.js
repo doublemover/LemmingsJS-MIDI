@@ -29,6 +29,34 @@ describe('Scaler3x individual blend functions', function () {
     scaler = new Scaler3x();
   });
 
+  it('blendLineSteepAndShallow draws expected pattern', function () {
+    const dest = new Uint32Array(9);
+    const out = makeOut(dest);
+    scaler.blendLineSteepAndShallow(COL, out);
+
+    const exp = new Uint32Array(9);
+    const eo = makeOut(exp);
+    alphaBlend(1, 4, eo.ref(2, 0), COL);
+    alphaBlend(1, 4, eo.ref(0, 2), COL);
+    alphaBlend(3, 4, eo.ref(2, 1), COL);
+    alphaBlend(3, 4, eo.ref(1, 2), COL);
+    eo.ref(2, 2).set(COL);
+
+    expectArray(dest, exp);
+  });
+
+  it('blendCorner applies alphaBlend to bottom-right', function () {
+    const dest = new Uint32Array(9);
+    const out = makeOut(dest);
+    scaler.blendCorner(COL, out);
+
+    const exp = new Uint32Array(9);
+    const eo = makeOut(exp);
+    alphaBlend(45, 100, eo.ref(2, 2), COL);
+
+    expectArray(dest, exp);
+  });
+
   function expectArray(actual, expected) {
     expect(Array.from(actual)).to.eql(Array.from(expected));
   }

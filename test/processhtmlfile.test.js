@@ -45,4 +45,19 @@ describe('processHtmlFile options', function () {
     assert.ok(!/src="app.js"/.test(result.html));
     fs.rmSync(dir, { recursive: true, force: true });
   });
+  it('extracts inline event handlers', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
+    const html = '<!DOCTYPE html><html><body><button onclick="doThing()">go</button></body></html>';
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const snippets = processHtmlFile(file);
+    assert.strictEqual(snippets.length, 1);
+    const handler = snippets[0];
+    assert.strictEqual(handler.type, 'handler');
+    assert.strictEqual(handler.attr, 'onclick');
+    assert.ok(typeof handler.loc.start === 'number');
+    assert.ok(typeof handler.loc.end === 'number');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
 });
