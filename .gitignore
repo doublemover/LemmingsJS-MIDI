@@ -29,3 +29,5 @@ Thumbs.db
 # Test output
 *.log
 *.tap
+test/processhtmlfile.test.js
+test/processhtmlfile.test.js
