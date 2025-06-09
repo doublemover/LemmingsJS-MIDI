@@ -115,3 +115,32 @@ describe('withPerformance', function() {
     expect(performance.measureCalls.length).to.equal(0);
   });
 });
+
+describe('startMeasure and withPerformance error handling', function() {
+  let origPerf;
+  beforeEach(function() {
+    origPerf = globalThis.performance;
+  });
+  afterEach(function() {
+    globalThis.performance = origPerf;
+    delete globalThis.lemmings;
+  });
+
+  it('returns noop when metrics disabled', function() {
+    globalThis.lemmings = { perfMetrics: false, debug: false };
+    globalThis.performance = { now() { throw new Error('called'); }, measure() { throw new Error('called'); } };
+    const dummy = new Dummy();
+    const end = dummy.startMeasure('t');
+    expect(() => end()).to.not.throw();
+  });
+
+  it('swallows measure errors', function() {
+    let count = 0;
+    globalThis.lemmings = { perfMetrics: true, debug: true };
+    globalThis.performance = { now() { return 0; }, measure() { count++; throw new Error('boom'); } };
+    const fn = Lemmings.withPerformance('t', {}, x => x + 1);
+    const result = fn(1);
+    expect(result).to.equal(2);
+    expect(count).to.equal(1);
+  });
+});
