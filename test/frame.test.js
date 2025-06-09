@@ -72,6 +72,22 @@ describe('Frame', function () {
     ]);
   });
 
+  it('drawPaletteImage copies RGBA buffers and sets mask from alpha', function () {
+    const frame = new Frame(2, 2);
+    const img = new Uint32Array([
+      0x01020301,
+      0x00000000,
+      0xAABBCCDD,
+      0x11223344
+    ]);
+
+    frame.clear();
+    frame.drawPaletteImage(img, 2, 2, null, 0, 0);
+
+    expect(Array.from(frame.data)).to.eql(Array.from(img));
+    expect(Array.from(frame.mask)).to.eql([1, 0, 1, 1]);
+  });
+
   it('respects noOverwrite and onlyOverwrite flags', function () {
     const frame = new Frame(1, 1);
     const base = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;

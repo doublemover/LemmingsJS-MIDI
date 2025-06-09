@@ -48,15 +48,29 @@ class Frame {
   drawPaletteImage (srcImg, srcWidth, srcHeight, palette, left = 0, top = 0) {
     const dest      = this.data;
     const dMask     = this.mask;
-    const palLookup = palette._rgbaCache ||= /* build once */
-      Uint32Array.from({ length: 128 }, (_, i) => palette.getColor(i));
-
     const dstStride = this.width;
     const baseX     = left  | 0;
     const baseY     = top   | 0;
 
     let srcIdx = 0;
     let dstIdx = (baseY * dstStride + baseX) | 0;
+
+    if (srcImg instanceof Uint32Array) {
+      for (let y = 0; y < srcHeight; ++y) {
+        let lineDstIdx = dstIdx;
+        for (let x = 0; x < srcWidth; ++x) {
+          const rgba = srcImg[srcIdx++];
+          dest[lineDstIdx] = rgba;
+          dMask[lineDstIdx] = (rgba >>> 24) ? 1 : 0;
+          ++lineDstIdx;
+        }
+        dstIdx += dstStride;
+      }
+      return;
+    }
+
+    const palLookup = palette._rgbaCache ||= /* build once */
+      Uint32Array.from({ length: 128 }, (_, i) => palette.getColor(i));
 
     for (let y = 0; y < srcHeight; ++y) {
       let lineDstIdx = dstIdx;
