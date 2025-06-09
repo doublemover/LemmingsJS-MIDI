@@ -62,4 +62,44 @@ describe('GroundReader', function() {
     expect(gr.colorPalette.getB(8)).to.equal(240);
     expect(gr.imgTerrain[0].isSteel).to.equal(true);
   });
+
+  it('logs warnings for inconsistent object fields', function() {
+    class MockLogHandler {
+      constructor() { this.logged = []; }
+      log(msg) { this.logged.push(msg); }
+      debug() {}
+    }
+    const origHandler = Lemmings.LogHandler;
+    Lemmings.LogHandler = MockLogHandler;
+    const prev = globalThis.lemmings.game.showDebug;
+    globalThis.lemmings.game.showDebug = true;
+
+    const buf = new Uint8Array(1056);
+    // object0: minimal data with mismatched unknown fields
+    buf[4] = 1; buf[5] = 1; // width, height
+    buf[6] = 0; buf[7] = 5; // frameDataSize
+    buf[8] = 0x04; buf[9] = 0x00; // maskLoc = 0x0400? Wait big-endian -> we want 0x0400 maybe 1024; but we can set 0x04 0x00 -> 1024
+    buf[10] = 0; buf[11] = 0; // unknown1 (should be 0x0400)
+    buf[12] = 0; buf[13] = 0; // unknown2 (should be 0x0200)
+    // rest of object0 left zero (trigger etc)
+
+    // terrain0 to satisfy reader
+    const tOff = 28 * 16;
+    buf[tOff] = 1; buf[tOff + 1] = 1;
+    buf[tOff + 5] = 3;
+
+    const pal = 960 + 24;
+    for (let i = 0; i < 48; i++) buf[pal + i] = 0;
+
+    const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT', 'lemmings');
+    const vgaT = new BinaryReader(new Uint8Array([0,0,0,0]));
+    const vgaO = new BinaryReader(new Uint8Array([0,0,0,0,0]));
+    new GroundReader(ground, vgaT, vgaO);
+
+    globalThis.lemmings.game.showDebug = prev;
+    const logs = ground.log.logged;
+    Lemmings.LogHandler = origHandler;
+    expect(logs.some(m => m.includes('unknown1 diverges'))).to.equal(true);
+    expect(logs.some(m => m.includes('unknown2 should be'))).to.equal(true);
+  });
 });
