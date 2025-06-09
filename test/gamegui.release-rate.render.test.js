@@ -154,7 +154,7 @@ describe('GameGui release-rate render', function() {
     gui.drawNukeHover(display);
     expect(display.calls[0]).to.deep.equal({
       op: 'drawMarchingAntRect',
-      args: [16 * 11, 16, 16, 23, 4, 4, 0xFF0080FF, 0xFF00FFFF]
+      args: [gui.panelButtonWidth * 11, gui.panelTop, gui.panelButtonWidth, gui.panelButtonHeight, 4, 4, 0xFF0080FF, 0xFF00FFFF]
     });
   });
 });

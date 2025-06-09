@@ -53,4 +53,11 @@ describe('StageImageProperties', function() {
     expect(allZero).to.equal(true);
     expect(doc.lastOpts && doc.lastOpts.alpha).to.equal(true);
   });
+
+  it('creates large ImageData without issue', function() {
+    const props = new StageImageProperties();
+    const img = props.createImage(32, 32);
+    expect(img.width).to.equal(32);
+    expect(img.height).to.equal(32);
+  });
 });

@@ -55,6 +55,16 @@ describe('DisplayImage scaling helpers', function() {
         3, 3, 3, 4
       ]);
     });
+
+    it('scaleNearest handles frames larger than 16x16', function() {
+      const big = new Frame(20, 20);
+      big.data.fill(5);
+      big.mask.fill(1);
+      const dest = new Uint32Array(40 * 40);
+      scaleNearest(big, 40, 40, { dest32: dest, destW: 40, destH: 40, baseX: 0, baseY: 0 });
+      expect(dest[0]).to.equal(5);
+      expect(dest[1599]).to.equal(5); // last pixel
+    });
   });
 
   describe('draw rect helpers', function() {
