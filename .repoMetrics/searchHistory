@@ -429,3 +429,6 @@
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
+{"time":"2025-06-09T13:54:37.036Z","query":"TApp","mdFiles":5,"codeFiles":5,"ms":874}
+{"time":"2025-06-09T13:54:59.483Z","query":"documentation docs","mdFiles":0,"codeFiles":0,"ms":958}
+{"time":"2025-06-09T13:55:16.108Z","query":"TApp","mdFiles":15,"codeFiles":15,"ms":630}
