@@ -108,4 +108,36 @@ describe('UserInputManager DOM events', function() {
     expect(ups).to.have.lengthOf(1);
     expect(uim.twoTouch).to.be.false;
   });
+
+  it('handles middle clicks and double clicks', function() {
+    const el = new StubElement();
+    const uim = new UserInputManager(el);
+    let dbl = 0;
+    uim.onDoubleClick.on(() => { dbl++; });
+
+    el.dispatchEvent(mouseEvent('mousedown', { clientX: 5, clientY: 5, button: 1 }));
+    expect(uim.mouseButton).to.be.true;
+    expect(uim.mouseButtonNumber).to.equal(1);
+
+    el.dispatchEvent(mouseEvent('mouseup', { clientX: 5, clientY: 5, button: 1 }));
+    expect(uim.mouseButton).to.be.false;
+
+    el.dispatchEvent(mouseEvent('dblclick', { clientX: 5, clientY: 5 }));
+    expect(dbl).to.equal(1);
+  });
+
+  it('clears state on touchleave and touchcancel', function() {
+    const el = new StubElement();
+    const uim = new UserInputManager(el);
+    el.dispatchEvent(touchEvent('touchstart', [[0, 0], [10, 0]]));
+    expect(uim.twoTouch).to.be.true;
+
+    el.dispatchEvent(touchEvent('touchleave'));
+    expect(uim.twoTouch).to.be.false;
+
+    el.dispatchEvent(touchEvent('touchstart', [[0, 0], [10, 0]]));
+    expect(uim.twoTouch).to.be.true;
+    el.dispatchEvent(touchEvent('touchcancel'));
+    expect(uim.twoTouch).to.be.false;
+  });
 });
