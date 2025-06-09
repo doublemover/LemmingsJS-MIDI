@@ -40,4 +40,31 @@ describe('tools/check-undefined.js', function () {
     expect(result.status).to.equal(0);
     expect(result.stdout).to.match(/No undefined calls/);
   });
+
+  it('respects CLI arguments for JS and HTML files', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    fs.mkdirSync(path.join(dir, 'js'));
+    fs.writeFileSync(path.join(dir, 'js', 'ignored.js'), 'missingFn();');
+    fs.writeFileSync(path.join(dir, 'main.js'), 'function foo(){} foo();');
+    const html = '<html><body><script>document.appendChild(document.createElement("div"));</script></body></html>';
+    fs.writeFileSync(path.join(dir, 'page.html'), html);
+    const result = spawnSync('node', [script, 'main.js', 'page.html'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(result.status).to.equal(0);
+    expect(result.stdout).to.match(/No undefined calls/);
+  });
+
+  it('handles built-in methods and code fragments', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    const file = path.join(dir, 'frag.js');
+    fs.writeFileSync(file, 'foo.appendChild(); return 5;');
+    const result = spawnSync('node', [script, 'frag.js'], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(result.status).to.equal(0);
+    expect(result.stdout).to.match(/No undefined calls/);
+  });
 });
