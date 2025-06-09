@@ -70,4 +70,21 @@ describe('UnpackFilePart', function () {
     Lemmings.LogHandler = origLog;
     expect(part.log.debugged.some(m => m.includes('done!'))).to.be.true;
   });
+
+  it('skips validation when checksum is zero', function () {
+    const origLog = Lemmings.LogHandler;
+    Lemmings.LogHandler = MockLogHandler;
+    const arr = Uint8Array.from([4, 5, 6]);
+    const packed = PackFilePart.pack(arr);
+    const br = new BinaryReader(packed.byteArray);
+    const part = new UnpackFilePart(br);
+    part.offset = 0;
+    part.compressedSize = br.length;
+    part.initialBufferLen = packed.initialBits;
+    part.checksum = 0;
+    part.decompressedSize = arr.length;
+    part.unpack();
+    Lemmings.LogHandler = origLog;
+    expect(part.log.debugged.some(m => m.includes('skipping checksum'))).to.be.true;
+  });
 });
