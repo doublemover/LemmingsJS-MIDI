@@ -429,4 +429,5 @@
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
-{"time":"2025-06-08T23:50:02.237Z","query":"npm test","mdFiles":12,"codeFiles":2,"ms":977}
+{"time":"2025-06-08T23:47:31.965Z","query":"CLI argument","mdFiles":10,"codeFiles":10,"ms":1182}
+{"time":"2025-06-08T23:47:34.348Z","query":"CLI","mdFiles":20,"codeFiles":20,"ms":1184}
