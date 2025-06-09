@@ -30,3 +30,4 @@ Thumbs.db
 *.log
 *.tap
 test/processhtmlfile.test.js
+test/processhtmlfile.test.js
