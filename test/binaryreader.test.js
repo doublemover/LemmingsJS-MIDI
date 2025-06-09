@@ -55,4 +55,50 @@ describe('BinaryReader', function () {
     assert.ok(reader.log.logged.filter(m => m.includes('read out of data')).length >= 2);
     Lemmings.LogHandler = origHandler;
   });
+
+  it('falls back to FileReader when arrayBuffer is unavailable', async function () {
+    const bytes = Uint8Array.from([9, 8, 7]);
+    const blob = new Blob([bytes]);
+
+    const origArrayBuffer = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = undefined;
+
+    let readCalled = false;
+    class FR {
+      constructor() {
+        this.onload = null;
+        this.onerror = null;
+        this.result = null;
+      }
+      readAsArrayBuffer() {
+        readCalled = true;
+        this.result = Buffer.from(bytes);
+        setImmediate(() => this.onload());
+      }
+    }
+
+    global.FileReader = FR;
+
+    const reader = new BinaryReader(blob);
+    const loaded = await reader.ready;
+    assert.ok(readCalled);
+    assert.deepStrictEqual(Array.from(loaded), [9, 8, 7]);
+
+    Blob.prototype.arrayBuffer = origArrayBuffer;
+    delete global.FileReader;
+  });
+
+  it('rejects when blob reading APIs are missing', async function () {
+    const blob = new Blob(['x']);
+    const origArrayBuffer = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = undefined;
+    const origFileReader = global.FileReader;
+    delete global.FileReader;
+
+    const reader = new BinaryReader(blob);
+    await assert.rejects(reader.ready, /Blob reading not supported/);
+
+    Blob.prototype.arrayBuffer = origArrayBuffer;
+    if (origFileReader) global.FileReader = origFileReader;
+  });
 });
