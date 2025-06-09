@@ -147,6 +147,23 @@ describe('export scripts', function () {
     expect(err).to.be.instanceOf(Error);
   });
 
+  it('exportPanelSprite.js defaults to lemmings when config.json is unreadable', async function () {
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportPanelSprite.js');
+    const cfg = fileURLToPath(new URL('../config.json', import.meta.url));
+    const cfgBak = `${cfg}.bak`;
+    fs.renameSync(cfg, cfgBak);
+    try {
+      await runScript(script, [], { cwd });
+      await new Promise(r => setTimeout(r, 50));
+      const file = path.join(cwd, 'exports', 'panel_export', 'panelSprite.png');
+      expect(fs.existsSync(file)).to.be.true;
+    } finally {
+      fs.renameSync(cfgBak, cfg);
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
+  });
+
   it('exportGroundImages.js writes PNGs', async function () {
     if (parseInt(process.versions.node) >= 20) {
       this.skip();
@@ -257,5 +274,25 @@ describe('export scripts', function () {
       fs.rmSync(cwd, { recursive: true, force: true });
     }
     expect(err).to.be.instanceOf(Error);
+  });
+
+  it('exportAllSprites.js defaults to lemmings when config.json is unreadable', async function () {
+    if (parseInt(process.versions.node) >= 20) {
+      this.skip();
+    }
+    const cwd = fs.mkdtempSync(path.join(os.tmpdir(), 'out-'));
+    const script = patchScript('exportAllSprites.js');
+    const cfg = fileURLToPath(new URL('../config.json', import.meta.url));
+    const cfgBak = `${cfg}.bak`;
+    fs.renameSync(cfg, cfgBak);
+    try {
+      await runScript(script, [], { cwd });
+      await new Promise(r => setTimeout(r, 50));
+      const file = path.join(cwd, 'exports', 'lemmings_all', 'panel.png');
+      expect(fs.existsSync(file)).to.be.true;
+    } finally {
+      fs.renameSync(cfgBak, cfg);
+      fs.rmSync(cwd, { recursive: true, force: true });
+    }
   });
 });
