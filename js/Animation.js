@@ -81,13 +81,40 @@ class Animation {
     offsetX = null, offsetY = null) {
     const frameArray = new Array(frames);
     for (let i = 0; i < frames; ++i) {
-      const paletteImg = new Lemmings.PaletteImage(width, height);
-      paletteImg.processImage(fr, bitsPerPixel);
-      paletteImg.processTransparentByColorIndex(0);
-      frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      const w = Array.isArray(width)  ? width[i]  : width;
+      const h = Array.isArray(height) ? height[i] : height;
+
+      if (bitsPerPixel === 32) {
+        const frame = new Lemmings.Frame(w, h, offsetX, offsetY);
+        const buf = frame.getBuffer();
+        const mask = frame.getMask();
+        for (let p = 0, n = w * h; p < n; p++) {
+          const r = fr.readByte();
+          const g = fr.readByte();
+          const b = fr.readByte();
+          const a = fr.readByte();
+          buf[p] = (a << 24) | (b << 16) | (g << 8) | r;
+          mask[p] = a ? 1 : 0;
+        }
+        frameArray[i] = frame;
+      } else {
+        const paletteImg = new Lemmings.PaletteImage(w, h);
+
+        if (bitsPerPixel === 8) {
+          const pixBuf = paletteImg.getImageBuffer();
+          for (let p = 0, n = w * h; p < n; p++) {
+            pixBuf[p] = fr.readByte();
+          }
+        } else {
+          paletteImg.processImage(fr, bitsPerPixel);
+        }
+
+        paletteImg.processTransparentByColorIndex(0);
+        frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      }
     }
     this.frames     = frameArray;
-    this._lastFrame = frameArray[frames-1];
+    this._lastFrame = frameArray[frames - 1];
     this.isFinished = false;
   }
 
@@ -109,17 +136,23 @@ class Animation {
    */
   loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
     offsetX = null, offsetY = null) {
+    if (bitsPerPixel === 32) {
+      this.loadFromFile(fr, bitsPerPixel, width, height, frames, palette,
+        offsetX, offsetY);
+      return;
+    }
+
     const newPal = new Lemmings.ColorPalette();
-    // Copy existing palette colours
-    for (let i = 0; i < 16; i++) {
+    const count = palette?.data?.length ?? 16;
+
+    for (let i = 0; i < count; i++) {
       newPal.setColorInt(i, palette.getColor(i));
     }
 
-    // Replace selected indices with icy colours pulled from the ONML
-    // object palette.  The ICE_COLORS array mirrors FIRE_INDICES by
-    // position rather than by colour index.
     for (let i = 0; i < FIRE_INDICES.length; i++) {
-      newPal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+      if (FIRE_INDICES[i] < count) {
+        newPal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+      }
     }
 
     this.loadFromFile(fr, bitsPerPixel, width, height, frames,

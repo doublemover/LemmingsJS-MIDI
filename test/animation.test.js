@@ -58,4 +58,29 @@ describe('Animation.loadFromFileWithPaletteSwap', function () {
     expect(anim.isFinished).to.equal(false);
     expect(anim.getFrame(6)).to.equal('b');
   });
+
+  it('reads 8-bit frames with per-frame dimensions', function () {
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 0, 0);
+    palette.setColorRGB(2, 0, 20, 0);
+
+    const data = new Uint8Array([1, 2]);
+    const reader = new BinaryReader(data);
+    const anim = new Animation();
+    anim.loadFromFile(reader, 8, [2], [1], 1, palette);
+
+    const buf = anim.frames[0].getBuffer();
+    expect(buf[0]).to.equal(Lemmings.ColorPalette.colorFromRGB(10, 0, 0));
+    expect(buf[1]).to.equal(Lemmings.ColorPalette.colorFromRGB(0, 20, 0));
+  });
+
+  it('bypasses palette swap for RGBA sprites', function () {
+    const palette = new Lemmings.ColorPalette();
+    const bytes = new Uint8Array([5, 6, 7, 255]);
+    const reader = new BinaryReader(bytes);
+    const anim = new Animation();
+    anim.loadFromFileWithPaletteSwap(reader, 32, 1, 1, 1, palette);
+    const buf = anim.frames[0].getBuffer();
+    expect(buf[0]).to.equal((255 << 24) | (7 << 16) | (6 << 8) | 5);
+  });
 });
