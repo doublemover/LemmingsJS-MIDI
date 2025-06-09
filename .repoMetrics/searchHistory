@@ -429,3 +429,9 @@
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
+{"time":"2025-06-08T23:53:09.709Z","query":"PaletteImage","mdFiles":2,"codeFiles":5,"ms":819}
+{"time":"2025-06-08T23:53:23.653Z","query":"32-bit","mdFiles":15,"codeFiles":15,"ms":1037}
+{"time":"2025-06-08T23:53:28.711Z","query":"VGASPEC","mdFiles":5,"codeFiles":5,"ms":1051}
+{"time":"2025-06-08T23:53:49.964Z","query":"GroundReader","mdFiles":4,"codeFiles":15,"ms":1148}
+{"time":"2025-06-08T23:54:58.642Z","query":"patchSprites","mdFiles":8,"codeFiles":15,"ms":940}
+{"time":"2025-06-08T23:57:41.304Z","query":"VGASPEC","mdFiles":5,"codeFiles":5,"ms":1033}
