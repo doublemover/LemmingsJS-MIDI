@@ -109,9 +109,9 @@ class Animation {
    */
   loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
     offsetX = null, offsetY = null) {
-    const newPal = new Lemmings.ColorPalette();
+    const newPal = new Lemmings.ColorPalette(palette.length);
     // Copy existing palette colours
-    for (let i = 0; i < 16; i++) {
+    for (let i = 0; i < palette.length; i++) {
       newPal.setColorInt(i, palette.getColor(i));
     }
 

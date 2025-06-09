@@ -1,8 +1,8 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 class ColorPalette {
-  constructor() {
-    this.data = new Uint32Array(16); //- 16 colors
+  constructor(size = 16) {
+    this.data = new Uint32Array(size);
     this.data.fill(0);
   }
   /** set color from Int-Value e.g. 0xFF00FF00 */
@@ -21,6 +21,9 @@ class ColorPalette {
   }
   getB(index) {
     return (this.data[index] >> 16) & 0xFF;
+  }
+  get length() {
+    return this.data.length;
   }
   /** set color from R,G,B */
   setColorRGB(index, r, g, b) {
