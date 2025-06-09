@@ -41,12 +41,14 @@ class Lemming extends Lemmings.BaseLogger {
   }
 
   getClickDistance(x, y) {
-    let yCenter = this.y - 5;
+    const hw = Math.floor(Lemming.SPRITE_BASE_WIDTH / 2);
+    const hh = Math.floor(Lemming.SPRITE_BASE_HEIGHT / 2);
+    let yCenter = this.y - hh;
     let xCenter = this.x;
-    let x1 = xCenter - 5;
-    let y1 = yCenter - 6;
-    let x2 = xCenter + 5;
-    let y2 = yCenter + 7;
+    let x1 = xCenter - hw;
+    let y1 = yCenter - hh - 1;
+    let x2 = xCenter + hw;
+    let y2 = yCenter + hh + 1;
     if ((x >= x1) && (x <= x2) && (y >= y1) && (y < y2)) {
       return ((yCenter - y) * (yCenter - y) + (xCenter - x) * (xCenter - x));
     }
@@ -120,5 +122,7 @@ class Lemming extends Lemmings.BaseLogger {
 
 Lemming.LEM_MIN_Y = -5;
 Lemming.LEM_MAX_FALLING = 59;
+Lemming.SPRITE_BASE_WIDTH = 16;
+Lemming.SPRITE_BASE_HEIGHT = 10;
 Lemmings.Lemming = Lemming;
 export { Lemming };
