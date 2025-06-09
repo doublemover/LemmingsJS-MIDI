@@ -150,6 +150,32 @@ describe('NodeFileProvider', function () {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
+  it('loadString decodes buffers returned from _getRar', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-rar-'));
+    let seen = null;
+    class MockProvider extends NodeFileProvider {
+      async _getRar(rarPath) {
+        seen = path.resolve(this.rootPath, rarPath);
+        return new Map([['foo.txt', Buffer.from('bar')]]);
+      }
+    }
+    const provider = new MockProvider(dir);
+    const str = await provider.loadString('pack.rar/foo.txt');
+    assert.strictEqual(str, 'bar');
+    assert.strictEqual(seen, path.resolve(dir, 'pack.rar'));
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('loadString reads regular files outside archives', async function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nfp-file-'));
+    const file = path.join(dir, 'plain.txt');
+    fs.writeFileSync(file, 'hello');
+    const provider = new NodeFileProvider('.');
+    const result = await provider.loadString(file);
+    assert.strictEqual(result, 'hello');
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   describe('nested rar archives', function () {
     const NESTED_RAR_BASE64 =
       'UmFyIRoHAQAzkrXlCgEFBgAFAQGAgAAxjDKDLQIDC9EABNEApIMCwa2wAoAAAQ9vdXRlci9pbm5lci5y' +
