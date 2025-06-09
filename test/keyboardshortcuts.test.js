@@ -412,6 +412,27 @@ describe('KeyboardShortcuts', function() {
     expect(timer.speedFactor).to.equal(0.1);
   });
 
+  it('pans down while ArrowDown held and resets on keyup', function() {
+    const timer = { speedFactor: 1, isRunning() { return true; } };
+    const view = { stage: null, game: { gameGui: {}, getGameTimer() { return timer; } }, nextFrame() {}, prevFrame() {} };
+    const ks = new KeyboardShortcuts(view);
+    let prevented = false;
+    const evt = { code: 'ArrowDown', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() { prevented = true; } };
+    ks._onKeyDown(evt);
+    expect(prevented).to.be.true;
+    expect(ks.pan.down).to.be.true;
+    ks._onKeyUp({ code: 'ArrowDown' });
+    expect(ks.pan.down).to.be.false;
+  });
+
+  it('handles Backquote without side effects', function() {
+    const timer = { speedFactor: 1 };
+    const ks = createShortcuts(timer, { queueCommand() {} });
+    let prevented = false;
+    ks._onKeyDown({ code: 'Backquote', shiftKey: false, ctrlKey: false, metaKey: false, preventDefault() { prevented = true; } });
+    expect(prevented).to.be.true;
+  });
+
   it('ignores events with control keys held', function() {
     const log = [];
     const manager = { queueCommand(cmd) { log.push(cmd); } };

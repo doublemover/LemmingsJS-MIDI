@@ -28,6 +28,12 @@ describe('Scaler2x individual blend functions', function() {
     scaler = new Scaler2x();
   });
 
+  it('scale() returns the configured factor', function() {
+    const s = new Scaler2x();
+    const result = Scaler2x.prototype.scale.call(s);
+    expect(result).to.equal(2);
+  });
+
   function expectArray(actual, expected) {
     expect(Array.from(actual)).to.eql(Array.from(expected));
   }

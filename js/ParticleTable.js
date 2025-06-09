@@ -48,7 +48,6 @@ class ParticleTable {
     if (!frameData || !gameDisplay) return;
     const table = this.#colorIndexTable;
     const palette = this.#palette;
-    let a = 255;
     for (let i = 0; i < frameData.length; i += 2) {
       const dx = frameData[i];
       const dy = frameData[i + 1];
@@ -59,8 +58,7 @@ class ParticleTable {
         y + dy,
         palette.getR(colorIndex),
         palette.getG(colorIndex),
-        palette.getB(colorIndex),
-        a
+        palette.getB(colorIndex)
       );
     }
   }
