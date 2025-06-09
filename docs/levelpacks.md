@@ -61,6 +61,10 @@ The engine reads these files in order to present the levels.
 * **sign_*.png, skill_panels.png** &ndash; custom menu graphics.
 * **music/** and **styles/** folders &ndash; include custom music tracks and graphic sets referenced by the pack.
 
+High‑resolution sprites belong in `styles/<set>-hr/` next to the
+standard-resolution `styles/<set>/` folder. See
+[`highres-migration.md`](highres-migration.md) for upgrade steps.
+
 ### Archive Formats
 
 Packs may be distributed as:

@@ -1,7 +1,10 @@
 # Tools
 
 This document describes the Node.js scripts found in the `tools` directory. These utilities help export,
-patch and package game assets.
+patch and package game assets.  Sprite exports now write **32‑bit PNGs** with
+alpha channels. If a pack includes a `styles/<set>-hr/` folder the tools
+automatically pick these double-resolution images.  Standard-resolution sprites
+remain available for older packs.
 
 All scripts accept paths to level packs. A pack can be a folder or an archive
 (`.zip`, `.tar`, `.tar.gz`, `.tgz`, or `.rar`). The `NodeFileProvider` class lets
@@ -70,7 +73,9 @@ node tools/patchSprites.js [--sheet-orientation=horizontal|vertical] <target DAT
 
 Replaces sprites in an existing DAT archive with PNG data. Multiple frames can
 be supplied as a sprite sheet when `--sheet-orientation` matches the sheet
-layout.
+layout.  The patched DAT supports **true‑color** PNGs, so edits may include
+alpha transparency and any palette.  High-resolution sprites simply use larger
+PNG files and follow the same naming conventions.
 
 ## packLevels.js
 
@@ -101,4 +106,5 @@ Removes all `export_*` directories created by the other scripts.
 
 Exported assets now live under the `exports/` directory. The game can load levels
 directly from packed archives, so you may keep your level packs compressed while
-still running these tools.
+still running these tools.  See [`highres-migration.md`](highres-migration.md)
+for guidelines on upgrading packs to the new sprite format.
