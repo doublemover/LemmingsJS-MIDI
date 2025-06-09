@@ -41,7 +41,7 @@ async function main() {
     if (!m) continue;
     const startIndex = parseInt(m[1], 10);
     if (startIndex >= container.parts.length) continue;
-    const png = PNG.sync.read(fs.readFileSync(path.join(pngDir, file)));
+    const png = PNG.sync.read(fs.readFileSync(path.join(pngDir, file)), { colorType: 6 });
     const part = container.parts[startIndex];
     const old = part.unpack();
     const expectedSize = old.length;
