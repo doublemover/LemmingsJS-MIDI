@@ -19,6 +19,14 @@ After decompression of main.dat, you should get 7 sections.  The contents of eac
 
 Note that this doc concerns the main.dat file from the DOS version of "Lemmings".  The DOS Xmas Lemmings games and the "Oh No! More Lemmings" games have slightly different graphics, so their main.dat should be slightly different, but the overall format should be identical, so you can still use the information here to explore the contents in those games' main.dat.
 
+### Modern extensions
+
+This project extends the format with optional **true‑color PNG** sprites.
+Uncompressed 32‑bit images may replace planar bitmaps at the same offsets.
+High‑resolution versions live in `styles/<set>-hr/` and use double the
+dimensions.  Engines that support these features load the PNG blocks
+transparently, falling back to the 16‑color originals when absent.
+
 
 ## 2) format and palette of graphics
 
