@@ -55,7 +55,6 @@ jq -s '
       );
   # First merge “base” and “ours,” then merge the result with “theirs.”
   reduce .[] as $obj ({}; mergeTwo(.; $obj))
-  | with_entries(select(.value != {} and .value != []))
 ' "${BASE}" "${OURS}" "${THEIRS}" \
   > "${OURS}.merged"
 

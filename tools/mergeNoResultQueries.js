@@ -9,14 +9,8 @@ export function mergeNoResultQueries(baseFile, targetFile) {
     fs.mkdirSync(path.dirname(targetFile), { recursive: true });
     fs.writeFileSync(targetFile, '');
   }
-  const baseLines = fs
-    .readFileSync(baseFile, 'utf8')
-    .split(/\r?\n/)
-    .filter(line => line && line !== '[]' && line !== '{}');
-  const targetLines = fs
-    .readFileSync(targetFile, 'utf8')
-    .split(/\r?\n/)
-    .filter(line => line && line !== '[]' && line !== '{}');
+  const baseLines = fs.readFileSync(baseFile, 'utf8').split(/\r?\n/).filter(Boolean);
+  const targetLines = fs.readFileSync(targetFile, 'utf8').split(/\r?\n/).filter(Boolean);
   const seen = new Set(targetLines);
   for (const line of baseLines) {
     if (!seen.has(line)) {
