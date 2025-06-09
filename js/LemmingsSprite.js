@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { SPRITE_META } from './lemmingsSpriteMeta.js';
 
 /**
  * Represents a set of all possible Lemmings sprite animations for a color palette.
@@ -32,42 +33,50 @@ class LemmingsSprite {
     }
 
     // Register all known Lemmings animation types efficiently
-    // Each line: state, dir, fr, bitsPerPixel, width, height, offsetX, offsetY, frames
-    // This reduces overhead vs calling registerAnimation 30+ times by inlining the loop
+    // Each line: state, dir, offsetX, offsetY, frames
+    // Width/height/bits are looked up from SPRITE_META
     const ANIM_LIST = [
-      // state, dir,  bits, w,  h, offX, offY, frames
-      [Lemmings.SpriteTypes.WALKING,  1, 2, 16, 10, -8, -10, 8],
-      [Lemmings.SpriteTypes.JUMPING,  1, 2, 16, 10, -8, -10, 1],
-      [Lemmings.SpriteTypes.WALKING, -1, 2, 16, 10, -8, -10, 8],
-      [Lemmings.SpriteTypes.JUMPING, -1, 2, 16, 10, -8, -10, 1],
-      [Lemmings.SpriteTypes.DIGGING,  0, 3, 16, 14, -8, -12,16],
-      [Lemmings.SpriteTypes.CLIMBING, 1, 2, 16, 12, -8, -12,8],
-      [Lemmings.SpriteTypes.CLIMBING,-1, 2, 16, 12, -8, -12,8],
-      [Lemmings.SpriteTypes.DROWNING, 0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.POSTCLIMBING, 1, 2, 16, 12, -8, -12, 8],
-      [Lemmings.SpriteTypes.POSTCLIMBING,-1,2,16,12,-8,-12,8],
-      [Lemmings.SpriteTypes.BUILDING,  1, 3, 16, 13, -8, -13,16],
-      [Lemmings.SpriteTypes.BUILDING, -1, 3, 16, 13, -8, -13,16],
-      [Lemmings.SpriteTypes.BASHING,   1, 3, 16, 10, -8, -10,32],
-      [Lemmings.SpriteTypes.BASHING,  -1, 3, 16, 10, -8, -10,32],
-      [Lemmings.SpriteTypes.MINING,    1, 3, 16, 13, -8, -12,24],
-      [Lemmings.SpriteTypes.MINING,   -1, 3, 16, 13, -8, -12,24],
-      [Lemmings.SpriteTypes.FALLING,   1, 2, 16, 10, -8, -10,4],
-      [Lemmings.SpriteTypes.FALLING,  -1, 2, 16, 10, -8, -10,4],
-      [Lemmings.SpriteTypes.UMBRELLA,  1, 3, 16, 16, -8, -16,8],
-      [Lemmings.SpriteTypes.UMBRELLA, -1, 3, 16, 16, -8, -16,8],
-      [Lemmings.SpriteTypes.SPLATTING, 0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.EXITING,   0, 2, 16, 13, -8, -13,8],
-      [Lemmings.SpriteTypes.FRYING,    0, 4, 16, 14, -8, -10,14],
-      [Lemmings.SpriteTypes.BLOCKING,  0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.SHRUGGING, 1, 2, 16, 10, -8, -10,8],
-      [Lemmings.SpriteTypes.SHRUGGING, 0, 2, 16, 10, -8, -10,8],
-      [Lemmings.SpriteTypes.OHNO,      0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.EXPLODING, 0, 3, 32, 32, -8, -10,1]
+      // state, dir, offX, offY, frames
+      [Lemmings.SpriteTypes.WALKING,  1, -8, -10, 8],
+      [Lemmings.SpriteTypes.JUMPING,  1, -8, -10, 1],
+      [Lemmings.SpriteTypes.WALKING, -1, -8, -10, 8],
+      [Lemmings.SpriteTypes.JUMPING, -1, -8, -10, 1],
+      [Lemmings.SpriteTypes.DIGGING,  0, -8, -12,16],
+      [Lemmings.SpriteTypes.CLIMBING, 1, -8, -12,8],
+      [Lemmings.SpriteTypes.CLIMBING,-1, -8, -12,8],
+      [Lemmings.SpriteTypes.DROWNING, 0, -8, -10,16],
+      [Lemmings.SpriteTypes.POSTCLIMBING, 1, -8, -12, 8],
+      [Lemmings.SpriteTypes.POSTCLIMBING,-1,-8,-12,8],
+      [Lemmings.SpriteTypes.BUILDING,  1, -8, -13,16],
+      [Lemmings.SpriteTypes.BUILDING, -1, -8, -13,16],
+      [Lemmings.SpriteTypes.BASHING,   1, -8, -10,32],
+      [Lemmings.SpriteTypes.BASHING,  -1, -8, -10,32],
+      [Lemmings.SpriteTypes.MINING,    1, -8, -12,24],
+      [Lemmings.SpriteTypes.MINING,   -1, -8, -12,24],
+      [Lemmings.SpriteTypes.FALLING,   1, -8, -10,4],
+      [Lemmings.SpriteTypes.FALLING,  -1, -8, -10,4],
+      [Lemmings.SpriteTypes.UMBRELLA,  1, -8, -16,8],
+      [Lemmings.SpriteTypes.UMBRELLA, -1, -8, -16,8],
+      [Lemmings.SpriteTypes.SPLATTING, 0, -8, -10,16],
+      [Lemmings.SpriteTypes.EXITING,   0, -8, -13,8],
+      [Lemmings.SpriteTypes.FRYING,    0, -8, -10,14],
+      [Lemmings.SpriteTypes.BLOCKING,  0, -8, -10,16],
+      [Lemmings.SpriteTypes.SHRUGGING, 1, -8, -10,8],
+      [Lemmings.SpriteTypes.SHRUGGING, 0, -8, -10,8],
+      [Lemmings.SpriteTypes.OHNO,      0, -8, -10,16],
+      [Lemmings.SpriteTypes.EXPLODING, 0, -8, -10,1]
     ];
 
-    for (const [state, dir, bits, w, h, offX, offY, frames] of ANIM_LIST) {
-      this.#registerAnimation(state, dir, fr, bits, w, h, offX, offY, frames, paletteCache);
+    for (const [state, dir, offX, offY, frames] of ANIM_LIST) {
+      const meta = SPRITE_META[state];
+      this.#registerAnimation(state, dir, fr, meta.bits, meta.width, meta.height,
+        offX, offY, frames, paletteCache);
+    }
+
+    if (Lemmings.Lemming) {
+      const base = SPRITE_META[Lemmings.SpriteTypes.WALKING];
+      Lemmings.Lemming.SPRITE_BASE_WIDTH = base.width;
+      Lemmings.Lemming.SPRITE_BASE_HEIGHT = base.height;
     }
   }
 
