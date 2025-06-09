@@ -81,10 +81,26 @@ class Animation {
     offsetX = null, offsetY = null) {
     const frameArray = new Array(frames);
     for (let i = 0; i < frames; ++i) {
-      const paletteImg = new Lemmings.PaletteImage(width, height);
-      paletteImg.processImage(fr, bitsPerPixel);
-      paletteImg.processTransparentByColorIndex(0);
-      frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      if (bitsPerPixel === 32) {
+        const frame = new Lemmings.Frame(width, height, offsetX, offsetY);
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const r = fr.readByte();
+            const g = fr.readByte();
+            const b = fr.readByte();
+            const a = fr.readByte();
+            const idx = y * width + x;
+            frame.data[idx] = (a << 24) | (b << 16) | (g << 8) | r;
+            frame.mask[idx] = a ? 1 : 0;
+          }
+        }
+        frameArray[i] = frame;
+      } else {
+        const paletteImg = new Lemmings.PaletteImage(width, height);
+        paletteImg.processImage(fr, bitsPerPixel);
+        paletteImg.processTransparentByColorIndex(0);
+        frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      }
     }
     this.frames     = frameArray;
     this._lastFrame = frameArray[frames-1];
