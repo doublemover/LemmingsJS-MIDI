@@ -149,6 +149,8 @@ $END                   # End group
 | `0xFF00`       | End-of-file                                                                           |
 
 Images referenced by the tables are stored **uncompressed** PNG blocks at byte offsets specified in the records. A global RLE wrapper may surround the entire DAT (see § 5).
+The PNGs may use full 32‑bit color with transparency. Classic 16‑color images
+remain valid and can coexist with their true‑color replacements.
 
 ### 4.2 High-Resolution folders (`style-hr`)
 
