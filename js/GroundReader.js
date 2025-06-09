@@ -84,27 +84,39 @@ class GroundReader extends Lemmings.BaseLogger {
       let filePos = img.imageLoc;
 
       for (let f = 0; f < img.frameCount; ++f) {
-        const pimg = new Lemmings.PaletteImage(img.width, img.height);
-        pimg.processImage(vga, bitsPerPixel, filePos);
-        pimg.processTransparentData(vga, filePos + img.maskLoc);
-
-        const frame = pimg.getImageBuffer();
-        frames[f]   = frame;
-        filePos    += img.frameDataSize;
+        const pixCount = img.width * img.height;
+        const rgbaSize = pixCount * 4;
+        const rawSize  = pixCount;
+        let frame;
+        if (img.frameDataSize === rgbaSize) {
+          frame = new Uint8Array(vga.data.subarray(filePos, filePos + rgbaSize));
+        } else if (img.frameDataSize === rawSize) {
+          frame = new Uint8Array(vga.data.subarray(filePos, filePos + rawSize));
+        } else {
+          const pimg = new Lemmings.PaletteImage(img.width, img.height);
+          pimg.processImage(vga, bitsPerPixel, filePos);
+          pimg.processTransparentData(vga, filePos + img.maskLoc);
+          frame = pimg.getImageBuffer();
+        }
+        frames[f] = frame;
+        filePos += img.frameDataSize;
 
         if (img.isSteel) {
           let widest  = 0;
           let tallest = 0;
 
-          // scan each row once from the right 
+          // scan each row once from the right
           for (let y = img.height - 1; y >= 0; --y) {
             const rowBase = y * img.width;
             let rowHasPixel = false;
 
             // scan from rightmost column until we see a solid pixel
             for (let x = img.width - 1; x >= 0; --x) {
-              if (frame[rowBase + x] !== TRANSPARENT) {
-                if (x + 1 > widest)  widest = x + 1;
+              const pix = frame.length === img.width * img.height * 4
+                ? (new Uint32Array(frame.buffer, frame.byteOffset, frame.length / 4))[rowBase + x] >>> 24
+                : frame[rowBase + x];
+              if (pix !== TRANSPARENT && pix !== 0) {
+                if (x + 1 > widest) widest = x + 1;
                 rowHasPixel = true;
                 break;
               }
