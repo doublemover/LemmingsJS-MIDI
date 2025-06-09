@@ -48,7 +48,7 @@
 - **lemmings2, save-file, doc, todo**: [notes/l2-save-format.md](notes/l2-save-format.md) - implement a loader/writer and research the unknown bytes in each tribe record.
 - **level-format, doc**: [notes/level-format.md](notes/level-format.md) - `docs/level-file-format.md` explains the 2048-byte `.lvl` layout produced by LemEdit. It lists all field offsets along with object IDs for each graphics set.
 - **level-format, l3, doc**: [notes/l3-level-format.md](notes/l3-level-format.md) - `docs/camanis/lemmings_3_level_file_format.md` outlines the Lemmings 3 header and object tables with extra lemming and enemy fields.
-- **level-loading**: [notes/level-loader.md](notes/level-loader.md) - LevelLoader.getLevel constructs a Level in five phases.
+- **level-loading**: [notes/level-loader.md](notes/level-loader.md) - Pascal `TranslateLevel` swaps bytes and converts coordinates between TLVLRec and TLevel.
 - **level-packs, resources, doc**: [notes/level-packs.md](notes/level-packs.md) - `docs/levelpacks.md` describes the repository's level pack layout and how Node
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - LevelReader parses the 2048-byte DAT format into objects, terrain and steel tables.
 - **level-parsing**: [notes/level-reader.md](notes/level-reader.md) - js/LevelReader.js consumes a 2048 byte .DAT level file. The first 0x20 bytes contain the release ...
