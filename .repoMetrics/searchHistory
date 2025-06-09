@@ -429,4 +429,7 @@
 {"time":"2025-06-08T19:43:19.533Z","query":"MapObject","mdFiles":10,"codeFiles":15,"ms":242}
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
-{"time":"2025-06-08T23:59:59Z","query":"Scaler2x","mdFiles":2,"codeFiles":2,"ms":2488}
+{"time":"2025-06-08T23:48:09.235Z","query":"84","mdFiles":0,"codeFiles":0,"ms":565}
+{"time":"2025-06-08T23:48:11.599Z","query":"line","mdFiles":0,"codeFiles":0,"ms":539}
+{"time":"2025-06-08T23:48:14.637Z","query":"line","mdFiles":0,"codeFiles":0,"ms":659}
+{"time":"2025-06-08T23:48:19.405Z","query":"MapObject","mdFiles":5,"codeFiles":5,"ms":618}
