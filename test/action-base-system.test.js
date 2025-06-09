@@ -13,7 +13,11 @@ class StubAnimation {
 }
 
 class StubSprites {
-  getAnimation(type, right) { return new StubAnimation(`sprite-${type}-${right}`); }
+  constructor() { this.calls = []; }
+  getAnimation(type, right) {
+    this.calls.push({ type, right });
+    return new StubAnimation(`sprite-${type}-${right}`);
+  }
 }
 
 class StubMasks {
@@ -87,5 +91,47 @@ describe('ActionBaseSystem', function() {
 
     expect(display.calls[0]).to.deep.equal({ frame: 'sprite-0-true-2', x: 0, y: 0 });
     expect(display.calls[1]).to.deep.equal({ frame: 'sprite-0-false-2', x: 0, y: 0 });
+  });
+
+  it('caches separately for different action names', function() {
+    const sprites = new StubSprites();
+    const masks = new StubMasks();
+
+    const opts1 = {
+      sprites,
+      spriteType: Lemmings.SpriteTypes.WALKING,
+      masks,
+      maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
+      actionName: 'a1'
+    };
+    const opts2 = { ...opts1, actionName: 'a2' };
+
+    const a1 = new ActionBaseSystem(opts1);
+    const a2 = new ActionBaseSystem(opts2);
+
+    expect(ActionBaseSystem.spriteCache.size).to.equal(2);
+    expect(ActionBaseSystem.maskCache.size).to.equal(2);
+    expect(a1.sprites).to.not.equal(a2.sprites);
+    expect(a1.masks).to.not.equal(a2.masks);
+  });
+
+  it('singleSprite caches under both key', function() {
+    const sprites = new StubSprites();
+    const masks = new StubMasks();
+
+    const opts = {
+      sprites,
+      spriteType: Lemmings.SpriteTypes.FRYING,
+      singleSprite: true,
+      masks,
+      maskTypes: Lemmings.MaskTypes.EXPLODING,
+      actionName: 'single'
+    };
+
+    const sys = new ActionBaseSystem(opts);
+
+    expect(Array.from(sys.sprites.keys())).to.deep.equal(['both']);
+    expect(Array.from(sys.masks.keys())).to.deep.equal(['both']);
+    expect(sprites.calls.some(c => c.right === true)).to.equal(false);
   });
 });
