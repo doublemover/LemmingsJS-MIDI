@@ -101,6 +101,34 @@ describe('mergeSearchHistory', function () {
     expect(queries).to.eql(['foo', 'bar']);
   });
 
+  it('creates the target file when ours is missing via merge-history.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hist-'));
+    const base = path.join(dir, 'base_history');
+    const ours = path.join(dir, '.repoMetrics', 'searchHistory');
+    const theirs = path.join(dir, 'theirs_history');
+    const rec = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    fs.writeFileSync(theirs, JSON.stringify(rec) + '\n');
+    const script = path.resolve('tools/merge-history.sh');
+    const res = spawnSync('bash', [script, base, ours, theirs], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+    const line = fs.readFileSync(ours, 'utf8').trim();
+    expect(JSON.parse(line).query).to.equal('foo');
+  });
+
+  it('leaves ours unchanged when theirs file is missing via merge-history.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hist-'));
+    const base = path.join(dir, 'base_history');
+    const ours = path.join(dir, '.repoMetrics', 'searchHistory');
+    fs.mkdirSync(path.dirname(ours), { recursive: true });
+    const rec = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    fs.writeFileSync(ours, JSON.stringify(rec) + '\n');
+    const script = path.resolve('tools/merge-history.sh');
+    const res = spawnSync('bash', [script, base, ours, path.join(dir, 'theirs_missing')], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+    const lines = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.length(1);
+  });
+
   it('deduplicates via the CLI with explicit files', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mhjs-'));
     const base = path.join(dir, 'base.jsonl');
