@@ -868,6 +868,18 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.WALKING);
   });
 
+  it('ActionJumpSystem climbs two cells then ends', function() {
+    const level = new StubLevel();
+    level.ground.add(level.key(1, -1));
+    level.ground.add(level.key(1, -2));
+    const sys = new ActionJumpSystem(new Map());
+    const lem = new StubLemming();
+    const res = sys.process(level, lem);
+    expect(res).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.y).to.equal(-2);
+    expect(lem.state).to.equal(0);
+  });
+
   it('ActionJumpSystem ends when no ceiling remains', function() {
     const level = new StubLevel();
     level.ground.add(level.key(1, -1));
@@ -919,6 +931,18 @@ describe('Action Systems process()', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.JUMPING);
     expect(lem.state).to.equal(1);
     expect(lem.y).to.equal(-2);
+  });
+
+  it('ActionJumpSystem initializes null state then ends', function() {
+    const level = new StubLevel();
+    level.ground.add(level.key(1, -1));
+    const sys = new ActionJumpSystem(new Map());
+    const lem = new StubLemming();
+    lem.state = null;
+    const res = sys.process(level, lem);
+    expect(res).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.state).to.equal(0);
+    expect(lem.y).to.equal(-1);
   });
 
   it('ActionMineSystem shrugs on steel ground', function() {
