@@ -142,7 +142,9 @@ class UnpackFilePart extends Lemmings.BaseLogger {
           }
         }
 
-        if (this.#checksum === bitReader.getCurrentChecksum()) {
+        if (this.#checksum === 0) {
+          this.log.debug(`doUnpacking(${fileReader.filename}) skipping checksum`);
+        } else if (this.#checksum === bitReader.getCurrentChecksum()) {
           this.log.debug(`doUnpacking(${fileReader.filename}) done!`);
         } else {
           this.log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
