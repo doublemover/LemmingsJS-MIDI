@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
+import '../js/ColorPalette.js';
 import '../js/Frame.js';
 import { Trigger } from '../js/Trigger.js';
 import { TriggerManager } from '../js/TriggerManager.js';
@@ -53,5 +54,58 @@ describe('TriggerManager', function () {
     tm.renderDebug(g);
     expect(g.drawFrameCalls[0].frame).to.equal(first);
     expect(tm._debugFrame).to.equal(first);
+  });
+
+  it('returns NO_TRIGGER when outside bounds', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
+    tm.add(tr);
+
+    expect(tm.trigger(-1, 0)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(0, -1)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(32, 1)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(1, 32)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(2, 2)).to.equal(TriggerTypes.TRAP);
+  });
+
+  it('colors cells based on state in renderDebug', function () {
+    const timer = { tick: 5, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+
+    const tr = new Trigger(TriggerTypes.TRAP, 20, 20, 23, 23);
+    tm.add(tr);
+
+    tm._lastHitTick[0] = 5;
+    tm._lastCheckTick[1] = 5;
+
+    const g = { calls: [], drawRect (...args) { this.calls.push(args); }, drawFrame () {} };
+
+    tm.renderDebug(g);
+
+    expect(g.calls).to.deep.equal([
+      [0, 0, 15, 15, 255, 0, 0],
+      [16, 0, 15, 15, 255, 255, 255],
+      [0, 16, 15, 15, 128, 128, 128],
+      [16, 16, 15, 15, 0, 0, 255]
+    ]);
+  });
+
+  it('dispose clears references', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
+    tm.add(tr);
+    tm.renderDebug({ drawRect() {}, drawFrame() {} });
+
+    tm.dispose();
+
+    expect(tm.gameTimer).to.equal(null);
+    expect(tm._grid).to.equal(null);
+    expect(tm._triggers).to.equal(null);
+    expect(tm._debugFrame).to.equal(null);
+
+    // should not throw
+    tm.removeByOwner(tr.owner);
   });
 });

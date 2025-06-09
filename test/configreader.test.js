@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import fs from 'fs';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 import '../js/LogHandler.js';
 import '../js/GameConfig.js';
@@ -49,5 +50,22 @@ describe('ConfigReader', function () {
     const cfg = await cr.getConfig(Lemmings.GameTypes.LEMMINGS);
     const expected = { ...packMechanics.lemmings, bomberAssist: true };
     expect(cfg.mechanics).to.eql(expected);
+  });
+
+  it('parses the Oh No pack from config.json', async function () {
+    const json = fs.readFileSync('config.json', 'utf8');
+    const reader = new ConfigReader(Promise.resolve(json));
+    const cfg = await reader.getConfig(Lemmings.GameTypes.OHNO);
+    expect(cfg.path).to.equal('lemmings_ohNo');
+    expect(cfg.gametype).to.equal(Lemmings.GameTypes.OHNO);
+    expect(cfg.level.filePrefix).to.equal('DLVEL');
+    expect(cfg.level.groups).to.eql([
+      'Tame',
+      'Crazy',
+      'Wild',
+      'Wicked',
+      'Havoc'
+    ]);
+    expect(cfg.mechanics).to.eql(packMechanics.lemmings_ohNo);
   });
 });
