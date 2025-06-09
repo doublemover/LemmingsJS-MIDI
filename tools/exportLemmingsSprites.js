@@ -17,7 +17,7 @@ function loadDefaultPack() {
 }
 
 function frameToPNG(frame) {
-  const png = new PNG({ width: frame.width, height: frame.height });
+  const png = new PNG({ width: frame.width, height: frame.height, colorType: 6 });
   for (let y = 0; y < frame.height; y++) {
     for (let x = 0; x < frame.width; x++) {
       const idx = y * frame.width + x;
@@ -49,7 +49,7 @@ function frameToPNG(frame) {
       if (!anim || !anim.frames || anim.frames.length === 0) continue;
 
       const dirName = dir ? 'right' : 'left';
-      const sheet = new PNG({ width: anim.frames[0].width * anim.frames.length, height: anim.frames[0].height });
+      const sheet = new PNG({ width: anim.frames[0].width * anim.frames.length, height: anim.frames[0].height, colorType: 6 });
 
       for (let i = 0; i < anim.frames.length; i++) {
         const frame = anim.getFrame(i);

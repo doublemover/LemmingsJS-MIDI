@@ -23,7 +23,7 @@ function bufToFrame(buf, width, height, palette) {
 }
 
 function frameToPNG(frame) {
-  const png = new PNG({ width: frame.width, height: frame.height });
+  const png = new PNG({ width: frame.width, height: frame.height, colorType: 6 });
   for (let y = 0; y < frame.height; y++) {
     for (let x = 0; x < frame.width; x++) {
       const idx = y * frame.width + x;
