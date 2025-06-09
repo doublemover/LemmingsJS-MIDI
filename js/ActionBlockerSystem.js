@@ -10,8 +10,27 @@ class ActionBlockerSystem extends ActionBaseSystem {
 
   process(level, lem) {
     if (lem.state == 0) {
-      const trigger1 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_LEFT, lem.x - 6, lem.y + 4, lem.x - 3, lem.y - 10, 0, 0, lem);
-      const trigger2 = new Lemmings.Trigger(Lemmings.TriggerTypes.BLOCKER_RIGHT, lem.x + 7, lem.y + 4, lem.x + 4, lem.y - 10, 0, 0, lem);
+      const h = Lemmings.Lemming.SPRITE_BASE_HEIGHT;
+      const trigger1 = new Lemmings.Trigger(
+        Lemmings.TriggerTypes.BLOCKER_LEFT,
+        lem.x - 6,
+        lem.y + 4,
+        lem.x - 3,
+        lem.y - h,
+        0,
+        0,
+        lem
+      );
+      const trigger2 = new Lemmings.Trigger(
+        Lemmings.TriggerTypes.BLOCKER_RIGHT,
+        lem.x + 7,
+        lem.y + 4,
+        lem.x + 4,
+        lem.y - h,
+        0,
+        0,
+        lem
+      );
       this.triggerManager.add(trigger1);
       this.triggerManager.add(trigger2);
       lem.state = 1;
