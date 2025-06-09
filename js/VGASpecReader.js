@@ -70,36 +70,44 @@ class VGASpecReader extends Lemmings.BaseLogger {
     const width = 960, chunkHeight = 40, groundImagePositionX = 304;
     let startScanLine = 0;
     const pixelCount = width * chunkHeight;
-    let bitBuffer = new Uint8Array(pixelCount);
-    let bitBufferPos = 0;
+    let chunkBytes = [];
 
     while (!fr.eof()) {
       const curByte = fr.readByte();
       if (curByte === 128) {
-        // End of scanline chunk: decode and draw
-        const fileReader = new Lemmings.BinaryReader(bitBuffer);
-        const bitImage = new Lemmings.PaletteImage(width, chunkHeight);
-        bitImage.processImage(fileReader, 3, 0);
-        bitImage.processTransparentByColorIndex(0);
-        this.#img.drawPaletteImage(bitImage.getImageBuffer(), width, chunkHeight, this.#groundPalette, groundImagePositionX, startScanLine);
+        const chunk = Uint8Array.from(chunkBytes);
+        const bytesPerPixel = chunk.length / pixelCount;
+        if (bytesPerPixel === 4) {
+          const src = new Uint32Array(chunk.buffer, chunk.byteOffset, pixelCount);
+          const dest = this.#img.data;
+          const mask = this.#img.mask;
+          for (let y = 0; y < chunkHeight; y++) {
+            const srcRow = y * width;
+            const dstRow = (startScanLine + y) * this.#img.width + groundImagePositionX;
+            dest.set(src.subarray(srcRow, srcRow + width), dstRow);
+            mask.fill(1, dstRow, dstRow + width);
+          }
+        } else if (bytesPerPixel === 1) {
+          this.#img.drawPaletteImage(chunk, width, chunkHeight, this.#groundPalette, groundImagePositionX, startScanLine);
+        } else {
+          const fileReader = new Lemmings.BinaryReader(chunk);
+          const bitImage = new Lemmings.PaletteImage(width, chunkHeight);
+          bitImage.processImage(fileReader, 3, 0);
+          bitImage.processTransparentByColorIndex(0);
+          this.#img.drawPaletteImage(bitImage.getImageBuffer(), width, chunkHeight, this.#groundPalette, groundImagePositionX, startScanLine);
+        }
         startScanLine += chunkHeight;
         if (startScanLine >= this.#img.height) break;
-        bitBufferPos = 0;
+        chunkBytes = [];
       } else if (curByte <= 127) {
-        // Copy next (curByte + 1) bytes
         let copyCount = curByte + 1;
         while (!fr.eof() && copyCount-- > 0) {
-          if (bitBufferPos >= bitBuffer.length) return;
-          bitBuffer[bitBufferPos++] = fr.readByte();
+          chunkBytes.push(fr.readByte());
         }
       } else {
-        // Repeat a value for (257 - curByte) times
         const repeatByte = fr.readByte();
         let repeatCount = 257 - curByte;
-        while (repeatCount-- > 0) {
-          if (bitBufferPos >= bitBuffer.length) return;
-          bitBuffer[bitBufferPos++] = repeatByte;
-        }
+        while (repeatCount-- > 0) chunkBytes.push(repeatByte);
       }
     }
   }
