@@ -46,6 +46,20 @@ describe('mergeNoResultQueries', function () {
     expect(result).to.equal('x\ny\n');
   });
 
+  it('filters out empty array and object lines', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
+    const base = path.join(dir, 'base_no_results');
+    const target = path.join(dir, '.repoMetrics', 'noResultQueries');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(base, '[]\n{}\nfoo\n');
+    fs.writeFileSync(target, '');
+
+    mergeNoResultQueries(base, target);
+
+    const lines = fs.readFileSync(target, 'utf8').trim().split(/\n/);
+    expect(lines).to.eql(['foo']);
+  });
+
   it('works via merge-no-results.sh', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
     const base = path.join(dir, 'base_no_results');
