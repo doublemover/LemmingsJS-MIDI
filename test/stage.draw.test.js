@@ -127,4 +127,68 @@ describe('Stage.draw', function() {
     expect(canvas.calls.putCalls.length).to.equal(1);
     expect(dashCalls).to.equal(1);
   });
+
+  it('crops view when viewpoint is negative', function() {
+    const canvas = createStubCanvas(10, 10);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    const display = stage.getGuiDisplay();
+    display.initSize(10, 10);
+
+    Object.assign(stage.guiImgProps, { width: 10, height: 10, x: 0, y: 0 });
+    Object.assign(stage.guiImgProps.viewPoint, { x: -4, y: -3, scale: 1 });
+
+    stage.draw(stage.guiImgProps, display.getImageData());
+
+    const args = canvas.calls.drawCalls[0];
+    expect(args[1]).to.equal(0); // sx
+    expect(args[2]).to.equal(0); // sy
+    expect(args[3]).to.equal(10); // sw
+    expect(args[4]).to.equal(10); // sh
+    expect(args[5]).to.equal(4);  // dx
+    expect(args[6]).to.equal(3);  // dy
+    expect(args[7]).to.equal(10); // dw
+    expect(args[8]).to.equal(10); // dh
+  });
+
+  it('limits destination size when scale exceeds viewport', function() {
+    const canvas = createStubCanvas(10, 10);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    const display = stage.getGuiDisplay();
+    display.initSize(10, 10);
+
+    Object.assign(stage.guiImgProps, { width: 10, height: 10, x: 0, y: 0 });
+    Object.assign(stage.guiImgProps.viewPoint, { x: 0, y: 0, scale: 2 });
+
+    stage.draw(stage.guiImgProps, display.getImageData());
+
+    const args = canvas.calls.drawCalls[0];
+    expect(args[1]).to.equal(0);
+    expect(args[2]).to.equal(0);
+    expect(args[3]).to.equal(5); // sw truncated
+    expect(args[4]).to.equal(5); // sh truncated
+    expect(args[7]).to.equal(10); // dw clamped
+    expect(args[8]).to.equal(10); // dh clamped
+  });
+
+  it('fills default overlay rectangle when none provided', function() {
+    const canvas = createStubCanvas(10, 10);
+    const stage = new Stage(canvas);
+    stage.clear = () => {};
+    const display = stage.getGuiDisplay();
+    display.initSize(10, 10);
+
+    Object.assign(stage.guiImgProps, { width: 10, height: 10, x: 0, y: 0 });
+
+    stage.overlayAlpha = 0.5;
+    stage.overlayColor = 'blue';
+    stage.overlayRect = null;
+    stage.overlayDashLen = 0;
+
+    stage.draw(stage.guiImgProps, display.getImageData());
+
+    const rect = canvas.calls.fillCalls[0];
+    expect(rect).to.deep.equal([0, 0, 10, 10]);
+  });
 });
