@@ -63,4 +63,30 @@ describe('mergeNoResultQueries', function () {
     const result = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
     expect(result).to.eql(['x', 'y']);
   });
+
+  it('creates the target file when ours is missing via merge-no-results.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
+    const base = path.join(dir, 'base_no_results');
+    const ours = path.join(dir, '.repoMetrics', 'noResultQueries');
+    const theirs = path.join(dir, 'theirs_no_results');
+    fs.writeFileSync(theirs, 'a\n');
+    const script = path.resolve('tools/merge-no-results.sh');
+    const res = spawnSync('bash', [script, base, ours, theirs], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+    const lines = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
+    expect(lines).to.eql(['a']);
+  });
+
+  it('leaves ours unchanged when theirs file is missing via merge-no-results.sh', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'nores-'));
+    const base = path.join(dir, 'base_no_results');
+    const ours = path.join(dir, '.repoMetrics', 'noResultQueries');
+    fs.mkdirSync(path.dirname(ours), { recursive: true });
+    fs.writeFileSync(ours, 'a\n');
+    const script = path.resolve('tools/merge-no-results.sh');
+    const res = spawnSync('bash', [script, base, ours, path.join(dir, 'missing')], { encoding: 'utf8' });
+    expect(res.status).to.equal(0);
+    const lines = fs.readFileSync(ours, 'utf8').trim().split(/\n/);
+    expect(lines).to.eql(['a']);
+  });
 });
