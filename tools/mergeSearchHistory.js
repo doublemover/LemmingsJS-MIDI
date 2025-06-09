@@ -10,7 +10,10 @@ function parseFile(file) {
   const records = [];
   for (const line of lines) {
     try {
-      records.push(JSON.parse(line));
+      const rec = JSON.parse(line);
+      if (Array.isArray(rec) && rec.length === 0) continue;
+      if (rec && typeof rec === 'object' && Object.keys(rec).length === 0) continue;
+      records.push(rec);
     } catch {
       // ignore malformed JSON
     }

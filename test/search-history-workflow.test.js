@@ -82,6 +82,23 @@ describe('mergeSearchHistory', function () {
     expect(parsed[1].query).to.equal('bar');
   });
 
+  it('skips empty arrays and objects', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'history-'));
+    const base = path.join(dir, 'base_history');
+    const target = path.join(dir, '.repoMetrics', 'searchHistory');
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+
+    const rec = { time: '2020-01-01T00:00:00Z', query: 'foo' };
+    fs.writeFileSync(base, '[]\n{}\n' + JSON.stringify(rec) + '\n');
+    fs.writeFileSync(target, '');
+
+    mergeSearchHistory(base, target);
+
+    const lines = fs.readFileSync(target, 'utf8').trim().split(/\n/);
+    expect(lines).to.have.length(1);
+    expect(JSON.parse(lines[0]).query).to.equal('foo');
+  });
+
   it('works via merge-history.sh', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'hist-'));
     const base = path.join(dir, 'base_history');

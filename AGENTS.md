@@ -40,6 +40,7 @@ to any repo scripts that support a name flag.
 ## Tests
 - Run `npm test [category...]` to execute the Mocha test suite. Categories are optional.
 - Run `npm run coverage` to view test coverage. When adding tests, inspect coverage for the files you changed and suggest tasks to cover missing parts.
+- Always write new tests or update existing tests to cover new functionality.
 
 ## Development
 - `npm start` launches `http-server` for local testing.
