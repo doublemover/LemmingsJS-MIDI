@@ -35,6 +35,14 @@ describe('DisplayImage primitives', function() {
     expect(disp.imgData.data).to.equal(first);
   });
 
+  it('initSize creates Uint32Array buffer and clear uses default color', function() {
+    const disp = new DisplayImage(stage);
+    disp.initSize(2, 1);
+    expect(disp.buffer32).to.be.instanceof(Uint32Array);
+    disp.clear();
+    expect(Array.from(disp.buffer32)).to.eql([0xFF00FF00, 0xFF00FF00]);
+  });
+
   it('setBackground copies Uint8ClampedArray data', function() {
     const disp = new DisplayImage(stage);
     disp.initSize(2, 1);
