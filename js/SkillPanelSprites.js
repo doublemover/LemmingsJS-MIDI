@@ -5,6 +5,8 @@ class SkillPanelSprites {
     this.letterSprite = {};
     this.numberSpriteLeft = [];
     this.numberSpriteRight = [];
+    this.buttonWidth = 16;
+    this.buttonHeight = 23;
     /// read skill panel
     let paletteImg = new Lemmings.PaletteImage(320, 40);
     paletteImg.processImage(fr6, 4);
@@ -58,6 +60,11 @@ class SkillPanelSprites {
     return this.emptyNumberSprite;
   }
 
+  /** return the standard button size */
+  getButtonSize() {
+    return { width: this.buttonWidth, height: this.buttonHeight };
+  }
+
   /** extract a rectangular patch from the panel background */
   getBackgroundPatch(x, y, w, h) {
     const src = this.panelSprite;
@@ -92,10 +99,10 @@ class SkillPanelSprites {
 
   /** return a brightened copy of the specified button region */
   getHighlightedButton(panelIndex) {
-    const x = panelIndex * 16;
+    const x = panelIndex * this.buttonWidth;
     const y = 16;
-    const w = 16;
-    const h = 23;
+    const w = this.buttonWidth;
+    const h = this.buttonHeight;
     const patch = this.getBackgroundPatch(x, y, w, h);
     for (let i = 0; i < patch.data.length; i++) {
       let c = patch.data[i];

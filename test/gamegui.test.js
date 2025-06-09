@@ -88,6 +88,7 @@ class SkillPanelSpritesStub {
     this.panel = { width: 176, height: 40, getData() { return [0]; } };
   }
   getPanelSprite() { return this.panel; }
+  getButtonSize() { return { width: 16, height: 23 }; }
   getNumberSpriteLeft(n) { return 'L' + n; }
   getNumberSpriteRight(n) { return 'R' + n; }
   getNumberSpriteEmpty() { return 'E'; }
@@ -163,11 +164,11 @@ describe('GameGui', function() {
     display.onMouseRightDown.trigger({ x: 0, y: 20 });
     expect(vc.cur).to.equal(vc.min);
 
-    display.onMouseDown.trigger({ x: 160, y: 33 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 10, y: gui.panelTop + 17 });
     expect(timer.speedFactor).to.be.below(1);
 
     timer.speedFactor = 2;
-    display.onMouseRightDown.trigger({ x: 160, y: 20 });
+    display.onMouseRightDown.trigger({ x: gui.panelButtonWidth * 10, y: gui.panelTop + 4 });
     expect(timer.speedFactor).to.equal(1);
   });
 
@@ -184,23 +185,23 @@ describe('GameGui', function() {
 
   it('pauses and resumes with pause button', function() {
     const { gui, display, timer } = makeGui();
-    display.onMouseDown.trigger({ x: 161, y: 20 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 10 + 1, y: gui.panelTop + 4 });
     expect(timer.running).to.equal(false);
     display.calls = [];
     gui.render();
-    const paused = display.calls.find(c => c.op === 'drawMarchingAntRect' && c.args[0] === 160);
+    const paused = display.calls.find(c => c.op === 'drawMarchingAntRect' && c.args[0] === gui.panelButtonWidth * 10);
     expect(paused).to.exist;
   });
 
   it('changes speed with fast-forward buttons', function() {
     const { gui, display, timer } = makeGui();
-    display.onMouseDown.trigger({ x: 170, y: 33 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 10 + 10, y: gui.panelTop + 17 });
     expect(timer.speedFactor).to.equal(2);
     let lines = display.calls.filter(c => c.op === 'drawHorizontalLine');
     expect(lines.length).to.be.greaterThan(0);
 
     display.calls = [];
-    display.onMouseDown.trigger({ x: 161, y: 33 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 10 + 1, y: gui.panelTop + 17 });
     expect(timer.speedFactor).to.equal(1);
     lines = display.calls.filter(c => c.op === 'drawHorizontalLine');
     expect(lines.length).to.be.greaterThan(0);
@@ -210,13 +211,13 @@ describe('GameGui', function() {
     const { gui, display, game } = makeGui();
     const cmds = [];
     game.queueCommand = c => cmds.push(c);
-    display.onMouseDown.trigger({ x: 177, y: 20 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 11 + 1, y: gui.panelTop + 4 });
     expect(gui.nukePrepared).to.equal(true);
     display.calls = [];
     gui.render();
-    const confirm = display.calls.find(c => c.op === 'drawRect' && c.args[0] === 176);
+    const confirm = display.calls.find(c => c.op === 'drawRect' && c.args[0] === gui.panelButtonWidth * 11);
     expect(confirm).to.exist;
-    display.onMouseDown.trigger({ x: 177, y: 20 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 11 + 1, y: gui.panelTop + 4 });
     expect(gui.nukePrepared).to.equal(false);
     expect(cmds[0]).to.be.instanceOf(Lemmings.CommandNuke);
   });
@@ -225,7 +226,7 @@ describe('GameGui', function() {
     const { gui, display, skills, game } = makeGui();
     const cmds = [];
     game.queueCommand = c => cmds.push(c);
-    display.onMouseDown.trigger({ x: 16 * 7 + 1, y: 20 });
+    display.onMouseDown.trigger({ x: gui.panelButtonWidth * 7 + 1, y: gui.panelTop + 4 });
     expect(skills.getSelectedSkill()).to.equal(Lemmings.SkillTypes.BASHER);
     expect(cmds[0]).to.be.instanceOf(Lemmings.CommandSelectSkill);
   });

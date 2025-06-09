@@ -77,8 +77,9 @@ describe('SkillPanelSprites helper methods', function () {
     sp.panelSprite = panel;
 
     const highlight = sp.getHighlightedButton(0);
-    expect(highlight.width).to.equal(16);
-    expect(highlight.height).to.equal(23);
+    const { width: bw, height: bh } = sp.getButtonSize();
+    expect(highlight.width).to.equal(bw);
+    expect(highlight.height).to.equal(bh);
     const bright = ColorPalette.colorFromRGB(50, 60, 70) >>> 0;
     expect(Array.from(new Set(highlight.data))).to.eql([bright]);
     expect(highlight.mask.every(m => m === 1)).to.be.true;

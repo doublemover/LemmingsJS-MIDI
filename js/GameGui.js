@@ -25,6 +25,11 @@ class GameGui {
 
     /* sprite caches */
     this._panelSprite    = skillPanelSprites.getPanelSprite();
+    const { width: bw, height: bh } =
+      skillPanelSprites.getButtonSize?.() || { width: 16, height: 23 };
+    this.panelButtonWidth  = bw;
+    this.panelButtonHeight = bh;
+    this.panelTop = this._panelSprite.height - this.panelButtonHeight - 1;
     this._numLeftCache   = new Array(10);
     this._numRightCache  = new Array(10);
     this._numEmptySprite = skillPanelSprites.getNumberSpriteEmpty();
@@ -112,7 +117,7 @@ class GameGui {
   }
 
   handleSkillMouseDown(e) {
-    const panelIndex = Math.trunc(e.x / 16);
+    const panelIndex = Math.trunc(e.x / this.panelButtonWidth);
     if (panelIndex !== 11) {
       this.nukePrepared = false;
       this.backgroundChanged = true;
@@ -216,7 +221,7 @@ class GameGui {
   }
 
   handleSkillMouseRightDown(e) {
-    const panelIndex = Math.trunc(e.x / 16);
+    const panelIndex = Math.trunc(e.x / this.panelButtonWidth);
 
     this.nukePrepared = false; // always cancel nuke confirmation on right click
     this.gameTimeChanged = true;
@@ -252,12 +257,12 @@ class GameGui {
   }
 
   handleSkillDoubleClick(e) {
-    if (Math.trunc(e.x / 16) === 11)
+    if (Math.trunc(e.x / this.panelButtonWidth) === 11)
       this.game.queueCommand(new Lemmings.CommandNuke());
   }
 
   handleMouseMove(e) {
-    const rawIdx = e.y > 15 ? Math.trunc(e.x / 16) : -1;
+    const rawIdx = e.y >= this.panelTop ? Math.trunc(e.x / this.panelButtonWidth) : -1;
     let idx = rawIdx;
 
     if (!this.gameTimer.isRunning() && rawIdx !== 11) {
@@ -310,11 +315,11 @@ class GameGui {
     }
 
     this._displayListeners = [
-      ['onMouseDown', e => { this.deltaReleaseRate = 0; if (e.y > 15) this.handleSkillMouseDown(e); }],
+      ['onMouseDown', e => { this.deltaReleaseRate = 0; if (e.y >= this.panelTop) this.handleSkillMouseDown(e); }],
       ['onMouseUp', () => { this.deltaReleaseRate = 0; }],
-      ['onMouseRightDown', e => { if (e.y > 15) this.handleSkillMouseRightDown(e); }],
+      ['onMouseRightDown', e => { if (e.y >= this.panelTop) this.handleSkillMouseRightDown(e); }],
       ['onMouseRightUp', () => { }],
-      ['onDoubleClick', e => { if (e.y > 15) this.handleSkillDoubleClick(e); }],
+      ['onDoubleClick', e => { if (e.y >= this.panelTop) this.handleSkillDoubleClick(e); }],
       ['onMouseMove', e => { this.handleMouseMove(e); }],
     ];
     for (const [event, handler] of this._displayListeners) {
@@ -435,26 +440,27 @@ class GameGui {
       this.gameSpeedChanged = false;
       const speedFac = this.gameTimer.speedFactor;
 
-      d.drawRect(160, 32, 16, 10, 0, 0, 0, true); // draw bottom black rect on pause button
+      const base = this.panelButtonWidth * 10;
+      d.drawRect(base, 32, this.panelButtonWidth, 10, 0, 0, 0, true); // draw bottom black rect on pause button
 
       if (speedFac != 120) {
         const greenS  = this._getGreenLetter('f');
-        d.drawFrameResized(greenS, 173, 34, 3, 4);
+        d.drawFrameResized(greenS, base + 13, 34, 3, 4);
       }
 
       if (speedFac != 0.1) {
         const greenP  = this._getGreenLetter('-');
-        d.drawFrameResized(greenP, 161, 33, 3, 6);
+        d.drawFrameResized(greenP, base + 1, 33, 3, 6);
       }
 
       const tens  = Math.floor(speedFac / 10);
       const ones  = speedFac % 10;
       const left  = this._getRightDigit(tens);
       const right = this._getRightDigit(ones);
-      let rightX = 164;
+      let rightX = base + 4;
       if (left && tens > 0) {
-        rightX = 164;
-        d.drawFrameResized(left, rightX-4, 33, 8, 6);
+        rightX = base + 4;
+        d.drawFrameResized(left, rightX - 4, 33, 8, 6);
       }
       if (right) {
         d.drawFrameResized(right, rightX, 33, 8, 6);
@@ -462,17 +468,17 @@ class GameGui {
       if (speedFac < 1) {
         let sn = Math.trunc((speedFac)*10);
         const small = this._getRightDigit(sn);
-        d.setPixel(167, 38, 255, 255, 255);
-        d.drawFrameResized(small, 164, 33, 8, 6);
-        d.drawHorizontalLine(169, 33, 175, 0, 0, 0);
+        d.setPixel(base + 7, 38, 255, 255, 255);
+        d.drawFrameResized(small, base + 4, 33, 8, 6);
+        d.drawHorizontalLine(base + 9, 33, base + 15, 0, 0, 0);
       }
 
       if (this._hoverSpeedUp) {
-        d.drawHorizontalLine(172, 32, 175, 0, 166, 0);
-        d.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+        d.drawHorizontalLine(base + 12, 32, base + 15, 0, 166, 0);
+        d.drawHorizontalLine(base + 12, 38, base + 15, 0, 166, 0);
       } else if (this._hoverSpeedDown) {
-        d.drawHorizontalLine(161, 32, 164, 0, 166, 0);
-        d.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+        d.drawHorizontalLine(base + 1, 32, base + 4, 0, 166, 0);
+        d.drawHorizontalLine(base + 1, 38, base + 4, 0, 166, 0);
       }
     }
 
@@ -488,7 +494,7 @@ class GameGui {
     for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
       if (this.skills.getSkill(s) <= 0) {
         const panel = this.getPanelIndexBySkill(s);
-        d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+        d.drawStippleRect(panel * this.panelButtonWidth, this.panelTop, this.panelButtonWidth, this.panelButtonHeight, 160, 160, 160);
       }
     }
     if (this.skillSelectionChanged) {
@@ -570,10 +576,10 @@ class GameGui {
   drawSelection(d, panelIdx) {
     if (panelIdx < 0) return;
     d.drawMarchingAntRect(
-      16 * panelIdx,
-      16,
-      16,
-      23,
+      this.panelButtonWidth * panelIdx,
+      this.panelTop,
+      this.panelButtonWidth,
+      this.panelButtonHeight,
       this.selectionDashLen,
       this._selectionOffset
     );
@@ -581,10 +587,10 @@ class GameGui {
 
   drawPaused(d) {
     d.drawMarchingAntRect(
-      16 * 10,
-      16,
-      16,
-      23,
+      this.panelButtonWidth * 10,
+      this.panelTop,
+      this.panelButtonWidth,
+      this.panelButtonHeight,
       this.selectionDashLen,
       this._selectionOffset
     );
@@ -592,7 +598,7 @@ class GameGui {
 
   drawSkillHover(d, panelIdx, r = 255, g = 255, b = 0) {
     if (panelIdx < 0) return;
-    d.drawRect(16 * panelIdx, 16, 16, 23, r, g, b);
+    d.drawRect(this.panelButtonWidth * panelIdx, this.panelTop, this.panelButtonWidth, this.panelButtonHeight, r, g, b);
   }
 
   _getPanelName(idx) {
@@ -612,7 +618,7 @@ class GameGui {
   }
 
   _drawLockEdge(d, panelIdx) {
-    const x = 16 * panelIdx + 2;
+    const x = this.panelButtonWidth * panelIdx + 2;
     const y = 18;
     const w = 11; // narrower than full panel
     const h = 18; // shorter than full panel
@@ -623,40 +629,41 @@ class GameGui {
   }
 
   drawSpeedChange(upDown, reset = false) {
+    const base = this.panelButtonWidth * 10;
     if (!reset) {
       if (upDown) {
-        this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
-        this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+        this.display.drawHorizontalLine(base + 12, 32, base + 15, 0, 166, 0);
+        this.display.drawHorizontalLine(base + 12, 38, base + 15, 0, 166, 0);
       } else {
-        this.display.drawHorizontalLine(161, 32, 164, 0, 166, 0);
-        this.display.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+        this.display.drawHorizontalLine(base + 1, 32, base + 4, 0, 166, 0);
+        this.display.drawHorizontalLine(base + 1, 38, base + 4, 0, 166, 0);
       }
     } else {
-      this.display.drawHorizontalLine(161, 32, 175, 111, 0, 0);
-      this.display.drawHorizontalLine(161, 38, 175, 111, 0, 0);
+      this.display.drawHorizontalLine(base + 1, 32, base + 15, 111, 0, 0);
+      this.display.drawHorizontalLine(base + 1, 38, base + 15, 111, 0, 0);
     }
 
     if (this._hoverSpeedUp) {
-      this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
-      this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
+      this.display.drawHorizontalLine(base + 12, 32, base + 15, 0, 166, 0);
+      this.display.drawHorizontalLine(base + 12, 38, base + 15, 0, 166, 0);
     } else if (this._hoverSpeedDown) {
-      this.display.drawHorizontalLine(161, 32, 164, 0, 166, 0);
-      this.display.drawHorizontalLine(161, 38, 164, 0, 166, 0);
+      this.display.drawHorizontalLine(base + 1, 32, base + 4, 0, 166, 0);
+      this.display.drawHorizontalLine(base + 1, 38, base + 4, 0, 166, 0);
     }
 
     this.gameSpeedChanged = true;
   }
 
   drawNukeConfirm(d) {
-    d.drawRect(16 * 11, 16, 16, 23, 255, 0, 0);
+    d.drawRect(this.panelButtonWidth * 11, this.panelTop, this.panelButtonWidth, this.panelButtonHeight, 255, 0, 0);
   }
 
   drawNukeHover(d) {
     d.drawMarchingAntRect(
-      16 * 11,
-      16,
-      16,
-      23,
+      this.panelButtonWidth * 11,
+      this.panelTop,
+      this.panelButtonWidth,
+      this.panelButtonHeight,
       this.selectionDashLen,
       this._selectionOffset * 2,
       0xFF0080FF,
@@ -664,8 +671,8 @@ class GameGui {
     );
   }
 
-  drawPanelNumber(d, num, panelIdx) { 
-    this.drawNumber(d, num, 4 + 16 * panelIdx, 17); 
+  drawPanelNumber(d, num, panelIdx) {
+    this.drawNumber(d, num, 4 + this.panelButtonWidth * panelIdx, 17);
   }
 
   drawNumber(d, num, x, y, small = false) {
