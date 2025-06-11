@@ -1,1062 +1,1194 @@
 [
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameStateTypes.js",
-    "duration_ms": 22309
+    "duration_ms": 25779
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CrosshairCursor.js",
-    "duration_ms": 22416
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskTypes.js",
-    "duration_ms": 23003
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SkillTypes.js",
-    "duration_ms": 23379
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SpriteTypes.js",
-    "duration_ms": 23638
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\eslint.config.js",
-    "duration_ms": 23788
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TerrainImageInfo.js",
-    "duration_ms": 23810
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\automerge-metrics-workflow.test.js",
-    "duration_ms": 24343
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\animation.test.js",
-    "duration_ms": 24343
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\baseimageinfo.test.js",
-    "duration_ms": 24384
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-measure-extras.test.js",
-    "duration_ms": 24427
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-speed-adjust.test.js",
-    "duration_ms": 24426
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-sequence-start.test.js",
-    "duration_ms": 24426
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\binaryreader.test.js",
-    "duration_ms": 24443
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-no-end.test.js",
-    "duration_ms": 24444
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitreader.test.js",
-    "duration_ms": 24443
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitstream.test.js",
-    "duration_ms": 24459
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\check-undefined.test.js",
-    "duration_ms": 24459
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\commands.test.js",
-    "duration_ms": 24534
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\dependency-review-workflow.test.js",
-    "duration_ms": 24533
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\command-lemmings-action.extra.test.js",
-    "duration_ms": 24534
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\crosshaircursor.test.js",
-    "duration_ms": 24549
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameTypes.js",
-    "duration_ms": 24573
+    "duration_ms": 25780
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingsBootstrap.js",
-    "duration_ms": 24783
+    "duration_ms": 26066
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingsNamespace.js",
-    "duration_ms": 24783
+    "duration_ms": 26066
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingStateType.js",
-    "duration_ms": 24827
+    "duration_ms": 26065
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.frames-no-game.test.js",
-    "duration_ms": 25122
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskTypes.js",
+    "duration_ms": 26510
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.movelevel.paths.test.js",
-    "duration_ms": 25239
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SkillTypes.js",
+    "duration_ms": 26852
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\geometry.test.js",
-    "duration_ms": 25238
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SpriteTypes.js",
+    "duration_ms": 27099
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.stepSpeed.test.js",
-    "duration_ms": 25284
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\eslint.config.js",
+    "duration_ms": 27203
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.instantNuke.test.js",
-    "duration_ms": 25300
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\hqx-index.test.js",
-    "duration_ms": 25300
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\hqx-scaling.test.js",
-    "duration_ms": 25300
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TriggerTypes.js",
-    "duration_ms": 25344
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\index.js",
-    "duration_ms": 25566
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Scaler3x.js",
-    "duration_ms": 25607
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Scaler4x.js",
-    "duration_ms": 25606
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TerrainImageInfo.js",
+    "duration_ms": 27251
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Scaler2x.js",
-    "duration_ms": 25628
+    "duration_ms": 27427
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamevictorycondition.methods.test.js",
-    "duration_ms": 25630
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Scaler3x.js",
+    "duration_ms": 27456
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\no-result-queries-workflow.test.js",
-    "duration_ms": 25630
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Scaler4x.js",
+    "duration_ms": 27456
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\no-result-queries-ci-workflow.test.js",
-    "duration_ms": 25655
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\animation.test.js",
+    "duration_ms": 27540
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtable.test.js",
-    "duration_ms": 25655
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\baseimageinfo.test.js",
+    "duration_ms": 27577
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtablereader.test.js",
-    "duration_ms": 25676
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\automerge-metrics-workflow.test.js",
+    "duration_ms": 27637
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\objectmanager.render.test.js",
-    "duration_ms": 25677
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-measure-extras.test.js",
+    "duration_ms": 27679
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packfilepart.test.js",
-    "duration_ms": 25676
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\archiveDir.test.js",
+    "duration_ms": 27681
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-history-ci-workflow.test.js",
-    "duration_ms": 25676
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-speed-adjust.test.js",
+    "duration_ms": 27680
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-history-workflow.test.js",
-    "duration_ms": 25676
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-sequence-start.test.js",
+    "duration_ms": 27680
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-script.test.js",
-    "duration_ms": 25723
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\automerge-repo-steps.workflow.test.js",
+    "duration_ms": 27681
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\particletable.test.js",
-    "duration_ms": 25723
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\binaryreader.test.js",
+    "duration_ms": 27680
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\squooshhqx.test.js",
-    "duration_ms": 25739
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitreader.test.js",
+    "duration_ms": 27700
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\smoothscroller.test.js",
-    "duration_ms": 25740
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitstream.test.js",
+    "duration_ms": 27700
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\enums.test.js",
-    "duration_ms": 25804
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-no-end.test.js",
+    "duration_ms": 27700
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\eventhandler.test.js",
-    "duration_ms": 25804
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\check-undefined.test.js",
+    "duration_ms": 27700
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\commands.test.js",
+    "duration_ms": 27719
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\command-lemmings-action.extra.test.js",
+    "duration_ms": 27761
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameTypes.js",
+    "duration_ms": 27881
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\game.test.js",
-    "duration_ms": 26009
+    "duration_ms": 28160
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamefactory.resources.test.js",
-    "duration_ms": 26108
+    "duration_ms": 28236
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamefactory.test.js",
-    "duration_ms": 26126
+    "duration_ms": 28236
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.misc.test.js",
-    "duration_ms": 26181
+    "duration_ms": 28259
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamevictory.test.js",
-    "duration_ms": 26181
+    "duration_ms": 28310
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\DrawProperties.js",
-    "duration_ms": 26300
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamevictorycondition.methods.test.js",
+    "duration_ms": 28331
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scalers.test.js",
-    "duration_ms": 26427
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.frames-no-game.test.js",
+    "duration_ms": 28460
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BaseImageInfo.js",
-    "duration_ms": 26525
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.movelevel.paths.test.js",
+    "duration_ms": 28580
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.extra.test.js",
-    "duration_ms": 26612
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.stepSpeed.test.js",
+    "duration_ms": 28611
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TriggerTypes.js",
+    "duration_ms": 28617
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\index.js",
+    "duration_ms": 28854
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\l2ssSpriteDecoder.test.js",
-    "duration_ms": 26613
+    "duration_ms": 28914
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.boundary.test.js",
+    "duration_ms": 28987
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.core.test.js",
+    "duration_ms": 28988
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.extra.test.js",
+    "duration_ms": 28988
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingsnamespace.test.js",
-    "duration_ms": 26651
+    "duration_ms": 28987
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.arrow.test.js",
-    "duration_ms": 26651
+    "duration_ms": 29046
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.ground.test.js",
-    "duration_ms": 26664
+    "duration_ms": 29063
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.render.test.js",
-    "duration_ms": 26677
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingssprite.cache.test.js",
+    "duration_ms": 29083
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.misc.test.js",
-    "duration_ms": 26677
+    "duration_ms": 29105
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.steel.test.js",
-    "duration_ms": 26677
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.debugoverlay.test.js",
+    "duration_ms": 29105
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelindexresolve.test.js",
-    "duration_ms": 26677
+    "duration_ms": 29105
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelwriter.test.js",
-    "duration_ms": 26677
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.steel.test.js",
+    "duration_ms": 29105
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.newsetsteelareas.test.js",
+    "duration_ms": 29105
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.render.test.js",
+    "duration_ms": 29105
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelreader.test.js",
-    "duration_ms": 26677
+    "duration_ms": 29105
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelwriter.test.js",
+    "duration_ms": 29104
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\level.setobjects.test.js",
+    "duration_ms": 29106
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelreader.objects.test.js",
+    "duration_ms": 29106
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\maskprovider.test.js",
-    "duration_ms": 26676
+    "duration_ms": 29105
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listSprites.defaultPack.test.js",
+    "duration_ms": 29105
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listSprites.loadDefaultPack.test.js",
+    "duration_ms": 29173
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\mapobject.test.js",
-    "duration_ms": 26677
+    "duration_ms": 29194
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Rectangle.js",
-    "duration_ms": 26754
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\crosshaircursor.test.js",
+    "duration_ms": 29200
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Range.js",
-    "duration_ms": 26754
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\dependency-review-workflow.test.js",
+    "duration_ms": 29201
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Position2D.js",
-    "duration_ms": 26754
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\eventhandler.test.js",
+    "duration_ms": 29271
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\PackFilePart.js",
-    "duration_ms": 26866
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\enums.test.js",
+    "duration_ms": 29271
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ObjectImageInfo.js",
-    "duration_ms": 26936
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.eventpaths.test.js",
+    "duration_ms": 29315
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelProperties.js",
-    "duration_ms": 27013
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-history-workflow.test.js",
+    "duration_ms": 29356
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelIndexType.js",
-    "duration_ms": 27013
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\particletable.lookup.test.js",
+    "duration_ms": 29357
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelElement.js",
-    "duration_ms": 27116
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\particletable.test.js",
+    "duration_ms": 29357
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelWriter.js",
-    "duration_ms": 27115
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-history-ci-workflow.test.js",
+    "duration_ms": 29357
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search-script.test.js",
+    "duration_ms": 29356
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\processhtmlfile.test.js",
+    "duration_ms": 29357
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\patchSprites.coverage.test.js",
+    "duration_ms": 29406
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search.cli.options.test.js",
+    "duration_ms": 29405
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\smoothscroller.test.js",
+    "duration_ms": 29406
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\search.cli.test.js",
+    "duration_ms": 29425
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\squooshhqx.test.js",
+    "duration_ms": 29442
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\trigger.test.js",
-    "duration_ms": 27103
+    "duration_ms": 29640
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\triggermanager.test.js",
-    "duration_ms": 27103
+    "duration_ms": 29640
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\terrainimageinfo.test.js",
-    "duration_ms": 27103
+    "duration_ms": 29679
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\workflow.test.js",
-    "duration_ms": 27118
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\geometry.test.js",
+    "duration_ms": 29707
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\viewpoint.test.js",
+    "duration_ms": 29701
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\userinput.dispose.test.js",
-    "duration_ms": 27119
+    "duration_ms": 29701
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameResult.js",
-    "duration_ms": 27298
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\merge-metrics-script.workflow.test.js",
+    "duration_ms": 29765
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\colorpalette.test.js",
-    "duration_ms": 27548
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.instantNuke.test.js",
+    "duration_ms": 29791
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\commandmanager.test.js",
-    "duration_ms": 27548
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\hqx-index.test.js",
+    "duration_ms": 29791
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Blender.js",
-    "duration_ms": 27992
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\hqx-scaling.test.js",
+    "duration_ms": 29791
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamedisplay.extra.test.js",
-    "duration_ms": 28332
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\DrawProperties.js",
+    "duration_ms": 29876
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportPanelSprite.defaultPack.test.js",
-    "duration_ms": 28414
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BaseImageInfo.js",
+    "duration_ms": 30152
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\processHtmlFile.test.js",
-    "duration_ms": 28408
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scalers.test.js",
+    "duration_ms": 30318
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\patchSprites.test.js",
-    "duration_ms": 28409
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\no-result-queries-ci-workflow.test.js",
+    "duration_ms": 30364
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packLevels.test.js",
-    "duration_ms": 28409
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.utils.test.js",
-    "duration_ms": 28477
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.utilities.test.js",
-    "duration_ms": 28478
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.setGameViewPointPosition.test.js",
-    "duration_ms": 28478
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\overlay-ants.test.js",
-    "duration_ms": 28510
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\frame.test.js",
-    "duration_ms": 28623
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.setup.test.js",
-    "duration_ms": 28805
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskProvider.js",
-    "duration_ms": 29032
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitwriter.test.js",
-    "duration_ms": 29985
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\L2ssSpriteDecoder.js",
-    "duration_ms": 30143
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionMineSystem.js",
-    "duration_ms": 30146
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\squooshhqx_bg.js",
-    "duration_ms": 30349
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scaler2x.test.js",
-    "duration_ms": 30354
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scaler4x.test.js",
-    "duration_ms": 30354
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\userinput.test.js",
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\no-result-queries-workflow.test.js",
     "duration_ms": 30378
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelIndexResolve.js",
-    "duration_ms": 30426
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtablereader.test.js",
+    "duration_ms": 30377
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelConfig.js",
-    "duration_ms": 30427
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\oddtable.test.js",
+    "duration_ms": 30431
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MapObject.js",
-    "duration_ms": 30446
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\objectmanager.render.test.js",
+    "duration_ms": 30431
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\index.js",
-    "duration_ms": 30792
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packfilepart.test.js",
+    "duration_ms": 30431
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\mask.test.js",
-    "duration_ms": 30855
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Rectangle.js",
+    "duration_ms": 30610
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\skillpanelsprites.helpers.test.js",
-    "duration_ms": 30854
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Range.js",
+    "duration_ms": 30610
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportLemmingsSprites.test.js",
-    "duration_ms": 30882
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Position2D.js",
+    "duration_ms": 30610
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\filecontainer.test.js",
-    "duration_ms": 30882
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\PackFilePart.js",
+    "duration_ms": 30642
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBlockerSystem.js",
-    "duration_ms": 30908
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ObjectImageInfo.js",
+    "duration_ms": 30769
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelProperties.js",
+    "duration_ms": 30866
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelIndexType.js",
+    "duration_ms": 30866
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelElement.js",
+    "duration_ms": 30930
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelWriter.js",
+    "duration_ms": 30983
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\colorpalette.test.js",
+    "duration_ms": 30996
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\commandmanager.test.js",
+    "duration_ms": 30997
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\workflow.test.js",
+    "duration_ms": 31254
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameResult.js",
+    "duration_ms": 31287
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamedisplay.extra.test.js",
+    "duration_ms": 31531
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportPanelSprite.defaultPack.test.js",
+    "duration_ms": 31614
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\scalers\\Blender.js",
+    "duration_ms": 32051
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.utilities.test.js",
+    "duration_ms": 32130
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.utils.test.js",
+    "duration_ms": 32130
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.setGameViewPointPosition.test.js",
+    "duration_ms": 32131
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.lifecycle.test.js",
+    "duration_ms": 32131
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.draw.test.js",
+    "duration_ms": 32131
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.drawbranches.test.js",
+    "duration_ms": 32131
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\overlay-ants.test.js",
+    "duration_ms": 32199
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.setup.test.js",
+    "duration_ms": 32264
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\frame.test.js",
+    "duration_ms": 32464
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBuildSystem.js",
-    "duration_ms": 30908
+    "duration_ms": 32706
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.zoomClear.test.js",
-    "duration_ms": 31489
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionMineSystem.js",
+    "duration_ms": 32917
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\OddTableReader.js",
-    "duration_ms": 31692
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scaler4x.test.js",
+    "duration_ms": 33051
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ObjectManager.js",
-    "duration_ms": 31718
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scaler2x.test.js",
+    "duration_ms": 33052
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.helpers.test.js",
-    "duration_ms": 31711
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\xbrz-scaler3x.test.js",
+    "duration_ms": 33064
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.applyquery.test.js",
-    "duration_ms": 32016
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\packLevels.test.js",
+    "duration_ms": 33303
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\minimap.extra.test.js",
-    "duration_ms": 32539
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\patchsprites.test.js",
+    "duration_ms": 33303
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionClimbSystem.js",
-    "duration_ms": 33115
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\userinput.test.js",
+    "duration_ms": 33318
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\filecontainer-errors.test.js",
-    "duration_ms": 33105
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\filecontainer.test.js",
+    "duration_ms": 33345
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\displayimage.test.js",
-    "duration_ms": 33416
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\squooshhqx_bg.js",
+    "duration_ms": 33661
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.helperExtras.test.js",
-    "duration_ms": 34164
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\L2ssSpriteDecoder.js",
+    "duration_ms": 33680
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\packMechanics.js",
-    "duration_ms": 34171
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelConfig.js",
+    "duration_ms": 33748
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskList.js",
-    "duration_ms": 34355
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelIndexResolve.js",
+    "duration_ms": 33802
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Mask.js",
-    "duration_ms": 34355
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MapObject.js",
+    "duration_ms": 33802
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\StageImageProperties.js",
-    "duration_ms": 34462
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBaseSystem.js",
-    "duration_ms": 34492
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionFryingSystem.js",
-    "duration_ms": 34521
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionHoistSystem.js",
-    "duration_ms": 34521
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionOhNoSystem.js",
-    "duration_ms": 34521
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionJumpSystem.js",
-    "duration_ms": 34521
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionShrugSystem.js",
-    "duration_ms": 34521
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionSplatterSystem.js",
-    "duration_ms": 34569
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BitReader.js",
-    "duration_ms": 34568
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionFallSystem.js",
-    "duration_ms": 34798
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionDiggSystem.js",
-    "duration_ms": 34879
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\configreader.test.js",
-    "duration_ms": 35001
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\game.queuecommand.test.js",
-    "duration_ms": 34999
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\groundreader.test.js",
-    "duration_ms": 34997
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskProvider.js",
+    "duration_ms": 33818
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\commandselectskill.test.js",
-    "duration_ms": 35001
+    "duration_ms": 34021
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gametimer.test.js",
-    "duration_ms": 35000
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBlockerSystem.js",
+    "duration_ms": 34071
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\mask.test.js",
+    "duration_ms": 34092
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\skillpanelsprites.helpers.test.js",
+    "duration_ms": 34165
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bitwriter.test.js",
+    "duration_ms": 34629
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportLemmingsSprites.test.js",
+    "duration_ms": 34775
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionDiggSystem.js",
+    "duration_ms": 34828
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\index.js",
+    "duration_ms": 35238
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.zoomClear.test.js",
+    "duration_ms": 35290
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingssprite.test.js",
+    "duration_ms": 35352
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\minimap.extra.test.js",
+    "duration_ms": 35351
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionFallSystem.js",
+    "duration_ms": 35387
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.helperExtras.test.js",
+    "duration_ms": 35506
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.applyquery.test.js",
+    "duration_ms": 35536
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.helpers.test.js",
+    "duration_ms": 35572
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.drawhelpers.test.js",
+    "duration_ms": 35587
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\filecontainer-errors.test.js",
+    "duration_ms": 35600
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionClimbSystem.js",
+    "duration_ms": 36437
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\patchSprites.cli.test.js",
+    "duration_ms": 36440
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\displayimage.scaling.test.js",
+    "duration_ms": 36447
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\OddTableReader.js",
+    "duration_ms": 36829
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ObjectManager.js",
+    "duration_ms": 36845
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameresult.test.js",
-    "duration_ms": 35039
+    "duration_ms": 37137
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gametimer.test.js",
+    "duration_ms": 37427
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\packMechanics.js",
+    "duration_ms": 37433
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameskills.test.js",
-    "duration_ms": 35119
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\displayimage.primitives.test.js",
-    "duration_ms": 35316
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GroundRenderer.js",
-    "duration_ms": 35322
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelloader.test.js",
-    "duration_ms": 35994
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listSprites.test.js",
-    "duration_ms": 36046
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\rectangle.test.js",
-    "duration_ms": 36045
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\solidlayer.test.js",
-    "duration_ms": 36044
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\range.test.js",
-    "duration_ms": 36078
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listSprites.stdout.test.js",
-    "duration_ms": 36079
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\vgaspecreader.test.js",
-    "duration_ms": 36076
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stageimageprops.test.js",
-    "duration_ms": 36118
+    "duration_ms": 37427
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\unpackfilepart.test.js",
-    "duration_ms": 36157
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.loadReplay.test.js",
-    "duration_ms": 36409
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\fileprovider.test.js",
-    "duration_ms": 36799
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\FileContainer.js",
-    "duration_ms": 37057
+    "duration_ms": 37470
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionCountdownSystem.js",
-    "duration_ms": 37241
+    "duration_ms": 37488
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\displayimage.test.js",
+    "duration_ms": 37577
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\groundreader.test.js",
+    "duration_ms": 38338
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionDrowningSystem.js",
-    "duration_ms": 37255
+    "duration_ms": 38692
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\game.queuecommand.test.js",
+    "duration_ms": 38906
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\configreader.test.js",
+    "duration_ms": 39053
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\levelloader.test.js",
+    "duration_ms": 39309
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\range.test.js",
+    "duration_ms": 39350
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\walk-wall-collision.test.js",
-    "duration_ms": 37238
+    "duration_ms": 39348
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\solidlayer.test.js",
+    "duration_ms": 39349
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\rectangle.test.js",
+    "duration_ms": 39350
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listSprites.stdout.test.js",
+    "duration_ms": 39351
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\StageImageProperties.js",
+    "duration_ms": 39360
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\vgaspecreader.test.js",
+    "duration_ms": 39348
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stageimageprops.test.js",
+    "duration_ms": 39378
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\listsprites.test.js",
+    "duration_ms": 39485
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBaseSystem.js",
+    "duration_ms": 39591
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionExitingSystem.js",
-    "duration_ms": 37255
+    "duration_ms": 39803
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionFryingSystem.js",
+    "duration_ms": 39803
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionFloatingSystem.js",
-    "duration_ms": 37279
+    "duration_ms": 39812
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandLemmingsAction.js",
-    "duration_ms": 37353
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionSplatterSystem.js",
+    "duration_ms": 39811
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Animation.js",
-    "duration_ms": 37354
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionHoistSystem.js",
+    "duration_ms": 39812
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.transitions.test.js",
-    "duration_ms": 37353
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionJumpSystem.js",
+    "duration_ms": 39812
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Trigger.js",
-    "duration_ms": 37360
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionShrugSystem.js",
+    "duration_ms": 39868
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.sound.test.js",
-    "duration_ms": 37969
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionOhNoSystem.js",
+    "duration_ms": 39869
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.menu-selects.test.js",
-    "duration_ms": 38020
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BitReader.js",
+    "duration_ms": 39868
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.overlayfade.test.js",
-    "duration_ms": 38082
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GroundRenderer.js",
+    "duration_ms": 40195
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.test.js",
-    "duration_ms": 38082
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\fileprovider.test.js",
+    "duration_ms": 40188
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.updateStageSize.test.js",
-    "duration_ms": 38082
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.updateviewpoint.test.js",
-    "duration_ms": 38082
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\userinput.events.test.js",
-    "duration_ms": 38082
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.loadReplay.test.js",
+    "duration_ms": 40254
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameConfig.js",
-    "duration_ms": 38140
+    "duration_ms": 40585
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-start.test.js",
-    "duration_ms": 38489
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Mask.js",
+    "duration_ms": 40845
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\EventHandler.js",
-    "duration_ms": 38704
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.enableDebug.test.js",
-    "duration_ms": 38891
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\PaletteImage.js",
-    "duration_ms": 38979
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ParticleTable.js",
-    "duration_ms": 38979
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameresources.test.js",
-    "duration_ms": 39009
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelLoader.js",
-    "duration_ms": 39160
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandReleaseRateIncrease.js",
-    "duration_ms": 39306
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandNuke.js",
-    "duration_ms": 39326
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandReleaseRateDecrease.js",
-    "duration_ms": 39354
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\loghandler.test.js",
-    "duration_ms": 39368
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ViewPoint.js",
-    "duration_ms": 39376
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingsSprite.js",
-    "duration_ms": 39908
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelReader.js",
-    "duration_ms": 39925
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\nodefileprovider.test.js",
-    "duration_ms": 40010
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.test.js",
-    "duration_ms": 40011
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\minimap.test.js",
-    "duration_ms": 40154
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameFactory.js",
-    "duration_ms": 40492
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamedisplay.test.js",
-    "duration_ms": 40703
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBashSystem.js",
-    "duration_ms": 40736
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportScripts.test.js",
-    "duration_ms": 41182
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\getNearestLemming.test.js",
-    "duration_ms": 41179
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionWalkSystem.js",
-    "duration_ms": 41836
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MaskList.js",
+    "duration_ms": 40845
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.test.js",
-    "duration_ms": 42875
+    "duration_ms": 41237
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.transitions.test.js",
+    "duration_ms": 41260
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\displayimage.primitives.test.js",
+    "duration_ms": 41308
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.menu-selects.test.js",
+    "duration_ms": 41345
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.enableDebug.test.js",
+    "duration_ms": 41346
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\userinput.events.test.js",
+    "duration_ms": 41443
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameFactory.js",
+    "duration_ms": 41459
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\FileContainer.js",
+    "duration_ms": 41459
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\EventHandler.js",
+    "duration_ms": 41482
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandReleaseRateDecrease.js",
+    "duration_ms": 41526
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandReleaseRateIncrease.js",
+    "duration_ms": 41526
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandNuke.js",
+    "duration_ms": 41576
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-start.test.js",
+    "duration_ms": 41739
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Animation.js",
+    "duration_ms": 42084
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\loghandler.test.js",
+    "duration_ms": 42224
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Trigger.js",
+    "duration_ms": 42233
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.updateviewpoint.test.js",
+    "duration_ms": 42221
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.test.js",
+    "duration_ms": 42222
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.overlayfade.test.js",
+    "duration_ms": 42257
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\stage.updateStageSize.test.js",
+    "duration_ms": 42257
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandLemmingsAction.js",
+    "duration_ms": 42393
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingmanager.spawn-remove.test.js",
+    "duration_ms": 42597
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\nodefileprovider.test.js",
+    "duration_ms": 42790
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.sound.test.js",
+    "duration_ms": 42795
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ViewPoint.js",
+    "duration_ms": 42843
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameresources.test.js",
+    "duration_ms": 42917
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelLoader.js",
+    "duration_ms": 43209
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\getNearestLemming.test.js",
+    "duration_ms": 43291
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamedisplay.test.js",
+    "duration_ms": 43317
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\PaletteImage.js",
+    "duration_ms": 43379
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ParticleTable.js",
+    "duration_ms": 43379
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\minimap.test.js",
+    "duration_ms": 43369
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemming.test.js",
+    "duration_ms": 43953
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LevelReader.js",
+    "duration_ms": 44705
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingsSprite.js",
+    "duration_ms": 44705
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\exportScripts.test.js",
+    "duration_ms": 44722
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingmanager.spawn.extras.test.js",
+    "duration_ms": 45364
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\VGASpecReader.js",
-    "duration_ms": 43315
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BitWriter.js",
-    "duration_ms": 43634
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.loop.test.js",
-    "duration_ms": 44016
+    "duration_ms": 45404
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandSelectSkill.js",
-    "duration_ms": 44049
+    "duration_ms": 45409
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.dispose.test.js",
-    "duration_ms": 44201
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-countdown-system.test.js",
+    "duration_ms": 45828
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\skillpanelsprites.test.js",
-    "duration_ms": 44197
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-climb-hoist.test.js",
+    "duration_ms": 45912
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\groundrenderer.test.js",
-    "duration_ms": 44249
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionBashSystem.js",
+    "duration_ms": 46037
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionExplodingSystem.js",
-    "duration_ms": 44856
+    "duration_ms": 46136
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.canvas-reset.test.js",
-    "duration_ms": 45058
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\skillpanelsprites.test.js",
+    "duration_ms": 46260
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\squooshhqx.js",
-    "duration_ms": 45186
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-systems-extra.test.js",
-    "duration_ms": 45351
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameDisplay.js",
-    "duration_ms": 45475
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TriggerManager.js",
-    "duration_ms": 45472
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ConfigReader.js",
-    "duration_ms": 45663
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingmanager.test.js",
-    "duration_ms": 45863
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\groundrenderer.test.js",
+    "duration_ms": 46264
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SkillPanelSprites.js",
-    "duration_ms": 45871
+    "duration_ms": 46272
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.onGameEnd.test.js",
-    "duration_ms": 46900
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.branches.test.js",
+    "duration_ms": 46722
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\lemmingmanager.test.js",
+    "duration_ms": 47099
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.dispose.test.js",
+    "duration_ms": 47149
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.canvas-reset.test.js",
+    "duration_ms": 47149
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\CommandManager.js",
-    "duration_ms": 47014
+    "duration_ms": 47258
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\index.html",
-    "duration_ms": 47223
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.onGameEnd.test.js",
+    "duration_ms": 47288
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Lemming.js",
-    "duration_ms": 47334
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ActionWalkSystem.js",
+    "duration_ms": 47561
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-mine-system.test.js",
-    "duration_ms": 47400
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ConfigReader.js",
+    "duration_ms": 47560
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SolidLayer.js",
-    "duration_ms": 47439
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BitWriter.js",
+    "duration_ms": 47561
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GroundReader.js",
-    "duration_ms": 47508
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.loop.test.js",
+    "duration_ms": 47874
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-drown-explode.test.js",
-    "duration_ms": 48229
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LogHandler.js",
-    "duration_ms": 48645
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\keyboardshortcuts.keys.test.js",
+    "duration_ms": 48970
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\ColorPalette.js",
-    "duration_ms": 48648
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameSkills.js",
-    "duration_ms": 48770
+    "duration_ms": 49230
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameResources.js",
-    "duration_ms": 49036
+    "duration_ms": 49631
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-entrance-placement.test.js",
-    "duration_ms": 49093
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\index.html",
+    "duration_ms": 49660
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Frame.js",
-    "duration_ms": 49758
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-systems-extra.test.js",
+    "duration_ms": 49993
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.loadlevel.test.js",
-    "duration_ms": 50132
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameSkills.js",
+    "duration_ms": 50300
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GroundReader.js",
+    "duration_ms": 51017
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LogHandler.js",
+    "duration_ms": 51016
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.loadlevel-missing.test.js",
-    "duration_ms": 50132
+    "duration_ms": 51159
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-base-system.test.js",
-    "duration_ms": 50136
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.loadlevel.test.js",
+    "duration_ms": 51159
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BinaryReader.js",
-    "duration_ms": 51084
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\SolidLayer.js",
+    "duration_ms": 51294
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\FileProvider.js",
-    "duration_ms": 51082
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameDisplay.js",
+    "duration_ms": 51684
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameVictoryCondition.js",
-    "duration_ms": 51402
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-mine-system.test.js",
+    "duration_ms": 51850
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MiniMap.js",
-    "duration_ms": 51827
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\UserInputManager.js",
-    "duration_ms": 52161
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Frame.js",
+    "duration_ms": 52218
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\KeyboardShortcuts.js",
-    "duration_ms": 52484
+    "duration_ms": 52412
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.controls.test.js",
-    "duration_ms": 52886
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\TriggerManager.js",
+    "duration_ms": 52421
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\vendor\\hqx\\squooshhqx.js",
+    "duration_ms": 52421
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Lemming.js",
+    "duration_ms": 52467
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-base-system.test.js",
+    "duration_ms": 52781
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-drown-explode.test.js",
+    "duration_ms": 52781
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-entrance-placement.test.js",
+    "duration_ms": 53113
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\FileProvider.js",
+    "duration_ms": 53206
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\MiniMap.js",
+    "duration_ms": 53723
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.suspendWithColor.test.js",
-    "duration_ms": 52885
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\UnpackFilePart.js",
-    "duration_ms": 53201
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.start-existing.test.js",
-    "duration_ms": 53818
+    "duration_ms": 53716
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Game.js",
-    "duration_ms": 53944
+    "duration_ms": 54258
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.behavior.test.js",
-    "duration_ms": 54589
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.controls.test.js",
+    "duration_ms": 54262
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameTimer.js",
-    "duration_ms": 55380
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.start-existing.test.js",
+    "duration_ms": 55171
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\BinaryReader.js",
+    "duration_ms": 55838
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\UserInputManager.js",
+    "duration_ms": 56592
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\xbrz\\xbrz.js",
-    "duration_ms": 55647
+    "duration_ms": 56797
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Level.js",
-    "duration_ms": 56179
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameVictoryCondition.js",
+    "duration_ms": 56885
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-sequence.test.js",
-    "duration_ms": 56741
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.behavior.test.js",
+    "duration_ms": 56991
   },
   {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingManager.js",
-    "duration_ms": 57434
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-systems.test.js",
-    "duration_ms": 57818
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameGui.js",
-    "duration_ms": 58810
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.test.js",
-    "duration_ms": 58830
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\DisplayImage.js",
-    "duration_ms": 58864
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameView.js",
-    "duration_ms": 58864
-  },
-  {
-    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-tps.test.js",
-    "duration_ms": 58994
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\UnpackFilePart.js",
+    "duration_ms": 58151
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Stage.js",
-    "duration_ms": 59339
+    "duration_ms": 58719
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameTimer.js",
+    "duration_ms": 58914
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\Level.js",
+    "duration_ms": 59118
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameGui.js",
+    "duration_ms": 59172
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\DisplayImage.js",
+    "duration_ms": 60049
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.release-rate.render.test.js",
+    "duration_ms": 60229
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gameview.test.js",
+    "duration_ms": 60477
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\action-systems.test.js",
+    "duration_ms": 60513
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-sequence.test.js",
+    "duration_ms": 60659
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\LemmingManager.js",
+    "duration_ms": 60860
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\js\\GameView.js",
+    "duration_ms": 61538
   },
   {
     "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\gamegui.test.js",
-    "duration_ms": 59517
+    "duration_ms": 61543
+  },
+  {
+    "file": "C:\\Users\\sneak\\Development\\LemmingsJS-MIDI\\test\\bench-tps.test.js",
+    "duration_ms": 61588
   }
 ]
