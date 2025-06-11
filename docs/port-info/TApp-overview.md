@@ -3,7 +3,8 @@
 This document summarizes the global `TApp` class from the original Delphi version
 (found in `src/Prog.App.pas` in the Lemmix repository). It covers its main fields,
 how the constructor and destructor handle them, form stack management and other
-global behaviors.
+global behaviors. See [forms-overview.md](forms-overview.md) for an overview of
+how screens are opened and closed.
 
 ## Key fields
 
