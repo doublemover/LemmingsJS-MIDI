@@ -169,6 +169,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
 - See [docs/ci.md](docs/ci.md) for gh actions workflow info.
 - See [docs/config.md](docs/config.md) for configuration details.
+- See [docs/port-info/README.md](docs/port-info/README.md) for notes on the Pascal source.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
 - See [docs/port-info/README.md](docs/port-info/README.md) for Pascal port notes.
 
