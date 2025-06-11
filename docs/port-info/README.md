@@ -20,4 +20,5 @@ This folder collects notes on porting the original Pascal Lemmix codebase to the
 - [Voice manager](voice-manager.md)
 - [Compiler and resource includes](compiler-includes.md)
 - [BASS integration notes](bass-integration.md)
+- [Graphics32 integration](graphics32-integration.md)
 - [Configuration formats](config-formats.md)
