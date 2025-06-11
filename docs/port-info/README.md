@@ -5,5 +5,6 @@ JavaScript/Node project. Each document covers a specific subsystem or topic.
 
 - [Architecture overview](architecture-overview.md)
 - [Sound system overview](sound-system-overview.md)
+- [Compiler and resource includes](compiler-includes.md)
 - [BASS integration notes](bass-integration.md)
 - [Configuration formats](config-formats.md)
