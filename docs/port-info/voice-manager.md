@@ -18,4 +18,22 @@ The `TVoiceMgr` class attempts to create a Windows SAPI `ISpeechVoice` instance 
 
 The voice manager tracks whether speech synthesis is installed (`Installed`) and whether speaking is currently allowed (`Enabled`). Calls to `Speak` and `ForcedSpeak` respect these flags so the game can disable spoken feedback when appropriate. Option sets determine which predefined messages are active.
 
+## Voice Options
+
+`Base.Types.pas` defines `TVoiceOption`, listing the spoken message categories:
+
+```
+BinLevelSaved, BinLevelSavingOff, BinLevelSavingOn, Cheater,
+CurrentSection, CurrentStyle, GameSaved, ReplayFail,
+SoundFX, StartReplay, VoiceDisable, VoiceEnable
+```
+
+`TVoiceOptions` is a set of these values. When constructing `TVoiceMgr` the
+caller passes both the desired options and an `Enabled` flag. `Speak` only
+voices a predefined message when its option is present in this set.
+
+Actual speech synthesis relies on the generated COM wrapper
+`SpeechLib_TLB.pas`, which exposes `ISpeechVoice` and the `CoSpVoice` class
+instantiated by `TVoiceMgr`.
+
 
