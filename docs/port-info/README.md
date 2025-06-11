@@ -1,8 +1,12 @@
 # Port Information
 
-This folder collects notes on porting the original Pascal Lemmix codebase to the
-JavaScript/Node project. Each document covers a specific subsystem or topic.
+This folder collects notes on porting the original Pascal Lemmix codebase to the JavaScript/Node project. Each document covers a specific subsystem or topic.
 
+- [Prog infrastructure overview](prog-infrastructure.md)
+- [TApp lifecycle overview](TApp-overview.md)
+- [Lemmix Configuration Summary](lemix-config.md)
+- [Sound system overview](sound-system-overview.md)
+- [Voice Manager](lemmix-voice.md)
 - [Architecture overview](architecture-overview.md)
 - [Sound system overview](sound-system-overview.md)
 - [Styles system](styles-system.md)
