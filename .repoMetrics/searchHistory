@@ -430,5 +430,7 @@
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
 {"time":"2025-06-09T00:24:51.211Z","query":"lemmix","mdFiles":20,"codeFiles":20,"ms":1015}
-{"time":"2025-06-11T18:35:47.211Z","query":"Lemmix","mdFiles":5,"codeFiles":5,"ms":487}
-{"time":"2025-06-11T18:35:49.428Z","query":"lem_directive","mdFiles":5,"codeFiles":5,"ms":563}
+{"time":"2025-06-11T18:36:39.676Z","query":"Pascal","mdFiles":0,"codeFiles":0,"ms":591}
+{"time":"2025-06-11T18:36:41.518Z","query":"style","mdFiles":0,"codeFiles":0,"ms":566}
+{"time":"2025-06-11T18:36:45.451Z","query":"style","mdFiles":0,"codeFiles":0,"ms":604}
+{"time":"2025-06-11T18:36:47.403Z","query":"level","mdFiles":0,"codeFiles":0,"ms":605}
