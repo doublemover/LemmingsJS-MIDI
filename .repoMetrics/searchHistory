@@ -430,4 +430,7 @@
 {"time":"2025-06-08T21:49:57.430Z","query":"foo","mdFiles":1,"codeFiles":0,"ms":2494}
 {"time":"2025-06-08T22:03:23.562Z","query":"_animationCache","mdFiles":0,"codeFiles":1,"ms":851}
 {"time":"2025-06-09T00:24:51.211Z","query":"lemmix","mdFiles":20,"codeFiles":20,"ms":1015}
-{"time":"2025-06-11T18:35:56.072Z","query":"Lemmix","mdFiles":20,"codeFiles":20,"ms":442}
+{"time":"2025-06-11T18:36:00.593Z","query":"base docs/port-info","mdFiles":15,"codeFiles":15,"ms":741}
+{"time":"2025-06-11T18:36:11.601Z","query":"Base docs/port-info","mdFiles":15,"codeFiles":15,"ms":735}
+{"time":"2025-06-11T18:36:20.754Z","query":"Utils","mdFiles":10,"codeFiles":10,"ms":737}
+{"time":"2025-06-11T18:36:24.775Z","query":"Utils docs/port-info","mdFiles":15,"codeFiles":15,"ms":710}
