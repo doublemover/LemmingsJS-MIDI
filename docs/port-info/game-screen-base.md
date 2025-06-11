@@ -1,6 +1,6 @@
 # GameScreen.Base port notes
 
-This document collects details about `TPurpleFont` and `TGameBaseScreen` from the Delphi `GameScreen.Base.pas` module used by **Lemmix**. It summarises how the DOS-style text font is created and how screen images and transitions are handled.
+This document collects details about `TPurpleFont` and `TGameBaseScreen` from the Delphi `GameScreen.Base.pas` module used by **Lemmix**. It summarises how the DOS-style text font is created and how screen images and transitions are handled. See [forms-overview.md](forms-overview.md) for the overall screen lifecycle.
 
 ## TPurpleFont setup
 
