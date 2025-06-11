@@ -4,7 +4,7 @@ This document summarizes how configuration is managed in the **Lemmix** project.
 
 ## Structure of `TConfig`
 
-The record groups all persistent options for the game. Key fields include sets of options and paths to assets:
+The record groups all persistent options for the game. Key fields include sets of options and paths to assets. Form-related settings correspond to the screens described in [forms-overview.md](forms-overview.md):
 
 ```pascal
 TConfig = record
