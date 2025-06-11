@@ -6,6 +6,7 @@ This folder collects notes on porting the original Pascal Lemmix codebase to the
 - [TApp lifecycle overview](TApp-overview.md)
 - [Lemmix Configuration Summary](lemix-config.md)
 - [Sound system overview](sound-system-overview.md)
+- [DOS resource handling](dos-resource-handling.md)
 - [Game controller overview](game-controller.md)
 - [Forms and screen lifecycle](forms-overview.md)
 - [GameScreen internals](gamescreens-others.md)
