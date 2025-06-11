@@ -171,6 +171,7 @@ The goal is to create a solid, performant port first. Then build out the sequenc
 - See [docs/config.md](docs/config.md) for configuration details.
 - See [docs/port-info/forms-overview.md](docs/port-info/forms-overview.md) for how UI screens open and close.
 - See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
+- See [docs/port-info/README.md](docs/port-info/README.md) for Pascal port notes.
 
 ### Running tests
 
