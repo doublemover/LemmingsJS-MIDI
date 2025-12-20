@@ -162,7 +162,7 @@ class Level extends Lemmings.BaseLogger {
     gp[idx]     = this.colorPalette.getR(paletteIndex);
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
-    lemmings.game.lemmingManager.miniMap.onGroundChanged(x, y, false);
+    globalThis?.lemmings?.game?.lemmingManager?.miniMap?.onGroundChanged(x, y, false);
   }
 
   hasGroundAt(x, y) { return this.groundMask.hasGroundAt(x, y); }
@@ -173,7 +173,7 @@ class Level extends Lemmings.BaseLogger {
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;
     gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
-    lemmings.game.lemmingManager.miniMap.onGroundChanged(x, y, true);
+    globalThis?.lemmings?.game?.lemmingManager?.miniMap?.onGroundChanged(x, y, true);
   }
 
   setArrowAreas(ranges = []) {

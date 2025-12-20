@@ -12,6 +12,8 @@ class ParticleTable {
   #colorIndexTable;
   /** @type {Int8Array[]} Decoded coordinates for all frames */
   #particleData;
+  /** @type {Lemmings.Frame[]} Cached particle frames */
+  #frames;
 
   /**
    * @param {any} palette - Color palette (with getR/G/B methods).
@@ -25,6 +27,12 @@ class ParticleTable {
       ParticleTable._sharedParticleData = ParticleTable.#decodeBase64Frames(ParticleTable.particleDataBase64);
     }
     this.#particleData = ParticleTable._sharedParticleData;
+    let frames = ParticleTable._frameCache.get(palette);
+    if (!frames) {
+      frames = this.#buildFrames();
+      ParticleTable._frameCache.set(palette, frames);
+    }
+    this.#frames = frames;
   }
 
   /** @returns {any} The palette object */
@@ -44,23 +52,48 @@ class ParticleTable {
    * @param {number} y - Center y
    */
   draw(gameDisplay, frameIndex, x, y) {
-    const frameData = this.#particleData[frameIndex];
-    if (!frameData || !gameDisplay) return;
+    const frame = this.#frames?.[frameIndex];
+    if (!frame || !gameDisplay) return;
+    gameDisplay.drawFrame(frame, x, y);
+  }
+
+  #buildFrames() {
+    const frames = new Array(this.#particleData.length);
     const table = this.#colorIndexTable;
     const palette = this.#palette;
-    for (let i = 0; i < frameData.length; i += 2) {
-      const dx = frameData[i];
-      const dy = frameData[i + 1];
-      if (dx === -128 || dy === -128) continue;
-      const colorIndex = table[i % 16];
-      gameDisplay.setPixel(
-        x + dx,
-        y + dy,
-        palette.getR(colorIndex),
-        palette.getG(colorIndex),
-        palette.getB(colorIndex)
-      );
+    for (let f = 0; f < this.#particleData.length; f++) {
+      const data = this.#particleData[f];
+      let minX = Infinity;
+      let maxX = -Infinity;
+      let minY = Infinity;
+      let maxY = -Infinity;
+      for (let i = 0; i < data.length; i += 2) {
+        const dx = data[i];
+        const dy = data[i + 1];
+        if (dx === -128 || dy === -128) continue;
+        if (dx < minX) minX = dx;
+        if (dx > maxX) maxX = dx;
+        if (dy < minY) minY = dy;
+        if (dy > maxY) maxY = dy;
+      }
+      if (!isFinite(minX) || !isFinite(minY)) {
+        frames[f] = new Lemmings.Frame(1, 1, 0, 0);
+        continue;
+      }
+      const width = (maxX - minX + 1) | 0;
+      const height = (maxY - minY + 1) | 0;
+      const frame = new Lemmings.Frame(width, height, minX, minY);
+      for (let i = 0; i < data.length; i += 2) {
+        const dx = data[i];
+        const dy = data[i + 1];
+        if (dx === -128 || dy === -128) continue;
+        const colorIndex = table[i % 16];
+        frame.setPixel(dx - minX, dy - minY, palette.getColor(colorIndex));
+      }
+      frame.enableSpanCache?.();
+      frames[f] = frame;
     }
+    return frames;
   }
 
   /**
@@ -94,6 +127,7 @@ class ParticleTable {
  * @private
  */
 ParticleTable._sharedParticleData = undefined;
+ParticleTable._frameCache = new WeakMap();
 
 // Static base64 string: coordinates for 51 frames (each 160 bytes)
 ParticleTable.particleDataBase64 = 'zJzp0Qfn/usD8vj1/PgD+fr6A/j+8/j3//b6/fv1Afz++vr2Av4F+AL5+fn7/wL4Afv++/r6AgH/AAD4BAD+/P4AA/gF/wD6/fr9+QMA/PsF+wQAAAL+AQH7/AL/Av7/BP39+fz+Af78+vz8+/sB/gP/AAABAAMAA/4A/f4C//0D///+/QL/A/78A/sA/v39/wH7/QL9AgH/Af7+Afv/AYCA0aMPy/zUBOL16PntCe728gnu+ev28Pzw+Pb48AT3//T48gH5B/MC9ff2+PwC9AP4Afj3+AH+//0B9QX+/vr+/QX2Bf0C9/v3/fYC/v35BvkF/wEA//' +

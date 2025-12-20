@@ -49,8 +49,12 @@ class ConfigReader extends Lemmings.BaseLogger {
       newConfig.path = configData.path;
       newConfig.gametype = Lemmings.GameTypes[configData.gametype];
       /// read level config
-      if (configData['level.useoddtable'] != null) {
-        newConfig.level.useOddTable = (!!configData['level.useoddtable']);
+      const oddFlag = configData['level.useOddTable'];
+      const oddFlagLegacy = configData['level.useoddtable'];
+      if (oddFlag != null) {
+        newConfig.level.useOddTable = !!oddFlag;
+      } else if (oddFlagLegacy != null) {
+        newConfig.level.useOddTable = !!oddFlagLegacy;
       }
       if (configData.mechanics != null) {
         newConfig.mechanics = configData.mechanics;

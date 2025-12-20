@@ -1,5 +1,11 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+const getApp = () => {
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
+  if (typeof lemmings !== 'undefined') return lemmings;
+  return null;
+};
+
 class GameTimer {
   #speedFactor;
   #frameTime;
@@ -34,8 +40,8 @@ class GameTimer {
     this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#visHandler = () => {
-      const skip = typeof lemmings !== 'undefined' &&
-        (lemmings.bench || lemmings.benchSequence);
+      const app = getApp();
+      const skip = app?.bench || app?.benchSequence;
       if (skip) return;
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
       if (hidden) {
@@ -133,7 +139,8 @@ class GameTimer {
     if (!this.isRunning()) return;
     window.cancelAnimationFrame(this.#rafId);
     this.#rafId = 0;
-    lemmings.tps = this.tps;
+    const app = getApp();
+    if (app) app.tps = this.tps;
     const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
     if (gameSeconds > this.#lastGameSecond) {
       if (this.eachGameSecond) {
@@ -144,7 +151,7 @@ class GameTimer {
     let delta = now - this.#lastTime;
     if (delta >= this.#frameTime) {
       const steps = Math.floor(delta / this.#frameTime);
-      if (lemmings.bench == true) {
+      if (app?.bench === true || app?.benchSequence === true) {
         this.#benchSpeedAdjust(steps);
       }
       delta -= steps * this.#frameTime;
@@ -163,7 +170,9 @@ class GameTimer {
     // slowThreshold and recoverThreshold scale with the current speedFactor.
     // Below speedFactor 6 the values grow too large; use speedFactor * 1.5 so
     // lower speeds still trigger slowdown after at least 10 queued frames.
-    lemmings.steps = steps;
+    const app = getApp();
+    if (!app) return;
+    app.steps = steps;
     const oldSpeed = this.#speedFactor;
 
     const mult = this.benchStartupFrames > 0 ? this.benchStableFactor : 1;
@@ -216,10 +225,10 @@ class GameTimer {
         ? `rgba(0,255,0,${intensity})`
         : `rgba(255,0,0,${intensity})`;
       const dashLen = Math.max(2, Math.min(steps, 20));
-      const stage = lemmings?.stage;
+      const stage = app?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
-        if (lemmings.bench) {
+        if (app.bench) {
           const gui = stage.guiImgProps;
           const scale = gui.viewPoint.scale;
           rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };
@@ -272,11 +281,16 @@ class GameTimer {
     return Math.floor(this.ticksToSeconds(left));
   }
   getGameLeftTimeString() {
+    const app = getApp();
+    if (app?.endless === true) {
+      return '4-20';
+    }
     const secs = this.getGameLeftTime();
     return Math.floor(secs / 60) + '-' + ('0' + (secs % 60)).slice(-2);
   }
   ticksToSeconds(t) {
-    if (lemmings.endless == true) {
+    const app = getApp();
+    if (app?.endless === true) {
       return 42069 * (this.TIME_PER_FRAME_MS / 1000);
     }  
     return t * (this.TIME_PER_FRAME_MS / 1000); 

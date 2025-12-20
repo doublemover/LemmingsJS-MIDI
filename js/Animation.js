@@ -84,7 +84,9 @@ class Animation {
       const paletteImg = new Lemmings.PaletteImage(width, height);
       paletteImg.processImage(fr, bitsPerPixel);
       paletteImg.processTransparentByColorIndex(0);
-      frameArray[i] = paletteImg.createFrame(palette, offsetX, offsetY);
+      const frame = paletteImg.createFrame(palette, offsetX, offsetY);
+      frame.enableSpanCache?.();
+      frameArray[i] = frame;
     }
     this.frames     = frameArray;
     this._lastFrame = frameArray[frames-1];

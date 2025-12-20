@@ -102,7 +102,7 @@ class LevelReader extends Lemmings.BaseLogger {
       const flag = fr.readByte();
       const pos = (high << 8) | low;
 
-      if (pos === 0 && size === 0) continue; // end-of-list marker
+      if (pos === 0 && size === 0) break; // end-of-list marker
 
       // 9-bit X in 8-px steps, origin - X_OFFSET
       const x = ((pos & 0x00FF) << 3) - X_OFFSET;

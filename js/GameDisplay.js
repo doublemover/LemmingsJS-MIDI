@@ -12,9 +12,42 @@ class GameDisplay {
     this._mouseMoveHandler = null;
     this._mouseX = -1;
     this._mouseY = -1;
+    this._hoverRafId = 0;
+    this._hoverX = 0;
+    this._hoverY = 0;
     this._dashOffset = 0;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+  }
+  _scheduleHoverUpdate() {
+    if (this._hoverRafId) return;
+    const raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
+      ? window.requestAnimationFrame.bind(window)
+      : (cb => { cb(); return 0; });
+    this._hoverRafId = raf(() => {
+      this._hoverRafId = 0;
+      this._updateHover();
+    });
+  }
+  _updateHover() {
+    const x = this._hoverX;
+    const y = this._hoverY;
+    const prev = this.hoverLemming;
+    let cand = prev;
+    if (cand && (cand.removed || cand.disabled || cand.getClickDistance(x, y) < 0)) {
+      cand = null;
+    }
+    if (!cand) {
+      cand = this.lemmingManager.getNearestLemming(x, y);
+    }
+    if (cand?.action?.getActionName?.() === 'exploding') cand = null;
+    if (prev !== cand && this.game?.gameGui) {
+      this.hoverLemming = cand;
+      this.game.gameGui.backgroundChanged = true;
+      this.game.gameGui.gameTimeChanged = true;
+    } else {
+      this.hoverLemming = cand;
+    }
   }
   setGuiDisplay(display) {
     this.display = display;
@@ -28,14 +61,9 @@ class GameDisplay {
     this._mouseMoveHandler = (e) => {
       this._mouseX = e.x;
       this._mouseY = e.y;
-      const prev = this.hoverLemming;
-      let cand = this.lemmingManager.getNearestLemming(e.x, e.y);
-      if (cand?.action?.getActionName?.() === 'exploding') cand = null;
-      this.hoverLemming = cand;
-      if (prev !== this.hoverLemming && this.game?.gameGui) {
-        this.game.gameGui.backgroundChanged = true;
-        this.game.gameGui.gameTimeChanged = true;
-      }
+      this._hoverX = e.x;
+      this._hoverY = e.y;
+      this._scheduleHoverUpdate();
     };
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
@@ -115,14 +143,14 @@ class GameDisplay {
     if (this.display && this._mouseHandler) {
       this.display.onMouseDown.off(this._mouseHandler);
       this._mouseHandler = null;
-      if (this._moveHandler) {
-        this.display.onMouseMove.off(this._moveHandler);
-        this._moveHandler = null;
-      }
     }
     if (this.display && this._mouseMoveHandler) {
       this.display.onMouseMove.off(this._mouseMoveHandler);
       this._mouseMoveHandler = null;
+    }
+    if (this._hoverRafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
+      window.cancelAnimationFrame(this._hoverRafId);
+      this._hoverRafId = 0;
     }
     this.display = null;
     this.game = null;

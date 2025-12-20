@@ -70,6 +70,82 @@ class SolidLayer extends Lemmings.BaseLogger {
   }
 
   /**
+     * Return step height from the bottom of a column.
+     * Behaves like sampling a 1xH sublayer then calling getGroundStepHeight.
+     * @param {number} x
+     * @param {number} yTop
+     * @param {number} height
+     * @returns {number} 0..height (height means fully solid)
+     */
+  getColumnStepHeight(x, yTop, height) {
+    const w = this.width;
+    const h = this.height;
+    if (x < 0 || x >= w || height <= 0) return 0;
+    const mask = this.mask;
+    const end = yTop + height - 1;
+    for (let i = 0; i < height; i++) {
+      const y = end - i;
+      if (y < 0 || y >= h) return i;
+      if (mask[y * w + x] === 0) return i;
+    }
+    return height;
+  }
+
+  /**
+     * Return depth to first solid pixel in a column.
+     * Behaves like sampling a 1xH sublayer then calling getGroundGapDepth.
+     * @param {number} x
+     * @param {number} yTop
+     * @param {number} height
+     * @returns {number} 1..height+1 (height+1 means no ground)
+     */
+  getColumnGapDepth(x, yTop, height) {
+    const w = this.width;
+    const h = this.height;
+    if (x < 0 || x >= w || height <= 0) return height + 1;
+    const mask = this.mask;
+    for (let i = 0; i < height; i++) {
+      const y = yTop + i;
+      if (y < 0 || y >= h) continue;
+      if (mask[y * w + x] !== 0) return i + 1;
+    }
+    return height + 1;
+  }
+
+  /**
+     * Count solid pixels in a rectangle without allocating a sublayer.
+     * Out-of-bounds areas are treated as empty.
+     * @param {number} x
+     * @param {number} y
+     * @param {number} w
+     * @param {number} h
+     * @param {number} [maxCount=Infinity]
+     * @returns {number}
+     */
+  countMaskInRect(x, y, w, h, maxCount = Infinity) {
+    if (w <= 0 || h <= 0) return 0;
+    const width = this.width;
+    const height = this.height;
+    const startX = Math.max(0, x);
+    const startY = Math.max(0, y);
+    const endX = Math.min(width, x + w);
+    const endY = Math.min(height, y + h);
+    if (startX >= endX || startY >= endY) return 0;
+    const mask = this.mask;
+    let count = 0;
+    for (let yy = startY; yy < endY; ++yy) {
+      const row = yy * width;
+      for (let xx = startX; xx < endX; ++xx) {
+        if (mask[row + xx]) {
+          count++;
+          if (count >= maxCount) return count;
+        }
+      }
+    }
+    return count;
+  }
+
+  /**
      * Clear ground using a mask at a given map position.
      * @param {Mask} mask
      * @param {number} x - top-left X position in map where mask will be applied (includes mask.offsetX)

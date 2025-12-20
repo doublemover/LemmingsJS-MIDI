@@ -12,8 +12,9 @@ class ActionOhNoSystem extends ActionBaseSystem {
 
   draw(gameDisplay, lem) {
     super.draw(gameDisplay, lem);
-    if (lem.frameIndex >= 15) {
-      lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
+    if (lem.frameIndex === 15) {
+      const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
+      if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
   }
     

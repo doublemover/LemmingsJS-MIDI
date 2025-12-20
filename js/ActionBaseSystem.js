@@ -5,8 +5,8 @@ import { Lemmings } from './LemmingsNamespace.js';
  * Handles sprite and mask caching as well as common draw/trigger logic.
  */
 class ActionBaseSystem {
-  static spriteCache = new Map();
-  static maskCache = new Map();
+  static spriteCache = new WeakMap();
+  static maskCache = new WeakMap();
   /**
      * @param {Object} options
      * @param {*} options.sprites Sprite provider
@@ -22,7 +22,12 @@ class ActionBaseSystem {
 
     if (sprites && spriteType !== null) {
       const cacheKey = this.actionName || spriteType;
-      if (!ActionBaseSystem.spriteCache.has(cacheKey)) {
+      let providerCache = ActionBaseSystem.spriteCache.get(sprites);
+      if (!providerCache) {
+        providerCache = new Map();
+        ActionBaseSystem.spriteCache.set(sprites, providerCache);
+      }
+      if (!providerCache.has(cacheKey)) {
         const map = new Map();
         if (singleSprite) {
           map.set('both', sprites.getAnimation(spriteType, false));
@@ -30,14 +35,19 @@ class ActionBaseSystem {
           map.set('left', sprites.getAnimation(spriteType, false));
           map.set('right', sprites.getAnimation(spriteType, true));
         }
-        ActionBaseSystem.spriteCache.set(cacheKey, map);
+        providerCache.set(cacheKey, map);
       }
-      this.sprites = ActionBaseSystem.spriteCache.get(cacheKey);
+      this.sprites = providerCache.get(cacheKey);
     }
 
     if (masks && maskTypes !== null) {
       const cacheKey = this.actionName || JSON.stringify(maskTypes);
-      if (!ActionBaseSystem.maskCache.has(cacheKey)) {
+      let providerCache = ActionBaseSystem.maskCache.get(masks);
+      if (!providerCache) {
+        providerCache = new Map();
+        ActionBaseSystem.maskCache.set(masks, providerCache);
+      }
+      if (!providerCache.has(cacheKey)) {
         const map = new Map();
         if (singleSprite) {
           map.set('both', masks.GetMask(maskTypes));
@@ -45,9 +55,9 @@ class ActionBaseSystem {
           map.set('left', masks.GetMask(maskTypes.left));
           map.set('right', masks.GetMask(maskTypes.right));
         }
-        ActionBaseSystem.maskCache.set(cacheKey, map);
+        providerCache.set(cacheKey, map);
       }
-      this.masks = ActionBaseSystem.maskCache.get(cacheKey);
+      this.masks = providerCache.get(cacheKey);
     }
   }
 

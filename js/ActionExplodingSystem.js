@@ -38,15 +38,16 @@ class ActionExplodingSystem extends ActionBaseSystem {
       this.triggerManager.removeByOwner(lem);
       const mask = this.masks.get('both').GetMask(0);
       const changed = level.clearGroundWithMask(mask, lem.x, lem.y);
-      if (changed) {
-        lemmings.game.lemmingManager.miniMap.invalidateRegion(
+      const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
+      if (changed && miniMap) {
+        miniMap.invalidateRegion(
           lem.x + mask.offsetX,
           lem.y + mask.offsetY,
           mask.width,
           mask.height
         );
       }
-      lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
+      if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
     if (lem.frameIndex == 52) {
       return Lemmings.LemmingStateType.OUT_OF_LEVEL;

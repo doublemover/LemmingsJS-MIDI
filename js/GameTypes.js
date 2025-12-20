@@ -1,9 +1,31 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+const GameTypes = {
+  UNKNOWN: 0,
+  LEMMINGS: 1,
+  OHNO: 2,
+  XMAS91: 3,
+  XMAS92: 4,
+  HOLIDAY93: 5,
+  HOLIDAY94: 6
+};
 
-export const GameTypes = Object.freeze({ UNKNOWN:0, LEMMINGS:1, OHNO:2, XMAS91:3, XMAS92:4, HOLIDAY93:5, HOLIDAY94:6 });
+const gameTypeNames = Object.keys(GameTypes);
+const toString = type => gameTypeNames[type] || 'UNKNOWN';
+
+Object.defineProperty(GameTypes, 'toString', {
+  value: toString,
+  enumerable: false
+});
+Object.defineProperty(GameTypes, 'length', {
+  value: gameTypeNames.length,
+  enumerable: false
+});
+
+Object.freeze(GameTypes);
 
 Lemmings.GameTypes = GameTypes;
+export { GameTypes };
 
 /*GameTypes[GameTypes["XMAS91"] = 3] = "XMAS91";
 GameTypes[GameTypes["XMAS92"] = 4] = "XMAS92";

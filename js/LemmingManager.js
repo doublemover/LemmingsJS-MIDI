@@ -45,6 +45,8 @@ class LemmingManager extends Lemmings.BaseLogger {
         } else {
           this.lemmings = [];
         }
+        this.activeLemmings = [];
+        this._activeDirty = false;
         this.minimapDots = new Uint8Array(0);
         this.spawnTotal = 0;
         this.selectedIndex = -1;
@@ -121,6 +123,24 @@ class LemmingManager extends Lemmings.BaseLogger {
     this.miniMap = miniMap;
   }
 
+  _addActiveLemming(lem) {
+    lem._activeIndex = this.activeLemmings.length;
+    this.activeLemmings.push(lem);
+  }
+
+  _compactActiveLemmings() {
+    const lems = this.activeLemmings;
+    let write = 0;
+    for (let i = 0; i < lems.length; i++) {
+      const lem = lems[i];
+      if (lem.removed) continue;
+      lem._activeIndex = write;
+      lems[write++] = lem;
+    }
+    lems.length = write;
+    this._activeDirty = false;
+  }
+
   processNewAction(lem, newAction) {
     if (newAction == Lemmings.LemmingStateType.NO_STATE_TYPE) return false;
     this.setLemmingState(lem, newAction);
@@ -139,7 +159,7 @@ class LemmingManager extends Lemmings.BaseLogger {
       },
       () => {
         this.addNewLemmings();
-        const lems = this.lemmings;
+        const lems = this.activeLemmings;
         const count = lems.length;
         if (this.isNuking() && count) {
           this.doLemmingAction(lems[this.nextNukingLemmingsIndex], Lemmings.SkillTypes.BOMBER);
@@ -188,6 +208,9 @@ class LemmingManager extends Lemmings.BaseLogger {
           this.miniMap.setLiveDots(this.minimapDots);
           this.miniMap.setSelectedDot(selDot);
         }
+        if (this._activeDirty) {
+          this._compactActiveLemmings();
+        }
       })();
   }
 
@@ -208,6 +231,7 @@ class LemmingManager extends Lemmings.BaseLogger {
         }
         this.setLemmingState(lem, Lemmings.LemmingStateType.FALLING);
         this.lemmings.push(lem);
+        this._addActiveLemming(lem);
         this.spawnTotal += 1;
 
         const extraCount = lemmings.extraLemmings | 0;
@@ -225,6 +249,7 @@ class LemmingManager extends Lemmings.BaseLogger {
             }
             extra.setAction(action);
             extras[i] = extra;
+            this._addActiveLemming(extra);
           }
           Array.prototype.push.apply(this.lemmings, extras);
           this.spawnTotal += extraCount;
@@ -290,14 +315,44 @@ class LemmingManager extends Lemmings.BaseLogger {
         tooltipText: 'render'
       },
       () => {
-        for (const lem of this.lemmings) {
+        const stage = gameDisplay?.stage;
+        const view = stage?.getGameViewRect?.();
+        let minX = -Infinity;
+        let maxX = Infinity;
+        let minY = -Infinity;
+        let maxY = Infinity;
+        if (view) {
+          const pad = 16;
+          minX = view.x - pad;
+          maxX = view.x + view.w + pad;
+          minY = view.y - pad;
+          maxY = view.y + view.h + pad;
+        }
+        for (const lem of this.activeLemmings) {
+          if (lem.removed) continue;
+          if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
           lem.render(gameDisplay);
         }
       })();
   }
 
   renderDebug(gameDisplay) {
-    for (const lem of this.lemmings) {
+    const stage = gameDisplay?.stage;
+    const view = stage?.getGameViewRect?.();
+    let minX = -Infinity;
+    let maxX = Infinity;
+    let minY = -Infinity;
+    let maxY = Infinity;
+    if (view) {
+      const pad = 16;
+      minX = view.x - pad;
+      maxX = view.x + view.w + pad;
+      minY = view.y - pad;
+      maxY = view.y + view.h + pad;
+    }
+    for (const lem of this.activeLemmings) {
+      if (lem.removed) continue;
+      if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
       lem.renderDebug(gameDisplay);
     }
   }
@@ -317,7 +372,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   getLemmings() {
-    return this.lemmings;
+    return this.activeLemmings;
   }
 
   getLemmingAt(x, y, radius = 6) {
@@ -327,7 +382,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   getNearestLemming(x, y) {
     let best = null;
     let bestDist = Infinity;
-    for (const lem of this.lemmings) {
+    for (const lem of this.activeLemmings) {
       if (lem.removed) continue;
       const dist = lem.getClickDistance(x, y);
       if (dist >= 0 && dist < bestDist) {
@@ -340,12 +395,13 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   getLemmingsInMask(mask, x, y) {
     const out = [];
-    const lems = this.lemmings;
+    const lems = this.activeLemmings;
     const left = x + mask.offsetX;
     const right = left + mask.width;
     const top = y + mask.offsetY;
     const bottom = top + mask.height;
     for (const val of lems) {
+      if (val.removed) continue;
       const lx = val.x;
       const ly = val.y;
       if (lx > left && lx < right && ly > top && ly < bottom) out.push(val);
@@ -394,7 +450,7 @@ class LemmingManager extends Lemmings.BaseLogger {
           this.logging.log(lem.id + ' Action: Error not an action: ' + Lemmings.LemmingStateType[stateType]);
           return;
         } else {
-          if (this.lemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
+          if (this.activeLemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
             this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
           }
         }
@@ -469,17 +525,22 @@ class LemmingManager extends Lemmings.BaseLogger {
             lem.action !== this.actions[Lemmings.LemmingStateType.EXITING]) {
       this.miniMap.addDeath(lem.x, lem.y);
     }
+    const lemId = lem.id;
     lem.remove();
+    if (lemId !== null && lemId !== undefined) this.lemmings[lemId] = null;
+    this._activeDirty = true;
     this.gameVictoryCondition.removeOne();
   }
 
   cycleSelection(dir = 1) {
-    if (!this.lemmings?.length) return null;
-    const total = this.lemmings.length;
-    let idx = this.selectedIndex;
+    const lems = this.activeLemmings;
+    if (!lems?.length) return null;
+    const total = lems.length;
+    const current = this.getSelectedLemming();
+    let idx = current?._activeIndex ?? 0;
     for (let i = 0; i < total; i++) {
       idx = (idx + dir + total) % total;
-      const lem = this.lemmings[idx];
+      const lem = lems[idx];
       if (!lem.removed && !lem.disabled) {
         this.setSelectedLemming(lem);
         return lem;
@@ -492,6 +553,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   dispose() {
     const start = performance.now();
     if (this.lemmings) this.lemmings.length = 0;
+    if (this.activeLemmings) this.activeLemmings.length = 0;
     if (this.minimapDots) this.minimapDots = new Uint8Array(0);
     this._minimapDotBuffer = null;
     this._mmVisited = null;
