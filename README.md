@@ -1,240 +1,185 @@
-# Lemmings
+# LemmingsJS-MIDI
 
-Lemmings reimplementation written in Javascript.
-
-The goal is to create a solid, performant port first. Then build out the sequencer features using WebMIDI.
+High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
 
 <p align=center><b><a href="https://doublemover.github.io/LemmingsJS-MIDI/">Play it in your browser</a></b></p>
 
 <p align=center><img src="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" width=50% height=50%></img></p>
 
-## New Features
-  - [Keyboard Shortcuts](https://github.com/doublemover/LemmingsJS-MIDI/blob/master/README.md#keyboard-shortcuts)
-  - Speed is displayed at the bottom of the Paws (Pause) button
-    - Click `f` for faster, `-` for slower
-    - Right clicking Paws resets the Speed to 1
-    - Functions as divisor of original tick speed `(60ms/GameSpeed)`
-  - Right click release rate buttons for instant min or max rates 
-  - Levels w/ multiple entrances function correctly
-  - Traps animate, are deadly, and have cooldowns
-  - Frying, Jumping, Hoisting animations
-  - Improved Steel terrain
-    - Steel sprite indexes are stored in `js/steelSprites.json` by game and pack to calculate opaque size for precise placement
-  - Arrow Walls function
-  - Minimap
-    - Accumulates ground at full resolution for enhanced accuracy
-    - Shows entrances, exits, lemmings, and lemming deaths
-    - Click & Drag to reposition view
-  - Zoom In & Out with Mousewheel
-  - Skill selection/use while paused
-  - Original crosshair cursor (from `MAIN.DAT` part 5). The system cursor is hidden and this sprite follows your mouse.
-  - Dashed debug box highlights the lemming closest to your cursor
-  - Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
-    - [Try it at 30x speed in 'bench' mode](https://doublemover.github.io/LemmingsJS-MIDI/?version=1&difficulty=3&level=8&speed=30&cheat=false&bench=true&scale=0.8&endless=true&nukeAfter=8) 
-  
-<details>
-  <summary> <b>Debug Features</b> </summary>
-    
-  - Right clicking Nuke toggles debug mode
-    - Adds Blue pixel under lemmings to represent engine position
-    - Red rectangles for triggers (traps, blockers, level exit)
-    - Cyan rectangles show steel
-    - Orange & Green show left & right arrow triggers
-    - While enabled, speed can be decreased below 1 in increments of 0.1, and up to 120 in increments of 10
-  - Extended URL Parameters
-    - `&debug=true` enables debug mode (Console is noisy)
-    - `&speed=x` sets game speed (0-120)
-    - `&bench=true` enables "bench" mode, spawns lemmings endlessly at max rate
-    - `&endless=true` disables time limit
-    - `&nukeAfter=x` automatically nukes after x*10
-    - `&scale=x` adjusts zoom scale (0.0125-5)
-    - `&extra=x` x extra lemmings per spawn (1-1000)
-      - Be careful with values larger than 100!
-</details>
-     
-<details open>
-  <summary> <b>Fixed Bugs</b> </summary>
+## Highlights
 
-  - Current automated test coverage is around **80%** of lines
-  - Various crashes
-  - Invisible blockers left behind when a blocker stops blocking
-  - Invisible lemmings consuming actions after dying
-  - Bombers retaining their triggers in weird cases
-  - Bombers exploding after falling into traps
-  - Explosion sprite misalignment
-  - Arrow Wall animations
-  - Fall height was incorrect
-  - Bench entrances spawn no higher than a safe 45-pixel drop
-  - Trap cooldown was missing
-  - Prevent wasted actions on falling lemmings (only floater, climber, builder, and bomber can be applied)
-  - Prevent redundant actions (cannot re-apply basher, blocker, digger, or miner)
-</details>
+- Accurate, fast Lemmings engine focused on performance first.
+- Smooth zoom, minimap, and precise trigger handling.
+- Bench mode for stress testing with live T/TPS/Active/Spawned stats.
+- WebMIDI hooks and sequencing features planned.
 
-<details>
-  <summary> <b>Performance</b> </summary>
-  
-  - "Reasonably optimized" hot loops
-  - Minimized reallocs, class level caching
-  - Using Uint8arrays for masks, Uint32arrays for display buffers
-  - Grid based trigger management 
-  - Cached sprites, animations
-  - Using requestAnimationFrame
-    - No longer skips missed ticks
-  - Untangled promises so that all errors bubble up correctly
-  - Split the codebase up into modules to aid with refactoring
-  - Removed unfinished sound/music functionality
-  - Partial JSDoc support
-</details>
+## Quick Start
 
-<details open>
-<summary>In Progress (10)</summary>
-  
-  - [ ] Letting LLM Agents loose on the codebase in the pursuit of:
-    - [ ] 100% test coverage
-      - [X] Currently at "80%", many features and tests are broken
-      - [ ] Once at 'full coverage' the state will rapidly improve again
-    - [X] All major features established
-    - [ ] A full pack decompression-patch-compression asset pipeline
-      - [ ] With compatability for as many other formats as possible
-    - [X] Three different options for sprite upscaling
-    - [ ] High resolution and 32 bit color sprite support
-    - [X] Palette swapped animated sprites
-    - [X] Marching ants, gotta have marching ants
-    - [X] Scrolling with momentum
-    - [ ] Full touch interaction support
-    - [ ] Full support for 'glitches' per pack
-    - [ ] Support for other popular pack types
-    - [ ] Procedural endless level generation
-  - [X] Partial support for xmas91/92 and holiday93/94 level packs
-    - [ ] Documenting the shit out of everything
-    - [ ] Needs steel sprite magic numbers
-    - [ ] New triggers probably
-    - [ ] Pallete? whatever else, some things look off
-  - [ ] Tick Step
-</details>
-
-<details>
-  <summary>Roadmap</summary>
-  
-- [X] Arrow Walls
-  - [ ] Are they supposed to bounce builders?
-  - [ ] 2-2-19 left arrows not rendering, range shows up in debug?
-  - [ ] I don't like that the arrows show up on stairs that are built
-    - [ ] Add built stairs to a separate ground that does not get painted by these?
-- [X] Traps
-  - [ ] Squish is missing
-  - [ ] "Generic Trap" just vanishes em
-- [ ] Bombs
-  - [ ] Bombs should remove normal ground that is overlapping steel, revealing it
-    - [ ] Write steel to second layer?
-- [ ] Super lemmings act twice per tick
-- [ ] MIDI
-  - [X] WebMIDI Error Display
-  - [X] List Input & Output devices in select elements
-  - [ ] Channel selection
-  - [ ] I/O Display
-  - [ ] Debug Display
-</details>
-
-<details>
-  <summary>Bugs & etc</summary>
-  
-- [ ] There is not a palette swapped frying animation 
-  - [X] Palette swap functionality works!
-  - [ ] 2-2-9, 1-4-30
-- [ ] Previous pack still flashing, causes crash if you navigate from 1->2 and then try going past 2-4-20
-  - [ ] Can't go back to version 1 by clicking back on the start of version 2
-- [ ] Building stairs off the horizontal edge of a level causes a step or two to appear on the other end of the level
-- [ ] Source some form of level editor
-  - [ ] Make and import a custom DAT with just image assets and a level with 8 tracks and 8 spawns
-- [ ] The ability to place flags or something to trigger different midi events as they are walked by
-</details>
-
-## Play Locally
-
-- Install [Node.js 20 or later](https://nodejs.org)
+- Install [Node.js 20+](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
-- Terminal:
+- Install and run:
   - `npm install`
   - `npm start`
+- Open http://127.0.0.1:8080
 
-- Then open http://127.0.0.1:8080 in your browser
-- If you encounter any issues [please let us know here](https://github.com/doublemover/LemmingsJS-MIDI/issues)
+If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
 
+## Performance
 
-## Tools, Testing, Additional info
+- Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
+- Try it at 30x speed in bench mode:
+  https://doublemover.github.io/LemmingsJS-MIDI/?version=1&difficulty=3&level=8&speed=30&cheat=false&bench=true&scale=0.8&endless=true&nukeAfter=8
 
-- See [docs/tools.md](docs/tools.md) for detailed usage of each script.
-- See [docs/exporting-sprites.md](docs/exporting-sprites.md) for instructions on running tools for exporting sprites.
-- See [docs/testing.md](docs/TESTING.md) for how to run the Mocha test suite.
-- See [docs/ci.md](docs/ci.md) for gh actions workflow info.
-- See [docs/config.md](docs/config.md) for configuration details.
-- See [contributing.md](CONTRIBUTING.md) for contribution guidelines.
+## Features
 
-### Running tests
+- Multiple entrances work correctly
+- Traps animate, are deadly, and have cooldowns
+- Frying, Jumping, Hoisting animations
+- Steel terrain improvements using `js/steelSprites.json`
+- Arrow walls
+- Minimap
+  - Accumulates ground at full resolution
+  - Shows entrances, exits, lemmings, and deaths
+  - Click and drag to reposition view
+- Zoom in and out with mouse wheel
+- Skill selection while paused
+- Original crosshair cursor (from `MAIN.DAT` part 5)
+- Dashed debug box for nearest lemming
+- Speed display on the Paws (Pause) button
+  - Click `f` for faster, `-` for slower
+  - Right click Paws resets speed to 1
+  - Speed is a divisor of original tick speed `(60ms / gameSpeed)`
+- Right click release rate buttons for instant min or max
 
-`npm test` runs the full Mocha suite. Individual groups are available via
-dedicated scripts listed in [docs/TESTING.md](docs/TESTING.md) and
-[.agentInfo/notes/test-categories.md](.agentInfo/notes/test-categories.md).
+## Controls
 
-
-### Progressive Web App
-
-
-This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
-as a **Progressive Web App (PWA)**. Installing adds the game to your phone's home screen
-and launches it fullscreen in landscape mode. Touch input still needs
-polish, so please file bugs for any issues you have!
+- `(Shift+)1`: Decrease release rate (minimum)
+- `(Shift+)2`: Increase release rate (maximum)
+- `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
+- `Q, W, E, R`: Select Builder, Basher, Miner, Digger
+- `Space`: Pause
+- `[` / `]`: Step backward / forward one tick while paused
+- `(Shift+)T`: Nuke (instant)
+- `Backspace`: Restart level
+- Arrow keys: Pan viewport (Shift for faster)
+- `Z` / `X`: Zoom in / out (Shift for faster)
+- `V`: Reset zoom to 2
+- `(Shift+)-` / `=`: Decrease / increase game speed (Shift for faster)
+- `,` / `.`: Previous / next level
+- `Shift+,` / `Shift+.`: Previous / next group
+- `Tab`: Cycle through skills
+- `\`: Toggle debug mode
 
 ## Options
 
-URL parameters (shortcut in brackets):
+URL parameters (shortcuts in brackets):
 
 - `version (v)`:
   - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=0) (default)
   - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1)
   - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
-- `difficulty (d)`: Difficulty 1-5 (default: 1)
-- `level (l)`: Level 1-30 (default: 1)
-- `speed (s)`: Control speed 0-100 (default: 1)
-- `cheat (c)`: Enable cheat mode (infinite actions) (default: false)
-- `debug (dbg)`: Enable debug mode until the page is refreshed (default: false)
-- `bench (b)`: Enable bench mode, lemmings never stop spawning with smooth speed modulation. The overlay fades out automatically and the timer resumes afterward. Only the pause button flashes red/green via `suspendWithColor` during adjustments (default: false)
-- `benchSequence (bs)`: Automatically measure extra lemming capacity then run bench tests with 50, 25, 10 and 1 additional entrances, repeating with half and then zero extra lemmings (default: false)
-  - The threshold search runs at the slowest release rate
-- `endless (e)`: Disables time limit (default: false)
-- `nukeAfter (na)`: Automatically nukes after x*10 (default: 0)
-- `scale (sc)`: Adjusts starting zoom .0125-5 (default: 2)
+- `difficulty (d)`: 1-5 (default: 1)
+- `level (l)`: 1-30 (default: 1)
+- `speed (s)`: 0-100 (default: 1)
+- `cheat (c)`: true/false (default: false)
+- `debug (dbg)`: true/false (default: false)
+- `bench (b)`: Bench mode (endless spawning with speed modulation)
+- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)
+- `endless (e)`: Disable time limit
+- `nukeAfter (na)`: Auto-nuke after x*10 seconds
+- `scale (sc)`: Starting zoom .0125-5 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
 
-## Keyboard Shortcuts
+<details>
+  <summary><b>Debug and Bench Notes</b></summary>
 
-- `(Shift+)1`: Decrease Release Rate (Minimum)
-- `(Shift+)2`: Increase Release Rate (Maximum)
-- `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
-- `Q, W, E, R`: Select Builder, Basher, Miner, Digger
-- `Space`: Pause
-- `[` / `]`: Step backward / forward one tick when paused
-- `(Shift+)T`: Nuke (Instant)
-- `Backspace`: Restart level
-- `(Shift+)←↑↓→`: Move viewport (More)
-- `(Shift+)Z` / `X`: Zoom in / out (More)
-- `V`: Reset zoom to 2
-- `(Shift+)-` / `=`: Decrease / Increase game speed (More)
-- `,` / `.`: Previous / Next level
-- `Shift+,` / `Shift+.`: Previous / Next group
-- `Tab`: Cycle through skills
-- `\`: Toggle debug mode
-  
+  - Right click Nuke toggles debug mode
+    - Blue pixel under lemmings (engine position)
+    - Red rectangles for triggers (traps, blockers, exit)
+    - Cyan rectangles show steel
+    - Orange and green show left/right arrow triggers
+    - Speed can drop below 1 in 0.1 steps and rise to 120 in steps of 10
+  - Bench mode spawns lemmings endlessly at max rate and shows T/TPS/Active/Spawned
+  - Bench sequence measures extra lemming capacity, then runs multiple entrance counts
+</details>
+
+## Development and Testing
+
+- `npm test` runs the full Mocha suite.
+- Individual groups are in [docs/TESTING.md](docs/TESTING.md) and
+  [.agentInfo/notes/test-categories.md](.agentInfo/notes/test-categories.md).
+- `npm run lint` checks ESLint rules.
+- `npm run format` fixes formatting.
+
+## Docs
+
+- Tools: [docs/tools.md](docs/tools.md)
+- Exporting sprites: [docs/exporting-sprites.md](docs/exporting-sprites.md)
+- Testing: [docs/TESTING.md](docs/TESTING.md)
+- CI: [docs/ci.md](docs/ci.md)
+- Config: [docs/config.md](docs/config.md)
+- Contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
+
+## Progressive Web App
+
+This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
+as a PWA. It launches fullscreen in landscape mode. Touch input still needs
+polish, so please file bugs for any issues you hit.
+
+<details open>
+  <summary><b>In Progress</b></summary>
+
+  - 100% test coverage
+  - Pack decompression/patch/compression pipeline
+  - High resolution and 32-bit color sprite support
+  - Full touch interaction support
+  - Full support for pack-specific glitches
+  - Support for other popular pack types
+  - Procedural endless level generation
+  - Tick step
+  - Improved documentation
+  - Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers, palette)
+</details>
+
+<details>
+  <summary><b>Roadmap</b></summary>
+
+  - Arrow walls
+    - Confirm builder bounce behavior
+    - Fix 2-2-19 left arrows not rendering
+    - Consider built-stairs handling
+  - Traps
+    - Squish missing
+    - "Generic trap" just vanishes lemmings
+  - Bombs
+    - Remove ground overlapping steel to reveal it
+  - Super lemmings act twice per tick
+  - MIDI
+    - Channel selection
+    - I/O display
+    - Debug display
+</details>
+
+<details>
+  <summary><b>Bugs and Misc</b></summary>
+
+  - No palette-swapped frying animation (2-2-9, 1-4-30)
+  - Previous pack flashing, crash if navigating 1 -> 2 then past 2-4-20
+  - Cannot go back to version 1 from version 2
+  - Building stairs off the horizontal edge causes wraparound steps
+  - Need a level editor or a custom DAT flow for music-driven levels
+  - Ability to place flags to trigger MIDI events
+</details>
+
 ## Credits
 
-- All of the dedicated lemmings fans, their archival and documentation efforts made this much easier to complete
+- Lemmings fans and archivists
 - [Lemmings Forums](https://www.lemmingsforums.net/)
-- [Camanis.net Lemmings Archives](https://www.camanis.net/lemmings/) 
+- [Camanis.net Lemmings Archives](https://www.camanis.net/lemmings/)
 - [tomsoftware](https://github.com/tomsoftware)
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
-- [Mumdance](https://www.mumdance.com/) (inspired me to do this during a radio show) 
+- [Mumdance](https://www.mumdance.com/)
 
 <!-- .agentInfo Notes
 
