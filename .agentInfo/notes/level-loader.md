@@ -1,5 +1,7 @@
 # Level.Loader.pas overview
 
+Tags: #lemmix #level-loader #level-format #lvl #lemmini #pascal
+
 `src/Level.Loader.pas` from [Lemmix](https://github.com/ericlangedijk/Lemmix) translates classic `.LVL` files to `TLevel` objects and back. Two overloads of `TLevelLoader.TranslateLevel` handle these conversions.
 
 ## LVL \u2192 TLevel

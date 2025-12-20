@@ -1,5 +1,7 @@
 # GameScreen.Player.pas overview
 
+Tags: #lemmix #pascal #input #timers #cursor #replay #ui
+
 Source: [Lemmix/GameScreen.Player.pas](https://github.com/ericlangedijk/Lemmix/blob/master/src/GameScreen.Player.pas).
 
 ## Timers and Application_Idle
