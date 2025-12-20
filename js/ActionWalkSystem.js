@@ -8,34 +8,13 @@ class ActionWalkSystem extends ActionBaseSystem {
   triggerLemAction(lem) {
     return false;
   }
-  getGroundStepHeight(slice) {
-    const { height } = slice;
-    for (let i = 0; i < height; i++) {
-      const y = height - 1 - i;
-      if (!slice.hasGroundAt(0, y)) {
-        return i;
-      }
-    }
-    return height;
-  }
-
-  getGroundGapDepth(slice) {
-    const { height } = slice;
-    for (let i = 0; i < height; i++) {
-      if (slice.hasGroundAt(0, i)) {
-        return i + 1;
-      }
-    }
-    return height + 1;
-  }
   process(level, lem) {
     lem.frameIndex++;
     const prevX = lem.x;
     lem.x += (lem.lookRight ? 1 : -1);
 
     const groundMask = level.getGroundMaskLayer();
-    const stepSlice = groundMask.getSubLayer(lem.x, lem.y - 7, 1, 8);
-    const upDelta = this.getGroundStepHeight(stepSlice);
+    const upDelta = groundMask.getColumnStepHeight(lem.x, lem.y - 7, 8);
     if (upDelta == 8) {
       // collision with obstacle
       lem.x = prevX; // revert movement into wall
@@ -57,8 +36,7 @@ class ActionWalkSystem extends ActionBaseSystem {
         return Lemmings.LemmingStateType.NO_STATE_TYPE;
       }
     } else {
-      const gapSlice = groundMask.getSubLayer(lem.x, lem.y + 1, 1, 3);
-      let downDelta = this.getGroundGapDepth(gapSlice);
+      let downDelta = groundMask.getColumnGapDepth(lem.x, lem.y + 1, 3);
       lem.y += downDelta;
       if (downDelta == 4) {
         return Lemmings.LemmingStateType.FALLING;

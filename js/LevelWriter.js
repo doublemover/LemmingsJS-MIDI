@@ -48,7 +48,10 @@ class LevelWriter extends Lemmings.BaseLogger {
         }
         dv.setUint16(pos, flags); pos += 2;
       } else {
-        dv.setUint32(pos, 0); pos += 4;
+        dv.setUint16(pos, 0); pos += 2;
+        dv.setUint16(pos, 0); pos += 2;
+        dv.setUint16(pos, 0); pos += 2;
+        dv.setUint16(pos, 0); pos += 2;
       }
     }
 

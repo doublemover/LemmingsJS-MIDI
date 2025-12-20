@@ -1,5 +1,20 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+const paletteLookupCache = new WeakMap();
+
+function getPaletteLookup(palette) {
+  if (!palette) return null;
+  let lookup = paletteLookupCache.get(palette);
+  if (!lookup) {
+    lookup = new Uint32Array(128);
+    for (let i = 0; i < 16; i++) {
+      lookup[i] = palette.getColor(i);
+    }
+    paletteLookupCache.set(palette, lookup);
+  }
+  return lookup;
+}
+
 class GroundRenderer {
   constructor () {}
 
@@ -26,6 +41,7 @@ class GroundRenderer {
     const w    = srcImg.width | 0;
     const h    = srcImg.height | 0;
     const pal  = srcImg.palette;
+    const palLookup = getPaletteLookup(pal);
 
     const destX = cfg.x | 0;
     const destY = cfg.y | 0;
@@ -44,7 +60,7 @@ class GroundRenderer {
           if (isErase) {
             img.clearPixel(x + destX, dy);
           } else {
-            img.setPixel(x + destX, dy, pal.getColor(ci), noOverwrite, onlyOverwrite);
+            img.setPixel(x + destX, dy, palLookup[ci], noOverwrite, onlyOverwrite);
           }
         }
       }
@@ -58,7 +74,7 @@ class GroundRenderer {
           if (isErase) {
             img.clearPixel(x + destX, dy);
           } else {
-            img.setPixel(x + destX, dy, pal.getColor(ci), noOverwrite, onlyOverwrite);
+            img.setPixel(x + destX, dy, palLookup[ci], noOverwrite, onlyOverwrite);
           }
         }
       }

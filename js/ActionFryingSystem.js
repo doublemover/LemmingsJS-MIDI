@@ -17,8 +17,9 @@ class ActionFryingSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     lem.frameIndex++;
-    if (lem.frameIndex >= 13) {
-      lemmings.game.lemmingManager.miniMap.addDeath(lem.x, lem.y);
+    if (lem.frameIndex === 13) {
+      const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
+      if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
     if (lem.frameIndex == 14) {
       return Lemmings.LemmingStateType.OUT_OF_LEVEL;

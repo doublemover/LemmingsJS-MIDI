@@ -48,10 +48,15 @@ class FileProvider extends Lemmings.BaseLogger {
       promise = this._fetchBinary(url, path);
     }
 
+    const guarded = promise.catch((err) => {
+      if (!opts.forceReload) this._cache.delete(url);
+      throw err;
+    });
+
     if (!opts.forceReload) {
-      this._cache.set(url, promise);
+      this._cache.set(url, guarded);
     }
-    return promise;
+    return guarded;
   }
 
   /**
@@ -75,10 +80,15 @@ class FileProvider extends Lemmings.BaseLogger {
       promise = this._fetchText(url);
     }
 
+    const guarded = promise.catch((err) => {
+      if (!opts.forceReload) this._cache.delete(url);
+      throw err;
+    });
+
     if (!opts.forceReload) {
-      this._cache.set(url, promise);
+      this._cache.set(url, guarded);
     }
-    return promise;
+    return guarded;
   }
 
   _buildUrl(path, filename) {

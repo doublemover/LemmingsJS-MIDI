@@ -6,6 +6,7 @@ import { createCrosshairFrame } from './CrosshairCursor.js';
 class GameView extends Lemmings.BaseLogger {
   constructor() {
     super();
+    globalThis.lemmings = this;
     this.gameType = null;
     this.levelIndex = 0;
     this.levelGroupIndex = 0;
@@ -76,6 +77,9 @@ class GameView extends Lemmings.BaseLogger {
       }
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
+      if (this.stage && game.level) {
+        this.applyLevelViewport(game.level);
+      }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
@@ -276,11 +280,6 @@ class GameView extends Lemmings.BaseLogger {
   }
 
   /** convert a string to a number or return 0 if NaN */
-  strToNum(value) {
-    const num = Number(value);
-    return isNaN(num) ? 0 : num;
-  }
-
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;
@@ -376,6 +375,31 @@ class GameView extends Lemmings.BaseLogger {
     while (htmlList.options.length) {
       htmlList.remove(0);
     }
+  }
+
+  getEntranceFocusX(level, stageImage) {
+    if (!level || !stageImage) return 0;
+    const entrance = level.entrances?.[0];
+    if (!entrance) return 0;
+    const scale = stageImage.viewPoint.scale || 1;
+    const viewW = stageImage.canvasViewportSize.width / scale;
+    if (!isFinite(viewW) || viewW <= 0) return 0;
+    const centerX = entrance.x + 24;
+    return Math.round(centerX - viewW / 2);
+  }
+
+  applyLevelViewport(level) {
+    if (!this.stage || !level) return;
+    const stageImage = this.stage.gameImgProps;
+    const rawX = Number.isFinite(level.screenPositionX) ? level.screenPositionX : 0;
+    const targetX = Number.isFinite(rawX) ? rawX : this.getEntranceFocusX(level, stageImage);
+    this.stage.applyViewport(
+      stageImage,
+      targetX,
+      0,
+      stageImage.viewPoint.scale
+    );
+    this.stage.redraw();
   }
   /** add array elements to a <select> */
   arrayToSelect(htmlList, list) {
@@ -482,11 +506,7 @@ class GameView extends Lemmings.BaseLogger {
       this.stage.resetFade();
       level.render(gameDisplay);
       this.stage.updateStageSize();
-      await this.start();
-
-      const stageImage = this.stage.gameImgProps;
-      this.stage.applyViewport(stageImage, level.screenPositionX, 0, 4);
-      this.stage.redraw();
+      this.applyLevelViewport(level);
     }
     this.updateQuery();
     this.log.debug(level);
@@ -499,9 +519,7 @@ class GameView extends Lemmings.BaseLogger {
     await this.loadLevel();
     const level = this.game.level;
     if (this.stage) {
-      const stageImage = this.stage.gameImgProps;
-      this.stage.applyViewport(stageImage, level.screenPositionX, 0, 4);
-      this.stage.redraw();
+      this.applyLevelViewport(level);
     }
     const cfg = this.configs?.find(c => c.gametype === this.gameType);
     const pack = cfg?.name || this.gameType;

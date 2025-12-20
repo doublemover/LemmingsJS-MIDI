@@ -18,27 +18,46 @@ class Frame {
     this.offsetY = offsetY | 0;
 
     const pixCount = this.width * this.height;
-    this.data = new Uint32Array(pixCount);   // RGBA 32‑bit
+    this.data = new Uint32Array(pixCount);   // RGBA 32-bit
     this.mask = new Uint8Array(pixCount);    // 0/1 occupancy
+    this._data8 = null;
+    this._spanCacheEnabled = false;
+    this._spanRows = null;
+    this._spanBounds = null;
 
     this.clear();
   }
 
   // accessors ----------------------------------------------------------------
-  getData   () { return new Uint8ClampedArray(this.data.buffer); }
+  getData   () {
+    if (!this._data8) this._data8 = new Uint8ClampedArray(this.data.buffer);
+    return this._data8;
+  }
   getBuffer () { return this.data; }
   getMask   () { return this.mask; }
+  getSpanCache () {
+    if (!this._spanCacheEnabled) return null;
+    if (!this._spanRows) this.#buildSpanCache();
+    return { rows: this._spanRows, bounds: this._spanBounds };
+  }
+
+  enableSpanCache () {
+    this._spanCacheEnabled = true;
+    if (!this._spanRows) this.#buildSpanCache();
+  }
 
   /** Fills entire frame black (mask = 0). */
   clear () {
     this.data.fill(Lemmings.ColorPalette.black);
     this.mask.fill(0);
+    this.#invalidateSpanCache();
   }
 
   /** Fills entire frame with an RGB colour (mask = 1). */
   fill (r, g, b) {
     this.data.fill(Lemmings.ColorPalette.colorFromRGB(r, g, b));
     this.mask.fill(1);
+    this.#invalidateSpanCache();
   }
 
   /**
@@ -70,6 +89,7 @@ class Frame {
       }
       dstIdx += dstStride;
     }
+    this.#invalidateSpanCache();
   }
 
   // misc helpers -------------------------------------------------------------
@@ -116,6 +136,7 @@ class Frame {
     if ((noOverwrite && this.mask[idx]) || (onlyOverwrite && !this.mask[idx])) return;
     this.data[idx] = color;
     this.mask[idx] = 1;
+    this.#invalidateSpanCache();
   }
 
   clearPixel (x, y) {
@@ -123,6 +144,51 @@ class Frame {
     const idx = (y * this.width + x) >>> 0;
     this.data[idx] = Lemmings.ColorPalette.black;
     this.mask[idx] = 0;
+    this.#invalidateSpanCache();
+  }
+
+  #invalidateSpanCache () {
+    if (!this._spanCacheEnabled) return;
+    this._spanRows = null;
+    this._spanBounds = null;
+  }
+
+  #buildSpanCache () {
+    const w = this.width;
+    const h = this.height;
+    const mask = this.mask;
+    const rows = new Array(h);
+    let minX = w;
+    let minY = h;
+    let maxX = -1;
+    let maxY = -1;
+
+    for (let y = 0; y < h; y++) {
+      const rowBase = y * w;
+      let x = 0;
+      let spans = null;
+      while (x < w) {
+        while (x < w && !mask[rowBase + x]) x++;
+        if (x >= w) break;
+        const start = x;
+        if (start < minX) minX = start;
+        if (y < minY) minY = y;
+        while (x < w && mask[rowBase + x]) x++;
+        const end = x;
+        if (end - 1 > maxX) maxX = end - 1;
+        if (y > maxY) maxY = y;
+        if (!spans) spans = [];
+        spans.push(start, end);
+      }
+      rows[y] = spans;
+    }
+
+    this._spanRows = rows;
+    if (maxX >= minX && maxY >= minY) {
+      this._spanBounds = { minX, minY, maxX, maxY };
+    } else {
+      this._spanBounds = null;
+    }
   }
 }
 Lemmings.Frame = Frame;

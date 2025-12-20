@@ -72,10 +72,13 @@
     }
 
     function setSize() {
-      const ratio = 800 / 480;
+      const baseW = 800;
+      const baseH = 480;
+      const ratio = baseW / baseH;
       const gameContainer = jQuery(".game_container");
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      const docEl = document.documentElement;
+      const width = Math.max(1, docEl.clientWidth || window.innerWidth);
+      const height = Math.max(1, docEl.clientHeight || window.innerHeight);
       let containerWidth, containerHeight;
 
       if (width >= height * ratio) {
@@ -92,13 +95,18 @@
         gameContainer.addClass("small");
       }
 
+      if (containerWidth > width) containerWidth = width;
+      if (containerHeight > height) containerHeight = height;
+
       gameContainer.width(containerWidth);
       gameContainer.height(containerHeight);
 
       const canvas = document.getElementById("gameCanvas");
       if (canvas) {
-        canvas.width = containerWidth;
-        canvas.height = containerHeight;
+        canvas.width = baseW;
+        canvas.height = baseH;
+        canvas.style.width = containerWidth + "px";
+        canvas.style.height = containerHeight + "px";
       }
 
       if (window.lemmings && window.lemmings.stage) {

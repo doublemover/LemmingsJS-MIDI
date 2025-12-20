@@ -42,7 +42,8 @@ class CommandManager extends Lemmings.BaseLogger {
       let commandStr = parts[i].split('=', 2);
       if (commandStr.length != 2) continue;
       let tick = parseInt(commandStr[0], 10);
-      this.runCommands[tick] = this.parseCommand(commandStr[1]);
+      const cmd = this.parseCommand(commandStr[1]);
+      if (cmd) this.runCommands[tick] = cmd;
     }
   }
 
@@ -60,6 +61,7 @@ class CommandManager extends Lemmings.BaseLogger {
   parseCommand(valuesStr) {
     if (valuesStr.length < 1) return;
     const newCommand = this.commandFactory(valuesStr.substr(0, 1));
+    if (!newCommand) return null;
     const values = valuesStr.substr(1).split(':');
     newCommand.load(values.map(Number));
     return newCommand;

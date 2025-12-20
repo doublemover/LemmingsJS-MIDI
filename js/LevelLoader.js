@@ -23,7 +23,11 @@ class LevelLoader {
       this.config.path,
       this.config.level.filePrefix + paddedFileId + '.DAT');
 
-    const oddTableBuf   = useOddTable ? this.fileProvider.loadBinary(this.config.path, 'ODDTABLE.DAT') : null;
+    const oddTableBuf = useOddTable
+      ? this.fileProvider
+        .loadBinary(this.config.path, 'ODDTABLE.DAT')
+        .catch(() => null)
+      : null;
 
     const [levelDat, oddBuf] = await Promise.all([baseLevel, oddTableBuf]);
 

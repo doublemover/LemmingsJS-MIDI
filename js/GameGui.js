@@ -1,5 +1,11 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+const getApp = () => {
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
+  if (typeof lemmings !== 'undefined') return lemmings;
+  return null;
+};
+
 /**
  * GameGui – unchanged public API, now updates itself
  * even while the simulation is paused.
@@ -52,18 +58,18 @@ class GameGui {
     this._rrLockMax = false;
 
     this._guiBound = this._guiLoop.bind(this);
-    this._guiRafId        = 0;
+    this._guiRafId = 0;
 
     this.smoothScroller = new Lemmings.SmoothScroller();
 
     this._nukeAfterCountdown = 0;
 
-
-    gameTimer.eachGameSecond.on(() => {
+    this._onEachGameSecond = () => {
+      const app = getApp();
       this._applyReleaseRateAuto();
-      if (lemmings.nukeAfter > 0) {
+      if (app?.nukeAfter > 0) {
         this._nukeAfterCountdown++;
-        if (this._nukeAfterCountdown == lemmings.nukeAfter) {
+        if (this._nukeAfterCountdown == app.nukeAfter) {
           this.game.queueCommand(new Lemmings.CommandNuke());
           this.nukePrepared = false;
         }
@@ -71,20 +77,24 @@ class GameGui {
       if ((Math.floor(this.gameTimer.getGameTime()) % 2) == 0) {
         this.backgroundChanged = true;
       }
+      this.gameTimeChanged = true;
 
       if (this._guiRafId == 0) {
         this._guiRafId = window.requestAnimationFrame(this._guiBound);
       }
-    });
+    };
+    gameTimer.eachGameSecond.on(this._onEachGameSecond);
 
-    skills.onCountChanged.on(() => {
+    this._onSkillCountChanged = () => {
       this.backgroundChanged = true;
-    });
+    };
+    skills.onCountChanged.on(this._onSkillCountChanged);
 
-    skills.onSelectionChanged.on(() => {
+    this._onSkillSelectionChanged = () => {
       this.backgroundChanged = true;
       this._selectionOffset  = 0;
-    });
+    };
+    skills.onSelectionChanged.on(this._onSkillSelectionChanged);
   }
 
   setMiniMap(miniMap) {
@@ -102,7 +112,7 @@ class GameGui {
       if (neu < min) neu = min;
       if (neu > max) neu = max;
       this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
-                (this.gameVictoryCondition.currentReleaseRate = neu);
+                (this.gameVictoryCondition.releaseRate = neu);
       this.releaseRateChanged = true;
     }
     if (this.deltaReleaseRate > 0)
@@ -136,7 +146,7 @@ class GameGui {
         if (neu > max) neu = max;
         this.lastGameSpeed = neu;
         this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
-                    (this.gameVictoryCondition.currentReleaseRate = neu);
+                    (this.gameVictoryCondition.releaseRate = neu);
       }
       this.deltaReleaseRate = step;
       this._applyReleaseRateAuto();
@@ -148,7 +158,8 @@ class GameGui {
         const pauseX = e.x - 159; // the leftmost position
         const pauseIndex = Math.trunc(pauseX / 9);
         const speedFac = this.gameTimer.speedFactor;
-        const debugOrBench = (this.game.showDebug || lemmings.bench == true);
+        const app = getApp();
+        const debugOrBench = (this.game.showDebug || app?.bench === true);
         if (pauseIndex === 0) {
           if (speedFac > 10) {
             this.gameTimer.speedFactor -= 10;
@@ -223,7 +234,8 @@ class GameGui {
 
     if (panelIndex === 0) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
-      this.gameVictoryCondition.setCurrentReleaseRate?.(min);
+      this.gameVictoryCondition.setCurrentReleaseRate?.(min) ??
+        (this.gameVictoryCondition.releaseRate = min);
       this.deltaReleaseRate = -min;
       this._applyReleaseRateAuto();
       return;
@@ -231,7 +243,8 @@ class GameGui {
 
     if (panelIndex === 1) {
       const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
-      this.gameVictoryCondition.setCurrentReleaseRate?.(max);
+      this.gameVictoryCondition.setCurrentReleaseRate?.(max) ??
+        (this.gameVictoryCondition.releaseRate = max);
       this.deltaReleaseRate = max;
       this._applyReleaseRateAuto();
       return;
@@ -349,9 +362,18 @@ class GameGui {
     if (this._guiRafId) {
       window.cancelAnimationFrame(this._guiRafId);
       this._guiRafId = 0;
-      if (this.gameTimer.eachGameSecond) {
-        this.gameTimer.eachGameSecond.off();
-      }
+    }
+    if (this.gameTimer?.eachGameSecond && this._onEachGameSecond) {
+      this.gameTimer.eachGameSecond.off(this._onEachGameSecond);
+      this._onEachGameSecond = null;
+    }
+    if (this.skills?.onCountChanged && this._onSkillCountChanged) {
+      this.skills.onCountChanged.off(this._onSkillCountChanged);
+      this._onSkillCountChanged = null;
+    }
+    if (this.skills?.onSelectionChanged && this._onSkillSelectionChanged) {
+      this.skills.onSelectionChanged.off(this._onSkillSelectionChanged);
+      this._onSkillSelectionChanged = null;
     }
     if (this.display && this._displayListeners) {
       for (const [event, handler] of this._displayListeners) {
@@ -372,6 +394,9 @@ class GameGui {
   render() {
     if (!this.display) return;
     const d = this.display;
+    const app = getApp();
+    const bench = app?.bench === true || app?.benchSequence === true;
+    if (bench) this.gameTimeChanged = true;
 
     if (this.backgroundChanged) {
       this.backgroundChanged = false;
@@ -384,7 +409,7 @@ class GameGui {
     if (this.gameTimeChanged) {
       this.gameTimeChanged = false;
 
-      if (lemmings.bench == false) {
+      if (!bench) {
         let text = '';
         if (this._hoverPanelIdx >= 0) {
           text = this._getPanelName(this._hoverPanelIdx);
@@ -410,17 +435,21 @@ class GameGui {
         if (text) {
           this.drawGreenString(d, text, 0, 0);
         }
-        this.drawGreenString(d, 'Time ' + this.gameTimer.getGameLeftTimeString() + '-00', 248, 0);
-        const outCount = this.gameVictoryCondition.getOutCount();
-        if (outCount >= 0) {
-          this.drawGreenString(d, 'Out ' + this.gameVictoryCondition.getOutCount() + '  ', 112, 0);
+        const timeText = app?.endless ? '4-20' : this.gameTimer.getGameLeftTimeString();
+        this.drawGreenString(d, 'Time ' + timeText + '-00', 248, 0);
+        const totalCount = this.game?.getLemmingManager?.()?.spawnTotal ??
+          this.gameVictoryCondition.getReleaseCount();
+        if (totalCount >= 0) {
+          this.drawGreenString(d, 'Out ' + totalCount + '  ', 112, 0);
         }
         this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
-      } else if (lemmings.bench == true && this.gameSpeedChanged) {
+      } else {
+        const activeCount = this.game.getLemmingManager?.()?.getLemmings?.()?.length ?? 0;
         const stats = [
-          'T' + lemmings.steps,
-          'TPS ' + Math.round(lemmings.tps),
-          'Spawned ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
+          'T' + (app?.steps ?? 0),
+          'TPS ' + Math.round(app?.tps ?? 0),
+          'ACTIVE ' + activeCount,
+          'SPAWNED ' + (this.game.getLemmingManager?.().spawnTotal ?? 0)
         ];
         let x = 0;
         for (let i = 0; i < stats.length; i++) {

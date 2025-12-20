@@ -127,11 +127,13 @@ describe('bench TPS', function() {
     gui.gameTimeChanged = true;
     gui.gameSpeedChanged = true;
     gui.render();
+    const activeCount = game.getLemmingManager?.()?.getLemmings?.()?.length ?? 0;
     const spawnCount = game.getLemmingManager?.().spawnTotal ?? 0;
     const strings = [
       'T' + lemmings.steps,
       'TPS ' + Math.round(lemmings.tps),
-      'Spawned ' + spawnCount
+      'ACTIVE ' + activeCount,
+      'SPAWNED ' + spawnCount
     ];
     let xpos = 0;
     expect(drawn.length).to.equal(strings.length);

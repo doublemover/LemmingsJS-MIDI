@@ -1,5 +1,11 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
+const getApp = () => {
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
+  if (typeof lemmings !== 'undefined') return lemmings;
+  return null;
+};
+
 class GameVictoryCondition {
   constructor(level) {
     this.isFinalize = false;
@@ -36,10 +42,29 @@ class GameVictoryCondition {
     return this.minReleaseRate;
   }
   getCurrentReleaseRate() {
-    if (lemmings.bench == true && !lemmings._benchMeasureExtras) {
+    const app = getApp();
+    if (app?.bench === true && !app?._benchMeasureExtras) {
       return 99;
     }
     return this.releaseRate;
+  }
+  getMaxReleaseRate() {
+    return GameVictoryCondition.maxReleaseRate;
+  }
+  setCurrentReleaseRate(value) {
+    if (this.isFinalize) {
+      return false;
+    }
+    const newRate = this.boundToRange(
+      this.minReleaseRate,
+      value,
+      GameVictoryCondition.maxReleaseRate
+    );
+    if (newRate === this.releaseRate) {
+      return false;
+    }
+    this.releaseRate = newRate;
+    return true;
   }
   /** one lemming reached the exit */
   addSurvivor() {

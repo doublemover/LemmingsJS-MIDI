@@ -308,6 +308,46 @@ class DisplayImage extends Lemmings.BaseLogger {
     const isScaled = (dstW !== srcW) || (dstH !== srcH);
 
     if (!isScaled) {
+      const spanCache = frame.getSpanCache?.();
+      if (spanCache && nullColor32 === null) {
+        const { rows, bounds } = spanCache;
+        const minY = bounds ? bounds.minY : 0;
+        const maxY = bounds ? bounds.maxY : -1;
+        for (let sy = 0; sy < srcH; sy++) {
+          const sourceY = upsideDown ? srcH - sy - 1 : sy;
+          if (sourceY < minY || sourceY > maxY) continue;
+          const spans = rows[sourceY];
+          if (!spans) continue;
+          const outY = sy + baseY;
+          if (outY < 0 || outY >= destH) continue;
+          const srcRow = sourceY * srcW;
+          const destRow = outY * destW + baseX;
+          for (let i = 0; i < spans.length; i += 2) {
+            let start = spans[i];
+            let end = spans[i + 1];
+            if (baseX + start < 0) start = -baseX;
+            if (baseX + end > destW) end = destW - baseX;
+            if (end <= start) continue;
+            let srcIdx = srcRow + start;
+            let destIdx = destRow + start;
+            if (!checkGround) {
+              for (let sx = start; sx < end; sx++, srcIdx++, destIdx++) {
+                dest32[destIdx] = srcBuf[srcIdx];
+              }
+            } else {
+              for (let sx = start; sx < end; sx++, srcIdx++, destIdx++) {
+                const outX = baseX + sx;
+                const hasGround = groundMask?.hasGroundAt(outX, outY);
+                if (noOverwrite && hasGround)    continue;
+                if (onlyOverwrite && !hasGround) continue;
+                dest32[destIdx] = srcBuf[srcIdx];
+              }
+            }
+          }
+        }
+        return;
+      }
+
       for (let sy = 0; sy < srcH; sy++) {
         const sourceY = upsideDown ? srcH - sy - 1 : sy;
         const outY = sy + baseY;

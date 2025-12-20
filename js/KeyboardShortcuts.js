@@ -21,10 +21,6 @@ class KeyboardShortcuts {
     }
     window.removeEventListener('keydown', this._down);
     window.removeEventListener('keyup', this._up);
-    if (this._raf !== null) {
-      cancelAnimationFrame(this._raf);
-      this._raf = null;
-    }
   }
 
   _startLoop() {
@@ -133,8 +129,9 @@ class KeyboardShortcuts {
 
   _instantNuke() {
     const mgr = this.view.game.getLemmingManager?.();
-    if (!mgr || !mgr.lemmings) return;
-    for (const lem of mgr.lemmings) {
+    const lems = mgr?.getLemmings?.() ?? mgr?.lemmings;
+    if (!lems) return;
+    for (const lem of lems) {
       if (lem.removed) continue;
       if (lem.hasExploded) continue;
       if (lem.countdownAction) continue;
