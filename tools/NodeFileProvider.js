@@ -1,4 +1,4 @@
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import * as Lemmings from '../js/exports.js';
 import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock { constructor() {} dispose() {} }

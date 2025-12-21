@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import fakeTimers from '@sinonjs/fake-timers';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { KeyboardShortcuts } from '../js/input/KeyboardShortcuts.js';
 
 // minimal global setup

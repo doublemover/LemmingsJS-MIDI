@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 
 // reuse stubs from exportScripts.test.js
 let orig;

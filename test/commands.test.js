@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/commands/CommandNuke.js';
 import '../js/commands/CommandReleaseRateIncrease.js';
 import '../js/commands/CommandReleaseRateDecrease.js';

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';

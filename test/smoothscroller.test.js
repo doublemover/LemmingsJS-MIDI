@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { SmoothScroller } from '../js/game/GameGui.js';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 globalThis.lemmings = { game: { showDebug: false } };

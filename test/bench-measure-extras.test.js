@@ -1,6 +1,6 @@
 import '../js/level/MapObject.js';
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import fakeTimers from '@sinonjs/fake-timers';
 import '../js/lemmings/Lemming.js';

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/LemmingsBootstrap.js';
 
 // Silence debug output

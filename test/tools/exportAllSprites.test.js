@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { PNG } from 'pngjs';
-import { Lemmings } from '../../js/LemmingsNamespace.js';
+import { Lemmings } from '../helpers/lemmings.js';
 
 let orig;
 let lastInitPath;

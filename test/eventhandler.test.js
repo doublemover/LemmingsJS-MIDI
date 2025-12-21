@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 
 globalThis.lemmings = Lemmings;

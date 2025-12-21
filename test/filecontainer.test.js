@@ -3,7 +3,7 @@ import assert from 'assert';
 // Minimal environment for LogHandler
 global.lemmings = { game: { showDebug: false } };
 
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';

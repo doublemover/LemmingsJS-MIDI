@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 

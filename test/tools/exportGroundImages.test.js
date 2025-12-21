@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
-import { Lemmings } from '../../js/LemmingsNamespace.js';
+import { Lemmings } from '../helpers/lemmings.js';
 import '../../js/data/BinaryReader.js';
 import '../../js/render/Frame.js';
 import '../../js/render/ColorPalette.js';
