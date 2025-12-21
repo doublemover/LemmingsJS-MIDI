@@ -23,6 +23,6 @@ describe('GitHub test workflow', function () {
     const syncStep = steps.find(
       s => s.run && s.run.includes('git checkout origin/master -- tools')
     );
-    expect(syncStep, 'sync tools step missing').to.exist;
+    expect(syncStep, 'sync tools step missing').to.not.exist;
   });
 });

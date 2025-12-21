@@ -21,6 +21,7 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
   - `npm install`
   - `npm start`
 - Open http://127.0.0.1:8080
+- This repo is intended for local development and offline tooling, not npm distribution.
 
 If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
 
@@ -106,14 +107,13 @@ URL parameters (shortcuts in brackets):
 ## Development and Testing
 
 - `npm test` runs the full Mocha suite.
-- Individual groups are in [docs/TESTING.md](docs/TESTING.md) and
-  [.agentInfo/notes/test-categories.md](.agentInfo/notes/test-categories.md).
+- Individual groups are in [docs/TESTING.md](docs/TESTING.md).
 - `npm run lint` checks ESLint rules.
 - `npm run format` fixes formatting.
 
 ## Docs
 
-- Tools: [docs/tools.md](docs/tools.md)
+- Offline tools: [docs/offline-tools.md](docs/offline-tools.md)
 - Exporting sprites: [docs/exporting-sprites.md](docs/exporting-sprites.md)
 - Testing: [docs/TESTING.md](docs/TESTING.md)
 - CI: [docs/ci.md](docs/ci.md)
@@ -180,10 +180,3 @@ polish, so please file bugs for any issues you hit.
 - [oklemenz/LemmingsJS](https://github.com/oklemenz/LemmingsJS)
 - The Throng (Blackmirror S7E4)
 - [Mumdance](https://www.mumdance.com/)
-
-<!-- .agentInfo Notes
-
-The `.agentInfo/` directory holds short design notes and TODOs. Each file begins with a `tags:` line so agents can search by keyword.
-See [`.agentInfo/index.md`](.agentInfo/index.md) for an overview of available notes. Make an effort to read and update these as much as you can.
-WebMIDI docs live in [`.agentInfo/notes/webmidi-overview.md`](.agentInfo/notes/webmidi-overview.md) and the environment summary in [`.agentInfo/notes/webmidi-environments.md`](.agentInfo/notes/webmidi-environments.md).
--->

@@ -4,9 +4,9 @@ import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 
-const script = path.resolve('tools/check-undefined.js');
+const script = path.resolve('scripts/check-undefined.js');
 
-describe('tools/check-undefined.js', function () {
+describe('scripts/check-undefined.js', function () {
   it('detects undefined function calls', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
     fs.mkdirSync(path.join(dir, 'js'));

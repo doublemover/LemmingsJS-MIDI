@@ -3,9 +3,9 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
-import { processHtmlFile } from '../../tools/processHtmlFile.js';
+import { processHtmlFile } from '../../scripts/processHtmlFile.js';
 
-describe('tools/processHtmlFile', function () {
+describe('scripts/processHtmlFile', function () {
   it('rewrites relative asset links to file URLs', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
     fs.mkdirSync(path.join(dir, 'js'));

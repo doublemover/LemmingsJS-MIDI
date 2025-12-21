@@ -10,23 +10,15 @@ The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/t
     node-version: 20
 ```
 
-After checking out the repository, each workflow refreshes the `tools/` folder
-from `origin/master` so helper scripts are always up to date.
-
 The CI job performs the following steps:
 
-1. `npm install`
-2. `npm run check-undefined`
-3. `npm run lint`
-4. `npm test`
+1. `npm ci`
+2. `npm run format`
+3. `git diff --exit-code`
+4. `npm run check-undefined`
+5. `npm run lint`
+6. `npm run depcheck`
+7. `npm test`
+8. `npm run coverage`
 
 All tests must pass before code is merged.
-
-The repository also runs [`automerge-repo.yml`](../.github/workflows/automerge-repo.yml).
-This job keeps `.repoMetrics/searchHistory` in sync with the history from
-`master` whenever a pull request is opened or updated. It fetches the file from
-`origin/master`, appends any missing lines and commits the change back to the PR
-branch.
-
-`automerge-repo.yml` performs a similar merge for `.repoMetrics/metrics.json`
-and `.agentInfo` files to reduce merge conflicts.
