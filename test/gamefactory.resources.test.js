@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 
 globalThis.lemmings = { game: { showDebug: false } };

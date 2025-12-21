@@ -14,8 +14,11 @@ function loadDefaultPack() {
 }
 
 const main = async () => {
-  const { Lemmings } = await import(
-    pathToFileURL(path.join(process.cwd(), 'js', 'LemmingsNamespace.js')).href
+  const Lemmings = await import(
+    pathToFileURL(path.join(process.cwd(), 'js', 'exports.js')).href
+  );
+  const { getDependency } = await import(
+    pathToFileURL(path.join(process.cwd(), 'js', 'core', 'dependencies.js')).href
   );
   await import(
     pathToFileURL(path.join(process.cwd(), 'js', 'LemmingsBootstrap.js')).href
@@ -32,7 +35,8 @@ const main = async () => {
   const outDir = process.argv[3] || path.join('exports', 'panel_green_map');
   const provider = new NodeFileProvider('.');
   const pal = new Lemmings.ColorPalette();
-  const res = new Lemmings.GameResources(provider, {
+  const GameResources = getDependency('GameResources', Lemmings.GameResources);
+  const res = new GameResources(provider, {
     path: pack,
     level: { groups: [] },
   });

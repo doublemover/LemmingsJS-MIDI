@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { FileProvider } from '../js/data/FileProvider.js';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 
 class MockBinaryReader {}
 class MockLogHandler {

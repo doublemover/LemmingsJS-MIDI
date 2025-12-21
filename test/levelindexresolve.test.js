@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { LevelIndexResolve } from '../js/level/LevelIndexResolve.js';
 import '../js/level/LevelIndexType.js';
 

@@ -1,4 +1,4 @@
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import * as Lemmings from '../js/exports.js';
 import '../js/LemmingsBootstrap.js';
 import { NodeFileProvider } from './NodeFileProvider.js';
 import fs from 'fs';

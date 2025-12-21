@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/data/BinaryReader.js';
 import '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';

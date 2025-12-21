@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { ActionBashSystem } from '../js/actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../js/actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../js/actions/ActionBuildSystem.js';

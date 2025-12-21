@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Lemmings } from '../js/LemmingsNamespace.js';
+import { Lemmings } from './helpers/lemmings.js';
 import { BitWriter } from '../js/data/BitWriter.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 // minimal global environment for logging
