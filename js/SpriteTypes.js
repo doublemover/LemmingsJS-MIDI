@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 export const SpriteTypes = Object.freeze({
   WALKING: 0,
   EXPLODING: 1,
@@ -22,5 +20,3 @@ export const SpriteTypes = Object.freeze({
   SHRUGGING: 18,
   OUT_OF_LEVEL: 19
 });
-
-Lemmings.SpriteTypes = SpriteTypes;

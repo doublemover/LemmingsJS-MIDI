@@ -1,24 +1,24 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
 
 /**
  * Efficient backwards-writing buffer for Lemmings decompression (LZ-style).
  * Copies raw data or references already-written bytes using a BitReader.
  * @class
  */
-class BitWriter extends Lemmings.BaseLogger {
+class BitWriter extends BaseLogger {
   /** @type {Uint8Array} Output buffer (write backwards from end) */
   #outData;
 
   /** @type {number} Current write position (decrements on write) */
   #outPos;
 
-  /** @type {Lemmings.BitReader} Input reader for compressed data */
+  /** @type {BitReader} Input reader for compressed data */
   #bitReader;
 
 
   /**
-   * @param {Lemmings.BitReader} bitReader - Source of compressed bits.
+   * @param {BitReader} bitReader - Source of compressed bits.
    * @param {number} outLength - Total length of output buffer.
    */
   constructor(bitReader, outLength) {
@@ -44,7 +44,7 @@ class BitWriter extends Lemmings.BaseLogger {
     return this.#outPos;
   }
 
-  /** @returns {Lemmings.BitReader} The input bit reader */
+  /** @returns {BitReader} The input bit reader */
   get bitReader() {
     return this.#bitReader;
   }
@@ -99,10 +99,10 @@ class BitWriter extends Lemmings.BaseLogger {
   /**
    * Returns a frozen BinaryReader view of the decompressed data.
    * @param {string} [filename] - Optional file name for BinaryReader.
-   * @returns {Lemmings.BinaryReader}
+   * @returns {BinaryReader}
    */
   getFileReader(filename) {
-    return new Lemmings.BinaryReader(this.#outData, null, null, filename);
+    return new BinaryReader(this.#outData, null, null, filename);
   }
 
   /**
@@ -116,6 +116,4 @@ class BitWriter extends Lemmings.BaseLogger {
 
 // Prevent further extension if not needed.
 Object.freeze(BitWriter);
-
-Lemmings.BitWriter = BitWriter;
 export { BitWriter };

@@ -1,9 +1,10 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionFryingSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.FRYING, singleSprite: true, actionName: 'frying' });
+    super({ sprites, spriteType: SpriteTypes.FRYING, singleSprite: true, actionName: 'frying' });
   }
 
   triggerLemAction(lem) {
@@ -25,16 +26,14 @@ class ActionFryingSystem extends ActionBaseSystem {
       if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
     if (lem.frameIndex == 14) {
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
     if (!level.hasGroundAt(lem.x + (lem.lookRight ? 8 : -8), lem.y)) {
       lem.x += (lem.lookRight ? 1 : -1);
     } else {
       lem.lookRight = !lem.lookRight;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionFryingSystem = ActionFryingSystem;
 export { ActionFryingSystem };

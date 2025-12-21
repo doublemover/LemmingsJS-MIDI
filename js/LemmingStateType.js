@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 export const LemmingStateType = Object.freeze({
   NO_STATE_TYPE: 0,
   WALKING: 1,
@@ -22,5 +20,3 @@ export const LemmingStateType = Object.freeze({
   SHRUG: 18,
   OUT_OF_LEVEL: 19
 });
-
-Lemmings.LemmingStateType = LemmingStateType; 

@@ -1,9 +1,9 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { SkillTypes } from './SkillTypes.js';
 
-class CommandSelectSkill extends Lemmings.BaseLogger {
-  constructor(skill = Lemmings.SkillTypes.UNKNOWN, apply = true) {
+class CommandSelectSkill extends BaseLogger {
+  constructor(skill = SkillTypes.UNKNOWN, apply = true) {
     super();
     this.skill = skill;
     this.apply = apply;
@@ -59,6 +59,4 @@ class CommandSelectSkill extends Lemmings.BaseLogger {
     return 's';
   }
 }
-
-Lemmings.CommandSelectSkill = CommandSelectSkill;
 export { CommandSelectSkill };

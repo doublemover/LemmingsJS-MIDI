@@ -1,5 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
 
 /**
  * Optimized bitwise reader for Lemmings decompression.
@@ -11,7 +10,7 @@ class BitReader {
   /** @type {number} Index of next byte to consume (reading backwards) */
   #pos;
 
-  /** @type {Lemmings.BinaryReader} Private clone of the input file reader */
+  /** @type {BinaryReader} Private clone of the input file reader */
   #binReader;
 
   /** @type {number} Current byte-sized bit buffer */
@@ -24,7 +23,7 @@ class BitReader {
   #checksum;
 
   /**
-   * @param {Lemmings.BinaryReader} fileReader - The input binary reader (must support .readByte and .filename).
+   * @param {BinaryReader} fileReader - The input binary reader (must support .readByte and .filename).
    * @param {number} offset - Offset to begin reading from.
    * @param {number} length - Number of bytes to read (reads backwards from offset+length).
    * @param {number} initBufferLength - Initial number of bits in buffer (normally 8 or less).
@@ -40,7 +39,7 @@ class BitReader {
       throw new RangeError('initBufferLength must be an integer between 0 and 8');
 
     this.#pos = length - 1;
-    this.#binReader = new Lemmings.BinaryReader(
+    this.#binReader = new BinaryReader(
       fileReader,
       offset,
       length,
@@ -111,6 +110,4 @@ class BitReader {
 }
 
 Object.freeze(BitReader);
-
-Lemmings.BitReader = BitReader;
 export { BitReader };

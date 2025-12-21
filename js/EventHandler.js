@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class EventHandler {
   constructor () {
     this.handlers = new Set();
@@ -30,6 +28,4 @@ class EventHandler {
     }
   }
 }
-
-Lemmings.EventHandler = EventHandler;
 export { EventHandler };

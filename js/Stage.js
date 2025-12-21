@@ -1,4 +1,9 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { DisplayImage, drawMarchingAntRect } from './DisplayImage.js';
+import { Position2D } from './Position2D.js';
+import { StageImageProperties } from './StageImageProperties.js';
+import { UserInputManager } from './UserInputManager.js';
+import { ViewPoint } from './ViewPoint.js';
+import { getDependency } from './core/dependencies.js';
 
 function colorStringTo32(str) {
   const m = /rgba?\((\d+),(\d+),(\d+),(\d*(?:\.\d+)?)\)/.exec(str);
@@ -28,18 +33,18 @@ class Stage {
     this.cursorY = 0;
 
     this.stageCav = canvasForOutput;
-    this.gameImgProps = new Lemmings.StageImageProperties();
-    this.guiImgProps  = new Lemmings.StageImageProperties();
+    this.gameImgProps = new StageImageProperties();
+    this.guiImgProps  = new StageImageProperties();
 
     // HUD always starts at scale = 4
-    this.guiImgProps.viewPoint = new Lemmings.ViewPoint(0, 0, 4);
+    this.guiImgProps.viewPoint = new ViewPoint(0, 0, 4);
     this._rawScale = this.gameImgProps.viewPoint.scale || 1;
 
     // Initialize DisplayImage instances
     this.getGameDisplay();
     this.getGuiDisplay();
 
-    this.controller = new Lemmings.UserInputManager(canvasForOutput);
+    this.controller = new UserInputManager(canvasForOutput);
     this.handleOnMouseUp();
     this.handleOnMouseDown();
     this.handleOnMouseRightUp();
@@ -74,7 +79,7 @@ class Stage {
     const localY = e.y - stageImage.y;
     const worldX = stageImage.viewPoint.getSceneX(localX);
     const worldY = stageImage.viewPoint.getSceneY(localY);
-    return new Lemmings.Position2D(worldX, worldY);
+    return new Position2D(worldX, worldY);
   }
 
   handleOnDoubleClick() {
@@ -143,7 +148,7 @@ class Stage {
         const worldX = stageImage.viewPoint.getSceneX(localX);
         const worldY = stageImage.viewPoint.getSceneY(localY);
         stageImage.display.onMouseMove.trigger(
-          new Lemmings.Position2D(worldX, worldY)
+          new Position2D(worldX, worldY)
         );
         
       }
@@ -333,13 +338,13 @@ class Stage {
 
   getGameDisplay() {
     if (this.gameImgProps.display) return this.gameImgProps.display;
-    this.gameImgProps.display = new Lemmings.DisplayImage(this);
+    this.gameImgProps.display = new DisplayImage(this);
     return this.gameImgProps.display;
   }
 
   getGuiDisplay() {
     if (this.guiImgProps.display) return this.guiImgProps.display;
-    this.guiImgProps.display = new Lemmings.DisplayImage(this);
+    this.guiImgProps.display = new DisplayImage(this);
     return this.guiImgProps.display;
   }
 
@@ -347,8 +352,9 @@ class Stage {
     this.clear(this.gameImgProps);
     const targetY = isFinite(y) ? y : 0;
 
-    if (lemmings.scale > 0) {
-      this._rawScale = lemmings.scale;
+    const app = globalThis?.lemmings;
+    if (app?.scale > 0) {
+      this._rawScale = app.scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.setX(x);
       this.gameImgProps.viewPoint.setY(targetY);
@@ -545,7 +551,8 @@ class Stage {
         const octx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
         const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
         const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
-        Lemmings.drawMarchingAntRect(
+        const drawAnts = getDependency('drawMarchingAntRect', drawMarchingAntRect);
+        drawAnts(
           disp,
           0,
           0,
@@ -610,5 +617,4 @@ class Stage {
   }
 }
 
-Lemmings.Stage = Stage;
 export { Stage };

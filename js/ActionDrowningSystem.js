@@ -1,10 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionDrowningSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.DROWNING, singleSprite: true, actionName: 'drowning' });
+    super({ sprites, spriteType: SpriteTypes.DROWNING, singleSprite: true, actionName: 'drowning' });
   }
   triggerLemAction(lem) {
     return false;
@@ -30,16 +31,14 @@ class ActionDrowningSystem extends ActionBaseSystem {
     }
     lem.frameIndex++;
     if (lem.frameIndex >= 16) {
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
     if (!level.hasGroundAt(lem.x + (lem.lookRight ? 8 : -8), lem.y)) {
       lem.x += (lem.lookRight ? 1 : -1);
     } else {
       lem.lookRight = !lem.lookRight;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionDrowningSystem = ActionDrowningSystem;
-
 export { ActionDrowningSystem };

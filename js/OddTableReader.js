@@ -1,7 +1,8 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { LevelProperties } from './LevelProperties.js';
+import { SkillTypes } from './SkillTypes.js';
 
-class OddTableReader extends Lemmings.BaseLogger {
+class OddTableReader extends BaseLogger {
   constructor(oddfile) {
     super();
     this.levelProperties = [];
@@ -21,20 +22,20 @@ class OddTableReader extends Lemmings.BaseLogger {
     /// count of levels definitions
     let count = Math.trunc(fr.length / 56);
     for (let i = 0; i < count; i++) {
-      let prop = new Lemmings.LevelProperties();
+      let prop = new LevelProperties();
       prop.releaseRate = fr.readWord();
       prop.releaseCount = fr.readWord();
       prop.needCount = fr.readWord();
       prop.timeLimit = fr.readWord();
       //- read amount of skills
-      prop.skills[Lemmings.SkillTypes.CLIMBER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.FLOATER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.BOMBER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.BLOCKER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.BUILDER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.BASHER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.MINER] = fr.readWord();
-      prop.skills[Lemmings.SkillTypes.DIGGER] = fr.readWord();
+      prop.skills[SkillTypes.CLIMBER] = fr.readWord();
+      prop.skills[SkillTypes.FLOATER] = fr.readWord();
+      prop.skills[SkillTypes.BOMBER] = fr.readWord();
+      prop.skills[SkillTypes.BLOCKER] = fr.readWord();
+      prop.skills[SkillTypes.BUILDER] = fr.readWord();
+      prop.skills[SkillTypes.BASHER] = fr.readWord();
+      prop.skills[SkillTypes.MINER] = fr.readWord();
+      prop.skills[SkillTypes.DIGGER] = fr.readWord();
       prop.levelName = fr.readString(32);
       this.log.debug('Level (' + i + ') Name: ' + prop.levelName + ' ' + prop.needCount + ' ' + prop.timeLimit);
       this.levelProperties.push(prop);
@@ -42,6 +43,5 @@ class OddTableReader extends Lemmings.BaseLogger {
     this.log.debug('levelProperties: ' + this.levelProperties.length);
   }
 }
-Lemmings.OddTableReader = OddTableReader;
 
 export { OddTableReader };

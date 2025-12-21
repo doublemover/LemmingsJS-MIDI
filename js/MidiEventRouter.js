@@ -1,4 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { MidiMapping } from './MidiMapping.js';
 import { MidiScheduler } from './MidiScheduler.js';
 
@@ -129,5 +128,4 @@ class MidiEventRouter {
   }
 }
 
-Lemmings.MidiEventRouter = MidiEventRouter;
 export { MidiEventRouter };

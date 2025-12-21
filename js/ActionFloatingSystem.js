@@ -1,12 +1,13 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 const FLOAT_SPEED = [3, 3, 3, 3, -1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2];
 const FLOAT_FRAME = [0, 1, 3, 5, 5, 5, 5, 5, 5, 6, 7, 7, 6, 5, 4, 4];
 
 class ActionFloatingSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.UMBRELLA, actionName: 'floating' });
+    super({ sprites, spriteType: SpriteTypes.UMBRELLA, actionName: 'floating' });
   }
   triggerLemAction(lem) {
     if (lem.hasParachute) {
@@ -32,12 +33,11 @@ class ActionFloatingSystem extends ActionBaseSystem {
       if (level.hasGroundAt(lem.x, lem.y + i)) {
         // landed
         lem.y += i;
-        return Lemmings.LemmingStateType.WALKING;
+        return LemmingStateType.WALKING;
       }
     }
     lem.y += speed;
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionFloatingSystem = ActionFloatingSystem;
 export { ActionFloatingSystem };

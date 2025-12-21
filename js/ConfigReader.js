@@ -1,8 +1,9 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { GameConfig } from './GameConfig.js';
+import { GameTypes } from './GameTypes.js';
 import { packMechanics } from './packMechanics.js';
 
-class ConfigReader extends Lemmings.BaseLogger {
+class ConfigReader extends BaseLogger {
   constructor(configFile) {
     super();
     this.configs = new Promise((resolve, reject) => {
@@ -22,7 +23,7 @@ class ConfigReader extends Lemmings.BaseLogger {
       this.configs.then((configs) => {
         const config = configs.find((config) => config.gametype == gameType);
         if (config == null) {
-          this.log.log('config for GameTypes:' + Lemmings.GameTypes.toString(gameType) + ' not found!');
+          this.log.log('config for GameTypes:' + GameTypes.toString(gameType) + ' not found!');
           reject();
           return;
         }
@@ -43,11 +44,11 @@ class ConfigReader extends Lemmings.BaseLogger {
     /// for all game types
     const configLength = config.length;
     for (let c = 0; c < configLength; c++) {
-      let newConfig = new Lemmings.GameConfig();
+      let newConfig = new GameConfig();
       let configData = config[c];
       newConfig.name = configData.name;
       newConfig.path = configData.path;
-      newConfig.gametype = Lemmings.GameTypes[configData.gametype];
+      newConfig.gametype = GameTypes[configData.gametype];
       /// read level config
       const oddFlag = configData['level.useOddTable'];
       const oddFlagLegacy = configData['level.useoddtable'];
@@ -70,6 +71,4 @@ class ConfigReader extends Lemmings.BaseLogger {
     return gameConfigs;
   }
 }
-Lemmings.ConfigReader = ConfigReader;
-
 export { ConfigReader };

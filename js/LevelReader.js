@@ -1,13 +1,17 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { DrawProperties } from './DrawProperties.js';
+import { LevelElement } from './LevelElement.js';
+import { LevelProperties } from './LevelProperties.js';
+import { Range } from './Range.js';
+import { SkillTypes } from './SkillTypes.js';
 
-class LevelReader extends Lemmings.BaseLogger {
+class LevelReader extends BaseLogger {
   /// Load a Level
   constructor(fr) {
     super();
     this.levelWidth = 1600;
     this.levelHeight = 160;
-    this.levelProperties = new Lemmings.LevelProperties();
+    this.levelProperties = new LevelProperties();
     this.screenPositionX = 0;
     /** index of GROUNDxO.DAT file */
     this.graphicSet1 = 0;
@@ -33,14 +37,14 @@ class LevelReader extends Lemmings.BaseLogger {
     this.levelProperties.timeLimit = fr.readWord();
     //- read amount of skills
     this.levelProperties.skills.fill(0);
-    this.levelProperties.skills[Lemmings.SkillTypes.CLIMBER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.FLOATER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.BOMBER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.BLOCKER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.BUILDER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.BASHER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.MINER] = fr.readWord();
-    this.levelProperties.skills[Lemmings.SkillTypes.DIGGER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.CLIMBER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.FLOATER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.BOMBER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.BLOCKER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.BUILDER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.BASHER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.MINER] = fr.readWord();
+    this.levelProperties.skills[SkillTypes.DIGGER] = fr.readWord();
     this.screenPositionX = fr.readWord();
     this.graphicSet1 = fr.readWord();
     this.graphicSet2 = fr.readWord();
@@ -52,7 +56,7 @@ class LevelReader extends Lemmings.BaseLogger {
     this.objects = [];
     fr.setOffset(0x0020);
     for (let i = 0; i < 32; i++) {
-      const newOb = new Lemmings.LevelElement();
+      const newOb = new LevelElement();
       newOb.x = fr.readWord() - 16;
       newOb.y = fr.readWord();
       newOb.id = fr.readWord();
@@ -60,7 +64,7 @@ class LevelReader extends Lemmings.BaseLogger {
       const isUpsideDown = ((flags & 0x0080) > 0);
       const noOverwrite = ((flags & 0x8000) > 0);
       const onlyOverwrite = ((flags & 0x4000) > 0);
-      newOb.drawProperties = new Lemmings.DrawProperties(isUpsideDown, noOverwrite, onlyOverwrite, false);
+      newOb.drawProperties = new DrawProperties(isUpsideDown, noOverwrite, onlyOverwrite, false);
       /// ignore empty items/objects
       if (flags == 0)
         continue;
@@ -72,7 +76,7 @@ class LevelReader extends Lemmings.BaseLogger {
     this.terrains = [];
     fr.setOffset(0x0120);
     for (let i = 0; i < 400; i++) {
-      const newOb = new Lemmings.LevelElement();
+      const newOb = new LevelElement();
       const v = fr.readInt(4);
       if (v == -1)
         continue;
@@ -84,7 +88,7 @@ class LevelReader extends Lemmings.BaseLogger {
       const isUpsideDown = ((flags & 2) > 0);
       const noOverwrite = ((flags & 4) > 0);
       const isErase = ((flags & 1) > 0);
-      newOb.drawProperties = new Lemmings.DrawProperties(isUpsideDown, noOverwrite, false, isErase);
+      newOb.drawProperties = new DrawProperties(isUpsideDown, noOverwrite, false, isErase);
       this.terrains.push(newOb);
     }
   }
@@ -114,7 +118,7 @@ class LevelReader extends Lemmings.BaseLogger {
       const width = (((size >> 4) & 0x0F) + 1) * 4; 
       const height = ((size & 0x0F) + 1) * 4;
 
-      const newRange = new Lemmings.Range();
+      const newRange = new Range();
       newRange.x = x;
       newRange.y = y;
       newRange.width = width;
@@ -130,6 +134,5 @@ class LevelReader extends Lemmings.BaseLogger {
     this.log.debug('Level Name: ' + this.levelProperties.levelName);
   }
 }
-Lemmings.LevelReader = LevelReader;
 
 export { LevelReader };

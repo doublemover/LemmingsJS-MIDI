@@ -1,6 +1,5 @@
-import {
-  Lemmings
-} from './LemmingsNamespace.js';
+import { Frame } from './Frame.js';
+import { TriggerTypes } from './TriggerTypes.js';
 
 class MiniMap {
   static palette = null;
@@ -31,8 +30,8 @@ class MiniMap {
     this.deadCount = 0;
 
     // render target (drawn into the GUI canvas once per frame)
-    this.frame = new Lemmings.Frame(this.width, this.height);
-    //this.renderFrame = new Lemmings.Frame(this.renderWidth, this.renderHeight);
+    this.frame = new Frame(this.width, this.height);
+    //this.renderFrame = new Frame(this.renderWidth, this.renderHeight);
 
     if (!MiniMap.palette) {
       MiniMap.palette = new Uint32Array(129);
@@ -245,7 +244,8 @@ class MiniMap {
       frame.mask[idx] = 1;
     }
 
-    const viewRect = lemmings.stage.getGameViewRect();
+    const viewRect = globalThis.lemmings?.stage?.getGameViewRect?.();
+    if (!viewRect) return;
     const vpX = (viewRect.x * this.scaleX) | 0;
     let vpW = (viewRect.w * this.scaleX) | 0;
     const vpY = (viewRect.y * this.scaleY) | 0;
@@ -271,7 +271,7 @@ class MiniMap {
       const rx = (obj.x * this.scaleX) | 0;
       const ry = (obj.y * this.scaleY) | 0;
       if (obj.ob?.id === 1) frame.setPixel(rx + 2, ry + 2, 0xFF00AA00);
-      if (obj.triggerType === Lemmings.TriggerTypes.EXIT_LEVEL) {
+      if (obj.triggerType === TriggerTypes.EXIT_LEVEL) {
         frame.setPixel(rx + 2, ry + 2, 0xFFFF00CC);
         frame.setPixel(rx + 2, ry + 1, 0xFFFF00CC);
       }
@@ -331,7 +331,6 @@ class MiniMap {
     this.frame = null;
   }
 }
-Lemmings.MiniMap = MiniMap;
 
 export {
   MiniMap

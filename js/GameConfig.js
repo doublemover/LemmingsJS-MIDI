@@ -1,4 +1,5 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { GameTypes } from './GameTypes.js';
+import { LevelConfig } from './LevelConfig.js';
 
 class GameConfig {
   constructor() {
@@ -7,12 +8,10 @@ class GameConfig {
     /** Path/Url to the resources */
     this.path = '';
     /** unique GameType Name */
-    this.gametype = Lemmings.GameTypes.UNKNOWN;
-    this.level = new Lemmings.LevelConfig();
+    this.gametype = GameTypes.UNKNOWN;
+    this.level = new LevelConfig();
     /** mechanics customization */
     this.mechanics = {};
   }
 }
-Lemmings.GameConfig = GameConfig;
-
 export { GameConfig };

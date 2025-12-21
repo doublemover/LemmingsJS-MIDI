@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class ViewPoint {
   constructor(x, y, scale) {
     this.x = x;
@@ -43,6 +41,5 @@ class ViewPoint {
     return Math.trunc(y / this.scale) + Math.trunc(this.y);
   }
 }
-Lemmings.ViewPoint = ViewPoint;
 
 export { ViewPoint };

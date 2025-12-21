@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { getDependency } from './core/dependencies.js';
 
 class Logger {
   constructor(moduleName) {
@@ -52,7 +52,7 @@ class Logger {
 
 class BaseLogger {
   constructor(name) {
-    const Handler = Lemmings.LogHandler || Lemmings.Logger;
+    const Handler = getDependency('LogHandler', Logger);
     this.log = new Handler(name || this.constructor.name);
   }
 
@@ -112,10 +112,6 @@ function withPerformance(name, devtools = {}, fn) {
   };
 }
 
-Lemmings.Logger = Logger;
-Lemmings.BaseLogger = BaseLogger;
-Lemmings.withPerformance = withPerformance;
-// Backwards compatibility
-Lemmings.LogHandler = Logger;
+const LogHandler = Logger;
 
-export { Logger, BaseLogger, withPerformance };
+export { Logger, BaseLogger, LogHandler, withPerformance };

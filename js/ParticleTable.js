@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Frame } from './Frame.js';
 
 /**
  * Particle effect coordinate table and color assignment for Lemmings explosions.
@@ -12,7 +12,7 @@ class ParticleTable {
   #colorIndexTable;
   /** @type {Int8Array[]} Decoded coordinates for all frames */
   #particleData;
-  /** @type {Lemmings.Frame[]} Cached particle frames */
+  /** @type {Frame[]} Cached particle frames */
   #frames;
 
   /**
@@ -77,12 +77,12 @@ class ParticleTable {
         if (dy > maxY) maxY = dy;
       }
       if (!isFinite(minX) || !isFinite(minY)) {
-        frames[f] = new Lemmings.Frame(1, 1, 0, 0);
+        frames[f] = new Frame(1, 1, 0, 0);
         continue;
       }
       const width = (maxX - minX + 1) | 0;
       const height = (maxY - minY + 1) | 0;
-      const frame = new Lemmings.Frame(width, height, minX, minY);
+      const frame = new Frame(width, height, minX, minY);
       for (let i = 0; i < data.length; i += 2) {
         const dx = data[i];
         const dy = data[i + 1];
@@ -163,7 +163,4 @@ ParticleTable.particleDataBase64 = 'zJzp0Qfn/usD8vj1/PgD+fr6A/j+8/j3//b6/fv1Afz+
     'ZUFVDGZUYbRY+1rtbxx0I21FeT9yMHeAgICAgIAQfoCAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIeTjsyAgDbNvADd7mjx9hixLYM+EBxdPWtQk1nDYgxoOkklZStf7GxCXAxtVmizX/th7HYdeyN0gIBAeTJ+gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI' +
     'CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICFlovQgIA40bsF3PNq9fYdrzOBRBAhX0NtV5FgwmkMbztQJmwrZutzRGMMdFhwsWb7aOx9gIAke4CAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgpiJ1ICAOdW6C9v3bPr2I605gIAQJ2FJb16PZ8FwDHY9VyZzLG3rekVqDHtad69t+2+AgICA' +
     'gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAh9iAgDrauBDa/G7/9SmsP4CAES1jUHJljW6/dwx9Pl0ney11gIBGcYCAXH6udft2gICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICA';
-Lemmings.ParticleTable?.particleDataBase64 || ''; // use the existing one if set, otherwise set below
-
-Lemmings.ParticleTable = ParticleTable;
 export { ParticleTable };

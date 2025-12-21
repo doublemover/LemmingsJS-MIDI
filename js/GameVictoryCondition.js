@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 const getApp = () => {
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
   if (typeof lemmings !== 'undefined') return lemmings;
@@ -132,6 +130,4 @@ class GameVictoryCondition {
   }
 }
 GameVictoryCondition.maxReleaseRate = 99;
-Lemmings.GameVictoryCondition = GameVictoryCondition;
-
 export { GameVictoryCondition };

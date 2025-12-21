@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 /**
  * Compressor implementing the inverse of {@link UnpackFilePart#doUnpacking}.
  *
@@ -80,6 +78,4 @@ class PackFilePart {
     return { byteArray, checksum, initialBits };
   }
 }
-
-Lemmings.PackFilePart = PackFilePart;
 export { PackFilePart };

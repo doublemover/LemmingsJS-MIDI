@@ -1,16 +1,18 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { MaskTypes } from './MaskTypes.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionExplodingSystem extends ActionBaseSystem {
 
   constructor(sprites, masks, triggerManager, particleTable) {
     super({
       sprites,
-      spriteType: Lemmings.SpriteTypes.EXPLODING,
+      spriteType: SpriteTypes.EXPLODING,
       singleSprite: true,
       masks,
-      maskTypes: Lemmings.MaskTypes.EXPLODING,
+      maskTypes: MaskTypes.EXPLODING,
       actionName: 'exploding'
     });
     this.triggerManager = triggerManager;
@@ -59,11 +61,9 @@ class ActionExplodingSystem extends ActionBaseSystem {
       if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
     if (lem.frameIndex == 52) {
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionExplodingSystem = ActionExplodingSystem;
 export { ActionExplodingSystem };

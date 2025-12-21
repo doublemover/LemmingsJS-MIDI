@@ -1,4 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { CommandNuke } from './CommandNuke.js';
+import { CommandReleaseRateIncrease } from './CommandReleaseRateIncrease.js';
+import { CommandReleaseRateDecrease } from './CommandReleaseRateDecrease.js';
+import { CommandSelectSkill } from './CommandSelectSkill.js';
+import { EventHandler } from './EventHandler.js';
+import { MiniMap } from './MiniMap.js';
+import { SkillTypes } from './SkillTypes.js';
+import { getDependency } from './core/dependencies.js';
 
 const getApp = () => {
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
@@ -60,7 +67,7 @@ class GameGui {
     this._guiBound = this._guiLoop.bind(this);
     this._guiRafId = 0;
 
-    this.smoothScroller = new Lemmings.SmoothScroller();
+    this.smoothScroller = new SmoothScroller();
 
     this._nukeAfterCountdown = 0;
 
@@ -70,7 +77,7 @@ class GameGui {
       if (app?.nukeAfter > 0) {
         this._nukeAfterCountdown++;
         if (this._nukeAfterCountdown == app.nukeAfter) {
-          this.game.queueCommand(new Lemmings.CommandNuke());
+          this.game.queueCommand(new CommandNuke());
           this.nukePrepared = false;
         }
       }
@@ -116,9 +123,9 @@ class GameGui {
       this.releaseRateChanged = true;
     }
     if (this.deltaReleaseRate > 0)
-      this.game.queueCommand(new Lemmings.CommandReleaseRateIncrease(this.deltaReleaseRate));
+      this.game.queueCommand(new CommandReleaseRateIncrease(this.deltaReleaseRate));
     else
-      this.game.queueCommand(new Lemmings.CommandReleaseRateDecrease(-this.deltaReleaseRate));
+      this.game.queueCommand(new CommandReleaseRateDecrease(-this.deltaReleaseRate));
   }
 
   handleSkillMouseDown(e) {
@@ -203,7 +210,7 @@ class GameGui {
     }
     if (panelIndex === 11) {
       if (this.nukePrepared) {
-        this.game.queueCommand(new Lemmings.CommandNuke());
+        this.game.queueCommand(new CommandNuke());
         this.nukePrepared = false;
         this.gameTimeChanged = true;
       } else {
@@ -217,13 +224,13 @@ class GameGui {
       return;
     }
     const newSkill = this.getSkillByPanelIndex(panelIndex);
-    if (newSkill === Lemmings.SkillTypes.UNKNOWN) return;
+    if (newSkill === SkillTypes.UNKNOWN) return;
     if (this.skills.getSkill(newSkill) <= 0) {
       if (this.skills.clearSelectedSkill()) this.skillSelectionChanged = true;
       return;
     }
     this.skills.setSelectedSkill(newSkill);
-    this.game.queueCommand(new Lemmings.CommandSelectSkill(newSkill));
+    this.game.queueCommand(new CommandSelectSkill(newSkill));
   }
 
   handleSkillMouseRightDown(e) {
@@ -266,7 +273,7 @@ class GameGui {
 
   handleSkillDoubleClick(e) {
     if (Math.trunc(e.x / 16) === 11)
-      this.game.queueCommand(new Lemmings.CommandNuke());
+      this.game.queueCommand(new CommandNuke());
   }
 
   handleMouseMove(e) {
@@ -319,7 +326,8 @@ class GameGui {
     }
     this.display = display;
     if (!this.miniMap) {
-      this.setMiniMap(new Lemmings.MiniMap(this.game.gameDisplay, this.game.level, display));
+      const MiniMapCtor = getDependency('MiniMap', MiniMap);
+      this.setMiniMap(new MiniMapCtor(this.game.gameDisplay, this.game.level, display));
     }
 
     this._displayListeners = [
@@ -425,8 +433,8 @@ class GameGui {
           text = 'Pause';
         } else {
           const sel = this.skills.getSelectedSkill();
-          if (sel !== Lemmings.SkillTypes.UNKNOWN) {
-            const key = Object.keys(Lemmings.SkillTypes)[sel];
+          if (sel !== SkillTypes.UNKNOWN) {
+            const key = Object.keys(SkillTypes)[sel];
             if (key) {
               text = key.charAt(0) + key.slice(1).toLowerCase();
             }
@@ -508,13 +516,13 @@ class GameGui {
 
     if (this.skillsCountChanged) {
       this.skillsCountChanged = false;
-      for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+      for (let s = 1; s < Object.keys(SkillTypes).length; ++s) {
         const panel = this.getPanelIndexBySkill(s);
         const count = this.skills.getSkill(s);
         this.drawPanelNumber(d, count, panel);
       }
     }
-    for (let s = 1; s < Object.keys(Lemmings.SkillTypes).length; ++s) {
+    for (let s = 1; s < Object.keys(SkillTypes).length; ++s) {
       if (this.skills.getSkill(s) <= 0) {
         const panel = this.getPanelIndexBySkill(s);
         d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
@@ -632,8 +640,8 @@ class GameGui {
     case 11: return 'Nuke';
     default:
       const skill = this.getSkillByPanelIndex(idx);
-      if (skill !== Lemmings.SkillTypes.UNKNOWN) {
-        const key = Object.keys(Lemmings.SkillTypes)[skill];
+      if (skill !== SkillTypes.UNKNOWN) {
+        const key = Object.keys(SkillTypes)[skill];
         if (key) return key.charAt(0) + key.slice(1).toLowerCase();
       }
       return '';
@@ -728,28 +736,28 @@ class GameGui {
 
   getSkillByPanelIndex(idx) {
     switch (Math.trunc(idx)) {
-    case 2:  return Lemmings.SkillTypes.CLIMBER;
-    case 3:  return Lemmings.SkillTypes.FLOATER;
-    case 4:  return Lemmings.SkillTypes.BOMBER;
-    case 5:  return Lemmings.SkillTypes.BLOCKER;
-    case 6:  return Lemmings.SkillTypes.BUILDER;
-    case 7:  return Lemmings.SkillTypes.BASHER;
-    case 8:  return Lemmings.SkillTypes.MINER;
-    case 9:  return Lemmings.SkillTypes.DIGGER;
-    default: return Lemmings.SkillTypes.UNKNOWN;
+    case 2:  return SkillTypes.CLIMBER;
+    case 3:  return SkillTypes.FLOATER;
+    case 4:  return SkillTypes.BOMBER;
+    case 5:  return SkillTypes.BLOCKER;
+    case 6:  return SkillTypes.BUILDER;
+    case 7:  return SkillTypes.BASHER;
+    case 8:  return SkillTypes.MINER;
+    case 9:  return SkillTypes.DIGGER;
+    default: return SkillTypes.UNKNOWN;
     }
   }
 
   getPanelIndexBySkill(skill) {
     switch (skill) {
-    case Lemmings.SkillTypes.CLIMBER: return 2;
-    case Lemmings.SkillTypes.FLOATER: return 3;
-    case Lemmings.SkillTypes.BOMBER:  return 4;
-    case Lemmings.SkillTypes.BLOCKER: return 5;
-    case Lemmings.SkillTypes.BUILDER: return 6;
-    case Lemmings.SkillTypes.BASHER:  return 7;
-    case Lemmings.SkillTypes.MINER:   return 8;
-    case Lemmings.SkillTypes.DIGGER:  return 9;
+    case SkillTypes.CLIMBER: return 2;
+    case SkillTypes.FLOATER: return 3;
+    case SkillTypes.BOMBER:  return 4;
+    case SkillTypes.BLOCKER: return 5;
+    case SkillTypes.BUILDER: return 6;
+    case SkillTypes.BASHER:  return 7;
+    case SkillTypes.MINER:   return 8;
+    case SkillTypes.DIGGER:  return 9;
     default: return -1;
     }
   }
@@ -765,7 +773,7 @@ class SmoothScroller {
     this.minVelocity = 0.7;       //0.0175;
     this._lastVelocity = 0;
 
-    this.onHasVelocity = new Lemmings.EventHandler();
+    this.onHasVelocity = new EventHandler();
   }
 
   hasVelocity() {
@@ -820,6 +828,4 @@ class SmoothScroller {
   }
 }
 
-Lemmings.SmoothScroller = SmoothScroller;
-Lemmings.GameGui = GameGui;
 export { GameGui, SmoothScroller };

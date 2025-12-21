@@ -1,7 +1,6 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger, withPerformance } from './LogHandler.js';
 
-class SolidLayer extends Lemmings.BaseLogger {
+class SolidLayer extends BaseLogger {
   /**
      * @param {number} width
      * @param {number} height
@@ -154,7 +153,7 @@ class SolidLayer extends Lemmings.BaseLogger {
      */
   clearGroundWithMask(mask, x, y, skipTest = null) {
     let changed = false;
-    Lemmings.withPerformance(
+    withPerformance(
       'clearGroundWithMask',
       {
         track: 'SolidLayer',
@@ -193,7 +192,7 @@ class SolidLayer extends Lemmings.BaseLogger {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
   clearGroundWithMasks(masks, positions, skipTest = null) {
-    Lemmings.withPerformance(
+    withPerformance(
       'clearGroundWithMasks',
       {
         track: 'SolidLayer',
@@ -212,5 +211,4 @@ class SolidLayer extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.SolidLayer = SolidLayer;
 export { SolidLayer };

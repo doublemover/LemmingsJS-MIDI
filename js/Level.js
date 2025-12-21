@@ -1,32 +1,36 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './ColorPalette.js';
-import './SolidLayer.js';
-import './SkillTypes.js';
+import { BaseLogger, withPerformance } from './LogHandler.js';
+import { Animation } from './Animation.js';
+import { ColorPalette } from './ColorPalette.js';
+import { Frame } from './Frame.js';
+import { MapObject } from './MapObject.js';
+import { Range } from './Range.js';
+import { SkillTypes } from './SkillTypes.js';
+import { SolidLayer } from './SolidLayer.js';
+import { Trigger } from './Trigger.js';
 
 // Palette remapping for the fire shooter trap. 
 const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
 const ICE_COLORS   = Object.freeze([
-  Lemmings.ColorPalette.colorFromRGB(92, 224, 255),
-  Lemmings.ColorPalette.colorFromRGB(96, 255, 255),
-  Lemmings.ColorPalette.colorFromRGB(72, 192, 255),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),
-  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
-  Lemmings.ColorPalette.colorFromRGB(0, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255)
+  ColorPalette.colorFromRGB(92, 224, 255),
+  ColorPalette.colorFromRGB(96, 255, 255),
+  ColorPalette.colorFromRGB(72, 192, 255),
+  ColorPalette.colorFromRGB(64, 160, 255),
+  ColorPalette.colorFromRGB(4, 48, 136),
+  ColorPalette.colorFromRGB(0, 64, 152),
+  ColorPalette.colorFromRGB(2, 32, 120),
+  ColorPalette.colorFromRGB(0, 64, 152),
+  ColorPalette.colorFromRGB(64, 160, 255)
 ]);
 
-class Level extends Lemmings.BaseLogger {
+class Level extends BaseLogger {
   constructor(width, height) {
     super();
     this.width = width | 0;
     this.height = height | 0;
-    this.groundMask = new Lemmings.SolidLayer(this.width, this.height);
+    this.groundMask = new SolidLayer(this.width, this.height);
     this.groundImages = null;
     this.steelRanges = new Int32Array(0);
-    this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+    this.steelMask = new SolidLayer(this.width, this.height);
 
     this.objects = [];
     this.entrances = [];
@@ -39,18 +43,18 @@ class Level extends Lemmings.BaseLogger {
     this.releaseCount = 0;
     this.needCount = 0;
     this.timeLimit = 0;
-    this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
+    this.skills = new Array(Object.keys(SkillTypes).length);
     this.screenPositionX = 0;
     this.isSuperLemming = false;
     /** mechanics customization */
     this.mechanics = {};
 
-    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
+    /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
   }
 
   setMapObjects(objects, objectImg) {
-    Lemmings.withPerformance(
+    withPerformance(
       'setMapObjects',
       {
         track: 'Level',
@@ -69,7 +73,7 @@ class Level extends Lemmings.BaseLogger {
 
           // // Ice palette swap for fire shooter traps
           // if (ob.id === 8 || ob.id === 10) {
-          //   const pal = new Lemmings.ColorPalette();
+          //   const pal = new ColorPalette();
           //   for (let i = 0; i < 16; ++i) {
           //     pal.setColorInt(i, objectInfo.palette.getColor(i));
           //   }
@@ -77,7 +81,7 @@ class Level extends Lemmings.BaseLogger {
           //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
           //   }
 
-          //   const clone = new Lemmings.ObjectImageInfo();
+          //   const clone = new ObjectImageInfo();
           //   Object.assign(clone, objectInfo);
           //   clone.palette = pal;
           //   objectInfo = clone;
@@ -88,7 +92,7 @@ class Level extends Lemmings.BaseLogger {
             tfxID = 12;
           }
 
-          const mapOb = new Lemmings.MapObject(ob, objectInfo, new Lemmings.Animation(), tfxID);
+          const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID);
           this.objects.push(mapOb);
           if (ob.id === 1) this.entrances.push(ob);
 
@@ -104,10 +108,10 @@ class Level extends Lemmings.BaseLogger {
               }
             }
 
-            let trigger = new Lemmings.Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
+            let trigger = new Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
 
             if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
-              const newRange = new Lemmings.Range();
+              const newRange = new Range();
               newRange.x = ob.x + objectInfo.trigger_left;
               newRange.y = ob.y + objectInfo.trigger_top;
               newRange.width = objectInfo.trigger_width;
@@ -215,7 +219,7 @@ class Level extends Lemmings.BaseLogger {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
-    Lemmings.withPerformance(
+    withPerformance(
       'newSetSteelAreas',
       {
         track: 'Level',
@@ -225,7 +229,7 @@ class Level extends Lemmings.BaseLogger {
       },
       () => {
         if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
-          this.steelMask = new Lemmings.SolidLayer(this.width, this.height);
+          this.steelMask = new SolidLayer(this.width, this.height);
         } else {
           // Clear all
           this.steelMask.mask.fill(0);
@@ -237,7 +241,7 @@ class Level extends Lemmings.BaseLogger {
           const tObj = terrains[i];
           const terImg = terrainImages[tObj.id];
           if (terImg.isSteel == true) {
-            const newRange = new Lemmings.Range();
+            const newRange = new Range();
             newRange.x = tObj.x;
             newRange.y = tObj.y;
             newRange.width = terImg.steelWidth;
@@ -323,10 +327,10 @@ class Level extends Lemmings.BaseLogger {
   }
 
   #buildDebugFrame() {
-    const frame = new Lemmings.Frame(this.width, this.height);
-    const steelColor  = Lemmings.ColorPalette.colorFromRGB(0, 255, 255);
-    const arrowRColor = Lemmings.ColorPalette.colorFromRGB(128, 255, 0);
-    const arrowLColor = Lemmings.ColorPalette.colorFromRGB(255, 128, 0);
+    const frame = new Frame(this.width, this.height);
+    const steelColor  = ColorPalette.colorFromRGB(0, 255, 255);
+    const arrowRColor = ColorPalette.colorFromRGB(128, 255, 0);
+    const arrowLColor = ColorPalette.colorFromRGB(255, 128, 0);
 
     const s = this.steelRanges;
     for (let i = 0, len = s.length; i < len; i += 4) {
@@ -343,5 +347,4 @@ class Level extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.Level = Level;
 export { Level };

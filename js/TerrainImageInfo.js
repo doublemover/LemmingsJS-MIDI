@@ -1,7 +1,5 @@
-import './BaseImageInfo.js';
-import { Lemmings } from './LemmingsNamespace.js';
+import { BaseImageInfo } from './BaseImageInfo.js';
 
-class TerrainImageInfo extends Lemmings.BaseImageInfo {}
-Lemmings.TerrainImageInfo = TerrainImageInfo;
+class TerrainImageInfo extends BaseImageInfo {}
 
 export { TerrainImageInfo };

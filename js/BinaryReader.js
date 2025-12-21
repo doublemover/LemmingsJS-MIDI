@@ -1,12 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
 
 /**
  * Reads binary data with flexible offset, length, and endian options.
  * Used for game/resource file decoding.
  * @class
  */
-class BinaryReader extends Lemmings.BaseLogger {
+class BinaryReader extends BaseLogger {
   /** @type {Uint8Array} Backing store for bytes */
   #data;
 
@@ -264,6 +263,4 @@ class BinaryReader extends Lemmings.BaseLogger {
 }
 
 Object.freeze(BinaryReader);
-
-Lemmings.BinaryReader = BinaryReader;
 export { BinaryReader };

@@ -1,9 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { Lemming } from './Lemming.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionJumpSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.JUMPING, actionName: 'jump' });
+    super({ sprites, spriteType: SpriteTypes.JUMPING, actionName: 'jump' });
   }
 
   triggerLemAction(lem) {
@@ -29,16 +31,14 @@ class ActionJumpSystem extends ActionBaseSystem {
       moved++;
     }
     if (lem.state >= 2 || !level.hasGroundAt(lem.x, lem.y - 1)) {
-      if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
-        lem.y = Lemmings.Lemming.LEM_MIN_Y;
+      if (lem.y < Lemming.LEM_MIN_Y) {
+        lem.y = Lemming.LEM_MIN_Y;
       }
       lem.state = 0;
-      return Lemmings.LemmingStateType.WALKING;
+      return LemmingStateType.WALKING;
     }
 
-    return Lemmings.LemmingStateType.JUMPING;
+    return LemmingStateType.JUMPING;
   }
 }
-
-Lemmings.ActionJumpSystem = ActionJumpSystem;
 export { ActionJumpSystem };

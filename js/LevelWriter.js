@@ -1,7 +1,7 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { SkillTypes } from './SkillTypes.js';
 
-class LevelWriter extends Lemmings.BaseLogger {
+class LevelWriter extends BaseLogger {
   /**
      * Serialize a level in the same format that LevelReader expects.
      * @param {Object} level Object containing properties like LevelReader
@@ -18,14 +18,14 @@ class LevelWriter extends Lemmings.BaseLogger {
     dv.setUint16(pos, props.releaseCount || 0); pos += 2;
     dv.setUint16(pos, props.needCount || 0); pos += 2;
     dv.setUint16(pos, props.timeLimit || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.CLIMBER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.FLOATER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.BOMBER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.BLOCKER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.BUILDER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.BASHER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.MINER] || 0); pos += 2;
-    dv.setUint16(pos, skills[Lemmings.SkillTypes.DIGGER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.CLIMBER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.FLOATER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.BOMBER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.BLOCKER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.BUILDER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.BASHER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.MINER] || 0); pos += 2;
+    dv.setUint16(pos, skills[SkillTypes.DIGGER] || 0); pos += 2;
     dv.setUint16(pos, level.screenPositionX || 0); pos += 2;
     dv.setUint16(pos, level.graphicSet1 || 0); pos += 2;
     dv.setUint16(pos, level.graphicSet2 || 0); pos += 2;
@@ -111,5 +111,4 @@ class LevelWriter extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.LevelWriter = LevelWriter;
 export { LevelWriter };

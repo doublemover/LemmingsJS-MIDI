@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 export const MaskTypes = Object.freeze({
   BASHING_R: 0,
   BASHING_L: 1,
@@ -8,5 +6,3 @@ export const MaskTypes = Object.freeze({
   EXPLODING: 4,
   NUMBERS: 5
 });
-
-Lemmings.MaskTypes = MaskTypes;

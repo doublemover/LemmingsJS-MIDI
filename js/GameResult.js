@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class GameResult {
   constructor(game) {
     this.state = game.getGameState();
@@ -9,6 +7,4 @@ class GameResult {
     this.duration = game.getGameTimer().getGameTicks();
   }
 }
-Lemmings.GameResult = GameResult;
-
 export { GameResult };

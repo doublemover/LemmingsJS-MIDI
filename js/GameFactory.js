@@ -1,21 +1,31 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { ConfigReader } from './ConfigReader.js';
+import { FileProvider } from './FileProvider.js';
+import { Game } from './Game.js';
+import { GameResources } from './GameResources.js';
+import { getDependency } from './core/dependencies.js';
 
 class GameFactory {
   constructor(rootPath) {
     this.rootPath = rootPath;
-    this.fileProvider = new Lemmings.FileProvider(rootPath);
+    const Provider = getDependency('FileProvider', FileProvider);
+    this.fileProvider = new Provider(rootPath);
     let configFileReader = this.fileProvider.loadString('config.json');
-    this.configReader = new Lemmings.ConfigReader(configFileReader);
+    const Reader = getDependency('ConfigReader', ConfigReader);
+    this.configReader = new Reader(configFileReader);
   }
   /** return a game object to control/run the game */
   getGame(gameType, gameResources = null) {
     return new Promise((resolve, reject) => {
       if (gameResources) {
-        resolve(new Lemmings.Game(gameResources));
+        const GameCtor = getDependency('Game', Game);
+        resolve(new GameCtor(gameResources));
         return;
       }
       this.getGameResources(gameType)
-        .then((res) => resolve(new Lemmings.Game(res)))
+        .then((res) => {
+          const GameCtor = getDependency('Game', Game);
+          resolve(new GameCtor(res));
+        })
         .catch(reject);
     });
   }
@@ -31,19 +41,20 @@ class GameFactory {
           reject();
           return;
         }
-        resolve(new Lemmings.GameResources(this.fileProvider, config));
+        const Resources = getDependency('GameResources', GameResources);
+        resolve(new Resources(this.fileProvider, config));
       });
     });
   }
 
   /** create and load a game from a provided config */
   async createFromConfig(config, groupIndex = 0, levelIndex = 0) {
-    const res = new Lemmings.GameResources(this.fileProvider, config);
-    const game = new Lemmings.Game(res);
+    const Resources = getDependency('GameResources', GameResources);
+    const GameCtor = getDependency('Game', Game);
+    const res = new Resources(this.fileProvider, config);
+    const game = new GameCtor(res);
     await game.loadLevel(groupIndex, levelIndex);
     return game;
   }
 }
-Lemmings.GameFactory = GameFactory;
-
 export { GameFactory };

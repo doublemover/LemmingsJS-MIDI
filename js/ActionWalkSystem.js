@@ -1,9 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { Lemming } from './Lemming.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionWalkSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.WALKING, actionName: 'walk' });
+    super({ sprites, spriteType: SpriteTypes.WALKING, actionName: 'walk' });
   }
   triggerLemAction(lem) {
     return false;
@@ -19,33 +21,31 @@ class ActionWalkSystem extends ActionBaseSystem {
       // collision with obstacle
       lem.x = prevX; // revert movement into wall
       if (lem.canClimb) {
-        return Lemmings.LemmingStateType.CLIMBING;
+        return LemmingStateType.CLIMBING;
       } else {
         lem.lookRight = !lem.lookRight;
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
+        return LemmingStateType.NO_STATE_TYPE;
       }
     } else if (upDelta > 0) {
       lem.y -= upDelta - 1;
       if (upDelta > 3) {
         lem.state = 0;
-        return Lemmings.LemmingStateType.JUMPING;
+        return LemmingStateType.JUMPING;
       } else {
-        if (lem.y < Lemmings.Lemming.LEM_MIN_Y) {
-          lem.y = Lemmings.Lemming.LEM_MIN_Y;
+        if (lem.y < Lemming.LEM_MIN_Y) {
+          lem.y = Lemming.LEM_MIN_Y;
         }
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
+        return LemmingStateType.NO_STATE_TYPE;
       }
     } else {
       let downDelta = groundMask.getColumnGapDepth(lem.x, lem.y + 1, 3);
       lem.y += downDelta;
       if (downDelta == 4) {
-        return Lemmings.LemmingStateType.FALLING;
+        return LemmingStateType.FALLING;
       } else {
-        return Lemmings.LemmingStateType.NO_STATE_TYPE;
+        return LemmingStateType.NO_STATE_TYPE;
       }
     }
   }
 }
-Lemmings.ActionWalkSystem = ActionWalkSystem;
-
 export { ActionWalkSystem };

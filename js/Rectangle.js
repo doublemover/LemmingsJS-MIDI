@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class Rectangle {
   constructor(x1 = 0, y1 = 0, x2 = 0, y2 = 0) {
     /** X position in the container */
@@ -16,6 +14,5 @@ class Rectangle {
     this.y2 = y2;
   }
 }
-Lemmings.Rectangle = Rectangle;
 
 export { Rectangle };

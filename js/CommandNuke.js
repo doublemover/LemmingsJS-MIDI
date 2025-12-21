@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class CommandNuke {
   constructor() {}
 
@@ -17,6 +15,4 @@ class CommandNuke {
   save() { return []; }
   getCommandKey() { return 'n'; }
 }
-
-Lemmings.CommandNuke = CommandNuke;
 export { CommandNuke };

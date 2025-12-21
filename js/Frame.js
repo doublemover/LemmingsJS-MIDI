@@ -1,7 +1,7 @@
 // ------------------------------------------------------------
 //  Frame.js
 // ------------------------------------------------------------
-import { Lemmings } from './LemmingsNamespace.js';
+import { ColorPalette } from './ColorPalette.js';
 
 /**
  * RGBA frame buffer + 1‑bit occupancy mask.
@@ -48,14 +48,14 @@ class Frame {
 
   /** Fills entire frame black (mask = 0). */
   clear () {
-    this.data.fill(Lemmings.ColorPalette.black);
+    this.data.fill(ColorPalette.black);
     this.mask.fill(0);
     this.#invalidateSpanCache();
   }
 
   /** Fills entire frame with an RGB colour (mask = 1). */
   fill (r, g, b) {
-    this.data.fill(Lemmings.ColorPalette.colorFromRGB(r, g, b));
+    this.data.fill(ColorPalette.colorFromRGB(r, g, b));
     this.mask.fill(1);
     this.#invalidateSpanCache();
   }
@@ -142,7 +142,7 @@ class Frame {
   clearPixel (x, y) {
     if ((x >>> 0) >= this.width || (y >>> 0) >= this.height) return;
     const idx = (y * this.width + x) >>> 0;
-    this.data[idx] = Lemmings.ColorPalette.black;
+    this.data[idx] = ColorPalette.black;
     this.mask[idx] = 0;
     this.#invalidateSpanCache();
   }
@@ -191,5 +191,4 @@ class Frame {
     }
   }
 }
-Lemmings.Frame = Frame;
 export { Frame };

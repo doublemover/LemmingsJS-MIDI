@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class LevelElement {
   constructor() {
     this.x = 0;
@@ -8,6 +6,5 @@ class LevelElement {
     this.frameIndex = 0;
   }
 }
-Lemmings.LevelElement = LevelElement;
 
 export { LevelElement };

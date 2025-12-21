@@ -1,7 +1,8 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './ObjectImageInfo.js';
-import './TerrainImageInfo.js';
+import { BaseLogger } from './LogHandler.js';
+import { ColorPalette } from './ColorPalette.js';
+import { ObjectImageInfo } from './ObjectImageInfo.js';
+import { PaletteImage } from './PaletteImage.js';
+import { TerrainImageInfo } from './TerrainImageInfo.js';
 let steelSprites = null;
 
 async function loadSteelSprites() {
@@ -23,8 +24,9 @@ async function loadSteelSprites() {
   return steelSprites;
 }
 
-Lemmings.loadSteelSprites = loadSteelSprites;
-Lemmings.resetSteelSprites = () => { steelSprites = null; };
+function resetSteelSprites() {
+  steelSprites = null;
+}
 
 const OBJECT_COUNT          = 16;
 const TERRAIN_COUNT         = 64;
@@ -32,11 +34,11 @@ const BYTE_SIZE_OF_OBJECTS  = 28 * OBJECT_COUNT;
 const BYTE_SIZE_OF_TERRAIN  = 8  * TERRAIN_COUNT;
 const TRANSPARENT = 128;
 
-class GroundReader extends Lemmings.BaseLogger {
+class GroundReader extends BaseLogger {
   /**
-   * @param {Lemmings.FileReader} groundFile  – GROUNDxO.DAT (1056 bytes)
-   * @param {Lemmings.FileReader} vgaTerrain  – slice of VGAGx.DAT (terrain)
-   * @param {Lemmings.FileReader} vgaObject   – slice of VGAGx.DAT (objects)
+   * @param {BinaryReader} groundFile  - GROUNDxO.DAT (1056 bytes)
+   * @param {BinaryReader} vgaTerrain  - slice of VGAGx.DAT (terrain)
+   * @param {BinaryReader} vgaObject   - slice of VGAGx.DAT (objects)
    */
   constructor (groundFile, vgaTerrain, vgaObject) {
     super();
@@ -52,8 +54,8 @@ class GroundReader extends Lemmings.BaseLogger {
     this.imgObjects    = new Array(OBJECT_COUNT);
     this.imgTerrain     = new Array(TERRAIN_COUNT);
 
-    this.groundPalette = new Lemmings.ColorPalette();
-    this.colorPalette  = new Lemmings.ColorPalette();
+    this.groundPalette = new ColorPalette();
+    this.colorPalette  = new ColorPalette();
 
     // Palette offset is the last block in the file – compute once.
     const paletteOffset = BYTE_SIZE_OF_OBJECTS + BYTE_SIZE_OF_TERRAIN;
@@ -84,7 +86,7 @@ class GroundReader extends Lemmings.BaseLogger {
       let filePos = img.imageLoc;
 
       for (let f = 0; f < img.frameCount; ++f) {
-        const pimg = new Lemmings.PaletteImage(img.width, img.height);
+        const pimg = new PaletteImage(img.width, img.height);
         pimg.processImage(vga, bitsPerPixel, filePos);
         pimg.processTransparentData(vga, filePos + img.maskLoc);
 
@@ -134,7 +136,7 @@ class GroundReader extends Lemmings.BaseLogger {
 
     //console.log("obj count: " + OBJECT_COUNT)
     for (let i = 0; i < OBJECT_COUNT; ++i) {
-      const img      = new Lemmings.ObjectImageInfo();
+      const img      = new ObjectImageInfo();
       const flags    = fr.readWordBE();
 
       // The following property assignments are grouped to keep the hidden
@@ -178,7 +180,7 @@ class GroundReader extends Lemmings.BaseLogger {
     fr.setOffset(offset);
 
     for (let i = 0; i < TERRAIN_COUNT; ++i) {
-      const img   = new Lemmings.TerrainImageInfo();
+      const img   = new TerrainImageInfo();
       img.width   = fr.readByte();
       img.height  = fr.readByte();
       img.imageLoc = fr.readWordBE();
@@ -234,5 +236,4 @@ class GroundReader extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.GroundReader = GroundReader;
-export { GroundReader };
+export { GroundReader, loadSteelSprites, resetSteelSprites };

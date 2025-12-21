@@ -1,10 +1,18 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { FileContainer } from './FileContainer.js';
+import { GroundReader, loadSteelSprites } from './GroundReader.js';
+import { GroundRenderer } from './GroundRenderer.js';
+import { Level } from './Level.js';
+import { LevelIndexResolve } from './LevelIndexResolve.js';
+import { LevelReader } from './LevelReader.js';
+import { OddTableReader } from './OddTableReader.js';
+import { SolidLayer } from './SolidLayer.js';
+import { VGASpecReader } from './VGASpecReader.js';
 
 class LevelLoader {
   constructor(fileProvider, config) {
     this.fileProvider = fileProvider;
     this.config = config;
-    this.levelIndexResolve = new Lemmings.LevelIndexResolve(config);
+    this.levelIndexResolve = new LevelIndexResolve(config);
   }
 
   async getLevel (levelMode, levelIndex) {
@@ -34,11 +42,11 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     // 2 · Parse header and build Level shell                                  //
     // ----------------------------------------------------------------------- //
-    const levelsContainer = new Lemmings.FileContainer(levelDat);
-    levelReader           = new Lemmings.LevelReader(
+    const levelsContainer = new FileContainer(levelDat);
+    levelReader           = new LevelReader(
       levelsContainer.getPart(levelInfo.partIndex));
 
-    level                      = new Lemmings.Level(
+    level                      = new Level(
       levelReader.levelWidth,
       levelReader.levelHeight);
     level.gameType             = this.config.gametype;
@@ -50,7 +58,7 @@ class LevelLoader {
 
     let levelProperties        = levelReader.levelProperties;
     if (useOddTable && oddBuf) {
-      const oddTable           = new Lemmings.OddTableReader(oddBuf);
+      const oddTable           = new OddTableReader(oddBuf);
       levelProperties          = oddTable.getLevelProperties(levelInfo.levelNumber);
     }
 
@@ -64,7 +72,7 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     // 3 · Fetch graphics set(s) in parallel                                   //
     // ----------------------------------------------------------------------- //
-    await Lemmings.loadSteelSprites();
+    await loadSteelSprites();
     const vgagrFile    = this.fileProvider.loadBinary(
       this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
     const groundFile   = this.fileProvider.loadBinary(
@@ -77,15 +85,15 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     // 4 · Decode terrain / objects and render background                      //
     // ----------------------------------------------------------------------- //
-    const vgaContainer = new Lemmings.FileContainer(vgagrBuf);
-    const groundReader = new Lemmings.GroundReader(
+    const vgaContainer = new FileContainer(vgagrBuf);
+    const groundReader = new GroundReader(
       groundBuf,
       vgaContainer.getPart(0),
       vgaContainer.getPart(1));
 
-    const render = new Lemmings.GroundRenderer();
+    const render = new GroundRenderer();
     if (vgaspecBuf) {
-      const spec = new Lemmings.VGASpecReader(
+      const spec = new VGASpecReader(
         vgaspecBuf, level.width, level.height);
       render.createVgaspecMap(levelReader, spec);
     } else {
@@ -97,7 +105,7 @@ class LevelLoader {
     // ----------------------------------------------------------------------- //
     level.setGroundImage(render.img.getData());
     level.setGroundMaskLayer(
-      new Lemmings.SolidLayer(level.width, level.height, render.img.mask));
+      new SolidLayer(level.width, level.height, render.img.mask));
 
     level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
     level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
@@ -109,5 +117,4 @@ class LevelLoader {
   }
 }
 
-Lemmings.LevelLoader = LevelLoader;
 export { LevelLoader };

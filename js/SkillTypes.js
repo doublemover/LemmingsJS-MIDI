@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 export const SkillTypes = Object.freeze({
   UNKNOWN:0,
   CLIMBER:1, 
@@ -11,5 +9,3 @@ export const SkillTypes = Object.freeze({
   MINER:7, 
   DIGGER:8
 });
-
-Lemmings.SkillTypes = SkillTypes;

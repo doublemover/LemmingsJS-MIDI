@@ -1,8 +1,8 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { BaseLogger } from './LogHandler.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
-class Lemming extends Lemmings.BaseLogger {
+class Lemming extends BaseLogger {
   constructor(x = 0, y = 0, id) {
     super();
     this.lookRight = true;
@@ -84,19 +84,19 @@ class Lemming extends Lemmings.BaseLogger {
       if (lemmings?.game?.lemmingManager?.miniMap) {
         lemmings.game.lemmingManager.miniMap.addDeath(lemX, newY);
       }
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
     // run main action
     if (!this.action) {
       if (lemmings?.game?.lemmingManager?.miniMap) {
         lemmings.game.lemmingManager.miniMap.addDeath(lemX, this.y);
       }
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
     // run secondary action
     if (this.countdownAction) {
       let newAction = this.countdownAction.process(level, this);
-      if (newAction != Lemmings.LemmingStateType.NO_STATE_TYPE) {
+      if (newAction != LemmingStateType.NO_STATE_TYPE) {
         return newAction;
       }
     }
@@ -106,7 +106,7 @@ class Lemming extends Lemmings.BaseLogger {
     }
     // prevent falling through function without returning a type
     this.log.log('lemming state falling through, fix it');
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 
   disable() {
@@ -127,5 +127,4 @@ class Lemming extends Lemmings.BaseLogger {
 
 Lemming.LEM_MIN_Y = -5;
 Lemming.LEM_MAX_FALLING = 59;
-Lemmings.Lemming = Lemming;
 export { Lemming };

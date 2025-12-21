@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 /**
  * Default glitch mechanic flags for each level pack.
  * These values can be overridden via config.json.
@@ -30,7 +28,4 @@ export const packMechanics = {
     bomberAssist: true
   }
 };
-
-Lemmings.packMechanics = packMechanics;
-
 export default packMechanics;

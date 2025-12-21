@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class Range {
   constructor() {
     this.x = 0;
@@ -9,6 +7,5 @@ class Range {
     this.direction = 0; // 1 is right, 0 is left
   }
 }
-Lemmings.Range = Range;
 
 export { Range };

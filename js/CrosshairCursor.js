@@ -1,11 +1,12 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { ColorPalette } from './ColorPalette.js';
+import { Frame } from './Frame.js';
 
 function createCrosshairFrame(size = 24) {
-  const frame = new Lemmings.Frame(size, size);
+  const frame = new Frame(size, size);
   frame.data.fill(0);        // transparent RGBA
   const center = Math.floor(size / 2);
-  const cw = Lemmings.ColorPalette.colorFromRGB(144, 238, 144); // light green
-  const ccw = Lemmings.ColorPalette.colorFromRGB(255, 255, 255); // white
+  const cw = ColorPalette.colorFromRGB(144, 238, 144); // light green
+  const ccw = ColorPalette.colorFromRGB(255, 255, 255); // white
 
   for (let y = 0; y < size; y++) {
     frame.setPixel(center, y, cw);
@@ -19,5 +20,4 @@ function createCrosshairFrame(size = 24) {
 
   return frame;
 }
-Lemmings.createCrosshairFrame = createCrosshairFrame;
 export { createCrosshairFrame };

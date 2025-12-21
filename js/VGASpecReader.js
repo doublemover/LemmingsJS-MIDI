@@ -1,24 +1,28 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
+import { ColorPalette } from './ColorPalette.js';
+import { FileContainer } from './FileContainer.js';
+import { Frame } from './Frame.js';
+import { PaletteImage } from './PaletteImage.js';
 
 /**
  * Decodes a VGASPEC-format ground file, including color palette and image buffer.
  * @class
  */
-class VGASpecReader extends Lemmings.BaseLogger {
+class VGASpecReader extends BaseLogger {
   /** @type {number} */
   #width;
   /** @type {number} */
   #height;
-  /** @type {Lemmings.ColorPalette} */
+  /** @type {ColorPalette} */
   #groundPalette;
-  /** @type {Lemmings.Frame} */
+  /** @type {Frame} */
   #img;
-  /** @type {Lemmings.Logger} */
+  /** @type {import('./LogHandler.js').Logger} */
   #log;
 
   /**
-     * @param {Lemmings.BinaryReader} vgaspecFile - File with VGASPEC-encoded level
+     * @param {BinaryReader} vgaspecFile - File with VGASPEC-encoded level
      * @param {number} width
      * @param {number} height
      */
@@ -27,8 +31,8 @@ class VGASpecReader extends Lemmings.BaseLogger {
     this.#log = this.log;
     this.#width = width | 0;
     this.#height = height | 0;
-    this.#groundPalette = new Lemmings.ColorPalette();
-    this.#img = new Lemmings.Frame(this.#width, this.#height);
+    this.#groundPalette = new ColorPalette();
+    this.#img = new Frame(this.#width, this.#height);
     this.#read(vgaspecFile);
   }
 
@@ -36,19 +40,19 @@ class VGASpecReader extends Lemmings.BaseLogger {
   get width() { return this.#width; }
   /** @returns {number} */
   get height() { return this.#height; }
-  /** @returns {Lemmings.ColorPalette} */
+  /** @returns {ColorPalette} */
   get groundPalette() { return this.#groundPalette; }
-  /** @returns {Lemmings.Frame} */
+  /** @returns {Frame} */
   get img() { return this.#img; }
 
   /**
      * Read the VGASPEC file, palette, and image.
      * @private
-     * @param {Lemmings.BinaryReader} fr
+     * @param {BinaryReader} fr
      */
   #read(fr) {
     fr.setOffset(0);
-    const fc = new Lemmings.FileContainer(fr);
+    const fc = new FileContainer(fr);
     if (fc.count() !== 1) {
       this.#log.log('No FileContainer found!');
       return;
@@ -62,7 +66,7 @@ class VGASpecReader extends Lemmings.BaseLogger {
   /**
      * Reads the main image using a RLE-like format.
      * @private
-     * @param {Lemmings.BinaryReader} fr
+     * @param {BinaryReader} fr
      * @param {number} offset
      */
   #readImage(fr, offset) {
@@ -77,8 +81,8 @@ class VGASpecReader extends Lemmings.BaseLogger {
       const curByte = fr.readByte();
       if (curByte === 128) {
         // End of scanline chunk: decode and draw
-        const fileReader = new Lemmings.BinaryReader(bitBuffer);
-        const bitImage = new Lemmings.PaletteImage(width, chunkHeight);
+        const fileReader = new BinaryReader(bitBuffer);
+        const bitImage = new PaletteImage(width, chunkHeight);
         bitImage.processImage(fileReader, 3, 0);
         bitImage.processTransparentByColorIndex(0);
         this.#img.drawPaletteImage(bitImage.getImageBuffer(), width, chunkHeight, this.#groundPalette, groundImagePositionX, startScanLine);
@@ -107,7 +111,7 @@ class VGASpecReader extends Lemmings.BaseLogger {
   /**
      * Load the palettes from the file part.
      * @private
-     * @param {Lemmings.BinaryReader} fr
+     * @param {BinaryReader} fr
      * @param {number} offset
      */
   #readPalettes(fr, offset) {
@@ -124,5 +128,4 @@ class VGASpecReader extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.VGASpecReader = VGASpecReader;
 export { VGASpecReader };

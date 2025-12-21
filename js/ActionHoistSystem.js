@@ -1,9 +1,10 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionHoistSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.POSTCLIMBING, actionName: 'hoist' });
+    super({ sprites, spriteType: SpriteTypes.POSTCLIMBING, actionName: 'hoist' });
   }
 
   triggerLemAction(lem) {
@@ -23,19 +24,17 @@ class ActionHoistSystem extends ActionBaseSystem {
 
     if (lem.frameIndex <= 4) {
       lem.y -= 2;
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
 
     if (lem.frameIndex > 4 && lem.frameIndex < 8) {
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
                    
     if (lem.frameIndex >= 8) {
-      return Lemmings.LemmingStateType.WALKING;
+      return LemmingStateType.WALKING;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionHoistSystem = ActionHoistSystem;
 export { ActionHoistSystem };

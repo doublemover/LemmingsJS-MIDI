@@ -1,20 +1,20 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './UnpackFilePart.js';
+import { BaseLogger, withPerformance } from './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
+import { UnpackFilePart } from './UnpackFilePart.js';
 
 /**
  * Represents a file composed of compressed segments/parts (Lemmings resource).
  * Each part can be unpacked into a BinaryReader.
  * @class
  */
-class FileContainer extends Lemmings.BaseLogger {
-  /** @type {Lemmings.UnpackFilePart[]} */
+class FileContainer extends BaseLogger {
+  /** @type {UnpackFilePart[]} */
   #parts;
 
 
   /**
    * Parse the file container's content on construction.
-   * @param {Lemmings.BinaryReader} content - The binary file content.
+   * @param {BinaryReader} content - The binary file content.
    */
   constructor(content) {
     super();
@@ -34,12 +34,12 @@ class FileContainer extends Lemmings.BaseLogger {
    * Return a new BinaryReader for the requested file part (unpacked).
    * If the index is out of range, returns an empty BinaryReader.
    * @param {number} index - Part index.
-   * @returns {Lemmings.BinaryReader}
+   * @returns {BinaryReader}
    */
   getPart(index) {
     if (index < 0 || index >= this.#parts.length) {
       this.log.log(`getPart(${index}) Out of index!`);
-      return new Lemmings.BinaryReader();
+      return new BinaryReader();
     }
     return this.#parts[index].unpack();
   }
@@ -47,10 +47,10 @@ class FileContainer extends Lemmings.BaseLogger {
   /**
    * Read and parse all file parts in this container.
    * Populates the internal parts array.
-   * @param {Lemmings.BinaryReader} fileReader - Input file reader.
+   * @param {BinaryReader} fileReader - Input file reader.
    */
   read(fileReader) {
-    Lemmings.withPerformance(
+    withPerformance(
       'FileContainer.read',
       {
         track: 'FileContainer',
@@ -67,7 +67,7 @@ class FileContainer extends Lemmings.BaseLogger {
           fileReader.setOffset(pos);
 
           // New part instance
-          let part = new Lemmings.UnpackFilePart(fileReader);
+          let part = new UnpackFilePart(fileReader);
           part.offset = pos + HEADER_SIZE;
           // Header parsing
           part.initialBufferLen = fileReader.readByte();
@@ -91,7 +91,7 @@ class FileContainer extends Lemmings.BaseLogger {
       })();
   }
 
-  /** @returns {Lemmings.UnpackFilePart[]} Array of all file parts (read-only view). */
+  /** @returns {UnpackFilePart[]} Array of all file parts (read-only view). */
   get parts() {
     return this.#parts.slice();
   }
@@ -99,6 +99,4 @@ class FileContainer extends Lemmings.BaseLogger {
 
 // Prevent extension if not needed.
 Object.freeze(FileContainer);
-
-Lemmings.FileContainer = FileContainer;
 export { FileContainer };
