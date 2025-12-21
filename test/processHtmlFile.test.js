@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
-import { processHtmlFile } from '../tools/processHtmlFile.js';
+import { processHtmlFile } from '../scripts/processHtmlFile.js';
 
 describe('processHtmlFile options', function () {
   it('rewrites relative asset links to file URLs', function () {

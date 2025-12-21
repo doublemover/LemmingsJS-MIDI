@@ -2,14 +2,15 @@
   "name": "lemmings-js-midi",
   "version": "0.0.2",
   "description": "Lemmings (JavaScript)",
+  "private": true,
   "main": "index.js",
   "directories": {
     "lib": "lib"
   },
   "scripts": {
     "start": "http-server --cors=*",
-    "check-undefined": "node tools/check-undefined.js",
-    "test": "node tools/runTests.js",
+    "check-undefined": "node scripts/check-undefined.js",
+    "test": "node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
@@ -27,11 +28,7 @@
     "pack-levels": "node tools/packLevels.js",
     "format": "eslint . --fix",
     "lint": "eslint .",
-    "depcheck": "depcheck",
-    "index": "node tools/build_index.js",
-    "agent-update-searchmetrics": "node tools/agentUpdateSearchMetrics.js",
-    "agent-update-searchhistory": "node tools/mergeSearchHistory.js",
-    "agent-precommit": "npm run agent-update-searchmetrics && npm run agent-update-searchhistory && git add .searchHistory .repoMetrics/metrics.json"
+    "depcheck": "depcheck"
   },
   "repository": {
     "type": "git",
@@ -56,23 +53,12 @@
     "depcheck": "^1.4.7",
     "eslint": "^9.28.0",
     "http-server": "^14.1.1",
-    "minimist": "^1.2.8",
     "mocha": "^11.5.0",
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
-    "seedrandom": "^3.0.5",
-    "snowball-stemmers": "^0.6.0",
-    "strip-comments": "^2.0.1",
     "tar": "^7.4.3"
   },
   "dependencies": {
-    "@xenova/transformers": "^2.17.2",
-    "escomplex": "^2.0.0-alpha",
-    "esprima": "^4.0.1",
-    "js-yaml": "^4.1.0",
-    "minhash": "^0.0.9",
-    "simple-git": "^3.28.0",
-    "varint": "^6.0.0",
-    "yaml": "^2.8.0"
+    "js-yaml": "^4.1.0"
   }
 }

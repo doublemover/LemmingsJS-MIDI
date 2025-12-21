@@ -13,7 +13,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Complete Mocha test suite with GitHub Actions workflows.
 - Bench mode shows a color-coded overlay and recovers speed dynamically.
 - Progressive Web App support via `site.webmanifest` and touch icons.
-- Detailed `.agentInfo` indexes aid navigation.
 - New docs under `docs/` cover CI, testing and sprite export tools.
 
 ### Fixed
@@ -22,13 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
+ 
+### Removed
+- Agent-focused search/index tooling and related metrics tracking.
 
 ## [0.0.3] - 2025-06-08
 ### Added
 - HQX and xBRZ scaling options for smoother graphics.
 - Frame step controls for debug playback.
 - Bench mode records spawn totals, spawns entrances near originals, randomizes direction and shows TPS.
-- Search tools track usage counts, capture no-result queries and support fuzzy matching.
 - Optional custom crosshair cursor.
 
 ### Fixed
@@ -45,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.0.2] - 2025-06-04
 ### Added
-- `.agentInfo/` directory for searchable design notes.
 - Keyboard shortcuts to adjust speed and game functions.
 - Right-click actions for quick release-rate changes and debug toggle.
 - Support for levels with multiple entrances and animated traps.

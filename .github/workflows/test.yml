@@ -14,19 +14,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
-      - name: Sync tools from master
-        run: |
-          git fetch origin master
-          git checkout origin/master -- tools
       - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
-      - run: npm run agent-update-searchmetrics 
-      - run: npm run agent-update-searchhistory
-      - run: git add .
       - run: npm run format
       - run: git diff --exit-code
       - run: npm run check-undefined

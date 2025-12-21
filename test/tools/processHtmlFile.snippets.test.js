@@ -2,11 +2,11 @@ import { expect } from 'chai';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { processHtmlFile } from '../../tools/processHtmlFile.js';
+import { processHtmlFile } from '../../scripts/processHtmlFile.js';
 
 // Tests for snippet extraction and event handler parsing
 
-describe('tools/processHtmlFile snippet extraction', function () {
+describe('scripts/processHtmlFile snippet extraction', function () {
   it('collects inline scripts and handler attributes', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
     const html = `<!DOCTYPE html><html><body>

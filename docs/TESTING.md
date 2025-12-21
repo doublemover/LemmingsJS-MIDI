@@ -10,8 +10,7 @@ npm run test-bench      # performance benchmarks
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 ```
-
-Categories are described in `.agentInfo/notes/test-categories.md`.
+Categories map to the glob patterns defined in `scripts/runTests.js`.
 
 Tests that require significant manual setup or large downloads are documented in
 [`excluded-tests.md`](excluded-tests.md). They are skipped in continuous

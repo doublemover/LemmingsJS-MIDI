@@ -1,7 +1,9 @@
-# Tools
+# Offline Tools
 
-This document describes the Node.js scripts found in the `tools` directory. These utilities help export,
-patch and package game assets.
+This document describes the Node.js scripts used for offline asset work. These
+utilities help export, patch and package game assets. They are meant for local
+development and are not part of the runtime site. Non-asset developer helpers
+live under `scripts/`.
 
 All scripts accept paths to level packs. A pack can be a folder or an archive
 (`.zip`, `.tar`, `.tar.gz`, `.tgz`, or `.rar`). The `NodeFileProvider` class lets
