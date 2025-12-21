@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class CommandLemmingsAction {
   constructor(lemmingId) {
@@ -20,7 +21,21 @@ class CommandLemmingsAction {
     if (!lemmingManager.doLemmingAction(lem, selectedSkill)) {
       return false;
     }
-    return gameSkills.reuseSkill(selectedSkill);
+    const ok = gameSkills.reuseSkill(selectedSkill);
+    if (ok) {
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.SKILL_ASSIGN,
+        SoundEffectIds.SKILL_ASSIGN,
+        {
+          skillType: selectedSkill,
+          lemmingId: lem.id,
+          x: lem.x,
+          y: lem.y
+        }
+      );
+    }
+    return ok;
   }
 
   load(values) {

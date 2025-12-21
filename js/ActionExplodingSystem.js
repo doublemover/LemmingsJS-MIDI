@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionExplodingSystem extends ActionBaseSystem {
 
@@ -33,6 +34,14 @@ class ActionExplodingSystem extends ActionBaseSystem {
 
   process(level, lem) {
     lem.disable();
+    if (lem.frameIndex === 0) {
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_EXPLODE,
+        SoundEffectIds.EXPLOSION,
+        { lemmingId: lem.id, x: lem.x, y: lem.y }
+      );
+    }
     lem.frameIndex++;
     if (lem.frameIndex == 1) {
       this.triggerManager.removeByOwner(lem);

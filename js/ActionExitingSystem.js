@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionExitingSystem extends ActionBaseSystem {
   constructor(sprites, gameVictoryCondition) {
@@ -14,6 +15,16 @@ class ActionExitingSystem extends ActionBaseSystem {
   }
   process(level, lem) {
     lem.disable();
+    if (lem.frameIndex === 0) {
+      const triggerType = lem.lastTriggerType ?? null;
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_EXIT,
+        SoundEffectIds.EXIT,
+        { lemmingId: lem.id, x: lem.x, y: lem.y, triggerType }
+      );
+      lem.lastTriggerType = null;
+    }
     lem.frameIndex++;
     if (lem.frameIndex >= 8) {
       this.gameVictoryCondition.addSurvivor();

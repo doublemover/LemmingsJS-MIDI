@@ -1,14 +1,21 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
         
 class ActionDiggSystem extends ActionBaseSystem {
   constructor(sprites) {
     super({ sprites, spriteType: Lemmings.SpriteTypes.DIGGING, actionName: 'digging' });
   }
   process(level, lem) {
-    if (level.isSteelGround(lem.x, lem.y) || 
-                level.isSteelGround(lem.x, lem.y - 1) || 
+    if (level.isSteelGround(lem.x, lem.y) ||
+                level.isSteelGround(lem.x, lem.y - 1) ||
                 level.isSteelGround(lem.x, lem.y - 2)) {
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.STEEL_HIT,
+        SoundEffectIds.STEEL_HIT,
+        { lemmingId: lem.id, x: lem.x, y: lem.y }
+      );
       return Lemmings.LemmingStateType.SHRUG;
     }
     if (lem.state == 0) {

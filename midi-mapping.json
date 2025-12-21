@@ -1,0 +1,64 @@
+{
+  "enabled": true,
+  "mpe": {
+    "enabled": true,
+    "masterChannel": 1,
+    "memberChannels": [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
+    "pitchBendRange": { "semitones": 24, "cents": 0 },
+    "timbreCc": 74
+  },
+  "scale": {
+    "name": "chromatic-minor",
+    "root": 0,
+    "degrees": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+  },
+  "noteRange": { "min": 36, "max": 84 },
+  "velocityRange": { "min": 20, "max": 110, "default": 80 },
+  "durationTicks": { "default": 6, "min": 2, "max": 24 },
+  "limits": {
+    "windowMs": 1000,
+    "maxEventsPerTick": 32,
+    "hardMaxEventsPerTick": 128,
+    "maxEventsPerSecond": 250,
+    "hardMaxEventsPerSecond": 250,
+    "overloadCooldownMs": 500,
+    "maxActiveNotes": 32,
+    "prioritySfx": [2, 3, 16]
+  },
+  "density": { "windowTicks": 24, "velocityBoost": 0.4, "durationScale": 0.5 },
+  "position": {
+    "xToNote": true,
+    "xNoteRange": { "min": -12, "max": 12 },
+    "yToVelocity": true,
+    "yToTimbre": true,
+    "timbreRange": { "min": 20, "max": 110 },
+    "viewPan": false,
+    "panRange": { "min": -127, "max": 127 },
+    "panDeadZonePct": 0.02,
+    "panOnscreenWeight": 0.8,
+    "panOffscreenWeight": 0.2,
+    "panOffscreenRange": 1
+  },
+  "sfx": {
+    "1": { "name": "skill-select", "note": 60, "durationTicks": 4 },
+    "2": { "name": "entrance-open", "note": 62, "durationTicks": 6 },
+    "3": { "name": "level-start", "note": 48, "durationTicks": 8 },
+    "4": { "name": "skill-assign", "note": 64, "durationTicks": 4 },
+    "5": { "name": "oh-no", "note": 55, "durationTicks": 8 },
+    "6": { "name": "trap-zap", "note": 66, "durationTicks": 6 },
+    "7": { "name": "trap-squish", "note": 68, "durationTicks": 6 },
+    "8": { "name": "splat", "note": 52, "durationTicks": 6 },
+    "9": { "name": "trap-slicer", "note": 70, "durationTicks": 6 },
+    "10": { "name": "steel-hit", "note": 71, "durationTicks": 3 },
+    "11": { "name": "unknown-0b", "note": 73, "durationTicks": 4 },
+    "12": { "name": "explosion", "note": 36, "durationTicks": 10 },
+    "13": { "name": "trap-fire", "note": 58, "durationTicks": 8 },
+    "14": { "name": "trap-ten-ton", "note": 40, "durationTicks": 8 },
+    "15": { "name": "trap-bear", "note": 43, "durationTicks": 8 },
+    "16": { "name": "exit", "note": 76, "durationTicks": 6 },
+    "17": { "name": "drown", "note": 45, "durationTicks": 8 },
+    "18": { "name": "builder-warning", "note": 65, "durationTicks": 4 },
+    "19": { "name": "fell-off", "note": 50, "durationTicks": 6, "disabled": true },
+    "20": { "name": "builder-step", "note": 67, "durationTicks": 4 }
+  }
+}

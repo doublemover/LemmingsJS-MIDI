@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionMineSystem extends ActionBaseSystem {
   constructor(sprites, masks) {
@@ -20,6 +21,12 @@ class ActionMineSystem extends ActionBaseSystem {
       let maskIndex = lem.frameIndex - 1;
       let subMask   = mask.GetMask(maskIndex);
       if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
+        const soundBus = getSoundBus();
+        soundBus?.emitSfx?.(
+          SoundEventTypes.STEEL_HIT,
+          SoundEffectIds.STEEL_HIT,
+          { lemmingId: lem.id, x: lem.x, y: lem.y }
+        );
         return Lemmings.LemmingStateType.SHRUG;
       }
       if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
