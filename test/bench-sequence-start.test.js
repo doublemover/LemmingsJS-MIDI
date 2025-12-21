@@ -1,14 +1,14 @@
 import '../js/level/MapObject.js';
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency, clearDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 import '../js/lemmings/Lemming.js';
 before(function(){
   class StageStub { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} }
   class KeyboardShortcutsStub { constructor(){} dispose(){} }
-  Lemmings.Stage = StageStub;
-  Lemmings.KeyboardShortcuts = KeyboardShortcutsStub;
+  setDependency('Stage', StageStub);
+  setDependency('KeyboardShortcuts', KeyboardShortcutsStub);
   global.window = globalThis.window = { setTimeout, clearTimeout, addEventListener(){}, removeEventListener(){} };
   global.document = globalThis.document = { visibilityState:'visible', hasFocus(){return true;}, createElement(){ return { appendChild(){}, options:[], remove(){} }; }, addEventListener(){}, removeEventListener(){} };
 });
@@ -16,15 +16,15 @@ before(function(){
 after(function(){
   delete global.window;
   delete global.document;
-  delete Lemmings.Stage;
-  delete Lemmings.KeyboardShortcuts;
+  clearDependency('Stage');
+  clearDependency('KeyboardShortcuts');
 });
 
 describe('benchSequenceStart', function() {
   it('computes extras and starts bench with first count', async function() {
     const { GameView } = await import('../js/game/GameView.js');
-    Lemmings.Stage = class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} };
-    Lemmings.KeyboardShortcuts = class { constructor(){} dispose(){} };
+    setDependency('Stage', class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} });
+    setDependency('KeyboardShortcuts', class { constructor(){} dispose(){} });
     const view = new GameView();
     let called = 0;
     view.benchMeasureExtras = async () => 4;

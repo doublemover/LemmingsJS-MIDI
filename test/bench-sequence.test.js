@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { GameTimer } from '../js/game/GameTimer.js';
 import fakeTimers from '@sinonjs/fake-timers';
@@ -96,13 +96,13 @@ describe('bench sequence', function() {
     origStage = Lemmings.Stage;
     origKeyboard = Lemmings.KeyboardShortcuts;
     origFactory = Lemmings.GameFactory;
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
-    Lemmings.TriggerTypes = { DROWN: 0, FRYING: 1, KILL: 2, TRAP: 3 };
-    Lemmings.Lemming = { LEM_MAX_FALLING: 59 };
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
+    setDependency('TriggerTypes', { DROWN: 0, FRYING: 1, KILL: 2, TRAP: 3 });
+    setDependency('Lemming', { LEM_MAX_FALLING: 59 });
     global.lemmings = { game: { showDebug: false } };
   });
   beforeEach(function(){ clock = fakeTimers.withGlobal(globalThis).install({ now:0 }); });
@@ -111,9 +111,9 @@ describe('bench sequence', function() {
     delete global.window;
     delete global.document;
     delete global.history;
-    Lemmings.Stage = origStage;
-    Lemmings.KeyboardShortcuts = origKeyboard;
-    Lemmings.GameFactory = origFactory;
+    setDependency('Stage', origStage);
+    setDependency('KeyboardShortcuts', origKeyboard);
+    setDependency('GameFactory', origFactory);
   });
 
   it('pauses and logs before restarting', async function() {

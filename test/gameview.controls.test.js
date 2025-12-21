@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
@@ -28,18 +28,18 @@ describe('GameView game controls', function() {
     origStage = Lemmings.Stage;
     origKeyboard = Lemmings.KeyboardShortcuts;
     origFactory = Lemmings.GameFactory;
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
   after(function() {
     delete global.window;
-    Lemmings.Stage = origStage;
-    Lemmings.KeyboardShortcuts = origKeyboard;
-    Lemmings.GameFactory = origFactory;
+    setDependency('Stage', origStage);
+    setDependency('KeyboardShortcuts', origKeyboard);
+    setDependency('GameFactory', origFactory);
   });
 
   it('relays cheat, suspend and continue to the game', async function() {

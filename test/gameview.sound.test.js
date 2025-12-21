@@ -1,4 +1,4 @@
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 
 class GameFactoryStub { constructor() {} }
 
@@ -20,18 +20,18 @@ describe('GameView audio methods', function() {
   beforeEach(function() {
     global.window = createWindow();
     global.history = { replaceState() {} };
-    Lemmings.GameFactory = GameFactoryStub;
+    setDependency('GameFactory', GameFactoryStub);
     this.origKeyboard = Lemmings.KeyboardShortcuts;
     this.origGameTypes = Lemmings.GameTypes;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameTypes = { toString: () => '' };
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameTypes', { toString: () => '' });
   });
 
   afterEach(function() {
     delete global.window;
     delete global.history;
-    Lemmings.KeyboardShortcuts = this.origKeyboard;
-    Lemmings.GameTypes = this.origGameTypes;
+    setDependency('KeyboardShortcuts', this.origKeyboard);
+    setDependency('GameTypes', this.origGameTypes);
   });
 
   it('playMusic and sound stubs execute without error', async function() {

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/GameStateTypes.js';
 import { Game } from '../js/game/Game.js';
@@ -24,16 +24,16 @@ describe('Game', function() {
       GameResult: Lemmings.GameResult
     };
 
-    Lemmings.GameResources = class {
+    setDependency('GameResources', class {
       async getLevel(g, i) {
         return { timeLimit: 5, colorPalette: 0, triggers: [], objects: [], screenPositionX: 0 };
       }
       async getMasks() { return []; }
       async getLemmingsSprite() { return {}; }
       async getSkillPanelSprite() { return {}; }
-    };
+    });
 
-    Lemmings.GameTimer = class {
+    setDependency('GameTimer', class {
       constructor(level) {
         this.level = level;
         this.onGameTick = new Lemmings.EventHandler();
@@ -45,17 +45,17 @@ describe('Game', function() {
       trigger() { this.onGameTick.trigger(); }
       getGameLeftTime() { return 60; }
       getGameTicks() { return 0; }
-    };
+    });
 
-    Lemmings.CommandManager = class {
+    setDependency('CommandManager', class {
       constructor(game, timer) { this.game = game; this.timer = timer; this.disposed = false; }
       dispose() { this.disposed = true; }
       serialize() { return ''; }
-    };
+    });
 
-    Lemmings.GameSkills = class { constructor(level) { this.level = level; } };
+    setDependency('GameSkills', class { constructor(level) { this.level = level; } });
 
-    Lemmings.GameVictoryCondition = class {
+    setDependency('GameVictoryCondition', class {
       constructor(level) { this.level = level; this.finalizeCalled = 0; }
       getSurvivorsCount() { return 1; }
       getNeedCount() { return 1; }
@@ -63,43 +63,43 @@ describe('Game', function() {
       getOutCount() { return 0; }
       getSurvivorPercentage() { return 100; }
       doFinalize() { this.finalizeCalled++; }
-    };
+    });
 
-    Lemmings.TriggerManager = class {
+    setDependency('TriggerManager', class {
       constructor(timer) { this.timer = timer; this.disposed = false; this.added = null; }
       addRange(arr) { this.added = arr; }
       dispose() { this.disposed = true; }
-    };
+    });
 
-    Lemmings.LemmingManager = class {
+    setDependency('LemmingManager', class {
       constructor() { this.tickCalled = 0; this.disposed = false; }
       tick() { this.tickCalled++; }
       dispose() { this.disposed = true; }
-    };
+    });
 
-    Lemmings.ObjectManager = class {
+    setDependency('ObjectManager', class {
       constructor() { this.disposed = false; this.added = null; }
       addRange(arr) { this.added = arr; }
       dispose() { this.disposed = true; }
-    };
+    });
 
-    Lemmings.GameGui = class {
+    setDependency('GameGui', class {
       constructor() { this.renderCalled = 0; this.setDisplay = null; this.disposed = false; }
       setGuiDisplay(d) { this.setDisplay = d; }
       render() { this.renderCalled++; }
       dispose() { this.disposed = true; }
-    };
+    });
 
-    Lemmings.GameDisplay = class {
+    setDependency('GameDisplay', class {
       constructor() { this.renderCalled = 0; this.renderDebugCalled = 0; this.setDisplay = null; this.disposed = false; }
       setGuiDisplay(d) { this.setDisplay = d; }
       render() { this.renderCalled++; }
       renderDebug() { this.renderDebugCalled++; }
       dispose() { this.disposed = true; }
-    };
+    });
 
-    Lemmings.ParticleTable = class { constructor() {} };
-    Lemmings.GameResult = class { constructor(game) { this.game = game; } };
+    setDependency('ParticleTable', class { constructor() {} });
+    setDependency('GameResult', class { constructor(game) { this.game = game; } });
   });
 
   afterEach(function() {

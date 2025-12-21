@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/level/Level.js';
 import '../js/level/TriggerTypes.js';
@@ -19,10 +19,10 @@ describe('bench entrance placement', function() {
   before(function() {
     global.window = { location: { search: '' }, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {}, requestAnimationFrame() {}, cancelAnimationFrame() {} };
     global.document = { visibilityState: 'visible', hasFocus() { return true; }, createElement() { return { appendChild() {}, options: [], remove() {} }; }, addEventListener() {}, removeEventListener() {} };
-    Lemmings.GameFactory = GameFactoryStub;
-    Lemmings.Stage = StageStub;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsStub;
-    Lemmings.GameTypes = { toString: () => '' };
+    setDependency('GameFactory', GameFactoryStub);
+    setDependency('Stage', StageStub);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsStub);
+    setDependency('GameTypes', { toString: () => '' });
   });
 
   after(function() {

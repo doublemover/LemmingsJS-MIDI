@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 class KeyboardShortcutsStub { constructor() {} dispose() {} }
@@ -18,10 +18,10 @@ function createWindowStub() {
 describe('GameView.enableDebug', function() {
   before(function() {
     global.window = createWindowStub();
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsStub;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('KeyboardShortcuts', KeyboardShortcutsStub);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
   after(function() {

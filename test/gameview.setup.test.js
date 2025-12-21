@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 function createDocumentStub() {
@@ -24,8 +24,8 @@ describe('GameView setup', function() {
     global.document = createDocumentStub();
     global.window = { location:{ search:'' }, setTimeout, clearTimeout, addEventListener(){}, removeEventListener(){} };
     global.history = { replaceState() {} };
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
@@ -45,7 +45,7 @@ describe('GameView setup', function() {
       async getConfig(type) { return configs.find(c => c.gametype === type); }
       async getGameResources(type) { return { getLevelGroups: () => ['g1', 'g2'] }; }
     }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
 
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
@@ -78,7 +78,7 @@ describe('GameView setup', function() {
       async getConfig(type) { return configs.find(c => c.gametype === type); }
       async getGameResources(type) { return { getLevelGroups: () => ['g1', 'g2'] }; }
     }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
 
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();

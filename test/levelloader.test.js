@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/LemmingsBootstrap.js';
 
 // Silence debug output
@@ -22,7 +22,7 @@ describe('LevelLoader', function () {
 
     // avoid fetch inside loadSteelSprites
     const origLoad = Lemmings.loadSteelSprites;
-    Lemmings.loadSteelSprites = async () => [];
+    setDependency('loadSteelSprites', async () => []);
 
     const config = {
       path: 'lemmings',
@@ -33,7 +33,7 @@ describe('LevelLoader', function () {
 
     const loader = new Lemmings.LevelLoader(new Provider(), config);
     const level = await loader.getLevel(0, 0);
-    Lemmings.loadSteelSprites = origLoad;
+    setDependency('loadSteelSprites', origLoad);
 
     expect(level).to.be.instanceOf(Lemmings.Level);
     expect(level.objects.length).to.equal(lr.objects.length);

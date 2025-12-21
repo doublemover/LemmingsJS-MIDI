@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
@@ -78,7 +78,7 @@ describe('VGASpecReader', function() {
       debug() {}
     }
     const orig = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
     const prev = globalThis.lemmings.game.showDebug;
     globalThis.lemmings.game.showDebug = true;
 
@@ -86,7 +86,7 @@ describe('VGASpecReader', function() {
     const reader = new VGASpecReader(br, 320, 40);
 
     globalThis.lemmings.game.showDebug = prev;
-    Lemmings.LogHandler = orig;
+    setDependency('LogHandler', orig);
 
     expect(reader.log.logged.some(m => m.includes('No FileContainer found!')))
       .to.be.true;
@@ -134,12 +134,12 @@ describe('VGASpecReader', function() {
     }
     const container = buildContainer(part);
     const orig = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
     const prev = globalThis.lemmings.game.showDebug;
     globalThis.lemmings.game.showDebug = true;
     const reader = new VGASpecReader(new BinaryReader(container), 320, 40);
     globalThis.lemmings.game.showDebug = prev;
-    Lemmings.LogHandler = orig;
+    setDependency('LogHandler', orig);
     expect(reader.log.logged.some(m => m.includes('unexpected end of file')))
       .to.be.true;
   });

@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/util/LogHandler.js';
 
@@ -40,7 +40,7 @@ describe('BinaryReader', function () {
     }
 
     const origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
     const bytes = Uint8Array.from([0x00, 0x01]);
     const reader = new BinaryReader(bytes, 0, bytes.length, 'test.bin');
 
@@ -53,7 +53,7 @@ describe('BinaryReader', function () {
     globalThis.lemmings.game.showDebug = prev;
 
     assert.ok(reader.log.logged.filter(m => m.includes('read out of data')).length >= 2);
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
   });
 
   it('falls back to FileReader when arrayBuffer is unavailable', async function () {

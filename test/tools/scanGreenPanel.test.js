@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 import { PNG } from 'pngjs';
-import { Lemmings } from '../helpers/lemmings.js';
+import { Lemmings, setDependency } from '../helpers/lemmings.js';
 import '../../js/LemmingsBootstrap.js';
 import { NodeFileProvider } from '../../tools/NodeFileProvider.js';
 
@@ -72,8 +72,8 @@ describe('tools/scanGreenPanel.js', function () {
   });
 
   after(function () {
-    Lemmings.GameResources = origGR;
-    Lemmings.SkillPanelSprites = origSP;
+    setDependency('GameResources', origGR);
+    setDependency('SkillPanelSprites', origSP);
     fs.unlinkSync(tempScript);
   });
 
@@ -95,8 +95,8 @@ describe('tools/scanGreenPanel.js', function () {
     expect(gx).to.not.equal(-1);
     class PanelSprites { getPanelSprite() { return frame; } }
     class GameResources { async getSkillPanelSprite() { return new PanelSprites(); } }
-    Lemmings.GameResources = GameResources;
-    Lemmings.SkillPanelSprites = PanelSprites;
+    setDependency('GameResources', GameResources);
+    setDependency('SkillPanelSprites', PanelSprites);
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'green-'));
     await runScript(tempScript, ['pack', outDir]);
@@ -116,8 +116,8 @@ describe('tools/scanGreenPanel.js', function () {
   it('handles missing panel sprite', async function () {
     class EmptySprites { getPanelSprite() { return { width: 0, height: 0, data: new Uint32Array(0) }; } }
     class GameResources { async getSkillPanelSprite() { return new EmptySprites(); } }
-    Lemmings.GameResources = GameResources;
-    Lemmings.SkillPanelSprites = EmptySprites;
+    setDependency('GameResources', GameResources);
+    setDependency('SkillPanelSprites', EmptySprites);
 
     const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'green-'));
     await runScript(tempScript, ['pack', outDir]);

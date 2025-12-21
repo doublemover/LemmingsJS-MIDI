@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { LemmingsSprite } from '../js/lemmings/LemmingsSprite.js';
 import '../js/lemmings/SpriteTypes.js';
 import '../js/render/ColorPalette.js';
@@ -20,12 +20,12 @@ describe('LemmingsSprite animation retrieval', function () {
 
   beforeEach(function () {
     origAnimation = Lemmings.Animation;
-    Lemmings.Animation = StubAnimation;
+    setDependency('Animation', StubAnimation);
     StubAnimation.count = 0;
   });
 
   afterEach(function () {
-    Lemmings.Animation = origAnimation;
+    setDependency('Animation', origAnimation);
   });
 
   it('reuses cached animations for the same palette', function () {

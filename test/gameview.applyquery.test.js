@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
@@ -19,7 +19,7 @@ globalThis.lemmings = { game: { showDebug: false } };
 describe('GameView.applyQuery and updateQuery', function () {
   beforeEach(function () {
     global.history = { replaceState() {} };
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
   });
 
   afterEach(function () {
@@ -94,7 +94,7 @@ describe('GameView.moveToLevel offsets', function () {
   beforeEach(function () {
     global.window = createWindow();
     global.history = { replaceState() {} };
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
   });
 
   afterEach(function () {

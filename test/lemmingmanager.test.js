@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
@@ -60,10 +60,10 @@ beforeEach(function() {
   global.worldW = 1600;
   global.worldH = 1200;
   for (const key of actionKeys) Lemmings[key] = DummyAction;
-  Lemmings.ActionBashSystem = BashAction;
-  Lemmings.ActionBlockerSystem = BlockAction;
-  Lemmings.ActionDiggSystem = DigAction;
-  Lemmings.ActionMineSystem = MineAction;
+  setDependency('ActionBashSystem', BashAction);
+  setDependency('ActionBlockerSystem', BlockAction);
+  setDependency('ActionDiggSystem', DigAction);
+  setDependency('ActionMineSystem', MineAction);
 });
 
 afterEach(function() {

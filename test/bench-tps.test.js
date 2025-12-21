@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import { GameTimer } from '../js/game/GameTimer.js';
@@ -88,7 +88,7 @@ describe('bench TPS', function() {
     lemmings.bench = false;
     lemmings.endless = false;
     origMiniMap = Lemmings.MiniMap;
-    Lemmings.MiniMap = MiniMapStub;
+    setDependency('MiniMap', MiniMapStub);
 
     globalThis.document = { visibilityState: 'visible', hasFocus() { return true; }, addEventListener() {}, removeEventListener() {} };
     globalThis.window = { requestAnimationFrame() {}, cancelAnimationFrame() {}, addEventListener() {}, removeEventListener() {} };
@@ -99,7 +99,7 @@ describe('bench TPS', function() {
     clock.uninstall();
     delete globalThis.window;
     delete globalThis.document;
-    Lemmings.MiniMap = origMiniMap;
+    setDependency('MiniMap', origMiniMap);
     delete global.lemmings;
   });
 

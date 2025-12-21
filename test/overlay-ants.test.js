@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/util/Position2D.js';
 import '../js/render/ViewPoint.js';
@@ -71,10 +71,10 @@ describe('Stage overlay marching ants', function() {
     stage.guiImgProps.display.initSize(4,4);
     let called = 0;
     const orig = Lemmings.drawMarchingAntRect;
-    Lemmings.drawMarchingAntRect = function() { called++; };
+    setDependency('drawMarchingAntRect', function() { called++; });
     stage.startOverlayFade('rgba(255,0,0,1)', { x: 0, y: 0, width: 2, height: 2 }, 3);
     stage.redraw();
-    Lemmings.drawMarchingAntRect = orig;
+    setDependency('drawMarchingAntRect', orig);
     expect(called).to.be.greaterThan(0);
     stage.resetOverlayFade();
   });

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { GameView } from '../js/game/GameView.js';
 
@@ -40,18 +40,18 @@ describe('GameView.start existing game', function() {
     origStage = Lemmings.Stage;
     origKeyboard = Lemmings.KeyboardShortcuts;
     origFactory = Lemmings.GameFactory;
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
   after(function() {
     delete global.window;
-    Lemmings.Stage = origStage;
-    Lemmings.KeyboardShortcuts = origKeyboard;
-    Lemmings.GameFactory = origFactory;
+    setDependency('Stage', origStage);
+    setDependency('KeyboardShortcuts', origKeyboard);
+    setDependency('GameFactory', origFactory);
   });
   it('continues current game and skips getGame', async function() {
     const view = new GameView();

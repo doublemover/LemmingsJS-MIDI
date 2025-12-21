@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/render/ViewPoint.js';
 import '../js/game/GameDisplay.js';
@@ -41,19 +41,19 @@ describe('GameView.loadLevel', function() {
     origStage = Lemmings.Stage;
     origFactory = Lemmings.GameFactory;
     origKeyboard = Lemmings.KeyboardShortcuts;
-    Lemmings.Stage = StageStub;
-    Lemmings.GameFactory = GameFactoryStub;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsStub;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { UNKNOWN: 0, 0: 'unknown', toString: () => '' };
+    setDependency('Stage', StageStub);
+    setDependency('GameFactory', GameFactoryStub);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsStub);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { UNKNOWN: 0, 0: 'unknown', toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
   after(function() {
     delete global.window;
-    Lemmings.Stage = origStage;
-    Lemmings.GameFactory = origFactory;
-    Lemmings.KeyboardShortcuts = origKeyboard;
+    setDependency('Stage', origStage);
+    setDependency('GameFactory', origFactory);
+    setDependency('KeyboardShortcuts', origKeyboard);
   });
 
   it('returns early when resources are missing', async function() {

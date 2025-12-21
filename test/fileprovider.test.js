@@ -1,6 +1,6 @@
 import assert from 'assert';
 import { FileProvider } from '../js/data/FileProvider.js';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 
 class MockBinaryReader {}
 class MockLogHandler {
@@ -28,8 +28,8 @@ describe('FileProvider', function () {
   beforeEach(function () {
     origBR = Lemmings.BinaryReader;
     origLog = Lemmings.LogHandler;
-    Lemmings.BinaryReader = MockBinaryReader;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('BinaryReader', MockBinaryReader);
+    setDependency('LogHandler', MockLogHandler);
     provider = new FileProvider(rootPath);
     global.localStorage = new (class {
       constructor() { this.store = new Map(); }
@@ -77,8 +77,8 @@ describe('FileProvider', function () {
       global.fetch = origFetch;
     }
     provider.clearCache();
-    Lemmings.BinaryReader = origBR;
-    Lemmings.LogHandler = origLog;
+    setDependency('BinaryReader', origBR);
+    setDependency('LogHandler', origLog);
   });
 
   it('_buildUrl() joins rootPath, path and filename', function () {

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency, clearDependency } from './helpers/lemmings.js';
 
 // minimal GameFactory stub for constructor
 class GameFactoryStub {
@@ -36,17 +36,17 @@ describe('GameView helper methods', function () {
     global.window = createWindow();
     global.document = createDocumentStub();
     global.history = { replaceState() {} };
-    Lemmings.GameFactory = GameFactoryStub;
-    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1, TYPE3: 2, toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('GameFactory', GameFactoryStub);
+    setDependency('GameTypes', { TYPE1: 0, TYPE2: 1, TYPE3: 2, toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
   });
 
   afterEach(function () {
     delete global.window;
     delete global.document;
     delete global.history;
-    delete Lemmings.GameTypes;
-    delete Lemmings.GameStateTypes;
+    clearDependency('GameTypes');
+    clearDependency('GameStateTypes');
   });
 
   it('parseNumber handles ranges and defaults', async function () {
@@ -222,9 +222,9 @@ describe('moveToLevel transitions', function () {
     global.window = createWindow();
     global.document = createDocumentStub();
     global.history = { replaceState() {} };
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1, TYPE3: 2 };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { TYPE1: 0, TYPE2: 1, TYPE3: 2 });
+    setDependency('GameStateTypes', { toString: () => '' });
     configs[1].level.order = [[0], [0]];
     configs[2].level.order = [[0]];
   });
@@ -232,7 +232,7 @@ describe('moveToLevel transitions', function () {
     delete global.window;
     delete global.document;
     delete global.history;
-    delete Lemmings.GameStateTypes;
+    clearDependency('GameStateTypes');
   });
 
   it('advances to next group when level exceeds group length', async function () {
@@ -311,7 +311,7 @@ describe('moveToLevel transitions', function () {
     view.levelIndex = 0;
     view.levelGroupIndex = 0;
     view.gameType = 2; // not in GameTypes keys
-    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1 };
+    setDependency('GameTypes', { TYPE1: 0, TYPE2: 1 });
     await view.moveToLevel(0);
     expect(view.gameType).to.equal(1);
     expect(view.levelGroupIndex).to.equal(0);

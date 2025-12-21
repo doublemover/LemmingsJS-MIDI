@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 function createWindow() {
@@ -40,9 +40,9 @@ describe('GameView menu interactions', function() {
     this.origFactory = Lemmings.GameFactory;
     this.origGameTypes = Lemmings.GameTypes;
     this.origGameStateTypes = Lemmings.GameStateTypes;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
@@ -50,10 +50,10 @@ describe('GameView menu interactions', function() {
     delete global.window;
     delete global.document;
     delete global.history;
-    Lemmings.KeyboardShortcuts = this.origKeyboard;
-    Lemmings.GameFactory = this.origFactory;
-    Lemmings.GameTypes = this.origGameTypes;
-    Lemmings.GameStateTypes = this.origGameStateTypes;
+    setDependency('KeyboardShortcuts', this.origKeyboard);
+    setDependency('GameFactory', this.origFactory);
+    setDependency('GameTypes', this.origGameTypes);
+    setDependency('GameStateTypes', this.origGameStateTypes);
   });
 
   it('populateLevelSelect creates options from resources', async function() {
@@ -67,7 +67,7 @@ describe('GameView menu interactions', function() {
       async getConfig(type) { expect(type).to.equal(1); return config; }
       get configReader() { return { configs: Promise.resolve([]) }; }
     }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
@@ -93,7 +93,7 @@ describe('GameView menu interactions', function() {
     class GameFactoryMock {
       get configReader() { return { configs: Promise.resolve([]) }; }
     }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
@@ -121,7 +121,7 @@ describe('GameView menu interactions', function() {
       async getGameResources(t) { request = t; return newResources; }
       get configReader() { return { configs: Promise.resolve(configs) }; }
     }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
@@ -146,7 +146,7 @@ describe('GameView menu interactions', function() {
 
   it('selectLevel updates index and loads', async function() {
     class GameFactoryMock { get configReader() { return { configs: Promise.resolve([]) }; } }
-    Lemmings.GameFactory = GameFactoryMock;
+    setDependency('GameFactory', GameFactoryMock);
     const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();

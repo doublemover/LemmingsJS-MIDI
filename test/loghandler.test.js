@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 
 /* Test custom LogHandler usage and withPerformance wrapper */
@@ -23,10 +23,10 @@ describe('LogHandler', function() {
   before(function() {
     globalThis.lemmings = { game: { showDebug: false } };
     origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = RecordingHandler;
+    setDependency('LogHandler', RecordingHandler);
   });
   after(function() {
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
     delete globalThis.lemmings;
   });
 

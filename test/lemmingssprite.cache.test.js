@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { LemmingsSprite } from '../js/lemmings/LemmingsSprite.js';
 import '../js/lemmings/SpriteTypes.js';
 import '../js/render/ColorPalette.js';
@@ -13,14 +13,14 @@ describe('LemmingsSprite caching', function() {
   beforeEach(function() {
     OrigAnimation = Lemmings.Animation;
     callCount = 0;
-    Lemmings.Animation = class {
+    setDependency('Animation', class {
       constructor() { callCount++; }
       loadFromFile() {}
-    };
+    });
   });
 
   afterEach(function() {
-    Lemmings.Animation = OrigAnimation;
+    setDependency('Animation', OrigAnimation);
   });
 
   it('reuses animations for identical palette', function() {
