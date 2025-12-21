@@ -5,13 +5,13 @@ import path from 'path';
 import { spawnSync } from 'child_process';
 
 import { Lemmings } from '../../js/LemmingsNamespace.js';
-import '../../js/LogHandler.js';
-import { BinaryReader } from '../../js/BinaryReader.js';
-import { BitReader } from '../../js/BitReader.js';
-import { BitWriter } from '../../js/BitWriter.js';
-import { PackFilePart } from '../../js/PackFilePart.js';
-import '../../js/UnpackFilePart.js';
-import { FileContainer } from '../../js/FileContainer.js';
+import '../../js/util/LogHandler.js';
+import { BinaryReader } from '../../js/data/BinaryReader.js';
+import { BitReader } from '../../js/data/BitReader.js';
+import { BitWriter } from '../../js/data/BitWriter.js';
+import { PackFilePart } from '../../js/data/PackFilePart.js';
+import '../../js/data/UnpackFilePart.js';
+import { FileContainer } from '../../js/data/FileContainer.js';
 
 const script = path.resolve('tools/packLevels.js');
 

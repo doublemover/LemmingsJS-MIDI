@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { decodeFrame, PAL_DIFF } from '../js/L2ssSpriteDecoder.js';
+import { decodeFrame, PAL_DIFF } from '../js/data/L2ssSpriteDecoder.js';
 
 describe('L2ssSpriteDecoder', function () {
   it('decodes a simple frame', function () {

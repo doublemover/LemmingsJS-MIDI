@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/GameStateTypes.js';
-import { Game } from '../js/Game.js';
-import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import '../js/util/EventHandler.js';
+import '../js/game/GameStateTypes.js';
+import { Game } from '../js/game/Game.js';
+import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 
 globalThis.lemmings = Lemmings;
 

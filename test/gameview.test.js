@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/DisplayImage.js';
-import '../js/ViewPoint.js';
+import '../js/util/EventHandler.js';
+import '../js/render/DisplayImage.js';
+import '../js/render/ViewPoint.js';
 import fakeTimers from '@sinonjs/fake-timers';
 // prepare a minimal window object for GameView.applyQuery
 function createWindowStub() {
@@ -51,7 +51,7 @@ afterEach(function() {
   delete globalThis.document;
 });
 
-import { GameView } from '../js/GameView.js';
+import { GameView } from '../js/game/GameView.js';
 
 // stub KeyboardShortcuts to avoid DOM access
 class KeyboardShortcutsMock {
@@ -148,7 +148,7 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const canvas = {
       addEventListener() {},
@@ -182,7 +182,7 @@ describe('GameView', function () {
   });
 
   it('calls updateStageSize when canvas is set', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     let called = 0;
     const orig = StageMock.prototype.updateStageSize;
@@ -208,7 +208,7 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(3);
   });
@@ -221,7 +221,7 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(2);
   });
@@ -234,7 +234,7 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(0.8);
   });
@@ -247,7 +247,7 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(5);
   });
@@ -260,14 +260,14 @@ describe('GameView', function () {
       addEventListener() {},
       removeEventListener() {}
     };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.gameSpeedFactor).to.equal(1);
   });
 
   it('suspendWithColor fades and resumes timer', async function() {
     const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     window.setTimeout = setTimeout;
     window.clearTimeout = clearTimeout;
@@ -310,7 +310,7 @@ describe('GameView', function () {
   });
 
   it('nextFrame ticks forward then renders', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const calls = [];
     const timer = { tick(v) { calls.push(['tick', v]); }, speedFactor: 1 };
@@ -321,7 +321,7 @@ describe('GameView', function () {
   });
 
   it('prevFrame ticks backward then renders', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const calls = [];
     const timer = { tick(v) { calls.push(['tick', v]); }, speedFactor: 1 };
@@ -332,7 +332,7 @@ describe('GameView', function () {
   });
 
   it('selectSpeedFactor updates timer speed', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const timer = { tick() {}, speedFactor: 1 };
     view.game = { getGameTimer() { return timer; } };
@@ -342,7 +342,7 @@ describe('GameView', function () {
   });
 
   it('resetFade is called when loading a level', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.updateQuery = () => {};
@@ -356,7 +356,7 @@ describe('GameView', function () {
   });
 
   it('enableDebug forwards to the game', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     let called = 0;
     view.game = {

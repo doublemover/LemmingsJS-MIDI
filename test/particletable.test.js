@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ParticleTable } from '../js/ParticleTable.js';
+import { ParticleTable } from '../js/render/ParticleTable.js';
 
 // Minimal palette stub with predictable color values
 function makePalette() {

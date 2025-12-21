@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/CommandNuke.js';
-import '../js/CommandReleaseRateIncrease.js';
-import '../js/CommandReleaseRateDecrease.js';
-import '../js/CommandLemmingsAction.js';
+import '../js/commands/CommandNuke.js';
+import '../js/commands/CommandReleaseRateIncrease.js';
+import '../js/commands/CommandReleaseRateDecrease.js';
+import '../js/commands/CommandLemmingsAction.js';
 
 // minimal global for logging
 globalThis.lemmings = { game: { showDebug: false } };

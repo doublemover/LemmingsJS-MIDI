@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/Position2D.js';
-import '../js/ViewPoint.js';
-import '../js/StageImageProperties.js';
-import '../js/DisplayImage.js';
-import '../js/UserInputManager.js';
-import { Stage } from '../js/Stage.js';
+import '../js/util/EventHandler.js';
+import '../js/util/Position2D.js';
+import '../js/render/ViewPoint.js';
+import '../js/render/StageImageProperties.js';
+import '../js/render/DisplayImage.js';
+import '../js/input/UserInputManager.js';
+import { Stage } from '../js/render/Stage.js';
 
 function createStubCanvas(width = 50, height = 50) {
   const ctx = {

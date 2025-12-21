@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { BitReader } from '../js/BitReader.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { BitReader } from '../js/data/BitReader.js';
 
 globalThis.lemmings = Lemmings;
 

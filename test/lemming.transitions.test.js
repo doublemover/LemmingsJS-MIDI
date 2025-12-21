@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/SolidLayer.js';
-import '../js/LemmingStateType.js';
-import '../js/Lemming.js';
-import { Level } from '../js/Level.js';
+import '../js/render/SolidLayer.js';
+import '../js/lemmings/LemmingStateType.js';
+import '../js/lemmings/Lemming.js';
+import { Level } from '../js/level/Level.js';
 
 class SeqAction {
   constructor(name, next) { this.name = name; this.next = next; }

@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import '../js/SkillTypes.js';
-import '../js/LevelProperties.js';
-import '../js/DrawProperties.js';
-import '../js/LevelElement.js';
-import { LevelWriter } from '../js/LevelWriter.js';
-import { LevelReader } from '../js/LevelReader.js';
-import { BinaryReader } from '../js/BinaryReader.js';
+import '../js/util/LogHandler.js';
+import '../js/game/SkillTypes.js';
+import '../js/level/LevelProperties.js';
+import '../js/render/DrawProperties.js';
+import '../js/level/LevelElement.js';
+import { LevelWriter } from '../js/level/LevelWriter.js';
+import { LevelReader } from '../js/level/LevelReader.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
 
 // Disable verbose debug output
 globalThis.lemmings = { game: { showDebug: false } };

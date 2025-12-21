@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { FileProvider } from '../js/FileProvider.js';
+import { FileProvider } from '../js/data/FileProvider.js';
 import { Lemmings } from '../js/LemmingsNamespace.js';
 
 class MockBinaryReader {}

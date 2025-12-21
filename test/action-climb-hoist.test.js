@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionClimbSystem } from '../js/ActionClimbSystem.js';
-import { ActionHoistSystem } from '../js/ActionHoistSystem.js';
-import '../js/LemmingStateType.js';
-import '../js/SpriteTypes.js';
+import { ActionClimbSystem } from '../js/actions/ActionClimbSystem.js';
+import { ActionHoistSystem } from '../js/actions/ActionHoistSystem.js';
+import '../js/lemmings/LemmingStateType.js';
+import '../js/lemmings/SpriteTypes.js';
 
 class StubLemming {
   constructor() {

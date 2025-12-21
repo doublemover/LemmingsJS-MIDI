@@ -1,7 +1,7 @@
 import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import '../js/LogHandler.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import '../js/util/LogHandler.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

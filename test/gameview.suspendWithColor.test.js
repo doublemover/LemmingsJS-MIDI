@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
@@ -46,7 +46,7 @@ describe('GameView suspendWithColor', function() {
   });
 
   it('passes pause button rect in bench mode', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.bench = true;
     view.gameCanvas = {};
@@ -68,7 +68,7 @@ describe('GameView suspendWithColor', function() {
     const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
     window.setTimeout = setTimeout;
     window.clearTimeout = clearTimeout;
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     const timer = { suspendCalled: 0, continueCalled: 0, suspend() { this.suspendCalled++; }, continue() { this.continueCalled++; } };

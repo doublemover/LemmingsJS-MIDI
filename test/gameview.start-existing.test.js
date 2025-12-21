@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import { GameView } from '../js/GameView.js';
+import '../js/util/EventHandler.js';
+import { GameView } from '../js/game/GameView.js';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
 class StageMock {

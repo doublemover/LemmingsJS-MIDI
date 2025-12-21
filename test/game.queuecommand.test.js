@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import { Game } from '../js/Game.js';
+import '../js/util/EventHandler.js';
+import { Game } from '../js/game/Game.js';
 
 // minimal global for logging
 globalThis.lemmings = { game: { showDebug: false } };

@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { OddTableReader } from '../js/OddTableReader.js';
-import '../js/SkillTypes.js';
-import '../js/LevelProperties.js';
-import '../js/LogHandler.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { OddTableReader } from '../js/data/OddTableReader.js';
+import '../js/game/SkillTypes.js';
+import '../js/level/LevelProperties.js';
+import '../js/util/LogHandler.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

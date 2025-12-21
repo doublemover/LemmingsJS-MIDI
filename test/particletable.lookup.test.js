@@ -16,7 +16,7 @@ describe('ParticleTable lookup branches', function() {
 
   it('skips sentinel coordinates while drawing', async function() {
     globalThis.lemmings = { game: { showDebug: false } };
-    const { ParticleTable } = await import('../js/ParticleTable.js?sentinel');
+    const { ParticleTable } = await import('../js/render/ParticleTable.js?sentinel');
     ParticleTable._sharedParticleData = [
       new Int8Array([0, 0, -128, 0, 1, 1, -128, -128])
     ];
@@ -31,7 +31,7 @@ describe('ParticleTable lookup branches', function() {
     let called = false;
     global.window = { atob(str) { called = true; return Buffer.from(str, 'base64').toString('binary'); } };
     globalThis.lemmings = { game: { showDebug: false } };
-    const { ParticleTable } = await import('../js/ParticleTable.js?atob');
+    const { ParticleTable } = await import('../js/render/ParticleTable.js?atob');
     ParticleTable._sharedParticleData = undefined;
     new ParticleTable(makePalette());
     expect(called).to.equal(true);
@@ -40,7 +40,7 @@ describe('ParticleTable lookup branches', function() {
   it('reads ParticleTable.particleDataBase64 when overridden', async function() {
     let accessed = false;
     globalThis.lemmings = { game: { showDebug: false } };
-    const { ParticleTable } = await import('../js/ParticleTable.js?optchain');
+    const { ParticleTable } = await import('../js/render/ParticleTable.js?optchain');
     const original = ParticleTable.particleDataBase64;
     Object.defineProperty(ParticleTable, 'particleDataBase64', {
       configurable: true,

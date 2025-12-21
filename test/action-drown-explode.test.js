@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionDrowningSystem } from '../js/ActionDrowningSystem.js';
-import { ActionExplodingSystem } from '../js/ActionExplodingSystem.js';
-import '../js/Trigger.js';
-import '../js/TriggerTypes.js';
-import '../js/LemmingStateType.js';
+import { ActionDrowningSystem } from '../js/actions/ActionDrowningSystem.js';
+import { ActionExplodingSystem } from '../js/actions/ActionExplodingSystem.js';
+import '../js/level/Trigger.js';
+import '../js/level/TriggerTypes.js';
+import '../js/lemmings/LemmingStateType.js';
 
 // Minimal stubs shared with existing tests
 class StubLemming {

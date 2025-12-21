@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import '../js/BitReader.js';
-import '../js/BitWriter.js';
-import '../js/PaletteImage.js';
-import '../js/Frame.js';
-import '../js/ColorPalette.js';
-import '../js/ObjectImageInfo.js';
-import { GroundReader } from '../js/GroundReader.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import '../js/data/BitReader.js';
+import '../js/data/BitWriter.js';
+import '../js/render/PaletteImage.js';
+import '../js/render/Frame.js';
+import '../js/render/ColorPalette.js';
+import '../js/level/ObjectImageInfo.js';
+import { GroundReader } from '../js/level/GroundReader.js';
 
 // Silence debug output
 globalThis.lemmings = { game: { showDebug: false } };

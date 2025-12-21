@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/ColorPalette.js';
-import { Frame } from '../js/Frame.js';
-import { DisplayImage } from '../js/DisplayImage.js';
-import '../js/EventHandler.js';
-import '../js/SkillTypes.js';
+import '../js/render/ColorPalette.js';
+import { Frame } from '../js/render/Frame.js';
+import { DisplayImage } from '../js/render/DisplayImage.js';
+import '../js/util/EventHandler.js';
+import '../js/game/SkillTypes.js';
 
 // minimal global env for logging
 globalThis.lemmings = { game: { showDebug: false } };

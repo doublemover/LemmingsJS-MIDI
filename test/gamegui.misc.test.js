@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/SkillTypes.js';
-import { GameGui } from '../js/GameGui.js';
+import '../js/game/SkillTypes.js';
+import { GameGui } from '../js/game/GameGui.js';
 
 const stubSprites = {
   getPanelSprite() { return { width: 0, height: 0, getData() { return [0]; } }; },

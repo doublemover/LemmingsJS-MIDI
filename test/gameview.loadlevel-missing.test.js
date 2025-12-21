@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/ViewPoint.js';
-import '../js/GameDisplay.js';
+import '../js/util/EventHandler.js';
+import '../js/render/ViewPoint.js';
+import '../js/game/GameDisplay.js';
 
 class KeyboardShortcutsStub {
   constructor() {}
@@ -64,7 +64,7 @@ describe('GameView.loadLevel missing level', function () {
   });
 
   it('returns early when getLevel returns null', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     let started = false;

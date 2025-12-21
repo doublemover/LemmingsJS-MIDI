@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Level } from '../js/Level.js';
-import { Range } from '../js/Range.js';
-import '../js/ColorPalette.js';
-import '../js/Animation.js';
-import '../js/Frame.js';
+import { Level } from '../js/level/Level.js';
+import { Range } from '../js/util/Range.js';
+import '../js/render/ColorPalette.js';
+import '../js/render/Animation.js';
+import '../js/render/Frame.js';
 
 const miniMapStub = { onGroundChanged() {} };
 

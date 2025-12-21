@@ -5,13 +5,13 @@ import path from 'path';
 import { fileURLToPath, pathToFileURL } from 'url';
 
 import { Lemmings } from '../../js/LemmingsNamespace.js';
-import '../../js/LogHandler.js';
-import { BinaryReader } from '../../js/BinaryReader.js';
-import { PackFilePart } from '../../js/PackFilePart.js';
-import '../../js/UnpackFilePart.js';
-import '../../js/BitReader.js';
-import '../../js/BitWriter.js';
-import { FileContainer } from '../../js/FileContainer.js';
+import '../../js/util/LogHandler.js';
+import { BinaryReader } from '../../js/data/BinaryReader.js';
+import { PackFilePart } from '../../js/data/PackFilePart.js';
+import '../../js/data/UnpackFilePart.js';
+import '../../js/data/BitReader.js';
+import '../../js/data/BitWriter.js';
+import { FileContainer } from '../../js/data/FileContainer.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

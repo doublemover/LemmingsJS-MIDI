@@ -2,11 +2,11 @@ import { expect } from 'chai';
 import { readFileSync } from 'fs';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/BinaryReader.js';
-import '../js/BitReader.js';
-import '../js/BitWriter.js';
-import '../js/UnpackFilePart.js';
-import { FileContainer } from '../js/FileContainer.js';
+import '../js/data/BinaryReader.js';
+import '../js/data/BitReader.js';
+import '../js/data/BitWriter.js';
+import '../js/data/UnpackFilePart.js';
+import { FileContainer } from '../js/data/FileContainer.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

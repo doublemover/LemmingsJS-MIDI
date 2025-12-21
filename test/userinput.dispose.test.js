@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/Position2D.js';
-import { UserInputManager } from '../js/UserInputManager.js';
+import '../js/util/EventHandler.js';
+import '../js/util/Position2D.js';
+import { UserInputManager } from '../js/input/UserInputManager.js';
 
 // basic DOM element stub used for UserInputManager
 function createStubElement() {

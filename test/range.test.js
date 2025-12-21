@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Range } from '../js/Range.js';
+import { Range } from '../js/util/Range.js';
 
 globalThis.lemmings = Lemmings;
 

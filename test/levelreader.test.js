@@ -1,18 +1,18 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { BitReader } from '../js/BitReader.js';
-import { BitWriter } from '../js/BitWriter.js';
-import { FileContainer } from '../js/FileContainer.js';
-import { LevelReader } from '../js/LevelReader.js';
-import '../js/LogHandler.js';
-import '../js/SkillTypes.js';
-import '../js/LevelProperties.js';
-import '../js/DrawProperties.js';
-import '../js/LevelElement.js';
-import '../js/Range.js';
-import '../js/UnpackFilePart.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { BitReader } from '../js/data/BitReader.js';
+import { BitWriter } from '../js/data/BitWriter.js';
+import { FileContainer } from '../js/data/FileContainer.js';
+import { LevelReader } from '../js/level/LevelReader.js';
+import '../js/util/LogHandler.js';
+import '../js/game/SkillTypes.js';
+import '../js/level/LevelProperties.js';
+import '../js/render/DrawProperties.js';
+import '../js/level/LevelElement.js';
+import '../js/util/Range.js';
+import '../js/data/UnpackFilePart.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

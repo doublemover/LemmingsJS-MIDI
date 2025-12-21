@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/GameResult.js';
+import '../js/game/GameResult.js';
 
 describe('GameResult', function() {
   it('captures game state and stats', function() {

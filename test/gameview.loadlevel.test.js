@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/ViewPoint.js';
-import '../js/GameDisplay.js';
+import '../js/util/EventHandler.js';
+import '../js/render/ViewPoint.js';
+import '../js/game/GameDisplay.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsStub { constructor() {} dispose() {} }
@@ -57,7 +57,7 @@ describe('GameView.loadLevel', function() {
   });
 
   it('returns early when resources are missing', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     let started = false;
@@ -72,7 +72,7 @@ describe('GameView.loadLevel', function() {
 
   it('clears autoMoveTimer before loading', async function() {
     const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.gameResources = { getLevel: async () => ({ render() {}, screenPositionX: 0 }), getLevelGroups: () => [] };
@@ -89,7 +89,7 @@ describe('GameView.loadLevel', function() {
   });
 
   it('syncs selects and redraws stage', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.configs = [{ gametype: 1 }, { gametype: 2 }];
@@ -121,7 +121,7 @@ describe('GameView.loadLevel', function() {
   });
 
   it('positions view after stage resize', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.updateQuery = () => {};

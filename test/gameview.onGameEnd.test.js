@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/GameStateTypes.js';
+import '../js/util/EventHandler.js';
+import '../js/game/GameStateTypes.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
@@ -51,7 +51,7 @@ describe('GameView onGameEnd', function() {
   });
 
   it('moves to next level after success', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.stage = new StageMock();
     let arg = null;
@@ -63,7 +63,7 @@ describe('GameView onGameEnd', function() {
   });
 
   it('retries level after failure', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.stage = new StageMock();
     let arg = null;

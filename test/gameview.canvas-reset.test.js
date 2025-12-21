@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 function createWindowStub() {
   return {
@@ -46,7 +46,7 @@ describe('GameView canvas reset', function() {
     const win = createWindowStub();
     global.window = win;
     global.history = { replaceState() {} };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
 
     const canvas1 = {

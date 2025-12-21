@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { Animation } from '../js/Animation.js';
-import '../js/ColorPalette.js';
-import '../js/PaletteImage.js';
-import '../js/Frame.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { Animation } from '../js/render/Animation.js';
+import '../js/render/ColorPalette.js';
+import '../js/render/PaletteImage.js';
+import '../js/render/Frame.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

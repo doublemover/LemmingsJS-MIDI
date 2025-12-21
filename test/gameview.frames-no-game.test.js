@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { GameView } from '../js/GameView.js';
+import { GameView } from '../js/game/GameView.js';
 
 describe('GameView without game', function() {
   it('nextFrame, prevFrame, and selectSpeedFactor no-op without game', function() {

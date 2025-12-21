@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { GameView } from '../js/GameView.js';
+import { GameView } from '../js/game/GameView.js';
 
 describe('GameView frame stepping and speed', function() {
   it('nextFrame ticks forward then renders', function() {

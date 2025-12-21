@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { ObjectManager } from '../js/ObjectManager.js';
+import { ObjectManager } from '../js/level/ObjectManager.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import '../js/SkillTypes.js';
-import '../js/SpriteTypes.js';
-import '../js/MaskTypes.js';
-import { ActionBaseSystem } from '../js/ActionBaseSystem.js';
-import { ActionCountdownSystem } from '../js/ActionCountdownSystem.js';
+import '../js/util/LogHandler.js';
+import '../js/game/SkillTypes.js';
+import '../js/lemmings/SpriteTypes.js';
+import '../js/render/MaskTypes.js';
+import { ActionBaseSystem } from '../js/actions/ActionBaseSystem.js';
+import { ActionCountdownSystem } from '../js/actions/ActionCountdownSystem.js';
 
 class FakeAnimation {
   constructor(label) { this.label = label; }

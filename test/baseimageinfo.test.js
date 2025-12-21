@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import { BaseImageInfo } from '../js/BaseImageInfo.js';
-import { TerrainImageInfo } from '../js/TerrainImageInfo.js';
+import '../js/util/LogHandler.js';
+import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
+import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 
 globalThis.lemmings = Lemmings;
 

@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/Frame.js';
-import '../js/ColorPalette.js';
-import { createCrosshairFrame } from '../js/CrosshairCursor.js';
+import '../js/render/Frame.js';
+import '../js/render/ColorPalette.js';
+import { createCrosshairFrame } from '../js/input/CrosshairCursor.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

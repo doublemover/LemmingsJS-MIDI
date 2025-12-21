@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Mask } from '../js/Mask.js';
-import { MaskList } from '../js/MaskList.js';
+import { Mask } from '../js/render/Mask.js';
+import { MaskList } from '../js/render/MaskList.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/ViewPoint.js';
+import '../js/render/ViewPoint.js';
 
 describe('ViewPoint coordinate translation', function() {
   it('clamps x within bounds', function() {

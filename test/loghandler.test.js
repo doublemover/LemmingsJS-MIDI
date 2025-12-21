@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
+import '../js/util/LogHandler.js';
 
 /* Test custom LogHandler usage and withPerformance wrapper */
 

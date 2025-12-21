@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { spawnSync } from 'child_process';
 
-import '../../js/LogHandler.js';
+import '../../js/util/LogHandler.js';
 
 describe('tools/listSprites.js', function () {
   it('writes spriteList.txt with sprite names', function () {

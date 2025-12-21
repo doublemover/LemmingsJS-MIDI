@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 
 // minimal global environment
 globalThis.lemmings = Lemmings;
