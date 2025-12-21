@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 
 function createWindow() {
   return {
@@ -29,8 +29,8 @@ describe('GameView.moveToLevel conditional paths', function () {
     requests = [];
     global.window = createWindow();
     global.history = { replaceState() {} };
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { TYPE1: 0, TYPE2: 1, TYPE3: 2 };
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { TYPE1: 0, TYPE2: 1, TYPE3: 2 });
   });
   afterEach(function () {
     delete global.window;

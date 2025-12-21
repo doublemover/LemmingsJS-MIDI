@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/GameStateTypes.js';
 import fakeTimers from '@sinonjs/fake-timers';
@@ -28,14 +28,14 @@ describe('GameView onGameEnd', function() {
     global.window = { location:{ search:'' }, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
     origStage = Lemmings.Stage;
     origKeyboard = Lemmings.KeyboardShortcuts;
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
     global.lemmings = { game: { showDebug: false } };
   });
   after(function() {
     delete global.window;
-    Lemmings.Stage = origStage;
-    Lemmings.KeyboardShortcuts = origKeyboard;
+    setDependency('Stage', origStage);
+    setDependency('KeyboardShortcuts', origKeyboard);
   });
   beforeEach(function() {
     clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });

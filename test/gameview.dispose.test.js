@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 function createWindowStub() {
@@ -31,9 +31,9 @@ class GameFactoryStub {
 
 describe('GameView.dispose', function() {
   before(function() {
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryStub;
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryStub);
   });
 
   it('removes listeners and disposes stage and shortcuts', async function() {

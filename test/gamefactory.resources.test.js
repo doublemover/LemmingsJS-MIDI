@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
@@ -33,10 +33,10 @@ describe('GameFactory resource helpers', function () {
       Game: Lemmings.Game
     };
 
-    Lemmings.FileProvider = FileProviderStub;
-    Lemmings.ConfigReader = ConfigReaderStub;
-    Lemmings.GameResources = GameResourcesStub;
-    Lemmings.Game = GameStub;
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
+    setDependency('GameResources', GameResourcesStub);
+    setDependency('Game', GameStub);
 
     const gf = new GameFactory('root');
 
@@ -53,10 +53,10 @@ describe('GameFactory resource helpers', function () {
     expect(game).to.be.instanceOf(GameStub);
     expect(game.res).to.equal(resources);
 
-    Lemmings.FileProvider = orig.FileProvider;
-    Lemmings.ConfigReader = orig.ConfigReader;
-    Lemmings.GameResources = orig.GameResources;
-    Lemmings.Game = orig.Game;
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
+    setDependency('GameResources', orig.GameResources);
+    setDependency('Game', orig.Game);
   });
 
   it('creates Game when resources are not provided', async function () {
@@ -87,10 +87,10 @@ describe('GameFactory resource helpers', function () {
       Game: Lemmings.Game
     };
 
-    Lemmings.FileProvider = FileProviderStub;
-    Lemmings.ConfigReader = ConfigReaderStub;
-    Lemmings.GameResources = GameResourcesStub;
-    Lemmings.Game = GameStub;
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
+    setDependency('GameResources', GameResourcesStub);
+    setDependency('Game', GameStub);
 
     const gf = new GameFactory('root');
 
@@ -100,10 +100,10 @@ describe('GameFactory resource helpers', function () {
     expect(game.res.cfg).to.equal(mockConfig);
     expect(gf.configReader.calls).to.eql([5]);
 
-    Lemmings.FileProvider = orig.FileProvider;
-    Lemmings.ConfigReader = orig.ConfigReader;
-    Lemmings.GameResources = orig.GameResources;
-    Lemmings.Game = orig.Game;
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
+    setDependency('GameResources', orig.GameResources);
+    setDependency('Game', orig.Game);
   });
 
   it('rejects when config is missing', async function () {
@@ -121,8 +121,8 @@ describe('GameFactory resource helpers', function () {
       ConfigReader: Lemmings.ConfigReader
     };
 
-    Lemmings.FileProvider = FileProviderStub;
-    Lemmings.ConfigReader = ConfigReaderStub;
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
 
     const gf = new GameFactory('root');
 
@@ -134,7 +134,7 @@ describe('GameFactory resource helpers', function () {
     }
     expect(rejected).to.be.true;
 
-    Lemmings.FileProvider = orig.FileProvider;
-    Lemmings.ConfigReader = orig.ConfigReader;
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
   });
 });

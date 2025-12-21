@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 
 function createWindowStub() {
@@ -27,19 +27,19 @@ describe('GameView canvas reset', function() {
     this.origStage = Lemmings.Stage;
     this.origKeyboard = Lemmings.KeyboardShortcuts;
     this.origFactory = Lemmings.GameFactory;
-    Lemmings.Stage = StageMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryStub;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('Stage', StageMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryStub);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
   after(function() {
     delete global.lemmings;
-    Lemmings.Stage = this.origStage;
-    Lemmings.KeyboardShortcuts = this.origKeyboard;
-    Lemmings.GameFactory = this.origFactory;
+    setDependency('Stage', this.origStage);
+    setDependency('KeyboardShortcuts', this.origKeyboard);
+    setDependency('GameFactory', this.origFactory);
   });
 
   it('disposes old stage and listeners when canvas replaced', async function() {

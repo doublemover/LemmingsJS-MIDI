@@ -1,6 +1,6 @@
 import assert from 'assert';
 
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/data/BinaryReader.js';
 import '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';
@@ -15,11 +15,11 @@ describe('FileContainer.read errors', function () {
   let origLog;
   beforeEach(function () {
     origLog = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
   });
 
   afterEach(function () {
-    Lemmings.LogHandler = origLog;
+    setDependency('LogHandler', origLog);
   });
 
   it('handles invalid part size', function () {

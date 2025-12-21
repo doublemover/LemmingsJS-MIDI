@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { BitWriter } from '../js/data/BitWriter.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 // minimal global environment for logging
@@ -38,7 +38,7 @@ describe('BitWriter', function () {
       log(msg) { this.logged.push(msg); }
     }
     const origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
 
     const stub = new StubReader([0x01, 0x02, 0x03]);
     const writer = new BitWriter(stub, 2);
@@ -49,7 +49,7 @@ describe('BitWriter', function () {
     assert.deepStrictEqual(Array.from(writer.outData), [0x02, 0x01]);
     assert.ok(log.logged.some(m => m.includes('out of out buffer')));
 
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
   });
 
   it('truncates copyReferencedData when length exceeds buffer', function () {
@@ -58,7 +58,7 @@ describe('BitWriter', function () {
       log(msg) { this.logged.push(msg); }
     }
     const origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
 
     const stub = new StubReader([0xAA, 0xBB, 0x00]);
     const writer = new BitWriter(stub, 3);
@@ -70,7 +70,7 @@ describe('BitWriter', function () {
     assert.deepStrictEqual(Array.from(writer.outData), [0xBB, 0xBB, 0xAA]);
     assert.ok(log.logged.some(m => m.includes('out of out buffer')));
 
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
   });
 
   it('validates constructor arguments', function () {
@@ -98,7 +98,7 @@ describe('BitWriter', function () {
       log(msg) { this.logged.push(msg); }
     }
     const origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
 
     const stub = new StubReader([0xaa, 0xbb, 3]);
     const writer = new BitWriter(stub, 3);
@@ -114,6 +114,6 @@ describe('BitWriter', function () {
     assert.strictEqual(writer.outPos, posBefore);
     assert.ok(log.logged.some(m => m.includes('offset out of range')));
 
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
   });
 });

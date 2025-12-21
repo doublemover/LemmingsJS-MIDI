@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { GameView } from '../js/game/GameView.js';
 
@@ -17,16 +17,16 @@ describe('GameView.loadReplay', function() {
     };
     this.origKeyboard = Lemmings.KeyboardShortcuts;
     this.origFactory = Lemmings.GameFactory;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.GameTypes = { toString: () => '' };
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('GameTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
   after(function() {
     delete global.window;
-    Lemmings.KeyboardShortcuts = this.origKeyboard;
-    Lemmings.GameFactory = this.origFactory;
+    setDependency('KeyboardShortcuts', this.origKeyboard);
+    setDependency('GameFactory', this.origFactory);
   });
 
   it('forwards replay string to start', async function() {

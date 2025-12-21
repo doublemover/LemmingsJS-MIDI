@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
@@ -34,25 +34,25 @@ const particleStub = {};
 
 // stub action systems used during initialization
 const dummyAction = class {};
-Lemmings.ActionWalkSystem = dummyAction;
-Lemmings.ActionFallSystem = dummyAction;
-Lemmings.ActionJumpSystem = dummyAction;
-Lemmings.ActionDiggSystem = dummyAction;
-Lemmings.ActionExitingSystem = dummyAction;
-Lemmings.ActionFloatingSystem = dummyAction;
-Lemmings.ActionBlockerSystem = dummyAction;
-Lemmings.ActionMineSystem = dummyAction;
-Lemmings.ActionClimbSystem = dummyAction;
-Lemmings.ActionHoistSystem = dummyAction;
-Lemmings.ActionBashSystem = dummyAction;
-Lemmings.ActionBuildSystem = dummyAction;
-Lemmings.ActionShrugSystem = dummyAction;
-Lemmings.ActionExplodingSystem = dummyAction;
-Lemmings.ActionOhNoSystem = dummyAction;
-Lemmings.ActionSplatterSystem = dummyAction;
-Lemmings.ActionDrowningSystem = dummyAction;
-Lemmings.ActionFryingSystem = dummyAction;
-Lemmings.ActionCountdownSystem = dummyAction;
+setDependency('ActionWalkSystem', dummyAction);
+setDependency('ActionFallSystem', dummyAction);
+setDependency('ActionJumpSystem', dummyAction);
+setDependency('ActionDiggSystem', dummyAction);
+setDependency('ActionExitingSystem', dummyAction);
+setDependency('ActionFloatingSystem', dummyAction);
+setDependency('ActionBlockerSystem', dummyAction);
+setDependency('ActionMineSystem', dummyAction);
+setDependency('ActionClimbSystem', dummyAction);
+setDependency('ActionHoistSystem', dummyAction);
+setDependency('ActionBashSystem', dummyAction);
+setDependency('ActionBuildSystem', dummyAction);
+setDependency('ActionShrugSystem', dummyAction);
+setDependency('ActionExplodingSystem', dummyAction);
+setDependency('ActionOhNoSystem', dummyAction);
+setDependency('ActionSplatterSystem', dummyAction);
+setDependency('ActionDrowningSystem', dummyAction);
+setDependency('ActionFryingSystem', dummyAction);
+setDependency('ActionCountdownSystem', dummyAction);
 
 describe('LemmingManager', function() {
 

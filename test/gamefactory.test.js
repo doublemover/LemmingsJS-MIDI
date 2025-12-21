@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
@@ -39,11 +39,11 @@ describe('GameFactory.createFromConfig', function () {
       GameTimer: Lemmings.GameTimer
     };
 
-    Lemmings.FileProvider = FileProviderStub;
-    Lemmings.ConfigReader = ConfigReaderStub;
-    Lemmings.GameResources = GameResourcesStub;
-    Lemmings.Game = GameStub;
-    Lemmings.GameTimer = GameTimerStub;
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
+    setDependency('GameResources', GameResourcesStub);
+    setDependency('Game', GameStub);
+    setDependency('GameTimer', GameTimerStub);
 
     const config = { path: 'data', level: {} };
     const gf = new GameFactory('root');
@@ -56,10 +56,10 @@ describe('GameFactory.createFromConfig', function () {
     expect(game.loadArgs).to.eql([1, 2]);
     expect(game.gameTimer).to.be.instanceOf(GameTimerStub);
 
-    Lemmings.FileProvider = orig.FileProvider;
-    Lemmings.ConfigReader = orig.ConfigReader;
-    Lemmings.GameResources = orig.GameResources;
-    Lemmings.Game = orig.Game;
-    Lemmings.GameTimer = orig.GameTimer;
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
+    setDependency('GameResources', orig.GameResources);
+    setDependency('Game', orig.Game);
+    setDependency('GameTimer', orig.GameTimer);
   });
 });

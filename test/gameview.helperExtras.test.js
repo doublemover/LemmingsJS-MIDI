@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 
 // stub GameFactory for GameView constructor
 class GameFactoryStub {
@@ -10,7 +10,7 @@ class GameFactoryStub {
 function setupEnv() {
   global.window = { location: { search: '' }, setTimeout, clearTimeout, addEventListener() {}, removeEventListener() {} };
   global.history = { replaceState() {} };
-  Lemmings.GameFactory = GameFactoryStub;
+  setDependency('GameFactory', GameFactoryStub);
 }
 
 function cleanupEnv() {

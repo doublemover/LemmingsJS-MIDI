@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/util/Position2D.js';
 import '../js/render/ViewPoint.js';
@@ -110,7 +110,7 @@ describe('Stage.draw', function() {
 
     let dashCalls = 0;
     const original = Lemmings.drawMarchingAntRect;
-    Lemmings.drawMarchingAntRect = () => { dashCalls++; };
+    setDependency('drawMarchingAntRect', () => { dashCalls++; });
 
     stage.overlayAlpha = 1;
     stage.overlayColor = 'green';
@@ -120,7 +120,7 @@ describe('Stage.draw', function() {
     stage.overlayDashColor = 0xFFFFFFFF;
     stage.draw(stage.guiImgProps, display.getImageData());
 
-    Lemmings.drawMarchingAntRect = original;
+    setDependency('drawMarchingAntRect', original);
 
     expect(canvas.calls.fillCalls.length).to.equal(1);
     expect(canvas.calls.getCalls.length).to.equal(1);

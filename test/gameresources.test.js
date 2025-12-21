@@ -1,5 +1,5 @@
 import assert from 'assert';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import { GameResources } from '../js/game/GameResources.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
@@ -32,7 +32,7 @@ describe('GameResources', function () {
         return super.getPart(i);
       }
     }
-    Lemmings.FileContainer = SpyFileContainer;
+    setDependency('FileContainer', SpyFileContainer);
 
     fileProvider = new NodeFileProvider('.');
     const origLoad = fileProvider.loadBinary.bind(fileProvider);
@@ -44,40 +44,40 @@ describe('GameResources', function () {
     };
 
     origLemmingsSprite = Lemmings.LemmingsSprite;
-    Lemmings.LemmingsSprite = class { constructor(part) { this.part = part; } };
+    setDependency('LemmingsSprite', class { constructor(part) { this.part = part; } });
 
     origSkillPanelSprites = Lemmings.SkillPanelSprites;
-    Lemmings.SkillPanelSprites = class { constructor(a, b) { this.parts = [a, b]; } };
+    setDependency('SkillPanelSprites', class { constructor(a, b) { this.parts = [a, b]; } });
 
     origPaletteImage = Lemmings.PaletteImage;
-    Lemmings.PaletteImage = class {
+    setDependency('PaletteImage', class {
       processImage() {}
       processTransparentByColorIndex() {}
       createFrame() { return 'frame'; }
-    };
+    });
 
     origColorPalette = Lemmings.ColorPalette;
-    Lemmings.ColorPalette = class { setColorRGB() {} };
+    setDependency('ColorPalette', class { setColorRGB() {} });
 
     origMaskProvider = Lemmings.MaskProvider;
-    Lemmings.MaskProvider = class { constructor(part) { this.part = part; } };
+    setDependency('MaskProvider', class { constructor(part) { this.part = part; } });
 
     origFrame = Lemmings.Frame;
-    Lemmings.Frame = class {
+    setDependency('Frame', class {
       constructor(w, h) { this.width = w; this.height = h; this.drawn = []; }
       drawPaletteImage(buf, w, h, pal) { this.drawn.push({ buf, w, h, pal }); }
-    };
+    });
 
   });
 
   afterEach(function () {
-    Lemmings.FileContainer = origFileContainer;
-    Lemmings.LemmingsSprite = origLemmingsSprite;
-    Lemmings.SkillPanelSprites = origSkillPanelSprites;
-    Lemmings.PaletteImage = origPaletteImage;
-    Lemmings.ColorPalette = origColorPalette;
-    Lemmings.MaskProvider = origMaskProvider;
-    Lemmings.Frame = origFrame;
+    setDependency('FileContainer', origFileContainer);
+    setDependency('LemmingsSprite', origLemmingsSprite);
+    setDependency('SkillPanelSprites', origSkillPanelSprites);
+    setDependency('PaletteImage', origPaletteImage);
+    setDependency('ColorPalette', origColorPalette);
+    setDependency('MaskProvider', origMaskProvider);
+    setDependency('Frame', origFrame);
   });
 
   it('caches the promise returned by getMainDat()', async function () {

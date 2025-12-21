@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency, clearDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/level/MapObject.js';
 import '../js/render/Animation.js';
@@ -43,15 +43,15 @@ before(function() {
     addEventListener() {},
     removeEventListener() {}
   };
-  Lemmings.Stage = class { constructor() {} getGameDisplay() { return {}; } getGuiDisplay() { return {}; } updateStageSize() {} setCursorSprite() {} clear() {} startFadeOut() {} startOverlayFade() {} };
-  Lemmings.KeyboardShortcuts = class { constructor() {} dispose() {} };
+  setDependency('Stage', class { constructor() {} getGameDisplay() { return {}; } getGuiDisplay() { return {}; } updateStageSize() {} setCursorSprite() {} clear() {} startFadeOut() {} startOverlayFade() {} });
+  setDependency('KeyboardShortcuts', class { constructor() {} dispose() {} });
 });
 
 describe('benchStart basics', function() {
   it('adds entrance objects and configures timer', async function() {
     const { GameView } = await import('../js/game/GameView.js');
-    Lemmings.Stage = class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} };
-    Lemmings.KeyboardShortcuts = class { constructor(){} dispose(){} };
+    setDependency('Stage', class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} });
+    setDependency('KeyboardShortcuts', class { constructor(){} dispose(){} });
     const level = new LevelStub();
     const objInfo = new Lemmings.ObjectImageInfo();
     objInfo.frames = [new Uint8Array(1)];
@@ -94,6 +94,6 @@ describe('benchStart basics', function() {
 after(function() {
   delete global.window;
   delete global.document;
-  delete Lemmings.Stage;
-  delete Lemmings.KeyboardShortcuts;
+  clearDependency('Stage');
+  clearDependency('KeyboardShortcuts');
 });

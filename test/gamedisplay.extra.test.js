@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/render/DisplayImage.js';
 import '../js/game/SkillTypes.js';
@@ -115,7 +115,7 @@ describe('GameDisplay extra', function() {
 
   it('draws yellow selection when action matches selected skill', function() {
     class DummyAction {}
-    Lemmings.ActionBashSystem = DummyAction;
+    setDependency('ActionBashSystem', DummyAction);
     const selected = { x: 5, y: 5, removed: false, action: new DummyAction() };
     const lm = {
       render() {},

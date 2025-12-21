@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
@@ -70,7 +70,7 @@ describe('GroundReader', function() {
       debug() {}
     }
     const origHandler = Lemmings.LogHandler;
-    Lemmings.LogHandler = MockLogHandler;
+    setDependency('LogHandler', MockLogHandler);
     const prev = globalThis.lemmings.game.showDebug;
     globalThis.lemmings.game.showDebug = true;
 
@@ -98,7 +98,7 @@ describe('GroundReader', function() {
 
     globalThis.lemmings.game.showDebug = prev;
     const logs = ground.log.logged;
-    Lemmings.LogHandler = origHandler;
+    setDependency('LogHandler', origHandler);
     expect(logs.some(m => m.includes('unknown1 diverges'))).to.equal(true);
     expect(logs.some(m => m.includes('unknown2 should be'))).to.equal(true);
   });

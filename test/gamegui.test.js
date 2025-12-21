@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/commands/CommandReleaseRateIncrease.js';
@@ -113,11 +113,11 @@ describe('GameGui', function() {
     };
     global.lemmings = { bench: false, game: { showDebug: false } };
     origMiniMap = Lemmings.MiniMap;
-    Lemmings.MiniMap = MiniMapStub;
+    setDependency('MiniMap', MiniMapStub);
   });
 
   afterEach(function() {
-    Lemmings.MiniMap = origMiniMap;
+    setDependency('MiniMap', origMiniMap);
     delete global.window;
     delete global.lemmings;
   });

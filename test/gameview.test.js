@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/render/DisplayImage.js';
 import '../js/render/ViewPoint.js';
@@ -127,18 +127,18 @@ describe('GameView', function () {
     setupWindow();
     // override engine classes after all modules loaded
     this.origStage = Lemmings.Stage;
-    Lemmings.Stage = StageMock;
-    Lemmings.GameFactory = GameFactoryMock;
-    Lemmings.KeyboardShortcuts = KeyboardShortcutsMock;
-    Lemmings.GameTypes = { toString: () => '' };
-    Lemmings.GameStateTypes = { toString: () => '' };
+    setDependency('Stage', StageMock);
+    setDependency('GameFactory', GameFactoryMock);
+    setDependency('KeyboardShortcuts', KeyboardShortcutsMock);
+    setDependency('GameTypes', { toString: () => '' });
+    setDependency('GameStateTypes', { toString: () => '' });
     global.lemmings = { game: { showDebug: false } };
   });
 
   after(function () {
     delete global.window;
     delete global.document;
-    Lemmings.Stage = this.origStage;
+    setDependency('Stage', this.origStage);
   });
   it('initializes stage and connects displays', async function () {
     global.window = {
