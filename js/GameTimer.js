@@ -1,4 +1,5 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { COUNTER_LIMIT } from './core/constants.js';
+import { EventHandler } from './EventHandler.js';
 
 const getApp = () => {
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
@@ -32,9 +33,9 @@ class GameTimer {
     this.#lastGameSecond = 0;
     this.#tickIndex = 0;
     this.#loopBound = this.#loop.bind(this);
-    this.onGameTick = new Lemmings.EventHandler();
-    this.eachGameSecond = new Lemmings.EventHandler();
-    this.onBeforeGameTick = new Lemmings.EventHandler();
+    this.onGameTick = new EventHandler();
+    this.eachGameSecond = new EventHandler();
+    this.onBeforeGameTick = new EventHandler();
     this.ticksTimeLimit = this.secondsToTicks(level.timeLimit * 60);
     this.#autoPaused = false;
     this.#stableTicks = 0;
@@ -66,7 +67,7 @@ class GameTimer {
 
   get tickIndex() { return this.#tickIndex; }
   set tickIndex(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
+    if (v >= COUNTER_LIMIT) {
       console.warn('tickIndex wrapped, resetting to 0');
       this.#tickIndex = 0;
     } else {
@@ -297,5 +298,5 @@ class GameTimer {
   }
   secondsToTicks(s) { return s * (1000 / this.TIME_PER_FRAME_MS); }
 }
-Lemmings.GameTimer = GameTimer;
+
 export { GameTimer };

@@ -1,13 +1,15 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { MaskTypes } from './MaskTypes.js';
+import { SpriteTypes } from './SpriteTypes.js';
 class ActionBashSystem extends ActionBaseSystem {
   constructor(sprites, masks) {
     super({
       sprites,
-      spriteType: Lemmings.SpriteTypes.BASHING,
+      spriteType: SpriteTypes.BASHING,
       masks,
-      maskTypes: { left: Lemmings.MaskTypes.BASHING_L, right: Lemmings.MaskTypes.BASHING_R },
+      maskTypes: { left: MaskTypes.BASHING_L, right: MaskTypes.BASHING_R },
       actionName: 'bashing'
     });
   }
@@ -23,7 +25,7 @@ class ActionBashSystem extends ActionBaseSystem {
       const yDelta = this.findGapDelta(groundMask, lem.x, lem.y);
       lem.y += yDelta;
       if (yDelta == 3) {
-        return Lemmings.LemmingStateType.FALLING;
+        return LemmingStateType.FALLING;
       }
     }
 
@@ -38,10 +40,10 @@ class ActionBashSystem extends ActionBaseSystem {
             SoundEffectIds.STEEL_HIT,
             { lemmingId: lem.id, x: lem.x, y: lem.y }
           );
-          return Lemmings.LemmingStateType.SHRUG;
+          return LemmingStateType.SHRUG;
         }
         if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
-          return Lemmings.LemmingStateType.SHRUG;
+          return LemmingStateType.SHRUG;
         }
       }
       level.clearGroundWithMask(subMask, lem.x, lem.y);
@@ -51,11 +53,11 @@ class ActionBashSystem extends ActionBaseSystem {
     if (state == 5) {
       if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8),
         lem.y - 6, lem.lookRight) == 4) {
-        return Lemmings.LemmingStateType.WALKING;
+        return LemmingStateType.WALKING;
       }
     }
 
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
   
   findGapDelta(groundMask, x, y) {
@@ -76,6 +78,4 @@ class ActionBashSystem extends ActionBaseSystem {
     return 4;
   }
 }
-Lemmings.ActionBashSystem = ActionBashSystem;
-
 export { ActionBashSystem };

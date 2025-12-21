@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 const DEFAULT_CONFIG = Object.freeze({
   enabled: true,
   mpe: {
@@ -215,5 +213,4 @@ class MidiMapping {
   }
 }
 
-Lemmings.MidiMapping = MidiMapping;
 export { MidiMapping };

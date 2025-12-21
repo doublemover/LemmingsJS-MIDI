@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Mask } from './Mask.js';
 
 class MaskList {
   constructor(fr, width, height, count, offsetX, offsetY) {
@@ -16,11 +16,9 @@ class MaskList {
   loadFromFile(fr, width, height, count, offsetX, offsetY) {
     this.frames.length = 0;
     for (let i = 0; i < count; i++) {
-      const mask = new Lemmings.Mask(fr, width, height, offsetX, offsetY);
+      const mask = new Mask(fr, width, height, offsetX, offsetY);
       this.frames.push(mask);
     }
   }
 }
-Lemmings.MaskList = MaskList;
-
 export { MaskList };

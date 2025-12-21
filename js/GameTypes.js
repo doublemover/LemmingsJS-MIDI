@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 const GameTypes = {
   UNKNOWN: 0,
   LEMMINGS: 1,
@@ -23,8 +21,6 @@ Object.defineProperty(GameTypes, 'length', {
 });
 
 Object.freeze(GameTypes);
-
-Lemmings.GameTypes = GameTypes;
 export { GameTypes };
 
 /*GameTypes[GameTypes["XMAS91"] = 3] = "XMAS91";

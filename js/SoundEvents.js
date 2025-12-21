@@ -1,5 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './EventHandler.js';
+import { EventHandler } from './EventHandler.js';
 
 const SoundEventTypes = Object.freeze({
   LEVEL_START: 'level-start',
@@ -46,7 +45,7 @@ const SoundEffectIds = Object.freeze({
 class SoundEventBus {
   constructor(gameTimer) {
     this.gameTimer = gameTimer;
-    this.onEvent = new Lemmings.EventHandler();
+    this.onEvent = new EventHandler();
     this._queue = [];
     this._queueLimit = 2048;
     this._sequence = 0;
@@ -103,10 +102,5 @@ const getSoundBus = () => {
   }
   return null;
 };
-
-Lemmings.SoundEventTypes = SoundEventTypes;
-Lemmings.SoundEffectIds = SoundEffectIds;
-Lemmings.SoundEventBus = SoundEventBus;
-Lemmings.getSoundBus = getSoundBus;
 
 export { SoundEventTypes, SoundEffectIds, SoundEventBus, getSoundBus };

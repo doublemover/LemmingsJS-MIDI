@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class BaseImageInfo {
   constructor() {
     this.width = 0;
@@ -25,6 +23,4 @@ class BaseImageInfo {
     this.palette = null;
   }
 }
-Lemmings.BaseImageInfo = BaseImageInfo;
-
 export { BaseImageInfo };

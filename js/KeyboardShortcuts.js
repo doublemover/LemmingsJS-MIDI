@@ -1,4 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { CommandLemmingsAction } from './CommandLemmingsAction.js';
+import { CommandNuke } from './CommandNuke.js';
+import { CommandReleaseRateDecrease } from './CommandReleaseRateDecrease.js';
+import { CommandReleaseRateIncrease } from './CommandReleaseRateIncrease.js';
+import { CommandSelectSkill } from './CommandSelectSkill.js';
+import { GameVictoryCondition } from './GameVictoryCondition.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SkillTypes } from './SkillTypes.js';
 
 class KeyboardShortcuts {
   constructor(view) {
@@ -121,9 +128,9 @@ class KeyboardShortcuts {
   _cycleSkill(dir = 1) {
     const skills = this.view.game.getGameSkills();
     let next = skills.getSelectedSkill() + dir;
-    if (next > Lemmings.SkillTypes.DIGGER) next = Lemmings.SkillTypes.CLIMBER;
-    if (next < Lemmings.SkillTypes.CLIMBER) next = Lemmings.SkillTypes.DIGGER;
-    this.view.game.queueCommand(new Lemmings.CommandSelectSkill(next, false));
+    if (next > SkillTypes.DIGGER) next = SkillTypes.CLIMBER;
+    if (next < SkillTypes.CLIMBER) next = SkillTypes.DIGGER;
+    this.view.game.queueCommand(new CommandSelectSkill(next, false));
     this.view.game.gameGui.skillSelectionChanged = true;
   }
 
@@ -135,9 +142,9 @@ class KeyboardShortcuts {
       if (lem.removed) continue;
       if (lem.hasExploded) continue;
       if (lem.countdownAction) continue;
-      if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.EXPLODING]) continue;
-      if (lem.action === mgr.actions?.[Lemmings.LemmingStateType.OHNO]) continue;
-      mgr.setLemmingState(lem, Lemmings.LemmingStateType.EXPLODING);
+      if (lem.action === mgr.actions?.[LemmingStateType.EXPLODING]) continue;
+      if (lem.action === mgr.actions?.[LemmingStateType.OHNO]) continue;
+      mgr.setLemmingState(lem, LemmingStateType.EXPLODING);
     }
   }
 
@@ -175,53 +182,53 @@ class KeyboardShortcuts {
     case 'Digit1':
       if (e.shiftKey) {
         const diff = game.getVictoryCondition().getCurrentReleaseRate() - game.getVictoryCondition().getMinReleaseRate();
-        if (diff > 0) game.queueCommand(new Lemmings.CommandReleaseRateDecrease(diff));
+        if (diff > 0) game.queueCommand(new CommandReleaseRateDecrease(diff));
       } else {
-        game.queueCommand(new Lemmings.CommandReleaseRateDecrease(1));
+        game.queueCommand(new CommandReleaseRateDecrease(1));
       }
       game.gameGui.releaseRateChanged = true;
       break;
     case 'Digit2':
       if (e.shiftKey) {
         const vc = game.getVictoryCondition();
-        const max = vc.getMaxReleaseRate?.() ?? Lemmings.GameVictoryCondition.maxReleaseRate;
+        const max = vc.getMaxReleaseRate?.() ?? GameVictoryCondition.maxReleaseRate;
         const diff = max - vc.getCurrentReleaseRate();
-        if (diff > 0) game.queueCommand(new Lemmings.CommandReleaseRateIncrease(diff));
+        if (diff > 0) game.queueCommand(new CommandReleaseRateIncrease(diff));
       } else {
-        game.queueCommand(new Lemmings.CommandReleaseRateIncrease(1));
+        game.queueCommand(new CommandReleaseRateIncrease(1));
       }
       game.gameGui.releaseRateChanged = true;
       break;
     case 'Digit3':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.CLIMBER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.CLIMBER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'Digit4':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.FLOATER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.FLOATER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'Digit5':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BOMBER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.BOMBER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'Digit6':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BLOCKER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.BLOCKER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'KeyQ':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BUILDER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.BUILDER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'KeyW':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.BASHER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.BASHER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'KeyE':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.MINER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.MINER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'KeyR':
-      game.queueCommand(new Lemmings.CommandSelectSkill(Lemmings.SkillTypes.DIGGER));
+      game.queueCommand(new CommandSelectSkill(SkillTypes.DIGGER));
       game.gameGui.skillSelectionChanged = true;
       break;
     case 'Space':
@@ -236,7 +243,7 @@ class KeyboardShortcuts {
       break;
     case 'KeyT':
       if (e.shiftKey) this._instantNuke();
-      else game.queueCommand(new Lemmings.CommandNuke());
+      else game.queueCommand(new CommandNuke());
       break;
     case 'Backspace':
       this.view.moveToLevel(0);
@@ -272,7 +279,7 @@ class KeyboardShortcuts {
     case 'KeyK': {
       const mgr = this.view.game.getLemmingManager?.();
       const lem = mgr?.getSelectedLemming?.();
-      if (lem) this.view.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+      if (lem) this.view.game.queueCommand(new CommandLemmingsAction(lem.id));
       break; }
     case 'KeyN':
       // selection cleared via keyboard no longer supported
@@ -341,5 +348,4 @@ class KeyboardShortcuts {
   }
 }
 
-Lemmings.KeyboardShortcuts = KeyboardShortcuts;
 export { KeyboardShortcuts };

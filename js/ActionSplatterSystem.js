@@ -1,10 +1,12 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
+import { TriggerTypes } from './TriggerTypes.js';
         
 class ActionSplatterSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.SPLATTING, singleSprite: true, actionName: 'splatter' });
+    super({ sprites, spriteType: SpriteTypes.SPLATTING, singleSprite: true, actionName: 'splatter' });
   }
   triggerLemAction(lem) {
     return false;
@@ -21,8 +23,8 @@ class ActionSplatterSystem extends ActionBaseSystem {
     if (lem.frameIndex === 0) {
       const triggerType = lem.lastTriggerType;
       const isTrapDeath =
-            triggerType === Lemmings.TriggerTypes.TRAP ||
-            triggerType === Lemmings.TriggerTypes.KILL;
+            triggerType === TriggerTypes.TRAP ||
+            triggerType === TriggerTypes.KILL;
       if (!isTrapDeath) {
         const soundBus = getSoundBus();
         soundBus?.emitSfx?.(
@@ -33,10 +35,8 @@ class ActionSplatterSystem extends ActionBaseSystem {
       }
       lem.lastTriggerType = null;
     }
-    if (++lem.frameIndex >= 16) return Lemmings.LemmingStateType.OUT_OF_LEVEL;
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    if (++lem.frameIndex >= 16) return LemmingStateType.OUT_OF_LEVEL;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionSplatterSystem = ActionSplatterSystem;
-
 export { ActionSplatterSystem };

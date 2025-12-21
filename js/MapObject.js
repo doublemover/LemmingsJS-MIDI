@@ -1,10 +1,12 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Animation } from './Animation.js';
+import { Frame } from './Frame.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { TriggerTypes } from './TriggerTypes.js';
 
 class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
   static _frameCache = new WeakMap();
-  constructor (ob, objectImg, animation = new Lemmings.Animation(), triggerType = Lemmings.TriggerTypes.NO_TRIGGER) {
+  constructor (ob, objectImg, animation = new Animation(), triggerType = TriggerTypes.NO_TRIGGER) {
     this.ob              = ob;
     this.obID            = ob.id;
     this.x               = ob.x;
@@ -16,7 +18,7 @@ class MapObject {
     if (!frames) {
       frames = new Array(objectImg.frames.length);
       for (let i = 0, len = frames.length; i < len; ++i) {
-        const f = new Lemmings.Frame(objectImg.width, objectImg.height);
+        const f = new Frame(objectImg.width, objectImg.height);
         f.clear();
         // Draw once (palette → RGBA). This cost is now paid ONE time per sprite
         f.drawPaletteImage(objectImg.frames[i], objectImg.width, objectImg.height,
@@ -44,11 +46,11 @@ class MapObject {
     let sfxId = null;
     let eventType = null;
 
-    if (triggerType === Lemmings.TriggerTypes.TRAP) {
+    if (triggerType === TriggerTypes.TRAP) {
       sfxId = trigger?.soundIndex ?? null;
       eventType = SoundEventTypes.TRAP_TRIGGER;
-    } else if (triggerType === Lemmings.TriggerTypes.KILL ||
-               triggerType === Lemmings.TriggerTypes.FRYING) {
+    } else if (triggerType === TriggerTypes.KILL ||
+               triggerType === TriggerTypes.FRYING) {
       sfxId = SoundEffectIds.TRAP_FIRE;
       eventType = SoundEventTypes.LEMMING_FIRE;
     }
@@ -70,5 +72,5 @@ class MapObject {
     }
   }
 }
-Lemmings.MapObject = MapObject;
 export { MapObject };
+

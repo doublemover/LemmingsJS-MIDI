@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class ColorPalette {
   constructor() {
     this.data = new Uint32Array(16); //- 16 colors
@@ -37,6 +35,4 @@ class ColorPalette {
     return 0xFFFF00FF;
   }
 }
-Lemmings.ColorPalette = ColorPalette;
-
 export { ColorPalette };

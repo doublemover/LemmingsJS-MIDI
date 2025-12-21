@@ -1,4 +1,6 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { ColorPalette } from './ColorPalette.js';
+import { Frame } from './Frame.js';
+import { TriggerTypes } from './TriggerTypes.js';
 
 /*  TriggerManager
  *  ───────────────
@@ -17,7 +19,7 @@ import { Lemmings } from './LemmingsNamespace.js';
 
 class TriggerManager {
   /**
-   * @param {Lemmings.GameTimer} gameTimer
+   * @param {GameTimer} gameTimer
    * @param {number}  [levelW=1600]   – level width in pixels (inclusive)
    * @param {number}  [levelH=160]    – level height in pixels (inclusive)
    * @param {number}  [cellSize=16]   – grid cell size, must be power of two
@@ -47,7 +49,7 @@ class TriggerManager {
     this._maxX = levelW;
     this._maxY = levelH;
 
-    /** @type {Lemmings.Frame|null} prebuilt debug overlay */
+    /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
   }
 
@@ -77,11 +79,11 @@ class TriggerManager {
   }
 
   /**
-   * Query at pixel (x,y).  Returns a value from Lemmings.TriggerTypes
+   * Query at pixel (x,y).  Returns a value from TriggerTypes
    */
   trigger (x, y, lemming = null) {
     if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
-      return Lemmings.TriggerTypes.NO_TRIGGER;
+      return TriggerTypes.NO_TRIGGER;
     }
 
     const bucket =
@@ -95,12 +97,12 @@ class TriggerManager {
 
     for (const trig of cell) {
       const val = trig.trigger(x, y, tick, lemming);
-      if (val !== Lemmings.TriggerTypes.NO_TRIGGER) {
+      if (val !== TriggerTypes.NO_TRIGGER) {
         this._lastHitTick[bucket] = tick;
         return val;
       }
     }
-    return Lemmings.TriggerTypes.NO_TRIGGER;
+    return TriggerTypes.NO_TRIGGER;
   }
 
   /** Draw rectangles in debug overlay */
@@ -129,8 +131,8 @@ class TriggerManager {
   /* ────────────────────── internal helpers ────────────────────── */
 
   #buildDebugFrame() {
-    const frame = new Lemmings.Frame(this._levelW, this._levelH);
-    const color = Lemmings.ColorPalette.colorFromRGB(255, 0, 0);
+    const frame = new Frame(this._levelW, this._levelH);
+    const color = ColorPalette.colorFromRGB(255, 0, 0);
     for (const tr of this._triggers) {
       if (tr.type === 7 || tr.type === 8) continue; // arrows handled elsewhere
       frame.drawRect(tr.x1, tr.y1, tr.x2 - tr.x1, tr.y2 - tr.y1, color);
@@ -184,5 +186,4 @@ class TriggerManager {
   }
 }
 
-Lemmings.TriggerManager = TriggerManager;
 export { TriggerManager };

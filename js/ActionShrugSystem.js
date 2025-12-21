@@ -1,9 +1,10 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionShrugSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.SHRUGGING, actionName: 'shrugging' });
+    super({ sprites, spriteType: SpriteTypes.SHRUGGING, actionName: 'shrugging' });
   }
 
   triggerLemAction(lem) {
@@ -17,11 +18,9 @@ class ActionShrugSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.frameIndex++;
     if (lem.frameIndex >= 8) {
-      return Lemmings.LemmingStateType.WALKING;
+      return LemmingStateType.WALKING;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionShrugSystem = ActionShrugSystem;
 export { ActionShrugSystem };

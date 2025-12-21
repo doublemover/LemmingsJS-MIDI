@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class CommandReleaseRateIncrease {
   constructor(number) {
     this.number = number;
@@ -15,6 +13,4 @@ class CommandReleaseRateIncrease {
   save() { return []; }
   getCommandKey() { return 'i'; }
 }
-
-Lemmings.CommandReleaseRateIncrease = CommandReleaseRateIncrease;
 export { CommandReleaseRateIncrease };

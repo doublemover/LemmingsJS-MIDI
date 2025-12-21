@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class Position2D {
   constructor(x = 0, y = 0) {
     /** X position in the container */
@@ -10,6 +8,5 @@ class Position2D {
     this.y = y;
   }
 }
-Lemmings.Position2D = Position2D;
 
 export { Position2D };

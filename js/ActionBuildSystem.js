@@ -1,10 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.BUILDING, actionName: 'building' });
+    super({ sprites, spriteType: SpriteTypes.BUILDING, actionName: 'building' });
   }
   process(level, lem) {
     lem.frameIndex = (lem.frameIndex + 1) % 16;
@@ -27,7 +28,7 @@ class ActionBuildSystem extends ActionBaseSystem {
           { lemmingId: lem.id, x: lem.x, y: lem.y }
         );
       }
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
     if (lem.frameIndex == 0) {
       lem.y--;
@@ -35,18 +36,16 @@ class ActionBuildSystem extends ActionBaseSystem {
         lem.x += (lem.lookRight ? 1 : -1);
         if (level.hasGroundAt(lem.x, lem.y - 1)) {
           lem.lookRight = !lem.lookRight;
-          return Lemmings.LemmingStateType.WALKING;
+          return LemmingStateType.WALKING;
         }
       }
-      if (++lem.state >= 12) return Lemmings.LemmingStateType.SHRUG;
+      if (++lem.state >= 12) return LemmingStateType.SHRUG;
       if (level.hasGroundAt(lem.x + (lem.lookRight ? 2 : -2), lem.y - 9)) {
         lem.lookRight = !lem.lookRight;
-        return Lemmings.LemmingStateType.WALKING;
+        return LemmingStateType.WALKING;
       }
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionBuildSystem = ActionBuildSystem;
-
 export { ActionBuildSystem };

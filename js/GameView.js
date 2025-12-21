@@ -1,9 +1,22 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './KeyboardShortcuts.js';
 import { createCrosshairFrame } from './CrosshairCursor.js';
+import { GameFactory } from './GameFactory.js';
+import { GameStateTypes } from './GameStateTypes.js';
+import { GameTypes } from './GameTypes.js';
+import { KeyboardShortcuts } from './KeyboardShortcuts.js';
+import { Lemming } from './Lemming.js';
+import { BaseLogger } from './LogHandler.js';
+import { MidiEventRouter } from './MidiEventRouter.js';
+import { MidiMapping } from './MidiMapping.js';
+import { Stage } from './Stage.js';
+import { TriggerTypes } from './TriggerTypes.js';
+import { getDependency } from './core/dependencies.js';
 
-class GameView extends Lemmings.BaseLogger {
+const getGameTypes = () => getDependency('GameTypes', GameTypes);
+const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
+const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
+const getLemmingCtor = () => getDependency('Lemming', Lemming);
+
+class GameView extends BaseLogger {
   constructor() {
     super();
     globalThis.lemmings = this;
@@ -12,7 +25,8 @@ class GameView extends Lemmings.BaseLogger {
     this.levelGroupIndex = 0;
     this.gameResources = null;
     this.game = null;
-    this.gameFactory = new Lemmings.GameFactory('./');
+    const Factory = getDependency('GameFactory', GameFactory);
+    this.gameFactory = new Factory('./');
     this.stage = null;
     this.gameSpeedFactor = 1;
     this.bench = false; // just keep spawning lems
@@ -44,12 +58,14 @@ class GameView extends Lemmings.BaseLogger {
     this.elementSelectLevelGroup = null;
     this.elementSelectLevel = null;
     this.configs = null;
-    this.shortcuts = new Lemmings.KeyboardShortcuts(this);
+    const Shortcuts = getDependency('KeyboardShortcuts', KeyboardShortcuts);
+    this.shortcuts = new Shortcuts(this);
     this.midiRouter = null;
     this._midiOut = null;
     this._midiMapping = null;
 
-    this.log.log('selected level: ' + Lemmings.GameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
+    const gameTypes = getGameTypes();
+    this.log.log('selected level: ' + gameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
   }
 
   set gameCanvas(el) {
@@ -58,7 +74,8 @@ class GameView extends Lemmings.BaseLogger {
       window.removeEventListener('orientationchange', this._stageResize);
       this.stage.dispose();
     }
-    this.stage = new Lemmings.Stage(el);
+    const StageCtor = getDependency('Stage', Stage);
+    this.stage = new StageCtor(el);
     this._stageResize = () => this.stage.updateStageSize();
     window.addEventListener('resize', this._stageResize);
     window.addEventListener('orientationchange', this._stageResize);
@@ -89,7 +106,8 @@ class GameView extends Lemmings.BaseLogger {
       await this.initMidiRouting();
       this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       game.start();
-      this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
+      const gameStateTypes = getGameStateTypes();
+      this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
       this.game = game;
       if (this.cheatEnabled) this.game.cheat();
@@ -100,11 +118,13 @@ class GameView extends Lemmings.BaseLogger {
   }
 
   onGameEnd(gameResult) {
-    this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(gameResult.state));
+    const gameStateTypes = getGameStateTypes();
+    this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameResult.state));
     this.stage.startFadeOut();
     console.dir(gameResult);
     this.autoMoveTimer = window.setTimeout(() => {
-      if (gameResult.state == Lemmings.GameStateTypes.SUCCEEDED) {
+      const gameStateTypes = getGameStateTypes();
+      if (gameResult.state == gameStateTypes.SUCCEEDED) {
         /// move to next level
         this.moveToLevel(1);
       } else {
@@ -237,13 +257,13 @@ class GameView extends Lemmings.BaseLogger {
   }
 
   async _loadMidiMapping() {
-    if (!this.gameFactory?.fileProvider) return new Lemmings.MidiMapping();
+    if (!this.gameFactory?.fileProvider) return new MidiMapping();
     try {
       const text = await this.gameFactory.fileProvider.loadString('midi-mapping.json');
-      return Lemmings.MidiMapping.fromJson(text);
+      return MidiMapping.fromJson(text);
     } catch (e) {
       this.log.log('Unable to load midi-mapping.json, using defaults', e);
-      return new Lemmings.MidiMapping();
+      return new MidiMapping();
     }
   }
 
@@ -256,7 +276,8 @@ class GameView extends Lemmings.BaseLogger {
         const position = this._midiMapping.config.position || {};
         this._midiMapping.config.position = { ...position, viewPan };
       }
-      this.midiRouter = new Lemmings.MidiEventRouter(this._midiMapping);
+      const Router = getDependency('MidiEventRouter', MidiEventRouter);
+      this.midiRouter = new Router(this._midiMapping);
     }
     if (!this._midiOut) {
       const webMidi = this._getWebMidi();
@@ -306,7 +327,8 @@ class GameView extends Lemmings.BaseLogger {
         this.levelGroupIndex--;
         this.levelIndex = groupLength - 1;
       }
-      if (!Lemmings.GameTypes[Object.keys(Lemmings.GameTypes)[this.gameType]]) {
+      const gameTypes = getGameTypes();
+      if (!gameTypes[Object.keys(gameTypes)[this.gameType]]) {
         this.gameType = 1;
         this.levelGroupIndex = 0;
         this.levelIndex = 0;
@@ -556,7 +578,8 @@ class GameView extends Lemmings.BaseLogger {
       this.game.stop();
       this.game = null;
     }
-    this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes[Lemmings.GameStateTypes.UNKNOWN]);
+    const gameStateTypes = getGameStateTypes();
+    this.changeHtmlText(this.elementGameState, gameStateTypes[gameStateTypes.UNKNOWN]);
     const level = await this.gameResources.getLevel(this.levelGroupIndex, this.levelIndex);
     if (!level) return;
     if (this.elementSelectGameType && this.configs) {
@@ -598,18 +621,19 @@ class GameView extends Lemmings.BaseLogger {
     level.entrances.length = 0;
     const baseEntrances = this._benchBaseEntrances;
     const groundMask = level.getGroundMaskLayer();
+    const triggerTypes = getTriggerTypes();
     const badTriggers = new Set([
-      Lemmings.TriggerTypes.DROWN,
-      Lemmings.TriggerTypes.FRYING,
-      Lemmings.TriggerTypes.KILL,
-      Lemmings.TriggerTypes.TRAP,
+      triggerTypes.DROWN,
+      triggerTypes.FRYING,
+      triggerTypes.KILL,
+      triggerTypes.TRAP,
     ]);
 
     const increments = [100, 50, 25, 12, 6];
     const SEGMENT_DURATION = 60;
     const ENTRANCE_HEIGHT = 28;
     const SPAWN_OFFSET_Y = 14;
-    const SAFE_ENTRANCE_DROP = Lemmings.Lemming.LEM_MAX_FALLING - SPAWN_OFFSET_Y;
+    const SAFE_ENTRANCE_DROP = getLemmingCtor().LEM_MAX_FALLING - SPAWN_OFFSET_Y;
 
     const clearHeight = (x, y) => {
       if (y < 0 || y + ENTRANCE_HEIGHT > level.height) return false;
@@ -806,6 +830,5 @@ class GameView extends Lemmings.BaseLogger {
     }
   }
 }
-Lemmings.GameView = GameView;
 
 export { GameView };

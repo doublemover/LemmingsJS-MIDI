@@ -1,9 +1,10 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
     
 class ActionOhNoSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.OHNO, singleSprite: true, actionName: 'oh-no' });
+    super({ sprites, spriteType: SpriteTypes.OHNO, singleSprite: true, actionName: 'oh-no' });
   }
 
   triggerLemAction(lem) {
@@ -20,7 +21,7 @@ class ActionOhNoSystem extends ActionBaseSystem {
     
   process(level, lem) {
     if (++lem.frameIndex == 16) {
-      return Lemmings.LemmingStateType.EXPLODING;
+      return LemmingStateType.EXPLODING;
     }
         
     // fall down!
@@ -30,9 +31,7 @@ class ActionOhNoSystem extends ActionBaseSystem {
         break;
       }
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionOhNoSystem = ActionOhNoSystem;
 export { ActionOhNoSystem };

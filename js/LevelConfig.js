@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class LevelConfig {
   constructor() {
     /** file Prefix used in the filename of the level-file */
@@ -22,6 +20,5 @@ class LevelConfig {
     return this.order[groupIndex].length;
   }
 }
-Lemmings.LevelConfig = LevelConfig;
 
 export { LevelConfig };

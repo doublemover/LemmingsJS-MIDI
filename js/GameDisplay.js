@@ -1,4 +1,10 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { CommandLemmingsAction } from './CommandLemmingsAction.js';
+import { ActionBashSystem } from './ActionBashSystem.js';
+import { ActionBlockerSystem } from './ActionBlockerSystem.js';
+import { ActionDiggSystem } from './ActionDiggSystem.js';
+import { ActionMineSystem } from './ActionMineSystem.js';
+import { SkillTypes } from './SkillTypes.js';
+import { getDependency } from './core/dependencies.js';
 
 class GameDisplay {
   constructor(game, level, lemmingManager, objectManager, triggerManager) {
@@ -18,6 +24,12 @@ class GameDisplay {
     this._dashOffset = 0;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+    this._redundantActions = {
+      [SkillTypes.BASHER]: getDependency('ActionBashSystem', ActionBashSystem),
+      [SkillTypes.BLOCKER]: getDependency('ActionBlockerSystem', ActionBlockerSystem),
+      [SkillTypes.DIGGER]: getDependency('ActionDiggSystem', ActionDiggSystem),
+      [SkillTypes.MINER]: getDependency('ActionMineSystem', ActionMineSystem)
+    };
   }
   _scheduleHoverUpdate() {
     if (this._hoverRafId) return;
@@ -54,7 +66,7 @@ class GameDisplay {
     this._mouseHandler = (e) => {
       const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
       if (lem) {
-        this.game.queueCommand(new Lemmings.CommandLemmingsAction(lem.id));
+        this.game.queueCommand(new CommandLemmingsAction(lem.id));
       }
     };
     this.display.onMouseDown.on(this._mouseHandler);
@@ -108,13 +120,7 @@ class GameDisplay {
     const skills = this.game?.getGameSkills?.();
     if (skills) {
       const selectedSkill = skills.getSelectedSkill();
-      const redundant = {
-        [Lemmings.SkillTypes.BASHER]: Lemmings.ActionBashSystem,
-        [Lemmings.SkillTypes.BLOCKER]: Lemmings.ActionBlockerSystem,
-        [Lemmings.SkillTypes.DIGGER]: Lemmings.ActionDiggSystem,
-        [Lemmings.SkillTypes.MINER]: Lemmings.ActionMineSystem
-      };
-      const ActionClass = redundant[selectedSkill];
+      const ActionClass = this._redundantActions[selectedSkill];
       if (ActionClass && lem.action instanceof ActionClass) {
         color = 0xffffff00; // yellow tint for redundant action
       }
@@ -162,6 +168,5 @@ class GameDisplay {
     this.hoverLemming = null;
   }
 }
-Lemmings.GameDisplay = GameDisplay;
 
 export { GameDisplay };

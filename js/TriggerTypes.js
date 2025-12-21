@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 export const TriggerTypes = Object.freeze({
   NO_TRIGGER: 0,
   EXIT_LEVEL: 1,
@@ -16,5 +14,3 @@ export const TriggerTypes = Object.freeze({
   FRYING: 12, // gross hack alert to make frying work for now
   DISABLED: 13, // added for new triggermanager
 });
-
-Lemmings.TriggerTypes = TriggerTypes;

@@ -1,13 +1,14 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { MaskTypes } from './MaskTypes.js';
 
 class ActionCountdownSystem extends ActionBaseSystem {
   static numberMasks = new Map();
   constructor(masks) {
     super({ actionName: 'countdown' });
     if (ActionCountdownSystem.numberMasks.size == 0) {
-      ActionCountdownSystem.numberMasks.set('numbers', masks.GetMask(Lemmings.MaskTypes.NUMBERS));
+      ActionCountdownSystem.numberMasks.set('numbers', masks.GetMask(MaskTypes.NUMBERS));
     }
   }
 
@@ -26,7 +27,7 @@ class ActionCountdownSystem extends ActionBaseSystem {
 
   process(level, lem) {
     if (lem.countdown <= 0) {
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
     lem.countdown--;
     if (lem.countdown == 0) {
@@ -37,11 +38,9 @@ class ActionCountdownSystem extends ActionBaseSystem {
         SoundEffectIds.OHNO,
         { lemmingId: lem.id, x: lem.x, y: lem.y }
       );
-      return Lemmings.LemmingStateType.OHNO;
+      return LemmingStateType.OHNO;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-
-Lemmings.ActionCountdownSystem = ActionCountdownSystem;
 export { ActionCountdownSystem };

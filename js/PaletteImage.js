@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Frame } from './Frame.js';
 
 class PaletteImage {
   constructor(width, height) {
@@ -10,7 +10,7 @@ class PaletteImage {
   getImageBuffer() { return this.pixBuf; }
 
   createFrame(palette, offsetX = 0, offsetY = 0) {
-    const frame = new Lemmings.Frame(this.width, this.height, offsetX, offsetY);
+    const frame = new Frame(this.width, this.height, offsetX, offsetY);
     if (palette) frame.drawPaletteImage(this.pixBuf, this.width, this.height, palette, 0, 0);
     return frame;
   }
@@ -48,5 +48,4 @@ class PaletteImage {
     }
   }
 }
-Lemmings.PaletteImage = PaletteImage;
 export { PaletteImage };

@@ -1,9 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { Lemming } from './Lemming.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionFallSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.FALLING, actionName: 'falling' });
+    super({ sprites, spriteType: SpriteTypes.FALLING, actionName: 'falling' });
   }
 
   draw(gameDisplay, lem) {
@@ -13,7 +15,7 @@ class ActionFallSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.frameIndex++;
     if (lem.state > 16 && (lem.hasParachute)) {
-      return Lemmings.LemmingStateType.FLOATING;
+      return LemmingStateType.FLOATING;
     }
 
     // fall down!
@@ -26,16 +28,14 @@ class ActionFallSystem extends ActionBaseSystem {
     lem.y += i;
     if (i == 3) {
       lem.state += i;
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     } else {
       // landed
-      if (lem.state > Lemmings.Lemming.LEM_MAX_FALLING) {
-        return Lemmings.LemmingStateType.SPLATTING;
+      if (lem.state > Lemming.LEM_MAX_FALLING) {
+        return LemmingStateType.SPLATTING;
       }
-      return Lemmings.LemmingStateType.WALKING;
+      return LemmingStateType.WALKING;
     }
   }
 }
-Lemmings.ActionFallSystem = ActionFallSystem;
-
 export { ActionFallSystem };

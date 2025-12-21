@@ -1,10 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
         
 class ActionDiggSystem extends ActionBaseSystem {
   constructor(sprites) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.DIGGING, actionName: 'digging' });
+    super({ sprites, spriteType: SpriteTypes.DIGGING, actionName: 'digging' });
   }
   process(level, lem) {
     if (level.isSteelGround(lem.x, lem.y) ||
@@ -16,7 +17,7 @@ class ActionDiggSystem extends ActionBaseSystem {
         SoundEffectIds.STEEL_HIT,
         { lemmingId: lem.id, x: lem.x, y: lem.y }
       );
-      return Lemmings.LemmingStateType.SHRUG;
+      return LemmingStateType.SHRUG;
     }
     if (lem.state == 0) {
       this.digRow(level, lem, lem.y - 2);
@@ -28,13 +29,13 @@ class ActionDiggSystem extends ActionBaseSystem {
     if (!(lem.frameIndex & 0x07)) {
       lem.y++;
       if (level.isOutOfLevel(lem.y)) {
-        return Lemmings.LemmingStateType.FALLING;
+        return LemmingStateType.FALLING;
       }
       if (!this.digRow(level, lem, lem.y - 1)) {
-        return Lemmings.LemmingStateType.FALLING;
+        return LemmingStateType.FALLING;
       }
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
   digRow(level, lem, y) {
     let removeCount = 0;
@@ -47,6 +48,4 @@ class ActionDiggSystem extends ActionBaseSystem {
     return (removeCount > 0);
   }
 }
-Lemmings.ActionDiggSystem = ActionDiggSystem;
-
 export { ActionDiggSystem };

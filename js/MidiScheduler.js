@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
 class MidiScheduler {
@@ -277,5 +275,4 @@ class MidiScheduler {
   }
 }
 
-Lemmings.MidiScheduler = MidiScheduler;
 export { MidiScheduler };

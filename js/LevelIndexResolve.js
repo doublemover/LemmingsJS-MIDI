@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { LevelIndexType } from './LevelIndexType.js';
 
 class LevelIndexResolve {
   constructor(config) {
@@ -16,7 +16,7 @@ class LevelIndexResolve {
     if (levelIndex < 0)
       return null;
     let levelOrderConfig = levelOrder[levelIndex];
-    let liType = new Lemmings.LevelIndexType();
+    let liType = new LevelIndexType();
     liType.fileId = Math.abs((levelOrderConfig / 10) | 0);
     liType.partIndex = Math.abs((levelOrderConfig % 10) | 0);
     liType.useOddTable = (levelOrderConfig < 0);
@@ -29,6 +29,5 @@ class LevelIndexResolve {
     return liType;
   }
 }
-Lemmings.LevelIndexResolve = LevelIndexResolve;
 
 export { LevelIndexResolve };

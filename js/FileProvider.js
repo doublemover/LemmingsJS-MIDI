@@ -1,10 +1,12 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { BaseLogger } from './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
+import { getDependency } from './core/dependencies.js';
 import './LogHandler.js';
 
 /**
  * FileProvider with transparent in‑memory caching.
  */
-class FileProvider extends Lemmings.BaseLogger {
+class FileProvider extends BaseLogger {
   constructor(rootPath) {
     super();
     this.rootPath = rootPath;
@@ -24,7 +26,7 @@ class FileProvider extends Lemmings.BaseLogger {
 
   /**
    * Load binary data from URL( rootPath + path + filename ).
-   * Returns a Promise that resolves to Lemmings.BinaryReader.
+   * Returns a Promise that resolves to BinaryReader.
    * @param {string} path    sub‑directory below rootPath (leading slash optional)
    * @param {?string} filename  optional file name; when omitted `path` is treated as full relative URL
    * @param {{forceReload?: boolean}} [opts]
@@ -117,7 +119,8 @@ class FileProvider extends Lemmings.BaseLogger {
       let value;
       if (type === 'binary') {
         const buf = this._base64ToArrayBuffer(entry.data);
-        value = new Lemmings.BinaryReader(buf, 0, null, this._filenameFromUrl(url), path);
+        const Reader = getDependency('BinaryReader', BinaryReader);
+        value = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
       } else {
         value = entry.data;
       }
@@ -170,7 +173,8 @@ class FileProvider extends Lemmings.BaseLogger {
     });
 
     const buf = response.buffer;
-    const reader = new Lemmings.BinaryReader(buf, 0, null, this._filenameFromUrl(url), path);
+    const Reader = getDependency('BinaryReader', BinaryReader);
+    const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
     const hash = await this._hashBuffer(buf);
     this._storeInLocalStorage(url, { type: 'binary', data: this._arrayBufferToBase64(buf), hash, ...response.headers });
     return reader;
@@ -269,5 +273,4 @@ class FileProvider extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.FileProvider = FileProvider;
 export { FileProvider };

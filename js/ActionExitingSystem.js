@@ -1,10 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionExitingSystem extends ActionBaseSystem {
   constructor(sprites, gameVictoryCondition) {
-    super({ sprites, spriteType: Lemmings.SpriteTypes.EXITING, singleSprite: true, actionName: 'exiting' });
+    super({ sprites, spriteType: SpriteTypes.EXITING, singleSprite: true, actionName: 'exiting' });
     this.gameVictoryCondition = gameVictoryCondition;
   }
   triggerLemAction(lem) {
@@ -28,10 +29,9 @@ class ActionExitingSystem extends ActionBaseSystem {
     lem.frameIndex++;
     if (lem.frameIndex >= 8) {
       this.gameVictoryCondition.addSurvivor();
-      return Lemmings.LemmingStateType.OUT_OF_LEVEL;
+      return LemmingStateType.OUT_OF_LEVEL;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionExitingSystem = ActionExitingSystem;
 export { ActionExitingSystem };

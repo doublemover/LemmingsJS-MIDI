@@ -1,9 +1,15 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './Frame.js';
-import './FileContainer.js';
+import { BaseLogger } from './LogHandler.js';
+import { ColorPalette } from './ColorPalette.js';
+import { FileContainer } from './FileContainer.js';
+import { Frame } from './Frame.js';
+import { getDependency } from './core/dependencies.js';
+import { LemmingsSprite } from './LemmingsSprite.js';
+import { LevelLoader } from './LevelLoader.js';
+import { MaskProvider } from './MaskProvider.js';
+import { PaletteImage } from './PaletteImage.js';
+import { SkillPanelSprites } from './SkillPanelSprites.js';
 
-class GameResources extends Lemmings.BaseLogger {
+class GameResources extends BaseLogger {
   constructor(fileProvider, config) {
     super();
     this.fileProvider = fileProvider;
@@ -21,7 +27,8 @@ class GameResources extends Lemmings.BaseLogger {
       this.fileProvider.loadBinary(this.config.path, 'MAIN.DAT')
         .then((data) => {
           // split the file
-          const mainParts = new Lemmings.FileContainer(data);
+          const Container = getDependency('FileContainer', FileContainer);
+          const mainParts = new Container(data);
           resolve(mainParts);
         })
         .catch((e) => {
@@ -34,7 +41,8 @@ class GameResources extends Lemmings.BaseLogger {
   getLemmingsSprite(colorPalette) {
     return new Promise((resolve, reject) => {
       this.getMainDat().then((container) => {
-        const sprite = new Lemmings.LemmingsSprite(container.getPart(0), colorPalette);
+        const Sprite = getDependency('LemmingsSprite', LemmingsSprite);
+        const sprite = new Sprite(container.getPart(0), colorPalette);
         resolve(sprite);
       });
     });
@@ -42,7 +50,8 @@ class GameResources extends Lemmings.BaseLogger {
   getSkillPanelSprite(colorPalette) {
     return new Promise((resolve, reject) => {
       this.getMainDat().then((container) => {
-        resolve(new Lemmings.SkillPanelSprites(container.getPart(2), container.getPart(6), colorPalette));
+        const PanelSprites = getDependency('SkillPanelSprites', SkillPanelSprites);
+        resolve(new PanelSprites(container.getPart(2), container.getPart(6), colorPalette));
       });
     });
   }
@@ -50,10 +59,12 @@ class GameResources extends Lemmings.BaseLogger {
     return new Promise((resolve) => {
       this.getMainDat().then((container) => {
         const fr = container.getPart(5);
-        const pimg = new Lemmings.PaletteImage(14, 14);
+        const Palette = getDependency('PaletteImage', PaletteImage);
+        const pimg = new Palette(14, 14);
         pimg.processImage(fr, 1);
         pimg.processTransparentByColorIndex(0);
-        const pal = new Lemmings.ColorPalette();
+        const PaletteCtor = getDependency('ColorPalette', ColorPalette);
+        const pal = new PaletteCtor();
         pal.setColorRGB(1, 255, 255, 255);
         resolve(pimg.createFrame(pal));
       });
@@ -62,13 +73,15 @@ class GameResources extends Lemmings.BaseLogger {
   getMasks() {
     return new Promise((resolve, reject) => {
       this.getMainDat().then((container) => {
-        resolve(new Lemmings.MaskProvider(container.getPart(1)));
+        const Provider = getDependency('MaskProvider', MaskProvider);
+        resolve(new Provider(container.getPart(1)));
       });
     });
   }
   /** return the Level Data for a given Level-Index */
   getLevel(levelMode, levelIndex) {
-    const levelReader = new Lemmings.LevelLoader(this.fileProvider, this.config);
+    const Loader = getDependency('LevelLoader', LevelLoader);
+    const levelReader = new Loader(this.fileProvider, this.config);
     return levelReader.getLevel(levelMode, levelIndex);
   }
   /** return the level group names for this game */
@@ -76,6 +89,4 @@ class GameResources extends Lemmings.BaseLogger {
     return this.config.level.groups;
   }
 }
-Lemmings.GameResources = GameResources;
-
 export { GameResources };

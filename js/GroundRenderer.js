@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Frame } from './Frame.js';
 
 const paletteLookupCache = new WeakMap();
 
@@ -26,7 +26,7 @@ class GroundRenderer {
   /** Build ground bitmap once per level */
   createGroundMap (levelReader, terrainImages) {
     const { levelWidth, levelHeight, terrains } = levelReader;
-    this.img = new Lemmings.Frame(levelWidth, levelHeight);
+    this.img = new Frame(levelWidth, levelHeight);
 
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];
@@ -82,5 +82,4 @@ class GroundRenderer {
   }
 }
 
-Lemmings.GroundRenderer = GroundRenderer;
 export { GroundRenderer };

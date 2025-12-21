@@ -1,4 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class CommandLemmingsAction {
@@ -50,6 +49,4 @@ class CommandLemmingsAction {
     return 'l';
   }
 }
-
-Lemmings.CommandLemmingsAction = CommandLemmingsAction;
 export { CommandLemmingsAction };

@@ -1,4 +1,6 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { Animation } from './Animation.js';
+import { SpriteTypes } from './SpriteTypes.js';
+import { getDependency } from './core/dependencies.js';
 
 /**
  * Represents a set of all possible Lemmings sprite animations for a color palette.
@@ -12,8 +14,8 @@ class LemmingsSprite {
   #colorPalette;
 
   /**
-   * Lookup table: ActionType × direction (left/right/neutral) → Animation
-   * @type {Lemmings.Animation[]}
+   * Lookup table: ActionType x direction (left/right/neutral) -> Animation
+   * @type {Animation[]}
    */
   #lemmingAnimation = [];
 
@@ -23,6 +25,7 @@ class LemmingsSprite {
    */
   constructor(fr, colorPalette) {
     this.#colorPalette = colorPalette;
+    this._AnimationCtor = getDependency('Animation', Animation);
 
     // Ensure a palette entry exists in the cache (cost: one WeakMap lookup)
     let paletteCache = _animationCache.get(colorPalette);
@@ -36,34 +39,34 @@ class LemmingsSprite {
     // This reduces overhead vs calling registerAnimation 30+ times by inlining the loop
     const ANIM_LIST = [
       // state, dir,  bits, w,  h, offX, offY, frames
-      [Lemmings.SpriteTypes.WALKING,  1, 2, 16, 10, -8, -10, 8],
-      [Lemmings.SpriteTypes.JUMPING,  1, 2, 16, 10, -8, -10, 1],
-      [Lemmings.SpriteTypes.WALKING, -1, 2, 16, 10, -8, -10, 8],
-      [Lemmings.SpriteTypes.JUMPING, -1, 2, 16, 10, -8, -10, 1],
-      [Lemmings.SpriteTypes.DIGGING,  0, 3, 16, 14, -8, -12,16],
-      [Lemmings.SpriteTypes.CLIMBING, 1, 2, 16, 12, -8, -12,8],
-      [Lemmings.SpriteTypes.CLIMBING,-1, 2, 16, 12, -8, -12,8],
-      [Lemmings.SpriteTypes.DROWNING, 0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.POSTCLIMBING, 1, 2, 16, 12, -8, -12, 8],
-      [Lemmings.SpriteTypes.POSTCLIMBING,-1,2,16,12,-8,-12,8],
-      [Lemmings.SpriteTypes.BUILDING,  1, 3, 16, 13, -8, -13,16],
-      [Lemmings.SpriteTypes.BUILDING, -1, 3, 16, 13, -8, -13,16],
-      [Lemmings.SpriteTypes.BASHING,   1, 3, 16, 10, -8, -10,32],
-      [Lemmings.SpriteTypes.BASHING,  -1, 3, 16, 10, -8, -10,32],
-      [Lemmings.SpriteTypes.MINING,    1, 3, 16, 13, -8, -12,24],
-      [Lemmings.SpriteTypes.MINING,   -1, 3, 16, 13, -8, -12,24],
-      [Lemmings.SpriteTypes.FALLING,   1, 2, 16, 10, -8, -10,4],
-      [Lemmings.SpriteTypes.FALLING,  -1, 2, 16, 10, -8, -10,4],
-      [Lemmings.SpriteTypes.UMBRELLA,  1, 3, 16, 16, -8, -16,8],
-      [Lemmings.SpriteTypes.UMBRELLA, -1, 3, 16, 16, -8, -16,8],
-      [Lemmings.SpriteTypes.SPLATTING, 0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.EXITING,   0, 2, 16, 13, -8, -13,8],
-      [Lemmings.SpriteTypes.FRYING,    0, 4, 16, 14, -8, -10,14],
-      [Lemmings.SpriteTypes.BLOCKING,  0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.SHRUGGING, 1, 2, 16, 10, -8, -10,8],
-      [Lemmings.SpriteTypes.SHRUGGING, 0, 2, 16, 10, -8, -10,8],
-      [Lemmings.SpriteTypes.OHNO,      0, 2, 16, 10, -8, -10,16],
-      [Lemmings.SpriteTypes.EXPLODING, 0, 3, 32, 32, -8, -10,1]
+      [SpriteTypes.WALKING,  1, 2, 16, 10, -8, -10, 8],
+      [SpriteTypes.JUMPING,  1, 2, 16, 10, -8, -10, 1],
+      [SpriteTypes.WALKING, -1, 2, 16, 10, -8, -10, 8],
+      [SpriteTypes.JUMPING, -1, 2, 16, 10, -8, -10, 1],
+      [SpriteTypes.DIGGING,  0, 3, 16, 14, -8, -12,16],
+      [SpriteTypes.CLIMBING, 1, 2, 16, 12, -8, -12,8],
+      [SpriteTypes.CLIMBING,-1, 2, 16, 12, -8, -12,8],
+      [SpriteTypes.DROWNING, 0, 2, 16, 10, -8, -10,16],
+      [SpriteTypes.POSTCLIMBING, 1, 2, 16, 12, -8, -12, 8],
+      [SpriteTypes.POSTCLIMBING,-1,2,16,12,-8,-12,8],
+      [SpriteTypes.BUILDING,  1, 3, 16, 13, -8, -13,16],
+      [SpriteTypes.BUILDING, -1, 3, 16, 13, -8, -13,16],
+      [SpriteTypes.BASHING,   1, 3, 16, 10, -8, -10,32],
+      [SpriteTypes.BASHING,  -1, 3, 16, 10, -8, -10,32],
+      [SpriteTypes.MINING,    1, 3, 16, 13, -8, -12,24],
+      [SpriteTypes.MINING,   -1, 3, 16, 13, -8, -12,24],
+      [SpriteTypes.FALLING,   1, 2, 16, 10, -8, -10,4],
+      [SpriteTypes.FALLING,  -1, 2, 16, 10, -8, -10,4],
+      [SpriteTypes.UMBRELLA,  1, 3, 16, 16, -8, -16,8],
+      [SpriteTypes.UMBRELLA, -1, 3, 16, 16, -8, -16,8],
+      [SpriteTypes.SPLATTING, 0, 2, 16, 10, -8, -10,16],
+      [SpriteTypes.EXITING,   0, 2, 16, 13, -8, -13,8],
+      [SpriteTypes.FRYING,    0, 4, 16, 14, -8, -10,14],
+      [SpriteTypes.BLOCKING,  0, 2, 16, 10, -8, -10,16],
+      [SpriteTypes.SHRUGGING, 1, 2, 16, 10, -8, -10,8],
+      [SpriteTypes.SHRUGGING, 0, 2, 16, 10, -8, -10,8],
+      [SpriteTypes.OHNO,      0, 2, 16, 10, -8, -10,16],
+      [SpriteTypes.EXPLODING, 0, 3, 32, 32, -8, -10,1]
     ];
 
     for (const [state, dir, bits, w, h, offX, offY, frames] of ANIM_LIST) {
@@ -75,7 +78,7 @@ class LemmingsSprite {
    * Returns the animation object for the given state/direction.
    * @param {number} state - SpriteTypes constant
    * @param {boolean|number} right - Rightward direction (true = right, false = left/neutral)
-   * @returns {Lemmings.Animation}
+   * @returns {Animation}
    */
   getAnimation(state, right) {
     return this.#lemmingAnimation[this.#typeToIndex(state, right)];
@@ -104,7 +107,7 @@ class LemmingsSprite {
    * @param {number} offsetX
    * @param {number} offsetY
    * @param {number} frames
-   * @param {Map} paletteCache - Palette→State→Dir cache for this palette
+   * @param {Map} paletteCache - Palette->State->Dir cache for this palette
    */
   #registerAnimation(state, dir, fr, bitsPerPixel, width, height, offsetX, offsetY, frames, paletteCache) {
     // Get/create per-state cache
@@ -115,7 +118,7 @@ class LemmingsSprite {
     }
     // Only create animation if not cached for (dir)
     if (!stateCache.has(dir)) {
-      let animation = new Lemmings.Animation();
+      let animation = new this._AnimationCtor();
       animation.loadFromFile(fr, bitsPerPixel, width, height, frames, this.#colorPalette, offsetX, offsetY);
       stateCache.set(dir, animation);
     }
@@ -133,12 +136,13 @@ class LemmingsSprite {
   /** @returns {any} The palette (for debugging or cache) */
   get colorPalette() { return this.#colorPalette; }
 
-  /** @returns {Lemmings.Animation[]} The flat animation table (read-only) */
+  /** @returns {Animation[]} The flat animation table (read-only) */
   get lemmingAnimation() { return this.#lemmingAnimation.slice(); }
 }
 
 // Global animation cache: WeakMap<palette, Map<state, Map<dir, Animation>>>
 const _animationCache = new WeakMap();
-
-Lemmings.LemmingsSprite = LemmingsSprite;
 export { LemmingsSprite };
+
+
+

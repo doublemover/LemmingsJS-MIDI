@@ -1,14 +1,16 @@
-import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { MaskTypes } from './MaskTypes.js';
+import { SpriteTypes } from './SpriteTypes.js';
 
 class ActionMineSystem extends ActionBaseSystem {
   constructor(sprites, masks) {
     super({
       sprites,
-      spriteType: Lemmings.SpriteTypes.MINING,
+      spriteType: SpriteTypes.MINING,
       masks,
-      maskTypes: { left: Lemmings.MaskTypes.MINING_L, right: Lemmings.MaskTypes.MINING_R },
+      maskTypes: { left: MaskTypes.MINING_L, right: MaskTypes.MINING_R },
       actionName: 'mining'
     });
   }
@@ -27,10 +29,10 @@ class ActionMineSystem extends ActionBaseSystem {
           SoundEffectIds.STEEL_HIT,
           { lemmingId: lem.id, x: lem.x, y: lem.y }
         );
-        return Lemmings.LemmingStateType.SHRUG;
+        return LemmingStateType.SHRUG;
       }
       if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
-        return Lemmings.LemmingStateType.SHRUG;
+        return LemmingStateType.SHRUG;
       }
       level.clearGroundWithMask(subMask, lem.x, lem.y);
       break;
@@ -40,13 +42,11 @@ class ActionMineSystem extends ActionBaseSystem {
     case 15:
       lem.x += lem.lookRight ? 1 : -1;
       if (!level.hasGroundAt(lem.x, lem.y)) {
-        return Lemmings.LemmingStateType.FALLING;
+        return LemmingStateType.FALLING;
       }
       break;
     }
-    return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    return LemmingStateType.NO_STATE_TYPE;
   }
 }
-Lemmings.ActionMineSystem = ActionMineSystem;
-
 export { ActionMineSystem };

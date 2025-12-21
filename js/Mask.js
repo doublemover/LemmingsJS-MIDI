@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class Mask {
   /**
      * @param {Object|null} fr - file reader for mask data, optional
@@ -49,6 +47,4 @@ class Mask {
     this.data = pixBuf;
   }
 }
-
-Lemmings.Mask = Mask;
 export { Mask };

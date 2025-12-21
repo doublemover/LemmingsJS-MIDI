@@ -1,8 +1,21 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
-import './SoundEvents.js';
+import { CommandManager } from './CommandManager.js';
+import { EventHandler } from './EventHandler.js';
+import { GameDisplay } from './GameDisplay.js';
+import { GameGui } from './GameGui.js';
+import { GameResult } from './GameResult.js';
+import { GameSkills } from './GameSkills.js';
+import { GameStateTypes } from './GameStateTypes.js';
+import { GameTimer } from './GameTimer.js';
+import { GameVictoryCondition } from './GameVictoryCondition.js';
+import { LemmingManager } from './LemmingManager.js';
+import { BaseLogger } from './LogHandler.js';
+import { ObjectManager } from './ObjectManager.js';
+import { ParticleTable } from './ParticleTable.js';
+import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
+import { TriggerManager } from './TriggerManager.js';
+import { getDependency } from './core/dependencies.js';
 
-class Game extends Lemmings.BaseLogger {
+class Game extends BaseLogger {
   constructor (gameResources) {
     super();
     this.gameResources = gameResources;
@@ -23,8 +36,8 @@ class Game extends Lemmings.BaseLogger {
     this.gameVictoryCondition = null;
     this.soundEvents          = null;
 
-    this.onGameEnd      = new Lemmings.EventHandler();
-    this.finalGameState = Lemmings.GameStateTypes.UNKNOWN;
+    this.onGameEnd      = new EventHandler();
+    this.finalGameState = GameStateTypes.UNKNOWN;
     this.showDebug      = false;
 
     this._boundTick = this.onGameTimerTick.bind(this);
@@ -63,7 +76,7 @@ class Game extends Lemmings.BaseLogger {
     this.gameGui         = null;
     this.soundEvents     = null;
 
-    this.finalGameState  = Lemmings.GameStateTypes.UNKNOWN;
+    this.finalGameState  = GameStateTypes.UNKNOWN;
   }
 
   async loadLevel (levelGroupIndex, levelIndex) {
@@ -75,14 +88,20 @@ class Game extends Lemmings.BaseLogger {
 
     const level   = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
     this.level    = level;
-    this.gameTimer = new Lemmings.GameTimer(level);
+    const Timer = getDependency('GameTimer', GameTimer);
+    this.gameTimer = new Timer(level);
     this.gameTimer.onGameTick.on(this._boundTick);
-    this.soundEvents = new Lemmings.SoundEventBus(this.gameTimer);
+    const SoundBus = getDependency('SoundEventBus', SoundEventBus);
+    this.soundEvents = new SoundBus(this.gameTimer);
 
-    this.commandManager       = new Lemmings.CommandManager(this, this.gameTimer);
-    this.skills               = new Lemmings.GameSkills(level);
-    this.gameVictoryCondition = new Lemmings.GameVictoryCondition(level);
-    this.triggerManager       = new Lemmings.TriggerManager(this.gameTimer);
+    const CommandMgr = getDependency('CommandManager', CommandManager);
+    const Skills = getDependency('GameSkills', GameSkills);
+    const Victory = getDependency('GameVictoryCondition', GameVictoryCondition);
+    const Triggers = getDependency('TriggerManager', TriggerManager);
+    this.commandManager       = new CommandMgr(this, this.gameTimer);
+    this.skills               = new Skills(level);
+    this.gameVictoryCondition = new Victory(level);
+    this.triggerManager       = new Triggers(this.gameTimer);
     this.triggerManager.addRange(level.triggers);
 
     const [masks, lemSprite] = await Promise.all([
@@ -90,8 +109,10 @@ class Game extends Lemmings.BaseLogger {
       this.gameResources.getLemmingsSprite(level.colorPalette),
     ]);
 
-    const particleTable  = new Lemmings.ParticleTable(level.colorPalette);
-    this.lemmingManager  = new Lemmings.LemmingManager(
+    const Particle = getDependency('ParticleTable', ParticleTable);
+    const LemmingMgr = getDependency('LemmingManager', LemmingManager);
+    const particleTable  = new Particle(level.colorPalette);
+    this.lemmingManager  = new LemmingMgr(
       level,
       lemSprite,
       this.triggerManager,
@@ -101,7 +122,8 @@ class Game extends Lemmings.BaseLogger {
     );
 
     const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
-    this.gameGui = new Lemmings.GameGui(
+    const Gui = getDependency('GameGui', GameGui);
+    this.gameGui = new Gui(
       this,
       skillPanelSprites,
       this.skills,
@@ -109,10 +131,12 @@ class Game extends Lemmings.BaseLogger {
       this.gameVictoryCondition,
     );
 
-    this.objectManager = new Lemmings.ObjectManager(this.gameTimer);
+    const ObjManager = getDependency('ObjectManager', ObjectManager);
+    this.objectManager = new ObjManager(this.gameTimer);
     this.objectManager.addRange(level.objects);
 
-    this.gameDisplay = new Lemmings.GameDisplay(
+    const Display = getDependency('GameDisplay', GameDisplay);
+    this.gameDisplay = new Display(
       this,
       level,
       this.lemmingManager,
@@ -128,8 +152,8 @@ class Game extends Lemmings.BaseLogger {
   start () {
     if (this.soundEvents) {
       this.soundEvents.emitSfx(
-        Lemmings.SoundEventTypes.LEVEL_START,
-        Lemmings.SoundEffectIds.LEVEL_START,
+        SoundEventTypes.LEVEL_START,
+        SoundEffectIds.LEVEL_START,
         {
           levelIndex: this.levelIndex,
           levelGroupIndex: this.levelGroupIndex,
@@ -171,12 +195,12 @@ class Game extends Lemmings.BaseLogger {
 
   getGameState () {
     if (typeof lemmings !== 'undefined' && lemmings.bench) {
-      return Lemmings.GameStateTypes.RUNNING;
+      return GameStateTypes.RUNNING;
     }
     if (typeof lemmings !== 'undefined' && lemmings.endless) {
-      return Lemmings.GameStateTypes.RUNNING;
+      return GameStateTypes.RUNNING;
     }
-    if (this.finalGameState !== Lemmings.GameStateTypes.UNKNOWN) {
+    if (this.finalGameState !== GameStateTypes.UNKNOWN) {
       return this.finalGameState;
     }
 
@@ -187,26 +211,27 @@ class Game extends Lemmings.BaseLogger {
     const won       = survivors >= need;
 
     if (left <= 0 && out <= 0) {
-      return won ? Lemmings.GameStateTypes.SUCCEEDED
-        : Lemmings.GameStateTypes.FAILED_LESS_LEMMINGS;
+      return won ? GameStateTypes.SUCCEEDED
+        : GameStateTypes.FAILED_LESS_LEMMINGS;
     }
     if (!lemmings?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
-      return won ? Lemmings.GameStateTypes.SUCCEEDED
-        : Lemmings.GameStateTypes.FAILED_OUT_OF_TIME;
+      return won ? GameStateTypes.SUCCEEDED
+        : GameStateTypes.FAILED_OUT_OF_TIME;
     }
-    return Lemmings.GameStateTypes.RUNNING;
+    return GameStateTypes.RUNNING;
   }
 
   checkForGameOver () {
     if (typeof lemmings !== 'undefined' && lemmings.bench) return;
-    if (this.finalGameState !== Lemmings.GameStateTypes.UNKNOWN) return;
+    if (this.finalGameState !== GameStateTypes.UNKNOWN) return;
 
     const state = this.getGameState();
-    if (state !== Lemmings.GameStateTypes.RUNNING &&
-        state !== Lemmings.GameStateTypes.UNKNOWN) {
+    if (state !== GameStateTypes.RUNNING &&
+        state !== GameStateTypes.UNKNOWN) {
       this.gameVictoryCondition.doFinalize();
       this.finalGameState = state;
-      this.onGameEnd?.trigger(new Lemmings.GameResult(this));
+      const Result = getDependency('GameResult', GameResult);
+      this.onGameEnd?.trigger(new Result(this));
     }
   }
 
@@ -221,6 +246,4 @@ class Game extends Lemmings.BaseLogger {
     }
   }
 }
-
-Lemmings.Game = Game;
 export { Game };

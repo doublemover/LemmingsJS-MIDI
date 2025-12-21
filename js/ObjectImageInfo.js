@@ -1,7 +1,6 @@
-import './BaseImageInfo.js';
-import { Lemmings } from './LemmingsNamespace.js';
+import { BaseImageInfo } from './BaseImageInfo.js';
 
-class ObjectImageInfo extends Lemmings.BaseImageInfo {
+class ObjectImageInfo extends BaseImageInfo {
   constructor() {
     super(...arguments);
     this.animationLoop = false;
@@ -18,6 +17,4 @@ class ObjectImageInfo extends Lemmings.BaseImageInfo {
     this.trap_sound_effect_id = 0;
   }
 }
-Lemmings.ObjectImageInfo = ObjectImageInfo;
-
 export { ObjectImageInfo };

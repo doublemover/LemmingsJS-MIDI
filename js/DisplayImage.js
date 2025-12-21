@@ -1,9 +1,8 @@
 /* -------------------- DisplayImage.js -------------------- */
-import './LogHandler.js';
-import { Lemmings } from './LemmingsNamespace.js';
+import { BaseLogger } from './LogHandler.js';
+import { EventHandler } from './EventHandler.js';
 import { scaleImage } from './xbrz/xbrz.js';
 import { hqxScale, initHqx } from './vendor/hqx/index.js';
-import './EventHandler.js';
 initHqx();
 
 // a simple but high quality 53-bit hash
@@ -22,16 +21,16 @@ const cyrb53 = (str, seed = 0) => {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
 
-class DisplayImage extends Lemmings.BaseLogger {
+class DisplayImage extends BaseLogger {
   constructor(stage) {
     super();
     this.stage = stage;
-    this.onMouseUp = new Lemmings.EventHandler();
-    this.onMouseDown = new Lemmings.EventHandler();
-    this.onMouseRightDown = new Lemmings.EventHandler();
-    this.onMouseRightUp = new Lemmings.EventHandler();
-    this.onMouseMove = new Lemmings.EventHandler();
-    this.onDoubleClick = new Lemmings.EventHandler();
+    this.onMouseUp = new EventHandler();
+    this.onMouseDown = new EventHandler();
+    this.onMouseRightDown = new EventHandler();
+    this.onMouseRightUp = new EventHandler();
+    this.onMouseMove = new EventHandler();
+    this.onDoubleClick = new EventHandler();
     // 32‑bit view reused everywhere; set by initSize()
     this.buffer32 = null;
     // this.onMouseDown.on(e => {
@@ -444,7 +443,6 @@ class DisplayImage extends Lemmings.BaseLogger {
     this.stage = null;
   }
 }
-Lemmings.DisplayImage = DisplayImage;
 
 function scaleNearest(
   frame,
@@ -714,9 +712,4 @@ function drawDashedRect(
   );
 }
 
-Lemmings.drawMarchingAntRect = drawMarchingAntRect;
-Lemmings.drawDashedRect = drawDashedRect;
-Lemmings.scaleNearest = scaleNearest;
-Lemmings.scaleXbrz = scaleXbrz;
-Lemmings.scaleHqx = scaleHqx;
 export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleNearest, scaleXbrz, scaleHqx };

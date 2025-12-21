@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { ViewPoint } from './ViewPoint.js';
 
 class StageImageProperties {
   constructor() {
@@ -7,7 +7,7 @@ class StageImageProperties {
     this.width = 0;
     this.height = 0;
     this.display = null;
-    this.viewPoint = new Lemmings.ViewPoint(0, 0, 2);
+    this.viewPoint = new ViewPoint(0, 0, 2);
   }
 
   /** Pixel dimensions of the viewport on the Stage canvas. */
@@ -26,6 +26,5 @@ class StageImageProperties {
     return this.ctx.createImageData(width, height);
   }
 }
-Lemmings.StageImageProperties = StageImageProperties;
 
 export { StageImageProperties };

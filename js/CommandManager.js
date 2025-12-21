@@ -1,7 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger } from './LogHandler.js';
+import { CommandLemmingsAction } from './CommandLemmingsAction.js';
+import { CommandNuke } from './CommandNuke.js';
+import { CommandReleaseRateDecrease } from './CommandReleaseRateDecrease.js';
+import { CommandReleaseRateIncrease } from './CommandReleaseRateIncrease.js';
+import { CommandSelectSkill } from './CommandSelectSkill.js';
 
-class CommandManager extends Lemmings.BaseLogger {
+class CommandManager extends BaseLogger {
   constructor(game, gameTimer) {
     super();
     if (game == null || gameTimer == null) {
@@ -49,11 +53,11 @@ class CommandManager extends Lemmings.BaseLogger {
 
   commandFactory(type) {
     switch (type.toLowerCase()) {
-    case 'l': return new Lemmings.CommandLemmingsAction();
-    case 'n': return new Lemmings.CommandNuke();
-    case 's': return new Lemmings.CommandSelectSkill();
-    case 'i': return new Lemmings.CommandReleaseRateIncrease();
-    case 'd': return new Lemmings.CommandReleaseRateDecrease();
+    case 'l': return new CommandLemmingsAction();
+    case 'n': return new CommandNuke();
+    case 's': return new CommandSelectSkill();
+    case 'i': return new CommandReleaseRateIncrease();
+    case 'd': return new CommandReleaseRateDecrease();
     default: return null;
     }
   }
@@ -104,6 +108,4 @@ class CommandManager extends Lemmings.BaseLogger {
     this.loggedCommads = {};
   }
 }
-
-Lemmings.CommandManager = CommandManager;
 export { CommandManager };

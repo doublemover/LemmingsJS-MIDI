@@ -1,4 +1,4 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { SkillTypes } from './SkillTypes.js';
 
 class LevelProperties {
   constructor() {
@@ -7,9 +7,8 @@ class LevelProperties {
     this.releaseCount = 0;
     this.needCount = 0;
     this.timeLimit = 0;
-    this.skills = new Array(Object.keys(Lemmings.SkillTypes).length);
+    this.skills = new Array(Object.keys(SkillTypes).length);
   }
 }
-Lemmings.LevelProperties = LevelProperties;
 
 export { LevelProperties };

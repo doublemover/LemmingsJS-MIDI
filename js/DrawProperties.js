@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class DrawProperties {
   constructor(isUpsideDown, noOverwrite, onlyOverwrite, isErase) {
     this.isUpsideDown = isUpsideDown;
@@ -11,6 +9,4 @@ class DrawProperties {
       this.isErase = false;
   }
 }
-Lemmings.DrawProperties = DrawProperties;
-
 export { DrawProperties };

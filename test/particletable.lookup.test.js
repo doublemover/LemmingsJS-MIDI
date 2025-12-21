@@ -1,5 +1,4 @@
 import { expect } from 'chai';
-import { Lemmings } from '../js/LemmingsNamespace.js';
 
 function makePalette() {
   return {
@@ -38,12 +37,25 @@ describe('ParticleTable lookup branches', function() {
     expect(called).to.equal(true);
   });
 
-  it('reads global ParticleTable.particleDataBase64 when set', async function() {
+  it('reads ParticleTable.particleDataBase64 when overridden', async function() {
     let accessed = false;
-    Lemmings.ParticleTable = { get particleDataBase64() { accessed = true; return 'abc'; } };
     globalThis.lemmings = { game: { showDebug: false } };
     const { ParticleTable } = await import('../js/ParticleTable.js?optchain');
+    const original = ParticleTable.particleDataBase64;
+    Object.defineProperty(ParticleTable, 'particleDataBase64', {
+      configurable: true,
+      get() {
+        accessed = true;
+        return original;
+      }
+    });
+    ParticleTable._sharedParticleData = undefined;
+    new ParticleTable(makePalette());
     expect(accessed).to.equal(true);
-    expect(Lemmings.ParticleTable).to.equal(ParticleTable);
+    Object.defineProperty(ParticleTable, 'particleDataBase64', {
+      configurable: true,
+      writable: true,
+      value: original
+    });
   });
 });

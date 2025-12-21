@@ -1,37 +1,37 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { COUNTER_LIMIT } from './core/constants.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
-import './LogHandler.js';
-import './ActionWalkSystem.js';
-import './ActionFallSystem.js';
-import './ActionJumpSystem.js';
-import './ActionDiggSystem.js';
-import './ActionExitingSystem.js';
-import './ActionFloatingSystem.js';
-import './ActionBlockerSystem.js';
-import './ActionMineSystem.js';
-import './ActionClimbSystem.js';
-import './ActionHoistSystem.js';
-import './ActionBashSystem.js';
-import './ActionBuildSystem.js';
-import './ActionShrugSystem.js';
-import './ActionExplodingSystem.js';
-import './ActionOhNoSystem.js';
-import './ActionSplatterSystem.js';
-import './ActionDrowningSystem.js';
-import './ActionFryingSystem.js';
-import './ActionCountdownSystem.js';
-import './LemmingStateType.js';
-import './Lemming.js';
-import './SpriteTypes.js';
-import './MaskTypes.js';
-import './LemmingsBootstrap.js';
+import { ActionBashSystem } from './ActionBashSystem.js';
+import { ActionBlockerSystem } from './ActionBlockerSystem.js';
+import { ActionBuildSystem } from './ActionBuildSystem.js';
+import { ActionClimbSystem } from './ActionClimbSystem.js';
+import { ActionCountdownSystem } from './ActionCountdownSystem.js';
+import { ActionDiggSystem } from './ActionDiggSystem.js';
+import { ActionDrowningSystem } from './ActionDrowningSystem.js';
+import { ActionExitingSystem } from './ActionExitingSystem.js';
+import { ActionExplodingSystem } from './ActionExplodingSystem.js';
+import { ActionFallSystem } from './ActionFallSystem.js';
+import { ActionFloatingSystem } from './ActionFloatingSystem.js';
+import { ActionFryingSystem } from './ActionFryingSystem.js';
+import { ActionHoistSystem } from './ActionHoistSystem.js';
+import { ActionJumpSystem } from './ActionJumpSystem.js';
+import { ActionMineSystem } from './ActionMineSystem.js';
+import { ActionOhNoSystem } from './ActionOhNoSystem.js';
+import { ActionShrugSystem } from './ActionShrugSystem.js';
+import { ActionSplatterSystem } from './ActionSplatterSystem.js';
+import { ActionWalkSystem } from './ActionWalkSystem.js';
+import { Lemming } from './Lemming.js';
+import { LemmingStateType } from './LemmingStateType.js';
+import { BaseLogger, LogHandler, withPerformance } from './LogHandler.js';
+import { SkillTypes } from './SkillTypes.js';
+import { TriggerTypes } from './TriggerTypes.js';
+import { getDependency } from './core/dependencies.js';
 
-class LemmingManager extends Lemmings.BaseLogger {
+class LemmingManager extends BaseLogger {
   #mmTickCounter = 0;
   #releaseTickIndex = 0;
   constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
     super();
-    Lemmings.withPerformance(
+    withPerformance(
       'LemmingManager constructor',
       {
         track: 'LemmingManager',
@@ -69,33 +69,64 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.nextNukingLemmingsIndex = -1;
         this._nukeTargets = null;
 
-        this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.FALLING]    = new Lemmings.ActionFallSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.JUMPING]    = new Lemmings.ActionJumpSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.DIGGING]    = new Lemmings.ActionDiggSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.EXITING]    = new Lemmings.ActionExitingSystem(lemmingsSprite, gameVictoryCondition);
-        this.actions[Lemmings.LemmingStateType.FLOATING]   = new Lemmings.ActionFloatingSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.BLOCKING]   = new Lemmings.ActionBlockerSystem(lemmingsSprite, triggerManager);
-        this.actions[Lemmings.LemmingStateType.MINING]     = new Lemmings.ActionMineSystem(lemmingsSprite, masks);
-        this.actions[Lemmings.LemmingStateType.CLIMBING]   = new Lemmings.ActionClimbSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.HOISTING]   = new Lemmings.ActionHoistSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.BASHING]    = new Lemmings.ActionBashSystem(lemmingsSprite, masks);
-        this.actions[Lemmings.LemmingStateType.BUILDING]   = new Lemmings.ActionBuildSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.SHRUG]      = new Lemmings.ActionShrugSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.EXPLODING]  = new Lemmings.ActionExplodingSystem(lemmingsSprite, masks, triggerManager, particleTable);
-        this.actions[Lemmings.LemmingStateType.OHNO]       = new Lemmings.ActionOhNoSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.SPLATTING]  = new Lemmings.ActionSplatterSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.DROWNING]   = new Lemmings.ActionDrowningSystem(lemmingsSprite);
-        this.actions[Lemmings.LemmingStateType.FRYING]     = new Lemmings.ActionFryingSystem(lemmingsSprite);
+        const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
+        const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
+        const JumpSystem = getDependency('ActionJumpSystem', ActionJumpSystem);
+        const DiggSystem = getDependency('ActionDiggSystem', ActionDiggSystem);
+        const ExitSystem = getDependency('ActionExitingSystem', ActionExitingSystem);
+        const FloatSystem = getDependency('ActionFloatingSystem', ActionFloatingSystem);
+        const BlockSystem = getDependency('ActionBlockerSystem', ActionBlockerSystem);
+        const MineSystem = getDependency('ActionMineSystem', ActionMineSystem);
+        const ClimbSystem = getDependency('ActionClimbSystem', ActionClimbSystem);
+        const HoistSystem = getDependency('ActionHoistSystem', ActionHoistSystem);
+        const BashSystem = getDependency('ActionBashSystem', ActionBashSystem);
+        const BuildSystem = getDependency('ActionBuildSystem', ActionBuildSystem);
+        const ShrugSystem = getDependency('ActionShrugSystem', ActionShrugSystem);
+        const ExplodeSystem = getDependency('ActionExplodingSystem', ActionExplodingSystem);
+        const OhNoSystem = getDependency('ActionOhNoSystem', ActionOhNoSystem);
+        const SplatterSystem = getDependency('ActionSplatterSystem', ActionSplatterSystem);
+        const DrownSystem = getDependency('ActionDrowningSystem', ActionDrowningSystem);
+        const FrySystem = getDependency('ActionFryingSystem', ActionFryingSystem);
+        const CountdownSystem = getDependency('ActionCountdownSystem', ActionCountdownSystem);
 
-        this.skillActions[Lemmings.SkillTypes.DIGGER]  = this.actions[Lemmings.LemmingStateType.DIGGING];
-        this.skillActions[Lemmings.SkillTypes.FLOATER] = this.actions[Lemmings.LemmingStateType.FLOATING];
-        this.skillActions[Lemmings.SkillTypes.BLOCKER] = this.actions[Lemmings.LemmingStateType.BLOCKING];
-        this.skillActions[Lemmings.SkillTypes.MINER]   = this.actions[Lemmings.LemmingStateType.MINING];
-        this.skillActions[Lemmings.SkillTypes.CLIMBER] = this.actions[Lemmings.LemmingStateType.CLIMBING];
-        this.skillActions[Lemmings.SkillTypes.BASHER]  = this.actions[Lemmings.LemmingStateType.BASHING];
-        this.skillActions[Lemmings.SkillTypes.BUILDER] = this.actions[Lemmings.LemmingStateType.BUILDING];
-        this.skillActions[Lemmings.SkillTypes.BOMBER]  = new Lemmings.ActionCountdownSystem(masks);
+        this.actions[LemmingStateType.WALKING]    = new WalkSystem(lemmingsSprite);
+        this.actions[LemmingStateType.FALLING]    = new FallSystem(lemmingsSprite);
+        this.actions[LemmingStateType.JUMPING]    = new JumpSystem(lemmingsSprite);
+        this.actions[LemmingStateType.DIGGING]    = new DiggSystem(lemmingsSprite);
+        this.actions[LemmingStateType.EXITING]    = new ExitSystem(lemmingsSprite, gameVictoryCondition);
+        this.actions[LemmingStateType.FLOATING]   = new FloatSystem(lemmingsSprite);
+        this.actions[LemmingStateType.BLOCKING]   = new BlockSystem(lemmingsSprite, triggerManager);
+        this.actions[LemmingStateType.MINING]     = new MineSystem(lemmingsSprite, masks);
+        this.actions[LemmingStateType.CLIMBING]   = new ClimbSystem(lemmingsSprite);
+        this.actions[LemmingStateType.HOISTING]   = new HoistSystem(lemmingsSprite);
+        this.actions[LemmingStateType.BASHING]    = new BashSystem(lemmingsSprite, masks);
+        this.actions[LemmingStateType.BUILDING]   = new BuildSystem(lemmingsSprite);
+        this.actions[LemmingStateType.SHRUG]      = new ShrugSystem(lemmingsSprite);
+        this.actions[LemmingStateType.EXPLODING]  = new ExplodeSystem(lemmingsSprite, masks, triggerManager, particleTable);
+        this.actions[LemmingStateType.OHNO]       = new OhNoSystem(lemmingsSprite);
+        this.actions[LemmingStateType.SPLATTING]  = new SplatterSystem(lemmingsSprite);
+        this.actions[LemmingStateType.DROWNING]   = new DrownSystem(lemmingsSprite);
+        this.actions[LemmingStateType.FRYING]     = new FrySystem(lemmingsSprite);
+
+        this.skillActions[SkillTypes.DIGGER]  = this.actions[LemmingStateType.DIGGING];
+        this.skillActions[SkillTypes.FLOATER] = this.actions[LemmingStateType.FLOATING];
+        this.skillActions[SkillTypes.BLOCKER] = this.actions[LemmingStateType.BLOCKING];
+        this.skillActions[SkillTypes.MINER]   = this.actions[LemmingStateType.MINING];
+        this.skillActions[SkillTypes.CLIMBER] = this.actions[LemmingStateType.CLIMBING];
+        this.skillActions[SkillTypes.BASHER]  = this.actions[LemmingStateType.BASHING];
+        this.skillActions[SkillTypes.BUILDER] = this.actions[LemmingStateType.BUILDING];
+        this.skillActions[SkillTypes.BOMBER]  = new CountdownSystem(masks);
+
+        this._actionTypes = {
+          blocker: BlockSystem,
+          basher: BashSystem,
+          builder: BuildSystem,
+          climber: ClimbSystem,
+          digger: DiggSystem,
+          floater: FloatSystem,
+          miner: MineSystem
+        };
+        this._lemmingCtor = getDependency('Lemming', Lemming);
 
         this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
       })();
@@ -103,7 +134,7 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   get mmTickCounter() { return this.#mmTickCounter; }
   set mmTickCounter(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
+    if (v >= COUNTER_LIMIT) {
       console.warn('mmTickCounter wrapped, resetting to 0');
       this.#mmTickCounter = 0;
     } else {
@@ -113,7 +144,7 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   get releaseTickIndex() { return this.#releaseTickIndex; }
   set releaseTickIndex(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
+    if (v >= COUNTER_LIMIT) {
       console.warn('releaseTickIndex wrapped, resetting to 0');
       this.#releaseTickIndex = 0;
     } else {
@@ -144,14 +175,14 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   processNewAction(lem, newAction) {
-    if (newAction == Lemmings.LemmingStateType.NO_STATE_TYPE) return false;
+    if (newAction == LemmingStateType.NO_STATE_TYPE) return false;
     this.setLemmingState(lem, newAction);
     return true;
   }
 
   tick() {
     const tickNum = this.mmTickCounter;
-    Lemmings.withPerformance(
+    withPerformance(
       'tick',
       {
         track: 'LemmingManager',
@@ -167,7 +198,7 @@ class LemmingManager extends Lemmings.BaseLogger {
           this._nukeNextLemming();
         }
         for (const lem of lems) {
-          if (lem.removed && lem.action !== this.actions[Lemmings.LemmingStateType.EXPLODING]) continue;
+          if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
           const newAction = lem.process(this.level);
           this.processNewAction(lem, newAction);
           const triggerAction = this.runTrigger(lem);
@@ -212,7 +243,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   addLemming(x, y) {
-    Lemmings.withPerformance(
+    withPerformance(
       'addLemming',
       {
         track: 'LemmingManager',
@@ -222,21 +253,22 @@ class LemmingManager extends Lemmings.BaseLogger {
       },
       () => {
         const startingLemLength = this.lemmings.length;
-        const lem = new Lemmings.Lemming(x, y, startingLemLength);
+        const LemmingCtor = this._lemmingCtor || Lemming;
+        const lem = new LemmingCtor(x, y, startingLemLength);
         if (lemmings.bench) {
           lem.lookRight = Math.random() < 0.5;
         }
-        this.setLemmingState(lem, Lemmings.LemmingStateType.FALLING);
+        this.setLemmingState(lem, LemmingStateType.FALLING);
         this.lemmings.push(lem);
         this._addActiveLemming(lem);
         this.spawnTotal += 1;
 
         const extraCount = lemmings.extraLemmings | 0;
         if (extraCount > 0) {
-          const action = this.actions[Lemmings.LemmingStateType.FALLING];
+          const action = this.actions[LemmingStateType.FALLING];
           const extras = new Array(extraCount);
           for (let i = 0; i < extraCount; i++) {
-            const extra = new Lemmings.Lemming(
+            const extra = new LemmingCtor(
               x,
               y,
               startingLemLength + 1 + i
@@ -290,41 +322,41 @@ class LemmingManager extends Lemmings.BaseLogger {
   runTrigger(lem) {
     if (lem.isRemoved() || lem.isDisabled()) {
       // this.lemmings.splice(this.lemmings.indexOf(lem), 1);
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
     const triggerType = this.triggerManager.trigger(lem.x, lem.y, lem);
     switch (triggerType) {
-    case Lemmings.TriggerTypes.NO_TRIGGER:
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
-    case Lemmings.TriggerTypes.DROWN:
+    case TriggerTypes.NO_TRIGGER:
+      return LemmingStateType.NO_STATE_TYPE;
+    case TriggerTypes.DROWN:
       lem.lastTriggerType = triggerType;
-      return Lemmings.LemmingStateType.DROWNING;
-    case Lemmings.TriggerTypes.EXIT_LEVEL:
+      return LemmingStateType.DROWNING;
+    case TriggerTypes.EXIT_LEVEL:
       lem.lastTriggerType = triggerType;
-      return Lemmings.LemmingStateType.EXITING;
-    case Lemmings.TriggerTypes.KILL:
+      return LemmingStateType.EXITING;
+    case TriggerTypes.KILL:
       lem.lastTriggerType = triggerType;
-      return Lemmings.LemmingStateType.SPLATTING;
-    case Lemmings.TriggerTypes.FRYING:
+      return LemmingStateType.SPLATTING;
+    case TriggerTypes.FRYING:
       lem.lastTriggerType = triggerType;
-      return Lemmings.LemmingStateType.FRYING;
-    case Lemmings.TriggerTypes.TRAP:
+      return LemmingStateType.FRYING;
+    case TriggerTypes.TRAP:
       lem.lastTriggerType = triggerType;
-      return Lemmings.LemmingStateType.SPLATTING;
-    case Lemmings.TriggerTypes.BLOCKER_LEFT:
+      return LemmingStateType.SPLATTING;
+    case TriggerTypes.BLOCKER_LEFT:
       if (lem.lookRight) lem.lookRight = false;
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
-    case Lemmings.TriggerTypes.BLOCKER_RIGHT:
+      return LemmingStateType.NO_STATE_TYPE;
+    case TriggerTypes.BLOCKER_RIGHT:
       if (!lem.lookRight) lem.lookRight = true;
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     default:
       this.logging.log('unknown trigger type: ' + triggerType);
-      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+      return LemmingStateType.NO_STATE_TYPE;
     }
   }
 
   render(gameDisplay) {
-    Lemmings.withPerformance(
+    withPerformance(
       'render',
       {
         track: 'LemmingManager',
@@ -428,7 +460,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   setLemmingState(lem, stateType) {
-    Lemmings.withPerformance(
+    withPerformance(
       'setLemmingState',
       {
         track: 'LemmingManager',
@@ -439,16 +471,16 @@ class LemmingManager extends Lemmings.BaseLogger {
       () => {
         if (lem.countdown > 0) {
           const lethal =
-                stateType === Lemmings.LemmingStateType.DROWNING   ||
-                stateType === Lemmings.LemmingStateType.SPLATTING  ||
-                stateType === Lemmings.LemmingStateType.FRYING;
+                stateType === LemmingStateType.DROWNING   ||
+                stateType === LemmingStateType.SPLATTING  ||
+                stateType === LemmingStateType.FRYING;
           if (lethal) {
             lem.countdown = 0;
             lem.countdownAction = null;
           }
         }
-        if (stateType == Lemmings.LemmingStateType.OUT_OF_LEVEL) {
-          Lemmings.withPerformance(
+        if (stateType == LemmingStateType.OUT_OF_LEVEL) {
+          withPerformance(
             'removeOne',
             {
               track: 'LemmingManager',
@@ -465,14 +497,14 @@ class LemmingManager extends Lemmings.BaseLogger {
         const actionSystem = this.actions[stateType];
         if (!actionSystem) {
           this.removeOne(lem);
-          this.logging.log(lem.id + ' Action: Error not an action: ' + Lemmings.LemmingStateType[stateType]);
+          this.logging.log(lem.id + ' Action: Error not an action: ' + LemmingStateType[stateType]);
           return;
         } else {
           if (this.activeLemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
             this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
           }
         }
-        if (stateType === Lemmings.LemmingStateType.EXPLODING) {
+        if (stateType === LemmingStateType.EXPLODING) {
           lem.hasExploded = true;
         }
         lem.setAction(actionSystem);
@@ -480,7 +512,7 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   doLemmingAction(lem, skillType) {
-    return Lemmings.withPerformance(
+    return withPerformance(
       'doLemmingAction',
       {
         track: 'LemmingManager',
@@ -498,34 +530,36 @@ class LemmingManager extends Lemmings.BaseLogger {
           return false;
         }
         const canApplyWhileFalling = {
-          [Lemmings.SkillTypes.FLOATER]: Lemmings.ActionFloatingSystem,
-          [Lemmings.SkillTypes.CLIMBER]: Lemmings.ActionClimbSystem,
-          [Lemmings.SkillTypes.BOMBER]: this.skillActions[Lemmings.SkillTypes.BOMBER],
-          [Lemmings.SkillTypes.BUILDER]: Lemmings.ActionBuildSystem
+          [SkillTypes.FLOATER]: this._actionTypes?.floater,
+          [SkillTypes.CLIMBER]: this._actionTypes?.climber,
+          [SkillTypes.BOMBER]: this.skillActions[SkillTypes.BOMBER],
+          [SkillTypes.BUILDER]: this._actionTypes?.builder
         };
-        if (lem.action == this.actions[Lemmings.LemmingStateType.FALLING]) {
+        if (lem.action == this.actions[LemmingStateType.FALLING]) {
           if (!canApplyWhileFalling[skillType]) {
             return false;
           }
         }
         const redundant = {
-          [Lemmings.SkillTypes.BASHER]: Lemmings.ActionBashSystem,
-          [Lemmings.SkillTypes.BLOCKER]: Lemmings.ActionBlockerSystem,
-          [Lemmings.SkillTypes.DIGGER]: Lemmings.ActionDiggSystem,
-          [Lemmings.SkillTypes.MINER]: Lemmings.ActionMineSystem
+          [SkillTypes.BASHER]: this._actionTypes?.basher,
+          [SkillTypes.BLOCKER]: this._actionTypes?.blocker,
+          [SkillTypes.DIGGER]: this._actionTypes?.digger,
+          [SkillTypes.MINER]: this._actionTypes?.miner
         };
         const alreadyDoingIt =
             redundant[skillType] && (lem.action instanceof redundant[skillType]);
         if (alreadyDoingIt) {
           return false;
         }
-        const wasBlocking = (lem.action instanceof Lemmings.ActionBlockerSystem);
+        const wasBlocking = this._actionTypes?.blocker
+          ? (lem.action instanceof this._actionTypes.blocker)
+          : false;
         const ok = actionSystem.triggerLemAction(lem);
         if (ok && wasBlocking) {
           const keepWall =
-                skillType === Lemmings.SkillTypes.BOMBER ||
-                skillType === Lemmings.SkillTypes.CLIMBER ||
-                skillType === Lemmings.SkillTypes.FLOATER;
+                skillType === SkillTypes.BOMBER ||
+                skillType === SkillTypes.CLIMBER ||
+                skillType === SkillTypes.FLOATER;
           if (!keepWall) {
             this.triggerManager.removeByOwner(lem);
           }
@@ -562,7 +596,7 @@ class LemmingManager extends Lemmings.BaseLogger {
       const lem = lems[idx];
       let applied = false;
       if (lem && !lem.removed && !lem.disabled) {
-        applied = this.doLemmingAction(lem, Lemmings.SkillTypes.BOMBER);
+        applied = this.doLemmingAction(lem, SkillTypes.BOMBER);
       }
       if (idx + 1 >= count) {
         this.nextNukingLemmingsIndex = -1;
@@ -577,7 +611,7 @@ class LemmingManager extends Lemmings.BaseLogger {
 
   removeOne(lem) {
     if (this.miniMap &&
-            lem.action !== this.actions[Lemmings.LemmingStateType.EXITING]) {
+            lem.action !== this.actions[LemmingStateType.EXITING]) {
       this.miniMap.addDeath(lem.x, lem.y);
     }
     const lemId = lem.id;
@@ -617,7 +651,8 @@ class LemmingManager extends Lemmings.BaseLogger {
     this.gameVictoryCondition = null;
     this.skillActions.length = 0;
     this.#releaseTickIndex = null;
-    this.logging = new Lemmings.LogHandler('LemmingManager');
+    const Handler = getDependency('LogHandler', LogHandler);
+    this.logging = new Handler('LemmingManager');
     this.miniMap = null;
     this.#mmTickCounter = null;
     this.nextNukingLemmingsIndex = null;
@@ -643,5 +678,4 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 }
 
-Lemmings.LemmingManager = LemmingManager;
 export { LemmingManager };

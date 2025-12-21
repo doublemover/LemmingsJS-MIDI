@@ -1,10 +1,11 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { EventHandler } from './EventHandler.js';
+import { SkillTypes } from './SkillTypes.js';
 
 class GameSkills {
   constructor(level) {
-    this.selectedSkill = Lemmings.SkillTypes.CLIMBER;
-    this.onCountChanged = new Lemmings.EventHandler();
-    this.onSelectionChanged = new Lemmings.EventHandler();
+    this.selectedSkill = SkillTypes.CLIMBER;
+    this.onCountChanged = new EventHandler();
+    this.onSelectionChanged = new EventHandler();
     this.skills = level.skills;
     this.cheatMode = false;
     // automatically select a valid skill when a level loads
@@ -12,7 +13,7 @@ class GameSkills {
   }
 
   selectFirstAvailable() {
-    for (let i = Lemmings.SkillTypes.CLIMBER; i <= Lemmings.SkillTypes.DIGGER; i++) {
+    for (let i = SkillTypes.CLIMBER; i <= SkillTypes.DIGGER; i++) {
       if (this.skills[i] > 0) {
         this.selectedSkill = i;
         break;
@@ -36,7 +37,7 @@ class GameSkills {
     return true;
   }
   getSkill(type) {
-    if (!Lemmings.SkillTypes[Object.keys(Lemmings.SkillTypes)[type]])
+    if (!SkillTypes[Object.keys(SkillTypes)[type]])
       return 0;
     const val = this.skills[type];
     if (val === Infinity) return 99;
@@ -49,7 +50,7 @@ class GameSkills {
     if (this.selectedSkill == skill) {
       return false;
     }
-    if (!Lemmings.SkillTypes[Object.keys(Lemmings.SkillTypes)[skill]]) {
+    if (!SkillTypes[Object.keys(SkillTypes)[skill]]) {
       return false;
     }
     this.selectedSkill = skill;
@@ -66,14 +67,12 @@ class GameSkills {
   }
 
   clearSelectedSkill() {
-    if (this.selectedSkill !== Lemmings.SkillTypes.UNKNOWN) {
-      this.selectedSkill = Lemmings.SkillTypes.UNKNOWN;
+    if (this.selectedSkill !== SkillTypes.UNKNOWN) {
+      this.selectedSkill = SkillTypes.UNKNOWN;
       this.onSelectionChanged.trigger();
       return true;
     }
     return false;
   }
 }
-Lemmings.GameSkills = GameSkills;
-
 export { GameSkills };

@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 /**
  * Base class for all action systems.
  * Handles sprite and mask caching as well as common draw/trigger logic.
@@ -85,6 +83,4 @@ class ActionBaseSystem {
     gameDisplay.drawFrame(frame, lem.x, lem.y);
   }
 }
-
-Lemmings.ActionBaseSystem = ActionBaseSystem;
 export { ActionBaseSystem };

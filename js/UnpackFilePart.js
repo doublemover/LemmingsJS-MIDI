@@ -1,12 +1,14 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './LogHandler.js';
+import { BaseLogger, withPerformance } from './LogHandler.js';
+import { BinaryReader } from './BinaryReader.js';
+import { BitReader } from './BitReader.js';
+import { BitWriter } from './BitWriter.js';
 
 /**
  * Represents a single compressed file part/chunk in a Lemmings resource.
  * Handles (lazy) decompression and exposes its metadata.
  * @class
  */
-class UnpackFilePart extends Lemmings.BaseLogger {
+class UnpackFilePart extends BaseLogger {
   /** @type {number} File offset in container */
   #offset = 0;
   /** @type {number} Initial buffer length for BitReader */
@@ -24,13 +26,13 @@ class UnpackFilePart extends Lemmings.BaseLogger {
   /** @type {number} Index in container */
   #index = 0;
 
-  /** @type {Lemmings.BinaryReader} Underlying file reader (or unpacked data after first unpack) */
+  /** @type {BinaryReader} Underlying file reader (or unpacked data after first unpack) */
   #fileReader;
   /** @type {boolean} Unpacking done flag */
   #unpackingDone = false;
 
   /**
-   * @param {Lemmings.BinaryReader} fileReader - The container file's BinaryReader (positioned at this part).
+   * @param {BinaryReader} fileReader - The container file's BinaryReader (positioned at this part).
    */
   constructor(fileReader) {
     super();
@@ -72,13 +74,13 @@ class UnpackFilePart extends Lemmings.BaseLogger {
   /** @returns {boolean} Whether this chunk has been unpacked */
   get unpackingDone() { return this.#unpackingDone; }
 
-  /** @returns {Lemmings.BinaryReader} The BinaryReader of the underlying (possibly unpacked) data */
+  /** @returns {BinaryReader} The BinaryReader of the underlying (possibly unpacked) data */
   get fileReader() { return this.#fileReader; }
 
   /**
    * Unpack (decompress) this file part and return a BinaryReader over the output buffer.
    * Caches the result after the first call.
-   * @returns {Lemmings.BinaryReader}
+   * @returns {BinaryReader}
    */
   unpack() {
     if (!this.#unpackingDone) {
@@ -87,17 +89,17 @@ class UnpackFilePart extends Lemmings.BaseLogger {
       return this.#fileReader;
     }
     // Return a new BinaryReader over the decompressed buffer for repeat access
-    return new Lemmings.BinaryReader(this.#fileReader);
+    return new BinaryReader(this.#fileReader);
   }
 
   /**
    * Internal method: perform actual decompression using BitReader/BitWriter.
    * @private
-   * @param {Lemmings.BinaryReader} fileReader
-   * @returns {Lemmings.BinaryReader}
+   * @param {BinaryReader} fileReader
+   * @returns {BinaryReader}
    */
   #doUnpacking(fileReader) {
-    return Lemmings.withPerformance(
+    return withPerformance(
       'doUnpacking',
       {
         track: 'UnpackFilePart',
@@ -106,13 +108,13 @@ class UnpackFilePart extends Lemmings.BaseLogger {
         tooltipText: `doUnpacking ${fileReader.filename}`
       },
       () => {
-        const bitReader = new Lemmings.BitReader(
+        const bitReader = new BitReader(
           fileReader,
           this.#offset,
           this.#compressedSize,
           this.#initialBufferLen
         );
-        const outBuffer = new Lemmings.BitWriter(bitReader, this.#decompressedSize);
+        const outBuffer = new BitWriter(bitReader, this.#decompressedSize);
 
         while (!outBuffer.eof() && !bitReader.eof()) {
           if (bitReader.read(1) === 0) {
@@ -157,6 +159,4 @@ class UnpackFilePart extends Lemmings.BaseLogger {
 
 // Prevent extension if not intended
 Object.freeze(UnpackFilePart);
-
-Lemmings.UnpackFilePart = UnpackFilePart;
 export { UnpackFilePart };

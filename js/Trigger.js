@@ -1,8 +1,9 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { COUNTER_LIMIT } from './core/constants.js';
+import { TriggerTypes } from './TriggerTypes.js';
 
 class Trigger {
   #disabledUntilTick;
-  constructor(type = Lemmings.TriggerTypes.NO_TRIGGER, x1 = 0, y1 = 0, x2 = 0, y2 = 0, disableTicksCount = 0, soundIndex = -1, owner = null) {
+  constructor(type = TriggerTypes.NO_TRIGGER, x1 = 0, y1 = 0, x2 = 0, y2 = 0, disableTicksCount = 0, soundIndex = -1, owner = null) {
     this.#disabledUntilTick = 0;
     this.owner = owner;
     this.type = type;
@@ -16,7 +17,7 @@ class Trigger {
 
   get disabledUntilTick() { return this.#disabledUntilTick; }
   set disabledUntilTick(v) {
-    if (v >= Lemmings.COUNTER_LIMIT) {
+    if (v >= COUNTER_LIMIT) {
       console.warn('disabledUntilTick wrapped, resetting to 0');
       this.#disabledUntilTick = 0;
     } else {
@@ -33,9 +34,9 @@ class Trigger {
         return this.type;
       }
     } else {
-      return Lemmings.TriggerTypes.DISABLED;
+      return TriggerTypes.DISABLED;
     }
-    return Lemmings.TriggerTypes.NO_TRIGGER;
+    return TriggerTypes.NO_TRIGGER;
   }
   draw(gameDisplay) {
 
@@ -45,6 +46,5 @@ class Trigger {
     gameDisplay.drawRect(this.x1, this.y1, this.x2 - this.x1, this.y2 - this.y1, 255, 0, 0);
   }
 }
-Lemmings.Trigger = Trigger;
 
 export { Trigger };

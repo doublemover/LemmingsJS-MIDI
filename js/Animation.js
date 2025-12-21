@@ -1,5 +1,5 @@
-import { Lemmings } from './LemmingsNamespace.js';
-import './ColorPalette.js';
+import { ColorPalette } from './ColorPalette.js';
+import { PaletteImage } from './PaletteImage.js';
 
 // Palette indices for the fire shooter trap that will be remapped when
 // creating an ice version of the animation.  They cover the full gradient
@@ -11,17 +11,17 @@ const FIRE_INDICES = Object.freeze([2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
 // set.  These values replace the warm tones of the fire trap with
 // cooler shades to give the impression of an "ice" trap.
 const ICE_COLORS = Object.freeze([
-  Lemmings.ColorPalette.colorFromRGB(64, 160, 255),  // brightest blue core
-  Lemmings.ColorPalette.colorFromRGB(56, 152, 240),
-  Lemmings.ColorPalette.colorFromRGB(48, 144, 232),
-  Lemmings.ColorPalette.colorFromRGB(40, 128, 216),
-  Lemmings.ColorPalette.colorFromRGB(32, 112, 200),
-  Lemmings.ColorPalette.colorFromRGB(24, 96, 184),
-  Lemmings.ColorPalette.colorFromRGB(16, 80, 168),
-  Lemmings.ColorPalette.colorFromRGB(8, 64, 152),
-  Lemmings.ColorPalette.colorFromRGB(4, 48, 136),
-  Lemmings.ColorPalette.colorFromRGB(2, 32, 120),
-  Lemmings.ColorPalette.colorFromRGB(0, 16, 104)
+  ColorPalette.colorFromRGB(64, 160, 255),  // brightest blue core
+  ColorPalette.colorFromRGB(56, 152, 240),
+  ColorPalette.colorFromRGB(48, 144, 232),
+  ColorPalette.colorFromRGB(40, 128, 216),
+  ColorPalette.colorFromRGB(32, 112, 200),
+  ColorPalette.colorFromRGB(24, 96, 184),
+  ColorPalette.colorFromRGB(16, 80, 168),
+  ColorPalette.colorFromRGB(8, 64, 152),
+  ColorPalette.colorFromRGB(4, 48, 136),
+  ColorPalette.colorFromRGB(2, 32, 120),
+  ColorPalette.colorFromRGB(0, 16, 104)
 ]);
 
 class Animation {
@@ -81,7 +81,7 @@ class Animation {
     offsetX = null, offsetY = null) {
     const frameArray = new Array(frames);
     for (let i = 0; i < frames; ++i) {
-      const paletteImg = new Lemmings.PaletteImage(width, height);
+      const paletteImg = new PaletteImage(width, height);
       paletteImg.processImage(fr, bitsPerPixel);
       paletteImg.processTransparentByColorIndex(0);
       const frame = paletteImg.createFrame(palette, offsetX, offsetY);
@@ -100,7 +100,7 @@ class Animation {
    * supplied palette before the frames are generated.  The indices are
    * defined by the const arrays FIRE_INDICES and ICE_INDICES below.
    *
-   * @param {Lemmings.BinaryReader} fr - Frame data source
+   * @param {BinaryReader} fr - Frame data source
    * @param {number} bitsPerPixel     - Bits per pixel of the source data
    * @param {number} width            - Frame width
    * @param {number} height           - Frame height
@@ -111,7 +111,7 @@ class Animation {
    */
   loadFromFileWithPaletteSwap (fr, bitsPerPixel, width, height, frames, palette,
     offsetX = null, offsetY = null) {
-    const newPal = new Lemmings.ColorPalette();
+    const newPal = new ColorPalette();
     // Copy existing palette colours
     for (let i = 0; i < 16; i++) {
       newPal.setColorInt(i, palette.getColor(i));
@@ -128,5 +128,4 @@ class Animation {
       newPal, offsetX, offsetY);
   }
 }
-Lemmings.Animation = Animation;
 export { Animation };

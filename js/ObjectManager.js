@@ -1,5 +1,3 @@
-import { Lemmings } from './LemmingsNamespace.js';
-
 class ObjectManager {
   constructor(gameTimer) {
     this.gameTimer = gameTimer;
@@ -21,6 +19,5 @@ class ObjectManager {
     }
   }
 }
-Lemmings.ObjectManager = ObjectManager;
 
 export { ObjectManager };

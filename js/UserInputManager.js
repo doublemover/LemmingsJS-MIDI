@@ -1,6 +1,7 @@
-import { Lemmings } from './LemmingsNamespace.js';
+import { EventHandler } from './EventHandler.js';
+import { Position2D } from './Position2D.js';
 
-class MouseMoveEventArguements extends Lemmings.Position2D {
+class MouseMoveEventArguements extends Position2D {
   constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
     super(x, y);
     this.mouseDownX = 0;
@@ -11,7 +12,7 @@ class MouseMoveEventArguements extends Lemmings.Position2D {
   }
 }
 
-class ZoomEventArgs extends Lemmings.Position2D {
+class ZoomEventArgs extends Position2D {
   constructor(x = 0, y = 0, deltaZoom = 0) {
     super(x, y);
     this.mouseDownX = 0;
@@ -31,13 +32,13 @@ class UserInputManager {
     this.lastMouseY = 0;
     this.mouseButton = false;
     this.mouseButtonNumber = 0;
-    this.onMouseMove = new Lemmings.EventHandler();
-    this.onMouseUp = new Lemmings.EventHandler();
-    this.onMouseDown = new Lemmings.EventHandler();
-    this.onMouseRightDown = new Lemmings.EventHandler();
-    this.onMouseRightUp = new Lemmings.EventHandler();
-    this.onDoubleClick = new Lemmings.EventHandler();
-    this.onZoom = new Lemmings.EventHandler();
+    this.onMouseMove = new EventHandler();
+    this.onMouseUp = new EventHandler();
+    this.onMouseDown = new EventHandler();
+    this.onMouseRightDown = new EventHandler();
+    this.onMouseRightUp = new EventHandler();
+    this.onDoubleClick = new EventHandler();
+    this.onZoom = new EventHandler();
     this.listenElement = listenElement;
     this._listeners = [];
     this.twoTouch = false;
@@ -64,7 +65,7 @@ class UserInputManager {
       if (e.touches.length === 2) {
         const p1 = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
         const p2 = this.getRelativePosition(this.listenElement, e.touches[1].clientX, e.touches[1].clientY);
-        const mid = new Lemmings.Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        const mid = new Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
         const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
 
         if (!this.twoTouch) {
@@ -96,7 +97,7 @@ class UserInputManager {
       if (e.touches.length === 2) {
         const p1 = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
         const p2 = this.getRelativePosition(this.listenElement, e.touches[1].clientX, e.touches[1].clientY);
-        const mid = new Lemmings.Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
+        const mid = new Position2D((p1.x + p2.x) / 2, (p1.y + p2.y) / 2);
         this.twoTouch = true;
         this.lastTouchDistance = Math.hypot(p2.x - p1.x, p2.y - p1.y);
         this.handleMouseDown(mid);
@@ -154,7 +155,7 @@ class UserInputManager {
           return false;
         }
         this.twoTouch = false;
-        this.handleMouseUp(new Lemmings.Position2D(this.lastMouseX, this.lastMouseY));
+        this.handleMouseUp(new Position2D(this.lastMouseX, this.lastMouseY));
         e.stopPropagation();
         e.preventDefault();
         return false;
@@ -226,7 +227,7 @@ class UserInputManager {
     const scaleY = element.height / rect.height;
     const x = (clientX - rect.left) * scaleX;
     const y = (clientY - rect.top) * scaleY;
-    return new Lemmings.Position2D(x, y);
+    return new Position2D(x, y);
   }
   handleMouseMove(position) {
     //- Move Point of View
@@ -274,11 +275,11 @@ class UserInputManager {
   }
   handleMouseUp(position) {
     this.handleMouseClear();
-    this.onMouseUp.trigger(new Lemmings.Position2D(position.x, position.y));
+    this.onMouseUp.trigger(new Position2D(position.x, position.y));
   }
   handleMouseRightUp(position) {
     this.handleMouseClear();
-    this.onMouseRightUp.trigger(new Lemmings.Position2D(position.x, position.y));
+    this.onMouseRightUp.trigger(new Position2D(position.x, position.y));
   }
   handleMouseMiddleUp() {
     this.handleMouseClear();
@@ -310,7 +311,5 @@ class UserInputManager {
     }
   }
 }
-
-Lemmings.UserInputManager = UserInputManager;
 
 export { UserInputManager };
