@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 import './LogHandler.js';
 import './ActionWalkSystem.js';
 import './ActionFallSystem.js';
@@ -66,6 +67,7 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.logging = LemmingManager.log;
         this.miniMap = null;
         this.nextNukingLemmingsIndex = -1;
+        this._nukeTargets = null;
 
         this.actions[Lemmings.LemmingStateType.WALKING]    = new Lemmings.ActionWalkSystem(lemmingsSprite);
         this.actions[Lemmings.LemmingStateType.FALLING]    = new Lemmings.ActionFallSystem(lemmingsSprite);
@@ -161,13 +163,8 @@ class LemmingManager extends Lemmings.BaseLogger {
         this.addNewLemmings();
         const lems = this.activeLemmings;
         const count = lems.length;
-        if (this.isNuking() && count) {
-          this.doLemmingAction(lems[this.nextNukingLemmingsIndex], Lemmings.SkillTypes.BOMBER);
-          if (this.nextNukingLemmingsIndex + 1 >= count) {
-            this.nextNukingLemmingsIndex = -1;
-          } else {
-            this.nextNukingLemmingsIndex++;
-          }
+        if (this.isNuking()) {
+          this._nukeNextLemming();
         }
         for (const lem of lems) {
           if (lem.removed && lem.action !== this.actions[Lemmings.LemmingStateType.EXPLODING]) continue;
@@ -258,17 +255,33 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   addNewLemmings() {
+    const endless = lemmings?.endless === true;
     if (lemmings.bench == true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
             
     } else {
-      if (this.gameVictoryCondition.getLeftCount() <= 0) return;
+      if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
     }
     if (++this.releaseTickIndex >= (104 - this.gameVictoryCondition.getCurrentReleaseRate())) {
       this.releaseTickIndex = 0;
       const entrances = this.level.entrances;
       for (let i = 0, l = entrances.length; i < l; i++) {
         const entrance = entrances[i];
-        this.addLemming(entrance.x + 24, entrance.y + 14);
+        const spawnX = entrance.x + 24;
+        const spawnY = entrance.y + 14;
+        if (!entrance._opened) {
+          entrance._opened = true;
+          const soundBus = getSoundBus();
+          soundBus?.emitSfx?.(
+            SoundEventTypes.ENTRANCE_OPEN,
+            SoundEffectIds.ENTRANCE_OPEN,
+            {
+              entranceIndex: i,
+              x: spawnX,
+              y: spawnY
+            }
+          );
+        }
+        this.addLemming(spawnX, spawnY);
         this.gameVictoryCondition.releaseOne();
       }
     }
@@ -279,19 +292,24 @@ class LemmingManager extends Lemmings.BaseLogger {
       // this.lemmings.splice(this.lemmings.indexOf(lem), 1);
       return Lemmings.LemmingStateType.NO_STATE_TYPE;
     }
-    const triggerType = this.triggerManager.trigger(lem.x, lem.y);
+    const triggerType = this.triggerManager.trigger(lem.x, lem.y, lem);
     switch (triggerType) {
     case Lemmings.TriggerTypes.NO_TRIGGER:
       return Lemmings.LemmingStateType.NO_STATE_TYPE;
     case Lemmings.TriggerTypes.DROWN:
+      lem.lastTriggerType = triggerType;
       return Lemmings.LemmingStateType.DROWNING;
     case Lemmings.TriggerTypes.EXIT_LEVEL:
+      lem.lastTriggerType = triggerType;
       return Lemmings.LemmingStateType.EXITING;
     case Lemmings.TriggerTypes.KILL:
+      lem.lastTriggerType = triggerType;
       return Lemmings.LemmingStateType.SPLATTING;
     case Lemmings.TriggerTypes.FRYING:
+      lem.lastTriggerType = triggerType;
       return Lemmings.LemmingStateType.FRYING;
     case Lemmings.TriggerTypes.TRAP:
+      lem.lastTriggerType = triggerType;
       return Lemmings.LemmingStateType.SPLATTING;
     case Lemmings.TriggerTypes.BLOCKER_LEFT:
       if (lem.lookRight) lem.lookRight = false;
@@ -518,7 +536,44 @@ class LemmingManager extends Lemmings.BaseLogger {
   }
 
   isNuking() { return this.nextNukingLemmingsIndex >= 0; }
-  doNukeAllLemmings() { this.nextNukingLemmingsIndex = 0; }
+  doNukeAllLemmings() {
+    const targets = this.activeLemmings.filter(lem => lem && !lem.removed && !lem.disabled);
+    this._nukeTargets = targets;
+    this.nextNukingLemmingsIndex = targets.length ? 0 : -1;
+  }
+
+  _nukeNextLemming() {
+    const lems = this._nukeTargets || [];
+    const count = lems.length;
+    if (count <= 0) return;
+    if (this.nextNukingLemmingsIndex >= count) {
+      this.nextNukingLemmingsIndex = -1;
+      this._nukeTargets = null;
+      return;
+    }
+    let attempts = 0;
+    while (attempts < count && this.nextNukingLemmingsIndex >= 0) {
+      const idx = this.nextNukingLemmingsIndex;
+      if (idx >= count) {
+        this.nextNukingLemmingsIndex = -1;
+        this._nukeTargets = null;
+        return;
+      }
+      const lem = lems[idx];
+      let applied = false;
+      if (lem && !lem.removed && !lem.disabled) {
+        applied = this.doLemmingAction(lem, Lemmings.SkillTypes.BOMBER);
+      }
+      if (idx + 1 >= count) {
+        this.nextNukingLemmingsIndex = -1;
+        this._nukeTargets = null;
+      } else {
+        this.nextNukingLemmingsIndex = idx + 1;
+      }
+      if (applied) break;
+      attempts++;
+    }
+  }
 
   removeOne(lem) {
     if (this.miniMap &&
@@ -566,6 +621,7 @@ class LemmingManager extends Lemmings.BaseLogger {
     this.miniMap = null;
     this.#mmTickCounter = null;
     this.nextNukingLemmingsIndex = null;
+    this._nukeTargets = null;
     this.selectedIndex = null;
     if (typeof lemmings !== 'undefined' &&
             lemmings.perfMetrics === true &&

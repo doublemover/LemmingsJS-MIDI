@@ -91,7 +91,15 @@ class GameVictoryCondition {
   }
   /** release one new lemming */
   releaseOne() {
-    if ((this.isFinalize) || (this.leftCount <= 0)) {
+    if (this.isFinalize) {
+      return;
+    }
+    const app = getApp();
+    if (app?.endless === true) {
+      this.outCount++;
+      return;
+    }
+    if (this.leftCount <= 0) {
       return;
     }
     this.leftCount--;
@@ -107,6 +115,10 @@ class GameVictoryCondition {
   /** stop releasing lemmings */
   doNuke() {
     if (this.isFinalize) {
+      return;
+    }
+    const app = getApp();
+    if (app?.endless === true) {
       return;
     }
     this.leftCount = 0;

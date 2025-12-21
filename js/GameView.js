@@ -45,6 +45,9 @@ class GameView extends Lemmings.BaseLogger {
     this.elementSelectLevel = null;
     this.configs = null;
     this.shortcuts = new Lemmings.KeyboardShortcuts(this);
+    this.midiRouter = null;
+    this._midiOut = null;
+    this._midiMapping = null;
 
     this.log.log('selected level: ' + Lemmings.GameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
   }
@@ -83,6 +86,8 @@ class GameView extends Lemmings.BaseLogger {
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
+      await this.initMidiRouting();
+      this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       game.start();
       this.changeHtmlText(this.elementGameState, Lemmings.GameStateTypes.toString(Lemmings.GameStateTypes.RUNNING));
       game.onGameEnd.on(state => this.onGameEnd(state));
@@ -202,6 +207,65 @@ class GameView extends Lemmings.BaseLogger {
 
   playSound(moveInterval) {
 
+  }
+
+  get midiOut() { return this._midiOut; }
+  set midiOut(output) {
+    this._midiOut = output;
+    this.midiRouter?.setOutput?.(output);
+  }
+
+  _getWebMidi() {
+    if (typeof globalThis !== 'undefined') return globalThis.WebMidi;
+    return null;
+  }
+
+  async _ensureWebMidiEnabled() {
+    const webMidi = this._getWebMidi();
+    if (!webMidi) return null;
+    if (webMidi.enabled) return webMidi;
+    try {
+      await webMidi.enable();
+      if (typeof globalThis.onEnabled === 'function') {
+        globalThis.onEnabled();
+      }
+      return webMidi;
+    } catch (e) {
+      this.log.log('WebMidi enable failed', e);
+      return null;
+    }
+  }
+
+  async _loadMidiMapping() {
+    if (!this.gameFactory?.fileProvider) return new Lemmings.MidiMapping();
+    try {
+      const text = await this.gameFactory.fileProvider.loadString('midi-mapping.json');
+      return Lemmings.MidiMapping.fromJson(text);
+    } catch (e) {
+      this.log.log('Unable to load midi-mapping.json, using defaults', e);
+      return new Lemmings.MidiMapping();
+    }
+  }
+
+  async initMidiRouting() {
+    if (!this.midiRouter) {
+      await this._ensureWebMidiEnabled();
+      this._midiMapping = this._midiMapping || await this._loadMidiMapping();
+      const viewPan = typeof globalThis !== 'undefined' ? globalThis.lemmingsMidiViewPan : null;
+      if (typeof viewPan === 'boolean') {
+        const position = this._midiMapping.config.position || {};
+        this._midiMapping.config.position = { ...position, viewPan };
+      }
+      this.midiRouter = new Lemmings.MidiEventRouter(this._midiMapping);
+    }
+    if (!this._midiOut) {
+      const webMidi = this._getWebMidi();
+      if (webMidi?.enabled && webMidi.outputs?.length) {
+        this._midiOut = webMidi.outputs[0];
+      }
+    }
+    if (this._midiOut) this.midiRouter.setOutput(this._midiOut);
+    return this.midiRouter;
   }
 
   enableDebug() {
@@ -488,6 +552,7 @@ class GameView extends Lemmings.BaseLogger {
     }
     if (!this.gameResources) return;
     if (this.game) {
+      this.midiRouter?.detach?.();
       this.game.stop();
       this.game = null;
     }
@@ -728,6 +793,10 @@ class GameView extends Lemmings.BaseLogger {
     if (this.shortcuts) {
       this.shortcuts.dispose();
       this.shortcuts = null;
+    }
+    if (this.midiRouter) {
+      this.midiRouter.dispose();
+      this.midiRouter = null;
     }
     if (this.stage && this.stage.dispose) {
       window.removeEventListener('resize', this._stageResize);

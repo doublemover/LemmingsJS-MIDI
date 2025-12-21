@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -12,6 +13,19 @@ class ActionBuildSystem extends ActionBaseSystem {
       const startX = lem.x + (lem.lookRight ? 0 : -4);
       for (let i = 0; i < 6; i++) {
         level.setGroundAt(startX + i, lem.y - 1, 7);
+      }
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.BUILDER_STEP,
+        SoundEffectIds.BUILDER_STEP,
+        { lemmingId: lem.id, x: lem.x, y: lem.y }
+      );
+      if (lem.state >= 9) {
+        soundBus?.emitSfx?.(
+          SoundEventTypes.BUILDER_WARNING,
+          SoundEffectIds.BUILDER_WARNING,
+          { lemmingId: lem.id, x: lem.x, y: lem.y }
+        );
       }
       return Lemmings.LemmingStateType.NO_STATE_TYPE;
     }

@@ -1,6 +1,7 @@
 import { Lemmings } from './LemmingsNamespace.js';
 
 import './LogHandler.js';
+import './SoundEvents.js';
 
 import './ActionBashSystem.js';
 import './ActionBlockerSystem.js';
@@ -74,6 +75,9 @@ import './MaskList.js';
 import './MaskProvider.js';
 import './MaskTypes.js';
 import './MiniMap.js';
+import './MidiMapping.js';
+import './MidiScheduler.js';
+import './MidiEventRouter.js';
 import './ObjectManager.js';
 import './ObjectImageInfo.js';
 import './OddTableReader.js';

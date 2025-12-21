@@ -79,7 +79,7 @@ class TriggerManager {
   /**
    * Query at pixel (x,y).  Returns a value from Lemmings.TriggerTypes
    */
-  trigger (x, y) {
+  trigger (x, y, lemming = null) {
     if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
       return Lemmings.TriggerTypes.NO_TRIGGER;
     }
@@ -94,7 +94,7 @@ class TriggerManager {
     this._lastCheckTick[bucket] = tick;
 
     for (const trig of cell) {
-      const val = trig.trigger(x, y, tick);
+      const val = trig.trigger(x, y, tick, lemming);
       if (val !== Lemmings.TriggerTypes.NO_TRIGGER) {
         this._lastHitTick[bucket] = tick;
         return val;

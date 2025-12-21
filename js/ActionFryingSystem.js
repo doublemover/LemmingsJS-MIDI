@@ -16,6 +16,9 @@ class ActionFryingSystem extends ActionBaseSystem {
 
   process(level, lem) {
     lem.disable();
+    if (lem.frameIndex === 0) {
+      lem.lastTriggerType = null;
+    }
     lem.frameIndex++;
     if (lem.frameIndex === 13) {
       const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;

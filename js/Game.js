@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import './SoundEvents.js';
 
 class Game extends Lemmings.BaseLogger {
   constructor (gameResources) {
@@ -20,6 +21,7 @@ class Game extends Lemmings.BaseLogger {
     this.objectManager        = null;
     this.triggerManager       = null;
     this.gameVictoryCondition = null;
+    this.soundEvents          = null;
 
     this.onGameEnd      = new Lemmings.EventHandler();
     this.finalGameState = Lemmings.GameStateTypes.UNKNOWN;
@@ -51,6 +53,7 @@ class Game extends Lemmings.BaseLogger {
     if (this.triggerManager?.dispose)    this.triggerManager.dispose();
     if (this.gameDisplay?.dispose)       this.gameDisplay.dispose();
     if (this.gameGui?.dispose)           this.gameGui.dispose();
+    if (this.soundEvents?.dispose)       this.soundEvents.dispose();
 
     this.commandManager  = null;
     this.objectManager   = null;
@@ -58,6 +61,7 @@ class Game extends Lemmings.BaseLogger {
     this.triggerManager  = null;
     this.gameDisplay     = null;
     this.gameGui         = null;
+    this.soundEvents     = null;
 
     this.finalGameState  = Lemmings.GameStateTypes.UNKNOWN;
   }
@@ -73,6 +77,7 @@ class Game extends Lemmings.BaseLogger {
     this.level    = level;
     this.gameTimer = new Lemmings.GameTimer(level);
     this.gameTimer.onGameTick.on(this._boundTick);
+    this.soundEvents = new Lemmings.SoundEventBus(this.gameTimer);
 
     this.commandManager       = new Lemmings.CommandManager(this, this.gameTimer);
     this.skills               = new Lemmings.GameSkills(level);
@@ -120,7 +125,20 @@ class Game extends Lemmings.BaseLogger {
     return this; // keeps legacy promise signature intact
   }
 
-  start () { this.gameTimer?.continue(); }
+  start () {
+    if (this.soundEvents) {
+      this.soundEvents.emitSfx(
+        Lemmings.SoundEventTypes.LEVEL_START,
+        Lemmings.SoundEffectIds.LEVEL_START,
+        {
+          levelIndex: this.levelIndex,
+          levelGroupIndex: this.levelGroupIndex,
+          levelName: this.level?.name ?? ''
+        }
+      );
+    }
+    this.gameTimer?.continue();
+  }
 
   stop () {
     this._disposeCurrentLevel();
@@ -153,6 +171,9 @@ class Game extends Lemmings.BaseLogger {
 
   getGameState () {
     if (typeof lemmings !== 'undefined' && lemmings.bench) {
+      return Lemmings.GameStateTypes.RUNNING;
+    }
+    if (typeof lemmings !== 'undefined' && lemmings.endless) {
       return Lemmings.GameStateTypes.RUNNING;
     }
     if (this.finalGameState !== Lemmings.GameStateTypes.UNKNOWN) {

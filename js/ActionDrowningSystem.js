@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionDrowningSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -17,6 +18,16 @@ class ActionDrowningSystem extends ActionBaseSystem {
   }
   process(level, lem) {
     lem.disable();
+    if (lem.frameIndex === 0) {
+      const triggerType = lem.lastTriggerType ?? null;
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_DROWN,
+        SoundEffectIds.DROWN,
+        { lemmingId: lem.id, x: lem.x, y: lem.y, triggerType }
+      );
+      lem.lastTriggerType = null;
+    }
     lem.frameIndex++;
     if (lem.frameIndex >= 16) {
       return Lemmings.LemmingStateType.OUT_OF_LEVEL;

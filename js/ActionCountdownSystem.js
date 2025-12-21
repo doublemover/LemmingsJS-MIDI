@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import { ActionBaseSystem } from './ActionBaseSystem.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class ActionCountdownSystem extends ActionBaseSystem {
   static numberMasks = new Map();
@@ -30,6 +31,12 @@ class ActionCountdownSystem extends ActionBaseSystem {
     lem.countdown--;
     if (lem.countdown == 0) {
       lem.setCountDown(null);
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_OHNO,
+        SoundEffectIds.OHNO,
+        { lemmingId: lem.id, x: lem.x, y: lem.y }
+      );
       return Lemmings.LemmingStateType.OHNO;
     }
     return Lemmings.LemmingStateType.NO_STATE_TYPE;

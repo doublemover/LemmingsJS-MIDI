@@ -1,4 +1,5 @@
 import { Lemmings } from './LemmingsNamespace.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
@@ -33,12 +34,40 @@ class MapObject {
   }
 
   /** Called when a lemming collides with this object's trigger zone. */
-  onTrigger (globalTick, lemming = null) {
+  onTrigger (globalTick, lemming = null, trigger = null, x = null, y = null) {
     // 1. restart visual cue
     if (this.animation && !this.animation.loop) {
       this.animation.restart(globalTick);
     }
-    // 2. play sound, spawn particles 
+    // 2. play sound, spawn particles
+    const triggerType = trigger?.type ?? this.triggerType;
+    let sfxId = null;
+    let eventType = null;
+
+    if (triggerType === Lemmings.TriggerTypes.TRAP) {
+      sfxId = trigger?.soundIndex ?? null;
+      eventType = SoundEventTypes.TRAP_TRIGGER;
+    } else if (triggerType === Lemmings.TriggerTypes.KILL ||
+               triggerType === Lemmings.TriggerTypes.FRYING) {
+      sfxId = SoundEffectIds.TRAP_FIRE;
+      eventType = SoundEventTypes.LEMMING_FIRE;
+    }
+
+    if (eventType && Number.isFinite(sfxId) && sfxId > 0) {
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        eventType,
+        sfxId,
+        {
+          objectId: this.obID,
+          triggerType,
+          trapSoundId: trigger?.soundIndex ?? null,
+          lemmingId: lemming?.id ?? null,
+          x: x ?? lemming?.x ?? this.x,
+          y: y ?? lemming?.y ?? this.y
+        }
+      );
+    }
   }
 }
 Lemmings.MapObject = MapObject;

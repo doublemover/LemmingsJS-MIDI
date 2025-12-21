@@ -1,5 +1,6 @@
 import { Lemmings } from './LemmingsNamespace.js';
 import './LogHandler.js';
+import { SoundEventTypes, SoundEffectIds, getSoundBus } from './SoundEvents.js';
 
 class Lemming extends Lemmings.BaseLogger {
   constructor(x = 0, y = 0, id) {
@@ -74,6 +75,12 @@ class Lemming extends Lemmings.BaseLogger {
       if (lemY >= level.height) {
         newY = level.height - 6;
       }
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_FELL_OFF,
+        SoundEffectIds.FELL_OFF,
+        { lemmingId: this.id, x: lemX, y: newY }
+      );
       if (lemmings?.game?.lemmingManager?.miniMap) {
         lemmings.game.lemmingManager.miniMap.addDeath(lemX, newY);
       }

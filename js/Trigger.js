@@ -6,6 +6,7 @@ class Trigger {
     this.#disabledUntilTick = 0;
     this.owner = owner;
     this.type = type;
+    this.soundIndex = soundIndex;
     this.x1 = Math.min(x1, x2);
     this.y1 = Math.min(y1, y2);
     this.x2 = Math.max(x1, x2);
@@ -22,12 +23,12 @@ class Trigger {
       this.#disabledUntilTick = v;
     }
   }
-  trigger(x, y, tick) {
+  trigger(x, y, tick, lemming = null) {
     if (this.disabledUntilTick <= tick) {
       if ((x >= this.x1) && (y >= this.y1) && (x <= this.x2) && (y <= this.y2)) {
         this.disabledUntilTick = tick + this.disableTicksCount;
         if (this.owner?.onTrigger){
-          this.owner.onTrigger(tick);
+          this.owner.onTrigger(tick, lemming, this, x, y);
         }
         return this.type;
       }
