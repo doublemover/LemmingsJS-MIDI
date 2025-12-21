@@ -1,5 +1,5 @@
 import './bootstrap.js';
-import { GameView } from '../GameView.js';
+import { GameView } from '../game/GameView.js';
 
 const $ = globalThis.$ || globalThis.jQuery;
 const jQuery = globalThis.jQuery || $;

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
 class StageMock {
@@ -43,7 +43,7 @@ describe('GameView game controls', function() {
   });
 
   it('relays cheat, suspend and continue to the game', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     const timer = { suspendCalled: 0, continueCalled: 0, suspend() { this.suspendCalled++; }, continue() { this.continueCalled++; } };
@@ -58,7 +58,7 @@ describe('GameView game controls', function() {
   });
 
   it('does not throw when game is null', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.game = null;

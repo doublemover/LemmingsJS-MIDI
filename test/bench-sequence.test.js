@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import { GameTimer } from '../js/GameTimer.js';
+import '../js/util/EventHandler.js';
+import { GameTimer } from '../js/game/GameTimer.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 class KeyboardShortcutsMock { constructor() {} dispose() {} }
@@ -117,7 +117,7 @@ describe('bench sequence', function() {
   });
 
   it('pauses and logs before restarting', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameCanvas = {};
     view.elementSelectGameType = { options: [], remove() {}, appendChild() {}, selectedIndex: 0 };

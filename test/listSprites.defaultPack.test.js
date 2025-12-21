@@ -3,7 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import { spawnSync } from 'child_process';
 
-import '../js/LogHandler.js';
+import '../js/util/LogHandler.js';
 
 describe('tools/listSprites.js default pack', function () {
   it('uses default path when no pack argument is given', function () {

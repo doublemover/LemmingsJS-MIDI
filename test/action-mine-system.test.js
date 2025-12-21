@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionMineSystem } from '../js/ActionMineSystem.js';
-import '../js/LemmingStateType.js';
-import '../js/MaskTypes.js';
+import { ActionMineSystem } from '../js/actions/ActionMineSystem.js';
+import '../js/lemmings/LemmingStateType.js';
+import '../js/render/MaskTypes.js';
 
 class DummyMask {
   constructor() { this.offsetX = 0; this.offsetY = 0; this.width = 1; this.height = 1; }

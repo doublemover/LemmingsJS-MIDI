@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { GameStateTypes } from '../js/GameStateTypes.js';
-import { GameTypes } from '../js/GameTypes.js';
-import { MaskTypes } from '../js/MaskTypes.js';
-import { SkillTypes } from '../js/SkillTypes.js';
-import { SpriteTypes } from '../js/SpriteTypes.js';
-import { TriggerTypes } from '../js/TriggerTypes.js';
+import { GameStateTypes } from '../js/game/GameStateTypes.js';
+import { GameTypes } from '../js/game/GameTypes.js';
+import { MaskTypes } from '../js/render/MaskTypes.js';
+import { SkillTypes } from '../js/game/SkillTypes.js';
+import { SpriteTypes } from '../js/lemmings/SpriteTypes.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
 describe('Enums', function () {
   it('have stable numeric values', function () {

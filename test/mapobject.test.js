@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { MapObject } from '../js/MapObject.js';
-import { Animation } from '../js/Animation.js';
-import { ColorPalette } from '../js/ColorPalette.js';
-import '../js/Frame.js';
+import { MapObject } from '../js/level/MapObject.js';
+import { Animation } from '../js/render/Animation.js';
+import { ColorPalette } from '../js/render/ColorPalette.js';
+import '../js/render/Frame.js';
 
 /** simple helper to create an object image stub */
 function makeObjectImage(loop = true, palette = null) {

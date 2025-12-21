@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/SkillTypes.js';
-import { GameGui } from '../js/GameGui.js';
+import '../js/util/EventHandler.js';
+import '../js/game/SkillTypes.js';
+import { GameGui } from '../js/game/GameGui.js';
 
 class DisplayStub {
   constructor() {

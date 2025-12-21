@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionBaseSystem } from '../js/ActionBaseSystem.js';
-import { MaskProvider } from '../js/MaskProvider.js';
-import '../js/MaskTypes.js';
-import '../js/MaskList.js';
+import { ActionBaseSystem } from '../js/actions/ActionBaseSystem.js';
+import { MaskProvider } from '../js/render/MaskProvider.js';
+import '../js/render/MaskTypes.js';
+import '../js/render/MaskList.js';
 
 // Minimal environment for LogHandler
 globalThis.lemmings = { game: { showDebug: false } };

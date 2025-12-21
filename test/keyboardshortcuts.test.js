@@ -1,16 +1,16 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/SkillTypes.js';
-import { KeyboardShortcuts } from '../js/KeyboardShortcuts.js';
-import '../js/CommandSelectSkill.js';
-import '../js/CommandLemmingsAction.js';
-import '../js/EventHandler.js';
-import '../js/Position2D.js';
-import '../js/ViewPoint.js';
-import '../js/StageImageProperties.js';
-import '../js/DisplayImage.js';
-import '../js/UserInputManager.js';
-import { Stage } from '../js/Stage.js';
+import '../js/game/SkillTypes.js';
+import { KeyboardShortcuts } from '../js/input/KeyboardShortcuts.js';
+import '../js/commands/CommandSelectSkill.js';
+import '../js/commands/CommandLemmingsAction.js';
+import '../js/util/EventHandler.js';
+import '../js/util/Position2D.js';
+import '../js/render/ViewPoint.js';
+import '../js/render/StageImageProperties.js';
+import '../js/render/DisplayImage.js';
+import '../js/input/UserInputManager.js';
+import { Stage } from '../js/render/Stage.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 globalThis.lemmings = { game: { showDebug: false } };

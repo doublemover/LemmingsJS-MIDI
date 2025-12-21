@@ -6,7 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'url';
 import { PNG } from 'pngjs';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
+import '../js/util/LogHandler.js';
 
 let orig;
 function setupStubs() {

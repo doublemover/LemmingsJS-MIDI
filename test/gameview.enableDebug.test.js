@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 class KeyboardShortcutsStub { constructor() {} dispose() {} }
 class GameFactoryMock { async getGame() { return {}; } }
@@ -29,7 +29,7 @@ describe('GameView.enableDebug', function() {
   });
 
   it('forwards to the game when available', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     let called = 0;
     view.game = { setDebugMode(v) { called++; this.val = v; } };

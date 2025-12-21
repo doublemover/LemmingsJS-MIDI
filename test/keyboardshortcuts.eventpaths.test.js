@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import fakeTimers from '@sinonjs/fake-timers';
-import { KeyboardShortcuts } from '../js/KeyboardShortcuts.js';
+import { KeyboardShortcuts } from '../js/input/KeyboardShortcuts.js';
 
 // minimal global setup
 globalThis.lemmings = { game: { showDebug: false } };

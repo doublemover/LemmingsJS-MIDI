@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionCountdownSystem } from '../js/ActionCountdownSystem.js';
-import '../js/LemmingStateType.js';
+import { ActionCountdownSystem } from '../js/actions/ActionCountdownSystem.js';
+import '../js/lemmings/LemmingStateType.js';
 
-import '../js/MaskTypes.js';
+import '../js/render/MaskTypes.js';
 class StubLemming {
   constructor(x = 0, y = 0) {
     this.x = x;

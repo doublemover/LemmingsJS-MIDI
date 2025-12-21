@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { LemmingsSprite } from '../js/LemmingsSprite.js';
-import '../js/SpriteTypes.js';
-import '../js/ColorPalette.js';
-import '../js/Animation.js';
+import { LemmingsSprite } from '../js/lemmings/LemmingsSprite.js';
+import '../js/lemmings/SpriteTypes.js';
+import '../js/render/ColorPalette.js';
+import '../js/render/Animation.js';
 
 // Ensure quiet logging
 globalThis.lemmings = { game: { showDebug: false } };

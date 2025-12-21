@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/SolidLayer.js';
-import '../js/LemmingStateType.js';
-import '../js/Lemming.js';
-import '../js/SkillTypes.js';
-import { Level } from '../js/Level.js';
-import { LemmingManager } from '../js/LemmingManager.js';
-import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
+import '../js/render/SolidLayer.js';
+import '../js/lemmings/LemmingStateType.js';
+import '../js/lemmings/Lemming.js';
+import '../js/game/SkillTypes.js';
+import { Level } from '../js/level/Level.js';
+import { LemmingManager } from '../js/lemmings/LemmingManager.js';
+import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/LemmingsBootstrap.js';
 
 const spriteStub = { getAnimation() { return { frames: [], getFrame() { return {}; } }; } };

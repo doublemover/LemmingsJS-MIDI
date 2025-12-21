@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { SolidLayer } from '../js/SolidLayer.js';
-import { Mask } from '../js/Mask.js';
+import { SolidLayer } from '../js/render/SolidLayer.js';
+import { Mask } from '../js/render/Mask.js';
 
 globalThis.lemmings = Lemmings;
 

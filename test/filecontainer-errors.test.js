@@ -1,9 +1,9 @@
 import assert from 'assert';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/BinaryReader.js';
-import '../js/UnpackFilePart.js';
-import { FileContainer } from '../js/FileContainer.js';
+import '../js/data/BinaryReader.js';
+import '../js/data/UnpackFilePart.js';
+import { FileContainer } from '../js/data/FileContainer.js';
 
 class MockLogHandler {
   constructor() { this.logged = []; }

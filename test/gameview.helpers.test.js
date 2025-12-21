@@ -50,7 +50,7 @@ describe('GameView helper methods', function () {
   });
 
   it('parseNumber handles ranges and defaults', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const q1 = new URLSearchParams('');
     expect(view.parseNumber(q1, ['n'], 5, 1, 10)).to.equal(5);
@@ -63,7 +63,7 @@ describe('GameView helper methods', function () {
   });
 
   it('parseBool interprets presence and defaults', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const q1 = new URLSearchParams('');
     expect(view.parseBool(q1, ['f'], true)).to.equal(true);
@@ -76,7 +76,7 @@ describe('GameView helper methods', function () {
   });
 
   it('strToNum converts strings to numbers', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.strToNum('5')).to.equal(5);
     expect(view.strToNum('')).to.equal(0);
@@ -86,7 +86,7 @@ describe('GameView helper methods', function () {
   });
 
   it('changeHtmlText updates innerText if element provided', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const el = { innerText: 'old' };
     view.changeHtmlText(el, 'new');
@@ -96,14 +96,14 @@ describe('GameView helper methods', function () {
   });
 
   it('prefixNumbers adds numeric prefixes', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const result = view.prefixNumbers(['A', 'B']);
     expect(result).to.eql(['1 - A', '2 - B']);
   });
 
   it('second strToNum parses integers and invalid values', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.strToNum('10')).to.equal(10);
     expect(view.strToNum('2.6')).to.equal(2);
@@ -111,7 +111,7 @@ describe('GameView helper methods', function () {
   });
 
   it('clearHtmlList removes all options from a select', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const select = { options: [1, 2, 3], remove(i) { this.options.splice(i, 1); } };
     view.clearHtmlList(select);
@@ -119,7 +119,7 @@ describe('GameView helper methods', function () {
   });
 
   it('arrayToSelect populates a select element', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const select = {
       options: [],
@@ -139,7 +139,7 @@ describe('GameView helper methods', function () {
   it('updateQuery writes parameters to history', async function () {
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameType = 2;
     view.levelGroupIndex = 1;
@@ -167,7 +167,7 @@ describe('GameView helper methods', function () {
   });
 
   it('updateQuery uses short names when shortcut enabled', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.shortcut = true;
     view.gameType = 2;
@@ -188,7 +188,7 @@ describe('GameView helper methods', function () {
   it('setHistoryState writes URL with ? prefix', async function () {
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.setHistoryState(new URLSearchParams('a=1'));
     expect(url).to.equal('?a=1');
@@ -236,7 +236,7 @@ describe('moveToLevel transitions', function () {
   });
 
   it('advances to next group when level exceeds group length', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -253,7 +253,7 @@ describe('moveToLevel transitions', function () {
   });
 
   it('advances to next game type when past last group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -271,7 +271,7 @@ describe('moveToLevel transitions', function () {
   });
 
   it('moves to previous group when level goes negative', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -286,7 +286,7 @@ describe('moveToLevel transitions', function () {
   });
 
   it('ignores backward move from the first level of the first group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -303,7 +303,7 @@ describe('moveToLevel transitions', function () {
   });
 
   it('resets invalid game type and reloads resources', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;

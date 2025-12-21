@@ -1,9 +1,9 @@
-import '../js/MapObject.js';
+import '../js/level/MapObject.js';
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
-import '../js/Lemming.js';
+import '../js/lemmings/Lemming.js';
 before(function(){
   class StageStub { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} }
   class KeyboardShortcutsStub { constructor(){} dispose(){} }
@@ -22,7 +22,7 @@ after(function(){
 
 describe('benchSequenceStart', function() {
   it('computes extras and starts bench with first count', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     Lemmings.Stage = class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} };
     Lemmings.KeyboardShortcuts = class { constructor(){} dispose(){} };
     const view = new GameView();

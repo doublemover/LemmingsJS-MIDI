@@ -4,11 +4,11 @@ import assert from 'assert';
 global.lemmings = { game: { showDebug: false } };
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/BinaryReader.js';
-import '../js/BitReader.js';
-import '../js/BitWriter.js';
-import '../js/UnpackFilePart.js';
-import { FileContainer } from '../js/FileContainer.js';
+import '../js/data/BinaryReader.js';
+import '../js/data/BitReader.js';
+import '../js/data/BitWriter.js';
+import '../js/data/UnpackFilePart.js';
+import { FileContainer } from '../js/data/FileContainer.js';
 
 function buildBuffer(badChecksum = false) {
   const compressed = Uint8Array.from([16, 8, 24, 8]);

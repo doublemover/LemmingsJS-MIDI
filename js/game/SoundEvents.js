@@ -1,0 +1,106 @@
+import { EventHandler } from '../util/EventHandler.js';
+
+const SoundEventTypes = Object.freeze({
+  LEVEL_START: 'level-start',
+  ENTRANCE_OPEN: 'entrance-open',
+  SKILL_SELECT: 'skill-select',
+  SKILL_ASSIGN: 'skill-assign',
+  BUILDER_STEP: 'builder-step',
+  BUILDER_WARNING: 'builder-warning',
+  STEEL_HIT: 'steel-hit',
+  LEMMING_OHNO: 'lemming-ohno',
+  LEMMING_EXPLODE: 'lemming-explode',
+  LEMMING_SPLAT: 'lemming-splat',
+  LEMMING_EXIT: 'lemming-exit',
+  LEMMING_DROWN: 'lemming-drown',
+  LEMMING_FIRE: 'lemming-fire',
+  LEMMING_FELL_OFF: 'lemming-fell-off',
+  TRAP_TRIGGER: 'trap-trigger'
+});
+
+const SoundEffectIds = Object.freeze({
+  NONE: 0x00,
+  SKILL_SELECT: 0x01,
+  ENTRANCE_OPEN: 0x02,
+  LEVEL_START: 0x03,
+  SKILL_ASSIGN: 0x04,
+  OHNO: 0x05,
+  TRAP_ZAP: 0x06,
+  TRAP_SQUISH: 0x07,
+  SPLAT: 0x08,
+  TRAP_SLICER: 0x09,
+  STEEL_HIT: 0x0A,
+  UNKNOWN_0B: 0x0B,
+  EXPLOSION: 0x0C,
+  TRAP_FIRE: 0x0D,
+  TRAP_TEN_TON: 0x0E,
+  TRAP_BEAR: 0x0F,
+  EXIT: 0x10,
+  DROWN: 0x11,
+  BUILDER_WARNING: 0x12,
+  FELL_OFF: 0x13,
+  BUILDER_STEP: 0x14
+});
+
+class SoundEventBus {
+  constructor(gameTimer) {
+    this.gameTimer = gameTimer;
+    this.onEvent = new EventHandler();
+    this._queue = [];
+    this._queueLimit = 2048;
+    this._sequence = 0;
+  }
+
+  emit(event) {
+    if (!event) return;
+    const hasListeners = this.onEvent?.handlers?.size > 0;
+    if (!hasListeners &&
+        (this._queueLimit <= 0 || this._queue.length >= this._queueLimit)) {
+      return;
+    }
+    const tick = this.gameTimer?.getGameTicks?.() ?? 0;
+    const frameMs = this.gameTimer?.frameTime ?? this.gameTimer?.TIME_PER_FRAME_MS ?? 60;
+    const payload = {
+      id: ++this._sequence,
+      tick,
+      timeMs: tick * frameMs,
+      frameMs,
+      speedFactor: this.gameTimer?.speedFactor ?? 1,
+      tps: this.gameTimer?.tps ?? null,
+      ...event
+    };
+    if (this._queueLimit > 0 && this._queue.length < this._queueLimit) {
+      this._queue.push(payload);
+    }
+    if (this.onEvent) this.onEvent.trigger(payload);
+  }
+
+  emitSfx(type, sfxId, data = {}) {
+    this.emit({ type, sfxId, ...data });
+  }
+
+  flush() {
+    const out = this._queue;
+    this._queue = [];
+    return out;
+  }
+
+  dispose() {
+    if (this.onEvent?.dispose) this.onEvent.dispose();
+    this.onEvent = null;
+    this._queue = [];
+    this.gameTimer = null;
+  }
+}
+
+const getSoundBus = () => {
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings?.game?.soundEvents) {
+    return globalThis.lemmings.game.soundEvents;
+  }
+  if (typeof lemmings !== 'undefined' && lemmings?.game?.soundEvents) {
+    return lemmings.game.soundEvents;
+  }
+  return null;
+};
+
+export { SoundEventTypes, SoundEffectIds, SoundEventBus, getSoundBus };

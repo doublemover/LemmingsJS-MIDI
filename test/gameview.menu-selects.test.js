@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 function createWindow() {
   return {
@@ -68,7 +68,7 @@ describe('GameView menu interactions', function() {
       get configReader() { return { configs: Promise.resolve([]) }; }
     }
     Lemmings.GameFactory = GameFactoryMock;
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.gameResources = new GameResourcesMock();
@@ -94,7 +94,7 @@ describe('GameView menu interactions', function() {
       get configReader() { return { configs: Promise.resolve([]) }; }
     }
     Lemmings.GameFactory = GameFactoryMock;
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.gameResources = new GameResourcesMock();
@@ -122,7 +122,7 @@ describe('GameView menu interactions', function() {
       get configReader() { return { configs: Promise.resolve(configs) }; }
     }
     Lemmings.GameFactory = GameFactoryMock;
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.configs = configs;
@@ -147,7 +147,7 @@ describe('GameView menu interactions', function() {
   it('selectLevel updates index and loads', async function() {
     class GameFactoryMock { get configReader() { return { configs: Promise.resolve([]) }; } }
     Lemmings.GameFactory = GameFactoryMock;
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.elementSelectLevel = createSelect();

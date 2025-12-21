@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/DisplayImage.js';
-import '../js/SkillTypes.js';
+import '../js/util/EventHandler.js';
+import '../js/render/DisplayImage.js';
+import '../js/game/SkillTypes.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LemmingStateType.js';
-import { Lemming } from '../js/Lemming.js';
+import '../js/lemmings/LemmingStateType.js';
+import { Lemming } from '../js/lemmings/Lemming.js';
 
 describe('Lemming extra', function() {
   it('getClickDistance computes distance and detects outside', function() {

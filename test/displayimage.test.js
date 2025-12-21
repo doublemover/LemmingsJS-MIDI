@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { DisplayImage } from '../js/DisplayImage.js';
-import { Frame } from '../js/Frame.js';
+import { DisplayImage } from '../js/render/DisplayImage.js';
+import { Frame } from '../js/render/Frame.js';
 
 class StubStage {
   createImage() {

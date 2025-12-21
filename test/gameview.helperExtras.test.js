@@ -23,7 +23,7 @@ describe('GameView helper extras', function () {
   afterEach(cleanupEnv);
 
   it('changeHtmlText updates text and ignores null', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const el = { innerText: 'old' };
     view.changeHtmlText(el, 'new');
@@ -33,13 +33,13 @@ describe('GameView helper extras', function () {
   });
 
   it('prefixNumbers prefixes list items', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.prefixNumbers(['A', 'B'])).to.eql(['1 - A', '2 - B']);
   });
 
   it('strToNum (parseInt version) handles valid and invalid strings', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.strToNum('10')).to.equal(10);
     expect(view.strToNum('2.5')).to.equal(2);
@@ -47,7 +47,7 @@ describe('GameView helper extras', function () {
   });
 
   it('clearHtmlList removes all options from select', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const select = { options: [1,2,3], remove(i){ this.options.splice(i,1); } };
     view.clearHtmlList(select);
@@ -55,7 +55,7 @@ describe('GameView helper extras', function () {
   });
 
   it('arrayToSelect creates option elements from array', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     const select = { options: [], remove(i){ this.options.splice(i,1); }, appendChild(el){ this.options.push(el); } };
     global.document = { createElement(){ return {}; } };

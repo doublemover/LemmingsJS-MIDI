@@ -1,4 +1,4 @@
-import { PackFilePart } from '../js/PackFilePart.js';
+import { PackFilePart } from '../js/data/PackFilePart.js';
 import fs from 'fs';
 import path from 'path';
 

@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 function createDocumentStub() {
   return {
@@ -47,7 +47,7 @@ describe('GameView setup', function() {
     }
     Lemmings.GameFactory = GameFactoryMock;
 
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.applyQuery = () => { view.gameType = 1; view.levelGroupIndex = 0; };
@@ -80,7 +80,7 @@ describe('GameView setup', function() {
     }
     Lemmings.GameFactory = GameFactoryMock;
 
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.applyQuery = () => { view.gameType = 1; view.levelGroupIndex = 0; };

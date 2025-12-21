@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import fs from 'fs';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import '../js/GameConfig.js';
-import '../js/LevelConfig.js';
-import '../js/GameTypes.js';
-import { ConfigReader } from '../js/ConfigReader.js';
-import { packMechanics } from '../js/packMechanics.js';
+import '../js/util/LogHandler.js';
+import '../js/game/GameConfig.js';
+import '../js/level/LevelConfig.js';
+import '../js/game/GameTypes.js';
+import { ConfigReader } from '../js/data/ConfigReader.js';
+import { packMechanics } from '../js/level/packMechanics.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

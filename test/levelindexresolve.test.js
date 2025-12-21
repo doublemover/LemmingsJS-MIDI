@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { LevelIndexResolve } from '../js/LevelIndexResolve.js';
-import '../js/LevelIndexType.js';
+import { LevelIndexResolve } from '../js/level/LevelIndexResolve.js';
+import '../js/level/LevelIndexType.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

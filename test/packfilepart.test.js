@@ -2,12 +2,12 @@ import { expect } from 'chai';
 import { readFileSync } from 'fs';
 
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { BitReader } from '../js/BitReader.js';
-import { BitWriter } from '../js/BitWriter.js';
-import { PackFilePart } from '../js/PackFilePart.js';
-import { UnpackFilePart } from '../js/UnpackFilePart.js';
-import { FileContainer } from '../js/FileContainer.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { BitReader } from '../js/data/BitReader.js';
+import { BitWriter } from '../js/data/BitWriter.js';
+import { PackFilePart } from '../js/data/PackFilePart.js';
+import { UnpackFilePart } from '../js/data/UnpackFilePart.js';
+import { FileContainer } from '../js/data/FileContainer.js';
 import { randomFillSync } from 'crypto';
 
 globalThis.lemmings = { game: { showDebug: false } };

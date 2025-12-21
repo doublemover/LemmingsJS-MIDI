@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/ColorPalette.js';
-import { DrawProperties } from '../js/DrawProperties.js';
-import { GroundRenderer } from '../js/GroundRenderer.js';
-import { DisplayImage } from '../js/DisplayImage.js';
+import '../js/render/ColorPalette.js';
+import { DrawProperties } from '../js/render/DrawProperties.js';
+import { GroundRenderer } from '../js/render/GroundRenderer.js';
+import { DisplayImage } from '../js/render/DisplayImage.js';
 
 class SimpleImageData {
   constructor(width, height) {

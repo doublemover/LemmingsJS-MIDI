@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { TerrainImageInfo } from '../js/TerrainImageInfo.js';
-import { BaseImageInfo } from '../js/BaseImageInfo.js';
-import { ColorPalette } from '../js/ColorPalette.js';
-import { Frame } from '../js/Frame.js';
+import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
+import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
+import { ColorPalette } from '../js/render/ColorPalette.js';
+import { Frame } from '../js/render/Frame.js';
 globalThis.lemmings = Lemmings;
 
 // Simple helper replicates GroundReader steel cropping

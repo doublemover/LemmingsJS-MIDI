@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ColorPalette } from '../js/ColorPalette.js';
+import { ColorPalette } from '../js/render/ColorPalette.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

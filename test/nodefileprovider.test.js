@@ -9,7 +9,7 @@ import * as tar from 'tar';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 import { archiveDir } from '../tools/archiveDir.js';
 import { createExtractorFromData } from 'node-unrar-js';
-import '../js/BinaryReader.js';
+import '../js/data/BinaryReader.js';
 
 const rarCheck = spawnSync('rar', ['--version'], { stdio: 'ignore' });
 const hasRar = !rarCheck.error;

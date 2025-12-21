@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Trigger } from '../js/Trigger.js';
-import { TriggerTypes } from '../js/TriggerTypes.js';
+import { Trigger } from '../js/level/Trigger.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

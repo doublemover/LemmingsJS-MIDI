@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LemmingStateType.js';
-import { KeyboardShortcuts } from '../js/KeyboardShortcuts.js';
+import '../js/lemmings/LemmingStateType.js';
+import { KeyboardShortcuts } from '../js/input/KeyboardShortcuts.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

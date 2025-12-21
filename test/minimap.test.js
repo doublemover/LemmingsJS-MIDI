@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import { MiniMap } from '../js/MiniMap.js';
+import '../js/util/EventHandler.js';
+import { MiniMap } from '../js/render/MiniMap.js';
 
 function createDisplay(width, height) {
   return {

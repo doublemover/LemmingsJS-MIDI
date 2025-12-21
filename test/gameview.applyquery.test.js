@@ -29,7 +29,7 @@ describe('GameView.applyQuery and updateQuery', function () {
 
   it('parses cheat/debug flags and rounds speed factor', async function () {
     global.window = createWindow('?cheat=true&debug=true&speed=2.6');
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.cheatEnabled).to.equal(true);
     expect(view.debug).to.equal(true);
@@ -38,7 +38,7 @@ describe('GameView.applyQuery and updateQuery', function () {
 
   it('parses shortcut/perfMetrics flags', async function () {
     global.window = { location: { search: '?_=true&pm=true' } };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.shortcut).to.equal(true);
     expect(view.perfMetrics).to.equal(true);
@@ -46,7 +46,7 @@ describe('GameView.applyQuery and updateQuery', function () {
 
   it('defaults shortcut/perfMetrics to false', async function () {
     global.window = { location: { search: '' } };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     expect(view.shortcut).to.equal(false);
     expect(view.perfMetrics).to.equal(false);
@@ -56,7 +56,7 @@ describe('GameView.applyQuery and updateQuery', function () {
     global.window = createWindow('?cheat=true&debug=true&speed=2.6');
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.shortcut = true;
     view.updateQuery();
@@ -71,7 +71,7 @@ describe('GameView.applyQuery and updateQuery', function () {
     global.window = createWindow('?cheat=true&debug=true&speed=2.6');
     let url = null;
     global.history.replaceState = (s, t, u) => { url = u; };
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.updateQuery();
     const params = new URLSearchParams(url.slice(1));
@@ -103,7 +103,7 @@ describe('GameView.moveToLevel offsets', function () {
   });
 
   it('ignores negative offset at start of first group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     view.loadLevel = async () => { throw new Error('loadLevel called'); };
@@ -115,7 +115,7 @@ describe('GameView.moveToLevel offsets', function () {
   });
 
   it('advances to next level within group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let called = false;

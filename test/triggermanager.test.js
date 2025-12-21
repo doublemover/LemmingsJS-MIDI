@@ -1,11 +1,11 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import '../js/ColorPalette.js';
-import '../js/Frame.js';
-import { Trigger } from '../js/Trigger.js';
-import { TriggerManager } from '../js/TriggerManager.js';
-import { TriggerTypes } from '../js/TriggerTypes.js';
+import '../js/util/LogHandler.js';
+import '../js/render/ColorPalette.js';
+import '../js/render/Frame.js';
+import { Trigger } from '../js/level/Trigger.js';
+import { TriggerManager } from '../js/level/TriggerManager.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

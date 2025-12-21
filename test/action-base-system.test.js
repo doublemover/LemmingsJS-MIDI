@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { ActionBaseSystem } from '../js/ActionBaseSystem.js';
-import '../js/SpriteTypes.js';
-import '../js/MaskTypes.js';
+import { ActionBaseSystem } from '../js/actions/ActionBaseSystem.js';
+import '../js/lemmings/SpriteTypes.js';
+import '../js/render/MaskTypes.js';
 
 // minimal global environment for logging
 globalThis.lemmings = { game: { showDebug: false } };

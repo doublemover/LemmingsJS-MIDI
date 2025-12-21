@@ -35,7 +35,7 @@ describe('GameView audio methods', function() {
   });
 
   it('playMusic and sound stubs execute without error', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.playMusic();
     view.stopMusic();

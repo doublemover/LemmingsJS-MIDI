@@ -1,7 +1,7 @@
 import { expect } from 'chai';
-import { SmoothScroller } from '../js/GameGui.js';
+import { SmoothScroller } from '../js/game/GameGui.js';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

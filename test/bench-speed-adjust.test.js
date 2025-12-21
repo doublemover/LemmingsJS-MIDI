@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import { GameTimer } from '../js/GameTimer.js';
+import '../js/util/EventHandler.js';
+import { GameTimer } from '../js/game/GameTimer.js';
 import fakeTimers from '@sinonjs/fake-timers';
 
 

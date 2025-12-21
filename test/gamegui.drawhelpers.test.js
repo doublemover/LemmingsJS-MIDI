@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { GameGui } from '../js/GameGui.js';
+import { GameGui } from '../js/game/GameGui.js';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/SkillTypes.js';
+import '../js/util/EventHandler.js';
+import '../js/game/SkillTypes.js';
 
 class DisplayImageStub {
   constructor() { this.calls = []; this.worldDataSize = { width: 0, height: 0 }; }

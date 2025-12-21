@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { CommandLemmingsAction } from '../js/CommandLemmingsAction.js';
+import { CommandLemmingsAction } from '../js/commands/CommandLemmingsAction.js';
 
 // minimal global
 globalThis.lemmings = { game: { showDebug: false } };

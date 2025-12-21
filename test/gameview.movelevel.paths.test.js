@@ -38,7 +38,7 @@ describe('GameView.moveToLevel conditional paths', function () {
   });
 
   it('ignores backward move from first level of first group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -55,7 +55,7 @@ describe('GameView.moveToLevel conditional paths', function () {
   });
 
   it('increments gameType when past last group', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;
@@ -73,7 +73,7 @@ describe('GameView.moveToLevel conditional paths', function () {
   });
 
   it('resets invalid game type to default', async function () {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const view = new GameView();
     view.gameFactory = new GameFactoryMock();
     let calls = 0;

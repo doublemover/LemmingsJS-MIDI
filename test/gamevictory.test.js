@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/LogHandler.js';
-import '../js/GameStateTypes.js';
-import { Game } from '../js/Game.js';
-import { GameVictoryCondition } from '../js/GameVictoryCondition.js';
-import '../js/GameResult.js';
+import '../js/util/LogHandler.js';
+import '../js/game/GameStateTypes.js';
+import { Game } from '../js/game/Game.js';
+import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
+import '../js/game/GameResult.js';
 
 // minimal environment
 globalThis.lemmings = { game: { showDebug: false } };

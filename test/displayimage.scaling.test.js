@@ -1,8 +1,8 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Frame } from '../js/Frame.js';
-import { DisplayImage, scaleNearest, scaleXbrz, scaleHqx } from '../js/DisplayImage.js';
-import '../js/ColorPalette.js';
+import { Frame } from '../js/render/Frame.js';
+import { DisplayImage, scaleNearest, scaleXbrz, scaleHqx } from '../js/render/DisplayImage.js';
+import '../js/render/ColorPalette.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

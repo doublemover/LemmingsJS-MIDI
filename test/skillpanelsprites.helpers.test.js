@@ -1,10 +1,10 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { Frame } from '../js/Frame.js';
-import { ColorPalette } from '../js/ColorPalette.js';
-import { SkillPanelSprites } from '../js/SkillPanelSprites.js';
-import '../js/LogHandler.js';
-import '../js/PaletteImage.js';
+import { Frame } from '../js/render/Frame.js';
+import { ColorPalette } from '../js/render/ColorPalette.js';
+import { SkillPanelSprites } from '../js/render/SkillPanelSprites.js';
+import '../js/util/LogHandler.js';
+import '../js/render/PaletteImage.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 

@@ -1,10 +1,10 @@
 import assert from 'assert';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import { BinaryReader } from '../js/BinaryReader.js';
-import { BitReader } from '../js/BitReader.js';
-import { BitWriter } from '../js/BitWriter.js';
-import { FileContainer } from '../js/FileContainer.js';
-import '../js/UnpackFilePart.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { BitReader } from '../js/data/BitReader.js';
+import { BitWriter } from '../js/data/BitWriter.js';
+import { FileContainer } from '../js/data/FileContainer.js';
+import '../js/data/UnpackFilePart.js';
 import { readFileSync } from 'fs';
 
 globalThis.lemmings = { game: { showDebug: false } };

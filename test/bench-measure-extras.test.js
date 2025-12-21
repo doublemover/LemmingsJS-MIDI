@@ -1,9 +1,9 @@
-import '../js/MapObject.js';
+import '../js/level/MapObject.js';
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
+import '../js/util/EventHandler.js';
 import fakeTimers from '@sinonjs/fake-timers';
-import '../js/Lemming.js';
+import '../js/lemmings/Lemming.js';
 
 before(function() {
   class StageStub { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} }
@@ -24,7 +24,7 @@ after(function() {
 
 describe('benchMeasureExtras', function() {
   it('resolves with extra count based on spawns', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const clock = fakeTimers.withGlobal(globalThis).install({ now: 0 });
     Lemmings.Stage = class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} };
     Lemmings.KeyboardShortcuts = class { constructor(){} dispose(){} };

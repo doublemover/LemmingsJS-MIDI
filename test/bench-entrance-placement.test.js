@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/Level.js';
-import '../js/TriggerTypes.js';
-import '../js/MapObject.js';
-import '../js/Animation.js';
-import '../js/ObjectImageInfo.js';
-import '../js/ColorPalette.js';
-import '../js/Frame.js';
+import '../js/util/EventHandler.js';
+import '../js/level/Level.js';
+import '../js/level/TriggerTypes.js';
+import '../js/level/MapObject.js';
+import '../js/render/Animation.js';
+import '../js/level/ObjectImageInfo.js';
+import '../js/render/ColorPalette.js';
+import '../js/render/Frame.js';
 
 globalThis.lemmings = { game: { showDebug: false } };
 
@@ -31,7 +31,7 @@ describe('bench entrance placement', function() {
   });
 
   it('retains original entrance and adds objects for new ones', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const level = new Lemmings.Level(100, 50);
     const ground = level.getGroundMaskLayer();
     for (let x = 0; x < 100; x++) ground.setGroundAt(x, 40);

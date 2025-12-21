@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import { Lemmings } from '../js/LemmingsNamespace.js';
-import '../js/EventHandler.js';
-import '../js/MapObject.js';
-import '../js/Animation.js';
-import '../js/Lemming.js';
-import '../js/TriggerTypes.js';
-import '../js/ObjectImageInfo.js';
-import '../js/ColorPalette.js';
+import '../js/util/EventHandler.js';
+import '../js/level/MapObject.js';
+import '../js/render/Animation.js';
+import '../js/lemmings/Lemming.js';
+import '../js/level/TriggerTypes.js';
+import '../js/level/ObjectImageInfo.js';
+import '../js/render/ColorPalette.js';
 
 // simple level stub
 class LevelStub {
@@ -49,7 +49,7 @@ before(function() {
 
 describe('benchStart basics', function() {
   it('adds entrance objects and configures timer', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     Lemmings.Stage = class { constructor(){} getGameDisplay(){return{};} getGuiDisplay(){return{};} updateStageSize(){} setCursorSprite(){} clear(){} startFadeOut(){} startOverlayFade(){} };
     Lemmings.KeyboardShortcuts = class { constructor(){} dispose(){} };
     const level = new LevelStub();
@@ -75,7 +75,7 @@ describe('benchStart basics', function() {
   });
 
   it('limits entrance count to available locations', async function() {
-    const { GameView } = await import('../js/GameView.js');
+    const { GameView } = await import('../js/game/GameView.js');
     const level = new LevelStub();
     level.height = 30;
     const timer = { speedFactor: 1, benchStartupFrames: 0, benchStableFactor: 1, getGameTime() { return 0; } };
