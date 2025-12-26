@@ -10,7 +10,7 @@ globalThis.lemmings = { game: { showDebug: false } };
 
 describe('ActionBaseSystem mask caching', function() {
   beforeEach(function() {
-    ActionBaseSystem.maskCache.clear();
+    ActionBaseSystem.maskCache = new WeakMap();
   });
 
   it('caches mask lists for identical actions', function() {
@@ -29,9 +29,10 @@ describe('ActionBaseSystem mask caching', function() {
       actionName: 'bash'
     });
 
-    expect(ActionBaseSystem.maskCache.size).to.equal(1);
+    const cache = ActionBaseSystem.maskCache.get(mp);
+    expect(cache.size).to.equal(1);
     expect(a1.masks).to.equal(a2.masks);
-    const cached = ActionBaseSystem.maskCache.get('bash');
+    const cached = cache.get('bash');
     expect(cached.get('left')).to.equal(mp.maskList[Lemmings.MaskTypes.BASHING_L]);
     expect(cached.get('right')).to.equal(mp.maskList[Lemmings.MaskTypes.BASHING_R]);
   });
@@ -54,9 +55,10 @@ describe('ActionBaseSystem mask caching', function() {
       actionName: 'mine'
     });
 
-    expect(ActionBaseSystem.maskCache.size).to.equal(2);
-    const bashEntry = ActionBaseSystem.maskCache.get('bash');
-    const mineEntry = ActionBaseSystem.maskCache.get('mine');
+    const cache = ActionBaseSystem.maskCache.get(mp);
+    expect(cache.size).to.equal(2);
+    const bashEntry = cache.get('bash');
+    const mineEntry = cache.get('mine');
     expect(bashEntry.get('left')).to.equal(mp.maskList[Lemmings.MaskTypes.BASHING_L]);
     expect(mineEntry.get('left')).to.equal(mp.maskList[Lemmings.MaskTypes.MINING_L]);
   });

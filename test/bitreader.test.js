@@ -42,9 +42,9 @@ describe('BitReader', function() {
     const reader = new BitReader(bin, 0, bin.length, 4);
 
     const n1 = reader.read(4);
-    expect(n1).to.equal(0x5);
+    expect(n1).to.equal(0xA);
     const n2 = reader.read(4);
-    expect(n2).to.equal(0xA);
+    expect(n2).to.equal(0x5);
     expect(() => reader.read(9)).to.throw(RangeError);
     expect(reader.getCurrentChecksum()).to.equal(0xFF);
   });

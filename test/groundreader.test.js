@@ -16,6 +16,7 @@ describe('GroundReader', function() {
   it('reads palettes and detects steel', async function() {
     const origFetch = globalThis.fetch;
     globalThis.fetch = async () => ({ json: async () => ({ lemmings: { 'GROUND0O.DAT': [0] } }) });
+    Lemmings.resetSteelSprites();
     await Lemmings.loadSteelSprites();
     globalThis.fetch = origFetch;
 
@@ -94,10 +95,10 @@ describe('GroundReader', function() {
     const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT', 'lemmings');
     const vgaT = new BinaryReader(new Uint8Array([0,0,0,0]));
     const vgaO = new BinaryReader(new Uint8Array([0,0,0,0,0]));
-    new GroundReader(ground, vgaT, vgaO);
+    const gr = new GroundReader(ground, vgaT, vgaO);
 
     globalThis.lemmings.game.showDebug = prev;
-    const logs = ground.log.logged;
+    const logs = gr.log.logged;
     setDependency('LogHandler', origHandler);
     expect(logs.some(m => m.includes('unknown1 diverges'))).to.equal(true);
     expect(logs.some(m => m.includes('unknown2 should be'))).to.equal(true);

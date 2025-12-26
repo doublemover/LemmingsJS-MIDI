@@ -31,17 +31,17 @@ const actionKeys = [
 const originalActions = {};
 for (const key of actionKeys) originalActions[key] = Lemmings[key];
 
-beforeEach(function() {
-  globalThis.lemmings = { bench: true, extraLemmings: 2, game: { showDebug: false } };
-  for (const key of actionKeys) Lemmings[key] = DummyAction;
-});
-
-afterEach(function() {
-  delete globalThis.lemmings;
-  for (const key of actionKeys) Lemmings[key] = originalActions[key];
-});
-
 describe('LemmingManager extra spawning', function() {
+  beforeEach(function() {
+    globalThis.lemmings = { bench: true, extraLemmings: 2, game: { showDebug: false } };
+    for (const key of actionKeys) Lemmings[key] = DummyAction;
+  });
+
+  afterEach(function() {
+    delete globalThis.lemmings;
+    for (const key of actionKeys) Lemmings[key] = originalActions[key];
+  });
+
   it('adds extra lemmings and updates spawnTotal', function() {
     const level = new Level(10, 10);
     level.entrances = [{ x: 0, y: 0 }];

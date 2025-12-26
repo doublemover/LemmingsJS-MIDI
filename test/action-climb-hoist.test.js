@@ -18,7 +18,11 @@ class StubLemming {
 
 class StubLevel { hasGroundAt() { return false; } }
 
-const stubSprites = new Map([['both', { getFrame() { return {}; } }]]);
+const stubSprites = {
+  getAnimation() {
+    return { getFrame() { return {}; } };
+  }
+};
 
 class StubDisplay {
   constructor() { this.calls = []; }

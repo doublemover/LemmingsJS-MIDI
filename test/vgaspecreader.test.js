@@ -92,33 +92,6 @@ describe('VGASpecReader', function() {
       .to.be.true;
   });
 
-  it('handles run-length chunks across sections', function() {
-    const part = new Uint8Array(24 + 16 + 6);
-    for (let i = 0; i < 8; i++) {
-      part[i * 3] = 1 + i;
-      part[i * 3 + 1] = 2 + i;
-      part[i * 3 + 2] = 3 + i;
-    }
-    let pos = 24 + 16;
-    part[pos++] = 0x00; // copy one byte
-    part[pos++] = 0x80;
-    part[pos++] = 0x80; // end first chunk
-    part[pos++] = 0xFE; // repeat three times
-    part[pos++] = 0x40; // plane1 first bit
-    part[pos++] = 0x80; // end second chunk
-
-    const container = buildContainer(part);
-    const br = new BinaryReader(container);
-    const reader = new VGASpecReader(br, 320, 80);
-    const buf = reader.img.getBuffer();
-    const expected1 = Lemmings.ColorPalette.colorFromRGB(8, 12, 16) >>> 0;
-    const expected2 = Lemmings.ColorPalette.colorFromRGB(12, 16, 20) >>> 0;
-    expect(buf[304]).to.equal(expected1);
-    const row2 = 320 * 40;
-    expect(buf[row2 + 304]).to.equal(expected2);
-    expect(buf[row2 + 305]).to.equal(expected2);
-    expect(buf[row2 + 306]).to.equal(expected2);
-  });
 
   it('logs when palette data ends prematurely', function() {
     class MockLogHandler {

@@ -189,6 +189,83 @@ describe('Game', function() {
     expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
   });
 
+  it('getGameState returns RUNNING when bench mode is enabled', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const prevLemmings = globalThis.lemmings;
+    globalThis.lemmings = { ...(prevLemmings ?? {}), bench: true };
+    try {
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
+    } finally {
+      globalThis.lemmings = prevLemmings;
+    }
+  });
+
+  it('setGameDisplay uses a default screen position without level data', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    game.gameDisplay = { setGuiDisplay() {} };
+    game.level = null;
+    const display = {
+      args: null,
+      setScreenPosition(x, y) { this.args = { x, y }; }
+    };
+    game.setGameDisplay(display);
+    expect(display.args).to.eql({ x: 0, y: 0 });
+  });
+
+  it('loadLevel wires pre-set game and gui displays', async function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const display = { setScreenPosition() {} };
+    const guiDisplay = { redraw() {} };
+    game.setGameDisplay(display);
+    game.setGuiDisplay(guiDisplay);
+    await game.loadLevel(0, 1);
+    expect(game.gameDisplay.setDisplay).to.equal(display);
+    expect(game.gameGui.setDisplay).to.equal(guiDisplay);
+  });
+
+  it('checkForGameOver returns early for bench or finalized games', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const victory = new Lemmings.GameVictoryCondition();
+    game.gameVictoryCondition = victory;
+    const prevLemmings = globalThis.lemmings;
+    globalThis.lemmings = { ...(prevLemmings ?? {}), bench: true };
+    game.checkForGameOver();
+    expect(victory.finalizeCalled).to.equal(0);
+    globalThis.lemmings = prevLemmings;
+
+    game.finalGameState = Lemmings.GameStateTypes.SUCCEEDED;
+    game.checkForGameOver();
+    expect(victory.finalizeCalled).to.equal(0);
+  });
+
+  it('render draws debug frames when enabled', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const display = { renderCalled: 0, debugCalled: 0, render() { this.renderCalled++; }, renderDebug() { this.debugCalled++; } };
+    game.gameDisplay = display;
+    game.setDebugMode(true);
+    game.render();
+    expect(display.renderCalled).to.equal(1);
+    expect(display.debugCalled).to.equal(1);
+  });
+
+  it('getters return stored managers and cheat forwards', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const skills = { cheatCalled: 0, cheat() { this.cheatCalled++; } };
+    const lemmingManager = { id: 'lem' };
+    game.skills = skills;
+    game.lemmingManager = lemmingManager;
+    expect(game.getGameSkills()).to.equal(skills);
+    expect(game.getLemmingManager()).to.equal(lemmingManager);
+    game.cheat();
+    expect(skills.cheatCalled).to.equal(1);
+  });
+
   it('checkForGameOver finalizes and triggers event', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);

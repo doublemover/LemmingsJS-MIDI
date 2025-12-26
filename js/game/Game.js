@@ -180,6 +180,10 @@ class Game extends BaseLogger {
   queueCommand(cmd)   { this.commandManager?.queueCommand(cmd); }
 
   onGameTimerTick () {
+    if (!this.level) {
+      this.runGameLogic();
+      return;
+    }
     this.runGameLogic();
     this.checkForGameOver();
     this.render();
