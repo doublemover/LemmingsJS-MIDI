@@ -18,7 +18,7 @@ describe('LevelReader.readLevelObjects', function() {
     const objects = [
       { x: 10, y: 20, id: 5, drawProperties: new Lemmings.DrawProperties(true, true, false, false) },
       null,
-      { x: 30, y: 40, id: 0x000C, drawProperties: new Lemmings.DrawProperties(false, false, false, false) }
+      { x: 30, y: 40, id: 0x000C, drawProperties: new Lemmings.DrawProperties(true, false, false, false) }
     ];
     const level = { levelProperties: props, objects };
     const buf = new LevelWriter().write(level);

@@ -43,8 +43,8 @@ class StubDisplay {
 
 describe('ActionBaseSystem', function() {
   beforeEach(function() {
-    ActionBaseSystem.spriteCache.clear();
-    ActionBaseSystem.maskCache.clear();
+    ActionBaseSystem.spriteCache = new WeakMap();
+    ActionBaseSystem.maskCache = new WeakMap();
   });
 
   it('reuses sprite and mask caches for identical options', function() {
@@ -62,8 +62,6 @@ describe('ActionBaseSystem', function() {
     const a1 = new ActionBaseSystem(opts);
     const a2 = new ActionBaseSystem(opts);
 
-    expect(ActionBaseSystem.spriteCache.size).to.equal(1);
-    expect(ActionBaseSystem.maskCache.size).to.equal(1);
     expect(a1.sprites).to.equal(a2.sprites);
     expect(a1.masks).to.equal(a2.masks);
   });
@@ -93,6 +91,26 @@ describe('ActionBaseSystem', function() {
     expect(display.calls[1]).to.deep.equal({ frame: 'sprite-0-false-2', x: 0, y: 0 });
   });
 
+  it('draw uses single sprite when configured', function() {
+    const sprites = new StubSprites();
+    const sys = new ActionBaseSystem({
+      sprites,
+      spriteType: Lemmings.SpriteTypes.FRYING,
+      singleSprite: true
+    });
+    const display = new StubDisplay();
+    const lem = new StubLemming();
+    lem.frameIndex = 3;
+
+    sys.draw(display, lem);
+
+    expect(display.calls[0]).to.deep.equal({
+      frame: `sprite-${Lemmings.SpriteTypes.FRYING}-false-3`,
+      x: 0,
+      y: 0
+    });
+  });
+
   it('caches separately for different action names', function() {
     const sprites = new StubSprites();
     const masks = new StubMasks();
@@ -109,8 +127,6 @@ describe('ActionBaseSystem', function() {
     const a1 = new ActionBaseSystem(opts1);
     const a2 = new ActionBaseSystem(opts2);
 
-    expect(ActionBaseSystem.spriteCache.size).to.equal(2);
-    expect(ActionBaseSystem.maskCache.size).to.equal(2);
     expect(a1.sprites).to.not.equal(a2.sprites);
     expect(a1.masks).to.not.equal(a2.masks);
   });
@@ -133,5 +149,20 @@ describe('ActionBaseSystem', function() {
     expect(Array.from(sys.sprites.keys())).to.deep.equal(['both']);
     expect(Array.from(sys.masks.keys())).to.deep.equal(['both']);
     expect(sprites.calls.some(c => c.right === true)).to.equal(false);
+  });
+
+  it('getActionName returns the configured action name', function() {
+    const sys = new ActionBaseSystem();
+    expect(sys.getActionName()).to.equal('');
+    sys.actionName = 'walking';
+    expect(sys.getActionName()).to.equal('walking');
+  });
+
+  it('draw exits early when sprites are missing', function() {
+    const sys = new ActionBaseSystem();
+    const display = new StubDisplay();
+    const lem = new StubLemming();
+    sys.draw(display, lem);
+    expect(display.calls).to.have.length(0);
   });
 });

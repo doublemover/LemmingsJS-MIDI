@@ -5,6 +5,7 @@ import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
 import '../js/game/SkillTypes.js';
 import { Level } from '../js/level/Level.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { LemmingManager } from '../js/lemmings/LemmingManager.js';
 import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/LemmingsBootstrap.js';
@@ -181,7 +182,7 @@ describe('LemmingManager core behavior', function() {
     manager.tick();
 
     expect(mm.dots.length).to.equal(2);
-    expect(manager.lemmings[0].removed).to.be.true;
+    expect(manager.lemmings[0]).to.equal(null);
   });
 
   it('getNearestLemming picks closest active lemming', function() {
@@ -281,8 +282,79 @@ describe('LemmingManager additional', function() {
     const lem = manager.lemmings[0];
     manager.setLemmingState(lem, Lemmings.LemmingStateType.BLOCKING);
     let removed=false; manager.triggerManager.removeByOwner=()=>{removed=true;};
-    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);
+    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);        
     expect(ok).to.be.true;
     expect(removed).to.be.true;
+  });
+});
+
+describe('LemmingManager triggers and nuking', function() {
+  it('runTrigger maps triggers and flips blockers', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(5, 5);
+    const lem = manager.lemmings[0];
+
+    manager.triggerManager.trigger = () => TriggerTypes.DROWN;
+    let state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.DROWNING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.DROWN);
+
+    manager.triggerManager.trigger = () => TriggerTypes.BLOCKER_LEFT;
+    lem.lookRight = true;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.lookRight).to.equal(false);
+
+    manager.triggerManager.trigger = () => TriggerTypes.BLOCKER_RIGHT;
+    lem.lookRight = false;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.lookRight).to.equal(true);
+  });
+
+  it('runTrigger logs unknown trigger types', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(4, 4);
+    const lem = manager.lemmings[0];
+
+    const logs = [];
+    manager.logging.log = msg => logs.push(msg);
+    manager.triggerManager.trigger = () => 999;
+
+    const state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(logs[0]).to.match(/unknown trigger type/i);
+  });
+
+  it('nuking skips disabled targets and ends when applied', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.addLemming(1, 1);
+    manager.addLemming(2, 2);
+
+    manager.doNukeAllLemmings();
+    const [lem1, lem2] = manager.lemmings;
+    lem1.disable();
+
+    const calls = [];
+    manager.doLemmingAction = (lem, skill) => {
+      calls.push({ lem, skill });
+      return true;
+    };
+
+    manager._nukeNextLemming();
+
+    expect(calls.length).to.equal(1);
+    expect(calls[0].lem).to.equal(lem2);
+    expect(calls[0].skill).to.equal(Lemmings.SkillTypes.BOMBER);
+    expect(manager.isNuking()).to.equal(false);
   });
 });

@@ -1,10 +1,12 @@
 import { expect } from 'chai';
 import { Lemmings } from './helpers/lemmings.js';
+import { ColorPalette } from '../js/render/ColorPalette.js';
 import { ParticleTable } from '../js/render/ParticleTable.js';
 
 // Minimal palette stub with predictable color values
 function makePalette() {
   return {
+    getColor(i) { return ColorPalette.colorFromRGB(i, i + 10, i + 20); },
     getR(i) { return i; },
     getG(i) { return i + 10; },
     getB(i) { return i + 20; }
@@ -25,22 +27,19 @@ describe('ParticleTable', function() {
     expect(pt.particleData.length).to.equal(51);
   });
 
-  it('draw() calls setPixel with expected coordinates and palette values', function() {
+  it('draw() calls drawFrame with a populated frame', function() {
     globalThis.lemmings = { game: { showDebug: false } };
     ParticleTable._sharedParticleData = undefined;
     const pal = makePalette();
     const pt = new ParticleTable(pal);
     const calls = [];
-    const display = { setPixel(...args) { calls.push(args); } };
+    const display = { drawFrame(frame, x, y) { calls.push({ frame, x, y }); } };
     pt.draw(display, 0, 60, 120);
-    expect(calls.length).to.equal(80);
-    expect(calls.slice(0, 5)).to.eql([
-      [8, 20, 4, 14, 24, 255],
-      [37, 73, 14, 24, 34, 255],
-      [67, 95, 12, 22, 32, 255],
-      [58, 99, 10, 20, 30, 255],
-      [63, 106, 8, 18, 28, 255]
-    ]);
+    expect(calls).to.have.lengthOf(1);
+    expect(calls[0].x).to.equal(60);
+    expect(calls[0].y).to.equal(120);
+    const expected = ColorPalette.colorFromRGB(4, 14, 24);
+    expect(calls[0].frame.getBuffer().includes(expected)).to.equal(true);
   });
 
   it('decodes shared data only once for multiple instances', function() {

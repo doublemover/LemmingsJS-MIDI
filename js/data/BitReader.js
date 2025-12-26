@@ -81,7 +81,7 @@ class BitReader {
 
     for (let i = bitCount; i-- > 0;) {
       if (bufferLen === 0) {
-        if (pos < 0) throw new RangeError('Attempt to read past end of buffer');
+        if (pos <= 0) throw new RangeError('Attempt to read past end of buffer');
         buffer = br.readByte(--pos);
         checksum ^= buffer;
         bufferLen = 8;

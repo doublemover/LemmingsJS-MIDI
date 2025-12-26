@@ -102,4 +102,63 @@ describe('GameVictoryCondition methods', function () {
     vc.doFinalize();
     expect(vc.isFinalize).to.be.true;
   });
+
+  it('exposes release rate bounds and counts', function () {
+    const vc = makeVC();
+    expect(vc.getNeedCount()).to.equal(1);
+    expect(vc.getReleaseCount()).to.equal(10);
+    expect(vc.getMinReleaseRate()).to.equal(10);
+    expect(vc.getMaxReleaseRate()).to.equal(GameVictoryCondition.maxReleaseRate);
+  });
+
+  it('sets current release rate with bounds and finalize checks', function () {
+    const vc = makeVC();
+    expect(vc.setCurrentReleaseRate(20)).to.equal(true);
+    expect(vc.releaseRate).to.equal(20);
+    expect(vc.setCurrentReleaseRate(20)).to.equal(false);
+    expect(vc.setCurrentReleaseRate(200)).to.equal(true);
+    expect(vc.releaseRate).to.equal(GameVictoryCondition.maxReleaseRate);
+    vc.doFinalize();
+    expect(vc.setCurrentReleaseRate(30)).to.equal(false);
+  });
+
+  it('uses normal release rate when measuring bench extras', function () {
+    const vc = makeVC();
+    lemmings.bench = true;
+    lemmings._benchMeasureExtras = true;
+    expect(vc.getCurrentReleaseRate()).to.equal(vc.releaseRate);
+    lemmings.bench = false;
+  });
+
+  it('respects endless mode when releasing or nuking', function () {
+    const vc = makeVC();
+    lemmings.endless = true;
+    vc.releaseOne();
+    expect(vc.leftCount).to.equal(10);
+    expect(vc.outCount).to.equal(1);
+    vc.doNuke();
+    expect(vc.leftCount).to.equal(10);
+    lemmings.endless = false;
+    vc.leftCount = 0;
+    vc.releaseOne();
+    expect(vc.outCount).to.equal(1);
+  });
+
+  it('handles missing app in getCurrentReleaseRate', function () {
+    const vc = makeVC();
+    const prev = globalThis.lemmings;
+    globalThis.lemmings = null;
+    try {
+      expect(vc.getCurrentReleaseRate()).to.equal(vc.releaseRate);
+    } finally {
+      globalThis.lemmings = prev;
+    }
+    const prevProp = globalThis.lemmings;
+    delete globalThis.lemmings;
+    try {
+      expect(vc.getCurrentReleaseRate()).to.equal(vc.releaseRate);
+    } finally {
+      globalThis.lemmings = prevProp;
+    }
+  });
 });

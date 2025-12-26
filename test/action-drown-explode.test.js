@@ -43,12 +43,21 @@ function stubMasks() {
   };
 }
 
-// fake game environment
-before(() => {
-  globalThis.lemmings = { game: { lemmingManager: { miniMap: { deaths: 0, addDeath() { this.deaths++; }, invalidateRegion() {} } } } };
-});
-
 describe('ActionDrowningSystem behavior', function() {
+  let originalLemmings;
+  beforeEach(() => {
+    originalLemmings = globalThis.lemmings;
+    globalThis.lemmings = { game: { lemmingManager: { miniMap: { deaths: 0, addDeath() { this.deaths++; }, invalidateRegion() {} } } } };
+  });
+
+  afterEach(() => {
+    if (originalLemmings === undefined) {
+      delete globalThis.lemmings;
+    } else {
+      globalThis.lemmings = originalLemmings;
+    }
+  });
+
   it('moves, turns and exits', function() {
     const level = new StubLevel();
     const sys = new ActionDrowningSystem(stubSprites);
@@ -73,7 +82,7 @@ describe('ActionDrowningSystem behavior', function() {
     const lem = new StubLemming();
     lem.frameIndex = 15;
     sys.draw({ drawFrame() {} }, lem);
-    expect(lemmings.game.lemmingManager.miniMap.deaths).to.equal(1);
+    expect(globalThis.lemmings.game.lemmingManager.miniMap.deaths).to.equal(1);
   });
 });
 
@@ -95,7 +104,7 @@ describe('ActionExplodingSystem behavior', function() {
   });
 
   it('triggerLemAction returns false', function() {
-    const sys = new ActionExplodingSystem(new Map(), stubMasks(), new StubTriggerManager(), { draw() {} });
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), new StubTriggerManager(), { draw() {} });
     const lem = new StubLemming();
     expect(sys.triggerLemAction(lem)).to.equal(false);
   });
@@ -103,7 +112,7 @@ describe('ActionExplodingSystem behavior', function() {
   it('process increments frameIndex and disables on first frame', function() {
     const level = new StubLevel();
     const tm = new StubTriggerManager();
-    const sys = new ActionExplodingSystem(new Map([['both', { getFrame() {} }]]), stubMasks(), tm, { draw() {} });
+    const sys = new ActionExplodingSystem(stubSprites, stubMasks(), tm, { draw() {} });
     const lem = new StubLemming();
     sys.process(level, lem); // frame 0 -> 1
     expect(lem.frameIndex).to.equal(1);

@@ -8,12 +8,22 @@ class DummyMask {
   constructor() { this.offsetX = 0; this.offsetY = 0; this.width = 1; this.height = 1; }
   at() { return false; }
 }
-function stubMasks() {
-  return new Map([
-    ['left', { GetMask() { return new DummyMask(); } }],
-    ['right', { GetMask() { return new DummyMask(); } }]
-  ]);
+class DummyMaskList {
+  GetMask() { return new DummyMask(); }
 }
+function stubMasks() {
+  return {
+    GetMask() {
+      return new DummyMaskList();
+    }
+  };
+}
+
+const stubSprites = {
+  getAnimation() {
+    return { getFrame() { return {}; } };
+  }
+};
 
 class StubLemming {
   constructor() { this.x = 0; this.y = 0; this.lookRight = true; this.frameIndex = 0; }
@@ -32,7 +42,7 @@ class StubLevel {
 describe('ActionMineSystem state handling', function () {
   it('returns SHRUG when steel or arrow under mask', function () {
     const level = new StubLevel();
-    const sys = new ActionMineSystem(new Map(), stubMasks());
+    const sys = new ActionMineSystem(stubSprites, stubMasks());
     const lem = new StubLemming();
 
     level.steel = true;
@@ -46,7 +56,7 @@ describe('ActionMineSystem state handling', function () {
 
   it('increments y at frame 3 and falls without ground', function () {
     const level = new StubLevel();
-    const sys = new ActionMineSystem(new Map(), stubMasks());
+    const sys = new ActionMineSystem(stubSprites, stubMasks());
     const lem = new StubLemming();
     lem.frameIndex = 2; // ->3
     const ret = sys.process(level, lem);
@@ -57,7 +67,7 @@ describe('ActionMineSystem state handling', function () {
   it('clears ground and continues when unobstructed', function () {
     const level = new StubLevel();
     level.ground.add(level.key(0, 0));
-    const sys = new ActionMineSystem(new Map(), stubMasks());
+    const sys = new ActionMineSystem(stubSprites, stubMasks());
     const lem = new StubLemming();
     const ret = sys.process(level, lem); // frame 0 -> 1
     expect(ret).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);

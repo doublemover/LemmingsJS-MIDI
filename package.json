@@ -15,7 +15,7 @@
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
-    "coverage": "cross-env C8_FORK=1 c8 mocha",
+    "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-report": "npx c8 report --reporter=html",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
     "export-lemmings-sprites": "node tools/exportLemmingsSprites.js",
@@ -29,6 +29,18 @@
     "format": "eslint . --fix",
     "lint": "eslint .",
     "depcheck": "depcheck"
+  },
+  "c8": {
+    "check-coverage": true,
+    "lines": 71,
+    "statements": 71,
+    "functions": 72,
+    "branches": 85,
+    "exclude": [
+      "js/vendor/**",
+      "js/vendor/jquery.js",
+      "js/vendor/webmidi.js"
+    ]
   },
   "repository": {
     "type": "git",

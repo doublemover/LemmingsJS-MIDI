@@ -1,4 +1,5 @@
 # LemmingsJS-MIDI
+![Coverage](https://img.shields.io/badge/coverage-83.6%25-yellow)
 
 High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
 
@@ -158,6 +159,8 @@ polish, so please file bugs for any issues you hit.
     - Channel selection
     - I/O display
     - Debug display
+  - Performance
+    - Investigate using GameTimer catchup slowdown as a failsafe for perf spikes
 </details>
 
 <details>

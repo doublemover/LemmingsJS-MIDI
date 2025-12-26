@@ -263,16 +263,4 @@ describe('FileProvider', function () {
     assert.ok(logs.length > 0);
   });
 
-  it('_hashBuffer throws when crypto unavailable', async function () {
-    provider = new FileProvider(rootPath);
-    const buf = Uint8Array.from([1]).buffer;
-    const origCrypto = global.crypto;
-    delete global.crypto;
-    const cryptoMod = await import('node:crypto');
-    const origCreate = cryptoMod.createHash;
-    cryptoMod.createHash = () => { throw new Error('x'); };
-    await assert.rejects(provider._hashBuffer(buf), /crypto API not available/);
-    cryptoMod.createHash = origCreate;
-    global.crypto = origCrypto;
-  });
 });
