@@ -252,3 +252,118 @@ If a level specifies `MUSIC ?n` it indexes into the *resolved* rotation list aft
 
 [1]: https://www.neolemmix.com/old/f_levelvar.html "namida's Lemmings Page"
 [2]: https://www.neolemmix.com/old/f_system.html "namida's Lemmings Page"
+
+---
+
+## 8 Editor subset for LemmingsJS-MIDI
+
+This repository will target NeoLemmix V12 text levels (`.nxlv`) for the level
+editor. The sections below document the initial subset and the mapping to the
+current runtime so we can implement a full round-trip editor without guessing.
+
+### 8.1 Header keys written by the editor
+
+All keys follow the `KEY value` format with a single space separator.
+
+| Key | Editor usage | Notes |
+| --- | --- | --- |
+| `TITLE` | String | Required for saved levels. |
+| `AUTHOR` | String | Optional. |
+| `VERSION` | String | Optional. |
+| `ID` | String | Optional. |
+| `STYLE` | String | Required. Mapped via editor style registry to classic assets. |
+| `MUSIC` | String | Optional (filename or `?n`). |
+| `LEMMINGS` | Int | Total lemming count. |
+| `SAVE_REQUIREMENT` | Int | Needed to win. |
+| `TIME_LIMIT` | Int or `INFINITE` | Seconds. |
+| `MAX_SPAWN_INTERVAL` | Int | 1-99. Maps to release rate. |
+| `SPAWN_INTERVAL_LOCKED` | Bool | `true` or `false`. |
+| `WIDTH` | Int | Initially fixed to 1600. |
+| `HEIGHT` | Int | Initially fixed to 160. |
+| `START_X` | Int | Viewport origin X. |
+| `START_Y` | Int | Viewport origin Y. |
+| `BACKGROUND` | String | Optional; ignored by classic engine. |
+
+### 8.2 `$SKILLSET`
+
+Editor writes classic skills only, one per line:
+
+```
+$SKILLSET
+  SKILL CLIMBER 0
+  SKILL FLOATER 0
+  SKILL BOMBER  0
+  SKILL BLOCKER 0
+  SKILL BUILDER 0
+  SKILL BASHER  0
+  SKILL MINER   0
+  SKILL DIGGER  0
+$END
+```
+
+`INFINITE` is accepted but will be stored as a large sentinel in the classic
+runtime. The editor will clamp values to practical limits.
+
+### 8.3 `$TERRAIN`
+
+Required keys: `STYLE`, `PIECE`, `X`, `Y`.
+
+Optional keys used by the editor:
+- `ROTATE` (0/90/180/270)
+- `FLIP_HORIZONTAL`, `FLIP_VERTICAL` (true/false)
+- `NO_OVERWRITE`, `ERASE`, `ONE_WAY`
+- `WIDTH`, `HEIGHT` (only for pieces that are resizable in NeoLemmix)
+
+Coordinate origin is the top-left of the level in pixels. Negative values are
+valid in NeoLemmix but will be clamped for the classic renderer.
+
+Mapping notes:
+- `STYLE` resolves via a repo-specific style registry to a classic ground set.
+- `PIECE` resolves to a numeric terrain id (0-63) in classic assets.
+- `FLIP_VERTICAL` maps to `DrawProperties.isUpsideDown` in this runtime.
+- `NO_OVERWRITE` maps to `DrawProperties.noOverwrite`.
+- `ERASE` maps to `DrawProperties.isErase`.
+- Horizontal flips and arbitrary rotations are not supported by classic DAT
+  sprites and will be ignored unless a compatible piece is available.
+
+### 8.4 `$GADGET`
+
+Required keys: `STYLE`, `PIECE`, `X`, `Y`.
+
+Optional keys the editor may read/write:
+- `ROTATE`, `FLIP_HORIZONTAL`, `FLIP_VERTICAL`
+- `WIDTH`, `HEIGHT` (for resizable gadgets)
+- `SKILL` (pickup skills), `LEMMINGS` (for entrances), `PAIRING`
+
+Mapping notes:
+- Classic object ids are 0-15 from the `GROUNDxO.DAT` header.
+- Entrance is object id 1 and exit is object id 0 in the current runtime.
+- Trigger behavior maps via `trigger_effect_id` to `TriggerTypes` in
+  `js/level/TriggerTypes.js`.
+
+### 8.5 `$TERRAINGROUP` and steel
+
+NeoLemmix uses `$TERRAINGROUP` to mark steel terrain. For compatibility the
+editor will:
+- Write steel terrain inside a `$TERRAINGROUP` marked `STEEL`, and
+- Maintain classic steel rectangles for the runtime steel mask.
+
+### 8.6 Unsupported sections and keys (initially)
+
+These are recognized but not applied in the current runtime:
+- `$LEMMING`, `$TALISMAN`, `$PRETEXT`, `$POSTTEXT`
+- Gimmicks (zombies, rising water, etc.)
+- One-way arrows as terrain flags (classic runtime uses object triggers)
+- High-resolution styles (`-hr`) and alias resolution
+
+Unsupported values will be preserved on load/save where possible.
+
+### 8.7 Style registry (repo-specific)
+
+The editor needs a registry that maps NeoLemmix `STYLE` names and `PIECE`
+identifiers to the classic asset indices this repo already uses:
+- Terrain: `terrainId` 0-63, object: `objectId` 0-15
+- Ground set: `graphicSet1` index for `GROUNDxO.DAT` / `VGAGRx.DAT`
+
+The registry will live in a JSON or JS module in the repo so the editor can
+populate palettes and serialize `.nxlv` consistently.

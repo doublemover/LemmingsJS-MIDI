@@ -34,6 +34,17 @@ class BinaryReader extends BaseLogger {
    */
   constructor(dataArray, offset = 0, length, filename = '[unknown]', foldername = '[unknown]') {
     super();
+    if (typeof offset === 'string') {
+      const nextFolder = typeof length === 'string' ? length : foldername;
+      filename = offset;
+      foldername = nextFolder;
+      offset = 0;
+      length = undefined;
+    } else if (typeof length === 'string') {
+      foldername = filename;
+      filename = length;
+      length = undefined;
+    }
     this.filename = filename;
     this.foldername = foldername;
 

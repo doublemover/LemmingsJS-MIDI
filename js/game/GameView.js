@@ -9,6 +9,12 @@ import { MidiEventRouter } from '../midi/MidiEventRouter.js';
 import { MidiMapping } from '../midi/MidiMapping.js';
 import { Stage } from '../render/Stage.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
+import { FileContainer } from '../data/FileContainer.js';
+import { LevelIndexResolve } from '../level/LevelIndexResolve.js';
+import { LevelReader } from '../level/LevelReader.js';
+import { EditorSession } from '../editor/EditorSession.js';
+import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js';
+import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { getDependency } from '../core/dependencies.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
@@ -80,6 +86,13 @@ class GameView extends BaseLogger {
     this._midiBaseConfig = null;
     this._midiSchemaHash = null;
     this.midiEnabled = true;
+
+    this.editorMode = false;
+    this.editorSession = null;
+    this.editorPlaytest = false;
+    this._editorWasRunning = false;
+    this._editorInputWasEnabled = true;
+    this._editorPanWasEnabled = true;
 
     const gameTypes = getGameTypes();
     this.log.log('selected level: ' + gameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
@@ -403,7 +416,11 @@ class GameView extends BaseLogger {
       if (oldGameType !== this.gameType) {
         this.gameResources = await this.gameFactory.getGameResources(this.gameType);
       }
-      await this.loadLevel();
+      if (this.editorMode) {
+        await this.loadEditorLevelFromSelection();
+      } else {
+        await this.loadLevel();
+      }
     } finally {
       this.inMoveToLevel = false;
     }
@@ -593,6 +610,10 @@ class GameView extends BaseLogger {
     this.levelGroupIndex = newLevelGroupIndex;
     this.levelIndex = 0;
     await this.populateLevelSelect();
+    if (this.editorMode) {
+      await this.loadEditorLevelFromSelection();
+      return;
+    }
     this.loadLevel();
   }
   /** switch the selected game type */
@@ -609,11 +630,19 @@ class GameView extends BaseLogger {
     this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
     this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
     await this.populateLevelSelect();
+    if (this.editorMode) {
+      await this.loadEditorLevelFromSelection();
+      return;
+    }
     this.loadLevel();
   }
   /** select a specific level */
-  selectLevel(newLevelIndex) {
+  async selectLevel(newLevelIndex) {
     this.levelIndex = newLevelIndex;
+    if (this.editorMode) {
+      await this.loadEditorLevelFromSelection();
+      return;
+    }
     this.loadLevel();
   }
   /** select a game type */
@@ -639,6 +668,20 @@ class GameView extends BaseLogger {
     if (this.benchSequence) {
       await this.benchSequenceStart();
     }
+  }
+
+  async setupEditor() {
+    this.applyQuery();
+    this.configs = await this.gameFactory.configReader.configs;
+    this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));
+    const typeIndex = this.configs.findIndex(c => c.gametype === this.gameType);
+    if (typeIndex >= 0 && this.elementSelectGameType)
+      this.elementSelectGameType.selectedIndex = typeIndex;
+    const newGameResources = await this.gameFactory.getGameResources(this.gameType);
+    this.gameResources = newGameResources;
+    this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
+    this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+    await this.populateLevelSelect();
   }
   /** load a level and render it to the display */
   async loadLevel() {
@@ -884,6 +927,229 @@ class GameView extends BaseLogger {
     this.extraLemmings = this._benchExtraList[0];
     lemmings.extraLemmings = this.extraLemmings;
     await this.benchStart(this._benchCounts[0]);
+  }
+
+  ensureEditorSession() {
+    if (!this.editorSession) {
+      this.editorSession = new EditorSession();
+    }
+    return this.editorSession;
+  }
+
+  enterEditorMode() {
+    if (this.editorMode) return;
+    this.editorMode = true;
+    this.editorPlaytest = false;
+    const timer = this.game?.getGameTimer?.();
+    this._editorWasRunning = !!timer?.isRunning?.();
+    timer?.suspend?.();
+    if (this.stage) {
+      this._editorPanWasEnabled = this.stage.panEnabled !== false;
+      this.stage.panEnabled = false;
+    }
+    if (this.game) {
+      this._editorInputWasEnabled = this.game.inputEnabled !== false;
+      this.game.inputEnabled = false;
+    }
+    if (!this.editorSession) {
+      this.editorSession = new EditorSession();
+      this.editorSession.createBlank();
+    }
+  }
+
+  exitEditorMode() {
+    if (!this.editorMode) return;
+    this.editorMode = false;
+    this.editorPlaytest = false;
+    const timer = this.game?.getGameTimer?.();
+    if (this._editorWasRunning) {
+      timer?.continue?.();
+    }
+    this._editorWasRunning = false;
+    if (this.stage) {
+      this.stage.panEnabled = this._editorPanWasEnabled !== false;
+    }
+    if (this.game) {
+      this.game.inputEnabled = this._editorInputWasEnabled !== false;
+    }
+  }
+
+  toggleEditorMode() {
+    if (this.editorMode) {
+      this.exitEditorMode();
+    } else {
+      this.enterEditorMode();
+    }
+  }
+
+  setEditorPlaytest(enabled) {
+    this.editorPlaytest = !!enabled;
+    if (!this.editorMode) return;
+    const timer = this.game?.getGameTimer?.();
+    if (this.editorPlaytest) {
+      timer?.continue?.();
+    } else {
+      timer?.suspend?.();
+    }
+    if (this.game) {
+      this.game.inputEnabled = this.editorPlaytest;
+    }
+    if (this.stage) {
+      this.stage.panEnabled = this.editorPlaytest;
+    }
+  }
+
+  createBlankEditorLevel(options = {}) {
+    this.enterEditorMode();
+    const level = this.editorSession.createBlank(options);
+    if (options.render !== false) {
+      this.loadEditorPreviewLevel({ suspend: true });
+    }
+    return level;
+  }
+
+  loadEditorLevelFromText(text, options = {}) {
+    this.enterEditorMode();
+    const level = this.editorSession.loadFromText(text);
+    if (options.render !== false) {
+      this.loadEditorPreviewLevel({ suspend: true });
+    }
+    return level;
+  }
+
+  getEditorLevelText() {
+    const session = this.ensureEditorSession();
+    return session.toText();
+  }
+
+  getEditorLevelTitle() {
+    const session = this.ensureEditorSession();
+    return session.getTitle();
+  }
+
+  async _startWithLevel(level) {
+    if (!this.gameFactory) return;
+    if (this.game != null) {
+      this.continue();
+      return;
+    }
+    const baseResources = this.gameResources;
+    if (!baseResources) return;
+    const editorResources = Object.create(baseResources);
+    editorResources.getLevel = async () => level;
+    try {
+      const game = await this.gameFactory.getGame(this.gameType, editorResources);
+      await game.loadLevel(this.levelGroupIndex, this.levelIndex);
+      game.setGameDisplay(this.stage.getGameDisplay());
+      game.setGuiDisplay(this.stage.getGuiDisplay());
+      if (this.stage && game.level) {
+        this.applyLevelViewport(game.level);
+      }
+      game.getGameTimer().speedFactor = this.gameSpeedFactor;
+      this.stage.setCursorSprite(createCrosshairFrame(24));
+      if (this.midiEnabled) {
+        await this.initMidiRouting();
+        this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
+      }
+      game.start();
+      const gameStateTypes = getGameStateTypes();
+      this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
+      game.onGameEnd.on(state => this.onGameEnd(state));
+      this.game = game;
+      if (this.cheatEnabled) this.game.cheat();
+      if (this.debug) this.game.showDebug = true;
+    } catch (e) {
+      this.log.log('Error starting custom level:', e);
+    }
+  }
+
+  async loadEditorPreviewLevel(options = {}) {
+    if (this.autoMoveTimer !== null) {
+      window.clearTimeout(this.autoMoveTimer);
+      this.autoMoveTimer = null;
+    }
+    if (!this.editorSession?.level || !this.gameFactory) return null;
+    const config = this.gameResources?.config || await this.gameFactory.getConfig(this.gameType);
+    if (!config) return null;
+    if (this.game) {
+      this.midiRouter?.detach?.();
+      this.game.stop();
+      this.game = null;
+    }
+    const gameStateTypes = getGameStateTypes();
+    this.changeHtmlText(this.elementGameState, gameStateTypes[gameStateTypes.UNKNOWN]);
+    const level = await loadEditorLevel(
+      this.editorSession.level,
+      config,
+      this.gameFactory.fileProvider,
+      {
+        levelGroupIndex: this.levelGroupIndex,
+        levelIndex: this.levelIndex
+      }
+    );
+    if (!level) return null;
+    if (this.elementSelectGameType && this.configs) {
+      const idx = this.configs.findIndex(c => c.gametype === this.gameType);
+      if (idx >= 0) this.elementSelectGameType.selectedIndex = idx;
+    }
+    if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+    if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
+    if (this.stage) {
+      const gameDisplay = this.stage.getGameDisplay();
+      gameDisplay.clear();
+      this.stage.resetFade();
+      level.render(gameDisplay);
+      this.stage.updateStageSize();
+      this.applyLevelViewport(level);
+    }
+    this.updateQuery();
+    this.log.debug(level);
+    await this._startWithLevel(level);
+    if (this.editorMode && this.game) {
+      this.game.inputEnabled = this.editorPlaytest;
+    }
+    if (this.editorMode && this.stage) {
+      this.stage.panEnabled = this.editorPlaytest;
+    }
+    const timer = this.game?.getGameTimer?.();
+    if (options.suspend !== false && !this.editorPlaytest) {
+      timer?.suspend?.();
+    } else if (this.editorPlaytest) {
+      timer?.continue?.();
+    }
+    return level;
+  }
+  async _loadClassicLevelReader(gameType, levelGroupIndex, levelIndex) {
+    const provider = this.gameFactory?.fileProvider;
+    if (!provider) return null;
+    const config = await this.gameFactory.getConfig(gameType);
+    if (!config) return null;
+    const resolver = new LevelIndexResolve(config);
+    const levelInfo = resolver.resolve(levelGroupIndex, levelIndex);
+    if (!levelInfo) return null;
+    const paddedFileId = ('0000' + levelInfo.fileId).slice(-3);
+    const levelDat = await provider.loadBinary(
+      config.path,
+      config.level.filePrefix + paddedFileId + '.DAT'
+    );
+    const levelsContainer = new FileContainer(levelDat);
+    return new LevelReader(levelsContainer.getPart(levelInfo.partIndex));
+  }
+
+  async loadEditorLevelFromSelection(options = {}) {
+    this.enterEditorMode();
+    const reader = await this._loadClassicLevelReader(
+      this.gameType,
+      this.levelGroupIndex,
+      this.levelIndex
+    );
+    if (!reader) return null;
+    const editorLevel = createEditorLevelFromClassic(reader, options);
+    this.editorSession.level = editorLevel;
+    if (options.render !== false) {
+      await this.loadEditorPreviewLevel({ suspend: true });
+    }
+    return editorLevel;
   }
 
   /** cleanup keyboard and stage handlers */

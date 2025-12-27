@@ -65,6 +65,7 @@ class GameDisplay {
   setGuiDisplay(display) {
     this.display = display;
     this._mouseHandler = (e) => {
+      if (this.game?.inputEnabled === false) return;
       const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
       if (lem) {
         this.game.queueCommand(new CommandLemmingsAction(lem.id));
@@ -72,6 +73,7 @@ class GameDisplay {
     };
     this.display.onMouseDown.on(this._mouseHandler);
     this._mouseMoveHandler = (e) => {
+      if (this.game?.inputEnabled === false) return;
       this._mouseX = e.x;
       this._mouseY = e.y;
       this._hoverX = e.x;

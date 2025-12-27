@@ -6,6 +6,7 @@ import { CommandSelectSkill } from '../commands/CommandSelectSkill.js';
 import { GameVictoryCondition } from '../game/GameVictoryCondition.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SkillTypes } from '../game/SkillTypes.js';
+import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
 
 class KeyboardShortcuts {
   constructor(view) {
@@ -17,8 +18,11 @@ class KeyboardShortcuts {
     this.mod = { shift:false };
     this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0,changed:false };
     this.zoom = { dir:0,v:0,reset:null };
+    this.keybindings = new KeybindingRegistry();
+    this._actions = this._createActionHandlers();
     this._raf = null;
     this._last = 0;
+    this._loadKeybindings();
   }
 
   dispose() {
@@ -126,16 +130,18 @@ class KeyboardShortcuts {
   }
 
   _cycleSkill(dir = 1) {
-    const skills = this.view.game.getGameSkills();
+    const game = this.view.game;
+    if (!game) return;
+    const skills = game.getGameSkills();
     let next = skills.getSelectedSkill() + dir;
     if (next > SkillTypes.DIGGER) next = SkillTypes.CLIMBER;
     if (next < SkillTypes.CLIMBER) next = SkillTypes.DIGGER;
-    this.view.game.queueCommand(new CommandSelectSkill(next, false));
-    this.view.game.gameGui.skillSelectionChanged = true;
+    game.queueCommand(new CommandSelectSkill(next, false));
+    game.gameGui.skillSelectionChanged = true;
   }
 
   _instantNuke() {
-    const mgr = this.view.game.getLemmingManager?.();
+    const mgr = this.view.game?.getLemmingManager?.();
     const lems = mgr?.getLemmings?.() ?? mgr?.lemmings;
     if (!lems) return;
     for (const lem of lems) {
@@ -149,8 +155,10 @@ class KeyboardShortcuts {
   }
 
   _changeSpeed(dir, isShift) {
-    const timer = this.view.game.getGameTimer();
-    const gui = this.view.game.gameGui;
+    const game = this.view.game;
+    if (!game) return;
+    const timer = game.getGameTimer();
+    const gui = game.gameGui;
     // Shift should noticeably speed things up
     const steps = isShift ? 5 : 1;
     for (let i=0;i<steps;i++) {
@@ -182,177 +190,244 @@ class KeyboardShortcuts {
     return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
   }
 
-  _onKeyDown(e) {
-    const game = this.view.game;
-    if (!game || e.ctrlKey || e.metaKey || this._shouldIgnoreKey(e)) return;
-    let handled = true;
-    switch (e.code) {
-    case 'Digit1':
-      if (e.shiftKey) {
-        const diff = game.getVictoryCondition().getCurrentReleaseRate() - game.getVictoryCondition().getMinReleaseRate();
-        if (diff > 0) game.queueCommand(new CommandReleaseRateDecrease(diff));
-      } else {
+  _loadKeybindings() {
+    const provider = this.view?.gameFactory?.fileProvider;
+    if (!provider?.loadString) return;
+    provider.loadString('keybindings.json')
+      .then((text) => {
+        const parsed = parseKeybindingConfig(text);
+        if (!parsed) return;
+        this.keybindings.setConfig(parsed);
+      })
+      .catch(() => {});
+  }
+
+  _createActionHandlers() {
+    return {
+      releaseRateDown: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
         game.queueCommand(new CommandReleaseRateDecrease(1));
-      }
-      game.gameGui.releaseRateChanged = true;
-      break;
-    case 'Digit2':
-      if (e.shiftKey) {
+        game.gameGui.releaseRateChanged = true;
+      }},
+      releaseRateDownMax: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
+        const vc = game.getVictoryCondition();
+        const diff = vc.getCurrentReleaseRate() - vc.getMinReleaseRate();
+        if (diff > 0) game.queueCommand(new CommandReleaseRateDecrease(diff));
+        game.gameGui.releaseRateChanged = true;
+      }},
+      releaseRateUp: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
+        game.queueCommand(new CommandReleaseRateIncrease(1));
+        game.gameGui.releaseRateChanged = true;
+      }},
+      releaseRateUpMax: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
         const vc = game.getVictoryCondition();
         const max = vc.getMaxReleaseRate?.() ?? GameVictoryCondition.maxReleaseRate;
         const diff = max - vc.getCurrentReleaseRate();
         if (diff > 0) game.queueCommand(new CommandReleaseRateIncrease(diff));
-      } else {
-        game.queueCommand(new CommandReleaseRateIncrease(1));
-      }
-      game.gameGui.releaseRateChanged = true;
-      break;
-    case 'Digit3':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.CLIMBER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'Digit4':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.FLOATER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'Digit5':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.BOMBER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'Digit6':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.BLOCKER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'KeyQ':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.BUILDER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'KeyW':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.BASHER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'KeyE':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.MINER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'KeyR':
-      game.queueCommand(new CommandSelectSkill(SkillTypes.DIGGER));
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'Space':
-      game.getGameTimer().toggle();
-      game.gameGui.skillSelectionChanged = true;
-      break;
-    case 'BracketRight':
-      if (!game.getGameTimer().isRunning()) this.view.nextFrame();
-      break;
-    case 'BracketLeft':
-      if (!game.getGameTimer().isRunning()) this.view.prevFrame();
-      break;
-    case 'KeyT':
-      if (e.shiftKey) this._instantNuke();
-      else game.queueCommand(new CommandNuke());
-      break;
-    case 'Backspace':
-      this.view.moveToLevel(0);
-      break;
-    case 'ArrowLeft':
-      if (this.pan.vx > 0) this.pan.vx = 0;
-      this.pan.left = true; this.pan.changed = true; this._startLoop();
-      break;
-    case 'ArrowRight':
-      if (this.pan.vx < 0) this.pan.vx = 0;
-      this.pan.right = true; this.pan.changed = true; this._startLoop();
-      break;
-    case 'ArrowUp':
-      if (this.pan.vy > 0) this.pan.vy = 0;
-      this.pan.up = true; this.pan.changed = true; this._startLoop();
-      break;
-    case 'ArrowDown':
-      if (this.pan.vy < 0) this.pan.vy = 0;
-      this.pan.down = true; this.pan.changed = true; this._startLoop();
-      break;
-    case 'KeyZ':
-      this.zoom.dir = 1; this._startLoop();
-      break;
-    case 'KeyX':
-      this.zoom.dir = -1; this._startLoop();
-      break;
-    case 'KeyV':
-      this.zoom.reset = 2; this._startLoop();
-      break;
-    case 'Tab':
-      this._cycleSkill(e.shiftKey ? -1 : 1);
-      break;
-    case 'KeyK': {
-      const mgr = this.view.game.getLemmingManager?.();
-      const lem = mgr?.getSelectedLemming?.();
-      if (lem) this.view.game.queueCommand(new CommandLemmingsAction(lem.id));
-      break; }
-    case 'KeyN':
-      // selection cleared via keyboard no longer supported
-      break;
-    case 'Backquote':
-      // cycling lemming selection removed
-      break;
-    case 'Backslash':
-      game.showDebug = !game.showDebug;
-      break;
-    case 'Minus':
-    case 'NumpadSubtract':
-      this._changeSpeed(-1, e.shiftKey);
-      break;
-    case 'Equal':
-    case 'NumpadAdd':
-      this._changeSpeed(1, e.shiftKey);
-      break;
-    case 'Comma':
-      if (e.shiftKey) {
+        game.gameGui.releaseRateChanged = true;
+      }},
+      selectSkillClimber: { down: () => this._selectSkill(SkillTypes.CLIMBER) },
+      selectSkillFloater: { down: () => this._selectSkill(SkillTypes.FLOATER) },
+      selectSkillBomber: { down: () => this._selectSkill(SkillTypes.BOMBER) },
+      selectSkillBlocker: { down: () => this._selectSkill(SkillTypes.BLOCKER) },
+      selectSkillBuilder: { down: () => this._selectSkill(SkillTypes.BUILDER) },
+      selectSkillBasher: { down: () => this._selectSkill(SkillTypes.BASHER) },
+      selectSkillMiner: { down: () => this._selectSkill(SkillTypes.MINER) },
+      selectSkillDigger: { down: () => this._selectSkill(SkillTypes.DIGGER) },
+      togglePause: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
+        game.getGameTimer().toggle();
+        game.gameGui.skillSelectionChanged = true;
+      }},
+      stepForward: { down: () => {
+        const timer = this.view.game?.getGameTimer?.();
+        if (!timer || timer.isRunning()) return;
+        this.view.nextFrame();
+      }},
+      stepBackward: { down: () => {
+        const timer = this.view.game?.getGameTimer?.();
+        if (!timer || timer.isRunning()) return;
+        this.view.prevFrame();
+      }},
+      nuke: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
+        game.queueCommand(new CommandNuke());
+      }},
+      nukeInstant: { down: () => this._instantNuke() },
+      restartLevel: { down: () => this.view.moveToLevel(0) },
+      panLeft: {
+        down: () => {
+          if (this.pan.vx > 0) this.pan.vx = 0;
+          this.pan.left = true;
+          this.pan.changed = true;
+          this._startLoop();
+        },
+        up: () => {
+          this.pan.left = false;
+          this.pan.changed = true;
+          this._startLoop();
+        }
+      },
+      panRight: {
+        down: () => {
+          if (this.pan.vx < 0) this.pan.vx = 0;
+          this.pan.right = true;
+          this.pan.changed = true;
+          this._startLoop();
+        },
+        up: () => {
+          this.pan.right = false;
+          this.pan.changed = true;
+          this._startLoop();
+        }
+      },
+      panUp: {
+        down: () => {
+          if (this.pan.vy > 0) this.pan.vy = 0;
+          this.pan.up = true;
+          this.pan.changed = true;
+          this._startLoop();
+        },
+        up: () => {
+          this.pan.up = false;
+          this.pan.changed = true;
+          this._startLoop();
+        }
+      },
+      panDown: {
+        down: () => {
+          if (this.pan.vy < 0) this.pan.vy = 0;
+          this.pan.down = true;
+          this.pan.changed = true;
+          this._startLoop();
+        },
+        up: () => {
+          this.pan.down = false;
+          this.pan.changed = true;
+          this._startLoop();
+        }
+      },
+      panBoost: {
+        preventDefault: false,
+        down: () => {
+          this.mod.shift = true;
+          this._startLoop();
+        },
+        up: () => {
+          this.mod.shift = false;
+          this._startLoop();
+        }
+      },
+      zoomIn: {
+        down: () => {
+          this.zoom.dir = 1;
+          this._startLoop();
+        },
+        up: () => {
+          if (this.zoom.dir > 0) this.zoom.dir = 0;
+          this._startLoop();
+        }
+      },
+      zoomOut: {
+        down: () => {
+          this.zoom.dir = -1;
+          this._startLoop();
+        },
+        up: () => {
+          if (this.zoom.dir < 0) this.zoom.dir = 0;
+          this._startLoop();
+        }
+      },
+      zoomReset: { down: () => {
+        this.zoom.reset = 2;
+        this._startLoop();
+      }},
+      cycleSkillNext: { down: () => this._cycleSkill(1) },
+      cycleSkillPrev: { down: () => this._cycleSkill(-1) },
+      applySkillToSelected: { down: () => {
+        const mgr = this.view.game?.getLemmingManager?.();
+        const lem = mgr?.getSelectedLemming?.();
+        if (!lem || !this.view.game) return;
+        this.view.game.queueCommand(new CommandLemmingsAction(lem.id));
+      }},
+      toggleDebug: { down: () => {
+        const game = this.view.game;
+        if (!game) return;
+        game.showDebug = !game.showDebug;
+      }},
+      speedDown: { down: () => this._changeSpeed(-1, false) },
+      speedDownFast: { down: () => this._changeSpeed(-1, true) },
+      speedUp: { down: () => this._changeSpeed(1, false) },
+      speedUpFast: { down: () => this._changeSpeed(1, true) },
+      levelPrev: { down: () => this.view.moveToLevel(-1) },
+      levelNext: { down: () => this.view.moveToLevel(1) },
+      levelGroupPrev: { down: () => {
         if (this.view.levelGroupIndex > 0) {
           this.view.selectLevelGroup(this.view.levelGroupIndex - 1);
         } else if (this.view.gameType > 1) {
           this.view.selectGameType(this.view.gameType - 1);
         }
-      } else {
-        this.view.moveToLevel(-1);
-      }
-      break;
-    case 'Period':
-      if (e.shiftKey) {
+      }},
+      levelGroupNext: { down: () => {
         const totalGroups = this.view.gameResources?.getLevelGroups().length || 0;
         if (this.view.levelGroupIndex + 1 < totalGroups) {
           this.view.selectLevelGroup(this.view.levelGroupIndex + 1);
         } else {
           this.view.selectGameType(this.view.gameType + 1);
         }
-      } else {
-        this.view.moveToLevel(1);
-      }
-      break;
-    case 'ShiftLeft':
-    case 'ShiftRight':
-      this.mod.shift = true; this._startLoop();
-      handled = false; // allow others maybe
-      break;
-    default:
-      handled = false;
+      }},
+      editorToggle: { down: () => {
+        if (typeof this.view.toggleEditorMode === 'function') {
+          this.view.toggleEditorMode();
+        }
+      }}
+    };
+  }
+
+  _selectSkill(skillType) {
+    const game = this.view.game;
+    if (!game) return;
+    game.queueCommand(new CommandSelectSkill(skillType));
+    game.gameGui.skillSelectionChanged = true;
+  }
+
+  _handleAction(action, type, event) {
+    const handler = this._actions[action];
+    if (!handler) return false;
+    const fn = type === 'up' ? handler.up : handler.down;
+    if (!fn) return false;
+    fn(event);
+    return handler.preventDefault !== false;
+  }
+
+  _onKeyDown(e) {
+    if (this._shouldIgnoreKey(e)) return;
+    const actions = this.keybindings.getActionsForEvent(e);
+    if (!actions.length) return;
+    let handled = false;
+    for (const action of actions) {
+      if (this._handleAction(action, 'down', e)) handled = true;
     }
     if (handled) e.preventDefault();
   }
 
   _onKeyUp(e) {
-    switch (e.code) {
-    case 'ArrowLeft': this.pan.left = false; this.pan.changed = true; break;
-    case 'ArrowRight': this.pan.right = false; this.pan.changed = true; break;
-    case 'ArrowUp': this.pan.up = false; this.pan.changed = true; break;
-    case 'ArrowDown': this.pan.down = false; this.pan.changed = true; break;
-    case 'KeyZ': if (this.zoom.dir > 0) this.zoom.dir = 0; break;
-    case 'KeyX': if (this.zoom.dir < 0) this.zoom.dir = 0; break;
-    case 'ShiftLeft':
-    case 'ShiftRight':
-      this.mod.shift = false; break;
+    const actions = this.keybindings.getActionsForEvent(e);
+    if (!actions.length) return;
+    let handled = false;
+    for (const action of actions) {
+      if (this._handleAction(action, 'up', e)) handled = true;
     }
-    this._startLoop();
+    if (handled) e.preventDefault();
   }
 }
 

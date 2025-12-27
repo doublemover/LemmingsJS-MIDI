@@ -1,5 +1,25 @@
 import { BaseLogger } from '../util/LogHandler.js';
 import { SkillTypes } from '../game/SkillTypes.js';
+import {
+  LEVEL_FILE_SIZE,
+  LEVEL_OBJECT_COUNT,
+  LEVEL_TERRAIN_COUNT,
+  LEVEL_STEEL_COUNT,
+  LEVEL_NAME_LENGTH,
+  LEVEL_OBJECT_OFFSET,
+  LEVEL_TERRAIN_OFFSET,
+  LEVEL_STEEL_OFFSET,
+  LEVEL_NAME_OFFSET,
+  OBJECT_X_OFFSET,
+  TERRAIN_X_OFFSET,
+  TERRAIN_X_MASK,
+  TERRAIN_Y_OFFSET,
+  TERRAIN_Y_WRAP,
+  TERRAIN_Y_MASK,
+  TERRAIN_ID_MASK,
+  TERRAIN_FLAG_SHIFT,
+  STEEL_X_OFFSET
+} from './ClassicLevelConstants.js';
 
 class LevelWriter extends BaseLogger {
   /**
@@ -8,7 +28,7 @@ class LevelWriter extends BaseLogger {
      * @returns {Uint8Array}
      */
   write(level) {
-    const out = new Uint8Array(2048);
+    const out = new Uint8Array(LEVEL_FILE_SIZE);
     const dv = new DataView(out.buffer);
 
     const props = level.levelProperties || {};
@@ -32,12 +52,12 @@ class LevelWriter extends BaseLogger {
     dv.setUint16(pos, level.isSuperLemming ? 1 : 0); pos += 2;
 
     // Objects
-    pos = 0x0020;
+    pos = LEVEL_OBJECT_OFFSET;
     const objects = level.objects || [];
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < LEVEL_OBJECT_COUNT; i++) {
       const ob = objects[i];
       if (ob) {
-        dv.setUint16(pos, (ob.x + 16) & 0xFFFF); pos += 2;
+        dv.setUint16(pos, (ob.x + OBJECT_X_OFFSET) & 0xFFFF); pos += 2;
         dv.setUint16(pos, ob.y & 0xFFFF); pos += 2;
         dv.setUint16(pos, ob.id & 0xFFFF); pos += 2;
         let flags = 0;
@@ -56,9 +76,9 @@ class LevelWriter extends BaseLogger {
     }
 
     // Terrain
-    pos = 0x0120;
+    pos = LEVEL_TERRAIN_OFFSET;
     const terrain = level.terrains || [];
-    for (let i = 0; i < 400; i++) {
+    for (let i = 0; i < LEVEL_TERRAIN_COUNT; i++) {
       const t = terrain[i];
       if (t) {
         let flags = 0;
@@ -67,9 +87,9 @@ class LevelWriter extends BaseLogger {
           if (t.drawProperties.isUpsideDown) flags |= 2;
           if (t.drawProperties.noOverwrite) flags |= 4;
         }
-        const x = (t.x + 16) & 0x0FFF;
-        const y = (t.y + 4 + 512) & 0x1FF;
-        const v = (flags << 29) | (x << 16) | (y << 7) | (t.id & 0x3F);
+        const x = (t.x + TERRAIN_X_OFFSET) & TERRAIN_X_MASK;
+        const y = (t.y + TERRAIN_Y_OFFSET + TERRAIN_Y_WRAP) & TERRAIN_Y_MASK;
+        const v = (flags << TERRAIN_FLAG_SHIFT) | (x << 16) | (y << 7) | (t.id & TERRAIN_ID_MASK);
         dv.setUint32(pos, v); pos += 4;
       } else {
         dv.setInt32(pos, -1); pos += 4;
@@ -77,13 +97,12 @@ class LevelWriter extends BaseLogger {
     }
 
     // Steel
-    pos = 0x0760;
+    pos = LEVEL_STEEL_OFFSET;
     const steels = level.steel || [];
-    const X_OFFSET = 16;
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < LEVEL_STEEL_COUNT; i++) {
       const r = steels[i];
       if (r) {
-        const xStep = ((r.x + X_OFFSET) >> 3) & 0x1FF;
+        const xStep = ((r.x + STEEL_X_OFFSET) >> 3) & 0x1FF;
         const yStep = (r.y >> 3) & 0x7F;
         const posVal = (yStep << 9) | xStep;
         const size = (((r.width / 4) - 1) << 4) | ((r.height / 4) - 1);
@@ -101,9 +120,9 @@ class LevelWriter extends BaseLogger {
     }
 
     // Level name
-    pos = 0x07E0;
+    pos = LEVEL_NAME_OFFSET;
     const name = props.levelName || '';
-    for (let i = 0; i < 32; i++) {
+    for (let i = 0; i < LEVEL_NAME_LENGTH; i++) {
       out[pos + i] = i < name.length ? name.charCodeAt(i) & 0xFF : 0;
     }
 

@@ -128,6 +128,22 @@ describe('BinaryReader', function () {
     assert.deepStrictEqual(Array.from(reader.data), [10, 20, 30, 40]);
   });
 
+  it('accepts filename as second argument', function () {
+    const bytes = Uint8Array.from([1, 2, 3]);
+    const reader = new BinaryReader(bytes, 'levels.dat');
+    assert.strictEqual(reader.filename, 'levels.dat');
+    assert.strictEqual(reader.hiddenOffset, 0);
+    assert.strictEqual(reader.length, 3);
+  });
+
+  it('accepts filename as third argument', function () {
+    const bytes = Uint8Array.from([9, 8, 7]);
+    const reader = new BinaryReader(bytes, 1, 'pack.dat');
+    assert.strictEqual(reader.filename, 'pack.dat');
+    assert.strictEqual(reader.hiddenOffset, 1);
+    assert.strictEqual(reader.length, 2);
+  });
+
   it('initializes from array with explicit length', async function () {
     const reader = new BinaryReader([5, 6, 7, 8], 2, 1);
     const loaded = await reader.ready;

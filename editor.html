@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <title>Lemmings Editor</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/png" href="img/favicon.png" />
+  <link type="text/css" rel="stylesheet" href="css/editor.css">
+  <script type="module" src="js/app/editorBoot.js"></script>
+</head>
+<body oncontextmenu="return false;">
+  <div class="editor-app">
+    <header class="editor-header">
+      <div class="editor-title">Lemmings Editor</div>
+      <div class="editor-controls">
+        <label>
+          Pack
+          <select id="editorGameTypeSelect"></select>
+        </label>
+        <label>
+          Group
+          <select id="editorLevelGroupSelect"></select>
+        </label>
+        <label>
+          Level
+          <select id="editorLevelIndexSelect"></select>
+        </label>
+        <label>
+          Saved
+          <select id="editorSavedSelect"></select>
+        </label>
+        <button id="editorSavedSave" type="button">Save</button>
+        <button id="editorSavedExport" type="button">Export</button>
+        <button class="secondary" id="editorSavedImport" type="button">Import</button>
+        <button class="secondary" id="editorPlaytestToggle" type="button">Playtest</button>
+        <input id="editorSavedImportInput" type="file" accept=".nxlv" hidden />
+      </div>
+    </header>
+
+    <div class="editor-main">
+      <aside class="editor-panel">
+        <div class="panel-title">Tools</div>
+        <div class="tool-grid" id="editorToolList">
+          <button type="button" data-tool="select">Select</button>
+          <button type="button" data-tool="terrain">Terrain</button>
+          <button type="button" data-tool="gadget">Object</button>
+          <button type="button" data-tool="trigger">Trigger</button>
+          <button type="button" data-tool="entrance">Entrance</button>
+          <button type="button" data-tool="exit">Exit</button>
+          <button type="button" data-tool="steel">Steel</button>
+          <button type="button" data-tool="brush">Brush</button>
+          <button type="button" data-tool="eraser">Eraser</button>
+        </div>
+
+        <div class="panel-title">Brush</div>
+        <label class="control-row">
+          Snap to grid
+          <input id="editorSnapToggle" type="checkbox" checked />
+        </label>
+        <label class="control-row">
+          Grid size
+          <input id="editorGridSize" type="number" min="1" value="4" />
+        </label>
+        <label class="control-row">
+          Brush size
+          <input id="editorBrushSize" type="number" min="1" value="1" />
+        </label>
+        <label class="control-row">
+          Erase gadgets
+          <input id="editorEraseGadgets" type="checkbox" />
+        </label>
+
+        <div class="panel-title">Palette</div>
+        <div class="palette-tabs" id="editorPaletteTabs">
+          <button type="button" data-tab="terrain" class="active">Terrain</button>
+          <button type="button" data-tab="gadgets">Objects</button>
+          <button type="button" data-tab="triggers">Triggers</button>
+        </div>
+        <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" />
+        <div class="palette-list" id="editorPaletteTerrain"></div>
+        <div class="palette-list" id="editorPaletteGadgets" hidden></div>
+        <div class="palette-list" id="editorPaletteTriggers" hidden></div>
+      </aside>
+
+      <section class="editor-canvas-panel">
+        <div class="canvas-wrap">
+          <canvas id="editorCanvas" width="800" height="480"></canvas>
+        </div>
+        <div class="status-strip">
+          <span id="editorStatus">Ready</span>
+          <span id="editorSelectionStatus">No selection</span>
+        </div>
+      </section>
+
+      <aside class="editor-panel">
+        <div class="panel-title">Header</div>
+        <div class="inspector-grid">
+          <label>Title<input id="editorHeaderTitle" type="text" /></label>
+          <label>Style<input id="editorHeaderStyle" type="text" /></label>
+          <label>Width<input id="editorHeaderWidth" type="number" min="1" /></label>
+          <label>Height<input id="editorHeaderHeight" type="number" min="1" /></label>
+          <label>Lemmings<input id="editorHeaderLemmings" type="number" min="0" /></label>
+          <label>Save Req<input id="editorHeaderSaveRequirement" type="number" min="0" /></label>
+          <label>Time Limit<input id="editorHeaderTimeLimit" type="text" /></label>
+          <label>Spawn Interval<input id="editorHeaderSpawnInterval" type="number" min="0" /></label>
+          <label>Start X<input id="editorHeaderStartX" type="number" /></label>
+          <label>Start Y<input id="editorHeaderStartY" type="number" /></label>
+        </div>
+
+        <div class="panel-title">Selection</div>
+        <div class="control-row"><span id="editorSelType">None</span><span id="editorSelName"></span></div>
+        <div class="inspector-grid">
+          <label>X<input id="editorSelX" type="number" /></label>
+          <label>Y<input id="editorSelY" type="number" /></label>
+          <label>Width<input id="editorSelWidth" type="number" /></label>
+          <label>Height<input id="editorSelHeight" type="number" /></label>
+          <label>Rotate<input id="editorSelRotate" type="number" min="0" max="270" step="90" /></label>
+          <label>Skill<input id="editorSelSkill" type="text" /></label>
+          <label>Lemmings<input id="editorSelLemmings" type="number" /></label>
+          <label>Pairing<input id="editorSelPairing" type="number" /></label>
+        </div>
+        <label class="control-row">
+          Flip H
+          <input id="editorSelFlipH" type="checkbox" />
+        </label>
+        <label class="control-row">
+          Flip V
+          <input id="editorSelFlipV" type="checkbox" />
+        </label>
+        <label class="control-row">
+          No Overwrite
+          <input id="editorSelNoOverwrite" type="checkbox" />
+        </label>
+        <label class="control-row">
+          Erase
+          <input id="editorSelErase" type="checkbox" />
+        </label>
+        <label class="control-row">
+          One Way
+          <input id="editorSelOneWay" type="checkbox" />
+        </label>
+        <button class="editor-button" id="editorDeleteSelection" type="button">Delete Selection</button>
+
+        <div class="panel-title">Validation</div>
+        <div class="issue-list" id="editorIssuesList"></div>
+      </aside>
+    </div>
+  </div>
+</body>
+</html>

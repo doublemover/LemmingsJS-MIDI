@@ -1,0 +1,1079 @@
+import { EditorController } from '../editor/EditorController.js';
+import { EditorHistory } from '../editor/EditorHistory.js';
+import { EditorAssetCache } from '../editor/EditorAssetCache.js';
+import { validateLevel } from '../editor/EditorValidator.js';
+import { getEntryBounds } from '../editor/EditorHitTest.js';
+import { EditorPreviewCache } from './editorPreviewCache.js';
+import { EditorKeybindings } from '../input/EditorKeybindings.js';
+import {
+  listSavedLevels,
+  loadSavedLevel,
+  saveLevel
+} from '../editor/EditorStorage.js';
+
+const MAX_HISTORY = Number.MAX_SAFE_INTEGER;
+
+const normalizeText = (value) => String(value ?? '').trim();
+
+const parseNumber = (value) => {
+  if (value == null || value === '') return null;
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+};
+
+const normalizeRotation = (value) => {
+  const num = parseNumber(value);
+  if (num == null) return null;
+  const normalized = ((num % 360) + 360) % 360;
+  const snapped = Math.round(normalized / 90) * 90;
+  return ((snapped % 360) + 360) % 360;
+};
+
+const formatRotation = (value) => {
+  const num = parseNumber(value);
+  if (num == null) return '';
+  const normalized = ((num % 360) + 360) % 360;
+  return String(normalized);
+};
+
+const formatValue = (value) => (value == null ? '' : String(value));
+
+const sanitizeFileName = (name) => String(name || 'level')
+  .trim()
+  .replace(/[^a-z0-9_-]+/gi, '_')
+  .replace(/^_+|_+$/g, '')
+  .slice(0, 60) || 'level';
+
+class EditorUiController {
+  constructor(options = {}) {
+    this.view = options.view || null;
+    this.document = options.document || globalThis.document;
+    this.window = options.window || globalThis.window;
+    this.session = options.session || this.view?.ensureEditorSession?.() || null;
+    this.history = options.history || new EditorHistory({ maxEntries: MAX_HISTORY });
+    this.controller = options.controller || new EditorController({
+      session: this.session,
+      history: this.history
+    });
+    this.assetCache = options.assetCache || new EditorAssetCache();
+    this.previewCache = options.previewCache || new EditorPreviewCache({
+      document: this.document,
+      window: this.window
+    });
+    this.assets = null;
+    this._selection = [];
+    this._activeTab = 'terrain';
+    this._currentSavedId = '';
+    this._playtest = false;
+    this._previewInFlight = false;
+    this._previewQueued = false;
+    this._cursorPos = null;
+    this._suppressHeader = false;
+    this._suppressInspector = false;
+    this._pointerDown = false;
+    this._shiftKey = false;
+    this._altKey = false;
+    this._antsOffset = 0;
+
+    this._bindElements();
+    this._bindController();
+  }
+
+  async init() {
+    if (!this.session?.level) {
+      this.view?.createBlankEditorLevel({ render: false });
+      this.session = this.view?.editorSession || this.session;
+      this.controller.session = this.session;
+    }
+    await this._reloadAssets();
+    this.controller.resetHistory('Init');
+    this._refreshHeaderFields();
+    this._refreshSelection(null);
+    this._refreshValidation();
+    this._refreshSavedList();
+    this._bindEvents();
+    await this._refreshPreview('Init');
+  }
+
+  _bindElements() {
+    const get = id => this.document.getElementById(id);
+    this.el = {
+      gameType: get('editorGameTypeSelect'),
+      levelGroup: get('editorLevelGroupSelect'),
+      levelIndex: get('editorLevelIndexSelect'),
+      savedSelect: get('editorSavedSelect'),
+      savedSave: get('editorSavedSave'),
+      savedExport: get('editorSavedExport'),
+      savedImport: get('editorSavedImport'),
+      savedImportInput: get('editorSavedImportInput'),
+      playtestToggle: get('editorPlaytestToggle'),
+      toolList: get('editorToolList'),
+      snapToggle: get('editorSnapToggle'),
+      gridSize: get('editorGridSize'),
+      brushSize: get('editorBrushSize'),
+      eraseGadgets: get('editorEraseGadgets'),
+      paletteTabs: get('editorPaletteTabs'),
+      paletteSearch: get('editorPaletteSearch'),
+      paletteTerrain: get('editorPaletteTerrain'),
+      paletteGadgets: get('editorPaletteGadgets'),
+      paletteTriggers: get('editorPaletteTriggers'),
+      status: get('editorStatus'),
+      selectionStatus: get('editorSelectionStatus'),
+      headerTitle: get('editorHeaderTitle'),
+      headerStyle: get('editorHeaderStyle'),
+      headerWidth: get('editorHeaderWidth'),
+      headerHeight: get('editorHeaderHeight'),
+      headerLemmings: get('editorHeaderLemmings'),
+      headerSaveRequirement: get('editorHeaderSaveRequirement'),
+      headerTimeLimit: get('editorHeaderTimeLimit'),
+      headerSpawnInterval: get('editorHeaderSpawnInterval'),
+      headerStartX: get('editorHeaderStartX'),
+      headerStartY: get('editorHeaderStartY'),
+      selType: get('editorSelType'),
+      selName: get('editorSelName'),
+      selX: get('editorSelX'),
+      selY: get('editorSelY'),
+      selWidth: get('editorSelWidth'),
+      selHeight: get('editorSelHeight'),
+      selRotate: get('editorSelRotate'),
+      selSkill: get('editorSelSkill'),
+      selLemmings: get('editorSelLemmings'),
+      selPairing: get('editorSelPairing'),
+      selFlipH: get('editorSelFlipH'),
+      selFlipV: get('editorSelFlipV'),
+      selNoOverwrite: get('editorSelNoOverwrite'),
+      selErase: get('editorSelErase'),
+      selOneWay: get('editorSelOneWay'),
+      deleteSelection: get('editorDeleteSelection'),
+      issuesList: get('editorIssuesList')
+    };
+  }
+
+  _bindController() {
+    this.controller.setCallbacks({
+      onSelectionChange: selection => {
+        this._refreshSelection(selection);
+        this._drawSelectionOverlay();
+      },
+      onMarqueeChange: () => {
+        this._drawSelectionOverlay();
+      },
+      onLevelChange: level => {
+        this._refreshHeaderFields(level);
+        this._refreshValidation();
+      },
+      onPreviewRequest: label => {
+        this._refreshPreview(label);
+      }
+    });
+  }
+
+  _bindEvents() {
+    this._bindToolButtons();
+    this._bindPaletteTabs();
+    this._bindPaletteSearch();
+    this._bindHeaderFields();
+    this._bindSelectionFields();
+    this._bindBrushControls();
+    this._bindSavedControls();
+    this._bindLevelSelectors();
+    this._bindPlaytest();
+    this._bindCanvasInput();
+    this._bindKeybindings();
+    this._bindModifierKeys();
+  }
+
+  _bindModifierKeys() {
+    const win = this.window;
+    if (!win?.addEventListener) return;
+    const update = (event) => {
+      this._shiftKey = !!event.shiftKey;
+      this._altKey = !!event.altKey;
+    };
+    win.addEventListener('keydown', update);
+    win.addEventListener('keyup', update);
+    win.addEventListener('blur', () => {
+      this._shiftKey = false;
+      this._altKey = false;
+    });
+  }
+
+  _bindKeybindings() {
+    if (!this.view) return;
+    this.keybindings?.dispose?.();
+    this.keybindings = new EditorKeybindings(this.controller, {
+      fileProvider: this.view.gameFactory?.fileProvider,
+      onToolChange: tool => {
+        this._setToolButton(tool);
+        this._updateStatus();
+      },
+      onCopy: () => {
+        if (this.controller.copySelection()) {
+          this._updateStatus('Copy');
+        }
+      },
+      onPaste: () => {
+        if (this.controller.pasteSelection()) {
+          this._refreshAfterEdit('Paste');
+        }
+      },
+      onDuplicate: () => {
+        if (this.controller.duplicateSelection()) {
+          this._refreshAfterEdit('Duplicate');
+        }
+      },
+      onNudge: (dx, dy, step) => {
+        if (this.controller.nudgeSelection(dx, dy, step)) {
+          this._refreshAfterEdit('Nudge');
+        }
+      },
+      onSnap: () => {
+        if (this.controller.snapSelectionToGrid()) {
+          this._refreshAfterEdit('Snap');
+        }
+      },
+      onUndo: () => {
+        if (this.controller.undo()) {
+          this._refreshAfterEdit('Undo');
+        }
+      },
+      onRedo: () => {
+        if (this.controller.redo()) {
+          this._refreshAfterEdit('Redo');
+        }
+      },
+      onDelete: () => {
+        if (this.controller.deleteSelected()) {
+          this._refreshAfterEdit('Delete');
+        }
+      },
+      onPlaytestToggle: () => this._togglePlaytest()
+    });
+    this.keybindings.bind();
+  }
+
+  _bindToolButtons() {
+    if (!this.el.toolList) return;
+    this.el.toolList.addEventListener('click', (event) => {
+      const button = event.target?.closest?.('button');
+      const tool = button?.dataset?.tool;
+      if (!tool) return;
+      this.controller.setTool(tool);
+      this._setToolButton(tool);
+      this._updateStatus();
+    });
+    this._setToolButton(this.controller.tool);
+  }
+
+  _bindPaletteTabs() {
+    if (!this.el.paletteTabs) return;
+    this.el.paletteTabs.addEventListener('click', (event) => {
+      const button = event.target?.closest?.('button');
+      const tab = button?.dataset?.tab;
+      if (!tab) return;
+      this._setPaletteTab(tab);
+    });
+  }
+
+  _bindPaletteSearch() {
+    if (!this.el.paletteSearch) return;
+    this.el.paletteSearch.addEventListener('input', () => {
+      this._applyPaletteFilter();
+    });
+  }
+
+  _bindHeaderFields() {
+    const headerMap = [
+      ['headerTitle', 'TITLE', value => normalizeText(value)],
+      ['headerStyle', 'STYLE', value => normalizeText(value)],
+      ['headerWidth', 'WIDTH', value => parseNumber(value)],
+      ['headerHeight', 'HEIGHT', value => parseNumber(value)],
+      ['headerLemmings', 'LEMMINGS', value => parseNumber(value)],
+      ['headerSaveRequirement', 'SAVE_REQUIREMENT', value => parseNumber(value)],
+      ['headerTimeLimit', 'TIME_LIMIT', value => {
+        const text = normalizeText(value);
+        if (!text) return 'INFINITE';
+        if (text.toUpperCase() === 'INFINITE') return 'INFINITE';
+        return parseNumber(text);
+      }],
+      ['headerSpawnInterval', 'MAX_SPAWN_INTERVAL', value => parseNumber(value)],
+      ['headerStartX', 'START_X', value => parseNumber(value)],
+      ['headerStartY', 'START_Y', value => parseNumber(value)]
+    ];
+
+    for (const [key, headerKey, parser] of headerMap) {
+      const el = this.el[key];
+      if (!el) continue;
+      el.addEventListener('change', async () => {
+        if (this._suppressHeader) return;
+        const parsed = parser(el.value);
+        this.controller.updateHeader(headerKey, parsed);
+        this.controller.history.pushSnapshot(this.session?.level, 'Header');
+        if (headerKey === 'STYLE') {
+          await this._reloadAssets();
+        }
+        this._refreshAfterEdit('Header');
+      });
+    }
+  }
+
+  _bindSelectionFields() {
+    const bindField = (el, handler) => {
+      if (!el) return;
+      el.addEventListener('change', () => {
+        if (this._suppressInspector) return;
+        handler();
+      });
+    };
+
+    bindField(this.el.selX, () => this._commitSelectionPatch({ X: parseNumber(this.el.selX.value) }));
+    bindField(this.el.selY, () => this._commitSelectionPatch({ Y: parseNumber(this.el.selY.value) }));
+    bindField(this.el.selWidth, () => this._commitSelectionPatch({ WIDTH: parseNumber(this.el.selWidth.value) }));
+    bindField(this.el.selHeight, () => this._commitSelectionPatch({ HEIGHT: parseNumber(this.el.selHeight.value) }));
+    bindField(this.el.selRotate, () => {
+      const snapped = normalizeRotation(this.el.selRotate.value);
+      this._commitSelectionPatch({ ROTATE: snapped });
+      this.el.selRotate.value = snapped == null ? '' : String(snapped);
+    });
+    bindField(this.el.selSkill, () => this._commitSelectionPatch({ SKILL: normalizeText(this.el.selSkill.value) }));
+    bindField(this.el.selLemmings, () => this._commitSelectionPatch({ LEMMINGS: parseNumber(this.el.selLemmings.value) }));
+    bindField(this.el.selPairing, () => this._commitSelectionPatch({ PAIRING: parseNumber(this.el.selPairing.value) }));
+
+    bindField(this.el.selFlipH, () => this._commitSelectionPatch({ FLIP_HORIZONTAL: !!this.el.selFlipH.checked }));
+    bindField(this.el.selFlipV, () => this._commitSelectionPatch({ FLIP_VERTICAL: !!this.el.selFlipV.checked }));
+    bindField(this.el.selNoOverwrite, () => this._commitSelectionPatch({ NO_OVERWRITE: !!this.el.selNoOverwrite.checked }));
+    bindField(this.el.selErase, () => this._commitSelectionPatch({ ERASE: !!this.el.selErase.checked }));
+    bindField(this.el.selOneWay, () => this._commitSelectionPatch({ ONE_WAY: !!this.el.selOneWay.checked }));
+
+    if (this.el.deleteSelection) {
+      this.el.deleteSelection.addEventListener('click', () => {
+        if (this.controller.deleteSelected()) {
+          this._refreshAfterEdit('Delete');
+        }
+      });
+    }
+  }
+
+  _bindBrushControls() {
+    if (this.el.snapToggle) {
+      this.el.snapToggle.addEventListener('change', () => {
+        this.controller.setSnapEnabled(this.el.snapToggle.checked);
+        this._updateStatus();
+      });
+    }
+    if (this.el.gridSize) {
+      this.el.gridSize.addEventListener('change', () => {
+        const value = parseNumber(this.el.gridSize.value);
+        this.controller.gridSize = value && value > 0 ? value : 1;
+        this._updateStatus();
+      });
+    }
+    if (this.el.brushSize) {
+      this.el.brushSize.addEventListener('change', () => {
+        const value = parseNumber(this.el.brushSize.value);
+        this.controller.setBrushSize(value || 1);
+      });
+    }
+    if (this.el.eraseGadgets) {
+      this.el.eraseGadgets.addEventListener('change', () => {
+        this.controller.setEraseGadgets(this.el.eraseGadgets.checked);
+      });
+    }
+  }
+
+  _bindSavedControls() {
+    if (this.el.savedSelect) {
+      this.el.savedSelect.addEventListener('change', () => {
+        const id = this.el.savedSelect.value;
+        if (!id) return;
+        const text = loadSavedLevel(undefined, id);
+        if (!text) return;
+        this._currentSavedId = id;
+        this._loadLevelFromText(text, { resetSaved: false });
+      });
+    }
+
+    if (this.el.savedSave) {
+      this.el.savedSave.addEventListener('click', () => {
+        this._saveCurrentLevel();
+      });
+    }
+
+    if (this.el.savedExport) {
+      this.el.savedExport.addEventListener('click', () => {
+        this._exportCurrentLevel();
+      });
+    }
+
+    if (this.el.savedImport && this.el.savedImportInput) {
+      this.el.savedImport.addEventListener('click', () => {
+        this.el.savedImportInput.click();
+      });
+      this.el.savedImportInput.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const text = typeof reader.result === 'string' ? reader.result : '';
+          if (!text) return;
+          this._currentSavedId = '';
+          this._loadLevelFromText(text, { resetSaved: true });
+        };
+        reader.readAsText(file);
+        event.target.value = '';
+      });
+    }
+  }
+
+  _bindLevelSelectors() {
+    if (this.el.gameType) {
+      this.el.gameType.addEventListener('change', async (event) => {
+        const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
+        await this.view?.selectGameType?.(value);
+        await this._syncAfterSelection('Load');
+      });
+    }
+    if (this.el.levelGroup) {
+      this.el.levelGroup.addEventListener('change', async (event) => {
+        const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
+        await this.view?.selectLevelGroup?.(value);
+        await this._syncAfterSelection('Load');
+      });
+    }
+    if (this.el.levelIndex) {
+      this.el.levelIndex.addEventListener('change', async (event) => {
+        const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
+        await this.view?.selectLevel?.(value);
+        await this._syncAfterSelection('Load');
+      });
+    }
+  }
+
+  _bindPlaytest() {
+    if (!this.el.playtestToggle) return;
+    this.el.playtestToggle.addEventListener('click', () => {
+      this._togglePlaytest();
+    });
+  }
+
+  _bindCanvasInput() {
+    const display = this.view?.stage?.getGameDisplay?.();
+    if (!display) return;
+    display.onMouseDown.on(pos => {
+      if (this._playtest) return;
+      this._pointerDown = true;
+      this.controller.handlePointerDown(pos, 0, { shiftKey: this._shiftKey, altKey: this._altKey });
+      this._updateCursor(pos);
+    });
+    display.onMouseRightDown.on(pos => {
+      if (this._playtest) return;
+      this._pointerDown = false;
+      this.controller.handlePointerDown(pos, 2, { shiftKey: this._shiftKey, altKey: this._altKey });
+      this._updateCursor(pos);
+    });
+    display.onMouseUp.on(() => {
+      if (this._playtest) return;
+      this._pointerDown = false;
+      this.controller.handlePointerUp();
+      this._refreshAfterEdit('Pointer');
+    });
+    display.onMouseRightUp.on(() => {
+      if (this._playtest) return;
+      this.controller.handlePointerUp();
+      this._refreshAfterEdit('Pointer');
+    });
+    display.onMouseMove.on(pos => {
+      if (this._playtest) return;
+      this.controller.handlePointerMove(pos, { isDown: this._pointerDown });
+      this._updateCursor(pos);
+    });
+  }
+
+  _updateCursor(pos) {
+    if (!pos) return;
+    this._cursorPos = { x: pos.x, y: pos.y };
+    this._updateStatus();
+  }
+
+  _setToolButton(tool) {
+    const buttons = this.el.toolList?.querySelectorAll?.('button') || [];
+    buttons.forEach(button => {
+      const isActive = button.dataset?.tool === tool;
+      button.classList.toggle('active', isActive);
+      button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  _setPaletteTab(tab) {
+    this._activeTab = tab;
+    const tabs = this.el.paletteTabs?.querySelectorAll?.('button') || [];
+    tabs.forEach(button => button.classList.toggle('active', button.dataset?.tab === tab));
+    if (this.el.paletteTerrain) this.el.paletteTerrain.hidden = tab !== 'terrain';
+    if (this.el.paletteGadgets) this.el.paletteGadgets.hidden = tab !== 'gadgets';
+    if (this.el.paletteTriggers) this.el.paletteTriggers.hidden = tab !== 'triggers';
+  }
+
+  _refreshPalettes() {
+    if (!this.assets) return;
+    this._renderPaletteList(this.el.paletteTerrain, this.assets.terrain, 'terrain');
+    this._renderPaletteList(this.el.paletteGadgets, this.assets.gadgets, 'gadget');
+    this._renderPaletteList(this.el.paletteTriggers, this.assets.triggers, 'trigger');
+    this._applyPaletteFilter();
+    this._setPaletteTab(this._activeTab);
+    this._refreshPaletteSelection();
+  }
+
+  _getPreviewUrl(entry, type) {
+    if (!this.previewCache || !this.assets) return null;
+    const image = type === 'terrain'
+      ? this.assets.terrainImages?.[entry.id]
+      : this.assets.gadgetImages?.[entry.id];
+    if (!image) return null;
+    return this.previewCache.getPreviewUrl({
+      type,
+      id: entry.id,
+      image
+    });
+  }
+
+  _renderPaletteList(container, items, type) {
+    if (!container) return;
+    container.innerHTML = '';
+    for (const entry of items || []) {
+      const button = this.document.createElement('button');
+      button.type = 'button';
+      button.dataset.id = String(entry.id);
+      button.dataset.type = type;
+      const size = `${entry.width || 0}x${entry.height || 0}`;
+      const triggerFlag = entry.triggerEffectId ? ` | T${entry.triggerEffectId}` : '';
+      const label = this.document.createElement('span');
+      label.className = 'palette-label';
+      label.textContent = `#${entry.id} ${entry.name} (${size})${triggerFlag}`;
+      const previewWrap = this.document.createElement('span');
+      previewWrap.className = 'palette-preview';
+      const previewImg = this.document.createElement('img');
+      previewImg.alt = '';
+      previewImg.loading = 'lazy';
+      previewWrap.appendChild(previewImg);
+      button.append(previewWrap, label);
+      button.addEventListener('click', () => {
+        const id = Number(entry.id);
+        if (type === 'terrain') {
+          this.controller.setSelectedTerrain(id);
+        } else if (type === 'trigger') {
+          this.controller.setSelectedTrigger(id);
+          this.controller.setSelectedGadget(id);
+        } else {
+          this.controller.setSelectedGadget(id);
+        }
+        this._refreshPaletteSelection();
+      });
+      const previewUrl = this._getPreviewUrl(entry, type);
+      if (previewUrl) {
+        previewImg.src = previewUrl;
+      } else {
+        previewWrap.classList.add('empty');
+      }
+      container.appendChild(button);
+    }
+  }
+
+  _applyPaletteFilter() {
+    const term = normalizeText(this.el.paletteSearch?.value || '').toLowerCase();
+    const filterList = (container) => {
+      if (!container) return;
+      const items = container.querySelectorAll('button');
+      items.forEach(button => {
+        if (!term) {
+          button.hidden = false;
+          return;
+        }
+        const text = button.textContent?.toLowerCase() || '';
+        button.hidden = !text.includes(term);
+      });
+    };
+    filterList(this.el.paletteTerrain);
+    filterList(this.el.paletteGadgets);
+    filterList(this.el.paletteTriggers);
+  }
+
+  _refreshPaletteSelection() {
+    const setActive = (container, id) => {
+      if (!container) return;
+      const buttons = container.querySelectorAll('button');
+      buttons.forEach(button => {
+        const match = Number(button.dataset.id) === id;
+        button.classList.toggle('active', match);
+      });
+    };
+    setActive(this.el.paletteTerrain, this.controller.selectedTerrainId);
+    setActive(this.el.paletteGadgets, this.controller.selectedGadgetId);
+    setActive(this.el.paletteTriggers, this.controller.selectedTriggerId);
+  }
+
+  _refreshHeaderFields(level = this.session?.level) {
+    if (!level) return;
+    this._suppressHeader = true;
+    if (this.el.headerTitle) this.el.headerTitle.value = formatValue(level.getHeader('TITLE'));
+    if (this.el.headerStyle) this.el.headerStyle.value = formatValue(level.getHeader('STYLE'));
+    if (this.el.headerWidth) this.el.headerWidth.value = formatValue(level.getHeader('WIDTH'));
+    if (this.el.headerHeight) this.el.headerHeight.value = formatValue(level.getHeader('HEIGHT'));
+    if (this.el.headerLemmings) this.el.headerLemmings.value = formatValue(level.getHeader('LEMMINGS'));
+    if (this.el.headerSaveRequirement) this.el.headerSaveRequirement.value = formatValue(level.getHeader('SAVE_REQUIREMENT'));
+    if (this.el.headerTimeLimit) this.el.headerTimeLimit.value = formatValue(level.getHeader('TIME_LIMIT'));
+    if (this.el.headerSpawnInterval) this.el.headerSpawnInterval.value = formatValue(level.getHeader('MAX_SPAWN_INTERVAL'));
+    if (this.el.headerStartX) this.el.headerStartX.value = formatValue(level.getHeader('START_X'));
+    if (this.el.headerStartY) this.el.headerStartY.value = formatValue(level.getHeader('START_Y'));
+    this._suppressHeader = false;
+  }
+
+  _refreshSelection(selection) {
+    const entries = Array.isArray(selection)
+      ? selection
+      : this.controller.getSelectedEntries();
+    this._selection = entries;
+    if (!entries.length) {
+      this._setSelectionFields(null);
+      this._updateSelectionStatus();
+      return;
+    }
+    if (entries.length > 1) {
+      this._setSelectionFields({ multi: true, count: entries.length });
+      this._updateSelectionStatus();
+      return;
+    }
+    const selected = entries[0];
+    const props = selected.entry?.props || {};
+    const isSteel = selected.type === 'steel';
+    const meta = selected.type === 'gadget'
+      ? this.assets?.gadgetById?.get?.(props.PIECE)
+      : this.assets?.terrainById?.get?.(props.PIECE);
+    const name = isSteel ? 'Steel' : (meta?.name || `#${props.PIECE}`);
+    const pieceId = Number(props.PIECE);
+    if (!isSteel && Number.isFinite(pieceId)) {
+      if (selected.type === 'gadget') {
+        this.controller.setSelectedGadget(pieceId);
+      } else {
+        this.controller.setSelectedTerrain(pieceId);
+      }
+      this._refreshPaletteSelection();
+    }
+    this._setSelectionFields({
+      type: selected.type,
+      name,
+      props
+    });
+    this._updateSelectionStatus();
+  }
+
+  _setSelectionFields(data) {
+    this._suppressInspector = true;
+    if (!data) {
+      if (this.el.selType) this.el.selType.textContent = 'None';
+      if (this.el.selName) this.el.selName.textContent = '';
+      const inputs = [
+        this.el.selX,
+        this.el.selY,
+        this.el.selWidth,
+        this.el.selHeight,
+        this.el.selRotate,
+        this.el.selSkill,
+        this.el.selLemmings,
+        this.el.selPairing
+      ];
+      inputs.forEach(input => {
+        if (input) {
+          input.value = '';
+          input.disabled = true;
+        }
+      });
+      const checks = [
+        this.el.selFlipH,
+        this.el.selFlipV,
+        this.el.selNoOverwrite,
+        this.el.selErase,
+        this.el.selOneWay
+      ];
+      checks.forEach(check => {
+        if (check) {
+          check.checked = false;
+          check.disabled = true;
+        }
+      });
+      if (this.el.deleteSelection) this.el.deleteSelection.disabled = true;
+      this._suppressInspector = false;
+      return;
+    }
+
+    if (data.multi) {
+      if (this.el.selType) this.el.selType.textContent = 'Multiple';
+      if (this.el.selName) this.el.selName.textContent = `${data.count} items`;
+      const inputs = [
+        this.el.selX,
+        this.el.selY,
+        this.el.selWidth,
+        this.el.selHeight,
+        this.el.selRotate,
+        this.el.selSkill,
+        this.el.selLemmings,
+        this.el.selPairing
+      ];
+      inputs.forEach(input => {
+        if (input) {
+          input.value = '';
+          input.disabled = true;
+        }
+      });
+      const checks = [
+        this.el.selFlipH,
+        this.el.selFlipV,
+        this.el.selNoOverwrite,
+        this.el.selErase,
+        this.el.selOneWay
+      ];
+      checks.forEach(check => {
+        if (check) {
+          check.checked = false;
+          check.disabled = true;
+        }
+      });
+      if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
+      this._suppressInspector = false;
+      return;
+    }
+
+    if (this.el.selType) this.el.selType.textContent = data.type;
+    if (this.el.selName) this.el.selName.textContent = data.name || '';
+
+    const props = data.props || {};
+    const isGadget = data.type === 'gadget';
+    const isSteel = data.type === 'steel';
+
+    if (this.el.selX) {
+      this.el.selX.value = formatValue(props.X);
+      this.el.selX.disabled = false;
+    }
+    if (this.el.selY) {
+      this.el.selY.value = formatValue(props.Y);
+      this.el.selY.disabled = false;
+    }
+    if (this.el.selWidth) {
+      this.el.selWidth.value = formatValue(props.WIDTH);
+      this.el.selWidth.disabled = false;
+    }
+    if (this.el.selHeight) {
+      this.el.selHeight.value = formatValue(props.HEIGHT);
+      this.el.selHeight.disabled = false;
+    }
+    if (this.el.selRotate) {
+      this.el.selRotate.value = formatRotation(props.ROTATE);
+      this.el.selRotate.disabled = isSteel;
+    }
+    if (this.el.selSkill) {
+      this.el.selSkill.value = formatValue(props.SKILL);
+      this.el.selSkill.disabled = !isGadget;
+    }
+    if (this.el.selLemmings) {
+      this.el.selLemmings.value = formatValue(props.LEMMINGS);
+      this.el.selLemmings.disabled = !isGadget;
+    }
+    if (this.el.selPairing) {
+      this.el.selPairing.value = formatValue(props.PAIRING);
+      this.el.selPairing.disabled = !isGadget;
+    }
+
+    if (this.el.selFlipH) {
+      this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
+      this.el.selFlipH.disabled = isSteel;
+    }
+    if (this.el.selFlipV) {
+      this.el.selFlipV.checked = !!props.FLIP_VERTICAL;
+      this.el.selFlipV.disabled = isSteel;
+    }
+    if (this.el.selNoOverwrite) {
+      this.el.selNoOverwrite.checked = !!props.NO_OVERWRITE;
+      this.el.selNoOverwrite.disabled = isGadget || isSteel;
+    }
+    if (this.el.selErase) {
+      this.el.selErase.checked = !!props.ERASE;
+      this.el.selErase.disabled = isGadget || isSteel;
+    }
+    if (this.el.selOneWay) {
+      this.el.selOneWay.checked = !!props.ONE_WAY;
+      this.el.selOneWay.disabled = isGadget || isSteel;
+    }
+    if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
+
+    this._suppressInspector = false;
+  }
+
+  _commitSelectionPatch(patch) {
+    const updated = this.controller.updateSelectedProps(patch);
+    if (!updated) return;
+    this.controller.history.pushSnapshot(this.session?.level, 'Edit');
+    this._refreshAfterEdit('Edit');
+  }
+
+  _refreshSavedList(selectedId = this._currentSavedId) {
+    if (!this.el.savedSelect) return;
+    const entries = listSavedLevels();
+    this.el.savedSelect.innerHTML = '';
+    const placeholder = this.document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Saved levels';
+    this.el.savedSelect.appendChild(placeholder);
+    for (const entry of entries) {
+      const opt = this.document.createElement('option');
+      opt.value = entry.id;
+      opt.textContent = entry.name;
+      this.el.savedSelect.appendChild(opt);
+    }
+    this.el.savedSelect.value = selectedId || '';
+  }
+
+  _saveCurrentLevel() {
+    if (!this.view?.editorSession?.level) return;
+    const defaultName = this.view.getEditorLevelTitle?.() || 'Untitled';
+    const prompt = this.window?.prompt;
+    if (typeof prompt !== 'function') return;
+    const name = normalizeText(prompt('Save level as', defaultName));
+    if (!name) return;
+    const text = this.view.getEditorLevelText();
+    const id = saveLevel(undefined, {
+      id: this._currentSavedId || undefined,
+      name,
+      text
+    });
+    if (!id) return;
+    this._currentSavedId = id;
+    this._refreshSavedList(id);
+  }
+
+  _exportCurrentLevel() {
+    this._refreshValidation();
+    if (this._hasErrors) {
+      this.window?.alert?.('Fix validation errors before exporting.');
+      return;
+    }
+    const text = this.view.getEditorLevelText();
+    const title = this.view.getEditorLevelTitle();
+    const filename = `${sanitizeFileName(title)}.nxlv`;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    this.document.body.appendChild(link);
+    link.click();
+    this.document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
+  async _syncAfterSelection(label) {
+    if (!this.view) return;
+    this._currentSavedId = '';
+    this.session = this.view.editorSession || this.session;
+    this.controller.session = this.session;
+    await this._reloadAssets();
+    this.controller.resetHistory(label || 'Load');
+    this._refreshHeaderFields(this.session?.level);
+    this._refreshSelection(null);
+    this._refreshValidation();
+    this._refreshSavedList('');
+    this._drawSelectionOverlay();
+    this._updateStatus(label || 'Load');
+  }
+
+  _loadLevelFromText(text, options = {}) {
+    if (!this.view) return;
+    const level = this.view.loadEditorLevelFromText(text, { render: false });
+    if (!level) return;
+    this.session = this.view.editorSession;
+    this.controller.session = this.session;
+    this._reloadAssets().then(async () => {
+      this.controller.resetHistory('Import');
+      this._refreshHeaderFields(level);
+      this._refreshSelection(null);
+      this._refreshValidation();
+      if (options.resetSaved) this._refreshSavedList('');
+      await this._refreshPreview('Import');
+    });
+  }
+
+  async _reloadAssets() {
+    const config = this.view?.gameResources?.config
+      || await this.view?.gameFactory?.getConfig?.(this.view?.gameType);
+    const styleName = this.session?.level?.getHeader?.('STYLE');
+    this.assets = await this.assetCache.loadStyleAssets(
+      styleName,
+      config,
+      this.view?.gameFactory?.fileProvider
+    );
+    this.controller.setAssets(this.assets);
+    this._refreshPalettes();
+  }
+
+  async _refreshPreview(label) {
+    if (!this.view) return;
+    if (this._previewInFlight) {
+      this._previewQueued = true;
+      return;
+    }
+    this._previewInFlight = true;
+    try {
+      await this.view.loadEditorPreviewLevel({ suspend: !this._playtest });
+      this.view.setEditorPlaytest(this._playtest);
+      this._drawSelectionOverlay();
+      this._updateStatus(label || 'Preview');
+    } finally {
+      this._previewInFlight = false;
+      if (this._previewQueued) {
+        this._previewQueued = false;
+        this._refreshPreview('Queued');
+      }
+    }
+  }
+
+  _refreshAfterEdit(label) {
+    this._refreshValidation();
+    this._drawSelectionOverlay();
+    this._updateStatus(label || 'Edit');
+  }
+
+  _refreshValidation() {
+    const issues = validateLevel(this.session?.level, this.assets || null);
+    this._renderIssues(issues);
+  }
+
+  _renderIssues(issues) {
+    this._hasErrors = false;
+    if (!this.el.issuesList) return;
+    this.el.issuesList.innerHTML = '';
+    for (const issue of issues) {
+      if (issue.severity === 'error') this._hasErrors = true;
+      const item = this.document.createElement('div');
+      item.className = `issue-item ${issue.severity}`;
+      const message = this.document.createElement('div');
+      message.textContent = issue.message;
+      item.appendChild(message);
+      if (issue.fix) {
+        const button = this.document.createElement('button');
+        button.type = 'button';
+        button.textContent = issue.fixLabel || 'Fix';
+        button.addEventListener('click', () => {
+          issue.fix();
+          this.controller.history.pushSnapshot(this.session?.level, 'Fix');
+          this._refreshAfterEdit('Fix');
+          this._refreshPreview('Fix');
+        });
+        item.appendChild(button);
+      }
+      this.el.issuesList.appendChild(item);
+    }
+  }
+
+  _updateStatus(label) {
+    if (!this.el.status) return;
+    const parts = [];
+    if (label) parts.push(label);
+    parts.push(`Tool: ${this.controller.tool}`);
+    const grid = this.controller.snapEnabled
+      ? `Grid ${this.controller.gridSize}`
+      : 'Grid off';
+    parts.push(grid);
+    if (this._cursorPos) {
+      const cx = Math.round(this._cursorPos.x);
+      const cy = Math.round(this._cursorPos.y);
+      parts.push(`X:${cx} Y:${cy}`);
+    }
+    parts.push(this._playtest ? 'Playtest' : 'Edit');
+    this.el.status.textContent = parts.join(' • ');
+  }
+
+  _updateSelectionStatus() {
+    if (!this.el.selectionStatus) return;
+    if (!this._selection || this._selection.length === 0) {
+      this.el.selectionStatus.textContent = 'No selection';
+      return;
+    }
+    if (this._selection.length > 1) {
+      this.el.selectionStatus.textContent = `${this._selection.length} selected`;
+      return;
+    }
+    const selected = this._selection[0];
+    const props = selected.entry?.props || {};
+    const name = selected.type === 'steel'
+      ? 'steel'
+      : (selected.entry?.props?.PIECE ?? 'unknown');
+    this.el.selectionStatus.textContent = `${selected.type} #${name} @ ${props.X ?? 0},${props.Y ?? 0}`;
+  }
+
+  _drawSelectionOverlay() {
+    if (!this.view?.game || !this.view.stage) return;
+    this.view.game.render();
+    const display = this.view.stage.getGameDisplay();
+    const selectedEntries = this.controller.getSelectedEntries();
+    const marquee = this.controller.getMarqueeBounds();
+    if (marquee) {
+      this._antsOffset = (this._antsOffset + 1) % 12;
+      display.drawMarchingAntRect(
+        marquee.x,
+        marquee.y,
+        marquee.width,
+        marquee.height,
+        3,
+        this._antsOffset,
+        0xFFFFFFFF,
+        0x00000000
+      );
+    }
+    for (const selected of selectedEntries) {
+      const meta = selected.type === 'steel'
+        ? null
+        : selected.type === 'gadget'
+          ? this.assets?.gadgetById?.get?.(selected.entry?.props?.PIECE)
+          : this.assets?.terrainById?.get?.(selected.entry?.props?.PIECE);
+      const bounds = getEntryBounds(selected.entry, meta);
+      display.drawDashedRect(bounds.x, bounds.y, bounds.width, bounds.height, 210, 106, 60, 3);
+    }
+    if (selectedEntries.length === 1) {
+      const selected = selectedEntries[0];
+      const meta = selected.type === 'steel'
+        ? null
+        : selected.type === 'gadget'
+          ? this.assets?.gadgetById?.get?.(selected.entry?.props?.PIECE)
+          : this.assets?.terrainById?.get?.(selected.entry?.props?.PIECE);
+      const bounds = getEntryBounds(selected.entry, meta);
+      const handleSize = this.controller.getHandleSize();
+      const half = Math.max(1, Math.floor(handleSize / 2));
+      const midX = bounds.x + Math.round(bounds.width / 2);
+      const midY = bounds.y + Math.round(bounds.height / 2);
+      const handles = [
+        [bounds.x, bounds.y],
+        [midX, bounds.y],
+        [bounds.x + bounds.width, bounds.y],
+        [bounds.x + bounds.width, midY],
+        [bounds.x + bounds.width, bounds.y + bounds.height],
+        [midX, bounds.y + bounds.height],
+        [bounds.x, bounds.y + bounds.height],
+        [bounds.x, midY]
+      ];
+      for (const [hx, hy] of handles) {
+        display.drawRect(hx - half, hy - half, handleSize - 1, handleSize - 1, 255, 255, 255, true);
+      }
+    }
+    this.view.stage.redraw();
+  }
+
+  _togglePlaytest() {
+    this._playtest = !this._playtest;
+    this.view?.setEditorPlaytest?.(this._playtest);
+    if (this.el.playtestToggle) {
+      this.el.playtestToggle.classList.toggle('is-active', this._playtest);
+      this.el.playtestToggle.textContent = this._playtest ? 'Playtest On' : 'Playtest';
+    }
+    this._updateStatus('Playtest');
+  }
+}
+
+export { EditorUiController };
