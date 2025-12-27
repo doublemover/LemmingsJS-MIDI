@@ -86,6 +86,12 @@ describe('FileProvider', function () {
     assert.strictEqual(url, rootPath + 'path' + '/' + 'file.bin');
   });
 
+  it('_filenameFromUrl strips query and handles empty', function () {
+    const name = provider._filenameFromUrl('http://x/y/file.bin?x=1#hash');
+    assert.strictEqual(name, 'file.bin');
+    assert.strictEqual(provider._filenameFromUrl(''), '');
+  });
+
   it('loadBinary caches identical requests', async function () {
     const p1 = provider.loadBinary('data', 'file.bin');
     const p2 = provider.loadBinary('data', 'file.bin');
@@ -145,6 +151,31 @@ describe('FileProvider', function () {
     assert.strictEqual(result2, 'hello');
   });
 
+  it('loadBinary uses cached binary entries from localStorage', async function () {
+    provider = new FileProvider(rootPath);
+    const data = Uint8Array.from([1, 2, 3]).buffer;
+    const url = rootPath + 'data/file.bin';
+    const entry = {
+      type: 'binary',
+      data: provider._arrayBufferToBase64(data),
+      hash: 'h'
+    };
+    global.localStorage.setItem('lem-cache:' + url, JSON.stringify(entry));
+
+    const result = await provider.loadBinary('data', 'file.bin');
+    assert.ok(result instanceof MockBinaryReader);
+    assert.strictEqual(requests.length, 0);
+  });
+
+  it('falls back to fetching when cached JSON is invalid', async function () {
+    const url = rootPath + 'bad.txt';
+    global.localStorage.setItem('lem-cache:' + url, '{bad');
+    const promise = provider.loadString(url);
+    requests[0].respond(200, 'ok');
+    const result = await promise;
+    assert.strictEqual(result, 'ok');
+  });
+
   it('logs an error when binary load fails', async function () {
     const p = provider.loadBinary('data', 'file.bin');
     requests[0].respond(404, null);
@@ -196,6 +227,29 @@ describe('FileProvider', function () {
     assert.strictEqual(fetchCalls, 1);
   });
 
+  it('_verifyCache returns early on matching headers', async function () {
+    let fetchCalls = 0;
+    provider._fetchHead = async () => ({ etag: 'same', lastModified: 'same' });
+    provider._fetchBinary = async () => { fetchCalls++; return new MockBinaryReader(); };
+    await provider._verifyCache('url', { type: 'binary', etag: 'same' });
+    assert.strictEqual(fetchCalls, 0);
+
+    provider._fetchHead = async () => ({ etag: 'other', lastModified: 'match' });
+    await provider._verifyCache('url', { type: 'binary', lastModified: 'match' });
+    assert.strictEqual(fetchCalls, 0);
+  });
+
+  it('_verifyCache swallows update errors', async function () {
+    provider._fetchHead = async () => ({ etag: 'new', lastModified: 'new' });
+    provider._fetchText = async () => { throw new Error('fail'); };
+    const logs = [];
+    const orig = console.log;
+    console.log = (...args) => logs.push(args);
+    await provider._verifyCache('url', { type: 'text', etag: 'old' });
+    console.log = orig;
+    assert.ok(logs.length > 0);
+  });
+
   it('_hashBuffer falls back to node crypto when web crypto missing', async function () {
     provider = new FileProvider(rootPath);
     const buf = Uint8Array.from([1,2,3]).buffer;
@@ -206,6 +260,29 @@ describe('FileProvider', function () {
     const { createHash } = await import('node:crypto');
     const expected = createHash('sha256').update(Buffer.from(buf)).digest('hex');
     assert.strictEqual(hash, expected);
+  });
+
+  it('_hashBuffer uses web crypto when available', async function () {
+    const orig = global.crypto;
+    global.crypto = {
+      subtle: {
+        digest: async () => Uint8Array.from([0, 255]).buffer
+      }
+    };
+    const buf = Uint8Array.from([1, 2]).buffer;
+    const hash = await provider._hashBuffer(buf);
+    global.crypto = orig;
+    assert.strictEqual(hash, '00ff');
+  });
+
+  it('_hashBuffer throws when crypto APIs are unavailable', async function () {
+    const orig = global.crypto;
+    delete global.crypto;
+    provider._forceCryptoError = true;
+    const buf = Uint8Array.from([1, 2]).buffer;
+    await assert.rejects(provider._hashBuffer(buf), /crypto API not available/);
+    provider._forceCryptoError = false;
+    global.crypto = orig;
   });
 
   it('base64 conversion roundtrips', function () {
@@ -232,6 +309,16 @@ describe('FileProvider', function () {
   it('_fetchText logs and rejects on failure', async function () {
     const promise = provider._fetchText(rootPath + 'bad.txt');
     requests[0].respond(404, 'err');
+    await assert.rejects(promise);
+    assert.ok(provider.log.logged.some(m => m.includes('error load file')));
+  });
+
+  it('_fetchText rejects when onload reports error status', async function () {
+    const promise = provider._fetchText(rootPath + 'bad2.txt');
+    const xhr = requests[0];
+    xhr.status = 500;
+    xhr.response = 'err';
+    xhr.onload();
     await assert.rejects(promise);
     assert.ok(provider.log.logged.some(m => m.includes('error load file')));
   });

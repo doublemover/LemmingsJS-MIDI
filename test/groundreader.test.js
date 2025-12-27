@@ -103,4 +103,48 @@ describe('GroundReader', function() {
     expect(logs.some(m => m.includes('unknown1 diverges'))).to.equal(true);
     expect(logs.some(m => m.includes('unknown2 should be'))).to.equal(true);
   });
+
+  it('returns early when ground file size is invalid', function() {
+    class MockLogHandler {
+      constructor() { this.logged = []; }
+      log(msg) { this.logged.push(msg); }
+      debug() {}
+    }
+    const origHandler = Lemmings.LogHandler;
+    setDependency('LogHandler', MockLogHandler);
+    const br = new BinaryReader(new Uint8Array(10), 0, 10, 'bad.dat');
+    const vgaT = new BinaryReader(new Uint8Array([0]));
+    const vgaO = new BinaryReader(new Uint8Array([0]));
+    const gr = new GroundReader(br, vgaT, vgaO);
+    setDependency('LogHandler', origHandler);
+    expect(gr.log.logged.some(m => m.includes('wrong size'))).to.equal(true);
+  });
+
+  it('loads steel sprites from disk when fetch fails', async function() {
+    const origFetch = globalThis.fetch;
+    globalThis.fetch = async () => { throw new Error('fail'); };
+    Lemmings.resetSteelSprites();
+    const sprites = await Lemmings.loadSteelSprites();
+    globalThis.fetch = origFetch;
+    expect(sprites).to.be.an('object');
+  });
+
+  it('logs when terrain folder name is unknown', function() {
+    const buf = new Uint8Array(1056);
+    const tOff = 28 * 16;
+    buf[tOff] = 1;
+    buf[tOff + 1] = 1;
+    buf[tOff + 5] = 3;
+    const pal = 960 + 24;
+    for (let i = 0; i < 48; i++) buf[pal + i] = 0;
+    const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT');
+    const vgaT = new BinaryReader(new Uint8Array([0, 0, 0, 0]));
+    const vgaO = new BinaryReader(new Uint8Array([0, 0, 0, 0, 0]));
+    const logs = [];
+    const orig = console.log;
+    console.log = (...args) => logs.push(args);
+    new GroundReader(ground, vgaT, vgaO);
+    console.log = orig;
+    expect(logs.length).to.be.greaterThan(0);
+  });
 });

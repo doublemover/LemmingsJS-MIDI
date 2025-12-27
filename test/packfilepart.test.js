@@ -32,6 +32,12 @@ describe('PackFilePart', function () {
     expect(Array.from(result)).to.eql(Array.from(arr));
   });
 
+  it('accepts array-like input', function () {
+    const arr = [9, 8, 7, 6];
+    const result = roundTrip(arr);
+    expect(Array.from(result)).to.eql(arr);
+  });
+
   it('round-trips first chunk of LEVEL000.DAT', function () {
     const dat = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
     const container = new FileContainer(new BinaryReader(new Uint8Array(dat)));

@@ -91,6 +91,27 @@ describe('TriggerManager', function () {
     ]);
   });
 
+  it('ignores duplicate triggers and empty ranges', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
+    tm.add(tr);
+    tm.add(tr);
+    tm.addRange([]);
+    expect(tm._triggers.size).to.equal(1);
+  });
+
+  it('skips arrow triggers in debug frame', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+    const arrow = new Trigger(TriggerTypes.BLOCKER_LEFT, 1, 1, 5, 5);
+    const trap = new Trigger(TriggerTypes.TRAP, 10, 10, 12, 12);
+    tm.addRange([arrow, trap]);
+    const g = { drawRect() {}, drawFrame() {} };
+    tm.renderDebug(g);
+    expect(tm._debugFrame).to.be.ok;
+  });
+
   it('dispose clears references', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);

@@ -177,6 +177,20 @@ describe('GameTimer', function() {
     expect(overlayCalls[0].rect).to.eql({ x: 160, y: 32, width: 16, height: 10 });
   });
 
+  it('slows down and restores speed in bench2 catchup mode', function() {
+    globalThis.lemmings.bench2 = true;
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    now = 600;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.be.lessThan(1);
+
+    now = 1200;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.be.closeTo(1, 0.0001);
+  });
+
   it('wraps tickIndex and converts time units', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const originalWarn = console.warn;

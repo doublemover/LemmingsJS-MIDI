@@ -239,6 +239,7 @@ class FileProvider extends BaseLogger {
     }
 
     try {
+      if (this._forceCryptoError) throw new Error('forced');
       const { createHash } = await import('node:crypto');
       const hash = createHash('sha256');
       hash.update(Buffer.from(buffer));

@@ -9,6 +9,7 @@ npm run test-core       # core game logic
 npm run test-bench      # performance benchmarks
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
+npm run test-offline-tools # offline asset tooling
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
 

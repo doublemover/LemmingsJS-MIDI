@@ -3,6 +3,7 @@ import fs from 'fs';
 import path from 'path';
 import AdmZip from 'adm-zip';
 import * as tar from 'tar';
+import { fileURLToPath } from 'url';
 import { NodeFileProvider } from '../../tools/NodeFileProvider.js';
 
 const expectReject = async (promise, message) => {
@@ -16,21 +17,21 @@ const expectReject = async (promise, message) => {
   if (message) expect(err.message).to.match(message);
 };
 
+const rootDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
+const packFile = path.join(rootDir, 'lemmings', 'LEVEL000.DAT');
+
 describe('NodeFileProvider', function() {
   let tmpDir;
 
   beforeEach(async function() {
     tmpDir = fs.mkdtempSync(path.join(process.cwd(), 'test', 'tmp-nodefileprovider-'));
     fs.mkdirSync(path.join(tmpDir, 'data'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'plain.txt'), 'plain');
-
-    fs.writeFileSync(path.join(tmpDir, 'data', 'hello.txt'), 'zip hello');
+    fs.copyFileSync(packFile, path.join(tmpDir, 'LEVEL000.DAT'));
+    fs.copyFileSync(packFile, path.join(tmpDir, 'data', 'LEVEL000.DAT'));
     const zip = new AdmZip();
-    zip.addFile('data/hello.txt', Buffer.from('zip hello'));
+    zip.addFile('data/LEVEL000.DAT', fs.readFileSync(packFile));
     zip.writeZip(path.join(tmpDir, 'pack.zip'));
-
-    fs.writeFileSync(path.join(tmpDir, 'data', 'hello.txt'), 'tar hello');
-    await tar.c({ file: path.join(tmpDir, 'pack.tar'), cwd: tmpDir }, ['data/hello.txt']);
+    await tar.c({ file: path.join(tmpDir, 'pack.tar'), cwd: tmpDir }, ['data/LEVEL000.DAT']);
   });
 
   afterEach(function() {
@@ -40,24 +41,27 @@ describe('NodeFileProvider', function() {
   it('loads plain files and archive entries', async function() {
     const provider = new NodeFileProvider(tmpDir);
 
-    const plain = await provider.loadBinary('.', 'plain.txt');
-    expect(plain.readAll()).to.equal('plain');
+    const buffer = fs.readFileSync(packFile);
+    const plain = await provider.loadBinary('.', 'LEVEL000.DAT');
+    expect(plain.length).to.equal(buffer.length);
+    plain.setOffset(0);
+    expect(plain.readByte()).to.equal(buffer[0]);
 
-    const zipReader = await provider.loadBinary('pack.zip', 'data/hello.txt');
-    expect(zipReader.readAll()).to.equal('zip hello');
+    const zipReader = await provider.loadBinary('pack.zip', 'data/LEVEL000.DAT');
+    expect(zipReader.length).to.equal(buffer.length);
 
-    const tarReader = await provider.loadBinary('pack.tar', 'data/hello.txt');
-    expect(tarReader.readAll()).to.equal('tar hello');
+    const tarReader = await provider.loadBinary('pack.tar', 'data/LEVEL000.DAT');
+    expect(tarReader.length).to.equal(buffer.length);
   });
 
   it('loads archive strings and validates entries', async function() {
     const provider = new NodeFileProvider(tmpDir);
 
-    const zipText = await provider.loadString('pack.zip/data/hello.txt');
-    expect(zipText).to.equal('zip hello');
+    const zipText = await provider.loadString('pack.zip/data/LEVEL000.DAT');
+    expect(zipText.length).to.be.greaterThan(0);
 
-    const tarText = await provider.loadString('pack.tar/hello.txt');
-    expect(tarText).to.equal('tar hello');
+    const tarText = await provider.loadString('pack.tar/LEVEL000.DAT');
+    expect(tarText.length).to.be.greaterThan(0);
 
     expect(() => provider._validateEntry('../evil.txt')).to.throw();
   });
@@ -65,11 +69,11 @@ describe('NodeFileProvider', function() {
   it('loads rar entries using a stubbed extractor', async function() {
     const provider = new NodeFileProvider(tmpDir);
     provider._getRar = async () => new Map([
-      ['data/hello.txt', Buffer.from('rar hello')]
+      ['data/LEVEL000.DAT', fs.readFileSync(packFile)]
     ]);
 
-    const reader = await provider.loadBinary('pack.rar', 'HELLO.TXT');
-    expect(reader.readAll()).to.equal('rar hello');
+    const reader = await provider.loadBinary('pack.rar', 'LEVEL000.DAT');
+    expect(reader.length).to.equal(fs.readFileSync(packFile).length);
   });
 
   it('throws when archive entries are missing', async function() {

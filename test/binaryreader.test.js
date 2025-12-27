@@ -26,6 +26,8 @@ describe('BinaryReader', function () {
     const reader = new BinaryReader(bytes);
 
     assert.strictEqual(reader.readInt(4, 0), 0x01020304);
+    assert.strictEqual(reader.readInt(2, 0), 0x0102);
+    assert.strictEqual(reader.readInt(3, 0), 0x010203);
     assert.strictEqual(reader.readIntBE(0), 0x04030201);
     assert.strictEqual(reader.readWord(4), 0x0506);
     assert.strictEqual(reader.readWordBE(4), 0x0605);
@@ -120,5 +122,50 @@ describe('BinaryReader', function () {
     assert.strictEqual(reader.length, 1);
     assert.strictEqual(reader.pos, 2);
     assert.deepStrictEqual(Array.from(reader.data), [5, 6, 7, 8]);
+  });
+
+  it('handles null input and readAll', function () {
+    const reader = new BinaryReader(null);
+    assert.strictEqual(reader.length, 0);
+    assert.strictEqual(reader.readByte(), 0);
+    assert.strictEqual(reader.readAll(), '');
+  });
+
+  it('initializes from another BinaryReader and tracks offsets', function () {
+    const base = new BinaryReader(Uint8Array.from([1, 2, 3, 4]));
+    const reader = new BinaryReader(base, 1, 2);
+    reader.setOffset(0);
+    assert.strictEqual(reader.getOffset(), 0);
+    assert.strictEqual(reader.readByte(), 2);
+    assert.strictEqual(reader.getOffset(), 1);
+    const str = reader.readString(4);
+    assert.strictEqual(str.length, 2);
+    assert.strictEqual(str.charCodeAt(0), 3);
+    assert.strictEqual(str.charCodeAt(1), 4);
+  });
+
+  it('rejects when FileReader emits an error', async function () {
+    const bytes = Uint8Array.from([1, 2, 3]);
+    const blob = new Blob([bytes]);
+    const origArrayBuffer = Blob.prototype.arrayBuffer;
+    Blob.prototype.arrayBuffer = undefined;
+
+    class FR {
+      constructor() {
+        this.onload = null;
+        this.onerror = null;
+        this.error = new Error('read failed');
+      }
+      readAsArrayBuffer() {
+        setImmediate(() => this.onerror());
+      }
+    }
+
+    global.FileReader = FR;
+    const reader = new BinaryReader(blob);
+    await assert.rejects(reader.ready, /read failed/);
+
+    Blob.prototype.arrayBuffer = origArrayBuffer;
+    delete global.FileReader;
   });
 });

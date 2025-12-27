@@ -1,4 +1,5 @@
 import { EventHandler } from '../util/EventHandler.js';
+import { withPerformance } from '../util/LogHandler.js';
 
 const SoundEventTypes = Object.freeze({
   LEVEL_START: 'level-start',
@@ -15,6 +16,9 @@ const SoundEventTypes = Object.freeze({
   LEMMING_DROWN: 'lemming-drown',
   LEMMING_FIRE: 'lemming-fire',
   LEMMING_FELL_OFF: 'lemming-fell-off',
+  LEMMING_BASH: 'lemming-bash',
+  LEMMING_DIG: 'lemming-dig',
+  LEMMING_MINE: 'lemming-mine',
   TRAP_TRIGGER: 'trap-trigger'
 });
 
@@ -39,7 +43,10 @@ const SoundEffectIds = Object.freeze({
   DROWN: 0x11,
   BUILDER_WARNING: 0x12,
   FELL_OFF: 0x13,
-  BUILDER_STEP: 0x14
+  BUILDER_STEP: 0x14,
+  BASH: 0x15,
+  DIG: 0x16,
+  MINE: 0x17
 });
 
 class SoundEventBus {
@@ -52,27 +59,38 @@ class SoundEventBus {
   }
 
   emit(event) {
-    if (!event) return;
-    const hasListeners = this.onEvent?.handlers?.size > 0;
-    if (!hasListeners &&
-        (this._queueLimit <= 0 || this._queue.length >= this._queueLimit)) {
-      return;
-    }
-    const tick = this.gameTimer?.getGameTicks?.() ?? 0;
-    const frameMs = this.gameTimer?.frameTime ?? this.gameTimer?.TIME_PER_FRAME_MS ?? 60;
-    const payload = {
-      id: ++this._sequence,
-      tick,
-      timeMs: tick * frameMs,
-      frameMs,
-      speedFactor: this.gameTimer?.speedFactor ?? 1,
-      tps: this.gameTimer?.tps ?? null,
-      ...event
-    };
-    if (this._queueLimit > 0 && this._queue.length < this._queueLimit) {
-      this._queue.push(payload);
-    }
-    if (this.onEvent) this.onEvent.trigger(payload);
+    return withPerformance(
+      'SoundEventBus emit',
+      {
+        track: 'SoundEvents',
+        trackGroup: 'Game State',
+        color: 'secondary',
+        tooltipText: 'emit'
+      },
+      () => {
+        if (!event) return;
+        const hasListeners = this.onEvent?.handlers?.size > 0;
+        if (!hasListeners &&
+            (this._queueLimit <= 0 || this._queue.length >= this._queueLimit)) {
+          return;
+        }
+        const tick = this.gameTimer?.getGameTicks?.() ?? 0;
+        const frameMs = this.gameTimer?.frameTime ?? this.gameTimer?.TIME_PER_FRAME_MS ?? 60;
+        const payload = {
+          id: ++this._sequence,
+          tick,
+          timeMs: tick * frameMs,
+          frameMs,
+          speedFactor: this.gameTimer?.speedFactor ?? 1,
+          tps: this.gameTimer?.tps ?? null,
+          ...event
+        };
+        if (this._queueLimit > 0 && this._queue.length < this._queueLimit) {
+          this._queue.push(payload);
+        }
+        if (this.onEvent) this.onEvent.trigger(payload);
+      }
+    ).call(this);
   }
 
   emitSfx(type, sfxId, data = {}) {

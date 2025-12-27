@@ -3,6 +3,14 @@ import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvent
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
         
+const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
+const scaleIntensity = (removed, maxCount) => {
+  if (!removed || removed <= 0) return 1;
+  const denom = Math.max((maxCount || 1) - 1, 1);
+  const ratio = (removed - 1) / denom;
+  return clamp(1 + ratio, 0.1, 2);
+};
+
 class ActionDiggSystem extends ActionBaseSystem {
   constructor(sprites) {
     super({ sprites, spriteType: SpriteTypes.DIGGING, actionName: 'digging' });
@@ -44,6 +52,20 @@ class ActionDiggSystem extends ActionBaseSystem {
         level.clearGroundAt(x, y);
         removeCount++;
       }
+    }
+    if (removeCount > 0) {
+      const soundBus = getSoundBus();
+      soundBus?.emitSfx?.(
+        SoundEventTypes.LEMMING_DIG,
+        SoundEffectIds.DIG,
+        {
+          lemmingId: lem.id,
+          x: lem.x,
+          y,
+          removed: removeCount,
+          intensity: scaleIntensity(removeCount, 9)
+        }
+      );
     }
     return (removeCount > 0);
   }

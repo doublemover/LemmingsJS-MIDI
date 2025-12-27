@@ -74,4 +74,48 @@ describe('LevelWriter', function() {
     expect(lr.steel.length).to.equal(0);
     expect(lr.levelProperties.levelName).to.equal('\x00'.repeat(32));
   });
+
+  it('writes object, terrain, and steel flags', function() {
+    const level = {
+      levelProperties: new Lemmings.LevelProperties(),
+      screenPositionX: 5,
+      graphicSet1: 2,
+      graphicSet2: 1,
+      isSuperLemming: true,
+      objects: [],
+      terrains: [],
+      steel: []
+    };
+    level.levelProperties.levelName = 'Test';
+    level.objects[0] = {
+      x: 10,
+      y: 20,
+      id: 3,
+      drawProperties: { noOverwrite: true, onlyOverwrite: true, isUpsideDown: true }
+    };
+    level.terrains[0] = {
+      x: 5,
+      y: 6,
+      id: 4,
+      drawProperties: { isErase: true, isUpsideDown: true, noOverwrite: true }
+    };
+    level.steel[0] = { x: 8, y: 16, width: 8, height: 4 };
+
+    const writer = new LevelWriter();
+    const out = writer.write(level);
+    const lr = new LevelReader(new BinaryReader(out));
+
+    expect(lr.isSuperLemming).to.equal(true);
+    expect(lr.graphicSet1).to.equal(2);
+    expect(lr.graphicSet2).to.equal(1);
+    expect(lr.levelProperties.levelName.startsWith('Test')).to.equal(true);
+    expect(lr.objects[0].drawProperties.noOverwrite).to.equal(true);
+    expect(lr.objects[0].drawProperties.onlyOverwrite).to.equal(true);
+    expect(lr.objects[0].drawProperties.isUpsideDown).to.equal(true);
+    expect(lr.terrains[0].drawProperties.isErase).to.equal(false);
+    expect(lr.terrains[0].drawProperties.isUpsideDown).to.equal(true);
+    expect(lr.terrains[0].drawProperties.noOverwrite).to.equal(true);
+    expect(lr.steel[0].width).to.equal(8);
+    expect(lr.steel[0].height).to.equal(4);
+  });
 });

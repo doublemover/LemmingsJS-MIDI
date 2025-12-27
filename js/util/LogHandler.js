@@ -7,7 +7,9 @@ class Logger {
 
   _enabled() {
     return typeof lemmings !== 'undefined' &&
-            lemmings.game && lemmings.game.showDebug === true;
+            lemmings &&
+            lemmings.game &&
+            lemmings.game.showDebug === true;
   }
 
   /** log an info message */
@@ -64,9 +66,10 @@ class BaseLogger {
      * @returns {Function}
      */
   startMeasure(name, devtools = {}) {
-    if (!(typeof lemmings !== 'undefined' &&
-              lemmings.perfMetrics === true &&
-              lemmings.debug === true) ||
+    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const perfEnabled = !!app &&
+            (app.performanceAPI === true || app.perfMetrics === true);
+    if (!perfEnabled ||
             typeof performance === 'undefined' ||
             typeof performance.now !== 'function' ||
             typeof performance.measure !== 'function') {
@@ -88,9 +91,10 @@ class BaseLogger {
 
 function withPerformance(name, devtools = {}, fn) {
   return function(...args) {
-    if (!(typeof lemmings !== 'undefined' &&
-              lemmings.perfMetrics === true &&
-              lemmings.debug === true) ||
+    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const perfEnabled = !!app &&
+            (app.performanceAPI === true || app.perfMetrics === true);
+    if (!perfEnabled ||
             typeof performance === 'undefined' ||
             typeof performance.now !== 'function' ||
             typeof performance.measure !== 'function') {

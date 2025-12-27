@@ -101,7 +101,7 @@ describe('withPerformance', function() {
   });
 
   it('measures only when flags enabled', function() {
-    globalThis.lemmings = { perfMetrics: true, debug: true };
+    globalThis.lemmings = { performanceAPI: true };
     const fn = (a, b) => a + b;
     const wrapped = Lemmings.withPerformance('sum', { t: 1 }, fn);
     const result = wrapped(2, 3);
@@ -110,7 +110,7 @@ describe('withPerformance', function() {
     expect(performance.measureCalls[0].name).to.equal('sum');
 
     performance.measureCalls.length = 0;
-    globalThis.lemmings = { perfMetrics: true, debug: false };
+    globalThis.lemmings = { performanceAPI: false, perfMetrics: false };
     wrapped(1, 1);
     expect(performance.measureCalls.length).to.equal(0);
   });

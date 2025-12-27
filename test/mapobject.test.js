@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { Lemmings } from './helpers/lemmings.js';
 import { MapObject } from '../js/level/MapObject.js';
+import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { Animation } from '../js/render/Animation.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 import '../js/render/Frame.js';
@@ -64,5 +65,34 @@ describe('MapObject', function () {
     const c0 = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
     const c1 = ColorPalette.colorFromRGB(40, 50, 60) >>> 0;
     expect(Array.from(buf.slice(0, 2))).to.eql([c0, c1]);
+  });
+
+  it('emits trap and fire sounds on trigger', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) { events.push({ type, id, payload }); } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0);
+
+    const trap = { type: TriggerTypes.TRAP, soundIndex: 2 };
+    mo.onTrigger(0, { id: 1, x: 10, y: 11 }, trap, 9, 8);
+    expect(events.length).to.equal(1);
+
+    const kill = { type: TriggerTypes.KILL };
+    mo.onTrigger(0, { id: 2, x: 0, y: 0 }, kill);
+    expect(events.length).to.equal(2);
+
+    delete globalThis.lemmings;
+  });
+
+  it('skips sound emission when sfxId is not positive', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) { events.push({ type, id, payload }); } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP);
+    mo.onTrigger(0, null, { type: TriggerTypes.TRAP, soundIndex: 0 });
+    expect(events.length).to.equal(0);
+    delete globalThis.lemmings;
   });
 });

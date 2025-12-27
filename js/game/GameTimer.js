@@ -1,5 +1,6 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { EventHandler } from '../util/EventHandler.js';
+import { withPerformance } from '../util/LogHandler.js';
 
 const getApp = () => {
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
@@ -19,6 +20,7 @@ class GameTimer {
   #autoPaused;
   #stableTicks;
   #catchupSlow;
+  #catchupBaseSpeed;
   #visHandler;
   benchStartupFrames = 0;
   benchStableFactor = 1;
@@ -40,9 +42,10 @@ class GameTimer {
     this.#autoPaused = false;
     this.#stableTicks = 0;
     this.#catchupSlow = false;
+    this.#catchupBaseSpeed = 1;
     this.#visHandler = () => {
       const app = getApp();
-      const skip = app?.bench || app?.benchSequence;
+      const skip = app?.bench || app?.bench2 || app?.benchSequence;
       if (skip) return;
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
       if (hidden) {
@@ -138,32 +141,48 @@ class GameTimer {
 
   #loop(now) {
     if (!this.isRunning()) return;
-    window.cancelAnimationFrame(this.#rafId);
-    this.#rafId = 0;
-    const app = getApp();
-    if (app) app.tps = this.tps;
-    const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
-    if (gameSeconds > this.#lastGameSecond) {
-      if (this.eachGameSecond) {
-        this.#lastGameSecond = gameSeconds;
-        this.eachGameSecond.trigger();
+    return withPerformance(
+      'GameTimer loop',
+      {
+        track: 'GameTimer',
+        trackGroup: 'Game Loop',
+        color: 'primary',
+        tooltipText: 'loop'
+      },
+      () => {
+        window.cancelAnimationFrame(this.#rafId);
+        this.#rafId = 0;
+        const app = getApp();
+        if (app) app.tps = this.tps;
+        const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
+        if (gameSeconds > this.#lastGameSecond) {
+          if (this.eachGameSecond) {
+            this.#lastGameSecond = gameSeconds;
+            this.eachGameSecond.trigger();
+          }
+        }
+        const frameTime = this.#frameTime;
+        let delta = now - this.#lastTime;
+        if (delta >= frameTime) {
+          const steps = Math.floor(delta / frameTime);
+          if (app?.bench === true || app?.benchSequence === true) {
+            this.#benchSpeedAdjust(steps);
+          }
+          if (app?.bench2 === true) {
+            if (steps > 1) this.#catchupSpeedAdjust(steps);
+            else this.#restoreSpeed();
+          }
+          delta -= steps * frameTime;
+          this.#lastTime = now - delta;
+          for (let i = 0; i < steps; ++i) {
+            if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
+            ++this.tickIndex;
+            if (this.onGameTick) this.onGameTick.trigger();
+          }
+        }
+        this.#rafId = window.requestAnimationFrame(this.#loopBound);
       }
-    }
-    let delta = now - this.#lastTime;
-    if (delta >= this.#frameTime) {
-      const steps = Math.floor(delta / this.#frameTime);
-      if (app?.bench === true || app?.benchSequence === true) {
-        this.#benchSpeedAdjust(steps);
-      }
-      delta -= steps * this.#frameTime;
-      this.#lastTime = now - delta;
-      for (let i = 0; i < steps; ++i) {
-        if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-        ++this.tickIndex;
-        if (this.onGameTick) this.onGameTick.trigger();
-      }
-    }
-    this.#rafId = window.requestAnimationFrame(this.#loopBound);
+    ).call(this);
   }
 
   #benchSpeedAdjust(steps) {
@@ -229,7 +248,7 @@ class GameTimer {
       const stage = app?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
-        if (app.bench) {
+        if (app.bench || app.bench2) {
           const gui = stage.guiImgProps;
           const scale = gui.viewPoint.scale;
           rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };
@@ -241,6 +260,9 @@ class GameTimer {
 
   #catchupSpeedAdjust(steps) {
     const newFactor = Math.max(0.1, 1 / steps);
+    if (!this.#catchupSlow) {
+      this.#catchupBaseSpeed = this.#speedFactor;
+    }
     if (newFactor < this.#speedFactor) {
       console.log(`catchup: ${steps} steps, speed ${newFactor}`);
       this.#speedFactor = newFactor;
@@ -252,7 +274,7 @@ class GameTimer {
   #restoreSpeed() {
     if (this.#catchupSlow) {
       this.#catchupSlow = false;
-      this.speedFactor = 1;
+      this.speedFactor = this.#catchupBaseSpeed || 1;
     }
   }
 

@@ -30,6 +30,7 @@ class GameView extends BaseLogger {
     this.stage = null;
     this.gameSpeedFactor = 1;
     this.bench = false; // just keep spawning lems
+    this.bench2 = false;
     this.benchSequence = false;
     this._benchMeasureExtras = false;
     this.endless = false; // time doesn't run out, game doesn't end
@@ -38,6 +39,7 @@ class GameView extends BaseLogger {
     this.laggedOut = 0;
     this.extraLemmings = 0;
     this.perfMetrics = false;
+    this.performanceAPI = false;
     this.steps = 0;
     this._benchMonitor = null;
     this._benchSpeedTrack = null;
@@ -63,6 +65,7 @@ class GameView extends BaseLogger {
     this.midiRouter = null;
     this._midiOut = null;
     this._midiMapping = null;
+    this.midiEnabled = true;
 
     const gameTypes = getGameTypes();
     this.log.log('selected level: ' + gameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
@@ -103,8 +106,10 @@ class GameView extends BaseLogger {
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
-      await this.initMidiRouting();
-      this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
+      if (this.midiEnabled) {
+        await this.initMidiRouting();
+        this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
+      }
       game.start();
       const gameStateTypes = getGameStateTypes();
       this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
@@ -160,7 +165,7 @@ class GameView extends BaseLogger {
     this.game.getGameTimer().suspend();
     if (this.stage?.startOverlayFade) {
       let rect = null;
-      if (this.bench) {
+      if (this.bench || this.bench2) {
         const gui = this.stage.guiImgProps;
         const scale = gui.viewPoint.scale;
         rect = {
@@ -268,9 +273,17 @@ class GameView extends BaseLogger {
   }
 
   async initMidiRouting() {
+    if (!this.midiEnabled) {
+      this.midiRouter?.detach?.();
+      this.midiRouter?.scheduler?.allNotesOff?.();
+      return null;
+    }
     if (!this.midiRouter) {
       await this._ensureWebMidiEnabled();
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
+      if (typeof globalThis !== 'undefined' && globalThis.lemmingsMidiOverrides) {
+        this.applyMidiOverrides(globalThis.lemmingsMidiOverrides);
+      }
       const viewPan = typeof globalThis !== 'undefined' ? globalThis.lemmingsMidiViewPan : null;
       if (typeof viewPan === 'boolean') {
         const position = this._midiMapping.config.position || {};
@@ -287,6 +300,34 @@ class GameView extends BaseLogger {
     }
     if (this._midiOut) this.midiRouter.setOutput(this._midiOut);
     return this.midiRouter;
+  }
+
+  async setMidiEnabled(enabled) {
+    this.midiEnabled = !!enabled;
+    if (!this.midiEnabled) {
+      this.midiRouter?.detach?.();
+      this.midiRouter?.scheduler?.allNotesOff?.();
+      return;
+    }
+    await this.initMidiRouting();
+    if (this.game?.soundEvents) {
+      this.midiRouter?.attach(this.game.soundEvents, { game: this.game, stage: this.stage });
+    }
+  }
+
+  applyMidiOverrides(overrides) {
+    if (!overrides || !this._midiMapping) return;
+    if (typeof MidiMapping?.mergeConfigs === 'function') {
+      const merged = MidiMapping.mergeConfigs(this._midiMapping.config, overrides);
+      this._midiMapping = new MidiMapping(merged);
+    } else {
+      this._midiMapping.config = { ...this._midiMapping.config, ...overrides };
+    }
+    if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
+  }
+
+  getMidiConfig() {
+    return this._midiMapping?.config ?? null;
   }
 
   enableDebug() {
@@ -383,6 +424,7 @@ class GameView extends BaseLogger {
     this.cheatEnabled = this.parseBool(query, ['cheat', 'c']);
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);
+    this.bench2 = this.parseBool(query, ['bench2', 'b2']);
     this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
@@ -394,10 +436,8 @@ class GameView extends BaseLogger {
     if (query.get('shortcut') || query.get('_')) {
       this.shortcut = (query.get('shortcut') || query.get('_')) === 'true';
     }
-    this.perfMetrics = false;
-    if (query.get('perfMetrics') || query.get('pm')) {
-      this.perfMetrics = (query.get('perfMetrics') || query.get('pm')) === 'true';
-    }
+    this.performanceAPI = this.parseBool(query, ['performanceAPI', 'pa']);
+    this.perfMetrics = this.performanceAPI;
   }
   updateQuery() {
     const params = typeof window === 'undefined'
@@ -421,11 +461,13 @@ class GameView extends BaseLogger {
     // optional flags only appear when non-default
     setParam('debug', 'dbg', this.debug, false);
     setParam('bench', 'b', this.bench, false);
+    setParam('bench2', 'b2', this.bench2, false);
     setParam('benchSequence', 'bs', this.benchSequence, false);
     setParam('endless', 'e', this.endless, false);
     setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
     setParam('extra', 'ex', this.extraLemmings, 0);
     setParam('scale', 'sc', this.scale, 0);
+    setParam('performanceAPI', 'pa', this.performanceAPI, false);
 
     if (this.shortcut) {
       params.set('_', true);

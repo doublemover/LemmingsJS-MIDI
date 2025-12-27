@@ -98,7 +98,11 @@ class StubLevel {
       }
     };
   }
-  clearGroundWithMask(mask, x, y) { this.clearedMasks.push({ mask, x, y }); }
+  clearGroundWithMask(mask, x, y) { this.clearedMasks.push({ mask, x, y }); }   
+  clearGroundWithMaskCount(mask, x, y) {
+    this.clearGroundWithMask(mask, x, y);
+    return this.clearCount ?? 1;
+  }
   hasSteelUnderMask() { return this.steelUnder; }
   hasArrowUnderMask() { return this.arrowUnder; }
   clearGroundAt(x, y) { this.clearedPoints.push(this.key(x, y)); this.ground.delete(this.key(x, y)); }
@@ -1147,6 +1151,48 @@ describe('Action systems events and draws', function() {
     restore();
     expect(calls[0].type).to.equal(SoundEventTypes.STEEL_HIT);
     expect(calls[1].type).to.equal(SoundEventTypes.STEEL_HIT);
+  });
+
+  it('emits terrain events with intensity for dig, bash, and mine', function() {
+    const calls = [];
+    const restore = useSoundBus(calls);
+    const digLevel = new StubLevel();
+    const dig = new ActionDiggSystem(stubSprites);
+    const digLem = new StubLemming(10, 5);
+    digLem.id = 9;
+    for (let x = digLem.x - 4; x <= digLem.x; x++) {
+      digLevel.ground.add(digLevel.key(x, 3));
+    }
+    dig.digRow(digLevel, digLem, 3);
+
+    const mask = { offsetX: 0, offsetY: 0, width: 3, height: 1, at() { return false; } };
+    const masks = { GetMask() { return { GetMask() { return mask; } }; } };
+
+    const bashLevel = new StubLevel();
+    bashLevel.clearCount = 3;
+    const bash = new ActionBashSystem(stubSprites, masks);
+    const bashLem = new StubLemming();
+    bashLem.id = 10;
+    bashLem.frameIndex = 2; // -> state 3
+    bash.process(bashLevel, bashLem);
+
+    const mineLevel = new StubLevel();
+    mineLevel.clearCount = 2;
+    const mine = new ActionMineSystem(stubSprites, masks);
+    const mineLem = new StubLemming();
+    mineLem.id = 11;
+    mine.process(mineLevel, mineLem);
+
+    restore();
+    const digEvent = calls.find(call => call.type === SoundEventTypes.LEMMING_DIG);
+    const bashEvent = calls.find(call => call.type === SoundEventTypes.LEMMING_BASH);
+    const mineEvent = calls.find(call => call.type === SoundEventTypes.LEMMING_MINE);
+    expect(digEvent).to.be.ok;
+    expect(bashEvent).to.be.ok;
+    expect(mineEvent).to.be.ok;
+    expect(digEvent.data.intensity).to.be.greaterThan(1);
+    expect(bashEvent.data.intensity).to.be.greaterThan(1);
+    expect(mineEvent.data.intensity).to.be.greaterThan(1);
   });
 
   it('ActionBashSystem exits to walking when solid ends', function() {

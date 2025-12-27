@@ -174,9 +174,17 @@ class KeyboardShortcuts {
     }
   }
 
+  _shouldIgnoreKey(e) {
+    const target = e?.target;
+    if (!target) return false;
+    if (target.isContentEditable) return true;
+    const tag = String(target.tagName || '').toUpperCase();
+    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+  }
+
   _onKeyDown(e) {
     const game = this.view.game;
-    if (!game || e.ctrlKey || e.metaKey) return;
+    if (!game || e.ctrlKey || e.metaKey || this._shouldIgnoreKey(e)) return;
     let handled = true;
     switch (e.code) {
     case 'Digit1':

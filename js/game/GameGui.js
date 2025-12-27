@@ -166,7 +166,7 @@ class GameGui {
         const pauseIndex = Math.trunc(pauseX / 9);
         const speedFac = this.gameTimer.speedFactor;
         const app = getApp();
-        const debugOrBench = (this.game.showDebug || app?.bench === true);
+        const debugOrBench = (this.game.showDebug || app?.bench === true || app?.bench2 === true);
         if (pauseIndex === 0) {
           if (speedFac > 10) {
             this.gameTimer.speedFactor -= 10;
@@ -400,10 +400,28 @@ class GameGui {
   }
 
   render() {
-    if (!this.display) return;
+    const perfEnabled = typeof lemmings !== 'undefined' &&
+      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+      typeof performance !== 'undefined' &&
+      typeof performance.measure === 'function' &&
+      typeof performance.now === 'function';
+    const perfStart = perfEnabled ? performance.now() : 0;
+    if (!this.display) {
+      if (perfEnabled) {
+        try {
+          performance.measure('GameGui render', {
+            start: perfStart,
+            detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
+      return;
+    }
     const d = this.display;
     const app = getApp();
-    const bench = app?.bench === true || app?.benchSequence === true;
+    const bench = app?.bench === true || app?.bench2 === true || app?.benchSequence === true;
     if (bench) this.gameTimeChanged = true;
 
     if (this.backgroundChanged) {
@@ -582,6 +600,16 @@ class GameGui {
       const viewW = d.worldDataSize.width;
 
       this.miniMap.render(viewX, viewW);
+    }
+    if (perfEnabled) {
+      try {
+        performance.measure('GameGui render', {
+          start: perfStart,
+          detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
+        });
+      } catch {
+        /* ignored */
+      }
     }
   }
 

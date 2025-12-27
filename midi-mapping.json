@@ -12,22 +12,45 @@
     "root": 0,
     "degrees": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
   },
+  "timing": {
+    "bpmBase": 120,
+    "scheduleAheadMs": 0
+  },
+  "noteDefaults": {
+    "octave": 4,
+    "degree": 0,
+    "chord": "triad"
+  },
   "noteRange": { "min": 36, "max": 84 },
   "velocityRange": { "min": 20, "max": 110, "default": 80 },
   "durationTicks": { "default": 6, "min": 2, "max": 24 },
+  "envelope": {
+    "attack": 1,
+    "decay": 0,
+    "sustain": 1,
+    "release": 1
+  },
+  "repeat": {
+    "maxRepeats": 0,
+    "windowBeats": 4,
+    "spacingTicks": 2,
+    "velocityBoost": 0.15,
+    "durationBoost": 0
+  },
   "limits": {
     "windowMs": 1000,
     "maxEventsPerTick": 32,
     "hardMaxEventsPerTick": 128,
-    "maxEventsPerSecond": 250,
-    "hardMaxEventsPerSecond": 250,
+    "maxEventsPerSecond": 900,
+    "hardMaxEventsPerSecond": 1000,
+    "maxBytesPerSecond": 3906,
     "overloadCooldownMs": 500,
     "maxActiveNotes": 32,
     "prioritySfx": [2, 3, 16]
   },
   "density": { "windowTicks": 24, "velocityBoost": 0.4, "durationScale": 0.5 },
   "position": {
-    "xToNote": true,
+    "xToNote": false,
     "xNoteRange": { "min": -12, "max": 12 },
     "yToVelocity": true,
     "yToTimbre": true,
@@ -39,10 +62,73 @@
     "panOffscreenWeight": 0.2,
     "panOffscreenRange": 1
   },
+  "input": {
+    "enabled": true,
+    "channel": "omni",
+    "transport": {
+      "start": "restart",
+      "stop": "pause",
+      "continue": "resume"
+    },
+    "notes": {
+      "skillBase": 60,
+      "skillOrder": [
+        "CLIMBER",
+        "FLOATER",
+        "BOMBER",
+        "BLOCKER",
+        "BUILDER",
+        "BASHER",
+        "MINER",
+        "DIGGER"
+      ],
+      "actions": {
+        "pause": 36,
+        "resume": 38,
+        "restart": 40,
+        "speedDown": 41,
+        "speedUp": 43,
+        "speedReset": 45,
+        "toggleMidi": 47,
+        "toggleViewPan": 49
+      }
+    },
+    "cc": {
+      "speed": { "cc": 1, "min": 0.1, "max": 8 },
+      "bpmBase": { "cc": 74, "min": 60, "max": 200 },
+      "intensity": { "cc": 7, "min": 10, "max": 127 },
+      "accent": { "cc": 11, "min": 0, "max": 1 },
+      "keyRoot": { "cc": 16, "min": 0, "max": 11, "round": true, "target": "scale.root" },
+      "scaleName": {
+        "cc": 17,
+        "target": "scale.name",
+        "values": ["chromatic-minor", "major", "minor", "dorian", "mixolydian", "pentatonic", "chromatic"]
+      },
+      "xToNote": { "cc": 18, "toggle": true, "target": "position.xToNote" },
+      "yToVelocity": { "cc": 19, "toggle": true, "target": "position.yToVelocity" },
+      "yToTimbre": { "cc": 20, "toggle": true, "target": "position.yToTimbre" },
+      "viewPan": { "cc": 21, "toggle": true, "target": "position.viewPan" },
+      "repeatCount": { "cc": 22, "min": 0, "max": 6, "round": true, "target": "repeat.maxRepeats" },
+      "repeatSpacing": { "cc": 23, "min": 1, "max": 8, "round": true, "target": "repeat.windowBeats" },
+      "envAttack": { "cc": 24, "min": 0, "max": 2, "target": "envelope.attack" },
+      "envDecay": { "cc": 25, "min": 0, "max": 2, "target": "envelope.decay" },
+      "envSustain": { "cc": 26, "min": 0, "max": 1, "target": "envelope.sustain" },
+      "envRelease": { "cc": 27, "min": 0, "max": 2, "target": "envelope.release" },
+      "chordType": {
+        "cc": 28,
+        "target": "noteDefaults.chord",
+        "values": ["triad", "seventh", "sixth", "ninth", "power", "sus2", "sus4", "octave"]
+      },
+      "chordOctave": { "cc": 29, "min": 1, "max": 8, "round": true, "target": "noteDefaults.octave" },
+      "chordDegree": { "cc": 30, "min": 0, "max": 6, "round": true, "target": "noteDefaults.degree" },
+      "duration": { "cc": 31, "min": 1, "max": 24, "round": true, "target": "durationTicks.default" }
+    }
+  },
+  "triggers": {},
   "sfx": {
     "1": { "name": "skill-select", "note": 60, "durationTicks": 4 },
-    "2": { "name": "entrance-open", "note": 62, "durationTicks": 6 },
-    "3": { "name": "level-start", "note": 48, "durationTicks": 8 },
+    "2": { "name": "entrance-open", "note": 62, "durationTicks": 6, "priority": 2 },
+    "3": { "name": "level-start", "note": 48, "durationTicks": 8, "priority": 2 },
     "4": { "name": "skill-assign", "note": 64, "durationTicks": 4 },
     "5": { "name": "oh-no", "note": 55, "durationTicks": 8 },
     "6": { "name": "trap-zap", "note": 66, "durationTicks": 6 },
@@ -55,10 +141,13 @@
     "13": { "name": "trap-fire", "note": 58, "durationTicks": 8 },
     "14": { "name": "trap-ten-ton", "note": 40, "durationTicks": 8 },
     "15": { "name": "trap-bear", "note": 43, "durationTicks": 8 },
-    "16": { "name": "exit", "note": 76, "durationTicks": 6 },
+    "16": { "name": "exit", "note": 76, "durationTicks": 6, "priority": 2 },
     "17": { "name": "drown", "note": 45, "durationTicks": 8 },
     "18": { "name": "builder-warning", "note": 65, "durationTicks": 4 },
     "19": { "name": "fell-off", "note": 50, "durationTicks": 6, "disabled": true },
-    "20": { "name": "builder-step", "note": 67, "durationTicks": 4 }
+    "20": { "name": "builder-step", "note": 67, "durationTicks": 4 },
+    "21": { "name": "bash", "note": 57, "durationTicks": 4 },
+    "22": { "name": "dig", "note": 59, "durationTicks": 4 },
+    "23": { "name": "mine", "note": 61, "durationTicks": 4 }
   }
 }
