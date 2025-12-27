@@ -470,10 +470,10 @@ class GameView extends BaseLogger {
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.bench2 = this.parseBool(query, ['bench2', 'b2']);
     this.benchReverse = this.parseBool(query, ['benchReverse', 'bR']);
-    if (this.bench || this.bench2) {
+    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
+    if (this.bench || this.bench2 || this.benchSequence) {
       this.benchReverse = false;
     }
-    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
