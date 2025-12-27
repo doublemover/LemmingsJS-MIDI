@@ -59,6 +59,7 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 ### Memory considerations
 - Keep a rolling time-based cap (configurable window) for history length.
 - Default window length uses the level time limit (seconds until game over).
+- Endless levels or bench sessions without time limits are uncapped for now.
 - Trim keyframes/deltas older than the window and expose current history span/size.
 
 ## Time travel controller
@@ -123,4 +124,4 @@ Integration points:
 - Non-deterministic inputs: disallow new commands during reverse playback.
 
 ## Open questions
-- What should the history cap be for endless levels or bench sessions without time limits?
+- None.
