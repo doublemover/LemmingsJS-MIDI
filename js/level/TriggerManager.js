@@ -1,6 +1,7 @@
 import { ColorPalette } from '../render/ColorPalette.js';
 import { Frame } from '../render/Frame.js';
 import { TriggerTypes } from './TriggerTypes.js';
+import { withPerformance } from '../util/LogHandler.js';
 
 /*  TriggerManager
  *  ───────────────
@@ -82,27 +83,38 @@ class TriggerManager {
    * Query at pixel (x,y).  Returns a value from TriggerTypes
    */
   trigger (x, y, lemming = null) {
-    if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
-      return TriggerTypes.NO_TRIGGER;
-    }
+    return withPerformance(
+      'TriggerManager trigger',
+      {
+        track: 'TriggerManager',
+        trackGroup: 'Game State',
+        color: 'secondary-light',
+        tooltipText: 'trigger'
+      },
+      () => {
+        if (x < 0 || y < 0 || x > this._maxX || y > this._maxY) {
+          return TriggerTypes.NO_TRIGGER;
+        }
 
-    const bucket =
-      ( (y >> this._shift) * this._cols ) +
-      (  x >> this._shift);
+        const bucket =
+          ( (y >> this._shift) * this._cols ) +
+          (  x >> this._shift);
 
-    const cell = this._grid[bucket];
-    const tick = this.gameTimer.getGameTicks();
+        const cell = this._grid[bucket];
+        const tick = this.gameTimer.getGameTicks();
 
-    this._lastCheckTick[bucket] = tick;
+        this._lastCheckTick[bucket] = tick;
 
-    for (const trig of cell) {
-      const val = trig.trigger(x, y, tick, lemming);
-      if (val !== TriggerTypes.NO_TRIGGER) {
-        this._lastHitTick[bucket] = tick;
-        return val;
+        for (const trig of cell) {
+          const val = trig.trigger(x, y, tick, lemming);
+          if (val !== TriggerTypes.NO_TRIGGER) {
+            this._lastHitTick[bucket] = tick;
+            return val;
+          }
+        }
+        return TriggerTypes.NO_TRIGGER;
       }
-    }
-    return TriggerTypes.NO_TRIGGER;
+    ).call(this);
   }
 
   /** Draw rectangles in debug overlay */

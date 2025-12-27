@@ -108,4 +108,27 @@ describe('UnpackFilePart', function () {
     setDependency('LogHandler', origLog);
     expect(part.log.debugged.some(m => m.includes('skipping checksum'))).to.be.true;
   });
+
+  it('exposes metadata getters', function () {
+    const br = new BinaryReader(new Uint8Array([1, 2, 3]));
+    const part = new UnpackFilePart(br);
+    part.offset = 5;
+    part.initialBufferLen = 7;
+    part.checksum = 9;
+    part.decompressedSize = 11;
+    part.compressedSize = 13;
+    part.unknown0 = 15;
+    part.unknown1 = 17;
+    part.index = 19;
+    expect(part.offset).to.equal(5);
+    expect(part.initialBufferLen).to.equal(7);
+    expect(part.checksum).to.equal(9);
+    expect(part.decompressedSize).to.equal(11);
+    expect(part.compressedSize).to.equal(13);
+    expect(part.unknown0).to.equal(15);
+    expect(part.unknown1).to.equal(17);
+    expect(part.index).to.equal(19);
+    expect(part.unpackingDone).to.equal(false);
+    expect(part.fileReader).to.equal(br);
+  });
 });

@@ -116,4 +116,44 @@ describe('VGASpecReader', function() {
     expect(reader.log.logged.some(m => m.includes('unexpected end of file')))
       .to.be.true;
   });
+
+  it('handles repeat runs and exposes dimensions', function() {
+    const repeats = 301;
+    const part = new Uint8Array(24 + 16 + repeats * 2);
+    for (let i = 0; i < 8; i++) {
+      part[i * 3] = 2;
+      part[i * 3 + 1] = 4;
+      part[i * 3 + 2] = 6;
+    }
+    let pos = 24 + 16;
+    for (let i = 0; i < repeats; i++) {
+      part[pos++] = 129; // repeat run (257 - 129 = 128)
+      part[pos++] = 1;
+    }
+    const container = buildContainer(part);
+    const reader = new VGASpecReader(new BinaryReader(container), 320, 40);
+    expect(reader.width).to.equal(320);
+    expect(reader.height).to.equal(40);
+  });
+
+  it('returns early on copy overflow', function() {
+    const runs = 301;
+    const bytesPerRun = 129;
+    const part = new Uint8Array(40 + runs * bytesPerRun);
+    for (let i = 0; i < 8; i++) {
+      part[i * 3] = 1;
+      part[i * 3 + 1] = 2;
+      part[i * 3 + 2] = 3;
+    }
+    let pos = 40;
+    for (let i = 0; i < runs; i++) {
+      part[pos++] = 127;
+      for (let j = 0; j < 128; j++) {
+        part[pos++] = 0;
+      }
+    }
+    const container = buildContainer(part);
+    const reader = new VGASpecReader(new BinaryReader(container), 320, 40);
+    expect(reader.width).to.equal(320);
+  });
 });

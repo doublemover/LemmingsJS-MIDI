@@ -44,6 +44,11 @@ describe('CommandManager', function() {
     const cmd = cm.commandFactory('x');
     expect(cmd).to.be.instanceOf(StubCommand);
     expect(cm.commandFactory('z')).to.equal(null);
+    expect(cm.commandFactory('l')).to.be.ok;
+    expect(cm.commandFactory('n')).to.be.ok;
+    expect(cm.commandFactory('s')).to.be.ok;
+    expect(cm.commandFactory('i')).to.be.ok;
+    expect(cm.commandFactory('d')).to.be.ok;
   });
 
   it('parseCommand loads values correctly', function() {
@@ -51,6 +56,8 @@ describe('CommandManager', function() {
     const cmd = cm.parseCommand('x2:3');
     expect(cmd).to.be.instanceOf(StubCommand);
     expect(cmd.values).to.deep.equal([2, 3]);
+    const unknown = cm.parseCommand('z1');
+    expect(unknown).to.equal(null);
   });
 
   it('queueCommand logs command and serializes', function() {
@@ -107,6 +114,8 @@ describe('CommandManager', function() {
     cm.gameTimer = timer;
     cm.queueCommand(failCmd);
     expect(Object.keys(cm.loggedCommads)).to.have.lengthOf(0);
+
+    cm.queueCommand({ save() { return []; } });
   });
 
   it('early exits when constructed without dependencies', function() {
@@ -140,6 +149,27 @@ describe('CommandManager', function() {
     expect(cm.game).to.equal(newGame);
     expect(cm.runCommands).to.deep.equal({});
     expect(cm.loggedCommads).to.deep.equal({});
+  });
+
+  it('setGame ignores null input', function() {
+    const cm = new TestCommandManager(game, new MockTimer());
+    const prev = cm.game;
+    cm.setGame(null);
+    expect(cm.game).to.equal(prev);
+  });
+
+  it('removes inherited tick listener on construction', function() {
+    const timer = new MockTimer();
+    let removed = false;
+    TestCommandManager.prototype._tickListener = () => {};
+    timer.onBeforeGameTick.off = function(fn) {
+      if (fn === TestCommandManager.prototype._tickListener) removed = true;
+      Lemmings.EventHandler.prototype.off.call(this, fn);
+    };
+    const cm = new TestCommandManager(game, timer);
+    expect(removed).to.equal(true);
+    delete TestCommandManager.prototype._tickListener;
+    cm.dispose();
   });
 
   it('dispose removes tick listener and clears references', function() {

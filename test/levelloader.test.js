@@ -67,4 +67,52 @@ describe('LevelLoader', function () {
     expect(called).to.equal(0);
   });
 
+  it('loads odd table data and vgaspec levels when configured', async function () {
+    const oddBuf = new Uint8Array(56);
+    const dv = new DataView(oddBuf.buffer);
+    let pos = 0;
+    dv.setUint16(pos, 12); pos += 2;
+    dv.setUint16(pos, 34); pos += 2;
+    dv.setUint16(pos, 5); pos += 2;
+    dv.setUint16(pos, 9); pos += 2;
+    for (let i = 0; i < 8; i++) {
+      dv.setUint16(pos, i + 1);
+      pos += 2;
+    }
+    const name = 'OddTable';
+    for (let i = 0; i < name.length; i++) {
+      oddBuf[pos + i] = name.charCodeAt(i);
+    }
+
+    class Provider {
+      loadBinary(path, file) {
+        if (file === 'ODDTABLE.DAT') {
+          return Promise.resolve(new Lemmings.BinaryReader(oddBuf));
+        }
+        const data = readFileSync(new URL(`../${path}/${file}`, import.meta.url));
+        return Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(data)));
+      }
+    }
+
+    const origLoad = Lemmings.loadSteelSprites;
+    setDependency('loadSteelSprites', async () => []);
+
+    const config = {
+      path: 'lemmings',
+      gametype: Lemmings.GameTypes.LEMMINGS,
+      mechanics: {},
+      level: { filePrefix: 'LEVEL', useOddTable: true, order: [[-1]] }
+    };
+
+    const loader = new Lemmings.LevelLoader(new Provider(), config);
+    const level = await loader.getLevel(0, 0);
+    setDependency('loadSteelSprites', origLoad);
+
+    expect(level.releaseRate).to.equal(12);
+    expect(level.releaseCount).to.equal(34);
+    expect(level.needCount).to.equal(5);
+    expect(level.timeLimit).to.equal(9);
+    expect(level.name.startsWith('OddTable')).to.equal(true);
+  });
+
 });

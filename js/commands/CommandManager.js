@@ -72,8 +72,17 @@ class CommandManager extends BaseLogger {
   }
 
   queueCommand(newCommand) {
+    const endMeasure = this.startMeasure('CommandManager queueCommand', {
+      track: 'CommandManager',
+      trackGroup: 'Game State',
+      color: 'primary-light',
+      tooltipText: 'queueCommand'
+    });
     const currentTick = this.gameTimer?.getGameTicks();
-    if (currentTick == null) return;
+    if (currentTick == null) {
+      endMeasure();
+      return;
+    }
 
     let ok = false;
     if (typeof newCommand.execute === 'function') {
@@ -83,6 +92,7 @@ class CommandManager extends BaseLogger {
     if (ok) {
       this.loggedCommads[currentTick] = newCommand;
     }
+    endMeasure();
   }
 
   serialize() {

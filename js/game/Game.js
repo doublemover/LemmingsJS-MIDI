@@ -80,6 +80,12 @@ class Game extends BaseLogger {
   }
 
   async loadLevel (levelGroupIndex, levelIndex) {
+    const endMeasure = this.startMeasure('Game loadLevel', {
+      track: 'Game',
+      trackGroup: 'Game State',
+      color: 'primary',
+      tooltipText: `loadLevel ${levelGroupIndex}:${levelIndex}`
+    });
     this._disposeCurrentLevel();
 
     // Record indices for HUD etc.
@@ -146,6 +152,7 @@ class Game extends BaseLogger {
     if (this.display) this.gameDisplay.setGuiDisplay(this.display);
     if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
+    endMeasure();
     return this; // keeps legacy promise signature intact
   }
 
@@ -190,15 +197,23 @@ class Game extends BaseLogger {
   }
 
   runGameLogic () {
+    const endMeasure = this.startMeasure('Game runGameLogic', {
+      track: 'Game',
+      trackGroup: 'Game State',
+      color: 'secondary',
+      tooltipText: 'runGameLogic'
+    });
     if (!this.level) {
       this.log.log('level not loaded!');
+      endMeasure();
       return;
     }
     this.lemmingManager.tick();
+    endMeasure();
   }
 
   getGameState () {
-    if (typeof lemmings !== 'undefined' && lemmings.bench) {
+    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2)) {
       return GameStateTypes.RUNNING;
     }
     if (typeof lemmings !== 'undefined' && lemmings.endless) {
@@ -226,8 +241,20 @@ class Game extends BaseLogger {
   }
 
   checkForGameOver () {
-    if (typeof lemmings !== 'undefined' && lemmings.bench) return;
-    if (this.finalGameState !== GameStateTypes.UNKNOWN) return;
+    const endMeasure = this.startMeasure('Game checkForGameOver', {
+      track: 'Game',
+      trackGroup: 'Game State',
+      color: 'tertiary',
+      tooltipText: 'checkForGameOver'
+    });
+    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2)) {
+      endMeasure();
+      return;
+    }
+    if (this.finalGameState !== GameStateTypes.UNKNOWN) {
+      endMeasure();
+      return;
+    }
 
     const state = this.getGameState();
     if (state !== GameStateTypes.RUNNING &&
@@ -237,9 +264,16 @@ class Game extends BaseLogger {
       const Result = getDependency('GameResult', GameResult);
       this.onGameEnd?.trigger(new Result(this));
     }
+    endMeasure();
   }
 
   render () {
+    const endMeasure = this.startMeasure('Game render', {
+      track: 'Game',
+      trackGroup: 'Render',
+      color: 'primary-dark',
+      tooltipText: 'render'
+    });
     if (this.gameDisplay) {
       this.gameDisplay.render();
       if (this.showDebug) this.gameDisplay.renderDebug();
@@ -248,6 +282,7 @@ class Game extends BaseLogger {
       this.gameGui.render();
       this.guiDisplay.redraw();
     }
+    endMeasure();
   }
 }
 export { Game };

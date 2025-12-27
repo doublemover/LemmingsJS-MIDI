@@ -5,6 +5,7 @@ import { ActionDiggSystem } from '../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../actions/ActionMineSystem.js';
 import { SkillTypes } from './SkillTypes.js';
 import { getDependency } from '../core/dependencies.js';
+import { withPerformance } from '../util/LogHandler.js';
 
 class GameDisplay {
   constructor(game, level, lemmingManager, objectManager, triggerManager) {
@@ -80,32 +81,54 @@ class GameDisplay {
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
   render() {
-    if (this.display == null)
-      return;
-    this.level.render(this.display);
-    this.objectManager.render(this.display);
-    this.lemmingManager.render(this.display);
-    if (!this.game.showDebug) {
-      const sel = this.lemmingManager.getSelectedLemming();
-      if (sel && !sel.removed) this.#drawSelection(sel);
+    return withPerformance(
+      'GameDisplay render',
+      {
+        track: 'GameDisplay',
+        trackGroup: 'Render',
+        color: 'primary',
+        tooltipText: 'render'
+      },
+      () => {
+        if (this.display == null)
+          return;
+        this.level.render(this.display);
+        this.objectManager.render(this.display);
+        this.lemmingManager.render(this.display);
+        if (!this.game.showDebug) {
+          const sel = this.lemmingManager.getSelectedLemming();
+          if (sel && !sel.removed) this.#drawSelection(sel);
 
-      if (this.hoverLemming && !this.hoverLemming.removed) {
-        this.#drawHover(this.hoverLemming);
+          if (this.hoverLemming && !this.hoverLemming.removed) {
+            this.#drawHover(this.hoverLemming);
+          }
+        }
       }
-    }
+    ).call(this);
   }
   renderDebug() {
-    if (this.display == null)
-      return;
-    this.level.renderDebug(this.display);
-    this.lemmingManager.renderDebug(this.display);
-    this.triggerManager.renderDebug(this.display);
-    if (this.hoverLemming) {
-      const x = this.hoverLemming.x - 5;
-      const y = this.hoverLemming.y - 11;
-      this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
-      this._dashOffset = (this._dashOffset + 1) % 6;
-    }
+    return withPerformance(
+      'GameDisplay renderDebug',
+      {
+        track: 'GameDisplay',
+        trackGroup: 'Render',
+        color: 'secondary',
+        tooltipText: 'renderDebug'
+      },
+      () => {
+        if (this.display == null)
+          return;
+        this.level.renderDebug(this.display);
+        this.lemmingManager.renderDebug(this.display);
+        this.triggerManager.renderDebug(this.display);
+        if (this.hoverLemming) {
+          const x = this.hoverLemming.x - 5;
+          const y = this.hoverLemming.y - 11;
+          this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
+          this._dashOffset = (this._dashOffset + 1) % 6;
+        }
+      }
+    ).call(this);
   }
 
   #drawCorner(x, y, r, g, b) {

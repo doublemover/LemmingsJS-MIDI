@@ -2,8 +2,7 @@ import { MidiMapping } from './MidiMapping.js';
 import { MidiScheduler } from './MidiScheduler.js';
 
 const MAX_EVENTS_PER_TICK = 32;
-// Cap note-on rate so note-off traffic fits MIDI 1.0 bandwidth.
-const MAX_MIDI_EVENTS_PER_SECOND = 250;
+const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
 
 class MidiEventRouter {
   constructor(mapping = null) {
@@ -13,15 +12,19 @@ class MidiEventRouter {
     this.context = {};
     this._lastTickBySfx = new Map();
     this._tickCounter = { tick: null, count: 0 };
-    this._rateLimit = { maxPerSecond: 0, tokens: 0, lastMs: 0 };
+    this._clockBaseMs = null;
+    this._clockFrameMs = null;
+    this._clockSpeedFactor = null;
+    this._lastAcceptedBySfx = new Map();
+    this._arpStateBySfx = new Map();
+    this._repeatHistoryByKey = new Map();
+    this._lastRateReport = null;
     this._boundOnEvent = this._onEvent.bind(this);
-    this._resetRateLimit();
   }
 
   setMapping(mapping) {
     this.mapping = mapping instanceof MidiMapping ? mapping : new MidiMapping(mapping || {});
     this.scheduler.setConfig(this.mapping.config);
-    this._resetRateLimit();
   }
 
   setOutput(output) {
@@ -34,7 +37,6 @@ class MidiEventRouter {
     }
     this.soundBus = soundBus;
     this.context = context || {};
-    this._resetRateLimit();
     this.soundBus?.onEvent?.on(this._boundOnEvent);
   }
 
@@ -67,59 +69,347 @@ class MidiEventRouter {
     return typeof performance !== 'undefined' ? performance.now() : Date.now();
   }
 
-  _resetRateLimit() {
-    const limits = this.mapping.config?.limits || {};
-    const maxPerSecond = limits.maxEventsPerSecond ?? MAX_MIDI_EVENTS_PER_SECOND;
-    const capped = Math.min(Math.max(maxPerSecond, 1), MAX_MIDI_EVENTS_PER_SECOND);
-    this._rateLimit.maxPerSecond = capped;
-    this._rateLimit.tokens = capped;
-    this._rateLimit.lastMs = this._nowMs();
+  _resolveScheduleBase(eventTimeMs, frameMs, speedFactor) {
+    if (!Number.isFinite(eventTimeMs)) return null;
+    const frameChanged = Number.isFinite(frameMs) &&
+      this._clockFrameMs != null &&
+      Math.abs(frameMs - this._clockFrameMs) > 0.001;
+    const speedChanged = Number.isFinite(speedFactor) &&
+      this._clockSpeedFactor != null &&
+      speedFactor !== this._clockSpeedFactor;
+    if (frameChanged || speedChanged) {
+      this._clockBaseMs = null;
+      this._lastAcceptedBySfx.clear();
+      this._arpStateBySfx.clear();
+      this._repeatHistoryByKey.clear();
+      this.scheduler?.allNotesOff?.();
+    }
+    if (this._clockBaseMs == null) {
+      this._clockBaseMs = this._nowMs() - eventTimeMs;
+    }
+    if (Number.isFinite(frameMs)) this._clockFrameMs = frameMs;
+    if (Number.isFinite(speedFactor)) this._clockSpeedFactor = speedFactor;
+    return this._clockBaseMs;
   }
 
-  _consumeRateToken() {
-    const rate = this._rateLimit;
-    const now = this._nowMs();
-    const elapsedMs = Math.max(0, now - rate.lastMs);
-    if (elapsedMs > 0) {
-      rate.tokens = Math.min(rate.maxPerSecond, rate.tokens + (elapsedMs / 1000) * rate.maxPerSecond);
-      rate.lastMs = now;
+  _getEventPriority(event, sfx) {
+    if (Number.isFinite(sfx?.priority)) return sfx.priority;
+    const priorityList = this.mapping.config?.limits?.prioritySfx || [];
+    if (priorityList.includes(event?.sfxId)) return 2;
+    return 1;
+  }
+
+  _getBpm() {
+    const base = this.mapping.config?.timing?.bpmBase ?? 120;
+    const speed = this.context?.game?.getGameTimer?.()?.speedFactor ?? 1;
+    return Math.max(20, base * speed);
+  }
+
+  _resolveArpKey(event, sfx) {
+    if (event?.triggerType != null && sfx?.arp?.independent) {
+      const objectId = Number.isFinite(event.objectId) ? event.objectId : null;
+      if (objectId != null) {
+        return `trigger:${event.triggerType}:${event.sfxId}:object:${objectId}`;
+      }
+      const lemmingId = Number.isFinite(event.lemmingId) ? event.lemmingId : null;
+      if (lemmingId != null) {
+        return `trigger:${event.triggerType}:${event.sfxId}:lemming:${lemmingId}`;
+      }
+      const x = Number.isFinite(event.x) ? Math.round(event.x) : 'x';
+      const y = Number.isFinite(event.y) ? Math.round(event.y) : 'y';
+      return `trigger:${event.triggerType}:${event.sfxId}:${x}:${y}`;
     }
-    if (rate.tokens < 1) return false;
-    rate.tokens -= 1;
+    return `sfx:${event?.sfxId ?? 'unknown'}`;
+  }
+
+  _getRepeatFactor(key, timeMs, repeatCfg, bpm) {
+    const maxRepeats = Math.max(0, repeatCfg.maxRepeats ?? 0);
+    const windowBeats = repeatCfg.windowBeats ?? repeatCfg.spacingTicks ?? 0;
+    if (maxRepeats <= 0 || !Number.isFinite(timeMs) || windowBeats <= 0 || bpm <= 0) {
+      return 0;
+    }
+    const windowMs = (60000 / bpm) * windowBeats;
+    const history = this._repeatHistoryByKey.get(key) || [];
+    const cutoff = timeMs - windowMs;
+    const nextHistory = history.filter(entry => entry >= cutoff);
+    nextHistory.push(timeMs);
+    this._repeatHistoryByKey.set(key, nextHistory);
+    const repeatCount = Math.max(0, nextHistory.length - 1);
+    return Math.min(repeatCount / maxRepeats, 1);
+  }
+
+  _planEntries(spec, sendTimeMs, noteCount = 1) {
+    const durationMs = Number.isFinite(spec.durationTicks) ? Math.max(0, spec.durationTicks * this.scheduler.tickMs) : 0;
+    const offTimeMs = sendTimeMs + durationMs;
+    const offMessages = durationMs > 0 ? (1 + (this.mapping.config?.mpe?.enabled ? 1 : 0)) : 0;
+    const estimate = this.scheduler.estimateMessages(spec);
+    const onMessages = Math.max(estimate.messages - offMessages, 0);
+    const onBytes = onMessages * 3;
+    const offBytes = offMessages * 3;
+    return {
+      on: { timeMs: sendTimeMs, count: onMessages * noteCount, bytes: onBytes * noteCount },
+      off: { timeMs: offTimeMs, count: offMessages * noteCount, bytes: offBytes * noteCount }
+    };
+  }
+
+  _shouldSend(meta, spec, plan, now) {
+    const limits = this.mapping.config?.limits || {};
+    const maxPerSecond = Math.min(Math.max(limits.maxEventsPerSecond ?? MAX_MIDI_MESSAGES_PER_SECOND, 1), MAX_MIDI_MESSAGES_PER_SECOND);
+    const hardMaxPerSecond = Math.min(
+      Math.max(limits.hardMaxEventsPerSecond ?? maxPerSecond, 1),
+      MAX_MIDI_MESSAGES_PER_SECOND
+    );
+    const snapshot = this.scheduler.getRateSnapshot(now);
+    const maxBytes = limits.maxBytesPerSecond ?? snapshot.maxBytesPerSecond;
+    const windowEnd = now + 1000;
+    let nextCount = snapshot.next.count;
+    let nextBytes = snapshot.next.bytes;
+    if (plan.on.timeMs >= now && plan.on.timeMs < windowEnd) {
+      nextCount += plan.on.count;
+      nextBytes += plan.on.bytes;
+    }
+    if (plan.off.timeMs >= now && plan.off.timeMs < windowEnd) {
+      nextCount += plan.off.count;
+      nextBytes += plan.off.bytes;
+    }
+    if (nextCount <= maxPerSecond && nextBytes <= maxBytes) {
+      return true;
+    }
+    if (nextBytes > maxBytes) {
+      this._lastRateReport = {
+        timeMs: now,
+        reason: 'byte-limit',
+        snapshot: this.scheduler.getUsageShare('next', now)
+      };
+      return false;
+    }
+    if (nextCount > hardMaxPerSecond) {
+      this._lastRateReport = {
+        timeMs: now,
+        reason: 'count-limit',
+        snapshot: this.scheduler.getUsageShare('next', now)
+      };
+      return false;
+    }
+    const plannedCount = nextCount - snapshot.next.count;
+    const plannedBytes = nextBytes - snapshot.next.bytes;
+    const priority = meta.priority ?? 1;
+    const bySfx = snapshot.next.bySfx;
+    let higherCount = 0;
+    let higherBytes = 0;
+    let sameGroupCount = 0;
+    let sameGroupBytes = 0;
+    const samePriority = [];
+    for (const [sfxId, entry] of bySfx.entries()) {
+      const entryPriority = entry.priority ?? 1;
+      if (entryPriority > priority) {
+        higherCount += entry.count;
+        higherBytes += entry.bytes;
+      } else if (entryPriority === priority) {
+        samePriority.push({ sfxId, count: entry.count, bytes: entry.bytes, priority: entryPriority });
+        sameGroupCount += entry.count;
+        sameGroupBytes += entry.bytes;
+      }
+    }
+    const available = Math.max(0, maxPerSecond - higherCount);
+    const availableBytes = Math.max(0, maxBytes - higherBytes);
+    if (available <= 0) {
+      this._lastRateReport = {
+        timeMs: now,
+        reason: nextBytes > maxBytes ? 'byte-limit' : 'priority-saturated',
+        snapshot: this.scheduler.getUsageShare('next', now)
+      };
+      return false;
+    }
+    if (availableBytes <= 0) {
+      this._lastRateReport = {
+        timeMs: now,
+        reason: 'byte-limit',
+        snapshot: this.scheduler.getUsageShare('next', now)
+      };
+      return false;
+    }
+
+    const shareReport = this.scheduler.getUsageShare('next', now);
+    const sameGroup = shareReport.filter(entry => entry.priority === priority);
+    const current = sameGroup.find(entry => entry.sfxId === meta.sfxId);
+    const groupSize = sameGroup.length + (current ? 0 : 1) || 1;
+    const evenShare = 1 / groupSize;
+    const shareRatio = evenShare > 0 ? ((current?.percentCount ?? evenShare) / evenShare) : 1;
+    const projectedGroupCount = sameGroupCount + plannedCount;
+    const projectedGroupBytes = sameGroupBytes + plannedBytes;
+    const overCount = projectedGroupCount > available
+      ? projectedGroupCount / Math.max(available, 1)
+      : 1;
+    const overBytes = projectedGroupBytes > availableBytes
+      ? projectedGroupBytes / Math.max(availableBytes, 1)
+      : 1;
+    const overageFactor = Math.max(1, overCount, overBytes);
+    const budgetCount = available / Math.max(groupSize, 1);
+    const budgetBytes = availableBytes / Math.max(groupSize, 1);
+    const projectedCount = (current?.count ?? 0) + plannedCount;
+    const projectedBytes = (current?.bytes ?? 0) + plannedBytes;
+    const overBudget = (budgetCount > 0 && projectedCount > budgetCount) ||
+      (budgetBytes > 0 && projectedBytes > budgetBytes);
+    const bpm = this._getBpm();
+    const beatMs = 60000 / bpm;
+    const spacingMs = beatMs * Math.max(1, shareRatio, overageFactor) / Math.max(priority, 1);
+    const lastAccepted = this._lastAcceptedBySfx.get(meta.sfxId) ?? -Infinity;
+    const okSpacing = (spec.timeMs ?? now) - lastAccepted >= spacingMs;
+    const limitReason = overBudget ? 'share-throttle' : 'count-limit';
+    this._lastRateReport = {
+      timeMs: now,
+      reason: nextBytes > maxBytes ? 'byte-limit' : (okSpacing ? limitReason : 'spacing'),
+      snapshot: shareReport
+    };
+    if (!okSpacing || overBudget) return false;
     return true;
   }
 
+  getRateReport() {
+    return this._lastRateReport;
+  }
+
+  getRateSnapshot() {
+    return this.scheduler.getRateSnapshot();
+  }
+
+  getUsageShare(window = 'past') {
+    return this.scheduler.getUsageShare(window);
+  }
+
   _onEvent(event) {
-    if (!event || event.sfxId == null) return;
-    if (!this.mapping.config?.enabled) return;
-    if (!this.scheduler.output) return;
-    const tick = event.tick;
-    if (tick != null && this._tickCounter.tick !== tick) {
-      this._tickCounter.tick = tick;
-      this._tickCounter.count = 0;
+    const perfEnabled = typeof lemmings !== 'undefined' &&
+      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+      typeof performance !== 'undefined' &&
+      typeof performance.measure === 'function' &&
+      typeof performance.now === 'function';
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (!event || event.sfxId == null) return;
+      if (!this.mapping.config?.enabled) return;
+      if (!this.scheduler.output) return;
+      const now = this._nowMs();
+      const tick = event.tick;
+      if (tick != null && this._tickCounter.tick !== tick) {
+        this._tickCounter.tick = tick;
+        this._tickCounter.count = 0;
+      }
+      const limits = this.mapping.config?.limits || {};
+      const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
+      const tickMs = this._tickMsFromEvent(event);
+      this.scheduler.setTickMs(tickMs);
+      const density = this._densityForEvent(event);
+      const viewRect = this.context?.stage?.getGameViewRect?.() || null;
+      const context = {
+        levelWidth: this.context?.game?.level?.width ?? this.context?.level?.width ?? null,
+        levelHeight: this.context?.game?.level?.height ?? this.context?.level?.height ?? null,
+        viewRect
+      };
+      const baseSfx = this.mapping.getSfxConfig(event.sfxId) || {};
+      const triggerCfg = event?.triggerType != null
+        ? this.mapping.config?.triggers?.[String(event.triggerType)] || null
+        : null;
+      const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
+      const spec = this.mapping.mapEvent(event, context, density, sfx);
+      if (!spec) return;
+      if (tick != null && this._tickCounter.count >= maxPerTick) return;
+      if (tick != null) {
+        this._tickCounter.count += 1;
+      }
+      if (event.tick != null) {
+        this._lastTickBySfx.set(event.sfxId, event.tick);
+      }
+      const priority = this._getEventPriority(event, sfx);
+      const meta = { sfxId: event.sfxId, eventType: event.type, priority, triggerType: event.triggerType ?? null };
+      const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;
+      const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
+      const rawTime = Number.isFinite(event.timeMs) && base != null ? base + event.timeMs : now;
+      const sendTimeMs = Math.max(rawTime, now + scheduleAhead);
+      const noteList = Array.isArray(spec.notes) && spec.notes.length ? spec.notes : [spec.note];
+
+      const arp = spec.arp;
+      let activeNotes = noteList.slice();
+      if (arp?.enabled && noteList.length) {
+        const sorted = noteList.slice().sort((a, b) => a - b);
+        const length = Math.max(1, Math.min(arp.length ?? sorted.length, sorted.length));
+        const seq = sorted.slice(0, length);
+        const seqKey = seq.join(',');
+        const arpKey = this._resolveArpKey(event, sfx);
+        const state = this._arpStateBySfx.get(arpKey) || {
+          index: 0,
+          dir: 1,
+          mode: arp.mode,
+          length,
+          seqKey
+        };
+        if (state.mode !== arp.mode || state.length !== length || state.seqKey !== seqKey) {
+          state.index = 0;
+          state.dir = 1;
+        }
+        state.mode = arp.mode;
+        state.length = length;
+        state.seqKey = seqKey;
+        let idx = state.index;
+        if (idx >= seq.length || idx < 0) idx = 0;
+        if (seq.length <= 1) {
+          activeNotes = [seq[0]];
+          state.index = 0;
+          state.dir = 1;
+        } else if (arp.mode === 'down') {
+          const reversed = seq.slice().reverse();
+          activeNotes = [reversed[idx]];
+          state.index = idx + 1;
+        } else if (arp.mode === 'updown') {
+          activeNotes = [seq[idx]];
+          if (idx + state.dir >= seq.length || idx + state.dir < 0) {
+            state.dir *= -1;
+          }
+          state.index = idx + state.dir;
+        } else {
+          activeNotes = [seq[idx]];
+          state.index = idx + 1;
+        }
+        this._arpStateBySfx.set(arpKey, state);
+      }
+
+      const repeatCfg = { ...(this.mapping.config?.repeat || {}), ...(sfx.repeat || {}) };
+      const bpm = this._getBpm();
+      const repeatKey = event?.triggerType != null
+        ? `trigger:${event.triggerType}:${event.sfxId}`
+        : `sfx:${event.sfxId}`;
+      const repeatFactor = this._getRepeatFactor(repeatKey, sendTimeMs, repeatCfg, bpm);
+      const velocityBoost = repeatCfg.velocityBoost ?? 0;
+      const durationBoost = repeatCfg.durationBoost ?? 0;
+      const velocityScale = 1 + velocityBoost * repeatFactor;
+      const durationScale = 1 + durationBoost * repeatFactor;
+      const specWithTime = {
+        ...spec,
+        timeMs: sendTimeMs,
+        velocity: Math.max(1, Math.min(127, Math.round((spec.velocity ?? 64) * velocityScale))),
+        durationTicks: Math.max(1, Math.round((spec.durationTicks ?? 1) * durationScale))
+      };
+      const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
+      if (!this._shouldSend(meta, specWithTime, plan, now)) {
+        return;
+      }
+      for (const note of activeNotes) {
+        const adjusted = { ...specWithTime, note };
+        this.scheduler.sendNote(adjusted, meta);
+      }
+      this._lastAcceptedBySfx.set(event.sfxId, sendTimeMs);
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('MidiEventRouter onEvent', {
+            start: perfStart,
+            detail: { devtools: { track: 'MidiEventRouter', trackGroup: 'MIDI', color: 'primary', tooltipText: 'onEvent' } }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
     }
-    const limits = this.mapping.config?.limits || {};
-    const maxPerTick = Math.min(Math.max(limits.maxEventsPerTick ?? MAX_EVENTS_PER_TICK, 1), MAX_EVENTS_PER_TICK);
-    const tickMs = this._tickMsFromEvent(event);
-    this.scheduler.setTickMs(tickMs);
-    const density = this._densityForEvent(event);
-    const viewRect = this.context?.stage?.getGameViewRect?.() || null;
-    const context = {
-      levelWidth: this.context?.game?.level?.width ?? this.context?.level?.width ?? null,
-      levelHeight: this.context?.game?.level?.height ?? this.context?.level?.height ?? null,
-      viewRect
-    };
-    const spec = this.mapping.mapEvent(event, context, density);
-    if (!spec) return;
-    if (tick != null && this._tickCounter.count >= maxPerTick) return;
-    if (!this._consumeRateToken()) return;
-    if (tick != null) {
-      this._tickCounter.count += 1;
-    }
-    if (event.tick != null) {
-      this._lastTickBySfx.set(event.sfxId, event.tick);
-    }
-    this.scheduler.sendNote(spec);
   }
 
   dispose() {

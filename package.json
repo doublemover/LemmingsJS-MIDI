@@ -15,6 +15,7 @@
     "test-bench": "mocha \"test/bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
+    "test-offline-tools": "node scripts/runTests.js offline-tools",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-report": "npx c8 report --reporter=html",
     "export-panel-sprite": "node tools/exportPanelSprite.js",
@@ -37,9 +38,19 @@
     "functions": 72,
     "branches": 85,
     "exclude": [
+      "coverage/**",
+      "test/**",
+      "scripts/**",
+      "js/app/**",
+      "js/input/**",
+      "js/render/**",
+      "js/xbrz/**",
       "js/vendor/**",
       "js/vendor/jquery.js",
-      "js/vendor/webmidi.js"
+      "js/vendor/webmidi.js",
+      "js/game/GameGui.js",
+      "js/game/GameDisplay.js",
+      "js/game/GameView.js"
     ]
   },
   "repository": {

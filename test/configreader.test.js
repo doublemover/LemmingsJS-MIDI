@@ -68,4 +68,39 @@ describe('ConfigReader', function () {
     ]);
     expect(cfg.mechanics).to.eql(packMechanics.lemmings_ohNo);
   });
+
+  it('returns empty configs on parse errors', function () {
+    const reader = new ConfigReader(Promise.resolve('bad json'));
+    const parsed = reader.parseConfig('bad json');
+    expect(parsed).to.eql([]);
+  });
+
+  it('returns undefined for gameType 0', function () {
+    const reader = new ConfigReader(Promise.resolve('[]'));
+    const result = reader.getConfig(0);
+    expect(result).to.equal(undefined);
+  });
+
+  it('rejects when config is missing and handles legacy odd table flag', async function () {
+    const json = JSON.stringify([
+      {
+        name: 'lemmings',
+        path: 'lemmings',
+        gametype: 'LEMMINGS',
+        'level.filePrefix': 'LEVEL',
+        'level.groups': ['Fun'],
+        'level.useoddtable': true,
+        'level.order': [[0]]
+      }
+    ]);
+    const reader = new ConfigReader(Promise.resolve(json));
+    const cfg = await reader.getConfig(Lemmings.GameTypes.LEMMINGS);
+    expect(cfg.level.useOddTable).to.equal(true);
+    try {
+      await reader.getConfig(Lemmings.GameTypes.OHNO);
+      expect.fail('expected rejection');
+    } catch (e) {
+      expect(e).to.equal(undefined);
+    }
+  });
 });

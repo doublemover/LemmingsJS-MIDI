@@ -20,20 +20,115 @@
   <script type="module" src="js/app/boot.js"></script>
 </head>
 <body oncontextmenu="return false;">
-  <div id="midiConfig" style="color:#fff; position: absolute; top: 0; left: 0;">
-    <div id="inputList">
-      <select id="midiInSelect"></select>
-    </div>
-    <div id="outputList">
-      <select id="midiOutSelect"></select>
-    </div>
-    <div id="viewPanToggle">
-      <label>
+  <div id="controlLeft" class="control-panel left">
+    <div class="panel-section">
+      <div class="panel-title">MIDI</div>
+      <label class="panel-row">
+        <input type="checkbox" id="midiEnabledToggle" />
+        MIDI enabled
+      </label>
+      <label class="panel-row">
+        Input
+        <select id="midiInSelect"></select>
+      </label>
+      <label class="panel-row">
+        Output
+        <select id="midiOutSelect"></select>
+      </label>
+      <label class="panel-row">
+        Input channel
+        <select id="midiInputChannel"></select>
+      </label>
+      <button id="midiResetButton" type="button">MIDI reset</button>
+      <label class="panel-row">
         <input type="checkbox" id="midiViewPanToggle" />
         View pan
       </label>
+      <div id="errorDisplay" class="panel-error"></div>
     </div>
-    <div id="errorDisplay" style="color:#f00;">
+    <div class="panel-section">
+      <div class="panel-title">Tempo</div>
+      <label class="panel-row">
+        Base BPM
+        <input type="number" id="midiBpmBase" min="40" max="240" step="1" />
+      </label>
+      <div class="panel-row">
+        Current BPM
+        <span id="midiBpmCurrent">--</span>
+      </div>
+    </div>
+    <details class="panel-section">
+      <summary class="panel-title">Sequencing</summary>
+      <div class="panel-row">
+        <span>Position mappings</span>
+        <button id="midiPositionAdd" type="button">Add mapping</button>
+      </div>
+      <div id="midiPositionList"></div>
+      <label class="panel-row">
+        Intensity
+        <input type="range" id="midiIntensity" min="10" max="127" step="1" />
+      </label>
+      <label class="panel-row">
+        Accent
+        <input type="range" id="midiAccent" min="0" max="1" step="0.01" />
+      </label>
+      <label class="panel-row">
+        Repeat max count
+        <input type="number" id="midiRepeatCount" min="0" max="4" step="1" />
+      </label>
+      <label class="panel-row">
+        Repeat window (beats)
+        <input type="number" id="midiRepeatSpacing" min="1" max="16" step="1" />
+      </label>
+    </details>
+  </div>
+  <div id="controlRight" class="control-panel right">
+    <div class="tabs">
+      <button class="tab-button active" data-tab="events">Events</button>
+      <button class="tab-button" data-tab="triggers">Triggers</button>
+      <button class="tab-button" data-tab="adsr">ADSR</button>
+    </div>
+    <div class="tab-panel active" id="midiTabEvents">
+      <div class="panel-section">
+        <div class="panel-title">Key and scale</div>
+        <label class="panel-row">
+          Key
+          <select id="midiKeySelect"></select>
+        </label>
+        <label class="panel-row">
+          Scale
+          <select id="midiScaleSelect"></select>
+        </label>
+      </div>
+      <div id="midiEventList"></div>
+    </div>
+    <div class="tab-panel" id="midiTabTriggers">
+      <div id="midiTriggerList"></div>
+    </div>
+    <div class="tab-panel" id="midiTabAdsr">
+      <div class="panel-section">
+        <div class="panel-title">Envelope</div>
+        <label class="panel-row">
+          Target
+          <select id="midiEnvTarget"></select>
+        </label>
+        <label class="panel-row">
+          Attack
+          <input type="range" id="midiEnvAttack" min="0" max="2" step="0.05" />
+        </label>
+        <label class="panel-row">
+          Decay
+          <input type="range" id="midiEnvDecay" min="0" max="1" step="0.05" />
+        </label>
+        <label class="panel-row">
+          Sustain
+          <input type="range" id="midiEnvSustain" min="0.25" max="2" step="0.05" />
+        </label>
+        <label class="panel-row">
+          Release
+          <input type="range" id="midiEnvRelease" min="0" max="2" step="0.05" />
+        </label>
+      </div>
     </div>
   </div>
   <div id="etc" style="color:#fff; position: absolute; bottom:0; left: 0;">

@@ -131,4 +131,40 @@ describe('L2ssSpriteDecoder', function () {
     const px0 = Array.from(frame.pixels.slice(0, 3));
     expect(px0).to.eql([7, 7, 7]);
   });
+
+  it('uses fallback palette and reminder branches', function () {
+    const width = 4;
+    const height = 1;
+    const header = new Uint8Array([
+      0x00, width,
+      0x00, height,
+      0x00, 0x00, 0x00, 0x14,
+      0x00, 0x00, 0x00, 0x16,
+      0x00, 0x00, 0x00, 0x17,
+      0x00, 0x00, 0x00, 0x18
+    ]);
+    const plane0 = new Uint8Array([PAL_DIFF + 1, 0xff]);
+    const plane1 = new Uint8Array([0xff]);
+    const plane2 = new Uint8Array([0xff]);
+    const plane3 = new Uint8Array([0xff]);
+    const data = new Uint8Array([
+      ...header,
+      ...plane0,
+      ...plane1,
+      ...plane2,
+      ...plane3
+    ]);
+    const palette = new Array(256).fill(null);
+    const debug = [{
+      m: 1,
+      l: 1,
+      xAdd: 1,
+      remindM: true,
+      remindL: true,
+      remindL2: true
+    }, null, null, null];
+    const frame = decodeFrame(data, 0, 0, palette, debug);
+    const px0 = Array.from(frame.pixels.slice(0, 3));
+    expect(px0).to.eql([0, 0, 0]);
+  });
 });

@@ -40,7 +40,7 @@ class LemmingManager extends BaseLogger {
         tooltipText: 'LemmingManager constructor'
       },
       () => {
-        if (!lemmings.bench && (lemmings.extraLemmings | 0) === 0) {
+        if (!lemmings.bench && !lemmings.bench2 && (lemmings.extraLemmings | 0) === 0) {
           this.lemmings = new Array(gameVictoryCondition.getReleaseCount());
           this.lemmings.length = 0;
         } else {
@@ -206,7 +206,7 @@ class LemmingManager extends BaseLogger {
         }
         const sel = this.getSelectedLemming();
         if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
-        if (lemmings.bench) {
+        if (lemmings.bench || lemmings.bench2) {
           lemmings.laggedOut = count;
         }
         if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
@@ -255,7 +255,7 @@ class LemmingManager extends BaseLogger {
         const startingLemLength = this.lemmings.length;
         const LemmingCtor = this._lemmingCtor || Lemming;
         const lem = new LemmingCtor(x, y, startingLemLength);
-        if (lemmings.bench) {
+        if (lemmings.bench || lemmings.bench2) {
           lem.lookRight = Math.random() < 0.5;
         }
         this.setLemmingState(lem, LemmingStateType.FALLING);
@@ -273,7 +273,7 @@ class LemmingManager extends BaseLogger {
               y,
               startingLemLength + 1 + i
             );
-            if (lemmings.bench) {
+            if (lemmings.bench || lemmings.bench2) {
               extra.lookRight = Math.random() < 0.5;
             }
             extra.setAction(action);
@@ -288,7 +288,7 @@ class LemmingManager extends BaseLogger {
 
   addNewLemmings() {
     const endless = lemmings?.endless === true;
-    if (lemmings.bench == true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
+    if (lemmings.bench == true || lemmings.bench2 == true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
             
     } else {
       if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
@@ -659,8 +659,7 @@ class LemmingManager extends BaseLogger {
     this._nukeTargets = null;
     this.selectedIndex = null;
     if (typeof lemmings !== 'undefined' &&
-            lemmings.perfMetrics === true &&
-            lemmings.debug === true &&
+            (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
             typeof performance !== 'undefined' &&
             typeof performance.measure === 'function') {
       performance.measure('LemmingManager Dispose', {

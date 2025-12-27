@@ -52,8 +52,11 @@ describe('BitReader', function() {
   it('validates constructor arguments', function() {
     const bytes = new Uint8Array([0]);
     const bin = new BinaryReader(bytes);
+    expect(() => new BitReader({}, 0, 1)).to.throw(TypeError);
     expect(() => new BitReader(bin, -1, 1)).to.throw(RangeError);
     expect(() => new BitReader(bin, 0, 0)).to.throw(RangeError);
     expect(() => new BitReader(bin, 0, 1, 9)).to.throw(RangeError);
+    expect(() => new BitReader(bin, 0, 1, -1)).to.throw(RangeError);
+    expect(() => new BitReader(bin, 0, 1, 1.5)).to.throw(RangeError);
   });
 });

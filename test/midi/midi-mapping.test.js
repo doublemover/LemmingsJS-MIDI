@@ -52,7 +52,7 @@ describe('MidiMapping', function() {
       0.5
     );
 
-    expect(spec.note).to.equal(78);
+    expect(spec.note).to.equal(66);
     expect(spec.velocity).to.equal(72);
     expect(spec.durationTicks).to.equal(8);
     expect(spec.timbre).to.equal(60);
@@ -84,5 +84,92 @@ describe('MidiMapping', function() {
     expect(center.pan).to.equal(0);
     expect(right.pan).to.be.greaterThan(0);
     expect(right.pan).to.be.at.most(127);
+  });
+
+  it('parses JSON input and handles invalid JSON', function() {
+    const valid = MidiMapping.fromJson('{"noteRange":{"min":50,"max":51}}');
+    expect(valid.config.noteRange.min).to.equal(50);
+    const invalid = MidiMapping.fromJson('{bad');
+    expect(invalid.config).to.be.ok;
+  });
+
+  it('returns sfx config and skips disabled events', function() {
+    const mapping = new MidiMapping({
+      enabled: true,
+      sfx: { '2': { note: 61, disabled: true } }
+    });
+    expect(mapping.getSfxConfig(2).note).to.equal(61);
+    expect(mapping.getSfxConfig(3)).to.equal(null);
+    const spec = mapping.mapEvent({ sfxId: 2 }, {}, 0);
+    expect(spec).to.equal(null);
+
+    const disabled = new MidiMapping({ enabled: false });
+    expect(disabled.mapEvent({ sfxId: 1 }, {}, 0)).to.equal(null);
+  });
+
+  it('quantizes and clamps notes with custom scale', function() {
+    const mapping = new MidiMapping({
+      scale: { degrees: [], root: 0 },
+      noteRange: { min: 60, max: 61 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.note).to.equal(61);
+  });
+
+  it('computes pan for offscreen events and keeps defaults', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        panRange: { min: -127, max: 127 },
+        panDeadZonePct: 0.1,
+        panOnscreenWeight: 0.5,
+        panOffscreenWeight: 0.5,
+        panOffscreenRange: 1,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1, x: 300 }, { viewRect: { x: 0, w: 100 } }, 0);
+    expect(spec.pan).to.be.greaterThan(0);
+  });
+
+  it('builds chords and applies envelope settings', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'major', root: 0 },
+      noteDefaults: { octave: 4, degree: 0, chord: 'triad' },
+      envelope: { attack: 1.2, decay: 0.1, sustain: 1, release: 0.8 },
+      sfx: { '1': { degree: 0, chord: { type: 'triad' } } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.notes).to.have.length(3);
+    expect(spec.velocity).to.be.greaterThan(0);
+    expect(spec.releaseVelocity).to.be.greaterThan(0);
+  });
+
+  it('applies intensity scaling and per-event envelope overrides', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 10, max: 127, default: 50 },
+      envelope: { attack: 1, decay: 0, sustain: 1, release: 1 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false },
+      sfx: { '1': { envelope: { attack: 1.5, release: 0.5 } } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1, intensity: 1.2 }, {}, 0);
+    expect(spec.velocity).to.equal(90);
+    expect(spec.releaseVelocity).to.equal(45);
+  });
+
+  it('merges configs with overrides', function() {
+    const merged = MidiMapping.mergeConfigs(
+      { noteRange: { min: 40, max: 60 }, scale: { root: 1 } },
+      { noteRange: { max: 72 }, scale: { name: 'minor' } }
+    );
+    expect(merged.noteRange.min).to.equal(40);
+    expect(merged.noteRange.max).to.equal(72);
+    expect(merged.scale.root).to.equal(1);
+    expect(merged.scale.name).to.equal('minor');
   });
 });

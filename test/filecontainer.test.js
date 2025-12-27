@@ -63,4 +63,14 @@ describe('FileContainer', function () {
   it('detects invalid checksum', function () {
     runTest(true);
   });
+
+  it('returns an empty reader for out-of-range parts', function () {
+    const { buffer } = buildBuffer(false);
+    const br = new Lemmings.BinaryReader(buffer, 0, buffer.length, 'buf');
+    const fc = new FileContainer(br);
+    const bad = fc.getPart(-1);
+    const bad2 = fc.getPart(99);
+    assert.strictEqual(bad.length, 0);
+    assert.strictEqual(bad2.length, 0);
+  });
 });

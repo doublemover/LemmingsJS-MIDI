@@ -117,3 +117,143 @@ canvas {
 .game_container.small #levelSelects select {
     font-size: 11px;
 }
+
+.control-panel {
+    position: absolute;
+    top: 8px;
+    width: 240px;
+    max-height: calc(100vh - 16px);
+    padding: 10px 12px;
+    color: #e7e7e7;
+    background: rgba(10, 12, 18, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+    overflow: auto;
+    z-index: 6;
+}
+
+.control-panel.left {
+    left: 8px;
+}
+
+.control-panel.right {
+    right: 8px;
+}
+
+.control-panel * {
+    overflow: visible;
+}
+
+.panel-section {
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.panel-section:last-child {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: 0;
+}
+
+.panel-title {
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #9fd6ff;
+    margin-bottom: 6px;
+}
+
+.panel-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 12px;
+    margin-bottom: 6px;
+}
+
+.control-panel label {
+    width: 100%;
+}
+
+.control-panel input,
+.control-panel select,
+.control-panel button {
+    font-size: 12px;
+    background: rgba(20, 22, 30, 0.9);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 4px;
+    padding: 2px 6px;
+    min-width: 80px;
+    user-select: text;
+}
+
+.control-panel input[type="range"] {
+    padding: 0;
+    min-width: 120px;
+}
+
+.control-panel button {
+    width: 100%;
+    margin-top: 6px;
+    cursor: pointer;
+}
+
+.panel-error {
+    color: #ff7b7b;
+    font-size: 11px;
+    margin-top: 6px;
+}
+
+.tabs {
+    display: flex;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.tab-button {
+    flex: 1;
+    padding: 4px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(28, 30, 42, 0.9);
+    color: #cfd8e3;
+    cursor: pointer;
+}
+
+.tab-button.active {
+    background: rgba(70, 120, 180, 0.85);
+    color: #fff;
+}
+
+.tab-panel {
+    display: none;
+}
+
+.tab-panel.active {
+    display: block;
+}
+
+@media (max-width: 960px) {
+    .control-panel {
+        width: 200px;
+        font-size: 11px;
+    }
+}
+
+@media (max-width: 720px) {
+    .control-panel.left {
+        left: 4px;
+        top: auto;
+        bottom: 4px;
+        max-height: 45vh;
+    }
+    .control-panel.right {
+        right: 4px;
+        top: 4px;
+        max-height: 45vh;
+    }
+}

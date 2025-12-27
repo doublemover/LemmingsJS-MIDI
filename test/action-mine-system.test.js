@@ -35,6 +35,7 @@ class StubLevel {
   key(x, y) { return `${x},${y}`; }
   hasGroundAt(x, y) { return this.ground.has(this.key(x, y)); }
   clearGroundWithMask(m, x, y) { this.cleared.push({ m, x, y }); }
+  clearGroundWithMaskCount(m, x, y) { this.clearGroundWithMask(m, x, y); return 1; }
   hasSteelUnderMask() { return this.steel; }
   hasArrowUnderMask() { return this.arrow; }
 }

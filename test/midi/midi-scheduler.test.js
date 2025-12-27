@@ -4,9 +4,9 @@ import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 
 const makeChannel = (id, calls) => ({
   sendNoteOn(note, opts) { calls.push({ type: 'noteOn', id, note, opts }); },
-  sendNoteOff(note) { calls.push({ type: 'noteOff', id, note }); },
-  sendPitchBend(value) { calls.push({ type: 'pitchBend', id, value }); },
-  sendControlChange(cc, value) { calls.push({ type: 'cc', id, cc, value }); },
+  sendNoteOff(note, opts) { calls.push({ type: 'noteOff', id, note, opts }); },
+  sendPitchBend(value, opts) { calls.push({ type: 'pitchBend', id, value, opts }); },
+  sendControlChange(cc, value, opts) { calls.push({ type: 'cc', id, cc, value, opts }); },
   sendPitchBendRange(semitones, cents) {
     calls.push({ type: 'bendRange', id, semitones, cents });
   },
@@ -42,9 +42,9 @@ describe('MidiScheduler', function() {
       expect(ok).to.equal(true);
       expect(calls.some(c => c.type === 'cc' && c.cc === 10 && c.value === 0)).to.equal(true);
 
-      clock.tick(25);
-
       expect(calls.some(c => c.type === 'noteOff' && c.note === 60)).to.equal(true);
+
+      clock.tick(25);
       expect(scheduler._activeNotes.size).to.equal(0);
     } finally {
       globalThis.performance = originalPerformance;
@@ -154,5 +154,96 @@ describe('MidiScheduler', function() {
     expect(allNotes).to.eql([1, 2, 3]);
     expect(scheduler._activeNotes.size).to.equal(0);
     expect(scheduler._activeByChannel.size).to.equal(0);
+  });
+
+  it('handles invalid sendNote inputs and tick updates', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    expect(scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 1 })).to.equal(false);
+
+    const calls = [];
+    const output = makeOutput([3], calls);
+    scheduler.setOutput(output);
+    scheduler.setTickMs(-1);
+    expect(scheduler.tickMs).to.equal(60);
+    scheduler.setTickMs(5);
+    expect(scheduler.tickMs).to.equal(5);
+
+    expect(scheduler.sendNote(null)).to.equal(false);
+    expect(scheduler.sendNote({ note: NaN })).to.equal(false);
+
+    scheduler.output = { channels: {} };
+    expect(scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 })).to.equal(false);
+  });
+
+  it('allocates default channels when MPE is disabled', function() {
+    const calls = [];
+    const output = makeOutput([4], calls);
+    const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 4 });
+    scheduler.setOutput(output);
+    scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
+    const noteOn = calls.find(c => c.type === 'noteOn');
+    expect(noteOn.id).to.equal(4);
+  });
+
+  it('stops active channels and clears scheduled note offs', function() {
+    const calls = [];
+    const output = makeOutput([1, 2], calls);
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const originalPerformance = globalThis.performance;
+    globalThis.performance = { now: () => clock.now };
+    try {
+      const scheduler = new MidiScheduler({
+        mpe: { enabled: true, memberChannels: [2] }
+      });
+      scheduler.setOutput(output);
+      scheduler.setTickMs(10);
+      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 2 });
+      expect(scheduler._noteOffs.length).to.be.greaterThan(0);
+      scheduler._stopActiveChannel(2);
+      expect(scheduler._noteOffs.length).to.equal(0);
+    } finally {
+      globalThis.performance = originalPerformance;
+      clock.uninstall();
+    }
+  });
+
+  it('processes note offs safely without output', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler._noteOffs.push({ timeMs: 0, channel: 1, note: 60, token: 1, mpe: false });
+    scheduler.output = null;
+    scheduler._processNoteOffs();
+    expect(scheduler._noteOffs.length).to.equal(1);
+  });
+
+  it('dispose clears timers and output', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.setOutput(output);
+    scheduler._noteOffTimerId = setTimeout(() => {}, 10);
+    scheduler.dispose();
+    expect(scheduler.output).to.equal(null);
+    expect(scheduler._noteOffs.length).to.equal(0);
+  });
+
+  it('tracks rate snapshots and clears queued events', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const originalPerformance = globalThis.performance;
+    globalThis.performance = { now: () => clock.now, measure: () => {} };
+    try {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(output);
+      scheduler.setTickMs(10);
+      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 1, timeMs: 500 });
+      const snapshot = scheduler.getRateSnapshot(0);
+      expect(snapshot.next.count).to.be.greaterThan(0);
+      scheduler.clearQueue();
+      expect(scheduler._ratePlanned.length).to.equal(0);
+    } finally {
+      globalThis.performance = originalPerformance;
+      clock.uninstall();
+    }
   });
 });

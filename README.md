@@ -72,6 +72,73 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 - `Tab`: Cycle through skills
 - `\`: Toggle debug mode
 
+## MIDI
+
+- Enable MIDI from the left control panel (toggle persists). When disabled, WebMIDI is not enabled and the MIDI router is detached.
+- Use the Input/Output selects to choose devices. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
+- Use `MIDI reset` to stop all notes and clear the queued events.
+- Base BPM is the sequencing anchor; current BPM shows the live value (Base BPM * game speed).
+- Sequencing section:
+  - Position mappings: add X/Y/X+Y mappings with min/max ranges to target note offset, intensity (velocity), timbre, pan, duration, pitch bend, or ADSR.
+  - Intensity and Accent adjust default velocity and density scaling.
+  - Repeat controls apply a beat window and a max repeat count to scale velocity/duration on rapid repeats.
+- Events/Triggers tabs:
+  - Configure each SFX event or trigger with mode (note/degree/chord), key+octave, or scale degree + octave.
+  - Chords support triad, seventh, sixth, ninth, power, sus2, sus4, and octave.
+  - Arps support up/down/updown; triggers can optionally run independent arps per source.
+- ADSR tab lets you target Global, a specific SFX, or a trigger to override envelope values.
+- UI state is stored in localStorage. Defaults come from `midi-mapping.json` and apply only on first run or when a value is missing.
+- Full defaults and customization notes live in `midi-mapping.json` and `docs/midi-mapping.md`.
+
+### MIDI input mapping
+
+- Input mapping is configured in `midi-mapping.json` under `input`.
+- Transport messages map to pause/resume/restart.
+- Notes map to skill selection or action controls (pause/resume/restart/speed/toggles).
+- CCs map to speed, BPM, intensity, accent, key/scale, view pan, repeat window, ADSR, and chord defaults.
+
+<details>
+  <summary><b>Default MIDI mapping table</b></summary>
+
+  | Type | Control | Meaning | Range/Values | Default |
+  | --- | --- | --- | --- | --- |
+  | Input | Channel | Input filter | `omni` or 1-16 | `omni` |
+  | Transport | Start (0xFA) | Action | restart | restart |
+  | Transport | Stop (0xFC) | Action | pause | pause |
+  | Transport | Continue (0xFB) | Action | resume | resume |
+  | Note | Skill base | Skill select base | MIDI note | 60 |
+  | Note | Skill order | Skill index order | CLIMBER, FLOATER, BOMBER, BLOCKER, BUILDER, BASHER, MINER, DIGGER | set |
+  | Note | 36 | Action | pause | 36 |
+  | Note | 38 | Action | resume | 38 |
+  | Note | 40 | Action | restart | 40 |
+  | Note | 41 | Action | speedDown | 41 |
+  | Note | 43 | Action | speedUp | 43 |
+  | Note | 45 | Action | speedReset | 45 |
+  | Note | 47 | Action | toggleMidi | 47 |
+  | Note | 49 | Action | toggleViewPan | 49 |
+  | CC | 1 | Speed factor | 0.1-8 | 1 |
+  | CC | 74 | Base BPM | 60-200 | 120 |
+  | CC | 7 | Intensity (velocity) | 10-127 | 80 |
+  | CC | 11 | Accent (density boost) | 0-1 | 0.4 |
+  | CC | 16 | Key root | 0-11 | 0 |
+  | CC | 17 | Scale name | chromatic-minor, major, minor, dorian, mixolydian, pentatonic, chromatic | chromatic-minor |
+  | CC | 18 | X to note offset | toggle | off |
+  | CC | 19 | Y to velocity | toggle | on |
+  | CC | 20 | Y to timbre | toggle | on |
+  | CC | 21 | View pan | toggle | off |
+  | CC | 22 | Repeat max count | 0-6 | 0 |
+  | CC | 23 | Repeat window (beats) | 1-8 | 4 |
+  | CC | 24 | Env attack | 0-2 | 1 |
+  | CC | 25 | Env decay | 0-2 | 0 |
+  | CC | 26 | Env sustain | 0-1 | 1 |
+  | CC | 27 | Env release | 0-2 | 1 |
+  | CC | 28 | Chord type | triad, seventh, sixth, ninth, power, sus2, sus4, octave | triad |
+  | CC | 29 | Chord octave | 1-8 | 4 |
+  | CC | 30 | Chord degree | 0-6 | 0 |
+  | CC | 31 | Duration ticks | 1-24 | 6 |
+
+</details>
+
 ## Options
 
 URL parameters (shortcuts in brackets):

@@ -4,6 +4,7 @@ import '../js/commands/CommandNuke.js';
 import '../js/commands/CommandReleaseRateIncrease.js';
 import '../js/commands/CommandReleaseRateDecrease.js';
 import '../js/commands/CommandLemmingsAction.js';
+import '../js/commands/CommandSelectSkill.js';
 
 // minimal global for logging
 globalThis.lemmings = { game: { showDebug: false } };
@@ -104,5 +105,165 @@ describe('Commands', function() {
     expect(fail.execute(game)).to.be.false;
     expect(actions).to.equal(1);
     expect(reused).to.equal(1);
+  });
+
+  it('CommandLemmingsAction handles missing dependencies and failed actions', function() {
+    const cmd = new Lemmings.CommandLemmingsAction(1);
+    const gameNoMgr = { getLemmingManager() { return null; }, getGameSkills() { return {}; } };
+    expect(cmd.execute(gameNoMgr)).to.equal(false);
+
+    const gameNoSkills = { getLemmingManager() { return {}; }, getGameSkills() { return null; } };
+    expect(cmd.execute(gameNoSkills)).to.equal(false);
+
+    const gameNoLem = {
+      getLemmingManager() { return { getLemming() { return null; } }; },
+      getGameSkills() {
+        return { getSelectedSkill() { return 'skill'; }, canReuseSkill() { return true; } };
+      }
+    };
+    expect(cmd.execute(gameNoLem)).to.equal(false);
+
+    const gameFailAction = {
+      getLemmingManager() {
+        return { getLemming() { return { id: 2 }; }, doLemmingAction() { return false; } };
+      },
+      getGameSkills() {
+        return {
+          getSelectedSkill() { return 'skill'; },
+          canReuseSkill() { return true; },
+          reuseSkill() { return true; }
+        };
+      }
+    };
+    expect(cmd.execute(gameFailAction)).to.equal(false);
+
+    const gameFailReuse = {
+      getLemmingManager() {
+        return { getLemming() { return { id: 3 }; }, doLemmingAction() { return true; } };
+      },
+      getGameSkills() {
+        return {
+          getSelectedSkill() { return 'skill'; },
+          canReuseSkill() { return true; },
+          reuseSkill() { return false; }
+        };
+      }
+    };
+    expect(cmd.execute(gameFailReuse)).to.equal(false);
+  });
+
+  it('CommandLemmingsAction emits sfx on success', function() {
+    let called = null;
+    globalThis.lemmings.game.soundEvents = {
+      emitSfx(type, id, payload) { called = { type, id, payload }; }
+    };
+    const game = {
+      getLemmingManager() {
+        return {
+          getLemming() { return { id: 7, x: 1, y: 2 }; },
+          doLemmingAction() { return true; }
+        };
+      },
+      getGameSkills() {
+        return {
+          getSelectedSkill() { return 'skill'; },
+          canReuseSkill() { return true; },
+          reuseSkill() { return true; }
+        };
+      }
+    };
+    const cmd = new Lemmings.CommandLemmingsAction(7);
+    expect(cmd.execute(game)).to.equal(true);
+    expect(called).to.be.an('object');
+    delete globalThis.lemmings.game.soundEvents;
+  });
+
+  it('CommandSelectSkill applies selection and optional action', function() {
+    const calls = [];
+    globalThis.lemmings.game.soundEvents = {
+      emitSfx(type, id, payload) { calls.push({ type, id, payload }); }
+    };
+    const lem = { id: 1, x: 2, y: 3 };
+    const skills = {
+      setSelectedSkill() { return true; },
+      canReuseSkill() { return true; },
+      reuseSkill() { return true; }
+    };
+    const lemMgr = {
+      getSelectedLemming() { return lem; },
+      doLemmingAction() { return true; }
+    };
+    const game = {
+      getGameSkills() { return skills; },
+      getLemmingManager() { return lemMgr; }
+    };
+    const cmd = new Lemmings.CommandSelectSkill(5, true);
+    expect(cmd.execute(game)).to.equal(true);
+    expect(calls.length).to.equal(2);
+
+    const noApply = new Lemmings.CommandSelectSkill(2, false);
+    expect(noApply.execute(game)).to.equal(true);
+
+    delete globalThis.lemmings.game.soundEvents;
+  });
+
+  it('CommandSelectSkill handles missing skills and action failures', function() {
+    const cmd = new Lemmings.CommandSelectSkill(1, true);
+    expect(cmd.execute({ getGameSkills() { return null; } })).to.equal(false);
+
+    const skills = { setSelectedSkill() { return false; } };
+    const game = {
+      getGameSkills() { return skills; },
+      getLemmingManager() { return null; }
+    };
+    expect(cmd.execute(game)).to.equal(false);
+
+    const lem = { id: 2 };
+    const gameFail = {
+      getGameSkills() {
+        return {
+          setSelectedSkill() { return true; },
+          canReuseSkill() { return false; },
+          reuseSkill() { return false; }
+        };
+      },
+      getLemmingManager() {
+        return {
+          getSelectedLemming() { return lem; },
+          doLemmingAction() { return false; }
+        };
+      }
+    };
+    expect(cmd.execute(gameFail)).to.equal(true);
+  });
+
+  it('command metadata helpers return defaults', function() {
+    const nuke = new Lemmings.CommandNuke();
+    nuke.load();
+    expect(nuke.save()).to.deep.equal([]);
+    expect(nuke.getCommandKey()).to.equal('n');
+
+    const inc = new Lemmings.CommandReleaseRateIncrease(1);
+    inc.load();
+    expect(inc.save()).to.deep.equal([]);
+    expect(inc.getCommandKey()).to.equal('i');
+
+    const dec = new Lemmings.CommandReleaseRateDecrease(1);
+    dec.load();
+    expect(dec.save()).to.deep.equal([]);
+    expect(dec.getCommandKey()).to.equal('d');
+
+    const select = new Lemmings.CommandSelectSkill();
+    select.load([3, 0]);
+    expect(select.save()).to.deep.equal([3, 0]);
+    expect(select.getCommandKey()).to.equal('s');
+  });
+
+  it('release rate commands return false without victory condition', function() {
+    const game = { getVictoryCondition() { return null; } };
+    const inc = new Lemmings.CommandReleaseRateIncrease(1);
+    const dec = new Lemmings.CommandReleaseRateDecrease(1);
+    expect(inc.execute(game)).to.equal(false);
+    expect(dec.execute(game)).to.equal(false);
   });
 });
