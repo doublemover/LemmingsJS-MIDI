@@ -85,6 +85,44 @@ describe('MapObject', function () {
     delete globalThis.lemmings;
   });
 
+  it('falls back to lemming position when trigger coordinates are missing', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) {
+      events.push({ type, id, payload });
+    } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 9, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0);
+
+    const trap = { type: TriggerTypes.TRAP, soundIndex: 2 };
+    const lem = { id: 4, x: 7, y: 8 };
+    mo.onTrigger(0, lem, trap);
+
+    expect(events.length).to.equal(1);
+    expect(events[0].payload.x).to.equal(7);
+    expect(events[0].payload.y).to.equal(8);
+    delete globalThis.lemmings;
+  });
+
+  it('falls back to object position when no trigger or lemming coordinates are provided', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) {
+      events.push({ type, id, payload });
+    } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 12, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0);
+
+    const trap = { type: TriggerTypes.TRAP, soundIndex: 3 };
+    mo.onTrigger(0, null, trap);
+
+    expect(events.length).to.equal(1);
+    expect(events[0].payload.trapSoundId).to.equal(3);
+    expect(events[0].payload.x).to.equal(3);
+    expect(events[0].payload.y).to.equal(4);
+    delete globalThis.lemmings;
+  });
+
   it('skips sound emission when sfxId is not positive', function () {
     const events = [];
     globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) { events.push({ type, id, payload }); } } } };
@@ -93,6 +131,32 @@ describe('MapObject', function () {
     const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP);
     mo.onTrigger(0, null, { type: TriggerTypes.TRAP, soundIndex: 0 });
     expect(events.length).to.equal(0);
+    delete globalThis.lemmings;
+  });
+
+  it('handles trap triggers without explicit trigger data', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) { events.push({ type, id, payload }); } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP);
+    mo.onTrigger(0);
+    expect(events.length).to.equal(0);
+    delete globalThis.lemmings;
+  });
+
+  it('emits frying sounds and preserves explicit trigger coordinates', function () {
+    const events = [];
+    globalThis.lemmings = { game: { soundEvents: { emitSfx(type, id, payload) {
+      events.push({ type, id, payload }); } } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(true);
+    const mo = new MapObject({ id: 6, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0);
+    const fry = { type: TriggerTypes.FRYING };
+    mo.onTrigger(0, { id: 1, x: 9, y: 8 }, fry, 0, 0);
+    expect(events.length).to.equal(1);
+    expect(events[0].payload.x).to.equal(0);
+    expect(events[0].payload.y).to.equal(0);
     delete globalThis.lemmings;
   });
 });

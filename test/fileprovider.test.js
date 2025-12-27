@@ -84,6 +84,8 @@ describe('FileProvider', function () {
   it('_buildUrl() joins rootPath, path and filename', function () {
     const url = provider._buildUrl('path', 'file.bin');
     assert.strictEqual(url, rootPath + 'path' + '/' + 'file.bin');
+    const noFile = provider._buildUrl('path', null);
+    assert.strictEqual(noFile, rootPath + 'path');
   });
 
   it('_filenameFromUrl strips query and handles empty', function () {
@@ -122,6 +124,15 @@ describe('FileProvider', function () {
     const p3 = provider.loadString(url);
     assert.strictEqual(p1, p3);
     assert.strictEqual(requests.length, 1);
+  });
+
+  it('loadString clears cache on failure', async function () {
+    const url = rootPath + 'fail.txt';
+    const promise = provider.loadString(url);
+    assert.strictEqual(provider._cache.size, 1);
+    requests[0].respond(500, 'err');
+    await assert.rejects(promise);
+    assert.strictEqual(provider._cache.has(url), false);
   });
 
   it('clearCache() empties the internal cache', async function () {
@@ -208,6 +219,98 @@ describe('FileProvider', function () {
     assert.strictEqual(provider._cache.get(url), p1);
   });
 
+  it('refreshes cached text entries when headers change', async function () {
+    let textFetched = 0;
+    provider._fetchHead = async () => ({ etag: 'new' });
+    provider._fetchText = async () => { textFetched++; };
+    await provider._verifyCache('file.txt', { type: 'text', etag: 'old' });
+    assert.strictEqual(textFetched, 1);
+  });
+
+  it('stores response headers when available for text and binary', async function () {
+    class HeaderXHR {
+      constructor() {
+        this.status = 0;
+        this.response = null;
+        HeaderXHR.instances.push(this);
+      }
+      open(method, url) { this.method = method; this.url = url; }
+      send() {}
+      getResponseHeader(name) {
+        if (name === 'ETag') return 'etag-value';
+        if (name === 'Last-Modified') return 'modified';
+        return null;
+      }
+      respond(status, body) {
+        this.status = status;
+        this.response = body;
+        if (status >= 200 && status < 300) {
+          if (this.onload) this.onload();
+        } else if (this.onerror) {
+          this.onerror();
+        }
+      }
+    }
+    HeaderXHR.instances = [];
+    global.XMLHttpRequest = HeaderXHR;
+
+    const textUrl = rootPath + 'headers.txt';
+    const textPromise = provider.loadString(textUrl);
+    HeaderXHR.instances[0].respond(200, 'ok');
+    await textPromise;
+    const textEntry = JSON.parse(global.localStorage.getItem('lem-cache:' + textUrl));
+    assert.strictEqual(textEntry.etag, 'etag-value');
+
+    const binPromise = provider.loadBinary('data', 'file.bin');
+    const buffer = new ArrayBuffer(0);
+    HeaderXHR.instances[1].respond(200, buffer);
+    await binPromise;
+    const binUrl = provider._buildUrl('data', 'file.bin');
+    const binEntry = JSON.parse(global.localStorage.getItem('lem-cache:' + binUrl));
+    assert.strictEqual(binEntry.lastModified, 'modified');
+  });
+
+  it('falls back to node crypto hashing and reports failures', async function () {
+    const origDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
+    try {
+      Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
+      const hash = await provider._hashBuffer(new Uint8Array([1, 2, 3]).buffer);
+      assert.match(hash, /^[a-f0-9]{64}$/);
+
+      provider._forceCryptoError = true;
+      await assert.rejects(provider._hashBuffer(new Uint8Array([4]).buffer), /crypto API not available/);
+      provider._forceCryptoError = false;
+    } finally {
+      if (origDescriptor) {
+        Object.defineProperty(globalThis, 'crypto', origDescriptor);
+      } else {
+        delete globalThis.crypto;
+      }
+    }
+  });
+
+  it('stores response headers for binary entries when available', async function () {
+    const p = provider.loadBinary('data', 'with-headers.bin');
+    const url = provider._buildUrl('data', 'with-headers.bin');
+    requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
+    requests[0].respond(200, new ArrayBuffer(1));
+    await p;
+    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    assert.strictEqual(entry.etag, 'etag');
+    assert.strictEqual(entry.lastModified, 'last');
+  });
+
+  it('stores response headers for text entries when available', async function () {
+    const url = rootPath + 'with-headers.txt';
+    const p = provider.loadString(url);
+    requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
+    requests[0].respond(200, 'ok');
+    await p;
+    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    assert.strictEqual(entry.etag, 'etag');
+    assert.strictEqual(entry.lastModified, 'last');
+  });
+
   it('_verifyCache refreshes stale entries', async function () {
     let headCalls = 0;
     let fetchCalls = 0;
@@ -248,6 +351,14 @@ describe('FileProvider', function () {
     await provider._verifyCache('url', { type: 'text', etag: 'old' });
     console.log = orig;
     assert.ok(logs.length > 0);
+  });
+
+  it('_verifyCache refreshes stale text entries', async function () {
+    let textCalls = 0;
+    provider._fetchHead = async () => ({ etag: 'new', lastModified: 'new' });
+    provider._fetchText = async () => { textCalls++; };
+    await provider._verifyCache('url', { type: 'text', etag: 'old' });
+    assert.strictEqual(textCalls, 1);
   });
 
   it('_hashBuffer falls back to node crypto when web crypto missing', async function () {
@@ -309,6 +420,16 @@ describe('FileProvider', function () {
   it('_fetchText logs and rejects on failure', async function () {
     const promise = provider._fetchText(rootPath + 'bad.txt');
     requests[0].respond(404, 'err');
+    await assert.rejects(promise);
+    assert.ok(provider.log.logged.some(m => m.includes('error load file')));
+  });
+
+  it('_fetchBinary rejects when onload reports error status', async function () {
+    const promise = provider._fetchBinary(rootPath + 'bad.bin', 'data');
+    const xhr = requests[0];
+    xhr.status = 500;
+    xhr.response = new ArrayBuffer(0);
+    xhr.onload();
     await assert.rejects(promise);
     assert.ok(provider.log.logged.some(m => m.includes('error load file')));
   });

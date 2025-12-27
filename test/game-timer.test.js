@@ -177,7 +177,125 @@ describe('GameTimer', function() {
     expect(overlayCalls[0].rect).to.eql({ x: 160, y: 32, width: 16, height: 10 });
   });
 
-  it('slows down and restores speed in bench2 catchup mode', function() {
+  it('reduces bench speeds across multiple thresholds', function() {
+    const overlayCalls = [];
+    globalThis.lemmings = {
+      bench: true,
+      stage: {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade(color, rect, dashLen) {
+          overlayCalls.push({ color, rect, dashLen });
+        }
+      }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    timer.speedFactor = 70;
+    now = 30;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(60);
+
+    timer.speedFactor = 50;
+    now = 60;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(40);
+
+    timer.speedFactor = 20;
+    now = 93;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(11);
+    expect(overlayCalls.some(call => call.rect)).to.equal(true);
+  });
+
+  it('reduces low bench speeds in smaller ranges', function() {
+    globalThis.lemmings = {
+      bench: true,
+      stage: {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade() {}
+      }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    timer.speedFactor = 5;
+    now = 144;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(4);
+
+    timer.speedFactor = 0.5;
+    now = 3000;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(0.4);
+  });
+
+  it('omits bench overlay rects during bench sequences', function() {
+    const overlayCalls = [];
+    globalThis.lemmings = {
+      benchSequence: true,
+      stage: {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade(color, rect, dashLen) {
+          overlayCalls.push({ color, rect, dashLen });
+        }
+      }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    now = 1200;
+    globalThis.window._raf(now);
+
+    expect(overlayCalls.length).to.equal(1);
+    expect(overlayCalls[0].rect).to.equal(null);
+  });
+
+  it('reduces slow bench speeds without drawing overlay rects', function() {
+    const overlayCalls = [];
+    globalThis.lemmings = {
+      benchSequence: true,
+      stage: {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade(color, rect) {
+          overlayCalls.push({ color, rect });
+        }
+      }
+    };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.speedFactor = 0.9;
+    timer.continue();
+
+    now = 1000;
+    globalThis.window._raf(now);
+
+    expect(timer.speedFactor).to.be.closeTo(0.8, 0.0001);
+    expect(overlayCalls.length).to.equal(1);
+    expect(overlayCalls[0].rect).to.equal(null);
+  });
+
+  it('bails out of bench speed adjustments when app disappears', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    const app = {
+      get bench() {
+        globalThis.lemmings = null;
+        return true;
+      },
+      stage: {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade() {}
+      }
+    };
+    globalThis.lemmings = app;
+    timer.continue();
+
+    now = 120;
+    globalThis.window._raf(now);
+
+    expect(globalThis.lemmings).to.equal(null);
+  });
+
+  it('slows down and restores speed in bench2 catchup mode', function() {  
     globalThis.lemmings.bench2 = true;
     const timer = new GameTimer({ timeLimit: 1 });
     timer.continue();
@@ -189,6 +307,35 @@ describe('GameTimer', function() {
     now = 1200;
     globalThis.window._raf(now);
     expect(timer.speedFactor).to.be.closeTo(1, 0.0001);
+  });
+
+  it('restores speed after a single catchup step', function() {
+    globalThis.lemmings.bench2 = true;
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.continue();
+
+    now = 120;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.be.lessThan(1);
+
+    now = 240;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(1);
+  });
+
+  it('restores catchup speed when steps return to normal', function() {
+    globalThis.lemmings.bench2 = true;
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.speedFactor = 2;
+    timer.continue();
+
+    now = 120;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.be.lessThan(2);
+
+    now = 360;
+    globalThis.window._raf(now);
+    expect(timer.speedFactor).to.equal(2);
   });
 
   it('wraps tickIndex and converts time units', function() {
@@ -297,7 +444,7 @@ describe('GameTimer', function() {
       configurable: true,
       get() {
         access += 1;
-        if (access === 1) return { bench: true };
+        if (access <= 2) return { bench: true };
         return null;
       }
     });
@@ -338,6 +485,18 @@ describe('GameTimer', function() {
 
     expect(timer.speedFactor).to.equal(1);
     expect(overlayCalls[0].color).to.match(/^rgba\(255,0,0/);
+  });
+
+  it('reduces sub-1.0 bench speeds when overloaded', function() {
+    globalThis.lemmings = { bench: true };
+    const timer = new GameTimer({ timeLimit: 1 });
+    timer.speedFactor = 0.5;
+    timer.continue();
+
+    now = timer.frameTime * 30;
+    globalThis.window._raf(now);
+
+    expect(timer.speedFactor).to.be.closeTo(0.4, 0.0001);
   });
 
   it('recovers speed after extended stability', function() {

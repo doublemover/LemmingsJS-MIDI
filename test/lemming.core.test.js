@@ -65,4 +65,36 @@ describe('Lemming core', function() {
     expect(lem.process(level)).to.equal(LemmingStateType.SPLATTING);
     expect(called).to.equal(true);
   });
+
+  it('renders countdown and action frames', function() {
+    const lem = new Lemming(1, 1, 1);
+    let draws = 0;
+    lem.countdownAction = { draw() { draws += 1; } };
+    lem.action = { draw() { draws += 1; } };
+    lem.render({});
+    expect(draws).to.equal(2);
+  });
+
+  it('skips rendering when no action is active', function() {
+    const lem = new Lemming(1, 1, 1);
+    let draws = 0;
+    lem.countdownAction = { draw() { draws += 1; } };
+    lem.action = null;
+    lem.render({});
+    expect(draws).to.equal(0);
+  });
+
+  it('logs and returns NO_STATE_TYPE when action disappears mid-process', function() {
+    const lem = new Lemming(1, 1, 1);
+    const level = makeLevel();
+    lem.action = { process() { return LemmingStateType.NO_STATE_TYPE; } };
+    lem.countdownAction = {
+      process() {
+        lem.action = null;
+        return LemmingStateType.NO_STATE_TYPE;
+      }
+    };
+    const state = lem.process(level);
+    expect(state).to.equal(LemmingStateType.NO_STATE_TYPE);
+  });
 });

@@ -111,4 +111,9 @@ describe('GameSkills', function() {
     expect(gs.getSelectedSkill()).to.equal(Lemmings.SkillTypes.CLIMBER);
     expect(triggered).to.equal(0);
   });
+
+  it('getSkill returns 0 for unknown skill indexes', function() {
+    const gs = createGameSkills({ CLIMBER: 1 });
+    expect(gs.getSkill(999)).to.equal(0);
+  });
 });

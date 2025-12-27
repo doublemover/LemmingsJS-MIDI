@@ -104,7 +104,7 @@ describe('TriggerManager', function () {
   it('skips arrow triggers in debug frame', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);
-    const arrow = new Trigger(TriggerTypes.BLOCKER_LEFT, 1, 1, 5, 5);
+    const arrow = new Trigger(TriggerTypes.ONEWAY_LEFT, 1, 1, 5, 5);
     const trap = new Trigger(TriggerTypes.TRAP, 10, 10, 12, 12);
     tm.addRange([arrow, trap]);
     const g = { drawRect() {}, drawFrame() {} };

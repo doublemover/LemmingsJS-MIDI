@@ -106,4 +106,22 @@ describe('GameResources', function () {
     const gr = new GameResources(fileProvider, cfg);
     assert.deepStrictEqual(gr.mechanics, { speed: 1 });
   });
+
+  it('delegates level loading and exposes group names', async function () {
+    const levelResult = { id: 5 };
+    const origLevelLoader = Lemmings.LevelLoader;
+    class LevelLoaderStub {
+      constructor(fp, cfg) { this.fp = fp; this.cfg = cfg; }
+      getLevel(mode, index) { this.args = [mode, index]; return Promise.resolve(levelResult); }
+    }
+    setDependency('LevelLoader', LevelLoaderStub);
+    const cfg = { path: 'data', level: { groups: ['A', 'B'] } };
+    const gr = new GameResources(fileProvider, cfg);
+
+    const level = await gr.getLevel(2, 3);
+    assert.strictEqual(level, levelResult);
+    assert.deepStrictEqual(gr.getLevelGroups(), ['A', 'B']);
+
+    setDependency('LevelLoader', origLevelLoader);
+  });
 });

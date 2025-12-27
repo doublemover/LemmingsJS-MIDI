@@ -109,6 +109,14 @@ describe('Level extra coverage', function() {
     };
     expect(level.hasSteelUnderMask(steelMask, 2, 2)).to.equal(true);
     expect(level.isSteelGround(0, 0, true)).to.equal(undefined);
+    const emptyMask = {
+      width: 1,
+      height: 1,
+      offsetX: 0,
+      offsetY: 0,
+      at() { return 1; }
+    };
+    expect(level.hasSteelUnderMask(emptyMask, 0, 0)).to.equal(false);
 
     level.setArrowAreas([
       Object.assign(new Range(), { x: 0, y: 0, width: 2, height: 2, direction: 1 })
@@ -116,6 +124,7 @@ describe('Level extra coverage', function() {
     level.setGroundAt(0, 0, 1);
     expect(level.isArrowAt(0, 0, 0)).to.equal(true);
     expect(level.hasArrowUnderMask(mask, 0, 0, 0)).to.equal(true);
+    expect(level.hasArrowUnderMask(mask, 3, 3, 0)).to.equal(false);
     delete globalThis.lemmings;
   });
 
@@ -135,5 +144,44 @@ describe('Level extra coverage', function() {
     };
     level.renderDebug(display);
     expect(drawCalled).to.equal(true);
+  });
+
+  it('rewrites trap ids and clears ground only when not steel', function() {
+    globalThis.lemmings = { game: { lemmingManager: { miniMap: { onGroundChanged() {} } } } };
+    const level = new Level(4, 4);
+    level.setPalettes(makePalette(), makePalette());
+    level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+
+    const palette = makePalette();
+    const objectImg = [];
+    objectImg[7] = {
+      width: 1,
+      height: 1,
+      frames: [Uint8Array.from([0])],
+      palette,
+      animationLoop: true,
+      firstFrameIndex: 0,
+      frameCount: 1,
+      trigger_effect_id: 6,
+      trigger_left: 0,
+      trigger_top: 0,
+      trigger_width: 1,
+      trigger_height: 1,
+      trap_sound_effect_id: 1
+    };
+    const objects = [{ id: 7, x: 1, y: 1, drawProperties: {} }];
+    level.setMapObjects(objects, objectImg);
+    expect(level.objects[0].triggerType).to.equal(12);
+
+    level.setGroundAt(1, 1, 1);
+    const mask = { width: 1, height: 1, offsetX: 0, offsetY: 0, at() { return 0; } };
+    const removed = level.clearGroundWithMaskCount(mask, 1, 1);
+    expect(removed).to.equal(1);
+
+    level.steelMask.setMaskAt(2, 2);
+    level.setGroundAt(2, 2, 1);
+    level.clearGroundAt(2, 2);
+    expect(level.hasGroundAt(2, 2)).to.equal(true);
+    delete globalThis.lemmings;
   });
 });

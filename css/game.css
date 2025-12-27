@@ -165,6 +165,27 @@ canvas {
     margin-bottom: 6px;
 }
 
+.panel-toggle {
+    cursor: pointer;
+}
+
+.control-panel.collapsed {
+    width: 64px;
+    padding: 10px 6px;
+    overflow: hidden;
+}
+
+.control-panel.collapsed .panel-section:not(.panel-header) {
+    display: none;
+}
+
+.control-panel.collapsed .panel-header {
+    border-bottom: 0;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    text-align: center;
+}
+
 .panel-row {
     display: flex;
     align-items: center;

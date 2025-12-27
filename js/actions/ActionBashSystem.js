@@ -67,6 +67,7 @@ class ActionBashSystem extends ActionBaseSystem {
       const removed = typeof level.clearGroundWithMaskCount === 'function'
         ? level.clearGroundWithMaskCount(subMask, lem.x, lem.y)
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
+      const intensity = scaleIntensity(removed, countClearable(subMask));
       if (removed > 0) {
         const soundBus = getSoundBus();
         soundBus?.emitSfx?.(
@@ -77,7 +78,7 @@ class ActionBashSystem extends ActionBaseSystem {
             x: lem.x,
             y: lem.y,
             removed,
-            intensity: scaleIntensity(removed, countClearable(subMask))
+            intensity
           }
         );
       }

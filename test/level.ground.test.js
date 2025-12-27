@@ -32,4 +32,28 @@ describe('Level ground operations', function() {
     expect(level.hasGroundAt(1, 1)).to.equal(false);
     expect(Array.from(level.groundImage.slice(idx, idx + 3))).to.eql([0, 0, 0]);
   });
+
+  it('clears ground with masks while skipping steel and bounds', function() {
+    const level = new Level(3, 3);
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(3 * 3 * 4));
+    level.setPalettes(palette, palette);
+
+    level.setGroundAt(1, 0, 1);
+    level.setGroundAt(1, 1, 1);
+    level.steelMask.setMaskAt(0, 0);
+
+    const mask = {
+      offsetX: -1,
+      offsetY: -1,
+      width: 3,
+      height: 3,
+      at(dx, dy) { return dx === 1 && dy === 2; }
+    };
+
+    const result = level._clearGroundWithMaskInternal(mask, 0, 0);
+    expect(result.changed).to.equal(true);
+    expect(result.removed).to.be.greaterThan(0);
+  });
 });

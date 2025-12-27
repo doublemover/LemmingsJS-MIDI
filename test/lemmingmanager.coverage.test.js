@@ -96,6 +96,74 @@ describe('LemmingManager coverage', function() {
     expect(hits.length).to.equal(1);
   });
 
+  it('skips removed lemmings in mask queries', function() {
+    const { manager } = makeManager();
+    const active = new Lemming(1, 1, 0);
+    const removed = new Lemming(1, 1, 1);
+    removed.removed = true;
+    manager.activeLemmings = [active, removed];
+    const mask = { offsetX: 0, offsetY: 0, width: 2, height: 2 };
+    const hits = manager.getLemmingsInMask(mask, 0, 0);
+    expect(hits).to.eql([active]);
+  });
+
+  it('clears invalid selections during tick', function() {
+    const { manager } = makeManager();
+    manager.triggerManager.trigger = () => TriggerTypes.NO_TRIGGER;
+    manager.releaseTickIndex = -1;
+    const removed = {
+      removed: true,
+      disabled: false,
+      action: null,
+      process() { return LemmingStateType.NO_STATE_TYPE; },
+      setAction() {},
+      isRemoved() { return this.removed; },
+      isDisabled() { return this.disabled; },
+      x: 0,
+      y: 0,
+      id: 1
+    };
+    manager.activeLemmings = [removed];
+    manager.selectedIndex = removed.id;
+    manager.tick();
+    expect(manager.selectedIndex).to.equal(-1);
+  });
+
+  it('updates minimap dots while de-duplicating positions', function() {
+    const { manager } = makeManager();
+    manager.triggerManager.trigger = () => TriggerTypes.NO_TRIGGER;
+    manager.releaseTickIndex = -1;
+    manager._minimapDotBuffer = new Uint8Array(0);
+    manager.mmTickCounter = 9;
+    manager.miniMap = {
+      scaleX: 1,
+      scaleY: 1,
+      setLiveDots(arr) { this.dots = arr; },
+      setSelectedDot(dot) { this.sel = dot; }
+    };
+    const makeLem = (id) => ({
+      removed: false,
+      disabled: false,
+      action: manager.actions[LemmingStateType.WALKING],
+      process() { return LemmingStateType.NO_STATE_TYPE; },
+      setAction() {},
+      isRemoved() { return this.removed; },
+      isDisabled() { return this.disabled; },
+      x: 2,
+      y: 2,
+      id
+    });
+    const lemA = makeLem(1);
+    const lemB = makeLem(2);
+    manager.activeLemmings = [lemA, lemB];
+    manager.lemmings = [lemA, lemB];
+    manager.selectedIndex = lemA.id;
+    manager.tick();
+    expect(manager.miniMap.dots.length).to.equal(2);
+    expect(manager.miniMap.sel).to.eql([2, 2]);
+    expect(manager.selectedIndex).to.equal(lemA.id);
+  });
+
   it('renders only visible lemmings', function() {
     const { manager } = makeManager();
     let renderCount = 0;
@@ -162,6 +230,60 @@ describe('LemmingManager coverage', function() {
     expect(lem.hasExploded).to.equal(true);
   });
 
+  it('clears countdown when lethal state is applied', function() {
+    const { manager } = makeManager();
+    const states = [
+      LemmingStateType.DROWNING,
+      LemmingStateType.SPLATTING,
+      LemmingStateType.FRYING
+    ];
+    for (const state of states) {
+      const lem = new Lemming(1, 1, 0);
+      lem.countdown = 3;
+      lem.countdownAction = {};
+      manager.setLemmingState(lem, state);
+      expect(lem.countdown).to.equal(0);
+      expect(lem.countdownAction).to.equal(null);
+    }
+  });
+
+  it('maps trigger results to exit, kill, and trap states', function() {
+    const { manager } = makeManager();
+    const lem = new Lemming(1, 1, 0);
+    const cases = [
+      [TriggerTypes.EXIT_LEVEL, LemmingStateType.EXITING],
+      [TriggerTypes.KILL, LemmingStateType.SPLATTING],
+      [TriggerTypes.FRYING, LemmingStateType.FRYING],
+      [TriggerTypes.TRAP, LemmingStateType.SPLATTING]
+    ];
+    for (const [triggerType, expected] of cases) {
+      manager.triggerManager.trigger = () => triggerType;
+      const state = manager.runTrigger(lem);
+      expect(state).to.equal(expected);
+      expect(lem.lastTriggerType).to.equal(triggerType);
+    }
+  });
+
+  it('uses a custom lemming constructor when provided', function() {
+    const { manager } = makeManager();
+    class CustomLemming extends Lemming {
+      constructor(x, y, id) {
+        super(x, y, id);
+        this.custom = true;
+      }
+    }
+    manager._lemmingCtor = CustomLemming;
+    manager.addLemming(3, 3);
+    expect(manager.lemmings[0].custom).to.equal(true);
+  });
+
+  it('uses the default lemming constructor by default', function() {
+    const { manager } = makeManager();
+    manager._lemmingCtor = null;
+    manager.addLemming(1, 1);
+    expect(manager.lemmings[0]).to.be.instanceOf(Lemming);
+  });
+
   it('ticks with minimap updates and compacts active list', function() {
     const { manager } = makeManager();
     manager.triggerManager.trigger = () => TriggerTypes.NO_TRIGGER;
@@ -226,6 +348,90 @@ describe('LemmingManager coverage', function() {
     expect(globalThis.lemmings.laggedOut).to.equal(3);
     expect(manager.minimapDots.length).to.be.greaterThan(0);
     expect(manager.activeLemmings.length).to.equal(1);
+  });
+
+  it('handles missing blocker action types when applying skills', function() {
+    const { manager } = makeManager();
+    const lem = new Lemming(1, 1, 0);
+    lem.setAction(manager.actions[LemmingStateType.WALKING]);
+    manager._actionTypes = {};
+    expect(manager.doLemmingAction(lem, SkillTypes.DIGGER)).to.equal(true);
+  });
+
+  it('marks nuke as inactive when no eligible targets exist', function() {
+    const { manager } = makeManager();
+    manager.activeLemmings = [
+      { removed: true, disabled: false },
+      { removed: false, disabled: true }
+    ];
+    manager.doNukeAllLemmings();
+    expect(manager.nextNukingLemmingsIndex).to.equal(-1);
+    expect(manager._nukeTargets).to.eql([]);
+  });
+
+  it('sets nuke index when targets exist', function() {
+    const { manager } = makeManager();
+    manager.activeLemmings = [{ removed: false, disabled: false }];
+    manager.doNukeAllLemmings();
+    expect(manager.nextNukingLemmingsIndex).to.equal(0);
+    expect(manager._nukeTargets.length).to.equal(1);
+  });
+
+  it('handles nuke bounds checks and fallback targets', function() {
+    const { manager } = makeManager();
+    manager._nukeTargets = null;
+    manager._nukeNextLemming();
+
+    manager._nukeTargets = [new Lemming(1, 1, 0)];
+    manager.nextNukingLemmingsIndex = 1;
+    manager._nukeNextLemming();
+    expect(manager.nextNukingLemmingsIndex).to.equal(-1);
+    expect(manager._nukeTargets).to.equal(null);
+
+    const lems = [new Lemming(1, 1, 0)];
+    manager._nukeTargets = lems;
+    let reads = 0;
+    Object.defineProperty(manager, 'nextNukingLemmingsIndex', {
+      get() {
+        reads += 1;
+        return reads === 1 ? 0 : 1;
+      },
+      set(value) {
+        this._nukeIndexValue = value;
+      },
+      configurable: true
+    });
+    manager._nukeNextLemming();
+    delete manager.nextNukingLemmingsIndex;
+  });
+
+  it('cycles selection from the start when nothing is selected', function() {
+    const { manager } = makeManager();
+    const lemA = new Lemming(1, 1, 0);
+    const lemB = new Lemming(2, 2, 1);
+    manager.activeLemmings = [lemA, lemB];
+    manager.selectedIndex = -1;
+    const selected = manager.cycleSelection(1);
+    expect(selected).to.equal(lemB);
+  });
+
+  it('returns null when no lemmings are active', function() {
+    const { manager } = makeManager();
+    manager.activeLemmings = [];
+    expect(manager.cycleSelection()).to.equal(null);
+  });
+
+  it('cycles selection from the current active index', function() {
+    const { manager } = makeManager();
+    const lemA = new Lemming(1, 1, 0);
+    const lemB = new Lemming(2, 2, 1);
+    lemA._activeIndex = 0;
+    lemB._activeIndex = 1;
+    manager.activeLemmings = [lemA, lemB];
+    manager.lemmings = [lemA, lemB];
+    manager.setSelectedLemming(lemA);
+    const selected = manager.cycleSelection(1);
+    expect(selected).to.equal(lemB);
   });
 
   it('disposes and records performance metrics', function() {

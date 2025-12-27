@@ -30,8 +30,11 @@ describe('Level arrow areas', function() {
     expect(level.isArrowAt(1, 1, 1)).to.equal(true);
     expect(level.isArrowAt(1, 1, 0)).to.equal(false);
 
-    const mask = new Mask(null, 1, 1, 0, 0); mask.data = new Int8Array([1]);
+    const mask = new Mask(null, 1, 1, 0, 0); mask.data = new Int8Array([1]);    
     expect(level.hasArrowUnderMask(mask, 1, 1, 1)).to.equal(true);
+
+    const blockMask = { offsetX: 0, offsetY: 0, width: 1, height: 1, at() { return true; } };
+    expect(level.hasArrowUnderMask(blockMask, 1, 1, 1)).to.equal(false);
 
     const stubDisplay = { calls: 0, drawFrame(frame) { this.calls++; this.last = frame; } };
     level.renderDebug(stubDisplay);

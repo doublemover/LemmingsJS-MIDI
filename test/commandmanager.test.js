@@ -71,15 +71,19 @@ describe('CommandManager', function() {
     expect(cm.serialize()).to.equal('1=x1');
   });
 
-  it('loadReplay schedules commands for future ticks', function() {
+  it('loadReplay schedules commands for future ticks', function() {     
     const timer = new MockTimer();
     const cm = new TestCommandManager(game, timer);
-    cm.loadReplay('2=x5');
+    cm.loadReplay('2=x5&bad&4=x6');
     timer.next();
     timer.next();
     expect(cm.serialize()).to.equal('');
     timer.next();
     expect(cm.serialize()).to.equal('2=x5');
+    timer.next();
+    expect(cm.serialize()).to.equal('2=x5');
+    timer.next();
+    expect(cm.serialize()).to.equal('2=x5&4=x6');
   });
 
   it('serialize concatenates multiple logged commands', function() {
@@ -170,6 +174,13 @@ describe('CommandManager', function() {
     expect(removed).to.equal(true);
     delete TestCommandManager.prototype._tickListener;
     cm.dispose();
+  });
+
+  it('skips malformed replay entries', function() {
+    const timer = new MockTimer();
+    const cm = new TestCommandManager(game, timer);
+    cm.loadReplay('bad-entry');
+    expect(Object.keys(cm.runCommands)).to.have.lengthOf(0);
   });
 
   it('dispose removes tick listener and clears references', function() {

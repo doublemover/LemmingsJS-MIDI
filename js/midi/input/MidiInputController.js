@@ -15,6 +15,7 @@ class MidiInputController {
     this.onConfigChange = typeof onConfigChange === 'function' ? onConfigChange : null;
     this.input = null;
     this.channel = 'omni';
+    this._noteCapture = null;
     this._handler = this._onMessage.bind(this);
   }
 
@@ -42,6 +43,10 @@ class MidiInputController {
       this.input.removeListener('midimessage', this._handler);
     }
     this.input = null;
+  }
+
+  setNoteCapture(handler) {
+    this._noteCapture = typeof handler === 'function' ? handler : null;
   }
 
   _matchesChannel(channel) {
@@ -107,8 +112,12 @@ class MidiInputController {
     if (action === 'resume') this._resumeGame();
   }
 
-  _handleNoteOn(note, velocity, config) {
+  _handleNoteOn(note, velocity, config, channel) {
     if (velocity === 0) return;
+    if (this._noteCapture) {
+      const handled = this._noteCapture(note, velocity, channel);
+      if (handled) return;
+    }
     const notesCfg = config?.input?.notes || {};
     const skillBase = notesCfg.skillBase ?? 60;
     const skillOrder = notesCfg.skillOrder || [];
@@ -207,7 +216,7 @@ class MidiInputController {
     if (type === 0x90 || type === 0x80) {
       const note = data[1];
       const velocity = data[2] ?? 0;
-      if (type === 0x90) this._handleNoteOn(note, velocity, config);
+      if (type === 0x90) this._handleNoteOn(note, velocity, config, channel);
       return;
     }
     if (type === 0xB0) {

@@ -3,7 +3,7 @@ import { Lemmings, setDependency } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
-import '../js/render/PaletteImage.js';
+import { PaletteImage } from '../js/render/PaletteImage.js';
 import '../js/render/Frame.js';
 import '../js/render/ColorPalette.js';
 import '../js/level/ObjectImageInfo.js';
@@ -51,7 +51,7 @@ describe('GroundReader', function() {
     }
 
     const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT', 'lemmings');
-    const vgaT = new BinaryReader(new Uint8Array([0, 0, 0, 0]));
+    const vgaT = new BinaryReader(new Uint8Array([0x80, 0, 0, 0x80]));
     const vgaO = new BinaryReader(new Uint8Array([0, 0, 0, 0, 0]));
     const gr = new GroundReader(ground, vgaT, vgaO);
 
@@ -62,6 +62,8 @@ describe('GroundReader', function() {
     expect(gr.colorPalette.getG(8)).to.equal(200);
     expect(gr.colorPalette.getB(8)).to.equal(240);
     expect(gr.imgTerrain[0].isSteel).to.equal(true);
+    expect(gr.imgTerrain[0].steelWidth).to.equal(1);
+    expect(gr.imgTerrain[0].steelHeight).to.equal(1);
   });
 
   it('logs warnings for inconsistent object fields', function() {
@@ -129,6 +131,28 @@ describe('GroundReader', function() {
     expect(sprites).to.be.an('object');
   });
 
+  it('rethrows when fetch fails on non-file URLs', async function() {
+    const origFetch = globalThis.fetch;
+    const origURL = globalThis.URL;
+    globalThis.fetch = async () => { throw new Error('fail'); };
+    globalThis.URL = class {
+      constructor() {
+        this.protocol = 'http:';
+        this.href = 'http://example.test/steelSprites.json';
+      }
+    };
+    Lemmings.resetSteelSprites();
+    let err = null;
+    try {
+      await Lemmings.loadSteelSprites();
+    } catch (e) {
+      err = e;
+    }
+    globalThis.fetch = origFetch;
+    globalThis.URL = origURL;
+    expect(err).to.be.instanceOf(Error);
+  });
+
   it('logs when terrain folder name is unknown', function() {
     const buf = new Uint8Array(1056);
     const tOff = 28 * 16;
@@ -146,5 +170,60 @@ describe('GroundReader', function() {
     new GroundReader(ground, vgaT, vgaO);
     console.log = orig;
     expect(logs.length).to.be.greaterThan(0);
+  });
+
+  it('logs when object data hits EOF', function() {
+    const logs = [];
+    const gr = Object.create(GroundReader.prototype);
+    gr.imgObjects = new Array(16);
+    gr.log = { log: msg => logs.push(msg) };
+    const br = new BinaryReader(new Uint8Array(1), 0, 1, 'bad.dat', 'lemmings');
+    gr._readObjectImages(br, 0, {});
+    expect(logs.some(m => m.includes('unexpected EOF'))).to.equal(true);
+  });
+
+  it('logs when terrain data hits EOF', function() {
+    const logs = [];
+    const gr = Object.create(GroundReader.prototype);
+    gr.imgTerrain = new Array(64);
+    gr.log = { log: msg => logs.push(msg) };
+    const br = new BinaryReader(new Uint8Array(1), 0, 1, 'bad.dat', 'lemmings');
+    gr._readTerrainImages(br, 0, {});
+    expect(logs.some(m => m.includes('unexpected EOF'))).to.equal(true);
+  });
+
+  it('skips missing image entries in _readImages', function() {
+    const gr = Object.create(GroundReader.prototype);
+    const br = new BinaryReader(new Uint8Array(0), 0, 0, 'empty.dat', 'lemmings');
+    gr._readImages([null], br, 3);
+  });
+
+  it('computes steel extents from non-transparent frames', function() {
+    const gr = Object.create(GroundReader.prototype);
+    const img = {
+      width: 2,
+      height: 2,
+      frameCount: 1,
+      frameDataSize: 0,
+      imageLoc: 0,
+      maskLoc: 0,
+      isSteel: true
+    };
+    const br = new BinaryReader(new Uint8Array(0), 0, 0, 'empty.dat', 'lemmings');
+    const origProcess = PaletteImage.prototype.processImage;
+    const origTransparent = PaletteImage.prototype.processTransparentData;
+    const origBuffer = PaletteImage.prototype.getImageBuffer;
+    PaletteImage.prototype.processImage = () => {};
+    PaletteImage.prototype.processTransparentData = () => {};
+    PaletteImage.prototype.getImageBuffer = () => new Uint8Array([128, 128, 128, 1]);
+    try {
+      gr._readImages([img], br, 3);
+      expect(img.steelWidth).to.equal(2);
+      expect(img.steelHeight).to.equal(2);
+    } finally {
+      PaletteImage.prototype.processImage = origProcess;
+      PaletteImage.prototype.processTransparentData = origTransparent;
+      PaletteImage.prototype.getImageBuffer = origBuffer;
+    }
   });
 });

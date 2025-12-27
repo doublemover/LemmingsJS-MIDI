@@ -56,7 +56,9 @@ const DEFAULT_CONFIG = Object.freeze({
     maxRepeats: 0,
     windowBeats: 4,
     spacingTicks: 2,
-    velocityBoost: 0.15,
+    target: 'velocity',
+    amount: 0.15,
+    velocityBoost: 0,
     durationBoost: 0
   },
   position: {
@@ -118,7 +120,7 @@ const DEFAULT_CONFIG = Object.freeze({
       yToVelocity: { cc: 19, toggle: true, target: 'position.yToVelocity' },
       yToTimbre: { cc: 20, toggle: true, target: 'position.yToTimbre' },
       viewPan: { cc: 21, toggle: true, target: 'position.viewPan' },
-      repeatCount: { cc: 22, min: 0, max: 6, round: true, target: 'repeat.maxRepeats' },
+      repeatCount: { cc: 22, min: 0, max: 32, round: true, target: 'repeat.maxRepeats' },
       repeatSpacing: { cc: 23, min: 1, max: 8, round: true, target: 'repeat.windowBeats' },
       envAttack: { cc: 24, min: 0, max: 2, target: 'envelope.attack' },
       envDecay: { cc: 25, min: 0, max: 2, target: 'envelope.decay' },
@@ -413,9 +415,6 @@ class MidiMapping {
       note = baseNote;
     }
 
-    if (noteOffset != null && sfx.note == null && sfx.degree == null) {
-      note = note + noteOffset;
-    }
     if (pitchBendOverride != null && !Number.isFinite(sfx.frequencyHz)) {
       pitchBend = clamp(pitchBendOverride, -1, 1);
     }
@@ -440,6 +439,15 @@ class MidiMapping {
     } else {
       note = quantizeToScale(note, scale);
       note = clampNoteToRange(note, noteRange);
+    }
+    if (Number.isFinite(noteOffset) && noteOffset !== 0) {
+      const offset = Math.round(noteOffset);
+      if (Array.isArray(notes) && notes.length) {
+        notes = notes.map(n => clampNoteToRange(n + offset, noteRange));
+        note = notes[0];
+      } else {
+        note = clampNoteToRange(note + offset, noteRange);
+      }
     }
 
     const velMin = velocityRange.min ?? 1;
@@ -550,5 +558,18 @@ class MidiMapping {
 }
 
 const ScaleLibrary = DEFAULT_SCALES;
+const __test__ = {
+  isPlainObject,
+  mergeConfig,
+  resolvePositionMappings,
+  resolveAxisValues,
+  resolveScale,
+  quantizeToScale,
+  clampNoteToRange,
+  buildScaleNote,
+  buildChordNotes,
+  noteFromFrequency,
+  noteToFrequency
+};
 
-export { MidiMapping, ScaleLibrary };
+export { MidiMapping, ScaleLibrary, __test__ };

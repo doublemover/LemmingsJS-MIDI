@@ -302,6 +302,26 @@ describe('LemmingManager triggers and nuking', function() {
     expect(state).to.equal(Lemmings.LemmingStateType.DROWNING);
     expect(lem.lastTriggerType).to.equal(TriggerTypes.DROWN);
 
+    manager.triggerManager.trigger = () => TriggerTypes.FRYING;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.FRYING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.FRYING);
+
+    manager.triggerManager.trigger = () => TriggerTypes.TRAP;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.TRAP);
+
+    manager.triggerManager.trigger = () => TriggerTypes.EXIT_LEVEL;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.EXITING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.EXIT_LEVEL);
+
+    manager.triggerManager.trigger = () => TriggerTypes.KILL;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.KILL);
+
     manager.triggerManager.trigger = () => TriggerTypes.BLOCKER_LEFT;
     lem.lookRight = true;
     state = manager.runTrigger(lem);
@@ -332,7 +352,7 @@ describe('LemmingManager triggers and nuking', function() {
     expect(logs[0]).to.match(/unknown trigger type/i);
   });
 
-  it('nuking skips disabled targets and ends when applied', function() {
+  it('nuking skips disabled targets and ends when applied', function() {        
     const level = new Level(10, 10);
     level.entrances = [{ x: 0, y: 0 }];
     const gvc = new GameVictoryCondition(level);
@@ -356,5 +376,62 @@ describe('LemmingManager triggers and nuking', function() {
     expect(calls[0].lem).to.equal(lem2);
     expect(calls[0].skill).to.equal(Lemmings.SkillTypes.BOMBER);
     expect(manager.isNuking()).to.equal(false);
+  });
+
+  it('clears nuke targets when index is out of range', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager._nukeTargets = [{ id: 1 }];
+    manager.nextNukingLemmingsIndex = 1;
+
+    manager._nukeNextLemming();
+
+    expect(manager.nextNukingLemmingsIndex).to.equal(-1);
+    expect(manager._nukeTargets).to.equal(null);
+  });
+
+  it('clears nuke targets when index jumps beyond count', function() {     
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager._nukeTargets = [{ id: 1 }];
+    let calls = 0;
+    Object.defineProperty(manager, 'nextNukingLemmingsIndex', {
+      configurable: true,
+      get() {
+        calls += 1;
+        if (calls === 1) return 0;
+        if (calls === 2) return 0;
+        return 5;
+      },
+      set(value) { this._nextNukeIndex = value; }
+    });
+
+    manager._nukeNextLemming();
+
+    expect(manager._nukeTargets).to.equal(null);
+  });
+
+  it('returns early when nuking with no targets', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager._nukeTargets = null;
+    manager.nextNukingLemmingsIndex = 0;
+    manager._nukeNextLemming();
+    expect(manager.nextNukingLemmingsIndex).to.equal(0);
+  });
+
+  it('cycleSelection returns null when no active lemmings exist', function() {
+    const level = new Level(10, 10);
+    level.entrances = [{ x: 0, y: 0 }];
+    const gvc = new GameVictoryCondition(level);
+    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    manager.activeLemmings.length = 0;
+    expect(manager.cycleSelection()).to.equal(null);
   });
 });

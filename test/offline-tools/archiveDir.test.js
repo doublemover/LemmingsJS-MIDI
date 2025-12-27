@@ -25,4 +25,43 @@ describe('archiveDir', function () {
     expect(fs.existsSync(`${dir}.tar.gz`)).to.equal(true);
     cleanup(dir);
   });
+
+  it('throws when rar command fails', async function () {
+    const dir = makeTempDir();
+    fs.copyFileSync(packFile, path.join(dir, 'LEVEL000.DAT'));
+    const missingDir = path.join(dir, 'missing');
+    try {
+      let err = null;
+      try {
+        await archiveDir(missingDir, 'rar', { spawnSync: () => ({ status: 1 }) });
+      } catch (e) {
+        err = e;
+      }
+      expect(err).to.be.instanceOf(Error);
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  it('accepts successful rar commands', async function () {
+    const dir = makeTempDir();
+    fs.copyFileSync(packFile, path.join(dir, 'LEVEL000.DAT'));
+    try {
+      await archiveDir(dir, 'rar', { spawnSync: () => ({ status: 0 }) });
+    } finally {
+      cleanup(dir);
+    }
+  });
+
+  it('rejects unsupported formats', async function () {
+    const dir = makeTempDir();
+    let err = null;
+    try {
+      await archiveDir(dir, '7z');
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.be.instanceOf(Error);
+    cleanup(dir);
+  });
 });

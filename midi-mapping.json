@@ -34,7 +34,9 @@
     "maxRepeats": 0,
     "windowBeats": 4,
     "spacingTicks": 2,
-    "velocityBoost": 0.15,
+    "target": "velocity",
+    "amount": 0.15,
+    "velocityBoost": 0,
     "durationBoost": 0
   },
   "limits": {
@@ -108,7 +110,7 @@
       "yToVelocity": { "cc": 19, "toggle": true, "target": "position.yToVelocity" },
       "yToTimbre": { "cc": 20, "toggle": true, "target": "position.yToTimbre" },
       "viewPan": { "cc": 21, "toggle": true, "target": "position.viewPan" },
-      "repeatCount": { "cc": 22, "min": 0, "max": 6, "round": true, "target": "repeat.maxRepeats" },
+      "repeatCount": { "cc": 22, "min": 0, "max": 32, "round": true, "target": "repeat.maxRepeats" },
       "repeatSpacing": { "cc": 23, "min": 1, "max": 8, "round": true, "target": "repeat.windowBeats" },
       "envAttack": { "cc": 24, "min": 0, "max": 2, "target": "envelope.attack" },
       "envDecay": { "cc": 25, "min": 0, "max": 2, "target": "envelope.decay" },

@@ -1195,6 +1195,43 @@ describe('Action systems events and draws', function() {
     expect(mineEvent.data.intensity).to.be.greaterThan(1);
   });
 
+  it('handles missing clear count with null bash masks', function() {
+    const restore = useSoundBus([]);
+    const level = {
+      getGroundMaskLayer() { return { hasGroundAt() { return false; } }; },
+      hasSteelUnderMask() { return false; },
+      hasArrowUnderMask() { return false; },
+      clearGroundWithMask(mask) { this.cleared = mask; }
+    };
+    const nullMasks = {
+      GetMask() { return { GetMask() { return null; } }; }
+    };
+    const sys = new ActionBashSystem(stubSprites, nullMasks);
+    const lem = new StubLemming();
+    lem.frameIndex = 1; // -> state 2
+    sys.process(level, lem);
+    restore();
+    expect(level.cleared).to.equal(null);
+  });
+
+  it('handles missing clear count with null mine masks', function() {
+    const restore = useSoundBus([]);
+    const level = {
+      hasSteelUnderMask() { return false; },
+      hasArrowUnderMask() { return false; },
+      clearGroundWithMask(mask) { this.cleared = mask; }
+    };
+    const nullMasks = {
+      GetMask() { return { GetMask() { return null; } }; }
+    };
+    const sys = new ActionMineSystem(stubSprites, nullMasks);
+    const lem = new StubLemming();
+    lem.frameIndex = 0; // -> state 1
+    sys.process(level, lem);
+    restore();
+    expect(level.cleared).to.equal(null);
+  });
+
   it('ActionBashSystem exits to walking when solid ends', function() {
     const level = new StubLevel();
     const sys = new ActionBashSystem(stubSprites, stubMasks());
@@ -1675,4 +1712,3 @@ describe('Action systems branch coverage', function() {
     expect(lem.x).to.equal(-1);
   });
 });
-

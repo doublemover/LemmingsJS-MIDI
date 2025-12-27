@@ -27,6 +27,19 @@ class TestClassList {
   contains(name) {
     return this._getSet().has(name);
   }
+
+  toggle(name, force) {
+    const set = this._getSet();
+    const has = set.has(name);
+    const shouldAdd = force == null ? !has : !!force;
+    if (shouldAdd) {
+      set.add(name);
+    } else {
+      set.delete(name);
+    }
+    this._setFrom(set);
+    return shouldAdd;
+  }
 }
 
 class TestElement {
