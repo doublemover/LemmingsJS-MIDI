@@ -68,7 +68,7 @@ class NodeFileProvider {
     if (!map) {
       map = new Map();
       const data = fs.readFileSync(abs);
-        const extractor = await this._rar.createExtractorFromData({ data });
+      const extractor = await this._rar.createExtractorFromData({ data });
       const list = extractor.getFileList();
       const headers = [...list.fileHeaders];
       for (const h of headers) {
