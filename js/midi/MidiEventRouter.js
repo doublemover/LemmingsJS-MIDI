@@ -83,6 +83,7 @@ class MidiEventRouter {
       this._arpStateBySfx.clear();
       this._repeatHistoryByKey.clear();
       this.scheduler?.allNotesOff?.();
+      this.scheduler?.clearQueue?.();
     }
     if (this._clockBaseMs == null) {
       this._clockBaseMs = this._nowMs() - eventTimeMs;
@@ -136,6 +137,82 @@ class MidiEventRouter {
     this._repeatHistoryByKey.set(key, nextHistory);
     const repeatCount = Math.max(0, nextHistory.length - 1);
     return Math.min(repeatCount / maxRepeats, 1);
+  }
+
+  _applyRepeatTarget(spec, activeNotes, repeatCfg, repeatFactor) {
+    if (!spec || repeatFactor <= 0) return { spec, activeNotes };
+    const hasAmount = Number.isFinite(repeatCfg.amount);
+    if (!hasAmount) return { spec, activeNotes };
+    const amount = repeatCfg.amount;
+    if (!amount) return { spec, activeNotes };
+    const delta = amount * repeatFactor;
+    const noteRange = this.mapping.config?.noteRange || { min: 0, max: 127 };
+    const positionCfg = this.mapping.config?.position || {};
+    const clampNote = value => Math.max(noteRange.min ?? 0, Math.min(noteRange.max ?? 127, value));
+    const clampValue = (value, min, max) => Math.max(min, Math.min(max, value));
+    const target = repeatCfg.target || 'velocity';
+    const updated = { ...spec };
+    let notes = activeNotes;
+
+    switch (target) {
+    case 'velocity':
+    case 'accent': {
+      const velocity = updated.velocity ?? 64;
+      updated.velocity = clampValue(Math.round(velocity * (1 + delta)), 1, 127);
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'duration': {
+      const duration = updated.durationTicks ?? 1;
+      updated.durationTicks = Math.max(1, Math.round(duration * (1 + delta)));
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'note': {
+      const noteDelta = Math.round(delta * 12);
+      notes = notes.map(note => clampNote(note + noteDelta));
+      updated.note = notes[0];
+      updated.notes = notes;
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'timbre': {
+      if (!Number.isFinite(updated.timbre)) return { spec: updated, activeNotes: notes };
+      const tMin = positionCfg.timbreRange?.min ?? 0;
+      const tMax = positionCfg.timbreRange?.max ?? 127;
+      const range = tMax - tMin;
+      updated.timbre = clampValue(updated.timbre + delta * range, tMin, tMax);
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'pan': {
+      if (!Number.isFinite(updated.pan)) return { spec: updated, activeNotes: notes };
+      const pMin = positionCfg.panRange?.min ?? -127;
+      const pMax = positionCfg.panRange?.max ?? 127;
+      const range = pMax - pMin;
+      updated.pan = clampValue(updated.pan + delta * range, pMin, pMax);
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'pitchBend': {
+      if (!Number.isFinite(updated.pitchBend)) return { spec: updated, activeNotes: notes };
+      updated.pitchBend = clampValue(updated.pitchBend + delta, -1, 1);
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'attack':
+    case 'decay': {
+      const velocity = updated.velocity ?? 64;
+      updated.velocity = clampValue(Math.round(velocity * (1 + delta)), 1, 127);
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'sustain': {
+      const duration = updated.durationTicks ?? 1;
+      updated.durationTicks = Math.max(1, Math.round(duration * (1 + delta)));
+      return { spec: updated, activeNotes: notes };
+    }
+    case 'release': {
+      const releaseVelocity = updated.releaseVelocity ?? updated.velocity ?? 64;
+      updated.releaseVelocity = clampValue(Math.round(releaseVelocity * (1 + delta)), 1, 127);
+      return { spec: updated, activeNotes: notes };
+    }
+    default:
+      return { spec: updated, activeNotes: notes };
+    }
   }
 
   _planEntries(spec, sendTimeMs, noteCount = 1) {
@@ -379,16 +456,22 @@ class MidiEventRouter {
         ? `trigger:${event.triggerType}:${event.sfxId}`
         : `sfx:${event.sfxId}`;
       const repeatFactor = this._getRepeatFactor(repeatKey, sendTimeMs, repeatCfg, bpm);
-      const velocityBoost = repeatCfg.velocityBoost ?? 0;
-      const durationBoost = repeatCfg.durationBoost ?? 0;
+      const hasAmount = Number.isFinite(repeatCfg.amount);
+      const velocityBoost = hasAmount ? 0 : (repeatCfg.velocityBoost ?? 0);
+      const durationBoost = hasAmount ? 0 : (repeatCfg.durationBoost ?? 0);
       const velocityScale = 1 + velocityBoost * repeatFactor;
       const durationScale = 1 + durationBoost * repeatFactor;
-      const specWithTime = {
+      let specWithTime = {
         ...spec,
         timeMs: sendTimeMs,
         velocity: Math.max(1, Math.min(127, Math.round((spec.velocity ?? 64) * velocityScale))),
         durationTicks: Math.max(1, Math.round((spec.durationTicks ?? 1) * durationScale))
       };
+      if (hasAmount && repeatFactor > 0) {
+        const adjusted = this._applyRepeatTarget(specWithTime, activeNotes, repeatCfg, repeatFactor);
+        specWithTime = adjusted.spec;
+        activeNotes = adjusted.activeNotes;
+      }
       const plan = this._planEntries(specWithTime, sendTimeMs, activeNotes.length);
       if (!this._shouldSend(meta, specWithTime, plan, now)) {
         return;

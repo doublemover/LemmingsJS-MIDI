@@ -58,6 +58,67 @@ describe('MidiMapping', function() {
     expect(spec.timbre).to.equal(60);
   });
 
+  it('applies note offsets to explicit notes', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 60, max: 72 },
+      position: {
+        mappings: [{ axis: 'x', target: 'note', min: 0, max: 12, enabled: true }],
+        viewPan: false
+      },
+      sfx: { '1': { note: 60 } }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.note).to.equal(72);
+  });
+
+  it('applies duration overrides from position mappings', function() {
+    const mapping = new MidiMapping({
+      durationTicks: { default: 4, min: 1, max: 10 },
+      position: {
+        mappings: [{ axis: 'x', target: 'duration', min: 2, max: 6, enabled: true }],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.durationTicks).to.equal(4);
+  });
+
+  it('applies pan overrides from position mappings', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [{ axis: 'x', target: 'pan', min: -127, max: 127, enabled: true }],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false,
+        panRange: { min: -127, max: 127 }
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.pan).to.equal(127);
+  });
+
   it('calculates pan from the view window', function() {
     const mapping = new MidiMapping({
       position: {
@@ -89,6 +150,8 @@ describe('MidiMapping', function() {
   it('parses JSON input and handles invalid JSON', function() {
     const valid = MidiMapping.fromJson('{"noteRange":{"min":50,"max":51}}');
     expect(valid.config.noteRange.min).to.equal(50);
+    const direct = MidiMapping.fromJson({ noteRange: { min: 48, max: 49 } });
+    expect(direct.config.noteRange.max).to.equal(49);
     const invalid = MidiMapping.fromJson('{bad');
     expect(invalid.config).to.be.ok;
   });
@@ -115,6 +178,63 @@ describe('MidiMapping', function() {
     });
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(61);
+  });
+
+  it('covers position mapping targets and overrides', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 60, max: 72 },
+      velocityRange: { min: 10, max: 120, default: 80 },
+      durationTicks: { min: 1, max: 10, default: 4 },
+      density: { velocityBoost: 0.5, durationScale: 0.5 },
+      position: {
+        mappings: [
+          { axis: 'x', target: 'note', max: 12, enabled: true },
+          { axis: 'x', target: 'velocity', enabled: true },
+          { axis: 'x', target: 'timbre', min: 0, max: 127, enabled: true },
+          { axis: 'x', target: 'pan', min: -50, max: 50, enabled: true },
+          { axis: 'x', target: 'duration', min: 2, max: 6, enabled: true },
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true },
+          { axis: 'x', target: 'attack', min: 0, max: 2, enabled: true },
+          { axis: 'x', target: 'decay', min: 0, max: 2, enabled: true },
+          { axis: 'x', target: 'sustain', min: 0.5, max: 1.5, enabled: true },
+          { axis: 'x', target: 'release', min: 0, max: 2, enabled: true },
+          { axis: 'xy', target: 'velocity', min: 20, max: 100, enabled: true }
+        ],
+        timbreRange: { min: 0, max: 127 },
+        panRange: { min: -127, max: 127 },
+        viewPan: false
+      },
+      scale: { degrees: [0, 2, 4, 5, 7, 9, 11], root: 0 }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50, y: 25, intensity: 1.2 },
+      { levelWidth: 100, levelHeight: 50 },
+      0.5,
+      { notes: [60, 64], envelope: { attack: 1.2 } }
+    );
+
+    expect(spec.notes).to.have.length(2);
+    expect(spec.pitchBend).to.be.a('number');
+    expect(spec.timbre).to.be.a('number');
+    expect(spec.pan).to.be.a('number');
+  });
+
+  it('skips mappings when axis values are missing', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [{ axis: 'y', target: 'velocity', min: 0, max: 127, enabled: true }],
+        viewPan: false
+      }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1, x: 10 }, { levelWidth: 100, levelHeight: null }, 0);
+    expect(spec.velocity).to.be.a('number');
+  });
+
+  it('handles null inputs for fromJson and mapEvent', function() {
+    const mapping = MidiMapping.fromJson(null);
+    expect(mapping.config).to.be.ok;
+    expect(mapping.mapEvent(null)).to.equal(null);
   });
 
   it('computes pan for offscreen events and keeps defaults', function() {
@@ -149,6 +269,109 @@ describe('MidiMapping', function() {
     expect(spec.releaseVelocity).to.be.greaterThan(0);
   });
 
+  it('falls back to the default scale when the name is unknown', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'mystery-scale', degrees: [] },
+      noteRange: { min: 60, max: 60 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.note).to.equal(60);
+  });
+
+  it('quantizes notes upward and downward to the scale', function() {
+    const mapping = new MidiMapping({
+      scale: { degrees: [0], root: 0 },
+      noteRange: { min: 0, max: 127 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+
+    const up = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 59 });
+    const down = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 61 });
+    expect(up.note).to.equal(60);
+    expect(down.note).to.equal(60);
+  });
+
+  it('keeps notes unchanged when no scale degree is within range', function() {
+    const mapping = new MidiMapping({
+      scale: { degrees: [99], root: 0 },
+      noteRange: { min: 0, max: 127 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 60 });
+    expect(spec.note).to.equal(60);
+  });
+
+  it('handles chord inversions', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },
+      noteDefaults: { octave: 4, degree: 0, chord: 'triad' },
+      sfx: { '1': { degree: 0, chord: { type: 'triad', inversion: 1 } } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.notes).to.eql([52, 55, 60]);
+  });
+
+  it('maps degrees to scale notes when chord is not specified', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },
+      noteDefaults: { octave: 4, degree: 0 },
+      sfx: { '1': { degree: 2, octave: 4 } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.note).to.equal(52);
+  });
+
+  it('applies note offsets to note arrays', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 0, max: 127 },
+      position: {
+        mappings: [{ axis: 'x', target: 'note', min: 0, max: 12, enabled: true }],
+        viewPan: false
+      },
+      sfx: { '1': { notes: [60, 64, 67] } }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.notes).to.eql([72, 76, 79]);
+    expect(spec.note).to.equal(72);
+  });
+
+  it('applies pitch bend and sustain overrides from position mappings', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true },
+          { axis: 'x', target: 'attack', min: 0, max: 2, enabled: true },
+          { axis: 'x', target: 'sustain', min: 0.5, max: 1.5, enabled: true },
+          { axis: 'x', target: 'unknown', min: 0, max: 1, enabled: true }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.pitchBend).to.equal(1);
+    expect(spec.durationTicks).to.be.greaterThan(0);
+  });
+
   it('applies intensity scaling and per-event envelope overrides', function() {
     const mapping = new MidiMapping({
       velocityRange: { min: 10, max: 127, default: 50 },
@@ -171,5 +394,326 @@ describe('MidiMapping', function() {
     expect(merged.noteRange.max).to.equal(72);
     expect(merged.scale.root).to.equal(1);
     expect(merged.scale.name).to.equal('minor');
+  });
+
+  it('handles null JSON input and array overrides', function() {
+    const fresh = MidiMapping.fromJson(null);
+    expect(fresh.config).to.be.ok;
+    const merged = MidiMapping.mergeConfigs(
+      { noteRange: { min: 40, max: 60 } },
+      { noteRange: [1, 2, 3] }
+    );
+    expect(merged.noteRange).to.eql([1, 2, 3]);
+  });
+
+  it('builds position mappings from toggle flags', function() {
+    const mapping = new MidiMapping({
+      position: {
+        xToNote: true,
+        yToVelocity: true,
+        yToTimbre: true,
+        viewPan: false,
+        xNoteRange: { min: -12, max: 12 },
+        timbreRange: { min: 0, max: 127 }
+      },
+      velocityRange: { min: 10, max: 110, default: 80 }
+    });
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100, y: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+    expect(spec.timbre).to.be.within(0, 127);
+  });
+
+  it('applies mapping targets and skips missing axis values', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 60, max: 72 },
+      velocityRange: { min: 1, max: 127, default: 60 },
+      durationTicks: { default: 4, min: 1, max: 10 },
+      position: {
+        mappings: [
+          { axis: 'x', target: 'note', min: -12, max: 12, enabled: true },
+          { axis: 'x', target: 'velocity', min: 10, max: 100, enabled: true },
+          { axis: 'y', target: 'timbre', min: 20, max: 80, enabled: true },
+          { axis: 'x', target: 'pan', min: -100, max: 100, enabled: true },
+          { axis: 'y', target: 'duration', min: 2, max: 6, enabled: true },
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true },
+          { axis: 'x', target: 'attack', min: 0, max: 2, enabled: true },
+          { axis: 'x', target: 'decay', min: 0, max: 2, enabled: true },
+          { axis: 'y', target: 'sustain', min: 0.5, max: 1.5, enabled: true },
+          { axis: 'y', target: 'release', min: 0, max: 2, enabled: true },
+          { axis: 'x', enabled: true }
+        ],
+        viewPan: false
+      }
+    });
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50, y: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+    expect(spec.pan).to.not.equal(null);
+    expect(spec.pitchBend).to.be.a('number');
+
+    const missingAxis = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100 },
+      0
+    );
+    expect(missingAxis.velocity).to.be.a('number');
+  });
+
+  it('quantizes notes already in scale and clamps out-of-range notes', function() {
+    const mapping = new MidiMapping({
+      scale: { degrees: [0, 4, 7], root: 0 },
+      noteRange: { min: 60, max: 72 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false },
+      sfx: { '1': { note: 64 } }
+    });
+    const inScale = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(inScale.note).to.equal(64);
+
+    const clamped = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 30 });
+    expect(clamped.note).to.equal(67);
+  });
+
+  it('builds sixth chords and falls back to triads', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },       
+      noteDefaults: { octave: 4, degree: 0, chord: 'triad' }
+    });
+    const sixth = mapping.mapEvent({ sfxId: 1 }, {}, 0, { degree: 0, chord: { type: 'sixth' } });
+    expect(sixth.notes).to.have.length(4);
+    const fallback = mapping.mapEvent({ sfxId: 1 }, {}, 0, { degree: 0, chord: { type: 'unknown' } });
+    expect(fallback.notes).to.have.length(3);
+  });
+
+  it('respects explicit values while applying pitch bend overrides', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true },
+          { axis: 'x', target: 'velocity', min: 10, max: 100, enabled: true },
+          { axis: 'x', target: 'duration', min: 2, max: 6, enabled: true }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      },
+      velocityRange: { min: 1, max: 127, default: 50 },
+      durationTicks: { default: 4, min: 1, max: 10 }
+    });
+
+    const specFreq = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0,
+      { frequencyHz: 440, velocity: 90, durationTicks: 8 }
+    );
+    expect(specFreq.pitchBend).to.equal(0);
+    expect(specFreq.velocity).to.equal(90);
+    expect(specFreq.durationTicks).to.equal(8);
+
+    const specOverride = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+    expect(specOverride.pitchBend).to.equal(1);
+  });
+
+  it('skips chord mapping when a note is already provided', function() {
+    const mapping = new MidiMapping({
+      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },
+      noteRange: { min: 60, max: 72 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0, { chord: { type: 'triad' }, note: 65 });
+    expect(spec.notes).to.equal(null);
+    expect(spec.note).to.equal(65);
+  });
+
+  it('handles view pan dead zones and empty widths', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        panRange: { min: -127, max: 127 },
+        panDeadZonePct: 0.5,
+        panOnscreenWeight: 1,
+        panOffscreenWeight: 0,
+        panOffscreenRange: 1,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+    const center = mapping.mapEvent({ sfxId: 1, x: 50 }, { viewRect: { x: 0, w: 100 } }, 0);
+    expect(center.pan).to.equal(0);
+
+    const zero = mapping.mapEvent({ sfxId: 1, x: 10 }, { viewRect: { x: 0, w: 0 } }, 0);
+    expect(zero.pan).to.equal(null);
+  });
+
+  it('returns null for missing events and ignores non-plain envelopes', function() {
+    const mapping = new MidiMapping({
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+    expect(mapping.mapEvent(null, {}, 0)).to.equal(null);
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0, { envelope: [] });
+    expect(spec.velocity).to.be.a('number');
+  });
+
+  it('mapEvent uses defaults and override sfx', function() {
+    const mapping = new MidiMapping({
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1 });
+    expect(spec.note).to.be.a('number');
+
+    const overrideSpec = mapping.mapEvent({ sfxId: 1 }, undefined, undefined, { note: 70 });
+    expect(overrideSpec.note).to.equal(70);
+  });
+
+  it('mapEvent applies mapping targets and disabled entries', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 60, max: 72 },
+      velocityRange: { min: 1, max: 127, default: 64 },
+      durationTicks: { default: 4, min: 1, max: 10 },
+      density: { windowTicks: 10, velocityBoost: 0.1, durationScale: 0.1 },
+      position: {
+        mappings: [
+          { axis: 'x', target: 'note', min: -12, max: 12, enabled: true },
+          { axis: 'x', target: 'velocity', min: 10, max: 100, enabled: true },
+          { axis: 'y', target: 'timbre', min: 20, max: 80, enabled: true },
+          { axis: 'x', target: 'pan', min: -50, max: 50, enabled: true },
+          { axis: 'x', target: 'duration', min: 2, max: 6, enabled: true },
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true },
+          { axis: 'x', target: 'attack', min: 0, max: 2, enabled: true },
+          { axis: 'y', target: 'sustain', min: 0.5, max: 1.5, enabled: true },
+          { axis: 'x', target: 'unknown', enabled: true },
+          { axis: 'y', target: 'velocity', enabled: false }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false,
+        timbreRange: { min: 0, max: 127 },
+        panRange: { min: -50, max: 50 }
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100, y: 50, intensity: 1.5 },
+      { levelWidth: 100, levelHeight: 100 },
+      0.5
+    );
+    expect(spec.timbre).to.be.within(0, 127);
+    expect(spec.pan).to.be.within(-50, 50);
+    expect(spec.durationTicks).to.be.at.least(1);
+
+    const missingAxis = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100 },
+      0
+    );
+    expect(missingAxis.timbre).to.equal(null);
+  });
+
+  it('mapEvent offsets note arrays and pitch bend overrides', function() {
+    const mapping = new MidiMapping({
+      noteRange: { min: 60, max: 72 },
+      velocityRange: { min: 1, max: 127, default: 60 },
+      position: {
+        mappings: [
+          { axis: 'x', target: 'note', min: 0, max: 12, enabled: true },
+          { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      },
+      sfx: { '1': { notes: [60, 64] } }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+    expect(spec.notes[0]).to.equal(72);
+    expect(spec.pitchBend).to.equal(1);
+  });
+
+  it('mapEvent applies envelope defaults and view pan fallbacks', function() {  
+    const mapping = new MidiMapping({
+      envelope: { attack: NaN, decay: NaN, sustain: NaN, release: NaN },
+      position: {
+        viewPan: true,
+        panDeadZonePct: 1,
+        panOnscreenWeight: 1,
+        panOffscreenWeight: 0,
+        panOffscreenRange: 1,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { viewRect: { x: 0, w: 100 } },
+      0,
+      { envelope: { attack: NaN } }
+    );
+    expect(spec.pan).to.equal(0);
+    expect(spec.releaseVelocity).to.be.a('number');
+  });
+
+  it('mapEvent returns null for missing events and uses defaults', function() {
+    const mapping = new MidiMapping();
+    expect(mapping.mapEvent(null, {}, 0)).to.equal(null);
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.note).to.be.a('number');
+  });
+
+  it('mapEvent handles overrides and unknown mapping targets', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [
+          { axis: 'y', target: 'unknown', enabled: true },
+          { axis: 'y', target: 'velocity', enabled: false }
+        ],
+        viewPan: false
+      }
+    });
+    const spec = mapping.mapEvent(
+      { sfxId: 1, y: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0,
+      { note: 60, velocity: 90 }
+    );
+    expect(spec.velocity).to.equal(90);
+  });
+
+  it('mapEvent uses pitch bend overrides without frequency data', function() {
+    const mapping = new MidiMapping({
+      position: {
+        mappings: [{ axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true }],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 100 },
+      { levelWidth: 100, levelHeight: 100 },
+      0,
+      { note: 60 }
+    );
+    expect(spec.pitchBend).to.equal(1);
   });
 });

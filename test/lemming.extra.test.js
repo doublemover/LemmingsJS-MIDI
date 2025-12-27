@@ -26,4 +26,13 @@ describe('Lemming extra', function() {
     const res = lem.process(level);
     expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
   });
+
+  it('process returns OUT_OF_LEVEL when action is missing', function() {
+    const lem = new Lemming(0, 0);
+    lem.action = null;
+    lem.countdownAction = null;
+    const level = { width: 2, height: 2 };
+    const res = lem.process(level);
+    expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
+  });
 });

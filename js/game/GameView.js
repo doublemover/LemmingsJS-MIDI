@@ -16,6 +16,18 @@ const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
 const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
 
+const cloneConfig = (config) => JSON.parse(JSON.stringify(config || {}));
+
+const hashString = (input) => {
+  let hash = 2166136261;
+  const str = String(input ?? '');
+  for (let i = 0; i < str.length; i++) {
+    hash ^= str.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16);
+};
+
 class GameView extends BaseLogger {
   constructor() {
     super();
@@ -65,6 +77,8 @@ class GameView extends BaseLogger {
     this.midiRouter = null;
     this._midiOut = null;
     this._midiMapping = null;
+    this._midiBaseConfig = null;
+    this._midiSchemaHash = null;
     this.midiEnabled = true;
 
     const gameTypes = getGameTypes();
@@ -265,10 +279,16 @@ class GameView extends BaseLogger {
     if (!this.gameFactory?.fileProvider) return new MidiMapping();
     try {
       const text = await this.gameFactory.fileProvider.loadString('midi-mapping.json');
-      return MidiMapping.fromJson(text);
+      const mapping = MidiMapping.fromJson(text);
+      this._midiSchemaHash = hashString(text);
+      this._midiBaseConfig = cloneConfig(mapping.config);
+      return mapping;
     } catch (e) {
       this.log.log('Unable to load midi-mapping.json, using defaults', e);
-      return new MidiMapping();
+      const mapping = new MidiMapping();
+      this._midiSchemaHash = hashString(JSON.stringify(mapping.config));
+      this._midiBaseConfig = cloneConfig(mapping.config);
+      return mapping;
     }
   }
 
@@ -316,18 +336,24 @@ class GameView extends BaseLogger {
   }
 
   applyMidiOverrides(overrides) {
-    if (!overrides || !this._midiMapping) return;
-    if (typeof MidiMapping?.mergeConfigs === 'function') {
-      const merged = MidiMapping.mergeConfigs(this._midiMapping.config, overrides);
-      this._midiMapping = new MidiMapping(merged);
-    } else {
-      this._midiMapping.config = { ...this._midiMapping.config, ...overrides };
-    }
+    if (!this._midiBaseConfig) return;
+    const merged = typeof MidiMapping?.mergeConfigs === 'function'
+      ? MidiMapping.mergeConfigs(this._midiBaseConfig, overrides || {})
+      : { ...this._midiBaseConfig, ...(overrides || {}) };
+    this._midiMapping = new MidiMapping(merged);
     if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
   }
 
   getMidiConfig() {
     return this._midiMapping?.config ?? null;
+  }
+
+  getMidiBaseConfig() {
+    return this._midiBaseConfig;
+  }
+
+  getMidiSchemaHash() {
+    return this._midiSchemaHash;
   }
 
   enableDebug() {
@@ -593,6 +619,12 @@ class GameView extends BaseLogger {
   /** select a game type */
   async setup() {
     this.applyQuery();
+    if (!this._midiMapping) {
+      this._midiMapping = await this._loadMidiMapping();
+      if (typeof globalThis !== 'undefined' && globalThis.lemmingsMidiOverrides) {
+        this.applyMidiOverrides(globalThis.lemmingsMidiOverrides);
+      }
+    }
     this.configs = await this.gameFactory.configReader.configs;
     this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));
     const typeIndex = this.configs.findIndex(c => c.gametype === this.gameType);

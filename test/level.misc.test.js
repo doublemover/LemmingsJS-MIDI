@@ -20,4 +20,26 @@ describe('Level misc helpers', function() {
     expect(level.isOutOfLevel(2)).to.equal(false);
     expect(level.isOutOfLevel(3)).to.equal(true);
   });
+
+  it('clears ground with mask constraints', function() {
+    const level = new Level(2, 2);
+    level.groundImage = new Uint8ClampedArray(2 * 2 * 4);
+    const pixelIndex = (1 * 2 + 0) * 4;
+    level.groundImage[pixelIndex] = 255;
+    level.isSteelAt = (x, y) => x === 1 && y === 0;
+
+    const mask = {
+      offsetX: -1,
+      offsetY: 0,
+      width: 4,
+      height: 2,
+      at(dx, dy) {
+        return dx === 1 && dy === 0;
+      }
+    };
+
+    const removed = level.clearGroundWithMaskCount(mask, 0, 0);
+    expect(removed).to.equal(1);
+    expect(level.groundImage[pixelIndex]).to.equal(0);
+  });
 });

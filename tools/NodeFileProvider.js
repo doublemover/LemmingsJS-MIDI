@@ -6,11 +6,12 @@ import * as tar from 'tar';
 import { createExtractorFromFile, createExtractorFromData } from 'node-unrar-js';
 
 class NodeFileProvider {
-  constructor(rootPath = '.') {
+  constructor(rootPath = '.', options = {}) {
     this.rootPath = rootPath;
     this.zipCache = new Map();
     this.tarCache = new Map();
     this.rarCache = new Map();
+    this._rar = options.rar || { createExtractorFromData, createExtractorFromFile };
   }
 
   /**
@@ -67,7 +68,7 @@ class NodeFileProvider {
     if (!map) {
       map = new Map();
       const data = fs.readFileSync(abs);
-      const extractor = await createExtractorFromData({ data });
+        const extractor = await this._rar.createExtractorFromData({ data });
       const list = extractor.getFileList();
       const headers = [...list.fileHeaders];
       for (const h of headers) {

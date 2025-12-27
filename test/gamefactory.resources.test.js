@@ -137,4 +137,86 @@ describe('GameFactory resource helpers', function () {
     setDependency('FileProvider', orig.FileProvider);
     setDependency('ConfigReader', orig.ConfigReader);
   });
+
+  it('records performance measures when enabled', async function () {
+    const measures = [];
+    const origPerf = globalThis.performance;
+    const origLemmings = globalThis.lemmings;
+    globalThis.performance = { now: () => 1, measure: (name) => measures.push(name) };
+    globalThis.lemmings = { performanceAPI: true, game: { showDebug: false } };
+
+    class FileProviderStub {
+      constructor(root) { this.root = root; }
+      loadString() { return Promise.resolve('[]'); }
+    }
+    class ConfigReaderStub {
+      getConfig() { return Promise.resolve({ path: 'data', level: {} }); }
+    }
+    class GameResourcesStub {}
+    class GameStub {}
+
+    const orig = {
+      FileProvider: Lemmings.FileProvider,
+      ConfigReader: Lemmings.ConfigReader,
+      GameResources: Lemmings.GameResources,
+      Game: Lemmings.Game
+    };
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
+    setDependency('GameResources', GameResourcesStub);
+    setDependency('Game', GameStub);
+
+    const gf = new GameFactory('root');
+    await gf.getGameResources(1);
+    await gf.getGame(1, new GameResourcesStub());
+
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
+    setDependency('GameResources', orig.GameResources);
+    setDependency('Game', orig.Game);
+    globalThis.performance = origPerf;
+    globalThis.lemmings = origLemmings;
+
+    expect(measures).to.include('GameFactory getGameResources');
+    expect(measures).to.include('GameFactory getGame');
+  });
+
+  it('swallows performance measurement errors', async function () {
+    const origPerf = globalThis.performance;
+    const origLemmings = globalThis.lemmings;
+    globalThis.performance = { now: () => 1, measure: () => { throw new Error('boom'); } };
+    globalThis.lemmings = { performanceAPI: true, game: { showDebug: false } };
+
+    class FileProviderStub {
+      constructor(root) { this.root = root; }
+      loadString() { return Promise.resolve('[]'); }
+    }
+    class ConfigReaderStub {
+      getConfig() { return Promise.resolve({ path: 'data', level: {} }); }
+    }
+    class GameResourcesStub {}
+    class GameStub {}
+
+    const orig = {
+      FileProvider: Lemmings.FileProvider,
+      ConfigReader: Lemmings.ConfigReader,
+      GameResources: Lemmings.GameResources,
+      Game: Lemmings.Game
+    };
+    setDependency('FileProvider', FileProviderStub);
+    setDependency('ConfigReader', ConfigReaderStub);
+    setDependency('GameResources', GameResourcesStub);
+    setDependency('Game', GameStub);
+
+    const gf = new GameFactory('root');
+    await gf.getGameResources(1);
+    await gf.getGame(1, new GameResourcesStub());
+
+    setDependency('FileProvider', orig.FileProvider);
+    setDependency('ConfigReader', orig.ConfigReader);
+    setDependency('GameResources', orig.GameResources);
+    setDependency('Game', orig.Game);
+    globalThis.performance = origPerf;
+    globalThis.lemmings = origLemmings;
+  });
 });

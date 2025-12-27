@@ -75,6 +75,47 @@ describe('midiUiController', function() {
     expect(controller.getMidiOverrides().input.channel).to.equal(2);
   });
 
+  it('resets stored overrides when schema hash changes', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    win.localStorage.setItem('lemmings.midi.overrides', JSON.stringify({ timing: { bpmBase: 90 } }));
+    win.localStorage.setItem('lemmings.midi.schemaHash', 'old');
+    const applied = [];
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({
+        getMidiSchemaHash: () => 'new',
+        applyMidiOverrides(patch) { applied.push(patch); }
+      })
+    });
+
+    controller.bindMidiUi();
+
+    expect(win.localStorage.getItem('lemmings.midi.overrides')).to.equal(null);
+    expect(win.localStorage.getItem('lemmings.midi.schemaHash')).to.equal('new');
+    expect(controller.getMidiOverrides()).to.eql({});
+    expect(applied).to.eql([{}]);
+  });
+
+  it('collapses the left panel when the MIDI title is clicked', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const panel = register(doc, 'div', 'controlLeft');
+    const toggle = register(doc, 'div', 'midiPanelToggle');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({})
+    });
+
+    controller.bindMidiUi();
+    toggle.dispatchEvent({ type: 'click' });
+    expect(panel.classList.contains('collapsed')).to.equal(true);
+    expect(win.localStorage.getItem('lemmings.midi.panelCollapsed')).to.equal('true');
+  });
+
   it('uses config defaults when storage is empty', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
@@ -115,6 +156,48 @@ describe('midiUiController', function() {
 
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal('omni');
+  });
+
+  it('populates key, scale, and event lists with default data', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const keySelect = register(doc, 'select', 'midiKeySelect');
+    const scaleSelect = register(doc, 'select', 'midiScaleSelect');
+    const eventList = register(doc, 'div', 'midiEventList');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => ({ timing: { bpmBase: 120 }, sfx: {} })
+    });
+
+    controller.refreshMidiUiFromConfig();
+
+    expect(keySelect.children.length).to.be.greaterThan(1);
+    expect(scaleSelect.children.length).to.be.greaterThan(0);
+    expect(eventList.children.length).to.be.greaterThan(0);
+  });
+
+  it('updates current bpm when base bpm changes', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const bpmBase = register(doc, 'input', 'midiBpmBase');
+    const bpmCurrent = register(doc, 'span', 'midiBpmCurrent');
+    register(doc, 'input', 'midiEnabledToggle');
+    register(doc, 'div', 'errorDisplay');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({ gameSpeedFactor: 2 }),
+      getMidiConfig: () => ({ timing: { bpmBase: 120 } })
+    });
+
+    controller.bindMidiUi();
+    bpmBase.value = '100';
+    bpmBase.dispatchEvent({ type: 'input', target: bpmBase });
+
+    expect(bpmCurrent.textContent).to.equal('200');
   });
 
   it('populates position mapping defaults when ranges are missing', function() {
@@ -197,6 +280,8 @@ describe('midiUiController', function() {
     const eventList = register(doc, 'div', 'midiEventList');
     const triggerList = register(doc, 'div', 'midiTriggerList');
     register(doc, 'select', 'midiEnvTarget');
+    register(doc, 'select', 'midiRepeatTarget');
+    register(doc, 'input', 'midiRepeatAmount');
     register(doc, 'div', 'errorDisplay');
 
     const config = {
@@ -245,6 +330,74 @@ describe('midiUiController', function() {
     expect(eventIndependent).to.equal(null);
   });
 
+  it('updates disabled toggles when re-enabled', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const eventList = register(doc, 'div', 'midiEventList');
+    register(doc, 'select', 'midiEnvTarget');
+    register(doc, 'div', 'errorDisplay');
+
+    const config = {
+      sfx: { '1': { note: 60, disabled: true } },
+      timing: { bpmBase: 120 }
+    };
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => config
+    });
+
+    controller.refreshMidiUiFromConfig();
+    const disabledRow = findElement(eventList, el => (
+      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Disabled'
+    ));
+    const disabledToggle = disabledRow?.children?.[1] || null;
+    expect(disabledToggle).to.be.ok;
+    disabledToggle.checked = false;
+    disabledToggle.dispatchEvent({ type: 'change', target: disabledToggle });
+    expect(controller.getMidiOverrides().sfx['1'].disabled).to.equal(false);
+  });
+
+  it('updates repeat target and amount overrides', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const repeatTarget = register(doc, 'select', 'midiRepeatTarget');
+    const repeatAmount = register(doc, 'input', 'midiRepeatAmount');
+    const repeatSpacing = register(doc, 'select', 'midiRepeatSpacing');
+    const repeatCount = register(doc, 'input', 'midiRepeatCount');
+
+    const config = {
+      repeat: { maxRepeats: 2, windowBeats: 0.5, target: 'note', amount: 0.25 },
+      timing: { bpmBase: 120 }
+    };
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => config
+    });
+
+    controller.bindMidiUi();
+    controller.refreshMidiUiFromConfig();
+    expect(repeatTarget.value).to.equal('note');
+
+    repeatTarget.value = 'velocity';
+    repeatTarget.dispatchEvent({ type: 'change', target: repeatTarget });
+    repeatAmount.value = '0.4';
+    repeatAmount.dispatchEvent({ type: 'change', target: repeatAmount });
+    repeatSpacing.value = '0.5';
+    repeatSpacing.dispatchEvent({ type: 'change', target: repeatSpacing });
+    repeatCount.value = '3';
+    repeatCount.dispatchEvent({ type: 'change', target: repeatCount });
+
+    const overrides = controller.getMidiOverrides();
+    expect(overrides.repeat.target).to.equal('velocity');
+    expect(overrides.repeat.amount).to.equal(0.4);
+    expect(overrides.repeat.windowBeats).to.equal(0.5);
+    expect(overrides.repeat.maxRepeats).to.equal(3);
+  });
+
   it('updates ADSR overrides for selected targets', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
@@ -269,6 +422,7 @@ describe('midiUiController', function() {
       getMidiConfig: () => config
     });
 
+    controller.bindMidiUi();
     controller.refreshMidiUiFromConfig();
     expect(envTarget.value).to.equal('global');
     expect(envAttack.value).to.equal('0.5');

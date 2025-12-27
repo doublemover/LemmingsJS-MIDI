@@ -54,7 +54,8 @@ describe('MidiInputController', function() {
           speed: { cc: 1, min: 0.1, max: 2 },
           bpmBase: { cc: 2, min: 100, max: 200 },
           custom: { cc: 3, target: 'position.viewPan', toggle: true },
-          scaleName: { cc: 4, target: 'scale.name', values: ['major', 'minor'] }
+          scaleName: { cc: 4, target: 'scale.name', values: ['major', 'minor'] },
+          accent: { cc: 5, min: 0, max: 1 }
         }
       },
       position: { viewPan: false }
@@ -93,5 +94,205 @@ describe('MidiInputController', function() {
 
     controller._onMessage({ data: [0xB0, 4, 127] });
     expect(patches.some(patch => patch.scale?.name === 'minor')).to.equal(true);
+
+    controller._onMessage({ data: [0xB0, 5, 127] });
+    expect(patches.some(patch => patch.density?.velocityBoost === 1)).to.equal(true);
+  });
+
+  it('captures note input when a capture handler is active', function() {       
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = {
+      input: {
+        channel: 'omni',
+        notes: { skillBase: 60, skillOrder: ['CLIMBER'] }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    let captured = null;
+    controller.setNoteCapture((note) => {
+      captured = note;
+      return true;
+    });
+
+    controller._onMessage({ data: [0x90, 60, 100] });
+
+    expect(captured).to.equal(60);
+    expect(commands.length).to.equal(0);
+  });
+
+  it('stores the last MIDI message on window', function() {
+    const view = {};
+    const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    const originalWindow = globalThis.window;
+    globalThis.window = {};
+    try {
+      controller._onMessage({ data: [0x90, 60, 100] });
+      expect(globalThis.window.lastMidiInputMessage).to.eql([0x90, 60, 100]);
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
+
+  it('sets gameSpeedFactor when no speed selector is present', function() {
+    const view = { gameSpeedFactor: 1 };
+    const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    controller._setSpeedFactor(2);
+    expect(view.gameSpeedFactor).to.equal(2);
+  });
+
+  it('maps intensity CC to velocity defaults', function() {
+    const patches = [];
+    const view = {};
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: { intensity: { cc: 9, min: 10, max: 127 } }
+      }
+    };
+    const controller = new MidiInputController(view, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
+    controller._onMessage({ data: [0xB0, 9, 127] });
+    expect(patches.some(patch => patch.velocityRange?.default === 127)).to.equal(true);
+  });
+
+  it('attaches and detaches MIDI listeners', function() {
+    const calls = [];
+    const input = {
+      addListener(type, handler) { calls.push({ type, handler }); },
+      removeListener(type, handler) { calls.push({ type, handler, removed: true }); }
+    };
+    const input2 = {
+      addListener(type, handler) { calls.push({ type, handler, input: 2 }); },
+      removeListener(type, handler) { calls.push({ type, handler, removed: true, input: 2 }); }
+    };
+    const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    controller.attach(input);
+    controller.attach(input2);
+    controller.detach();
+    expect(calls.some(call => call.type === 'midimessage' && !call.removed)).to.equal(true);
+    expect(calls.some(call => call.type === 'midimessage' && call.removed)).to.equal(true);
+  });
+
+  it('applies config patches through the view when no handler is provided', function() {
+    const patches = [];
+    const view = { applyMidiOverrides(patch) { patches.push(patch); } };
+    const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    controller._applyConfigPatch({ timing: { bpmBase: 140 } });
+    expect(patches).to.eql([{ timing: { bpmBase: 140 } }]);
+  });
+
+  it('uses the view config getter and adjusts speed with game timer', function() {
+    const speeds = [];
+    const view = {
+      getMidiConfig() { return { input: { channel: 3 } }; },
+      selectSpeedFactor(value) { speeds.push(value); },
+      game: { getGameTimer() { return { speedFactor: 2 }; } }
+    };
+    const controller = new MidiInputController(view);
+    controller._onMessage({ data: [0x92, 60, 100] });
+    controller._changeSpeed(1);
+    expect(speeds[speeds.length - 1]).to.equal(3);
+  });
+
+  it('handles velocity-zero notes, note capture fallthrough, and note offs', function() {
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = { input: { channel: 'omni', notes: { skillBase: 60, skillOrder: ['CLIMBER'] } } };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    controller.setNoteCapture(() => false);
+
+    controller._onMessage({ data: [0x90, 60, 0] });
+    controller._onMessage({ data: [0x90, 60, 100] });
+    controller._onMessage({ data: [0x80, 60, 0] });
+
+    expect(commands.length).to.equal(1);
+  });
+
+  it('maps generic CC targets without rounding', function() {
+    const patches = [];
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: { custom: { cc: 99, min: 0, max: 10, target: 'timing.bpmBase' } }
+      }
+    };
+    const controller = new MidiInputController({}, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
+    controller._onMessage({ data: [0xB0, 99, 64] });
+    expect(patches[0].timing.bpmBase).to.be.a('number');
+  });
+
+  it('ignores realtime clock messages', function() {
+    const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    controller._onMessage({ data: [0xF8] });
+    expect(controller.channel).to.equal('omni');
+  });
+
+  it('refreshes config before ignoring empty messages', function() {
+    const view = {};
+    const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    let setCalled = false;
+    controller.setConfig = () => { setCalled = true; };
+    controller._onMessage({ data: [] });
+    expect(setCalled).to.equal(true);
+  });
+
+  it('defaults missing velocity and CC values to zero', function() {
+    const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
+    const noteCalls = [];
+    const ccCalls = [];
+    controller._handleNoteOn = (note, velocity) => noteCalls.push({ note, velocity });
+    controller._handleControlChange = (cc, value) => ccCalls.push({ cc, value });
+
+    controller._onMessage({ data: [0x90, 60] });
+    controller._onMessage({ data: [0xB0, 7] });
+
+    expect(noteCalls[0].velocity).to.equal(0);
+    expect(ccCalls[0].value).to.equal(0);
+  });
+
+  it('applies accent defaults and rounds mapped values', function() {
+    const patches = [];
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: {
+          accent: { cc: 10 },
+          rounded: { cc: 11, target: 'timing.bpmBase', min: 0, max: 10, round: true }
+        }
+      }
+    };
+    const controller = new MidiInputController({}, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
+
+    controller._onMessage({ data: [0xB0, 10, 127] });
+    controller._onMessage({ data: [0xB0, 11, 64] });
+
+    expect(patches.some(patch => patch.density?.velocityBoost === 1)).to.equal(true);
+    expect(patches.some(patch => Number.isInteger(patch.timing?.bpmBase))).to.equal(true);
+  });
+
+  it('handles missing config providers gracefully', function() {
+    const controller = new MidiInputController({});
+    controller.getConfig = null;
+    controller._onMessage({ data: [] });
+    expect(controller.channel).to.equal('omni');
   });
 });

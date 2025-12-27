@@ -32,7 +32,10 @@ function init() {
   lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
   lemmings.elementSelectLevel = document.getElementById('levelIndexSelect');
   lemmings.gameCanvas = document.getElementById('gameCanvas');
-  lemmings.setup();
+  const setupPromise = lemmings.setup();
+  if (setupPromise?.then) {
+    setupPromise.then(() => midiUi?.refreshMidiUiFromConfig?.()).catch(() => {});
+  }
   // use GameView.strToNum to parse dropdown values
   lemmings.elementSelectGameType.addEventListener('change', (e) => {
     lemmings.selectGameType(lemmings.strToNum(e.target.value));

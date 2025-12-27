@@ -13,6 +13,8 @@ describe('Enums', function () {
 
     expect(GameTypes.UNKNOWN).to.equal(0);
     expect(GameTypes.HOLIDAY94).to.equal(6);
+    expect(GameTypes.toString(999)).to.equal('UNKNOWN');
+    expect(GameTypes.toString(GameTypes.LEMMINGS)).to.equal('LEMMINGS');
 
     expect(MaskTypes.BASHING_R).to.equal(0);
     expect(MaskTypes.NUMBERS).to.equal(5);

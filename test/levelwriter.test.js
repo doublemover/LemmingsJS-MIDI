@@ -75,6 +75,24 @@ describe('LevelWriter', function() {
     expect(lr.levelProperties.levelName).to.equal('\x00'.repeat(32));
   });
 
+  it('defaults missing level properties when writing', function() {
+    const level = {};
+    const writer = new LevelWriter();
+    const out = writer.write(level);
+    const lr = new LevelReader(new BinaryReader(out));
+    expect(lr.levelProperties.releaseRate).to.equal(0);
+    expect(lr.levelProperties.needCount).to.equal(0);
+  });
+
+  it('defaults missing skills arrays', function() {
+    const level = { levelProperties: {} };
+    const writer = new LevelWriter();
+    const out = writer.write(level);
+    const lr = new LevelReader(new BinaryReader(out));
+    expect(lr.levelProperties.skills.length).to.be.greaterThan(0);
+    expect(lr.levelProperties.skills[0]).to.equal(0);
+  });
+
   it('writes object, terrain, and steel flags', function() {
     const level = {
       levelProperties: new Lemmings.LevelProperties(),

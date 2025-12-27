@@ -28,16 +28,35 @@ describe('packLevels', function () {
     expect(fs.existsSync(outFile)).to.equal(true);
 
     const packed = fs.readFileSync(outFile);
-    const packedContainer = new FileContainer(new BinaryReader(packed, outFile));
+    const packedContainer = new FileContainer(new BinaryReader(packed, 0, undefined, outFile));
     expect(packedContainer.count()).to.equal(1);
-    const packedPart = packedContainer.getPart(0);
-    const unpacked = packedPart.unpack();
+    const unpacked = packedContainer.getPart(0);
     unpacked.setOffset(0);
     const outBytes = new Uint8Array(source.length);
     for (let j = 0; j < outBytes.length; j++) {
       outBytes[j] = unpacked.readByte();
     }
     expect(Buffer.compare(Buffer.from(outBytes), Buffer.from(source))).to.equal(0);
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('prints usage when required args are missing', function () {
+    const res = spawnSync(process.execPath, [scriptPath], { cwd: rootDir });
+    expect(res.status).to.equal(0);
+    expect(res.stdout.toString()).to.match(/Usage: node tools\/packLevels\.js/);
+  });
+
+  it('skips files that are not 2048 bytes', function () {
+    const dir = makeTempDir();
+    const lvlPath = path.join(dir, 'LEVEL001.LVL');
+    fs.writeFileSync(lvlPath, new Uint8Array(10));
+    const outFile = path.join(dir, 'packed.dat');
+
+    const res = spawnSync(process.execPath, [scriptPath, dir, outFile], { cwd: rootDir });
+    expect(res.status).to.equal(0);
+    expect(res.stderr.toString()).to.include('Skipping LEVEL001.LVL');
+    expect(fs.readFileSync(outFile).length).to.equal(0);
 
     fs.rmSync(dir, { recursive: true, force: true });
   });

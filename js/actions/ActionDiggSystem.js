@@ -6,7 +6,7 @@ import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const scaleIntensity = (removed, maxCount) => {
   if (!removed || removed <= 0) return 1;
-  const denom = Math.max((maxCount || 1) - 1, 1);
+  const denom = Math.max(maxCount - 1, 1);
   const ratio = (removed - 1) / denom;
   return clamp(1 + ratio, 0.1, 2);
 };
@@ -53,6 +53,7 @@ class ActionDiggSystem extends ActionBaseSystem {
         removeCount++;
       }
     }
+    const intensity = scaleIntensity(removeCount, 9);
     if (removeCount > 0) {
       const soundBus = getSoundBus();
       soundBus?.emitSfx?.(
@@ -63,7 +64,7 @@ class ActionDiggSystem extends ActionBaseSystem {
           x: lem.x,
           y,
           removed: removeCount,
-          intensity: scaleIntensity(removeCount, 9)
+          intensity
         }
       );
     }

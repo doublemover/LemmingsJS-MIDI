@@ -74,4 +74,25 @@ describe('Level setMapObjects', function() {
       objects[2].x + 1, objects[2].y + 1, 1, 1, 1,
     ]);
   });
+
+  it('remaps trap effects for squish-style objects', function() {
+    const level = new Level(10, 10);
+    const objects = [
+      { id: 7, x: 0, y: 0, drawProperties: {} },
+      { id: 8, x: 1, y: 0, drawProperties: {} },
+      { id: 10, x: 2, y: 0, drawProperties: {} }
+    ];
+    const objectImg = {
+      7: makeObjectImage({ trigger_effect_id: 6 }),
+      8: makeObjectImage({ trigger_effect_id: 6 }),
+      10: makeObjectImage({ trigger_effect_id: 6 })
+    };
+
+    level.setMapObjects(objects, objectImg);
+
+    expect(level.objects).to.have.lengthOf(3);
+    expect(level.objects[0].triggerType).to.equal(Lemmings.TriggerTypes.FRYING);
+    expect(level.objects[1].triggerType).to.equal(Lemmings.TriggerTypes.FRYING);
+    expect(level.objects[2].triggerType).to.equal(Lemmings.TriggerTypes.FRYING);
+  });
 });

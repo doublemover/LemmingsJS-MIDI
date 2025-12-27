@@ -4,7 +4,7 @@ import { spawnSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 
-export async function archiveDir(dir, format) {
+export async function archiveDir(dir, format, { spawnSync: run = spawnSync } = {}) {
   const base = path.basename(dir);
   const cwd = path.dirname(dir);
   format = format.toLowerCase();
@@ -15,7 +15,7 @@ export async function archiveDir(dir, format) {
   } else if (format === 'tar' || format === 'tgz' || format === 'tar.gz') {
     await tar.c({ gzip: true, cwd, file: `${dir}.tar.gz` }, [base]);
   } else if (format === 'rar') {
-    const res = spawnSync('rar', ['a', `${base}.rar`, base], { cwd, stdio: 'inherit' });
+    const res = run('rar', ['a', `${base}.rar`, base], { cwd, stdio: 'inherit' });
     if (res.error || res.status !== 0) {
       throw new Error('rar command failed');
     }

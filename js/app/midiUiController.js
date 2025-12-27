@@ -1,4 +1,4 @@
-import { ScaleLibrary } from '../midi/MidiMapping.js';
+import { MidiMapping, ScaleLibrary } from '../midi/MidiMapping.js';
 import { SoundEffectIds } from '../game/SoundEvents.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
@@ -31,6 +31,30 @@ const POSITION_TARGETS = [
   { value: 'sustain', label: 'Sustain' },
   { value: 'release', label: 'Release' }
 ];
+const REPEAT_TARGETS = [
+  { value: 'velocity', label: 'Intensity' },
+  { value: 'accent', label: 'Accent' },
+  { value: 'note', label: 'Note' },
+  { value: 'timbre', label: 'Timbre' },
+  { value: 'pan', label: 'Pan' },
+  { value: 'duration', label: 'Duration' },
+  { value: 'pitchBend', label: 'Pitch bend' },
+  { value: 'attack', label: 'Attack' },
+  { value: 'decay', label: 'Decay' },
+  { value: 'sustain', label: 'Sustain' },
+  { value: 'release', label: 'Release' }
+];
+const REPEAT_WINDOW_OPTIONS = [
+  { value: 0.0625, label: '1/16' },
+  { value: 0.125, label: '1/8' },
+  { value: 1 / 3, label: '1/3' },
+  { value: 0.25, label: '1/4' },
+  { value: 0.5, label: '1/2' },
+  { value: 1, label: '1' },
+  { value: 2, label: '2' },
+  { value: 4, label: '4' },
+  { value: 8, label: '8' }
+];
 
 const midiStorageKeys = {
   inputId: 'lemmings.midi.inputId',
@@ -39,7 +63,9 @@ const midiStorageKeys = {
   enabled: 'lemmings.midi.enabled',
   inputChannel: 'lemmings.midi.inputChannel',
   adsrTarget: 'lemmings.midi.adsrTarget',
-  overrides: 'lemmings.midi.overrides'
+  overrides: 'lemmings.midi.overrides',
+  schemaHash: 'lemmings.midi.schemaHash',
+  panelCollapsed: 'lemmings.midi.panelCollapsed'
 };
 
 const readStoredMidiId = (storage, key) => {
@@ -96,6 +122,8 @@ const mergeDeep = (target, source) => {
   return out;
 };
 
+const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
 const ALL_SKILLS = Object.values(SkillTypes)
   .filter(value => Number.isFinite(value) && value !== SkillTypes.UNKNOWN);
 
@@ -122,6 +150,11 @@ const TRAP_SFX_IDS = new Set([
   SoundEffectIds.TRAP_TEN_TON,
   SoundEffectIds.TRAP_BEAR
 ]);
+const SFX_NAME_BY_ID = new Map(
+  Object.entries(SoundEffectIds)
+    .filter(([, value]) => Number.isFinite(value) && value > 0)
+    .map(([name, value]) => [value, name.toLowerCase().replace(/_/g, '-')])
+);
 
 const EXCLUDED_TRIGGER_NAMES = new Set(['UNKNOWN_2', 'UNKNOWN_3']);
 const TRIGGER_NAME_BY_VALUE = new Map(
@@ -289,6 +322,10 @@ export const createMidiUiController = ({
   let midiInputController = null;
   let midiOverrides = readStoredJson(storage, midiStorageKeys.overrides) || {};
   let lastUiSignature = null;
+  let noteCapture = null;
+  if (!isPlainObject(midiOverrides)) {
+    midiOverrides = {};
+  }
   if (typeof globalThis !== 'undefined') {
     globalThis.lemmingsMidiOverrides = midiOverrides;
   }
@@ -358,6 +395,17 @@ export const createMidiUiController = ({
     }
   };
 
+  const setNoteCapture = (handler) => {
+    noteCapture = handler;
+    if (midiInputController?.setNoteCapture) {
+      midiInputController.setNoteCapture(handler);
+    }
+  };
+
+  const clearNoteCapture = () => {
+    setNoteCapture(null);
+  };
+
   const applyViewPanSetting = (enabled) => {
     midiViewPanEnabled = !!enabled;
     if (typeof globalThis !== 'undefined') {
@@ -368,7 +416,48 @@ export const createMidiUiController = ({
 
   const getConfig = () => {
     if (typeof getMidiConfig === 'function') return getMidiConfig();
-    return getLemmings()?.getMidiConfig?.() || null;
+    const lemmings = getLemmings();
+    return lemmings?.getMidiConfig?.() || lemmings?.getMidiBaseConfig?.() || null;
+  };
+
+  const getSchemaHash = () => getLemmings()?.getMidiSchemaHash?.() || null;
+
+  const clearMidiStorage = () => {
+    storeMidiId(storage, midiStorageKeys.inputId, null);
+    storeMidiId(storage, midiStorageKeys.outputId, null);
+    storeMidiId(storage, midiStorageKeys.viewPan, null);
+    storeMidiId(storage, midiStorageKeys.enabled, null);
+    storeMidiId(storage, midiStorageKeys.inputChannel, null);
+    storeMidiId(storage, midiStorageKeys.adsrTarget, null);
+    storeMidiId(storage, midiStorageKeys.panelCollapsed, null);
+    storeJson(storage, midiStorageKeys.overrides, null);
+  };
+
+  const resetMidiDefaults = (persistHash = true) => {
+    const expectedHash = getSchemaHash();
+    clearMidiStorage();
+    midiOverrides = {};
+    if (typeof globalThis !== 'undefined') {
+      globalThis.lemmingsMidiOverrides = midiOverrides;
+    }
+    if (expectedHash && persistHash) {
+      storeMidiId(storage, midiStorageKeys.schemaHash, expectedHash);
+    } else if (!persistHash) {
+      storeMidiId(storage, midiStorageKeys.schemaHash, null);
+    }
+    const lemmings = getLemmings();
+    if (lemmings?.applyMidiOverrides) {
+      lemmings.applyMidiOverrides({});
+    }
+  };
+
+  const ensureSchemaHash = () => {
+    const expectedHash = getSchemaHash();
+    if (!expectedHash) return false;
+    const storedHash = readStoredMidiId(storage, midiStorageKeys.schemaHash);
+    if (storedHash && storedHash === expectedHash) return false;
+    resetMidiDefaults(true);
+    return true;
   };
 
   const buildUiSignature = () => {
@@ -436,6 +525,42 @@ export const createMidiUiController = ({
       select.value = String(current);
     } else {
       select.value = 'omni';
+    }
+  };
+
+  const buildRepeatTargetOptions = (select, current) => {
+    if (!select) return;
+    select.innerHTML = '';
+    REPEAT_TARGETS.forEach(target => {
+      const opt = document.createElement('option');
+      opt.value = target.value;
+      opt.textContent = target.label;
+      select.appendChild(opt);
+    });
+    if (current) {
+      select.value = String(current);
+    }
+  };
+
+  const buildRepeatWindowOptions = (select, current) => {
+    if (!select) return;
+    select.innerHTML = '';
+    REPEAT_WINDOW_OPTIONS.forEach(option => {
+      const opt = document.createElement('option');
+      opt.value = String(option.value);
+      opt.textContent = option.label;
+      select.appendChild(opt);
+    });
+    if (current != null) {
+      const value = String(current);
+      const hasOption = Array.from(select.options || []).some(opt => opt.value === value);
+      if (!hasOption) {
+        const custom = document.createElement('option');
+        custom.value = value;
+        custom.textContent = value;
+        select.appendChild(custom);
+      }
+      select.value = value;
     }
   };
 
@@ -560,14 +685,14 @@ export const createMidiUiController = ({
 
     const updateEntry = () => {
       const next = { ...(entry || {}) };
-      delete next.note;
-      delete next.degree;
-      delete next.octave;
-      delete next.chord;
-      delete next.arp;
-      delete next.priority;
-      delete next.disabled;
       if (name) next.name = name;
+      next.note = null;
+      next.degree = null;
+      next.octave = null;
+      next.chord = null;
+      next.arp = null;
+      next.priority = null;
+      next.disabled = false;
       const mode = modeSelect.value;
       if (mode === 'note' && noteKeySelect.value !== '' && noteOctaveInput.value !== '') {
         const key = Number(noteKeySelect.value);
@@ -595,6 +720,75 @@ export const createMidiUiController = ({
       setMidiOverrides(patch);
     };
 
+    const resolveScaleForNote = () => {
+      const config = getConfig();
+      const scale = config?.scale || {};
+      const root = Number.isFinite(scale.root) ? scale.root : 0;
+      const degrees = Array.isArray(scale.degrees) && scale.degrees.length
+        ? scale.degrees
+        : (ScaleLibrary[scale.name] || ScaleLibrary['chromatic-minor'] || NOTE_NAMES.map((_, idx) => idx));
+      return { root, degrees };
+    };
+
+    const noteToScaleDegree = (note) => {
+      const { root, degrees } = resolveScaleForNote();
+      const relative = ((note - root) % 12 + 12) % 12;
+      let degreeIndex = degrees.indexOf(relative);
+      if (degreeIndex < 0) {
+        let best = 0;
+        let bestDist = 99;
+        degrees.forEach((deg, idx) => {
+          const dist = Math.min(Math.abs(deg - relative), 12 - Math.abs(deg - relative));
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = idx;
+          }
+        });
+        degreeIndex = best;
+      }
+      const degreeOffset = degrees[degreeIndex] ?? 0;
+      const octave = Math.max(0, Math.floor((note - root - degreeOffset) / 12));
+      return { degree: degreeIndex, octave };
+    };
+
+    const applyLearnedNote = (note) => {
+      if (!Number.isFinite(note)) return;
+      if (modeSelect.value === 'note') {
+        noteKeySelect.value = String(note % 12);
+        noteOctaveInput.value = String(Math.floor(note / 12));
+      } else {
+        const resolved = noteToScaleDegree(note);
+        degreeInput.value = String(resolved.degree);
+        octaveInput.value = String(resolved.octave);
+      }
+      updateEntry();
+    };
+
+    const bindNoteCapture = (row, input) => {
+      if (!row || !input) return;
+      const arm = () => {
+        if (input.disabled) return;
+        setNoteCapture((captureNote) => {
+          applyLearnedNote(captureNote);
+          clearNoteCapture();
+          return true;
+        });
+      };
+      const label = typeof row.querySelector === 'function'
+        ? row.querySelector('span')
+        : (row.children ? row.children[0] : null);
+      if (label) {
+        label.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          if (typeof input.focus === 'function') input.focus();
+          arm();
+        });
+      }
+      input.addEventListener('focus', arm);
+      input.addEventListener('blur', clearNoteCapture);
+    };
+
     modeSelect.addEventListener('change', () => {
       updateModeAvailability();
       updateEntry();
@@ -602,11 +796,16 @@ export const createMidiUiController = ({
     [noteKeySelect, noteOctaveInput, degreeInput, octaveInput, chordSelect, arpToggle, arpMode, arpLength, arpIndependentToggle, priorityInput, disabledToggle]
       .forEach(el => el.addEventListener('change', updateEntry));
 
-    details.appendChild(createRow('Mode', modeSelect));
-    details.appendChild(createRow('Key', noteKeySelect));
-    details.appendChild(createRow('Octave', noteOctaveInput));
-    details.appendChild(createRow('Degree', degreeInput));
-    details.appendChild(createRow('Scale octave', octaveInput));
+    const modeRow = createRow('Mode', modeSelect);
+    const keyRow = createRow('Key', noteKeySelect);
+    const octaveRow = createRow('Octave', noteOctaveInput);
+    const degreeRow = createRow('Degree', degreeInput);
+    const scaleOctaveRow = createRow('Scale octave', octaveInput);
+    details.appendChild(modeRow);
+    details.appendChild(keyRow);
+    details.appendChild(octaveRow);
+    details.appendChild(degreeRow);
+    details.appendChild(scaleOctaveRow);
     details.appendChild(createRow('Chord', chordSelect));
     details.appendChild(createRow('Arp', arpToggle));
     details.appendChild(createRow('Arp mode', arpMode));
@@ -616,6 +815,10 @@ export const createMidiUiController = ({
     }
     details.appendChild(createRow('Priority', priorityInput));
     details.appendChild(createRow('Disabled', disabledToggle));
+    bindNoteCapture(keyRow, noteKeySelect);
+    bindNoteCapture(octaveRow, noteOctaveInput);
+    bindNoteCapture(degreeRow, degreeInput);
+    bindNoteCapture(scaleOctaveRow, octaveInput);
     return details;
   };
 
@@ -730,6 +933,13 @@ export const createMidiUiController = ({
       const removeEntry = () => {
         const next = (mappings || []).filter((_, idx) => idx !== index);
         setMidiOverrides({ position: { mappings: next } });
+        window?.setTimeout?.(() => {
+          try {
+            refreshMidiUiFromConfig();
+          } catch (e) {
+            console.error('MIDI UI refresh failed', e);
+          }
+        }, 0);
       };
 
       [axisSelect, minInput, maxInput, enabledToggle]
@@ -777,13 +987,25 @@ export const createMidiUiController = ({
     if (!container) return;
     container.innerHTML = '';
     const sfx = config?.sfx || {};
-    const ids = Object.keys(sfx).sort((a, b) => Number(a) - Number(b));
+    let ids = Object.keys(sfx).sort((a, b) => Number(a) - Number(b));
+    if (!ids.length) {
+      ids = Array.from(SFX_NAME_BY_ID.keys()).sort((a, b) => a - b).map(String);
+    }
     ids.forEach(id => {
       const numericId = Number(id);
-      if (availableSfxIds && !availableSfxIds.has(numericId)) return;
-      const entry = sfx[id];
-      const name = entry?.name ? `${entry.name} (#${id})` : `SFX ${id}`;
-      container.appendChild(buildMappingEditor({ id, name, entry, targetKey: 'sfx' }));
+      if (availableSfxIds && availableSfxIds.size && !availableSfxIds.has(numericId)) return;
+      const entry = sfx[id] || {};
+      const fallbackName = SFX_NAME_BY_ID.get(numericId);
+      const name = entry?.name
+        ? `${entry.name} (#${id})`
+        : (fallbackName ? `${fallbackName} (#${id})` : `SFX ${id}`);
+      container.appendChild(buildMappingEditor({
+        id,
+        name,
+        entry,
+        targetKey: 'sfx',
+        allowIndependentArp: TRAP_SFX_IDS.has(numericId)
+      }));
     });
   };
 
@@ -820,7 +1042,7 @@ export const createMidiUiController = ({
     const ids = Object.keys(sfx).sort((a, b) => Number(a) - Number(b));
     for (const id of ids) {
       const numericId = Number(id);
-      if (availableSfxIds && !availableSfxIds.has(numericId)) continue;
+      if (availableSfxIds && availableSfxIds.size && !availableSfxIds.has(numericId)) continue;
       const entry = sfx[id];
       const name = entry?.name ? `${entry.name} (#${id})` : `SFX ${id}`;
       const opt = document.createElement('option');
@@ -871,6 +1093,8 @@ export const createMidiUiController = ({
     const accent = document.getElementById('midiAccent');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
+    const repeatTarget = document.getElementById('midiRepeatTarget');
+    const repeatAmount = document.getElementById('midiRepeatAmount');
     const envAttack = document.getElementById('midiEnvAttack');
     const envDecay = document.getElementById('midiEnvDecay');
     const envSustain = document.getElementById('midiEnvSustain');
@@ -879,25 +1103,46 @@ export const createMidiUiController = ({
     const viewPanToggle = document.getElementById('midiViewPanToggle');
     const inputChannel = document.getElementById('midiInputChannel');
     const bpmBase = document.getElementById('midiBpmBase');
-    if (bpmBase && Number.isFinite(config.timing?.bpmBase)) {
-      bpmBase.value = String(config.timing.bpmBase);
+    const bpmValue = Number.isFinite(config.timing?.bpmBase) ? config.timing.bpmBase : 120;
+    if (bpmBase) bpmBase.value = String(bpmValue);
+    if (scaleSelect) buildScaleOptions(scaleSelect, config.scale?.name || 'chromatic-minor');
+    if (keySelect) {
+      const root = Number.isFinite(config.scale?.root) ? config.scale.root : 0;
+      buildKeyOptions(keySelect, root);
     }
-    if (scaleSelect) buildScaleOptions(scaleSelect, config.scale?.name);
-    if (keySelect) buildKeyOptions(keySelect, config.scale?.root);
-    if (intensity && Number.isFinite(config.velocityRange?.default)) {
-      intensity.value = String(config.velocityRange.default);
+    if (intensity) {
+      const defaultVelocity = Number.isFinite(config.velocityRange?.default)
+        ? config.velocityRange.default
+        : 80;
+      intensity.value = String(defaultVelocity);
     }
-    if (accent && Number.isFinite(config.density?.velocityBoost)) {
-      accent.value = String(config.density.velocityBoost);
+    if (accent) {
+      const defaultAccent = Number.isFinite(config.density?.velocityBoost)
+        ? config.density.velocityBoost
+        : 0.4;
+      accent.value = String(defaultAccent);
     }
-    if (repeatCount && Number.isFinite(config.repeat?.maxRepeats)) {
-      repeatCount.value = String(config.repeat.maxRepeats);
+    const repeatCfg = config.repeat || {};
+    if (repeatCount) {
+      const maxRepeats = Number.isFinite(repeatCfg.maxRepeats) ? repeatCfg.maxRepeats : 0;
+      repeatCount.value = String(maxRepeats);
     }
-    if (repeatSpacing && (Number.isFinite(config.repeat?.windowBeats) || Number.isFinite(config.repeat?.spacingTicks))) {
-      const windowBeats = Number.isFinite(config.repeat?.windowBeats)
-        ? config.repeat.windowBeats
-        : config.repeat.spacingTicks;
-      repeatSpacing.value = String(windowBeats);
+    if (repeatSpacing) {
+      const windowBeats = Number.isFinite(repeatCfg.windowBeats)
+        ? repeatCfg.windowBeats
+        : (Number.isFinite(repeatCfg.spacingTicks) ? repeatCfg.spacingTicks : 1);
+      buildRepeatWindowOptions(repeatSpacing, windowBeats);
+    }
+    if (repeatTarget) {
+      const target = repeatCfg.target
+        || (repeatCfg.durationBoost ? 'duration' : 'velocity');
+      buildRepeatTargetOptions(repeatTarget, target);
+    }
+    if (repeatAmount) {
+      const amount = Number.isFinite(repeatCfg.amount)
+        ? repeatCfg.amount
+        : (repeatCfg.durationBoost ?? repeatCfg.velocityBoost ?? 0);
+      repeatAmount.value = String(amount);
     }
     if (positionList) {
       const mappings = resolvePositionMappings(config);
@@ -926,11 +1171,12 @@ export const createMidiUiController = ({
       };
     })();
     const availableSfxIds = resolveAvailableSfxIds(config, level, skills);
+    const sfxFilter = availableSfxIds && availableSfxIds.size ? availableSfxIds : null;
     const availableTriggerTypes = level ? collectTriggerTypes(level) : null;
-    buildEventList(config, availableSfxIds);
+    buildEventList(config, sfxFilter);
     buildTriggerList(config, availableTriggerTypes);
     if (envTarget) {
-      buildAdsrTargetOptions(envTarget, config, availableSfxIds, availableTriggerTypes);
+      buildAdsrTargetOptions(envTarget, config, sfxFilter, availableTriggerTypes);
       const storedTarget = readStoredMidiId(storage, midiStorageKeys.adsrTarget);
       const options = Array.from(envTarget.options || envTarget.children || []);
       const matches = storedTarget &&
@@ -938,20 +1184,31 @@ export const createMidiUiController = ({
       envTarget.value = matches ? storedTarget : 'global';
     }
     const env = resolveEnvelopeConfig(config, envTarget?.value || 'global');
-    if (envAttack && Number.isFinite(env.attack)) envAttack.value = String(env.attack);
-    if (envDecay && Number.isFinite(env.decay)) envDecay.value = String(env.decay);
-    if (envSustain && Number.isFinite(env.sustain)) envSustain.value = String(env.sustain);
-    if (envRelease && Number.isFinite(env.release)) envRelease.value = String(env.release);
+    if (envAttack) envAttack.value = String(Number.isFinite(env.attack) ? env.attack : 1);
+    if (envDecay) envDecay.value = String(Number.isFinite(env.decay) ? env.decay : 0);
+    if (envSustain) envSustain.value = String(Number.isFinite(env.sustain) ? env.sustain : 1);
+    if (envRelease) envRelease.value = String(Number.isFinite(env.release) ? env.release : 1);
     return true;
   };
 
   const scheduleMidiUiRefresh = () => {
+    let attempts = 0;
     const attempt = () => {
-      if (!refreshMidiUiFromConfig()) {
-        window?.requestAnimationFrame?.(attempt);
+      let refreshed = false;
+      try {
+        ensureSchemaHash();
+        refreshed = refreshMidiUiFromConfig();
+      } catch (e) {
+        console.error('MIDI UI refresh failed', e);
+      }
+      if (!refreshed) {
+        attempts += 1;
+        if (attempts < 120) {
+          window?.setTimeout?.(attempt, 250);
+        }
       }
     };
-    window?.requestAnimationFrame?.(attempt);
+    window?.setTimeout?.(attempt, 0);
   };
 
   const onEnabled = () => {
@@ -1026,6 +1283,9 @@ export const createMidiUiController = ({
     const viewPanToggle = document.getElementById('midiViewPanToggle');
     const inputChannel = document.getElementById('midiInputChannel');
     const resetButton = document.getElementById('midiResetButton');
+    const defaultsButton = document.getElementById('midiDefaultsButton');
+    const panelToggle = document.getElementById('midiPanelToggle');
+    const leftPanel = document.getElementById('controlLeft');
     const bpmBase = document.getElementById('midiBpmBase');
     const bpmCurrent = document.getElementById('midiBpmCurrent');
     const keySelect = document.getElementById('midiKeySelect');
@@ -1035,10 +1295,15 @@ export const createMidiUiController = ({
     const accent = document.getElementById('midiAccent');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
+    const repeatTarget = document.getElementById('midiRepeatTarget');
+    const repeatAmount = document.getElementById('midiRepeatAmount');
     const envAttack = document.getElementById('midiEnvAttack');
     const envDecay = document.getElementById('midiEnvDecay');
     const envSustain = document.getElementById('midiEnvSustain');
     const envRelease = document.getElementById('midiEnvRelease');
+    const envTarget = document.getElementById('midiEnvTarget');
+
+    ensureSchemaHash();
 
     const storedEnabled = readStoredMidiId(storage, midiStorageKeys.enabled);
     const configEnabled = getConfig()?.enabled;
@@ -1056,6 +1321,24 @@ export const createMidiUiController = ({
     if (storedChannel && storedChannel !== 'omni' &&
         (!midiOverrides?.input?.channel || midiOverrides.input.channel === 'omni')) {
       setMidiOverrides({ input: { channel: Number(storedChannel) } });
+    }
+
+    if (leftPanel) {
+      const collapsed = readStoredMidiId(storage, midiStorageKeys.panelCollapsed) === 'true';
+      if (collapsed) leftPanel.classList.add('collapsed');
+    }
+    if (panelToggle && leftPanel) {
+      panelToggle.addEventListener('click', () => {
+        leftPanel.classList.toggle('collapsed');
+        const isCollapsed = leftPanel.classList.contains('collapsed');
+        storeMidiId(storage, midiStorageKeys.panelCollapsed, isCollapsed ? 'true' : null);
+        window?.setTimeout?.(() => {
+          if (typeof window?.dispatchEvent === 'function') {
+            const evt = typeof Event === 'function' ? new Event('resize') : { type: 'resize' };
+            window.dispatchEvent(evt);
+          }
+        }, 0);
+      });
     }
 
     if (enabledToggle) {
@@ -1112,11 +1395,24 @@ export const createMidiUiController = ({
         lemmings?.midiRouter?.scheduler?.clearQueue?.();
       });
     }
+    if (defaultsButton) {
+      defaultsButton.addEventListener('click', () => {
+        resetMidiDefaults(true);
+        refreshMidiUiFromConfig();
+      });
+    }
     if (bpmBase) {
-      bpmBase.addEventListener('change', (event) => {
+      const updateBpmBase = (event) => {
         const bpm = Number(event.target.value) || 120;
         setMidiOverrides({ timing: { bpmBase: bpm } });
-      });
+        if (bpmCurrent) {
+          const lemmings = getLemmings();
+          const speed = lemmings?.game?.getGameTimer?.()?.speedFactor ?? lemmings?.gameSpeedFactor ?? 1;
+          bpmCurrent.textContent = String(Math.round(bpm * speed));
+        }
+      };
+      bpmBase.addEventListener('change', updateBpmBase);
+      bpmBase.addEventListener('input', updateBpmBase);
     }
     if (keySelect) {
       keySelect.addEventListener('change', (event) => {
@@ -1137,6 +1433,13 @@ export const createMidiUiController = ({
         const mappings = resolvePositionMappings(config);
         mappings.push(buildDefaultPositionMapping(config));
         setMidiOverrides({ position: { mappings } });
+        window?.setTimeout?.(() => {
+          try {
+            refreshMidiUiFromConfig();
+          } catch (e) {
+            console.error('MIDI UI refresh failed', e);
+          }
+        }, 0);
       });
     }
     if (intensity) {
@@ -1161,6 +1464,18 @@ export const createMidiUiController = ({
       repeatSpacing.addEventListener('change', (event) => {
         const value = Number(event.target.value) || 1;
         setMidiOverrides({ repeat: { windowBeats: value } });
+      });
+    }
+    if (repeatTarget) {
+      repeatTarget.addEventListener('change', (event) => {
+        const value = event.target.value || 'velocity';
+        setMidiOverrides({ repeat: { target: value } });
+      });
+    }
+    if (repeatAmount) {
+      repeatAmount.addEventListener('change', (event) => {
+        const value = Number(event.target.value) || 0;
+        setMidiOverrides({ repeat: { amount: value } });
       });
     }
     const envUpdate = () => {
@@ -1221,7 +1536,11 @@ export const createMidiUiController = ({
       const signature = buildUiSignature();
       if (signature !== lastUiSignature) {
         lastUiSignature = signature;
-        refreshMidiUiFromConfig();
+        try {
+          refreshMidiUiFromConfig();
+        } catch (e) {
+          console.error('MIDI UI refresh failed', e);
+        }
       }
     };
     updateBpm();
@@ -1238,6 +1557,9 @@ export const createMidiUiController = ({
     setMidiOverrides,
     setMidiInputController(controller) {
       midiInputController = controller;
+      if (midiInputController?.setNoteCapture) {
+        midiInputController.setNoteCapture(noteCapture);
+      }
     },
     getMidiOverrides() {
       return midiOverrides;

@@ -116,7 +116,7 @@ describe('withPerformance', function() {
   });
 });
 
-describe('startMeasure and withPerformance error handling', function() {
+describe('startMeasure and withPerformance error handling', function() {        
   let origPerf;
   beforeEach(function() {
     origPerf = globalThis.performance;
@@ -134,6 +134,20 @@ describe('startMeasure and withPerformance error handling', function() {
     expect(() => end()).to.not.throw();
   });
 
+  it('records measures when performance metrics are enabled', function() {
+    const calls = [];
+    globalThis.lemmings = { perfMetrics: true };
+    globalThis.performance = {
+      now() { return 1; },
+      measure(name, opts) { calls.push({ name, opts }); }
+    };
+    const dummy = new Dummy();
+    const end = dummy.startMeasure('tick', { tag: 'x' });
+    end();
+    expect(calls.length).to.equal(1);
+    expect(calls[0].name).to.equal('tick');
+  });
+
   it('swallows measure errors', function() {
     let count = 0;
     globalThis.lemmings = { perfMetrics: true, debug: true };
@@ -142,5 +156,25 @@ describe('startMeasure and withPerformance error handling', function() {
     const result = fn(1);
     expect(result).to.equal(2);
     expect(count).to.equal(1);
+  });
+
+  it('swallows startMeasure errors', function() {
+    globalThis.lemmings = { perfMetrics: true, debug: true };
+    globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
+    const dummy = new Dummy();
+    const end = dummy.startMeasure('oops');
+    expect(() => end()).to.not.throw();
+  });
+
+  it('returns noop when lemmings is undefined', function() {
+    const prev = globalThis.lemmings;
+    delete globalThis.lemmings;
+    globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
+    const dummy = new Dummy();
+    const end = dummy.startMeasure('noop');
+    expect(() => end()).to.not.throw();
+    const wrapped = Lemmings.withPerformance('noop', {}, x => x + 1);
+    expect(wrapped(1)).to.equal(2);
+    globalThis.lemmings = prev;
   });
 });

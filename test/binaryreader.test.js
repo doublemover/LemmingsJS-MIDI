@@ -34,6 +34,20 @@ describe('BinaryReader', function () {
     assert.strictEqual(reader.readString(3, 6), 'ABC');
   });
 
+  it('readIntBE uses the current offset when none is provided', function () {
+    const reader = new BinaryReader(Uint8Array.from([0x01, 0x02, 0x03, 0x04]));
+    const value = reader.readIntBE();
+    assert.strictEqual(value, 0x04030201);
+    assert.strictEqual(reader.pos, 4);
+  });
+
+  it('readInt uses the current offset when none is provided', function () {
+    const reader = new BinaryReader(Uint8Array.from([0x01, 0x02, 0x03, 0x04, 0x05]));
+    const value = reader.readInt();
+    assert.strictEqual(value, 0x01020304);
+    assert.strictEqual(reader.pos, 4);
+  });
+
   it('logs warnings for invalid offsets', function () {
     class MockLogHandler {
       constructor() { this.logged = []; }
