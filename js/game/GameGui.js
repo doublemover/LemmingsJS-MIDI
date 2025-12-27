@@ -166,7 +166,7 @@ class GameGui {
         const pauseIndex = Math.trunc(pauseX / 9);
         const speedFac = this.gameTimer.speedFactor;
         const app = getApp();
-        const debugOrBench = (this.game.showDebug || app?.bench === true || app?.bench2 === true);
+        const debugOrBench = (this.game.showDebug || app?.bench === true || app?.bench2 === true || app?.benchReverse === true);
         if (pauseIndex === 0) {
           if (speedFac > 10) {
             this.gameTimer.speedFactor -= 10;
@@ -421,7 +421,7 @@ class GameGui {
     }
     const d = this.display;
     const app = getApp();
-    const bench = app?.bench === true || app?.bench2 === true || app?.benchSequence === true;
+    const bench = app?.bench === true || app?.bench2 === true || app?.benchReverse === true || app?.benchSequence === true;
     if (bench) this.gameTimeChanged = true;
 
     if (this.backgroundChanged) {

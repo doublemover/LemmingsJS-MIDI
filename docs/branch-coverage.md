@@ -6,7 +6,7 @@ Coverage summary from the same run:
 - Statements: 99.98%
 - Lines: 99.98%
 - Functions: 100%
-- Branches: 96.63%
+- Branches: 96.64%
 
 ## js/commands/CommandManager.js
 - line 47 branch 0 branch (47:34-47:43)
