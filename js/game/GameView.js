@@ -49,6 +49,7 @@ class GameView extends BaseLogger {
     this.gameSpeedFactor = 1;
     this.bench = false; // just keep spawning lems
     this.bench2 = false;
+    this.benchReverse = false;
     this.benchSequence = false;
     this._benchMeasureExtras = false;
     this.endless = false; // time doesn't run out, game doesn't end
@@ -192,7 +193,7 @@ class GameView extends BaseLogger {
     this.game.getGameTimer().suspend();
     if (this.stage?.startOverlayFade) {
       let rect = null;
-      if (this.bench || this.bench2) {
+      if (this.bench || this.bench2 || this.benchReverse) {
         const gui = this.stage.guiImgProps;
         const scale = gui.viewPoint.scale;
         rect = {
@@ -468,6 +469,10 @@ class GameView extends BaseLogger {
     this.debug = this.parseBool(query, ['debug', 'dbg']);
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.bench2 = this.parseBool(query, ['bench2', 'b2']);
+    this.benchReverse = this.parseBool(query, ['benchReverse', 'bR']);
+    if (this.bench || this.bench2) {
+      this.benchReverse = false;
+    }
     this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
     this.endless = this.parseBool(query, ['endless', 'e']);
     this.nukeAfter = this.parseNumber(query, ['nukeAfter', 'na'], 0, 1, 60, 10);
@@ -505,6 +510,7 @@ class GameView extends BaseLogger {
     setParam('debug', 'dbg', this.debug, false);
     setParam('bench', 'b', this.bench, false);
     setParam('bench2', 'b2', this.bench2, false);
+    setParam('benchReverse', 'bR', this.benchReverse, false);
     setParam('benchSequence', 'bs', this.benchSequence, false);
     setParam('endless', 'e', this.endless, false);
     setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);

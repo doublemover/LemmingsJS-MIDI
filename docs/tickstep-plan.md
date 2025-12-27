@@ -57,8 +57,8 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 - Sound events: per-tick array of event payloads.
 
 ### Memory considerations
-- Keep a rolling cap (configurable) for history length.
-- Expose total history size and allow auto-trim (drop oldest keyframes and deltas).
+- Keep a rolling time-based cap (configurable window) for history length.
+- Trim keyframes/deltas older than the window and expose current history span/size.
 
 ## Time travel controller
 Create a TimeTravelController to own history, seek, and playback direction.
@@ -80,7 +80,8 @@ Integration points:
    - Move target tick backward.
    - Apply the reverse of the delta for that tick.
    - Emit SoundEventBus events for that tick with reverse: true.
-4) When hitting a keyframe boundary, restore keyframe and reapply deltas as needed.
+4) Stop at tick 0 (no wraparound).
+5) When hitting a keyframe boundary, restore keyframe and reapply deltas as needed.
 
 ## MIDI handling in reverse
 - SoundEventBus events should include reverse: true when emitted during reverse playback.
@@ -93,7 +94,12 @@ Integration points:
 ## UI and controls
 - Preserve existing step-forward key while paused.
 - Add step-backward keybinds (TBD) and a reverse playback toggle.
+- Suppress gameplay input while reverse playback is active.
 - Show playback direction indicator and current tick index in HUD.
+
+## Bench reverse flag
+- Add a `benchReverse` (`bR`) flag that behaves like bench mode but marks the session as reverse-enabled.
+- If `bench` or `bench2` is active, `benchReverse` is forced off.
 
 ## Tests
 - RNG determinism: same seed yields identical tick hashes.
@@ -116,6 +122,5 @@ Integration points:
 - Non-deterministic inputs: disallow new commands during reverse playback.
 
 ## Open questions
-- What maximum history duration should we support by default?
-- Should reverse playback accept commands (and log them) or suppress input?
-- Do we want reverse playback to stop at tick 0 or loop?
+- What should the default history window be (seconds)?
+- Should benchReverse allow benchSequence, or should they be mutually exclusive?

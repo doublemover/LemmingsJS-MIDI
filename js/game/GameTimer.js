@@ -45,7 +45,7 @@ class GameTimer {
     this.#catchupBaseSpeed = 1;
     this.#visHandler = () => {
       const app = getApp();
-      const skip = app?.bench || app?.bench2 || app?.benchSequence;
+      const skip = app?.bench || app?.bench2 || app?.benchReverse || app?.benchSequence;
       if (skip) return;
       const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
       if (hidden) {
@@ -165,7 +165,7 @@ class GameTimer {
         let delta = now - this.#lastTime;
         if (delta >= frameTime) {
           const steps = Math.floor(delta / frameTime);
-          if (app?.bench === true || app?.benchSequence === true) {
+          if (app?.bench === true || app?.benchReverse === true || app?.benchSequence === true) {
             this.#benchSpeedAdjust(steps);
           }
           if (app?.bench2 === true) {
@@ -248,7 +248,7 @@ class GameTimer {
       const stage = app?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
-        if (app.bench || app.bench2) {
+        if (app.bench || app.bench2 || app.benchReverse) {
           const gui = stage.guiImgProps;
           const scale = gui.viewPoint.scale;
           rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };

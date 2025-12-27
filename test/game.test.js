@@ -201,6 +201,18 @@ describe('Game', function() {
     }
   });
 
+  it('getGameState returns RUNNING when benchReverse is enabled', function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    const prevLemmings = globalThis.lemmings;
+    globalThis.lemmings = { ...(prevLemmings ?? {}), benchReverse: true };
+    try {
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
+    } finally {
+      globalThis.lemmings = prevLemmings;
+    }
+  });
+
   it('setGameDisplay uses a default screen position without level data', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);

@@ -41,7 +41,7 @@ class GameVictoryCondition {
   }
   getCurrentReleaseRate() {
     const app = getApp();
-    if ((app?.bench === true || app?.bench2 === true) && !app?._benchMeasureExtras) {
+    if ((app?.bench === true || app?.bench2 === true || app?.benchReverse === true) && !app?._benchMeasureExtras) {
       return 99;
     }
     return this.releaseRate;

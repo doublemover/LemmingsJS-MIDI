@@ -170,6 +170,8 @@ URL parameters (shortcuts in brackets):
 - `cheat (c)`: true/false (default: false)
 - `debug (dbg)`: true/false (default: false)
 - `bench (b)`: Bench mode (endless spawning with speed modulation)
+- `bench2 (b2)`: Bench mode with catchup slowdown (bench2)
+- `benchReverse (bR)`: Bench mode with reverse-playback flag enabled
 - `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)
 - `endless (e)`: Disable time limit
 - `nukeAfter (na)`: Auto-nuke after x*10 seconds

@@ -213,7 +213,7 @@ class Game extends BaseLogger {
   }
 
   getGameState () {
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2)) {
+    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
       return GameStateTypes.RUNNING;
     }
     if (typeof lemmings !== 'undefined' && lemmings.endless) {
@@ -247,7 +247,7 @@ class Game extends BaseLogger {
       color: 'tertiary',
       tooltipText: 'checkForGameOver'
     });
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2)) {
+    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
       endMeasure();
       return;
     }
