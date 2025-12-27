@@ -120,7 +120,10 @@ class Frame {
     let pos = ((offset % pattern) + pattern) % pattern;
     const set = (px, py) => {
       const useFirst = Math.floor(pos / dashLen) % 2 === 0;
-      this.setPixel(px, py, useFirst ? color1 : color2);
+      const color = useFirst ? color1 : color2;
+      if ((color >>> 24) !== 0) {
+        this.setPixel(px, py, color);
+      }
       pos = (pos + 1) % pattern;
     };
 

@@ -4,13 +4,36 @@ import { LevelElement } from './LevelElement.js';
 import { LevelProperties } from './LevelProperties.js';
 import { Range } from '../util/Range.js';
 import { SkillTypes } from '../game/SkillTypes.js';
+import {
+  DEFAULT_LEVEL_WIDTH,
+  DEFAULT_LEVEL_HEIGHT,
+  LEVEL_OBJECT_COUNT,
+  LEVEL_TERRAIN_COUNT,
+  LEVEL_STEEL_COUNT,
+  LEVEL_OBJECT_OFFSET,
+  LEVEL_TERRAIN_OFFSET,
+  LEVEL_STEEL_OFFSET,
+  LEVEL_NAME_OFFSET,
+  LEVEL_NAME_LENGTH,
+  OBJECT_X_OFFSET,
+  TERRAIN_X_OFFSET,
+  TERRAIN_X_MASK,
+  TERRAIN_Y_OFFSET,
+  TERRAIN_Y_WRAP,
+  TERRAIN_Y_MASK,
+  TERRAIN_Y_WRAP_THRESHOLD,
+  TERRAIN_ID_MASK,
+  TERRAIN_FLAG_SHIFT,
+  STEEL_X_OFFSET,
+  STEEL_X_OFFSET_LEMEDIT
+} from './ClassicLevelConstants.js';
 
 class LevelReader extends BaseLogger {
   /// Load a Level
   constructor(fr) {
     super();
-    this.levelWidth = 1600;
-    this.levelHeight = 160;
+    this.levelWidth = DEFAULT_LEVEL_WIDTH;
+    this.levelHeight = DEFAULT_LEVEL_HEIGHT;
     this.levelProperties = new LevelProperties();
     this.screenPositionX = 0;
     /** index of GROUNDxO.DAT file */
@@ -54,10 +77,10 @@ class LevelReader extends BaseLogger {
   readLevelObjects(fr) {
     /// reset array
     this.objects = [];
-    fr.setOffset(0x0020);
-    for (let i = 0; i < 32; i++) {
+    fr.setOffset(LEVEL_OBJECT_OFFSET);
+    for (let i = 0; i < LEVEL_OBJECT_COUNT; i++) {
       const newOb = new LevelElement();
-      newOb.x = fr.readWord() - 16;
+      newOb.x = fr.readWord() - OBJECT_X_OFFSET;
       newOb.y = fr.readWord();
       newOb.id = fr.readWord();
       const flags = fr.readWord();
@@ -74,17 +97,17 @@ class LevelReader extends BaseLogger {
   readLevelTerrain(fr) {
     /// reset array
     this.terrains = [];
-    fr.setOffset(0x0120);
-    for (let i = 0; i < 400; i++) {
+    fr.setOffset(LEVEL_TERRAIN_OFFSET);
+    for (let i = 0; i < LEVEL_TERRAIN_COUNT; i++) {
       const newOb = new LevelElement();
       const v = fr.readInt(4);
       if (v == -1)
         continue;
-      newOb.x = ((v >> 16) & 0x0FFF) - 16;
-      const y = ((v >> 7) & 0x01FF);
-      newOb.y = y - ((y > 256) ? 516 : 4);
-      newOb.id = (v & 0x003F);
-      const flags = ((v >> 29) & 0x000F);
+      newOb.x = ((v >> 16) & TERRAIN_X_MASK) - TERRAIN_X_OFFSET;
+      const y = ((v >> 7) & TERRAIN_Y_MASK);
+      newOb.y = y - ((y > TERRAIN_Y_WRAP_THRESHOLD) ? (TERRAIN_Y_OFFSET + TERRAIN_Y_WRAP) : TERRAIN_Y_OFFSET);
+      newOb.id = (v & TERRAIN_ID_MASK);
+      const flags = ((v >> TERRAIN_FLAG_SHIFT) & 0x000F);
       const isUpsideDown = ((flags & 2) > 0);
       const noOverwrite = ((flags & 4) > 0);
       const isErase = ((flags & 1) > 0);
@@ -95,11 +118,11 @@ class LevelReader extends BaseLogger {
 
   /** read Level Steel areas */
   readSteelArea(fr, isLemEdit = false) {
-    const X_OFFSET = isLemEdit ? 12 : 16;   // originals use −16, LemEdit uses −12
+    const X_OFFSET = isLemEdit ? STEEL_X_OFFSET_LEMEDIT : STEEL_X_OFFSET;   // originals use −16, LemEdit uses −12
     /// reset array
     this.steel = [];
-    fr.setOffset(0x0760);
-    for (let i = 0; i < 32; i++) {
+    fr.setOffset(LEVEL_STEEL_OFFSET);
+    for (let i = 0; i < LEVEL_STEEL_COUNT; i++) {
       const low = fr.readByte();
       const high = fr.readByte();
       const size = fr.readByte();
@@ -130,7 +153,7 @@ class LevelReader extends BaseLogger {
   /** read general Level information */
   readLevelName(fr) {
     /// at the end of the 
-    this.levelProperties.levelName = fr.readString(32, 0x07E0);
+    this.levelProperties.levelName = fr.readString(LEVEL_NAME_LENGTH, LEVEL_NAME_OFFSET);
     this.log.debug('Level Name: ' + this.levelProperties.levelName);
   }
 }

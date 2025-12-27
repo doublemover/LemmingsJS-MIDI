@@ -114,8 +114,37 @@ canvas {
     font-size: 15px;
 }
 
+#levelSelects .saved-level-controls {
+    display: inline-flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    margin-top: 4px;
+}
+
+#levelSelects .saved-level-label {
+    color: #0f0;
+}
+
+#levelSelects button {
+    background-color: #002200;
+    color: #0f0;
+    border: 1px solid #0f0;
+    margin-right: 4px;
+    font-size: 13px;
+    padding: 1px 6px;
+}
+
+#savedLevelImportInput {
+    display: none;
+}
+
 .game_container.small #levelSelects select {
     font-size: 11px;
+}
+
+.game_container.small #levelSelects button {
+    font-size: 10px;
 }
 
 .control-panel {

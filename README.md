@@ -22,6 +22,7 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
   - `npm install`
   - `npm start`
 - Open http://127.0.0.1:8080
+- Open http://127.0.0.1:8080/editor.html for the standalone level editor.
 - This repo is intended for local development and offline tooling, not npm distribution.
 
 If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
@@ -45,6 +46,7 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
   - Click and drag to reposition view
 - Zoom in and out with mouse wheel
 - Skill selection while paused
+- Editor preview mode with `.nxlv` load/save/import/export (localStorage + file download/upload)
 - Original crosshair cursor (from `MAIN.DAT` part 5)
 - Dashed debug box for nearest lemming
 - Speed display on the Paws (Pause) button
@@ -71,6 +73,21 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 - `Shift+,` / `Shift+.`: Previous / next group
 - `Tab`: Cycle through skills
 - `\`: Toggle debug mode
+- `Shift+``: Toggle editor mode (preview only)
+
+### Editor
+
+- Standalone editor page at `editor.html`.
+- `P`: Toggle playtest (configurable in `keybindings.json`).
+- Shift-click or marquee to multi-select; drag to move; resize handles adjust size.
+- Palette previews are generated from sprites and cached in browser storage.
+- Steel rectangles are editable with the Steel tool.
+- Copy/paste/duplicate, nudge, and snap actions are configurable in `keybindings.json`.
+- Alt-drag duplicates the current selection; entrance/exit placement is capped at 4 each.
+
+## Keybindings
+
+Keybindings are configurable in `keybindings.json`. The in-game defaults map to the controls above, and the editor toggle uses `Shift+Backquote` by default.
 
 ## MIDI
 
@@ -175,6 +192,8 @@ URL parameters (shortcuts in brackets):
 ## Development and Testing
 
 - `npm test` runs the full Mocha suite.
+- `npm run test-editor` runs the editor unit tests.
+- `npm run coverage-editor` enforces 100% coverage for `js/editor/**`.
 - Individual groups are in [docs/TESTING.md](docs/TESTING.md).
 - `npm run lint` checks ESLint rules.
 - `npm run format` fixes formatting.
@@ -197,14 +216,13 @@ polish, so please file bugs for any issues you hit.
 <details open>
   <summary><b>In Progress</b></summary>
 
-  - 100% test coverage
+  - Editor tools (palette, placement, selection, brush, triggers)
   - Pack decompression/patch/compression pipeline
   - High resolution and 32-bit color sprite support
   - Full touch interaction support
   - Full support for pack-specific glitches
   - Support for other popular pack types
   - Procedural endless level generation
-  - Tick step
   - Improved documentation
   - Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers, palette)
 </details>
@@ -237,7 +255,6 @@ polish, so please file bugs for any issues you hit.
   - Previous pack flashing, crash if navigating 1 -> 2 then past 2-4-20
   - Cannot go back to version 1 from version 2
   - Building stairs off the horizontal edge causes wraparound steps
-  - Need a level editor or a custom DAT flow for music-driven levels
   - Ability to place flags to trigger MIDI events
 </details>
 

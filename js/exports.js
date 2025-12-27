@@ -96,6 +96,36 @@ export { Trigger } from './level/Trigger.js';
 export { TriggerManager } from './level/TriggerManager.js';
 export { TriggerTypes } from './level/TriggerTypes.js';
 export { UnpackFilePart } from './data/UnpackFilePart.js';
+export { KeybindingRegistry, DEFAULT_KEYBINDINGS, mergeKeybindingConfig, parseKeybindingConfig } from './input/KeybindingRegistry.js';
 export { UserInputManager } from './input/UserInputManager.js';
 export { VGASpecReader } from './data/VGASpecReader.js';
 export { ViewPoint } from './render/ViewPoint.js';
+export { EditorLevel } from './editor/EditorLevel.js';
+export { EditorSession } from './editor/EditorSession.js';
+export { createEditorLevelFromClassic } from './editor/ClassicLevelConverter.js';
+export { createClassicLevelData, loadEditorLevel } from './editor/EditorLevelLoader.js';
+export { NxlvParser } from './editor/NxlvParser.js';
+export { NxlvWriter } from './editor/NxlvWriter.js';
+export {
+  STORAGE_KEYS as EditorStorageKeys,
+  createLevelId as createEditorLevelId,
+  listSavedLevels,
+  loadSavedLevel,
+  saveLevel as saveEditorLevel,
+  deleteLevel as deleteEditorLevel
+} from './editor/EditorStorage.js';
+export {
+  DEFAULT_TERRAIN_COUNT,
+  DEFAULT_GADGET_COUNT,
+  registerStyle,
+  getStyle,
+  getStyleByGroundSet,
+  getStyleNames,
+  getDefaultStyle,
+  resolveTerrainId,
+  resolveTerrainName,
+  resolveGadgetId,
+  resolveGadgetName,
+  resetStyleRegistry,
+  registerClassicStyles
+} from './editor/StyleRegistry.js';

@@ -2,6 +2,11 @@ import './bootstrap.js';
 import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';
 import { createMidiUiController } from './midiUiController.js';
+import {
+  listSavedLevels,
+  loadSavedLevel,
+  saveLevel
+} from '../editor/EditorStorage.js';
 
 const $ = globalThis.$ || globalThis.jQuery;
 const jQuery = globalThis.jQuery || $;
@@ -46,6 +51,112 @@ function init() {
   lemmings.elementSelectLevel.addEventListener('change', (e) => {
     lemmings.selectLevel(lemmings.strToNum(e.target.value));
   });
+
+  const savedSelect = document.getElementById('savedLevelSelect');
+  const savedSaveButton = document.getElementById('savedLevelSave');
+  const savedExportButton = document.getElementById('savedLevelExport');
+  const savedImportButton = document.getElementById('savedLevelImport');
+  const savedImportInput = document.getElementById('savedLevelImportInput');
+
+  let currentSavedId = '';
+
+  const sanitizeFileName = (name) => String(name || 'level')
+    .trim()
+    .replace(/[^a-z0-9_-]+/gi, '_')
+    .replace(/^_+|_+$/g, '')
+    .slice(0, 60) || 'level';
+
+  const refreshSavedList = (selectedId = currentSavedId) => {
+    if (!savedSelect) return;
+    const entries = listSavedLevels();
+    savedSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Saved levels';
+    savedSelect.appendChild(placeholder);
+    for (const entry of entries) {
+      const opt = document.createElement('option');
+      opt.value = entry.id;
+      opt.textContent = entry.name;
+      savedSelect.appendChild(opt);
+    }
+    savedSelect.value = selectedId || '';
+  };
+
+  const ensureEditorLevel = () => {
+    lemmings.enterEditorMode();
+    if (!lemmings.editorSession?.level) {
+      lemmings.createBlankEditorLevel();
+    }
+  };
+
+  if (savedSelect) {
+    refreshSavedList();
+    savedSelect.addEventListener('change', () => {
+      const id = savedSelect.value;
+      if (!id) return;
+      const text = loadSavedLevel(undefined, id);
+      if (!text) return;
+      lemmings.loadEditorLevelFromText(text);
+      currentSavedId = id;
+    });
+  }
+
+  if (savedSaveButton) {
+    savedSaveButton.addEventListener('click', () => {
+      ensureEditorLevel();
+      const text = lemmings.getEditorLevelText();
+      const name = lemmings.getEditorLevelTitle();
+      const id = saveLevel(undefined, {
+        id: currentSavedId || undefined,
+        name,
+        text
+      });
+      if (id) {
+        currentSavedId = id;
+        refreshSavedList(id);
+      }
+    });
+  }
+
+  if (savedExportButton) {
+    savedExportButton.addEventListener('click', () => {
+      ensureEditorLevel();
+      const text = lemmings.getEditorLevelText();
+      const title = lemmings.getEditorLevelTitle();
+      const filename = `${sanitizeFileName(title)}.nxlv`;
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  }
+
+  if (savedImportButton && savedImportInput) {
+    savedImportButton.addEventListener('click', () => {
+      savedImportInput.click();
+    });
+
+    savedImportInput.addEventListener('change', (e) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        const text = typeof reader.result === 'string' ? reader.result : '';
+        if (!text) return;
+        lemmings.loadEditorLevelFromText(text);
+        currentSavedId = '';
+        refreshSavedList('');
+      };
+      reader.readAsText(file);
+      e.target.value = '';
+    });
+  }
 }
 
 function setSize() {

@@ -1,0 +1,322 @@
+:root {
+  --bg: #f1efe7;
+  --ink: #1f1b16;
+  --muted: #6b5f52;
+  --panel: #fbf7ef;
+  --panel-border: #d4c6b7;
+  --accent: #d26a3c;
+  --accent-dark: #a44b26;
+  --warn: #c77c2f;
+  --error: #b3362d;
+  --shadow: rgba(26, 20, 16, 0.15);
+  --grid: rgba(60, 50, 40, 0.08);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Trebuchet MS", "Lucida Grande", "Lucida Sans Unicode", sans-serif;
+  color: var(--ink);
+  background:
+    radial-gradient(circle at 20% 20%, rgba(255, 255, 255, 0.7), transparent 40%),
+    radial-gradient(circle at 80% 10%, rgba(210, 106, 60, 0.12), transparent 45%),
+    linear-gradient(135deg, #ede7dc 0%, #f6f1e7 50%, #efe6d9 100%);
+  min-height: 100vh;
+}
+
+.editor-app {
+  display: grid;
+  grid-template-rows: auto 1fr;
+  min-height: 100vh;
+}
+
+.editor-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 24px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--panel-border);
+  box-shadow: 0 6px 20px var(--shadow);
+}
+
+.editor-title {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.editor-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.editor-controls select,
+.editor-controls input,
+.editor-controls button {
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+  color: var(--ink);
+  padding: 6px 8px;
+  font-size: 13px;
+}
+
+.editor-controls button {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-dark);
+  cursor: pointer;
+}
+
+.editor-controls button.secondary {
+  background: #f4efe6;
+  color: var(--ink);
+}
+
+.editor-controls button.is-active {
+  background: #2f7a48;
+  border-color: #1f5a35;
+  color: #fff;
+}
+
+.editor-main {
+  display: grid;
+  grid-template-columns: minmax(240px, 320px) 1fr minmax(260px, 360px);
+  gap: 16px;
+  padding: 16px;
+}
+
+.editor-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: 0 10px 20px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel-title {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.tool-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.tool-grid button,
+.palette-list button,
+.editor-button {
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+  padding: 8px 10px;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tool-grid button.active,
+.palette-list button.active {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px rgba(210, 106, 60, 0.25);
+}
+
+.control-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.control-row input,
+.control-row select {
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.palette-tabs {
+  display: flex;
+  gap: 6px;
+}
+
+.palette-tabs button {
+  flex: 1;
+  padding: 6px 4px;
+  font-size: 12px;
+  border: 1px solid var(--panel-border);
+  background: #f8f2e8;
+  cursor: pointer;
+}
+
+.palette-tabs button.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent-dark);
+}
+
+.palette-list {
+  display: grid;
+  gap: 6px;
+  max-height: 320px;
+  overflow: auto;
+}
+
+.palette-list button {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+
+.palette-preview {
+  width: 46px;
+  height: 46px;
+  border: 1px solid var(--panel-border);
+  border-radius: 6px;
+  background:
+    linear-gradient(135deg, rgba(210, 106, 60, 0.12), transparent 55%),
+    #fffdf9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.palette-preview img {
+  max-width: 100%;
+  max-height: 100%;
+  image-rendering: pixelated;
+}
+
+.palette-preview.empty {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0, 0, 0, 0.05),
+      rgba(0, 0, 0, 0.05) 6px,
+      transparent 6px,
+      transparent 12px
+    ),
+    #fffdf9;
+}
+
+.palette-label {
+  display: block;
+  line-height: 1.25;
+}
+
+.editor-canvas-panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 12px 28px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px;
+  gap: 8px;
+}
+
+.canvas-wrap {
+  width: 100%;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--panel-border);
+  background:
+    linear-gradient(0deg, var(--grid) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+#editorCanvas {
+  width: 100%;
+  height: 100%;
+  max-height: 70vh;
+  image-rendering: pixelated;
+}
+
+.status-strip {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.inspector-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.inspector-grid label {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.inspector-grid input,
+.inspector-grid select {
+  width: 100%;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.issue-list {
+  display: grid;
+  gap: 8px;
+}
+
+.issue-item {
+  padding: 8px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.issue-item.error {
+  border-left: 4px solid var(--error);
+}
+
+.issue-item.warning {
+  border-left: 4px solid var(--warn);
+}
+
+.issue-item button {
+  align-self: flex-start;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .editor-main {
+    grid-template-columns: 1fr;
+  }
+}

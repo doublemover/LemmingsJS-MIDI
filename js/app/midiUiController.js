@@ -321,6 +321,7 @@ export const createMidiUiController = ({
   let midiViewPanEnabled = false;
   let midiInputController = null;
   let midiOverrides = readStoredJson(storage, midiStorageKeys.overrides) || {};
+  let envControlsBound = false;
   let lastUiSignature = null;
   let noteCapture = null;
   if (!isPlainObject(midiOverrides)) {
@@ -1083,9 +1084,58 @@ export const createMidiUiController = ({
     return { ...base };
   };
 
+  const bindEnvelopeControls = () => {
+    if (envControlsBound) return;
+    const envAttack = document.getElementById('midiEnvAttack');
+    const envDecay = document.getElementById('midiEnvDecay');
+    const envSustain = document.getElementById('midiEnvSustain');
+    const envRelease = document.getElementById('midiEnvRelease');
+    const envTarget = document.getElementById('midiEnvTarget');
+    if (!envAttack && !envDecay && !envSustain && !envRelease && !envTarget) {
+      return;
+    }
+    const envUpdate = () => {
+      if (!envAttack || !envDecay || !envSustain || !envRelease) return;
+      const envelope = {
+        attack: Number(envAttack.value) || 0,
+        decay: Number(envDecay.value) || 0,
+        sustain: Number(envSustain.value) || 0,
+        release: Number(envRelease.value) || 0
+      };
+      const target = resolveEnvelopeTarget(envTarget?.value || 'global');
+      if (target.scope === 'sfx' && target.id) {
+        setMidiOverrides({ sfx: { [target.id]: { envelope } } });
+        return;
+      }
+      if (target.scope === 'trigger' && target.id) {
+        setMidiOverrides({ triggers: { [target.id]: { envelope } } });
+        return;
+      }
+      setMidiOverrides({ envelope });
+    };
+    if (envAttack) envAttack.addEventListener('change', envUpdate);
+    if (envDecay) envDecay.addEventListener('change', envUpdate);
+    if (envSustain) envSustain.addEventListener('change', envUpdate);
+    if (envRelease) envRelease.addEventListener('change', envUpdate);
+    if (envTarget) {
+      envTarget.addEventListener('change', (event) => {
+        const value = event.target.value || 'global';
+        storeMidiId(storage, midiStorageKeys.adsrTarget, value);
+        const config = getConfig();
+        const env = resolveEnvelopeConfig(config, value);
+        if (envAttack && Number.isFinite(env.attack)) envAttack.value = String(env.attack);
+        if (envDecay && Number.isFinite(env.decay)) envDecay.value = String(env.decay);
+        if (envSustain && Number.isFinite(env.sustain)) envSustain.value = String(env.sustain);
+        if (envRelease && Number.isFinite(env.release)) envRelease.value = String(env.release);
+      });
+    }
+    envControlsBound = true;
+  };
+
   const refreshMidiUiFromConfig = () => {
     const config = getConfig();
     if (!config) return false;
+    bindEnvelopeControls();
     const keySelect = document.getElementById('midiKeySelect');
     const scaleSelect = document.getElementById('midiScaleSelect');
     const positionList = document.getElementById('midiPositionList');
@@ -1297,11 +1347,6 @@ export const createMidiUiController = ({
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
     const repeatTarget = document.getElementById('midiRepeatTarget');
     const repeatAmount = document.getElementById('midiRepeatAmount');
-    const envAttack = document.getElementById('midiEnvAttack');
-    const envDecay = document.getElementById('midiEnvDecay');
-    const envSustain = document.getElementById('midiEnvSustain');
-    const envRelease = document.getElementById('midiEnvRelease');
-    const envTarget = document.getElementById('midiEnvTarget');
 
     ensureSchemaHash();
 
@@ -1478,41 +1523,7 @@ export const createMidiUiController = ({
         setMidiOverrides({ repeat: { amount: value } });
       });
     }
-    const envUpdate = () => {
-      if (!envAttack || !envDecay || !envSustain || !envRelease) return;
-      const envelope = {
-        attack: Number(envAttack.value) || 0,
-        decay: Number(envDecay.value) || 0,
-        sustain: Number(envSustain.value) || 0,
-        release: Number(envRelease.value) || 0
-      };
-      const target = resolveEnvelopeTarget(envTarget?.value || 'global');
-      if (target.scope === 'sfx' && target.id) {
-        setMidiOverrides({ sfx: { [target.id]: { envelope } } });
-        return;
-      }
-      if (target.scope === 'trigger' && target.id) {
-        setMidiOverrides({ triggers: { [target.id]: { envelope } } });
-        return;
-      }
-      setMidiOverrides({ envelope });
-    };
-    if (envAttack) envAttack.addEventListener('change', envUpdate);
-    if (envDecay) envDecay.addEventListener('change', envUpdate);
-    if (envSustain) envSustain.addEventListener('change', envUpdate);
-    if (envRelease) envRelease.addEventListener('change', envUpdate);
-    if (envTarget) {
-      envTarget.addEventListener('change', (event) => {
-        const value = event.target.value || 'global';
-        storeMidiId(storage, midiStorageKeys.adsrTarget, value);
-        const config = getConfig();
-        const env = resolveEnvelopeConfig(config, value);
-        if (envAttack && Number.isFinite(env.attack)) envAttack.value = String(env.attack);
-        if (envDecay && Number.isFinite(env.decay)) envDecay.value = String(env.decay);
-        if (envSustain && Number.isFinite(env.sustain)) envSustain.value = String(env.sustain);
-        if (envRelease && Number.isFinite(env.release)) envRelease.value = String(env.release);
-      });
-    }
+    bindEnvelopeControls();
 
     const tabs = document.querySelectorAll('.tab-button');
     const panels = document.querySelectorAll('.tab-panel');

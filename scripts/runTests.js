@@ -6,7 +6,8 @@ const CATEGORY_PATTERNS = {
   bench: ['test/bench*.test.js'],
   workflow: ['test/*workflow*.test.js'],
   tools: ['test/tools/*.test.js'],
-  'offline-tools': ['test/offline-tools/*.test.js']
+  'offline-tools': ['test/offline-tools/*.test.js'],
+  editor: ['test/editor/*.test.js']
 };
 
 const categories = process.argv.slice(2);

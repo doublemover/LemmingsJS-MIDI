@@ -27,6 +27,7 @@ class Stage {
     this.overlayDashLen = 0;
     this.overlayDashColor = 0;
     this.overlayDashOffset = 0;
+    this.panEnabled = true;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -135,7 +136,7 @@ class Stage {
       if (e.button) {
         const stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
         if (!stageImage || !stageImage.display) return;
-        if (stageImage === this.gameImgProps) {
+        if (this.panEnabled && stageImage === this.gameImgProps) {
           this.updateViewPoint(stageImage, e.deltaX, e.deltaY, 0);
         }
         const pos = this.calcPosition2D(stageImage, e);
