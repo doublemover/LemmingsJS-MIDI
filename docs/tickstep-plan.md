@@ -58,6 +58,7 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 
 ### Memory considerations
 - Keep a rolling time-based cap (configurable window) for history length.
+- Default window length uses the level time limit (seconds until game over).
 - Trim keyframes/deltas older than the window and expose current history span/size.
 
 ## Time travel controller
@@ -99,7 +100,7 @@ Integration points:
 
 ## Bench reverse flag
 - Add a `benchReverse` (`bR`) flag that behaves like bench mode but marks the session as reverse-enabled.
-- If `bench` or `bench2` is active, `benchReverse` is forced off.
+- If `bench`, `bench2`, or `benchSequence` is active, `benchReverse` is forced off.
 
 ## Tests
 - RNG determinism: same seed yields identical tick hashes.
@@ -122,5 +123,4 @@ Integration points:
 - Non-deterministic inputs: disallow new commands during reverse playback.
 
 ## Open questions
-- What should the default history window be (seconds)?
-- Should benchReverse allow benchSequence, or should they be mutually exclusive?
+- What should the history cap be for endless levels or bench sessions without time limits?
