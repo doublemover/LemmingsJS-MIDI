@@ -98,6 +98,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 - Enable MIDI from the left control panel (toggle persists). When disabled, WebMIDI is not enabled and the MIDI router is detached.
 - Use the Input/Output selects to choose devices. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
 - Use `MIDI reset` to stop all notes and clear the queued events.
+- `reverse.allNotesOffOnToggle` in `midi-mapping.json` can auto-reset MIDI when toggling reverse playback.
 - Base BPM is the sequencing anchor; current BPM shows the live value (Base BPM * game speed).
 - Sequencing section:
   - Position mappings: add X/Y/X+Y mappings with min/max ranges to target note offset, intensity (velocity), timbre, pan, duration, pitch bend, or ADSR.
