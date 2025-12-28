@@ -52,6 +52,28 @@ describe('MidiScheduler', function() {
     }
   });
 
+  it('swaps attack and release velocity when reversing', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.setOutput(output);
+    scheduler.setTickMs(10);
+
+    const ok = scheduler.sendNote({
+      note: 60,
+      velocity: 80,
+      releaseVelocity: 20,
+      durationTicks: 1,
+      reverse: true
+    });
+
+    expect(ok).to.equal(true);
+    const noteOn = calls.find(c => c.type === 'noteOn');
+    const noteOff = calls.find(c => c.type === 'noteOff');
+    expect(noteOn.opts.rawAttack).to.equal(20);
+    expect(noteOff.opts.rawRelease).to.equal(80);
+  });
+
   it('steals the oldest note when active count is exceeded', function() {       
     const calls = [];
     const output = makeOutput([1], calls);
