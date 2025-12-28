@@ -167,20 +167,26 @@ class GameGui {
         const speedFac = this.gameTimer.speedFactor;
         const app = getApp();
         const debugOrBench = (this.game.showDebug || app?.bench === true || app?.bench2 === true || app?.benchReverse === true);
+        const syncSpeed = () => {
+          if (app) app.gameSpeedFactor = this.gameTimer.speedFactor;
+        };
         if (pauseIndex === 0) {
           if (speedFac > 10) {
             this.gameTimer.speedFactor -= 10;
             this.drawSpeedChange(false);
+            syncSpeed();
             return;
           }
           if (speedFac > 1) {
             this.gameTimer.speedFactor--;
             this.drawSpeedChange(false); 
+            syncSpeed();
             return;
           }
           if (debugOrBench || speedFac == 1 || speedFac > 0.1 && speedFac < 1) {
             this.gameTimer.speedFactor = Math.trunc((this.gameTimer.speedFactor-0.1)*100)/100;
             this.drawSpeedChange(false);
+            syncSpeed();
             return;
           }
         }
@@ -188,16 +194,19 @@ class GameGui {
           if (speedFac < 1) {
             this.gameTimer.speedFactor = Math.trunc((this.gameTimer.speedFactor+0.1)*100)/100;
             this.drawSpeedChange(true);
+            syncSpeed();
             return;
           }
           if (speedFac >= 10 && speedFac < 120) {
             this.gameTimer.speedFactor += 10;
             this.drawSpeedChange(true);
+            syncSpeed();
             return;
           }
           if (speedFac < 10) {
             this.gameTimer.speedFactor++;
             this.drawSpeedChange(true);
+            syncSpeed();
             return;
           }
         }
@@ -261,6 +270,8 @@ class GameGui {
       if (this.gameTimer.speedFactor !== 1) {
         this.gameTimer.speedFactor = 1;
         this.drawSpeedChange(false, true);
+        const app = getApp();
+        if (app) app.gameSpeedFactor = this.gameTimer.speedFactor;
       }
       return;
     }
@@ -458,8 +469,9 @@ class GameGui {
             }
           }
         }
-        if (text) {
-          this.drawGreenString(d, text, 0, 0);
+        const statusText = this._composeStatusText(this._formatTickIndicator(), text);
+        if (statusText) {
+          this.drawGreenString(d, statusText, 0, 0);
         }
         const timeText = app?.endless ? '4-20' : this.gameTimer.getGameLeftTimeString();
         this.drawGreenString(d, 'Time ' + timeText + '-00', 248, 0);
@@ -611,6 +623,21 @@ class GameGui {
         /* ignored */
       }
     }
+  }
+
+  _formatTickIndicator() {
+    const tick = Math.max(0, this.gameTimer?.tickIndex ?? 0);
+    const dir = this.game?.timeTravel?.isReversing ? '<' : '>';
+    return `T${tick}${dir}`;
+  }
+
+  _composeStatusText(primary, secondary) {
+    const left = primary || '';
+    const right = secondary || '';
+    if (!left && !right) return '';
+    const combined = right ? `${left} ${right}` : left;
+    const maxChars = 14;
+    return combined.length > maxChars ? combined.slice(0, maxChars) : combined;
   }
 
   _pad(v, len) { const s = String(v); return s.length >= len ? s : ' '.repeat(len - s.length) + s; }

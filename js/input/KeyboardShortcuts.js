@@ -130,6 +130,7 @@ class KeyboardShortcuts {
   }
 
   _cycleSkill(dir = 1) {
+    if (this._isGameplayBlocked()) return;
     const game = this.view.game;
     if (!game) return;
     const skills = game.getGameSkills();
@@ -141,6 +142,7 @@ class KeyboardShortcuts {
   }
 
   _instantNuke() {
+    if (this._isGameplayBlocked()) return;
     const mgr = this.view.game?.getLemmingManager?.();
     const lems = mgr?.getLemmings?.() ?? mgr?.lemmings;
     if (!lems) return;
@@ -180,6 +182,11 @@ class KeyboardShortcuts {
         }
       }
     }
+    this.view.gameSpeedFactor = timer.speedFactor;
+  }
+
+  _isGameplayBlocked() {
+    return !!this.view?.game?.timeTravel?.isReversing;
   }
 
   _shouldIgnoreKey(e) {
@@ -205,12 +212,14 @@ class KeyboardShortcuts {
   _createActionHandlers() {
     return {
       releaseRateDown: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const game = this.view.game;
         if (!game) return;
         game.queueCommand(new CommandReleaseRateDecrease(1));
         game.gameGui.releaseRateChanged = true;
       }},
       releaseRateDownMax: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const game = this.view.game;
         if (!game) return;
         const vc = game.getVictoryCondition();
@@ -219,12 +228,14 @@ class KeyboardShortcuts {
         game.gameGui.releaseRateChanged = true;
       }},
       releaseRateUp: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const game = this.view.game;
         if (!game) return;
         game.queueCommand(new CommandReleaseRateIncrease(1));
         game.gameGui.releaseRateChanged = true;
       }},
       releaseRateUpMax: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const game = this.view.game;
         if (!game) return;
         const vc = game.getVictoryCondition();
@@ -244,6 +255,11 @@ class KeyboardShortcuts {
       togglePause: { down: () => {
         const game = this.view.game;
         if (!game) return;
+        if (game.timeTravel?.isReversing) {
+          game.timeTravel.stopReverse();
+          game.gameGui.skillSelectionChanged = true;
+          return;
+        }
         game.getGameTimer().toggle();
         game.gameGui.skillSelectionChanged = true;
       }},
@@ -257,7 +273,14 @@ class KeyboardShortcuts {
         if (!timer || timer.isRunning()) return;
         this.view.prevFrame();
       }},
+      toggleReverse: { down: () => {
+        const game = this.view.game;
+        if (!game?.timeTravel) return;
+        game.timeTravel.toggleReverse();
+        if (game.gameGui) game.gameGui.gameTimeChanged = true;
+      }},
       nuke: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const game = this.view.game;
         if (!game) return;
         game.queueCommand(new CommandNuke());
@@ -354,6 +377,7 @@ class KeyboardShortcuts {
       cycleSkillNext: { down: () => this._cycleSkill(1) },
       cycleSkillPrev: { down: () => this._cycleSkill(-1) },
       applySkillToSelected: { down: () => {
+        if (this._isGameplayBlocked()) return;
         const mgr = this.view.game?.getLemmingManager?.();
         const lem = mgr?.getSelectedLemming?.();
         if (!lem || !this.view.game) return;
@@ -394,6 +418,7 @@ class KeyboardShortcuts {
   }
 
   _selectSkill(skillType) {
+    if (this._isGameplayBlocked()) return;
     const game = this.view.game;
     if (!game) return;
     game.queueCommand(new CommandSelectSkill(skillType));
