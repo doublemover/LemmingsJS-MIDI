@@ -1,6 +1,7 @@
 # NeoLemmix Expansion Notes (Beyond Classic Subset)
 
 This document captures the additional NeoLemmix features required for full parity, pulled from `docs/nl-file-format.md` and related references.
+Status: no NeoLemmix expansion features are implemented yet; this is a backlog.
 
 ## Core `.nxlv` sections to add
 - `$LEMMING`: pre-placed lemmings with flags (zombie, climber, floater, etc.).

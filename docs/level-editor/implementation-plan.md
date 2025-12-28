@@ -2,17 +2,22 @@
 
 Goal: deliver a standalone editor page for classic packs with DOM overlay tools, validation, playtest toggle, and full per-edit history while preserving preview rendering.
 
+## Status (0.0.3)
+- Classic subset editor is implemented (standalone page, tool palette, selection/inspector, validation with fixes, undo/redo history, saved levels, export/import, playtest toggle, palette previews).
+- Entrance/exit placement is capped at 4 each; steel rectangles are editable.
+- Preview still follows classic rendering rules (rotation/flip beyond classic are not previewed).
+
 ## Scope
-- In: classic headers, terrain/object placement, triggers, entrance/exit (single each for now), resize/rotate/flip metadata (rotations snapped to 0/90/180/270), validation with fix suggestions, saved levels (prompt for name), export/import, playtest toggle.
-- Out: full NeoLemmix sections (terrain groups, talismans, pre-text, etc.), live keybinding editing, steel area editing.
+- In: classic headers, terrain/object placement, triggers, entrance/exit (cap 4), steel rectangles, brush/eraser, resize/rotate/flip metadata (rotations snapped to 0/90/180/270), validation with fix suggestions, saved levels (prompt for name), export/import (.nxlv + .lvl), playtest toggle.
+- Out: full NeoLemmix sections (terrain groups, talismans, pre-text, etc.), live keybinding editing, advanced transforms beyond classic preview.
 
 ## Milestones
-1) Standalone editor page + layout.
-2) Input wiring + tool palette (place/move/erase).
-3) Inspector for transforms + metadata edits.
-4) Validation + fix suggestions.
-5) Keybindings (editor tool actions).
-6) Docs/README updates + remaining gaps list.
+1) Standalone editor page + layout. (done)
+2) Input wiring + tool palette (place/move/erase). (done)
+3) Inspector for transforms + metadata edits. (done)
+4) Validation + fix suggestions. (done)
+5) Keybindings (editor tool actions). (done)
+6) Docs/README updates + remaining gaps list. (done)
 
 ## Detailed Steps
 - Create `editor.html` and `css/editor.css` with three-column layout and DOM overlay panels.

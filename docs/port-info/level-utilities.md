@@ -10,7 +10,9 @@ This note summarizes three Pascal modules from the original Lemmix project and t
 - `ShortHash` XORs the two halves of the MD5 to create an eight byte value.
 - `GetLevelCode` converts that value into a 10‑character code alternating vowels and consonants.
 
-These hashing helpers are not yet ported to JavaScript.
+These hashing helpers are now implemented in `js/level/LevelHasher.js`:
+`LevelHasher.longHash()` returns MD5 bytes, `shortHash()` returns the 64-bit hash
+as a BigInt, and `getLevelCode()` builds the 10-character code.
 
 ## `Level.Loader.pas`
 
@@ -20,18 +22,18 @@ The process swaps endianness on every word and unpacks coordinates and drawing f
 A second overload performs the reverse when saving.
 `TLemminiLoader.LoadLVLFromFile` also parses a simple text‑based format.
 
-The JavaScript port implements these features in `js/LevelReader.js`, `js/LevelWriter.js` and
-`js/LevelLoader.js`. The reader/writer handle the binary format while `LevelLoader` resolves the
+The JavaScript port implements these features in `js/level/LevelReader.js`, `js/level/LevelWriter.js` and
+`js/level/LevelLoader.js`. The reader/writer handle the binary format while `LevelLoader` resolves the
 correct graphics sets, decodes terrain and objects and attaches the data to a `Level` object.
+The editor UI now exports/imports `.lvl` files using the writer/reader pipeline.
 
 ## Saving and replay data
 
 The original `Game.pas` contains methods like `TRecorder.SaveToFile` and `SaveToStream` for replay files
-and level states. Only a basic binary writer has been ported so far. Replay serialization and the
-hash‑based level codes still rely on the Pascal sources.
+and level states. The JS port records replays via `CommandManager.serialize()` and stores the result on
+`GameResult.replay` (see `docs/replays.md`). File-based replay formats and replay caches are still
+unported.
 
 ## Remaining work
 
-- Port `TLevelHasher` to generate MD5 hashes and level codes in JS.
-- Integrate `LevelWriter` with actual save/load UI.
-- Port recorder and replay serialization routines.
+- Port file-based replay serialization (save/load + metadata) and replay cache support.

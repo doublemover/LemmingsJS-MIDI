@@ -1,6 +1,11 @@
 import { EditorController } from '../editor/EditorController.js';
 import { EditorHistory } from '../editor/EditorHistory.js';
 import { EditorAssetCache } from '../editor/EditorAssetCache.js';
+import { BinaryReader } from '../data/BinaryReader.js';
+import { LevelReader } from '../level/LevelReader.js';
+import { LevelWriter } from '../level/LevelWriter.js';
+import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js';
+import { createClassicLevelData } from '../editor/EditorLevelLoader.js';
 import { validateLevel } from '../editor/EditorValidator.js';
 import { getEntryBounds } from '../editor/EditorHitTest.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
@@ -104,8 +109,11 @@ class EditorUiController {
       savedSelect: get('editorSavedSelect'),
       savedSave: get('editorSavedSave'),
       savedExport: get('editorSavedExport'),
+      savedExportClassic: get('editorSavedExportClassic'),
       savedImport: get('editorSavedImport'),
+      savedImportClassic: get('editorSavedImportClassic'),
       savedImportInput: get('editorSavedImportInput'),
+      savedImportClassicInput: get('editorSavedImportClassicInput'),
       playtestToggle: get('editorPlaytestToggle'),
       toolList: get('editorToolList'),
       snapToggle: get('editorSnapToggle'),
@@ -405,6 +413,12 @@ class EditorUiController {
       });
     }
 
+    if (this.el.savedExportClassic) {
+      this.el.savedExportClassic.addEventListener('click', () => {
+        this._exportCurrentLevelClassic();
+      });
+    }
+
     if (this.el.savedImport && this.el.savedImportInput) {
       this.el.savedImport.addEventListener('click', () => {
         this.el.savedImportInput.click();
@@ -420,6 +434,27 @@ class EditorUiController {
           this._loadLevelFromText(text, { resetSaved: true });
         };
         reader.readAsText(file);
+        event.target.value = '';
+      });
+    }
+
+    if (this.el.savedImportClassic && this.el.savedImportClassicInput) {
+      this.el.savedImportClassic.addEventListener('click', () => {
+        this.el.savedImportClassicInput.click();
+      });
+      this.el.savedImportClassicInput.addEventListener('change', (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          const buffer = reader.result;
+          if (!buffer) return;
+          const binary = new BinaryReader(buffer, 0, undefined, file.name);
+          const levelReader = new LevelReader(binary);
+          this._currentSavedId = '';
+          this._loadLevelFromClassic(levelReader, { resetSaved: true });
+        };
+        reader.readAsArrayBuffer(file);
         event.target.value = '';
       });
     }
@@ -869,6 +904,40 @@ class EditorUiController {
     URL.revokeObjectURL(url);
   }
 
+  _exportCurrentLevelClassic() {
+    this._refreshValidation();
+    if (this._hasErrors) {
+      this.window?.alert?.('Fix validation errors before exporting.');
+      return;
+    }
+    if (!this.session?.level) return;
+    const classic = createClassicLevelData(this.session.level);
+    if (!classic?.levelReader) return;
+    const writer = new LevelWriter();
+    const payload = {
+      levelProperties: classic.levelReader.levelProperties,
+      screenPositionX: classic.levelReader.screenPositionX,
+      graphicSet1: classic.levelReader.graphicSet1,
+      graphicSet2: classic.levelReader.graphicSet2,
+      isSuperLemming: classic.levelReader.isSuperLemming,
+      objects: classic.levelReader.objects,
+      terrains: classic.levelReader.terrains,
+      steel: classic.levelReader.steel
+    };
+    const bytes = writer.write(payload);
+    const title = this.view.getEditorLevelTitle();
+    const filename = `${sanitizeFileName(title)}.lvl`;
+    const blob = new Blob([bytes], { type: 'application/octet-stream' });
+    const url = URL.createObjectURL(blob);
+    const link = this.document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    this.document.body.appendChild(link);
+    link.click();
+    this.document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }
+
   async _syncAfterSelection(label) {
     if (!this.view) return;
     this._currentSavedId = '';
@@ -897,6 +966,24 @@ class EditorUiController {
       this._refreshValidation();
       if (options.resetSaved) this._refreshSavedList('');
       await this._refreshPreview('Import');
+    });
+  }
+
+  _loadLevelFromClassic(levelReader, options = {}) {
+    if (!this.view) return;
+    const session = this.view.ensureEditorSession?.() || this.session;
+    const editorLevel = createEditorLevelFromClassic(levelReader);
+    if (!editorLevel) return;
+    session.level = editorLevel;
+    this.session = session;
+    this.controller.session = this.session;
+    this._reloadAssets().then(async () => {
+      this.controller.resetHistory('Import LVL');
+      this._refreshHeaderFields(editorLevel);
+      this._refreshSelection(null);
+      this._refreshValidation();
+      if (options.resetSaved) this._refreshSavedList('');
+      await this._refreshPreview('Import LVL');
     });
   }
 

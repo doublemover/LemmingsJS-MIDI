@@ -46,7 +46,7 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
   - Click and drag to reposition view
 - Zoom in and out with mouse wheel
 - Skill selection while paused
-- Editor preview mode with `.nxlv` load/save/import/export (localStorage + file download/upload)
+- Editor preview mode with `.nxlv` load/save/import/export (localStorage + file download/upload) and `.lvl` import/export
 - Original crosshair cursor (from `MAIN.DAT` part 5)
 - Dashed debug box for nearest lemming
 - Speed display on the Paws (Pause) button
@@ -78,6 +78,7 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 ### Editor
 
 - Standalone editor page at `editor.html`.
+- Import/export `.nxlv` and classic `.lvl` files from the editor header.
 - `P`: Toggle playtest (configurable in `keybindings.json`).
 - Shift-click or marquee to multi-select; drag to move; resize handles adjust size.
 - Palette previews are generated from sprites and cached in browser storage.
@@ -232,32 +233,30 @@ polish, so please file bugs for any issues you hit.
 <details>
   <summary><b>Roadmap</b></summary>
 
-  - Arrow walls
-    - Confirm builder bounce behavior
-    - Fix 2-2-19 left arrows not rendering
-    - Consider built-stairs handling
-  - Traps
-    - Squish missing
-    - "Generic trap" just vanishes lemmings
-  - Bombs
-    - Remove ground overlapping steel to reveal it
-  - Super lemmings act twice per tick
+  - Arrow walls (partial; trigger ranges parsed + debug overlay only) [feature]
+    - Confirm builder bounce behavior [verify]
+    - Fix 2-2-19 left arrows not rendering [verify]
+    - Consider built-stairs handling [feature]
+  - Traps [feature]
+    - Squish missing [feature]
+    - "Generic trap" uses splat death instead of trap animation [bug]
+  - Bombs [verify]
+    - Remove ground overlapping steel to reveal it [bug]
+  - Super lemmings act twice per tick [feature]
   - MIDI
-    - Channel selection
-    - I/O display
-    - Debug display
+    - Debug display [feature]
   - Performance
-    - Investigate using GameTimer catchup slowdown as a failsafe for perf spikes
+    - Investigate using GameTimer catchup slowdown as a failsafe for perf spikes [feature]
 </details>
 
 <details>
   <summary><b>Bugs and Misc</b></summary>
 
-  - No palette-swapped frying animation (2-2-9, 1-4-30)
-  - Previous pack flashing, crash if navigating 1 -> 2 then past 2-4-20
-  - Cannot go back to version 1 from version 2
-  - Building stairs off the horizontal edge causes wraparound steps
-  - Ability to place flags to trigger MIDI events
+  - [bug] No palette-swapped frying animation (2-2-9, 1-4-30)
+  - [verify] Previous pack flashing, crash if navigating 1 -> 2 then past 2-4-20
+  - [verify] Cannot go back to version 1 from version 2
+  - [bug] Building stairs off the horizontal edge causes wraparound steps
+  - [feature] Ability to place flags to trigger MIDI events
 </details>
 
 ## Credits
