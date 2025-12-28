@@ -70,6 +70,7 @@ class GameView extends BaseLogger {
     this._benchStartTime = 0;
     this._benchBaseEntrances = null;
     this._benchEntrancePool = null;
+    this.preserveHistory = false;
     this.cheatEnabled = false;
     this.applyQuery();
     this.elementGameState = null;
@@ -132,6 +133,9 @@ class GameView extends BaseLogger {
         this.applyLevelViewport(game.level);
       }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
+      if (this.preserveHistory || replayString != null) {
+        game.history?.setPreserveFutureHistory?.(true);
+      }
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
@@ -540,7 +544,8 @@ class GameView extends BaseLogger {
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.bench2 = this.parseBool(query, ['bench2', 'b2']);
     this.benchReverse = this.parseBool(query, ['benchReverse', 'bR']);
-    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
+    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);        
+    this.preserveHistory = this.parseBool(query, ['preserveHistory', 'ph']);
     if (this.bench || this.bench2 || this.benchSequence) {
       this.benchReverse = false;
     }
@@ -582,6 +587,7 @@ class GameView extends BaseLogger {
     setParam('bench2', 'b2', this.bench2, false);
     setParam('benchReverse', 'bR', this.benchReverse, false);
     setParam('benchSequence', 'bs', this.benchSequence, false);
+    setParam('preserveHistory', 'ph', this.preserveHistory, false);
     setParam('endless', 'e', this.endless, false);
     setParam('nukeAfter', 'na', this.nukeAfter ? this.nukeAfter / 10 : undefined);
     setParam('extra', 'ex', this.extraLemmings, 0);
