@@ -268,7 +268,11 @@ class MidiScheduler {
         ? Math.max(0, spec.durationTicks * this.tickMs)
         : 0;
       const offTimeMs = sendTimeMs + durationMs;
-      const velocity = clamp(spec.velocity ?? 64, 1, 127);
+      const baseVelocity = clamp(spec.velocity ?? 64, 1, 127);
+      const baseRelease = clamp(spec.releaseVelocity ?? baseVelocity, 1, 127);
+      const reverse = !!spec.reverse;
+      const attackVelocity = reverse ? baseRelease : baseVelocity;
+      const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
 
       if (this.config.mpe?.enabled) {
@@ -297,7 +301,7 @@ class MidiScheduler {
         this._stealOldestNote();
       }
 
-      channel.sendNoteOn(spec.note, { rawAttack: velocity, time: sendTimeMs });
+      channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs });
 
       this._activeNotes.set(token, {
         channel: channelNumber,
@@ -313,7 +317,6 @@ class MidiScheduler {
           token
         });
       }
-      const releaseVelocity = clamp(spec.releaseVelocity ?? velocity, 1, 127);
       if (durationMs > 0) {
         channel.sendNoteOff(spec.note, { rawRelease: releaseVelocity, time: offTimeMs });
         if (this.config.mpe?.enabled) {
