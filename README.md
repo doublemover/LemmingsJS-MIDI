@@ -1,7 +1,7 @@
 # LemmingsJS-MIDI
 ![Coverage](https://img.shields.io/badge/coverage-99.98%25-brightgreen)
 
-High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
+High-performance JavaScript port of Lemmings with WebMIDI sequencing support.
 
 <p align=center><b><a href="https://doublemover.github.io/LemmingsJS-MIDI/">Play it in your browser</a></b></p>
 
@@ -12,7 +12,7 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing ambitions.
 - Accurate, fast Lemmings engine focused on performance first.
 - Smooth zoom, minimap, and precise trigger handling.
 - Bench mode for stress testing with live T/TPS/Active/Spawned stats.
-- WebMIDI hooks and sequencing features planned.
+- WebMIDI routing, input mapping, and sequencing controls.
 
 ## Quick Start
 
@@ -39,18 +39,17 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 - Traps animate, are deadly, and have cooldowns
 - Frying, Jumping, Hoisting animations
 - Steel terrain improvements using `js/steelSprites.json`
-- Arrow walls
 - Minimap
   - Accumulates ground at full resolution
   - Shows entrances, exits, lemmings, and deaths
   - Click and drag to reposition view
 - Zoom in and out with mouse wheel
 - Skill selection while paused
-- Editor preview mode with `.nxlv` load/save/import/export (localStorage + file download/upload) and `.lvl` import/export
 - Original crosshair cursor (from `MAIN.DAT` part 5)
 - Dashed debug box for nearest lemming
 - Speed display on the Paws (Pause) button
-  - Click `f` for faster, `-` for slower
+  - Click left/right side of Paws to slow down or speed up
+  - Use `-` / `=` (Shift for faster steps) to adjust speed
   - Right click Paws resets speed to 1
   - Speed is a divisor of original tick speed `(60ms / gameSpeed)`
 - Right click release rate buttons for instant min or max
@@ -61,7 +60,7 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 - `(Shift+)2`: Increase release rate (maximum)
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
-- `Space`: Pause
+- `Space`: Pause/Resume
 - `[` / `]`: Step backward / forward one tick while paused
 - `(Shift+)T`: Nuke (instant)
 - `Backspace`: Restart level
@@ -72,6 +71,8 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 - `,` / `.`: Previous / next level
 - `Shift+,` / `Shift+.`: Previous / next group
 - `Tab`: Cycle through skills
+- `Shift+Tab`: Previous skill
+- `K`: Apply selected skill to selected lemming
 - `\`: Toggle debug mode
 - `Shift+``: Toggle editor mode (preview only)
 
@@ -99,7 +100,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 - Sequencing section:
   - Position mappings: add X/Y/X+Y mappings with min/max ranges to target note offset, intensity (velocity), timbre, pan, duration, pitch bend, or ADSR.
   - Intensity and Accent adjust default velocity and density scaling.
-  - Repeat controls apply a beat window and a max repeat count to scale velocity/duration on rapid repeats.
+  - Repeat controls apply a beat window, max count, target, and amount to scale parameters on rapid repeats.
 - Events/Triggers tabs:
   - Configure each SFX event or trigger with mode (note/degree/chord), key+octave, or scale degree + octave.
   - Chords support triad, seventh, sixth, ninth, power, sus2, sus4, and octave.
@@ -144,7 +145,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
   | CC | 19 | Y to velocity | toggle | on |
   | CC | 20 | Y to timbre | toggle | on |
   | CC | 21 | View pan | toggle | off |
-  | CC | 22 | Repeat max count | 0-6 | 0 |
+  | CC | 22 | Repeat max count | 0-32 | 0 |
   | CC | 23 | Repeat window (beats) | 1-8 | 4 |
   | CC | 24 | Env attack | 0-2 | 1 |
   | CC | 25 | Env decay | 0-2 | 0 |
@@ -162,9 +163,12 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 URL parameters (shortcuts in brackets):
 
 - `version (v)`:
-  - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=0) (default)
-  - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1)
-  - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
+  - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1) (default)
+  - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
+  - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=3)
+  - 4: [Xmas 1992](https://doublemover.github.io/LemmingsJS-MIDI?version=4)
+  - 5: [Holiday 1993](https://doublemover.github.io/LemmingsJS-MIDI?version=5)
+  - 6: [Holiday 1994](https://doublemover.github.io/LemmingsJS-MIDI?version=6)
 - `difficulty (d)`: 1-5 (default: 1)
 - `level (l)`: 1-30 (default: 1)
 - `speed (s)`: 0-100 (default: 1)
@@ -176,8 +180,10 @@ URL parameters (shortcuts in brackets):
 - `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)
 - `endless (e)`: Disable time limit
 - `nukeAfter (na)`: Auto-nuke after x*10 seconds
-- `scale (sc)`: Starting zoom .0125-5 (default: 2)
+- `scale (sc)`: Starting zoom .0125-8 (default: 2)
 - `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
+- `performanceAPI (pa)`: Enable Performance API instrumentation
+- `shortcut`/`_`: Prefer short query keys when updating the URL
 
 <details>
   <summary><b>Debug and Bench Notes</b></summary>
