@@ -7,6 +7,7 @@ import { GameSkills } from './GameSkills.js';
 import { GameStateTypes } from './GameStateTypes.js';
 import { GameTimer } from './GameTimer.js';
 import { GameVictoryCondition } from './GameVictoryCondition.js';
+import { HistoryStore } from './HistoryStore.js';
 import { LemmingManager } from '../lemmings/LemmingManager.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { ObjectManager } from '../level/ObjectManager.js';
@@ -35,6 +36,7 @@ class Game extends BaseLogger {
     this.triggerManager       = null;
     this.gameVictoryCondition = null;
     this.soundEvents          = null;
+    this.history              = null;
 
     this.onGameEnd      = new EventHandler();
     this.finalGameState = GameStateTypes.UNKNOWN;
@@ -67,6 +69,7 @@ class Game extends BaseLogger {
     if (this.gameDisplay?.dispose)       this.gameDisplay.dispose();
     if (this.gameGui?.dispose)           this.gameGui.dispose();
     if (this.soundEvents?.dispose)       this.soundEvents.dispose();
+    if (this.history?.detach)           this.history.detach();
 
     this.commandManager  = null;
     this.objectManager   = null;
@@ -75,6 +78,7 @@ class Game extends BaseLogger {
     this.gameDisplay     = null;
     this.gameGui         = null;
     this.soundEvents     = null;
+    this.history         = null;
 
     this.finalGameState  = GameStateTypes.UNKNOWN;
   }
@@ -97,6 +101,9 @@ class Game extends BaseLogger {
     const Timer = getDependency('GameTimer', GameTimer);
     this.gameTimer = new Timer(level);
     this.gameTimer.onGameTick.on(this._boundTick);
+    const History = getDependency('HistoryStore', HistoryStore);
+    this.history = new History();
+    this.history.attach(this, { captureBaseline: false });
     const SoundBus = getDependency('SoundEventBus', SoundEventBus);
     this.soundEvents = new SoundBus(this.gameTimer);
 
@@ -152,6 +159,7 @@ class Game extends BaseLogger {
     if (this.display) this.gameDisplay.setGuiDisplay(this.display);
     if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
+    this.history?.start?.();
     endMeasure();
     return this; // keeps legacy promise signature intact
   }

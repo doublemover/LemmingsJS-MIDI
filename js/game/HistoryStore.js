@@ -147,13 +147,14 @@ class HistoryStore {
     this._afterTick = null;
   }
 
-  attach(game) {
+  attach(game, { captureBaseline = true } = {}) {
     if (!game) return;
     this.game = game;
     this.timer = game.getGameTimer?.() || null;
     this._bindTimer();
-    this.captureBaseline(game);
-    this._recording = true;
+    if (captureBaseline) {
+      this.start();
+    }
   }
 
   detach() {
@@ -168,6 +169,12 @@ class HistoryStore {
     this._recording = false;
     this.game = null;
     this.timer = null;
+  }
+
+  start() {
+    if (!this.game) return;
+    this.captureBaseline(this.game);
+    this._recording = true;
   }
 
   _bindTimer() {
