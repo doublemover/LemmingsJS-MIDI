@@ -390,6 +390,7 @@ class MidiEventRouter {
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
       const spec = this.mapping.mapEvent(event, context, density, sfx);
       if (!spec) return;
+      spec.reverse = !!event.reverse;
       if (tick != null && this._tickCounter.count >= maxPerTick) return;
       if (tick != null) {
         this._tickCounter.count += 1;
