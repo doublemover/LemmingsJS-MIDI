@@ -50,6 +50,7 @@ import '../game/GameSkills.js';
 import '../game/GameStateTypes.js';
 import '../game/GameTimer.js';
 import '../game/HistoryStore.js';
+import '../game/TimeTravelController.js';
 import '../game/GameTypes.js';
 import '../game/GameVictoryCondition.js';
 import '../game/GameView.js';

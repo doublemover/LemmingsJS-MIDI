@@ -8,6 +8,7 @@ import { GameStateTypes } from './GameStateTypes.js';
 import { GameTimer } from './GameTimer.js';
 import { GameVictoryCondition } from './GameVictoryCondition.js';
 import { HistoryStore } from './HistoryStore.js';
+import { TimeTravelController } from './TimeTravelController.js';
 import { LemmingManager } from '../lemmings/LemmingManager.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { ObjectManager } from '../level/ObjectManager.js';
@@ -37,6 +38,8 @@ class Game extends BaseLogger {
     this.gameVictoryCondition = null;
     this.soundEvents          = null;
     this.history              = null;
+    this.timeTravel           = null;
+    this.inputEnabled         = true;
 
     this.onGameEnd      = new EventHandler();
     this.finalGameState = GameStateTypes.UNKNOWN;
@@ -70,6 +73,7 @@ class Game extends BaseLogger {
     if (this.gameGui?.dispose)           this.gameGui.dispose();
     if (this.soundEvents?.dispose)       this.soundEvents.dispose();
     if (this.history?.detach)           this.history.detach();
+    if (this.timeTravel?.dispose)       this.timeTravel.dispose();
 
     this.commandManager  = null;
     this.objectManager   = null;
@@ -79,6 +83,7 @@ class Game extends BaseLogger {
     this.gameGui         = null;
     this.soundEvents     = null;
     this.history         = null;
+    this.timeTravel      = null;
 
     this.finalGameState  = GameStateTypes.UNKNOWN;
   }
@@ -107,6 +112,9 @@ class Game extends BaseLogger {
     const SoundBus = getDependency('SoundEventBus', SoundEventBus);
     this.soundEvents = new SoundBus(this.gameTimer);
     this.soundEvents.setHistoryStore?.(this.history);
+    const TimeTravel = getDependency('TimeTravelController', TimeTravelController);
+    this.timeTravel = new TimeTravel(this, this.history);
+    this.gameTimer?.setTimeTravelController?.(this.timeTravel);
 
     const CommandMgr = getDependency('CommandManager', CommandManager);
     const Skills = getDependency('GameSkills', GameSkills);
@@ -193,7 +201,10 @@ class Game extends BaseLogger {
   getCommandManager   () { return this.commandManager; }
   cheat               () { this.skills?.cheat(); }
   setDebugMode       (v) { this.showDebug = !!v; }
-  queueCommand(cmd)   { this.commandManager?.queueCommand(cmd); }
+  queueCommand(cmd)   {
+    if (this.inputEnabled === false || this.timeTravel?.isReversing) return;
+    this.commandManager?.queueCommand(cmd);
+  }
 
   onGameTimerTick () {
     if (!this.level) {

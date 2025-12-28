@@ -178,6 +178,45 @@ class HistoryStore {
     if (!this.game) return;
     this.captureBaseline(this.game);
     this._recording = true;
+    const tickIndex = this.timer?.tickIndex ?? 0;
+    if (!this.keyframes.has(tickIndex)) {
+      this.keyframes.set(tickIndex, this._captureKeyframe(this.game, tickIndex));
+    }
+  }
+
+  pause() {
+    this._recording = false;
+    this._currentDelta = null;
+    this._currentTick = null;
+  }
+
+  resume() {
+    if (!this.game) return;
+    this.captureBaseline(this.game);
+    this._recording = true;
+  }
+
+  getKeyframeAtOrBefore(tickIndex) {
+    if (!Number.isFinite(tickIndex)) return null;
+    let best = null;
+    for (const [key, frame] of this.keyframes.entries()) {
+      if (key > tickIndex) continue;
+      if (!best || key > best.tickIndex) {
+        best = frame;
+      }
+    }
+    return best;
+  }
+
+  truncateAfter(tickIndex) {
+    if (!Number.isFinite(tickIndex)) return;
+    const cutoff = Math.max(0, Math.trunc(tickIndex));
+    for (const key of this.deltas.keys()) {
+      if (key > cutoff) this.deltas.delete(key);
+    }
+    for (const key of this.keyframes.keys()) {
+      if (key > cutoff) this.keyframes.delete(key);
+    }
   }
 
   _bindTimer() {
@@ -197,10 +236,11 @@ class HistoryStore {
   endTick() {
     if (!this._recording || !this.game || !this._currentDelta) return;
     const tick = this._currentTick;
+    const tickIndex = this.timer?.tickIndex ?? (tick + 1);
     this._diffState(this.game, this._currentDelta);
     this.deltas.set(tick, this._currentDelta);
-    if ((tick % this.options.keyframeInterval) === 0) {
-      this.keyframes.set(tick, this._captureKeyframe(this.game, tick));
+    if ((tickIndex % this.options.keyframeInterval) === 0) {
+      this.keyframes.set(tickIndex, this._captureKeyframe(this.game, tickIndex));
     }
     this._currentDelta = null;
   }
@@ -298,7 +338,7 @@ class HistoryStore {
     return id;
   }
 
-  _captureKeyframe(game, tick) {
+  _captureKeyframe(game, tickIndex) {
     const lemmingManager = game.getLemmingManager?.();
     const lemmings = lemmingManager?.lemmings || [];
     const lemmingState = cloneLemmingState(this._lemmingState, lemmings.length || 0);
@@ -319,7 +359,7 @@ class HistoryStore {
     const groundMask = level?.groundMask?.mask ? new Uint8Array(level.groundMask.mask) : null;
     const groundImage = level?.groundImage ? new Uint8ClampedArray(level.groundImage) : null;
     return {
-      tick,
+      tickIndex,
       lemmingState,
       lemmingManagerState,
       entranceOpened,
@@ -802,6 +842,7 @@ class HistoryStore {
       }
       this._applyLemmingManagerState(manager, delta.lemmingManagerChanges, useNext);
       this._rebuildActiveLemmings(manager);
+      this._applyMinimapDeaths(manager, delta.minimapDeaths, useNext);
     }
 
     this._applyEntranceChanges(game.level, delta.entranceChanges, useNext);
@@ -1029,6 +1070,39 @@ class HistoryStore {
     if (delta.gameChanges) {
       const state = useNext ? delta.gameChanges.next : delta.gameChanges.prev;
       if (state) game.finalGameState = state.finalGameState;
+    }
+  }
+
+  _applyMinimapDeaths(manager, entries, useNext) {
+    const miniMap = manager?.miniMap;
+    if (!miniMap || !entries?.length) return;
+    if (useNext) {
+      for (const entry of entries) {
+        const idx = entry.prevCount ?? miniMap.deadCount ?? 0;
+        const neededDots = (idx + 1) * 2;
+        if (miniMap.deadDots.length < neededDots) {
+          const next = Math.max(4, miniMap.deadDots.length * 2, neededDots);
+          const coords = new Uint8Array(next);
+          coords.set(miniMap.deadDots);
+          miniMap.deadDots = coords;
+        }
+        if (miniMap.deadTTLs.length < idx + 1) {
+          const next = Math.max(4, miniMap.deadTTLs.length * 2, idx + 1);
+          const ttls = new Uint8Array(next);
+          ttls.set(miniMap.deadTTLs);
+          miniMap.deadTTLs = ttls;
+        }
+        miniMap.deadDots[idx * 2] = entry.x ?? 0;
+        miniMap.deadDots[idx * 2 + 1] = entry.y ?? 0;
+        miniMap.deadTTLs[idx] = entry.ttl ?? 0;
+        miniMap.deadCount = Math.max(miniMap.deadCount ?? 0, idx + 1);
+      }
+      return;
+    }
+    for (let i = entries.length - 1; i >= 0; i--) {
+      const entry = entries[i];
+      const prevCount = entry.prevCount ?? 0;
+      miniMap.deadCount = prevCount;
     }
   }
 

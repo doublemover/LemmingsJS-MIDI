@@ -22,6 +22,7 @@ class GameTimer {
   #catchupSlow;
   #catchupBaseSpeed;
   #visHandler;
+  #timeTravel;
   benchStartupFrames = 0;
   benchStableFactor = 1;
 
@@ -43,6 +44,7 @@ class GameTimer {
     this.#stableTicks = 0;
     this.#catchupSlow = false;
     this.#catchupBaseSpeed = 1;
+    this.#timeTravel = null;
     this.#visHandler = () => {
       const app = getApp();
       const skip = app?.bench || app?.bench2 || app?.benchReverse || app?.benchSequence;
@@ -67,6 +69,12 @@ class GameTimer {
   }
 
   isRunning() { return this.#running; }
+
+  setTimeTravelController(controller) {
+    this.#timeTravel = controller;
+  }
+
+  getTimeTravelController() { return this.#timeTravel; }
 
   get tickIndex() { return this.#tickIndex; }
   set tickIndex(v) {
@@ -126,6 +134,10 @@ class GameTimer {
     if (this.isRunning()) return;
     const count = Math.trunc(Math.abs(steps));
     const dir = Math.sign(steps);
+    if (dir < 0 && this.#timeTravel?.stepBackward) {
+      this.#timeTravel.stepBackward(count);
+      return;
+    }
     for (let i = 0; i < count; i++) {
       if (dir >= 0) {
         if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);

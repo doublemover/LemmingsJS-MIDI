@@ -226,12 +226,23 @@ class GameView extends BaseLogger {
     if (this.game == null) {
       return;
     }
-    this.game.getGameTimer().tick(1);
+    const timer = this.game.getGameTimer();
+    if (!timer) return;
+    if (this.game.timeTravel?.isReversing) {
+      this.game.timeTravel.stopReverse();
+    }
+    this.game.history?.truncateAfter?.(timer.tickIndex);
+    timer.tick(1);
     this.game.render();
   }
 
   prevFrame() {
     if (this.game == null) {
+      return;
+    }
+    const timeTravel = this.game.timeTravel;
+    if (timeTravel?.stepBackward) {
+      timeTravel.stepBackward(1);
       return;
     }
     this.game.getGameTimer().tick(-1);
