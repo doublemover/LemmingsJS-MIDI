@@ -276,6 +276,13 @@ class KeyboardShortcuts {
       toggleReverse: { down: () => {
         const game = this.view.game;
         if (!game?.timeTravel) return;
+        const midiConfig = this.view?.getMidiConfig?.()
+          ?? this.view?.midiRouter?.mapping?.config;
+        if (midiConfig?.reverse?.allNotesOffOnToggle) {
+          const scheduler = this.view?.midiRouter?.scheduler;
+          scheduler?.allNotesOff?.();
+          scheduler?.clearQueue?.();
+        }
         game.timeTravel.toggleReverse();
         if (game.gameGui) game.gameGui.gameTimeChanged = true;
       }},

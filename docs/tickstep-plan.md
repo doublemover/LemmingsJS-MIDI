@@ -58,6 +58,7 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 
 ### Memory considerations
 - History is uncapped by default (no rolling window yet).
+- Optional cap/warn thresholds can prune oldest ticks when enabled.
 - When resuming forward after rewinding, truncate future history to avoid branches.
 - Preserve future history by setting `preserveFutureHistory` when replay capture needs it.
 
