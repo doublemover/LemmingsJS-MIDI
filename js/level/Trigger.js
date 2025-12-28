@@ -27,7 +27,13 @@ class Trigger {
   trigger(x, y, tick, lemming = null) {
     if (this.disabledUntilTick <= tick) {
       if ((x >= this.x1) && (y >= this.y1) && (x <= this.x2) && (y <= this.y2)) {
-        this.disabledUntilTick = tick + this.disableTicksCount;
+        const prev = this.disabledUntilTick;
+        const next = tick + this.disableTicksCount;
+        if (prev !== next) {
+          const history = globalThis?.lemmings?.game?.history ?? null;
+          history?.recordTriggerCooldown?.(this, prev, next);
+        }
+        this.disabledUntilTick = next;
         if (this.owner?.onTrigger){
           this.owner.onTrigger(tick, lemming, this, x, y);
         }

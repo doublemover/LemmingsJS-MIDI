@@ -1,4 +1,5 @@
 import { SkillTypes } from './SkillTypes.js';
+import { Trigger } from '../level/Trigger.js';
 
 const DEFAULT_OPTIONS = Object.freeze({
   keyframeInterval: 120
@@ -107,6 +108,7 @@ const createDelta = (tick) => ({
   lemChanges: { ids: [], fields: [], prev: [], next: [] },
   lemAdded: [],
   lemRemoved: [],
+  lemmingManagerChanges: null,
   groundChanges: { indices: [], prevMask: [], prevR: [], prevG: [], prevB: [], nextMask: [], nextR: [], nextG: [], nextB: [] },
   entranceChanges: { indices: [], prev: [], next: [] },
   triggerCooldownChanges: { ids: [], prev: [], next: [] },
@@ -130,6 +132,7 @@ class HistoryStore {
     this._currentTick = null;
     this._currentDelta = null;
     this._lemmingState = createLemmingState(0);
+    this._lemmingManagerState = null;
     this._entranceOpened = new Uint8Array(0);
     this._skillsState = null;
     this._victoryState = null;
@@ -205,7 +208,9 @@ class HistoryStore {
   captureBaseline(game) {
     if (!game) return;
     this._captureScalarState(game);
-    this._captureLemmingState(game.getLemmingManager?.());
+    const manager = game.getLemmingManager?.();
+    this._captureLemmingState(manager);
+    this._lemmingManagerState = this._readLemmingManager(manager);
     this._captureEntrances(game.level);
   }
 
@@ -214,18 +219,18 @@ class HistoryStore {
     this._currentDelta.soundEvents.push(event);
   }
 
-  recordGroundChange(index, prev, next) {
+  recordGroundChange(index, prevMask, prevR, prevG, prevB, nextMask, nextR, nextG, nextB) {
     if (!this._currentDelta) return;
     const changes = this._currentDelta.groundChanges;
     changes.indices.push(index);
-    changes.prevMask.push(prev.mask);
-    changes.prevR.push(prev.r);
-    changes.prevG.push(prev.g);
-    changes.prevB.push(prev.b);
-    changes.nextMask.push(next.mask);
-    changes.nextR.push(next.r);
-    changes.nextG.push(next.g);
-    changes.nextB.push(next.b);
+    changes.prevMask.push(prevMask);
+    changes.prevR.push(prevR);
+    changes.prevG.push(prevG);
+    changes.prevB.push(prevB);
+    changes.nextMask.push(nextMask);
+    changes.nextR.push(nextR);
+    changes.nextG.push(nextG);
+    changes.nextB.push(nextB);
   }
 
   recordEntranceChange(index, prev, next) {
@@ -297,11 +302,15 @@ class HistoryStore {
     const lemmingManager = game.getLemmingManager?.();
     const lemmings = lemmingManager?.lemmings || [];
     const lemmingState = cloneLemmingState(this._lemmingState, lemmings.length || 0);
+    const lemmingManagerState = this._readLemmingManager(lemmingManager);
     const entrances = game.level?.entrances || [];
     const entranceOpened = new Uint8Array(entrances.length);
     for (let i = 0; i < entrances.length; i++) {
       entranceOpened[i] = entrances[i]?._opened ? 1 : 0;
     }
+    const triggerState = this._readTriggerState(game);
+    const objectState = this._readObjectState(game.level);
+    const minimapState = this._readMinimapState(lemmingManager?.miniMap);
     const victory = this._readVictory(game.getVictoryCondition?.());
     const skills = this._readSkills(game.getGameSkills?.());
     const timer = this._readTimer(game.getGameTimer?.());
@@ -312,7 +321,11 @@ class HistoryStore {
     return {
       tick,
       lemmingState,
+      lemmingManagerState,
       entranceOpened,
+      triggerState,
+      objectState,
+      minimapState,
       victory,
       skills,
       timer,
@@ -323,7 +336,9 @@ class HistoryStore {
   }
 
   _diffState(game, delta) {
-    this._diffLemmings(game.getLemmingManager?.(), delta);
+    const manager = game.getLemmingManager?.();
+    this._diffLemmings(manager, delta);
+    this._diffLemmingManager(manager, delta);
     this._diffEntrances(game.level, delta);
     this._diffScalarState(game, delta);
   }
@@ -349,7 +364,6 @@ class HistoryStore {
     const lems = manager.lemmings || [];
     this._lemmingState = ensureLemmingCapacity(this._lemmingState, lems.length);
     const prev = this._lemmingState;
-    const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
     for (let i = 0; i < lems.length; i++) {
       const lem = lems[i];
       if (!lem) {
@@ -425,6 +439,45 @@ class HistoryStore {
         prev.present[i] = 0;
       }
     }
+  }
+
+  _diffLemmingManager(manager, delta) {
+    const next = this._readLemmingManager(manager);
+    if (this._lemmingManagerState && next && !this._lemmingManagerEqual(this._lemmingManagerState, next)) {
+      delta.lemmingManagerChanges = { prev: this._lemmingManagerState, next };
+    }
+    this._lemmingManagerState = next;
+  }
+
+  _readLemmingManager(manager) {
+    if (!manager) return null;
+    const targets = Array.isArray(manager._nukeTargets)
+      ? manager._nukeTargets.map(lem => (lem?.id ?? null))
+      : null;
+    return {
+      selectedIndex: manager.selectedIndex,
+      spawnTotal: manager.spawnTotal,
+      releaseTickIndex: manager.releaseTickIndex,
+      mmTickCounter: manager.mmTickCounter,
+      nextNukingLemmingsIndex: manager.nextNukingLemmingsIndex,
+      nukeTargets: targets
+    };
+  }
+
+  _lemmingManagerEqual(a, b) {
+    if (!a || !b) return false;
+    if (a.selectedIndex !== b.selectedIndex) return false;
+    if (a.spawnTotal !== b.spawnTotal) return false;
+    if (a.releaseTickIndex !== b.releaseTickIndex) return false;
+    if (a.mmTickCounter !== b.mmTickCounter) return false;
+    if (a.nextNukingLemmingsIndex !== b.nextNukingLemmingsIndex) return false;
+    const aa = a.nukeTargets || [];
+    const bb = b.nukeTargets || [];
+    if (aa.length !== bb.length) return false;
+    for (let i = 0; i < aa.length; i++) {
+      if (aa[i] !== bb[i]) return false;
+    }
+    return true;
   }
 
   _diffLemmingField(delta, id, field, prevValue, nextValue, store) {
@@ -643,11 +696,42 @@ class HistoryStore {
       manager._activeDirty = false;
     }
 
+    if (manager && keyframe.lemmingManagerState) {
+      const state = keyframe.lemmingManagerState;
+      manager.selectedIndex = state.selectedIndex ?? -1;
+      manager.spawnTotal = state.spawnTotal ?? 0;
+      manager.releaseTickIndex = state.releaseTickIndex ?? 0;
+      manager.mmTickCounter = state.mmTickCounter ?? 0;
+      manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
+      if (Array.isArray(state.nukeTargets)) {
+        manager._nukeTargets = state.nukeTargets
+          .map(id => (Number.isFinite(id) ? manager.lemmings[id] : null))
+          .filter(Boolean);
+      } else {
+        manager._nukeTargets = null;
+      }
+    }
+
     if (game.level && keyframe.entranceOpened) {
       const entrances = game.level.entrances || [];
       for (let i = 0; i < entrances.length; i++) {
         entrances[i]._opened = !!keyframe.entranceOpened[i];
       }
+    }
+
+    if (game.triggerManager && keyframe.triggerState) {
+      this._applyTriggerState(game, keyframe.triggerState);
+    }
+
+    if (game.level && keyframe.objectState) {
+      this._applyObjectState(game.level, keyframe.objectState);
+    }
+
+    if (manager?.miniMap && keyframe.minimapState) {
+      const miniMap = manager.miniMap;
+      miniMap.deadDots = new Uint8Array(keyframe.minimapState.deadDots || []);
+      miniMap.deadTTLs = new Uint8Array(keyframe.minimapState.deadTTLs || []);
+      miniMap.deadCount = keyframe.minimapState.deadCount ?? 0;
     }
 
     if (game.level?.groundMask && keyframe.groundMask) {
@@ -691,6 +775,124 @@ class HistoryStore {
     }
 
     this.captureBaseline(game);
+  }
+
+  _readTriggerState(game) {
+    const triggerManager = game?.triggerManager;
+    const level = game?.level;
+    if (!triggerManager || !level) return null;
+    const staticTriggers = [];
+    const dynamicTriggers = [];
+    const levelTriggers = level.triggers || [];
+    const staticSet = new Set(levelTriggers);
+    for (let i = 0; i < levelTriggers.length; i++) {
+      const trig = levelTriggers[i];
+      if (!trig) continue;
+      const id = this._ensureTriggerId(trig);
+      staticTriggers.push({ id, disabledUntilTick: trig.disabledUntilTick });
+    }
+    for (const trig of triggerManager._triggers || []) {
+      if (!trig || staticSet.has(trig)) continue;
+      const ownerId = Number.isFinite(trig.owner?.id) ? trig.owner.id : null;
+      if (ownerId == null) continue;
+      const id = this._ensureTriggerId(trig);
+      dynamicTriggers.push({
+        id,
+        ownerId,
+        type: trig.type,
+        x1: trig.x1,
+        y1: trig.y1,
+        x2: trig.x2,
+        y2: trig.y2,
+        disableTicksCount: trig.disableTicksCount,
+        soundIndex: trig.soundIndex,
+        disabledUntilTick: trig.disabledUntilTick
+      });
+    }
+    return { staticTriggers, dynamicTriggers };
+  }
+
+  _applyTriggerState(game, state) {
+    const triggerManager = game.triggerManager;
+    const level = game.level;
+    if (!triggerManager || !level || !state) return;
+    const levelTriggers = level.triggers || [];
+    for (let i = 0; i < levelTriggers.length; i++) {
+      const trig = levelTriggers[i];
+      const entry = state.staticTriggers?.[i] || null;
+      if (!trig || !entry) continue;
+      trig.disabledUntilTick = entry.disabledUntilTick;
+      this._ensureTriggerId(trig);
+    }
+
+    const dynamic = state.dynamicTriggers || [];
+    if (dynamic.length) {
+      const removeOwners = new Set();
+      for (const trig of triggerManager._triggers || []) {
+        const ownerId = Number.isFinite(trig.owner?.id) ? trig.owner.id : null;
+        if (ownerId != null) removeOwners.add(ownerId);
+      }
+      for (const ownerId of removeOwners) {
+        const owner = game.getLemmingManager?.()?.getLemming?.(ownerId) ?? null;
+        if (owner) triggerManager.removeByOwner(owner);
+      }
+      for (const snap of dynamic) {
+        const owner = game.getLemmingManager?.()?.getLemming?.(snap.ownerId) ?? null;
+        const trig = new Trigger(
+          snap.type,
+          snap.x1,
+          snap.y1,
+          snap.x2,
+          snap.y2,
+          snap.disableTicksCount,
+          snap.soundIndex,
+          owner
+        );
+        trig.disabledUntilTick = snap.disabledUntilTick;
+        trig.__historyId = snap.id;
+        triggerManager.add(trig);
+      }
+    }
+  }
+
+  _readObjectState(level) {
+    const objects = level?.objects || [];
+    const out = [];
+    for (const obj of objects) {
+      if (!obj?.animation) continue;
+      const id = this._ensureObjectId(obj);
+      out.push({
+        id,
+        firstFrameIndex: obj.animation.firstFrameIndex,
+        isFinished: obj.animation.isFinished
+      });
+    }
+    return out;
+  }
+
+  _applyObjectState(level, state) {
+    const objects = level?.objects || [];
+    const byId = new Map();
+    for (const obj of objects) {
+      if (!obj?.animation) continue;
+      const id = this._ensureObjectId(obj);
+      byId.set(id, obj);
+    }
+    for (const entry of state || []) {
+      const obj = byId.get(entry.id);
+      if (!obj?.animation) continue;
+      obj.animation.firstFrameIndex = entry.firstFrameIndex;
+      obj.animation.isFinished = !!entry.isFinished;
+    }
+  }
+
+  _readMinimapState(miniMap) {
+    if (!miniMap) return null;
+    return {
+      deadDots: new Uint8Array(miniMap.deadDots || []),
+      deadTTLs: new Uint8Array(miniMap.deadTTLs || []),
+      deadCount: miniMap.deadCount ?? 0
+    };
   }
 }
 

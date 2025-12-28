@@ -137,11 +137,11 @@ class Level extends BaseLogger {
   isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
   _clearGroundWithMaskInternal(mask, x, y) {
-    let changed = this.groundMask.clearGroundWithMask(
-      mask, x, y,
-      (px, py) => this.isSteelAt(px, py)
-    );
+    let changed = false;
     let removed = 0;
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    const gm = this.groundMask;
+    const gmMask = gm.mask;
     const img = this.groundImage;
     const w = this.width;
     const { offsetX, offsetY, width: mw, height: mh } = mask;
@@ -152,12 +152,33 @@ class Level extends BaseLogger {
         const py = y + offsetY + dy;
         if (this.isSteelAt(px, py)) continue;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
-        const idx = (py * w + px) * 4;
-        if (img[idx] || img[idx + 1] || img[idx + 2]) {
+        const maskIdx = py * w + px;
+        const imgIdx = maskIdx * 4;
+        const prevMask = gmMask[maskIdx];
+        const prevR = img[imgIdx];
+        const prevG = img[imgIdx + 1];
+        const prevB = img[imgIdx + 2];
+        if (prevMask || prevR || prevG || prevB) {
+          history?.recordGroundChange?.(
+            maskIdx,
+            prevMask,
+            prevR,
+            prevG,
+            prevB,
+            0,
+            0,
+            0,
+            0
+          );
+        }
+        if (prevMask) {
           changed = true;
+          gmMask[maskIdx] = 0;
+        }
+        if (prevR || prevG || prevB) {
           removed += 1;
         }
-        img[idx] = img[idx + 1] = img[idx + 2] = 0;
+        img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
       }
     }
     return { changed, removed };
@@ -172,9 +193,31 @@ class Level extends BaseLogger {
   }
 
   setGroundAt(x, y, paletteIndex) {
-    this.groundMask.setGroundAt(x, y);
+    const maskIdx = y * this.width + x;
     const idx = (y * this.width + x) * 4;
     const gp = this.groundImage;
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    if (history?.recordGroundChange) {
+      const prevMask = this.groundMask.mask[maskIdx];
+      const prevR = gp[idx];
+      const prevG = gp[idx + 1];
+      const prevB = gp[idx + 2];
+      const nextR = this.colorPalette.getR(paletteIndex);
+      const nextG = this.colorPalette.getG(paletteIndex);
+      const nextB = this.colorPalette.getB(paletteIndex);
+      history.recordGroundChange(
+        maskIdx,
+        prevMask,
+        prevR,
+        prevG,
+        prevB,
+        1,
+        nextR,
+        nextG,
+        nextB
+      );
+    }
+    this.groundMask.setGroundAt(x, y);
     gp[idx]     = this.colorPalette.getR(paletteIndex);
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
@@ -185,9 +228,28 @@ class Level extends BaseLogger {
 
   clearGroundAt(x, y) {
     if (this.isSteelAt(x, y)) return;
-    this.groundMask.clearGroundAt(x, y);
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    if (history?.recordGroundChange) {
+      const maskIdx = y * this.width + x;
+      const prevMask = this.groundMask.mask[maskIdx];
+      const prevR = gp[idx];
+      const prevG = gp[idx + 1];
+      const prevB = gp[idx + 2];
+      history.recordGroundChange(
+        maskIdx,
+        prevMask,
+        prevR,
+        prevG,
+        prevB,
+        0,
+        0,
+        0,
+        0
+      );
+    }
+    this.groundMask.clearGroundAt(x, y);
     gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
     globalThis?.lemmings?.game?.lemmingManager?.miniMap?.onGroundChanged(x, y, true);
   }

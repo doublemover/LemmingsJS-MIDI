@@ -62,6 +62,19 @@ class TriggerManager {
     this._triggers.add(trigger);
     this.#insert(trigger);
     this._debugFrame = null;
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    if (history?.recordTriggerAdd) {
+      history.recordTriggerAdd(trigger, {
+        type: trigger.type,
+        x1: trigger.x1,
+        y1: trigger.y1,
+        x2: trigger.x2,
+        y2: trigger.y2,
+        disableTicksCount: trigger.disableTicksCount,
+        soundIndex: trigger.soundIndex,
+        ownerId: trigger.owner?.id ?? null
+      });
+    }
   }
 
   /** Bulk-add (used by Level on load) */
@@ -185,6 +198,19 @@ class TriggerManager {
 
         arr.delete(trigger);
       }
+    }
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    if (history?.recordTriggerRemove) {
+      history.recordTriggerRemove(trigger, {
+        type: trigger.type,
+        x1: trigger.x1,
+        y1: trigger.y1,
+        x2: trigger.x2,
+        y2: trigger.y2,
+        disableTicksCount: trigger.disableTicksCount,
+        soundIndex: trigger.soundIndex,
+        ownerId: trigger.owner?.id ?? null
+      });
     }
     delete trigger.__bucketIndices;
     this._debugFrame = null;

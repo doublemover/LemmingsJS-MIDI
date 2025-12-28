@@ -106,6 +106,7 @@ class Game extends BaseLogger {
     this.history.attach(this, { captureBaseline: false });
     const SoundBus = getDependency('SoundEventBus', SoundEventBus);
     this.soundEvents = new SoundBus(this.gameTimer);
+    this.soundEvents.setHistoryStore?.(this.history);
 
     const CommandMgr = getDependency('CommandManager', CommandManager);
     const Skills = getDependency('GameSkills', GameSkills);
