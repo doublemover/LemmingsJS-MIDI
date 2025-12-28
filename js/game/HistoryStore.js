@@ -777,6 +777,261 @@ class HistoryStore {
     this.captureBaseline(game);
   }
 
+  applyDeltaForward(game, delta) {
+    this._applyDelta(game, delta, true);
+  }
+
+  applyDeltaBackward(game, delta) {
+    this._applyDelta(game, delta, false);
+  }
+
+  _applyDelta(game, delta, useNext) {
+    if (!game || !delta) return;
+    const manager = game.getLemmingManager?.();
+    if (manager) {
+      if (useNext) {
+        this._applyLemmingAdds(manager, delta.lemAdded);
+      } else {
+        this._applyLemmingAdds(manager, delta.lemRemoved);
+      }
+      this._applyLemmingChanges(manager, delta.lemChanges, useNext);
+      if (useNext) {
+        this._applyLemmingRemovals(manager, delta.lemRemoved);
+      } else {
+        this._applyLemmingRemovals(manager, delta.lemAdded);
+      }
+      this._applyLemmingManagerState(manager, delta.lemmingManagerChanges, useNext);
+      this._rebuildActiveLemmings(manager);
+    }
+
+    this._applyEntranceChanges(game.level, delta.entranceChanges, useNext);
+    this._applyGroundChanges(game.level, delta.groundChanges, useNext);
+    this._applyTriggerChanges(game, delta, useNext);
+    this._applyObjectChanges(game.level, delta.objectAnimChanges, useNext);
+    this._applyScalarChanges(game, delta, useNext);
+  }
+
+  _applyLemmingAdds(manager, list) {
+    if (!manager || !Array.isArray(list) || !list.length) return;
+    const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
+    if (!Array.isArray(manager.lemmings)) manager.lemmings = [];
+    for (const snap of list) {
+      if (snap == null || !Number.isFinite(snap.id)) continue;
+      let lem = manager.lemmings[snap.id];
+      if (!lem) {
+        const ctor = manager._lemmingCtor || globalThis.lemmings?.Lemming || null;
+        lem = ctor ? new ctor(snap.x, snap.y, snap.id) : { id: snap.id };
+        manager.lemmings[snap.id] = lem;
+      }
+      const action = snap.actionType >= 0 ? manager.actions?.[snap.actionType] : null;
+      applyLemmingSnapshot(lem, snap, action, countdownAction);
+    }
+  }
+
+  _applyLemmingRemovals(manager, list) {
+    if (!manager || !Array.isArray(list) || !list.length) return;
+    for (const snap of list) {
+      if (snap == null || !Number.isFinite(snap.id)) continue;
+      manager.lemmings[snap.id] = null;
+    }
+  }
+
+  _applyLemmingChanges(manager, changes, useNext) {
+    if (!manager || !changes?.ids?.length) return;
+    const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
+    for (let i = 0; i < changes.ids.length; i++) {
+      const id = changes.ids[i];
+      const field = changes.fields[i];
+      const value = useNext ? changes.next[i] : changes.prev[i];
+      const lem = manager.lemmings?.[id];
+      if (!lem) continue;
+      switch (field) {
+      case 0: lem.x = value; break;
+      case 1: lem.y = value; break;
+      case 2: lem.lookRight = !!value; break;
+      case 3: lem.frameIndex = value; break;
+      case 4: lem.state = value; break;
+      case 5: lem.canClimb = !!value; break;
+      case 6: lem.hasParachute = !!value; break;
+      case 7: lem.removed = !!value; break;
+      case 8: lem.disabled = !!value; break;
+      case 9: lem.countdown = value; break;
+      case 10: lem.hasExploded = !!value; break;
+      case 11: lem.lastTriggerType = value >= 0 ? value : null; break;
+      case 12: lem.action = value >= 0 ? manager.actions?.[value] : null; break;
+      case 13: lem.countdownAction = value ? countdownAction : null; break;
+      default: break;
+      }
+    }
+  }
+
+  _applyLemmingManagerState(manager, changes, useNext) {
+    if (!manager || !changes) return;
+    const state = useNext ? changes.next : changes.prev;
+    if (!state) return;
+    manager.selectedIndex = state.selectedIndex ?? -1;
+    manager.spawnTotal = state.spawnTotal ?? 0;
+    manager.releaseTickIndex = state.releaseTickIndex ?? 0;
+    manager.mmTickCounter = state.mmTickCounter ?? 0;
+    manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
+    if (Array.isArray(state.nukeTargets)) {
+      manager._nukeTargets = state.nukeTargets
+        .map(id => (Number.isFinite(id) ? manager.lemmings[id] : null))
+        .filter(Boolean);
+    } else {
+      manager._nukeTargets = null;
+    }
+  }
+
+  _rebuildActiveLemmings(manager) {
+    if (!manager) return;
+    manager.activeLemmings = manager.lemmings.filter(lem => lem && !lem.removed);
+    for (let i = 0; i < manager.activeLemmings.length; i++) {
+      manager.activeLemmings[i]._activeIndex = i;
+    }
+    manager._activeDirty = false;
+  }
+
+  _applyEntranceChanges(level, changes, useNext) {
+    if (!level || !changes?.indices?.length) return;
+    for (let i = 0; i < changes.indices.length; i++) {
+      const idx = changes.indices[i];
+      const val = useNext ? changes.next[i] : changes.prev[i];
+      if (level.entrances?.[idx]) {
+        level.entrances[idx]._opened = !!val;
+      }
+    }
+  }
+
+  _applyGroundChanges(level, changes, useNext) {
+    if (!level || !changes?.indices?.length) return;
+    const mask = level.groundMask?.mask;
+    const img = level.groundImage;
+    if (!mask || !img) return;
+    for (let i = 0; i < changes.indices.length; i++) {
+      const index = changes.indices[i];
+      const maskValue = useNext ? changes.nextMask[i] : changes.prevMask[i];
+      const r = useNext ? changes.nextR[i] : changes.prevR[i];
+      const g = useNext ? changes.nextG[i] : changes.prevG[i];
+      const b = useNext ? changes.nextB[i] : changes.prevB[i];
+      mask[index] = maskValue;
+      const imgIdx = index * 4;
+      img[imgIdx] = r;
+      img[imgIdx + 1] = g;
+      img[imgIdx + 2] = b;
+    }
+  }
+
+  _applyTriggerChanges(game, delta, useNext) {
+    const triggerManager = game?.triggerManager;
+    if (!triggerManager || !delta) return;
+    const adds = useNext ? delta.triggerAdd : delta.triggerRemove;
+    const removes = useNext ? delta.triggerRemove : delta.triggerAdd;
+    for (const snap of removes || []) {
+      const trig = this._findTriggerById(triggerManager, snap.id);
+      if (trig && trig.owner) {
+        triggerManager.removeByOwner(trig.owner);
+      }
+    }
+    for (const snap of adds || []) {
+      const owner = Number.isFinite(snap.ownerId)
+        ? game.getLemmingManager?.()?.getLemming?.(snap.ownerId)
+        : null;
+      const trig = new Trigger(
+        snap.type,
+        snap.x1,
+        snap.y1,
+        snap.x2,
+        snap.y2,
+        snap.disableTicksCount,
+        snap.soundIndex,
+        owner
+      );
+      trig.disabledUntilTick = snap.disabledUntilTick ?? 0;
+      trig.__historyId = snap.id;
+      triggerManager.add(trig);
+    }
+    if (delta.triggerCooldownChanges?.ids?.length) {
+      for (let i = 0; i < delta.triggerCooldownChanges.ids.length; i++) {
+        const id = delta.triggerCooldownChanges.ids[i];
+        const trig = this._findTriggerById(triggerManager, id);
+        if (!trig) continue;
+        const value = useNext
+          ? delta.triggerCooldownChanges.next[i]
+          : delta.triggerCooldownChanges.prev[i];
+        trig.disabledUntilTick = value;
+      }
+    }
+  }
+
+  _findTriggerById(triggerManager, id) {
+    if (!triggerManager || !id) return null;
+    if (this._triggerById.has(id)) return this._triggerById.get(id);
+    for (const trig of triggerManager._triggers || []) {
+      if (trig?.__historyId === id) {
+        this._triggerById.set(id, trig);
+        return trig;
+      }
+    }
+    return null;
+  }
+
+  _applyObjectChanges(level, changes, useNext) {
+    if (!level || !changes?.ids?.length) return;
+    const objects = level.objects || [];
+    const byId = new Map();
+    for (const obj of objects) {
+      if (!obj?.animation) continue;
+      const id = this._ensureObjectId(obj);
+      byId.set(id, obj);
+    }
+    for (let i = 0; i < changes.ids.length; i++) {
+      const id = changes.ids[i];
+      const obj = byId.get(id);
+      if (!obj?.animation) continue;
+      const first = useNext ? changes.nextFirst[i] : changes.prevFirst[i];
+      const finished = useNext ? changes.nextFinished[i] : changes.prevFinished[i];
+      obj.animation.firstFrameIndex = first;
+      obj.animation.isFinished = !!finished;
+    }
+  }
+
+  _applyScalarChanges(game, delta, useNext) {
+    if (delta.victoryChanges) {
+      const victory = game.getVictoryCondition?.();
+      const state = useNext ? delta.victoryChanges.next : delta.victoryChanges.prev;
+      if (victory && state) {
+        victory.releaseRate = state.releaseRate;
+        victory.minReleaseRate = state.minReleaseRate;
+        victory.leftCount = state.leftCount;
+        victory.outCount = state.outCount;
+        victory.survivorCount = state.survivorCount;
+        victory.isFinalize = !!state.isFinalize;
+      }
+    }
+    if (delta.skillsChanges) {
+      const skills = game.getGameSkills?.();
+      const state = useNext ? delta.skillsChanges.next : delta.skillsChanges.prev;
+      if (skills && state) {
+        skills.selectedSkill = state.selectedSkill;
+        skills.cheatMode = !!state.cheatMode;
+        skills.skills = state.skills.slice();
+      }
+    }
+    if (delta.timerChanges) {
+      const timer = game.getGameTimer?.();
+      const state = useNext ? delta.timerChanges.next : delta.timerChanges.prev;
+      if (timer && state) {
+        timer.speedFactor = state.speedFactor;
+        timer.tickIndex = state.tickIndex;
+      }
+    }
+    if (delta.gameChanges) {
+      const state = useNext ? delta.gameChanges.next : delta.gameChanges.prev;
+      if (state) game.finalGameState = state.finalGameState;
+    }
+  }
+
   _readTriggerState(game) {
     const triggerManager = game?.triggerManager;
     const level = game?.level;
