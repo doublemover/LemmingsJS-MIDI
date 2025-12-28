@@ -81,4 +81,23 @@ describe('HistoryStore', function() {
     expect(manager.lemmings[0].y).to.equal(12);
     expect(manager.selectedIndex).to.equal(0);
   });
+
+  it('truncates future history unless preservation is enabled', function() {
+    const history = new HistoryStore({ keyframeInterval: 5 });
+    history.deltas.set(0, { tick: 0 });
+    history.deltas.set(2, { tick: 2 });
+    history.keyframes.set(0, { tickIndex: 0 });
+    history.keyframes.set(2, { tickIndex: 2 });
+
+    history.truncateAfter(0);
+    expect(history.deltas.has(2)).to.equal(false);
+    expect(history.keyframes.has(2)).to.equal(false);
+
+    history.deltas.set(2, { tick: 2 });
+    history.keyframes.set(2, { tickIndex: 2 });
+    history.setPreserveFutureHistory(true);
+    history.truncateAfter(0);
+    expect(history.deltas.has(2)).to.equal(true);
+    expect(history.keyframes.has(2)).to.equal(true);
+  });
 });

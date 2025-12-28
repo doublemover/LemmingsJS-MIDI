@@ -2,7 +2,8 @@ import { SkillTypes } from './SkillTypes.js';
 import { Trigger } from '../level/Trigger.js';
 
 const DEFAULT_OPTIONS = Object.freeze({
-  keyframeInterval: 120
+  keyframeInterval: 120,
+  preserveFutureHistory: false
 });
 
 const createLemmingState = (size) => ({
@@ -150,6 +151,10 @@ class HistoryStore {
     this._afterTick = null;
   }
 
+  setPreserveFutureHistory(enabled) {
+    this.options.preserveFutureHistory = !!enabled;
+  }
+
   attach(game, { captureBaseline = true } = {}) {
     if (!game) return;
     this.game = game;
@@ -210,6 +215,7 @@ class HistoryStore {
 
   truncateAfter(tickIndex) {
     if (!Number.isFinite(tickIndex)) return;
+    if (this.options.preserveFutureHistory) return;
     const cutoff = Math.max(0, Math.trunc(tickIndex));
     for (const key of this.deltas.keys()) {
       if (key > cutoff) this.deltas.delete(key);
