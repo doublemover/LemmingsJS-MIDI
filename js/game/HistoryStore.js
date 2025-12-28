@@ -3,7 +3,11 @@ import { Trigger } from '../level/Trigger.js';
 
 const DEFAULT_OPTIONS = Object.freeze({
   keyframeInterval: 120,
-  preserveFutureHistory: false
+  preserveFutureHistory: false,
+  enableHistoryCap: false,
+  historyCapTicks: 0,
+  historyWarnTicks: 0,
+  deltaPoolLimit: 64
 });
 
 const createLemmingState = (size) => ({
@@ -110,7 +114,18 @@ const createDelta = (tick) => ({
   lemAdded: [],
   lemRemoved: [],
   lemmingManagerChanges: null,
-  groundChanges: { indices: [], prevMask: [], prevR: [], prevG: [], prevB: [], nextMask: [], nextR: [], nextG: [], nextB: [] },
+  groundChanges: {
+    indices: [],
+    spans: null,
+    prevMask: [],
+    prevR: [],
+    prevG: [],
+    prevB: [],
+    nextMask: [],
+    nextR: [],
+    nextG: [],
+    nextB: []
+  },
   entranceChanges: { indices: [], prev: [], next: [] },
   triggerCooldownChanges: { ids: [], prev: [], next: [] },
   triggerAdd: [],
@@ -127,8 +142,17 @@ const createDelta = (tick) => ({
 class HistoryStore {
   constructor(options = {}) {
     this.options = { ...DEFAULT_OPTIONS, ...options };
-    this.keyframes = new Map();
-    this.deltas = new Map();
+    this.keyframes = [];
+    this.keyframeTicks = [];
+    this.deltas = [];
+    this.minDeltaTick = null;
+    this.maxDeltaTick = null;
+    this.minKeyframeTick = null;
+    this.maxKeyframeTick = null;
+    this.deltaCount = 0;
+    this.keyframeCount = 0;
+    this._deltaPool = [];
+    this._historyWarned = false;
     this._recording = false;
     this._currentTick = null;
     this._currentDelta = null;
@@ -149,10 +173,91 @@ class HistoryStore {
     this.timer = null;
     this._beforeTick = null;
     this._afterTick = null;
+    this._groundDirty = true;
+    this._lastKeyframe = null;
   }
 
   setPreserveFutureHistory(enabled) {
     this.options.preserveFutureHistory = !!enabled;
+  }
+
+  getDelta(tickIndex) {
+    if (!Number.isFinite(tickIndex)) return null;
+    return this.deltas[Math.trunc(tickIndex)] || null;
+  }
+
+  getKeyframe(tickIndex) {
+    if (!Number.isFinite(tickIndex)) return null;
+    return this.keyframes[Math.trunc(tickIndex)] || null;
+  }
+
+  getHistoryStats() {
+    const min = this.minDeltaTick;
+    const max = this.maxDeltaTick;
+    const span = (min == null || max == null) ? 0 : (max - min + 1);
+    return {
+      minTick: min,
+      maxTick: max,
+      deltaCount: this.deltaCount,
+      keyframeCount: this.keyframeCount,
+      spanTicks: span
+    };
+  }
+
+  _allocDelta(tickIndex) {
+    const tick = Math.trunc(tickIndex);
+    const delta = this._deltaPool.pop();
+    if (!delta) return createDelta(tick);
+    this._resetDelta(delta, tick);
+    return delta;
+  }
+
+  _resetDelta(delta, tickIndex) {
+    delta.tick = Math.trunc(tickIndex);
+    delta.lemChanges.ids.length = 0;
+    delta.lemChanges.fields.length = 0;
+    delta.lemChanges.prev.length = 0;
+    delta.lemChanges.next.length = 0;
+    delta.lemAdded.length = 0;
+    delta.lemRemoved.length = 0;
+    delta.lemmingManagerChanges = null;
+    delta.groundChanges.indices.length = 0;
+    delta.groundChanges.spans = null;
+    delta.groundChanges.prevMask.length = 0;
+    delta.groundChanges.prevR.length = 0;
+    delta.groundChanges.prevG.length = 0;
+    delta.groundChanges.prevB.length = 0;
+    delta.groundChanges.nextMask.length = 0;
+    delta.groundChanges.nextR.length = 0;
+    delta.groundChanges.nextG.length = 0;
+    delta.groundChanges.nextB.length = 0;
+    delta.entranceChanges.indices.length = 0;
+    delta.entranceChanges.prev.length = 0;
+    delta.entranceChanges.next.length = 0;
+    delta.triggerCooldownChanges.ids.length = 0;
+    delta.triggerCooldownChanges.prev.length = 0;
+    delta.triggerCooldownChanges.next.length = 0;
+    delta.triggerAdd.length = 0;
+    delta.triggerRemove.length = 0;
+    delta.objectAnimChanges.ids.length = 0;
+    delta.objectAnimChanges.prevFirst.length = 0;
+    delta.objectAnimChanges.prevFinished.length = 0;
+    delta.objectAnimChanges.nextFirst.length = 0;
+    delta.objectAnimChanges.nextFinished.length = 0;
+    delta.victoryChanges = null;
+    delta.skillsChanges = null;
+    delta.timerChanges = null;
+    delta.gameChanges = null;
+    delta.soundEvents.length = 0;
+    delta.minimapDeaths.length = 0;
+  }
+
+  _releaseDelta(delta) {
+    if (!delta) return;
+    const limit = this.options.deltaPoolLimit ?? DEFAULT_OPTIONS.deltaPoolLimit;
+    if (this._deltaPool.length >= limit) return;
+    this._resetDelta(delta, 0);
+    this._deltaPool.push(delta);
   }
 
   attach(game, { captureBaseline = true } = {}) {
@@ -184,8 +289,8 @@ class HistoryStore {
     this.captureBaseline(this.game);
     this._recording = true;
     const tickIndex = this.timer?.tickIndex ?? 0;
-    if (!this.keyframes.has(tickIndex)) {
-      this.keyframes.set(tickIndex, this._captureKeyframe(this.game, tickIndex));
+    if (!this.keyframes[tickIndex]) {
+      this._setKeyframe(tickIndex, this._captureKeyframe(this.game, tickIndex));
     }
   }
 
@@ -198,31 +303,223 @@ class HistoryStore {
   resume() {
     if (!this.game) return;
     this.captureBaseline(this.game);
+    this._groundDirty = true;
     this._recording = true;
   }
 
   getKeyframeAtOrBefore(tickIndex) {
     if (!Number.isFinite(tickIndex)) return null;
-    let best = null;
-    for (const [key, frame] of this.keyframes.entries()) {
-      if (key > tickIndex) continue;
-      if (!best || key > best.tickIndex) {
-        best = frame;
+    const ticks = this.keyframeTicks;
+    if (!ticks.length) return null;
+    const target = Math.max(0, Math.trunc(tickIndex));
+    if (target < ticks[0]) return null;
+    let lo = 0;
+    let hi = ticks.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (ticks[mid] <= target) {
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
       }
     }
-    return best;
+    const tick = ticks[Math.max(0, hi)];
+    return this.keyframes[tick] || null;
   }
 
   truncateAfter(tickIndex) {
     if (!Number.isFinite(tickIndex)) return;
     if (this.options.preserveFutureHistory) return;
     const cutoff = Math.max(0, Math.trunc(tickIndex));
-    for (const key of this.deltas.keys()) {
-      if (key > cutoff) this.deltas.delete(key);
+    this._truncateDeltasAfter(cutoff);
+    this._truncateKeyframesAfter(cutoff);
+  }
+
+  _setDelta(tickIndex, delta) {
+    const tick = Math.trunc(tickIndex);
+    if (!this.deltas[tick]) {
+      this.deltaCount += 1;
     }
-    for (const key of this.keyframes.keys()) {
-      if (key > cutoff) this.keyframes.delete(key);
+    this.deltas[tick] = delta;
+    if (this.minDeltaTick == null || tick < this.minDeltaTick) {
+      this.minDeltaTick = tick;
     }
+    if (this.maxDeltaTick == null || tick > this.maxDeltaTick) {
+      this.maxDeltaTick = tick;
+    }
+  }
+
+  _setKeyframe(tickIndex, keyframe) {
+    const tick = Math.trunc(tickIndex);
+    if (!this.keyframes[tick]) {
+      this.keyframeCount += 1;
+      this._insertKeyframeTick(tick);
+    }
+    this.keyframes[tick] = keyframe;
+    this._lastKeyframe = keyframe;
+    if (this.minKeyframeTick == null || tick < this.minKeyframeTick) {
+      this.minKeyframeTick = tick;
+    }
+    if (this.maxKeyframeTick == null || tick > this.maxKeyframeTick) {
+      this.maxKeyframeTick = tick;
+    }
+  }
+
+  _insertKeyframeTick(tickIndex) {
+    const tick = Math.trunc(tickIndex);
+    const list = this.keyframeTicks;
+    const last = list[list.length - 1];
+    if (last == null || tick > last) {
+      list.push(tick);
+      return;
+    }
+    if (tick === last) return;
+    let lo = 0;
+    let hi = list.length - 1;
+    while (lo <= hi) {
+      const mid = (lo + hi) >> 1;
+      if (list[mid] < tick) {
+        lo = mid + 1;
+      } else {
+        hi = mid - 1;
+      }
+    }
+    if (list[lo] !== tick) list.splice(lo, 0, tick);
+  }
+
+  _truncateDeltasAfter(cutoff) {
+    if (this.maxDeltaTick == null) return;
+    for (let tick = this.maxDeltaTick; tick > cutoff; tick -= 1) {
+      const delta = this.deltas[tick];
+      if (!delta) continue;
+      this.deltas[tick] = undefined;
+      this.deltaCount -= 1;
+      this._releaseDelta(delta);
+    }
+    let nextMax = Math.min(this.maxDeltaTick, cutoff);
+    while (nextMax >= (this.minDeltaTick ?? 0) && !this.deltas[nextMax]) {
+      nextMax -= 1;
+    }
+    if (nextMax < (this.minDeltaTick ?? 0)) {
+      this.minDeltaTick = null;
+      this.maxDeltaTick = null;
+      this.deltaCount = 0;
+      return;
+    }
+    this.maxDeltaTick = nextMax;
+  }
+
+  _truncateKeyframesAfter(cutoff) {
+    if (this.maxKeyframeTick == null) return;
+    for (let tick = this.maxKeyframeTick; tick > cutoff; tick -= 1) {
+      if (!this.keyframes[tick]) continue;
+      this.keyframes[tick] = undefined;
+      this.keyframeCount -= 1;
+    }
+    while (this.keyframeTicks.length &&
+        this.keyframeTicks[this.keyframeTicks.length - 1] > cutoff) {
+      this.keyframeTicks.pop();
+    }
+    if (!this.keyframeTicks.length) {
+      this.minKeyframeTick = null;
+      this.maxKeyframeTick = null;
+      this._lastKeyframe = null;
+      return;
+    }
+    this.minKeyframeTick = this.keyframeTicks[0];
+    this.maxKeyframeTick = this.keyframeTicks[this.keyframeTicks.length - 1];
+    this._lastKeyframe = this.keyframes[this.maxKeyframeTick] || null;
+  }
+
+  _truncateBefore(cutoff) {
+    if (this.minDeltaTick == null || this.maxDeltaTick == null) return;
+    const start = Math.max(0, Math.trunc(cutoff));
+    for (let tick = this.minDeltaTick; tick < start; tick += 1) {
+      const delta = this.deltas[tick];
+      if (!delta) continue;
+      this.deltas[tick] = undefined;
+      this.deltaCount -= 1;
+      this._releaseDelta(delta);
+    }
+    let nextMin = Math.max(this.minDeltaTick, start);
+    while (nextMin <= (this.maxDeltaTick ?? 0) && !this.deltas[nextMin]) {
+      nextMin += 1;
+    }
+    if (nextMin > (this.maxDeltaTick ?? 0)) {
+      this.minDeltaTick = null;
+      this.maxDeltaTick = null;
+      this.deltaCount = 0;
+    } else {
+      this.minDeltaTick = nextMin;
+    }
+
+    if (!this.keyframeTicks.length) return;
+    while (this.keyframeTicks.length && this.keyframeTicks[0] < start) {
+      const tick = this.keyframeTicks.shift();
+      if (this.keyframes[tick]) {
+        this.keyframes[tick] = undefined;
+        this.keyframeCount -= 1;
+      }
+    }
+    if (!this.keyframeTicks.length) {
+      this.minKeyframeTick = null;
+      this.maxKeyframeTick = null;
+      this._lastKeyframe = null;
+      return;
+    }
+    this.minKeyframeTick = this.keyframeTicks[0];
+    this.maxKeyframeTick = this.keyframeTicks[this.keyframeTicks.length - 1];
+    this._lastKeyframe = this.keyframes[this.maxKeyframeTick] || null;
+  }
+
+  _compressGroundChanges(changes) {
+    const indices = changes?.indices;
+    if (!indices || indices.length < 2) return;
+    const starts = [];
+    const lengths = [];
+    let runStart = indices[0];
+    let runLength = 1;
+    for (let i = 1; i < indices.length; i++) {
+      const idx = indices[i];
+      if (idx === indices[i - 1] + 1) {
+        runLength += 1;
+      } else {
+        starts.push(runStart);
+        lengths.push(runLength);
+        runStart = idx;
+        runLength = 1;
+      }
+    }
+    starts.push(runStart);
+    lengths.push(runLength);
+    changes.spans = { starts, lengths };
+    indices.length = 0;
+  }
+
+  _maybeWarnHistory() {
+    const warn = this.options.historyWarnTicks;
+    if (!warn || warn <= 0 || this._historyWarned) return;
+    if (this.minDeltaTick == null || this.maxDeltaTick == null) return;
+    const span = this.maxDeltaTick - this.minDeltaTick + 1;
+    if (span < warn) return;
+    this._historyWarned = true;
+    console.warn(`HistoryStore: ${span} ticks retained (warn threshold ${warn}).`);
+  }
+
+  _enforceHistoryCap() {
+    if (!this.options.enableHistoryCap) return;
+    const cap = this.options.historyCapTicks ?? 0;
+    if (!Number.isFinite(cap) || cap <= 0) return;
+    if (this.minDeltaTick == null || this.maxDeltaTick == null) return;
+    const span = this.maxDeltaTick - this.minDeltaTick + 1;
+    if (span <= cap) return;
+    let cutoff = this.maxDeltaTick - cap + 1;
+    const frame = this.getKeyframeAtOrBefore(cutoff);
+    if (frame?.tickIndex != null) {
+      cutoff = Math.min(cutoff, frame.tickIndex);
+    }
+    if (cutoff <= this.minDeltaTick) return;
+    this._truncateBefore(cutoff);
   }
 
   _bindTimer() {
@@ -236,7 +533,7 @@ class HistoryStore {
   beginTick(tick) {
     if (!this._recording) return;
     this._currentTick = tick;
-    this._currentDelta = createDelta(tick);
+    this._currentDelta = this._allocDelta(tick);
   }
 
   endTick() {
@@ -244,10 +541,13 @@ class HistoryStore {
     const tick = this._currentTick;
     const tickIndex = this.timer?.tickIndex ?? (tick + 1);
     this._diffState(this.game, this._currentDelta);
-    this.deltas.set(tick, this._currentDelta);
+    this._compressGroundChanges(this._currentDelta.groundChanges);
+    this._setDelta(tick, this._currentDelta);
     if ((tickIndex % this.options.keyframeInterval) === 0) {
-      this.keyframes.set(tickIndex, this._captureKeyframe(this.game, tickIndex));
+      this._setKeyframe(tickIndex, this._captureKeyframe(this.game, tickIndex));
     }
+    this._maybeWarnHistory();
+    this._enforceHistoryCap();
     this._currentDelta = null;
   }
 
@@ -267,6 +567,7 @@ class HistoryStore {
 
   recordGroundChange(index, prevMask, prevR, prevG, prevB, nextMask, nextR, nextG, nextB) {
     if (!this._currentDelta) return;
+    this._groundDirty = true;
     const changes = this._currentDelta.groundChanges;
     changes.indices.push(index);
     changes.prevMask.push(prevMask);
@@ -362,8 +663,20 @@ class HistoryStore {
     const timer = this._readTimer(game.getGameTimer?.());
     const gameState = this._readGameState(game);
     const level = game.level || null;
-    const groundMask = level?.groundMask?.mask ? new Uint8Array(level.groundMask.mask) : null;
-    const groundImage = level?.groundImage ? new Uint8ClampedArray(level.groundImage) : null;
+    let groundMask = null;
+    let groundImage = null;
+    if (level?.groundMask?.mask && level?.groundImage) {
+      if (!this._groundDirty &&
+          this._lastKeyframe?.groundMask &&
+          this._lastKeyframe?.groundImage) {
+        groundMask = this._lastKeyframe.groundMask;
+        groundImage = this._lastKeyframe.groundImage;
+      } else {
+        groundMask = new Uint8Array(level.groundMask.mask);
+        groundImage = new Uint8ClampedArray(level.groundImage);
+      }
+    }
+    this._groundDirty = false;
     return {
       tickIndex,
       lemmingState,
@@ -951,10 +1264,35 @@ class HistoryStore {
   }
 
   _applyGroundChanges(level, changes, useNext) {
-    if (!level || !changes?.indices?.length) return;
+    if (!level || !changes) return;
     const mask = level.groundMask?.mask;
     const img = level.groundImage;
     if (!mask || !img) return;
+    const spans = changes.spans;
+    if (spans?.starts?.length) {
+      let valueIndex = 0;
+      const starts = spans.starts;
+      const lengths = spans.lengths;
+      for (let i = 0; i < starts.length; i++) {
+        const start = starts[i];
+        const length = lengths[i];
+        for (let j = 0; j < length; j++) {
+          const index = start + j;
+          const maskValue = useNext ? changes.nextMask[valueIndex] : changes.prevMask[valueIndex];
+          const r = useNext ? changes.nextR[valueIndex] : changes.prevR[valueIndex];
+          const g = useNext ? changes.nextG[valueIndex] : changes.prevG[valueIndex];
+          const b = useNext ? changes.nextB[valueIndex] : changes.prevB[valueIndex];
+          mask[index] = maskValue;
+          const imgIdx = index * 4;
+          img[imgIdx] = r;
+          img[imgIdx + 1] = g;
+          img[imgIdx + 2] = b;
+          valueIndex += 1;
+        }
+      }
+      return;
+    }
+    if (!changes.indices?.length) return;
     for (let i = 0; i < changes.indices.length; i++) {
       const index = changes.indices[i];
       const maskValue = useNext ? changes.nextMask[i] : changes.prevMask[i];

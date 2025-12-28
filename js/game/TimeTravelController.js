@@ -23,7 +23,8 @@ class TimeTravelController {
         break;
       }
       const targetTick = this.timer.tickIndex - 1;
-      const delta = this.history.deltas.get(targetTick);
+      const delta = this.history.getDelta?.(targetTick)
+        ?? this.history.deltas?.[targetTick];
       if (!delta) {
         this.seekToTick(targetTick);
         break;
@@ -48,7 +49,8 @@ class TimeTravelController {
     this.timer.tickIndex = keyframe.tickIndex ?? target;
     let cursor = this.timer.tickIndex;
     while (cursor < target) {
-      const delta = this.history.deltas.get(cursor);
+      const delta = this.history.getDelta?.(cursor)
+        ?? this.history.deltas?.[cursor];
       if (!delta) break;
       this.history.applyDeltaForward(this.game, delta);
       cursor += 1;

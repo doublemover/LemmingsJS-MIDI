@@ -13,13 +13,14 @@ describe('TimeTravelController', function() {
       TIME_PER_FRAME_MS: 60
     };
     const history = {
-      deltas: new Map(),
+      deltas: [],
+      getDelta(tick) { return this.deltas[tick]; },
       applyDeltaBackward(game, delta) {
         applied.push(delta);
       }
     };
     const delta = { soundEvents: [{ sfxId: 2, type: 'test' }] };
-    history.deltas.set(0, delta);
+    history.deltas[0] = delta;
     const game = {
       getGameTimer: () => timer,
       soundEvents: { emit: event => events.push(event) },

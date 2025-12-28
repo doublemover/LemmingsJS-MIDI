@@ -168,7 +168,7 @@ describe('HistoryStore', function() {
     timer.tickIndex = 1;
     history.endTick();
 
-    const delta = history.deltas.get(0);
+    const delta = history.getDelta(0);
     expect(delta).to.be.ok;
 
     history.applyDeltaBackward(game, delta);
@@ -184,21 +184,21 @@ describe('HistoryStore', function() {
 
   it('truncates future history unless preservation is enabled', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
-    history.deltas.set(0, { tick: 0 });
-    history.deltas.set(2, { tick: 2 });
-    history.keyframes.set(0, { tickIndex: 0 });
-    history.keyframes.set(2, { tickIndex: 2 });
+    history._setDelta(0, { tick: 0 });
+    history._setDelta(2, { tick: 2 });
+    history._setKeyframe(0, { tickIndex: 0 });
+    history._setKeyframe(2, { tickIndex: 2 });
 
     history.truncateAfter(0);
-    expect(history.deltas.has(2)).to.equal(false);
-    expect(history.keyframes.has(2)).to.equal(false);
+    expect(!!history.deltas[2]).to.equal(false);
+    expect(!!history.keyframes[2]).to.equal(false);
 
-    history.deltas.set(2, { tick: 2 });
-    history.keyframes.set(2, { tickIndex: 2 });
+    history._setDelta(2, { tick: 2 });
+    history._setKeyframe(2, { tickIndex: 2 });
     history.setPreserveFutureHistory(true);
     history.truncateAfter(0);
-    expect(history.deltas.has(2)).to.equal(true);
-    expect(history.keyframes.has(2)).to.equal(true);
+    expect(!!history.deltas[2]).to.equal(true);
+    expect(!!history.keyframes[2]).to.equal(true);
   });
 
   it('applies non-lemming deltas and scalar changes', function() {
@@ -221,12 +221,17 @@ describe('HistoryStore', function() {
     const obj = { animation: { firstFrameIndex: 0, isFinished: false } };
     level.objects = [obj];
     level.groundMask.mask[1] = 1;
+    level.groundMask.mask[2] = 1;
     level.groundImage[4] = 10;
     level.groundImage[5] = 20;
     level.groundImage[6] = 30;
+    level.groundImage[8] = 11;
+    level.groundImage[9] = 21;
+    level.groundImage[10] = 31;
 
     history.beginTick(0);
     history.recordGroundChange(1, 1, 10, 20, 30, 0, 0, 0, 0);
+    history.recordGroundChange(2, 1, 11, 21, 31, 0, 0, 0, 0);
     history.recordEntranceChange(0, false, true);
     history.recordObjectAnimation(
       obj,
@@ -248,11 +253,13 @@ describe('HistoryStore', function() {
     timer.tickIndex = 1;
     history.endTick();
 
-    const delta = history.deltas.get(0);
+    const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
 
     expect(level.groundMask.mask[1]).to.equal(0);
+    expect(level.groundMask.mask[2]).to.equal(0);
     expect(level.groundImage[4]).to.equal(0);
+    expect(level.groundImage[8]).to.equal(0);
     expect(level.entrances[0]._opened).to.equal(true);
     expect(obj.animation.firstFrameIndex).to.equal(5);
     expect(obj.animation.isFinished).to.equal(true);
@@ -274,9 +281,13 @@ describe('HistoryStore', function() {
 
     history.applyDeltaBackward(game, delta);
     expect(level.groundMask.mask[1]).to.equal(1);
+    expect(level.groundMask.mask[2]).to.equal(1);
     expect(level.groundImage[4]).to.equal(10);
     expect(level.groundImage[5]).to.equal(20);
     expect(level.groundImage[6]).to.equal(30);
+    expect(level.groundImage[8]).to.equal(11);
+    expect(level.groundImage[9]).to.equal(21);
+    expect(level.groundImage[10]).to.equal(31);
     expect(level.entrances[0]._opened).to.equal(false);
     expect(obj.animation.firstFrameIndex).to.equal(0);
     expect(obj.animation.isFinished).to.equal(false);
@@ -314,7 +325,7 @@ describe('HistoryStore', function() {
     timer.tickIndex = 1;
     history.endTick();
 
-    const delta = history.deltas.get(0);
+    const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
     expect(trigger.disabledUntilTick).to.equal(5);
     history.applyDeltaBackward(game, delta);
@@ -350,7 +361,7 @@ describe('HistoryStore', function() {
     timer.tickIndex = 1;
     history.endTick();
 
-    const delta = history.deltas.get(0);
+    const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
     expect(triggerManager._triggers.size).to.equal(1);
     const added = Array.from(triggerManager._triggers)[0];
@@ -362,5 +373,32 @@ describe('HistoryStore', function() {
 
     history.applyDeltaBackward(game, delta);
     expect(triggerManager._triggers.size).to.equal(0);
+  });
+
+  it('caps history and warns when configured', function() {
+    const history = new HistoryStore({
+      enableHistoryCap: true,
+      historyCapTicks: 2,
+      historyWarnTicks: 2
+    });
+    const warnings = [];
+    const originalWarn = console.warn;
+    console.warn = (msg) => warnings.push(msg);
+    try {
+      history._setDelta(0, { tick: 0 });
+      history._setDelta(1, { tick: 1 });
+      history._maybeWarnHistory();
+      expect(warnings).to.have.length(1);
+      history._maybeWarnHistory();
+      expect(warnings).to.have.length(1);
+
+      history._setDelta(2, { tick: 2 });
+      history._enforceHistoryCap();
+      expect(history.getDelta(0)).to.equal(null);
+      expect(history.getDelta(1)).to.be.ok;
+      expect(history.getDelta(2)).to.be.ok;
+    } finally {
+      console.warn = originalWarn;
+    }
   });
 });
