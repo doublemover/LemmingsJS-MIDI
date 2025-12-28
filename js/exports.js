@@ -47,6 +47,7 @@ export { GameResult } from './game/GameResult.js';
 export { GameSkills } from './game/GameSkills.js';
 export { GameStateTypes } from './game/GameStateTypes.js';
 export { GameTimer } from './game/GameTimer.js';
+export { HistoryStore } from './game/HistoryStore.js';
 export { GameTypes } from './game/GameTypes.js';
 export { GameVictoryCondition } from './game/GameVictoryCondition.js';
 export { GameView } from './game/GameView.js';
