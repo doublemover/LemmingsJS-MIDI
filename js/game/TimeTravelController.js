@@ -7,6 +7,8 @@ class TimeTravelController {
     this._reverseActive = false;
     this._reverseRaf = 0;
     this._lastTime = 0;
+    this._reverseCarryMs = 0;
+    this.maxReverseStepsPerFrame = 120;
     this._resumeForward = false;
     this._prevInputEnabled = null;
   }
@@ -77,14 +79,20 @@ class TimeTravelController {
     this.timer.suspend?.();
     this.history?.pause?.();
     this._lastTime = performance.now();
+    this._reverseCarryMs = 0;
     const loop = (now) => {
       if (!this._reverseActive) return;
       const frameTime = this.timer.frameTime || this.timer.TIME_PER_FRAME_MS || 60;
-      let delta = now - this._lastTime;
+      let delta = (now - this._lastTime) + this._reverseCarryMs;
       if (delta >= frameTime) {
-        const steps = Math.floor(delta / frameTime);
+        const rawSteps = Math.floor(delta / frameTime);
+        const maxSteps = Number.isFinite(this.maxReverseStepsPerFrame)
+          ? Math.max(1, Math.trunc(this.maxReverseStepsPerFrame))
+          : rawSteps;
+        const steps = Math.min(rawSteps, maxSteps);
         delta -= steps * frameTime;
-        this._lastTime = now - delta;
+        this._reverseCarryMs = delta;
+        this._lastTime = now;
         this.stepBackward(steps);
       }
       this._reverseRaf = window.requestAnimationFrame(loop);
@@ -99,6 +107,7 @@ class TimeTravelController {
       window.cancelAnimationFrame(this._reverseRaf);
       this._reverseRaf = 0;
     }
+    this._reverseCarryMs = 0;
     if (this._resumeForward) {
       this.history?.truncateAfter?.(this.timer.tickIndex);
     }
