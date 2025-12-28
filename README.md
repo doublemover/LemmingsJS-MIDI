@@ -179,7 +179,8 @@ URL parameters (shortcuts in brackets):
 - `bench (b)`: Bench mode (endless spawning with speed modulation)
 - `bench2 (b2)`: Bench mode with catchup slowdown (bench2)
 - `benchReverse (bR)`: Bench mode with reverse-playback flag enabled
-- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)
+- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)   
+- `preserveHistory (ph)`: Preserve future history when resuming after reverse playback
 - `endless (e)`: Disable time limit
 - `nukeAfter (na)`: Auto-nuke after x*10 seconds
 - `scale (sc)`: Starting zoom .0125-8 (default: 2)
