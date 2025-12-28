@@ -1335,6 +1335,7 @@ class HistoryStore {
       trig.disabledUntilTick = snap.disabledUntilTick ?? 0;
       trig.__historyId = snap.id;
       triggerManager.add(trig);
+      this._triggerById.set(snap.id, trig);
     }
     if (delta.triggerCooldownChanges?.ids?.length) {
       for (let i = 0; i < delta.triggerCooldownChanges.ids.length; i++) {
@@ -1363,16 +1364,20 @@ class HistoryStore {
 
   _applyObjectChanges(level, changes, useNext) {
     if (!level || !changes?.ids?.length) return;
-    const objects = level.objects || [];
-    const byId = new Map();
-    for (const obj of objects) {
-      if (!obj?.animation) continue;
-      const id = this._ensureObjectId(obj);
-      byId.set(id, obj);
-    }
     for (let i = 0; i < changes.ids.length; i++) {
       const id = changes.ids[i];
-      const obj = byId.get(id);
+      let obj = this._objectById.get(id);
+      if (!obj) {
+        const objects = level.objects || [];
+        for (const entry of objects) {
+          if (!entry?.animation) continue;
+          const entryId = this._ensureObjectId(entry);
+          if (entryId === id) {
+            obj = entry;
+            break;
+          }
+        }
+      }
       if (!obj?.animation) continue;
       const first = useNext ? changes.nextFirst[i] : changes.prevFirst[i];
       const finished = useNext ? changes.nextFinished[i] : changes.prevFinished[i];
@@ -1544,15 +1549,19 @@ class HistoryStore {
   }
 
   _applyObjectState(level, state) {
-    const objects = level?.objects || [];
-    const byId = new Map();
-    for (const obj of objects) {
-      if (!obj?.animation) continue;
-      const id = this._ensureObjectId(obj);
-      byId.set(id, obj);
-    }
     for (const entry of state || []) {
-      const obj = byId.get(entry.id);
+      let obj = this._objectById.get(entry.id);
+      if (!obj) {
+        const objects = level?.objects || [];
+        for (const candidate of objects) {
+          if (!candidate?.animation) continue;
+          const candidateId = this._ensureObjectId(candidate);
+          if (candidateId === entry.id) {
+            obj = candidate;
+            break;
+          }
+        }
+      }
       if (!obj?.animation) continue;
       obj.animation.firstFrameIndex = entry.firstFrameIndex;
       obj.animation.isFinished = !!entry.isFinished;
