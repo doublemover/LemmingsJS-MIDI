@@ -84,4 +84,48 @@ describe('TimeTravelController', function() {
       globalThis.performance = originalPerformance;
     }
   });
+
+  it('caps reverse steps per frame and carries remainder', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    let rafCallback = null;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame(cb) {
+        rafCallback = cb;
+        return 1;
+      },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = {
+        frameTime: 10,
+        TIME_PER_FRAME_MS: 10,
+        isRunning: () => false,
+        suspend() {}
+      };
+      const history = {
+        pause() {},
+        resume() {}
+      };
+      const game = { getGameTimer: () => timer, inputEnabled: true };
+      const controller = new TimeTravelController(game, history);
+      const steps = [];
+      controller.stepBackward = (count) => steps.push(count);
+      controller.maxReverseStepsPerFrame = 3;
+
+      controller.startReverse();
+      rafCallback?.(100);
+      rafCallback?.(120);
+
+      expect(steps).to.eql([3, 3]);
+      expect(controller._reverseCarryMs).to.equal(60);
+
+      controller.stopReverse();
+      expect(controller._reverseCarryMs).to.equal(0);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
 });
