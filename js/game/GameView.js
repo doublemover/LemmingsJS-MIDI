@@ -233,6 +233,9 @@ class GameView extends BaseLogger {
     }
     this.game.history?.truncateAfter?.(timer.tickIndex);
     timer.tick(1);
+    if (this.game.gameGui) {
+      this.game.gameGui.gameTimeChanged = true;
+    }
     this.game.render();
   }
 
