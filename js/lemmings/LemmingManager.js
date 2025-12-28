@@ -116,6 +116,13 @@ class LemmingManager extends BaseLogger {
         this.skillActions[SkillTypes.BASHER]  = this.actions[LemmingStateType.BASHING];
         this.skillActions[SkillTypes.BUILDER] = this.actions[LemmingStateType.BUILDING];
         this.skillActions[SkillTypes.BOMBER]  = new CountdownSystem(masks);
+        this.countdownAction = this.skillActions[SkillTypes.BOMBER];
+
+        this.actionTypeByAction = new Map();
+        for (let i = 0; i < this.actions.length; i++) {
+          const action = this.actions[i];
+          if (action) this.actionTypeByAction.set(action, i);
+        }
 
         this._actionTypes = {
           blocker: BlockSystem,
