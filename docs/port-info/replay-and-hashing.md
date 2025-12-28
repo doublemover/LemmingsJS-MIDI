@@ -64,3 +64,6 @@ end;
 ```
 
 This short hash uniquely identifies a level and appears in replay headers so the engine can verify the replay matches the loaded level.
+
+JS now implements `LevelHasher` in `js/level/LevelHasher.js` with MD5 bytes,
+short hash (BigInt), and the 10-character level code generator.

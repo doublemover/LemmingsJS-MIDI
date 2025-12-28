@@ -63,6 +63,7 @@ export { LevelIndexResolve } from './level/LevelIndexResolve.js';
 export { LevelIndexType } from './level/LevelIndexType.js';
 export { LevelLoader } from './level/LevelLoader.js';
 export { LevelProperties } from './level/LevelProperties.js';
+export { LevelHasher } from './level/LevelHasher.js';
 export { LevelReader } from './level/LevelReader.js';
 export { LevelWriter } from './level/LevelWriter.js';
 export { Logger, BaseLogger, LogHandler, withPerformance } from './util/LogHandler.js';

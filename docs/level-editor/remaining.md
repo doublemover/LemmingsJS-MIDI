@@ -2,6 +2,7 @@
 
 This list tracks features not included in the classic subset editor scope.
 See `docs/level-editor/neolemmix-expansion.md` for a fuller NeoLemmix parity roadmap.
+The classic subset editor is implemented; items below remain out of scope.
 
 ## NeoLemmix Sections
 - Terrain groups, order/visibility, and grouped terrain properties.
