@@ -91,7 +91,7 @@ Integration points:
 - MidiScheduler inverts attack/release when spec.reverse is true:
   - use releaseVelocity as attack and velocity as release
   - optional duration adjustment if needed
-- If event history is missing, re-simulate forward from keyframe to rebuild per-tick event log, then emit in reverse order.
+- If event history is missing, skip MIDI for that tick (best-effort replay is acceptable).
 
 ## UI and controls
 - Preserve existing step-forward key while paused.
