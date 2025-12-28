@@ -95,6 +95,17 @@ describe('MidiEventRouter', function() {
     expect(sent.length).to.equal(2);
   });
 
+  it('passes reverse flags to the scheduler', function() {
+    const router = new MidiEventRouter(new MidiMapping());
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+
+    router._onEvent({ sfxId: 1, tick: 1, reverse: true });
+
+    expect(sent[0].reverse).to.equal(true);
+  });
+
   it('enforces per-tick and per-second limits', function() {
     const mapping = new MidiMapping({
       limits: { maxEventsPerTick: 1, maxEventsPerSecond: 2 }
