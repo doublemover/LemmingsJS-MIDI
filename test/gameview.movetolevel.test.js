@@ -17,7 +17,8 @@ describe('GameView moveToLevel', function() {
 
   const configs = {
     1: makeConfig([4, 5]),
-    2: makeConfig([3])
+    2: makeConfig([3]),
+    6: makeConfig([2, 3])
   };
 
   beforeEach(function() {
@@ -65,5 +66,19 @@ describe('GameView moveToLevel', function() {
     expect(view.gameType).to.equal(1);
     expect(view.levelGroupIndex).to.equal(0);
     expect(view.levelIndex).to.equal(3);
+  });
+
+  it('wraps to pack 1 when advancing past the last pack level', async function() {
+    const view = new GameView();
+    view.gameType = 6;
+    view.levelGroupIndex = 1;
+    view.levelIndex = 2;
+    view.loadLevel = async () => {};
+
+    await view.moveToLevel(1);
+
+    expect(view.gameType).to.equal(1);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.levelIndex).to.equal(0);
   });
 });
