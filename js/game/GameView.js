@@ -379,41 +379,66 @@ class GameView extends BaseLogger {
 
   /** add/subtract one to the current levelIndex */
   async moveToLevel(moveInterval = 0) {
-    if (this.levelIndex + moveInterval < 0 && this.levelGroupIndex == 0) return;
     if (this.inMoveToLevel) return;
     this.inMoveToLevel = true;
-    this.levelIndex = (this.levelIndex + moveInterval) | 0;
     const oldGameType = this.gameType;
     try {
-      const config = await this.gameFactory.getConfig(this.gameType);
-      const groupLength = config.level.getGroupLength(this.levelGroupIndex);
-
-      if (this.levelIndex >= groupLength) {
-        this.levelGroupIndex++;
-        this.levelIndex = 0;
-      } else if (this.levelGroupIndex > 0 && this.levelIndex < 0) {
-        this.levelGroupIndex--;
-        this.levelIndex = groupLength - 1;
-      } else if (this.levelGroupIndex == 0 && this.levelIndex < 0 && this.gameType > 1) {
-        this.gameType--;
-        this.levelGroupIndex = 0;
-        this.levelIndex = 0;
-      }
-      if (this.levelGroupIndex >= config.level.order.length) {
-        this.gameType++;
-        this.levelGroupIndex = 0;
-        this.levelIndex = 0;
-      }
-      if ((this.levelIndex < 0) && (this.levelGroupIndex > 0)) {
-        this.levelGroupIndex--;
-        this.levelIndex = groupLength - 1;
-      }
       const gameTypes = getGameTypes();
-      if (!gameTypes[Object.keys(gameTypes)[this.gameType]]) {
-        this.gameType = 1;
-        this.levelGroupIndex = 0;
-        this.levelIndex = 0;
+      let gameType = this.gameType;
+      let levelGroupIndex = this.levelGroupIndex;
+      let levelIndex = (this.levelIndex + moveInterval) | 0;
+      let config = await this.gameFactory.getConfig(gameType);
+
+      const getGroupLength = (cfg, groupIndex) =>
+        cfg?.level?.getGroupLength?.(groupIndex) ?? 0;
+      const isValidGameType = (type) =>
+        type > 0 && type < gameTypes.length;
+
+      if (moveInterval < 0) {
+        while (levelIndex < 0) {
+          if (levelGroupIndex > 0) {
+            levelGroupIndex--;
+            levelIndex += getGroupLength(config, levelGroupIndex);
+            continue;
+          }
+          if (gameType > 1) {
+            gameType--;
+            config = await this.gameFactory.getConfig(gameType);
+            levelGroupIndex = Math.max(0, (config.level.order?.length ?? 1) - 1);
+            levelIndex += getGroupLength(config, levelGroupIndex);
+            continue;
+          }
+          levelIndex = 0;
+          break;
+        }
+      } else if (moveInterval > 0) {
+        while (true) {
+          const groupLength = getGroupLength(config, levelGroupIndex);
+          if (levelIndex < groupLength) break;
+          levelIndex -= groupLength;
+          if (levelGroupIndex + 1 < (config.level.order?.length ?? 0)) {
+            levelGroupIndex++;
+            continue;
+          }
+          gameType++;
+          if (!isValidGameType(gameType)) {
+            gameType = 1;
+          }
+          config = await this.gameFactory.getConfig(gameType);
+          levelGroupIndex = 0;
+        }
       }
+
+      if (!isValidGameType(gameType)) {
+        gameType = 1;
+        levelGroupIndex = 0;
+        levelIndex = 0;
+      }
+
+      this.gameType = gameType;
+      this.levelGroupIndex = levelGroupIndex;
+      this.levelIndex = levelIndex;
+
       if (oldGameType !== this.gameType) {
         this.gameResources = await this.gameFactory.getGameResources(this.gameType);
       }
