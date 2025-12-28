@@ -56,25 +56,27 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 
 ## Controls
 
-- `(Shift+)1`: Decrease release rate (minimum)
-- `(Shift+)2`: Increase release rate (maximum)
+- `1` / `Shift+1`: Decrease release rate by 1 / to minimum
+- `2` / `Shift+2`: Increase release rate by 1 / to maximum
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
-- `Space`: Pause/Resume
+- `K`: Apply selected skill to selected lemming
+- `Space`: Pause/resume
 - `[` / `]`: Step backward / forward one tick while paused
-- `(Shift+)T`: Nuke (instant)
+- `Alt+]`: Step backward (mirror of step forward)
+- `B`: Toggle continuous reverse playback
+- `T` / `Shift+T`: Nuke / instant nuke
 - `Backspace`: Restart level
 - Arrow keys: Pan viewport (Shift for faster)
 - `Z` / `X`: Zoom in / out (Shift for faster)
 - `V`: Reset zoom to 2
-- `(Shift+)-` / `=`: Decrease / increase game speed (Shift for faster)
+- `-` / `=`: Decrease / increase game speed (Shift for faster, numpad +/- also supported)
+- `Alt+=`: Decrease speed (Shift for faster)
 - `,` / `.`: Previous / next level
 - `Shift+,` / `Shift+.`: Previous / next group
-- `Tab`: Cycle through skills
-- `Shift+Tab`: Previous skill
-- `K`: Apply selected skill to selected lemming
+- `Tab` / `Shift+Tab`: Cycle through skills forward / backward
 - `\`: Toggle debug mode
-- `Shift+``: Toggle editor mode (preview only)
+- `Shift+Backquote`: Toggle editor mode (preview only)
 
 ### Editor
 
