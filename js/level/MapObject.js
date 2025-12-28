@@ -39,7 +39,21 @@ class MapObject {
   onTrigger (globalTick, lemming = null, trigger = null, x = null, y = null) {
     // 1. restart visual cue
     if (this.animation && !this.animation.loop) {
-      this.animation.restart(globalTick);
+      const history = globalThis?.lemmings?.game?.history ?? null;
+      if (history?.recordObjectAnimation) {
+        const prev = {
+          firstFrameIndex: this.animation.firstFrameIndex,
+          isFinished: this.animation.isFinished
+        };
+        this.animation.restart(globalTick);
+        const next = {
+          firstFrameIndex: this.animation.firstFrameIndex,
+          isFinished: this.animation.isFinished
+        };
+        history.recordObjectAnimation(this, prev, next);
+      } else {
+        this.animation.restart(globalTick);
+      }
     }
     // 2. play sound, spawn particles
     const triggerType = trigger?.type ?? this.triggerType;
@@ -73,4 +87,3 @@ class MapObject {
   }
 }
 export { MapObject };
-
