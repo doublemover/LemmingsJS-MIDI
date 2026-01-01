@@ -61,6 +61,7 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 - Optional cap/warn thresholds can prune oldest ticks when enabled.
 - When resuming forward after rewinding, truncate future history to avoid branches.
 - Preserve future history by setting `preserveFutureHistory` when replay capture needs it.
+- Expose a `preserveHistory` (`ph`) URL flag that toggles `preserveFutureHistory`.
 
 ## Time travel controller
 Create a TimeTravelController to own history, seek, and playback direction.
