@@ -75,9 +75,9 @@ describe('ConfigReader', function () {
     expect(parsed).to.eql([]);
   });
 
-  it('returns undefined for gameType 0', function () {
+  it('returns undefined for gameType 0', async function () {
     const reader = new ConfigReader(Promise.resolve('[]'));
-    const result = reader.getConfig(0);
+    const result = await reader.getConfig(0);
     expect(result).to.equal(undefined);
   });
 
