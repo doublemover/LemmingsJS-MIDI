@@ -28,6 +28,7 @@ class Stage {
     this.overlayDashColor = 0;
     this.overlayDashOffset = 0;
     this.panEnabled = true;
+    this._resizeRaf = 0;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -254,6 +255,18 @@ class Stage {
     this.clampViewPoint(stageImage);
   }
 
+  scheduleUpdateStageSize() {
+    if (this._resizeRaf) return;
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+      this.updateStageSize();
+      return;
+    }
+    this._resizeRaf = window.requestAnimationFrame(() => {
+      this._resizeRaf = 0;
+      this.updateStageSize();
+    });
+  }
+
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
@@ -471,6 +484,10 @@ class Stage {
 
   dispose() {
     this.resetFade();
+    if (this._resizeRaf) {
+      window.cancelAnimationFrame(this._resizeRaf);
+      this._resizeRaf = 0;
+    }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose)  this.guiImgProps.display.dispose();
     if (this.controller?.dispose)            this.controller.dispose();

@@ -107,7 +107,7 @@ class GameView extends BaseLogger {
     }
     const StageCtor = getDependency('Stage', Stage);
     this.stage = new StageCtor(el);
-    this._stageResize = () => this.stage.updateStageSize();
+    this._stageResize = () => this.stage.scheduleUpdateStageSize();
     window.addEventListener('resize', this._stageResize);
     window.addEventListener('orientationchange', this._stageResize);
     this._stageResize();
@@ -273,9 +273,37 @@ class GameView extends BaseLogger {
     return null;
   }
 
+  _formatMidiEnableError(err) {
+    const rawMessage = err?.message ? String(err.message) : String(err || '');
+    const isSecure = typeof window !== 'undefined'
+      ? (window.isSecureContext || window.location?.protocol === 'https:' || window.location?.hostname === 'localhost')
+      : true;
+    if (!isSecure) {
+      return 'WebMIDI requires HTTPS or localhost.';
+    }
+    if (err?.name === 'NotAllowedError' || /permission/i.test(rawMessage)) {
+      return 'WebMIDI permission denied. Check browser permissions.';
+    }
+    if (err?.name === 'SecurityError' || /secure context/i.test(rawMessage)) {
+      return 'WebMIDI requires HTTPS or localhost.';
+    }
+    if (err?.name === 'NotSupportedError') {
+      return 'WebMIDI is not supported in this browser.';
+    }
+    if (!rawMessage) {
+      return 'WebMIDI enable failed.';
+    }
+    return `WebMIDI enable failed: ${rawMessage}`;
+  }
+
   async _ensureWebMidiEnabled() {
     const webMidi = this._getWebMidi();
-    if (!webMidi) return null;
+    if (!webMidi) {
+      if (typeof globalThis.onMidiError === 'function') {
+        globalThis.onMidiError('WebMIDI is not supported in this browser.');
+      }
+      return null;
+    }
     if (webMidi.enabled) return webMidi;
     try {
       await webMidi.enable();
@@ -285,6 +313,9 @@ class GameView extends BaseLogger {
       return webMidi;
     } catch (e) {
       this.log.log('WebMidi enable failed', e);
+      if (typeof globalThis.onMidiError === 'function') {
+        globalThis.onMidiError(this._formatMidiEnableError(e));
+      }
       return null;
     }
   }

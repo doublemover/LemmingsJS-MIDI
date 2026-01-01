@@ -3,7 +3,8 @@
 ## Current status
 - Foundation work is complete: `EditorLevel`, `NxlvParser`, `NxlvWriter`, and the style registry are implemented with 100% editor test coverage.
 - Editor storage helpers (`EditorStorage`) are implemented with 100% editor test coverage.
-- Editor runtime integration and UI are not implemented yet.
+- Editor runtime integration and UI are implemented (see `editor.html` and `js/app/editorUiController.js`).
+- The remainder of this document is a historical roadmap and should be reviewed against the current editor feature set.
 
 ## Goals
 - Add an in-game level editor that reads and writes NeoLemmix V12 `.nxlv`.
