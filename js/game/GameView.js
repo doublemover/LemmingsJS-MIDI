@@ -15,6 +15,7 @@ import { LevelReader } from '../level/LevelReader.js';
 import { EditorSession } from '../editor/EditorSession.js';
 import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js';
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
+import { listSavedLevels, loadSavedLevel } from '../editor/EditorStorage.js';
 import { getDependency } from '../core/dependencies.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
@@ -89,6 +90,8 @@ class GameView extends BaseLogger {
     this._midiSchemaHash = null;
     this.midiEnabled = true;
 
+    this.includeSavedLevels = false;
+    this.autoExitEditorOnSelect = false;
     this.editorMode = false;
     this.editorSession = null;
     this.editorPlaytest = false;
@@ -438,8 +441,16 @@ class GameView extends BaseLogger {
       let levelIndex = (this.levelIndex + moveInterval) | 0;
       let config = await this.gameFactory.getConfig(gameType);
 
-      const getGroupLength = (cfg, groupIndex) =>
-        cfg?.level?.getGroupLength?.(groupIndex) ?? 0;
+      const savedEntries = this._getSavedLevelEntries();
+      const getBaseGroupCount = cfg => cfg?.level?.order?.length ?? 0;
+      const getGroupLength = (cfg, groupIndex) => {
+        const baseGroupCount = getBaseGroupCount(cfg);
+        return this._getGroupLength(cfg, groupIndex, baseGroupCount, savedEntries);
+      };
+      const getGroupCount = (cfg) => {
+        const baseGroupCount = getBaseGroupCount(cfg);
+        return this._getGroupCount(baseGroupCount, savedEntries);
+      };
       const isValidGameType = (type) =>
         type > 0 && type < gameTypes.length;
 
@@ -453,7 +464,7 @@ class GameView extends BaseLogger {
           if (gameType > 1) {
             gameType--;
             config = await this.gameFactory.getConfig(gameType);
-            levelGroupIndex = Math.max(0, (config.level.order?.length ?? 1) - 1);
+            levelGroupIndex = Math.max(0, getGroupCount(config) - 1);
             levelIndex += getGroupLength(config, levelGroupIndex);
             continue;
           }
@@ -463,9 +474,22 @@ class GameView extends BaseLogger {
       } else if (moveInterval > 0) {
         while (true) {
           const groupLength = getGroupLength(config, levelGroupIndex);
+          if (groupLength <= 0) {
+            if (levelGroupIndex + 1 < getGroupCount(config)) {
+              levelGroupIndex++;
+              continue;
+            }
+            gameType++;
+            if (!isValidGameType(gameType)) {
+              gameType = 1;
+            }
+            config = await this.gameFactory.getConfig(gameType);
+            levelGroupIndex = 0;
+            continue;
+          }
           if (levelIndex < groupLength) break;
           levelIndex -= groupLength;
-          if (levelGroupIndex + 1 < (config.level.order?.length ?? 0)) {
+          if (levelGroupIndex + 1 < getGroupCount(config)) {
             levelGroupIndex++;
             continue;
           }
@@ -490,6 +514,9 @@ class GameView extends BaseLogger {
 
       if (oldGameType !== this.gameType) {
         this.gameResources = await this.gameFactory.getGameResources(this.gameType);
+      }
+      if (this.autoExitEditorOnSelect && this.editorMode) {
+        this.exitEditorMode();
       }
       if (this.editorMode) {
         await this.loadEditorLevelFromSelection();
@@ -532,8 +559,8 @@ class GameView extends BaseLogger {
       ? new URLSearchParams('')
       : new URLSearchParams(window.location.search);
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
-    this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 5) - 1;
-    this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 30) - 1;
+    this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 6) - 1;
+    this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 100) - 1;
     this.gameSpeedFactor = this.parseNumber(query, ['speed', 's'], 1, 0, 100);
     // values above normal correspond to discrete steps
     if (this.gameSpeedFactor > 1) {
@@ -630,6 +657,86 @@ class GameView extends BaseLogger {
     }
   }
 
+  _getSavedLevelEntries() {
+    if (!this.includeSavedLevels) return [];
+    return listSavedLevels();
+  }
+
+  _getSavedGroupIndex(baseGroupCount, savedEntries = []) {
+    if (!this.includeSavedLevels || !savedEntries.length) return -1;
+    return baseGroupCount;
+  }
+
+  _isSavedGroupIndex(groupIndex, baseGroupCount, savedEntries = []) {
+    return groupIndex === this._getSavedGroupIndex(baseGroupCount, savedEntries);
+  }
+
+  _getGroupCount(baseGroupCount, savedEntries = []) {
+    const savedIndex = this._getSavedGroupIndex(baseGroupCount, savedEntries);
+    return savedIndex >= 0 ? baseGroupCount + 1 : baseGroupCount;
+  }
+
+  _getGroupNames(savedEntries = []) {
+    const baseGroups = this.gameResources?.getLevelGroups?.() ?? [];
+    if (!this.includeSavedLevels || !savedEntries.length) return baseGroups;
+    return [...baseGroups, 'Saved Levels'];
+  }
+
+  _getGroupLength(config, groupIndex, baseGroupCount, savedEntries = []) {
+    if (this._isSavedGroupIndex(groupIndex, baseGroupCount, savedEntries)) {
+      return savedEntries.length;
+    }
+    return config?.level?.getGroupLength?.(groupIndex) ?? 0;
+  }
+
+  _normalizeSelection(config, savedEntries = []) {
+    const baseGroupCount = config?.level?.order?.length ??
+      this.gameResources?.getLevelGroups?.().length ?? 0;
+    const groupCount = this._getGroupCount(baseGroupCount, savedEntries);
+    if (groupCount <= 0) {
+      this.levelGroupIndex = 0;
+      this.levelIndex = 0;
+      return;
+    }
+    let groupIndex = Math.min(Math.max(this.levelGroupIndex, 0), groupCount - 1);
+    let levelIndex = Math.max(this.levelIndex, 0);
+    let groupLength = this._getGroupLength(
+      config,
+      groupIndex,
+      baseGroupCount,
+      savedEntries
+    );
+    if (groupLength <= 0) {
+      let found = false;
+      for (let i = 0; i < groupCount; i++) {
+        const length = this._getGroupLength(config, i, baseGroupCount, savedEntries);
+        if (length > 0) {
+          groupIndex = i;
+          levelIndex = 0;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        groupIndex = 0;
+        levelIndex = 0;
+      }
+    } else if (levelIndex >= groupLength) {
+      levelIndex = 0;
+    }
+    this.levelGroupIndex = groupIndex;
+    this.levelIndex = levelIndex;
+  }
+
+  async _syncLevelGroupSelect(savedEntries = []) {
+    if (!this.elementSelectLevelGroup || !this.gameResources) return;
+    const config = await this.gameFactory.getConfig(this.gameType);
+    const groups = this._getGroupNames(savedEntries);
+    this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(groups));
+    this._normalizeSelection(config, savedEntries);
+    this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+  }
+
   getEntranceFocusX(level, stageImage) {
     if (!level || !stageImage) return 0;
     const entrance = level.entrances?.[0];
@@ -672,26 +779,60 @@ class GameView extends BaseLogger {
   async populateLevelSelect() {
     if (!this.elementSelectLevel || !this.gameResources) return;
     const config = await this.gameFactory.getConfig(this.gameType);
-    const groupLength = config.level.getGroupLength(this.levelGroupIndex);
+    const savedEntries = this._getSavedLevelEntries();
+    const baseGroupCount = this.gameResources.getLevelGroups().length;
+    if (this._isSavedGroupIndex(this.levelGroupIndex, baseGroupCount, savedEntries)) {
+      const list = savedEntries.map((entry, index) => `${index + 1}: ${entry.name}`);
+      this.arrayToSelect(this.elementSelectLevel, list);
+      if (list.length) {
+        this.levelIndex = Math.min(this.levelIndex, list.length - 1);
+      } else {
+        this.levelIndex = 0;
+      }
+      this.elementSelectLevel.selectedIndex = this.levelIndex;
+      return;
+    }
+    const groupLength = this._getGroupLength(
+      config,
+      this.levelGroupIndex,
+      baseGroupCount,
+      savedEntries
+    );
     const list = [];
     for (let i = 0; i < groupLength; i++) {
-      const lvl = await this.gameResources.getLevel(this.levelGroupIndex, i);
-      if (!lvl) continue;
-      list.push((i + 1) + ': ' + lvl.name);
+      try {
+        const lvl = await this.gameResources.getLevel(this.levelGroupIndex, i);
+        if (lvl) {
+          list.push((i + 1) + ': ' + lvl.name);
+          continue;
+        }
+      } catch (e) {
+        // keep slot alignment even if a level fails to load
+      }
+      list.push((i + 1) + ': [missing]');
     }
     this.arrayToSelect(this.elementSelectLevel, list);
+    if (list.length) {
+      this.levelIndex = Math.min(this.levelIndex, list.length - 1);
+    } else {
+      this.levelIndex = 0;
+    }
     this.elementSelectLevel.selectedIndex = this.levelIndex;
   }
   /** switch the selected level group */
   async selectLevelGroup(newLevelGroupIndex) {
     if (!this.gameResources) return;
-    const groups = this.gameResources.getLevelGroups();
-    const max = groups.length - 1;
+    const savedEntries = this._getSavedLevelEntries();
+    const baseGroupCount = this.gameResources.getLevelGroups().length;
+    const max = Math.max(0, this._getGroupCount(baseGroupCount, savedEntries) - 1);
     if (newLevelGroupIndex < 0) newLevelGroupIndex = 0;
     else if (newLevelGroupIndex > max) newLevelGroupIndex = max;
     this.levelGroupIndex = newLevelGroupIndex;
     this.levelIndex = 0;
     await this.populateLevelSelect();
+    if (this.autoExitEditorOnSelect && this.editorMode) {
+      this.exitEditorMode();
+    }
     if (this.editorMode) {
       await this.loadEditorLevelFromSelection();
       return;
@@ -709,9 +850,12 @@ class GameView extends BaseLogger {
     this.levelIndex = 0;
     const newGameResources = await this.gameFactory.getGameResources(this.gameType);
     this.gameResources = newGameResources;
-    this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
-    this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+    const savedEntries = this._getSavedLevelEntries();
+    await this._syncLevelGroupSelect(savedEntries);
     await this.populateLevelSelect();
+    if (this.autoExitEditorOnSelect && this.editorMode) {
+      this.exitEditorMode();
+    }
     if (this.editorMode) {
       await this.loadEditorLevelFromSelection();
       return;
@@ -721,6 +865,9 @@ class GameView extends BaseLogger {
   /** select a specific level */
   async selectLevel(newLevelIndex) {
     this.levelIndex = newLevelIndex;
+    if (this.autoExitEditorOnSelect && this.editorMode) {
+      this.exitEditorMode();
+    }
     if (this.editorMode) {
       await this.loadEditorLevelFromSelection();
       return;
@@ -743,10 +890,11 @@ class GameView extends BaseLogger {
       this.elementSelectGameType.selectedIndex = typeIndex;
     const newGameResources = await this.gameFactory.getGameResources(this.gameType);
     this.gameResources = newGameResources;
-    this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
-    this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
-    await this.populateLevelSelect();
+    const savedEntries = this._getSavedLevelEntries();
+    await this._syncLevelGroupSelect(savedEntries);
+    const populatePromise = this.populateLevelSelect();
     await this.loadLevel();
+    await populatePromise;
     if (this.benchSequence) {
       await this.benchSequenceStart();
     }
@@ -761,8 +909,8 @@ class GameView extends BaseLogger {
       this.elementSelectGameType.selectedIndex = typeIndex;
     const newGameResources = await this.gameFactory.getGameResources(this.gameType);
     this.gameResources = newGameResources;
-    this.arrayToSelect(this.elementSelectLevelGroup, this.prefixNumbers(this.gameResources.getLevelGroups()));
-    this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
+    const savedEntries = this._getSavedLevelEntries();
+    await this._syncLevelGroupSelect(savedEntries);
     await this.populateLevelSelect();
   }
   /** load a level and render it to the display */
@@ -772,6 +920,11 @@ class GameView extends BaseLogger {
       this.autoMoveTimer = null;
     }
     if (!this.gameResources) return;
+    const savedEntries = this._getSavedLevelEntries();
+    const baseGroupCount = this.gameResources.getLevelGroups().length;
+    if (this._isSavedGroupIndex(this.levelGroupIndex, baseGroupCount, savedEntries)) {
+      return this.loadSavedLevelFromSelection(savedEntries);
+    }
     if (this.game) {
       this.midiRouter?.detach?.();
       this.game.stop();
@@ -810,7 +963,8 @@ class GameView extends BaseLogger {
     }
     const cfg = this.configs?.find(c => c.gametype === this.gameType);
     const pack = cfg?.name || this.gameType;
-    const group = this.gameResources.getLevelGroups()[this.levelGroupIndex];
+    const savedEntries = this._getSavedLevelEntries();
+    const group = this._getGroupNames(savedEntries)[this.levelGroupIndex];
     const lvlName = level.name ? level.name.trim() : '';
     console.log(`starting bench series for ${lvlName} in ${group} in ${pack}, adding ${entrances} entrances with ${this.extraLemmings} extra lemmings`);
 
@@ -1200,6 +1354,38 @@ class GameView extends BaseLogger {
       timer?.continue?.();
     }
     return level;
+  }
+
+  async loadSavedLevelFromSelection(savedEntries = null) {
+    if (!this.gameResources || !this.gameFactory) return null;
+    const entries = savedEntries ?? this._getSavedLevelEntries();
+    if (!entries.length) return null;
+    if (this.levelIndex < 0) this.levelIndex = 0;
+    if (this.levelIndex >= entries.length) {
+      this.levelIndex = entries.length - 1;
+    }
+    const entry = entries[this.levelIndex];
+    if (!entry) return null;
+    const text = loadSavedLevel(undefined, entry.id);
+    if (!text) return null;
+    if (this.autoExitEditorOnSelect && this.editorMode) {
+      this.exitEditorMode();
+    }
+    const session = this.ensureEditorSession();
+    session.loadFromText(text);
+    return this.loadEditorPreviewLevel({ suspend: false });
+  }
+
+  async refreshSavedLevels() {
+    if (!this.includeSavedLevels || !this.gameResources) return;
+    const savedEntries = this._getSavedLevelEntries();
+    await this._syncLevelGroupSelect(savedEntries);
+    await this.populateLevelSelect();
+    const baseGroupCount = this.gameResources.getLevelGroups().length;
+    if (!this.editorMode &&
+        this._isSavedGroupIndex(this.levelGroupIndex, baseGroupCount, savedEntries)) {
+      await this.loadSavedLevelFromSelection(savedEntries);
+    }
   }
   async _loadClassicLevelReader(gameType, levelGroupIndex, levelIndex) {
     const provider = this.gameFactory?.fileProvider;

@@ -189,12 +189,20 @@ class KeyboardShortcuts {
     return !!this.view?.game?.timeTravel?.isReversing;
   }
 
-  _shouldIgnoreKey(e) {
+  _shouldIgnoreKey(e, actions = []) {
     const target = e?.target;
     if (!target) return false;
     if (target.isContentEditable) return true;
     const tag = String(target.tagName || '').toUpperCase();
-    return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    if (tag === 'SELECT') {
+      if (actions.includes('toggleReverse') ||
+          actions.includes('stepBackward') ||
+          actions.includes('stepForward')) {
+        return false;
+      }
+      return true;
+    }
+    return tag === 'INPUT' || tag === 'TEXTAREA';
   }
 
   _loadKeybindings() {
@@ -409,7 +417,8 @@ class KeyboardShortcuts {
         }
       }},
       levelGroupNext: { down: () => {
-        const totalGroups = this.view.gameResources?.getLevelGroups().length || 0;
+        const totalGroups = this.view.elementSelectLevelGroup?.options.length ||
+          this.view.gameResources?.getLevelGroups().length || 0;
         if (this.view.levelGroupIndex + 1 < totalGroups) {
           this.view.selectLevelGroup(this.view.levelGroupIndex + 1);
         } else {
@@ -442,9 +451,9 @@ class KeyboardShortcuts {
   }
 
   _onKeyDown(e) {
-    if (this._shouldIgnoreKey(e)) return;
     const actions = this.keybindings.getActionsForEvent(e);
     if (!actions.length) return;
+    if (this._shouldIgnoreKey(e, actions)) return;
     let handled = false;
     for (const action of actions) {
       if (this._handleAction(action, 'down', e)) handled = true;

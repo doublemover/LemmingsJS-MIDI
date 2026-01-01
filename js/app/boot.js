@@ -26,6 +26,8 @@ function init() {
 
   lemmings = new GameView();
   lemmings.midiEnabled = midiUi.getStoredEnabled();
+  lemmings.includeSavedLevels = true;
+  lemmings.autoExitEditorOnSelect = true;
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
@@ -83,6 +85,7 @@ function init() {
       savedSelect.appendChild(opt);
     }
     savedSelect.value = selectedId || '';
+    lemmings?.refreshSavedLevels?.();
   };
 
   const ensureEditorLevel = () => {
