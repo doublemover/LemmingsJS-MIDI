@@ -463,12 +463,8 @@ describe('FileProvider', function () {
 
   it('_storeInLocalStorage ignores write errors', function () {
     global.localStorage.setItem = () => { throw new Error('nope'); };
-    const logs = [];
-    const orig = console.log;
-    console.log = (...args) => logs.push(args);
-    provider._storeInLocalStorage('url', { a: 1 });
-    console.log = orig;
-    assert.ok(logs.length > 0);
+    const result = provider._storeInLocalStorage('url', { a: 1 });
+    assert.strictEqual(result, false);
   });
 
 });

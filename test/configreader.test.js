@@ -100,7 +100,8 @@ describe('ConfigReader', function () {
       await reader.getConfig(Lemmings.GameTypes.OHNO);
       expect.fail('expected rejection');
     } catch (e) {
-      expect(e).to.equal(undefined);
+      expect(e).to.be.instanceOf(Error);
+      expect(e.message).to.equal('Game config not found');
     }
   });
 });
