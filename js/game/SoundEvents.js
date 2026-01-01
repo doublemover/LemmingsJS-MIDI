@@ -56,6 +56,7 @@ class SoundEventBus {
     this._queue = [];
     this._queueLimit = 2048;
     this._sequence = 0;
+    this.history = null;
   }
 
   emit(event) {
@@ -88,6 +89,7 @@ class SoundEventBus {
         if (this._queueLimit > 0 && this._queue.length < this._queueLimit) {
           this._queue.push(payload);
         }
+        this.history?.recordSoundEvent?.(payload);
         if (this.onEvent) this.onEvent.trigger(payload);
       }
     ).call(this);
@@ -103,11 +105,16 @@ class SoundEventBus {
     return out;
   }
 
+  setHistoryStore(history) {
+    this.history = history;
+  }
+
   dispose() {
     if (this.onEvent?.dispose) this.onEvent.dispose();
     this.onEvent = null;
     this._queue = [];
     this.gameTimer = null;
+    this.history = null;
   }
 }
 

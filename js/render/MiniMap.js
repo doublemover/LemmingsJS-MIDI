@@ -201,6 +201,15 @@ class MiniMap {
   addDeath(x, y) {
     const sx = Math.max(0, Math.min(this.width - 1, (x * this.scaleX) | 0));
     const sy = Math.max(0, Math.min(this.height - 1, (y * this.scaleY) | 0));
+    const history = globalThis?.lemmings?.game?.history ?? null;
+    if (history?.recordMinimapDeath) {
+      history.recordMinimapDeath({
+        x: sx,
+        y: sy,
+        ttl: MiniMap.DEATH_DOT_TTL,
+        prevCount: this.deadCount
+      });
+    }
 
     if (this.deadCount >= this.deadTTLs.length) {
       const next = Math.max(4, this.deadTTLs.length * 2);

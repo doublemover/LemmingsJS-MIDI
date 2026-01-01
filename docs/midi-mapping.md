@@ -57,5 +57,10 @@ Default skill order:
 ## Customization tips
 
 - Edit the `input` section in `midi-mapping.json` to change note or CC mappings.
-- Use `input.channel` to switch between omni and a specific MIDI channel.
+- Use `input.channel` to switch between omni and a specific MIDI channel.       
 - Mapping changes take effect on refresh.
+
+## Reverse playback
+
+- `reverse.allNotesOffOnToggle` sends all-notes-off and clears queued MIDI events
+  whenever reverse playback is toggled (default: `false`).

@@ -56,25 +56,27 @@ If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-
 
 ## Controls
 
-- `(Shift+)1`: Decrease release rate (minimum)
-- `(Shift+)2`: Increase release rate (maximum)
+- `1` / `Shift+1`: Decrease release rate by 1 / to minimum
+- `2` / `Shift+2`: Increase release rate by 1 / to maximum
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
 - `Q, W, E, R`: Select Builder, Basher, Miner, Digger
-- `Space`: Pause/Resume
+- `K`: Apply selected skill to selected lemming
+- `Space`: Pause/resume
 - `[` / `]`: Step backward / forward one tick while paused
-- `(Shift+)T`: Nuke (instant)
+- `Alt+]`: Step backward (mirror of step forward)
+- `B`: Toggle continuous reverse playback
+- `T` / `Shift+T`: Nuke / instant nuke
 - `Backspace`: Restart level
 - Arrow keys: Pan viewport (Shift for faster)
 - `Z` / `X`: Zoom in / out (Shift for faster)
 - `V`: Reset zoom to 2
-- `(Shift+)-` / `=`: Decrease / increase game speed (Shift for faster)
+- `-` / `=`: Decrease / increase game speed (Shift for faster, numpad +/- also supported)
+- `Alt+=`: Decrease speed (Shift for faster)
 - `,` / `.`: Previous / next level
 - `Shift+,` / `Shift+.`: Previous / next group
-- `Tab`: Cycle through skills
-- `Shift+Tab`: Previous skill
-- `K`: Apply selected skill to selected lemming
+- `Tab` / `Shift+Tab`: Cycle through skills forward / backward
 - `\`: Toggle debug mode
-- `Shift+``: Toggle editor mode (preview only)
+- `Shift+Backquote`: Toggle editor mode (preview only)
 
 ### Editor
 
@@ -96,6 +98,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 - Enable MIDI from the left control panel (toggle persists). When disabled, WebMIDI is not enabled and the MIDI router is detached.
 - Use the Input/Output selects to choose devices. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
 - Use `MIDI reset` to stop all notes and clear the queued events.
+- `reverse.allNotesOffOnToggle` in `midi-mapping.json` can auto-reset MIDI when toggling reverse playback.
 - Base BPM is the sequencing anchor; current BPM shows the live value (Base BPM * game speed).
 - Sequencing section:
   - Position mappings: add X/Y/X+Y mappings with min/max ranges to target note offset, intensity (velocity), timbre, pan, duration, pitch bend, or ADSR.
@@ -177,7 +180,8 @@ URL parameters (shortcuts in brackets):
 - `bench (b)`: Bench mode (endless spawning with speed modulation)
 - `bench2 (b2)`: Bench mode with catchup slowdown (bench2)
 - `benchReverse (bR)`: Bench mode with reverse-playback flag enabled
-- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)
+- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)   
+- `preserveHistory (ph)`: Preserve future history when resuming after reverse playback
 - `endless (e)`: Disable time limit
 - `nukeAfter (na)`: Auto-nuke after x*10 seconds
 - `scale (sc)`: Starting zoom .0125-8 (default: 2)

@@ -26,6 +26,9 @@ const DEFAULT_CONFIG = Object.freeze({
     bpmBase: 120,
     scheduleAheadMs: 0
   },
+  reverse: {
+    allNotesOffOnToggle: false
+  },
   noteDefaults: {
     octave: 4,
     degree: 0,

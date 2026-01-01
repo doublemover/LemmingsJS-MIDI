@@ -20,8 +20,8 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 - GameTimer.tickIndex only increments in the RAF loop.
 - CommandManager already timestamps commands per tick and can replay them.
 - SoundEventBus emits per-tick events used by MidiEventRouter.
-- Some simulation paths use Math.random (entrance direction), breaking determinism.
-- No history store or serialization exists today.
+- Some simulation paths use Math.random (entrance/extra spawn facing), so full determinism is deferred.
+- HistoryStore captures keyframes/deltas and sound event history; serialization is still TBD.
 
 ## Useful existing pieces
 - CommandManager tick log can be reused for deterministic replay or event reconstruction.
@@ -29,9 +29,9 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 - SoundEventBus is a natural place to capture event history for reverse playback.
 - MidiEventRouter and MidiScheduler already accept time metadata and can pass a reverse flag through mapping.
 
-## Determinism baseline
-1) Replace Math.random usage in simulation with a seeded RNG.
-2) Store RNG seed in game session state and in snapshots.
+## Determinism baseline (deferred)
+1) Seeded RNG is skipped for now because randomness is limited to spawn facing.
+2) Store RNG seed in session state if more simulation paths use randomness later.
 3) Ensure any time-based logic uses tickIndex, not wall time.
 
 ## State boundary (what must be reversible)
@@ -57,10 +57,11 @@ Design forward single-step, backward stepping, and continuous reverse playback w
 - Sound events: per-tick array of event payloads.
 
 ### Memory considerations
-- Keep a rolling time-based cap (configurable window) for history length.
-- Default window length uses the level time limit (seconds until game over).
-- Endless levels or bench sessions without time limits are uncapped for now.
-- Trim keyframes/deltas older than the window and expose current history span/size.
+- History is uncapped by default (no rolling window yet).
+- Optional cap/warn thresholds can prune oldest ticks when enabled.
+- When resuming forward after rewinding, truncate future history to avoid branches.
+- Preserve future history by setting `preserveFutureHistory` when replay capture needs it.
+- Expose a `preserveHistory` (`ph`) URL flag that toggles `preserveFutureHistory`.
 
 ## Time travel controller
 Create a TimeTravelController to own history, seek, and playback direction.
@@ -91,11 +92,11 @@ Integration points:
 - MidiScheduler inverts attack/release when spec.reverse is true:
   - use releaseVelocity as attack and velocity as release
   - optional duration adjustment if needed
-- If event history is missing, re-simulate forward from keyframe to rebuild per-tick event log, then emit in reverse order.
+- If event history is missing, skip MIDI for that tick (best-effort replay is acceptable).
 
 ## UI and controls
 - Preserve existing step-forward key while paused.
-- Add step-backward keybinds (TBD) and a reverse playback toggle.
+- Add step-backward keybinds and a reverse playback toggle.
 - Suppress gameplay input while reverse playback is active.
 - Show playback direction indicator and current tick index in HUD.
 
@@ -119,7 +120,7 @@ Integration points:
 6) Tests + perf guardrails.
 
 ## Risks and mitigations
-- Memory growth: cap history length, add warnings, allow trimming.
+- Memory growth: history is uncapped; add optional cap/warnings if it becomes an issue.
 - Large ground deltas: batch spans and compress deltas.
 - Non-deterministic inputs: disallow new commands during reverse playback.
 
