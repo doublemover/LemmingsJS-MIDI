@@ -12,15 +12,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Node tools export sprites and package levels.
 - Complete Mocha test suite with GitHub Actions workflows.
 - Bench mode shows a color-coded overlay and recovers speed dynamically.
-- Progressive Web App support via `site.webmanifest` and touch icons.
+- Progressive Web App support via `site.webmanifest`, touch icons, and a service worker cache.
 - New docs under `docs/` cover CI, testing and sprite export tools.
+- MIDI device hot-plug listeners refresh input/output lists while preserving selections.
 
 ### Fixed
+- Debounced stage resize updates to avoid redundant canvas layout work.
+- MIDI enable failures now surface in the UI and the error display resets cleanly.
+- `DisplayImage.drawDashedRect` now handles the RGB signature used by the editor overlay.
 
 ### Changed
 - `patchSprites.js` can slice sprite sheets using `--sheet-orientation`.
 - `packLevels.js` creates DAT archives from 2048-byte level files.
 - These tools rely on `NodeFileProvider` to read packs from folders or archives.
+- `FileProvider` now prefers IndexedDB caching with localStorage fallback and chunked base64 conversion.
  
 ### Removed
 - Agent-focused search/index tooling and related metrics tracking.

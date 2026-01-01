@@ -23,60 +23,46 @@ class GameResources extends BaseLogger {
     if (this.mainDat != null) {
       return this.mainDat;
     }
-    this.mainDat = new Promise((resolve, reject) => {
-      this.fileProvider.loadBinary(this.config.path, 'MAIN.DAT')
-        .then((data) => {
-          // split the file
-          const Container = getDependency('FileContainer', FileContainer);
-          const mainParts = new Container(data);
-          resolve(mainParts);
-        })
-        .catch((e) => {
-          this.log.log('Failed to load MAIN.DAT', e);
-          reject(e);
-        });
-    });
+    this.mainDat = this._loadMainDat();
     return this.mainDat;
   }
-  getLemmingsSprite(colorPalette) {
-    return new Promise((resolve, reject) => {
-      this.getMainDat().then((container) => {
-        const Sprite = getDependency('LemmingsSprite', LemmingsSprite);
-        const sprite = new Sprite(container.getPart(0), colorPalette);
-        resolve(sprite);
-      });
-    });
+  async _loadMainDat() {
+    try {
+      const data = await this.fileProvider.loadBinary(this.config.path, 'MAIN.DAT');
+      const Container = getDependency('FileContainer', FileContainer);
+      return new Container(data);
+    } catch (e) {
+      this.mainDat = null;
+      this.log.log('Failed to load MAIN.DAT', e);
+      throw e;
+    }
   }
-  getSkillPanelSprite(colorPalette) {
-    return new Promise((resolve, reject) => {
-      this.getMainDat().then((container) => {
-        const PanelSprites = getDependency('SkillPanelSprites', SkillPanelSprites);
-        resolve(new PanelSprites(container.getPart(2), container.getPart(6), colorPalette));
-      });
-    });
+  async getLemmingsSprite(colorPalette) {
+    const container = await this.getMainDat();
+    const Sprite = getDependency('LemmingsSprite', LemmingsSprite);
+    return new Sprite(container.getPart(0), colorPalette);
   }
-  getCursorSprite() {
-    return new Promise((resolve) => {
-      this.getMainDat().then((container) => {
-        const fr = container.getPart(5);
-        const Palette = getDependency('PaletteImage', PaletteImage);
-        const pimg = new Palette(14, 14);
-        pimg.processImage(fr, 1);
-        pimg.processTransparentByColorIndex(0);
-        const PaletteCtor = getDependency('ColorPalette', ColorPalette);
-        const pal = new PaletteCtor();
-        pal.setColorRGB(1, 255, 255, 255);
-        resolve(pimg.createFrame(pal));
-      });
-    });
+  async getSkillPanelSprite(colorPalette) {
+    const container = await this.getMainDat();
+    const PanelSprites = getDependency('SkillPanelSprites', SkillPanelSprites);
+    return new PanelSprites(container.getPart(2), container.getPart(6), colorPalette);
   }
-  getMasks() {
-    return new Promise((resolve, reject) => {
-      this.getMainDat().then((container) => {
-        const Provider = getDependency('MaskProvider', MaskProvider);
-        resolve(new Provider(container.getPart(1)));
-      });
-    });
+  async getCursorSprite() {
+    const container = await this.getMainDat();
+    const fr = container.getPart(5);
+    const Palette = getDependency('PaletteImage', PaletteImage);
+    const pimg = new Palette(14, 14);
+    pimg.processImage(fr, 1);
+    pimg.processTransparentByColorIndex(0);
+    const PaletteCtor = getDependency('ColorPalette', ColorPalette);
+    const pal = new PaletteCtor();
+    pal.setColorRGB(1, 255, 255, 255);
+    return pimg.createFrame(pal);
+  }
+  async getMasks() {
+    const container = await this.getMainDat();
+    const Provider = getDependency('MaskProvider', MaskProvider);
+    return new Provider(container.getPart(1));
   }
   /** return the Level Data for a given Level-Index */
   getLevel(levelMode, levelIndex) {

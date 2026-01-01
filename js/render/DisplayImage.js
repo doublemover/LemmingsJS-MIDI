@@ -101,20 +101,6 @@ class DisplayImage extends BaseLogger {
     this.drawVerticalLine( x2,  y,  y2, r, g, b);
   }
 
-  drawDashedRect(x, y, width, height, r, g, b, dashLen = 2) {
-    const x2 = x + width;
-    const y2 = y + height;
-    const step = dashLen * 2;
-    for (let dx = x; dx <= x2; dx += step) {
-      this.drawHorizontalLine(dx, y, Math.min(dx + dashLen - 1, x2), r, g, b);
-      this.drawHorizontalLine(dx, y2, Math.min(dx + dashLen - 1, x2), r, g, b);
-    }
-    for (let dy = y; dy <= y2; dy += step) {
-      this.drawVerticalLine(x, dy, Math.min(dy + dashLen - 1, y2), r, g, b);
-      this.drawVerticalLine(x2, dy, Math.min(dy + dashLen - 1, y2), r, g, b);
-    }
-  }
-
   /** Vertical 1‑px line (uses uint32 writes) */
   drawVerticalLine(x, y1, y2, r, g, b) {
     if (!this.buffer32) return;
@@ -179,21 +165,49 @@ class DisplayImage extends BaseLogger {
     y,
     width,
     height,
-    dashLen = 3,
-    offset = 0,
-    color1 = 0xFFFFFFFF,
-    color2 = 0xFF000000
+    dashLenOrR = 3,
+    offsetOrG = 0,
+    color1OrB = 0xFFFFFFFF,
+    color2OrDashLen = 0xFF000000
   ) {
+    const isRgbSignature = arguments.length >= 7 &&
+      Number.isFinite(dashLenOrR) &&
+      Number.isFinite(offsetOrG) &&
+      Number.isFinite(color1OrB) &&
+      dashLenOrR >= 0 && dashLenOrR <= 255 &&
+      offsetOrG >= 0 && offsetOrG <= 255 &&
+      color1OrB >= 0 && color1OrB <= 255;
+
+    if (isRgbSignature) {
+      const r = dashLenOrR;
+      const g = offsetOrG;
+      const b = color1OrB;
+      const dashLen = Number.isFinite(color2OrDashLen) ? color2OrDashLen : 2;
+      const color = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
+      drawDashedRect(
+        this,
+        x,
+        y,
+        width,
+        height,
+        dashLen,
+        0,
+        color,
+        0x00000000
+      );
+      return;
+    }
+
     drawDashedRect(
       this,
       x,
       y,
       width,
       height,
-      dashLen,
-      offset,
-      color1,
-      color2
+      dashLenOrR,
+      offsetOrG,
+      color1OrB,
+      color2OrDashLen
     );
   }
 

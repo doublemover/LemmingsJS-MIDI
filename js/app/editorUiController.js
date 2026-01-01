@@ -11,43 +11,26 @@ import { getEntryBounds } from '../editor/EditorHitTest.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
 import {
+  formatRotation,
+  formatValue,
+  normalizeRotation,
+  normalizeText,
+  parseNumber,
+  sanitizeFileName
+} from './editor-ui/editorUiFormat.js';
+import {
+  downloadBinaryFile,
+  downloadTextFile,
+  readArrayBufferFile,
+  readTextFile
+} from './editor-ui/editorUiFiles.js';
+import {
   listSavedLevels,
   loadSavedLevel,
   saveLevel
 } from '../editor/EditorStorage.js';
 
 const MAX_HISTORY = Number.MAX_SAFE_INTEGER;
-
-const normalizeText = (value) => String(value ?? '').trim();
-
-const parseNumber = (value) => {
-  if (value == null || value === '') return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
-};
-
-const normalizeRotation = (value) => {
-  const num = parseNumber(value);
-  if (num == null) return null;
-  const normalized = ((num % 360) + 360) % 360;
-  const snapped = Math.round(normalized / 90) * 90;
-  return ((snapped % 360) + 360) % 360;
-};
-
-const formatRotation = (value) => {
-  const num = parseNumber(value);
-  if (num == null) return '';
-  const normalized = ((num % 360) + 360) % 360;
-  return String(normalized);
-};
-
-const formatValue = (value) => (value == null ? '' : String(value));
-
-const sanitizeFileName = (name) => String(name || 'level')
-  .trim()
-  .replace(/[^a-z0-9_-]+/gi, '_')
-  .replace(/^_+|_+$/g, '')
-  .slice(0, 60) || 'level';
 
 class EditorUiController {
   constructor(options = {}) {
@@ -423,18 +406,19 @@ class EditorUiController {
       this.el.savedImport.addEventListener('click', () => {
         this.el.savedImportInput.click();
       });
-      this.el.savedImportInput.addEventListener('change', (event) => {
+      this.el.savedImportInput.addEventListener('change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const text = typeof reader.result === 'string' ? reader.result : '';
+        try {
+          const text = await readTextFile(file);
           if (!text) return;
           this._currentSavedId = '';
           this._loadLevelFromText(text, { resetSaved: true });
-        };
-        reader.readAsText(file);
-        event.target.value = '';
+        } catch (error) {
+          console.error('Failed to read level file.', error);
+        } finally {
+          event.target.value = '';
+        }
       });
     }
 
@@ -442,20 +426,21 @@ class EditorUiController {
       this.el.savedImportClassic.addEventListener('click', () => {
         this.el.savedImportClassicInput.click();
       });
-      this.el.savedImportClassicInput.addEventListener('change', (event) => {
+      this.el.savedImportClassicInput.addEventListener('change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
-        const reader = new FileReader();
-        reader.onload = () => {
-          const buffer = reader.result;
+        try {
+          const buffer = await readArrayBufferFile(file);
           if (!buffer) return;
           const binary = new BinaryReader(buffer, 0, undefined, file.name);
           const levelReader = new LevelReader(binary);
           this._currentSavedId = '';
           this._loadLevelFromClassic(levelReader, { resetSaved: true });
-        };
-        reader.readAsArrayBuffer(file);
-        event.target.value = '';
+        } catch (error) {
+          console.error('Failed to read classic level file.', error);
+        } finally {
+          event.target.value = '';
+        }
       });
     }
   }
@@ -893,15 +878,7 @@ class EditorUiController {
     const text = this.view.getEditorLevelText();
     const title = this.view.getEditorLevelTitle();
     const filename = `${sanitizeFileName(title)}.nxlv`;
-    const blob = new Blob([text], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const link = this.document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    this.document.body.appendChild(link);
-    link.click();
-    this.document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadTextFile(this.document, text, filename);
   }
 
   _exportCurrentLevelClassic() {
@@ -927,15 +904,7 @@ class EditorUiController {
     const bytes = writer.write(payload);
     const title = this.view.getEditorLevelTitle();
     const filename = `${sanitizeFileName(title)}.lvl`;
-    const blob = new Blob([bytes], { type: 'application/octet-stream' });
-    const url = URL.createObjectURL(blob);
-    const link = this.document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    this.document.body.appendChild(link);
-    link.click();
-    this.document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    downloadBinaryFile(this.document, bytes, filename);
   }
 
   async _syncAfterSelection(label) {

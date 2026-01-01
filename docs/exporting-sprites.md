@@ -26,4 +26,8 @@ The Node scripts in the `tools` directory use `NodeFileProvider` to read level p
 
 ### Progressive Web App
 
-This repo ships with [site.webmanifest](../site.webmanifest) so it can be installed as a **Progressive Web App (PWA)**. Installing adds the game to your device's app list and launches it fullscreen in landscape mode. Touch input still needs polish, so the mobile experience may be rough.
+This repo ships with [site.webmanifest](../site.webmanifest) and a service worker
+(`../service-worker.js`) so it can be installed as a **Progressive Web App (PWA)**.
+Installing adds the game to your device's app list and launches it fullscreen in
+landscape mode, with offline caching for core assets after the first successful
+load. Touch input still needs polish, so the mobile experience may be rough.

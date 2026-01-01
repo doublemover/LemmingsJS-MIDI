@@ -6,30 +6,26 @@ import { packMechanics } from '../level/packMechanics.js';
 class ConfigReader extends BaseLogger {
   constructor(configFile) {
     super();
-    this.configs = new Promise((resolve, reject) => {
-      configFile.then((jsonString) => {
-        let configJson = this.parseConfig(jsonString);
-        resolve(configJson);
+    this.configs = configFile
+      .then((jsonString) => this.parseConfig(jsonString))
+      .catch((e) => {
+        this.log.log('Unable to load config', e);
+        throw e;
       });
-    });
   }
   /** return the game config for a given GameType */
-  getConfig(gameType) {
+  async getConfig(gameType) {
     if (gameType == 0) {
       this.log.log('tried to get gametype 0?');
       return;
     }
-    return new Promise((resolve, reject) => {
-      this.configs.then((configs) => {
-        const config = configs.find((config) => config.gametype == gameType);
-        if (config == null) {
-          this.log.log('config for GameTypes:' + GameTypes.toString(gameType) + ' not found!');
-          reject();
-          return;
-        }
-        resolve(config);
-      });
-    });
+    const configs = await this.configs;
+    const config = configs.find((entry) => entry.gametype == gameType);
+    if (config == null) {
+      this.log.log('config for GameTypes:' + GameTypes.toString(gameType) + ' not found!');
+      throw new Error('Game config not found');
+    }
+    return config;
   }
   /** parse the config file */
   parseConfig(jsonData) {

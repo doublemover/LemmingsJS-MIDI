@@ -2,6 +2,7 @@ import './bootstrap.js';
 import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';
 import { createMidiUiController } from './midiUiController.js';
+import { registerServiceWorker } from './registerServiceWorker.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -32,6 +33,7 @@ function init() {
   });
   midiUi.setMidiInputController(midiInputController);
   globalThis.onEnabled = () => midiUi?.onEnabled?.();
+  globalThis.onMidiError = (message) => midiUi?.showError?.(message);
 
   lemmings.elementSelectGameType = document.getElementById('gameTypeSelect');
   lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
@@ -198,7 +200,7 @@ function setSize() {
   }
 
   if (window.lemmings && window.lemmings.stage) {
-    window.lemmings.stage.updateStageSize();
+    window.lemmings.stage.scheduleUpdateStageSize();
   }
 }
 
@@ -217,6 +219,7 @@ function start() {
   init();
   midiUi?.bindMidiUi();
   midiUi?.scheduleMidiUiRefresh();
+  registerServiceWorker();
   setSize();
   bindResize();
 }

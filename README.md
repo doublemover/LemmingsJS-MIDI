@@ -218,9 +218,10 @@ URL parameters (shortcuts in brackets):
 
 ## Progressive Web App
 
-This repo ships with [site.webmanifest](site.webmanifest) so it can be installed
-as a PWA. It launches fullscreen in landscape mode. Touch input still needs
-polish, so please file bugs for any issues you hit.
+This repo ships with [site.webmanifest](site.webmanifest) and a service worker
+(`service-worker.js`) so it can be installed as a PWA with offline caching for
+core assets after the first successful load. It launches fullscreen in landscape
+mode. Touch input still needs polish, so please file bugs for any issues you hit.
 
 <details open>
   <summary><b>In Progress</b></summary>

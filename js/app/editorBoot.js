@@ -1,6 +1,7 @@
 import './bootstrap.js';
 import { GameView } from '../game/GameView.js';
 import { EditorUiController } from './editorUiController.js';
+import { registerServiceWorker } from './registerServiceWorker.js';
 
 const init = async () => {
   const lemmings = new GameView();
@@ -21,4 +22,5 @@ const init = async () => {
 
 window.addEventListener('DOMContentLoaded', () => {
   init();
+  registerServiceWorker();
 });

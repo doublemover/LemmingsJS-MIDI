@@ -14,7 +14,7 @@ class GameFactory {
     this.configReader = new Reader(configFileReader);
   }
   /** return a game object to control/run the game */
-  getGame(gameType, gameResources = null) {
+  async getGame(gameType, gameResources = null) {
     const perfEnabled = typeof lemmings !== 'undefined' &&
       (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
@@ -32,26 +32,24 @@ class GameFactory {
         /* ignored */
       }
     };
-    return new Promise((resolve, reject) => {
+    try {
       if (gameResources) {
         const GameCtor = getDependency('Game', Game);
-        resolve(new GameCtor(gameResources));
-        return;
+        return new GameCtor(gameResources);
       }
-      this.getGameResources(gameType)
-        .then((res) => {
-          const GameCtor = getDependency('Game', Game);
-          resolve(new GameCtor(res));
-        })
-        .catch(reject);
-    }).finally(finish);
+      const res = await this.getGameResources(gameType);
+      const GameCtor = getDependency('Game', Game);
+      return new GameCtor(res);
+    } finally {
+      finish();
+    }
   }
   /** return the config of a game type */
   getConfig(gameType) {
     return this.configReader.getConfig(gameType);
   }
   /** return a Game Resources that gives access to images, maps, sounds  */
-  getGameResources(gameType) {
+  async getGameResources(gameType) {
     const perfEnabled = typeof lemmings !== 'undefined' &&
       (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
@@ -69,16 +67,16 @@ class GameFactory {
         /* ignored */
       }
     };
-    return new Promise((resolve, reject) => {
-      this.configReader.getConfig(gameType).then((config) => {
-        if (config == null) {
-          reject();
-          return;
-        }
-        const Resources = getDependency('GameResources', GameResources);
-        resolve(new Resources(this.fileProvider, config));
-      });
-    }).finally(finish);
+    try {
+      const config = await this.configReader.getConfig(gameType);
+      if (config == null) {
+        throw new Error('Game config not found');
+      }
+      const Resources = getDependency('GameResources', GameResources);
+      return new Resources(this.fileProvider, config);
+    } finally {
+      finish();
+    }
   }
 
   /** create and load a game from a provided config */
