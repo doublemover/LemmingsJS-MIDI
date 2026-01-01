@@ -182,10 +182,10 @@ describe('HistoryStore', function() {
     expect(manager.selectedIndex).to.equal(0);
   });
 
-  it('truncates future history unless preservation is enabled', function() {
+  it('truncates future history unless preservation is enabled', function() {    
     const history = new HistoryStore({ keyframeInterval: 5 });
-    history._setDelta(0, { tick: 0 });
-    history._setDelta(2, { tick: 2 });
+    history._setDelta(0, history._allocDelta(0));
+    history._setDelta(2, history._allocDelta(2));
     history._setKeyframe(0, { tickIndex: 0 });
     history._setKeyframe(2, { tickIndex: 2 });
 
@@ -193,7 +193,7 @@ describe('HistoryStore', function() {
     expect(!!history.deltas[2]).to.equal(false);
     expect(!!history.keyframes[2]).to.equal(false);
 
-    history._setDelta(2, { tick: 2 });
+    history._setDelta(2, history._allocDelta(2));
     history._setKeyframe(2, { tickIndex: 2 });
     history.setPreserveFutureHistory(true);
     history.truncateAfter(0);
@@ -385,14 +385,14 @@ describe('HistoryStore', function() {
     const originalWarn = console.warn;
     console.warn = (msg) => warnings.push(msg);
     try {
-      history._setDelta(0, { tick: 0 });
-      history._setDelta(1, { tick: 1 });
+      history._setDelta(0, history._allocDelta(0));
+      history._setDelta(1, history._allocDelta(1));
       history._maybeWarnHistory();
       expect(warnings).to.have.length(1);
       history._maybeWarnHistory();
       expect(warnings).to.have.length(1);
 
-      history._setDelta(2, { tick: 2 });
+      history._setDelta(2, history._allocDelta(2));
       history._enforceHistoryCap();
       expect(history.getDelta(0)).to.equal(null);
       expect(history.getDelta(1)).to.be.ok;
