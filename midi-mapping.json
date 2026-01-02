@@ -1,5 +1,5 @@
 {
-  "enabled": true,
+  "enabled": false,
   "mpe": {
     "enabled": true,
     "masterChannel": 1,

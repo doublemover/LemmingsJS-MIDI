@@ -3,6 +3,7 @@ import { TriggerTypes } from '../level/TriggerTypes.js';
 import {
   CHORD_OPTIONS,
   EXCLUDED_TRIGGER_NAMES,
+  EXCLUDED_SFX_IDS,
   NOTE_NAMES,
   POSITION_AXES,
   POSITION_TARGETS,
@@ -766,6 +767,7 @@ export const createMidiUiController = ({
     }
     ids.forEach(id => {
       const numericId = Number(id);
+      if (EXCLUDED_SFX_IDS.has(numericId)) return;
       if (availableSfxIds && availableSfxIds.size && !availableSfxIds.has(numericId)) return;
       const entry = sfx[id] || {};
       const fallbackName = SFX_NAME_BY_ID.get(numericId);
@@ -815,6 +817,7 @@ export const createMidiUiController = ({
     const ids = Object.keys(sfx).sort((a, b) => Number(a) - Number(b));
     for (const id of ids) {
       const numericId = Number(id);
+      if (EXCLUDED_SFX_IDS.has(numericId)) continue;
       if (availableSfxIds && availableSfxIds.size && !availableSfxIds.has(numericId)) continue;
       const entry = sfx[id];
       const name = entry?.name ? `${entry.name} (#${id})` : `SFX ${id}`;
@@ -1130,6 +1133,8 @@ export const createMidiUiController = ({
       const el = document.getElementById(id);
       if (el) el.disabled = !enabled;
     }
+    const root = document?.body;
+    if (root?.classList) root.classList.toggle('midi-disabled', !enabled);
   };
 
   const bindMidiUi = () => {
@@ -1161,7 +1166,7 @@ export const createMidiUiController = ({
     const configEnabled = getConfig()?.enabled;
     const midiEnabled = storedEnabled != null
       ? storedEnabled !== 'false'
-      : (typeof configEnabled === 'boolean' ? configEnabled : true);
+      : (typeof configEnabled === 'boolean' ? configEnabled : false);
     if (enabledToggle) enabledToggle.checked = midiEnabled;
     toggleMidiUiEnabled(midiEnabled);
     const storedChannel = readStoredMidiId(storage, midiStorageKeys.inputChannel);
@@ -1392,7 +1397,7 @@ export const createMidiUiController = ({
       if (stored != null) return stored !== 'false';
       const configEnabled = getConfig()?.enabled;
       if (typeof configEnabled === 'boolean') return configEnabled;
-      return true;
+      return false;
     },
     getStorageKeys() {
       return { ...midiStorageKeys };

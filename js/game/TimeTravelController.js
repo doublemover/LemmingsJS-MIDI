@@ -15,16 +15,23 @@ class TimeTravelController {
 
   get isReversing() { return this._reverseActive; }
 
+  _resolveTimer() {
+    const timer = this.game?.getGameTimer?.();
+    if (timer) this.timer = timer;
+    return this.timer;
+  }
+
   stepBackward(count = 1) {
-    if (!this.timer || !this.history || !this.game) return;
-    if (this.timer.isRunning?.()) this.timer.suspend?.();
+    const timer = this._resolveTimer();
+    if (!timer || !this.history || !this.game) return;
+    if (timer.isRunning?.()) timer.suspend?.();
     const steps = Math.max(0, Math.trunc(count));
     for (let i = 0; i < steps; i++) {
-      if (this.timer.tickIndex <= 0) {
-        this.timer.tickIndex = 0;
+      if (timer.tickIndex <= 0) {
+        timer.tickIndex = 0;
         break;
       }
-      const targetTick = this.timer.tickIndex - 1;
+      const targetTick = timer.tickIndex - 1;
       const delta = this.history.getDelta?.(targetTick)
         ?? this.history.deltas?.[targetTick];
       if (!delta) {
@@ -32,7 +39,7 @@ class TimeTravelController {
         break;
       }
       this.history.applyDeltaBackward(this.game, delta);
-      this.timer.tickIndex = targetTick;
+      timer.tickIndex = targetTick;
       this._emitReverseEvents(delta);
       if (this.game.gameGui) {
         this.game.gameGui.gameTimeChanged = true;
@@ -42,21 +49,22 @@ class TimeTravelController {
   }
 
   seekToTick(targetTickIndex) {
-    if (!this.timer || !this.history || !this.game) return;
-    if (this.timer.isRunning?.()) this.timer.suspend?.();
+    const timer = this._resolveTimer();
+    if (!timer || !this.history || !this.game) return;
+    if (timer.isRunning?.()) timer.suspend?.();
     const target = Math.max(0, Math.trunc(targetTickIndex));
     const keyframe = this.history.getKeyframeAtOrBefore(target);
     if (!keyframe) return;
     this.history.applyKeyframe(this.game, keyframe);
-    this.timer.tickIndex = keyframe.tickIndex ?? target;
-    let cursor = this.timer.tickIndex;
+    timer.tickIndex = keyframe.tickIndex ?? target;
+    let cursor = timer.tickIndex;
     while (cursor < target) {
       const delta = this.history.getDelta?.(cursor)
         ?? this.history.deltas?.[cursor];
       if (!delta) break;
       this.history.applyDeltaForward(this.game, delta);
       cursor += 1;
-      this.timer.tickIndex = cursor;
+      timer.tickIndex = cursor;
     }
     if (this.game.gameGui) {
       this.game.gameGui.gameTimeChanged = true;
@@ -65,10 +73,11 @@ class TimeTravelController {
   }
 
   startReverse() {
-    if (this._reverseActive || !this.timer || !this.game) return;
+    const timer = this._resolveTimer();
+    if (this._reverseActive || !timer || !this.game) return;
     this.playbackDirection = -1;
     this._reverseActive = true;
-    this._resumeForward = !!this.timer.isRunning?.();
+    this._resumeForward = !!timer.isRunning?.();
     if (this._prevInputEnabled === null) {
       this._prevInputEnabled = this.game.inputEnabled ?? true;
     }
@@ -76,13 +85,13 @@ class TimeTravelController {
     if (this.game.gameGui) {
       this.game.gameGui.gameTimeChanged = true;
     }
-    this.timer.suspend?.();
+    timer.suspend?.();
     this.history?.pause?.();
     this._lastTime = performance.now();
     this._reverseCarryMs = 0;
     const loop = (now) => {
       if (!this._reverseActive) return;
-      const frameTime = this.timer.frameTime || this.timer.TIME_PER_FRAME_MS || 60;
+      const frameTime = timer.frameTime || timer.TIME_PER_FRAME_MS || 60;
       let delta = (now - this._lastTime) + this._reverseCarryMs;
       if (delta >= frameTime) {
         const rawSteps = Math.floor(delta / frameTime);
@@ -102,14 +111,15 @@ class TimeTravelController {
 
   stopReverse() {
     if (!this._reverseActive) return;
+    const timer = this._resolveTimer();
     this._reverseActive = false;
     if (this._reverseRaf) {
       window.cancelAnimationFrame(this._reverseRaf);
       this._reverseRaf = 0;
     }
     this._reverseCarryMs = 0;
-    if (this._resumeForward) {
-      this.history?.truncateAfter?.(this.timer.tickIndex);
+    if (this._resumeForward && timer) {
+      this.history?.truncateAfter?.(timer.tickIndex);
     }
     this.history?.resume?.();
     this.playbackDirection = 1;
@@ -122,7 +132,7 @@ class TimeTravelController {
     }
     if (this._resumeForward) {
       this._resumeForward = false;
-      this.timer.continue?.();
+      timer?.continue?.();
     }
   }
 

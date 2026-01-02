@@ -88,7 +88,7 @@ class GameView extends BaseLogger {
     this._midiMapping = null;
     this._midiBaseConfig = null;
     this._midiSchemaHash = null;
-    this.midiEnabled = true;
+    this.midiEnabled = false;
 
     this.includeSavedLevels = false;
     this.autoExitEditorOnSelect = false;

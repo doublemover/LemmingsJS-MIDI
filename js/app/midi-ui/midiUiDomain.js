@@ -81,6 +81,9 @@ const TRAP_SFX_IDS = new Set([
   SoundEffectIds.TRAP_TEN_TON,
   SoundEffectIds.TRAP_BEAR
 ]);
+const EXCLUDED_SFX_IDS = new Set([
+  SoundEffectIds.UNKNOWN_0B
+]);
 const SFX_NAME_BY_ID = new Map(
   Object.entries(SoundEffectIds)
     .filter(([, value]) => Number.isFinite(value) && value > 0)
@@ -249,6 +252,7 @@ export {
   EXCLUDED_TRIGGER_NAMES,
   TRIGGER_NAME_BY_VALUE,
   TRAP_SFX_IDS,
+  EXCLUDED_SFX_IDS,
   SFX_NAME_BY_ID,
   collectTriggerTypes,
   resolveAvailableSfxIds,

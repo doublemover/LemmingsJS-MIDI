@@ -8,6 +8,50 @@ import { OddTableReader } from '../data/OddTableReader.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { VGASpecReader } from '../data/VGASpecReader.js';
 
+const mergeLevelProperties = (baseProperties, oddProperties) => {
+  if (!oddProperties) return baseProperties;
+
+  const merged = {
+    levelName: baseProperties.levelName,
+    releaseRate: baseProperties.releaseRate,
+    releaseCount: baseProperties.releaseCount,
+    needCount: baseProperties.needCount,
+    timeLimit: baseProperties.timeLimit,
+    skills: Array.isArray(baseProperties.skills)
+      ? baseProperties.skills.slice()
+      : []
+  };
+
+  if (typeof oddProperties.levelName === 'string' &&
+      oddProperties.levelName.length > 0) {
+    merged.levelName = oddProperties.levelName;
+  }
+
+  if (Number.isFinite(oddProperties.releaseRate)) {
+    merged.releaseRate = oddProperties.releaseRate;
+  }
+  if (Number.isFinite(oddProperties.releaseCount)) {
+    merged.releaseCount = oddProperties.releaseCount;
+  }
+  if (Number.isFinite(oddProperties.needCount)) {
+    merged.needCount = oddProperties.needCount;
+  }
+  if (Number.isFinite(oddProperties.timeLimit)) {
+    merged.timeLimit = oddProperties.timeLimit;
+  }
+
+  if (Array.isArray(oddProperties.skills)) {
+    const maxLen = Math.max(merged.skills.length, oddProperties.skills.length);
+    if (merged.skills.length < maxLen) merged.skills.length = maxLen;
+    for (let i = 0; i < maxLen; i++) {
+      const value = oddProperties.skills[i];
+      if (Number.isFinite(value)) merged.skills[i] = value;
+    }
+  }
+
+  return merged;
+};
+
 class LevelLoader {
   constructor(fileProvider, config) {
     this.fileProvider = fileProvider;
@@ -56,11 +100,13 @@ class LevelLoader {
     level.isSuperLemming       = levelReader.isSuperLemming;
     level.mechanics            = this.config.mechanics;
 
-    let levelProperties        = levelReader.levelProperties;
-    if (useOddTable && oddBuf) {
+    const baseProperties       = levelReader.levelProperties;
+    let oddProperties          = null;
+    if (useOddTable && oddBuf && oddBuf.length > 0) {
       const oddTable           = new OddTableReader(oddBuf);
-      levelProperties          = oddTable.getLevelProperties(levelInfo.levelNumber);
+      oddProperties            = oddTable.getLevelProperties(levelInfo.levelNumber);
     }
+    const levelProperties      = mergeLevelProperties(baseProperties, oddProperties);
 
     level.name         = levelProperties.levelName;
     level.releaseRate  = levelProperties.releaseRate;
