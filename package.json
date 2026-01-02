@@ -9,6 +9,7 @@
   },
   "scripts": {
     "start": "http-server --cors=*",
+    "start-https": "http-server --cors=* -S -C certs/localhost.pem -K certs/localhost-key.pem",
     "check-undefined": "node scripts/check-undefined.js",
     "test": "node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
@@ -17,6 +18,9 @@
     "test-tools": "mocha \"test/tools/*.test.js\"",
     "test-offline-tools": "node scripts/runTests.js offline-tools",
     "test-editor": "mocha \"test/editor/*.test.js\"",
+    "test-e2e": "playwright test",
+    "test-e2e:ui": "playwright test --ui",
+    "test-e2e:install": "playwright install chromium",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-editor": "cross-env C8_FORK=1 c8 --include=js/editor/** --check-coverage --lines 100 --statements 100 --functions 100 --branches 100 mocha \"test/editor/*.test.js\"",
     "coverage-report": "npx c8 report --reporter=html",
@@ -68,6 +72,7 @@
     "node": ">=20"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@sinonjs/fake-timers": "^14.0.0",
     "acorn": "^8.14.1",
     "adm-zip": "^0.5.16",

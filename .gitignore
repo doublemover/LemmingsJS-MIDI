@@ -31,3 +31,5 @@ Thumbs.db
 *.tap
 test/processhtmlfile.test.js
 test/processhtmlfile.test.js
+playwright-report/
+test-results/
