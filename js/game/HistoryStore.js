@@ -1578,4 +1578,12 @@ class HistoryStore {
   }
 }
 
-export { HistoryStore };
+const __test__ = {
+  createLemmingState,
+  cloneLemmingState,
+  ensureLemmingCapacity,
+  snapshotLemming,
+  applyLemmingSnapshot
+};
+
+export { HistoryStore, __test__ };

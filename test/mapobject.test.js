@@ -53,6 +53,28 @@ describe('MapObject', function () {
     expect(anim.isFinished).to.equal(false);
   });
 
+  it('records animation changes when history is available', function () {
+    const records = [];
+    globalThis.lemmings = { game: { history: {
+      recordObjectAnimation(obj, prev, next) {
+        records.push({ obj, prev, next });
+      }
+    } } };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(false);
+    const anim = new Animation();
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, anim);
+    anim.firstFrameIndex = 12;
+    anim.isFinished = true;
+
+    mo.onTrigger(20);
+
+    expect(records).to.have.length(1);
+    expect(records[0].prev.firstFrameIndex).to.equal(12);
+    expect(records[0].next.firstFrameIndex).to.equal(20);
+    expect(records[0].next.isFinished).to.equal(false);
+  });
+
   it('draws frames using the provided palette', function () {
     MapObject._frameCache = new WeakMap();
     const palette = new ColorPalette();

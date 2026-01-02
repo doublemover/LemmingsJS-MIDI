@@ -17,6 +17,131 @@ class MockLogHandler {
 }
 let origBR;
 let origLog;
+let origIndexedDb;
+
+const createIndexedDb = ({ failOpen = false } = {}) => {
+  const stores = new Map();
+  const keyPaths = new Map();
+  const indexes = new Map();
+  const objectStoreNames = {
+    contains(name) {
+      return stores.has(name);
+    }
+  };
+
+  const makeRequest = (result, error = null) => {
+    const request = { result: undefined, error };
+    setTimeout(() => {
+      if (error) {
+        request.onerror?.();
+      } else {
+        request.result = result;
+        request.onsuccess?.();
+      }
+    }, 0);
+    return request;
+  };
+
+  const makeCursorRequest = (map, field) => {
+    const entries = Array.from(map.values())
+      .slice()
+      .sort((a, b) => (a?.[field] ?? 0) - (b?.[field] ?? 0));
+    let idx = 0;
+    const request = {};
+    const cursor = {
+      get value() {
+        return entries[idx];
+      },
+      continue() {
+        idx += 1;
+        trigger();
+      }
+    };
+    const trigger = () => {
+      setTimeout(() => {
+        request.result = idx < entries.length ? cursor : null;
+        request.onsuccess?.();
+      }, 0);
+    };
+    trigger();
+    return request;
+  };
+
+  const ensureStore = (name, keyPath = 'id') => {
+    if (!stores.has(name)) stores.set(name, new Map());
+    if (!keyPaths.has(name)) keyPaths.set(name, keyPath);
+    if (!indexes.has(name)) indexes.set(name, new Map());
+  };
+
+  const createStore = (name) => {
+    ensureStore(name);
+    const map = stores.get(name);
+    const keyPath = keyPaths.get(name);
+    const indexMap = indexes.get(name);
+    return {
+      get(key) {
+        return makeRequest(map.get(key));
+      },
+      put(value) {
+        const key = keyPath ? value?.[keyPath] : value?.key;
+        map.set(key, value);
+        return makeRequest(value);
+      },
+      delete(key) {
+        map.delete(key);
+        return makeRequest(undefined);
+      },
+      createIndex(indexName, field) {
+        indexMap.set(indexName, { field });
+        return {};
+      },
+      index(indexName) {
+        const idx = indexMap.get(indexName);
+        return {
+          openCursor() {
+            return makeCursorRequest(map, idx?.field);
+          }
+        };
+      }
+    };
+  };
+
+  const db = {
+    objectStoreNames,
+    createObjectStore(name, options = {}) {
+      ensureStore(name, options.keyPath);
+      return createStore(name);
+    },
+    transaction(storeNames) {
+      const names = Array.isArray(storeNames) ? storeNames : [storeNames];
+      names.forEach((name) => ensureStore(name));
+      return {
+        objectStore(name) {
+          return createStore(name);
+        }
+      };
+    },
+    close() {}
+  };
+
+  return {
+    open() {
+      const request = {};
+      setTimeout(() => {
+        if (failOpen) {
+          request.error = new Error('indexeddb open failed');
+          request.onerror?.();
+          return;
+        }
+        request.result = db;
+        request.onupgradeneeded?.();
+        request.onsuccess?.();
+      }, 0);
+      return request;
+    },
+    _stores: stores
+  };
+};
 
 describe('FileProvider', function () {
   const rootPath = '/base/';
@@ -28,6 +153,7 @@ describe('FileProvider', function () {
   beforeEach(function () {
     origBR = Lemmings.BinaryReader;
     origLog = Lemmings.LogHandler;
+    origIndexedDb = global.indexedDB;
     setDependency('BinaryReader', MockBinaryReader);
     setDependency('LogHandler', MockLogHandler);
     provider = new FileProvider(rootPath);
@@ -73,6 +199,11 @@ describe('FileProvider', function () {
   afterEach(function () {
     restore();
     delete global.localStorage;
+    if (origIndexedDb === undefined) {
+      delete global.indexedDB;
+    } else {
+      global.indexedDB = origIndexedDb;
+    }
     if (origFetch) {
       global.fetch = origFetch;
     }
@@ -450,7 +581,7 @@ describe('FileProvider', function () {
     assert.strictEqual(result, null);
   });
 
-  it('_fetchHead returns headers and swallows errors', async function () {
+  it('_fetchHead returns headers and swallows errors', async function () {      
     global.fetch = async () => {
       return { headers: { get: key => ({ ETag: 'v', 'Last-Modified': 'm' }[key]) } };
     };
@@ -461,10 +592,280 @@ describe('FileProvider', function () {
     assert.strictEqual(failure, null);
   });
 
+  it('skips indexedDB entries with mismatched types or missing payloads', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    const entries = idb._stores.get('entries');
+    const payloads = idb._stores.get('payloads');
+    const url = rootPath + 'cached.bin';
+    entries.set(url, { url, type: 'text', size: 1, lastAccess: 1 });
+    payloads.set(url, { url, data: new ArrayBuffer(1) });
+
+    const mismatch = await provider._loadFromIndexedDb(url, 'binary', 'data');
+    assert.strictEqual(mismatch, null);
+
+    entries.set(url, { url, type: 'binary', size: 1, lastAccess: 1 });
+    payloads.delete(url);
+    const missing = await provider._loadFromIndexedDb(url, 'binary', 'data');
+    assert.strictEqual(missing, null);
+  });
+
+  it('loads text payloads from indexedDB', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    const entries = idb._stores.get('entries');
+    const payloads = idb._stores.get('payloads');
+    const url = rootPath + 'cached.txt';
+    entries.set(url, { url, type: 'text', size: 4, lastAccess: 1 });
+    payloads.set(url, { url, data: 'ok' });
+
+    const result = await provider._loadFromIndexedDb(url, 'text');
+    assert.strictEqual(result.value, 'ok');
+  });
+
+  it('estimates entry sizes for buffers, views, and strings', function () {
+    const buf = new ArrayBuffer(4);
+    assert.strictEqual(provider._estimateEntrySize({ type: 'binary', data: buf }), 4);
+    assert.strictEqual(provider._estimateEntrySize({
+      type: 'binary',
+      data: new Uint8Array([1, 2])
+    }), 2);
+    assert.ok(provider._estimateEntrySize({ type: 'text', data: 'abc' }) >= 3);
+    assert.strictEqual(provider._estimateEntrySize(null), 0);
+  });
+
+  it('handles localStorage fallbacks and evictions', function () {
+    delete global.localStorage;
+    assert.deepStrictEqual(provider._getLocalStorageEntries(), []);
+    assert.strictEqual(provider._storeInLocalStorage('url', { type: 'text', data: 'x' }), false);
+
+    const store = new Map([
+      ['lem-cache:' + rootPath + 'a', JSON.stringify({ lastAccess: 1, size: 20 })],
+      ['lem-cache:' + rootPath + 'b', JSON.stringify({ lastAccess: 2, size: 20 })]
+    ]);
+    const removed = [];
+    global.localStorage = {
+      length: store.size,
+      key(i) { return Array.from(store.keys())[i] ?? null; },
+      getItem(key) { return store.get(key) ?? null; },
+      removeItem(key) { removed.push(key); store.delete(key); },
+      setItem(key, value) { store.set(key, value); }
+    };
+    provider._evictLocalStorage(4 * 1024 * 1024);
+    assert.strictEqual(removed.length, 2);
+  });
+
+  it('returns null when localStorage entries are wrong type', function () {
+    const url = rootPath + 'wrong.bin';
+    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({ type: 'text', data: 'ok' }));
+    const result = provider._loadFromLocalStorage(url, 'binary', 'data');
+    assert.strictEqual(result, null);
+  });
+
+  it('uses indexedDB cache when available', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    const url = provider._buildUrl('data', 'cached.bin');
+    const buffer = new ArrayBuffer(4);
+    await provider._storeInIndexedDb(url, { type: 'binary', data: buffer, hash: 'h' });
+
+    const result = await provider.loadBinary('data', 'cached.bin');
+    assert.ok(result instanceof MockBinaryReader);
+    assert.strictEqual(requests.length, 0);
+  });
+
+  it('disables indexedDB on open errors', async function () {
+    global.indexedDB = createIndexedDb({ failOpen: true });
+    provider = new FileProvider(rootPath);
+    const db = await provider._openIndexedDb();
+    assert.strictEqual(db, null);
+    assert.strictEqual(provider._idbDisabled, true);
+  });
+
+  it('enumerates localStorage entries using key/length', function () {
+    const store = new Map([
+      ['lem-cache:' + rootPath + 'a.txt', 'a'],
+      ['other', 'skip']
+    ]);
+    global.localStorage = {
+      length: store.size,
+      key(i) { return Array.from(store.keys())[i] ?? null; },
+      getItem(key) { return store.get(key) ?? null; },
+      removeItem(key) { store.delete(key); },
+      setItem(key, value) { store.set(key, value); }
+    };
+    const entries = provider._getLocalStorageEntries();
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].key, 'lem-cache:' + rootPath + 'a.txt');
+  });
+
+  it('prunes indexedDB entries when over the limit', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    const entries = idb._stores.get('entries');
+    const payloads = idb._stores.get('payloads');
+    const meta = idb._stores.get('meta');
+    const urlA = rootPath + 'a.bin';
+    const urlB = rootPath + 'b.bin';
+    entries.set(urlA, { url: urlA, size: 30 * 1024 * 1024, lastAccess: 1 });
+    entries.set(urlB, { url: urlB, size: 30 * 1024 * 1024, lastAccess: 2 });
+    payloads.set(urlA, { url: urlA, data: new ArrayBuffer(1) });
+    payloads.set(urlB, { url: urlB, data: new ArrayBuffer(1) });
+    meta.set('totalBytes', { key: 'totalBytes', value: 60 * 1024 * 1024 });
+
+    await provider._pruneIndexedDb(60 * 1024 * 1024);
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    assert.ok(entries.size < 2);
+    const metaEntry = meta.get('totalBytes');
+    assert.ok(metaEntry.value <= 60 * 1024 * 1024);
+  });
+
   it('_storeInLocalStorage ignores write errors', function () {
     global.localStorage.setItem = () => { throw new Error('nope'); };
     const result = provider._storeInLocalStorage('url', { a: 1 });
     assert.strictEqual(result, false);
+  });
+
+  it('falls back to localStorage when indexedDB misses', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+
+    const binUrl = provider._buildUrl('data', 'fallback.bin');
+    const buf = Uint8Array.from([1]).buffer;
+    global.localStorage.setItem('lem-cache:' + binUrl, JSON.stringify({
+      type: 'binary',
+      data: provider._arrayBufferToBase64(buf)
+    }));
+
+    const bin = await provider.loadBinary('data', 'fallback.bin');
+    assert.ok(bin instanceof MockBinaryReader);
+    assert.strictEqual(requests.length, 0);
+
+    const textUrl = rootPath + 'fallback.txt';
+    global.localStorage.setItem('lem-cache:' + textUrl, JSON.stringify({
+      type: 'text',
+      data: 'hello'
+    }));
+    const text = await provider.loadString(textUrl);
+    assert.strictEqual(text, 'hello');
+  });
+
+  it('handles indexedDB failures in load and touch paths', async function () {
+    provider._openIndexedDb = async () => null;
+    const missing = await provider._loadFromIndexedDb('url', 'text');
+    assert.strictEqual(missing, null);
+    await provider._touchIndexedDbEntry('url', { url: 'url' });
+
+    provider._openIndexedDb = async () => ({ transaction() { throw new Error('fail'); } });
+    const failed = await provider._loadFromIndexedDb('url', 'text');
+    assert.strictEqual(failed, null);
+    await provider._touchIndexedDbEntry('url', { url: 'url' });
+  });
+
+  it('updates indexedDB sizes when entries already exist', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    const entries = idb._stores.get('entries');
+    const meta = idb._stores.get('meta');
+    const url = rootPath + 'cached.bin';
+    entries.set(url, { url, type: 'binary', size: 10, lastAccess: 1 });
+    meta.set('totalBytes', { key: 'totalBytes', value: 10 });
+
+    const stored = await provider._storeInIndexedDb(url, { type: 'binary', data: new ArrayBuffer(2) });
+    assert.strictEqual(stored, true);
+    const updated = meta.get('totalBytes');
+    assert.strictEqual(updated.value, 2);
+  });
+
+  it('returns false when indexedDB storage fails', async function () {
+    provider._openIndexedDb = async () => ({ transaction() { throw new Error('fail'); } });
+    const stored = await provider._storeInIndexedDb('url', { type: 'text', data: 'x' });
+    assert.strictEqual(stored, false);
+  });
+
+  it('prunes indexedDB only when over the limit', async function () {
+    provider._openIndexedDb = async () => null;
+    await provider._pruneIndexedDb(10);
+
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    await provider._pruneIndexedDb(1024);
+  });
+
+  it('estimates sizes without TextEncoder and ignores unknown data', function () {
+    const orig = global.TextEncoder;
+    global.TextEncoder = undefined;
+    assert.strictEqual(provider._estimateTextSize('abcd'), 4);
+    global.TextEncoder = orig;
+
+    assert.strictEqual(provider._estimateEntrySize({ type: 'binary', data: 5 }), 0);
+  });
+
+  it('enumerates localStorage entries using store.forEach', function () {
+    const store = new Map([
+      ['lem-cache:' + rootPath + 'a.txt', 'a'],
+      ['other', 'skip']
+    ]);
+    global.localStorage = { store };
+    const entries = provider._getLocalStorageEntries();
+    assert.strictEqual(entries.length, 1);
+    assert.strictEqual(entries[0].key, 'lem-cache:' + rootPath + 'a.txt');
+  });
+
+  it('evicts localStorage safely with malformed entries', function () {
+    const store = new Map([
+      ['lem-cache:' + rootPath + 'bad', '{bad'],
+      ['lem-cache:' + rootPath + 'empty', null]
+    ]);
+    global.localStorage = {
+      length: store.size,
+      key(i) { return Array.from(store.keys())[i] ?? null; },
+      getItem(key) { return store.get(key) ?? null; },
+      removeItem(key) { store.delete(key); },
+      setItem(key, value) { store.set(key, value); }
+    };
+
+    const usage = provider._getLocalStorageUsage();
+    provider._evictLocalStorage();
+    assert.strictEqual(provider._cacheStats.localStorageBytes, usage);
+  });
+
+  it('handles missing localStorage in touch and load paths', function () {
+    delete global.localStorage;
+    assert.strictEqual(provider._loadFromLocalStorage('url', 'text'), null);
+    provider._touchLocalStorageEntry('url', null);
+  });
+
+  it('logs and returns false when localStorage serialization fails', function () {
+    const original = provider._serializeLocalStorageEntry;
+    provider._serializeLocalStorageEntry = () => { throw new Error('fail'); };
+    const logs = [];
+    const origLog = console.log;
+    console.log = (...args) => logs.push(args);
+    const result = provider._storeInLocalStorage('url', { type: 'text', data: 'x' });
+    console.log = origLog;
+    provider._serializeLocalStorageEntry = original;
+    assert.strictEqual(result, false);
+    assert.ok(logs.length > 0);
+  });
+
+  it('serializes localStorage entries with default access times', function () {
+    const serialized = provider._serializeLocalStorageEntry({ type: 'text', data: 'x' });
+    assert.ok(serialized.entry.lastAccess > 0);
+    assert.ok(serialized.entry.size > 0);
   });
 
 });

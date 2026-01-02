@@ -106,6 +106,40 @@ describe('MidiEventRouter', function() {
     expect(sent[0].reverse).to.equal(true);
   });
 
+  it('ignores events when disabled or output is missing', function() {
+    const disabled = new MidiEventRouter(new MidiMapping({ enabled: false }));
+    const sent = [];
+    disabled.scheduler = makeSchedulerStub(sent);
+    disabled.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    disabled._onEvent({ sfxId: 1, tick: 1 });
+    expect(sent.length).to.equal(0);
+
+    const noOutput = new MidiEventRouter(new MidiMapping({ enabled: true }));
+    noOutput.scheduler = makeSchedulerStub(sent);
+    noOutput.scheduler.output = null;
+    noOutput.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    noOutput._onEvent({ sfxId: 1, tick: 1 });
+    noOutput._onEvent({});
+    expect(sent.length).to.equal(0);
+  });
+
+  it('schedules ahead when event time is behind', function() {
+    const mapping = new MidiMapping({
+      timing: { scheduleAheadMs: 50 },
+      limits: { maxEventsPerSecond: 1000 }
+    });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    router._nowMs = () => 1000;
+    router._resolveScheduleBase = () => 900;
+
+    router._onEvent({ sfxId: 1, tick: 1, timeMs: 0 });
+
+    expect(sent[0].timeMs).to.equal(1050);
+  });
+
   it('enforces per-tick and per-second limits', function() {
     const mapping = new MidiMapping({
       limits: { maxEventsPerTick: 1, maxEventsPerSecond: 2 }
@@ -411,6 +445,29 @@ describe('MidiEventRouter', function() {
     expect(busB.onEvent.handlers.size).to.equal(1);
     router.detach();
     expect(busB.onEvent.handlers.size).to.equal(0);
+  });
+
+  it('accepts plain mapping configs and resets context defaults', function() {
+    const router = new MidiEventRouter();
+    let configured = null;
+    router.scheduler = { setConfig(cfg) { configured = cfg; } };
+    router.setMapping({ timing: { bpmBase: 90 } });
+    expect(router.mapping).to.be.instanceOf(MidiMapping);
+    expect(configured).to.equal(router.mapping.config);
+
+    const bus = { onEvent: new EventHandler() };
+    router.attach(bus, null);
+    expect(router.context).to.eql({});
+    router.detach();
+  });
+
+  it('resolves arp keys with fallback coordinates', function() {
+    const router = new MidiEventRouter();
+    const key = router._resolveArpKey(
+      { triggerType: 7, sfxId: 1, x: NaN },
+      { arp: { independent: true } }
+    );
+    expect(key).to.equal('trigger:7:1:x:y');
   });
 
   it('emits performance measurements when enabled', function() {
@@ -1362,6 +1419,29 @@ describe('MidiEventRouter', function() {
     boostRouter._onEvent({ sfxId: 1, tick: 1, tps: 50, timeMs: 0 });
   });
 
+  it('onEvent fills defaults when repeat boosts are missing', function() {
+    const mapping = new MidiMapping({
+      enabled: true,
+      limits: null,
+      timing: null,
+      repeat: null,
+      triggers: null,
+      sfx: { '1': { note: 60, repeat: { maxRepeats: 2, windowBeats: 1 } } }
+    });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.context = { level: { width: 200, height: 100 } };
+    router.mapping.mapEvent = () => ({ note: 60 });
+    router._nowMs = () => 0;
+
+    router._onEvent({ sfxId: 1, tick: 1, triggerType: 5, timeMs: 0, tps: 50 });
+
+    expect(sent.length).to.equal(1);
+    expect(sent[0].velocity).to.equal(64);
+    expect(sent[0].durationTicks).to.equal(1);
+  });
+
   it('covers attach cleanup and tick defaults', function() {
     const mapping = new MidiMapping({ timing: { bpmBase: 10 } });
     const routerA = new MidiEventRouter(mapping);
@@ -1501,5 +1581,84 @@ describe('MidiEventRouter', function() {
     const ok = router._shouldSend({ sfxId: 3, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('byte-limit');
+  });
+
+  it('setMapping accepts MidiMapping instances', function() {
+    const mapping = new MidiMapping({ timing: { bpmBase: 90 } });
+    const router = new MidiEventRouter();
+    let configured = null;
+    router.scheduler = { setConfig(cfg) { configured = cfg; } };
+    router.setMapping(mapping);
+    expect(router.mapping).to.equal(mapping);
+    expect(configured).to.equal(mapping.config);
+  });
+
+  it('returns zero density when window ticks are disabled', function() {
+    const router = new MidiEventRouter(new MidiMapping({ density: null }));
+    expect(router._densityForEvent({ sfxId: 1, tick: 10 })).to.equal(0);
+  });
+
+  it('resolves arpeggio keys to unknown when sfxId is missing', function() {
+    const router = new MidiEventRouter();
+    const key = router._resolveArpKey({}, {});
+    expect(key).to.equal('sfx:unknown');
+  });
+
+  it('merges trigger config into sfx overrides on events', function() {
+    const mapping = new MidiMapping({
+      enabled: true,
+      limits: { maxEventsPerSecond: 1000 },
+      sfx: { '1': { velocity: 10 } },
+      triggers: { '7': { velocity: 20 } }
+    });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.scheduler.output = {};
+    let captured = null;
+    router.mapping.mapEvent = (event, context, density, sfx) => {
+      captured = sfx;
+      return { note: 60, velocity: sfx.velocity, durationTicks: 1 };
+    };
+
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50, triggerType: 7 });
+
+    expect(captured.velocity).to.equal(20);
+    expect(sent.length).to.equal(1);
+  });
+
+  it('returns zero repeat factors when repeats are disabled or invalid', function() {
+    const router = new MidiEventRouter();
+    const repeatCfg = { maxRepeats: 0, windowBeats: 0 };
+    expect(router._getRepeatFactor('sfx:1', NaN, repeatCfg, 0)).to.equal(0);
+  });
+
+  it('applies repeat defaults when velocity and duration are missing', function() {
+    const router = new MidiEventRouter();
+    const baseSpec = { note: 60 };
+
+    const velocity = router._applyRepeatTarget(
+      baseSpec,
+      [60],
+      { amount: 0.5, target: 'velocity' },
+      1
+    ).spec.velocity;
+    expect(velocity).to.equal(96);
+
+    const duration = router._applyRepeatTarget(
+      baseSpec,
+      [60],
+      { amount: 0.5, target: 'duration' },
+      1
+    ).spec.durationTicks;
+    expect(duration).to.equal(2);
+
+    const release = router._applyRepeatTarget(
+      baseSpec,
+      [60],
+      { amount: 0.5, target: 'release' },
+      1
+    ).spec.releaseVelocity;
+    expect(release).to.equal(96);
   });
 });
