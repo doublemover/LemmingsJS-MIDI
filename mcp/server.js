@@ -354,7 +354,7 @@ const InputKeysSchema = z.object({
 
 const VisionCaptureSchema = z.object({
   sessionId: z.string().min(1),
-  target: z.enum(['page', 'gameCanvas', 'guiCanvas', 'rect']).optional(),
+  target: z.enum(['page', 'gameCanvas', 'guiCanvas', 'stageCanvas', 'rect']).optional(),
   rect: RectSchema.optional(),
   format: z.enum(['png', 'jpeg', 'webp']).optional(),
   delivery: z.enum(['resource', 'inline']).optional(),
@@ -761,6 +761,8 @@ const resolveCanvasClip = (metrics, target, rect) => {
     base = metrics.gameRect;
   } else if (target === 'guiCanvas' && metrics.guiRect) {
     base = metrics.guiRect;
+  } else if (target === 'stageCanvas') {
+    base = null;
   }
 
   const baseCss = base
@@ -810,7 +812,7 @@ const captureFrame = async (session, options) => {
     clip = rect;
     width = rect?.width ?? null;
     height = rect?.height ?? null;
-  } else if (target === 'gameCanvas' || target === 'guiCanvas') {
+  } else if (target === 'gameCanvas' || target === 'guiCanvas' || target === 'stageCanvas') {
     const metrics = await resolveCanvasMetrics(session.page);
     if (!metrics) return { ok: false, reason: 'canvas_missing' };
     const resolved = resolveCanvasClip(metrics, target, rect);
@@ -989,7 +991,7 @@ const startSpectatorServer = async (session, options = {}) => {
     if (session.spectator.isCapturing) return;
     session.spectator.isCapturing = true;
     try {
-      const result = await captureFrame(session, { target: 'gameCanvas', format: 'jpeg', delivery: 'inline' });
+      const result = await captureFrame(session, { target: 'stageCanvas', format: 'jpeg', delivery: 'inline' });
       if (result.ok && result.frame?.dataBase64) {
         const payload = {
           type: 'frame',

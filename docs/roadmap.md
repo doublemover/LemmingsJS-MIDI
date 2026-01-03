@@ -67,23 +67,18 @@ Notes:
 - Touch targets: landscape by default; portrait only on larger tablets; use
   sensible gesture mappings.
 
-## Phase 4: Time travel and reverse playback
-- [ ] Determinism/RNG seeding is deferred for now.
-- [ ] Complete HistoryStore capture (keyframes + per-tick deltas for lemmings,
-  ground/steel, objects/triggers, sound events) with optional caps/warnings.
-- [ ] Finish TimeTravelController integration (seek/step, reverse loop, preserve
-  or truncate future history safely).
-- [ ] Update the minimap during reverse playback and ignore game speed changes.
-- [ ] Wire reverse MIDI replay (reverse flag + attack/release inversion; skip if
-  event history is missing).
-- [ ] Add UI indicators and controls (direction/tick HUD, input suppression,
-  benchReverse flag).
-- [ ] Add/extend tests (snapshot restore, step-backward symmetry, reverse MIDI,
-  perf guardrails).
+## Phase 4: Time travel and history coverage
+- [x] Expand HistoryStore snapshots/deltas to cover mutable gameplay state
+  (lemmings, manager, triggers, objects, ground, minimap deaths, victory,
+  skills, timer, sound events).
+- [x] Reverse playback (toggle + step) with input suppression and HUD direction
+  indicator.
+- [x] Reverse playback updates minimap deaths and emits reverse sound events.
+- [x] Ignore game speed changes during reverse playback (speedFactor remains
+  stable while rewinding).
 
 Notes:
-- HistoryStore should warn only (no hard caps yet); pick a provisional threshold
-  before the stress test data is available.
+- Determinism is explicitly out of scope for this phase.
 
 ## Phase 5: MIDI sequencing and UI
 - [ ] Iterate on the MIDI UI and mapping UX.
@@ -152,3 +147,10 @@ Notes:
 
 ## Phase 12: Broken tests
 - [ ] None recorded (last run: `npm test`).
+
+## Phase 13: Procedural endless mode (procgen)
+- [ ] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.
+- [ ] Use pack/style 2 assets for the procgen level bootstrap.
+- [ ] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
+- [ ] Implement rightmost-lemming camera tracking with clamping and smooth follow.
+- [ ] Add minimal E2E smoke coverage for procgen readiness and endless spawning.
