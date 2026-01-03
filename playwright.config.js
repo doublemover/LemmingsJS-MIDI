@@ -13,7 +13,7 @@ export default defineConfig({
     ignoreHTTPSErrors: true,
     permissions: ['midi'],
     launchOptions: {
-      args: ['--allow-insecure-localhost']
+      args: ['--allow-insecure-localhost', '--ignore-certificate-errors']
     },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',

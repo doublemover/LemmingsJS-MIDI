@@ -175,6 +175,15 @@ canvas {
 .control-panel * {
     overflow: visible;
     box-sizing: border-box;
+    max-width: 100%;
+}
+
+.control-panel summary {
+    list-style: none;
+}
+
+.control-panel summary::-webkit-details-marker {
+    display: none;
 }
 
 body.midi-disabled #controlRight {

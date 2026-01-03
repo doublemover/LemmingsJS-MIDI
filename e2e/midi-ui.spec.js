@@ -53,6 +53,12 @@ test('MIDI panels match layout snapshots', async ({ page }) => {
   const rightPanel = page.locator('#controlRight');
   await expect(leftPanel).toHaveScreenshot('midi-left-default.png');
   await expect(rightPanel).toHaveScreenshot('midi-right-events.png');
+  await page.locator('[data-tab-target="midiTabTriggers"]').click();
+  await expect(page.locator('#midiTabTriggers')).toHaveClass(/active/);
+  await expect(rightPanel).toHaveScreenshot('midi-right-triggers.png');
+  await page.locator('[data-tab-target="midiTabAdsr"]').click();
+  await expect(page.locator('#midiTabAdsr')).toHaveClass(/active/);
+  await expect(rightPanel).toHaveScreenshot('midi-right-adsr.png');
   await page.locator('[data-tab-target="midiTabGlobalFx"]').click();
   await expect(page.locator('#midiTabGlobalFx')).toHaveClass(/active/);
   await expect(leftPanel).toHaveScreenshot('midi-left-global-fx.png');
@@ -73,9 +79,21 @@ test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) =
     const metrics = await page.evaluate((sel) => {
       const panel = document.querySelector(sel);
       if (!panel) return null;
-      return { scrollHeight: panel.scrollHeight, clientHeight: panel.clientHeight };
+      const styles = window.getComputedStyle(panel);
+      const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
+      const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
+      return {
+        scrollHeight: panel.scrollHeight,
+        clientHeight: panel.clientHeight,
+        scrollWidth: panel.scrollWidth,
+        clientWidth: panel.clientWidth,
+        paddingX: paddingLeft + paddingRight
+      };
     }, selector);
     if (!metrics) continue;
+    expect(metrics.scrollWidth).toBeLessThanOrEqual(
+      metrics.clientWidth + metrics.paddingX + 2
+    );
     if (metrics.scrollHeight > metrics.clientHeight + 2) {
       testInfo.annotations.push({
         type: 'warning',
