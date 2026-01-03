@@ -2,7 +2,7 @@
 
 This roadmap consolidates outstanding items from the README (In Progress,
 Roadmap, Bugs and Misc) plus the current workstreams. It is the single place to
-track ongoing and future work.
+track ongoing and future work. Keep this roadmap current as work lands.
 
 ## Phase 1: E2E harness adoption and baseline testing
 - [ ] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
@@ -10,7 +10,18 @@ track ongoing and future work.
 - [ ] Add harness-backed regression tests for input and view controls.
 - [ ] Add harness-backed MIDI UI tests once permission flows are stable.
 
+Notes:
+- "Ready" means the level is loaded, everything is visible and interactable, and
+  the game can advance without error.
+- Saved levels always follow default packs under a separate group label, sorted
+  by name then time.
+- Input/view regression should cover all controls.
+- MIDI UI tests should be UI-only when reliable MIDI access is not available.
+- Define and enforce invariants (state hash symmetry, lemming counts/positions,
+  minimap state, command log, sound events).
+
 ## Phase 2: Editor testing and completion (multi-phase)
+- [ ] Phase 2.0: Fix editor page layout (game view too low, side panels too large, top of game should be at top of window just like the game page)
 - [ ] Phase 2.1: Verify core editor tools plus overlay/inspector coverage
   (palette, placement, selection, brush, triggers, steel).
 - [ ] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
@@ -23,21 +34,41 @@ track ongoing and future work.
   and style registry coverage for terrain/gadgets.
 - [ ] Phase 2.6: Ensure steel rectangle editing and resizable gadgets behave
   correctly; enforce classic limits.
-- [ ] Phase 2.7: Add/extend `.nxlv` round-trip tests and editor runtime mapping
-  validation (blank level defaults, preview mapping, trigger behavior).
+- [ ] Phase 2.7: Defer `.nxlv` round-trip tests/unknown section handling for now;
+  focus on editor runtime mapping validation (blank level defaults, preview
+  mapping, trigger behavior).
 - [ ] Phase 2.8: Fix editor view jumps (layout/canvas offsets, scale, event
   ordering).
 - [ ] Phase 2.9: Polish UI/UX and editor documentation.
 
+Notes:
+- Cover all tools and inspector fields.
+- Show the saved-level selector only when saved levels exist; ordering/naming
+  is not important.
+- Brush grid sizes: 1/2/4/8/16/32; skip if assets are not tileable.
+- Define edit-mode toggle expectations (pause state, HUD visibility, command
+  suppression, playtest lock).
+- Clarify steel behavior/limits (mask rules, overlap handling, limit enforcement).
+- View-jump repro steps pending; do a brief exploration first.
+- Keep editor docs brief.
+
 ## Phase 3: UX, input, and presentation
-- [ ] Add a shortcut overlay toggle (game/editor) that fades in/out (0.25 ms
-  requested; confirm duration) and is easy to dismiss.
+- [ ] Add a shortcut overlay toggle (game/editor) that fades in/out and is easy
+  to dismiss.
 - [ ] Fix keyboard view navigation acceleration (too fast at either speed).
 - [ ] Robust touch controls and ensure scaling on iPad.
-- [ ] Improve the website (layout, responsiveness, onboarding, PWA polish).
+- [ ] Improve the website (summary metadata for social embeds).
+
+Notes:
+- Overlay fade duration is 250 ms; use F1 and ? if possible; separate overlays
+  for game and editor.
+- Keyboard view acceleration should be smooth with a low max speed cap; Shift
+  should still feel useful for faster pan.
+- Touch targets: landscape by default; portrait only on larger tablets; use
+  sensible gesture mappings.
 
 ## Phase 4: Time travel and reverse playback
-- [ ] Finalize determinism baseline (seeded RNG + stored seed, tick-based timing).
+- [ ] Determinism/RNG seeding is deferred for now.
 - [ ] Complete HistoryStore capture (keyframes + per-tick deltas for lemmings,
   ground/steel, objects/triggers, sound events) with optional caps/warnings.
 - [ ] Finish TimeTravelController integration (seek/step, reverse loop, preserve
@@ -47,8 +78,12 @@ track ongoing and future work.
   event history is missing).
 - [ ] Add UI indicators and controls (direction/tick HUD, input suppression,
   benchReverse flag).
-- [ ] Add/extend tests (determinism hashes, snapshot restore, step-backward
-  symmetry, reverse MIDI, perf guardrails).
+- [ ] Add/extend tests (snapshot restore, step-backward symmetry, reverse MIDI,
+  perf guardrails).
+
+Notes:
+- HistoryStore should warn only (no hard caps yet); pick a provisional threshold
+  before the stress test data is available.
 
 ## Phase 5: MIDI sequencing and UI
 - [ ] Iterate on the MIDI UI and mapping UX.
@@ -56,14 +91,16 @@ track ongoing and future work.
 - [ ] Ability to place flags to trigger MIDI events.
 
 ## Phase 6: Performance and benchmarks
+- [ ] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
 - [ ] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for
-  effectiveness and necessity.
+  effectiveness and necessity. 
 - [ ] Standalone updated performance benchmark.
 - [ ] Standalone stress test for history memory (ticks at 30x/60x/120x until
   exhaustion).
 - [ ] Investigate GameTimer catchup slowdown as a perf spike failsafe.
 
 ## Phase 7: Gameplay parity, packs, and assets
+- [ ] Find external references that confirm these things before implementing
 - [ ] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
   consider built-stairs handling.
 - [ ] Traps: add missing squish, fix generic trap using splat death.
