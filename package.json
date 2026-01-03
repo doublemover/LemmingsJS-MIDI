@@ -19,6 +19,7 @@
     "test-offline-tools": "node scripts/runTests.js offline-tools",
     "test-editor": "mocha \"test/editor/*.test.js\"",
     "test-e2e": "playwright test",
+    "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor.spec.js",
     "test-e2e:ui": "playwright test --ui",
     "test-e2e:install": "playwright install chromium",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
