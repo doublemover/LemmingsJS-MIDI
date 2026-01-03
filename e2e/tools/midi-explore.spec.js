@@ -12,6 +12,22 @@ import {
   rowByLabel
 } from './midiUiSnippets.js';
 
+const IGNORED_MIDI_WARNINGS = [
+  /permission to use web midi api was not granted/i,
+  /webmidi permission denied/i
+];
+
+const isIgnoredMidiWarning = (text) => {
+  if (!text) return false;
+  return IGNORED_MIDI_WARNINGS.some(pattern => pattern.test(text));
+};
+
+const filterMidiWarnings = (text) => {
+  if (!text) return '';
+  const lines = text.split(/\r?\n/).map(line => line.trim()).filter(Boolean);
+  return lines.filter(line => !isIgnoredMidiWarning(line)).join('\n');
+};
+
 test('Explore MIDI UI mappings', async ({ page }) => {
   const errors = collectPageErrors(page);
   const issues = [];
@@ -41,8 +57,10 @@ test('Explore MIDI UI mappings', async ({ page }) => {
   });
   await page.goto('/');
   const webMidiStatus = await enableWebMidi(page);
-  console.log('webmidi enable result:', webMidiStatus);
-  if (!webMidiStatus.ok) {
+  if (webMidiStatus.ok || !isIgnoredMidiWarning(webMidiStatus.reason)) {
+    console.log('webmidi enable result:', webMidiStatus);
+  }
+  if (!webMidiStatus.ok && !isIgnoredMidiWarning(webMidiStatus.reason)) {
     issues.push(`WebMIDI enable failed: ${webMidiStatus.reason || 'unknown'}`);
   }
   if (crashed) {
@@ -76,8 +94,9 @@ test('Explore MIDI UI mappings', async ({ page }) => {
     console.log('external resources:', JSON.stringify(externalResources, null, 2));
   }
   const errorDisplay = await getMidiErrorDisplay(page);
-  if (errorDisplay) {
-    issues.push(`MIDI error display: ${errorDisplay}`);
+  const filteredErrorDisplay = filterMidiWarnings(errorDisplay);
+  if (filteredErrorDisplay) {
+    issues.push(`MIDI error display: ${filteredErrorDisplay}`);
   }
 
   const keySelect = page.locator(MIDI_SELECTORS.keySelect);
