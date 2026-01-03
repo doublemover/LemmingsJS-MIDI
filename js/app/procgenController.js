@@ -169,9 +169,10 @@ class ProcgenController {
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
     this._builderBurst = {
       remaining: this._randInt(1, 5),
-      nextDelay: this._randInt(1, 20),
-      dueTick: tick + this._randInt(1, 20)
+      nextDelay: this._randInt(10, 20),
+      dueTick: 0
     };
+    this._builderBurst.dueTick = tick + this._builderBurst.nextDelay;
   }
 
   _processBuilderBurst() {
@@ -187,7 +188,7 @@ class ProcgenController {
         this._builderBurst = null;
         return;
       }
-      burst.nextDelay += this._randInt(1, 5);
+      burst.nextDelay = Math.round(burst.nextDelay * 2) + this._randInt(1, 5);
     }
     burst.dueTick = tick + burst.nextDelay;
   }
@@ -354,7 +355,14 @@ class ProcgenController {
     const transition = this._colorTransition;
     transition.current += transition.step;
     transition.remaining -= 1;
-    let next = Math.round(transition.current);
+    const progress = transition.total > 0
+      ? (transition.total - transition.remaining) / transition.total
+      : 1;
+    let next = transition.from;
+    if (transition.from !== transition.to) {
+      const chance = Math.min(1, Math.max(0, progress));
+      next = Math.random() < chance ? transition.to : transition.from;
+    }
     if (transition.remaining <= 0) {
       next = transition.to;
       transition.current = transition.to;
