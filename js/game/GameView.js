@@ -1330,13 +1330,32 @@ class GameView extends BaseLogger {
     }
     if (this.elementSelectLevelGroup) this.elementSelectLevelGroup.selectedIndex = this.levelGroupIndex;
     if (this.elementSelectLevel) this.elementSelectLevel.selectedIndex = this.levelIndex;
+    const preserveView = options.preserveView === true;
+    const prevViewport = preserveView && this.stage
+      ? {
+        x: this.stage.gameImgProps.viewPoint.x,
+        y: this.stage.gameImgProps.viewPoint.y,
+        scale: this.stage.gameImgProps.viewPoint.scale
+      }
+      : null;
+
     if (this.stage) {
       const gameDisplay = this.stage.getGameDisplay();
       gameDisplay.clear();
       this.stage.resetFade();
       level.render(gameDisplay);
       this.stage.updateStageSize();
-      this.applyLevelViewport(level);
+      if (prevViewport) {
+        this.stage.applyViewport(
+          this.stage.gameImgProps,
+          prevViewport.x,
+          prevViewport.y,
+          prevViewport.scale
+        );
+        this.stage.redraw();
+      } else {
+        this.applyLevelViewport(level);
+      }
     }
     this.updateQuery();
     this.log.debug(level);

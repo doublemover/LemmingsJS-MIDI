@@ -45,6 +45,9 @@ class UserInputManager {
     this.lastTouchDistance = 0;
 
     this.once = false;
+    if (this.listenElement?.style) {
+      this.listenElement.style.touchAction = 'none';
+    }
 
     this._addListener('mousemove', (e) => {
       let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
@@ -54,6 +57,10 @@ class UserInputManager {
       return false;
     });
     this._addListener('touchmove', (e) => {
+      if (e.touches.length > 2) {
+        e.preventDefault();
+        return;
+      }
       if (e.touches.length === 1 && !this.twoTouch) {
         let relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
         this.handleMouseMove(relativePos);
@@ -87,6 +94,10 @@ class UserInputManager {
       return;
     });
     this._addListener('touchstart', (e) => {
+      if (e.touches.length > 2) {
+        e.preventDefault();
+        return;
+      }
       if (e.touches.length === 1) {
         const relativePos = this.getRelativePosition(this.listenElement, e.touches[0].clientX, e.touches[0].clientY);
         this.handleMouseDown(relativePos);
@@ -200,14 +211,17 @@ class UserInputManager {
     });
   }
 
-  _addListener(type, handler) {
-    this.listenElement.addEventListener(type, handler);
-    this._listeners.push([type, handler]);
+  _addListener(type, handler, options = null) {
+    const useOptions = options || (type.startsWith('touch') || type === 'wheel'
+      ? { passive: false }
+      : undefined);
+    this.listenElement.addEventListener(type, handler, useOptions);
+    this._listeners.push([type, handler, useOptions]);
   }
 
   dispose() {
-    for (const [type, handler] of this._listeners) {
-      this.listenElement.removeEventListener(type, handler);
+    for (const [type, handler, options] of this._listeners) {
+      this.listenElement.removeEventListener(type, handler, options);
     }
     this._listeners.length = 0;
   }

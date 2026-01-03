@@ -1,6 +1,6 @@
 {
   "name": "lemmings-js-midi",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Lemmings (JavaScript)",
   "private": true,
   "main": "index.js",
@@ -23,6 +23,8 @@
     "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor.spec.js",
     "test-e2e:ui": "playwright test --ui",
     "test-e2e:install": "playwright install chromium",
+    "bench-performance": "node scripts/bench-performance.js",
+    "bench-history": "node scripts/bench-history-stress.js",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-editor": "cross-env C8_FORK=1 c8 --include=js/editor/** --check-coverage --lines 100 --statements 100 --functions 100 --branches 100 mocha \"test/editor/*.test.js\"",
     "coverage-report": "npx c8 report --reporter=html",

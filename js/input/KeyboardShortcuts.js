@@ -7,6 +7,7 @@ import { GameVictoryCondition } from '../game/GameVictoryCondition.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
+import { formatBindingSpec } from './KeybindingFormatter.js';
 
 class KeyboardShortcuts {
   constructor(view) {
@@ -51,14 +52,14 @@ class KeyboardShortcuts {
       const vp = img.viewPoint;
       const scale = vp.scale;
       // hold shift to pan much further per frame
-      const shiftMul = this.mod.shift ? 2.5 : 1;
+      const shiftMul = this.mod.shift ? 2 : 1;
 
       // ----- panning -----
       // tweak distance per frame; previous values felt too large
-      const baseX = 25 * scale;
-      const baseY = 12 * scale;
-      // faster acceleration with immediate jump when direction changes
-      const accel = 0.25 / scale * dt;
+      const baseX = 18 * scale;
+      const baseY = 9 * scale;
+      // smoother acceleration with immediate jump when direction changes
+      const accel = 0.18 / scale * dt;
       const targetVX = (this.pan.right - this.pan.left) * baseX * shiftMul;
       const targetVY = (this.pan.down - this.pan.up)   * baseY * shiftMul;
       if (this.pan.changed) {
@@ -70,8 +71,8 @@ class KeyboardShortcuts {
         this.pan.vy += (targetVY - this.pan.vy) * accel;
       }
       // extend easing so velocity decays more gradually
-      this.pan.vx *= 0.9;
-      this.pan.vy *= 0.9;
+      this.pan.vx *= 0.85;
+      this.pan.vy *= 0.85;
       const dx = this.pan.vx;
       const dy = this.pan.vy;
       if (Math.abs(dx) > 0.05 || Math.abs(dy) > 0.05) {
@@ -215,6 +216,11 @@ class KeyboardShortcuts {
         this.keybindings.setConfig(parsed);
       })
       .catch(() => {});
+  }
+
+  getDisplayBindings(action) {
+    const specs = this.keybindings.getBindingsForAction(action);
+    return specs.map(spec => formatBindingSpec(spec)).filter(Boolean);
   }
 
   _createActionHandlers() {
@@ -429,6 +435,9 @@ class KeyboardShortcuts {
         if (typeof this.view.toggleEditorMode === 'function') {
           this.view.toggleEditorMode();
         }
+      }},
+      toggleShortcutOverlay: { down: () => {
+        this.view?.shortcutOverlay?.toggle?.();
       }}
     };
   }

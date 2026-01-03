@@ -49,8 +49,8 @@ When the game is loaded with `?e2e=1`, `window.__E2E__` exposes:
 ### Keyboard shortcuts (already present)
 `keybindings.json` maps action names (e.g. `selectSkillBuilder`) to key chords.
 The MCP server must load this mapping and provide:
-- A way to run a named action (`lemmings.input.action`)
-- A way to run arbitrary key events (`lemmings.input.keys`)
+- A way to run a named action (`input.action`)
+- A way to run arbitrary key events (`input.keys`)
 
 ### Missing piece we add: select lemming by ID
 The agent needs a direct selection primitive, independent of cursor position.
@@ -135,7 +135,7 @@ If the MCP host is not consuming streaming notifications, then:
 - new events since the last tool call in that session
 - a condensed `humanSummary` if any human inputs occurred
 
-Additionally, the agent can call `lemmings.events.poll` for explicit polling.
+Additionally, the agent can call `events.poll` for explicit polling.
 
 ---
 
@@ -143,16 +143,17 @@ Additionally, the agent can call `lemmings.events.poll` for explicit polling.
 
 ### High-level tool groups
 Note: the MCP server exposes tool names with dots replaced by underscores
-(`lemmings.session.create` → `lemmings_session_create`) to satisfy host naming
-constraints. The canonical names below are dotted; use underscores when calling.
+(`session.create` → `session_create`) to satisfy host naming constraints. The
+canonical names below are dotted; use underscores when calling (full tool:
+`lemmings.session_create`).
 
 ### High-level tool groups
-- **Session**: `lemmings.session.*`
-- **Time**: `lemmings.time.*`
-- **State**: `lemmings.state.*`, `lemmings.lemmings.*`, `lemmings.lemming.*`
-- **Input**: `lemmings.input.*`, `lemmings.skill.*`
-- **Vision**: `lemmings.vision.*`
-- **Events / Watches**: `lemmings.events.*`, `lemmings.watch.*`
+- **Session**: `session.*`
+- **Time**: `time.*`
+- **State**: `state.*`, `lemming.*`
+- **Input**: `input.*`, `skill.*`
+- **Vision**: `vision.*`
+- **Events / Watches**: `events.*`, `watch.*`
 
 ---
 
@@ -164,7 +165,7 @@ Below, every tool defines:
 - Default behavior
 - Failure modes
 
-### 7.1 `lemmings.session.create`
+### 7.1 `session.create`
 Create a new session and launch the game page.
 
 **Inputs**
@@ -189,7 +190,7 @@ Create a new session and launch the game page.
 
 ---
 
-### 7.2 `lemmings.session.close`
+### 7.2 `session.close`
 Close page/context and delete session resources/events.
 
 **Inputs**
@@ -200,7 +201,7 @@ Close page/context and delete session resources/events.
 
 ---
 
-### 7.3 `lemmings.time.pause` / `lemmings.time.resume`
+### 7.3 `time.pause` / `time.resume`
 Deterministic time control (calls `__E2E__.pause()` / `resume()`).
 
 **Inputs**
@@ -211,7 +212,7 @@ Deterministic time control (calls `__E2E__.pause()` / `resume()`).
 
 ---
 
-### 7.4 `lemmings.time.step`
+### 7.4 `time.step`
 Step the simulation forward (or backward if negative) by N ticks.
 
 **Inputs**
@@ -227,7 +228,7 @@ Step the simulation forward (or backward if negative) by N ticks.
 
 ---
 
-### 7.5 `lemmings.state.get`
+### 7.5 `state.get`
 Return structured state snapshot (from `__E2E__.getState()`), optionally filtered.
 
 **Inputs**
@@ -258,7 +259,7 @@ Return structured state snapshot (from `__E2E__.getState()`), optionally filtere
 
 ---
 
-### 7.6 `lemmings.lemmings.summary`
+### 7.6 `lemming.summary`
 Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 **Inputs**
@@ -287,7 +288,7 @@ Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 ---
 
-### 7.7 `lemmings.lemming.select`
+### 7.7 `lemming.select`
 Directly select a specific lemming by ID.
 
 **Inputs**
@@ -306,14 +307,14 @@ Directly select a specific lemming by ID.
 
 ---
 
-### 7.8 `lemmings.skill.apply`
+### 7.8 `skill.apply`
 Apply a skill to a selected lemming using keyboard shortcuts.
 
 **Inputs**
 - `sessionId`
 - `skill`: `"climber"|"floater"|"bomber"|"blocker"|"builder"|"basher"|"miner"|"digger"`
 - `lemmingId` (optional)
-  - If provided, the server must select it first (via `lemmings.lemming.select`).
+  - If provided, the server must select it first (via `lemming.select`).
 - `ensurePaused` (optional, default `true`)
 - `verify` (optional, default `true`)
   - If true, server reads state before/after and reports whether the lemming’s state/flags changed.
@@ -331,7 +332,7 @@ Apply a skill to a selected lemming using keyboard shortcuts.
 
 ---
 
-### 7.9 `lemmings.input.action`
+### 7.9 `input.action`
 Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`).
 
 **Inputs**
@@ -344,7 +345,7 @@ Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`
 
 ---
 
-### 7.10 `lemmings.input.keys`
+### 7.10 `input.keys`
 Low-level key event injection (for chords and “hold shift” behaviors like panBoost).
 
 **Inputs (two supported shapes)**
@@ -365,7 +366,7 @@ Low-level key event injection (for chords and “hold shift” behaviors like pa
 
 ---
 
-### 7.11 `lemmings.vision.capture`
+### 7.11 `vision.capture`
 Capture a screenshot of the full view or a subsection.
 
 **Inputs**
@@ -391,7 +392,7 @@ Capture a screenshot of the full view or a subsection.
 
 ---
 
-### 7.12 `lemmings.vision.captureSequence`
+### 7.12 `vision.captureSequence`
 Capture multiple frames across time, either by stepping or by sampling.
 
 **Inputs**
@@ -402,7 +403,7 @@ Capture multiple frames across time, either by stepping or by sampling.
 - `frames`: number
 - `stepBy` (optional, default `1`, used for mode=`step`)
 - `everyMs` (optional, used for mode=`sample`)
-- `capture`: same capture options as `lemmings.vision.capture`
+- `capture`: same capture options as `vision.capture`
 - `returnManifest` (optional, default `true`): store a manifest JSON as a resource
 
 **Outputs**
@@ -410,7 +411,7 @@ Capture multiple frames across time, either by stepping or by sampling.
 
 ---
 
-### 7.13 `lemmings.watch.create`
+### 7.13 `watch.create`
 Create a watch that emits events when:
 - every `everyTicks`, OR
 - when a JSON pointer value changes
@@ -433,7 +434,7 @@ Watches are processed server-side (polling `getState()`), and generate events in
 
 ---
 
-### 7.14 `lemmings.watch.cancel`
+### 7.14 `watch.cancel`
 Cancel a watch.
 
 **Inputs**
@@ -445,7 +446,7 @@ Cancel a watch.
 
 ---
 
-### 7.15 `lemmings.events.poll`
+### 7.15 `events.poll`
 Explicitly poll for events since a cursor.
 
 **Inputs**
@@ -481,17 +482,17 @@ Tool errors should be expressed as structured `ok=false` responses wherever poss
 1. **Session + Playwright boot**
    - launch, goto `/?e2e=1`, wait for `ready`
 2. **State read**
-   - `lemmings.state.get`
+   - `state.get`
 3. **Input actions**
    - load `keybindings.json`
-   - `lemmings.input.action`
+   - `input.action`
 4. **Direct selection**
    - add `__E2E__.selectLemmingById`
-   - `lemmings.lemming.select`
+   - `lemming.select`
 5. **Skill apply**
-   - `lemmings.skill.apply` = select skill + apply key
+   - `skill.apply` = select skill + apply key
 6. **Vision**
-   - `lemmings.vision.capture` (resource by default)
+   - `vision.capture` (resource by default)
 7. **Event envelope + spectator UI**
    - event queue
    - simple webpage showing latest frame

@@ -9,6 +9,7 @@ class TimeTravelController {
     this._lastTime = 0;
     this._reverseCarryMs = 0;
     this.maxReverseStepsPerFrame = 120;
+    this.ignoreSpeedOnReverse = true;
     this._resumeForward = false;
     this._prevInputEnabled = null;
   }

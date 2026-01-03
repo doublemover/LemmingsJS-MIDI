@@ -20,6 +20,7 @@ Editor preview uses classic engine rendering. Editor data is converted to classi
 - Preview reloads when editor data changes.
 - Reloads are debounced to avoid thrashing during drag operations.
 - The game timer is suspended after each preview refresh.
+- Preview reloads preserve the current viewport unless loading/importing a level.
 
 ## Rendering overlays
 

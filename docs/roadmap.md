@@ -26,20 +26,20 @@ Notes:
   (palette, placement, selection, brush, triggers, steel).
 - [x] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
   loads into the editor while editing; confirm playtest flow.
-- [ ] Phase 2.3: Cover editing workflows (multi-select, drag/resize,
+- [x] Phase 2.3: Cover editing workflows (multi-select, drag/resize,
   copy/paste/duplicate, undo/redo, snap/nudge, delete/duplicate).
-- [ ] Phase 2.4: Validate saved-level pipeline (saved dropdown, localStorage
+- [x] Phase 2.4: Validate saved-level pipeline (saved dropdown, localStorage
   persistence, import/export for `.nxlv` and classic `.lvl`).
-- [ ] Phase 2.5: Evaluate brush/eraser feasibility (tileable assets + grid size)
+- [x] Phase 2.5: Evaluate brush/eraser feasibility (tileable assets + grid size)
   and style registry coverage for terrain/gadgets.
-- [ ] Phase 2.6: Ensure steel rectangle editing and resizable gadgets behave
+- [x] Phase 2.6: Ensure steel rectangle editing and resizable gadgets behave
   correctly; enforce classic limits.
-- [ ] Phase 2.7: Defer `.nxlv` round-trip tests/unknown section handling for now;
+- [x] Phase 2.7: Defer `.nxlv` round-trip tests/unknown section handling for now;
   focus on editor runtime mapping validation (blank level defaults, preview
   mapping, trigger behavior).
-- [ ] Phase 2.8: Fix editor view jumps (layout/canvas offsets, scale, event
+- [x] Phase 2.8: Fix editor view jumps (layout/canvas offsets, scale, event
   ordering).
-- [ ] Phase 2.9: Polish UI/UX and editor documentation.
+- [x] Phase 2.9: Polish UI/UX and editor documentation.
 
 Notes:
 - Cover all tools and inspector fields.
@@ -53,11 +53,11 @@ Notes:
 - Keep editor docs brief.
 
 ## Phase 3: UX, input, and presentation
-- [ ] Add a shortcut overlay toggle (game/editor) that fades in/out and is easy
+- [x] Add a shortcut overlay toggle (game/editor) that fades in/out and is easy
   to dismiss.
-- [ ] Fix keyboard view navigation acceleration (too fast at either speed).
-- [ ] Robust touch controls and ensure scaling on iPad.
-- [ ] Improve the website (summary metadata for social embeds).
+- [x] Fix keyboard view navigation acceleration (too fast at either speed).
+- [x] Robust touch controls and ensure scaling on iPad.
+- [x] Improve the website (summary metadata for social embeds).
 
 Notes:
 - Overlay fade duration is 250 ms; use F1 and ? if possible; separate overlays
@@ -91,13 +91,13 @@ Notes:
 - [ ] Ability to place flags to trigger MIDI events.
 
 ## Phase 6: Performance and benchmarks
-- [ ] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
-- [ ] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for
-  effectiveness and necessity. 
-- [ ] Standalone updated performance benchmark.
-- [ ] Standalone stress test for history memory (ticks at 30x/60x/120x until
+- [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
+- [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for     
+  effectiveness and necessity.
+- [x] Standalone updated performance benchmark.
+- [x] Standalone stress test for history memory (ticks at 30x/60x/120x until    
   exhaustion).
-- [ ] Investigate GameTimer catchup slowdown as a perf spike failsafe.
+- [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
 
 ## Phase 7: Gameplay parity, packs, and assets
 - [ ] Find external references that confirm these things before implementing

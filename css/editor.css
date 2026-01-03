@@ -323,3 +323,102 @@ body {
     grid-template-columns: 1fr;
   }
 }
+
+.shortcut-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(18, 14, 10, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 250ms ease;
+  z-index: 20;
+}
+
+.shortcut-overlay.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.shortcut-overlay__panel {
+  width: min(760px, 92vw);
+  max-height: 80vh;
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 12px;
+  box-shadow: 0 18px 28px var(--shadow);
+  padding: 16px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  color: var(--ink);
+}
+
+.shortcut-overlay__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.shortcut-overlay__title {
+  font-family: "Palatino Linotype", "Book Antiqua", Palatino, serif;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.shortcut-overlay__close {
+  background: var(--error);
+  border: 1px solid #8e2b25;
+  color: #fff;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.shortcut-section {
+  border-top: 1px solid var(--panel-border);
+  padding-top: 10px;
+  margin-top: 10px;
+}
+
+.shortcut-section:first-child {
+  border-top: 0;
+  padding-top: 0;
+  margin-top: 0;
+}
+
+.shortcut-section__title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 12px;
+  padding: 2px 0;
+}
+
+.shortcut-label {
+  flex: 1;
+  min-width: 0;
+}
+
+.shortcut-keys {
+  font-family: "Courier New", monospace;
+  font-size: 11px;
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}

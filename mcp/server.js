@@ -402,82 +402,82 @@ const EventsPollSchema = z.object({
 
 const TOOL_SPECS = [
   {
-    name: 'lemmings.session.create',
+    name: 'session.create',
     description: 'Launch a Playwright session and load the game with the E2E harness.',
     schema: SessionCreateSchema
   },
   {
-    name: 'lemmings.session.close',
+    name: 'session.close',
     description: 'Close a Playwright session and clear resources/events.',
     schema: SessionCloseSchema
   },
   {
-    name: 'lemmings.time.pause',
+    name: 'time.pause',
     description: 'Pause the game timer via the E2E harness.',
     schema: TimeSchema
   },
   {
-    name: 'lemmings.time.resume',
+    name: 'time.resume',
     description: 'Resume the game timer via the E2E harness.',
     schema: TimeSchema
   },
   {
-    name: 'lemmings.time.step',
+    name: 'time.step',
     description: 'Step the game timer forward or backward by a number of ticks.',
     schema: TimeStepSchema
   },
   {
-    name: 'lemmings.state.get',
+    name: 'state.get',
     description: 'Fetch a structured state snapshot from the E2E harness.',
     schema: StateGetSchema
   },
   {
-    name: 'lemmings.lemmings.summary',
+    name: 'lemming.summary',
     description: 'Return aggregated lemming summary data.',
     schema: LemmingsSummarySchema
   },
   {
-    name: 'lemmings.lemming.select',
+    name: 'lemming.select',
     description: 'Select a lemming by ID via the E2E harness.',
     schema: LemmingSelectSchema
   },
   {
-    name: 'lemmings.skill.apply',
+    name: 'skill.apply',
     description: 'Apply a skill to a selected lemming using keybindings.',
     schema: SkillApplySchema
   },
   {
-    name: 'lemmings.input.action',
+    name: 'input.action',
     description: 'Execute a named action from keybindings.json.',
     schema: InputActionSchema
   },
   {
-    name: 'lemmings.input.keys',
+    name: 'input.keys',
     description: 'Inject low-level key events.',
     schema: InputKeysSchema
   },
   {
-    name: 'lemmings.vision.capture',
+    name: 'vision.capture',
     description: 'Capture a screenshot of the page or canvas.',
     schema: VisionCaptureSchema
   },
   {
-    name: 'lemmings.vision.captureSequence',
+    name: 'vision.captureSequence',
     description: 'Capture multiple frames across time.',
     schema: VisionSequenceSchema
   },
   {
-    name: 'lemmings.watch.create',
+    name: 'watch.create',
     description: 'Create a watch that emits events based on ticks or state changes.',
     schema: WatchCreateSchema
   },
   {
-    name: 'lemmings.watch.cancel',
+    name: 'watch.cancel',
     description: 'Cancel a watch.',
     schema: WatchCancelSchema
   },
   {
-    name: 'lemmings.events.poll',
+    name: 'events.poll',
     description: 'Poll events since a cursor.',
     schema: EventsPollSchema
   }
@@ -486,6 +486,25 @@ const TOOL_SPECS = [
 const TOOL_NAME_ALIASES = new Map();
 
 const toToolName = (name) => String(name).replace(/\./g, '_');
+
+const LEGACY_TOOL_ALIASES = new Map([
+  ['lemmings.session.create', 'session.create'],
+  ['lemmings.session.close', 'session.close'],
+  ['lemmings.time.pause', 'time.pause'],
+  ['lemmings.time.resume', 'time.resume'],
+  ['lemmings.time.step', 'time.step'],
+  ['lemmings.state.get', 'state.get'],
+  ['lemmings.lemmings.summary', 'lemming.summary'],
+  ['lemmings.lemming.select', 'lemming.select'],
+  ['lemmings.skill.apply', 'skill.apply'],
+  ['lemmings.input.action', 'input.action'],
+  ['lemmings.input.keys', 'input.keys'],
+  ['lemmings.vision.capture', 'vision.capture'],
+  ['lemmings.vision.captureSequence', 'vision.captureSequence'],
+  ['lemmings.watch.create', 'watch.create'],
+  ['lemmings.watch.cancel', 'watch.cancel'],
+  ['lemmings.events.poll', 'events.poll']
+]);
 
 const TOOL_DEFS = TOOL_SPECS.map((spec) => {
   const externalName = toToolName(spec.name);
@@ -497,6 +516,11 @@ const TOOL_DEFS = TOOL_SPECS.map((spec) => {
     inputSchema: toJsonSchemaCompat(spec.schema)
   };
 });
+
+for (const [legacyName, currentName] of LEGACY_TOOL_ALIASES.entries()) {
+  TOOL_NAME_ALIASES.set(legacyName, currentName);
+  TOOL_NAME_ALIASES.set(toToolName(legacyName), currentName);
+}
 
 const buildToolResponse = (payload) => ({
   content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
@@ -1606,22 +1630,22 @@ const eventsPollTool = async (args) => {
 };
 
 const TOOL_HANDLERS = new Map([
-  ['lemmings.session.create', createSession],
-  ['lemmings.session.close', closeSession],
-  ['lemmings.time.pause', pauseTime],
-  ['lemmings.time.resume', resumeTime],
-  ['lemmings.time.step', stepTime],
-  ['lemmings.state.get', getStateTool],
-  ['lemmings.lemmings.summary', getLemmingsSummaryTool],
-  ['lemmings.lemming.select', selectLemmingTool],
-  ['lemmings.skill.apply', applySkillTool],
-  ['lemmings.input.action', inputActionTool],
-  ['lemmings.input.keys', inputKeysTool],
-  ['lemmings.vision.capture', visionCaptureTool],
-  ['lemmings.vision.captureSequence', visionSequenceTool],
-  ['lemmings.watch.create', watchCreateTool],
-  ['lemmings.watch.cancel', watchCancelTool],
-  ['lemmings.events.poll', eventsPollTool]
+  ['session.create', createSession],
+  ['session.close', closeSession],
+  ['time.pause', pauseTime],
+  ['time.resume', resumeTime],
+  ['time.step', stepTime],
+  ['state.get', getStateTool],
+  ['lemming.summary', getLemmingsSummaryTool],
+  ['lemming.select', selectLemmingTool],
+  ['skill.apply', applySkillTool],
+  ['input.action', inputActionTool],
+  ['input.keys', inputKeysTool],
+  ['vision.capture', visionCaptureTool],
+  ['vision.captureSequence', visionSequenceTool],
+  ['watch.create', watchCreateTool],
+  ['watch.cancel', watchCancelTool],
+  ['events.poll', eventsPollTool]
 ]);
 
 const server = new Server(

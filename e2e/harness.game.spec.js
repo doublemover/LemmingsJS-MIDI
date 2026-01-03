@@ -83,7 +83,7 @@ test('Time travel restores invariant state', async ({ page }) => {
   expect(restoredSnapshot).toEqual(baselineSnapshot);
 });
 
-test('Reverse playback toggles and rewinds ticks', async ({ page }) => {
+test('Reverse playback toggles and rewinds ticks', async ({ page }) => {        
   await page.evaluate(() => window.__E2E__.pause());
   await page.evaluate(() => window.__E2E__.step(10));
   const tickBefore = await page.evaluate(() => window.__E2E__.getState().game.timer.tickIndex);
@@ -97,6 +97,21 @@ test('Reverse playback toggles and rewinds ticks', async ({ page }) => {
   expect(reversingState.game.timeTravel.playbackDirection).toBe(-1);
   await page.evaluate(() => window.__E2E__.stopReverse());
   await page.waitForFunction(() => window.__E2E__.getState().game.timeTravel.isReversing === false);
+});
+
+test('Reverse playback does not change speed factor', async ({ page }) => {
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.evaluate(() => window.__E2E__.setSpeed(2));
+  await page.evaluate(() => window.__E2E__.step(4));
+  await page.evaluate(() => window.__E2E__.setSpeed(4));
+  await page.evaluate(() => window.__E2E__.step(2));
+  const speedBefore = await page.evaluate(() => window.__E2E__.getState().game.timer.speedFactor);
+  await page.evaluate(() => window.__E2E__.startReverse());
+  await page.waitForFunction(() => window.__E2E__.getState().game.timeTravel.isReversing === true);
+  await page.waitForFunction(() => window.__E2E__.getState().game.timer.tickIndex < 5);
+  const speedDuring = await page.evaluate(() => window.__E2E__.getState().game.timer.speedFactor);
+  expect(speedDuring).toBe(speedBefore);
+  await page.evaluate(() => window.__E2E__.stopReverse());
 });
 
 test('Harness returns buffers with decodable metadata', async ({ page }) => {

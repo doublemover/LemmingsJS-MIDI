@@ -61,7 +61,21 @@ const networkFirst = async (request, fallbackUrl = null, { bypassCache = false }
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CORE_CACHE).then(cache => cache.addAll(CORE_ASSETS))
+    (async () => {
+      const cache = await caches.open(CORE_CACHE);
+      await Promise.all(
+        CORE_ASSETS.map(async (asset) => {
+          try {
+            const response = await fetchFresh(asset);
+            if (response && response.status === 200) {
+              await cache.put(asset, response.clone());
+            }
+          } catch {
+            // Ignore failures during install; fetch handlers will recover.
+          }
+        })
+      );
+    })()
   );
   self.skipWaiting();
 });

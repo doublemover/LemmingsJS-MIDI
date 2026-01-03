@@ -335,6 +335,37 @@ const getViewState = (view) => {
   };
 };
 
+const getBenchMetrics = (view) => {
+  if (!view) return null;
+  const timer = view.game?.getGameTimer?.() || null;
+  const active = !!(view.bench || view.bench2 || view.benchReverse || view.benchSequence);
+  const mode = view.benchReverse
+    ? 'reverse'
+    : view.benchSequence
+      ? 'sequence'
+      : view.bench2
+        ? 'catchup'
+        : view.bench
+          ? 'bench'
+          : null;
+  return {
+    active,
+    mode,
+    steps: view.steps ?? 0,
+    tps: view.tps ?? timer?.tps ?? null,
+    speedFactor: timer?.speedFactor ?? null,
+    benchMaxSpeed: view._benchMaxSpeed ?? null,
+    benchIndex: view._benchIndex ?? null,
+    benchCounts: Array.isArray(view._benchCounts) ? view._benchCounts.slice() : [],
+    benchExtraList: Array.isArray(view._benchExtraList) ? view._benchExtraList.slice() : [],
+    benchExtraIndex: view._benchExtraIndex ?? null,
+    benchStartTime: view._benchStartTime ?? null,
+    benchMeasureExtras: !!view._benchMeasureExtras,
+    benchStartupFrames: timer?.benchStartupFrames ?? 0,
+    benchStableFactor: timer?.benchStableFactor ?? 1
+  };
+};
+
 const getStageState = (stage) => {
   if (!stage) return null;
   const viewRect = stage.getGameViewRect?.() || null;
@@ -369,6 +400,7 @@ const getGameState = (view) => {
   const level = game.level || null;
   const triggerManager = game.triggerManager || null;
   const soundEvents = game.soundEvents || null;
+  const bench = getBenchMetrics(view);
 
   const lemmings = Array.isArray(manager?.lemmings)
     ? manager.lemmings.map(lem => serializeLemming(manager, lem))
@@ -489,6 +521,7 @@ const getGameState = (view) => {
       entries: objects
     },
     minimap,
+    bench,
     soundEvents: soundEvents
       ? {
         queuedCount: soundEvents._queue?.length ?? 0,
@@ -712,6 +745,28 @@ const flushSoundEvents = (view) => {
   return true;
 };
 
+const startBenchSequence = async (view) => {
+  if (!view?.benchSequenceStart) return false;
+  await view.benchSequenceStart();
+  return true;
+};
+
+const startBench = async (view, entrances = 1) => {
+  if (!view?.benchStart) return false;
+  const count = Math.max(1, Math.trunc(Number(entrances) || 1));
+  await view.benchStart(count);
+  return true;
+};
+
+const stopBench = (view) => {
+  if (!view) return false;
+  view.bench = false;
+  view.bench2 = false;
+  view.benchReverse = false;
+  view.benchSequence = false;
+  return true;
+};
+
 const createE2EApi = (context) => ({
   version: 1,
   _setContext: (next) => {
@@ -729,6 +784,7 @@ const createE2EApi = (context) => ({
       stage: getStageState(view?.stage),
       game: getGameState(view),
       editor: getEditorState(view, editorUi),
+      bench: getBenchMetrics(view),
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
@@ -748,7 +804,11 @@ const createE2EApi = (context) => ({
   stopReverse: () => stopReverse(context.view),
   toggleReverse: () => toggleReverse(context.view),
   flushSoundEvents: () => flushSoundEvents(context.view),
-  selectLemmingById: (id) => selectLemmingById(context.view, id)
+  selectLemmingById: (id) => selectLemmingById(context.view, id),
+  getBenchMetrics: () => getBenchMetrics(context.view),
+  startBenchSequence: () => startBenchSequence(context.view),
+  startBench: (entrances) => startBench(context.view, entrances),
+  stopBench: () => stopBench(context.view)
 });
 
 const installE2EHarness = ({ view, editorUi } = {}) => {

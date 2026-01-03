@@ -126,6 +126,7 @@ This spec defines the standalone editor page UI and interaction model for the cl
 - Playtest toggle resumes gameplay; toggling off pauses and returns to editing.
 - Inspector edits commit on change (not on every keystroke).
 - Validation fixes apply in one history step.
+- Preview refreshes preserve the viewport during edit operations.
 
 ## Accessibility
 - All buttons and inputs are keyboard-focusable.

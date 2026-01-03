@@ -10,6 +10,7 @@ import { validateLevel } from '../editor/EditorValidator.js';
 import { getEntryBounds } from '../editor/EditorHitTest.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
+import { ShortcutOverlay } from './shortcutOverlay.js';
 import {
   formatRotation,
   formatValue,
@@ -31,6 +32,54 @@ import {
 } from '../editor/EditorStorage.js';
 
 const MAX_HISTORY = Number.MAX_SAFE_INTEGER;
+const EDITOR_SHORTCUT_SECTIONS = [
+  {
+    title: 'General',
+    entries: [
+      { action: 'editorToggleShortcutOverlay', label: 'Shortcut overlay' },
+      { action: 'editorTogglePlaytest', label: 'Toggle playtest' }
+    ]
+  },
+  {
+    title: 'Tools',
+    entries: [
+      { action: 'editorToolSelect', label: 'Select' },
+      { action: 'editorToolTerrain', label: 'Terrain' },
+      { action: 'editorToolGadget', label: 'Object' },
+      { action: 'editorToolTrigger', label: 'Trigger' },
+      { action: 'editorToolEntrance', label: 'Entrance' },
+      { action: 'editorToolExit', label: 'Exit' },
+      { action: 'editorToolSteel', label: 'Steel' },
+      { action: 'editorToolBrush', label: 'Brush' },
+      { action: 'editorToolEraser', label: 'Eraser' }
+    ]
+  },
+  {
+    title: 'Edit',
+    entries: [
+      { action: 'editorCopy', label: 'Copy' },
+      { action: 'editorPaste', label: 'Paste' },
+      { action: 'editorDuplicate', label: 'Duplicate' },
+      { action: 'editorUndo', label: 'Undo' },
+      { action: 'editorRedo', label: 'Redo' },
+      { action: 'editorDelete', label: 'Delete selection' },
+      { action: 'editorSnapSelection', label: 'Snap to grid' }
+    ]
+  },
+  {
+    title: 'Nudge',
+    entries: [
+      { action: 'editorNudgeLeft', label: 'Nudge left' },
+      { action: 'editorNudgeRight', label: 'Nudge right' },
+      { action: 'editorNudgeUp', label: 'Nudge up' },
+      { action: 'editorNudgeDown', label: 'Nudge down' },
+      { action: 'editorNudgeLeftFast', label: 'Nudge left (grid)' },
+      { action: 'editorNudgeRightFast', label: 'Nudge right (grid)' },
+      { action: 'editorNudgeUpFast', label: 'Nudge up (grid)' },
+      { action: 'editorNudgeDownFast', label: 'Nudge down (grid)' }
+    ]
+  }
+];
 
 class EditorUiController {
   constructor(options = {}) {
@@ -55,6 +104,8 @@ class EditorUiController {
     this._playtest = false;
     this._previewInFlight = false;
     this._previewQueued = false;
+    this._previewQueuedLabel = null;
+    this._previewQueuedOptions = null;
     this._cursorPos = null;
     this._suppressHeader = false;
     this._suppressInspector = false;
@@ -62,6 +113,7 @@ class EditorUiController {
     this._shiftKey = false;
     this._altKey = false;
     this._antsOffset = 0;
+    this.shortcutOverlay = null;
 
     this._bindElements();
     this._bindController();
@@ -80,7 +132,7 @@ class EditorUiController {
     this._refreshValidation();
     this._refreshSavedList();
     this._bindEvents();
-    await this._refreshPreview('Init');
+    await this._refreshPreview('Init', { preserveView: false });
   }
 
   _bindElements() {
@@ -136,7 +188,8 @@ class EditorUiController {
       selErase: get('editorSelErase'),
       selOneWay: get('editorSelOneWay'),
       deleteSelection: get('editorDeleteSelection'),
-      issuesList: get('editorIssuesList')
+      issuesList: get('editorIssuesList'),
+      shortcutOverlay: get('editorShortcutOverlay')
     };
   }
 
@@ -171,6 +224,7 @@ class EditorUiController {
     this._bindPlaytest();
     this._bindCanvasInput();
     this._bindKeybindings();
+    this._bindShortcutOverlay();
     this._bindModifierKeys();
   }
 
@@ -194,6 +248,10 @@ class EditorUiController {
     this.keybindings?.dispose?.();
     this.keybindings = new EditorKeybindings(this.controller, {
       fileProvider: this.view.gameFactory?.fileProvider,
+      onBindingsLoaded: () => {
+        this._applyTooltips();
+        this._refreshShortcutOverlay();
+      },
       onToolChange: tool => {
         this._setToolButton(tool);
         this._updateStatus();
@@ -238,9 +296,31 @@ class EditorUiController {
           this._refreshAfterEdit('Delete');
         }
       },
-      onPlaytestToggle: () => this._togglePlaytest()
+      onPlaytestToggle: () => this._togglePlaytest(),
+      onToggleShortcutOverlay: () => this._toggleShortcutOverlay()
     });
     this.keybindings.bind();
+    this._applyTooltips();
+    this._refreshShortcutOverlay();
+  }
+
+  _bindShortcutOverlay() {
+    if (this.shortcutOverlay || !this.el.shortcutOverlay) return;
+    this.shortcutOverlay = new ShortcutOverlay({
+      root: this.el.shortcutOverlay,
+      title: 'Editor Shortcuts',
+      sections: EDITOR_SHORTCUT_SECTIONS,
+      getBindings: action => this.keybindings?.getDisplayBindings(action) || []
+    });
+  }
+
+  _toggleShortcutOverlay() {
+    this.shortcutOverlay?.toggle();
+  }
+
+  _refreshShortcutOverlay() {
+    if (!this.shortcutOverlay) return;
+    this.shortcutOverlay.render();
   }
 
   _bindToolButtons() {
@@ -521,6 +601,32 @@ class EditorUiController {
       const isActive = button.dataset?.tool === tool;
       button.classList.toggle('active', isActive);
       button.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+  }
+
+  _applyTooltips() {
+    if (!this.keybindings || !this.el.toolList) return;
+    const map = {
+      select: 'editorToolSelect',
+      terrain: 'editorToolTerrain',
+      gadget: 'editorToolGadget',
+      trigger: 'editorToolTrigger',
+      entrance: 'editorToolEntrance',
+      exit: 'editorToolExit',
+      steel: 'editorToolSteel',
+      brush: 'editorToolBrush',
+      eraser: 'editorToolEraser'
+    };
+    const buttons = this.el.toolList.querySelectorAll('button');
+    buttons.forEach(button => {
+      const tool = button.dataset?.tool;
+      const action = map[tool];
+      if (!action) return;
+      const bindings = this.keybindings.getDisplayBindings(action);
+      if (!bindings.length) return;
+      button.title = bindings.length === 1
+        ? `Shortcut: ${bindings[0]}`
+        : `Shortcuts: ${bindings.join(', ')}`;
     });
   }
 
@@ -934,7 +1040,7 @@ class EditorUiController {
       this._refreshSelection(null);
       this._refreshValidation();
       if (options.resetSaved) this._refreshSavedList('');
-      await this._refreshPreview('Import');
+      await this._refreshPreview('Import', { preserveView: false });
     });
   }
 
@@ -952,7 +1058,7 @@ class EditorUiController {
       this._refreshSelection(null);
       this._refreshValidation();
       if (options.resetSaved) this._refreshSavedList('');
-      await this._refreshPreview('Import LVL');
+      await this._refreshPreview('Import LVL', { preserveView: false });
     });
   }
 
@@ -969,23 +1075,33 @@ class EditorUiController {
     this._refreshPalettes();
   }
 
-  async _refreshPreview(label) {
+  async _refreshPreview(label, options = {}) {
     if (!this.view) return;
+    const preserveView = options.preserveView !== false;
     if (this._previewInFlight) {
       this._previewQueued = true;
+      this._previewQueuedLabel = label || 'Queued';
+      this._previewQueuedOptions = { preserveView };
       return;
     }
     this._previewInFlight = true;
     try {
-      await this.view.loadEditorPreviewLevel({ suspend: !this._playtest });
+      await this.view.loadEditorPreviewLevel({
+        suspend: !this._playtest,
+        preserveView
+      });
       this.view.setEditorPlaytest(this._playtest);
       this._drawSelectionOverlay();
       this._updateStatus(label || 'Preview');
     } finally {
       this._previewInFlight = false;
       if (this._previewQueued) {
+        const nextLabel = this._previewQueuedLabel || 'Queued';
+        const nextOptions = this._previewQueuedOptions || {};
         this._previewQueued = false;
-        this._refreshPreview('Queued');
+        this._previewQueuedLabel = null;
+        this._previewQueuedOptions = null;
+        this._refreshPreview(nextLabel, nextOptions);
       }
     }
   }

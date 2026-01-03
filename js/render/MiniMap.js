@@ -229,6 +229,7 @@ class MiniMap {
 
   render() {
     if (!this.guiDisplay) return;
+    const reversing = !!globalThis?.lemmings?.game?.timeTravel?.isReversing;
 
     if (++this._viewportCounter >= this.viewportDashDelay) {
       this._viewportCounter = 0;
@@ -297,22 +298,35 @@ class MiniMap {
     }
 
     /* Death flashes */
-    let write = 0;
-    const total = this.deadCount;
-    for (let i = 0; i < total; ++i) {
-      const ttl = this.deadTTLs[i] - 1;
-      if (ttl <= 0) continue;
-      this.deadTTLs[write] = ttl;
-      const x = this.deadDots[i * 2];
-      const y = this.deadDots[i * 2 + 1];
-      this.deadDots[write * 2] = x;
-      this.deadDots[write * 2 + 1] = y;
-      if (ttl & 4) {
-        frame.setPixel(x, y, 0xFF0000FF);
+    if (reversing) {
+      const total = this.deadCount;
+      for (let i = 0; i < total; ++i) {
+        const ttl = this.deadTTLs[i];
+        if (ttl <= 0) continue;
+        if (ttl & 4) {
+          const x = this.deadDots[i * 2];
+          const y = this.deadDots[i * 2 + 1];
+          frame.setPixel(x, y, 0xFF0000FF);
+        }
       }
-      write++;
+    } else {
+      let write = 0;
+      const total = this.deadCount;
+      for (let i = 0; i < total; ++i) {
+        const ttl = this.deadTTLs[i] - 1;
+        if (ttl <= 0) continue;
+        this.deadTTLs[write] = ttl;
+        const x = this.deadDots[i * 2];
+        const y = this.deadDots[i * 2 + 1];
+        this.deadDots[write * 2] = x;
+        this.deadDots[write * 2 + 1] = y;
+        if (ttl & 4) {
+          frame.setPixel(x, y, 0xFF0000FF);
+        }
+        write++;
+      }
+      this.deadCount = write;
     }
-    this.deadCount = write;
 
     /* Blit */
     const destX = this.guiDisplay.worldDataSize.width  - W;

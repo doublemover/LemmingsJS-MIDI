@@ -4,6 +4,15 @@
   <title>Lemmings - Lemmings / Oh no! More Lemmings</title>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
+  <meta name="description" content="Classic Lemmings reimplementation with WebMIDI controls, editor, and E2E harness." />
+  <meta property="og:title" content="LemmingsJS-MIDI" />
+  <meta property="og:description" content="Classic Lemmings reimplementation with WebMIDI controls, editor, and E2E harness." />
+  <meta property="og:image" content="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" />
+  <meta property="og:url" content="https://github.com/doublemover/LemmingsJS-MIDI" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="LemmingsJS-MIDI" />
+  <meta name="twitter:description" content="Classic Lemmings reimplementation with WebMIDI controls, editor, and E2E harness." />
+  <meta name="twitter:image" content="https://github.com/user-attachments/assets/291d0c6a-ca2e-4de1-bee7-5c0cfb169ae9" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -226,6 +235,15 @@
       <span id="levelName" class="level_name"></span>
       <img class="arrow_l" src="img/arrow_l.png" width="37" height="58" onclick="lemmings.moveToLevel(-1)"/>
       <img class="arrow_r" src="img/arrow_r.png" width="37" height="58" onclick="lemmings.moveToLevel(1)"/>
+    </div>
+  </div>
+  <div id="shortcutOverlay" class="shortcut-overlay" aria-hidden="true">
+    <div class="shortcut-overlay__panel" role="dialog" aria-modal="true">
+      <div class="shortcut-overlay__header">
+        <div class="shortcut-overlay__title">Game Shortcuts</div>
+        <button type="button" class="shortcut-overlay__close">Close</button>
+      </div>
+      <div class="shortcut-overlay__content"></div>
     </div>
   </div>
   <script>

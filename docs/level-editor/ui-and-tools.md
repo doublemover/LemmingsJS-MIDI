@@ -32,11 +32,13 @@
 - `Shift+`` toggles editor mode.
 - Entering editor mode pauses the timer and disables gameplay input/panning; exiting restores the prior run state.
 - Tool shortcuts are configurable via `keybindings.json`.
+- Tool buttons show shortcut tooltips from the active keybindings.
 - Left click places or selects; drag moves selection.
 - Right click cancels placement or clears selection.
 - Alt-drag duplicates the active selection before moving it.
 - Arrow keys nudge the selection; shift+arrows nudge by the grid size.
 - Mouse wheel zoom and arrow-key panning still work in editor mode.
+- Preview reloads preserve the current viewport during edit operations.
 
 ## Brush feasibility
 

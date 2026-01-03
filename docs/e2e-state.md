@@ -13,6 +13,10 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.startReverse()` / `window.__E2E__.stopReverse()` toggle reverse playback.
 - `window.__E2E__.toggleReverse()` flips reverse playback state.
 - `window.__E2E__.flushSoundEvents()` clears the queued sound events.
+- `window.__E2E__.getBenchMetrics()` returns bench-related metrics.
+- `window.__E2E__.startBenchSequence()` starts the sequence bench run.
+- `window.__E2E__.startBench(entrances)` starts a single bench run.
+- `window.__E2E__.stopBench()` stops bench flags.
 - `window.__E2E__.setEditorPlaytest(enabled)` toggles editor playtest.
 - `window.__E2E__.getEditorHistoryEntry(index)` returns one editor history
   entry with full text.
@@ -30,6 +34,7 @@ Top-level fields:
 - `stage`: viewport/pan/scale info.
 - `game`: game simulation state (null before load).
 - `editor`: editor state snapshot (see `docs/e2e-editor-state.md`).
+- `bench`: bench metrics snapshot (if available).
 - `midi`: midi enable/router summary.
 
 ### view
@@ -74,6 +79,10 @@ Top-level fields:
 - `objects`: `count`, `entries` (position + trigger + animation state).
 - `minimap`: `width`, `height`, `scaleX`, `scaleY`, `liveDotCount`,
   `deadCount`, `selectedDot`.
+- `bench`: `active`, `mode`, `steps`, `tps`, `speedFactor`, `benchMaxSpeed`,
+  `benchIndex`, `benchCounts`, `benchExtraList`, `benchExtraIndex`,
+  `benchStartTime`, `benchMeasureExtras`, `benchStartupFrames`,
+  `benchStableFactor`.
 - `soundEvents`: `queuedCount`, `sequence`, `queueLimit`.
 
 ## getBuffer(name)

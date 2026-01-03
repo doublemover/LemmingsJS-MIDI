@@ -1,4 +1,5 @@
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
+import { formatBindingSpec } from './KeybindingFormatter.js';
 import { EditorTools } from '../editor/EditorTools.js';
 
 class EditorKeybindings {
@@ -14,7 +15,9 @@ class EditorKeybindings {
     this._onRedo = options.onRedo || null;
     this._onDelete = options.onDelete || null;
     this._onPlaytestToggle = options.onPlaytestToggle || null;
+    this._onToggleShortcutOverlay = options.onToggleShortcutOverlay || null;
     this._onPreview = options.onPreview || null;
+    this._onBindingsLoaded = options.onBindingsLoaded || null;
     this._down = this._onKeyDown.bind(this);
     this.keybindings = new KeybindingRegistry();
     this._actions = this._createActionHandlers();
@@ -36,6 +39,7 @@ class EditorKeybindings {
         const parsed = parseKeybindingConfig(text);
         if (!parsed) return;
         this.keybindings.setConfig(parsed);
+        this._onBindingsLoaded?.();
       })
       .catch(() => {});
   }
@@ -52,6 +56,11 @@ class EditorKeybindings {
     if (!tool) return;
     this.controller.setTool(tool);
     this._onTool?.(tool);
+  }
+
+  getDisplayBindings(action) {
+    const specs = this.keybindings.getBindingsForAction(action);
+    return specs.map(spec => formatBindingSpec(spec)).filter(Boolean);
   }
 
   _createActionHandlers() {
@@ -103,6 +112,9 @@ class EditorKeybindings {
       }},
       editorTogglePlaytest: { down: () => {
         this._onPlaytestToggle?.();
+      }},
+      editorToggleShortcutOverlay: { down: () => {
+        this._onToggleShortcutOverlay?.();
       }},
       editorUndo: { down: () => {
         this._onUndo?.();

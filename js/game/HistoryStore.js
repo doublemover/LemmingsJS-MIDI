@@ -1124,7 +1124,11 @@ class HistoryStore {
     if (keyframe.timer) {
       const timer = game.getGameTimer?.();
       if (timer) {
-        timer.speedFactor = keyframe.timer.speedFactor;
+        const ignoreSpeed = !!game?.timeTravel?.isReversing &&
+          !!game?.timeTravel?.ignoreSpeedOnReverse;
+        if (!ignoreSpeed) {
+          timer.speedFactor = keyframe.timer.speedFactor;
+        }
         timer.tickIndex = keyframe.timer.tickIndex;
       }
     }
@@ -1412,7 +1416,10 @@ class HistoryStore {
       const timer = game.getGameTimer?.();
       const state = useNext ? delta.timerChanges.next : delta.timerChanges.prev;
       if (timer && state) {
-        timer.speedFactor = state.speedFactor;
+        const ignoreSpeed = !useNext && !!game?.timeTravel?.ignoreSpeedOnReverse;
+        if (!ignoreSpeed) {
+          timer.speedFactor = state.speedFactor;
+        }
         timer.tickIndex = state.tickIndex;
       }
     }

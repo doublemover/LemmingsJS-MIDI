@@ -7,6 +7,8 @@ common subsets of the suite:
 npm test                # runs all tests
 npm run test-core       # core game logic
 npm run test-bench      # performance benchmarks
+npm run bench-performance # standalone bench (Playwright + E2E harness)
+npm run bench-history   # history stress test (Playwright + E2E harness)
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling

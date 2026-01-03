@@ -4,6 +4,7 @@ import { MidiInputController } from '../midi/input/MidiInputController.js';
 import { createMidiUiController } from './midiUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
+import { ShortcutOverlay } from './shortcutOverlay.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -12,6 +13,61 @@ import {
 
 const $ = globalThis.$ || globalThis.jQuery;
 const jQuery = globalThis.jQuery || $;
+
+const GAME_SHORTCUT_SECTIONS = [
+  {
+    title: 'General',
+    entries: [
+      { action: 'toggleShortcutOverlay', label: 'Shortcut overlay' },
+      { action: 'togglePause', label: 'Pause / resume' },
+      { action: 'toggleReverse', label: 'Reverse playback' },
+      { action: 'stepBackward', label: 'Step back' },
+      { action: 'stepForward', label: 'Step forward' },
+      { action: 'restartLevel', label: 'Restart level' },
+      { action: 'nuke', label: 'Nuke' },
+      { action: 'nukeInstant', label: 'Instant nuke' }
+    ]
+  },
+  {
+    title: 'View',
+    entries: [
+      { action: 'panLeft', label: 'Pan left' },
+      { action: 'panRight', label: 'Pan right' },
+      { action: 'panUp', label: 'Pan up' },
+      { action: 'panDown', label: 'Pan down' },
+      { action: 'panBoost', label: 'Pan boost' },
+      { action: 'zoomIn', label: 'Zoom in' },
+      { action: 'zoomOut', label: 'Zoom out' },
+      { action: 'zoomReset', label: 'Zoom reset' }
+    ]
+  },
+  {
+    title: 'Skills',
+    entries: [
+      { action: 'cycleSkillPrev', label: 'Cycle skill (prev)' },
+      { action: 'cycleSkillNext', label: 'Cycle skill (next)' },
+      { action: 'applySkillToSelected', label: 'Apply skill to selected' },
+      { action: 'selectSkillClimber', label: 'Select climber' },
+      { action: 'selectSkillFloater', label: 'Select floater' },
+      { action: 'selectSkillBomber', label: 'Select bomber' },
+      { action: 'selectSkillBlocker', label: 'Select blocker' },
+      { action: 'selectSkillBuilder', label: 'Select builder' },
+      { action: 'selectSkillBasher', label: 'Select basher' },
+      { action: 'selectSkillMiner', label: 'Select miner' },
+      { action: 'selectSkillDigger', label: 'Select digger' }
+    ]
+  },
+  {
+    title: 'Levels',
+    entries: [
+      { action: 'levelPrev', label: 'Previous level' },
+      { action: 'levelNext', label: 'Next level' },
+      { action: 'levelGroupPrev', label: 'Previous group' },
+      { action: 'levelGroupNext', label: 'Next group' },
+      { action: 'editorToggle', label: 'Toggle editor' }
+    ]
+  }
+];
 
 let midiUi = null;
 let midiInputController = null;
@@ -29,6 +85,12 @@ function init() {
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
+  lemmings.shortcutOverlay = new ShortcutOverlay({
+    root: document.getElementById('shortcutOverlay'),
+    title: 'Game Shortcuts',
+    sections: GAME_SHORTCUT_SECTIONS,
+    getBindings: action => lemmings.shortcuts?.getDisplayBindings?.(action) || []
+  });
   installE2EHarness({ view: lemmings });
 
   midiInputController = new MidiInputController(lemmings, {
@@ -185,8 +247,12 @@ function setSize() {
   const ratio = baseW / baseH;
   const gameContainer = jQuery('.game_container');
   const docEl = document.documentElement;
-  const width = Math.max(1, docEl.clientWidth || window.innerWidth);
-  const height = Math.max(1, docEl.clientHeight || window.innerHeight);
+  const viewport = window.visualViewport;
+  const width = Math.max(1, viewport?.width || docEl.clientWidth || window.innerWidth);
+  const height = Math.max(1, viewport?.height || docEl.clientHeight || window.innerHeight);
+  const isPortrait = height > width;
+  const isTablet = Math.max(width, height) >= 900;
+  document.body.classList.toggle('portrait-small', isPortrait && !isTablet);
   let containerWidth, containerHeight;
 
   if (width >= height * ratio) {

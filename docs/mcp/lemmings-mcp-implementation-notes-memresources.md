@@ -49,7 +49,7 @@ Useful commands from official docs:
   `npx @modelcontextprotocol/inspector node build/index.js`
 - CLI mode:  
   `npx @modelcontextprotocol/inspector --cli node build/index.js --method tools/list`  
-  `npx @modelcontextprotocol/inspector --cli node build/index.js --method tools/call --tool-name lemmings.state.get --tool-arg sessionId=...`
+  `npx @modelcontextprotocol/inspector --cli node build/index.js --method tools/call --tool-name state_get --tool-arg sessionId=...`
 
 (See the official Inspector docs and GitHub readme for flags like `-e key=value`, custom ports, etc.)
 
@@ -113,7 +113,7 @@ Implementation should:
 This keeps selection semantics consistent with the game.
 
 ### Server tool behavior
-`lemmings.lemming.select` should:
+`lemming.select` should:
 1. read current state (optional)
 2. call `__E2E__.selectLemmingById(id)`
 3. if `confirm=true`, read state again and confirm `selectedIndex === id`
@@ -130,7 +130,7 @@ Example mapping:
 - ...
 - apply → `applySkillToSelected`
 
-### Implementation pattern (`lemmings.skill.apply`)
+### Implementation pattern (`skill.apply`)
 1. optionally pause (harness)
 2. optionally select lemming by id
 3. send action for `selectSkillX`

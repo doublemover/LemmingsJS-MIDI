@@ -304,7 +304,7 @@ export const StateGetOutputSchema = z.object({
 });
 
 /* ---------------------------------- */
-/* Tool: lemmings.summary              */
+/* Tool: lemming.summary               */
 /* ---------------------------------- */
 
 export const LemmingsSummaryInputSchema = z.object({
@@ -556,22 +556,22 @@ export const EventsPollOutputSchema = z.object({
 /* ---------------------------------- */
 
 export const ToolNameSchema = z.enum([
-  "lemmings.session.create",
-  "lemmings.session.close",
-  "lemmings.time.pause",
-  "lemmings.time.resume",
-  "lemmings.time.step",
-  "lemmings.state.get",
-  "lemmings.lemmings.summary",
-  "lemmings.lemming.select",
-  "lemmings.skill.apply",
-  "lemmings.input.action",
-  "lemmings.input.keys",
-  "lemmings.vision.capture",
-  "lemmings.vision.captureSequence",
-  "lemmings.watch.create",
-  "lemmings.watch.cancel",
-  "lemmings.events.poll",
+  "session.create",
+  "session.close",
+  "time.pause",
+  "time.resume",
+  "time.step",
+  "state.get",
+  "lemming.summary",
+  "lemming.select",
+  "skill.apply",
+  "input.action",
+  "input.keys",
+  "vision.capture",
+  "vision.captureSequence",
+  "watch.create",
+  "watch.cancel",
+  "events.poll",
 ]);
 
 /**
@@ -579,20 +579,20 @@ export const ToolNameSchema = z.enum([
  * Useful for a typed router.
  */
 export const ToolSchemas = {
-  "lemmings.session.create": { input: SessionCreateInputSchema, output: SessionCreateOutputSchema },
-  "lemmings.session.close": { input: SessionCloseInputSchema, output: SessionCloseOutputSchema },
-  "lemmings.time.pause": { input: TimePauseResumeInputSchema, output: TimePauseResumeOutputSchema },
-  "lemmings.time.resume": { input: TimePauseResumeInputSchema, output: TimePauseResumeOutputSchema },
-  "lemmings.time.step": { input: TimeStepInputSchema, output: TimeStepOutputSchema },
-  "lemmings.state.get": { input: StateGetInputSchema, output: StateGetOutputSchema },
-  "lemmings.lemmings.summary": { input: LemmingsSummaryInputSchema, output: LemmingsSummaryOutputSchema },
-  "lemmings.lemming.select": { input: LemmingSelectInputSchema, output: LemmingSelectOutputSchema },
-  "lemmings.skill.apply": { input: SkillApplyInputSchema, output: SkillApplyOutputSchema },
-  "lemmings.input.action": { input: InputActionInputSchema, output: InputActionOutputSchema },
-  "lemmings.input.keys": { input: InputKeysInputSchema, output: InputKeysOutputSchema },
-  "lemmings.vision.capture": { input: VisionCaptureInputSchema, output: VisionCaptureOutputSchema },
-  "lemmings.vision.captureSequence": { input: VisionCaptureSequenceInputSchema, output: VisionCaptureSequenceOutputSchema },
-  "lemmings.watch.create": { input: WatchCreateInputSchema, output: WatchCreateOutputSchema },
-  "lemmings.watch.cancel": { input: WatchCancelInputSchema, output: WatchCancelOutputSchema },
-  "lemmings.events.poll": { input: EventsPollInputSchema, output: EventsPollOutputSchema },
+  "session.create": { input: SessionCreateInputSchema, output: SessionCreateOutputSchema },
+  "session.close": { input: SessionCloseInputSchema, output: SessionCloseOutputSchema },
+  "time.pause": { input: TimePauseResumeInputSchema, output: TimePauseResumeOutputSchema },
+  "time.resume": { input: TimePauseResumeInputSchema, output: TimePauseResumeOutputSchema },
+  "time.step": { input: TimeStepInputSchema, output: TimeStepOutputSchema },
+  "state.get": { input: StateGetInputSchema, output: StateGetOutputSchema },
+  "lemming.summary": { input: LemmingsSummaryInputSchema, output: LemmingsSummaryOutputSchema },
+  "lemming.select": { input: LemmingSelectInputSchema, output: LemmingSelectOutputSchema },
+  "skill.apply": { input: SkillApplyInputSchema, output: SkillApplyOutputSchema },
+  "input.action": { input: InputActionInputSchema, output: InputActionOutputSchema },
+  "input.keys": { input: InputKeysInputSchema, output: InputKeysOutputSchema },
+  "vision.capture": { input: VisionCaptureInputSchema, output: VisionCaptureOutputSchema },
+  "vision.captureSequence": { input: VisionCaptureSequenceInputSchema, output: VisionCaptureSequenceOutputSchema },
+  "watch.create": { input: WatchCreateInputSchema, output: WatchCreateOutputSchema },
+  "watch.cancel": { input: WatchCancelInputSchema, output: WatchCancelOutputSchema },
+  "events.poll": { input: EventsPollInputSchema, output: EventsPollOutputSchema },
 } as const;

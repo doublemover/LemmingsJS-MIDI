@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import fs from 'node:fs/promises';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 
 const waitForEditorHarness = async (page) => {
@@ -43,6 +44,21 @@ const dragCanvas = async (page, start, end) => {
   await page.mouse.down();
   await page.mouse.move(endX, endY);
   await page.mouse.up();
+};
+
+const worldToPage = (state, canvasBox, point) => {
+  const viewRect = state?.stage?.viewRect;
+  const gamePos = state?.stage?.gamePosition;
+  const scale = state?.stage?.gameScale ?? 1;
+  if (!viewRect || !gamePos || !Number.isFinite(scale)) {
+    throw new Error('Missing stage transform data for editor canvas.');
+  }
+  const canvasX = gamePos.x + (point.x - viewRect.x) * scale;
+  const canvasY = gamePos.y + (point.y - viewRect.y) * scale;
+  return {
+    x: canvasBox.x + canvasX,
+    y: canvasBox.y + canvasY
+  };
 };
 
 const parseLevelName = (label) => {
@@ -279,4 +295,356 @@ test('Editor brush and steel tools modify level data', async ({ page }) => {
   const placed = steel[steel.length - 1];
   expect(placed.props.WIDTH).toBeGreaterThan(1);
   expect(placed.props.HEIGHT).toBeGreaterThan(1);
+});
+
+test('Editor brush respects grid size snapping', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  const gridSize = page.locator('#editorGridSize');
+  await gridSize.fill('8');
+  await gridSize.dispatchEvent('change');
+
+  const snapToggle = page.locator('#editorSnapToggle');
+  await snapToggle.check();
+
+  const before = await getEditorState(page);
+  const beforeCount = before.editor.session.level.terrains.length;
+
+  await page.click('#editorToolList button[data-tool="brush"]');
+  await clickCanvas(page, 0.22, 0.32);
+
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length > count;
+  }, beforeCount);
+
+  const after = await getEditorState(page);
+  const placed = after.editor.session.level.terrains[after.editor.session.level.terrains.length - 1];
+  expect(placed.props.X % 8).toBe(0);
+  expect(placed.props.Y % 8).toBe(0);
+});
+
+test('Editor eraser removes terrain entries', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  const before = await getEditorState(page);
+  const beforeCount = before.editor.session.level.terrains.length;
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.25, 0.4);
+
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length > count;
+  }, beforeCount);
+
+  const afterPlace = await getEditorState(page);
+  const afterCount = afterPlace.editor.session.level.terrains.length;
+
+  await page.click('#editorToolList button[data-tool="eraser"]');
+  await clickCanvas(page, 0.25, 0.4);
+
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length < count;
+  }, afterCount);
+});
+
+test('Editor exports and imports classic levels via downloads', async ({ page }) => {
+  const [nxlvDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('#editorSavedExport')
+  ]);
+  expect(nxlvDownload.suggestedFilename()).toMatch(/\.nxlv$/i);
+
+  const [classicDownload] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('#editorSavedExportClassic')
+  ]);
+  expect(classicDownload.suggestedFilename()).toMatch(/\.lvl$/i);
+
+  const classicPath = await classicDownload.path();
+  expect(classicPath).not.toBeNull();
+  const buffer = await fs.readFile(classicPath);
+
+  await page.setInputFiles('#editorSavedImportClassicInput', {
+    name: 'imported-level.lvl',
+    mimeType: 'application/octet-stream',
+    buffer
+  });
+
+  await page.waitForFunction(() => {
+    const history = window.__E2E__.getState().editor.history;
+    const entries = history?.entries || [];
+    return entries.length > 0 && entries[entries.length - 1].label === 'Import LVL';
+  });
+});
+
+test('Editor selection workflows support multi-select, nudge, and delete', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.2, 0.3);
+  await clickCanvas(page, 0.3, 0.3);
+
+  let state = await getEditorState(page);
+  const terrainBefore = state.editor.session.level.terrains.length;
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.2, 0.3);
+  await page.keyboard.down('Shift');
+  await clickCanvas(page, 0.3, 0.3);
+  await page.keyboard.up('Shift');
+
+  await page.waitForFunction(() => {
+    return window.__E2E__.getState().editor.controller.selectionEntries.length === 2;
+  });
+
+  state = await getEditorState(page);
+  const entriesBefore = state.editor.controller.selectionEntries.map((entry) => ({
+    x: entry.entry.props.X,
+    y: entry.entry.props.Y
+  }));
+
+  await page.keyboard.press('ArrowRight');
+
+  await page.waitForFunction((before) => {
+    const entries = window.__E2E__.getState().editor.controller.selectionEntries;
+    if (entries.length !== 2) return false;
+    return entries.every((entry, idx) => entry.entry.props.X === before[idx].x + 1);
+  }, entriesBefore);
+
+  await page.keyboard.press('Delete');
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length === count - 2;
+  }, terrainBefore);
+});
+
+test('Editor snap-to-grid aligns selection to grid size', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.25, 0.35);
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.25, 0.35);
+  await page.waitForFunction(() => {
+    return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
+  });
+
+  const selX = page.locator('#editorSelX');
+  const selY = page.locator('#editorSelY');
+  await selX.fill('3');
+  await selX.dispatchEvent('change');
+  await selY.fill('5');
+  await selY.dispatchEvent('change');
+
+  await page.waitForFunction(() => {
+    const entry = window.__E2E__.getState().editor.controller.selectionEntries[0];
+    return entry && entry.entry.props.X === 3 && entry.entry.props.Y === 5;
+  });
+
+  await page.keyboard.press('Control+KeyG');
+
+  await page.waitForFunction(() => {
+    const state = window.__E2E__.getState();
+    const entry = state.editor.controller.selectionEntries[0];
+    const grid = state.editor.controller.gridSize || 1;
+    return entry
+      && entry.entry.props.X % grid === 0
+      && entry.entry.props.Y % grid === 0;
+  });
+});
+
+test('Editor copy/paste/duplicate and undo/redo update terrain counts', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.25, 0.35);
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.25, 0.35);
+  await page.waitForFunction(() => {
+    return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
+  });
+
+  let state = await getEditorState(page);
+  const terrainBefore = state.editor.session.level.terrains.length;
+
+  await page.keyboard.press('Control+KeyC');
+  await page.keyboard.press('Control+KeyV');
+
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length === count + 1;
+  }, terrainBefore);
+
+  state = await getEditorState(page);
+  const afterPaste = state.editor.session.level.terrains.length;
+
+  await page.keyboard.press('Control+KeyD');
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length === count + 1;
+  }, afterPaste);
+
+  state = await getEditorState(page);
+  const afterDuplicate = state.editor.session.level.terrains.length;
+
+  await page.keyboard.press('KeyZ');
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length === count - 1;
+  }, afterDuplicate);
+
+  await page.keyboard.press('Shift+KeyZ');
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length === count;
+  }, afterDuplicate);
+});
+
+test('Editor drag and resize move steel entries', async ({ page }) => {
+  await page.click('#editorToolList button[data-tool="steel"]');
+  await dragCanvas(page, { x: 0.55, y: 0.35 }, { x: 0.62, y: 0.45 });
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.58, 0.4);
+
+  await page.waitForFunction(() => {
+    const bounds = window.__E2E__.getState().editor.controller.selectionBounds;
+    return bounds && bounds.width > 0 && bounds.height > 0;
+  });
+
+  let state = await getEditorState(page);
+  const beforeEntry = state.editor.controller.selectionEntries[0];
+  const bounds = state.editor.controller.selectionBounds;
+  const canvasBox = await getCanvasBox(page);
+  const start = worldToPage(state, canvasBox, { x: bounds.x + 2, y: bounds.y + 2 });
+  const grid = state.editor.controller.gridSize || 1;
+  const target = worldToPage(state, canvasBox, {
+    x: bounds.x + grid * 2,
+    y: bounds.y + grid * 2
+  });
+
+  await page.mouse.move(start.x, start.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x, target.y);
+  await page.mouse.up();
+
+  state = await getEditorState(page);
+  const moved = state.editor.controller.selectionEntries[0];
+  expect(moved.entry.props.X).not.toBe(beforeEntry.entry.props.X);
+  expect(moved.entry.props.Y).not.toBe(beforeEntry.entry.props.Y);
+
+  const resizedBounds = state.editor.controller.selectionBounds;
+  const handle = worldToPage(state, canvasBox, {
+    x: resizedBounds.x + resizedBounds.width,
+    y: resizedBounds.y + resizedBounds.height
+  });
+  const resizeTarget = worldToPage(state, canvasBox, {
+    x: resizedBounds.x + resizedBounds.width + grid * 2,
+    y: resizedBounds.y + resizedBounds.height + grid * 2
+  });
+
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.mouse.move(resizeTarget.x, resizeTarget.y);
+  await page.mouse.up();
+
+  state = await getEditorState(page);
+  const resized = state.editor.controller.selectionEntries[0];
+  expect(resized.entry.props.WIDTH).toBeGreaterThan(beforeEntry.entry.props.WIDTH || 0);
+  expect(resized.entry.props.HEIGHT).toBeGreaterThan(beforeEntry.entry.props.HEIGHT || 0);
+});
+
+test('Editor entrance and exit tools enforce classic limits', async ({ page }) => {
+  let state = await getEditorState(page);
+  const entranceId = state.editor.assets.entranceId;
+  const exitId = state.editor.assets.exitId;
+  expect(Number.isFinite(entranceId)).toBe(true);
+  expect(Number.isFinite(exitId)).toBe(true);
+
+  await page.click('#editorToolList button[data-tool="entrance"]');
+  for (let i = 0; i < 5; i += 1) {
+    await clickCanvas(page, 0.18 + i * 0.04, 0.3);
+  }
+
+  state = await getEditorState(page);
+  const entranceCount = state.editor.session.level.gadgets
+    .filter(entry => entry?.props?.PIECE === entranceId).length;
+  expect(entranceCount).toBeLessThanOrEqual(4);
+
+  await page.click('#editorToolList button[data-tool="exit"]');
+  for (let i = 0; i < 5; i += 1) {
+    await clickCanvas(page, 0.18 + i * 0.04, 0.6);
+  }
+
+  state = await getEditorState(page);
+  const exitCount = state.editor.session.level.gadgets
+    .filter(entry => entry?.props?.PIECE === exitId).length;
+  expect(exitCount).toBeLessThanOrEqual(4);
+});
+
+test('Editor gadget resize writes width and height props', async ({ page }) => {
+  await page.click('#editorPaletteTabs button[data-tab="gadgets"]');
+  const gadgetButton = page.locator('#editorPaletteGadgets button').first();
+  await expect(gadgetButton).toBeVisible();
+  await gadgetButton.click();
+
+  await page.click('#editorToolList button[data-tool="gadget"]');
+  await clickCanvas(page, 0.35, 0.45);
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.35, 0.45);
+
+  await page.waitForFunction(() => {
+    const bounds = window.__E2E__.getState().editor.controller.selectionBounds;
+    return bounds && bounds.width > 0 && bounds.height > 0;
+  });
+
+  let state = await getEditorState(page);
+  const bounds = state.editor.controller.selectionBounds;
+  const canvasBox = await getCanvasBox(page);
+  const handle = worldToPage(state, canvasBox, {
+    x: bounds.x + bounds.width,
+    y: bounds.y + bounds.height
+  });
+  const resizeTarget = worldToPage(state, canvasBox, {
+    x: bounds.x + bounds.width + 8,
+    y: bounds.y + bounds.height + 8
+  });
+
+  await page.mouse.move(handle.x, handle.y);
+  await page.mouse.down();
+  await page.mouse.move(resizeTarget.x, resizeTarget.y);
+  await page.mouse.up();
+
+  state = await getEditorState(page);
+  const resized = state.editor.controller.selectionEntries[0];
+  expect(resized.entry.props.WIDTH).toBeGreaterThan(0);
+  expect(resized.entry.props.HEIGHT).toBeGreaterThan(0);
+});
+
+test('Editor view stays stable during edit actions', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button').first();
+  await expect(terrainButton).toBeVisible();
+  await terrainButton.click();
+
+  let state = await getEditorState(page);
+  const initialRect = state.stage.viewRect;
+  expect(initialRect).toBeTruthy();
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.3, 0.35);
+  await page.click('#editorToolList button[data-tool="select"]');
+  await clickCanvas(page, 0.3, 0.35);
+  await page.keyboard.press('ArrowRight');
+
+  state = await getEditorState(page);
+  const nextRect = state.stage.viewRect;
+  expect(nextRect).toEqual(initialRect);
 });

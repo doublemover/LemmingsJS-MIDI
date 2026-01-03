@@ -21,12 +21,12 @@ Files:
 
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).
-  Example: `lemmings.session.create` becomes `lemmings_session_create`.
+  Example: `session.create` becomes `session_create` (full tool: `lemmings.session_create`).
 
 ## Smoke test checklist
-- `lemmings.session.create` returns a session id and `ready=true`.
-- `lemmings.state.get` returns a snapshot with `game.timer.tickIndex`.
-- `lemmings.input.action` with `togglePause` toggles `game.timer.running`.
-- `lemmings.lemmings.summary` returns counts and selected lemming data.
-- `lemmings.vision.capture` returns a resource URI and `resources/read` can fetch it.
-- `lemmings.session.close` cleans up without errors.
+- `session.create` returns a session id and `ready=true`.
+- `state.get` returns a snapshot with `game.timer.tickIndex`.
+- `input.action` with `togglePause` toggles `game.timer.running`.
+- `lemming.summary` returns counts and selected lemming data.
+- `vision.capture` returns a resource URI and `resources/read` can fetch it.
+- `session.close` cleans up without errors.
