@@ -400,88 +400,103 @@ const EventsPollSchema = z.object({
   after: z.string().optional()
 });
 
-const TOOL_DEFS = [
+const TOOL_SPECS = [
   {
     name: 'lemmings.session.create',
     description: 'Launch a Playwright session and load the game with the E2E harness.',
-    inputSchema: toJsonSchemaCompat(SessionCreateSchema)
+    schema: SessionCreateSchema
   },
   {
     name: 'lemmings.session.close',
     description: 'Close a Playwright session and clear resources/events.',
-    inputSchema: toJsonSchemaCompat(SessionCloseSchema)
+    schema: SessionCloseSchema
   },
   {
     name: 'lemmings.time.pause',
     description: 'Pause the game timer via the E2E harness.',
-    inputSchema: toJsonSchemaCompat(TimeSchema)
+    schema: TimeSchema
   },
   {
     name: 'lemmings.time.resume',
     description: 'Resume the game timer via the E2E harness.',
-    inputSchema: toJsonSchemaCompat(TimeSchema)
+    schema: TimeSchema
   },
   {
     name: 'lemmings.time.step',
     description: 'Step the game timer forward or backward by a number of ticks.',
-    inputSchema: toJsonSchemaCompat(TimeStepSchema)
+    schema: TimeStepSchema
   },
   {
     name: 'lemmings.state.get',
     description: 'Fetch a structured state snapshot from the E2E harness.',
-    inputSchema: toJsonSchemaCompat(StateGetSchema)
+    schema: StateGetSchema
   },
   {
     name: 'lemmings.lemmings.summary',
     description: 'Return aggregated lemming summary data.',
-    inputSchema: toJsonSchemaCompat(LemmingsSummarySchema)
+    schema: LemmingsSummarySchema
   },
   {
     name: 'lemmings.lemming.select',
     description: 'Select a lemming by ID via the E2E harness.',
-    inputSchema: toJsonSchemaCompat(LemmingSelectSchema)
+    schema: LemmingSelectSchema
   },
   {
     name: 'lemmings.skill.apply',
     description: 'Apply a skill to a selected lemming using keybindings.',
-    inputSchema: toJsonSchemaCompat(SkillApplySchema)
+    schema: SkillApplySchema
   },
   {
     name: 'lemmings.input.action',
     description: 'Execute a named action from keybindings.json.',
-    inputSchema: toJsonSchemaCompat(InputActionSchema)
+    schema: InputActionSchema
   },
   {
     name: 'lemmings.input.keys',
     description: 'Inject low-level key events.',
-    inputSchema: toJsonSchemaCompat(InputKeysSchema)
+    schema: InputKeysSchema
   },
   {
     name: 'lemmings.vision.capture',
     description: 'Capture a screenshot of the page or canvas.',
-    inputSchema: toJsonSchemaCompat(VisionCaptureSchema)
+    schema: VisionCaptureSchema
   },
   {
     name: 'lemmings.vision.captureSequence',
     description: 'Capture multiple frames across time.',
-    inputSchema: toJsonSchemaCompat(VisionSequenceSchema)
+    schema: VisionSequenceSchema
   },
   {
     name: 'lemmings.watch.create',
     description: 'Create a watch that emits events based on ticks or state changes.',
-    inputSchema: toJsonSchemaCompat(WatchCreateSchema)
+    schema: WatchCreateSchema
   },
   {
     name: 'lemmings.watch.cancel',
     description: 'Cancel a watch.',
-    inputSchema: toJsonSchemaCompat(WatchCancelSchema)
+    schema: WatchCancelSchema
   },
   {
     name: 'lemmings.events.poll',
     description: 'Poll events since a cursor.',
-    inputSchema: toJsonSchemaCompat(EventsPollSchema)
+    schema: EventsPollSchema
   }
 ];
+
+const TOOL_NAME_ALIASES = new Map();
+
+const toToolName = (name) => String(name).replace(/\./g, '_');
+
+const TOOL_DEFS = TOOL_SPECS.map((spec) => {
+  const externalName = toToolName(spec.name);
+  TOOL_NAME_ALIASES.set(externalName, spec.name);
+  TOOL_NAME_ALIASES.set(spec.name, spec.name);
+  return {
+    name: externalName,
+    description: spec.description,
+    inputSchema: toJsonSchemaCompat(spec.schema)
+  };
+});
 
 const buildToolResponse = (payload) => ({
   content: [{ type: 'text', text: JSON.stringify(payload, null, 2) }],
@@ -1625,10 +1640,11 @@ const server = new Server(
 server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS }));
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-  const toolName = request.params.name;
+  const rawName = request.params.name;
+  const toolName = TOOL_NAME_ALIASES.get(rawName) || rawName;
   const handler = TOOL_HANDLERS.get(toolName);
   if (!handler) {
-    throw new Error(`Unknown tool: ${toolName}`);
+    throw new Error(`Unknown tool: ${rawName}`);
   }
   const args = request.params.arguments || {};
   const payload = await handler(args);

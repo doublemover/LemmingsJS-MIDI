@@ -142,6 +142,11 @@ Additionally, the agent can call `lemmings.events.poll` for explicit polling.
 ## 6) Tool names and responsibilities
 
 ### High-level tool groups
+Note: the MCP server exposes tool names with dots replaced by underscores
+(`lemmings.session.create` → `lemmings_session_create`) to satisfy host naming
+constraints. The canonical names below are dotted; use underscores when calling.
+
+### High-level tool groups
 - **Session**: `lemmings.session.*`
 - **Time**: `lemmings.time.*`
 - **State**: `lemmings.state.*`, `lemmings.lemmings.*`, `lemmings.lemming.*`

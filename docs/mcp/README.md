@@ -19,6 +19,10 @@ Files:
 - Claude Code: configure a stdio MCP server that runs `node mcp/server.js`.
 - LM Studio: use stdio with `node mcp/server.js` (HTTP transport is not wired up yet).
 
+## Tool naming
+- Tool names are exposed with dots replaced by underscores (for host validation).
+  Example: `lemmings.session.create` becomes `lemmings_session_create`.
+
 ## Smoke test checklist
 - `lemmings.session.create` returns a session id and `ready=true`.
 - `lemmings.state.get` returns a snapshot with `game.timer.tickIndex`.
