@@ -28,6 +28,10 @@ class ProcgenController {
     this._soundHandler = null;
     this._builderBurst = null;
     this._cameraTargetX = null;
+    this._lastSecond = null;
+    this._bombCheckElapsed = 0;
+    this._bombChance = 0.01;
+    this._nukeElapsed = 0;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
@@ -89,7 +93,8 @@ class ProcgenController {
       const lemmingId = event?.lemmingId;
       if (this._seenFalls.has(lemmingId)) return;
       this._seenFalls.add(lemmingId);
-      this._scheduleBuilderBurst();
+      const originX = Number.isFinite(event?.x) ? event.x : null;
+      this._scheduleBuilderBurst(originX);
     };
     bus.onEvent.on(this._soundHandler);
   }
@@ -124,6 +129,7 @@ class ProcgenController {
 
   _onTick() {
     if (!this._running) return;
+    this._updateTimers();
     const follow = this._getFollowLemming();
     const followX = Number.isFinite(follow?.x) ? follow.x : null;
     const guideX = Number.isFinite(followX) ? followX : this._getRightmostX();
@@ -131,6 +137,59 @@ class ProcgenController {
     this._ensureGround(guideX);
     this._processBuilderBurst();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
+  }
+
+  _updateTimers() {
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? null;
+    if (!Number.isFinite(tick)) return;
+    const seconds = Math.floor(tick / 17.5);
+    if (this._lastSecond == null) {
+      this._lastSecond = seconds;
+      return;
+    }
+    if (seconds <= this._lastSecond) return;
+    const delta = seconds - this._lastSecond;
+    this._lastSecond = seconds;
+    this._bombCheckElapsed += delta;
+    this._nukeElapsed += delta;
+    this._maybeTriggerBomber();
+    this._maybeTriggerNuke();
+  }
+
+  _maybeTriggerBomber() {
+    if (this._bombCheckElapsed < 30) return;
+    if (Math.random() < this._bombChance) {
+      const manager = this.game?.getLemmingManager?.();
+      const lems = manager?.activeLemmings || manager?.lemmings || [];
+      let best = null;
+      let bestX = -Infinity;
+      for (const lem of lems) {
+        if (!lem || lem.removed || lem.disabled) continue;
+        if (lem.x > bestX) {
+          bestX = lem.x;
+          best = lem;
+        }
+      }
+      if (best && manager?.doLemmingAction?.(best, SkillTypes.BOMBER)) {
+        this._bombCheckElapsed = 0;
+        this._bombChance = 0.01;
+        return;
+      }
+    }
+    if (this._bombCheckElapsed >= 10) {
+      this._bombCheckElapsed = 0;
+      this._bombChance = Math.min(1, this._bombChance * 2);
+    }
+  }
+
+  _maybeTriggerNuke() {
+    if (this._nukeElapsed < 60) return;
+    if (Math.random() < 0.1) {
+      const manager = this.game?.getLemmingManager?.();
+      manager?.doNukeAllLemmings?.();
+    }
+    this._nukeElapsed = 0;
   }
 
   _getFollowLemming() {
@@ -164,13 +223,15 @@ class ProcgenController {
     return max;
   }
 
-  _scheduleBuilderBurst() {
+  _scheduleBuilderBurst(originX) {
     const timer = this.game?.getGameTimer?.();
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
     this._builderBurst = {
       remaining: this._randInt(1, 5),
       nextDelay: this._randInt(10, 20),
-      dueTick: 0
+      dueTick: 0,
+      originX: Number.isFinite(originX) ? originX : null,
+      used: new Set()
     };
     this._builderBurst.dueTick = tick + this._builderBurst.nextDelay;
   }
@@ -181,7 +242,7 @@ class ProcgenController {
     const timer = this.game?.getGameTimer?.();
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
     if (burst.dueTick > tick) return;
-    const applied = this._applyBuilderToNextLemming();
+    const applied = this._applyBuilderToNextLemming(burst);
     if (applied) {
       burst.remaining -= 1;
       if (burst.remaining <= 0) {
@@ -193,10 +254,28 @@ class ProcgenController {
     burst.dueTick = tick + burst.nextDelay;
   }
 
-  _applyBuilderToNextLemming() {
+  _applyBuilderToNextLemming(burst) {
     const manager = this.game?.getLemmingManager?.();
     const lems = manager?.lemmings || [];
     if (!lems.length) return false;
+    if (Number.isFinite(burst?.originX)) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const lem of lems) {
+        if (!lem || lem.removed || lem.disabled) continue;
+        if (burst.used?.has?.(lem.id)) continue;
+        const dist = Math.abs((lem.x ?? 0) - burst.originX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = lem;
+        }
+      }
+      if (best && manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+        burst.used?.add?.(best.id);
+        return true;
+      }
+      return false;
+    }
     const start = Math.max(0, this._builderCursorId);
     for (let i = 0; i < lems.length; i++) {
       const idx = (start + i) % lems.length;
