@@ -34,10 +34,10 @@
 <body oncontextmenu="return false;">
   <div id="controlLeft" class="control-panel left">
     <div class="panel-section panel-header">
-      <div class="panel-title panel-toggle" id="midiPanelToggle">MIDI</div>
+      <div class="panel-title panel-toggle" id="midiPanelToggle">MIDI</div>     
       <label class="panel-row midi-enable-row">
+        <span>MIDI enabled</span>
         <input type="checkbox" id="midiEnabledToggle" />
-        MIDI enabled
       </label>
       <button id="midiDefaultsButton" type="button" class="button-danger">reset all</button>
     </div>
@@ -51,21 +51,21 @@
       <details class="panel-section" id="midiIoSection" data-section-key="io" open>
         <summary class="panel-title">I/O</summary>
         <label class="panel-row">
-          Input
+          <span>Input</span>
           <select id="midiInSelect"></select>
         </label>
         <label class="panel-row">
-          Output
+          <span>Output</span>
           <select id="midiOutSelect"></select>
         </label>
         <label class="panel-row">
-          Input channel
+          <span>Input channel</span>
           <select id="midiInputChannel"></select>
         </label>
         <button id="midiResetButton" type="button">MIDI reset</button>
         <label class="panel-row">
+          <span>View pan</span>
           <input type="checkbox" id="midiViewPanToggle" />
-          View pan
         </label>
         <div id="errorDisplay" class="panel-error"></div>
       </details>
@@ -115,15 +115,15 @@
           </label>
         </summary>
         <label class="panel-row">
-          Repeat max count
+          <span>Repeat max count</span>
           <input type="number" id="midiRepeatCount" min="0" max="32" step="1" />
         </label>
         <label class="panel-row">
-          Repeat window (beats)
+          <span>Repeat window (beats)</span>
           <select id="midiRepeatSpacing"></select>
         </label>
         <label class="panel-row">
-          Repeat target
+          <span>Repeat target</span>
           <select id="midiRepeatTarget"></select>
         </label>
         <label class="panel-row range-row">
@@ -147,11 +147,11 @@
       <div class="panel-section">
         <div class="panel-title">Key and scale</div>
         <label class="panel-row">
-          Key
+          <span>Key</span>
           <select id="midiKeySelect"></select>
         </label>
         <label class="panel-row">
-          Scale
+          <span>Scale</span>
           <select id="midiScaleSelect"></select>
         </label>
       </div>
@@ -164,7 +164,7 @@
       <div class="panel-section">
         <div class="panel-title">Envelope</div>
         <label class="panel-row">
-          Target
+          <span>Target</span>
           <select id="midiEnvTarget"></select>
         </label>
         <label class="panel-row range-row">

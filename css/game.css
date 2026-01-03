@@ -203,6 +203,13 @@ body.midi-disabled #controlLeft {
     width: auto;
     height: auto;
     max-height: none;
+    padding: 10px 12px;
+    min-width: 0;
+}
+
+body.midi-disabled #controlLeft.control-panel.collapsed {
+    width: auto;
+    padding: 10px 12px;
 }
 
 .panel-section {
@@ -223,6 +230,8 @@ body.midi-disabled #controlLeft {
     justify-content: space-between;
     gap: 8px;
     width: 100%;
+    min-width: 0;
+    flex-wrap: nowrap;
     font-size: 12px;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -267,8 +276,8 @@ body.midi-disabled #controlLeft {
 }
 
 .panel-row-wide {
-    font-size: 10px;
-    line-height: 1.2;
+    font-size: 9px;
+    line-height: 1.1;
     justify-content: flex-start;
     white-space: nowrap;
 }
@@ -299,6 +308,29 @@ body.midi-disabled #controlLeft {
     gap: 8px;
     font-size: 12px;
     margin-bottom: 6px;
+    min-width: 0;
+    flex-wrap: nowrap;
+}
+
+.panel-row > span {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.panel-row > .range-input,
+.panel-row > .input-pair {
+    flex: 1;
+    min-width: 0;
+}
+
+.panel-row > input,
+.panel-row > select,
+.panel-row > button,
+.panel-row > .axis-toggle {
+    flex-shrink: 0;
 }
 
 .panel-tabs {
@@ -353,13 +385,13 @@ body.midi-disabled #controlLeft {
 }
 
 .input-compact {
-    width: 64px;
-    min-width: 64px;
+    width: 56px;
+    min-width: 56px;
 }
 
 .input-mini {
-    width: 48px;
-    min-width: 48px;
+    width: 44px;
+    min-width: 44px;
 }
 
 .input-align-right {
@@ -370,7 +402,7 @@ body.midi-disabled #controlLeft {
     width: 100%;
 }
 
-.control-panel input,
+.control-panel input:not([type="checkbox"]):not([type="radio"]),
 .control-panel select,
 .control-panel button {
     font-size: 12px;
@@ -383,9 +415,28 @@ body.midi-disabled #controlLeft {
     user-select: text;
 }
 
+.control-panel input[type="checkbox"],
+.control-panel input[type="radio"] {
+    min-width: 0;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    margin: 0;
+}
+
 .control-panel input[type="range"] {
     padding: 0;
     min-width: 120px;
+}
+
+.control-panel .input-compact {
+    width: 56px;
+    min-width: 56px;
+}
+
+.control-panel .input-mini {
+    width: 44px;
+    min-width: 44px;
 }
 
 .control-panel button {

@@ -45,6 +45,19 @@ test('Enabling MIDI reveals panels and inputs', async ({ page }) => {
   }
 });
 
+test('MIDI panels match layout snapshots', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  await page.waitForSelector('#midiEventList details');
+  const leftPanel = page.locator('#controlLeft');
+  const rightPanel = page.locator('#controlRight');
+  await expect(leftPanel).toHaveScreenshot('midi-left-default.png');
+  await expect(rightPanel).toHaveScreenshot('midi-right-events.png');
+  await page.locator('[data-tab-target="midiTabGlobalFx"]').click();
+  await expect(page.locator('#midiTabGlobalFx')).toHaveClass(/active/);
+  await expect(leftPanel).toHaveScreenshot('midi-left-global-fx.png');
+});
+
 test('MIDI event list excludes unknown-0B', async ({ page }) => {
   await page.goto('/');
   await page.locator('#midiEnabledToggle').check();

@@ -491,9 +491,7 @@ export const createMidiUiController = ({
     const details = document.createElement('details');
     details.className = 'panel-section';
     const summary = document.createElement('summary');
-    summary.className = 'panel-title';
-    const summaryRow = document.createElement('span');
-    summaryRow.className = 'panel-title-row';
+    summary.className = 'panel-title panel-title-row';
     const summaryTitle = document.createElement('span');
     summaryTitle.textContent = name || `Event ${id}`;
     const enabledToggle = document.createElement('input');
@@ -504,9 +502,8 @@ export const createMidiUiController = ({
     enabledText.textContent = 'Enabled';
     enabledLabel.appendChild(enabledText);
     enabledLabel.appendChild(enabledToggle);
-    summaryRow.appendChild(summaryTitle);
-    summaryRow.appendChild(enabledLabel);
-    summary.appendChild(summaryRow);
+    summary.appendChild(summaryTitle);
+    summary.appendChild(enabledLabel);
     details.appendChild(summary);
 
     const modeSelect = document.createElement('select');

@@ -25,6 +25,8 @@ const isSameOrigin = (url) => url.origin === self.location.origin;
 const isHtmlRequest = (request) => request.mode === 'navigate' ||
   (request.headers.get('accept') || '').includes('text/html');
 
+const fetchFresh = (request) => fetch(new Request(request, { cache: 'no-store' }));
+
 const cacheFirst = async (request) => {
   const cache = await caches.open(RUNTIME_CACHE);
   const cached = await cache.match(request);
@@ -36,9 +38,9 @@ const cacheFirst = async (request) => {
   return response;
 };
 
-const networkFirst = async (request, fallbackUrl = null) => {
+const networkFirst = async (request, fallbackUrl = null, { bypassCache = false } = {}) => {
   try {
-    const response = await fetch(request);
+    const response = await (bypassCache ? fetchFresh(request) : fetch(request));
     if (response && response.status === 200) {
       const cache = await caches.open(RUNTIME_CACHE);
       cache.put(request, response.clone());
@@ -85,17 +87,25 @@ self.addEventListener('fetch', (event) => {
   if (isHtmlRequest(request)) {
     const fallbackPath = url.pathname.endsWith('/editor.html') ? 'editor.html' : 'index.html';
     const fallbackUrl = toUrl(fallbackPath);
-    event.respondWith(networkFirst(request, fallbackUrl));
+    event.respondWith(networkFirst(request, fallbackUrl, { bypassCache: true }));
     return;
   }
 
   const destination = request.destination;
-  const isStatic = destination === 'script' ||
-    destination === 'style' ||
-    destination === 'image' ||
+  if (destination === 'script' || destination === 'style') {
+    event.respondWith(networkFirst(request, null, { bypassCache: true }));
+    return;
+  }
+  const isStatic = destination === 'image' ||
     destination === 'font' ||
     destination === 'audio';
   if (isStatic) {
     event.respondWith(cacheFirst(request));
+  }
+});
+
+self.addEventListener('message', (event) => {
+  if (event?.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
