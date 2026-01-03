@@ -82,7 +82,7 @@ Notes:
 
 ## Phase 5: MIDI sequencing and UI
 - [ ] Iterate on the MIDI UI and mapping UX.
-- [ ] Add MIDI debug display.
+- [x] Add MIDI debug display.
 - [ ] Ability to place flags to trigger MIDI events.
 
 ## Phase 6: Performance and benchmarks

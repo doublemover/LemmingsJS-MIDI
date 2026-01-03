@@ -46,6 +46,25 @@ const formatNumber = (value, digits = 2) => {
   return fixed.replace(/\.?0+$/, '');
 };
 
+const formatDebugBytes = (bytes) => {
+  if (!Array.isArray(bytes) || !bytes.length) return '--';
+  return bytes
+    .map(value => Number(value).toString(16).padStart(2, '0'))
+    .join(' ');
+};
+
+const formatDebugOutput = (payload) => {
+  if (!payload) return '--';
+  if (Array.isArray(payload)) return formatDebugBytes(payload);
+  if (typeof payload === 'object') {
+    const note = Number.isFinite(payload.note) ? payload.note : '?';
+    const velocity = Number.isFinite(payload.velocity) ? payload.velocity : '?';
+    const channel = Number.isFinite(payload.channel) ? payload.channel : '?';
+    return `note ${note} vel ${velocity} ch ${channel}`;
+  }
+  return String(payload);
+};
+
 
 export const createMidiUiController = ({
   window = globalThis.window,
@@ -1415,6 +1434,8 @@ export const createMidiUiController = ({
     const leftPanel = document.getElementById('controlLeft');
     const bpmBase = document.getElementById('midiBpmBase');
     const bpmCurrent = document.getElementById('midiBpmCurrent');
+    const debugInput = document.getElementById('midiDebugInput');
+    const debugOutput = document.getElementById('midiDebugOutput');
     const keySelect = document.getElementById('midiKeySelect');
     const scaleSelect = document.getElementById('midiScaleSelect');
     const positionAdd = document.getElementById('midiPositionAdd');
@@ -1652,6 +1673,17 @@ export const createMidiUiController = ({
     };
     updateBpm();
     window?.setInterval?.(updateBpm, 500);
+
+    const updateDebug = () => {
+      if (debugInput) {
+        debugInput.textContent = `Input: ${formatDebugBytes(window?.lastMidiInputMessage)}`;
+      }
+      if (debugOutput) {
+        debugOutput.textContent = `Output: ${formatDebugOutput(window?.lastMidiOutputMessage)}`;
+      }
+    };
+    updateDebug();
+    window?.setInterval?.(updateDebug, 250);
 
     midiUiBound = true;
   };

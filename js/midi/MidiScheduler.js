@@ -302,6 +302,15 @@ class MidiScheduler {
       }
 
       channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs });
+      if (typeof window !== 'undefined') {
+        window.lastMidiOutputMessage = {
+          type: 'noteOn',
+          note: spec.note,
+          velocity: attackVelocity,
+          channel: channelNumber,
+          timeMs: sendTimeMs
+        };
+      }
 
       this._activeNotes.set(token, {
         channel: channelNumber,
