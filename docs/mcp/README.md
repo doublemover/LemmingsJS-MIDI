@@ -19,6 +19,11 @@ Files:
 - Claude Code: configure a stdio MCP server that runs `node mcp/server.js`.
 - LM Studio: use stdio with `node mcp/server.js` (HTTP transport is not wired up yet).
 
+## Client compatibility tracking
+- Matrix: `docs/mcp/client-compatibility.json`
+- Examples: `docs/mcp/config-examples/`
+- Check: `npm run check-mcp-clients`
+
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `session.create` becomes `session_create` (full tool: `lemmings.session_create`).
