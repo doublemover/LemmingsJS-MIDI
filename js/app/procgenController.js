@@ -1,4 +1,6 @@
 import { Lemming } from '../lemmings/Lemming.js';
+import { SkillTypes } from '../game/SkillTypes.js';
+import { SoundEventTypes } from '../game/SoundEvents.js';
 
 class ProcgenController {
   constructor({ view, game, level, options = {} }) {
@@ -14,6 +16,10 @@ class ProcgenController {
     this._colorTransition = { from: 1, to: 1, remaining: 0, total: 0 };
     this._sustainBaseY = 0;
     this._sustainRemaining = 0;
+    this._builderQueue = [];
+    this._builderCursorId = 0;
+    this._seenFalls = new Set();
+    this._soundHandler = null;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
@@ -39,12 +45,14 @@ class ProcgenController {
       this._cameraX = stage.gameImgProps.viewPoint.x || 0;
     }
     this._bindTimer();
+    this._bindSoundEvents();
   }
 
   stop() {
     if (!this._running) return;
     this._running = false;
     this._unbindTimer();
+    this._unbindSoundEvents();
   }
 
   _bindTimer() {
@@ -59,6 +67,28 @@ class ProcgenController {
     if (!timer?.onGameTick?.off || !this._tickHandler) return;
     timer.onGameTick.off(this._tickHandler);
     this._tickHandler = null;
+  }
+
+  _bindSoundEvents() {
+    if (this._soundHandler) return;
+    const bus = this.game?.soundEvents;
+    if (!bus?.onEvent?.on) return;
+    this._soundHandler = event => {
+      if (event?.type !== SoundEventTypes.LEMMING_FELL_OFF) return;
+      const lemmingId = event?.lemmingId;
+      if (this._seenFalls.has(lemmingId)) return;
+      this._seenFalls.add(lemmingId);
+      this._scheduleBuilderBurst();
+    };
+    bus.onEvent.on(this._soundHandler);
+  }
+
+  _unbindSoundEvents() {
+    const bus = this.game?.soundEvents;
+    if (bus?.onEvent?.off && this._soundHandler) {
+      bus.onEvent.off(this._soundHandler);
+    }
+    this._soundHandler = null;
   }
 
   _initGround() {
@@ -86,6 +116,7 @@ class ProcgenController {
     const guideX = Number.isFinite(followX) ? followX : this._getRightmostX();
     if (!Number.isFinite(guideX)) return;
     this._ensureGround(guideX);
+    this._processBuilderQueue();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
   }
 
@@ -118,6 +149,43 @@ class ProcgenController {
       return Number.isFinite(entrance?.x) ? entrance.x : null;
     }
     return max;
+  }
+
+  _scheduleBuilderBurst() {
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    const count = this._randInt(1, 5);
+    for (let i = 0; i < count; i++) {
+      const delay = this._randInt(1, 20);
+      this._builderQueue.push({ dueTick: tick + delay });
+    }
+  }
+
+  _processBuilderQueue() {
+    if (!this._builderQueue.length) return;
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    const dueIndex = this._builderQueue.findIndex(item => item.dueTick <= tick);
+    if (dueIndex < 0) return;
+    this._builderQueue.splice(dueIndex, 1);
+    this._applyBuilderToNextLemming();
+  }
+
+  _applyBuilderToNextLemming() {
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length) return false;
+    const start = Math.max(0, this._builderCursorId);
+    for (let i = 0; i < lems.length; i++) {
+      const idx = (start + i) % lems.length;
+      const lem = lems[idx];
+      if (!lem || lem.removed || lem.disabled) continue;
+      this._builderCursorId = idx + 1;
+      if (manager.doLemmingAction(lem, SkillTypes.BUILDER)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   _ensureGround(rightmostX) {
