@@ -57,7 +57,10 @@ class ProcgenStageAdapter {
     const vp = stageImage.canvasViewportSize;
     const fitX = vp.width > 0 ? vp.width / worldWidth : 0.1;
     const fitY = vp.height > 0 ? vp.height / worldHeight : 0.1;
-    return Math.max(0.01, Math.min(fitX, fitY));
+    if (fitX >= 1 && fitY >= 1) {
+      return 1;
+    }
+    return Math.max(0.01, Math.min(1, Math.min(fitX, fitY)));
   }
 
   _overrideScaleClamp() {
