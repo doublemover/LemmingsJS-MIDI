@@ -149,8 +149,8 @@ Notes:
 - [ ] None recorded (last run: `npm test`).
 
 ## Phase 13: Procedural endless mode (procgen)
-- [ ] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.
-- [ ] Use pack/style 2 assets for the procgen level bootstrap.
-- [ ] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
-- [ ] Implement rightmost-lemming camera tracking with clamping and smooth follow.
-- [ ] Add minimal E2E smoke coverage for procgen readiness and endless spawning.
+- [x] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.
+- [x] Use pack/style 2 assets for the procgen level bootstrap.
+- [x] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
+- [x] Implement rightmost-lemming camera tracking with clamping and smooth follow.
+- [x] Add minimal E2E smoke coverage for procgen readiness and endless spawning.

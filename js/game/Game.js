@@ -95,14 +95,30 @@ class Game extends BaseLogger {
       color: 'primary',
       tooltipText: `loadLevel ${levelGroupIndex}:${levelIndex}`
     });
+    const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
+    await this._initLevel(level, { levelGroupIndex, levelIndex });
+    endMeasure();
+    return this; // keeps legacy promise signature intact
+  }
+
+  async loadCustomLevel(level, options = {}) {
+    if (!level) return null;
+    await this._initLevel(level, options);
+    return this;
+  }
+
+  async _initLevel(level, options = {}) {
     this._disposeCurrentLevel();
 
     // Record indices for HUD etc.
-    this.levelGroupIndex = levelGroupIndex;
-    this.levelIndex      = levelIndex;
+    this.levelGroupIndex = Number.isFinite(options.levelGroupIndex)
+      ? options.levelGroupIndex
+      : 0;
+    this.levelIndex = Number.isFinite(options.levelIndex)
+      ? options.levelIndex
+      : 0;
+    this.level = level;
 
-    const level   = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
-    this.level    = level;
     const Timer = getDependency('GameTimer', GameTimer);
     this.gameTimer = new Timer(level);
     this.gameTimer.onGameTick.on(this._boundTick);
@@ -169,8 +185,6 @@ class Game extends BaseLogger {
     if (this.guiDisplay) this.gameGui.setGuiDisplay(this.guiDisplay);
 
     this.history?.start?.();
-    endMeasure();
-    return this; // keeps legacy promise signature intact
   }
 
   start () {
@@ -301,6 +315,8 @@ class Game extends BaseLogger {
     if (this.guiDisplay) {
       this.gameGui.render();
       this.guiDisplay.redraw();
+    } else if (this.display) {
+      this.display.redraw();
     }
     endMeasure();
   }

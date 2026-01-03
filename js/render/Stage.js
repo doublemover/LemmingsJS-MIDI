@@ -33,6 +33,8 @@ class Stage {
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
+    this.guiEnabled = true;
+    this.hudMargin = 20;
 
     this.stageCav = canvasForOutput;
     this.gameImgProps = new StageImageProperties();
@@ -74,6 +76,14 @@ class Stage {
       0
     );
     this.cursorCanvas = c;
+  }
+
+  setGuiEnabled(enabled) {
+    this.guiEnabled = !!enabled;
+    if (!this.guiEnabled) {
+      this.guiImgProps.display = null;
+    }
+    this.updateStageSize();
   }
 
   calcPosition2D(stageImage, e) {
@@ -270,30 +280,30 @@ class Stage {
   updateStageSize() {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
-    // this margin is for the level <select> elements in the html 
-    const margin = 20;
+    const guiActive = this.guiEnabled && !!this.guiImgProps.display;
+    // this margin is for the level <select> elements in the html
+    const margin = guiActive ? this.hudMargin : 0;
 
     // HUD scale adapts to available space
+    const rawHUDH = guiActive ? (this.guiImgProps.display?.worldDataSize.height || 80) : 0;
+    const rawHUDW = guiActive ? (this.guiImgProps.display?.worldDataSize.width || 720) : 0;
 
-    const rawHUDH = this.guiImgProps.display?.worldDataSize.height || 80;
-    const rawHUDW = this.guiImgProps.display?.worldDataSize.width  || 720;
-
-    const maxScaleW = stageW / rawHUDW;
-    const maxScaleH = (stageH - margin) / rawHUDH;
-    let hudScale = Math.min(4, maxScaleW, maxScaleH);
+    const maxScaleW = guiActive && rawHUDW ? stageW / rawHUDW : 1;
+    const maxScaleH = guiActive && rawHUDH ? (stageH - margin) / rawHUDH : 1;
+    let hudScale = guiActive ? Math.min(4, maxScaleW, maxScaleH) : 1;
     if (!isFinite(hudScale) || hudScale <= 0) hudScale = 1;
     this.guiImgProps.viewPoint.scale = hudScale;
 
-    const hudH = rawHUDH * hudScale;
-    const hudW = rawHUDW * hudScale;
+    const hudH = guiActive ? rawHUDH * hudScale : 0;
+    const hudW = guiActive ? rawHUDW * hudScale : 0;
 
     const gameH = Math.max(0, stageH - hudH - margin);
 
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
     this.gameImgProps.canvasViewportSize = { width: stageW, height: gameH };
     Object.assign(this.guiImgProps, {
-      x: this.guiImgProps.display ? (stageW - hudW) / 2 : 0,
-      y: stageH - hudH - margin
+      x: guiActive ? (stageW - hudW) / 2 : 0,
+      y: guiActive ? (stageH - hudH - margin) : 0
     });
     this.guiImgProps.canvasViewportSize = { width: hudW, height: hudH };
 
@@ -321,7 +331,7 @@ class Stage {
       this.draw(this.gameImgProps, gameImg);
     }
 
-    if (this.guiImgProps.display) {
+    if (guiActive && this.guiImgProps.display) {
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }
