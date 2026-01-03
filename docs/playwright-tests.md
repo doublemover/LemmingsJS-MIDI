@@ -13,11 +13,16 @@ Playwright runs against `https://localhost:8080` and starts the server via
 `npm run start-https`, which uses the self-signed cert in `certs/`. If you need
 a trusted local cert, replace the files in `certs/` with your own.
 
-## WebMIDI stubbing
-For now, E2E tests stub WebMIDI using `e2e/helpers/webmidiStub.js` to avoid
-permission prompts and hardware dependencies. The stub provides fake inputs and
-outputs, so MIDI coverage is limited to UI flows until real devices are wired
-in.
+## E2E harness
+Add `?e2e=1` to enable the test harness and `window.__E2E__` API. The current
+schema is documented in:
+- `docs/e2e-state.md`
+- `docs/e2e-editor-state.md`
+
+## WebMIDI
+E2E tests can grant real MIDI permissions (Chromium-only) or use the stub in
+`e2e/helpers/webmidiStub.js` to avoid hardware dependencies. The stub is
+optional and should be used only when real MIDI access is unavailable.
 
 ## Phased coverage plan
 1) MIDI UI: enable/disable flow, pane visibility, event list sanity.

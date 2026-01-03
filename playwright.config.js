@@ -11,6 +11,10 @@ export default defineConfig({
     baseURL: 'https://localhost:8080',
     browserName: 'chromium',
     ignoreHTTPSErrors: true,
+    permissions: ['midi'],
+    launchOptions: {
+      args: ['--allow-insecure-localhost']
+    },
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure'

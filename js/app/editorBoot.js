@@ -2,6 +2,7 @@ import './bootstrap.js';
 import { GameView } from '../game/GameView.js';
 import { EditorUiController } from './editorUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
+import { installE2EHarness } from './e2eHarness.js';
 
 const init = async () => {
   const lemmings = new GameView();
@@ -18,6 +19,7 @@ const init = async () => {
 
   const ui = new EditorUiController({ view: lemmings, document, window });
   await ui.init();
+  installE2EHarness({ view: lemmings, editorUi: ui });
 };
 
 window.addEventListener('DOMContentLoaded', () => {

@@ -1,7 +1,6 @@
-const STATS_PIXEL_URL = 'https://sneakyness.com/stats/lemmings-MIDI';
+const STATS_PIXEL_URL = /https:\/\/sneakyness\.com\/stats\/lemmings-MIDI\/?/;
 
 export async function installExternalAssetStubs(page) {
-  await page.route(STATS_PIXEL_URL, (route) => {
-    return route.fulfill({ status: 204 });
-  });
+  const handler = (route) => route.fulfill({ status: 204 });
+  await page.context().route(STATS_PIXEL_URL, handler);
 }

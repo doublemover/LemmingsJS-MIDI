@@ -3,6 +3,7 @@ import { GameView } from '../game/GameView.js';
 import { MidiInputController } from '../midi/input/MidiInputController.js';
 import { createMidiUiController } from './midiUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
+import { installE2EHarness } from './e2eHarness.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -28,6 +29,7 @@ function init() {
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
+  installE2EHarness({ view: lemmings });
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
