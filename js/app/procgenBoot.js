@@ -16,7 +16,7 @@ const PROCGEN_LEVEL_WIDTH = 65535;
 const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
-const PROCGEN_GROUND_HEIGHT = 3;
+const PROCGEN_GROUND_HEIGHT = 4;
 
 const buildProcgenEditorLevel = () => {
   const level = new EditorLevel();

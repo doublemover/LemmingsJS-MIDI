@@ -14,7 +14,7 @@ class ProcgenController {
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
-    this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 3;
+    this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
     this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 120;
     this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 2;
