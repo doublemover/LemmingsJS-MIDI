@@ -517,6 +517,7 @@ export const createMidiUiController = ({
     const summary = document.createElement('summary');
     summary.className = 'panel-title panel-title-row';
     const summaryTitle = document.createElement('span');
+    summaryTitle.className = 'panel-title-text';
     summaryTitle.textContent = name || `Event ${id}`;
     const enabledToggle = document.createElement('input');
     enabledToggle.type = 'checkbox';

@@ -11,14 +11,16 @@ class ProcgenController {
     this._groundEndX = 0;
     this._groundTopY = 0;
     this._segmentColorIndex = 0;
+    this._terrainPlan = { mode: 'flat', remaining: 0 };
+    this._pendingDrop = false;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 8;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
-    this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 160;
-    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 24;
-    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 64;
-    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 16;
-    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 64;
+    this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 120;
+    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 12;
+    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 48;
+    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 12;
+    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 48;
     this.followLerp = Number.isFinite(options.followLerp) ? options.followLerp : 0.12;
     this.maxStepUp = Number.isFinite(options.maxStepUp) ? options.maxStepUp : 3;
     this.maxDrop = Number.isFinite(options.maxDrop) ? options.maxDrop : (Lemming.LEM_MAX_FALLING - 1);
@@ -68,10 +70,24 @@ class ProcgenController {
 
   _onTick() {
     if (!this._running) return;
-    const rightmost = this._getRightmostX();
-    if (!Number.isFinite(rightmost)) return;
-    this._ensureGround(rightmost);
-    this._updateCamera(rightmost);
+    const follow = this._getFollowLemming();
+    const followX = Number.isFinite(follow?.x) ? follow.x : null;
+    const guideX = Number.isFinite(followX) ? followX : this._getRightmostX();
+    if (!Number.isFinite(guideX)) return;
+    this._ensureGround(guideX);
+    this._updateCamera(Number.isFinite(followX) ? followX : guideX);
+  }
+
+  _getFollowLemming() {
+    const manager = this.game?.getLemmingManager?.();
+    const first = manager?.getLemming?.(0);
+    if (first && !first.removed && !first.disabled) return first;
+    const lems = manager?.activeLemmings || manager?.lemmings || [];
+    for (const lem of lems) {
+      if (!lem || lem.removed || lem.disabled) continue;
+      return lem;
+    }
+    return null;
   }
 
   _getRightmostX() {
@@ -129,11 +145,75 @@ class ProcgenController {
   _pickNextTopY() {
     const levelHeight = this.level?.height ?? 0;
     const maxTop = Math.max(0, levelHeight - this.groundHeight);
-    const up = Math.max(0, Math.floor(this.maxStepUp));
-    const down = Math.max(0, Math.floor(this.maxDrop));
-    const delta = Math.floor(Math.random() * (up + down + 1)) - up;
+    const delta = this._nextElevationDelta();
     const next = this._groundTopY + delta;
     return Math.max(0, Math.min(maxTop, next));
+  }
+
+  _nextElevationDelta() {
+    if (!this._terrainPlan || this._terrainPlan.remaining <= 0) {
+      this._seedTerrainPlan();
+    }
+    const mode = this._terrainPlan.mode;
+    const up = Math.max(1, Math.floor(this.maxStepUp));
+    const down = Math.max(1, Math.floor(this.maxDrop));
+    let delta = 0;
+    if (mode === 'climb') {
+      delta = -this._randInt(1, up);
+    } else if (mode === 'drop-small') {
+      delta = this._randInt(1, Math.min(3, down));
+    } else if (mode === 'drop-medium') {
+      delta = this._randInt(Math.min(4, down), Math.min(10, down));
+    } else if (mode === 'drop-big') {
+      const minBig = Math.max(1, Math.floor(down * 0.75));
+      delta = this._randInt(minBig, down);
+    } else {
+      delta = this._randInt(-1, 1);
+    }
+    this._terrainPlan.remaining -= 1;
+    return delta;
+  }
+
+  _seedTerrainPlan() {
+    const prev = this._terrainPlan?.mode || 'flat';
+    let mode = 'flat';
+    if (prev === 'climb') {
+      mode = 'flat';
+      this._pendingDrop = true;
+    } else if (prev === 'flat') {
+      if (this._pendingDrop) {
+        const roll = Math.random();
+        if (roll < 0.6) mode = 'drop-small';
+        else if (roll < 0.9) mode = 'drop-medium';
+        else mode = 'drop-big';
+        this._pendingDrop = false;
+      } else {
+        const roll = Math.random();
+        if (roll < 0.35) mode = 'climb';
+        else if (roll < 0.7) mode = 'drop-small';
+        else if (roll < 0.9) mode = 'drop-medium';
+        else mode = 'drop-big';
+      }
+    } else {
+      mode = 'flat';
+    }
+    const lengths = {
+      climb: this._randInt(2, 5),
+      flat: this._randInt(4, 10),
+      'drop-small': this._randInt(2, 5),
+      'drop-medium': this._randInt(2, 4),
+      'drop-big': 1
+    };
+    this._terrainPlan = {
+      mode,
+      remaining: lengths[mode] || 3
+    };
+  }
+
+  _randInt(min, max) {
+    const lo = Math.min(min, max);
+    const hi = Math.max(min, max);
+    return lo + Math.floor(Math.random() * (hi - lo + 1));
   }
 
   _getNextColorIndex() {
@@ -158,7 +238,7 @@ class ProcgenController {
     const viewW = stageImage.canvasViewportSize.width / scale;
     if (!Number.isFinite(viewW) || viewW <= 0) return;
     const targetX = rightmostX - viewW / 2;
-    this._cameraX += (targetX - this._cameraX) * this.followLerp;
+    this._cameraX = targetX;
     stage.applyViewport(stageImage, this._cameraX, 0, stageImage.viewPoint.scale);
   }
 }

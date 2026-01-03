@@ -76,6 +76,19 @@ const init = async () => {
   view.applyLevelViewport(level);
   view.stage.updateStageSize();
   game.start();
+  if (canvas) {
+    canvas.addEventListener('pointerdown', () => {
+      const active = document.activeElement;
+      if (!active) return;
+      const tag = active.tagName;
+      if (active.isContentEditable ||
+          tag === 'INPUT' ||
+          tag === 'SELECT' ||
+          tag === 'TEXTAREA') {
+        active.blur?.();
+      }
+    }, { capture: true });
+  }
 
   const controller = new ProcgenController({
     view,

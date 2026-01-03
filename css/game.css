@@ -275,6 +275,15 @@ body.portrait-small .control-panel {
     text-overflow: ellipsis;
 }
 
+.panel-title-text {
+    flex: 1;
+    min-width: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    color: inherit;
+}
+
 .panel-title-toggle {
     display: inline-flex;
     align-items: center;

@@ -23,7 +23,7 @@ const init = async () => {
           tag === 'TEXTAREA') {
         active.blur?.();
       }
-    });
+    }, { capture: true });
   }
 
   await lemmings.setupEditor();

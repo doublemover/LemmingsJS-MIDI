@@ -116,7 +116,7 @@ function init() {
           tag === 'TEXTAREA') {
         active.blur?.();
       }
-    });
+    }, { capture: true });
   }
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
