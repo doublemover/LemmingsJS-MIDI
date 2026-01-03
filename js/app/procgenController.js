@@ -30,7 +30,7 @@ class ProcgenController {
     this._cameraTargetX = null;
     this._lastSecond = null;
     this._bombCheckElapsed = 0;
-    this._bombChance = 0.01;
+    this._bombChance = 0.0001;
     this._nukeElapsed = 0;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
@@ -185,7 +185,7 @@ class ProcgenController {
 
   _maybeTriggerNuke() {
     if (this._nukeElapsed < 60) return;
-    if (Math.random() < 0.1) {
+    if (Math.random() < 0.001) {
       const manager = this.game?.getLemmingManager?.();
       manager?.doNukeAllLemmings?.();
     }
