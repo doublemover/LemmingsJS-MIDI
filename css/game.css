@@ -192,6 +192,10 @@ body.midi-disabled #controlLeft .panel-header {
     padding-bottom: 0;
 }
 
+body.midi-disabled #controlLeft .tab-panel {
+    display: none;
+}
+
 .panel-section {
     margin-bottom: 12px;
     padding-bottom: 10px;
@@ -214,6 +218,29 @@ body.midi-disabled #controlLeft .panel-header {
 
 .panel-toggle {
     cursor: pointer;
+}
+
+.panel-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.panel-title-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 10px;
+    text-transform: none;
+    letter-spacing: 0.04em;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.panel-row-wide {
+    font-size: 11px;
+    line-height: 1.4;
+    justify-content: flex-start;
 }
 
 .control-panel.collapsed {
@@ -242,6 +269,65 @@ body.midi-disabled #controlLeft .panel-header {
     margin-bottom: 6px;
 }
 
+.panel-tabs {
+    padding-bottom: 6px;
+}
+
+.range-row {
+    align-items: center;
+}
+
+.range-input {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 1;
+    min-width: 120px;
+}
+
+.range-input input[type="range"] {
+    flex: 1;
+    min-width: 90px;
+}
+
+.range-label {
+    min-width: 28px;
+    font-size: 10px;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+}
+
+.axis-toggle {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.axis-checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 11px;
+}
+
+.axis-toggle select {
+    min-width: 48px;
+}
+
+.input-pair {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.input-compact {
+    min-width: 70px;
+}
+
+.input-align-right {
+    text-align: right;
+}
+
 .control-panel label {
     width: 100%;
 }
@@ -268,6 +354,18 @@ body.midi-disabled #controlLeft .panel-header {
     width: 100%;
     margin-top: 6px;
     cursor: pointer;
+}
+
+.control-panel .button-danger {
+    background: rgba(70, 20, 20, 0.9);
+    border-color: rgba(255, 120, 120, 0.6);
+    color: #ffd6d6;
+}
+
+.control-panel .button-compact {
+    width: 25%;
+    min-width: 70px;
+    margin-right: auto;
 }
 
 .panel-error {

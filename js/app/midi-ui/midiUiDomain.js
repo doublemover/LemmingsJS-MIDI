@@ -13,10 +13,11 @@ const CHORD_OPTIONS = [
   'sus4',
   'octave'
 ];
-const POSITION_AXES = [
-  { value: 'x', label: 'X' },
-  { value: 'y', label: 'Y' },
-  { value: 'xy', label: 'X+Y' }
+const POSITION_AXIS_OPERATORS = [
+  { value: 'add', label: '+' },
+  { value: 'sub', label: '-' },
+  { value: 'mul', label: '*' },
+  { value: 'div', label: '/' }
 ];
 const POSITION_TARGETS = [
   { value: 'note', label: 'Note offset' },
@@ -203,10 +204,32 @@ const resolveAvailableSfxIds = (config, level, skills) => {
   return available;
 };
 
+const normalizePositionMapping = (entry) => {
+  const axisX = typeof entry?.axisX === 'boolean' ? entry.axisX : null;
+  const axisY = typeof entry?.axisY === 'boolean' ? entry.axisY : null;
+  const axisOp = entry?.axisOp || 'add';
+  if (axisX != null || axisY != null) {
+    return {
+      ...entry,
+      axisX: axisX ?? false,
+      axisY: axisY ?? false,
+      axisOp
+    };
+  }
+  const axis = entry?.axis || 'x';
+  if (axis === 'xy') {
+    return { ...entry, axisX: true, axisY: true, axisOp };
+  }
+  if (axis === 'y') {
+    return { ...entry, axisX: false, axisY: true, axisOp };
+  }
+  return { ...entry, axisX: true, axisY: false, axisOp };
+};
+
 const resolvePositionMappings = (config) => {
   const position = config?.position || {};
   if (Array.isArray(position.mappings)) {
-    return position.mappings.map(entry => ({ ...entry }));
+    return position.mappings.map(entry => normalizePositionMapping({ ...entry }));
   }
   const velocityRange = config?.velocityRange || {};
   const timbreRange = position.timbreRange || {};
@@ -215,6 +238,9 @@ const resolvePositionMappings = (config) => {
     const xRange = position.xNoteRange || {};
     mappings.push({
       axis: 'x',
+      axisX: true,
+      axisY: false,
+      axisOp: 'add',
       target: 'note',
       min: xRange.min ?? 0,
       max: xRange.max ?? 0,
@@ -224,6 +250,9 @@ const resolvePositionMappings = (config) => {
   if (position.yToVelocity) {
     mappings.push({
       axis: 'y',
+      axisX: false,
+      axisY: true,
+      axisOp: 'add',
       target: 'velocity',
       min: velocityRange.max ?? 127,
       max: velocityRange.min ?? 1,
@@ -233,6 +262,9 @@ const resolvePositionMappings = (config) => {
   if (position.yToTimbre) {
     mappings.push({
       axis: 'y',
+      axisX: false,
+      axisY: true,
+      axisOp: 'add',
       target: 'timbre',
       min: timbreRange.max ?? 127,
       max: timbreRange.min ?? 0,
@@ -245,7 +277,7 @@ const resolvePositionMappings = (config) => {
 export {
   NOTE_NAMES,
   CHORD_OPTIONS,
-  POSITION_AXES,
+  POSITION_AXIS_OPERATORS,
   POSITION_TARGETS,
   REPEAT_TARGETS,
   REPEAT_WINDOW_OPTIONS,

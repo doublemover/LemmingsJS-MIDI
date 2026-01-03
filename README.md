@@ -96,14 +96,14 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 ## MIDI
 
 - Enable MIDI from the left control panel (toggle persists). When disabled, WebMIDI is not enabled and the MIDI router is detached.
-- Use the Input/Output selects to choose devices. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
-- Use `MIDI reset` to stop all notes and clear the queued events.
+- Use the I/O section for Input/Output, Input channel, and `MIDI reset`. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
+- Use `reset all` to clear stored MIDI overrides and UI state.
 - `reverse.allNotesOffOnToggle` in `midi-mapping.json` can auto-reset MIDI when toggling reverse playback.
-- Base BPM is the sequencing anchor; current BPM shows the live value (Base BPM * game speed).
-- Sequencing section:
-  - Position mappings: add X/Y/X+Y mappings with min/max ranges to target note offset, intensity (velocity), timbre, pan, duration, pitch bend, or ADSR.
+- Base BPM is the sequencing anchor; current BPM shows `speed x base`, plus ticks per second/beat/measure.
+- Global FX tab:
   - Intensity and Accent adjust default velocity and density scaling.
-  - Repeat controls apply a beat window, max count, target, and amount to scale parameters on rapid repeats.
+  - Positional Modifiers add X/Y mappings (with optional operators) and per-target min/max ranges.
+  - Global Repeat applies a beat window, max count, target, and amount to scale parameters on rapid repeats.
 - Events/Triggers tabs:
   - Configure each SFX event or trigger with mode (note/degree/chord), key+octave, or scale degree + octave.
   - Chords support triad, seventh, sixth, ninth, power, sus2, sus4, and octave.
@@ -117,7 +117,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 - Input mapping is configured in `midi-mapping.json` under `input`.
 - Transport messages map to pause/resume/restart.
 - Notes map to skill selection or action controls (pause/resume/restart/speed/toggles).
-- CCs map to speed, BPM, intensity, accent, key/scale, view pan, repeat window, ADSR, and chord defaults.
+- CCs map to speed, BPM, intensity, accent, key/scale, view pan, repeat window, ADSR, chord defaults, and time signature.
 
 <details>
   <summary><b>Default MIDI mapping table</b></summary>

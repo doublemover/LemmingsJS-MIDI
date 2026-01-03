@@ -7,7 +7,10 @@ const midiStorageKeys = {
   adsrTarget: 'lemmings.midi.adsrTarget',
   overrides: 'lemmings.midi.overrides',
   schemaHash: 'lemmings.midi.schemaHash',
-  panelCollapsed: 'lemmings.midi.panelCollapsed'
+  panelCollapsed: 'lemmings.midi.panelCollapsed',
+  tabLeft: 'lemmings.midi.tabLeft',
+  tabRight: 'lemmings.midi.tabRight',
+  sectionStates: 'lemmings.midi.sectionStates'
 };
 
 const readStoredMidiId = (storage, key) => {

@@ -174,11 +174,11 @@ test('Explore MIDI UI mappings', async ({ page }) => {
     }
   }
 
-  await page.locator('button[data-tab="triggers"]').click();
+  await page.locator('button[data-tab-target="midiTabTriggers"]').click();
   const triggerCount = await page.locator('#midiTriggerList details').count();
   if (triggerCount < 1) issues.push('Trigger list is empty.');
 
-  await page.locator('button[data-tab="adsr"]').click();
+  await page.locator('button[data-tab-target="midiTabAdsr"]').click();
   const adsrTargetCount = await page.locator('#midiEnvTarget option').count();
   if (adsrTargetCount < 1) issues.push('ADSR target list is empty.');
   const adsrAttack = page.locator('#midiEnvAttack');

@@ -24,7 +24,8 @@ const DEFAULT_CONFIG = Object.freeze({
   },
   timing: {
     bpmBase: 120,
-    scheduleAheadMs: 0
+    scheduleAheadMs: 0,
+    timeSignature: { beats: 4, unit: 4 }
   },
   reverse: {
     allNotesOffOnToggle: false
@@ -136,7 +137,9 @@ const DEFAULT_CONFIG = Object.freeze({
       },
       chordOctave: { cc: 29, min: 1, max: 8, round: true, target: 'noteDefaults.octave' },
       chordDegree: { cc: 30, min: 0, max: 6, round: true, target: 'noteDefaults.degree' },
-      duration: { cc: 31, min: 1, max: 24, round: true, target: 'durationTicks.default' }
+      duration: { cc: 31, min: 1, max: 24, round: true, target: 'durationTicks.default' },
+      timeSignatureBeats: { cc: 80, min: 1, max: 12, round: true, target: 'timing.timeSignature.beats' },
+      timeSignatureUnit: { cc: 81, values: [1, 2, 4, 8, 16], target: 'timing.timeSignature.unit' }
     }
   },
   triggers: {},
@@ -210,6 +213,54 @@ const resolveAxisValues = (event, context) => {
     ? clamp((xNorm + yNorm) / 2, 0, 1)
     : null;
   return { x: xNorm, y: yNorm, xy: xyNorm };
+};
+
+const resolveAxisValue = (entry, axisValues) => {
+  const axisX = typeof entry?.axisX === 'boolean' ? entry.axisX : null;
+  const axisY = typeof entry?.axisY === 'boolean' ? entry.axisY : null;
+  if (axisX != null || axisY != null) {
+    if (axisX && axisY) {
+      const xVal = axisValues.x;
+      const yVal = axisValues.y;
+      if (xVal == null || yVal == null) return null;
+      const op = entry?.axisOp || 'add';
+      switch (op) {
+      case 'sub':
+        return clamp((xVal - yVal + 1) / 2, 0, 1);
+      case 'mul':
+        return clamp(xVal * yVal, 0, 1);
+      case 'div':
+        if (yVal === 0) return 1;
+        return clamp(xVal / yVal, 0, 1);
+      case 'add':
+      default:
+        return clamp((xVal + yVal) / 2, 0, 1);
+      }
+    }
+    if (axisX) return axisValues.x;
+    if (axisY) return axisValues.y;
+    return null;
+  }
+  const axis = entry?.axis || 'x';
+  if (axis === 'xy') {
+    const xVal = axisValues.x;
+    const yVal = axisValues.y;
+    if (xVal == null || yVal == null) return axisValues.xy;
+    const op = entry?.axisOp || 'add';
+    switch (op) {
+    case 'sub':
+      return clamp((xVal - yVal + 1) / 2, 0, 1);
+    case 'mul':
+      return clamp(xVal * yVal, 0, 1);
+    case 'div':
+      if (yVal === 0) return 1;
+      return clamp(xVal / yVal, 0, 1);
+    case 'add':
+    default:
+      return clamp((xVal + yVal) / 2, 0, 1);
+    }
+  }
+  return axisValues[axis] ?? null;
 };
 
 const resolveScale = (scale) => {
@@ -350,8 +401,7 @@ class MidiMapping {
 
     const applyPositionMapping = (entry) => {
       if (!entry || entry.enabled === false) return;
-      const axis = entry.axis || 'x';
-      const axisValue = axisValues[axis];
+      const axisValue = resolveAxisValue(entry, axisValues);
       if (axisValue == null) return;
       const target = entry.target || 'velocity';
       const velMin = velocityRange.min ?? 1;

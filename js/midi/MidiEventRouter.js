@@ -124,6 +124,7 @@ class MidiEventRouter {
   }
 
   _getRepeatFactor(key, timeMs, repeatCfg, bpm) {
+    if (repeatCfg?.enabled === false) return 0;
     const maxRepeats = Math.max(0, repeatCfg.maxRepeats ?? 0);
     const windowBeats = repeatCfg.windowBeats ?? repeatCfg.spacingTicks ?? 0;
     if (maxRepeats <= 0 || !Number.isFinite(timeMs) || windowBeats <= 0 || bpm <= 0) {

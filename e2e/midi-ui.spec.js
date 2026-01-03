@@ -51,3 +51,23 @@ test('MIDI event list excludes unknown-0B', async ({ page }) => {
   await page.waitForSelector('#midiEventList details');
   await expect(page.locator('#midiEventList')).not.toContainText('unknown-0B');
 });
+
+test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) => {
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  const selectors = ['#controlLeft', '#controlRight'];
+  for (const selector of selectors) {
+    const metrics = await page.evaluate((sel) => {
+      const panel = document.querySelector(sel);
+      if (!panel) return null;
+      return { scrollHeight: panel.scrollHeight, clientHeight: panel.clientHeight };
+    }, selector);
+    if (!metrics) continue;
+    if (metrics.scrollHeight > metrics.clientHeight + 2) {
+      testInfo.annotations.push({
+        type: 'warning',
+        description: `${selector} requires scrolling at default size.`
+      });
+    }
+  }
+});

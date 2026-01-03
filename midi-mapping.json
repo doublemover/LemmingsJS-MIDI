@@ -14,7 +14,8 @@
   },
   "timing": {
     "bpmBase": 120,
-    "scheduleAheadMs": 0
+    "scheduleAheadMs": 0,
+    "timeSignature": { "beats": 4, "unit": 4 }
   },
   "reverse": {
     "allNotesOffOnToggle": false
@@ -34,6 +35,7 @@
     "release": 1
   },
   "repeat": {
+    "enabled": false,
     "maxRepeats": 0,
     "windowBeats": 4,
     "spacingTicks": 2,
@@ -126,7 +128,9 @@
       },
       "chordOctave": { "cc": 29, "min": 1, "max": 8, "round": true, "target": "noteDefaults.octave" },
       "chordDegree": { "cc": 30, "min": 0, "max": 6, "round": true, "target": "noteDefaults.degree" },
-      "duration": { "cc": 31, "min": 1, "max": 24, "round": true, "target": "durationTicks.default" }
+      "duration": { "cc": 31, "min": 1, "max": 24, "round": true, "target": "durationTicks.default" },
+      "timeSignatureBeats": { "cc": 80, "min": 1, "max": 12, "round": true, "target": "timing.timeSignature.beats" },
+      "timeSignatureUnit": { "cc": 81, "values": [1, 2, 4, 8, 16], "target": "timing.timeSignature.unit" }
     }
   },
   "triggers": {},

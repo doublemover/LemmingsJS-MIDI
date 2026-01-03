@@ -197,7 +197,7 @@ describe('midiUiController', function() {
     bpmBase.value = '100';
     bpmBase.dispatchEvent({ type: 'input', target: bpmBase });
 
-    expect(bpmCurrent.textContent).to.equal('200');
+    expect(bpmCurrent.textContent).to.contain('2x 100 = 200 BPM');
   });
 
   it('populates position mapping defaults when ranges are missing', function() {
@@ -219,18 +219,18 @@ describe('midiUiController', function() {
 
     controller.refreshMidiUiFromConfig();
 
-    const minRow = findElement(positionList, el => (
-      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Min'
+    const rangeRow = findElement(positionList, el => (
+      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Min / Max'
     ));
-    const maxRow = findElement(positionList, el => (
-      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Max'
-    ));
-    const minInput = minRow?.children?.[1] || null;
-    const maxInput = maxRow?.children?.[1] || null;
+    const rangeInputs = rangeRow?.children?.[1] || null;
+    const minInput = rangeInputs?.children?.[0] || null;
+    const maxInput = rangeInputs?.children?.[1] || null;
     expect(minInput).to.be.ok;
     expect(maxInput).to.be.ok;
-    expect(minInput.value).to.equal('-50');
-    expect(maxInput.value).to.equal('50');
+    expect(minInput.value).to.equal('');
+    expect(maxInput.value).to.equal('');
+    expect(minInput.placeholder).to.equal('-50');
+    expect(maxInput.placeholder).to.equal('50');
   });
 
   it('populates MIDI device selects and attaches inputs', function() {
@@ -349,13 +349,13 @@ describe('midiUiController', function() {
     });
 
     controller.refreshMidiUiFromConfig();
-    const disabledRow = findElement(eventList, el => (
-      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Disabled'
+    const enabledRow = findElement(eventList, el => (
+      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Enabled'
     ));
-    const disabledToggle = disabledRow?.children?.[1] || null;
-    expect(disabledToggle).to.be.ok;
-    disabledToggle.checked = false;
-    disabledToggle.dispatchEvent({ type: 'change', target: disabledToggle });
+    const enabledToggle = enabledRow?.children?.[1] || null;
+    expect(enabledToggle).to.be.ok;
+    enabledToggle.checked = true;
+    enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(controller.getMidiOverrides().sfx['1'].disabled).to.equal(false);
   });
 

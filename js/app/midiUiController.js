@@ -5,7 +5,7 @@ import {
   EXCLUDED_TRIGGER_NAMES,
   EXCLUDED_SFX_IDS,
   NOTE_NAMES,
-  POSITION_AXES,
+  POSITION_AXIS_OPERATORS,
   POSITION_TARGETS,
   REPEAT_TARGETS,
   REPEAT_WINDOW_OPTIONS,
@@ -38,6 +38,13 @@ const mergeDeep = (target, source) => {
 };
 
 const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+
+const formatNumber = (value, digits = 2) => {
+  if (!Number.isFinite(value)) return '--';
+  const fixed = value.toFixed(digits);
+  if (!fixed.includes('.')) return fixed;
+  return fixed.replace(/\.?0+$/, '');
+};
 
 
 export const createMidiUiController = ({
@@ -204,6 +211,9 @@ export const createMidiUiController = ({
     storeMidiId(storage, midiStorageKeys.inputChannel, null);
     storeMidiId(storage, midiStorageKeys.adsrTarget, null);
     storeMidiId(storage, midiStorageKeys.panelCollapsed, null);
+    storeMidiId(storage, midiStorageKeys.tabLeft, null);
+    storeMidiId(storage, midiStorageKeys.tabRight, null);
+    storeJson(storage, midiStorageKeys.sectionStates, null);
     storeJson(storage, midiStorageKeys.overrides, null);
   };
 
@@ -232,6 +242,109 @@ export const createMidiUiController = ({
     if (storedHash && storedHash === expectedHash) return false;
     resetMidiDefaults(true);
     return true;
+  };
+
+  const tabStorageKeys = {
+    'midi-left': midiStorageKeys.tabLeft,
+    'midi-right': midiStorageKeys.tabRight
+  };
+
+  const readSectionStates = () => {
+    const stored = readStoredJson(storage, midiStorageKeys.sectionStates);
+    return isPlainObject(stored) ? stored : {};
+  };
+
+  const storeSectionStates = (state) => {
+    storeJson(storage, midiStorageKeys.sectionStates, state);
+  };
+
+  const applySectionStates = ({ useStored = true } = {}) => {
+    const states = useStored ? readSectionStates() : {};
+    const sections = Array.from(document?.querySelectorAll?.('details[data-section-key]') || []);
+    sections.forEach(section => {
+      const key = section.dataset.sectionKey;
+      if (!section.dataset.defaultOpen) {
+        section.dataset.defaultOpen = section.hasAttribute('open') ? 'true' : 'false';
+      }
+      if (useStored && typeof states[key] === 'boolean') {
+        section.open = states[key];
+      } else if (!useStored) {
+        section.open = section.dataset.defaultOpen === 'true';
+      }
+    });
+  };
+
+  const bindSectionPersistence = () => {
+    const sections = Array.from(document?.querySelectorAll?.('details[data-section-key]') || []);
+    if (!sections.length) return;
+    const states = readSectionStates();
+    sections.forEach(section => {
+      const key = section.dataset.sectionKey;
+      if (!section.dataset.defaultOpen) {
+        section.dataset.defaultOpen = section.hasAttribute('open') ? 'true' : 'false';
+      }
+      if (typeof states[key] === 'boolean') {
+        section.open = states[key];
+      }
+      section.addEventListener('toggle', () => {
+        if (!key) return;
+        const next = readSectionStates();
+        next[key] = section.open;
+        storeSectionStates(next);
+      });
+    });
+  };
+
+  const setActiveTab = (group, targetId, { persist = false } = {}) => {
+    if (!group) return;
+    const buttons = Array.from(document?.querySelectorAll?.(`.tab-button[data-tab-group="${group}"]`) || []);
+    const panels = Array.from(document?.querySelectorAll?.(`.tab-panel[data-tab-group="${group}"]`) || []);
+    if (!buttons.length || !panels.length) return;
+    const target = targetId || buttons.find(button => button.classList.contains('active'))?.dataset.tabTarget;
+    const finalTarget = target || buttons[0]?.dataset.tabTarget;
+    buttons.forEach(button => button.classList.remove('active'));
+    panels.forEach(panel => panel.classList.remove('active'));
+    const activeButton = buttons.find(button => button.dataset.tabTarget === finalTarget) || buttons[0];
+    const activePanel = panels.find(panel => panel.id === finalTarget) || panels[0];
+    if (activeButton) activeButton.classList.add('active');
+    if (activePanel) activePanel.classList.add('active');
+    const storageKey = tabStorageKeys[group];
+    if (persist && storageKey && activePanel?.id) {
+      storeMidiId(storage, storageKey, activePanel.id);
+    }
+  };
+
+  const applyTabState = ({ useStored = true } = {}) => {
+    const groups = new Set();
+    const buttons = Array.from(document?.querySelectorAll?.('.tab-button[data-tab-group]') || []);
+    buttons.forEach(button => {
+      if (button.dataset.tabGroup) groups.add(button.dataset.tabGroup);
+    });
+    groups.forEach(group => {
+      const storageKey = tabStorageKeys[group];
+      const stored = useStored && storageKey ? readStoredMidiId(storage, storageKey) : null;
+      setActiveTab(group, stored, { persist: false });
+    });
+  };
+
+  const bindTabs = () => {
+    const buttons = Array.from(document?.querySelectorAll?.('.tab-button[data-tab-group]') || []);
+    buttons.forEach(button => {
+      button.addEventListener('click', () => {
+        const group = button.dataset.tabGroup;
+        const target = button.dataset.tabTarget;
+        setActiveTab(group, target, { persist: true });
+      });
+    });
+    applyTabState({ useStored: true });
+  };
+
+  const resetUiState = () => {
+    storeMidiId(storage, midiStorageKeys.tabLeft, null);
+    storeMidiId(storage, midiStorageKeys.tabRight, null);
+    storeJson(storage, midiStorageKeys.sectionStates, null);
+    applyTabState({ useStored: false });
+    applySectionStates({ useStored: false });
   };
 
   const buildUiSignature = () => {
@@ -348,12 +461,52 @@ export const createMidiUiController = ({
     return label;
   };
 
+  const bindRangeInput = (input) => {
+    if (!input) return;
+    const updateTitle = () => {
+      input.title = input.value;
+    };
+    const updateLabels = () => {
+      const parent = input.parentElement || input.parentNode || input.parent;
+      const children = parent?.children || [];
+      const labels = Array.from(children).filter(child => child.classList?.contains('range-label'));
+      if (labels.length > 0) {
+        const minValue = Number(input.min);
+        labels[0].textContent = Number.isFinite(minValue) ? formatNumber(minValue, 2) : '';
+      }
+      if (labels.length > 1) {
+        const maxValue = Number(input.max);
+        labels[labels.length - 1].textContent = Number.isFinite(maxValue) ? formatNumber(maxValue, 2) : '';
+      }
+    };
+    updateTitle();
+    updateLabels();
+    if (input.dataset.rangeBound === 'true') return;
+    input.addEventListener('input', updateTitle);
+    input.addEventListener('change', updateTitle);
+    input.dataset.rangeBound = 'true';
+  };
+
   const buildMappingEditor = ({ id, name, entry, targetKey, allowIndependentArp = false }) => {
     const details = document.createElement('details');
     details.className = 'panel-section';
     const summary = document.createElement('summary');
     summary.className = 'panel-title';
-    summary.textContent = name || `Event ${id}`;
+    const summaryRow = document.createElement('span');
+    summaryRow.className = 'panel-title-row';
+    const summaryTitle = document.createElement('span');
+    summaryTitle.textContent = name || `Event ${id}`;
+    const enabledToggle = document.createElement('input');
+    enabledToggle.type = 'checkbox';
+    const enabledLabel = document.createElement('label');
+    enabledLabel.className = 'panel-title-toggle';
+    const enabledText = document.createElement('span');
+    enabledText.textContent = 'Enabled';
+    enabledLabel.appendChild(enabledText);
+    enabledLabel.appendChild(enabledToggle);
+    summaryRow.appendChild(summaryTitle);
+    summaryRow.appendChild(enabledLabel);
+    summary.appendChild(summaryRow);
     details.appendChild(summary);
 
     const modeSelect = document.createElement('select');
@@ -420,9 +573,6 @@ export const createMidiUiController = ({
     priorityInput.min = '1';
     priorityInput.max = '4';
 
-    const disabledToggle = document.createElement('input');
-    disabledToggle.type = 'checkbox';
-
     const initialMode = entry?.chord
       ? 'chord'
       : (entry?.degree != null ? 'degree' : 'note');
@@ -443,7 +593,7 @@ export const createMidiUiController = ({
     arpLength.value = entry?.arp?.length ?? 3;
     arpIndependentToggle.checked = !!entry?.arp?.independent;
     priorityInput.value = entry?.priority ?? '';
-    disabledToggle.checked = !!entry?.disabled;
+    enabledToggle.checked = !entry?.disabled;
 
     const updateModeAvailability = () => {
       const mode = modeSelect.value;
@@ -489,7 +639,7 @@ export const createMidiUiController = ({
         }
       }
       if (priorityInput.value !== '') next.priority = Number(priorityInput.value);
-      if (disabledToggle.checked) next.disabled = true;
+      if (!enabledToggle.checked) next.disabled = true;
       const patch = { [targetKey]: { [String(id)]: next } };
       setMidiOverrides(patch);
     };
@@ -567,7 +717,7 @@ export const createMidiUiController = ({
       updateModeAvailability();
       updateEntry();
     });
-    [noteKeySelect, noteOctaveInput, degreeInput, octaveInput, chordSelect, arpToggle, arpMode, arpLength, arpIndependentToggle, priorityInput, disabledToggle]
+    [noteKeySelect, noteOctaveInput, degreeInput, octaveInput, chordSelect, arpToggle, arpMode, arpLength, arpIndependentToggle, priorityInput, enabledToggle]
       .forEach(el => el.addEventListener('change', updateEntry));
 
     const modeRow = createRow('Mode', modeSelect);
@@ -588,7 +738,8 @@ export const createMidiUiController = ({
       details.appendChild(createRow('Independent arp', arpIndependentToggle));
     }
     details.appendChild(createRow('Priority', priorityInput));
-    details.appendChild(createRow('Disabled', disabledToggle));
+    enabledLabel.addEventListener('click', (event) => event.stopPropagation());
+    enabledToggle.addEventListener('click', (event) => event.stopPropagation());
     bindNoteCapture(keyRow, noteKeySelect);
     bindNoteCapture(octaveRow, noteOctaveInput);
     bindNoteCapture(degreeRow, degreeInput);
@@ -644,14 +795,52 @@ export const createMidiUiController = ({
     if (!container) return;
     container.innerHTML = '';
     (mappings || []).forEach((entry, index) => {
-      const axisSelect = document.createElement('select');
-      POSITION_AXES.forEach(axis => {
+      const axisXToggle = document.createElement('input');
+      axisXToggle.type = 'checkbox';
+      const axisYToggle = document.createElement('input');
+      axisYToggle.type = 'checkbox';
+      const axisOpSelect = document.createElement('select');
+      POSITION_AXIS_OPERATORS.forEach(operator => {
         const opt = document.createElement('option');
-        opt.value = axis.value;
-        opt.textContent = axis.label;
-        axisSelect.appendChild(opt);
+        opt.value = operator.value;
+        opt.textContent = operator.label;
+        axisOpSelect.appendChild(opt);
       });
-      axisSelect.value = entry?.axis || 'x';
+      const axis = entry?.axis || 'x';
+      let axisX = typeof entry?.axisX === 'boolean' ? entry.axisX : null;
+      let axisY = typeof entry?.axisY === 'boolean' ? entry.axisY : null;
+      if (axisX == null && axisY == null) {
+        if (axis === 'xy') {
+          axisX = true;
+          axisY = true;
+        } else if (axis === 'y') {
+          axisX = false;
+          axisY = true;
+        } else {
+          axisX = true;
+          axisY = false;
+        }
+      }
+      if (!axisX && !axisY) {
+        axisX = true;
+      }
+      axisXToggle.checked = !!axisX;
+      axisYToggle.checked = !!axisY;
+      axisOpSelect.value = entry?.axisOp || 'add';
+
+      const axisControl = document.createElement('div');
+      axisControl.className = 'axis-toggle';
+      const axisXLabel = document.createElement('label');
+      axisXLabel.className = 'axis-checkbox';
+      axisXLabel.appendChild(axisXToggle);
+      axisXLabel.appendChild(document.createTextNode('X'));
+      const axisYLabel = document.createElement('label');
+      axisYLabel.className = 'axis-checkbox';
+      axisYLabel.appendChild(axisYToggle);
+      axisYLabel.appendChild(document.createTextNode('Y'));
+      axisControl.appendChild(axisXLabel);
+      axisControl.appendChild(axisOpSelect);
+      axisControl.appendChild(axisYLabel);
 
       const targetSelect = document.createElement('select');
       POSITION_TARGETS.forEach(target => {
@@ -662,19 +851,21 @@ export const createMidiUiController = ({
       });
       targetSelect.value = entry?.target || 'velocity';
 
-      const defaults = resolvePositionDefaults(entry, config);
-      const minValue = Number.isFinite(entry?.min) ? entry.min : defaults.min;
-      const maxValue = Number.isFinite(entry?.max) ? entry.max : defaults.max;
-
       const minInput = document.createElement('input');
       minInput.type = 'number';
       minInput.step = '0.1';
-      minInput.value = Number.isFinite(minValue) ? String(minValue) : '';
+      minInput.className = 'input-compact input-align-right';
+      if (Number.isFinite(entry?.min)) {
+        minInput.value = String(entry.min);
+      }
 
       const maxInput = document.createElement('input');
       maxInput.type = 'number';
       maxInput.step = '0.1';
-      maxInput.value = Number.isFinite(maxValue) ? String(maxValue) : '';
+      maxInput.className = 'input-compact input-align-right';
+      if (Number.isFinite(entry?.max)) {
+        maxInput.value = String(entry.max);
+      }
 
       const enabledToggle = document.createElement('input');
       enabledToggle.type = 'checkbox';
@@ -683,15 +874,38 @@ export const createMidiUiController = ({
       const removeButton = document.createElement('button');
       removeButton.type = 'button';
       removeButton.textContent = 'Remove';
+      removeButton.className = 'button-danger button-compact';
+
+      const updateAxisUi = () => {
+        if (!axisXToggle.checked && !axisYToggle.checked) {
+          axisXToggle.checked = true;
+        }
+        const showOp = axisXToggle.checked && axisYToggle.checked;
+        axisOpSelect.hidden = !showOp;
+        axisOpSelect.disabled = !showOp;
+      };
+      updateAxisUi();
+
+      const updateRangePlaceholders = (target) => {
+        const rangeDefaults = resolvePositionDefaults({ target }, config);
+        minInput.placeholder = Number.isFinite(rangeDefaults.min) ? String(rangeDefaults.min) : '';
+        maxInput.placeholder = Number.isFinite(rangeDefaults.max) ? String(rangeDefaults.max) : '';
+      };
+      updateRangePlaceholders(targetSelect.value);
 
       const updateEntry = () => {
         const next = (mappings || []).map((item, idx) => {
           if (idx !== index) return { ...item };
           const minValue = minInput.value === '' ? null : Number(minInput.value);
           const maxValue = maxInput.value === '' ? null : Number(maxInput.value);
+          const axisX = axisXToggle.checked;
+          const axisY = axisYToggle.checked;
           const nextEntry = {
             ...item,
-            axis: axisSelect.value,
+            axis: axisX && axisY ? 'xy' : (axisX ? 'x' : 'y'),
+            axisX,
+            axisY,
+            axisOp: axisOpSelect.value || 'add',
             target: targetSelect.value,
             enabled: !!enabledToggle.checked
           };
@@ -716,29 +930,47 @@ export const createMidiUiController = ({
         }, 0);
       };
 
-      [axisSelect, minInput, maxInput, enabledToggle]
+      [axisOpSelect, minInput, maxInput, enabledToggle]
         .forEach(el => el.addEventListener('change', updateEntry));
+      const updateAxisAndEntry = () => {
+        updateAxisUi();
+        updateEntry();
+      };
+      [axisXToggle, axisYToggle].forEach(el => el.addEventListener('change', updateAxisAndEntry));
       targetSelect.addEventListener('change', () => {
-        if (minInput.value === '' && maxInput.value === '') {
-          const nextDefaults = resolvePositionDefaults({ target: targetSelect.value }, config);
-          if (Number.isFinite(nextDefaults.min)) minInput.value = String(nextDefaults.min);
-          if (Number.isFinite(nextDefaults.max)) maxInput.value = String(nextDefaults.max);
-        }
+        updateRangePlaceholders(targetSelect.value);
         updateEntry();
       });
       removeButton.addEventListener('click', removeEntry);
 
       const block = document.createElement('div');
       block.className = 'panel-section';
-      const title = document.createElement('div');
-      title.className = 'panel-title';
+      const titleRow = document.createElement('div');
+      titleRow.className = 'panel-title panel-title-row';
+      const title = document.createElement('span');
       title.textContent = `Mapping ${index + 1}`;
-      block.appendChild(title);
-      block.appendChild(createRow('Axis', axisSelect));
+      const enabledLabel = document.createElement('label');
+      enabledLabel.className = 'panel-title-toggle';
+      const enabledText = document.createElement('span');
+      enabledText.textContent = 'Enabled';
+      enabledLabel.appendChild(enabledText);
+      enabledLabel.appendChild(enabledToggle);
+      titleRow.appendChild(title);
+      titleRow.appendChild(enabledLabel);
+      block.appendChild(titleRow);
+      block.appendChild(createRow('Axis', axisControl));
       block.appendChild(createRow('Target', targetSelect));
-      block.appendChild(createRow('Min', minInput));
-      block.appendChild(createRow('Max', maxInput));
-      block.appendChild(createRow('Enabled', enabledToggle));
+      const rangeRow = document.createElement('label');
+      rangeRow.className = 'panel-row';
+      const rangeLabel = document.createElement('span');
+      rangeLabel.textContent = 'Min / Max';
+      const rangeInputs = document.createElement('div');
+      rangeInputs.className = 'input-pair';
+      rangeInputs.appendChild(minInput);
+      rangeInputs.appendChild(maxInput);
+      rangeRow.appendChild(rangeLabel);
+      rangeRow.appendChild(rangeInputs);
+      block.appendChild(rangeRow);
       block.appendChild(removeButton);
       container.appendChild(block);
     });
@@ -749,6 +981,9 @@ export const createMidiUiController = ({
     const xRange = position.xNoteRange || {};
     return {
       axis: 'x',
+      axisX: true,
+      axisY: false,
+      axisOp: 'add',
       target: 'note',
       min: xRange.min ?? 0,
       max: xRange.max ?? 0,
@@ -869,6 +1104,7 @@ export const createMidiUiController = ({
     if (!envAttack && !envDecay && !envSustain && !envRelease && !envTarget) {
       return;
     }
+    [envAttack, envDecay, envSustain, envRelease].forEach(bindRangeInput);
     const envUpdate = () => {
       if (!envAttack || !envDecay || !envSustain || !envRelease) return;
       const envelope = {
@@ -916,6 +1152,7 @@ export const createMidiUiController = ({
     const positionList = document.getElementById('midiPositionList');
     const intensity = document.getElementById('midiIntensity');
     const accent = document.getElementById('midiAccent');
+    const repeatEnabled = document.getElementById('midiRepeatEnabled');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
     const repeatTarget = document.getElementById('midiRepeatTarget');
@@ -939,15 +1176,26 @@ export const createMidiUiController = ({
       const defaultVelocity = Number.isFinite(config.velocityRange?.default)
         ? config.velocityRange.default
         : 80;
+      if (Number.isFinite(config.velocityRange?.min)) {
+        intensity.min = String(config.velocityRange.min);
+      }
+      if (Number.isFinite(config.velocityRange?.max)) {
+        intensity.max = String(config.velocityRange.max);
+      }
       intensity.value = String(defaultVelocity);
+      bindRangeInput(intensity);
     }
     if (accent) {
       const defaultAccent = Number.isFinite(config.density?.velocityBoost)
         ? config.density.velocityBoost
         : 0.4;
       accent.value = String(defaultAccent);
+      bindRangeInput(accent);
     }
     const repeatCfg = config.repeat || {};
+    if (repeatEnabled) {
+      repeatEnabled.checked = repeatCfg.enabled === true;
+    }
     if (repeatCount) {
       const maxRepeats = Number.isFinite(repeatCfg.maxRepeats) ? repeatCfg.maxRepeats : 0;
       repeatCount.value = String(maxRepeats);
@@ -968,6 +1216,7 @@ export const createMidiUiController = ({
         ? repeatCfg.amount
         : (repeatCfg.durationBoost ?? repeatCfg.velocityBoost ?? 0);
       repeatAmount.value = String(amount);
+      bindRangeInput(repeatAmount);
     }
     if (positionList) {
       const mappings = resolvePositionMappings(config);
@@ -1013,6 +1262,10 @@ export const createMidiUiController = ({
     if (envDecay) envDecay.value = String(Number.isFinite(env.decay) ? env.decay : 0);
     if (envSustain) envSustain.value = String(Number.isFinite(env.sustain) ? env.sustain : 1);
     if (envRelease) envRelease.value = String(Number.isFinite(env.release) ? env.release : 1);
+    bindRangeInput(envAttack);
+    bindRangeInput(envDecay);
+    bindRangeInput(envSustain);
+    bindRangeInput(envRelease);
     return true;
   };
 
@@ -1056,6 +1309,8 @@ export const createMidiUiController = ({
       : null;
     const resolvedInputId = resolveMidiId(inputs, currentInputId, storedInputId);
     const resolvedOutputId = resolveMidiId(outputs, currentOutputId, storedOutputId);
+    const shouldResetUi = (storedInputId && resolvedInputId && storedInputId !== resolvedInputId) ||
+      (storedOutputId && resolvedOutputId && storedOutputId !== resolvedOutputId);
 
     if (resolvedInputId && inputSelect) {
       inputSelect.value = resolvedInputId;
@@ -1071,6 +1326,10 @@ export const createMidiUiController = ({
       setActiveMidiOutput(resolvedOutputId);
     } else {
       setActiveMidiOutput(null);
+    }
+
+    if (shouldResetUi) {
+      resetUiState();
     }
 
     const storedViewPan = readStoredMidiId(storage, midiStorageKeys.viewPan);
@@ -1122,12 +1381,20 @@ export const createMidiUiController = ({
 
   const toggleMidiUiEnabled = (enabled) => {
     const inputs = [
+      'midiBpmBase',
       'midiInSelect',
       'midiOutSelect',
       'midiInputChannel',
       'midiResetButton',
       'midiViewPanToggle',
-      'midiPositionAdd'
+      'midiPositionAdd',
+      'midiIntensity',
+      'midiAccent',
+      'midiRepeatEnabled',
+      'midiRepeatCount',
+      'midiRepeatSpacing',
+      'midiRepeatTarget',
+      'midiRepeatAmount'
     ];
     for (const id of inputs) {
       const el = document.getElementById(id);
@@ -1155,6 +1422,7 @@ export const createMidiUiController = ({
     const positionAdd = document.getElementById('midiPositionAdd');
     const intensity = document.getElementById('midiIntensity');
     const accent = document.getElementById('midiAccent');
+    const repeatEnabled = document.getElementById('midiRepeatEnabled');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
     const repeatTarget = document.getElementById('midiRepeatTarget');
@@ -1224,6 +1492,7 @@ export const createMidiUiController = ({
         const selectedId = event.target.value || null;
         storeMidiId(storage, midiStorageKeys.inputId, selectedId);
         setActiveMidiInput(selectedId);
+        resetUiState();
       });
     }
     if (outputSelect) {
@@ -1231,6 +1500,7 @@ export const createMidiUiController = ({
         const selectedId = event.target.value || null;
         storeMidiId(storage, midiStorageKeys.outputId, selectedId);
         setActiveMidiOutput(selectedId);
+        resetUiState();
       });
     }
     if (viewPanToggle) {
@@ -1258,6 +1528,7 @@ export const createMidiUiController = ({
     if (defaultsButton) {
       defaultsButton.addEventListener('click', () => {
         resetMidiDefaults(true);
+        resetUiState();
         refreshMidiUiFromConfig();
       });
     }
@@ -1265,11 +1536,7 @@ export const createMidiUiController = ({
       const updateBpmBase = (event) => {
         const bpm = Number(event.target.value) || 120;
         setMidiOverrides({ timing: { bpmBase: bpm } });
-        if (bpmCurrent) {
-          const lemmings = getLemmings();
-          const speed = lemmings?.game?.getGameTimer?.()?.speedFactor ?? lemmings?.gameSpeedFactor ?? 1;
-          bpmCurrent.textContent = String(Math.round(bpm * speed));
-        }
+        updateBpm();
       };
       bpmBase.addEventListener('change', updateBpmBase);
       bpmBase.addEventListener('input', updateBpmBase);
@@ -1314,6 +1581,13 @@ export const createMidiUiController = ({
         setMidiOverrides({ density: { velocityBoost: value } });
       });
     }
+    if (repeatEnabled) {
+      repeatEnabled.addEventListener('click', (event) => event.stopPropagation());
+      repeatEnabled.addEventListener('change', (event) => {
+        const enabled = !!event.target.checked;
+        setMidiOverrides({ repeat: { enabled } });
+      });
+    }
     if (repeatCount) {
       repeatCount.addEventListener('change', (event) => {
         const value = Number(event.target.value) || 0;
@@ -1340,28 +1614,30 @@ export const createMidiUiController = ({
     }
     bindEnvelopeControls();
 
-    const tabs = document.querySelectorAll('.tab-button');
-    const panels = document.querySelectorAll('.tab-panel');
-    tabs.forEach(button => {
-      button.addEventListener('click', () => {
-        tabs.forEach(btn => btn.classList.remove('active'));
-        panels.forEach(panel => panel.classList.remove('active'));
-        button.classList.add('active');
-        const target = document.getElementById(`midiTab${button.dataset.tab?.[0]?.toUpperCase()}${button.dataset.tab?.slice(1)}`);
-        if (target) target.classList.add('active');
-      });
-    });
+    bindTabs();
+    bindSectionPersistence();
 
     const updateBpm = () => {
       if (!bpmCurrent) return;
-      const config = getConfig();
-      const base = config?.timing?.bpmBase ?? 120;
+      const config = getConfig() || {};
+      const timing = config.timing || {};
+      const base = Number.isFinite(timing.bpmBase) ? timing.bpmBase : 120;
+      const timeSignature = timing.timeSignature || {};
+      const beats = Number.isFinite(timeSignature.beats) ? timeSignature.beats : 4;
+      const unit = Number.isFinite(timeSignature.unit) && timeSignature.unit > 0 ? timeSignature.unit : 4;
       const lemmings = getLemmings();
-      const speed = lemmings?.game?.getGameTimer?.()?.speedFactor ?? lemmings?.gameSpeedFactor ?? 1;
-      bpmCurrent.textContent = Math.round(base * speed).toString();
-      const signature = buildUiSignature();
-      if (signature !== lastUiSignature) {
-        lastUiSignature = signature;
+      const timer = lemmings?.game?.getGameTimer?.();
+      const speed = timer?.speedFactor ?? lemmings?.gameSpeedFactor ?? 1;
+      const tps = timer?.tps ?? (timer?.frameTime ? 1000 / timer.frameTime : 1000 / 60);
+      const currentBpm = base * speed;
+      const ticksPerQuarter = currentBpm > 0 ? (tps * 60 / currentBpm) : 0;
+      const unitScale = 4 / unit;
+      const ticksPerBeat = ticksPerQuarter * unitScale;
+      const ticksPerMeasure = ticksPerBeat * beats;
+      bpmCurrent.textContent = `${formatNumber(speed, 2)}x ${formatNumber(base, 0)} = ${formatNumber(currentBpm, 0)} BPM | ${formatNumber(tps, 1)} tps | ${formatNumber(ticksPerBeat, 1)} t/beat | ${formatNumber(ticksPerMeasure, 1)} t/measure`;
+      const uiSignature = buildUiSignature();
+      if (uiSignature !== lastUiSignature) {
+        lastUiSignature = uiSignature;
         try {
           refreshMidiUiFromConfig();
         } catch (e) {

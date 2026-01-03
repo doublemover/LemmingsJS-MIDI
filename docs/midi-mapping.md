@@ -43,7 +43,7 @@ Default skill order:
 | 19 | position.yToVelocity | toggle | on |
 | 20 | position.yToTimbre | toggle | on |
 | 21 | position.viewPan | toggle | off |
-| 22 | repeat.maxRepeats | 0-6 | 0 |
+| 22 | repeat.maxRepeats | 0-32 | 0 |
 | 23 | repeat.windowBeats | 1-8 | 4 |
 | 24 | envelope.attack | 0-2 | 1 |
 | 25 | envelope.decay | 0-2 | 0 |
@@ -53,12 +53,32 @@ Default skill order:
 | 29 | noteDefaults.octave | 1-8 | 4 |
 | 30 | noteDefaults.degree | 0-6 | 0 |
 | 31 | durationTicks.default | 1-24 | 6 |
+| 80 | timing.timeSignature.beats | 1-12 | 4 |
+| 81 | timing.timeSignature.unit | 1, 2, 4, 8, 16 | 4 |
+
+## Target ranges
+
+These ranges are used by positional modifiers and defaults when min/max values
+are omitted. Values outside the ranges are clamped.
+
+| Target | Range |
+| --- | --- |
+| Note offset | -12 to 12 (from `position.xNoteRange`) |
+| Intensity (velocity) | 20 to 110 (from `velocityRange`) |
+| Timbre | 20 to 110 (from `position.timbreRange`) |
+| Pan | -127 to 127 (from `position.panRange`) |
+| Duration | 2 to 24 (from `durationTicks`) |
+| Pitch bend | -1 to 1 |
+| Attack/Decay/Release | 0 to 2 |
+| Sustain | 0.25 to 2 |
 
 ## Customization tips
 
 - Edit the `input` section in `midi-mapping.json` to change note or CC mappings.
 - Use `input.channel` to switch between omni and a specific MIDI channel.       
 - Mapping changes take effect on refresh.
+- There is no standard MIDI CC for time signatures; the defaults use CC 80/81,
+  but you can remap or disable them in `midi-mapping.json`.
 
 ## Reverse playback
 
