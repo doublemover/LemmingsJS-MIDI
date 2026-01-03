@@ -195,10 +195,10 @@ class ProcgenController {
   _getFollowLemming() {
     const manager = this.game?.getLemmingManager?.();
     const first = manager?.getLemming?.(0);
-    if (first && Number.isFinite(first.x)) return first;
+    if (first && Number.isFinite(first.x) && first.lookRight) return first;
     const lems = manager?.activeLemmings || manager?.lemmings || [];
     for (const lem of lems) {
-      if (!lem || lem.removed || lem.disabled) continue;
+      if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
       return lem;
     }
     return null;
@@ -213,7 +213,7 @@ class ProcgenController {
     const lems = manager?.activeLemmings || manager?.lemmings || [];
     let max = null;
     for (const lem of lems) {
-      if (!lem || lem.removed || lem.disabled) continue;
+      if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
       if (max == null || lem.x > max) max = lem.x;
     }
     if (max == null) {
@@ -262,7 +262,7 @@ class ProcgenController {
       let best = null;
       let bestDist = Infinity;
       for (const lem of lems) {
-        if (!lem || lem.removed || lem.disabled) continue;
+        if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
         if (burst.used?.has?.(lem.id)) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.originX);
         if (dist < bestDist) {
