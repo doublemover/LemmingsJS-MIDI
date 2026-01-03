@@ -854,7 +854,7 @@ export const createMidiUiController = ({
       const minInput = document.createElement('input');
       minInput.type = 'number';
       minInput.step = '0.1';
-      minInput.className = 'input-compact input-align-right';
+      minInput.className = 'input-mini input-align-right';
       if (Number.isFinite(entry?.min)) {
         minInput.value = String(entry.min);
       }
@@ -862,7 +862,7 @@ export const createMidiUiController = ({
       const maxInput = document.createElement('input');
       maxInput.type = 'number';
       maxInput.step = '0.1';
-      maxInput.className = 'input-compact input-align-right';
+      maxInput.className = 'input-mini input-align-right';
       if (Number.isFinite(entry?.max)) {
         maxInput.value = String(entry.max);
       }
@@ -1153,6 +1153,7 @@ export const createMidiUiController = ({
     const intensity = document.getElementById('midiIntensity');
     const accent = document.getElementById('midiAccent');
     const repeatEnabled = document.getElementById('midiRepeatEnabled');
+    const repeatSection = document.getElementById('midiRepeatSection');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
     const repeatTarget = document.getElementById('midiRepeatTarget');
@@ -1586,6 +1587,13 @@ export const createMidiUiController = ({
       repeatEnabled.addEventListener('change', (event) => {
         const enabled = !!event.target.checked;
         setMidiOverrides({ repeat: { enabled } });
+        if (enabled && repeatSection && !repeatSection.open) {
+          repeatSection.open = true;
+          const key = repeatSection.dataset.sectionKey || 'repeat';
+          const states = readSectionStates();
+          states[key] = true;
+          storeSectionStates(states);
+        }
       });
     }
     if (repeatCount) {

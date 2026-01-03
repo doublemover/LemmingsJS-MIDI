@@ -43,6 +43,19 @@ function init() {
   lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
   lemmings.elementSelectLevel = document.getElementById('levelIndexSelect');
   lemmings.gameCanvas = document.getElementById('gameCanvas');
+  if (lemmings.gameCanvas) {
+    lemmings.gameCanvas.addEventListener('pointerdown', () => {
+      const active = document.activeElement;
+      if (!active) return;
+      const tag = active.tagName;
+      if (active.isContentEditable ||
+          tag === 'INPUT' ||
+          tag === 'SELECT' ||
+          tag === 'TEXTAREA') {
+        active.blur?.();
+      }
+    });
+  }
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
     setupPromise.then(() => midiUi?.refreshMidiUiFromConfig?.()).catch(() => {});

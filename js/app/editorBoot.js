@@ -12,6 +12,19 @@ const init = async () => {
   lemmings.elementSelectLevelGroup = document.getElementById('editorLevelGroupSelect');
   lemmings.elementSelectLevel = document.getElementById('editorLevelIndexSelect');
   lemmings.gameCanvas = document.getElementById('editorCanvas');
+  if (lemmings.gameCanvas) {
+    lemmings.gameCanvas.addEventListener('pointerdown', () => {
+      const active = document.activeElement;
+      if (!active) return;
+      const tag = active.tagName;
+      if (active.isContentEditable ||
+          tag === 'INPUT' ||
+          tag === 'SELECT' ||
+          tag === 'TEXTAREA') {
+        active.blur?.();
+      }
+    });
+  }
 
   await lemmings.setupEditor();
   lemmings.enterEditorMode();

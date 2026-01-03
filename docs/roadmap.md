@@ -119,5 +119,9 @@ Notes:
 - [ ] Procedural endless level generation.
 
 ## Phase 8: Documentation
-- [ ] Improved documentation (usage, editor workflows, MIDI, performance).
+- [ ] Improved documentation (usage, editor workflows, MIDI, performance).      
 - [ ] Keep this roadmap current as work lands.
+
+## Phase 9: Gamepad support (deferred)
+- [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
+  support (gameplay + editor bindings, navigation, remapping).
