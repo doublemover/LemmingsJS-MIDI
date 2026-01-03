@@ -13,13 +13,21 @@ class ProcgenController {
     this._groundEndX = 0;
     this._groundTopY = 0;
     this._segmentColorIndex = 0;
-    this._colorTransition = { from: 1, to: 1, remaining: 0, total: 0 };
+    this._colorTransition = {
+      from: 1,
+      to: 1,
+      remaining: 0,
+      total: 0,
+      current: 1,
+      step: 0
+    };
     this._sustainBaseY = 0;
     this._sustainRemaining = 0;
-    this._builderQueue = [];
     this._builderCursorId = 0;
     this._seenFalls = new Set();
     this._soundHandler = null;
+    this._builderBurst = null;
+    this._cameraTargetX = null;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
@@ -74,7 +82,10 @@ class ProcgenController {
     const bus = this.game?.soundEvents;
     if (!bus?.onEvent?.on) return;
     this._soundHandler = event => {
-      if (event?.type !== SoundEventTypes.LEMMING_FELL_OFF) return;
+      if (event?.type !== SoundEventTypes.LEMMING_FELL_OFF &&
+          event?.type !== SoundEventTypes.LEMMING_SPLAT) {
+        return;
+      }
       const lemmingId = event?.lemmingId;
       if (this._seenFalls.has(lemmingId)) return;
       this._seenFalls.add(lemmingId);
@@ -101,7 +112,9 @@ class ProcgenController {
       from: this._segmentColorIndex,
       to: this._segmentColorIndex,
       remaining: 0,
-      total: 0
+      total: 0,
+      current: this._segmentColorIndex,
+      step: 0
     };
     this._sustainBaseY = this._groundTopY;
     this._sustainRemaining = 0;
@@ -116,7 +129,7 @@ class ProcgenController {
     const guideX = Number.isFinite(followX) ? followX : this._getRightmostX();
     if (!Number.isFinite(guideX)) return;
     this._ensureGround(guideX);
-    this._processBuilderQueue();
+    this._processBuilderBurst();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
   }
 
@@ -154,21 +167,29 @@ class ProcgenController {
   _scheduleBuilderBurst() {
     const timer = this.game?.getGameTimer?.();
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
-    const count = this._randInt(1, 5);
-    for (let i = 0; i < count; i++) {
-      const delay = this._randInt(1, 20);
-      this._builderQueue.push({ dueTick: tick + delay });
-    }
+    this._builderBurst = {
+      remaining: this._randInt(1, 5),
+      nextDelay: this._randInt(1, 20),
+      dueTick: tick + this._randInt(1, 20)
+    };
   }
 
-  _processBuilderQueue() {
-    if (!this._builderQueue.length) return;
+  _processBuilderBurst() {
+    const burst = this._builderBurst;
+    if (!burst || burst.remaining <= 0) return;
     const timer = this.game?.getGameTimer?.();
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
-    const dueIndex = this._builderQueue.findIndex(item => item.dueTick <= tick);
-    if (dueIndex < 0) return;
-    this._builderQueue.splice(dueIndex, 1);
-    this._applyBuilderToNextLemming();
+    if (burst.dueTick > tick) return;
+    const applied = this._applyBuilderToNextLemming();
+    if (applied) {
+      burst.remaining -= 1;
+      if (burst.remaining <= 0) {
+        this._builderBurst = null;
+        return;
+      }
+      burst.nextDelay += this._randInt(1, 5);
+    }
+    burst.dueTick = tick + burst.nextDelay;
   }
 
   _applyBuilderToNextLemming() {
@@ -318,22 +339,25 @@ class ProcgenController {
     }
     if (!this._colorTransition || this._colorTransition.remaining <= 0) {
       const target = this._randInt(1, maxIndex);
+      const to = target === this._segmentColorIndex ? ((target % maxIndex) + 1) : target;
+      const total = this._randInt(10, 300);
+      const step = total > 0 ? (to - this._segmentColorIndex) / total : 0;
       this._colorTransition = {
         from: this._segmentColorIndex,
-        to: target === this._segmentColorIndex ? ((target % maxIndex) + 1) : target,
-        total: this._randInt(10, 300),
-        remaining: 0
+        to,
+        total,
+        remaining: total,
+        current: this._segmentColorIndex,
+        step
       };
-      this._colorTransition.remaining = this._colorTransition.total;
     }
     const transition = this._colorTransition;
-    const progress = transition.total <= 0
-      ? 1
-      : (transition.total - transition.remaining) / transition.total;
-    let next = Math.round(transition.from + (transition.to - transition.from) * progress);
+    transition.current += transition.step;
     transition.remaining -= 1;
+    let next = Math.round(transition.current);
     if (transition.remaining <= 0) {
       next = transition.to;
+      transition.current = transition.to;
     }
     next = Math.min(maxIndex, Math.max(1, next));
     this._segmentColorIndex = next;
@@ -358,7 +382,13 @@ class ProcgenController {
     const viewW = stageImage.canvasViewportSize.width / scale;
     if (!Number.isFinite(viewW) || viewW <= 0) return;
     const targetX = rightmostX - viewW / 2;
-    this._cameraX = targetX;
+    if (!Number.isFinite(this._cameraX)) {
+      this._cameraX = targetX;
+    }
+    this._cameraTargetX = targetX;
+    const frameMs = this.game?.getGameTimer?.().frameTime ?? 16;
+    const alpha = Math.min(1, Math.max(0.01, frameMs / 500));
+    this._cameraX += (this._cameraTargetX - this._cameraX) * alpha;
     stage.applyViewport(stageImage, this._cameraX, 0, stageImage.viewPoint.scale);
   }
 }
