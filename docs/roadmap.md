@@ -81,9 +81,9 @@ Notes:
 - Determinism is explicitly out of scope for this phase.
 
 ## Phase 5: MIDI sequencing and UI
-- [ ] Iterate on the MIDI UI and mapping UX.
+- [x] Iterate on the MIDI UI and mapping UX.
 - [x] Add MIDI debug display.
-- [ ] Ability to place flags to trigger MIDI events.
+- [ ] [Deferred] Ability to place flags to trigger MIDI events.
 
 ## Phase 6: Performance and benchmarks
 - [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function

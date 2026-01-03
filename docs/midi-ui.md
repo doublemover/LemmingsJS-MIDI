@@ -9,6 +9,7 @@ editing mappings; the toggle state persists in localStorage.
 - Reset all: clears stored overrides and UI state back to defaults.
 - I/O section: input, output, input channel, and MIDI reset.
 - Base BPM: master sequencing tempo; current BPM reflects game speed.
+- MIDI Debug: shows the last MIDI input and output message.
 - Global FX tab:
   - Intensity and Accent sliders adjust velocity and density scaling.
   - Positional Modifiers map X/Y to targets with optional operators and min/max
