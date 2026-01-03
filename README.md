@@ -231,8 +231,12 @@ URL parameters (shortcuts in brackets):
 
 ## Docs
 
+- Usage: [docs/usage.md](docs/usage.md)
 - Offline tools: [docs/offline-tools.md](docs/offline-tools.md)
 - Exporting sprites: [docs/exporting-sprites.md](docs/exporting-sprites.md)
+- Editor workflows: [docs/level-editor/workflows.md](docs/level-editor/workflows.md)
+- MIDI UI: [docs/midi-ui.md](docs/midi-ui.md)
+- Performance benchmarks: [docs/performance-benchmarks.md](docs/performance-benchmarks.md)
 - Testing: [docs/TESTING.md](docs/TESTING.md)
 - CI: [docs/ci.md](docs/ci.md)
 - Config: [docs/config.md](docs/config.md)

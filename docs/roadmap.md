@@ -119,7 +119,7 @@ Notes:
 - [ ] Procedural endless level generation.
 
 ## Phase 8: Documentation
-- [ ] Improved documentation (usage, editor workflows, MIDI, performance).      
+- [x] Improved documentation (usage, editor workflows, MIDI, performance).      
 - [ ] Keep this roadmap current as work lands.
 
 ## Phase 9: Gamepad support (deferred)

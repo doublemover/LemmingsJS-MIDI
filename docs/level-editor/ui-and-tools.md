@@ -1,5 +1,7 @@
 # Level Editor UI and Tools
 
+See `docs/level-editor/workflows.md` for end-to-end editing flows.
+
 ## UI layout
 
 - **Editor toolbar** (left of canvas): tool buttons and mode status.

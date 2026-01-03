@@ -3,6 +3,8 @@
 This document summarizes the default MIDI mappings in `midi-mapping.json`.
 Edit that file to customize your setup.
 
+For UI behavior and controls, see `docs/midi-ui.md`.
+
 ## Input
 
 - Channel: `omni` (listen to all channels) or 1-16.
