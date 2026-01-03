@@ -227,48 +227,9 @@ This repo ships with [site.webmanifest](site.webmanifest) and a service worker
 core assets after the first successful load. It launches fullscreen in landscape
 mode. Touch input still needs polish, so please file bugs for any issues you hit.
 
-<details open>
-  <summary><b>In Progress</b></summary>
+## Roadmap
 
-  - Editor tools (palette, placement, selection, brush, triggers)
-  - Pack decompression/patch/compression pipeline
-  - High resolution and 32-bit color sprite support
-  - Full touch interaction support
-  - Full support for pack-specific glitches
-  - Support for other popular pack types
-  - Procedural endless level generation
-  - Improved documentation
-  - Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers, palette)
-</details>
-
-<details>
-  <summary><b>Roadmap</b></summary>
-
-  - Arrow walls (partial; trigger ranges parsed + debug overlay only) [feature]
-    - Confirm builder bounce behavior [verify]
-    - Fix 2-2-19 left arrows not rendering [verify]
-    - Consider built-stairs handling [feature]
-  - Traps [feature]
-    - Squish missing [feature]
-    - "Generic trap" uses splat death instead of trap animation [bug]
-  - Bombs [verify]
-    - Remove ground overlapping steel to reveal it [bug]
-  - Super lemmings act twice per tick [feature]
-  - MIDI
-    - Debug display [feature]
-  - Performance
-    - Investigate using GameTimer catchup slowdown as a failsafe for perf spikes [feature]
-</details>
-
-<details>
-  <summary><b>Bugs and Misc</b></summary>
-
-  - [bug] No palette-swapped frying animation (2-2-9, 1-4-30)
-  - [verify] Previous pack flashing, crash if navigating 1 -> 2 then past 2-4-20
-  - [verify] Cannot go back to version 1 from version 2
-  - [bug] Building stairs off the horizontal edge causes wraparound steps
-  - [feature] Ability to place flags to trigger MIDI events
-</details>
+See [docs/roadmap.md](docs/roadmap.md) for the consolidated roadmap and phases.
 
 ## Credits
 

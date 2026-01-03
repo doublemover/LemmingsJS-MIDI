@@ -29,3 +29,10 @@ support. These notes are written for Codex-5.2 and Devstral 2 style agents.
 
 ## Docs and changelog
 - Documentation-only updates should not be listed in `CHANGELOG.md`.
+
+## Planning policy
+- `docs/roadmap.md` is the sole source of truth for plans and roadmaps.
+- If a new plan/roadmap file is added, absorb its relevant work into
+  `docs/roadmap.md` after confirming the items are not already implemented and
+  do not need additional clarification, then remove the plan file.
+- Prefer updating `docs/roadmap.md` over creating new plan documents.
