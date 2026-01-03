@@ -5,10 +5,10 @@ Roadmap, Bugs and Misc) plus the current workstreams. It is the single place to
 track ongoing and future work. Keep this roadmap current as work lands.
 
 ## Phase 1: E2E harness adoption and baseline testing
-- [ ] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
+- [x] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
   saved-level ordering, time travel invariants, reverse playback).
-- [ ] Add harness-backed regression tests for input and view controls.
-- [ ] Add harness-backed MIDI UI tests once permission flows are stable.
+- [x] Add harness-backed regression tests for input and view controls.
+- [x] Add harness-backed MIDI UI tests once permission flows are stable.
 
 Notes:
 - "Ready" means the level is loaded, everything is visible and interactable, and
