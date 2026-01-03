@@ -145,3 +145,7 @@ Notes:
 Notes:
 - Default to stdio; LM Studio can use HTTP if needed.
 - Always include the events envelope when non-empty.
+
+## Phase 11: MCP client compatibility checks
+- [ ] Add automated checks that capture Codex CLI/Claude Code/LM Studio versions,
+  verify MCP config formats, and flag format updates we need to track.

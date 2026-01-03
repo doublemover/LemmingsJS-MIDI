@@ -27,6 +27,24 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing support.
 
 If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
 
+## MCP Quick Start
+
+LemmingsJS-MIDI includes an MCP server for automation, state inspection, input
+control, and vision capture using Playwright sessions.
+
+- Run `npm run start-https` in a separate tab.
+- Add the following config to Codex CLI `config.toml` (version 0.77):
+
+```toml
+[mcp_servers.lemmings]
+  command = "node"
+  args = ["C:\\Users\\sneak\\Development\\Lemmings-MIDI-CODEX\\mcp\\server.js"]
+
+[mcp_servers.lemmings.env]
+  LEMMINGS_MCP_BASE_URL = "https://localhost:8080"
+  LEMMINGS_MCP_PATH = "/?e2e=1"
+```
+
 ## Performance
 
 - Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
