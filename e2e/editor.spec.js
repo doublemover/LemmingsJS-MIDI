@@ -53,3 +53,11 @@ test('Save and import keep saved list wired up', async ({ page }) => {
     return select && select.value === '';
   });
 });
+
+test('Canvas interaction clears focused editor inputs', async ({ page }) => {
+  const titleInput = page.locator('#editorHeaderTitle');
+  await titleInput.focus();
+  await expect(titleInput).toBeFocused();
+  await page.locator('#editorCanvas').click({ position: { x: 12, y: 12 }, force: true });
+  await expect(titleInput).not.toBeFocused();
+});

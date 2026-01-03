@@ -259,7 +259,7 @@ body.portrait-small .control-panel {
 .panel-title-row {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 8px;
     flex: 1;
     width: 100%;
@@ -267,17 +267,9 @@ body.portrait-small .control-panel {
     flex-wrap: nowrap;
 }
 
-.panel-title-row > span:first-child {
-    flex: 1;
-    min-width: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
 .panel-title-text {
-    flex: 1;
-    min-width: 0;
+    flex: 1 1 auto;
+    min-width: 6ch;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -292,9 +284,14 @@ body.portrait-small .control-panel {
     text-transform: none;
     letter-spacing: 0.04em;
     color: rgba(255, 255, 255, 0.7);
+    flex: 0 0 auto;
     margin-left: auto;
-    flex-shrink: 0;
     white-space: nowrap;
+    width: auto;
+}
+
+.control-panel .panel-title-toggle {
+    width: auto;
 }
 
 .panel-row-wide {
@@ -302,6 +299,16 @@ body.portrait-small .control-panel {
     line-height: 1.1;
     justify-content: flex-start;
     white-space: nowrap;
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.panel-row-wide > span {
+    display: block;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .control-panel.collapsed {
@@ -367,6 +374,8 @@ body.portrait-small .control-panel {
 
 details.panel-section > summary.panel-title {
     cursor: pointer;
+    width: 100%;
+    min-width: 0;
 }
 
 .panel-tabs {

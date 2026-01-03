@@ -64,6 +64,21 @@ test('MIDI panels match layout snapshots', async ({ page }) => {
   await expect(leftPanel).toHaveScreenshot('midi-left-global-fx.png');
 });
 
+test('MIDI event and trigger titles render with width', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  await page.waitForSelector('#midiEventList details');
+  const eventTitle = page.locator('#midiEventList summary .panel-title-text').first();
+  await expect(eventTitle).toContainText('#');
+  const eventBox = await eventTitle.boundingBox();
+  expect(eventBox?.width ?? 0).toBeGreaterThan(20);
+  await page.locator('[data-tab-target="midiTabTriggers"]').click();
+  const triggerTitle = page.locator('#midiTriggerList summary .panel-title-text').first();
+  await expect(triggerTitle).toContainText('#');
+  const triggerBox = await triggerTitle.boundingBox();
+  expect(triggerBox?.width ?? 0).toBeGreaterThan(20);
+});
+
 test('MIDI event list excludes unknown-0B', async ({ page }) => {
   await page.goto('/');
   await page.locator('#midiEnabledToggle').check();
@@ -101,4 +116,15 @@ test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) =
       });
     }
   }
+});
+
+test('Canvas interaction clears focused MIDI inputs', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  const bpmInput = page.locator('#midiBpmBase');
+  await bpmInput.focus();
+  await expect(bpmInput).toBeFocused();
+  const canvas = page.locator('#gameCanvas');
+  await canvas.click({ position: { x: 20, y: 20 }, force: true });
+  await expect(bpmInput).not.toBeFocused();
 });

@@ -3,6 +3,7 @@ import { GameView } from '../game/GameView.js';
 import { EditorUiController } from './editorUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
+import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
 
 const init = async () => {
   const lemmings = new GameView();
@@ -12,19 +13,7 @@ const init = async () => {
   lemmings.elementSelectLevelGroup = document.getElementById('editorLevelGroupSelect');
   lemmings.elementSelectLevel = document.getElementById('editorLevelIndexSelect');
   lemmings.gameCanvas = document.getElementById('editorCanvas');
-  if (lemmings.gameCanvas) {
-    lemmings.gameCanvas.addEventListener('pointerdown', () => {
-      const active = document.activeElement;
-      if (!active) return;
-      const tag = active.tagName;
-      if (active.isContentEditable ||
-          tag === 'INPUT' ||
-          tag === 'SELECT' ||
-          tag === 'TEXTAREA') {
-        active.blur?.();
-      }
-    }, { capture: true });
-  }
+  bindCanvasFocusBlur(lemmings.gameCanvas);
 
   await lemmings.setupEditor();
   lemmings.enterEditorMode();

@@ -5,6 +5,7 @@ import { createMidiUiController } from './midiUiController.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
+import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -105,19 +106,7 @@ function init() {
   lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
   lemmings.elementSelectLevel = document.getElementById('levelIndexSelect');
   lemmings.gameCanvas = document.getElementById('gameCanvas');
-  if (lemmings.gameCanvas) {
-    lemmings.gameCanvas.addEventListener('pointerdown', () => {
-      const active = document.activeElement;
-      if (!active) return;
-      const tag = active.tagName;
-      if (active.isContentEditable ||
-          tag === 'INPUT' ||
-          tag === 'SELECT' ||
-          tag === 'TEXTAREA') {
-        active.blur?.();
-      }
-    }, { capture: true });
-  }
+  bindCanvasFocusBlur(lemmings.gameCanvas);
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
     setupPromise.then(() => midiUi?.refreshMidiUiFromConfig?.()).catch(() => {});

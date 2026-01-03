@@ -7,14 +7,16 @@ import { ProcgenController } from './procgenController.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
+import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
+import { ProcgenStageAdapter } from './procgenStageAdapter.js';
 
 const PROCGEN_GAME_TYPE = GameTypes.OHNO;
 const PROCGEN_STYLE = 'fire';
-const PROCGEN_LEVEL_WIDTH = 8192;
+const PROCGEN_LEVEL_WIDTH = 65535;
 const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
-const PROCGEN_GROUND_HEIGHT = 8;
+const PROCGEN_GROUND_HEIGHT = 1;
 
 const buildProcgenEditorLevel = () => {
   const level = new EditorLevel();
@@ -76,19 +78,7 @@ const init = async () => {
   view.applyLevelViewport(level);
   view.stage.updateStageSize();
   game.start();
-  if (canvas) {
-    canvas.addEventListener('pointerdown', () => {
-      const active = document.activeElement;
-      if (!active) return;
-      const tag = active.tagName;
-      if (active.isContentEditable ||
-          tag === 'INPUT' ||
-          tag === 'SELECT' ||
-          tag === 'TEXTAREA') {
-        active.blur?.();
-      }
-    }, { capture: true });
-  }
+  bindCanvasFocusBlur(canvas);
 
   const controller = new ProcgenController({
     view,
@@ -98,23 +88,12 @@ const init = async () => {
   });
   controller.start();
 
-  const zoomConfig = {
-    min: 0.5,
-    max: 4,
-    step: 1.1
-  };
-  canvas.addEventListener('wheel', event => {
-    event.preventDefault();
-    const stage = view.stage;
-    const stageImage = stage?.gameImgProps;
-    if (!stage || !stageImage) return;
-    const current = stageImage.viewPoint.scale || 1;
-    const factor = event.deltaY > 0 ? 1 / zoomConfig.step : zoomConfig.step;
-    const next = Math.min(zoomConfig.max, Math.max(zoomConfig.min, current * factor));
-    if (next === current) return;
-    stage.applyViewport(stageImage, stageImage.viewPoint.x || 0, stageImage.viewPoint.y || 0, next);
-    stage.redraw();
-  }, { passive: false });
+  const stageAdapter = new ProcgenStageAdapter({
+    view,
+    controller,
+    canvas
+  });
+  stageAdapter.install();
 
   installE2EHarness({ view });
   registerServiceWorker();

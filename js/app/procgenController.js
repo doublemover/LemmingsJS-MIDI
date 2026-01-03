@@ -14,13 +14,13 @@ class ProcgenController {
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
-    this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 8;
+    this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 1;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
     this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 120;
-    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 12;
-    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 48;
-    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 12;
-    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 48;
+    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 2;
+    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 6;
+    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 4;
+    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 20;
     this.followLerp = Number.isFinite(options.followLerp) ? options.followLerp : 0.12;
     this.maxStepUp = Number.isFinite(options.maxStepUp) ? options.maxStepUp : 3;
     this.maxDrop = Number.isFinite(options.maxDrop) ? options.maxDrop : (Lemming.LEM_MAX_FALLING - 1);
@@ -81,13 +81,17 @@ class ProcgenController {
   _getFollowLemming() {
     const manager = this.game?.getLemmingManager?.();
     const first = manager?.getLemming?.(0);
-    if (first && !first.removed && !first.disabled) return first;
+    if (first && Number.isFinite(first.x)) return first;
     const lems = manager?.activeLemmings || manager?.lemmings || [];
     for (const lem of lems) {
       if (!lem || lem.removed || lem.disabled) continue;
       return lem;
     }
     return null;
+  }
+
+  getGroundExtentX() {
+    return Math.max(1, Math.floor(this._groundEndX || 0));
   }
 
   _getRightmostX() {
@@ -137,7 +141,7 @@ class ProcgenController {
   }
 
   _pickSegmentWidth() {
-    const min = Math.max(4, Math.floor(this.segmentMinWidth));
+    const min = Math.max(2, Math.floor(this.segmentMinWidth));
     const max = Math.max(min, Math.floor(this.segmentMaxWidth));
     return min + Math.floor(Math.random() * (max - min + 1));
   }
@@ -161,11 +165,11 @@ class ProcgenController {
     if (mode === 'climb') {
       delta = -this._randInt(1, up);
     } else if (mode === 'drop-small') {
-      delta = this._randInt(1, Math.min(3, down));
+      delta = this._randInt(1, Math.min(4, down));
     } else if (mode === 'drop-medium') {
-      delta = this._randInt(Math.min(4, down), Math.min(10, down));
+      delta = this._randInt(Math.min(5, down), Math.min(14, down));
     } else if (mode === 'drop-big') {
-      const minBig = Math.max(1, Math.floor(down * 0.75));
+      const minBig = Math.max(6, Math.floor(down * 0.7));
       delta = this._randInt(minBig, down);
     } else {
       delta = this._randInt(-1, 1);
@@ -183,24 +187,24 @@ class ProcgenController {
     } else if (prev === 'flat') {
       if (this._pendingDrop) {
         const roll = Math.random();
-        if (roll < 0.6) mode = 'drop-small';
-        else if (roll < 0.9) mode = 'drop-medium';
+        if (roll < 0.5) mode = 'drop-small';
+        else if (roll < 0.85) mode = 'drop-medium';
         else mode = 'drop-big';
         this._pendingDrop = false;
       } else {
         const roll = Math.random();
-        if (roll < 0.35) mode = 'climb';
-        else if (roll < 0.7) mode = 'drop-small';
-        else if (roll < 0.9) mode = 'drop-medium';
+        if (roll < 0.5) mode = 'climb';
+        else if (roll < 0.75) mode = 'drop-small';
+        else if (roll < 0.92) mode = 'drop-medium';
         else mode = 'drop-big';
       }
     } else {
       mode = 'flat';
     }
     const lengths = {
-      climb: this._randInt(2, 5),
-      flat: this._randInt(4, 10),
-      'drop-small': this._randInt(2, 5),
+      climb: this._randInt(4, 10),
+      flat: this._randInt(8, 18),
+      'drop-small': this._randInt(3, 8),
       'drop-medium': this._randInt(2, 4),
       'drop-big': 1
     };
@@ -235,6 +239,7 @@ class ProcgenController {
     const stageImage = stage?.gameImgProps;
     if (!stage || !stageImage) return;
     const scale = stageImage.viewPoint.scale || 1;
+    if (!Number.isFinite(scale) || scale <= 0) return;
     const viewW = stageImage.canvasViewportSize.width / scale;
     if (!Number.isFinite(viewW) || viewW <= 0) return;
     const targetX = rightmostX - viewW / 2;

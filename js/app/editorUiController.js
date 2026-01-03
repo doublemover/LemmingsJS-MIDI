@@ -560,12 +560,14 @@ class EditorUiController {
     const display = this.view?.stage?.getGameDisplay?.();
     if (!display) return;
     display.onMouseDown.on(pos => {
+      this._clearActiveInputFocus();
       if (this._playtest) return;
       this._pointerDown = true;
       this.controller.handlePointerDown(pos, 0, { shiftKey: this._shiftKey, altKey: this._altKey });
       this._updateCursor(pos);
     });
     display.onMouseRightDown.on(pos => {
+      this._clearActiveInputFocus();
       if (this._playtest) return;
       this._pointerDown = false;
       this.controller.handlePointerDown(pos, 2, { shiftKey: this._shiftKey, altKey: this._altKey });
@@ -587,6 +589,23 @@ class EditorUiController {
       this.controller.handlePointerMove(pos, { isDown: this._pointerDown });
       this._updateCursor(pos);
     });
+  }
+
+  _clearActiveInputFocus() {
+    const doc = this.document;
+    const active = doc?.activeElement;
+    if (!active) return;
+    const tag = active.tagName;
+    if (active.isContentEditable ||
+        tag === 'INPUT' ||
+        tag === 'SELECT' ||
+        tag === 'TEXTAREA') {
+      active.blur?.();
+      if (doc?.body) {
+        doc.body.tabIndex = -1;
+        doc.body.focus?.({ preventScroll: true });
+      }
+    }
   }
 
   _updateCursor(pos) {

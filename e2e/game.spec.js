@@ -40,3 +40,14 @@ test('Arrow navigation updates the selected level', async ({ page }) => {
     return select && select.value === prev;
   }, initialValue);
 });
+
+test('Space toggles pause state', async ({ page }) => {
+  await page.goto('/?e2e=1');
+  await page.waitForFunction(() => window.__E2E__?.getState?.().ready);
+  const isRunning = () => window.__E2E__?.getState?.().game?.timer?.running;
+  await page.waitForFunction(isRunning);
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__E2E__?.getState?.().game?.timer?.running === false);
+  await page.keyboard.press('Space');
+  await page.waitForFunction(() => window.__E2E__?.getState?.().game?.timer?.running === true);
+});
