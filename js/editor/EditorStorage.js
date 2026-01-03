@@ -66,10 +66,18 @@ const createLevelId = (now = () => Date.now()) => {
   return `level-${now()}-${idCounter}`;
 };
 
+const compareSavedLevels = (a, b) => {
+  const nameA = String(a?.name || '').toLowerCase();
+  const nameB = String(b?.name || '').toLowerCase();
+  if (nameA < nameB) return -1;
+  if (nameA > nameB) return 1;
+  return (b?.updatedAt || 0) - (a?.updatedAt || 0);
+};
+
 const listSavedLevels = (storage = getDefaultStorage()) => {
   const raw = safeGetItem(storage, STORAGE_KEYS.index);
   const entries = sanitizeIndex(parseIndex(raw));
-  entries.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  entries.sort(compareSavedLevels);
   return entries;
 };
 

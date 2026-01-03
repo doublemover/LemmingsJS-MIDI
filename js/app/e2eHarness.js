@@ -296,6 +296,17 @@ const serializeMapObject = (obj) => {
   };
 };
 
+const isGameReady = (view) => {
+  const game = view?.game;
+  const stage = view?.stage;
+  if (!game || !stage || !game.level) return false;
+  const timer = game.getGameTimer?.();
+  if (!timer || typeof timer.tick !== 'function') return false;
+  const viewRect = stage.getGameViewRect?.() || null;
+  if (!viewRect || viewRect.w <= 0 || viewRect.h <= 0) return false;
+  return true;
+};
+
 const getViewState = (view) => {
   if (!view) return null;
   return {
@@ -391,7 +402,7 @@ const getGameState = (view) => {
     : null;
 
   return {
-    ready: true,
+    ready: isGameReady(view),
     finalGameState: game.finalGameState ?? null,
     state: game.getGameState?.() ?? null,
     timer: timer
@@ -663,6 +674,34 @@ const setSpeed = (view, speedFactor) => {
   return true;
 };
 
+const startReverse = (view) => {
+  const timeTravel = view?.game?.timeTravel;
+  if (!timeTravel?.startReverse) return false;
+  timeTravel.startReverse();
+  return true;
+};
+
+const stopReverse = (view) => {
+  const timeTravel = view?.game?.timeTravel;
+  if (!timeTravel?.stopReverse) return false;
+  timeTravel.stopReverse();
+  return true;
+};
+
+const toggleReverse = (view) => {
+  const timeTravel = view?.game?.timeTravel;
+  if (!timeTravel?.toggleReverse) return false;
+  timeTravel.toggleReverse();
+  return true;
+};
+
+const flushSoundEvents = (view) => {
+  const soundEvents = view?.game?.soundEvents;
+  if (!soundEvents?.flush) return false;
+  soundEvents.flush();
+  return true;
+};
+
 const createE2EApi = (context) => ({
   version: 1,
   _setContext: (next) => {
@@ -675,7 +714,7 @@ const createE2EApi = (context) => ({
     return {
       version: 1,
       mode: editorUi ? 'editor' : (view?.editorMode ? 'editor' : 'game'),
-      ready: !!view?.game,
+      ready: isGameReady(view),
       view: getViewState(view),
       stage: getStageState(view?.stage),
       game: getGameState(view),
@@ -694,7 +733,11 @@ const createE2EApi = (context) => ({
   step: (count) => stepGame(context.view, count),
   seek: (tickIndex) => seekGame(context.view, tickIndex),
   setEditorPlaytest: (enabled) => setEditorPlaytest(context.view, context.editorUi, enabled),
-  setSpeed: (value) => setSpeed(context.view, value)
+  setSpeed: (value) => setSpeed(context.view, value),
+  startReverse: () => startReverse(context.view),
+  stopReverse: () => stopReverse(context.view),
+  toggleReverse: () => toggleReverse(context.view),
+  flushSoundEvents: () => flushSoundEvents(context.view)
 });
 
 const installE2EHarness = ({ view, editorUi } = {}) => {

@@ -43,22 +43,23 @@ describe('EditorStorage', () => {
     }
   });
 
-  it('lists saved levels sorted by updatedAt', () => {
+  it('lists saved levels sorted by name then updatedAt', () => {
     const storage = new MemoryStorage();
     const entries = [
       { id: 'b', name: 'Beta', updatedAt: 5 },
-      { id: 'a', name: '', updatedAt: 10 },
-      { id: 'c', name: 'Gamma', updatedAt: 'nope' },
-      { id: 'd', name: 'Delta', updatedAt: 0 },
+      { id: 'a1', name: 'Alpha', updatedAt: 10 },
+      { id: 'a2', name: 'Alpha', updatedAt: 3 },
+      { id: 'c', name: '', updatedAt: 'nope' },
       { name: 'Skip', updatedAt: 1 }
     ];
     storage.setItem(STORAGE_KEYS.index, JSON.stringify(entries));
     const list = listSavedLevels(storage);
     expect(list).to.have.length(4);
-    expect(list[0].id).to.equal('a');
-    expect(list[0].name).to.equal('Untitled');
-    expect(list[1].id).to.equal('b');
-    expect(list.slice(2).every(entry => entry.updatedAt === 0)).to.equal(true);
+    expect(list[0].id).to.equal('a1');
+    expect(list[1].id).to.equal('a2');
+    expect(list[2].id).to.equal('b');
+    expect(list[3].name).to.equal('Untitled');
+    expect(list[3].updatedAt).to.equal(0);
   });
 
   it('handles invalid storage data without throwing', () => {

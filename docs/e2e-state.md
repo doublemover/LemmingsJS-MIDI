@@ -10,6 +10,9 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
 - `window.__E2E__.pause()` / `window.__E2E__.resume()` control the game timer.
 - `window.__E2E__.setSpeed(factor)` sets `gameSpeedFactor`.
+- `window.__E2E__.startReverse()` / `window.__E2E__.stopReverse()` toggle reverse playback.
+- `window.__E2E__.toggleReverse()` flips reverse playback state.
+- `window.__E2E__.flushSoundEvents()` clears the queued sound events.
 - `window.__E2E__.setEditorPlaytest(enabled)` toggles editor playtest.
 - `window.__E2E__.getEditorHistoryEntry(index)` returns one editor history
   entry with full text.
@@ -19,7 +22,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 Top-level fields:
 - `version`: schema version (currently `1`).
 - `mode`: `game` or `editor`.
-- `ready`: `true` when the game instance exists.
+- `ready`: `true` when the level is loaded, the stage viewport is valid, and the
+  game can advance without error.
 - `view`: top-level GameView state.
 - `stage`: viewport/pan/scale info.
 - `game`: game simulation state (null before load).
@@ -46,7 +50,7 @@ Top-level fields:
 - `gamePosition`, `guiPosition` (screen offsets of stage images).
 
 ### game
-- `ready`: `true` when the game instance exists.
+- `ready`: `true` when the level is loaded and the stage viewport is valid.
 - `finalGameState`, `state` (GameStateTypes values).
 - `timer`: `tickIndex`, `speedFactor`, `frameTime`, `tps`, `running`.
 - `history`: `minTick`, `maxTick`, `deltaCount`, `keyframeCount`, `spanTicks`.
