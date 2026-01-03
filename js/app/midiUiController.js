@@ -220,6 +220,11 @@ export const createMidiUiController = ({
     return lemmings?.getMidiConfig?.() || lemmings?.getMidiBaseConfig?.() || null;
   };
 
+  const getEffectiveConfig = () => {
+    const base = getConfig() || {};
+    return mergeDeep(base, midiOverrides || {});
+  };
+
   const getSchemaHash = () => getLemmings()?.getMidiSchemaHash?.() || null;
 
   const clearMidiStorage = () => {
@@ -849,11 +854,15 @@ export const createMidiUiController = ({
       const axisXLabel = document.createElement('label');
       axisXLabel.className = 'axis-checkbox';
       axisXLabel.appendChild(axisXToggle);
-      axisXLabel.appendChild(document.createTextNode('X'));
+      const axisXText = document.createElement('span');
+      axisXText.textContent = 'X';
+      axisXLabel.appendChild(axisXText);
       const axisYLabel = document.createElement('label');
       axisYLabel.className = 'axis-checkbox';
       axisYLabel.appendChild(axisYToggle);
-      axisYLabel.appendChild(document.createTextNode('Y'));
+      const axisYText = document.createElement('span');
+      axisYText.textContent = 'Y';
+      axisYLabel.appendChild(axisYText);
       axisControl.appendChild(axisXLabel);
       axisControl.appendChild(axisOpSelect);
       axisControl.appendChild(axisYLabel);
@@ -1160,7 +1169,7 @@ export const createMidiUiController = ({
   };
 
   const refreshMidiUiFromConfig = () => {
-    const config = getConfig();
+    const config = getEffectiveConfig();
     if (!config) return false;
     bindEnvelopeControls();
     const keySelect = document.getElementById('midiKeySelect');
@@ -1645,7 +1654,7 @@ export const createMidiUiController = ({
 
     const updateBpm = () => {
       if (!bpmCurrent) return;
-      const config = getConfig() || {};
+      const config = getEffectiveConfig() || {};
       const timing = config.timing || {};
       const base = Number.isFinite(timing.bpmBase) ? timing.bpmBase : 120;
       const timeSignature = timing.timeSignature || {};
