@@ -34,14 +34,25 @@ test('Harness exposes state and can step/seek', async ({ page }) => {
 
   const state = await page.evaluate(() => window.__E2E__.getState());
   expect(state.version).toBe(1);
+  expect(state.mode).toBe('game');
   expect(state.view).toBeTruthy();
   expect(state.game).toBeTruthy();
+  expect(state.view.includeSavedLevels).toBe(true);
+  expect(state.stage.viewRect).toBeTruthy();
+  expect(state.stage.viewRect.w).toBeGreaterThan(0);
+  expect(state.stage.viewRect.h).toBeGreaterThan(0);
+  expect(state.game.timer.running).toBe(false);
+  expect(state.game.lemmings.length).toBe(state.game.lemmingManager.totalCount);
+  expect(state.game.triggers.entries.length).toBe(state.game.triggers.totalCount);
+  expect(state.game.objects.entries.length).toBe(state.game.objects.count);
+  expect(state.midi.enabled).toBe(state.view.midiEnabled);
 });
 
 test('Harness returns buffers with decodable metadata', async ({ page }) => {
   const groundMask = await page.evaluate(() => window.__E2E__.getBuffer('ground-mask'));
   expect(groundMask).toBeTruthy();
   const decodedMask = decodeE2EBuffer(groundMask);
+  expect(decodedMask.format).toBe('mask8');
   expect(decodedMask.width).toBeGreaterThan(0);
   expect(decodedMask.height).toBeGreaterThan(0);
   expect(decodedMask.array.length).toBe(decodedMask.width * decodedMask.height);
@@ -49,5 +60,9 @@ test('Harness returns buffers with decodable metadata', async ({ page }) => {
   const minimapTerrain = await page.evaluate(() => window.__E2E__.getBuffer('minimap-terrain'));
   expect(minimapTerrain).toBeTruthy();
   const decodedMinimap = decodeE2EBuffer(minimapTerrain);
+  expect(decodedMinimap.format).toBe('u8');
   expect(decodedMinimap.array.length).toBe(decodedMinimap.width * decodedMinimap.height);
+
+  const unknownBuffer = await page.evaluate(() => window.__E2E__.getBuffer('missing-buffer'));
+  expect(unknownBuffer).toBeNull();
 });
