@@ -674,6 +674,16 @@ const setSpeed = (view, speedFactor) => {
   return true;
 };
 
+const selectLemmingById = (view, lemmingId) => {
+  const manager = view?.game?.getLemmingManager?.();
+  const id = Number(lemmingId);
+  if (!manager || !Number.isFinite(id)) return false;
+  const lem = manager.getLemming?.(id);
+  if (!lem || lem.removed || lem.disabled) return false;
+  manager.setSelectedLemming?.(lem);
+  return true;
+};
+
 const startReverse = (view) => {
   const timeTravel = view?.game?.timeTravel;
   if (!timeTravel?.startReverse) return false;
@@ -737,7 +747,8 @@ const createE2EApi = (context) => ({
   startReverse: () => startReverse(context.view),
   stopReverse: () => stopReverse(context.view),
   toggleReverse: () => toggleReverse(context.view),
-  flushSoundEvents: () => flushSoundEvents(context.view)
+  flushSoundEvents: () => flushSoundEvents(context.view),
+  selectLemmingById: (id) => selectLemmingById(context.view, id)
 });
 
 const installE2EHarness = ({ view, editorUi } = {}) => {

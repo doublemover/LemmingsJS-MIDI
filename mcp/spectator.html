@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lemmings MCP Spectator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Tahoma, sans-serif;
+      background: #0d0f12;
+      color: #e8e9ea;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      padding: 12px 16px;
+      background: #16191f;
+      border-bottom: 1px solid #2b3038;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      font-size: 14px;
+    }
+    #status {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+    #dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #d96a35;
+    }
+    #dot.connected {
+      background: #4fc08d;
+    }
+    #hint {
+      opacity: 0.7;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    #frame {
+      max-width: 100%;
+      max-height: calc(100vh - 96px);
+      image-rendering: pixelated;
+      border: 1px solid #2b3038;
+      background: #0f1216;
+    }
+    #frame.empty {
+      opacity: 0.35;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div id="status">
+      <span id="dot" aria-hidden="true"></span>
+      <span id="statusText">Connecting</span>
+    </div>
+    <div id="hint">Click the frame to send a click. Press keys to relay input.</div>
+  </header>
+  <main>
+    <img id="frame" class="empty" alt="Waiting for frames" />
+  </main>
+  <script>
+    const statusText = document.getElementById('statusText');
+    const dot = document.getElementById('dot');
+    const frame = document.getElementById('frame');
+    const hint = document.getElementById('hint');
+
+    const ws = new WebSocket(`ws://${location.host}`);
+
+    ws.addEventListener('open', () => {
+      statusText.textContent = 'Connected';
+      dot.classList.add('connected');
+    });
+
+    ws.addEventListener('close', () => {
+      statusText.textContent = 'Disconnected';
+      dot.classList.remove('connected');
+    });
+
+    ws.addEventListener('error', () => {
+      statusText.textContent = 'Connection error';
+      dot.classList.remove('connected');
+    });
+
+    ws.addEventListener('message', (event) => {
+      let message;
+      try {
+        message = JSON.parse(event.data);
+      } catch (err) {
+        return;
+      }
+      if (message.type === 'hello') {
+        hint.textContent = message.allowHumanInput
+          ? 'Click the frame to send a click. Press keys to relay input.'
+          : 'Spectator is read-only. Input relay is disabled.';
+      }
+      if (message.type === 'frame') {
+        const { mimeType, dataBase64 } = message;
+        frame.src = `data:${mimeType};base64,${dataBase64}`;
+        frame.classList.remove('empty');
+        frame.alt = 'Lemmings frame';
+      }
+    });
+
+    const send = (payload) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      ws.send(JSON.stringify(payload));
+    };
+
+    window.addEventListener('keydown', (event) => {
+      if (event.repeat) return;
+      event.preventDefault();
+      send({ type: 'key', action: 'down', key: event.code || event.key });
+    });
+
+    window.addEventListener('keyup', (event) => {
+      event.preventDefault();
+      send({ type: 'key', action: 'up', key: event.code || event.key });
+    });
+
+    frame.addEventListener('click', (event) => {
+      const rect = frame.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      send({ type: 'click', x, y });
+    });
+  </script>
+</body>
+</html>

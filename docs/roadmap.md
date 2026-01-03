@@ -127,20 +127,20 @@ Notes:
   support (gameplay + editor bindings, navigation, remapping).
 
 ## Phase 10: MCP automation + in-memory resources
-- [ ] Build MCP server with `@modelcontextprotocol/sdk` (v1) and stdio transport,
+- [x] Build MCP server with `@modelcontextprotocol/sdk` (v1) and stdio transport,
   plus npm scripts for local runs.
-- [ ] Session management + Playwright boot for `https://localhost:8080/?e2e=1`
+- [x] Session management + Playwright boot for `https://localhost:8080/?e2e=1`
   with localhost cert handling and focus management.
-- [ ] Harness additions for MCP (notably `selectLemmingById`) and doc updates in
+- [x] Harness additions for MCP (notably `selectLemmingById`) and doc updates in
   `docs/e2e-state.md` and `docs/mcp/`.
-- [ ] Implement core tools: time control, `state.get`, lemmings summary, input
+- [x] Implement core tools: time control, `state.get`, lemmings summary, input
   actions/keys, lemming select, and skill apply.
-- [ ] In-memory resource store with LRU/TTL and `resources/read` (plus optional
+- [x] In-memory resource store with LRU/TTL and `resources/read` (plus optional
   `resources/list`) for `lemmings://` URIs.
-- [ ] Vision capture tools (single + sequence) with manifest support.
-- [ ] Events queue, watch create/cancel, and events poll with per-call envelopes.
-- [ ] Spectator UI plus human input relay (opt-in).
-- [ ] Host setup notes and smoke tests for Codex CLI, Claude Code, and LM Studio.
+- [x] Vision capture tools (single + sequence) with manifest support.
+- [x] Events queue, watch create/cancel, and events poll with per-call envelopes.
+- [x] Spectator UI plus human input relay (opt-in).
+- [x] Host setup notes and smoke tests for Codex CLI, Claude Code, and LM Studio.
 
 Notes:
 - Default to stdio; LM Studio can use HTTP if needed.

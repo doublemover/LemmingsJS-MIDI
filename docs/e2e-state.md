@@ -16,6 +16,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.setEditorPlaytest(enabled)` toggles editor playtest.
 - `window.__E2E__.getEditorHistoryEntry(index)` returns one editor history
   entry with full text.
+- `window.__E2E__.selectLemmingById(id)` selects a lemming by ID (returns
+  `true` on success).
 
 ## getState() structure
 
