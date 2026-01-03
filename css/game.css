@@ -346,6 +346,20 @@ body.portrait-small .control-panel {
     flex-shrink: 0;
 }
 
+#midiIoSection .panel-row > span {
+    flex: 0 0 auto;
+    max-width: 45%;
+}
+
+#midiIoSection .panel-row > select {
+    flex: 1 1 0;
+    min-width: 0;
+}
+
+details.panel-section > summary.panel-title {
+    cursor: pointer;
+}
+
 .panel-tabs {
     padding-bottom: 6px;
 }

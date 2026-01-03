@@ -85,6 +85,24 @@ const init = async () => {
   });
   controller.start();
 
+  const zoomConfig = {
+    min: 0.5,
+    max: 4,
+    step: 1.1
+  };
+  canvas.addEventListener('wheel', event => {
+    event.preventDefault();
+    const stage = view.stage;
+    const stageImage = stage?.gameImgProps;
+    if (!stage || !stageImage) return;
+    const current = stageImage.viewPoint.scale || 1;
+    const factor = event.deltaY > 0 ? 1 / zoomConfig.step : zoomConfig.step;
+    const next = Math.min(zoomConfig.max, Math.max(zoomConfig.min, current * factor));
+    if (next === current) return;
+    stage.applyViewport(stageImage, stageImage.viewPoint.x || 0, stageImage.viewPoint.y || 0, next);
+    stage.redraw();
+  }, { passive: false });
+
   installE2EHarness({ view });
   registerServiceWorker();
 };

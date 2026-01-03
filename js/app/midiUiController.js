@@ -530,6 +530,12 @@ export const createMidiUiController = ({
     summary.appendChild(enabledLabel);
     details.appendChild(summary);
 
+    summary.addEventListener('click', (event) => {
+      if (enabledLabel.contains(event.target)) return;
+      event.preventDefault();
+      details.open = !details.open;
+    });
+
     const modeSelect = document.createElement('select');
     ['note', 'degree', 'chord'].forEach(mode => {
       const opt = document.createElement('option');

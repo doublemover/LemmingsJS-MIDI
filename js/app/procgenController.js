@@ -1,3 +1,5 @@
+import { Lemming } from '../lemmings/Lemming.js';
+
 class ProcgenController {
   constructor({ view, game, level, options = {} }) {
     this.view = view || null;
@@ -7,14 +9,19 @@ class ProcgenController {
     this._running = false;
     this._cameraX = 0;
     this._groundEndX = 0;
+    this._groundTopY = 0;
+    this._segmentColorIndex = 0;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 8;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
-    this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 240;
-    this.segmentWidth = Number.isFinite(options.segmentWidth) ? options.segmentWidth : 160;
-    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 80;
-    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 240;
+    this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 160;
+    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 24;
+    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 64;
+    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 16;
+    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 64;
     this.followLerp = Number.isFinite(options.followLerp) ? options.followLerp : 0.12;
+    this.maxStepUp = Number.isFinite(options.maxStepUp) ? options.maxStepUp : 3;
+    this.maxDrop = Number.isFinite(options.maxDrop) ? options.maxDrop : (Lemming.LEM_MAX_FALLING - 1);
   }
 
   start() {
@@ -53,7 +60,9 @@ class ProcgenController {
     const entrance = this.level?.entrances?.[0] || null;
     const entranceX = Number.isFinite(entrance?.x) ? entrance.x : 0;
     const startX = Math.max(0, entranceX - Math.floor(this.initialGroundWidth / 4));
-    this._paintGround(startX, this.initialGroundWidth);
+    this._groundTopY = Math.max(0, (this.level?.height ?? 0) - this.groundHeight);
+    this._segmentColorIndex = this.groundColorIndex;
+    this._paintGround(startX, this.initialGroundWidth, this._groundTopY, this._segmentColorIndex);
     this._groundEndX = Math.max(this._groundEndX, startX + this.initialGroundWidth);
   }
 
@@ -85,24 +94,60 @@ class ProcgenController {
     if (!Number.isFinite(levelWidth) || levelWidth <= 0) return;
     while (rightmostX + this.lookAhead >= this._groundEndX - this.extendThreshold) {
       if (this._groundEndX >= levelWidth) break;
-      this._paintGround(this._groundEndX, this.segmentWidth);
-      this._groundEndX = Math.min(levelWidth, this._groundEndX + this.segmentWidth);
+      const segmentWidth = this._pickSegmentWidth();
+      const nextTop = this._pickNextTopY();
+      const colorIndex = this._getNextColorIndex();
+      this._paintGround(this._groundEndX, segmentWidth, nextTop, colorIndex);
+      this._groundTopY = nextTop;
+      this._groundEndX = Math.min(levelWidth, this._groundEndX + segmentWidth);
     }
   }
 
-  _paintGround(startX, width) {
+  _paintGround(startX, width, topY, colorIndex) {
     if (!this.level) return;
     const levelWidth = this.level.width;
     const levelHeight = this.level.height;
     const x0 = Math.max(0, startX);
     const x1 = Math.min(levelWidth, startX + width);
-    const y0 = Math.max(0, levelHeight - this.groundHeight);
-    const y1 = levelHeight;
+    const top = Number.isFinite(topY) ? topY : levelHeight - this.groundHeight;
+    const y0 = Math.max(0, Math.min(levelHeight - this.groundHeight, top));
+    const y1 = Math.min(levelHeight, y0 + this.groundHeight);
+    const paletteIndex = Number.isFinite(colorIndex) ? colorIndex : this.groundColorIndex;
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
-        this.level.setGroundAt(x, y, this.groundColorIndex);
+        this.level.setGroundAt(x, y, paletteIndex);
       }
     }
+  }
+
+  _pickSegmentWidth() {
+    const min = Math.max(4, Math.floor(this.segmentMinWidth));
+    const max = Math.max(min, Math.floor(this.segmentMaxWidth));
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  _pickNextTopY() {
+    const levelHeight = this.level?.height ?? 0;
+    const maxTop = Math.max(0, levelHeight - this.groundHeight);
+    const up = Math.max(0, Math.floor(this.maxStepUp));
+    const down = Math.max(0, Math.floor(this.maxDrop));
+    const delta = Math.floor(Math.random() * (up + down + 1)) - up;
+    const next = this._groundTopY + delta;
+    return Math.max(0, Math.min(maxTop, next));
+  }
+
+  _getNextColorIndex() {
+    const maxIndex = 15;
+    const base = Number.isFinite(this.groundColorIndex) && this.groundColorIndex > 0
+      ? this.groundColorIndex
+      : 1;
+    if (!Number.isFinite(this._segmentColorIndex) || this._segmentColorIndex <= 0) {
+      this._segmentColorIndex = base;
+    }
+    let next = (this._segmentColorIndex % maxIndex) + 1;
+    if (next === 0) next = 1;
+    this._segmentColorIndex = next;
+    return next;
   }
 
   _updateCamera(rightmostX) {
