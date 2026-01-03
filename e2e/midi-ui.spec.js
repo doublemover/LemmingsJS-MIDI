@@ -1,7 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { installWebMidiStub } from './helpers/webmidiStub.js';
 
 test.beforeEach(async ({ page }) => {
+  await installExternalAssetStubs(page);
   await installWebMidiStub(page);
 });
 

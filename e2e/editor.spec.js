@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
+import { installExternalAssetStubs } from './helpers/externalAssets.js';
 
 test.beforeEach(async ({ page }) => {
+  await installExternalAssetStubs(page);
   await page.addInitScript(() => {
     try {
       window.localStorage?.clear?.();
