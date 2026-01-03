@@ -21,10 +21,10 @@ Notes:
   minimap state, command log, sound events).
 
 ## Phase 2: Editor testing and completion (multi-phase)
-- [ ] Phase 2.0: Fix editor page layout (game view too low, side panels too large, top of game should be at top of window just like the game page)
-- [ ] Phase 2.1: Verify core editor tools plus overlay/inspector coverage
+- [x] Phase 2.0: Fix editor page layout (game view too low, side panels too large, top of game should be at top of window just like the game page)
+- [x] Phase 2.1: Verify core editor tools plus overlay/inspector coverage
   (palette, placement, selection, brush, triggers, steel).
-- [ ] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
+- [x] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
   loads into the editor while editing; confirm playtest flow.
 - [ ] Phase 2.3: Cover editing workflows (multi-select, drag/resize,
   copy/paste/duplicate, undo/redo, snap/nudge, delete/duplicate).

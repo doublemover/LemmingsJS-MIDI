@@ -30,6 +30,7 @@
 ## Keyboard and mouse
 
 - `Shift+`` toggles editor mode.
+- Entering editor mode pauses the timer and disables gameplay input/panning; exiting restores the prior run state.
 - Tool shortcuts are configurable via `keybindings.json`.
 - Left click places or selects; drag moves selection.
 - Right click cancels placement or clears selection.
