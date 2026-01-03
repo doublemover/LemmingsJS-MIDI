@@ -8,7 +8,7 @@ class ProcgenStageAdapter {
     this.stage = view?.stage || null;
     this._resizeHandler = null;
     this._snapOverridden = false;
-    this.maxScale = 8;
+    this.maxScale = 6;
     this.zoomStep = 1.1;
   }
 

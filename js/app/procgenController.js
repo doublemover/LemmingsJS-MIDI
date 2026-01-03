@@ -11,6 +11,9 @@ class ProcgenController {
     this._groundEndX = 0;
     this._groundTopY = 0;
     this._segmentColorIndex = 0;
+    this._colorTransition = { from: 1, to: 1, remaining: 0, total: 0 };
+    this._sustainBaseY = 0;
+    this._sustainRemaining = 0;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
 
@@ -64,6 +67,14 @@ class ProcgenController {
     const startX = Math.max(0, entranceX - Math.floor(this.initialGroundWidth / 4));
     this._groundTopY = Math.max(0, (this.level?.height ?? 0) - this.groundHeight);
     this._segmentColorIndex = this.groundColorIndex;
+    this._colorTransition = {
+      from: this._segmentColorIndex,
+      to: this._segmentColorIndex,
+      remaining: 0,
+      total: 0
+    };
+    this._sustainBaseY = this._groundTopY;
+    this._sustainRemaining = 0;
     this._paintGround(startX, this.initialGroundWidth, this._groundTopY, this._segmentColorIndex);
     this._groundEndX = Math.max(this._groundEndX, startX + this.initialGroundWidth);
   }
@@ -149,8 +160,17 @@ class ProcgenController {
   _pickNextTopY() {
     const levelHeight = this.level?.height ?? 0;
     const maxTop = Math.max(0, levelHeight - this.groundHeight);
+    if (this._sustainRemaining <= 0) {
+      this._seedSustainLevel(maxTop);
+    }
     const delta = this._nextElevationDelta();
-    const next = this._groundTopY + delta;
+    let next = this._groundTopY + delta;
+    const offset = this._groundTopY - this._sustainBaseY;
+    if (offset !== 0) {
+      const biasStep = Math.min(3, Math.ceil(Math.abs(offset) / 8));
+      next += offset > 0 ? -biasStep : biasStep;
+    }
+    this._sustainRemaining -= 1;
     return Math.max(0, Math.min(maxTop, next));
   }
 
@@ -228,10 +248,37 @@ class ProcgenController {
     if (!Number.isFinite(this._segmentColorIndex) || this._segmentColorIndex <= 0) {
       this._segmentColorIndex = base;
     }
-    let next = (this._segmentColorIndex % maxIndex) + 1;
-    if (next === 0) next = 1;
+    if (!this._colorTransition || this._colorTransition.remaining <= 0) {
+      const target = this._randInt(1, maxIndex);
+      this._colorTransition = {
+        from: this._segmentColorIndex,
+        to: target === this._segmentColorIndex ? ((target % maxIndex) + 1) : target,
+        total: this._randInt(10, 300),
+        remaining: 0
+      };
+      this._colorTransition.remaining = this._colorTransition.total;
+    }
+    const transition = this._colorTransition;
+    const progress = transition.total <= 0
+      ? 1
+      : (transition.total - transition.remaining) / transition.total;
+    let next = Math.round(transition.from + (transition.to - transition.from) * progress);
+    transition.remaining -= 1;
+    if (transition.remaining <= 0) {
+      next = transition.to;
+    }
+    next = Math.min(maxIndex, Math.max(1, next));
     this._segmentColorIndex = next;
     return next;
+  }
+
+  _seedSustainLevel(maxTop) {
+    const upRange = Math.max(8, Math.floor(this.maxStepUp * 8));
+    const downRange = Math.max(12, Math.floor(this.maxDrop * 0.35));
+    const delta = this._randInt(-upRange, downRange);
+    const nextBase = Math.max(0, Math.min(maxTop, this._groundTopY + delta));
+    this._sustainBaseY = nextBase;
+    this._sustainRemaining = this._randInt(20, 200);
   }
 
   _updateCamera(rightmostX) {

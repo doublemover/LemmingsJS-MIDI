@@ -48,6 +48,7 @@ const init = async () => {
   view.includeSavedLevels = false;
   view.endless = true;
   view.gameCanvas = canvas;
+  view.gameSpeedFactor = 3;
   if (view.stage) {
     view.stage.setGuiEnabled(false);
     view.stage.setCursorSprite(null);
@@ -78,6 +79,7 @@ const init = async () => {
   view.applyLevelViewport(level);
   view.stage.updateStageSize();
   game.start();
+  game.getGameTimer().speedFactor = view.gameSpeedFactor;
   bindCanvasFocusBlur(canvas);
 
   const controller = new ProcgenController({
