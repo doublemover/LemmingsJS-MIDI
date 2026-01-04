@@ -114,7 +114,7 @@ test('Reverse playback does not change speed factor', async ({ page }) => {
   await page.evaluate(() => window.__E2E__.stopReverse());
 });
 
-test('Harness returns buffers with decodable metadata', async ({ page }) => {
+test('Harness returns buffers with decodable metadata', async ({ page }) => {   
   const groundMask = await page.evaluate(() => window.__E2E__.getBuffer('ground-mask'));
   expect(groundMask).toBeTruthy();
   const decodedMask = decodeE2EBuffer(groundMask);
@@ -131,4 +131,43 @@ test('Harness returns buffers with decodable metadata', async ({ page }) => {
 
   const unknownBuffer = await page.evaluate(() => window.__E2E__.getBuffer('missing-buffer'));
   expect(unknownBuffer).toBeNull();
+});
+
+test('Minimap click preserves zoom scale', async ({ page }) => {
+  const canvas = page.locator('canvas');
+  await expect(canvas).toBeVisible();
+  const box = await canvas.boundingBox();
+  if (!box) throw new Error('Missing canvas bounds.');
+  await page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.5);
+  await page.mouse.wheel(0, -800);
+
+  await page.waitForFunction(() => {
+    const scale = window.__E2E__?.getState?.().stage?.gameScale ?? 1;
+    return scale > 1;
+  });
+  const scaleBefore = await page.evaluate(
+    () => window.__E2E__?.getState?.().stage?.gameScale ?? 1
+  );
+
+  const minimapPoint = await page.evaluate(() => {
+    const stage = window.lemmings?.stage;
+    const gui = stage?.guiImgProps;
+    const display = gui?.display;
+    const rect = stage?.stageCav?.getBoundingClientRect?.();
+    if (!stage || !gui || !display || !rect) return null;
+    const destX = display.worldDataSize.width - 127;
+    const destY = display.worldDataSize.height - 24 - 1;
+    const scale = gui.viewPoint?.scale ?? 1;
+    return {
+      x: rect.left + gui.x + destX * scale + 2,
+      y: rect.top + gui.y + destY * scale + 2
+    };
+  });
+  if (!minimapPoint) throw new Error('Missing minimap position.');
+  await page.mouse.click(minimapPoint.x, minimapPoint.y);
+
+  const scaleAfter = await page.evaluate(
+    () => window.__E2E__?.getState?.().stage?.gameScale ?? 1
+  );
+  expect(scaleAfter).toBe(scaleBefore);
 });

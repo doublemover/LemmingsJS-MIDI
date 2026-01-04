@@ -63,7 +63,11 @@ const EDITOR_SHORTCUT_SECTIONS = [
       { action: 'editorUndo', label: 'Undo' },
       { action: 'editorRedo', label: 'Redo' },
       { action: 'editorDelete', label: 'Delete selection' },
-      { action: 'editorSnapSelection', label: 'Snap to grid' }
+      { action: 'editorSnapSelection', label: 'Snap to grid' },
+      { action: 'editorBringToFront', label: 'Bring to front' },
+      { action: 'editorMoveForward', label: 'Move forward' },
+      { action: 'editorMoveBackward', label: 'Move backward' },
+      { action: 'editorSendToBack', label: 'Send to back' }
     ]
   },
   {
@@ -113,6 +117,7 @@ class EditorUiController {
     this._shiftKey = false;
     this._altKey = false;
     this._antsOffset = 0;
+    this._needsDefaultEntrances = false;
     this.shortcutOverlay = null;
 
     this._bindElements();
@@ -124,6 +129,7 @@ class EditorUiController {
       this.view?.createBlankEditorLevel({ render: false });
       this.session = this.view?.editorSession || this.session;
       this.controller.session = this.session;
+      this._needsDefaultEntrances = true;
     }
     await this._reloadAssets();
     this.controller.resetHistory('Init');
@@ -161,6 +167,7 @@ class EditorUiController {
       paletteTerrain: get('editorPaletteTerrain'),
       paletteGadgets: get('editorPaletteGadgets'),
       paletteTriggers: get('editorPaletteTriggers'),
+      cursorStatus: get('editorCursorStatus'),
       status: get('editorStatus'),
       selectionStatus: get('editorSelectionStatus'),
       headerTitle: get('editorHeaderTitle'),
@@ -188,6 +195,10 @@ class EditorUiController {
       selNoOverwrite: get('editorSelNoOverwrite'),
       selErase: get('editorSelErase'),
       selOneWay: get('editorSelOneWay'),
+      selectionBringFront: get('editorSelectionBringFront'),
+      selectionMoveForward: get('editorSelectionMoveForward'),
+      selectionMoveBackward: get('editorSelectionMoveBackward'),
+      selectionSendBack: get('editorSelectionSendBack'),
       deleteSelection: get('editorDeleteSelection'),
       issuesList: get('editorIssuesList'),
       shortcutOverlay: get('editorShortcutOverlay')
@@ -219,6 +230,7 @@ class EditorUiController {
     this._bindPaletteSearch();
     this._bindHeaderFields();
     this._bindSelectionFields();
+    this._bindSelectionActions();
     this._bindBrushControls();
     this._bindSavedControls();
     this._bindLevelSelectors();
@@ -296,6 +308,26 @@ class EditorUiController {
       onDelete: () => {
         if (this.controller.deleteSelected()) {
           this._refreshAfterEdit('Delete');
+        }
+      },
+      onBringToFront: () => {
+        if (this.controller.bringSelectionToFront()) {
+          this._refreshAfterEdit('Reorder');
+        }
+      },
+      onSendToBack: () => {
+        if (this.controller.sendSelectionToBack()) {
+          this._refreshAfterEdit('Reorder');
+        }
+      },
+      onMoveForward: () => {
+        if (this.controller.moveSelectionForward()) {
+          this._refreshAfterEdit('Reorder');
+        }
+      },
+      onMoveBackward: () => {
+        if (this.controller.moveSelectionBackward()) {
+          this._refreshAfterEdit('Reorder');
         }
       },
       onPlaytestToggle: () => this._togglePlaytest(),
@@ -651,10 +683,15 @@ class EditorUiController {
       const action = map[tool];
       if (!action) return;
       const bindings = this.keybindings.getDisplayBindings(action);
-      if (!bindings.length) return;
-      button.title = bindings.length === 1
+      const base = button.dataset?.tooltip || button.title || '';
+      if (!bindings.length) {
+        if (base) button.title = base;
+        return;
+      }
+      const suffix = bindings.length === 1
         ? `Shortcut: ${bindings[0]}`
         : `Shortcuts: ${bindings.join(', ')}`;
+      button.title = base ? `${base} (${suffix})` : suffix;
     });
   }
 
@@ -715,13 +752,15 @@ class EditorUiController {
       button.dataset.type = type;
       const size = `${entry.width || 0}x${entry.height || 0}`;
       const triggerFlag = entry.triggerEffectId ? ` | T${entry.triggerEffectId}` : '';
+      const labelText = `#${entry.id} ${entry.name} (${size})${triggerFlag}`;
       const label = this.document.createElement('span');
       label.className = 'palette-label';
-      label.textContent = `#${entry.id} ${entry.name} (${size})${triggerFlag}`;
+      label.textContent = labelText;
+      button.title = `Select ${labelText}`;
       const previewWrap = this.document.createElement('span');
       previewWrap.className = 'palette-preview';
       const previewImg = this.document.createElement('img');
-      previewImg.alt = '';
+      previewImg.alt = labelText;
       previewImg.loading = 'lazy';
       previewWrap.appendChild(previewImg);
       button.append(previewWrap, label);
@@ -830,7 +869,8 @@ class EditorUiController {
     this._setSelectionFields({
       type: selected.type,
       name,
-      props
+      props,
+      meta
     });
     this._updateSelectionStatus();
   }
@@ -915,8 +955,11 @@ class EditorUiController {
     if (this.el.selName) this.el.selName.textContent = data.name || '';
 
     const props = data.props || {};
+    const meta = data.meta || null;
     const isGadget = data.type === 'gadget';
     const isSteel = data.type === 'steel';
+    const widthValue = props.WIDTH ?? (isSteel ? undefined : meta?.width);
+    const heightValue = props.HEIGHT ?? (isSteel ? undefined : meta?.height);
 
     if (this.el.selX) {
       this.el.selX.value = formatValue(props.X);
@@ -927,11 +970,11 @@ class EditorUiController {
       this.el.selY.disabled = false;
     }
     if (this.el.selWidth) {
-      this.el.selWidth.value = formatValue(props.WIDTH);
+      this.el.selWidth.value = formatValue(widthValue);
       this.el.selWidth.disabled = false;
     }
     if (this.el.selHeight) {
-      this.el.selHeight.value = formatValue(props.HEIGHT);
+      this.el.selHeight.value = formatValue(heightValue);
       this.el.selHeight.disabled = false;
     }
     if (this.el.selRotate) {
@@ -1024,12 +1067,43 @@ class EditorUiController {
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
     this.controller.resetHistory('New');
+    this._needsDefaultEntrances = true;
     this._currentSavedId = '';
     this._refreshSavedList('');
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
     await this._refreshPreview('New', { preserveView: false });
+  }
+
+  _bindSelectionActions() {
+    const bind = (el, handler) => {
+      if (!el) return;
+      el.addEventListener('click', () => {
+        if (handler()) {
+          this._refreshAfterEdit('Reorder');
+        }
+      });
+    };
+    bind(this.el.selectionBringFront, () => this.controller.bringSelectionToFront());
+    bind(this.el.selectionMoveForward, () => this.controller.moveSelectionForward());
+    bind(this.el.selectionMoveBackward, () => this.controller.moveSelectionBackward());
+    bind(this.el.selectionSendBack, () => this.controller.sendSelectionToBack());
+  }
+
+  _ensureDefaultEntrancesExits() {
+    if (!this._needsDefaultEntrances) return;
+    const viewRect = this.view?.stage?.getGameViewRect?.() || null;
+    const added = this.controller.ensureDefaultEntrancesExits({
+      entranceId: this.assets?.entranceId,
+      exitId: this.assets?.exitId,
+      viewRect
+    });
+    if (added) {
+      this._refreshSelection(null);
+      this._refreshValidation();
+    }
+    this._needsDefaultEntrances = false;
   }
 
   _exportCurrentLevel() {
@@ -1151,6 +1225,7 @@ class EditorUiController {
         preserveView
       });
       this.view.setEditorPlaytest(this._playtest);
+      this._ensureDefaultEntrancesExits();
       this._drawSelectionOverlay();
       this._updateStatus(label || 'Preview');
     } finally {
@@ -1192,6 +1267,9 @@ class EditorUiController {
         const button = this.document.createElement('button');
         button.type = 'button';
         button.textContent = issue.fixLabel || 'Fix';
+        button.title = issue.fixLabel
+          ? `Apply fix: ${issue.fixLabel}`
+          : 'Apply automatic fix.';
         button.addEventListener('click', () => {
           issue.fix();
           this.controller.history.pushSnapshot(this.session?.level, 'Fix');
@@ -1205,6 +1283,15 @@ class EditorUiController {
   }
 
   _updateStatus(label) {
+    if (this.el.cursorStatus) {
+      if (this._cursorPos) {
+        const cx = Math.round(this._cursorPos.x);
+        const cy = Math.round(this._cursorPos.y);
+        this.el.cursorStatus.textContent = `X:${cx} Y:${cy}`;
+      } else {
+        this.el.cursorStatus.textContent = 'X:— Y:—';
+      }
+    }
     if (!this.el.status) return;
     const parts = [];
     if (label) parts.push(label);
@@ -1213,11 +1300,6 @@ class EditorUiController {
       ? `Grid ${this.controller.gridSize}`
       : 'Grid off';
     parts.push(grid);
-    if (this._cursorPos) {
-      const cx = Math.round(this._cursorPos.x);
-      const cy = Math.round(this._cursorPos.y);
-      parts.push(`X:${cx} Y:${cy}`);
-    }
     parts.push(this._playtest ? 'Playtest' : 'Edit');
     this.el.status.textContent = parts.join(' • ');
   }
@@ -1261,9 +1343,24 @@ class EditorUiController {
       );
     }
     if (display?.drawStippleRect && Array.isArray(steelEntries)) {
+      const gridSize = 16;
       for (const entry of steelEntries) {
         const bounds = getEntryBounds(entry, null);
-        display.drawStippleRect(bounds.x, bounds.y, bounds.width, bounds.height, 0, 255, 255);
+        display.drawStippleRect(
+          bounds.x,
+          bounds.y,
+          bounds.width,
+          bounds.height,
+          0,
+          180,
+          180
+        );
+        for (let x = bounds.x; x <= bounds.x + bounds.width; x += gridSize) {
+          display.drawStippleRect(x, bounds.y, 0, bounds.height, 0, 255, 255);
+        }
+        for (let y = bounds.y; y <= bounds.y + bounds.height; y += gridSize) {
+          display.drawStippleRect(bounds.x, y, bounds.width, 0, 0, 255, 255);
+        }
       }
     }
     for (const selected of selectedEntries) {

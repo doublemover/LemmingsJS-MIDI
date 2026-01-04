@@ -67,6 +67,10 @@
     "editorTogglePlaytest": ["KeyP"],
     "editorUndo": ["KeyZ"],
     "editorRedo": ["Shift+KeyZ"],
-    "editorDelete": ["Delete", "Backspace"]
+    "editorDelete": ["Delete", "Backspace"],
+    "editorBringToFront": ["Ctrl+Shift+BracketRight"],
+    "editorSendToBack": ["Ctrl+Shift+BracketLeft"],
+    "editorMoveForward": ["Alt+BracketRight"],
+    "editorMoveBackward": ["Alt+BracketLeft"]
   }
 }

@@ -441,7 +441,9 @@ class DisplayImage extends BaseLogger {
     this.buffer32[y * this.imgData.width + x] = 0xFF000000 | (b&0xFF)<<16 | (g&0xFF)<<8 | (r&0xFF);
   }
 
-  setScreenPosition(x, y) { this.stage.setGameViewPointPosition(x, y); }
+  setScreenPosition(x, y, options) {
+    this.stage.setGameViewPointPosition(x, y, options);
+  }
   getImageData()         { return this.imgData;  }
   redraw()               { this.stage.redraw();   }
 

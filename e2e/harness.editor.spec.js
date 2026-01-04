@@ -277,7 +277,7 @@ test('Editor playtest toggles timer and input state', async ({ page }) => {
   expect(inputStopped).toBe(false);
 });
 
-test('Editor level selection loads into editor session', async ({ page }) => {
+test('Editor level selection loads into editor session', async ({ page }) => {  
   const state = await getEditorState(page);
   const levelSelect = page.locator('#editorLevelIndexSelect');
   const optionCount = await levelSelect.locator('option').count();
@@ -305,7 +305,31 @@ test('Editor level selection loads into editor session', async ({ page }) => {
   expect(normalizedTitle).toBe(targetName);
 });
 
-test('Editor terrain placement uses palette selection', async ({ page }) => {
+test('Editor new level seeds entrance and exit', async ({ page }) => {
+  await page.click('#editorNewLevel');
+  await page.waitForFunction(() => {
+    const state = window.__E2E__?.getState?.();
+    return (state?.editor?.session?.level?.gadgets?.length || 0) >= 1;
+  });
+  const state = await getEditorState(page);
+  const entranceId = state.editor.assets.entranceId;
+  const exitId = state.editor.assets.exitId;
+  const gadgets = state.editor.session.level.gadgets || [];
+  const entrance = gadgets.find(entry => entry?.props?.PIECE === entranceId);
+  const exit = gadgets.find(entry => entry?.props?.PIECE === exitId);
+  expect(entrance).toBeTruthy();
+  expect(exit).toBeTruthy();
+
+  const viewRect = state.stage.viewRect;
+  const entranceX = entrance?.props?.X ?? 0;
+  const exitX = exit?.props?.X ?? 0;
+  expect(entranceX).toBeGreaterThanOrEqual(viewRect.x);
+  expect(entranceX).toBeLessThanOrEqual(viewRect.x + viewRect.w);
+  expect(exitX).toBeGreaterThanOrEqual(viewRect.x);
+  expect(exitX).toBeLessThanOrEqual(viewRect.x + viewRect.w);
+});
+
+test('Editor terrain placement uses palette selection', async ({ page }) => {   
   const terrainButton = page.locator('#editorPaletteTerrain button').first();
   await expect(terrainButton).toBeVisible();
   const terrainId = await terrainButton.getAttribute('data-id');
@@ -341,6 +365,41 @@ test('Editor terrain placement uses palette selection', async ({ page }) => {
   const snappedY = snapWorldValue(worldClick.y, gridSize, snapEnabled);
   expect(placed.props.X).toBe(snappedX - offsetX);
   expect(placed.props.Y).toBe(snappedY - offsetY);
+});
+
+test('Editor layer order buttons reorder selection', async ({ page }) => {
+  const state = await getEditorState(page);
+  const terrainId = state.editor.assets.terrain[0]?.id;
+  expect(Number.isFinite(terrainId)).toBe(true);
+
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await selectPaletteItem(page, '#editorPaletteTerrain', terrainId);
+
+  const pointA = await getCanvasPoint(page, 0.35, 0.6);
+  const pointB = await getCanvasPoint(page, 0.45, 0.6);
+  await page.mouse.click(pointA.x, pointA.y);
+  await page.mouse.click(pointB.x, pointB.y);
+
+  await page.click('#editorToolList button[data-tool="select"]');
+  const placedState = await getEditorState(page);
+  const entry = placedState.editor.session.level.terrains[0];
+  const meta = placedState.editor.assets.terrain.find(item => item.id === terrainId);
+  const center = getEntryCenter(entry, meta);
+  const pagePoint = await getPagePointFromWorld(page, center);
+  if (!pagePoint) throw new Error('Failed to resolve selection point.');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
+  await page.waitForFunction(() => {
+    return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
+  });
+
+  const beforeIndex = await page.evaluate(
+    () => window.__E2E__.getState().editor.controller.selectionEntries[0].index
+  );
+  await page.click('#editorSelectionMoveForward');
+  const afterIndex = await page.evaluate(
+    () => window.__E2E__.getState().editor.controller.selectionEntries[0].index
+  );
+  expect(afterIndex).toBe(beforeIndex + 1);
 });
 
 test('Editor gadget and trigger placement use palette selection', async ({ page }) => {

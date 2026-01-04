@@ -13,31 +13,31 @@
     <header class="editor-header">
       <div class="editor-title">Lemmings Editor</div>
       <div class="editor-controls">
-        <label>
+        <label title="Choose the level pack to edit.">
           Pack
-          <select id="editorGameTypeSelect"></select>
+          <select id="editorGameTypeSelect" title="Choose the level pack to edit."></select>
         </label>
-        <label>
+        <label title="Choose the level group within the selected pack.">
           Group
-          <select id="editorLevelGroupSelect"></select>
+          <select id="editorLevelGroupSelect" title="Choose the level group within the selected pack."></select>
         </label>
-        <label>
+        <label title="Choose the level index within the selected group.">
           Level
-          <select id="editorLevelIndexSelect"></select>
+          <select id="editorLevelIndexSelect" title="Choose the level index within the selected group."></select>
         </label>
-        <label>
+        <label title="Choose a saved editor level from local storage.">
           Saved
-          <select id="editorSavedSelect"></select>
+          <select id="editorSavedSelect" title="Choose a saved editor level from local storage."></select>
         </label>
-        <button id="editorNewLevel" type="button">New Level</button>
-        <button id="editorSavedSave" type="button">Save</button>
-        <button id="editorSavedExport" type="button">Export</button>
-        <button id="editorSavedExportClassic" type="button">Export LVL</button>
-        <button class="secondary" id="editorSavedImport" type="button">Import</button>
-        <button class="secondary" id="editorSavedImportClassic" type="button">Import LVL</button>
-        <button class="secondary" id="editorPlaytestToggle" type="button">Playtest</button>
-        <input id="editorSavedImportInput" type="file" accept=".nxlv" hidden />
-        <input id="editorSavedImportClassicInput" type="file" accept=".lvl" hidden />
+        <button id="editorNewLevel" type="button" title="Create a new blank level.">New Level</button>
+        <button id="editorSavedSave" type="button" title="Save the current level to local storage.">Save</button>
+        <button id="editorSavedExport" type="button" title="Export the current level in editor format (.nxlv).">Export</button>
+        <button id="editorSavedExportClassic" type="button" title="Export the current level as a classic LVL file.">Export LVL</button>
+        <button class="secondary" id="editorSavedImport" type="button" title="Import a saved editor level (.nxlv).">Import</button>
+        <button class="secondary" id="editorSavedImportClassic" type="button" title="Import a classic LVL file into the editor.">Import LVL</button>
+        <button class="secondary" id="editorPlaytestToggle" type="button" title="Toggle playtest mode to run the level.">Playtest</button>
+        <input id="editorSavedImportInput" type="file" accept=".nxlv" title="Choose an editor level file (.nxlv) to import." hidden />
+        <input id="editorSavedImportClassicInput" type="file" accept=".lvl" title="Choose a classic LVL file to import." hidden />
       </div>
     </header>
 
@@ -45,105 +45,117 @@
       <aside class="editor-panel">
         <div class="panel-title">Tools</div>
         <div class="tool-grid" id="editorToolList">
-          <button type="button" data-tool="select">Select</button>
-          <button type="button" data-tool="terrain">Terrain</button>
-          <button type="button" data-tool="gadget">Object</button>
-          <button type="button" data-tool="trigger">Trigger</button>
-          <button type="button" data-tool="entrance">Entrance</button>
-          <button type="button" data-tool="exit">Exit</button>
-          <button type="button" data-tool="steel">Steel</button>
-          <button type="button" data-tool="brush">Brush</button>
-          <button type="button" data-tool="eraser">Eraser</button>
+          <button type="button" data-tool="select" data-tooltip="Select and move existing items.">Select</button>
+          <button type="button" data-tool="terrain" data-tooltip="Place terrain pieces.">Terrain</button>
+          <button type="button" data-tool="gadget" data-tooltip="Place interactive objects.">Object</button>
+          <button type="button" data-tool="trigger" data-tooltip="Place trigger regions.">Trigger</button>
+          <button type="button" data-tool="entrance" data-tooltip="Place entrances (spawners).">Entrance</button>
+          <button type="button" data-tool="exit" data-tooltip="Place exits.">Exit</button>
+          <button type="button" data-tool="steel" data-tooltip="Draw steel areas.">Steel</button>
+          <button type="button" data-tool="brush" data-tooltip="Paint terrain with a brush.">Brush</button>
+          <button type="button" data-tool="eraser" data-tooltip="Erase terrain or gadgets.">Eraser</button>
         </div>
 
         <div class="panel-title">Brush</div>
-        <label class="control-row">
+        <label class="control-row" title="Snap placements to the current grid size.">
           Snap to grid
-          <input id="editorSnapToggle" type="checkbox" checked />
+          <input id="editorSnapToggle" type="checkbox" checked title="Snap placements to the current grid size." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Set the grid size for snapping and nudge steps.">
           Grid size
-          <input id="editorGridSize" type="number" min="1" value="4" />
+          <input id="editorGridSize" type="number" min="1" value="4" title="Set the grid size for snapping and nudge steps." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Set the brush size for painting terrain.">
           Brush size
-          <input id="editorBrushSize" type="number" min="1" value="1" />
+          <input id="editorBrushSize" type="number" min="1" value="1" title="Set the brush size for painting terrain." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Allow the eraser tool to remove gadgets as well as terrain.">
           Erase gadgets
-          <input id="editorEraseGadgets" type="checkbox" />
+          <input id="editorEraseGadgets" type="checkbox" title="Allow the eraser tool to remove gadgets as well as terrain." />
         </label>
 
         <div class="panel-title">Palette</div>
-        <div class="palette-tabs" id="editorPaletteTabs">
-          <button type="button" data-tab="terrain" class="active">Terrain</button>
-          <button type="button" data-tab="gadgets">Objects</button>
-          <button type="button" data-tab="triggers">Triggers</button>
+        <div class="palette-block">
+          <div class="palette-tabs" id="editorPaletteTabs" title="Switch between terrain, object, and trigger palettes.">
+            <button type="button" data-tab="terrain" class="active" title="Show terrain palette.">Terrain</button>
+            <button type="button" data-tab="gadgets" title="Show object palette.">Objects</button>
+            <button type="button" data-tab="triggers" title="Show trigger palette.">Triggers</button>
+          </div>
+          <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" title="Filter palette entries by name or id." />
+          <div class="palette-list" id="editorPaletteTerrain"></div>
+          <div class="palette-list" id="editorPaletteGadgets" hidden></div>
+          <div class="palette-list" id="editorPaletteTriggers" hidden></div>
         </div>
-        <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" />
-        <div class="palette-list" id="editorPaletteTerrain"></div>
-        <div class="palette-list" id="editorPaletteGadgets" hidden></div>
-        <div class="palette-list" id="editorPaletteTriggers" hidden></div>
       </aside>
 
       <section class="editor-canvas-panel">
         <div class="canvas-wrap">
-          <canvas id="editorCanvas" width="800" height="480"></canvas>
+          <canvas id="editorCanvas" width="800" height="480" title="Editor canvas. Click to place or edit items."></canvas>
         </div>
         <div class="status-strip">
+          <span id="editorCursorStatus">X:— Y:—</span>
           <span id="editorStatus">Ready</span>
           <span id="editorSelectionStatus">No selection</span>
         </div>
       </section>
 
       <aside class="editor-panel">
-        <div class="panel-title">Header</div>
+        <div class="panel-title">Level Settings</div>
         <div class="inspector-grid">
-          <label>Title<input id="editorHeaderTitle" type="text" /></label>
-          <label>Style<input id="editorHeaderStyle" type="text" /></label>
-          <label>Width<input id="editorHeaderWidth" type="number" min="1" /></label>
-          <label>Height<input id="editorHeaderHeight" type="number" min="1" /></label>
-          <label>Lemmings<input id="editorHeaderLemmings" type="number" min="0" /></label>
-          <label>Save Req<input id="editorHeaderSaveRequirement" type="number" min="0" /></label>
-          <label>Time Limit<input id="editorHeaderTimeLimit" type="text" /></label>
-          <label>Spawn Interval<input id="editorHeaderSpawnInterval" type="number" min="0" /></label>
-          <label>Start X<input id="editorHeaderStartX" type="number" /></label>
-          <label>Start Y<input id="editorHeaderStartY" type="number" /></label>
+          <label title="Set the level title shown in menus.">Title<input id="editorHeaderTitle" type="text" title="Set the level title shown in menus." /></label>
+          <label title="Choose the style/tileset used for terrain and objects.">Style<input id="editorHeaderStyle" type="text" title="Choose the style/tileset used for terrain and objects." /></label>
+          <div class="field-help" title="The style controls which terrain and object set is used for previews and exports.">Style chooses the tileset for terrain and objects.</div>
+          <label title="Set the level width in pixels.">Width<input id="editorHeaderWidth" type="number" min="1" title="Set the level width in pixels." /></label>
+          <label title="Set the level height in pixels.">Height<input id="editorHeaderHeight" type="number" min="1" title="Set the level height in pixels." /></label>
+          <label title="Total lemmings released for this level.">Lemmings<input id="editorHeaderLemmings" type="number" min="0" title="Total lemmings released for this level." /></label>
+          <label title="How many lemmings must be saved to win.">Save Req<input id="editorHeaderSaveRequirement" type="number" min="0" title="How many lemmings must be saved to win." /></label>
+          <label title="Time limit in minutes. Use INFINITE for no limit.">Time Limit<input id="editorHeaderTimeLimit" type="text" title="Time limit in minutes. Use INFINITE for no limit." /></label>
+          <label title="Spawn interval (release rate) in ticks.">Spawn Interval<input id="editorHeaderSpawnInterval" type="number" min="0" title="Spawn interval (release rate) in ticks." /></label>
+          <label title="Initial camera X position in pixels.">Start X<input id="editorHeaderStartX" type="number" title="Initial camera X position in pixels." /></label>
+          <label title="Initial camera Y position in pixels.">Start Y<input id="editorHeaderStartY" type="number" title="Initial camera Y position in pixels." /></label>
         </div>
 
-        <div class="panel-title">Selection</div>
+        <div class="panel-separator"></div>
+
+        <div class="panel-title">Current Selection</div>
         <div class="control-row"><span id="editorSelType">None</span><span id="editorSelName"></span></div>
         <div class="inspector-grid">
-          <label>X<input id="editorSelX" type="number" /></label>
-          <label>Y<input id="editorSelY" type="number" /></label>
-          <label>Width<input id="editorSelWidth" type="number" /></label>
-          <label>Height<input id="editorSelHeight" type="number" /></label>
-          <label>Rotate<input id="editorSelRotate" type="number" min="0" max="270" step="90" /></label>
-          <label>Skill<input id="editorSelSkill" type="text" /></label>
-          <label>Lemmings<input id="editorSelLemmings" type="number" /></label>
-          <label>Pairing<input id="editorSelPairing" type="number" /></label>
+          <label title="Selection X position in pixels.">X<input id="editorSelX" type="number" title="Selection X position in pixels." /></label>
+          <label title="Selection Y position in pixels.">Y<input id="editorSelY" type="number" title="Selection Y position in pixels." /></label>
+          <label title="Selection width in pixels.">Width<input id="editorSelWidth" type="number" title="Selection width in pixels." /></label>
+          <label title="Selection height in pixels.">Height<input id="editorSelHeight" type="number" title="Selection height in pixels." /></label>
+          <label title="Rotation in degrees.">Rotate<input id="editorSelRotate" type="number" min="0" max="270" step="90" title="Rotation in degrees." /></label>
+          <label title="Skill for gadget triggers (if applicable).">Skill<input id="editorSelSkill" type="text" title="Skill for gadget triggers (if applicable)." /></label>
+          <label title="Lemmings emitted by entrance gadgets.">Lemmings<input id="editorSelLemmings" type="number" title="Lemmings emitted by entrance gadgets." /></label>
+          <label title="Pairing value for linked gadgets.">Pairing<input id="editorSelPairing" type="number" title="Pairing value for linked gadgets." /></label>
         </div>
-        <label class="control-row">
+        <label class="control-row" title="Flip the selection horizontally.">
           Flip H
-          <input id="editorSelFlipH" type="checkbox" />
+          <input id="editorSelFlipH" type="checkbox" title="Flip the selection horizontally." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Flip the selection vertically.">
           Flip V
-          <input id="editorSelFlipV" type="checkbox" />
+          <input id="editorSelFlipV" type="checkbox" title="Flip the selection vertically." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Prevent placing terrain over existing terrain.">
           No Overwrite
-          <input id="editorSelNoOverwrite" type="checkbox" />
+          <input id="editorSelNoOverwrite" type="checkbox" title="Prevent placing terrain over existing terrain." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Erase terrain where this piece is placed.">
           Erase
-          <input id="editorSelErase" type="checkbox" />
+          <input id="editorSelErase" type="checkbox" title="Erase terrain where this piece is placed." />
         </label>
-        <label class="control-row">
+        <label class="control-row" title="Only allow lemmings to move in one direction.">
           One Way
-          <input id="editorSelOneWay" type="checkbox" />
+          <input id="editorSelOneWay" type="checkbox" title="Only allow lemmings to move in one direction." />
         </label>
-        <button class="editor-button" id="editorDeleteSelection" type="button">Delete Selection</button>
+        <div class="selection-order">
+          <button class="editor-button" id="editorSelectionBringFront" type="button" title="Bring selection to front (top layer).">Bring to Front</button>
+          <button class="editor-button" id="editorSelectionMoveForward" type="button" title="Move selection forward by one layer.">Move Forward</button>
+          <button class="editor-button" id="editorSelectionMoveBackward" type="button" title="Move selection backward by one layer.">Move Back</button>
+          <button class="editor-button" id="editorSelectionSendBack" type="button" title="Send selection to back (bottom layer).">Send to Back</button>
+        </div>
+        <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Selection</button>
 
         <div class="panel-title">Validation</div>
         <div class="issue-list" id="editorIssuesList"></div>
@@ -154,7 +166,7 @@
     <div class="shortcut-overlay__panel" role="dialog" aria-modal="true">
       <div class="shortcut-overlay__header">
         <div class="shortcut-overlay__title">Editor Shortcuts</div>
-        <button type="button" class="shortcut-overlay__close">Close</button>
+        <button type="button" class="shortcut-overlay__close" title="Close the shortcut overlay.">Close</button>
       </div>
       <div class="shortcut-overlay__content"></div>
     </div>

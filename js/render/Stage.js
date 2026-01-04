@@ -372,9 +372,19 @@ class Stage {
     return this.guiImgProps.display;
   }
 
-  setGameViewPointPosition(x, y) {
+  setGameViewPointPosition(x, y, options = {}) {
     this.clear(this.gameImgProps);
     const targetY = isFinite(y) ? y : 0;
+    const preserveScale = options.preserveScale === true;
+    if (preserveScale) {
+      const rawScale = Number.isFinite(this._rawScale)
+        ? this._rawScale
+        : (this.gameImgProps.viewPoint.scale || 1);
+      this._rawScale = rawScale;
+      this.applyViewport(this.gameImgProps, x, targetY, rawScale);
+      this.redraw();
+      return;
+    }
 
     const app = globalThis?.lemmings;
     if (app?.scale > 0) {

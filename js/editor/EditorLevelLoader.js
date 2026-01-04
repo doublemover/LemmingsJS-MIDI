@@ -15,6 +15,7 @@ import {
 } from './StyleRegistry.js';
 
 const DEFAULT_RELEASE_RATE = 50;
+const MAX_TIME_LIMIT_SECONDS = 99 * 60 + 99;
 
 const coerceNumber = (value, fallback) => {
   return Number.isFinite(value) ? value : fallback;
@@ -46,7 +47,7 @@ const resolveGroundSet = (styleName) => {
 };
 
 const resolveTimeLimit = (value) => {
-  if (value === 'INFINITE') return 0;
+  if (value === 'INFINITE') return MAX_TIME_LIMIT_SECONDS;
   return Number.isFinite(value) && value > 0 ? value : 0;
 };
 

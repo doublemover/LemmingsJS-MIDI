@@ -73,7 +73,7 @@ class MiniMap {
     const pct = mx / this.width;
     const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
-    gd.setScreenPosition?.(newX, 0);
+    gd.setScreenPosition?.(newX, 0, { preserveScale: true });
   }
 
   #handleMouseUp(event){
@@ -89,7 +89,7 @@ class MiniMap {
     const pct = mx / this.width;
     const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
-    gd.setScreenPosition?.(newX, 0);
+    gd.setScreenPosition?.(newX, 0, { preserveScale: true });
   }
 
   #handleMouseMove(event){
@@ -108,7 +108,7 @@ class MiniMap {
     const pct = mx / this.width;
     const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
     this.level.screenPositionX = newX;
-    gd.setScreenPosition?.(newX, 0);
+    gd.setScreenPosition?.(newX, 0, { preserveScale: true });
   }
 
   /* Build complete terrain snapshot (expensive – call at load/reset only). */

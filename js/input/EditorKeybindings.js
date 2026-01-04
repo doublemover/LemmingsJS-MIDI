@@ -14,6 +14,10 @@ class EditorKeybindings {
     this._onUndo = options.onUndo || null;
     this._onRedo = options.onRedo || null;
     this._onDelete = options.onDelete || null;
+    this._onBringToFront = options.onBringToFront || null;
+    this._onSendToBack = options.onSendToBack || null;
+    this._onMoveForward = options.onMoveForward || null;
+    this._onMoveBackward = options.onMoveBackward || null;
     this._onPlaytestToggle = options.onPlaytestToggle || null;
     this._onToggleShortcutOverlay = options.onToggleShortcutOverlay || null;
     this._onPreview = options.onPreview || null;
@@ -124,6 +128,18 @@ class EditorKeybindings {
       }},
       editorDelete: { down: () => {
         this._onDelete?.();
+      }},
+      editorBringToFront: { down: () => {
+        this._onBringToFront?.();
+      }},
+      editorSendToBack: { down: () => {
+        this._onSendToBack?.();
+      }},
+      editorMoveForward: { down: () => {
+        this._onMoveForward?.();
+      }},
+      editorMoveBackward: { down: () => {
+        this._onMoveBackward?.();
       }}
     };
   }

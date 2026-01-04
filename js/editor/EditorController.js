@@ -393,6 +393,95 @@ class EditorController {
     return true;
   }
 
+  _reorderSelection(mode) {
+    if (!this.session?.level || this.selection.length === 0) return false;
+    const groups = {
+      terrain: [],
+      gadget: [],
+      steel: []
+    };
+    for (const selected of this.selection) {
+      if (groups[selected.type]) groups[selected.type].push(selected.index);
+    }
+    const reorderList = (list, indices, dir) => {
+      if (!Array.isArray(list) || indices.length === 0) return null;
+      const unique = Array.from(new Set(indices)).filter(idx => idx >= 0 && idx < list.length);
+      if (!unique.length) return null;
+      const selectedSet = new Set(unique);
+      if (dir === 'front' || dir === 'back') {
+        const ordered = unique.slice().sort((a, b) => a - b).map(idx => list[idx]);
+        const remaining = list.filter((_, idx) => !selectedSet.has(idx));
+        list.length = 0;
+        if (dir === 'front') {
+          list.push(...remaining, ...ordered);
+        } else {
+          list.push(...ordered, ...remaining);
+        }
+        const next = new Map();
+        list.forEach((entry, idx) => next.set(entry, idx));
+        return ordered.map(entry => next.get(entry)).filter(idx => idx != null);
+      }
+      if (dir === 'forward') {
+        const sorted = unique.slice().sort((a, b) => b - a);
+        for (const idx of sorted) {
+          if (idx >= list.length - 1) continue;
+          if (selectedSet.has(idx + 1)) continue;
+          const tmp = list[idx + 1];
+          list[idx + 1] = list[idx];
+          list[idx] = tmp;
+          selectedSet.delete(idx);
+          selectedSet.add(idx + 1);
+        }
+        return Array.from(selectedSet);
+      }
+      if (dir === 'backward') {
+        const sorted = unique.slice().sort((a, b) => a - b);
+        for (const idx of sorted) {
+          if (idx <= 0) continue;
+          if (selectedSet.has(idx - 1)) continue;
+          const tmp = list[idx - 1];
+          list[idx - 1] = list[idx];
+          list[idx] = tmp;
+          selectedSet.delete(idx);
+          selectedSet.add(idx - 1);
+        }
+        return Array.from(selectedSet);
+      }
+      return null;
+    };
+
+    const nextSelection = [];
+    for (const [type, indices] of Object.entries(groups)) {
+      const list = this._getListForType(type);
+      const nextIndices = reorderList(list, indices, mode);
+      if (!nextIndices) continue;
+      for (const idx of nextIndices) {
+        nextSelection.push({ type, index: idx });
+      }
+    }
+    if (!nextSelection.length) return false;
+    this._setSelection(nextSelection);
+    this._commitHistory('Reorder');
+    this._requestPreview('Reorder');
+    return true;
+  }
+
+  bringSelectionToFront() {
+    return this._reorderSelection('front');
+  }
+
+  sendSelectionToBack() {
+    return this._reorderSelection('back');
+  }
+
+  moveSelectionForward() {
+    return this._reorderSelection('forward');
+  }
+
+  moveSelectionBackward() {
+    return this._reorderSelection('backward');
+  }
+
   undo() {
     const level = this.history.undo();
     if (!level || !this.session) return null;
@@ -538,6 +627,13 @@ class EditorController {
     }
   }
 
+  _hasGadgetId(pieceId) {
+    if (!this.session?.level || !Number.isFinite(pieceId)) return false;
+    const list = this.session.level.gadgets;
+    if (!Array.isArray(list)) return false;
+    return list.some(entry => entry?.props?.PIECE === pieceId);
+  }
+
   _trimGadgetsById(pieceId, maxCount) {
     if (!this.session?.level || !Number.isFinite(pieceId)) return;
     const list = this.session.level.gadgets;
@@ -623,6 +719,48 @@ class EditorController {
     this.session.level.gadgets.push(entry);
     this._markChanged();
     return entry;
+  }
+
+  ensureDefaultEntrancesExits(options = {}) {
+    if (!this.session?.level) return false;
+    const entranceId = Number.isFinite(options.entranceId)
+      ? options.entranceId
+      : this.assets?.entranceId;
+    const exitId = Number.isFinite(options.exitId)
+      ? options.exitId
+      : this.assets?.exitId;
+    const viewRect = options.viewRect || null;
+    const headerWidth = coerceEntryNumber(this.session.level.getHeader?.('WIDTH'), 0);
+    const headerHeight = coerceEntryNumber(this.session.level.getHeader?.('HEIGHT'), 0);
+    const levelWidth = Number.isFinite(headerWidth) && headerWidth > 0 ? headerWidth : 0;
+    const levelHeight = Number.isFinite(headerHeight) && headerHeight > 0 ? headerHeight : 0;
+    const hasEntrance = Number.isFinite(entranceId) && this._hasGadgetId(entranceId);
+    const hasExit = Number.isFinite(exitId) && this._hasGadgetId(exitId);
+    if (hasEntrance && hasExit) return false;
+
+    const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
+    const baseX = viewRect ? viewRect.x : 0;
+    const baseY = viewRect ? viewRect.y : 0;
+    const viewW = viewRect ? viewRect.w : Math.min(levelWidth, 320);
+    const viewH = viewRect ? viewRect.h : Math.min(levelHeight, 160);
+    const targetY = clamp(baseY + viewH - 32, 0, Math.max(0, levelHeight - 1));
+
+    if (!hasEntrance && Number.isFinite(entranceId)) {
+      const meta = this._getGadgetMeta(entranceId);
+      const offset = Math.max(8, Math.floor((meta?.width || 16) / 2));
+      const x = clamp(baseX + offset, 0, Math.max(0, levelWidth - 1));
+      this._placeGadgetAt(x, targetY, entranceId);
+    }
+    if (!hasExit && Number.isFinite(exitId)) {
+      const meta = this._getGadgetMeta(exitId);
+      const offset = Math.max(8, Math.floor((meta?.width || 16) / 2));
+      const x = clamp(baseX + viewW - offset, 0, Math.max(0, levelWidth - 1));
+      this._placeGadgetAt(x, targetY, exitId);
+    }
+
+    this._commitHistory('Defaults');
+    this._requestPreview('Defaults');
+    return true;
   }
 
   _placeSteelAt(x, y, width, height) {
