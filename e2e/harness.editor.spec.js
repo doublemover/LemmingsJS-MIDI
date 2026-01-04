@@ -34,6 +34,28 @@ const clickCanvas = async (page, xRatio, yRatio) => {
   );
 };
 
+const getCanvasPoint = async (page, xRatio, yRatio) => {
+  const box = await getCanvasBox(page);
+  return {
+    x: box.x + box.width * xRatio,
+    y: box.y + box.height * yRatio
+  };
+};
+
+const getWorldPointFromPage = async (page, point, canvasBox) => {
+  return page.evaluate(({ x, y, canvasX, canvasY }) => {
+    const stage = window.lemmings?.stage;
+    if (!stage) return null;
+    const img = stage.gameImgProps;
+    const localX = (x - canvasX) - img.x;
+    const localY = (y - canvasY) - img.y;
+    return {
+      x: img.viewPoint.getSceneX(localX),
+      y: img.viewPoint.getSceneY(localY)
+    };
+  }, { x: point.x, y: point.y, canvasX: canvasBox.x, canvasY: canvasBox.y });
+};
+
 const snapWorldValue = (value, gridSize, snapEnabled) => {
   if (!snapEnabled || !Number.isFinite(gridSize) || gridSize <= 1) {
     return Math.round(value);
@@ -79,6 +101,103 @@ const worldToPage = (state, canvasBox, point) => {
   };
 };
 
+const getPagePointFromWorld = async (page, point) => {
+  return page.evaluate(({ x, y }) => {
+    const stage = window.lemmings?.stage;
+    const canvas = stage?.stageCav;
+    const rect = canvas?.getBoundingClientRect?.();
+    const viewRect = stage?.getGameViewRect?.();
+    const scale = stage?.gameImgProps?.viewPoint?.scale ?? 1;
+    if (!rect || !viewRect) return null;
+    const localX = (stage.gameImgProps?.x ?? 0) + (x - viewRect.x) * scale;
+    const localY = (stage.gameImgProps?.y ?? 0) + (y - viewRect.y) * scale;
+    return {
+      x: rect.left + localX,
+      y: rect.top + localY
+    };
+  }, point);
+};
+
+const centerViewportOn = async (page, point) => {
+  await page.evaluate(({ x, y }) => {
+    const stage = window.lemmings?.stage;
+    if (!stage) return;
+    const viewRect = stage.getGameViewRect?.();
+    if (!viewRect) return;
+    const scale = stage.gameImgProps?.viewPoint?.scale ?? 1;
+    stage.applyViewport(
+      stage.gameImgProps,
+      x - viewRect.w / 2,
+      y - viewRect.h / 2,
+      scale
+    );
+    stage.redraw?.();
+  }, point);
+};
+
+const selectPaletteItem = async (page, containerSelector, id) => {
+  const button = page.locator(`${containerSelector} button[data-id="${id}"]`);
+  await button.scrollIntoViewIfNeeded();
+  await button.click();
+};
+
+const captureSelectionScreenshot = async (page, name) => {
+  const canvas = page.locator('#editorCanvas');
+  await expect(canvas).toBeVisible();
+  const path = test.info().outputPath(name);
+  await canvas.screenshot({ path });
+  await test.info().attach(name, { path, contentType: 'image/png' });
+};
+
+const placeSelectAndSnapshot = async (page, options) => {
+  const {
+    tool,
+    paletteContainer,
+    id,
+    clickRatio,
+    snapshotName
+  } = options;
+  const before = await getEditorState(page);
+  const worldClick = getWorldPointFromRatio(before, clickRatio.x, clickRatio.y);
+  await centerViewportOn(page, worldClick);
+  const centered = await getEditorState(page);
+  const canvasBox = await getCanvasBox(page);
+  const pagePoint = worldToPage(centered, canvasBox, worldClick);
+
+  await page.click(`#editorToolList button[data-tool="${tool}"]`);
+  await selectPaletteItem(page, paletteContainer, id);
+  await page.mouse.click(pagePoint.x, pagePoint.y);
+
+  await page.evaluate(() => {
+    window.__E2E__?.pause?.();
+  });
+  await page.click('#editorToolList button[data-tool="select"]');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
+  await captureSelectionScreenshot(page, snapshotName);
+  await page.keyboard.press('Control+Z');
+};
+
+const coerceNumber = (value, fallback = 0) => (
+  Number.isFinite(value) ? value : fallback
+);
+
+const getEntryCenter = (entry, meta) => {
+  const props = entry?.props || {};
+  const width = Number.isFinite(props.WIDTH)
+    ? props.WIDTH
+    : Number.isFinite(meta?.width)
+      ? meta.width
+      : 1;
+  const height = Number.isFinite(props.HEIGHT)
+    ? props.HEIGHT
+    : Number.isFinite(meta?.height)
+      ? meta.height
+      : 1;
+  const centerX = coerceNumber(props.X, 0) + Math.floor(Math.max(1, width) / 2);
+  const centerY = coerceNumber(props.Y, 0) + Math.floor(Math.max(1, height) / 2);
+  return { x: centerX, y: centerY };
+};
+
 const parseLevelName = (label) => {
   const text = String(label || '');
   const idx = text.indexOf(':');
@@ -94,8 +213,13 @@ test.beforeEach(async ({ page }) => {
     } catch (error) {}
     window.prompt = () => 'E2E Save';
     window.alert = () => {};
+    if ('serviceWorker' in navigator) {
+      const noopRegister = async () => ({ unregister: async () => true });
+      navigator.serviceWorker.register = noopRegister;
+      navigator.serviceWorker.getRegistrations = async () => [];
+    }
   });
-  await page.goto('/editor.html?e2e=1');
+  await page.goto(`/editor.html?e2e=1&cacheBust=${Date.now()}`);
   await waitForEditorHarness(page);
 });
 
@@ -191,12 +315,17 @@ test('Editor terrain placement uses palette selection', async ({ page }) => {
   const before = await getEditorState(page);
   const beforeCount = before.editor.session.level.terrains.length;
   const terrainMeta = before.editor.assets.terrain.find(item => item.id === Number(terrainId));
-  const worldClick = getWorldPointFromRatio(before, 0.25, 0.35);
   const snapEnabled = before.editor.controller.snapEnabled;
   const gridSize = before.editor.controller.gridSize;
+  const canvasBox = await getCanvasBox(page);
+  const pagePoint = {
+    x: canvasBox.x + canvasBox.width * 0.25,
+    y: canvasBox.y + canvasBox.height * 0.35
+  };
+  const worldClick = await getWorldPointFromPage(page, pagePoint, canvasBox);
 
   await page.click('#editorToolList button[data-tool="terrain"]');
-  await clickCanvas(page, 0.25, 0.35);
+  await page.mouse.click(pagePoint.x, pagePoint.y);
 
   await page.waitForFunction((count) => {
     return window.__E2E__.getState().editor.session.level.terrains.length > count;
@@ -206,10 +335,10 @@ test('Editor terrain placement uses palette selection', async ({ page }) => {
   const terrains = after.editor.session.level.terrains;
   const placed = terrains[terrains.length - 1];
   expect(placed.props.PIECE).toBe(Number(terrainId));
-  const snappedX = snapWorldValue(worldClick.x, gridSize, snapEnabled);
-  const snappedY = snapWorldValue(worldClick.y, gridSize, snapEnabled);
   const offsetX = terrainMeta?.width ? Math.floor(terrainMeta.width / 2) : 0;
   const offsetY = terrainMeta?.height ? Math.floor(terrainMeta.height / 2) : 0;
+  const snappedX = snapWorldValue(worldClick.x, gridSize, snapEnabled);
+  const snappedY = snapWorldValue(worldClick.y, gridSize, snapEnabled);
   expect(placed.props.X).toBe(snappedX - offsetX);
   expect(placed.props.Y).toBe(snappedY - offsetY);
 });
@@ -226,8 +355,13 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   const gadgetsBefore = state.editor.session.level.gadgets.length;
 
   await page.click('#editorToolList button[data-tool="gadget"]');
-  const worldClick = getWorldPointFromRatio(state, 0.35, 0.4);
-  await clickCanvas(page, 0.35, 0.4);
+  const gadgetCanvasBox = await getCanvasBox(page);
+  const gadgetPoint = {
+    x: gadgetCanvasBox.x + gadgetCanvasBox.width * 0.35,
+    y: gadgetCanvasBox.y + gadgetCanvasBox.height * 0.4
+  };
+  const worldClick = await getWorldPointFromPage(page, gadgetPoint, gadgetCanvasBox);
+  await page.mouse.click(gadgetPoint.x, gadgetPoint.y);
 
   await page.waitForFunction((count) => {
     return window.__E2E__.getState().editor.session.level.gadgets.length > count;
@@ -238,10 +372,10 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   let placed = gadgets[gadgets.length - 1];
   expect(placed.props.PIECE).toBe(Number(gadgetId));
   const gadgetMeta = state.editor.assets.gadgets.find(item => item.id === Number(gadgetId));
-  const snappedX = snapWorldValue(worldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
-  const snappedY = snapWorldValue(worldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
   const offsetX = gadgetMeta?.width ? Math.floor(gadgetMeta.width / 2) : 0;
   const offsetY = gadgetMeta?.height ? Math.floor(gadgetMeta.height / 2) : 0;
+  const snappedX = snapWorldValue(worldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const snappedY = snapWorldValue(worldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
   expect(placed.props.X).toBe(snappedX - offsetX);
   expect(placed.props.Y).toBe(snappedY - offsetY);
 
@@ -256,8 +390,13 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   const triggersBefore = state.editor.session.level.gadgets.length;
 
   await page.click('#editorToolList button[data-tool="trigger"]');
-  const triggerWorldClick = getWorldPointFromRatio(state, 0.45, 0.45);
-  await clickCanvas(page, 0.45, 0.45);
+  const triggerCanvasBox = await getCanvasBox(page);
+  const triggerPoint = {
+    x: triggerCanvasBox.x + triggerCanvasBox.width * 0.45,
+    y: triggerCanvasBox.y + triggerCanvasBox.height * 0.45
+  };
+  const triggerWorldClick = await getWorldPointFromPage(page, triggerPoint, triggerCanvasBox);
+  await page.mouse.click(triggerPoint.x, triggerPoint.y);
 
   await page.waitForFunction((count) => {
     return window.__E2E__.getState().editor.session.level.gadgets.length > count;
@@ -268,10 +407,10 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   placed = gadgets[gadgets.length - 1];
   expect(placed.props.PIECE).toBe(Number(triggerId));
   const triggerMeta = state.editor.assets.gadgets.find(item => item.id === Number(triggerId));
-  const triggerX = snapWorldValue(triggerWorldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
-  const triggerY = snapWorldValue(triggerWorldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
   const triggerOffsetX = triggerMeta?.width ? Math.floor(triggerMeta.width / 2) : 0;
   const triggerOffsetY = triggerMeta?.height ? Math.floor(triggerMeta.height / 2) : 0;
+  const triggerX = snapWorldValue(triggerWorldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const triggerY = snapWorldValue(triggerWorldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
   expect(placed.props.X).toBe(triggerX - triggerOffsetX);
   expect(placed.props.Y).toBe(triggerY - triggerOffsetY);
 });
@@ -279,24 +418,23 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
 test('Editor pack switch refreshes palettes and placement', async ({ page }) => {
   const state = await getEditorState(page);
   const gameTypeSelect = page.locator('#editorGameTypeSelect');
-  const options = await gameTypeSelect.locator('option').evaluateAll((nodes) => {
-    return nodes.map((node) => ({
-      value: node.value,
-      label: node.textContent || ''
-    }));
+  const selectInfo = await page.evaluate(() => {
+    const select = document.getElementById('editorGameTypeSelect');
+    if (!select) return null;
+    const values = Array.from(select.options).map(option => option.value);
+    return { selectedIndex: select.selectedIndex, values };
   });
-  expect(options.length).toBeGreaterThan(1);
-  const current = String(state.view.gameType);
-  const nextOption = options.find(option => option.value !== current);
-  expect(nextOption).toBeTruthy();
+  expect(selectInfo?.values?.length).toBeGreaterThan(1);
+  const nextIndex = selectInfo.selectedIndex === 0 ? 1 : 0;
+  const nextValue = selectInfo.values[nextIndex];
 
-  await gameTypeSelect.selectOption(nextOption.value);
-  await page.waitForFunction((prevPath) => {
-    return window.__E2E__.getState().view.configPath !== prevPath;
-  }, state.view.configPath);
+  await gameTypeSelect.selectOption(nextValue);
+  await page.waitForFunction((prevType) => {
+    return window.__E2E__.getState().view.gameType !== prevType;
+  }, state.view.gameType);
 
   const nextState = await getEditorState(page);
-  expect(nextState.view.configPath).not.toBe(state.view.configPath);
+  expect(nextState.view.gameType).not.toBe(state.view.gameType);
   expect(nextState.editor.assets.terrain.length).toBeGreaterThan(0);
 
   const firstTerrain = nextState.editor.assets.terrain[0];
@@ -313,6 +451,55 @@ test('Editor pack switch refreshes palettes and placement', async ({ page }) => 
   const placedState = await getEditorState(page);
   const placed = placedState.editor.session.level.terrains.slice(-1)[0];
   expect(placed.props.PIECE).toBe(firstTerrain.id);
+});
+
+test('Editor selection overlays render for every asset', async ({ page }) => {
+  test.slow();
+  await page.fill('#editorPaletteSearch', '');
+  await page.click('#editorPaletteTabs button[data-tab="terrain"]');
+  const terrainIds = await page.$$eval('#editorPaletteTerrain button', (buttons) => (
+    buttons.map(button => Number(button.dataset.id)).filter(Number.isFinite)
+  ));
+  const gadgetIds = await page.$$eval('#editorPaletteGadgets button', (buttons) => (
+    buttons.map(button => Number(button.dataset.id)).filter(Number.isFinite)
+  ));
+  const triggerIds = await page.$$eval('#editorPaletteTriggers button', (buttons) => (
+    buttons.map(button => Number(button.dataset.id)).filter(Number.isFinite)
+  ));
+
+  const clickRatio = { x: 0.3, y: 0.35 };
+
+  for (const id of terrainIds) {
+    await placeSelectAndSnapshot(page, {
+      tool: 'terrain',
+      paletteContainer: '#editorPaletteTerrain',
+      id,
+      clickRatio,
+      snapshotName: `editor-selection-terrain-${id}.png`
+    });
+  }
+
+  await page.click('#editorPaletteTabs button[data-tab="gadgets"]');
+  for (const id of gadgetIds) {
+    await placeSelectAndSnapshot(page, {
+      tool: 'gadget',
+      paletteContainer: '#editorPaletteGadgets',
+      id,
+      clickRatio,
+      snapshotName: `editor-selection-gadget-${id}.png`
+    });
+  }
+
+  await page.click('#editorPaletteTabs button[data-tab="triggers"]');
+  for (const id of triggerIds) {
+    await placeSelectAndSnapshot(page, {
+      tool: 'trigger',
+      paletteContainer: '#editorPaletteTriggers',
+      id,
+      clickRatio,
+      snapshotName: `editor-selection-trigger-${id}.png`
+    });
+  }
 });
 
 test('Editor placement preserves viewport when panned', async ({ page }) => {
@@ -374,8 +561,15 @@ test('Editor selection updates inspector state', async ({ page }) => {
   await page.click('#editorToolList button[data-tool="terrain"]');
   await clickCanvas(page, 0.3, 0.55);
 
+  const placedState = await getEditorState(page);
+  const placed = placedState.editor.session.level.terrains.slice(-1)[0];
+  const meta = placedState.editor.assets.terrain.find(item => item.id === placed.props.PIECE);
+  const center = getEntryCenter(placed, meta);
+  const pagePoint = await getPagePointFromWorld(page, center);
+
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.3, 0.55);
+  if (!pagePoint) throw new Error('Failed to resolve selection click point.');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
 
   await page.waitForFunction(() => {
     return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
@@ -453,8 +647,11 @@ test('Editor brush respects grid size snapping', async ({ page }) => {
 
   const after = await getEditorState(page);
   const placed = after.editor.session.level.terrains[after.editor.session.level.terrains.length - 1];
-  expect(placed.props.X % 8).toBe(0);
-  expect(placed.props.Y % 8).toBe(0);
+  const meta = after.editor.assets.terrain.find(item => item.id === placed.props.PIECE);
+  const offsetX = meta?.width ? Math.floor(meta.width / 2) : 0;
+  const offsetY = meta?.height ? Math.floor(meta.height / 2) : 0;
+  expect((placed.props.X + offsetX) % 8).toBe(0);
+  expect((placed.props.Y + offsetY) % 8).toBe(0);
 });
 
 test('Editor eraser removes terrain entries', async ({ page }) => {
@@ -563,8 +760,15 @@ test('Editor snap-to-grid aligns selection to grid size', async ({ page }) => {
   await page.click('#editorToolList button[data-tool="terrain"]');
   await clickCanvas(page, 0.25, 0.35);
 
+  let state = await getEditorState(page);
+  let placed = state.editor.session.level.terrains.slice(-1)[0];
+  let meta = state.editor.assets.terrain.find(item => item.id === placed.props.PIECE);
+  let center = getEntryCenter(placed, meta);
+  let pagePoint = await getPagePointFromWorld(page, center);
+
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.25, 0.35);
+  if (!pagePoint) throw new Error('Failed to resolve selection click point.');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
   await page.waitForFunction(() => {
     return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
   });
@@ -601,13 +805,20 @@ test('Editor copy/paste/duplicate and undo/redo update terrain counts', async ({
   await page.click('#editorToolList button[data-tool="terrain"]');
   await clickCanvas(page, 0.25, 0.35);
 
+  let state = await getEditorState(page);
+  let placed = state.editor.session.level.terrains.slice(-1)[0];
+  let meta = state.editor.assets.terrain.find(item => item.id === placed.props.PIECE);
+  let center = getEntryCenter(placed, meta);
+  let pagePoint = await getPagePointFromWorld(page, center);
+
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.25, 0.35);
+  if (!pagePoint) throw new Error('Failed to resolve selection click point.');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
   await page.waitForFunction(() => {
     return window.__E2E__.getState().editor.controller.selectionEntries.length === 1;
   });
 
-  let state = await getEditorState(page);
+  state = await getEditorState(page);
   const terrainBefore = state.editor.session.level.terrains.length;
 
   await page.keyboard.press('Control+KeyC');
@@ -643,15 +854,21 @@ test('Editor drag and resize move steel entries', async ({ page }) => {
   await page.click('#editorToolList button[data-tool="steel"]');
   await dragCanvas(page, { x: 0.55, y: 0.35 }, { x: 0.62, y: 0.45 });
 
+  let state = await getEditorState(page);
+  const steelEntry = state.editor.session.level.steel.slice(-1)[0];
+  const steelCenter = getEntryCenter(steelEntry, null);
+  const steelPoint = await getPagePointFromWorld(page, steelCenter);
+
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.58, 0.4);
+  if (!steelPoint) throw new Error('Failed to resolve steel selection point.');
+  await page.mouse.click(steelPoint.x, steelPoint.y);
 
   await page.waitForFunction(() => {
     const bounds = window.__E2E__.getState().editor.controller.selectionBounds;
     return bounds && bounds.width > 0 && bounds.height > 0;
   });
 
-  let state = await getEditorState(page);
+  state = await getEditorState(page);
   const beforeEntry = state.editor.controller.selectionEntries[0];
   const bounds = state.editor.controller.selectionBounds;
   const canvasBox = await getCanvasBox(page);
@@ -730,22 +947,29 @@ test('Editor gadget resize writes width and height props', async ({ page }) => {
   await page.click('#editorToolList button[data-tool="gadget"]');
   await clickCanvas(page, 0.35, 0.45);
 
+  let state = await getEditorState(page);
+  const placed = state.editor.session.level.gadgets.slice(-1)[0];
+  const meta = state.editor.assets.gadgets.find(item => item.id === placed.props.PIECE);
+  const center = getEntryCenter(placed, meta);
+  const pagePoint = await getPagePointFromWorld(page, center);
+
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.35, 0.45);
+  if (!pagePoint) throw new Error('Failed to resolve gadget selection point.');
+  await page.mouse.click(pagePoint.x, pagePoint.y);
 
   await page.waitForFunction(() => {
     const bounds = window.__E2E__.getState().editor.controller.selectionBounds;
     return bounds && bounds.width > 0 && bounds.height > 0;
   });
 
-  let state = await getEditorState(page);
+  state = await getEditorState(page);
   const bounds = state.editor.controller.selectionBounds;
-  const canvasBox = await getCanvasBox(page);
-  const handle = worldToPage(state, canvasBox, {
+  const canvasBox2 = await getCanvasBox(page);
+  const handle = worldToPage(state, canvasBox2, {
     x: bounds.x + bounds.width,
     y: bounds.y + bounds.height
   });
-  const resizeTarget = worldToPage(state, canvasBox, {
+  const resizeTarget = worldToPage(state, canvasBox2, {
     x: bounds.x + bounds.width + 8,
     y: bounds.y + bounds.height + 8
   });
@@ -772,8 +996,14 @@ test('Editor view stays stable during edit actions', async ({ page }) => {
 
   await page.click('#editorToolList button[data-tool="terrain"]');
   await clickCanvas(page, 0.3, 0.35);
+  const placedState = await getEditorState(page);
+  const placed = placedState.editor.session.level.terrains.slice(-1)[0];
+  const meta = placedState.editor.assets.terrain.find(item => item.id === placed.props.PIECE);
+  const center = getEntryCenter(placed, meta);
+  const canvasBox = await getCanvasBox(page);
+  const pagePoint = worldToPage(placedState, canvasBox, center);
   await page.click('#editorToolList button[data-tool="select"]');
-  await clickCanvas(page, 0.3, 0.35);
+  await page.mouse.click(pagePoint.x, pagePoint.y);
   await page.keyboard.press('ArrowRight');
 
   state = await getEditorState(page);

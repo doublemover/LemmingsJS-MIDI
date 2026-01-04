@@ -133,6 +133,17 @@ class Frame {
     for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
   }
 
+  /** Draw a stippled rectangle fill (simple checkerboard pattern). */
+  drawStippleRect(x, y, width, height, r = 128, g = 128, b = 128) {
+    const color32 = ColorPalette.colorFromRGB(r, g, b);
+    for (let dy = 0; dy <= height; dy++) {
+      for (let dx = 0; dx <= width; dx++) {
+        if (((dx + dy) & 1) !== 0) continue;
+        this.setPixel(x + dx, y + dy, color32);
+      }
+    }
+  }
+
   setPixel (x, y, color, noOverwrite = false, onlyOverwrite = false) {
     if ((x >>> 0) >= this.width || (y >>> 0) >= this.height) return;
     const idx = (y * this.width + x) >>> 0;

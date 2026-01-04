@@ -1246,6 +1246,7 @@ class EditorUiController {
     const display = this.view.stage.getGameDisplay();
     const selectedEntries = this.controller.getSelectedEntries();
     const marquee = this.controller.getMarqueeBounds();
+    const steelEntries = this.session?.level?.steel;
     if (marquee) {
       this._antsOffset = (this._antsOffset + 1) % 12;
       display.drawMarchingAntRect(
@@ -1258,6 +1259,12 @@ class EditorUiController {
         0xFFFFFFFF,
         0x00000000
       );
+    }
+    if (display?.drawStippleRect && Array.isArray(steelEntries)) {
+      for (const entry of steelEntries) {
+        const bounds = getEntryBounds(entry, null);
+        display.drawStippleRect(bounds.x, bounds.y, bounds.width, bounds.height, 0, 255, 255);
+      }
     }
     for (const selected of selectedEntries) {
       const meta = selected.type === 'steel'

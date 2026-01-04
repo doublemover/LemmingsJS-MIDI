@@ -558,6 +558,18 @@ class EditorController {
     this._strokeChanged = true;
   }
 
+  _getTerrainMeta(id) {
+    const byId = this.assets?.terrainById?.get?.(id);
+    if (byId) return byId;
+    return this.assets?.terrain?.find?.(entry => entry?.id === id) || null;
+  }
+
+  _getGadgetMeta(id) {
+    const byId = this.assets?.gadgetById?.get?.(id);
+    if (byId) return byId;
+    return this.assets?.gadgets?.find?.(entry => entry?.id === id) || null;
+  }
+
   _centerPlacement(x, y, meta) {
     const width = Number(meta?.width || 0);
     const height = Number(meta?.height || 0);
@@ -585,7 +597,7 @@ class EditorController {
 
   _placeTerrainAt(x, y) {
     if (!this.session?.level) return null;
-    const meta = this.assets?.terrainById?.get?.(this.selectedTerrainId);
+    const meta = this._getTerrainMeta(this.selectedTerrainId);
     const pos = this._centerPlacement(x, y, meta);
     const entry = createTerrainEntry({
       styleName: this.session.level.getHeader('STYLE'),
@@ -600,7 +612,7 @@ class EditorController {
 
   _placeGadgetAt(x, y, pieceId) {
     if (!this.session?.level) return null;
-    const meta = this.assets?.gadgetById?.get?.(pieceId);
+    const meta = this._getGadgetMeta(pieceId);
     const pos = this._centerPlacement(x, y, meta);
     const entry = createGadgetEntry({
       styleName: this.session.level.getHeader('STYLE'),
