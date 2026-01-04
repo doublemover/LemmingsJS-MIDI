@@ -48,7 +48,8 @@ class EditorAssetCache {
     const style = getStyleForName(styleName);
     const resolvedStyle = style?.name || styleName || 'dirt';
     const groundSet = Number.isFinite(style?.groundSet) ? style.groundSet | 0 : 0;
-    const cached = this.cache.get(groundSet);
+    const cacheKey = `${config.path || ''}|${resolvedStyle}|${groundSet}`;
+    const cached = this.cache.get(cacheKey);
     if (cached) return { ...cached, styleName: resolvedStyle };
 
     await loadSteelSprites();
@@ -114,7 +115,7 @@ class EditorAssetCache {
       gadgetById
     };
 
-    this.cache.set(groundSet, payload);
+    this.cache.set(cacheKey, payload);
     return { ...payload };
   }
 }

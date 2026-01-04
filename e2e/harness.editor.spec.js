@@ -34,6 +34,24 @@ const clickCanvas = async (page, xRatio, yRatio) => {
   );
 };
 
+const snapWorldValue = (value, gridSize, snapEnabled) => {
+  if (!snapEnabled || !Number.isFinite(gridSize) || gridSize <= 1) {
+    return Math.round(value);
+  }
+  return Math.round(value / gridSize) * gridSize;
+};
+
+const getWorldPointFromRatio = (state, xRatio, yRatio) => {
+  const viewRect = state?.stage?.viewRect;
+  if (!viewRect) {
+    throw new Error('Missing viewRect for world coordinate lookup.');
+  }
+  return {
+    x: viewRect.x + viewRect.w * xRatio,
+    y: viewRect.y + viewRect.h * yRatio
+  };
+};
+
 const dragCanvas = async (page, start, end) => {
   const box = await getCanvasBox(page);
   const startX = box.x + box.width * start.x;
@@ -172,6 +190,10 @@ test('Editor terrain placement uses palette selection', async ({ page }) => {
 
   const before = await getEditorState(page);
   const beforeCount = before.editor.session.level.terrains.length;
+  const terrainMeta = before.editor.assets.terrain.find(item => item.id === Number(terrainId));
+  const worldClick = getWorldPointFromRatio(before, 0.25, 0.35);
+  const snapEnabled = before.editor.controller.snapEnabled;
+  const gridSize = before.editor.controller.gridSize;
 
   await page.click('#editorToolList button[data-tool="terrain"]');
   await clickCanvas(page, 0.25, 0.35);
@@ -184,6 +206,12 @@ test('Editor terrain placement uses palette selection', async ({ page }) => {
   const terrains = after.editor.session.level.terrains;
   const placed = terrains[terrains.length - 1];
   expect(placed.props.PIECE).toBe(Number(terrainId));
+  const snappedX = snapWorldValue(worldClick.x, gridSize, snapEnabled);
+  const snappedY = snapWorldValue(worldClick.y, gridSize, snapEnabled);
+  const offsetX = terrainMeta?.width ? Math.floor(terrainMeta.width / 2) : 0;
+  const offsetY = terrainMeta?.height ? Math.floor(terrainMeta.height / 2) : 0;
+  expect(placed.props.X).toBe(snappedX - offsetX);
+  expect(placed.props.Y).toBe(snappedY - offsetY);
 });
 
 test('Editor gadget and trigger placement use palette selection', async ({ page }) => {
@@ -198,6 +226,7 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   const gadgetsBefore = state.editor.session.level.gadgets.length;
 
   await page.click('#editorToolList button[data-tool="gadget"]');
+  const worldClick = getWorldPointFromRatio(state, 0.35, 0.4);
   await clickCanvas(page, 0.35, 0.4);
 
   await page.waitForFunction((count) => {
@@ -208,6 +237,13 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   let gadgets = state.editor.session.level.gadgets;
   let placed = gadgets[gadgets.length - 1];
   expect(placed.props.PIECE).toBe(Number(gadgetId));
+  const gadgetMeta = state.editor.assets.gadgets.find(item => item.id === Number(gadgetId));
+  const snappedX = snapWorldValue(worldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const snappedY = snapWorldValue(worldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const offsetX = gadgetMeta?.width ? Math.floor(gadgetMeta.width / 2) : 0;
+  const offsetY = gadgetMeta?.height ? Math.floor(gadgetMeta.height / 2) : 0;
+  expect(placed.props.X).toBe(snappedX - offsetX);
+  expect(placed.props.Y).toBe(snappedY - offsetY);
 
   await page.click('#editorPaletteTabs button[data-tab="triggers"]');
   const triggerButton = page.locator('#editorPaletteTriggers button').first();
@@ -220,6 +256,7 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   const triggersBefore = state.editor.session.level.gadgets.length;
 
   await page.click('#editorToolList button[data-tool="trigger"]');
+  const triggerWorldClick = getWorldPointFromRatio(state, 0.45, 0.45);
   await clickCanvas(page, 0.45, 0.45);
 
   await page.waitForFunction((count) => {
@@ -230,6 +267,52 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   gadgets = state.editor.session.level.gadgets;
   placed = gadgets[gadgets.length - 1];
   expect(placed.props.PIECE).toBe(Number(triggerId));
+  const triggerMeta = state.editor.assets.gadgets.find(item => item.id === Number(triggerId));
+  const triggerX = snapWorldValue(triggerWorldClick.x, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const triggerY = snapWorldValue(triggerWorldClick.y, state.editor.controller.gridSize, state.editor.controller.snapEnabled);
+  const triggerOffsetX = triggerMeta?.width ? Math.floor(triggerMeta.width / 2) : 0;
+  const triggerOffsetY = triggerMeta?.height ? Math.floor(triggerMeta.height / 2) : 0;
+  expect(placed.props.X).toBe(triggerX - triggerOffsetX);
+  expect(placed.props.Y).toBe(triggerY - triggerOffsetY);
+});
+
+test('Editor pack switch refreshes palettes and placement', async ({ page }) => {
+  const state = await getEditorState(page);
+  const gameTypeSelect = page.locator('#editorGameTypeSelect');
+  const options = await gameTypeSelect.locator('option').evaluateAll((nodes) => {
+    return nodes.map((node) => ({
+      value: node.value,
+      label: node.textContent || ''
+    }));
+  });
+  expect(options.length).toBeGreaterThan(1);
+  const current = String(state.view.gameType);
+  const nextOption = options.find(option => option.value !== current);
+  expect(nextOption).toBeTruthy();
+
+  await gameTypeSelect.selectOption(nextOption.value);
+  await page.waitForFunction((prevPath) => {
+    return window.__E2E__.getState().view.configPath !== prevPath;
+  }, state.view.configPath);
+
+  const nextState = await getEditorState(page);
+  expect(nextState.view.configPath).not.toBe(state.view.configPath);
+  expect(nextState.editor.assets.terrain.length).toBeGreaterThan(0);
+
+  const firstTerrain = nextState.editor.assets.terrain[0];
+  const paletteFirstId = await page.locator('#editorPaletteTerrain button').first().getAttribute('data-id');
+  expect(Number(paletteFirstId)).toBe(firstTerrain.id);
+
+  await page.click('#editorPaletteTerrain button');
+  const beforeCount = nextState.editor.session.level.terrains.length;
+  await page.click('#editorToolList button[data-tool="terrain"]');
+  await clickCanvas(page, 0.2, 0.3);
+  await page.waitForFunction((count) => {
+    return window.__E2E__.getState().editor.session.level.terrains.length > count;
+  }, beforeCount);
+  const placedState = await getEditorState(page);
+  const placed = placedState.editor.session.level.terrains.slice(-1)[0];
+  expect(placed.props.PIECE).toBe(firstTerrain.id);
 });
 
 test('Editor placement preserves viewport when panned', async ({ page }) => {

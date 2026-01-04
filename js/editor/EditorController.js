@@ -558,6 +558,17 @@ class EditorController {
     this._strokeChanged = true;
   }
 
+  _centerPlacement(x, y, meta) {
+    const width = Number(meta?.width || 0);
+    const height = Number(meta?.height || 0);
+    const offsetX = width > 0 ? Math.floor(width / 2) : 0;
+    const offsetY = height > 0 ? Math.floor(height / 2) : 0;
+    return {
+      x: x - offsetX,
+      y: y - offsetY
+    };
+  }
+
   _commitHistory(label) {
     this.history.pushSnapshot(this.session?.level, label);
   }
@@ -574,11 +585,13 @@ class EditorController {
 
   _placeTerrainAt(x, y) {
     if (!this.session?.level) return null;
+    const meta = this.assets?.terrainById?.get?.(this.selectedTerrainId);
+    const pos = this._centerPlacement(x, y, meta);
     const entry = createTerrainEntry({
       styleName: this.session.level.getHeader('STYLE'),
       piece: this.selectedTerrainId,
-      x,
-      y
+      x: pos.x,
+      y: pos.y
     });
     this.session.level.terrains.push(entry);
     this._markChanged();
@@ -587,11 +600,13 @@ class EditorController {
 
   _placeGadgetAt(x, y, pieceId) {
     if (!this.session?.level) return null;
+    const meta = this.assets?.gadgetById?.get?.(pieceId);
+    const pos = this._centerPlacement(x, y, meta);
     const entry = createGadgetEntry({
       styleName: this.session.level.getHeader('STYLE'),
       piece: pieceId,
-      x,
-      y
+      x: pos.x,
+      y: pos.y
     });
     this.session.level.gadgets.push(entry);
     this._markChanged();
