@@ -1075,6 +1075,7 @@ class EditorUiController {
     this._currentSavedId = '';
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
+    this.controller.clearSelection();
     await this._reloadAssets();
     this.controller.resetHistory(label || 'Load');
     this._refreshHeaderFields(this.session?.level);
@@ -1091,6 +1092,7 @@ class EditorUiController {
     if (!level) return;
     this.session = this.view.editorSession;
     this.controller.session = this.session;
+    this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import');
       this._refreshHeaderFields(level);
@@ -1109,6 +1111,7 @@ class EditorUiController {
     session.level = editorLevel;
     this.session = session;
     this.controller.session = this.session;
+    this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import LVL');
       this._refreshHeaderFields(editorLevel);

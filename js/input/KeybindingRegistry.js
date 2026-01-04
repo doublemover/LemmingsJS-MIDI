@@ -63,8 +63,8 @@ const DEFAULT_KEYBINDINGS = Object.freeze({
     editorNudgeDownFast: ['Shift+ArrowDown'],
     editorSnapSelection: ['Ctrl+KeyG'],
     editorTogglePlaytest: ['KeyP'],
-    editorUndo: ['KeyZ'],
-    editorRedo: ['Shift+KeyZ'],
+    editorUndo: ['Ctrl+KeyZ'],
+    editorRedo: ['Ctrl+Shift+KeyZ', 'Ctrl+KeyY'],
     editorDelete: ['Delete', 'Backspace']
   })
 });
