@@ -181,6 +181,10 @@ body {
   overflow: auto;
 }
 
+.palette-list[hidden] {
+  display: none !important;
+}
+
 .palette-list button {
   display: grid;
   grid-template-columns: 48px 1fr;

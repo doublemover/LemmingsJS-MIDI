@@ -30,7 +30,16 @@ test('Palette tabs switch visible lists', async ({ page }) => {
   const gadgetsTab = page.locator('#editorPaletteTabs button[data-tab="gadgets"]');
   await gadgetsTab.click();
   await expect(page.locator('#editorPaletteGadgets')).toHaveJSProperty('hidden', false);
+  await expect(page.locator('#editorPaletteGadgets')).toBeVisible();
   await expect(page.locator('#editorPaletteTerrain')).toHaveJSProperty('hidden', true);
+  await expect(page.locator('#editorPaletteTerrain')).toBeHidden();
+
+  const triggersTab = page.locator('#editorPaletteTabs button[data-tab="triggers"]');
+  await triggersTab.click();
+  await expect(page.locator('#editorPaletteTriggers')).toHaveJSProperty('hidden', false);
+  await expect(page.locator('#editorPaletteTriggers')).toBeVisible();
+  await expect(page.locator('#editorPaletteTerrain')).toHaveJSProperty('hidden', true);
+  await expect(page.locator('#editorPaletteTerrain')).toBeHidden();
 });
 
 test('Save and import keep saved list wired up', async ({ page }) => {
