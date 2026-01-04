@@ -1,5 +1,5 @@
 import { FileContainer } from '../data/FileContainer.js';
-import { GroundReader } from '../level/GroundReader.js';
+import { GroundReader, loadSteelSprites } from '../level/GroundReader.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import {
   getDefaultStyle,
@@ -51,6 +51,7 @@ class EditorAssetCache {
     const cached = this.cache.get(groundSet);
     if (cached) return { ...cached, styleName: resolvedStyle };
 
+    await loadSteelSprites();
     const vgagrFile = await fileProvider.loadBinary(config.path, `VGAGR${groundSet}.DAT`);
     const groundFile = await fileProvider.loadBinary(config.path, `GROUND${groundSet}O.DAT`);
     const container = new this.FileContainer(vgagrFile);
@@ -69,7 +70,9 @@ class EditorAssetCache {
         name,
         width: img?.width || 0,
         height: img?.height || 0,
-        isSteel: !!img?.isSteel
+        isSteel: !!img?.isSteel,
+        steelWidth: img?.steelWidth || 0,
+        steelHeight: img?.steelHeight || 0
       };
       terrainById.set(id, entry);
       return entry;

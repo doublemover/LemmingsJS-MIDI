@@ -95,13 +95,14 @@ class EditorController {
 
   setAssets(assets) {
     this.assets = assets || null;
-    if (assets?.terrain?.length && !this.selectedTerrainId) {
+    const hasId = (list, id) => Array.isArray(list) && list.some(entry => entry?.id === id);
+    if (assets?.terrain?.length && !hasId(assets.terrain, this.selectedTerrainId)) {
       this.selectedTerrainId = assets.terrain[0].id;
     }
-    if (assets?.gadgets?.length && !this.selectedGadgetId) {
+    if (assets?.gadgets?.length && !hasId(assets.gadgets, this.selectedGadgetId)) {
       this.selectedGadgetId = assets.gadgets[0].id;
     }
-    if (assets?.triggers?.length && this.selectedTriggerId == null) {
+    if (assets?.triggers?.length && !hasId(assets.triggers, this.selectedTriggerId)) {
       this.selectedTriggerId = assets.triggers[0].id;
     }
   }

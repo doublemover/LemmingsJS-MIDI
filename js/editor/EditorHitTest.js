@@ -7,8 +7,18 @@ const getEntryBounds = (entry, meta = {}, options = {}) => {
   const safeMeta = meta || {};
   const x = coerceNumber(props.X, 0);
   const y = coerceNumber(props.Y, 0);
-  const widthFallback = options.widthFallback ?? safeMeta.width ?? 8;
-  const heightFallback = options.heightFallback ?? safeMeta.height ?? 8;
+  const steelWidth = safeMeta?.isSteel && Number.isFinite(safeMeta?.steelWidth)
+    ? safeMeta.steelWidth
+    : null;
+  const steelHeight = safeMeta?.isSteel && Number.isFinite(safeMeta?.steelHeight)
+    ? safeMeta.steelHeight
+    : null;
+  const widthFallback = options.widthFallback
+    ?? (steelWidth && steelWidth > 0 ? steelWidth : safeMeta.width)
+    ?? 8;
+  const heightFallback = options.heightFallback
+    ?? (steelHeight && steelHeight > 0 ? steelHeight : safeMeta.height)
+    ?? 8;
   const width = coerceNumber(props.WIDTH, widthFallback);
   const height = coerceNumber(props.HEIGHT, heightFallback);
   const w = Math.max(1, width | 0);
