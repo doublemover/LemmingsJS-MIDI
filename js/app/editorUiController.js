@@ -142,6 +142,7 @@ class EditorUiController {
       levelGroup: get('editorLevelGroupSelect'),
       levelIndex: get('editorLevelIndexSelect'),
       savedSelect: get('editorSavedSelect'),
+      newLevel: get('editorNewLevel'),
       savedSave: get('editorSavedSave'),
       savedExport: get('editorSavedExport'),
       savedExportClassic: get('editorSavedExportClassic'),
@@ -254,6 +255,7 @@ class EditorUiController {
       },
       onToolChange: tool => {
         this._setToolButton(tool);
+        this._syncPaletteTabForTool(tool);
         this._updateStatus();
       },
       onCopy: () => {
@@ -331,9 +333,11 @@ class EditorUiController {
       if (!tool) return;
       this.controller.setTool(tool);
       this._setToolButton(tool);
+      this._syncPaletteTabForTool(tool);
       this._updateStatus();
     });
     this._setToolButton(this.controller.tool);
+    this._syncPaletteTabForTool(this.controller.tool);
   }
 
   _bindPaletteTabs() {
@@ -453,6 +457,11 @@ class EditorUiController {
   }
 
   _bindSavedControls() {
+    if (this.el.newLevel) {
+      this.el.newLevel.addEventListener('click', () => {
+        this._createNewLevel();
+      });
+    }
     if (this.el.savedSelect) {
       this.el.savedSelect.addEventListener('change', () => {
         const id = this.el.savedSelect.value;
@@ -658,6 +667,16 @@ class EditorUiController {
     if (this.el.paletteTriggers) this.el.paletteTriggers.hidden = tab !== 'triggers';
   }
 
+  _syncPaletteTabForTool(tool) {
+    if (tool === 'terrain') {
+      this._setPaletteTab('terrain');
+    } else if (tool === 'gadget') {
+      this._setPaletteTab('gadgets');
+    } else if (tool === 'trigger') {
+      this._setPaletteTab('triggers');
+    }
+  }
+
   _refreshPalettes() {
     if (!this.assets) return;
     this._renderPaletteList(this.el.paletteTerrain, this.assets.terrain, 'terrain');
@@ -685,6 +704,11 @@ class EditorUiController {
     if (!container) return;
     container.innerHTML = '';
     for (const entry of items || []) {
+      const width = Number(entry.width || 0);
+      const height = Number(entry.height || 0);
+      if (width <= 0 && height <= 0) {
+        continue;
+      }
       const button = this.document.createElement('button');
       button.type = 'button';
       button.dataset.id = String(entry.id);
@@ -992,6 +1016,20 @@ class EditorUiController {
     if (!id) return;
     this._currentSavedId = id;
     this._refreshSavedList(id);
+  }
+
+  async _createNewLevel() {
+    if (!this.view) return;
+    this.view.createBlankEditorLevel({ render: false });
+    this.session = this.view.editorSession || this.session;
+    this.controller.session = this.session;
+    this.controller.resetHistory('New');
+    this._currentSavedId = '';
+    this._refreshSavedList('');
+    this._refreshHeaderFields();
+    this._refreshSelection(null);
+    this._refreshValidation();
+    await this._refreshPreview('New', { preserveView: false });
   }
 
   _exportCurrentLevel() {

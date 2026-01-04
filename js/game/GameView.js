@@ -1279,7 +1279,11 @@ class GameView extends BaseLogger {
       game.setGameDisplay(this.stage.getGameDisplay());
       game.setGuiDisplay(this.stage.getGuiDisplay());
       if (this.stage && game.level) {
-        this.applyLevelViewport(game.level);
+        const preserveViewport = this._preserveEditorViewport === true;
+        if (!preserveViewport) {
+          this.applyLevelViewport(game.level);
+        }
+        this._preserveEditorViewport = false;
       }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
       this.stage.setCursorSprite(createCrosshairFrame(24));
@@ -1338,6 +1342,7 @@ class GameView extends BaseLogger {
         scale: this.stage.gameImgProps.viewPoint.scale
       }
       : null;
+    this._preserveEditorViewport = !!prevViewport;
 
     if (this.stage) {
       const gameDisplay = this.stage.getGameDisplay();
@@ -1360,6 +1365,7 @@ class GameView extends BaseLogger {
     this.updateQuery();
     this.log.debug(level);
     await this._startWithLevel(level);
+    this._preserveEditorViewport = false;
     if (this.editorMode && this.game) {
       this.game.inputEnabled = this.editorPlaytest;
     }
