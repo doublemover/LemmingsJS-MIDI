@@ -232,6 +232,55 @@ test('Editor gadget and trigger placement use palette selection', async ({ page 
   expect(placed.props.PIECE).toBe(Number(triggerId));
 });
 
+test('Editor placement preserves viewport when panned', async ({ page }) => {
+  let state = await getEditorState(page);
+  const scale = state.stage.gameScale || 2;
+  const viewRect = state.stage.viewRect;
+  const stage = state.stage;
+  if (!viewRect || !stage) {
+    throw new Error('Missing stage view data');
+  }
+  const targetX = Math.max(0, viewRect.x + viewRect.w * 0.6);
+  await page.evaluate(({ x, scale }) => {
+    const stage = window.lemmings?.stage;
+    if (!stage) return;
+    stage.applyViewport(stage.gameImgProps, x, 0, scale);
+    stage.redraw();
+  }, { x: targetX, scale });
+
+  await page.waitForFunction((x) => {
+    const rect = window.__E2E__.getState().stage.viewRect;
+    return rect && rect.x >= x - 1;
+  }, targetX);
+
+  state = await getEditorState(page);
+  const beforeX = state.stage.viewRect.x;
+  const beforeScale = state.stage.gameScale;
+  const canvasBox = await getCanvasBox(page);
+
+  await page.click('#editorToolList button[data-tool="gadget"]');
+  const gadgetEntry = state.editor.assets.gadgets.find(entry => entry.width > 0 || entry.height > 0);
+  if (!gadgetEntry) {
+    throw new Error('No gadget entry found');
+  }
+  await page.click(`#editorPaletteGadgets button[data-id="${gadgetEntry.id}"]`);
+
+  const placePoint = {
+    x: beforeX + Math.min(80, state.stage.viewRect.w * 0.4),
+    y: 80
+  };
+  const pagePoint = worldToPage(state, canvasBox, placePoint);
+  await page.mouse.click(pagePoint.x, pagePoint.y);
+
+  await page.waitForFunction((expected) => {
+    const next = window.__E2E__.getState().stage.viewRect;
+    return next && Math.abs(next.x - expected) < 1;
+  }, beforeX);
+
+  state = await getEditorState(page);
+  expect(Math.abs(state.stage.gameScale - beforeScale)).toBeLessThan(0.01);
+});
+
 test('Editor selection updates inspector state', async ({ page }) => {
   const terrainButton = page.locator('#editorPaletteTerrain button').first();
   await expect(terrainButton).toBeVisible();

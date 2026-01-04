@@ -1365,6 +1365,15 @@ class GameView extends BaseLogger {
     this.updateQuery();
     this.log.debug(level);
     await this._startWithLevel(level);
+    if (prevViewport && this.stage) {
+      this.stage.applyViewport(
+        this.stage.gameImgProps,
+        prevViewport.x,
+        prevViewport.y,
+        prevViewport.scale
+      );
+      this.stage.redraw();
+    }
     this._preserveEditorViewport = false;
     if (this.editorMode && this.game) {
       this.game.inputEnabled = this.editorPlaytest;

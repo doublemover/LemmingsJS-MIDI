@@ -12,7 +12,7 @@ import { findEntryAt, getEntryBounds } from './EditorHitTest.js';
 const DEFAULT_GRID = 4;
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
-const DEFAULT_HANDLE_SIZE = 6;
+const DEFAULT_HANDLE_SIZE = 2;
 
 const snapValue = (value, gridSize) => {
   if (!Number.isFinite(gridSize) || gridSize <= 1) return Math.round(value);
