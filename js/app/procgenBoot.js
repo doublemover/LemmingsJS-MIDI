@@ -3,7 +3,10 @@ import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
+import { getStyleNames } from '../editor/StyleRegistry.js';
 import { ProcgenController } from './procgenController.js';
+import { ProcgenAssetManager } from './procgenAssetManager.js';
+import { ProcgenTerrainStamper } from './procgenTerrainStamper.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { registerServiceWorker } from './registerServiceWorker.js';
 import { DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
@@ -11,17 +14,39 @@ import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
 import { ProcgenStageAdapter } from './procgenStageAdapter.js';
 
 const PROCGEN_GAME_TYPE = GameTypes.OHNO;
-const PROCGEN_STYLE = 'fire';
 const PROCGEN_LEVEL_WIDTH = 65535;
 const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
 const PROCGEN_GROUND_HEIGHT = 4;
 
-const buildProcgenEditorLevel = () => {
+const pickProcgenStyle = () => {
+  const names = getStyleNames();
+  if (!names.length) return 'fire';
+  let last = null;
+  try {
+    last = window.localStorage?.getItem('procgen.style') || null;
+  } catch (err) {
+    last = null;
+  }
+  const normalizedLast = last ? last.toLowerCase() : null;
+  const candidates = normalizedLast
+    ? names.filter(name => name.toLowerCase() !== normalizedLast)
+    : names.slice();
+  const list = candidates.length ? candidates : names;
+  const choice = list[Math.floor(Math.random() * list.length)] || names[0];
+  try {
+    window.localStorage?.setItem('procgen.style', choice);
+  } catch (err) {
+    // ignore storage failures
+  }
+  return choice;
+};
+
+const buildProcgenEditorLevel = (styleName) => {
   const level = new EditorLevel();
   level.setHeader('TITLE', 'Procgen');
-  level.setHeader('STYLE', PROCGEN_STYLE);
+  level.setHeader('STYLE', styleName);
   level.setHeader('WIDTH', PROCGEN_LEVEL_WIDTH);
   level.setHeader('HEIGHT', PROCGEN_LEVEL_HEIGHT);
   level.setHeader('LEMMINGS', PROCGEN_RELEASE_COUNT);
@@ -59,13 +84,14 @@ const init = async () => {
   const resources = await view.gameFactory.getGameResources(PROCGEN_GAME_TYPE);
   view.gameResources = resources;
 
-  const { level: editorLevel } = buildProcgenEditorLevel();
+  const styleName = pickProcgenStyle();
+  const { level: editorLevel } = buildProcgenEditorLevel(styleName);
   const level = await loadEditorLevel(
     editorLevel,
     config,
     view.gameFactory.fileProvider,
     {
-      styleName: PROCGEN_STYLE,
+      styleName,
       levelGroupIndex: 0,
       levelIndex: 0
     }
@@ -82,10 +108,20 @@ const init = async () => {
   game.getGameTimer().speedFactor = view.gameSpeedFactor;
   bindCanvasFocusBlur(canvas);
 
+  const assetManager = new ProcgenAssetManager({
+    styleName,
+    config,
+    fileProvider: view.gameFactory.fileProvider
+  });
+  await assetManager.load();
+  const stamper = new ProcgenTerrainStamper(level);
+
   const controller = new ProcgenController({
     view,
     game,
     level,
+    assets: assetManager,
+    stamper,
     options: { groundHeight: PROCGEN_GROUND_HEIGHT }
   });
   controller.start();

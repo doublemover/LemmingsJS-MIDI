@@ -3,10 +3,12 @@ import { SkillTypes } from '../game/SkillTypes.js';
 import { SoundEventTypes } from '../game/SoundEvents.js';
 
 class ProcgenController {
-  constructor({ view, game, level, options = {} }) {
+  constructor({ view, game, level, assets, stamper, options = {} }) {
     this.view = view || null;
     this.game = game || null;
     this.level = level || null;
+    this.assets = assets || null;
+    this.stamper = stamper || null;
     this._tickHandler = null;
     this._running = false;
     this._cameraX = 0;
@@ -34,6 +36,8 @@ class ProcgenController {
     this._nukeElapsed = 0;
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
+    this._gaps = [];
+    this._gapCooldown = 0;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -45,6 +49,11 @@ class ProcgenController {
     this.followLerp = Number.isFinite(options.followLerp) ? options.followLerp : 0.12;
     this.maxStepUp = Number.isFinite(options.maxStepUp) ? options.maxStepUp : 3;
     this.maxDrop = Number.isFinite(options.maxDrop) ? options.maxDrop : (Lemming.LEM_MAX_FALLING - 1);
+    this.gapChance = Number.isFinite(options.gapChance) ? options.gapChance : 0.08;
+    this.gapMinWidth = Number.isFinite(options.gapMinWidth) ? options.gapMinWidth : 3;
+    this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
+    this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
+    this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
   }
 
   start() {
@@ -136,6 +145,7 @@ class ProcgenController {
     if (!Number.isFinite(guideX)) return;
     this._ensureGround(guideX);
     this._processBuilderBurst();
+    this._processGapBridges();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
   }
 
@@ -254,6 +264,46 @@ class ProcgenController {
     burst.dueTick = tick + burst.nextDelay;
   }
 
+  _processGapBridges() {
+    if (!this._gaps.length) return;
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length) return;
+    const follow = this._getFollowLemming();
+    const leadId = follow?.id ?? null;
+    const leadX = Number.isFinite(follow?.x) ? follow.x : null;
+    for (const gap of this._gaps) {
+      if (!gap || gap.assigned) continue;
+      if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
+      const triggerX = gap.x - this.gapTriggerDistance;
+      if (Number.isFinite(leadX) && leadX < triggerX) continue;
+      let best = null;
+      let bestDist = Infinity;
+      for (const lem of lems) {
+        if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
+        const dist = Math.abs((lem.x ?? 0) - gap.x);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = lem;
+        }
+      }
+      if (!best) continue;
+      if (leadId != null && best.id !== leadId && Number.isFinite(leadX)) {
+        if (best.x < leadX - 8) continue;
+      }
+      if (manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+        gap.assigned = true;
+      }
+    }
+    const cutoff = Number.isFinite(this._cameraX) ? this._cameraX - 200 : null;
+    this._gaps = this._gaps.filter(gap => {
+      if (!gap) return false;
+      if (!gap.assigned) return true;
+      if (cutoff == null) return false;
+      return gap.x + gap.width > cutoff;
+    });
+  }
+
   _applyBuilderToNextLemming(burst) {
     const manager = this.game?.getLemmingManager?.();
     const lems = manager?.lemmings || [];
@@ -295,6 +345,19 @@ class ProcgenController {
     while (rightmostX + this.lookAhead >= this._groundEndX - this.extendThreshold) {
       if (this._groundEndX >= levelWidth) break;
       const segmentWidth = this._pickSegmentWidth();
+      if (this._shouldInsertGap()) {
+        const gapWidth = this._pickGapWidth();
+        const gapStart = this._groundEndX;
+        this._gaps.push({
+          x: gapStart,
+          width: gapWidth,
+          y: this._groundTopY,
+          assigned: false
+        });
+        this._groundEndX = Math.min(levelWidth, this._groundEndX + gapWidth);
+        this._gapCooldown = this._randInt(16, 40);
+        continue;
+      }
       const nextTop = this._pickNextTopY();
       const colorIndex = this._getNextColorIndex();
       this._paintGround(this._groundEndX, segmentWidth, nextTop, colorIndex);
@@ -304,6 +367,14 @@ class ProcgenController {
   }
 
   _paintGround(startX, width, topY, colorIndex) {
+    if (this.assets && this.stamper) {
+      this._paintGroundPieces(startX, width, topY, colorIndex);
+      return;
+    }
+    this._paintGroundPixels(startX, width, topY, colorIndex);
+  }
+
+  _paintGroundPixels(startX, width, topY, colorIndex) {
     if (!this.level) return;
     const levelWidth = this.level.width;
     const levelHeight = this.level.height;
@@ -312,7 +383,9 @@ class ProcgenController {
     const top = Number.isFinite(topY) ? topY : levelHeight - this.groundHeight;
     const y0 = Math.max(0, Math.min(levelHeight - this.groundHeight, top));
     const y1 = Math.min(levelHeight, y0 + this.groundHeight);
-    const paletteIndex = Number.isFinite(colorIndex) ? colorIndex : this.groundColorIndex;
+    const paletteIndex = Number.isFinite(colorIndex)
+      ? colorIndex
+      : this.groundColorIndex;
     for (let y = y0; y < y1; y++) {
       for (let x = x0; x < x1; x++) {
         this.level.setGroundAt(x, y, paletteIndex);
@@ -320,10 +393,58 @@ class ProcgenController {
     }
   }
 
+  _paintGroundPieces(startX, width, topY, colorIndex) {
+    if (!this.level || !this.assets || !this.stamper) return;
+    const levelWidth = this.level.width;
+    const maxX = Math.min(levelWidth, startX + width);
+    const floorY = (Number.isFinite(topY) ? topY : 0) + this.groundHeight - 1;
+    let cursor = Math.max(0, startX);
+    const decorBias = Number.isFinite(colorIndex) ? (colorIndex % 4) : 0;
+    while (cursor < maxX) {
+      const remaining = maxX - cursor;
+      const piece = this.assets.pickGroundPiece(remaining, this.groundHeight);
+      if (!piece?.bounds?.width) break;
+      const destX = cursor - piece.bounds.minX;
+      const destY = floorY - piece.bounds.maxY;
+      this.stamper.stamp(piece, destX, destY);
+      if (Math.random() < (this.decorChance + decorBias * 0.01)) {
+        this._placeDecoration(destX, destY, piece);
+      }
+      cursor += Math.max(1, piece.bounds.width);
+      if (cursor >= maxX) break;
+    }
+  }
+
+  _placeDecoration(baseX, baseY, basePiece) {
+    if (!this.assets || !this.stamper) return;
+    const decor = this.assets.pickDecorPiece(32);
+    if (!decor?.bounds) return;
+    const offsetX = basePiece?.bounds?.minX ?? 0;
+    const destX = baseX + offsetX + this._randInt(-4, 6);
+    const raise = this._randInt(6, 22);
+    const destY = baseY - decor.bounds.height - raise;
+    this.stamper.stamp(decor, destX, destY);
+  }
+
   _pickSegmentWidth() {
     const min = Math.max(2, Math.floor(this.segmentMinWidth));
     const max = Math.max(min, Math.floor(this.segmentMaxWidth));
     return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  _pickGapWidth() {
+    const min = Math.max(2, Math.floor(this.gapMinWidth));
+    const max = Math.max(min, Math.floor(this.gapMaxWidth));
+    return min + Math.floor(Math.random() * (max - min + 1));
+  }
+
+  _shouldInsertGap() {
+    if (this._gapCooldown > 0) {
+      this._gapCooldown -= 1;
+      return false;
+    }
+    if (Math.random() > this.gapChance) return false;
+    return true;
   }
 
   _pickNextTopY() {

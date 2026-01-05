@@ -205,9 +205,9 @@ Notes:
     buttons, preview refresh label coalescing).
 
 ## Phase 20: Procgen terrain stamping + assets
-- [ ] Add procgen asset manager (terrain/object categorization from packs).
-- [ ] Replace pixel writes with terrain-piece stamping and chunk streaming.
-- [ ] Add decoration and hazard placement with counterplay rules.
+- [x] Add procgen asset manager (terrain/object categorization from packs).
+- [x] Replace pixel writes with terrain-piece stamping and chunk streaming.
+- [x] Add decoration and hazard placement with counterplay rules.
 
 ## Phase 21: Procgen AI director + solvability
 - [ ] Add environment sensing primitives (drop/wall/gap/hazard scans).
