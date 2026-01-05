@@ -1458,6 +1458,7 @@ export const createMidiUiController = ({
     const intensity = document.getElementById('midiIntensity');
     const accent = document.getElementById('midiAccent');
     const repeatEnabled = document.getElementById('midiRepeatEnabled');
+    const repeatSection = document.getElementById('midiRepeatSection');
     const repeatCount = document.getElementById('midiRepeatCount');
     const repeatSpacing = document.getElementById('midiRepeatSpacing');
     const repeatTarget = document.getElementById('midiRepeatTarget');
@@ -1730,6 +1731,11 @@ export const createMidiUiController = ({
     },
     getStorageKeys() {
       return { ...midiStorageKeys };
+    },
+    __test__: {
+      applySectionStates,
+      buildPositionMappingList,
+      resetMidiDefaults
     },
     setActiveMidiInput,
     setActiveMidiOutput
