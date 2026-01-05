@@ -381,6 +381,61 @@ export const StateDeltaOutputSchema = z.object({
 });
 
 /* ---------------------------------- */
+/* Tool: editor.apply                  */
+/* ---------------------------------- */
+
+export const EditorApplyOpSchema = z.object({
+  opId: z.string().optional(),
+  type: z.string().min(1),
+  args: z.record(z.any()).optional(),
+});
+
+export const EditorApplyInputSchema = z.object({
+  sessionId: SessionIdSchema,
+  ops: z.array(EditorApplyOpSchema),
+  atomic: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+  history: z.object({
+    label: z.string().optional(),
+    record: z.boolean().optional(),
+  }).optional(),
+  preview: z.object({
+    refresh: z.boolean().optional(),
+    label: z.string().optional(),
+    preserveViewport: z.boolean().optional(),
+  }).optional(),
+  validate: z.object({
+    run: z.boolean().optional(),
+    autoFix: z.enum(["none", "safe", "aggressive"]).optional(),
+  }).optional(),
+  returnState: z.enum(["none", "editor", "full"]).optional(),
+});
+
+export const EditorApplyResultSchema = z.object({
+  opId: z.string().nullable().optional(),
+  type: z.string(),
+  ok: z.boolean(),
+  value: z.any().optional(),
+  error: z.string().optional(),
+});
+
+export const EditorApplyResourceSchema = z.object({
+  uri: ResourceUriSchema.optional(),
+  mimeType: MimeTypeSchema.optional(),
+  name: z.string().optional(),
+  sizeBytes: z.number().int().nonnegative().optional(),
+  meta: z.any().optional(),
+});
+
+export const EditorApplyOutputSchema = z.object({
+  ok: z.boolean(),
+  results: z.array(EditorApplyResultSchema).optional(),
+  state: z.any().optional(),
+  resources: z.array(EditorApplyResourceSchema).optional(),
+  events: EventsEnvelopeSchema,
+});
+
+/* ---------------------------------- */
 /* Tool: lemming.summary               */
 /* ---------------------------------- */
 
@@ -646,6 +701,7 @@ export const ToolNameSchema = z.enum([
   "time.step",
   "state.get",
   "state.delta",
+  "editor.apply",
   "lemming.summary",
   "lemming.select",
   "skill.apply",
@@ -670,6 +726,7 @@ export const ToolSchemas = {
   "time.step": { input: TimeStepInputSchema, output: TimeStepOutputSchema },
   "state.get": { input: StateGetInputSchema, output: StateGetOutputSchema },
   "state.delta": { input: StateDeltaInputSchema, output: StateDeltaOutputSchema },
+  "editor.apply": { input: EditorApplyInputSchema, output: EditorApplyOutputSchema },
   "lemming.summary": { input: LemmingsSummaryInputSchema, output: LemmingsSummaryOutputSchema },
   "lemming.select": { input: LemmingSelectInputSchema, output: LemmingSelectOutputSchema },
   "skill.apply": { input: SkillApplyInputSchema, output: SkillApplyOutputSchema },

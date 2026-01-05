@@ -4,6 +4,7 @@ import {
   createTerrainEntry,
   createGadgetEntry,
   createSteelEntry,
+  ensureEntryUid,
   setEntryProp,
   removeEntryAt
 } from './EditorEntryFactory.js';
@@ -21,11 +22,17 @@ const snapValue = (value, gridSize) => {
 
 const clampSize = (value) => Math.max(1, Math.round(value));
 
-const cloneEntry = (entry) => {
+const cloneEntry = (entry, options = {}) => {
   const props = entry?.props ? { ...entry.props } : {};
   const order = Array.isArray(entry?.order) ? entry.order.slice() : Object.keys(props);
   const unknownLines = Array.isArray(entry?.unknownLines) ? entry.unknownLines.slice() : [];
-  return { props, order, unknownLines };
+  const clone = { props, order, unknownLines };
+  if (options.preserveUid && entry?.uid) {
+    clone.uid = entry.uid;
+  } else if (options.assignUid !== false) {
+    ensureEntryUid(clone, options.prefix || 'e');
+  }
+  return clone;
 };
 
 const coerceEntryNumber = (value, fallback = 0) => {
@@ -254,7 +261,7 @@ class EditorController {
       minY = Math.min(minY, y);
       items.push({
         type: selected.type,
-        entry: cloneEntry(selected.entry),
+        entry: cloneEntry(selected.entry, { assignUid: false }),
         offsetX: x,
         offsetY: y
       });
@@ -280,7 +287,8 @@ class EditorController {
     for (const selected of entries) {
       const list = this._getListForType(selected.type);
       if (!Array.isArray(list)) continue;
-      const clone = cloneEntry(selected.entry);
+      const prefix = selected.type === 'gadget' ? 'g' : selected.type === 'steel' ? 's' : 't';
+      const clone = cloneEntry(selected.entry, { prefix });
       clone.props.X = coerceEntryNumber(clone.props.X, 0) + offsetX;
       clone.props.Y = coerceEntryNumber(clone.props.Y, 0) + offsetY;
       list.push(clone);
@@ -308,7 +316,8 @@ class EditorController {
     for (const item of entries) {
       const list = this._getListForType(item.type);
       if (!Array.isArray(list)) continue;
-      const clone = cloneEntry(item.entry);
+      const prefix = item.type === 'gadget' ? 'g' : item.type === 'steel' ? 's' : 't';
+      const clone = cloneEntry(item.entry, { prefix });
       clone.props.X = baseX + item.offsetX;
       clone.props.Y = baseY + item.offsetY;
       list.push(clone);

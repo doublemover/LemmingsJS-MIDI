@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.YOUR_GITHUB_USERNAME/your-server",
+  "title": "Your Server",
+  "description": "A short description of what this MCP server does",
+  "version": "1.0.0",
+  "repository": {
+    "url": "https://github.com/YOUR_GITHUB_USERNAME/your-repo",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/YOUR_GITHUB_USERNAME/your-repo/releases/download/v1.0.0/your-server.mcpb",
+      "fileSha256": "PUT_SHA256_OF_MCPB_HERE",
+      "transport": { "type": "stdio" }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "tool": "manual",
+      "notes": "Optional: keep this under 4KB; other _meta keys will be dropped by the official registry."
+    }
+  }
+}

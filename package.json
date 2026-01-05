@@ -11,6 +11,8 @@
     "start": "http-server --cors=*",
     "start-https": "http-server --cors=* -S -C certs/localhost.pem -K certs/localhost-key.pem",
     "mcp": "node mcp/server.js",
+    "mcpb:build": "node scripts/build-mcpb-bundle.js",
+    "mcpb:validate": "npm run mcpb:build && npx @anthropic-ai/mcpb validate dist/mcpb",
     "check-undefined": "node scripts/check-undefined.js",
     "test": "node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",

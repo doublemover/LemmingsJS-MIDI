@@ -43,6 +43,21 @@ compact `state.get` preset defaults.
 }
 ```
 
+## Apply editor ops (create terrain + export)
+
+```json
+{
+  "sessionId": "<id>",
+  "ops": [
+    { "type": "level.new", "args": { "header": { "TITLE": "Demo", "STYLE": "dirt" } } },
+    { "type": "entry.add", "args": { "kind": "terrain", "props": { "PIECE": 1, "X": 120, "Y": 80 } } },
+    { "type": "level.export", "args": { "format": "nxlv", "filename": "demo.nxlv" } }
+  ],
+  "preview": { "refresh": true },
+  "returnState": "editor"
+}
+```
+
 ## Debug: full state as a resource
 
 ```json

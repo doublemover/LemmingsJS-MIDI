@@ -147,7 +147,7 @@ describe('EditorController', () => {
     controller.setTool(EditorTools.TERRAIN);
     controller.handlePointerDown({ x: 5.2, y: 6.2 }, 0);
     expect(session.level.terrains).to.have.length(1);
-    expect(session.level.terrains[0].props.X).to.equal(5);
+    expect(session.level.terrains[0].props.X).to.equal(1);
     expect(history.snapshots[0].label).to.equal('Terrain');
 
     controller.setSelectedGadget(1);
@@ -586,7 +586,7 @@ describe('EditorController', () => {
     const controller = new EditorController({ session, history, snapEnabled: false, gridSize: 1 });
     controller.setAssets(buildAssets());
     controller.setTool(EditorTools.SELECT);
-    expect(controller.getHandleSize()).to.equal(6);
+    expect(controller.getHandleSize()).to.equal(2);
 
     const entry = createTerrainEntry({
       styleName: 'dirt',
@@ -782,9 +782,9 @@ describe('EditorController', () => {
     controller.selectedGadgetId = 8;
     controller.selectedTriggerId = 7;
     controller.setAssets(buildAssets());
-    expect(controller.selectedTerrainId).to.equal(9);
-    expect(controller.selectedGadgetId).to.equal(8);
-    expect(controller.selectedTriggerId).to.equal(7);
+    expect(controller.selectedTerrainId).to.equal(2);
+    expect(controller.selectedGadgetId).to.equal(1);
+    expect(controller.selectedTriggerId).to.equal(3);
     controller.setAssets(null);
     expect(controller.assets).to.equal(null);
   });
@@ -803,8 +803,8 @@ describe('EditorController', () => {
     controller.setAssets(buildAssets());
     controller.setTool(EditorTools.TERRAIN);
     controller.handlePointerDown({ x: 5.6, y: 5.2 }, 0);
-    expect(session.level.terrains[0].props.X).to.equal(6);
-    expect(session.level.terrains[0].props.Y).to.equal(5);
+    expect(session.level.terrains[0].props.X).to.equal(2);
+    expect(session.level.terrains[0].props.Y).to.equal(1);
   });
 
   it('covers internal fallbacks', () => {

@@ -194,7 +194,7 @@ describe('EditorLevelLoader', () => {
     expect(reader.levelProperties.releaseRate).to.equal(40);
     expect(reader.levelProperties.releaseCount).to.equal(12);
     expect(reader.levelProperties.needCount).to.equal(8);
-    expect(reader.levelProperties.timeLimit).to.equal(0);
+    expect(reader.levelProperties.timeLimit).to.equal(6039);
     expect(reader.levelProperties.skills[1]).to.equal(2);
     expect(reader.terrains[0].id).to.equal(4);
     expect(reader.terrains[0].drawProperties.isUpsideDown).to.equal(true);

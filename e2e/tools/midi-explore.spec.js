@@ -139,19 +139,42 @@ test('Explore MIDI UI mappings', async ({ page }) => {
   const arpMode = rowByLabel(details, rowIndexMap, 'Arp mode').locator('select');
   const arpLength = rowByLabel(details, rowIndexMap, 'Arp length').locator('input[type="number"]');
 
+  const ensureVisible = async (locator, label) => {
+    const visible = await locator.isVisible().catch(() => false);
+    if (!visible) {
+      issues.push(`${label} is not visible in event details.`);
+    }
+    return visible;
+  };
+  const trySelectOption = async (locator, value, label) => {
+    try {
+      await locator.selectOption(value, { timeout: 1000 });
+      return true;
+    } catch (error) {
+      issues.push(`${label} select not visible/enabled for option "${value}".`);
+      return false;
+    }
+  };
+
   if ((await modeSelect.count()) < 1) issues.push('Mode select missing from event details.');
   if ((await chordSelect.count()) < 1) issues.push('Chord select missing from event details.');
   if ((await arpMode.count()) < 1) issues.push('Arp mode select missing from event details.');
 
   if ((await modeSelect.count()) > 0 && sfxId) {
-    await modeSelect.selectOption('note');
+    const modeSelected = await trySelectOption(modeSelect, 'note', 'Mode');
+    if (!modeSelected) {
+      if (issues.length) {
+        console.log('midi exploration issues:', JSON.stringify(issues, null, 2));
+      }
+      return;
+    }
     if (await keyRowSelect.isDisabled()) issues.push('Key select disabled in note mode.');
     if (await noteOctaveInput.isDisabled()) issues.push('Octave disabled in note mode.');
     if (!(await degreeInput.isDisabled())) issues.push('Degree enabled in note mode.');
     if (!(await scaleOctaveInput.isDisabled())) issues.push('Scale octave enabled in note mode.');
     if (!(await chordSelect.isDisabled())) issues.push('Chord enabled in note mode.');
 
-    await keyRowSelect.selectOption('1');
+    await trySelectOption(keyRowSelect, '1', 'Key');
     await noteOctaveInput.fill('4');
     await noteOctaveInput.dispatchEvent('change');
 
@@ -162,7 +185,13 @@ test('Explore MIDI UI mappings', async ({ page }) => {
       issues.push('Note selection did not update overrides (expected note 49).');
     }
 
-    await modeSelect.selectOption('chord');
+    const chordModeSelected = await trySelectOption(modeSelect, 'chord', 'Mode');
+    if (!chordModeSelected) {
+      if (issues.length) {
+        console.log('midi exploration issues:', JSON.stringify(issues, null, 2));
+      }
+      return;
+    }
     if (!(await keyRowSelect.isDisabled())) issues.push('Key select enabled in chord mode.');
     if (!(await noteOctaveInput.isDisabled())) issues.push('Octave enabled in chord mode.');
     if (await degreeInput.isDisabled()) issues.push('Degree disabled in chord mode.');
@@ -173,9 +202,11 @@ test('Explore MIDI UI mappings', async ({ page }) => {
     await degreeInput.dispatchEvent('change');
     await scaleOctaveInput.fill('4');
     await scaleOctaveInput.dispatchEvent('change');
-    await chordSelect.selectOption('sus4');
-    await arpToggle.check();
-    await arpMode.selectOption('down');
+    await trySelectOption(chordSelect, 'sus4', 'Chord');
+    if (await ensureVisible(arpToggle, 'Arp toggle')) {
+      await arpToggle.check();
+    }
+    await trySelectOption(arpMode, 'down', 'Arp mode');
     await arpLength.fill('5');
     await arpLength.dispatchEvent('change');
 

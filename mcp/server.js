@@ -493,6 +493,31 @@ const WatchCancelSchema = z.object({
   watchId: z.string().min(1)
 });
 
+const EditorApplySchema = z.object({
+  sessionId: z.string().min(1),
+  ops: z.array(z.object({
+    opId: z.string().optional(),
+    type: z.string().min(1),
+    args: z.any().optional()
+  })).optional(),
+  atomic: z.boolean().optional(),
+  dryRun: z.boolean().optional(),
+  history: z.object({
+    label: z.string().optional(),
+    record: z.boolean().optional()
+  }).optional(),
+  preview: z.object({
+    refresh: z.boolean().optional(),
+    label: z.string().optional(),
+    preserveViewport: z.boolean().optional()
+  }).optional(),
+  validate: z.object({
+    run: z.boolean().optional(),
+    autoFix: z.enum(['none', 'safe', 'aggressive']).optional()
+  }).optional(),
+  returnState: z.enum(['none', 'editor', 'full']).optional()
+});
+
 const EventsPollSchema = z.object({
   sessionId: z.string().min(1),
   after: z.string().optional()
@@ -533,6 +558,11 @@ const TOOL_SPECS = [
     name: 'state.delta',
     description: 'Return filtered history deltas between ticks (defaults to changes since the last state.get).',
     schema: StateDeltaSchema
+  },
+  {
+    name: 'editor.apply',
+    description: 'Apply editor mutations through the E2E harness.',
+    schema: EditorApplySchema
   },
   {
     name: 'lemming.summary',
@@ -598,6 +628,7 @@ const LEGACY_TOOL_ALIASES = new Map([
   ['lemmings.time.step', 'time.step'],
   ['lemmings.state.get', 'state.get'],
   ['lemmings.state.delta', 'state.delta'],
+  ['lemmings.editor.apply', 'editor.apply'],
   ['lemmings.lemmings.summary', 'lemming.summary'],
   ['lemmings.lemming.select', 'lemming.select'],
   ['lemmings.skill.apply', 'skill.apply'],
@@ -1885,6 +1916,64 @@ const getStateDeltaTool = async (args) => {
   return attachEvents(session, response);
 };
 
+const editorApplyTool = async (args) => {
+  const parsed = EditorApplySchema.parse(args || {});
+  const session = getSession(parsed.sessionId);
+  const result = await callE2E(session, 'editorApply', parsed.ops || [], {
+    atomic: parsed.atomic,
+    dryRun: parsed.dryRun,
+    history: parsed.history,
+    preview: parsed.preview,
+    validate: parsed.validate,
+    returnState: parsed.returnState
+  });
+  if (!result.ok) {
+    return attachEvents(session, {
+      ok: false,
+      reason: 'harness_unavailable',
+      error: result.error || null
+    });
+  }
+
+  const payload = result.value || {};
+  if (!payload.ok) {
+    return attachEvents(session, payload);
+  }
+
+  const resources = [];
+  if (Array.isArray(payload.resources)) {
+    for (const resource of payload.resources) {
+      if (!resource) continue;
+      const encoding = resource.encoding || 'text';
+      const data = resource.data || '';
+      const bytes = encoding === 'base64'
+        ? Buffer.from(data, 'base64')
+        : Buffer.from(data, 'utf8');
+      const mimeType = resource.mimeType || 'application/octet-stream';
+      const stored = session.resources.put({
+        sessionId: session.id,
+        bytes,
+        mimeType,
+        meta: resource.meta || { kind: 'resource', name: resource.name || '' }
+      });
+      resources.push({
+        uri: stored?.uri || null,
+        mimeType,
+        name: resource.name || null,
+        sizeBytes: stored?.sizeBytes ?? null,
+        meta: resource.meta || null
+      });
+    }
+  }
+
+  return attachEvents(session, {
+    ok: true,
+    results: Array.isArray(payload.results) ? payload.results : [],
+    state: payload.state ?? null,
+    resources
+  });
+};
+
 const getLemmingsSummaryTool = async (args) => {
   const { sessionId, filter, topK, includeSelected } = LemmingsSummarySchema.parse(args || {});
   const session = getSession(sessionId);
@@ -2181,6 +2270,7 @@ const TOOL_HANDLERS = new Map([
   ['time.step', stepTime],
   ['state.get', getStateTool],
   ['state.delta', getStateDeltaTool],
+  ['editor.apply', editorApplyTool],
   ['lemming.summary', getLemmingsSummaryTool],
   ['lemming.select', selectLemmingTool],
   ['skill.apply', applySkillTool],

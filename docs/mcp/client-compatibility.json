@@ -30,6 +30,26 @@
       "transport": "stdio",
       "needsReview": true,
       "reviewReason": "Confirm MCP config schema for stdio/HTTP selection."
+    },
+    {
+      "id": "claude-desktop",
+      "name": "Claude Desktop",
+      "lastVerifiedVersion": "unknown",
+      "configFormat": "json",
+      "configExample": "docs/mcp/config-examples/claude-desktop.json",
+      "transport": "stdio",
+      "needsReview": true,
+      "reviewReason": "Confirm current config filename and MCP server schema."
+    },
+    {
+      "id": "vscode",
+      "name": "VS Code",
+      "lastVerifiedVersion": "unknown",
+      "configFormat": "json",
+      "configExample": "docs/mcp/config-examples/vscode-mcp.json",
+      "transport": "stdio",
+      "needsReview": true,
+      "reviewReason": "Confirm MCP config file location and schema."
     }
   ]
 }

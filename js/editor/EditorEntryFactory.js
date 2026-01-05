@@ -1,19 +1,58 @@
+let uidCounter = 0;
+
 const normalizeKey = (key) => {
   if (key == null) return '';
   return String(key).trim().toUpperCase();
 };
 
-const createEntry = (props = {}, order = null) => {
+const createUid = (prefix = 'e') => {
+  uidCounter = (uidCounter + 1) % 1000000;
+  const stamp = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `${prefix}_${stamp}_${uidCounter.toString(36)}_${rand}`;
+};
+
+const ensureEntryUid = (entry, prefix = 'e') => {
+  if (!entry) return null;
+  if (!entry.uid) {
+    entry.uid = createUid(prefix);
+  }
+  return entry.uid;
+};
+
+const ensureLevelEntryUids = (level) => {
+  if (!level) return;
+  const ensureList = (entries, prefix) => {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      ensureEntryUid(entry, prefix);
+    }
+  };
+  ensureList(level.terrains, 't');
+  ensureList(level.gadgets, 'g');
+  ensureList(level.steel, 's');
+  if (Array.isArray(level.terrainGroups)) {
+    for (const group of level.terrainGroups) {
+      if (Array.isArray(group?.terrains)) {
+        ensureList(group.terrains, 't');
+      }
+    }
+  }
+};
+
+const createEntry = (props = {}, order = null, options = {}) => {
   const filtered = {};
   for (const [key, value] of Object.entries(props)) {
     if (value === undefined || value === null || value === '') continue;
     filtered[normalizeKey(key)] = value;
   }
-  return {
+  const entry = {
     props: filtered,
     order: Array.isArray(order) && order.length ? order.slice() : Object.keys(filtered),
     unknownLines: []
   };
+  ensureEntryUid(entry, options.prefix || 'e');
+  return entry;
 };
 
 const setEntryProp = (entry, key, value, options = {}) => {
@@ -55,7 +94,7 @@ const createTerrainEntry = (params = {}) => {
     ONE_WAY: params.oneWay ? true : undefined,
     WIDTH: params.width,
     HEIGHT: params.height
-  });
+  }, null, { prefix: 't' });
 };
 
 const createGadgetEntry = (params = {}) => {
@@ -72,7 +111,7 @@ const createGadgetEntry = (params = {}) => {
     SKILL: params.skill,
     LEMMINGS: params.lemmings,
     PAIRING: params.pairing
-  });
+  }, null, { prefix: 'g' });
 };
 
 const createSteelEntry = (params = {}) => {
@@ -81,7 +120,7 @@ const createSteelEntry = (params = {}) => {
     Y: params.y,
     WIDTH: params.width,
     HEIGHT: params.height
-  });
+  }, null, { prefix: 's' });
 };
 
 const removeEntryAt = (level, type, index) => {
@@ -100,6 +139,8 @@ export {
   createTerrainEntry,
   createGadgetEntry,
   createSteelEntry,
+  ensureEntryUid,
+  ensureLevelEntryUids,
   setEntryProp,
   removeEntryAt
 };

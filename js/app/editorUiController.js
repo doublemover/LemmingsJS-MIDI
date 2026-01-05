@@ -8,6 +8,7 @@ import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js
 import { createClassicLevelData } from '../editor/EditorLevelLoader.js';
 import { validateLevel } from '../editor/EditorValidator.js';
 import { getEntryBounds } from '../editor/EditorHitTest.js';
+import { ensureLevelEntryUids } from '../editor/EditorEntryFactory.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
@@ -131,6 +132,7 @@ class EditorUiController {
       this.controller.session = this.session;
       this._needsDefaultEntrances = true;
     }
+    ensureLevelEntryUids(this.session?.level);
     await this._reloadAssets();
     this.controller.resetHistory('Init');
     this._refreshHeaderFields();
@@ -1066,6 +1068,7 @@ class EditorUiController {
     this.view.createBlankEditorLevel({ render: false });
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
+    ensureLevelEntryUids(this.session?.level);
     this.controller.resetHistory('New');
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
@@ -1149,6 +1152,7 @@ class EditorUiController {
     this._currentSavedId = '';
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
+    ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
     await this._reloadAssets();
     this.controller.resetHistory(label || 'Load');
@@ -1166,6 +1170,7 @@ class EditorUiController {
     if (!level) return;
     this.session = this.view.editorSession;
     this.controller.session = this.session;
+    ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import');
@@ -1185,6 +1190,7 @@ class EditorUiController {
     session.level = editorLevel;
     this.session = session;
     this.controller.session = this.session;
+    ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import LVL');

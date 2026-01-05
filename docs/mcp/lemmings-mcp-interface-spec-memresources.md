@@ -283,7 +283,24 @@ Return filtered history deltas between ticks (defaults to changes since the last
 - `ok`, `cursor`, `afterTick`, `fromTick`, `toTick`, `deltas`
 - `resourceUri` + `sizeBytes` (if `delivery="resource"`)
 
-### 7.7 `lemming.summary`
+### 7.7 `editor.apply`
+Apply editor mutations through the E2E harness (batch ops + optional validation).
+
+**Inputs**
+- `sessionId`
+- `ops`: array of `{ type, args, opId? }`
+- `atomic`, `dryRun`
+- `history`: `{ label?, record? }`
+- `preview`: `{ refresh?, label?, preserveViewport? }`
+- `validate`: `{ run?, autoFix? }`
+- `returnState`: `none | editor | full`
+
+**Outputs**
+- `{ ok, results[], state?, resources?, events }`
+
+---
+
+### 7.8 `lemming.summary`
 Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 **Inputs**
@@ -312,7 +329,7 @@ Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 ---
 
-### 7.8 `lemming.select`
+### 7.9 `lemming.select`
 Directly select a specific lemming by ID.
 
 **Inputs**
@@ -331,7 +348,7 @@ Directly select a specific lemming by ID.
 
 ---
 
-### 7.9 `skill.apply`
+### 7.10 `skill.apply`
 Apply a skill to a selected lemming using keyboard shortcuts.
 
 **Inputs**
@@ -358,7 +375,7 @@ Apply a skill to a selected lemming using keyboard shortcuts.
 
 ---
 
-### 7.10 `input.action`
+### 7.11 `input.action`
 Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`).
 
 **Inputs**
@@ -371,7 +388,7 @@ Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`
 
 ---
 
-### 7.11 `input.keys`
+### 7.12 `input.keys`
 Low-level key event injection (for chords and “hold shift” behaviors like panBoost).
 
 **Inputs (two supported shapes)**
@@ -392,7 +409,7 @@ Low-level key event injection (for chords and “hold shift” behaviors like pa
 
 ---
 
-### 7.11 `vision.capture`
+### 7.13 `vision.capture`
 Capture a screenshot of the full view or a subsection.
 
 **Inputs**
@@ -418,7 +435,7 @@ Capture a screenshot of the full view or a subsection.
 
 ---
 
-### 7.12 `vision.captureSequence`
+### 7.14 `vision.captureSequence`
 Capture multiple frames across time, either by stepping or by sampling.
 
 **Inputs**
@@ -437,7 +454,7 @@ Capture multiple frames across time, either by stepping or by sampling.
 
 ---
 
-### 7.13 `watch.create`
+### 7.15 `watch.create`
 Create a watch that emits events when:
 - every `everyTicks`, OR
 - when a JSON pointer value changes
@@ -460,7 +477,7 @@ Watches are processed server-side (polling `getState()`), and generate events in
 
 ---
 
-### 7.14 `watch.cancel`
+### 7.16 `watch.cancel`
 Cancel a watch.
 
 **Inputs**
@@ -472,7 +489,7 @@ Cancel a watch.
 
 ---
 
-### 7.15 `events.poll`
+### 7.17 `events.poll`
 Explicitly poll for events since a cursor.
 
 **Inputs**

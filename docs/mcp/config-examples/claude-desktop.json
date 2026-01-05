@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "lemmings": {
+      "command": "node",
+      "args": ["C:\\path\\to\\LemmingsJS-MIDI\\mcp\\server.js"],
+      "env": {
+        "LEMMINGS_MCP_BASE_URL": "https://localhost:8080",
+        "LEMMINGS_MCP_PATH": "/?e2e=1"
+      }
+    }
+  }
+}

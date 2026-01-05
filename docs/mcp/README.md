@@ -9,6 +9,7 @@ Files:
 - `docs/mcp/protocol-v2.md`
 - `docs/mcp/protocol-mappings.json`
 - `docs/mcp/call-examples.md`
+- `docs/mcp/publishing.md`
 
 ## Server usage
 - Start the game server: `npm run start-https` (serves `https://localhost:8080`).
@@ -21,11 +22,17 @@ Files:
 - Codex CLI: configure a stdio MCP server that runs `node mcp/server.js`.
 - Claude Code: configure a stdio MCP server that runs `node mcp/server.js`.
 - LM Studio: use stdio with `node mcp/server.js` (HTTP transport is not wired up yet).
+- Claude Desktop: configure a stdio MCP server that runs `node mcp/server.js`.
+- VS Code: configure a stdio MCP server that runs `node mcp/server.js`.
 
 ## Client compatibility tracking
 - Matrix: `docs/mcp/client-compatibility.json`
 - Examples: `docs/mcp/config-examples/`
 - Check: `npm run check-mcp-clients`
+
+## Publishing
+- MCPB templates: `mcpb/`
+- Publishing steps: `docs/mcp/publishing.md`
 
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).

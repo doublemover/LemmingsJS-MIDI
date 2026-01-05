@@ -1,0 +1,32 @@
+{
+  "manifest_version": "0.3",
+  "name": "your-server",
+  "version": "1.0.0",
+  "description": "One-line description of what this extension does",
+  "author": {
+    "name": "Your Name",
+    "email": "you@example.com",
+    "url": "https://github.com/yourname"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "server/index.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/server/index.js"],
+      "env": {
+        "LOG_LEVEL": "info",
+        "API_KEY": "${user_config.api_key}"
+      }
+    }
+  },
+  "user_config": {
+    "api_key": {
+      "type": "string",
+      "title": "API Key",
+      "description": "API key for the upstream service (stored securely by the client)",
+      "sensitive": true,
+      "required": true
+    }
+  }
+}

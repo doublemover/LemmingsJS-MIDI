@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "lemmings": {
+      "type": "stdio",
+      "command": "node",
+      "args": ["${workspaceFolder}/mcp/server.js"],
+      "env": {
+        "LEMMINGS_MCP_BASE_URL": "https://localhost:8080",
+        "LEMMINGS_MCP_PATH": "/?e2e=1"
+      }
+    }
+  }
+}

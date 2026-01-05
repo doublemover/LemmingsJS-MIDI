@@ -1,0 +1,25 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.doublemover/lemmings-mcp",
+  "title": "Lemmings MCP",
+  "description": "MCP server for LemmingsJS-MIDI automation and inspection",
+  "version": "0.0.4",
+  "repository": {
+    "url": "https://github.com/doublemover/LemmingsJS-MIDI",
+    "source": "github"
+  },
+  "packages": [
+    {
+      "registryType": "mcpb",
+      "identifier": "https://github.com/doublemover/LemmingsJS-MIDI/releases/download/v0.0.4/lemmings-mcp.mcpb",
+      "fileSha256": "PUT_SHA256_OF_MCPB_HERE",
+      "transport": { "type": "stdio" }
+    }
+  ],
+  "_meta": {
+    "io.modelcontextprotocol.registry/publisher-provided": {
+      "tool": "manual",
+      "notes": "Update identifier/fileSha256 before publishing."
+    }
+  }
+}

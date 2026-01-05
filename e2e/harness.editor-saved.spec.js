@@ -21,7 +21,11 @@ const bootEditor = async (page, options = {}) => {
   } else {
     await page.addInitScript(() => {
       try {
-        window.localStorage?.clear?.();
+        const key = '__e2eStorageCleared';
+        if (!window.sessionStorage?.getItem?.(key)) {
+          window.localStorage?.clear?.();
+          window.sessionStorage?.setItem?.(key, 'true');
+        }
       } catch (error) {}
     });
   }

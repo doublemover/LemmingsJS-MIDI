@@ -1,4 +1,5 @@
 import { EditorLevel } from './EditorLevel.js';
+import { createEntry as createEditorEntry } from './EditorEntryFactory.js';
 
 const HEADER_NUMERIC_KEYS = new Set([
   'LEMMINGS',
@@ -73,10 +74,6 @@ function parseKeyValue(line) {
   return { key, value };
 }
 
-function createEntry() {
-  return { props: {}, order: [], unknownLines: [] };
-}
-
 function createGroup() {
   return { props: {}, order: [], terrains: [], unknownLines: [] };
 }
@@ -145,13 +142,13 @@ class NxlvParser {
           stack.push({ type: 'SKILLSET', data: { skills: new Map(), unknownLines: [] } });
           break;
         case 'TERRAIN':
-          stack.push({ type: 'TERRAIN', data: createEntry() });
+          stack.push({ type: 'TERRAIN', data: createEditorEntry({}, null, { prefix: 't' }) });
           break;
         case 'GADGET':
-          stack.push({ type: 'GADGET', data: createEntry() });
+          stack.push({ type: 'GADGET', data: createEditorEntry({}, null, { prefix: 'g' }) });
           break;
         case 'STEEL':
-          stack.push({ type: 'STEEL', data: createEntry() });
+          stack.push({ type: 'STEEL', data: createEditorEntry({}, null, { prefix: 's' }) });
           break;
         case 'TERRAINGROUP':
           stack.push({ type: 'TERRAINGROUP', data: createGroup() });

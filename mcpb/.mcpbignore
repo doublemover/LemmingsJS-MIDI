@@ -1,0 +1,13 @@
+.git/
+.github/
+.vscode/
+coverage/
+docs/
+e2e/
+test/
+tests/
+**/*.map
+**/*.log
+**/*.md
+node_modules/.cache/
+playwright-report/

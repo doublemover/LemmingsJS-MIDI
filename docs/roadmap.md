@@ -177,7 +177,44 @@ Notes:
 
 ## Phase 16: MCP v2 docs, examples, and compatibility checks
 - [x] Document compact defaults, delta usage, and event modes in `docs/mcp/`.
-- [x] Update client call examples/configs for the short tool names and default
+- [x] Update client call examples/configs for the short tool names and default  
   compact preset.
-- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new
+- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new  
   defaults and update the compatibility matrix.
+
+## Phase 17: MCP client compatibility + MCPB publishing readiness
+- [x] Fold LM Studio into the MCP config examples and add Claude Desktop + VS
+  Code examples.
+- [x] Add MCPB bundle templates (manifest, server registry entry, mcpb ignore)
+  and document the packaging steps.
+- [x] Add a disabled-by-default CI workflow for MCPB validation (Windows/macOS).
+- [x] Update MCP docs with publishing/registry checklist and compatibility notes.
+
+## Phase 18: MCP editor.apply tool (editor mutation API)
+- [x] Add stable UID support for editor entries and expose them in editor state.
+- [x] Implement `editor.apply` in the E2E harness (ops, batching, history,
+  preview refresh, validation, export).
+- [x] Add `editor.apply` tool in MCP server + schema + docs and resources export.
+- [x] Add tests for editor.apply flows (new/load/save/export, entry CRUD,
+  selection, history, validate).
+
+## Phase 19: Editor audit fixes + parity guardrails
+- [ ] Load `terrainGroups` into editor preview/runtime or warn as unsupported.
+- [ ] Preserve section-local comments in NXLV round-trips.
+- [ ] Add validation caps for width/height/brush/steel sizes and unsafe header
+  values; clarify INFINITE time handling.
+- [ ] Hide/disable or implement unsupported inspector fields (rotate, flip H,
+  resize, one-way) and add warnings for gadget-only props in classic mode.
+- [ ] Add editor UX safety upgrades (history cap, dirty indicator, undo/redo
+  buttons, preview refresh label coalescing).
+
+## Phase 20: Procgen terrain stamping + assets
+- [ ] Add procgen asset manager (terrain/object categorization from packs).
+- [ ] Replace pixel writes with terrain-piece stamping and chunk streaming.
+- [ ] Add decoration and hazard placement with counterplay rules.
+
+## Phase 21: Procgen AI director + solvability
+- [ ] Add environment sensing primitives (drop/wall/gap/hazard scans).
+- [ ] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
+  blocker coordination).
+- [ ] Add pacing/budget controls plus debug overlay for AI decisions.
