@@ -19,8 +19,9 @@ const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
 const PROCGEN_GROUND_HEIGHT = 4;
-const PROCGEN_ENTRANCE_OFFSET = 56;
-const PROCGEN_INITIAL_GROUND_WIDTH = 220;
+const PROCGEN_ENTRANCE_OFFSET = 80;
+const PROCGEN_INITIAL_GROUND_WIDTH = 280;
+const PROCGEN_ENTRANCE_CLEARANCE = 28;
 
 const shuffle = (list) => {
   for (let i = list.length - 1; i > 0; i--) {
@@ -123,7 +124,7 @@ const init = async () => {
     view.gameFactory.fileProvider,
     config
   );
-  const { level: editorLevel } = buildProcgenEditorLevel(styleName);
+  const { level: editorLevel, entranceX, entranceY } = buildProcgenEditorLevel(styleName);
   const level = await loadEditorLevel(
     editorLevel,
     config,
@@ -163,6 +164,9 @@ const init = async () => {
     options: {
       groundHeight: PROCGEN_GROUND_HEIGHT,
       initialGroundWidth: PROCGEN_INITIAL_GROUND_WIDTH,
+      entranceX,
+      entranceY,
+      entranceClearance: PROCGEN_ENTRANCE_CLEARANCE,
       aiDebugOverlay
     }
   });

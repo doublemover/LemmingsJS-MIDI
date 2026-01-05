@@ -65,13 +65,16 @@ class ProcgenController {
     this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
     this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
     this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
-    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 12;
+    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 6;
     this.aiScanAhead = Number.isFinite(options.aiScanAhead) ? options.aiScanAhead : 24;
     this.aiWallHeight = Number.isFinite(options.aiWallHeight) ? options.aiWallHeight : 10;
     this.aiHazardDistance = Number.isFinite(options.aiHazardDistance) ? options.aiHazardDistance : 18;
     this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
     this.aiDebugOverlay = options.aiDebugOverlay === true;
-    this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 24;
+    this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 12;
+    this.entranceX = Number.isFinite(options.entranceX) ? options.entranceX : null;
+    this.entranceY = Number.isFinite(options.entranceY) ? options.entranceY : null;
+    this.entranceClearance = Number.isFinite(options.entranceClearance) ? options.entranceClearance : 24;
   }
 
   start() {
@@ -194,28 +197,28 @@ class ProcgenController {
   _initAiDirector() {
     this._aiDecisionInterval = Math.max(1, Math.floor(this.aiDecisionInterval));
     this._aiBudgetMax = {
-      builder: 6,
+      builder: 8,
       floater: 6,
-      bash: 3,
-      mine: 3,
+      bash: 4,
+      mine: 2,
       dig: 3,
-      blocker: 2
+      blocker: 3
     };
     this._aiBudget = {
-      builder: 4,
-      floater: 3,
-      bash: 2,
-      mine: 2,
+      builder: 5,
+      floater: 4,
+      bash: 3,
+      mine: 1,
       dig: 2,
-      blocker: 1
+      blocker: 2
     };
     this._aiBudgetRegen = {
-      builder: 0.5,
-      floater: 0.4,
-      bash: 0.2,
+      builder: 1.0,
+      floater: 0.8,
+      bash: 0.4,
       mine: 0.2,
-      dig: 0.2,
-      blocker: 0.1
+      dig: 0.3,
+      blocker: 0.2
     };
   }
 
@@ -235,6 +238,8 @@ class ProcgenController {
     if (tick - this._aiLastDecisionTick < this._aiDecisionInterval) return;
     this._aiLastDecisionTick = tick;
 
+    this._applyEdgeBlockers(tick);
+
     const lemming = this._getFollowLemming();
     if (!lemming) return;
     if (this._shouldSkipAiFor(lemming, tick)) return;
@@ -246,6 +251,28 @@ class ProcgenController {
       this._aiLastDecision = { tick, action: null, scan };
     }
     this._updateDebugOverlay();
+  }
+
+  _applyEdgeBlockers(tick) {
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length) return;
+    const ground = this.level?.groundMask;
+    if (!ground) return;
+    for (const lem of lems) {
+      if (!lem || lem.removed || lem.disabled || lem.lookRight) continue;
+      const actionName = lem.action?.getActionName?.() || '';
+      if (actionName && actionName !== 'walking') continue;
+      if (this._shouldSkipAiFor(lem, tick)) continue;
+      const drop = this._getDropAt(ground, Math.floor(lem.x) - 1, Math.floor(lem.y), this.maxDrop);
+      if (drop > 0 && this._canSpend('blocker')) {
+        if (manager.doLemmingAction(lem, SkillTypes.BLOCKER)) {
+          this._noteAiAction(lem, tick, 32);
+          return;
+        }
+        this._refundBudget('blocker');
+      }
+    }
   }
 
   _scanAhead(lemming) {
@@ -642,7 +669,7 @@ class ProcgenController {
     const structure = this._getStructurePlan();
     while (cursor < maxX) {
       const remaining = maxX - cursor;
-      const surfaceY = this._nextSurfaceY(structure, floorY);
+      let surfaceY = this._nextSurfaceY(structure, floorY);
       const minHeight = structure?.type === 'pillar'
         ? Math.max(this.groundHeight * 3, 8)
         : this.groundHeight;
@@ -651,6 +678,7 @@ class ProcgenController {
         : 1;
       const piece = this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
+      surfaceY = this._clampSurfaceForEntrance(surfaceY, piece, cursor);
       const destX = cursor - piece.bounds.minX;
       const destY = surfaceY - piece.bounds.maxY;
       this.stamper.stamp(piece, destX, destY);
@@ -718,6 +746,18 @@ class ProcgenController {
     }
     plan.surface = surface;
     return Math.max(0, Math.min(maxSurface, surface));
+  }
+
+  _clampSurfaceForEntrance(surfaceY, piece, cursorX) {
+    if (!Number.isFinite(this.entranceY) || !Number.isFinite(this.entranceX)) {
+      return surfaceY;
+    }
+    if (!piece?.bounds) return surfaceY;
+    const span = Math.max(80, piece.bounds.width * 2);
+    if (Math.abs(cursorX - this.entranceX) > span) return surfaceY;
+    const clearance = Math.max(12, this.entranceClearance);
+    const minSurface = this.entranceY + clearance;
+    return Math.max(surfaceY, minSurface);
   }
 
   _placeDecoration(baseX, baseY, basePiece) {
