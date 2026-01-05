@@ -67,4 +67,73 @@ describe('scripts/check-undefined.js', function () {
     expect(result.status).to.equal(0);
     expect(result.stdout).to.match(/No undefined calls/);
   });
+
+  it('skips node_modules, .git, and jquery.js when scanning the tree', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    const jsDir = path.join(dir, 'js');
+    fs.mkdirSync(jsDir);
+    fs.mkdirSync(path.join(jsDir, 'sub'));
+
+    fs.writeFileSync(path.join(jsDir, 'main.js'), 'function ok(){};');
+    fs.writeFileSync(
+      path.join(jsDir, 'sub', 'helper.js'),
+      [
+        'class Foo {',
+        '  jump() {}',
+        '  bar = () => {};',
+        '}',
+        'const arrow = () => {};',
+        'const named = function named() {};',
+        'const arr = [,];',
+        'with (Math) { }'
+      ].join('\n')
+    );
+    fs.writeFileSync(path.join(jsDir, 'jquery.js'), 'missingFromJquery();');
+
+    fs.mkdirSync(path.join(dir, 'node_modules'));
+    fs.mkdirSync(path.join(dir, '.git'));
+    fs.writeFileSync(
+      path.join(dir, 'node_modules', 'evil.html'),
+      '<script>missingCall()</script>'
+    );
+    fs.writeFileSync(
+      path.join(dir, '.git', 'evil.html'),
+      '<script>missingCall()</script>'
+    );
+    fs.writeFileSync(
+      path.join(dir, 'index.html'),
+      '<html><body><script>ok(); this.jump(); console.log("ok"); setTimeout(function(){},0);</script></body></html>'
+    );
+    fs.writeFileSync(
+      path.join(dir, 'bad.html'),
+      '<html><body><script>const = 1;</script></body></html>'
+    );
+
+    const result = spawnSync('node', [script], { cwd: dir, encoding: 'utf8' });
+    expect(result.status).to.equal(0);
+    expect(result.stdout).to.match(/No undefined calls/);
+  });
+
+  it('returns success when JS cannot be parsed', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    const file = path.join(dir, 'bad.js');
+    fs.writeFileSync(file, 'const = 1;');
+
+    const result = spawnSync('node', [script, file], { encoding: 'utf8' });
+    expect(result.status).to.equal(0);
+    expect(result.stdout).to.match(/No undefined calls/);
+  });
+
+  it('reports undefined methods on non-builtin objects', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'undef-'));
+    const file = path.join(dir, 'missing-method.js');
+    fs.writeFileSync(file, 'const obj = {}; obj.missing(); ({}).alsoMissing();');
+
+    const result = spawnSync('node', [script, file], {
+      cwd: dir,
+      encoding: 'utf8'
+    });
+    expect(result.status).to.not.equal(0);
+    expect(result.stderr || result.stdout).to.match(/missing|alsoMissing/);
+  });
 });

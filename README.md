@@ -1,5 +1,5 @@
 # LemmingsJS-MIDI
-![Coverage](https://img.shields.io/badge/coverage-96.89%25-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-99.51%25-brightgreen)
 
 High-performance JavaScript port of Lemmings with WebMIDI sequencing support.
 

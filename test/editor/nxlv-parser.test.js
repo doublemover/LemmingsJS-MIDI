@@ -1,5 +1,6 @@
 import assert from 'assert';
-import { NxlvParser } from '../../js/editor/NxlvParser.js';
+import { NxlvParser, __test__ } from '../../js/editor/NxlvParser.js';
+import { EditorLevel } from '../../js/editor/EditorLevel.js';
 
 describe('NxlvParser', function () {
   it('parses headers, sections, and groups', function () {
@@ -120,6 +121,54 @@ describe('NxlvParser', function () {
     const level = NxlvParser.parse(text);
     assert.strictEqual(level.terrains.length, 1);
     assert.strictEqual(level.terrains[0].props.X, 1);
+  });
+
+  it('initializes skillset unknown lines when missing', function () {
+    const original = Object.getOwnPropertyDescriptor(EditorLevel.prototype, 'skillsetUnknownLines');
+    let firstAssignment = true;
+    Object.defineProperty(EditorLevel.prototype, 'skillsetUnknownLines', {
+      configurable: true,
+      get() { return this.__skillsetUnknownLines; },
+      set(value) {
+        if (firstAssignment) {
+          this.__skillsetUnknownLines = null;
+          firstAssignment = false;
+          return;
+        }
+        this.__skillsetUnknownLines = value;
+      }
+    });
+    try {
+      const text = [
+        '$SKILLSET',
+        '  EXTRA note',
+        '$END'
+      ].join('\n');
+      const level = NxlvParser.parse(text);
+      assert.ok(Array.isArray(level.skillsetUnknownLines));
+      assert.ok(level.skillsetUnknownLines.some(line => line.includes('EXTRA')));
+    } finally {
+      if (original) {
+        Object.defineProperty(EditorLevel.prototype, 'skillsetUnknownLines', original);
+      } else {
+        delete EditorLevel.prototype.skillsetUnknownLines;
+      }
+      delete EditorLevel.prototype.__skillsetUnknownLines;
+    }
+  });
+
+  it('captures unknown section comments and fallback lines', function () {
+    const text = [
+      '$UNKNOWN_SECTION',
+      '# unknown comment',
+      '$END'
+    ].join('\n');
+    const level = NxlvParser.parse(text);
+    assert.strictEqual(level.unknownSections[0].lines[0], '# unknown comment');
+
+    const fallbackLevel = { unknownLines: [] };
+    __test__.pushUnknownLine(fallbackLevel, { type: 'TERRAIN', data: {} }, '# fallback');
+    assert.ok(fallbackLevel.unknownLines.includes('# fallback'));
   });
 
   it('handles empty input and stray end markers', function () {

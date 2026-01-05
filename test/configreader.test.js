@@ -81,6 +81,17 @@ describe('ConfigReader', function () {
     expect(result).to.equal(undefined);
   });
 
+  it('rejects when loading config fails', async function () {
+    const err = new Error('boom');
+    const reader = new ConfigReader(Promise.reject(err));
+    try {
+      await reader.configs;
+      expect.fail('expected rejection');
+    } catch (caught) {
+      expect(caught).to.equal(err);
+    }
+  });
+
   it('rejects when config is missing and handles legacy odd table flag', async function () {
     const json = JSON.stringify([
       {

@@ -98,4 +98,59 @@ describe('GroundRenderer small maps', function() {
       col,   BLACK
     ]);
   });
+
+  it('clears pixels when erasing upside down', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+
+    const pal = makePalette(color32(5, 10, 15));
+    const terrainImages = [makeTerrain([1, 1, 1, 1], 2, 2, pal)];
+    const levelReader = {
+      levelWidth: 2,
+      levelHeight: 2,
+      terrains: [{ id: 0, x: 0, y: 0, drawProperties: new DrawProperties(true, false, false, true) }]
+    };
+
+    const gr = new GroundRenderer();
+    gr.createGroundMap(levelReader, terrainImages);
+
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(2, 2);
+    display.setBackground(gr.img.getData());
+
+    const BLACK = color32(0, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      BLACK, BLACK,
+      BLACK, BLACK
+    ]);
+  });
+
+  it('skips missing images and handles null palettes', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+
+    const terrainImages = [{
+      width: 1,
+      height: 1,
+      frames: [Uint8Array.from([0x80])],
+      palette: null
+    }];
+    const levelReader = {
+      levelWidth: 1,
+      levelHeight: 1,
+      terrains: [
+        { id: 0, x: 0, y: 0, drawProperties: new DrawProperties(false, false, false, false) },
+        { id: 1, x: 0, y: 0, drawProperties: new DrawProperties(false, false, false, false) }
+      ]
+    };
+
+    const gr = new GroundRenderer();
+    gr.createGroundMap(levelReader, terrainImages);
+
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(1, 1);
+    display.setBackground(gr.img.getData());
+    const BLACK = color32(0, 0, 0);
+    expect(display.buffer32[0]).to.equal(BLACK);
+  });
 });

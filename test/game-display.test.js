@@ -153,6 +153,26 @@ describe('GameDisplay', function() {
     expect(calls[0][5]).to.equal(255);
   });
 
+  it('exposes drawCorner test hook', function() {
+    const display = {
+      drawRect(...args) { this.args = args; },
+      onMouseDown: new EventHandler(),
+      onMouseMove: new EventHandler(),
+      drawCornerRect() {},
+      drawDashedRect() {}
+    };
+    const lemmingManager = { render() {}, renderDebug() {}, getNearestLemming() { return null; }, getSelectedLemming() { return null; } };
+    const level = { render() {}, renderDebug() {} };
+    const objectManager = { render() {} };
+    const triggerManager = { renderDebug() {} };
+    const gd = new GameDisplay({}, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+
+    GameDisplay.__test__.drawCorner(gd, 1, 2, 3, 4, 5);
+
+    expect(display.args).to.eql([1, 2, 2, 2, 3, 4, 5, true]);
+  });
+
   it('renders debug overlays and advances dash offset', function() {
     const display = {
       drawDashedRect(...args) { this.args = args; }
@@ -169,6 +189,54 @@ describe('GameDisplay', function() {
 
     expect(display.args).to.have.length(6);
     expect(gd._dashOffset).to.equal(1);
+  });
+
+  it('skips input when disabled and uses fallback hover scheduling', function() {
+    const display = makeDisplay();
+    let queued = 0;
+    let nearestCalls = 0;
+    const game = {
+      inputEnabled: false,
+      queueCommand() { queued += 1; },
+      gameGui: { backgroundChanged: false, gameTimeChanged: false }
+    };
+    const lemmingManager = {
+      render() {},
+      renderDebug() {},
+      getNearestLemming() { nearestCalls += 1; return makeLemming(2); },
+      getSelectedLemming() { return null; }
+    };
+    const level = { render() {}, renderDebug() {} };
+    const objectManager = { render() {} };
+    const triggerManager = { renderDebug() {} };
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.setGuiDisplay(display);
+
+    display.onMouseDown.trigger({ x: 1, y: 2 });
+    display.onMouseMove.trigger({ x: 3, y: 4 });
+    expect(queued).to.equal(0);
+
+    let distanceCalls = 0;
+    const prev = makeLemming(1);
+    prev.getClickDistance = () => { distanceCalls += 1; return -1; };
+    gd.hoverLemming = prev;
+    gd._hoverX = 1;
+    gd._hoverY = 1;
+    gd._updateHover();
+    expect(distanceCalls).to.equal(1);
+    expect(nearestCalls).to.equal(1);
+
+    const originalWindow = globalThis.window;
+    globalThis.window = {};
+    let scheduled = 0;
+    gd._updateHover = () => { scheduled += 1; };
+    gd._hoverRafId = 0;
+    gd._scheduleHoverUpdate();
+    expect(scheduled).to.equal(1);
+    gd._hoverRafId = 123;
+    gd._scheduleHoverUpdate();
+    expect(scheduled).to.equal(1);
+    globalThis.window = originalWindow;
   });
 
   it('skips rendering when no display is assigned', function() {

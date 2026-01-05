@@ -115,11 +115,16 @@ const deleteLevel = (storage = getDefaultStorage(), id) => {
   return true;
 };
 
+const __test__ = {
+  compareSavedLevels
+};
+
 export {
   STORAGE_KEYS,
   createLevelId,
   listSavedLevels,
   loadSavedLevel,
   saveLevel,
-  deleteLevel
+  deleteLevel,
+  __test__
 };

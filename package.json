@@ -54,17 +54,10 @@
     "exclude": [
       "coverage/**",
       "test/**",
-      "scripts/**",
-      "js/app/**",
-      "js/input/**",
-      "js/render/**",
       "js/xbrz/**",
       "js/vendor/**",
       "js/vendor/jquery.js",
-      "js/vendor/webmidi.js",
-      "js/game/GameGui.js",
-      "js/game/GameDisplay.js",
-      "js/game/GameView.js"
+      "js/vendor/webmidi.js"
     ]
   },
   "repository": {

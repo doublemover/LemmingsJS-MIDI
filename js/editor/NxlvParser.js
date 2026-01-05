@@ -19,6 +19,7 @@ const HEADER_BOOLEAN_KEYS = new Set([
 const ENTRY_NUMERIC_KEYS = new Set([
   'X',
   'Y',
+  'PIECE',
   'ROTATE',
   'WIDTH',
   'HEIGHT',
@@ -240,3 +241,9 @@ class NxlvParser {
 }
 
 export { NxlvParser };
+
+const __test__ = {
+  pushUnknownLine
+};
+
+export { __test__ };

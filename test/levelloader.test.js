@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { readFileSync } from 'fs';
 import { Lemmings, setDependency } from './helpers/lemmings.js';
 import '../js/LemmingsBootstrap.js';
+import { __test__ as LevelLoaderTest } from '../js/level/LevelLoader.js';
 
 // Silence debug output
 globalThis.lemmings = { game: { showDebug: false } };
@@ -215,6 +216,26 @@ describe('LevelLoader', function () {
     setDependency('loadSteelSprites', origLoad);
 
     expectLevelProperties(level, baseProps);
+  });
+
+  it('merges odd table properties and expands skill lists', function () {
+    const base = {
+      levelName: 'Base',
+      releaseRate: 1,
+      releaseCount: 2,
+      needCount: 3,
+      timeLimit: 4,
+      skills: [1]
+    };
+    const odd = { skills: [9, 8, 7] };
+    const merged = LevelLoaderTest.mergeLevelProperties(base, odd);
+    expect(merged.skills).to.eql([9, 8, 7]);
+
+    const mergedNoSkills = LevelLoaderTest.mergeLevelProperties(
+      { ...base, skills: null },
+      { skills: [5, 6] }
+    );
+    expect(mergedNoSkills.skills).to.eql([5, 6]);
   });
 
 });

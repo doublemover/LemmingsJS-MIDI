@@ -30,6 +30,7 @@ describe('Mask', function() {
         expect(mask.at(x, y)).to.equal(expected[y][x]);
       }
     }
+    expect(mask.getMask()).to.have.length(8);
     expect(mask.at(-1, 0)).to.equal(false);
     expect(mask.at(4, 0)).to.equal(false);
     expect(mask.at(0, 2)).to.equal(false);

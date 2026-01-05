@@ -485,7 +485,7 @@ class MidiMapping {
         .map(n => clampNoteToRange(n, noteRange));
       note = notes[0];
     } else if (sfx.degree != null) {
-      const degree = sfx.degree ?? noteDefaults.degree ?? 0;
+      const degree = sfx.degree;
       const octave = sfx.octave ?? noteDefaults.octave ?? 4;
       note = buildScaleNote(degree, scale, octave);
       note = clampNoteToRange(note, noteRange);
@@ -616,6 +616,7 @@ const __test__ = {
   mergeConfig,
   resolvePositionMappings,
   resolveAxisValues,
+  resolveAxisValue,
   resolveScale,
   quantizeToScale,
   clampNoteToRange,

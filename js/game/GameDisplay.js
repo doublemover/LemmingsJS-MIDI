@@ -170,6 +170,12 @@ class GameDisplay {
     this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
   }
 
+  static __test__ = {
+    drawCorner(instance, x, y, r, g, b) {
+      instance.#drawCorner(x, y, r, g, b);
+    }
+  };
+
   dispose() {
     if (this.display && this._mouseHandler) {
       this.display.onMouseDown.off(this._mouseHandler);

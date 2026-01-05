@@ -74,6 +74,10 @@ describe('DisplayImage coverage', function() {
     expect(display.getWidth()).to.equal(0);
     expect(display.getHeight()).to.equal(0);
 
+    const coldDisplay = new DisplayImage(stage);
+    coldDisplay.setPixel(0, 0, 1, 2, 3);
+
+    display.initSize(2, 2);
     display.initSize(2, 2);
     expect(display.worldDataSize).to.eql({ width: 2, height: 2 });
     display.worldDataSize = { width: 3, height: 4 };
@@ -119,6 +123,7 @@ describe('DisplayImage coverage', function() {
     display.initSize(6, 6);
     display.clear(0);
     display.drawRect(1, 1, 2, 2, 10, 20, 30, true);
+    display.drawRect(0, 0, 1, 1, 10, 20, 30, false);
     display.drawHorizontalLine(4, 2, 2, 10, 20, 30);
     display.drawVerticalLine(2, 4, 2, 10, 20, 30);
     display.drawStippleRect(0, 0, 2, 2);
@@ -126,14 +131,24 @@ describe('DisplayImage coverage', function() {
     display.drawCornerRect(0, 0, { width: 4, height: 4 }, 1, 2, 3, 1, false, 0);
     display.drawCornerRect(1, 1, 3, 4, 5, 6, 2, true, 2);
 
+    const tinyFrame = makeFrame(1, 1);
+    display.drawFrame(tinyFrame, 0, 0);
+    display.drawFrameCovered(tinyFrame, 0, 0, 1, 2, 3);
+
     const mask = makeFrame(2, 2, {
       mask: Uint8Array.from([1, 0, 1, 1]),
       offsetX: -1,
       offsetY: 0
     });
     display.drawMask(mask, 1, 1);
+    display.drawMask(mask, -10, 1);
+    display.drawMask(mask, 1, -10);
+
+    const coldMaskDisplay = new DisplayImage(stage);
+    coldMaskDisplay.drawMask(mask, 1, 1);
 
     display.drawDashedRect(1, 1, 2, 1, 3, 0, 0xFFFFFFFF, 0xFF000000);
+    display.drawDashedRect(1, 1, 2, 1, 3, 0, 255, Number.NaN);
     drawDashedRect(display, 0, 0, 1, 1);
     drawMarchingAntRect(null, 0, 0, 1, 1);
 
@@ -156,8 +171,15 @@ describe('DisplayImage coverage', function() {
       spans,
       bounds: { minY: 0, maxY: 2 }
     });
+    const frameNoBounds = makeFrame(3, 3, {
+      offsetX: -1,
+      spans
+    });
 
     display._blit(frame, 0, 0, { checkGround: false });
+    display._blit(frameNoBounds, 0, 0, { checkGround: false });
+    display._blit(frame, 0, 0, { checkGround: false, upsideDown: true });
+    display._blit(frame, 0, -10, { checkGround: false });
 
     const skipFrame = makeFrame(3, 3, {
       offsetX: 10,
@@ -192,6 +214,7 @@ describe('DisplayImage coverage', function() {
       offsetX: -1
     });
     display._blit(sparseFrame, 0, 0);
+    display._blit(sparseFrame, 0, -5);
     display._blit(sparseFrame, 0, 0, {
       nullColor32: 0x12345678,
       upsideDown: true
@@ -201,6 +224,11 @@ describe('DisplayImage coverage', function() {
       noOverwrite: true,
       groundMask
     });
+    display._blit(sparseFrame, 0, 0, {
+      checkGround: true,
+      onlyOverwrite: true,
+      groundMask: { hasGroundAt: () => false }
+    });
 
     display.groundMask = groundMask;
     display.drawFrameFlags(sparseFrame, 0, 0, {
@@ -208,6 +236,8 @@ describe('DisplayImage coverage', function() {
       noOverwrite: false,
       isUpsideDown: true
     });
+
+    display.drawFrameResized(frame, 0, 0, 2, 2);
   });
 
   it('scales frames with multiple algorithms', function() {
@@ -250,6 +280,116 @@ describe('DisplayImage coverage', function() {
     scaleXbrz(frame, 2, 2, {});
     scaleHqx(frame, 3, 3, { dest32: display.buffer32, destW: 4, destH: 4, baseX: 0, baseY: 0 });
     scaleHqx(frame, 2, 2, {});
+
+    const maskedFrame = makeFrame(2, 2, {
+      buffer: Uint32Array.from([1, 2, 3, 4]),
+      mask: Uint8Array.from([1, 0, 1, 1])
+    });
+    scaleXbrz(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: 0x10203040,
+      checkGround: true,
+      noOverwrite: true,
+      groundMask: { hasGroundAt: () => true }
+    });
+    scaleXbrz(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: -1,
+      baseY: 0
+    });
+    scaleXbrz(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: -1
+    });
+    scaleXbrz(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: 0x10203040,
+      checkGround: true,
+      onlyOverwrite: true,
+      groundMask: { hasGroundAt: () => false }
+    });
+    scaleXbrz(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      upsideDown: true
+    });
+    scaleHqx(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: 0x10203040,
+      checkGround: true,
+      noOverwrite: true,
+      groundMask: { hasGroundAt: () => true }
+    });
+    scaleHqx(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: 0x10203040,
+      checkGround: true,
+      onlyOverwrite: true,
+      groundMask: { hasGroundAt: () => false }
+    });
+    scaleHqx(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: -1
+    });
+    scaleHqx(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: -1,
+      baseY: 0
+    });
+    scaleHqx(maskedFrame, 4, 4, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      upsideDown: true
+    });
+
+    scaleNearest(maskedFrame, 2, 2, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: 0,
+      nullColor32: 0x10101010
+    });
+    scaleNearest(maskedFrame, 2, 2, {
+      dest32: display.buffer32,
+      destW: 4,
+      destH: 4,
+      baseX: 0,
+      baseY: -1,
+      upsideDown: true
+    });
   });
 
   it('disposes event handlers safely', function() {

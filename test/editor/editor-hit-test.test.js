@@ -14,13 +14,27 @@ describe('EditorHitTest', () => {
     expect(bounds).to.deep.equal({ x: 10, y: 20, width: 12, height: 14 });
 
     const boundsFromProps = getEntryBounds({ props: { X: 1, Y: 2, WIDTH: 5, HEIGHT: 6 } }, meta);
-    expect(boundsFromProps).to.deep.equal({ x: 1, y: 2, width: 5, height: 6 });
+    expect(boundsFromProps).to.deep.equal({ x: 1, y: 2, width: 12, height: 14 });
+
+    const boundsFromPropsAllowed = getEntryBounds(
+      { props: { X: 1, Y: 2, WIDTH: 5, HEIGHT: 6 } },
+      meta,
+      { allowEntrySize: true }
+    );
+    expect(boundsFromPropsAllowed).to.deep.equal({ x: 1, y: 2, width: 5, height: 6 });
 
     const boundsFromOptions = getEntryBounds({ props: { X: 0, Y: 0 } }, {}, { widthFallback: 3, heightFallback: 4 });
     expect(boundsFromOptions).to.deep.equal({ x: 0, y: 0, width: 3, height: 4 });
 
     const boundsFromNull = getEntryBounds(null);
     expect(boundsFromNull).to.deep.equal({ x: 0, y: 0, width: 8, height: 8 });
+
+    const steelMeta = { isSteel: true, steelWidth: 6, steelHeight: 7, width: 20, height: 30 };
+    const steelBounds = getEntryBounds({ props: { X: 1, Y: 2 } }, steelMeta);
+    expect(steelBounds).to.deep.equal({ x: 1, y: 2, width: 6, height: 7 });
+
+    const fallbackSteel = getEntryBounds({ props: { X: 3, Y: 4 } }, { isSteel: true, steelWidth: 0, steelHeight: 0, width: 9, height: 10 });
+    expect(fallbackSteel).to.deep.equal({ x: 3, y: 4, width: 9, height: 10 });
   });
 
   it('tests bounds hits', () => {

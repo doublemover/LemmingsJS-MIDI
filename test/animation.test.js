@@ -48,6 +48,12 @@ describe('Animation.loadFromFileWithPaletteSwap', function () {
     expect(anim.getFrame(4)).to.equal('b');
   });
 
+  it('returns null when there are no frames', function () {
+    const anim = new Animation();
+    anim.frames = [];
+    expect(anim.getFrame(0)).to.equal(null);
+  });
+
   it('uses local index after restart when not looping', function () {
     const anim = new Animation(null, false);
     anim.frames = ['a', 'b', 'c'];

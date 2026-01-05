@@ -4,6 +4,8 @@ import {
   createTerrainEntry,
   createGadgetEntry,
   createSteelEntry,
+  ensureEntryUid,
+  ensureLevelEntryUids,
   setEntryProp,
   removeEntryAt
 } from '../../js/editor/EditorEntryFactory.js';
@@ -135,5 +137,30 @@ describe('EditorEntryFactory', () => {
     expect(removeEntryAt(level, 'terrain', 5)).to.equal(null);
     expect(removeEntryAt(level, 'gadget', -1)).to.equal(null);
     expect(removeEntryAt(null, 'terrain', 0)).to.equal(null);
+  });
+
+  it('assigns entry uids and skips null entries', () => {
+    expect(ensureEntryUid(null)).to.equal(null);
+    const level = new EditorLevel();
+    level.terrains = [{ props: {} }, { props: {}, uid: 't_keep' }];
+    level.gadgets = [{ props: {} }];
+    level.steel = [{ props: {} }];
+    level.terrainGroups = [{ terrains: [{ props: {} }] }];
+    ensureLevelEntryUids(level);
+    expect(level.terrains[0].uid).to.be.a('string');
+    expect(level.terrains[1].uid).to.equal('t_keep');
+    expect(level.gadgets[0].uid).to.be.a('string');
+    expect(level.steel[0].uid).to.be.a('string');
+    expect(level.terrainGroups[0].terrains[0].uid).to.be.a('string');
+  });
+
+  it('ignores null levels and non-array entry lists', () => {
+    expect(() => ensureLevelEntryUids(null)).to.not.throw();
+    const level = new EditorLevel();
+    level.terrains = null;
+    level.gadgets = {};
+    level.steel = undefined;
+    ensureLevelEntryUids(level);
+    expect(level.terrains).to.equal(null);
   });
 });

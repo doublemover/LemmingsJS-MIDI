@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { KeybindingRegistry } from '../../js/input/KeybindingRegistry.js';
+import { KeybindingRegistry, mergeKeybindingConfig } from '../../js/input/KeybindingRegistry.js';
 
 const makeEvent = (code, mods = {}) => ({
   code,
@@ -64,5 +64,54 @@ describe('KeybindingRegistry', () => {
     });
     const actions = registry.getActionsForEvent(makeEvent('ShiftLeft', { shift: true }));
     expect(actions).to.include('boost');
+  });
+
+  it('returns empty bindings when an action is missing', () => {
+    const registry = new KeybindingRegistry({ bindings: {} });
+    expect(registry.getBindingsForAction('nope')).to.eql([]);
+  });
+
+  it('normalizes invalid binding overrides to empty objects', () => {
+    const base = { version: 1, bindings: { action: 'KeyA' } };
+    const merged = mergeKeybindingConfig(base, { bindings: [] });
+    expect(merged.bindings).to.eql(base.bindings);
+  });
+
+  it('normalizes digit key tokens', () => {
+    const registry = new KeybindingRegistry({
+      bindings: {
+        actionBase: '1'
+      }
+    });
+    const actions = registry.getActionsForEvent(makeEvent('Digit1'));
+    expect(actions).to.include('actionBase');
+  });
+
+  it('ignores non-string binding entries', () => {
+    const registry = new KeybindingRegistry({
+      bindings: {
+        actionBase: 5
+      }
+    });
+    expect(registry.getBindingsForAction('actionBase')).to.eql([]);
+  });
+
+  it('skips invalid chords and missing event codes', () => {
+    const registry = new KeybindingRegistry({
+      bindings: {
+        actionBase: '+'
+      }
+    });
+    expect(registry.getActionsForEvent({})).to.eql([]);
+    expect(registry.getActionsForEvent({ code: 'KeyF24' })).to.eql([]);
+  });
+
+  it('keeps single-character tokens that are not alphanumeric', () => {
+    const registry = new KeybindingRegistry({
+      bindings: {
+        actionBase: '.'
+      }
+    });
+    expect(registry.getActionsForEvent(makeEvent('.'))).to.include('actionBase');
   });
 });

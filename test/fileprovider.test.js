@@ -276,6 +276,17 @@ describe('FileProvider', function () {
     assert.strictEqual(provider._cache.size, 0);
   });
 
+  it('getCacheStats reports cache counters', function () {
+    provider._cache.set('a', Promise.resolve('x'));
+    provider._cacheStats.localStorageBytes = 12;
+    provider._cacheStats.indexedDbBytes = 34;
+    assert.deepStrictEqual(provider.getCacheStats(), {
+      memoryEntries: 1,
+      localStorageBytes: 12,
+      indexedDbBytes: 34
+    });
+  });
+
   it('stores data in localStorage and reuses it', async function () {
     const url = rootPath + 'text.txt';
     const p1 = provider.loadString(url);
@@ -348,6 +359,121 @@ describe('FileProvider', function () {
     await p3;
 
     assert.strictEqual(provider._cache.get(url), p1);
+  });
+
+  it('loadBinary uses indexedDB path when enabled and uncached', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => null;
+    provider._loadFromLocalStorage = () => null;
+    let fetchCalls = 0;
+    provider._fetchBinary = async () => {
+      fetchCalls++;
+      return new MockBinaryReader();
+    };
+
+    const result = await provider.loadBinary('data', 'missing.bin');
+    assert.ok(result instanceof MockBinaryReader);
+    assert.strictEqual(fetchCalls, 1);
+  });
+
+  it('loadBinary falls back when indexedDB rejects', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    provider._loadFromLocalStorage = () => null;
+    let fetchCalls = 0;
+    provider._fetchBinary = async () => {
+      fetchCalls++;
+      return new MockBinaryReader();
+    };
+
+    const result = await provider.loadBinary('data', 'missing.bin');
+    assert.ok(result instanceof MockBinaryReader);
+    assert.strictEqual(fetchCalls, 1);
+  });
+
+  it('loadBinary uses localStorage fallback after indexedDB error', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    provider._loadFromLocalStorage = () => ({ value: new MockBinaryReader() });
+    provider._fetchBinary = async () => { throw new Error('should not fetch'); };
+
+    const result = await provider.loadBinary('data', 'missing.bin');
+    assert.ok(result instanceof MockBinaryReader);
+  });
+
+  it('loadBinary reads localStorage when indexedDB rejects', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    const url = provider._buildUrl('data', 'cached.bin');
+    const buf = Uint8Array.from([1, 2, 3]).buffer;
+    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({
+      type: 'binary',
+      data: provider._arrayBufferToBase64(buf)
+    }));
+    provider._fetchBinary = async () => { throw new Error('should not fetch'); };
+
+    const result = await provider.loadBinary('data', 'cached.bin');
+    assert.ok(result instanceof MockBinaryReader);
+  });
+
+  it('loadString uses indexedDB path when enabled and uncached', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => null;
+    provider._loadFromLocalStorage = () => null;
+    let fetchCalls = 0;
+    provider._fetchText = async () => {
+      fetchCalls++;
+      return 'ok';
+    };
+
+    const result = await provider.loadString(rootPath + 'missing.txt');
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(fetchCalls, 1);
+  });
+
+  it('loadString falls back when indexedDB rejects', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    provider._loadFromLocalStorage = () => null;
+    let fetchCalls = 0;
+    provider._fetchText = async () => {
+      fetchCalls++;
+      return 'ok';
+    };
+
+    const result = await provider.loadString(rootPath + 'missing.txt');
+    assert.strictEqual(result, 'ok');
+    assert.strictEqual(fetchCalls, 1);
+  });
+
+  it('loadString uses cached indexedDB value', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => ({ value: 'cached' });
+    provider._fetchText = async () => { throw new Error('should not fetch'); };
+    const result = await provider.loadString(rootPath + 'cached.txt');
+    assert.strictEqual(result, 'cached');
+  });
+
+  it('loadString uses localStorage fallback after indexedDB error', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    provider._loadFromLocalStorage = () => ({ value: 'cached' });
+    provider._fetchText = async () => { throw new Error('should not fetch'); };
+    const result = await provider.loadString(rootPath + 'cached.txt');
+    assert.strictEqual(result, 'cached');
+  });
+
+  it('loadString uses localStorage after indexedDB rejection', async function () {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    const url = rootPath + 'cached.txt';
+    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({
+      type: 'text',
+      data: 'stored'
+    }));
+    provider._fetchText = async () => { throw new Error('should not fetch'); };
+    const result = await provider.loadString(url);
+    assert.strictEqual(result, 'stored');
   });
 
   it('refreshes cached text entries when headers change', async function () {
@@ -659,6 +785,23 @@ describe('FileProvider', function () {
     assert.strictEqual(removed.length, 2);
   });
 
+  it('stops evicting localStorage once under target', function () {
+    const store = new Map([
+      ['lem-cache:' + rootPath + 'a', JSON.stringify({ lastAccess: 1, size: 200 })],
+      ['lem-cache:' + rootPath + 'b', JSON.stringify({ lastAccess: 2, size: 5 })]
+    ]);
+    let removed = 0;
+    global.localStorage = {
+      length: store.size,
+      key(i) { return Array.from(store.keys())[i] ?? null; },
+      getItem(key) { return store.get(key) ?? null; },
+      removeItem(key) { removed += 1; store.delete(key); },
+      setItem(key, value) { store.set(key, value); }
+    };
+    provider._evictLocalStorage(4 * 1024 * 1024 - 1);
+    assert.strictEqual(removed, 1);
+  });
+
   it('returns null when localStorage entries are wrong type', function () {
     const url = rootPath + 'wrong.bin';
     global.localStorage.setItem('lem-cache:' + url, JSON.stringify({ type: 'text', data: 'ok' }));
@@ -728,6 +871,24 @@ describe('FileProvider', function () {
     assert.ok(metaEntry.value <= 60 * 1024 * 1024);
   });
 
+  it('prunes indexedDB entries with missing size metadata', async function () {
+    const idb = createIndexedDb();
+    global.indexedDB = idb;
+    provider = new FileProvider(rootPath);
+    await provider._openIndexedDb();
+    const entries = idb._stores.get('entries');
+    const payloads = idb._stores.get('payloads');
+    const meta = idb._stores.get('meta');
+    const url = rootPath + 'nosize.bin';
+    entries.set(url, { url, lastAccess: 1 });
+    payloads.set(url, { url, data: new ArrayBuffer(1) });
+    meta.set('totalBytes', { key: 'totalBytes', value: 60 * 1024 * 1024 });
+
+    await provider._pruneIndexedDb(60 * 1024 * 1024);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.ok(entries.size < 1);
+  });
+
   it('_storeInLocalStorage ignores write errors', function () {
     global.localStorage.setItem = () => { throw new Error('nope'); };
     const result = provider._storeInLocalStorage('url', { a: 1 });
@@ -759,7 +920,7 @@ describe('FileProvider', function () {
     assert.strictEqual(text, 'hello');
   });
 
-  it('handles indexedDB failures in load and touch paths', async function () {
+  it('handles indexedDB failures in load and touch paths', async function () {  
     provider._openIndexedDb = async () => null;
     const missing = await provider._loadFromIndexedDb('url', 'text');
     assert.strictEqual(missing, null);
@@ -769,6 +930,34 @@ describe('FileProvider', function () {
     const failed = await provider._loadFromIndexedDb('url', 'text');
     assert.strictEqual(failed, null);
     await provider._touchIndexedDbEntry('url', { url: 'url' });
+  });
+
+  it('_idbRequest rejects when a request fails', async function () {
+    const request = { error: new Error('fail') };
+    const promise = provider._idbRequest(request);
+    request.onerror();
+    await assert.rejects(promise, /fail/);
+  });
+
+  it('closes indexedDB on version changes', async function () {
+    const closeCalls = [];
+    global.indexedDB = {
+      open() {
+        const request = {};
+        setTimeout(() => {
+          request.result = {
+            objectStoreNames: { contains() { return true; } },
+            close() { closeCalls.push(true); }
+          };
+          request.onsuccess?.();
+        }, 0);
+        return request;
+      }
+    };
+    provider = new FileProvider(rootPath);
+    const db = await provider._openIndexedDb();
+    db.onversionchange();
+    assert.strictEqual(closeCalls.length, 1);
   });
 
   it('updates indexedDB sizes when entries already exist', async function () {
@@ -794,6 +983,37 @@ describe('FileProvider', function () {
     assert.strictEqual(stored, false);
   });
 
+  it('triggers indexedDB pruning after oversized writes', async function () {
+    let pruneCalls = 0;
+    provider._estimateEntrySize = () => 60 * 1024 * 1024;
+    let idbCalls = 0;
+    provider._idbRequest = async () => {
+      idbCalls++;
+      if (idbCalls === 1) return null;
+      return { value: 0 };
+    };
+    provider._openIndexedDb = async () => ({
+      transaction() {
+        const tx = {
+          objectStore() {
+            return {
+              get() { return {}; },
+              put() {}
+            };
+          }
+        };
+        setTimeout(() => tx.oncomplete?.(), 0);
+        return tx;
+      }
+    });
+    provider._pruneIndexedDb = () => { pruneCalls++; };
+
+    const stored = await provider._storeInIndexedDb('url', { type: 'text', data: 'x' });
+    assert.strictEqual(stored, true);
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.strictEqual(pruneCalls, 1);
+  });
+
   it('prunes indexedDB only when over the limit', async function () {
     provider._openIndexedDb = async () => null;
     await provider._pruneIndexedDb(10);
@@ -805,10 +1025,16 @@ describe('FileProvider', function () {
     await provider._pruneIndexedDb(1024);
   });
 
+  it('swallows pruning errors when indexedDB transactions fail', async function () {
+    provider._openIndexedDb = async () => ({ transaction() { throw new Error('fail'); } });
+    await provider._pruneIndexedDb(60 * 1024 * 1024);
+  });
+
   it('estimates sizes without TextEncoder and ignores unknown data', function () {
     const orig = global.TextEncoder;
     global.TextEncoder = undefined;
     assert.strictEqual(provider._estimateTextSize('abcd'), 4);
+    assert.strictEqual(provider._estimateTextSize(''), 0);
     global.TextEncoder = orig;
 
     assert.strictEqual(provider._estimateEntrySize({ type: 'binary', data: 5 }), 0);

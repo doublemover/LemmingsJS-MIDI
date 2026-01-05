@@ -163,4 +163,8 @@ class LevelLoader {
   }
 }
 
-export { LevelLoader };
+const __test__ = {
+  mergeLevelProperties
+};
+
+export { LevelLoader, __test__ };

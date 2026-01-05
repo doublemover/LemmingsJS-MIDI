@@ -72,6 +72,17 @@ describe('Frame', function () {
     ]);
   });
 
+  it('draws stippled rectangles', function () {
+    const frame = new Frame(2, 2);
+    frame.clear();
+    frame.drawStippleRect(0, 0, 1, 1, 10, 20, 30);
+    const color = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
+    expect(frame.data[0]).to.equal(color);
+    expect(frame.data[3]).to.equal(color);
+    expect(frame.mask[0]).to.equal(1);
+    expect(frame.mask[3]).to.equal(1);
+  });
+
   it('respects noOverwrite and onlyOverwrite flags', function () {
     const frame = new Frame(1, 1);
     const base = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
@@ -88,5 +99,21 @@ describe('Frame', function () {
     frame.setPixel(0, 0, other, false, true);
     expect(frame.data[0]).to.equal(other);
     expect(frame.mask[0]).to.equal(1);
+  });
+
+  it('invalidates and rebuilds the span cache', function () {
+    const frame = new Frame(2, 2);
+    expect(frame.getSpanCache()).to.equal(null);
+    frame.enableSpanCache();
+    const emptyCache = frame.getSpanCache();
+    expect(emptyCache.bounds).to.equal(null);
+
+    const color = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
+    frame.setPixel(0, 0, color);
+    expect(frame._spanRows).to.equal(null);
+    expect(frame._spanBounds).to.equal(null);
+
+    const cache = frame.getSpanCache();
+    expect(cache.bounds).to.not.equal(null);
   });
 });

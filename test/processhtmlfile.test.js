@@ -6,6 +6,36 @@ import { pathToFileURL } from 'url';
 import { processHtmlFile } from '../scripts/processHtmlFile.js';
 
 describe('processHtmlFile options', function () {
+  it('extracts empty inline scripts', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
+    const html = '<!DOCTYPE html><html><head><script></script></head></html>';
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const snippets = processHtmlFile(file);
+    assert.strictEqual(snippets.length, 1);
+    assert.strictEqual(snippets[0].type, 'script');
+    assert.strictEqual(snippets[0].code, '');
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('ignores absolute asset links when rewriting', function () {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
+    const html = `<!DOCTYPE html><html><head>
+      <link rel="stylesheet" href="https://example.com/style.css">
+      <script src="https://example.com/app.js"></script>
+    </head><body></body></html>`;
+    const file = path.join(dir, 'index.html');
+    fs.writeFileSync(file, html);
+
+    const result = processHtmlFile(file, { rewritePaths: true });
+    assert.ok(result.html.includes('https://example.com/style.css'));
+    assert.ok(result.html.includes('https://example.com/app.js'));
+
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   it('rewrites relative asset links to file URLs', function () {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'html-'));
     const jsPath = path.join(dir, 'app.js');

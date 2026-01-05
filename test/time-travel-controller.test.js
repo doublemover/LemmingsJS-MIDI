@@ -121,6 +121,56 @@ describe('TimeTravelController', function() {
     expect(game.gameGui.gameTimeChanged).to.equal(true);
   });
 
+  it('uses the target tick when keyframe tickIndex is missing', function() {
+    const timer = { tickIndex: 3, isRunning: () => false, suspend() {} };
+    const history = {
+      getKeyframeAtOrBefore() { return {}; },
+      applyKeyframe() {}
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+
+    controller.seekToTick(5);
+
+    expect(timer.tickIndex).to.equal(5);
+  });
+
+  it('breaks seek loops when deltas are missing', function() {
+    const timer = { tickIndex: 0, isRunning: () => false, suspend() {} };
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 0 }; },
+      getDelta() { return null; },
+      applyKeyframe() {},
+      applyDeltaForward() { throw new Error('should not apply'); }
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+
+    controller.seekToTick(2);
+
+    expect(timer.tickIndex).to.equal(0);
+  });
+
+  it('suspends running timers and falls back to delta arrays', function() {
+    let suspended = 0;
+    const timer = { tickIndex: 0, isRunning: () => true, suspend() { suspended += 1; } };
+    const applied = [];
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 0 }; },
+      getDelta() { return undefined; },
+      deltas: [{ tick: 0 }],
+      applyKeyframe() {},
+      applyDeltaForward(game, delta) { applied.push(delta); }
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+
+    controller.seekToTick(1);
+
+    expect(suspended).to.equal(1);
+    expect(applied).to.have.length(1);
+  });
+
   it('skips seek when no keyframe is available', function() {
     const timer = { tickIndex: 3, isRunning: () => false, suspend() {} };
     const history = { getKeyframeAtOrBefore() { return null; } };
@@ -179,6 +229,56 @@ describe('TimeTravelController', function() {
     }
   });
 
+  it('stores prior input state when missing', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = { frameTime: 60, TIME_PER_FRAME_MS: 60, isRunning: () => false, suspend() {} };
+      const history = { pause() {} };
+      const game = { getGameTimer: () => timer };
+      const controller = new TimeTravelController(game, history);
+
+      controller.startReverse();
+      expect(controller._prevInputEnabled).to.equal(true);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
+  it('marks game gui on reverse toggle', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = { frameTime: 60, TIME_PER_FRAME_MS: 60, isRunning: () => false, suspend() {}, continue() {} };
+      const history = { pause() {}, resume() {} };
+      const game = { getGameTimer: () => timer, inputEnabled: true, gameGui: { gameTimeChanged: false } };
+      const controller = new TimeTravelController(game, history);
+
+      controller.toggleReverse();
+      expect(controller.isReversing).to.equal(true);
+      expect(game.gameGui.gameTimeChanged).to.equal(true);
+
+      game.gameGui.gameTimeChanged = false;
+      controller.toggleReverse();
+      expect(controller.isReversing).to.equal(false);
+      expect(game.gameGui.gameTimeChanged).to.equal(true);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
   it('uses TIME_PER_FRAME_MS and skips small reverse deltas', function() {
     const originalWindow = globalThis.window;
     const originalPerformance = globalThis.performance;
@@ -210,6 +310,35 @@ describe('TimeTravelController', function() {
 
       expect(steps).to.eql([1]);
       controller.stopReverse();
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
+  it('uses a default frame time and skips inactive reverse loops', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    let rafCallback = null;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame(cb) {
+        rafCallback = cb;
+        return 1;
+      },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = { frameTime: 0, TIME_PER_FRAME_MS: 0, isRunning: () => false, suspend() {} };
+      const history = { pause() {}, resume() {} };
+      const game = { getGameTimer: () => timer, inputEnabled: true };
+      const controller = new TimeTravelController(game, history);
+      controller.stepBackward = () => {};
+
+      controller.startReverse();
+      rafCallback?.(700);
+      controller._reverseActive = false;
+      rafCallback?.(800);
     } finally {
       globalThis.window = originalWindow;
       globalThis.performance = originalPerformance;
@@ -302,6 +431,42 @@ describe('TimeTravelController', function() {
 
       controller.stopReverse();
       expect(controller._reverseCarryMs).to.equal(0);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
+  it('uses raw reverse steps when maxReverseStepsPerFrame is invalid', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    let rafCallback = null;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame(cb) {
+        rafCallback = cb;
+        return 1;
+      },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = {
+        frameTime: 10,
+        TIME_PER_FRAME_MS: 10,
+        isRunning: () => false,
+        suspend() {}
+      };
+      const history = { pause() {}, resume() {} };
+      const game = { getGameTimer: () => timer, inputEnabled: true };
+      const controller = new TimeTravelController(game, history);
+      controller.maxReverseStepsPerFrame = Number.NaN;
+      const steps = [];
+      controller.stepBackward = (count) => steps.push(count);
+
+      controller.startReverse();
+      rafCallback?.(50);
+      expect(steps[0]).to.equal(5);
+      controller.stopReverse();
     } finally {
       globalThis.window = originalWindow;
       globalThis.performance = originalPerformance;

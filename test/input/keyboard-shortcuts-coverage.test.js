@@ -470,4 +470,49 @@ describe('KeyboardShortcuts coverage', function() {
 
     shortcuts.dispose();
   });
+
+  it('resets zoom and formats display bindings', function() {
+    const globals = setupGlobals();
+    const { view } = createFixture();
+    const shortcuts = new KeyboardShortcuts(view);
+    shortcuts.keybindings.setConfig({
+      version: 1,
+      bindings: { toggleDebug: ['KeyZ'] }
+    });
+    const bindings = shortcuts.getDisplayBindings('toggleDebug');
+    expect(bindings.length).to.equal(1);
+
+    shortcuts.zoom.reset = view.stage.gameImgProps.viewPoint.scale;
+    shortcuts.zoom.v = 0;
+    shortcuts.zoom.dir = 0;
+    shortcuts._step(16.666);
+    expect(shortcuts.zoom.reset).to.equal(null);
+    expect(shortcuts.zoom.v).to.equal(0);
+
+    shortcuts.mod.shift = true;
+    shortcuts.zoom.dir = 1;
+    shortcuts._step(33.333);
+
+    shortcuts.zoom.dir = 0;
+    shortcuts.zoom.reset = null;
+    shortcuts.zoom.v = 0;
+    shortcuts._step(50);
+    shortcuts.dispose();
+    restoreGlobals(globals.originals);
+  });
+
+  it('handles keyup actions and level group fallbacks', function() {
+    const { view } = createFixture();
+    const shortcuts = new KeyboardShortcuts(view);
+    view.elementSelectLevelGroup = null;
+    view.selectLevelGroup = (idx) => { view.selected = idx; };
+    shortcuts._actions.levelGroupNext.down();
+    expect(view.selected).to.equal(1);
+
+    shortcuts.keybindings.getActionsForEvent = () => ['panLeft'];
+    let prevented = false;
+    shortcuts._onKeyUp({ preventDefault() { prevented = true; } });
+    expect(prevented).to.equal(true);
+    shortcuts.dispose();
+  });
 });

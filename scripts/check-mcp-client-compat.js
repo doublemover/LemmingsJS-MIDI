@@ -2,13 +2,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const root = path.resolve(__dirname, '..');
-const matrixPath = path.join(root, 'docs', 'mcp', 'client-compatibility.json');
-
-const readJson = (filePath) => {
-  const raw = fs.readFileSync(filePath, 'utf8');
+const readJson = (filePath, fsImpl) => {
+  const raw = fsImpl.readFileSync(filePath, 'utf8');
   return JSON.parse(raw);
 };
 
@@ -20,87 +15,132 @@ const checkToml = (content) => {
 
 const checkJsonConfig = (data) => {
   if (!data || typeof data !== 'object') return false;
-  const servers = data.mcpServers || data.mcp_servers;
+  const servers = data.mcpServers || data.mcp_servers || data.servers;
   if (!servers || typeof servers !== 'object') return false;
   const entry = servers.lemmings;
   if (!entry || typeof entry !== 'object') return false;
   return ensureString(entry.command) && Array.isArray(entry.args);
 };
 
-const errors = [];
-const warnings = [];
+const resolveRoot = (pathImpl, fileURLToPathImpl, rootDir) => {
+  if (rootDir) return rootDir;
+  const __filename = fileURLToPathImpl(import.meta.url);
+  const __dirname = pathImpl.dirname(__filename);
+  return pathImpl.resolve(__dirname, '..');
+};
 
-const matrix = readJson(matrixPath);
-if (!matrix || typeof matrix !== 'object') {
-  errors.push('client-compatibility.json is missing or invalid.');
-}
-const clients = Array.isArray(matrix?.clients) ? matrix.clients : [];
-const ids = new Set();
-for (const client of clients) {
-  if (!client || typeof client !== 'object') {
-    errors.push('Client entry is not an object.');
-    continue;
-  }
-  if (!ensureString(client.id)) {
-    errors.push('Client entry missing id.');
-    continue;
-  }
-  if (ids.has(client.id)) {
-    errors.push(`Duplicate client id: ${client.id}`);
-  }
-  ids.add(client.id);
-  if (!ensureString(client.name)) {
-    errors.push(`Client ${client.id} missing name.`);
-  }
-  if (!ensureString(client.configFormat)) {
-    errors.push(`Client ${client.id} missing configFormat.`);
-  }
-  if (!ensureString(client.configExample)) {
-    errors.push(`Client ${client.id} missing configExample.`);
-  }
-  if (!ensureString(client.transport)) {
-    errors.push(`Client ${client.id} missing transport.`);
-  }
-  if (!ensureString(client.lastVerifiedVersion)) {
-    errors.push(`Client ${client.id} missing lastVerifiedVersion.`);
-  } else if (client.lastVerifiedVersion === 'unknown') {
-    warnings.push(`Client ${client.id} version is unknown.`);
-  }
-  if (client.needsReview) {
-    warnings.push(`Client ${client.id} needs review: ${client.reviewReason || 'no reason provided'}`);
-  }
+const runCompatibilityCheck = (options = {}) => {
+  const {
+    fsImpl = fs,
+    pathImpl = path,
+    fileURLToPathImpl = fileURLToPath,
+    consoleImpl = console,
+    processImpl = process,
+    rootDir = null
+  } = options;
 
-  const examplePath = path.join(root, client.configExample);
-  if (!fs.existsSync(examplePath)) {
-    errors.push(`Config example not found for ${client.id}: ${client.configExample}`);
-    continue;
+  const root = resolveRoot(pathImpl, fileURLToPathImpl, rootDir);
+  const matrixPath = pathImpl.join(root, 'docs', 'mcp', 'client-compatibility.json');
+  const errors = [];
+  const warnings = [];
+  let matrix = null;
+
+  try {
+    matrix = readJson(matrixPath, fsImpl);
+  } catch (error) {
+    matrix = null;
   }
-  const content = fs.readFileSync(examplePath, 'utf8');
-  if (client.configFormat === 'toml') {
-    if (!checkToml(content)) {
-      errors.push(`Config example for ${client.id} does not look like TOML MCP config.`);
+  if (!matrix || typeof matrix !== 'object') {
+    errors.push('client-compatibility.json is missing or invalid.');
+  }
+  const clients = Array.isArray(matrix?.clients) ? matrix.clients : [];
+  const ids = new Set();
+  for (const client of clients) {
+    if (!client || typeof client !== 'object') {
+      errors.push('Client entry is not an object.');
+      continue;
     }
-  } else if (client.configFormat === 'json') {
-    try {
-      const json = JSON.parse(content);
-      if (!checkJsonConfig(json)) {
-        errors.push(`Config example for ${client.id} is missing expected MCP fields.`);
+    if (!ensureString(client.id)) {
+      errors.push('Client entry missing id.');
+      continue;
+    }
+    if (ids.has(client.id)) {
+      errors.push(`Duplicate client id: ${client.id}`);
+    }
+    ids.add(client.id);
+    if (!ensureString(client.name)) {
+      errors.push(`Client ${client.id} missing name.`);
+    }
+    if (!ensureString(client.configFormat)) {
+      errors.push(`Client ${client.id} missing configFormat.`);
+    }
+    if (!ensureString(client.configExample)) {
+      errors.push(`Client ${client.id} missing configExample.`);
+    }
+    if (!ensureString(client.transport)) {
+      errors.push(`Client ${client.id} missing transport.`);
+    }
+    if (!ensureString(client.lastVerifiedVersion)) {
+      errors.push(`Client ${client.id} missing lastVerifiedVersion.`);
+    } else if (client.lastVerifiedVersion === 'unknown') {
+      warnings.push(`Client ${client.id} version is unknown.`);
+    }
+    if (client.needsReview) {
+      warnings.push(`Client ${client.id} needs review: ${client.reviewReason || 'no reason provided'}`);
+    }
+
+    if (!ensureString(client.configExample)) {
+      continue;
+    }
+    const examplePath = pathImpl.join(root, client.configExample);
+    if (!fsImpl.existsSync(examplePath)) {
+      errors.push(`Config example not found for ${client.id}: ${client.configExample}`);
+      continue;
+    }
+    const content = fsImpl.readFileSync(examplePath, 'utf8');
+    if (client.configFormat === 'toml') {
+      if (!checkToml(content)) {
+        errors.push(`Config example for ${client.id} does not look like TOML MCP config.`);
       }
-    } catch (error) {
-      errors.push(`Config example for ${client.id} is not valid JSON.`);
+    } else if (client.configFormat === 'json') {
+      try {
+        const json = JSON.parse(content);
+        if (!checkJsonConfig(json)) {
+          errors.push(`Config example for ${client.id} is missing expected MCP fields.`);
+        }
+      } catch (error) {
+        errors.push(`Config example for ${client.id} is not valid JSON.`);
+      }
     }
   }
-}
 
-for (const warning of warnings) {
-  console.warn(`Warning: ${warning}`);
-}
-
-if (errors.length) {
-  for (const error of errors) {
-    console.error(`Error: ${error}`);
+  for (const warning of warnings) {
+    consoleImpl.warn(`Warning: ${warning}`);
   }
-  process.exitCode = 1;
-} else {
-  console.log('MCP client compatibility check passed.');
+
+  if (errors.length) {
+    for (const error of errors) {
+      consoleImpl.error(`Error: ${error}`);
+    }
+    processImpl.exitCode = 1;
+  } else {
+    consoleImpl.log('MCP client compatibility check passed.');
+  }
+
+  return { errors, warnings };
+};
+
+const isMain = (() => {
+  if (!process.argv[1]) return false;
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  runCompatibilityCheck();
 }
+
+export { runCompatibilityCheck };

@@ -9,7 +9,7 @@ import { createClassicLevelData } from '../editor/EditorLevelLoader.js';
 import { validateLevel } from '../editor/EditorValidator.js';
 import { getEntryBounds } from '../editor/EditorHitTest.js';
 import { ensureLevelEntryUids } from '../editor/EditorEntryFactory.js';
-import { getStyleNames } from '../editor/StyleRegistry.js';
+import { getStyle, getStyleNames } from '../editor/StyleRegistry.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
@@ -115,6 +115,8 @@ class EditorUiController {
     this._previewQueuedOptions = null;
     this._cursorPos = null;
     this._paletteViewMode = 'list';
+    this._paletteGridColumns = 4;
+    this._styleAvailability = new Map();
     this._suppressHeader = false;
     this._suppressInspector = false;
     this._pointerDown = false;
@@ -142,7 +144,6 @@ class EditorUiController {
     this.controller.resetHistory('Init');
     this._setDirty(false);
     this._refreshUndoRedo();
-    this._refreshStyleOptions();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
@@ -764,6 +765,38 @@ class EditorUiController {
       this.el.paletteViewGrid.addEventListener('click', () => setMode('grid'));
     }
     this._applyPaletteViewMode();
+    this._bindPaletteGridZoom();
+  }
+
+  _bindPaletteGridZoom() {
+    const bind = (container) => {
+      if (!container) return;
+      container.addEventListener('wheel', (event) => {
+        if (!event.ctrlKey || this._paletteViewMode !== 'grid') return;
+        event.preventDefault();
+        const direction = event.deltaY > 0 ? 1 : -1;
+        this._setPaletteGridColumns(this._paletteGridColumns + direction);
+      }, { passive: false });
+    };
+    bind(this.el.paletteTerrain);
+    bind(this.el.paletteGadgets);
+    bind(this.el.paletteTriggers);
+  }
+
+  _setPaletteGridColumns(count) {
+    const next = Math.min(6, Math.max(2, Math.round(count)));
+    this._paletteGridColumns = next;
+    this._applyPaletteGridColumns();
+  }
+
+  _applyPaletteGridColumns() {
+    const apply = (container) => {
+      if (!container) return;
+      container.style.setProperty('--palette-grid-columns', String(this._paletteGridColumns));
+    };
+    apply(this.el.paletteTerrain);
+    apply(this.el.paletteGadgets);
+    apply(this.el.paletteTriggers);
   }
 
   _applyPaletteViewMode() {
@@ -775,6 +808,7 @@ class EditorUiController {
     setGrid(this.el.paletteTerrain);
     setGrid(this.el.paletteGadgets);
     setGrid(this.el.paletteTriggers);
+    this._applyPaletteGridColumns();
   }
 
   _getPreviewUrl(entry, type) {
@@ -888,12 +922,47 @@ class EditorUiController {
     this._suppressHeader = false;
   }
 
-  _refreshStyleOptions() {
+  async _resolveAvailableStyles() {
+    const config = this.view?.gameResources?.config
+      || await this.view?.gameFactory?.getConfig?.(this.view?.gameType);
+    const pathKey = config?.path || '';
+    if (this._styleAvailability.has(pathKey)) {
+      return this._styleAvailability.get(pathKey);
+    }
+    const styleNames = getStyleNames();
+    const provider = this.view?.gameFactory?.fileProvider;
+    if (!config || !provider?.loadBinary) {
+      this._styleAvailability.set(pathKey, styleNames);
+      return styleNames;
+    }
+    const available = [];
+    for (const name of styleNames) {
+      const style = getStyle(name);
+      const groundSet = Number.isFinite(style?.groundSet) ? style.groundSet | 0 : null;
+      if (groundSet == null) continue;
+      try {
+        await Promise.all([
+          provider.loadBinary(config.path, `VGAGR${groundSet}.DAT`),
+          provider.loadBinary(config.path, `GROUND${groundSet}O.DAT`)
+        ]);
+        available.push(style.name);
+      } catch (e) {
+        // Skip styles missing assets in this pack.
+      }
+    }
+    const list = available.length ? available : styleNames;
+    this._styleAvailability.set(pathKey, list);
+    return list;
+  }
+
+  async _refreshStyleOptions() {
     const select = this.el.headerStyle;
     if (!select) return;
     const current = normalizeText(this.session?.level?.getHeader?.('STYLE'));
-    const styles = getStyleNames();
-    const options = current && !styles.includes(current)
+    const styles = await this._resolveAvailableStyles();
+    const normalized = styles.map(name => normalizeText(name));
+    const hasCurrent = current && normalized.includes(current);
+    const options = current && !hasCurrent
       ? styles.concat([current])
       : styles.slice();
     select.innerHTML = '';
@@ -1056,7 +1125,7 @@ class EditorUiController {
     }
     if (this.el.selRotate) {
       this.el.selRotate.value = formatRotation(props.ROTATE);
-      this.el.selRotate.disabled = true;
+      this.el.selRotate.disabled = isSteel;
     }
     if (this.el.selSkill) {
       this.el.selSkill.value = formatValue(props.SKILL);
@@ -1073,7 +1142,7 @@ class EditorUiController {
 
     if (this.el.selFlipH) {
       this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
-      this.el.selFlipH.disabled = true;
+      this.el.selFlipH.disabled = isSteel;
     }
     if (this.el.selFlipV) {
       this.el.selFlipV.checked = !!props.FLIP_VERTICAL;
@@ -1158,7 +1227,7 @@ class EditorUiController {
     this._currentSavedId = '';
     this._refreshSavedList('');
     await this._reloadAssets();
-    this._refreshStyleOptions();
+    await this._refreshStyleOptions();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
@@ -1325,7 +1394,7 @@ class EditorUiController {
     );
     this.controller.setAssets(this.assets);
     this._refreshPalettes();
-    this._refreshStyleOptions();
+    await this._refreshStyleOptions();
   }
 
   async _refreshPreview(label, options = {}) {

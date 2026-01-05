@@ -64,6 +64,15 @@ describe('NxlvWriter', function () {
     assert.strictEqual(parsed.gadgets[0].props.FLIP_VERTICAL, true);
   });
 
+  it('handles missing skillset unknown lines', function () {
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'Skillset');
+    level.setSkill('CLIMBER', 1);
+    level.skillsetUnknownLines = null;
+    const text = NxlvWriter.write(level);
+    assert.ok(text.includes('$SKILLSET'));
+  });
+
   it('uses default header order when headerOrder is empty', function () {
     const level = new EditorLevel();
     level.header = { STYLE: 'dirt', TITLE: 'Zed' };

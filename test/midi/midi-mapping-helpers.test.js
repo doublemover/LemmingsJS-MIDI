@@ -51,6 +51,50 @@ describe('MidiMapping helpers', function() {
     expect(missing.y).to.equal(null);
   });
 
+  it('resolves axis combinations and operations', function() {
+    const axisValues = { x: 0.25, y: 0.5, xy: 0.375 };
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true, axisOp: 'sub' }, axisValues))
+      .to.equal(0.375);
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true, axisOp: 'mul' }, axisValues))
+      .to.equal(0.125);
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true, axisOp: 'add' }, axisValues))
+      .to.equal(0.375);
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true }, axisValues))
+      .to.equal(0.375);
+
+    const divValues = { x: 0.5, y: 0, xy: 0.5 };
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true, axisOp: 'div' }, divValues))
+      .to.equal(1);
+    const divNonZero = { x: 0.4, y: 0.8, xy: 0.6 };
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true, axisOp: 'div' }, divNonZero))
+      .to.equal(0.5);
+
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: false }, axisValues))
+      .to.equal(0.25);
+    expect(__test__.resolveAxisValue({ axisX: false, axisY: true }, axisValues))
+      .to.equal(0.5);
+    expect(__test__.resolveAxisValue({ axisX: false, axisY: false }, axisValues))
+      .to.equal(null);
+
+    const missingAxis = { x: 0.4, y: null, xy: 0.4 };
+    expect(__test__.resolveAxisValue({ axis: 'xy' }, missingAxis)).to.equal(0.4);
+    expect(__test__.resolveAxisValue({ axis: 'xy', axisOp: 'mul' }, axisValues))
+      .to.equal(0.125);
+    expect(__test__.resolveAxisValue({ axis: 'xy', axisOp: 'sub' }, axisValues))
+      .to.equal(0.375);
+    expect(__test__.resolveAxisValue({ axis: 'xy', axisOp: 'div' }, divValues))
+      .to.equal(1);
+    const divAxisValues = { x: 0.3, y: 0.6, xy: 0.45 };
+    expect(__test__.resolveAxisValue({ axis: 'xy', axisOp: 'div' }, divAxisValues))
+      .to.equal(0.5);
+    expect(__test__.resolveAxisValue({ axis: 'x' }, axisValues)).to.equal(0.25);
+
+    expect(__test__.resolveAxisValue(null, axisValues)).to.equal(0.25);
+    const missingPair = { x: 0.4, y: null, xy: null };
+    expect(__test__.resolveAxisValue({ axisX: true, axisY: true }, missingPair))
+      .to.equal(null);
+  });
+
   it('resolves scales and quantizes notes', function() {
     const scale = __test__.resolveScale({ name: 'major', root: 2 });
     expect(scale.degrees).to.have.length(7);
@@ -60,6 +104,11 @@ describe('MidiMapping helpers', function() {
 
     const fallback = __test__.resolveScale({ name: 'unknown', degrees: [] });
     expect(fallback.name).to.equal('chromatic-minor');
+
+    const defaultQuantized = __test__.quantizeToScale(60.4, null);
+    expect(defaultQuantized).to.equal(60);
+    const rootFallback = __test__.quantizeToScale(61, { degrees: [0], root: null });
+    expect(rootFallback).to.equal(60);
 
     expect(__test__.quantizeToScale(60.4, { degrees: [], root: 0 })).to.equal(60);
     expect(__test__.quantizeToScale(60, { degrees: [0], root: 0 })).to.equal(60);
@@ -79,6 +128,9 @@ describe('MidiMapping helpers', function() {
 
     const triad = __test__.buildChordNotes(0, baseScale, 4, 'unknown', 0);
     expect(triad).to.have.length(3);
+
+    const fallbackChord = __test__.buildChordNotes(0, { root: 0 }, 4, 'triad', 0);
+    expect(fallbackChord).to.have.length(3);
 
     const inverted = __test__.buildChordNotes(0, baseScale, 4, 'triad', 1);
     expect(inverted[0]).to.be.greaterThan(triad[0]);

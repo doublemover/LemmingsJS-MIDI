@@ -130,6 +130,27 @@ describe('MiniMap', function() {
     expect(miniMap.deadCount).to.equal(1);
   });
 
+  it('advances viewport dash and clamps viewport width', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    let rectArgs = null;
+    miniMap.frame.drawMarchingAntRect = (...args) => { rectArgs = args; };
+    miniMap._viewportCounter = miniMap.viewportDashDelay - 1;
+    miniMap.viewportDashOffset = 3;
+
+    globalThis.lemmings = {
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: level.width, h: level.height }; } },
+      game: { timeTravel: { isReversing: false } }
+    };
+
+    miniMap.render();
+    expect(miniMap._viewportCounter).to.equal(0);
+    expect(miniMap.viewportDashOffset).to.equal(4);
+    expect(rectArgs[2]).to.equal(miniMap.width - 1);
+  });
+
   it('disposes display listeners', function() {
     const counter = { value: 1 };
     const level = makeLevel(counter);
@@ -139,5 +160,59 @@ describe('MiniMap', function() {
     expect(guiDisplay.onMouseDown.handlers.size).to.be.greaterThan(0);
     miniMap.dispose();
     expect(guiDisplay.onMouseDown.handlers.size).to.equal(0);
+  });
+
+  it('clamps terrain counts and handles missing history', function() {
+    const counter = { value: 100 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    miniMap.invalidateRegion(0, 0, 1, 1);
+    expect(miniMap.terrain[0]).to.equal(72);
+
+    globalThis.lemmings = null;
+    miniMap.addDeath(0, 0);
+  });
+
+  it('returns early without a gui display and skips expired death dots', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const miniMap = new MiniMap({}, level, null);
+    expect(() => miniMap.render()).to.not.throw();
+
+    const guiDisplay = makeGuiDisplay();
+    const activeMap = new MiniMap({}, level, guiDisplay);
+    activeMap.deadCount = 1;
+    activeMap.deadTTLs[0] = 0;
+    activeMap.deadDots[0] = 1;
+    activeMap.deadDots[1] = 1;
+    globalThis.lemmings = {
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: true } }
+    };
+    activeMap.render();
+  });
+
+  it('returns early for invalid pointer state and bounds', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+
+    miniMap.guiDisplay = null;
+    guiDisplay.onMouseDown.trigger({ x: destX + 1, y: destY + 1 });
+    guiDisplay.onMouseMove.trigger({ x: destX + 1, y: destY + 1 });
+    guiDisplay.onMouseUp.trigger({ x: destX + 1, y: destY + 1 });
+
+    miniMap.guiDisplay = guiDisplay;
+    guiDisplay.onMouseUp.trigger({ x: 1, y: 1 });
+
+    miniMap._mouseDown = false;
+    guiDisplay.onMouseMove.trigger({ x: destX + 1, y: destY + 1 });
+
+    miniMap._mouseDown = true;
+    guiDisplay.onMouseMove.trigger({ x: 1, y: 1 });
   });
 });

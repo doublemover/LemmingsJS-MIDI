@@ -11,6 +11,7 @@ function setupTemp() {
     .replace('./squooshhqx.js', './squooshhqx.stub.js')
     .replace('./squooshhqx_bg.js', './squooshhqx_bg.stub.js');
   fs.writeFileSync(path.join(dir, 'index.js'), code);
+  fs.writeFileSync(path.join(dir, 'package.json'), '{"type":"module"}');
   fs.writeFileSync(path.join(dir, 'squooshhqx.stub.js'), 'export const calls={initSync:0,resize:[]};\nexport function initSync(b){calls.initSync++;calls.bytes=b;}\nexport function resize(buf,w,h,f){calls.resize.push([buf,w,h,f]);return \'scaled\';}');
   fs.writeFileSync(path.join(dir, 'squooshhqx_bg.stub.js'), 'export default \'\';');
   return dir;

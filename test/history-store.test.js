@@ -3,6 +3,7 @@ import { HistoryStore, __test__ } from '../js/game/HistoryStore.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
+import { EventHandler } from '../js/util/EventHandler.js';
 
 const createStubTimer = () => ({
   tickIndex: 0,
@@ -182,7 +183,7 @@ describe('HistoryStore', function() {
     expect(manager.selectedIndex).to.equal(0);
   });
 
-  it('truncates future history unless preservation is enabled', function() {    
+  it('truncates future history unless preservation is enabled', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     history._setDelta(0, history._allocDelta(0));
     history._setDelta(2, history._allocDelta(2));
@@ -199,6 +200,138 @@ describe('HistoryStore', function() {
     history.truncateAfter(0);
     expect(!!history.deltas[2]).to.equal(true);
     expect(!!history.keyframes[2]).to.equal(true);
+  });
+
+  it('snapshots lemming boolean flags', function() {
+    const lem = {
+      id: 1,
+      x: 0,
+      y: 0,
+      lookRight: false,
+      frameIndex: 0,
+      state: 0,
+      canClimb: false,
+      hasParachute: true,
+      removed: true,
+      disabled: true,
+      countdown: 0,
+      hasExploded: false,
+      lastTriggerType: 1
+    };
+    const snap = __test__.snapshotLemming(lem, 2, true);
+    expect(snap.hasParachute).to.equal(1);
+    expect(snap.removed).to.equal(1);
+    expect(snap.disabled).to.equal(1);
+    expect(snap.countdownActive).to.equal(1);
+  });
+
+  it('handles keyframe access and resume without a game', function() {
+    const history = new HistoryStore();
+    expect(history.getKeyframe('bad')).to.equal(null);
+    history.resume();
+  });
+
+  it('truncates all deltas when cutting after the last tick', function() {
+    const history = new HistoryStore();
+    history.deltas[1] = history._allocDelta(1);
+    history.minDeltaTick = 1;
+    history.maxDeltaTick = 1;
+    history.deltaCount = 1;
+    history._truncateDeltasAfter(0);
+    expect(history.minDeltaTick).to.equal(null);
+    expect(history.maxDeltaTick).to.equal(null);
+  });
+
+  it('truncates deltas before a cutoff and clears ranges', function() {
+    const history = new HistoryStore();
+    history.deltas[0] = history._allocDelta(0);
+    history.deltas[1] = history._allocDelta(1);
+    history.minDeltaTick = 0;
+    history.maxDeltaTick = 1;
+    history.deltaCount = 2;
+    history._truncateBefore(2);
+    expect(history.minDeltaTick).to.equal(null);
+    expect(history.maxDeltaTick).to.equal(null);
+  });
+
+  it('uses fallback tick indices when timers are missing', function() {
+    const history = new HistoryStore({ keyframeInterval: 1 });
+    history._recording = true;
+    history._currentTick = 0;
+    history._currentDelta = history._allocDelta(0);
+    history.game = {};
+    history.timer = { tickIndex: undefined };
+    history._diffState = () => {};
+    history._compressGroundChanges = () => {};
+    history._setDelta = () => {};
+    history._captureKeyframe = () => ({ tickIndex: 0 });
+    let keyframeTick = null;
+    history._setKeyframe = (tickIndex) => { keyframeTick = tickIndex; };
+    history._maybeWarnHistory = () => {};
+    history._enforceHistoryCap = () => {};
+    history.endTick();
+    expect(keyframeTick).to.equal(1);
+  });
+
+  it('compares skill arrays with missing values', function() {
+    const history = new HistoryStore();
+    const a = { selectedSkill: 1, cheatMode: false };
+    const b = { selectedSkill: 1, cheatMode: false, skills: [1] };
+    expect(history._skillsEqual(a, b)).to.equal(false);
+  });
+
+  it('applies keyframes with lemming list resizing and speed ignores', function() {
+    const history = new HistoryStore();
+    const timer = { speedFactor: 2, tickIndex: 0 };
+    const manager = { lemmings: [], skillActions: [], actions: [] };
+    const game = {
+      getLemmingManager: () => manager,
+      getGameTimer: () => timer,
+      timeTravel: { isReversing: true, ignoreSpeedOnReverse: true }
+    };
+    const stateSize = 2;
+    const keyframe = {
+      tickIndex: 1,
+      lemmingState: {
+        present: [true, true],
+        x: [0, 1],
+        y: [0, 1],
+        lookRight: [0, 1],
+        frameIndex: [0, 0],
+        state: [0, 0],
+        canClimb: [0, 0],
+        hasParachute: [0, 0],
+        removed: [0, 0],
+        disabled: [0, 0],
+        countdown: [0, 0],
+        hasExploded: [0, 0],
+        lastTriggerType: [-1, -1],
+        actionType: [-1, -1],
+        countdownActive: [0, 0]
+      },
+      timer: { speedFactor: 5, tickIndex: 1 }
+    };
+    history.applyKeyframe(game, keyframe);
+    expect(manager.lemmings).to.have.length(stateSize);
+    expect(timer.speedFactor).to.equal(2);
+  });
+
+  it('applies timer changes without overwriting reverse speed', function() {
+    const history = new HistoryStore();
+    const timer = { speedFactor: 3, tickIndex: 0 };
+    const game = {
+      getGameTimer: () => timer,
+      timeTravel: { ignoreSpeedOnReverse: true }
+    };
+    const delta = {
+      timerChanges: {
+        prev: { speedFactor: 10, tickIndex: 5 },
+        next: { speedFactor: 2, tickIndex: 2 }
+      }
+    };
+    history._applyScalarChanges(game, delta, false);
+    expect(timer.speedFactor).to.equal(3);
+    expect(timer.tickIndex).to.equal(5);
   });
 
   it('applies non-lemming deltas and scalar changes', function() {
@@ -1537,6 +1670,7 @@ describe('HistoryStore', function() {
     history._setDelta(2, history._allocDelta(2));
     history._setKeyframe(2, { tickIndex: 2 });
     expect(history.getKeyframe(2)).to.be.ok;
+    expect(history.getKeyframe(4)).to.equal(null);
 
     const stats = history.getHistoryStats();
     expect(stats.spanTicks).to.equal(3);
@@ -2106,6 +2240,28 @@ describe('HistoryStore', function() {
     beforeLast.maxKeyframeTick = 2;
     beforeLast._truncateBefore(0);
     expect(beforeLast._lastKeyframe).to.equal(null);
+
+    const historySpan = new HistoryStore();
+    historySpan._setDelta(0, historySpan._allocDelta(0));
+    historySpan._setDelta(5, historySpan._allocDelta(5));
+    historySpan._truncateDeltasAfter(3);
+    expect(historySpan.maxDeltaTick).to.equal(0);
+
+    const historyClear = new HistoryStore();
+    historyClear._setDelta(5, historyClear._allocDelta(5));
+    historyClear._truncateDeltasAfter(3);
+    expect(historyClear.minDeltaTick).to.equal(null);
+
+    const beforeSpan = new HistoryStore();
+    beforeSpan._setDelta(0, beforeSpan._allocDelta(0));
+    beforeSpan._setDelta(5, beforeSpan._allocDelta(5));
+    beforeSpan._truncateBefore(2);
+    expect(beforeSpan.minDeltaTick).to.equal(5);
+
+    const beforeClear = new HistoryStore();
+    beforeClear._setDelta(0, beforeClear._allocDelta(0));
+    beforeClear._truncateBefore(2);
+    expect(beforeClear.maxDeltaTick).to.equal(null);
   });
 
   it('handles history warning and cap edge cases', function() {
@@ -2367,6 +2523,7 @@ describe('HistoryStore', function() {
     expect(history._skillsEqual(skillsState, { ...skillsState, cheatMode: false })).to.equal(false);
     expect(history._skillsEqual(skillsState, { ...skillsState, skills: [1] })).to.equal(false);
     expect(history._skillsEqual(skillsState, { ...skillsState, skills: [1, 3] })).to.equal(false);
+    expect(history._skillsEqual(skillsState, { selectedSkill: 1, cheatMode: true })).to.equal(false);
     expect(history._skillsEqual(null, skillsState)).to.equal(false);
 
     const victory = {
@@ -2840,6 +2997,29 @@ describe('HistoryStore', function() {
     expect(history.getKeyframe(5)).to.be.ok;
   });
 
+  it('binds before tick handlers when timers provide hooks', function() {
+    const timer = {
+      tickIndex: 0,
+      speedFactor: 1,
+      frameTime: 60,
+      onBeforeGameTick: new EventHandler(),
+      onGameTick: new EventHandler()
+    };
+    const manager = { lemmings: [], actions: [], skillActions: [] };
+    const game = {
+      level: { entrances: [] },
+      finalGameState: 0,
+      getLemmingManager: () => manager,
+      getGameTimer: () => timer,
+      getGameSkills: () => null,
+      getVictoryCondition: () => null
+    };
+    const history = new HistoryStore();
+    history.attach(game, { captureBaseline: true });
+    timer.onBeforeGameTick.trigger(3);
+    expect(history._currentTick).to.equal(3);
+  });
+
   it('applies keyframes without nuke targets arrays', function() {
     const { history, game, manager } = createHistoryFixture();
     history.applyKeyframe(game, {
@@ -2861,6 +3041,33 @@ describe('HistoryStore', function() {
     expect(manager.miniMap.deadDots).to.have.length(0);
     expect(manager.miniMap.deadTTLs).to.have.length(0);
     expect(manager.miniMap.deadCount).to.equal(0);
+  });
+
+  it('skips applyKeyframe when inputs are missing', function() {
+    const history = new HistoryStore();
+    history.applyKeyframe(null, { lemmingState: {} });
+    history.applyKeyframe({ getLemmingManager: () => ({}) }, null);
+  });
+
+  it('initializes missing lemming arrays during keyframe apply', function() {
+    const history = new HistoryStore();
+    const manager = { actions: [], skillActions: [] };
+    const game = {
+      level: { entrances: [] },
+      finalGameState: 0,
+      getLemmingManager: () => manager,
+      getGameTimer: () => null,
+      getGameSkills: () => null,
+      getVictoryCondition: () => null
+    };
+    const lemmingState = __test__.createLemmingState(1);
+    lemmingState.present[0] = 1;
+    lemmingState.x[0] = 2;
+    lemmingState.y[0] = 3;
+    lemmingState.actionType[0] = -1;
+    history.applyKeyframe(game, { lemmingState });
+    expect(Array.isArray(manager.lemmings)).to.equal(true);
+    expect(manager.lemmings[0]).to.be.ok;
   });
 
   it('applies keyframe action and entrance fallbacks', function() {

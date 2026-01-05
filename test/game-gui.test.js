@@ -67,6 +67,8 @@ describe('GameGui utilities', function() {
     expect(gui._getPanelName(1)).to.equal('Increase');
     expect(gui._getPanelName(10)).to.equal('Pause');
     expect(gui._getPanelName(11)).to.equal('Nuke');
+    expect(gui._getPanelName(2)).to.equal('Climber');
+    expect(gui._getPanelName(99)).to.equal('');
   });
 
   it('draws selection and hover highlights', function() {
@@ -140,5 +142,13 @@ describe('SmoothScroller', function() {
     scroller.update();
     expect(last).to.equal(0);
     expect(logs.length).to.equal(1);
+  });
+
+  it('reports whether velocity is active', function() {
+    const scroller = new SmoothScroller();
+    scroller.velocity = 0;
+    expect(scroller.hasVelocity()).to.equal(false);
+    scroller.velocity = scroller.minVelocity;
+    expect(scroller.hasVelocity()).to.equal(true);
   });
 });

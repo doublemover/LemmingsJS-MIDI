@@ -76,6 +76,22 @@ describe('GameTimer', function() {
     expect(ticks.length).to.equal(4);
   });
 
+  it('stores the time travel controller', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    const controller = { stepBackward() {} };
+    timer.setTimeTravelController(controller);
+    expect(timer.getTimeTravelController()).to.equal(controller);
+  });
+
+  it('delegates backward ticks to the time travel controller', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    const calls = [];
+    const controller = { stepBackward(count) { calls.push(count); } };
+    timer.setTimeTravelController(controller);
+    timer.tick(-3);
+    expect(calls).to.eql([3]);
+  });
+
   it('formats left time and honors endless mode', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     expect(timer.getGameLeftTimeString()).to.equal('1-00');

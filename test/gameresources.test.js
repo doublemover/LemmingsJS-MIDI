@@ -124,4 +124,19 @@ describe('GameResources', function () {
 
     setDependency('LevelLoader', origLevelLoader);
   });
+
+  it('resets mainDat when loading fails', async function () {
+    const error = new Error('missing');
+    const badProvider = { loadBinary: async () => { throw error; } };
+    const cfg = { path: 'bad', level: { groups: [] } };
+    const gr = new GameResources(badProvider, cfg);
+
+    try {
+      await gr.getMainDat();
+      assert.fail('expected rejection');
+    } catch (err) {
+      assert.strictEqual(err, error);
+      assert.strictEqual(gr.mainDat, null);
+    }
+  });
 });

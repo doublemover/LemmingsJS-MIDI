@@ -113,7 +113,7 @@ describe('EditorValidator', () => {
     expect(exitCount).to.equal(4);
   });
 
-  it('warns about unknown entrance/exit ids and clamps entries', () => {
+  it('warns about unknown entrance/exit ids', () => {
     const level = createLevel();
     level.terrains.push({ props: { X: -5, Y: 200 } });
     level.terrains.push({});
@@ -125,10 +125,7 @@ describe('EditorValidator', () => {
     expect(issues.some(issue => issue.message.includes('Exit piece'))).to.equal(true);
 
     const clampIssue = issues.find(issue => issue.message.includes('Out-of-bounds'));
-    expect(clampIssue).to.exist;
-    clampIssue.fix();
-    expect(level.terrains[0].props.X).to.equal(0);
-    expect(level.gadgets[0].props.Y).to.equal(0);
+    expect(clampIssue).to.equal(undefined);
   });
 
   it('handles out-of-bounds checks when width or height is missing', () => {
@@ -171,6 +168,18 @@ describe('EditorValidator', () => {
     sizeIssue.fix();
     clampIssue.fix();
     expect(level.steel[1].props.WIDTH).to.be.at.least(1);
+  });
+
+  it('skips oversized steel fixes when props are removed', () => {
+    const level = createLevel();
+    const entry = { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999 } };
+    level.steel = [entry];
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const oversizeIssue = issues.find(issue => issue.message.includes('Steel sizes exceed the level bounds'));
+    expect(oversizeIssue).to.exist;
+    delete entry.props;
+    oversizeIssue.fix();
+    expect(entry.props).to.equal(undefined);
   });
 
   it('covers steel out-of-bounds branches', () => {
@@ -226,11 +235,30 @@ describe('EditorValidator', () => {
     expect(issues.some(issue => issue.message.includes('Missing entrance'))).to.equal(true);
   });
 
+  it('handles missing terrain group arrays', () => {
+    const level = createLevel();
+    level.terrainGroups = null;
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    expect(Array.isArray(issues)).to.equal(true);
+  });
+
   it('warns when terrain groups are present', () => {
     const level = createLevel();
     level.terrainGroups = [{ name: 'group-1' }];
     const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
     expect(issues.some(issue => issue.message.includes('Terrain groups'))).to.equal(true);
+  });
+
+  it('strips gadget-only props in terrain groups safely', () => {
+    const level = createLevel();
+    const entry = { props: { SKILL: 1 } };
+    level.terrainGroups = [{ terrains: [entry] }];
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const gadgetPropsIssue = issues.find(issue => issue.message.includes('Gadget-only properties'));
+    expect(gadgetPropsIssue).to.exist;
+    delete entry.props;
+    gadgetPropsIssue.fix();
+    expect(entry.props).to.equal(undefined);
   });
 
   it('warns about classic caps and unsupported props', () => {
@@ -261,16 +289,58 @@ describe('EditorValidator', () => {
     const gadgetPropsIssue = issues.find(issue => issue.message.includes('Gadget-only properties'));
     const terrainUnsupportedIssue = issues.find(issue => issue.message.includes('Terrain entries include unsupported classic properties'));
     const gadgetUnsupportedIssue = issues.find(issue => issue.message.includes('Gadget entries include unsupported classic properties'));
+    const oversizeIssue = issues.find(issue => issue.message.includes('Steel sizes exceed the level bounds'));
+    const widthIssue = issues.find(issue => issue.message.includes('Width exceeds classic preview max'));
+    const heightIssue = issues.find(issue => issue.message.includes('Height exceeds classic preview max'));
+    const lemmingsIssue = issues.find(issue => issue.message.includes('Lemmings count exceeds safe max'));
+    const saveReqIssue = issues.find(issue => issue.message.includes('Save requirement exceeds safe max'));
+    const spawnIssue = issues.find(issue => issue.message.includes('Spawn interval is out of range'));
+    const timeLimitIssue = issues.find(issue => issue.message.includes('Time limit exceeds classic max'));
     expect(gadgetPropsIssue).to.exist;
     expect(terrainUnsupportedIssue).to.exist;
     expect(gadgetUnsupportedIssue).to.exist;
+    expect(oversizeIssue).to.exist;
+    expect(widthIssue).to.exist;
+    expect(heightIssue).to.exist;
+    expect(lemmingsIssue).to.exist;
+    expect(saveReqIssue).to.exist;
+    expect(spawnIssue).to.exist;
+    expect(timeLimitIssue).to.exist;
 
     gadgetPropsIssue.fix();
     terrainUnsupportedIssue.fix();
     gadgetUnsupportedIssue.fix();
+    oversizeIssue.fix();
+    widthIssue.fix();
+    heightIssue.fix();
+    lemmingsIssue.fix();
+    saveReqIssue.fix();
+    spawnIssue.fix();
+    timeLimitIssue.fix();
     expect(level.terrains[0].props).to.not.have.property('SKILL');
     expect(level.terrains[0].props).to.not.have.property('ROTATE');
     expect(level.gadgets[0].props).to.not.have.property('ROTATE');
     expect(level.steel[0].props).to.not.have.property('LEMMINGS');
+  });
+
+  it('clamps negative time limits and invalid start positions', () => {
+    const level = createLevel();
+    level.setHeader('TIME_LIMIT', -5);
+    level.setHeader('START_X', Number.NaN);
+    level.setHeader('START_Y', 'bad');
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const timeIssue = issues.find(issue => issue.message.includes('Time limit cannot be negative'));
+    const startXIssue = issues.find(issue => issue.message.includes('Start X is invalid'));
+    const startYIssue = issues.find(issue => issue.message.includes('Start Y is invalid'));
+    expect(timeIssue).to.exist;
+    expect(startXIssue).to.exist;
+    expect(startYIssue).to.exist;
+
+    timeIssue.fix();
+    startXIssue.fix();
+    startYIssue.fix();
+    expect(level.getHeader('TIME_LIMIT')).to.equal(0);
+    expect(level.getHeader('START_X')).to.equal(0);
+    expect(level.getHeader('START_Y')).to.equal(0);
   });
 });

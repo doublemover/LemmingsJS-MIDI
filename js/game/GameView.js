@@ -1377,9 +1377,13 @@ class GameView extends BaseLogger {
     this._preserveEditorViewport = false;
     if (this.editorMode && this.game) {
       this.game.inputEnabled = this.editorPlaytest;
+    } else if (this.game) {
+      this.game.inputEnabled = true;
     }
     if (this.editorMode && this.stage) {
       this.stage.panEnabled = this.editorPlaytest;
+    } else if (this.stage) {
+      this.stage.panEnabled = true;
     }
     const timer = this.game?.getGameTimer?.();
     if (options.suspend !== false && !this.editorPlaytest) {

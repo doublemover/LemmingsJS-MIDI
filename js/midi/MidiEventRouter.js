@@ -294,7 +294,7 @@ class MidiEventRouter {
     if (available <= 0) {
       this._lastRateReport = {
         timeMs: now,
-        reason: nextBytes > maxBytes ? 'byte-limit' : 'priority-saturated',
+        reason: 'priority-saturated',
         snapshot: this.scheduler.getUsageShare('next', now)
       };
       return false;
@@ -311,9 +311,9 @@ class MidiEventRouter {
     const shareReport = this.scheduler.getUsageShare('next', now);
     const sameGroup = shareReport.filter(entry => entry.priority === priority);
     const current = sameGroup.find(entry => entry.sfxId === meta.sfxId);
-    const groupSize = sameGroup.length + (current ? 0 : 1) || 1;
+    const groupSize = sameGroup.length + (current ? 0 : 1);
     const evenShare = 1 / groupSize;
-    const shareRatio = evenShare > 0 ? ((current?.percentCount ?? evenShare) / evenShare) : 1;
+    const shareRatio = (current?.percentCount ?? evenShare) / evenShare;
     const projectedGroupCount = sameGroupCount + plannedCount;
     const projectedGroupBytes = sameGroupBytes + plannedBytes;
     const overCount = projectedGroupCount > available
@@ -337,7 +337,7 @@ class MidiEventRouter {
     const limitReason = overBudget ? 'share-throttle' : 'count-limit';
     this._lastRateReport = {
       timeMs: now,
-      reason: nextBytes > maxBytes ? 'byte-limit' : (okSpacing ? limitReason : 'spacing'),
+      reason: okSpacing ? limitReason : 'spacing',
       snapshot: shareReport
     };
     if (!okSpacing || overBudget) return false;

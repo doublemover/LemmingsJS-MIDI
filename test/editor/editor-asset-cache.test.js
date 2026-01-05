@@ -258,4 +258,24 @@ describe('EditorAssetCache', () => {
     expect(emptyStyleAssets.styleName).to.equal('dirt');
     expect(emptyStyleAssets.groundSet).to.equal(0);
   });
+
+  it('handles configs without a path in the cache key', async () => {
+    const fileProvider = { loadBinary: () => Promise.resolve(new Uint8Array([7])) };
+    class FakeFileContainer {
+      constructor(buffer) { this.buffer = buffer; }
+      getPart(index) { return { index, buffer: this.buffer }; }
+    }
+    class FakeGroundReader {
+      getTerrainImages() { return []; }
+      getObjectImages() { return []; }
+    }
+    const cache = new EditorAssetCache({
+      FileContainer: FakeFileContainer,
+      GroundReader: FakeGroundReader
+    });
+    const config = { gametype: 1 };
+    const assets = await cache.loadStyleAssets('dirt', config, fileProvider);
+    expect(assets.styleName).to.equal('dirt');
+    await cache.loadStyleAssets('dirt', config, fileProvider);
+  });
 });

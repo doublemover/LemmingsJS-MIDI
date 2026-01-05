@@ -720,4 +720,53 @@ describe('MidiInputController coverage', function() {
     controller._handleControlChange(10, 127, config);
     expect(patches.length).to.equal(2);
   });
+
+  it('uses default ranges for speed and intensity controls', function() {
+    const patches = [];
+    const view = {
+      applyMidiOverrides(patch) { patches.push(patch); },
+      game: { queueCommand() {}, gameGui: {} },
+      gameSpeedFactor: 1
+    };
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: {
+          speed: { cc: 1 },
+          intensity: { cc: 7 }
+        }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    let speed = null;
+    controller._setSpeedFactor = value => { speed = value; };
+
+    controller._handleControlChange(1, 64, config);
+    controller._handleControlChange(7, 64, config);
+
+    expect(speed).to.be.greaterThan(0.1);
+    expect(speed).to.be.lessThan(8.1);
+    expect(patches[0].velocityRange.default).to.be.at.least(10);
+    expect(patches[0].velocityRange.default).to.be.at.most(127);
+  });
+
+  it('covers attach and fallback branches', function() {
+    const events = [];
+    const input = {
+      addListener(name) { events.push(['add', name]); },
+      removeListener(name) { events.push(['remove', name]); }
+    };
+    const view = { game: { queueCommand() {}, gameGui: {} } };
+    const controller = new MidiInputController(view);
+    controller.attach(input);
+    controller.attach(null);
+    expect(controller.input).to.equal(null);
+
+    const target = { timing: { bpmBase: 90 } };
+    controller._setNested(target, 'timing.bpmBase', 120);
+    expect(target.timing.bpmBase).to.equal(120);
+
+    controller._handleTransport(0xFA, { input: {} });
+    controller._handleControlChange(1, 64, { input: { cc: { speed: {} } } });
+  });
 });

@@ -1,5 +1,8 @@
+import { readFileSync } from 'node:fs';
 import { expect } from 'chai';
 import { GameView } from '../js/game/GameView.js';
+import { BinaryReader } from '../js/data/BinaryReader.js';
+import { LevelReader } from '../js/level/LevelReader.js';
 import { MidiMapping } from '../js/midi/MidiMapping.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { setDependency, resetDependencies } from './helpers/lemmings.js';
@@ -313,20 +316,18 @@ describe('GameView coverage', function() {
 
   it('handles saved level loading and editor text utilities', async function() {
     globalThis.window = { location: { search: '' } };
+    const indexPayload = JSON.stringify([
+      { id: 'lvl-1', name: 'Saved Level', updatedAt: 1 }
+    ]);
     globalThis.localStorage = {
-      store: new Map(),
-      getItem(key) { return this.store.get(key) ?? null; },
-      setItem(key, value) { this.store.set(key, value); },
-      removeItem(key) { this.store.delete(key); }
+      getItem(key) {
+        if (key === 'lemmings.editor.levels') return indexPayload;
+        if (key === 'lemmings.editor.level.lvl-1') return 'LEVELDATA';
+        return null;
+      },
+      setItem() {},
+      removeItem() {}
     };
-    globalThis.localStorage.setItem(
-      'lemmings.editor.levels',
-      JSON.stringify([{ id: 'lvl-1', name: 'Saved Level', updatedAt: 1 }])
-    );
-    globalThis.localStorage.setItem(
-      'lemmings.editor.level.lvl-1',
-      'LEVELDATA'
-    );
 
     const view = new GameView();
     view.includeSavedLevels = true;
@@ -490,7 +491,10 @@ describe('GameView coverage', function() {
 
     view.editorMode = false;
     view.configs = [{ gametype: 2, name: 'Pack' }];
-    view.gameFactory = { async getGameResources() { return {}; } };
+    view.gameFactory = {
+      async getGameResources() { return { getLevelGroups() { return ['One']; } }; },
+      async getConfig() { return { level: { getGroupLength() { return 0; } } }; }
+    };
     view._syncLevelGroupSelect = async () => { view.synced = true; };
     view.populateLevelSelect = async () => { view.levelsPopulated = true; };
     await view.selectGameType(0);
@@ -796,5 +800,616 @@ describe('GameView coverage', function() {
     view.benchStart = async () => { view.sequenceStarted = true; };
     await view.benchSequenceStart();
     expect(view.sequenceStarted).to.equal(true);
+  });
+
+  it('short-circuits start and controls when no game is active', async function() {
+    const view = new GameView();
+    view.gameFactory = null;
+    await view.start();
+    view.cheat();
+    view.suspend();
+    view.continue();
+    view.suspendWithColor('red');
+    view.nextFrame();
+    view.prevFrame();
+    view.selectSpeedFactor(3);
+    view.enableDebug();
+  });
+
+  it('continues when start is called with an existing game', async function() {
+    const view = new GameView();
+    let continued = false;
+    view.game = { getGameTimer() { return { continue() { continued = true; } }; } };
+    view.continue = () => { continued = true; };
+    await view.start();
+    expect(continued).to.equal(true);
+  });
+
+  it('handles game end for non-success results', function() {
+    globalThis.window = {
+      location: { search: '' },
+      setTimeout(cb) { cb(); return 1; }
+    };
+    setDependency('GameStateTypes', {
+      UNKNOWN: 0,
+      SUCCEEDED: 1,
+      toString() { return 'FAILED'; }
+    });
+    const view = new GameView();
+    view.stage = { startFadeOut() {} };
+    view.elementGameState = { innerText: '' };
+    view.moveToLevel = delta => { view.moved = delta; };
+    view.onGameEnd({ state: 0 });
+    expect(view.moved).to.equal(0);
+  });
+
+  it('formats MIDI errors for security and empty messages', function() {
+    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
+    const view = new GameView();
+    expect(view._formatMidiEnableError({ name: 'SecurityError', message: 'secure context' }))
+      .to.equal('WebMIDI requires HTTPS or localhost.');
+    expect(view._formatMidiEnableError(''))
+      .to.equal('WebMIDI enable failed.');
+  });
+
+  it('reports WebMidi enable failures', async function() {
+    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
+    let errorMessage = null;
+    globalThis.onMidiError = msg => { errorMessage = msg; };
+    globalThis.WebMidi = {
+      enabled: false,
+      enable: async () => { throw new Error('boom'); }
+    };
+    const view = new GameView();
+    const result = await view._ensureWebMidiEnabled();
+    expect(result).to.equal(null);
+    expect(errorMessage).to.contain('WebMIDI enable failed');
+  });
+
+  it('attaches MIDI routing when enabled and game has sound events', async function() {
+    const view = new GameView();
+    view.game = { soundEvents: {}, getGameTimer() { return { continue() {} }; } };
+    view.stage = {};
+    view.midiRouter = { attach() {}, detach() {}, scheduler: { allNotesOff() {} } };
+    view.initMidiRouting = async () => view.midiRouter;
+    await view.setMidiEnabled(true);
+  });
+
+  it('covers helper branches for selection utilities', function() {
+    const view = new GameView();
+    view.includeSavedLevels = true;
+    view.gameResources = { getLevelGroups() { return []; } };
+    expect(view._getGroupLength({}, 0, 0, [{ id: 'a' }])).to.equal(1);
+
+    view.levelGroupIndex = 2;
+    view.levelIndex = 3;
+    view._normalizeSelection({}, []);
+    expect(view.levelGroupIndex).to.equal(0);
+    expect(view.levelIndex).to.equal(0);
+
+    const config = { level: { order: [[1]], getGroupLength() { return 1; } } };
+    view.levelGroupIndex = 0;
+    view.levelIndex = 5;
+    view._normalizeSelection(config, []);
+    expect(view.levelIndex).to.equal(0);
+
+    view.arrayToSelect(null, ['A']);
+    view.changeHtmlText(null, 'hi');
+  });
+
+  it('handles empty saved lists and editor selections', async function() {
+    stubDocument();
+    const view = new GameView();
+    view.elementSelectLevel = makeSelect();
+    view.gameResources = { getLevelGroups() { return ['One']; } };
+    view.gameFactory = { async getConfig() { return { level: { getGroupLength() { return 0; } } }; } };
+    view._getSavedLevelEntries = () => [];
+    view._isSavedGroupIndex = () => true;
+    view.levelGroupIndex = 0;
+    view.levelIndex = 3;
+    await view.populateLevelSelect();
+    expect(view.levelIndex).to.equal(0);
+
+    view.editorMode = true;
+    view.autoExitEditorOnSelect = true;
+    view.exitEditorMode = () => { view.exited = true; };
+    view.loadEditorLevelFromSelection = async () => { view.loadedEditor = true; };
+    view.gameFactory = {
+      async getGameResources() { return { getLevelGroups() { return ['One']; } }; },
+      async getConfig() { return { level: { getGroupLength() { return 0; } } }; }
+    };
+    view.configs = [{ gametype: 1 }];
+    await view.selectGameType(0);
+    expect(view.exited).to.equal(true);
+    expect(view.loadedEditor).to.equal(true);
+  });
+
+  it('updates bench setup when enabled', async function() {
+    stubDocument();
+    const view = new GameView();
+    view.benchSequence = true;
+    view.applyQuery = () => {};
+    view._loadMidiMapping = async () => new MidiMapping({ position: {} });
+    view.gameFactory = {
+      configReader: { configs: [{ gametype: 1, name: 'Pack' }] },
+      async getGameResources() { return { getLevelGroups() { return ['One']; } }; }
+    };
+    view.elementSelectGameType = makeSelect();
+    view._syncLevelGroupSelect = async () => {};
+    view.populateLevelSelect = async () => {};
+    view.loadLevel = async () => {};
+    view.benchSequenceStart = async () => { view.benchRan = true; };
+    await view.setup();
+    expect(view.benchRan).to.equal(true);
+  });
+
+  it('clears pending timers and replaces running games on load', async function() {
+    globalThis.window = { location: { search: '' }, clearTimeout() {} };
+    globalThis.history = { replaceState() {} };
+    const view = new GameView();
+    view.autoMoveTimer = 1;
+    view.gameResources = {
+      getLevelGroups() { return ['One']; },
+      async getLevel() { return { render() {}, screenPositionX: 0 }; }
+    };
+    view.stage = {
+      getGameDisplay() { return { clear() {}, initSize() {}, setBackground() {} }; },
+      resetFade() {},
+      updateStageSize() {},
+      applyViewport() {},
+      redraw() {}
+    };
+    view.applyLevelViewport = () => {};
+    view.game = { stop() { view.stopped = true; } };
+    view.midiRouter = { detach() { view.detached = true; } };
+    view.elementGameState = { innerText: '' };
+    view.configs = [{ gametype: view.gameType }];
+    await view.loadLevel();
+    expect(view.stopped).to.equal(true);
+    expect(view.detached).to.equal(true);
+  });
+
+  it('covers replay start, cheat, and frame helpers when game exists', async function() {
+    globalThis.window = {
+      location: { search: '' },
+      setTimeout(cb) { cb(); return 1; },
+      clearTimeout() {}
+    };
+    const view = new GameView();
+    let replayLoaded = null;
+    const timer = { continue() {}, suspend() {}, tick() {}, speedFactor: 0 };
+    view.gameFactory = {
+      async getGame() {
+        return {
+          level: {},
+          soundEvents: {},
+          onGameEnd: new EventHandler(),
+          getCommandManager() { return { loadReplay(str) { replayLoaded = str; } }; },
+          getGameTimer() { return timer; },
+          history: { truncateAfter() {} },
+          timeTravel: { stepBackward() {} },
+          render() {},
+          setGameDisplay() {},
+          setGuiDisplay() {},
+          loadLevel() {},
+          start() {},
+          cheat() { view.cheated = true; }
+        };
+      }
+    };
+    view.stage = {
+      getGameDisplay() { return {}; },
+      getGuiDisplay() { return {}; },
+      setCursorSprite() {}
+    };
+    view.applyLevelViewport = () => {};
+    await view.start('abc');
+    expect(replayLoaded).to.equal('abc');
+
+    view.cheat();
+    view.suspendWithColor('blue');
+    view.nextFrame();
+    view.prevFrame();
+    view.selectSpeedFactor(2);
+  });
+
+  it('draws overlay and resets timers in suspendWithColor', function() {
+    let timeoutCb = null;
+    let clearedId = null;
+    globalThis.window = {
+      location: { search: '' },
+      clearTimeout(id) { clearedId = id; },
+      setTimeout(cb) { timeoutCb = cb; return 7; }
+    };
+    const view = new GameView();
+    const timer = {
+      suspend() {},
+      continue() { view.continued = true; }
+    };
+    view.game = { getGameTimer() { return timer; } };
+    view.stage = {
+      guiImgProps: { x: 10, y: 20, viewPoint: { scale: 2 } },
+      startOverlayFade(color, rect) { view.overlay = { color, rect }; }
+    };
+    view.resumeTimer = 3;
+    view.bench = true;
+
+    view.suspendWithColor('red');
+    expect(clearedId).to.equal(3);
+    expect(view.resumeTimer).to.equal(7);
+    expect(view.overlay.rect).to.eql({ x: 330, y: 84, width: 32, height: 20 });
+
+    timeoutCb();
+    expect(view.continued).to.equal(true);
+    expect(view.resumeTimer).to.equal(null);
+  });
+
+  it('covers MIDI mapping fallback and disabled routing', async function() {
+    const view = new GameView();
+    view.gameFactory = {
+      fileProvider: { loadString: async () => { throw new Error('nope'); } }
+    };
+    const mapping = await view._loadMidiMapping();
+    expect(mapping).to.be.instanceOf(MidiMapping);
+
+    view.midiEnabled = false;
+    view.midiRouter = { detach() { view.detached = true; }, scheduler: { allNotesOff() { view.off = true; } } };
+    const result = await view.initMidiRouting();
+    expect(result).to.equal(null);
+    expect(view.detached).to.equal(true);
+    expect(view.off).to.equal(true);
+  });
+
+  it('covers moveToLevel negative wrap and invalid game types', async function() {
+    setDependency('GameTypes', { length: 1, toString() { return 'Pack'; } });
+    const view = new GameView();
+    view.gameFactory = {
+      async getConfig() { return { level: { order: [[]] } }; },
+      async getGameResources() { return {}; }
+    };
+    view.editorMode = true;
+    view.autoExitEditorOnSelect = true;
+    view.exitEditorMode = () => { view.exited = true; };
+    view.loadEditorLevelFromSelection = async () => { view.loadedEditor = true; };
+    view.loadLevel = async () => { view.loaded = true; };
+    await view.moveToLevel(-1);
+    expect(view.levelIndex).to.equal(0);
+    expect(view.exited).to.equal(true);
+    expect(view.loadedEditor).to.equal(true);
+  });
+
+  it('covers selection list empty branches', async function() {
+    const view = new GameView();
+    view.elementSelectLevel = makeSelect();
+    view.gameResources = { getLevelGroups() { return ['One']; } };
+    view._getSavedLevelEntries = () => [];
+    view._isSavedGroupIndex = () => false;
+    view.gameFactory = { async getConfig() { return { level: { getGroupLength() { return 0; } } }; } };
+    view.levelIndex = 5;
+    await view.populateLevelSelect();
+    expect(view.levelIndex).to.equal(0);
+  });
+
+  it('covers selectLevel outside editor mode', async function() {
+    const view = new GameView();
+    view.editorMode = false;
+    view.loadLevel = () => { view.loaded = true; };
+    await view.selectLevel(2);
+    expect(view.loaded).to.equal(true);
+  });
+
+  it('calls preview rendering from editor utilities', function() {
+    const view = new GameView();
+    let previewed = 0;
+    view.loadEditorPreviewLevel = async () => { previewed += 1; };
+    view.createBlankEditorLevel();
+    view.loadEditorLevelFromText('LEVELDATA');
+    expect(previewed).to.equal(2);
+  });
+
+  it('returns early when starting a level with an existing game', async function() {
+    const view = new GameView();
+    let continued = false;
+    view.game = { getGameTimer() { return { continue() { continued = true; } }; } };
+    view.continue = () => { continued = true; };
+    await view._startWithLevel({});
+    expect(continued).to.equal(true);
+  });
+
+  it('swallows errors when starting editor levels', async function() {
+    const view = new GameView();
+    view.gameResources = {};
+    view.gameFactory = { async getGame() { throw new Error('boom'); } };
+    await view._startWithLevel({});
+  });
+
+  it('loads editor previews with preserved view state', async function() {
+    globalThis.window = { location: { search: '' }, clearTimeout() {} };
+    globalThis.history = { replaceState() {} };
+    const view = new GameView();
+    view.autoMoveTimer = 1;
+    view.createBlankEditorLevel({ render: false });
+    view.editorMode = true;
+    view.editorPlaytest = true;
+    view.midiEnabled = true;
+    view.initMidiRouting = async () => { view.midiRouter = { attach() {} }; return view.midiRouter; };
+    const config = {
+      gametype: view.gameType,
+      path: 'lemmings',
+      level: { filePrefix: 'LEVEL', order: [[0]] },
+      mechanics: {}
+    };
+    view.gameResources = { config, getLevelGroups() { return []; } };
+    view.gameFactory = {
+      fileProvider: {
+        async loadBinary(path, filename) {
+          const data = readFileSync(new URL(`../${path}/${filename}`, import.meta.url));
+          return new BinaryReader(data, 0, data.length, filename, path);
+        }
+      },
+      async getGame() {
+        return {
+          level: null,
+          soundEvents: {},
+          onGameEnd: new EventHandler(),
+          loadLevel() {},
+          setGameDisplay() {},
+          setGuiDisplay() {},
+          getGameTimer() { return { speedFactor: 0, suspend() {}, continue() {} }; },
+          start() {},
+          stop() {},
+          cheat() {}
+        };
+      }
+    };
+    view.configs = [{ gametype: view.gameType, name: 'Pack' }];
+    view.elementSelectGameType = { selectedIndex: -1 };
+    view.elementSelectLevelGroup = { selectedIndex: -1 };
+    view.elementSelectLevel = { selectedIndex: -1 };
+    view.stage = {
+      panEnabled: false,
+      gameImgProps: { viewPoint: { x: 1, y: 2, scale: 1 }, canvasViewportSize: { width: 10, height: 10 } },
+      getGameDisplay() { return { clear() {}, initSize() {}, setBackground() {} }; },
+      getGuiDisplay() { return {}; },
+      resetFade() {},
+      updateStageSize() {},
+      applyViewport() {},
+      redraw() {},
+      setCursorSprite() {}
+    };
+    view.updateQuery = () => {};
+    view.applyLevelViewport = () => {};
+    await view.loadEditorPreviewLevel({ preserveView: true, suspend: false });
+  });
+
+  it('enables input and pan when not in editor mode', async function() {
+    globalThis.window = { location: { search: '' }, clearTimeout() {} };
+    globalThis.history = { replaceState() {} };
+    const view = new GameView();
+    view.autoMoveTimer = 1;
+    view.createBlankEditorLevel({ render: false });
+    view.editorMode = false;
+    view.editorPlaytest = false;
+    const config = {
+      gametype: view.gameType,
+      path: 'lemmings',
+      level: { filePrefix: 'LEVEL', order: [[0]] },
+      mechanics: {}
+    };
+    view.gameResources = { config, getLevelGroups() { return []; } };
+    view.gameFactory = {
+      fileProvider: {
+        async loadBinary(path, filename) {
+          const data = readFileSync(new URL(`../${path}/${filename}`, import.meta.url));
+          return new BinaryReader(data, 0, data.length, filename, path);
+        }
+      },
+      async getGame() {
+        return {
+          level: null,
+          soundEvents: {},
+          onGameEnd: new EventHandler(),
+          loadLevel() {},
+          setGameDisplay() {},
+          setGuiDisplay() {},
+          getGameTimer() { return { speedFactor: 0, suspend() {}, continue() {} }; },
+          start() {},
+          stop() {},
+          cheat() {},
+          inputEnabled: false
+        };
+      }
+    };
+    view.stage = {
+      panEnabled: false,
+      gameImgProps: { viewPoint: { x: 1, y: 2, scale: 1 }, canvasViewportSize: { width: 10, height: 10 } },
+      getGameDisplay() { return { clear() {}, initSize() {}, setBackground() {} }; },
+      getGuiDisplay() { return {}; },
+      resetFade() {},
+      updateStageSize() {},
+      applyViewport() {},
+      redraw() {},
+      setCursorSprite() {}
+    };
+    view.updateQuery = () => {};
+    view.applyLevelViewport = () => {};
+    await view.loadEditorPreviewLevel({ preserveView: false, suspend: false });
+    expect(view.game.inputEnabled).to.equal(true);
+    expect(view.stage.panEnabled).to.equal(true);
+  });
+
+  it('clamps saved level index when out of range', async function() {
+    globalThis.window = { location: { search: '' } };
+    globalThis.localStorage = {
+      store: new Map(),
+      getItem(key) { return this.store.get(key) ?? null; },
+      setItem(key, value) { this.store.set(key, value); },
+      removeItem(key) { this.store.delete(key); }
+    };
+    globalThis.localStorage.setItem(
+      'lemmings.editor.levels',
+      JSON.stringify([{ id: 'lvl-1', name: 'Saved Level', updatedAt: 1 }])
+    );
+    globalThis.localStorage.setItem(
+      'lemmings.editor.level.lvl-1',
+      'LEVELDATA'
+    );
+
+    const view = new GameView();
+    view.gameResources = {};
+    view.gameFactory = {};
+    view.includeSavedLevels = true;
+    view.levelIndex = 5;
+    view.loadEditorPreviewLevel = async () => 'preview';
+
+    const result = await view.loadSavedLevelFromSelection();
+
+    expect(result).to.equal('preview');
+    expect(view.levelIndex).to.equal(0);
+  });
+
+  it('loads classic levels when data is available', async function() {
+    globalThis.window = { location: { search: '' } };
+    const view = new GameView();
+    const data = readFileSync(new URL('../lemmings/LEVEL000.DAT', import.meta.url));
+    view.gameFactory = {
+      fileProvider: {
+        async loadBinary(path, filename) {
+          return new BinaryReader(data, 0, data.length, filename, path);
+        }
+      },
+      async getConfig() {
+        return {
+          path: 'lemmings',
+          level: {
+            filePrefix: 'LEVEL',
+            order: [[0]]
+          }
+        };
+      }
+    };
+
+    const reader = await view._loadClassicLevelReader(1, 0, 0);
+
+    expect(reader).to.be.instanceOf(LevelReader);
+  });
+
+  it('loads editor preview levels end-to-end', async function() {
+    globalThis.window = {
+      location: { search: '' },
+      clearTimeout() {}
+    };
+    globalThis.history = { replaceState() {} };
+    const view = new GameView();
+    view.createBlankEditorLevel({ render: false });
+    const config = {
+      gametype: view.gameType,
+      path: 'lemmings',
+      level: { filePrefix: 'LEVEL', order: [[0]] },
+      mechanics: {}
+    };
+    view.gameResources = { config, getLevelGroups() { return []; } };
+    view.gameFactory = {
+      fileProvider: {
+        async loadBinary(path, filename) {
+          const data = readFileSync(new URL(`../${path}/${filename}`, import.meta.url));
+          return new BinaryReader(data, 0, data.length, filename, path);
+        }
+      },
+      async getGame() {
+        return {
+          level: null,
+          soundEvents: {},
+          onGameEnd: new EventHandler(),
+          loadLevel() {},
+          setGameDisplay() {},
+          setGuiDisplay() {},
+          getGameTimer() { return { speedFactor: 0, suspend() {}, continue() {} }; },
+          start() {},
+          stop() {},
+          cheat() {}
+        };
+      }
+    };
+    view.stage = {
+      gameImgProps: { viewPoint: { x: 0, y: 0, scale: 1 }, canvasViewportSize: { width: 10, height: 10 } },
+      getGameDisplay() {
+        return {
+          clear() {},
+          initSize() {},
+          setBackground() {}
+        };
+      },
+      getGuiDisplay() { return {}; },
+      resetFade() {},
+      updateStageSize() {},
+      applyViewport() {},
+      redraw() {},
+      setCursorSprite() {}
+    };
+    view.updateQuery = () => {};
+    view.applyLevelViewport = () => {};
+
+    const level = await view.loadEditorPreviewLevel();
+
+    expect(level).to.not.equal(null);
+  });
+
+  it('loads editor levels from classic readers', async function() {
+    globalThis.window = { location: { search: '' } };
+    const view = new GameView();
+    view.game = { getGameTimer() { return { isRunning() { return false; }, suspend() {} }; } };
+    view.stage = { panEnabled: true };
+    view.levelGroupIndex = 0;
+    view.levelIndex = 0;
+    view._loadClassicLevelReader = async () => ({
+      graphicSet1: 0,
+      levelProperties: {
+        levelName: 'Classic',
+        releaseCount: 10,
+        needCount: 5,
+        releaseRate: 50,
+        timeLimit: 3,
+        skills: []
+      },
+      levelWidth: 160,
+      levelHeight: 80,
+      screenPositionX: 12,
+      terrains: [],
+      objects: [],
+      steel: []
+    });
+    let previewed = false;
+    view.loadEditorPreviewLevel = async () => { previewed = true; return 'preview'; };
+
+    const level = await view.loadEditorLevelFromSelection();
+
+    expect(level).to.equal(view.editorSession.level);
+    expect(previewed).to.equal(true);
+    expect(view.editorMode).to.equal(true);
+  });
+
+  it('disposes shortcuts, midi, and stage handlers', function() {
+    const removed = [];
+    globalThis.window = {
+      location: { search: '' },
+      removeEventListener(type) { removed.push(type); }
+    };
+    const view = new GameView();
+    let shortcutsDisposed = false;
+    let midiDisposed = false;
+    let stageDisposed = false;
+    view.shortcuts = { dispose() { shortcutsDisposed = true; } };
+    view.midiRouter = { dispose() { midiDisposed = true; } };
+    view._stageResize = () => {};
+    view.stage = { dispose() { stageDisposed = true; } };
+
+    view.dispose();
+
+    expect(shortcutsDisposed).to.equal(true);
+    expect(midiDisposed).to.equal(true);
+    expect(stageDisposed).to.equal(true);
+    expect(removed).to.include('resize');
+    expect(removed).to.include('orientationchange');
   });
 });

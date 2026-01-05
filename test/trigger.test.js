@@ -21,6 +21,22 @@ describe('Trigger', function() {
     expect(trig.disabledUntilTick).to.equal(4);
   });
 
+  it('records trigger cooldown when history is present', function() {
+    const original = globalThis.lemmings;
+    const calls = [];
+    globalThis.lemmings = { game: { history: {
+      recordTriggerCooldown(trigger, prev, next) {
+        calls.push({ trigger, prev, next });
+      }
+    } } };
+    const trig = new Trigger(TriggerTypes.EXIT_LEVEL, 0, 0, 10, 10, 2);
+    trig.trigger(1, 1, 0);
+    expect(calls).to.have.length(1);
+    expect(calls[0].prev).to.equal(0);
+    expect(calls[0].next).to.equal(2);
+    globalThis.lemmings = original;
+  });
+
   it('draw() writes to GameDisplay', function() {
     const trig = new Trigger(TriggerTypes.EXIT_LEVEL, 2, 3, 5, 7);
     const mockDisplay = { calls: [], drawRect(...args) { this.calls.push(args); } };

@@ -908,10 +908,10 @@ class ProcgenController {
       const minWidth = structure?.type === 'shelf'
         ? Math.max(6, this.segmentMinWidth)
         : 1;
-        const repeatWidth = repeatPiece?.width ?? repeatPiece?.bounds?.width ?? 0;
-        const piece = repeatPiece && remaining >= repeatWidth
-          ? repeatPiece
-          : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
+      const repeatWidth = repeatPiece?.width ?? repeatPiece?.bounds?.width ?? 0;
+      const piece = repeatPiece && remaining >= repeatWidth
+        ? repeatPiece
+        : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
       if (!repeatPiece || Math.random() < 0.25) {
         repeatPiece = piece;

@@ -152,7 +152,7 @@ describe('GameGui coverage', function() {
   });
 
   it('handles skill mouse actions', function() {
-    const { gui, game, skills, timer, victory } = makeGui({ running: true });
+    const { gui, game, skills, timer, victory } = makeGui({ running: true });   
     victory.releaseRate = 10;
     gui.handleSkillMouseDown({ x: 0, y: 20 });
     expect(gui.skillSelectionChanged).to.equal(true);
@@ -169,6 +169,73 @@ describe('GameGui coverage', function() {
     gui.handleSkillMouseDown({ x: 32, y: 20 });
     const selectCmd = game.commands.find(cmd => cmd instanceof CommandSelectSkill);
     expect(selectCmd).to.not.equal(undefined);
+  });
+
+  it('tracks nuke countdown and skill change flags', function() {
+    const { gui, game, skills } = makeGui({ running: true });
+    const originalLemmings = globalThis.lemmings;
+    globalThis.lemmings = { nukeAfter: 1 };
+    gui.nukePrepared = true;
+
+    gui._onEachGameSecond();
+    const nukeCmd = game.commands.find(cmd => cmd instanceof CommandNuke);
+    expect(nukeCmd).to.not.equal(undefined);
+    expect(gui.nukePrepared).to.equal(false);
+
+    gui.backgroundChanged = false;
+    gui._selectionOffset = 5;
+    skills.onCountChanged.trigger();
+    skills.onSelectionChanged.trigger();
+    expect(gui.backgroundChanged).to.equal(true);
+    expect(gui._selectionOffset).to.equal(0);
+
+    globalThis.lemmings = originalLemmings;
+  });
+
+  it('adjusts release rate and speed from panel clicks', function() {
+    const { gui, timer, victory, skills } = makeGui({ running: true });
+    const app = { gameSpeedFactor: 1 };
+    const originalLemmings = globalThis.lemmings;
+    globalThis.lemmings = app;
+    gui.drawSpeedChange = () => {};
+
+    victory.releaseRate = 20;
+    gui.handleSkillMouseDown({ x: 0, y: 20 });
+    expect(victory.releaseRate).to.equal(14);
+
+    victory.releaseRate = 20;
+    gui.handleSkillMouseDown({ x: 16, y: 20 });
+    expect(victory.releaseRate).to.equal(26);
+
+    timer.speedFactor = 11;
+    gui.handleSkillMouseDown({ x: 160, y: 32 });
+    expect(timer.speedFactor).to.equal(1);
+    timer.speedFactor = 2;
+    gui.handleSkillMouseDown({ x: 160, y: 32 });
+    expect(timer.speedFactor).to.equal(1);
+    timer.speedFactor = 1;
+    gui.handleSkillMouseDown({ x: 160, y: 32 });
+    expect(timer.speedFactor).to.equal(0.9);
+
+    timer.speedFactor = 0.5;
+    gui.handleSkillMouseDown({ x: 170, y: 32 });
+    expect(timer.speedFactor).to.equal(0.6);
+    timer.speedFactor = 20;
+    gui.handleSkillMouseDown({ x: 170, y: 32 });
+    expect(timer.speedFactor).to.equal(30);
+    timer.speedFactor = 5;
+    gui.handleSkillMouseDown({ x: 170, y: 32 });
+    expect(timer.speedFactor).to.equal(6);
+
+    skills.getSkill = () => 0;
+    gui.handleSkillMouseDown({ x: 32, y: 20 });
+    expect(gui.skillSelectionChanged).to.equal(true);
+
+    gui.handleSkillDoubleClick({ x: 176, y: 20 });
+    const doubleNuke = gui.game.commands.find(cmd => cmd instanceof CommandNuke);
+    expect(doubleNuke).to.not.equal(undefined);
+
+    globalThis.lemmings = originalLemmings;
   });
 
   it('handles right-click actions and hover state', function() {
@@ -194,6 +261,51 @@ describe('GameGui coverage', function() {
     timer.speedFactor = 1;
     gui.handleMouseMove({ x: 168, y: 40 });
     expect(gui._hoverSpeedUp || gui._hoverSpeedDown).to.equal(true);
+  });
+
+  it('suppresses hover when paused or skill counts are empty', function() {     
+    const { gui, skills, timer } = makeGui({ running: false });
+    timer.isRunning = () => false;
+    gui.handleMouseMove({ x: 32, y: 20 });
+    expect(gui._hoverPanelIdx).to.equal(-1);
+
+    timer.isRunning = () => true;
+    skills.getSkill = () => 0;
+    gui.handleMouseMove({ x: 32, y: 20 });
+    expect(gui._hoverPanelIdx).to.equal(-1);
+  });
+
+  it('covers clamping, fallbacks, and helper branches', function() {
+    const { gui, victory } = makeGui({ running: true });
+    victory.getMinReleaseRate = () => 10;
+    victory.getMaxReleaseRate = () => 20;
+    victory.releaseRate = 10;
+    gui.deltaReleaseRate = -5;
+    gui._applyReleaseRateAuto();
+    expect(victory.releaseRate).to.equal(10);
+
+    victory.releaseRate = 20;
+    gui.deltaReleaseRate = 5;
+    gui._applyReleaseRateAuto();
+    expect(victory.releaseRate).to.equal(20);
+
+    gui.handleSkillMouseDown({ x: 500, y: 20 });
+    gui.handleMouseMove({ x: 0, y: 0 });
+
+    gui.gameVictoryCondition = {};
+    gui.handleMouseMove({ x: 0, y: 20 });
+
+    expect(gui._composeStatusText('', '')).to.equal('');
+    expect(gui._pad(1234, 2)).to.equal('1234');
+    gui.drawSelection(makeDisplay(), -1);
+
+    expect(gui.getSkillByPanelIndex(3)).to.equal(SkillTypes.FLOATER);
+    expect(gui.getSkillByPanelIndex(4)).to.equal(SkillTypes.BOMBER);
+    expect(gui.getSkillByPanelIndex(5)).to.equal(SkillTypes.BLOCKER);
+    expect(gui.getSkillByPanelIndex(6)).to.equal(SkillTypes.BUILDER);
+    expect(gui.getSkillByPanelIndex(7)).to.equal(SkillTypes.BASHER);
+    expect(gui.getSkillByPanelIndex(8)).to.equal(SkillTypes.MINER);
+    expect(gui.getSkillByPanelIndex(9)).to.equal(SkillTypes.DIGGER);
   });
 
   it('renders normal and bench HUD states', function() {
@@ -231,6 +343,128 @@ describe('GameGui coverage', function() {
     expect(display.frames.length).to.be.greaterThan(0);
   });
 
+  it('renders status text, speed, and lock variations', function() {
+    const display = makeDisplay();
+    const { gui, game, skills, timer, victory } = makeGui({ running: true, speedFactor: 12 });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    const miniMap = { args: null, render(x, w) { this.args = { x, w }; } };
+    gui.miniMap = miniMap;
+    game.level.screenPositionX = 3;
+
+    gui.backgroundChanged = true;
+    gui.gameTimeChanged = true;
+    gui.gameSpeedChanged = true;
+    gui.skillsCountChanged = true;
+    gui.releaseRateChanged = true;
+    gui._hoverPanelIdx = 10;
+    gui._hoverSpeedUp = true;
+    timer.speedFactor = 12;
+    gui.render();
+    gui._hoverSpeedUp = false;
+    gui._hoverSpeedDown = true;
+    gui.gameTimeChanged = true;
+    gui.render();
+
+    gui._hoverPanelIdx = -1;
+    gui._hoverSpeedUp = false;
+    game.gameDisplay.hoverLemming = { action: { getActionName() { return 'walking'; } } };
+    gui.gameTimeChanged = true;
+    gui.render();
+
+    game.gameDisplay.hoverLemming = null;
+    gui.nukePrepared = true;
+    gui.gameTimeChanged = true;
+    gui.render();
+
+    gui.nukePrepared = false;
+    timer.isRunning = () => false;
+    gui.gameTimeChanged = true;
+    gui.render();
+
+    timer.isRunning = () => true;
+    skills.setSelectedSkill(SkillTypes.BUILDER);
+    globalThis.lemmings = { endless: true };
+    gui.gameTimeChanged = true;
+    gui.render();
+    delete globalThis.lemmings;
+
+    timer.speedFactor = 0.5;
+    gui._hoverSpeedDown = true;
+    gui.gameSpeedChanged = true;
+    gui.render();
+
+    timer.speedFactor = 120;
+    gui._hoverSpeedDown = false;
+    gui.gameSpeedChanged = true;
+    gui.render();
+
+    timer.speedFactor = 0.1;
+    gui.gameSpeedChanged = true;
+    gui.render();
+
+    victory.releaseRate = victory.getMinReleaseRate();
+    gui.releaseRateChanged = true;
+    gui.render();
+    gui._rrLockMin = true;
+    victory.releaseRate = victory.getMinReleaseRate() + 1;
+    gui.render();
+
+    victory.releaseRate = victory.getMaxReleaseRate();
+    gui.releaseRateChanged = true;
+    gui.render();
+    gui._rrLockMax = true;
+    victory.releaseRate = victory.getMaxReleaseRate() - 1;
+    gui.render();
+
+    const originalPerformance = globalThis.performance;
+    const originalLemmings = globalThis.lemmings;
+    globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
+    globalThis.lemmings = { performanceAPI: true };
+    gui.gameTimeChanged = true;
+    gui.render();
+    globalThis.performance = originalPerformance;
+    globalThis.lemmings = originalLemmings;
+
+    expect(miniMap.args).to.eql({ x: 3, w: display.worldDataSize.width });
+  });
+
+  it('returns early when display is missing with perf enabled', function() {    
+    const { gui } = makeGui({ running: true });
+    let measured = 0;
+    const originalPerformance = globalThis.performance;
+    const originalLemmings = globalThis.lemmings;
+    globalThis.performance = { now() { return 0; }, measure() { measured += 1; } };
+    globalThis.lemmings = { performanceAPI: true };
+
+    gui.display = null;
+    gui.render();
+    expect(measured).to.equal(1);
+
+    gui._onEachGameSecond();
+    globalThis.performance = originalPerformance;
+    globalThis.lemmings = originalLemmings;
+  });
+
+  it('swallows perf errors when display is missing', function() {
+    const { gui } = makeGui({ running: true });
+    let measured = 0;
+    const originalPerformance = globalThis.performance;
+    const originalLemmings = globalThis.lemmings;
+    globalThis.performance = {
+      now() { return 0; },
+      measure() { measured += 1; throw new Error('boom'); }
+    };
+    globalThis.lemmings = { performanceAPI: true };
+
+    gui.display = null;
+    gui.render();
+
+    expect(measured).to.equal(1);
+    globalThis.performance = originalPerformance;
+    globalThis.lemmings = originalLemmings;
+  });
+
   it('runs the GUI loop once', function() {
     const display = makeDisplay();
     const { gui } = makeGui({ running: true });
@@ -238,5 +472,85 @@ describe('GameGui coverage', function() {
     gui.display = display;
     gui._guiLoop();
     expect(display.redrawCalls).to.equal(1);
+  });
+
+  it('removes old display listeners when swapping displays', function() {
+    const displayA = makeDisplay();
+    const displayB = makeDisplay();
+    setDependency('MiniMap', class { constructor() {} render() {} dispose() {} });
+    const { gui } = makeGui({ running: true });
+    gui.setGuiDisplay(displayA);
+    expect(displayA.onMouseDown.handlers.size).to.equal(1);
+    gui.setGuiDisplay(displayB);
+    expect(displayA.onMouseDown.handlers.size).to.equal(0);
+    expect(displayB.onMouseDown.handlers.size).to.equal(1);
+  });
+
+  it('returns early in gui loop when display is missing', function() {
+    const { gui } = makeGui({ running: true });
+    gui.display = null;
+    gui._guiLoop();
+  });
+
+  it('disposes handlers and cached sprites', function() {
+    const display = makeDisplay();
+    let canceled = 0;
+    let miniDisposed = 0;
+    globalThis.window.cancelAnimationFrame = () => { canceled += 1; };
+    setDependency('MiniMap', class {
+      constructor() {}
+      render() {}
+      dispose() { miniDisposed += 1; }
+    });
+
+    const { gui, skills, timer } = makeGui({ running: true });
+    gui.setGuiDisplay(display);
+    gui._guiRafId = 5;
+    gui.dispose();
+
+    expect(canceled).to.equal(1);
+    expect(timer.eachGameSecond.handlers.size).to.equal(0);
+    expect(skills.onCountChanged.handlers.size).to.equal(0);
+    expect(skills.onSelectionChanged.handlers.size).to.equal(0);
+    expect(display.onMouseDown.handlers.size).to.equal(0);
+    expect(display.onMouseMove.handlers.size).to.equal(0);
+    expect(gui.miniMap).to.equal(null);
+    expect(miniDisposed).to.equal(1);
+    expect(gui._panelSprite).to.equal(null);
+  });
+
+  it('draws fractional speed indicators and hover defaults', function() {
+    const display = makeDisplay();
+    const { gui } = makeGui({ speedFactor: 0.5, running: true });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.gameSpeedChanged = true;
+    gui.render();
+    expect(display.pixels).to.be.greaterThan(0);
+
+    const rectCount = display.rects.length;
+    gui.drawSkillHover(display, -1);
+    expect(display.rects.length).to.equal(rectCount);
+  });
+
+  it('formats status text and panel names', function() {
+    const { gui } = makeGui();
+    const text = gui._composeStatusText('123456789012345', 'OK');
+    expect(text.length).to.equal(14);
+    expect(gui._getPanelName(2)).to.equal('Climber');
+    expect(gui._getPanelName(99)).to.equal('');
+  });
+
+  it('reacts to skill count changes and formats tick indicators', function() {
+    const { gui, skills, timer, game } = makeGui();
+    gui.backgroundChanged = false;
+    skills.onCountChanged.trigger();
+    expect(gui.backgroundChanged).to.equal(true);
+
+    timer.tickIndex = -5;
+    game.timeTravel = { isReversing: true };
+    expect(gui._formatTickIndicator()).to.equal('T0<');
+    expect(gui._getPanelName(0)).to.equal('Decrease');
+    expect(gui._getPanelName(11)).to.equal('Nuke');
   });
 });

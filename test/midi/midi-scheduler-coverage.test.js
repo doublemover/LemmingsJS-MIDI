@@ -65,6 +65,33 @@ describe('MidiScheduler coverage', function() {
     expect(snapshot.past.bySfx.has('unknown')).to.equal(true);
   });
 
+  it('computes usage share for upcoming windows', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler._ratePlanned = [{ timeMs: 10, count: 2, bytes: 6, sfxId: 7, priority: 3 }];
+    const share = scheduler.getUsageShare('next', 0);
+    expect(share[0].sfxId).to.equal(7);
+    expect(share[0].percentCount).to.equal(1);
+  });
+
+  it('handles zero totals in usage share', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler._ratePlanned = [{ timeMs: 10, count: 0, bytes: 0, sfxId: 9 }];
+    const share = scheduler.getUsageShare('next', 0);
+    expect(share[0].priority).to.equal(1);
+    expect(share[0].percentCount).to.equal(0);
+    expect(share[0].percentBytes).to.equal(0);
+  });
+
+  it('defaults usage share priority when missing', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.getRateSnapshot = () => ({
+      past: { count: 1, bytes: 3, bySfx: new Map([[7, { count: 1, bytes: 3 }]]) },
+      next: { count: 0, bytes: 0, bySfx: new Map() }
+    });
+    const share = scheduler.getUsageShare('past', 0);
+    expect(share[0].priority).to.equal(1);
+  });
+
   it('estimateMessages returns zero when note is missing', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     const estimate = scheduler.estimateMessages({});
@@ -125,6 +152,24 @@ describe('MidiScheduler coverage', function() {
     expect(scheduler._noteOffs.length).to.equal(0);
     expect(scheduler._activeByChannel.size).to.equal(0);
     expect(scheduler._noteOffTimerId).to.equal(0);
+  });
+
+  it('sends all-notes-off using MPE master defaults', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1 } });
+    scheduler.setOutput(output);
+    scheduler.allNotesOff();
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
+  });
+
+  it('falls back to the MPE master channel when unset', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
+    scheduler.setOutput(output);
+    scheduler.allNotesOff();
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
   });
 
   it('setConfig handles null configs and triggers init with output', function() {
@@ -335,6 +380,17 @@ describe('MidiScheduler coverage', function() {
     expect(scheduler._allocateChannel()).to.equal(9);
   });
 
+  it('allocates channel 1 when the MPE master is falsy', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 0, memberChannels: [] } });
+    scheduler._memberChannels = [];
+    expect(scheduler._allocateChannel()).to.equal(1);
+  });
+
+  it('allocates default channel 1 when unspecified', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    expect(scheduler._allocateChannel()).to.equal(1);
+  });
+
   it('estimateMessages accounts for MPE mode', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true } });
     const estimate = scheduler.estimateMessages({ note: 60, pitchBend: 0.5, durationTicks: 0 });
@@ -424,6 +480,15 @@ describe('MidiScheduler coverage', function() {
     expect(allNotes).to.eql([3]);
   });
 
+  it('allNotesOff falls back to channel 1 when default is falsy', function() {
+    const calls = [];
+    const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 0 });
+    scheduler.setOutput(makeOutput([1], calls));
+    scheduler.allNotesOff();
+    const allNotes = calls.filter(call => call.type === 'allNotesOff').map(call => call.id);
+    expect(allNotes).to.eql([1]);
+  });
+
   it('dispose stops active channels before clearing state', function() {        
     const scheduler = new MidiScheduler({ mpe: { enabled: true } });
     let stopped = 0;
@@ -502,6 +567,20 @@ describe('MidiScheduler coverage', function() {
     } finally {
       globalThis.performance = originalPerf;
       globalThis.lemmings = originalLemmings;
+    }
+  });
+
+  it('records last MIDI output message on window', function() {
+    const calls = [];
+    const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 1 });
+    scheduler.setOutput(makeOutput([1], calls));
+    const originalWindow = globalThis.window;
+    globalThis.window = {};
+    try {
+      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
+      expect(globalThis.window.lastMidiOutputMessage.type).to.equal('noteOn');
+    } finally {
+      globalThis.window = originalWindow;
     }
   });
 

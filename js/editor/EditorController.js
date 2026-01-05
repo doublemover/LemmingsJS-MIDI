@@ -1138,3 +1138,11 @@ class EditorController {
 }
 
 export { EditorController };
+
+const __test__ = {
+  cloneEntry,
+  normalizeBounds,
+  boundsIntersect
+};
+
+export { __test__ };

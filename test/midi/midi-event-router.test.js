@@ -461,6 +461,201 @@ describe('MidiEventRouter', function() {
     router.detach();
   });
 
+  it('keeps MidiMapping instances when setting mapping', function() {
+    const mapping = new MidiMapping({ timing: { bpmBase: 100 } });
+    const router = new MidiEventRouter();
+    router.setMapping(mapping);
+    expect(router.mapping).to.equal(mapping);
+  });
+
+  it('handles repeat factor and repeat targets directly', function() {
+    const router = new MidiEventRouter(new MidiMapping({
+      noteRange: { min: 0, max: 127 },
+      position: { timbreRange: { min: 0, max: 100 }, panRange: { min: -50, max: 50 } }
+    }));
+    expect(router._getRepeatFactor('x', 10, { enabled: false }, 120)).to.equal(0);
+    expect(router._getRepeatFactor('x', Number.NaN, { maxRepeats: 1, windowBeats: 1 }, 120)).to.equal(0);
+
+    const baseSpec = { note: 60, velocity: 64, durationTicks: 2, timbre: 50, pan: 0, pitchBend: 0.2 };
+    const noteList = [60, 64];
+    const amountCfg = { amount: 1, target: 'timbre' };
+    const timbreResult = router._applyRepeatTarget(baseSpec, noteList, amountCfg, 0.5);
+    expect(timbreResult.spec.timbre).to.not.equal(50);
+
+    const panResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'pan' }, 0.5);
+    expect(panResult.spec.pan).to.not.equal(0);
+
+    const attackResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'attack' }, 0.5);
+    expect(attackResult.spec.velocity).to.not.equal(64);
+
+    const sustainResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'sustain' }, 0.5);
+    expect(sustainResult.spec.durationTicks).to.not.equal(2);
+    const sustainDefault = router._applyRepeatTarget(
+      { ...baseSpec, durationTicks: null },
+      noteList,
+      { amount: 1, target: 'sustain' },
+      0.5
+    );
+    expect(sustainDefault.spec.durationTicks).to.be.at.least(1);
+
+    const noTimbre = router._applyRepeatTarget({ ...baseSpec, timbre: null }, noteList, { amount: 1, target: 'timbre' }, 0.5);
+    expect(noTimbre.spec.timbre).to.equal(null);
+    const noPan = router._applyRepeatTarget({ ...baseSpec, pan: null }, noteList, { amount: 1, target: 'pan' }, 0.5);
+    expect(noPan.spec.pan).to.equal(null);
+  });
+
+  it('reports priority saturation', function() {
+    const mapping = new MidiMapping({
+      timing: { bpmBase: 60 },
+      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 2000, maxBytesPerSecond: 1000 }
+    });
+    const router = new MidiEventRouter(mapping);
+    router.scheduler = {
+      getRateSnapshot() {
+        return {
+          next: {
+            count: 1000,
+            bytes: 10,
+            bySfx: new Map([[2, { count: 1000, bytes: 10, priority: 2 }]])
+          },
+          maxBytesPerSecond: 1000
+        };
+      },
+      getUsageShare() {
+        return [{ sfxId: 2, count: 1000, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
+      }
+    };
+    const plan = { on: { timeMs: 2000, count: 0, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    const saturated = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
+    expect(saturated).to.equal(false);
+    expect(router.getRateReport().reason).to.equal('priority-saturated');
+  });
+
+  it('defaults priorities when missing', function() {
+    const mapping = new MidiMapping({
+      timing: { bpmBase: 60 },
+      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 }
+    });
+    const router = new MidiEventRouter(mapping);
+    router.scheduler = {
+      getRateSnapshot() {
+        return {
+          next: { count: 6, bytes: 0, bySfx: new Map([[2, { count: 1, bytes: 0 }]]) },
+          maxBytesPerSecond: 1000
+        };
+      },
+      getUsageShare() {
+        return [{ sfxId: 2, count: 1, bytes: 0, percentCount: 1, percentBytes: 0 }];
+      }
+    };
+    const plan = { on: { timeMs: 0, count: 1, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    const ok = router._shouldSend({ sfxId: 1 }, {}, plan, 0);
+    expect(ok).to.equal(true);
+  });
+
+  it('reports spacing limits when events arrive too quickly', function() {
+    const mapping = new MidiMapping({
+      timing: { bpmBase: 60 },
+      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 1000 }
+    });
+    const router = new MidiEventRouter(mapping);
+    router.scheduler = {
+      getRateSnapshot() {
+        return { next: { count: 10, bytes: 0, bySfx: new Map() }, maxBytesPerSecond: 1000 };
+      },
+      getUsageShare() {
+        return [];
+      }
+    };
+    const plan = { on: { timeMs: 0, count: 1, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    router._lastAcceptedBySfx.set(1, 0);
+    const spacing = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
+    expect(spacing).to.equal(false);
+    expect(router.getRateReport().reason).to.equal('spacing');
+  });
+
+  it('accounts for byte-heavy groups in share overage', function() {
+    const mapping = new MidiMapping({
+      timing: { bpmBase: 120 },
+      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 100 }
+    });
+    const router = new MidiEventRouter(mapping);
+    router.scheduler = {
+      getRateSnapshot() {
+        return {
+          next: {
+            count: 20,
+            bytes: 0,
+            bySfx: new Map([
+              [2, { count: 1, bytes: 90, priority: 2 }],
+              [1, { count: 1, bytes: 20, priority: 1 }]
+            ])
+          },
+          maxBytesPerSecond: 100
+        };
+      },
+      getUsageShare() {
+        return [{ sfxId: 1, count: 1, bytes: 20, priority: 1, percentCount: 1, percentBytes: 1 }];
+      }
+    };
+    const plan = { on: { timeMs: 2000, count: 0, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 1000 }, plan, 0);
+    expect(ok).to.equal(false);
+    expect(router.getRateReport().reason).to.equal('share-throttle');
+  });
+
+  it('resets arp indices when out of range', function() {
+    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.mapping.mapEvent = () => ({
+      notes: [60, 64, 67],
+      note: 60,
+      velocity: 64,
+      durationTicks: 1,
+      arp: { enabled: true, mode: 'up', length: 3 }
+    });
+    router._arpStateBySfx.set('sfx:1', { index: 99, dir: 1, mode: 'up', length: 3, seqKey: '60,64,67' });
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+    expect(sent[0].note).to.equal(60);
+  });
+
+  it('defaults arp length to the note list', function() {
+    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 10000 } });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.mapping.mapEvent = () => ({
+      notes: [60, 64],
+      note: 60,
+      velocity: 64,
+      durationTicks: 1,
+      arp: { enabled: true, mode: 'down' }
+    });
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+    expect(sent[0].note).to.equal(64);
+  });
+
+  it('builds context from game state and stage when available', function() {
+    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
+    const router = new MidiEventRouter(mapping);
+    const sent = [];
+    router.scheduler = makeSchedulerStub(sent);
+    router.context = {
+      game: { level: { width: 200, height: 100 } },
+      stage: { getGameViewRect() { return { x: 0, w: 200 }; } }
+    };
+    router.mapping.mapEvent = (event, context) => {
+      expect(context.levelWidth).to.equal(200);
+      expect(context.levelHeight).to.equal(100);
+      expect(context.viewRect.w).to.equal(200);
+      return { note: 60, velocity: 64, durationTicks: 0 };
+    };
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+    expect(sent.length).to.equal(1);
+  });
+
   it('resolves arp keys with fallback coordinates', function() {
     const router = new MidiEventRouter();
     const key = router._resolveArpKey(
@@ -1660,5 +1855,116 @@ describe('MidiEventRouter', function() {
       1
     ).spec.releaseVelocity;
     expect(release).to.equal(96);
+  });
+
+  it('defaults repeat targets when ranges and velocity are missing', function() {
+    const router = new MidiEventRouter(new MidiMapping({
+      position: { timbreRange: null, panRange: null }
+    }));
+    const baseSpec = { note: 60, timbre: 10, pan: 0 };
+    const notes = [60];
+
+    const timbre = router._applyRepeatTarget(
+      baseSpec,
+      notes,
+      { amount: 0.5, target: 'timbre' },
+      1
+    ).spec.timbre;
+    expect(timbre).to.be.within(0, 127);
+    expect(timbre).to.not.equal(10);
+
+    const pan = router._applyRepeatTarget(
+      baseSpec,
+      notes,
+      { amount: 0.5, target: 'pan' },
+      1
+    ).spec.pan;
+    expect(pan).to.be.within(-127, 127);
+
+    const attack = router._applyRepeatTarget(
+      { note: 60 },
+      notes,
+      { amount: 0.5, target: 'attack' },
+      1
+    ).spec.velocity;
+    expect(attack).to.equal(96);
+  });
+
+  it('replaces mappings when setMapping receives a plain object', function() {
+    const router = new MidiEventRouter();
+    router.setMapping({ enabled: true });
+    expect(router.mapping).to.be.instanceOf(MidiMapping);
+    expect(router.mapping.config.enabled).to.equal(true);
+  });
+
+  it('clamps notes to defaults when no note range is configured', function() {
+    const router = new MidiEventRouter(new MidiMapping({ noteRange: null, position: {} }));
+    const adjusted = router._applyRepeatTarget(
+      { note: 60 },
+      [200],
+      { amount: 1, target: 'note' },
+      1
+    );
+    expect(adjusted.activeNotes[0]).to.equal(127);
+  });
+
+  it('reuses MidiMapping instances in setMapping', function() {
+    const mapping = new MidiMapping({ enabled: false });
+    const router = new MidiEventRouter();
+    router.setMapping(mapping);
+    expect(router.mapping).to.equal(mapping);
+  });
+
+  it('uses repeat fallbacks when window beats and max repeats are missing', function() {
+    const router = new MidiEventRouter();
+    const bpm = router._getBpm();
+    const repeatCfg = { maxRepeats: 1, windowBeats: 1 };
+    router._getRepeatFactor('sfx:1', 0, repeatCfg, bpm);
+    const factor = router._getRepeatFactor('sfx:1', 100, repeatCfg, bpm);
+    expect(factor).to.equal(1);
+
+    const fallback = router._getRepeatFactor('sfx:2', 50, { spacingTicks: 2 }, bpm);
+    expect(fallback).to.equal(0);
+
+    const emptyWindow = router._getRepeatFactor('sfx:3', 60, { maxRepeats: 2 }, bpm);
+    expect(emptyWindow).to.equal(0);
+  });
+
+  it('replaces null mappings with defaults', function() {
+    const router = new MidiEventRouter();
+    router.setMapping(null);
+    expect(router.mapping).to.be.instanceOf(MidiMapping);
+  });
+
+  it('uses repeat spacing fallbacks and default targets', function() {
+    const router = new MidiEventRouter(new MidiMapping({
+      noteRange: { min: null, max: null },
+      position: null
+    }));
+    const bpm = router._getBpm();
+    router._getRepeatFactor('sfx:1', 0, { maxRepeats: 2, spacingTicks: 2 }, bpm);
+    const factor = router._getRepeatFactor('sfx:1', 100, { maxRepeats: 2, spacingTicks: 2 }, bpm);
+    expect(factor).to.be.greaterThan(0);
+
+    const baseSpec = { velocity: 50, note: 200 };
+    const adjusted = router._applyRepeatTarget(baseSpec, [200], { amount: 0.5 }, 1);
+    expect(adjusted.spec.velocity).to.be.greaterThan(50);
+    expect(adjusted.activeNotes[0]).to.equal(200);
+
+    const noteAdjusted = router._applyRepeatTarget(
+      baseSpec,
+      [200],
+      { amount: 0.5, target: 'note' },
+      1
+    );
+    expect(noteAdjusted.activeNotes[0]).to.equal(127);
+
+    const timbreAdjusted = router._applyRepeatTarget(
+      { ...baseSpec, timbre: 10 },
+      [60],
+      { amount: 0.5, target: 'timbre' },
+      1
+    );
+    expect(timbreAdjusted.spec.timbre).to.be.within(0, 127);
   });
 });

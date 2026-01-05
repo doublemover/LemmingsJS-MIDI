@@ -275,34 +275,6 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Exit piece is unknown for this style.'));
   }
 
-  if (cappedWidth > 0 && cappedHeight > 0) {
-    const boundsWidth = cappedWidth;
-    const boundsHeight = cappedHeight;
-    const clampList = (entries) => {
-      for (const entry of entries) {
-        if (!entry?.props) continue;
-        entry.props.X = clamp(coerceNumber(entry.props.X, 0), 0, Math.max(boundsWidth - 1, 0));
-        entry.props.Y = clamp(coerceNumber(entry.props.Y, 0), 0, Math.max(boundsHeight - 1, 0));
-      }
-    };
-    const outOfBounds = (entries) => entries.some(entry => {
-      const x = coerceNumber(entry?.props?.X, 0);
-      const y = coerceNumber(entry?.props?.Y, 0);
-      return x < 0 || y < 0 || x >= boundsWidth || y >= boundsHeight;
-    });
-    const terrains = Array.isArray(level.terrains) ? level.terrains : [];
-    const hasBadTerrain = outOfBounds(terrains);
-    const hasBadGadget = outOfBounds(gadgets);
-    const hasBadSteel = outOfBounds(steelEntries);
-    if (hasBadTerrain || hasBadGadget || hasBadSteel) {
-      issues.push(createIssue('warning', 'Out-of-bounds entries.', 'Clamp entries', () => {
-        clampList(terrains);
-        clampList(gadgets);
-        clampList(steelEntries);
-      }));
-    }
-  }
-
   const invalidSteel = steelEntries.filter(entry => {
     const width = coerceNumber(entry?.props?.WIDTH, NaN);
     const height = coerceNumber(entry?.props?.HEIGHT, NaN);
@@ -312,8 +284,8 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Steel rectangles must have width/height.', 'Fix steel sizes', () => {
       for (const entry of invalidSteel) {
         if (!entry?.props) continue;
-        entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth || safeWidth);
-        entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight || safeHeight);
+        entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth);
+        entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight);
       }
     }));
   }
@@ -331,8 +303,8 @@ const validateLevel = (level, assets = null, options = {}) => {
       () => {
         for (const entry of oversizedSteel) {
           if (!entry?.props) continue;
-          entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth || safeWidth);
-          entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight || safeHeight);
+          entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth);
+          entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight);
         }
       }
     ));

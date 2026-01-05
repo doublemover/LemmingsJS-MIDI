@@ -7,20 +7,25 @@ const getEntryBounds = (entry, meta = {}, options = {}) => {
   const safeMeta = meta || {};
   const x = coerceNumber(props.X, 0);
   const y = coerceNumber(props.Y, 0);
+  const metaWidth = Number.isFinite(safeMeta?.width) ? safeMeta.width : null;
+  const metaHeight = Number.isFinite(safeMeta?.height) ? safeMeta.height : null;
   const steelWidth = safeMeta?.isSteel && Number.isFinite(safeMeta?.steelWidth)
     ? safeMeta.steelWidth
     : null;
   const steelHeight = safeMeta?.isSteel && Number.isFinite(safeMeta?.steelHeight)
     ? safeMeta.steelHeight
     : null;
+  const hasMetaSize = Number.isFinite(metaWidth) && metaWidth > 0
+    && Number.isFinite(metaHeight) && metaHeight > 0;
+  const useEntrySize = options.allowEntrySize === true || !hasMetaSize;
   const widthFallback = options.widthFallback
-    ?? (steelWidth && steelWidth > 0 ? steelWidth : safeMeta.width)
+    ?? (steelWidth && steelWidth > 0 ? steelWidth : (metaWidth && metaWidth > 0 ? metaWidth : null))
     ?? 8;
   const heightFallback = options.heightFallback
-    ?? (steelHeight && steelHeight > 0 ? steelHeight : safeMeta.height)
+    ?? (steelHeight && steelHeight > 0 ? steelHeight : (metaHeight && metaHeight > 0 ? metaHeight : null))
     ?? 8;
-  const width = coerceNumber(props.WIDTH, widthFallback);
-  const height = coerceNumber(props.HEIGHT, heightFallback);
+  const width = coerceNumber(useEntrySize ? props.WIDTH : null, widthFallback);
+  const height = coerceNumber(useEntrySize ? props.HEIGHT : null, heightFallback);
   const w = Math.max(1, width | 0);
   const h = Math.max(1, height | 0);
   return { x, y, width: w, height: h };

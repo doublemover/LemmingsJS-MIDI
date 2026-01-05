@@ -731,4 +731,16 @@ function drawDashedRect(
   );
 }
 
-export { DisplayImage, drawMarchingAntRect, drawDashedRect, scaleNearest, scaleXbrz, scaleHqx };
+const __test__ = {
+  cyrb53
+};
+
+export {
+  DisplayImage,
+  drawMarchingAntRect,
+  drawDashedRect,
+  scaleNearest,
+  scaleXbrz,
+  scaleHqx,
+  __test__
+};

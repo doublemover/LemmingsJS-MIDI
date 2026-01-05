@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { BinaryReader } from '../../js/data/BinaryReader.js';
 import { FileContainer } from '../../js/data/FileContainer.js';
-import { LevelHasher } from '../../js/level/LevelHasher.js';
+import { LevelHasher, buildLevelCode } from '../../js/level/LevelHasher.js';
 
 const toHex = (bytes) => Array.from(bytes)
   .map((byte) => byte.toString(16).padStart(2, '0'))
@@ -47,6 +47,29 @@ describe('LevelHasher', function() {
     expect(toHex(LevelHasher.longHash(reader))).to.equal(toHex(LevelHasher.longHash(slice)));
   });
 
+  it('accepts arrays, buffers, and empty inputs', function() {
+    const data = new Uint8Array([1, 2, 3, 4]);
+    const hashArray = LevelHasher.longHash([1, 2, 3, 4]);
+    const hashBuffer = LevelHasher.longHash(data.buffer);
+    const hashEmpty = LevelHasher.longHash(null);
+    expect(hashArray).to.have.lengthOf(16);
+    expect(hashBuffer).to.have.lengthOf(16);
+    expect(hashEmpty).to.have.lengthOf(16);
+
+    const wrapper = { data: data, hiddenOffset: 1 };
+    const hashWrapper = LevelHasher.longHash(wrapper);
+    expect(hashWrapper).to.have.lengthOf(16);
+  });
+
+  it('handles numeric inputs and bigint codes', function() {
+    const hash = LevelHasher.longHash(4);
+    expect(hash).to.have.lengthOf(16);
+    const code = buildLevelCode(123456n);
+    expect(code).to.have.lengthOf(10);
+    const zeroCode = buildLevelCode(null);
+    expect(zeroCode).to.have.lengthOf(10);
+  });
+
   it('returns alternating consonant/vowel codes', function() {
     const data = new Uint8Array([9, 8, 7, 6, 5, 4]);
     const code = LevelHasher.getLevelCode(data);
@@ -59,6 +82,11 @@ describe('LevelHasher', function() {
         expect(VOWELS.has(char)).to.equal(true);
       }
     }
+  });
+
+  it('builds level codes from numeric values', function() {
+    const code = buildLevelCode(123456);
+    expect(code).to.have.lengthOf(10);
   });
 
   it('matches the known level code for LEVEL000.DAT part 0', function() {

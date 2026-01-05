@@ -61,4 +61,32 @@ describe('ParticleTable', function() {
     const pt = new ParticleTable(pal);
     expect(() => pt.draw(null, 0, 0, 0)).to.not.throw();
   });
+
+  it('builds a placeholder frame when particle data is empty', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+    const originalCache = ParticleTable._frameCache;
+    ParticleTable._frameCache = new WeakMap();
+    ParticleTable._sharedParticleData = [Int8Array.from([-128, -128])];
+    const pal = makePalette();
+    const pt = new ParticleTable(pal);
+    let drawn = null;
+    pt.draw({ drawFrame(frame) { drawn = frame; } }, 0, 0, 0);
+    expect(drawn.width).to.equal(1);
+    expect(drawn.height).to.equal(1);
+    ParticleTable._frameCache = originalCache;
+  });
+
+  it('uses window.atob when available', function() {
+    globalThis.lemmings = { game: { showDebug: false } };
+    const originalWindow = globalThis.window;
+    globalThis.window = {
+      atob: (value) => Buffer.from(value, 'base64').toString('binary')
+    };
+    ParticleTable._sharedParticleData = undefined;
+    ParticleTable._frameCache = new WeakMap();
+    const pal = makePalette();
+    const pt = new ParticleTable(pal);
+    expect(pt.particleData.length).to.equal(51);
+    globalThis.window = originalWindow;
+  });
 });

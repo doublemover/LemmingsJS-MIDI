@@ -144,6 +144,14 @@ describe('BinaryReader', function () {
     assert.strictEqual(reader.length, 2);
   });
 
+  it('accepts filename and foldername when offset and length are strings', function () {
+    const bytes = Uint8Array.from([9, 8, 7]);
+    const reader = new BinaryReader(bytes, 'LEVELS.DAT', 'lemmings');
+    assert.strictEqual(reader.filename, 'LEVELS.DAT');
+    assert.strictEqual(reader.foldername, 'lemmings');
+    assert.strictEqual(reader.hiddenOffset, 0);
+  });
+
   it('initializes from array with explicit length', async function () {
     const reader = new BinaryReader([5, 6, 7, 8], 2, 1);
     const loaded = await reader.ready;

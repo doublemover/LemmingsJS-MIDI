@@ -397,10 +397,10 @@ class HistoryStore {
       this._releaseDelta(delta);
     }
     let nextMax = Math.min(this.maxDeltaTick, cutoff);
-    while (nextMax >= (this.minDeltaTick ?? 0) && !this.deltas[nextMax]) {
+    while (nextMax >= this.minDeltaTick && !this.deltas[nextMax]) {
       nextMax -= 1;
     }
-    if (nextMax < (this.minDeltaTick ?? 0)) {
+    if (nextMax < this.minDeltaTick) {
       this.minDeltaTick = null;
       this.maxDeltaTick = null;
       this.deltaCount = 0;
@@ -442,10 +442,10 @@ class HistoryStore {
       this._releaseDelta(delta);
     }
     let nextMin = Math.max(this.minDeltaTick, start);
-    while (nextMin <= (this.maxDeltaTick ?? 0) && !this.deltas[nextMin]) {
+    while (nextMin <= this.maxDeltaTick && !this.deltas[nextMin]) {
       nextMin += 1;
     }
-    if (nextMin > (this.maxDeltaTick ?? 0)) {
+    if (nextMin > this.maxDeltaTick) {
       this.minDeltaTick = null;
       this.maxDeltaTick = null;
       this.deltaCount = 0;

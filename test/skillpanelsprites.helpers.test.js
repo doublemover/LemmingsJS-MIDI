@@ -69,7 +69,7 @@ describe('SkillPanelSprites helper methods', function () {
   it('brightens a button region', function () {
     const pal = new ColorPalette();
     pal.setColorRGB(0, 10, 20, 30);
-    const sp = new SkillPanelSprites(new FakeReader(), new FakeReader(), pal);
+    const sp = new SkillPanelSprites(new FakeReader(), new FakeReader(), pal);  
     const panel = new Frame(16, 40);
     const base = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
     panel.data.fill(base);
@@ -82,5 +82,16 @@ describe('SkillPanelSprites helper methods', function () {
     const bright = ColorPalette.colorFromRGB(50, 60, 70) >>> 0;
     expect(Array.from(new Set(highlight.data))).to.eql([bright]);
     expect(highlight.mask.every(m => m === 1)).to.be.true;
+  });
+
+  it('returns panel, letter, and number sprites', function () {
+    const pal = new ColorPalette();
+    const sp = new SkillPanelSprites(new FakeReader(), new FakeReader(), pal);
+
+    expect(sp.getPanelSprite()).to.equal(sp.panelSprite);
+    expect(sp.getLetterSprite('a')).to.equal(sp.letterSprite.A);
+    expect(sp.getNumberSpriteLeft(0)).to.equal(sp.numberSpriteLeft[0]);
+    expect(sp.getNumberSpriteRight(0)).to.equal(sp.numberSpriteRight[0]);
+    expect(sp.getNumberSpriteEmpty()).to.equal(sp.emptyNumberSprite);
   });
 });

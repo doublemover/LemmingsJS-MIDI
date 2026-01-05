@@ -5,7 +5,8 @@ import {
   listSavedLevels,
   loadSavedLevel,
   saveLevel,
-  deleteLevel
+  deleteLevel,
+  __test__
 } from '../../js/editor/EditorStorage.js';
 
 class MemoryStorage {
@@ -60,6 +61,38 @@ describe('EditorStorage', () => {
     expect(list[2].id).to.equal('b');
     expect(list[3].name).to.equal('Untitled');
     expect(list[3].updatedAt).to.equal(0);
+  });
+
+  it('orders names in both directions', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEYS.index, JSON.stringify([
+      { id: 'b', name: 'Beta', updatedAt: 1 },
+      { id: 'a', name: 'Alpha', updatedAt: 2 }
+    ]));
+    const list = listSavedLevels(storage);
+    expect(list[0].id).to.equal('a');
+    expect(list[1].id).to.equal('b');
+  });
+
+  it('orders equal names by updatedAt', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEYS.index, JSON.stringify([
+      { id: 'a1', name: 'Same', updatedAt: 1 },
+      { id: 'a2', name: 'Same', updatedAt: 5 }
+    ]));
+    const list = listSavedLevels(storage);
+    expect(list[0].id).to.equal('a2');
+    expect(list[1].id).to.equal('a1');
+  });
+
+  it('compares names and updatedAt explicitly', () => {
+    const { compareSavedLevels } = __test__;
+    expect(compareSavedLevels({ name: 'Alpha' }, { name: 'Beta' })).to.equal(-1);
+    expect(compareSavedLevels({ name: 'Gamma' }, { name: 'Beta' })).to.equal(1);
+    expect(compareSavedLevels({ name: 'Same', updatedAt: 1 }, { name: 'Same', updatedAt: 4 }))
+      .to.equal(3);
+    expect(compareSavedLevels({}, { updatedAt: 2 })).to.equal(2);
+    expect(compareSavedLevels({}, {})).to.equal(0);
   });
 
   it('handles invalid storage data without throwing', () => {

@@ -119,6 +119,117 @@ describe('MidiMapping', function() {
     expect(spec.pan).to.equal(127);
   });
 
+  it('applies axisX/axisY mappings across targets', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 1, max: 101, default: 1 },
+      durationTicks: { default: 5, min: 1, max: 10 },
+      position: {
+        mappings: [
+          { axisX: true, axisY: true, axisOp: 'sub', target: 'velocity', min: 1, max: 101, enabled: true },
+          { axisX: true, axisY: false, target: 'timbre', min: 0, max: 100, enabled: true },
+          { axisX: false, axisY: true, target: 'pan', min: -127, max: 127, enabled: true },
+          { axisX: false, axisY: false, target: 'duration', min: 1, max: 9, enabled: true }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false,
+        timbreRange: { min: 0, max: 100 },
+        panRange: { min: -127, max: 127 }
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 25, y: 75 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.velocity).to.equal(26);
+    expect(spec.timbre).to.equal(25);
+    expect(spec.pan).to.equal(64);
+    expect(spec.durationTicks).to.equal(5);
+  });
+
+  it('skips axisX/axisY mappings when values are missing', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 1, max: 127, default: 10 },
+      position: {
+        mappings: [{ axisX: true, axisY: true, axisOp: 'mul', target: 'velocity', min: 1, max: 127, enabled: true }],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100, levelHeight: null },
+      0
+    );
+
+    expect(spec.velocity).to.equal(10);
+  });
+
+  it('applies xy axis operations for mappings', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 1, max: 101, default: 1 },
+      position: {
+        mappings: [
+          { axis: 'xy', axisOp: 'sub', target: 'velocity', min: 1, max: 101, enabled: true },
+          { axis: 'xy', axisOp: 'mul', target: 'timbre', min: 0, max: 100, enabled: true },
+          { axis: 'xy', axisOp: 'div', target: 'pan', min: -127, max: 127, enabled: true }
+        ],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false,
+        timbreRange: { min: 0, max: 100 },
+        panRange: { min: -127, max: 127 }
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 25, y: 75 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(spec.velocity).to.equal(26);
+    expect(spec.timbre).to.equal(19);
+    expect(spec.pan).to.be.below(0);
+
+    const zeroSpec = mapping.mapEvent(
+      { sfxId: 1, x: 25, y: 0 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+
+    expect(zeroSpec.pan).to.equal(127);
+  });
+
+  it('skips xy mappings when axis values are missing', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 1, max: 127, default: 10 },
+      position: {
+        mappings: [{ axis: 'xy', target: 'velocity', min: 1, max: 127, enabled: true }],
+        viewPan: false,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50 },
+      { levelWidth: 100, levelHeight: null },
+      0
+    );
+
+    expect(spec.velocity).to.equal(10);
+  });
+
   it('calculates pan from the view window', function() {
     const mapping = new MidiMapping({
       position: {
@@ -145,6 +256,51 @@ describe('MidiMapping', function() {
     expect(center.pan).to.equal(0);
     expect(right.pan).to.be.greaterThan(0);
     expect(right.pan).to.be.at.most(127);
+  });
+
+  it('uses pan defaults when optional settings are missing', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 80 },
+      { viewRect: { x: 0, w: 100 }, levelWidth: 100 },
+      0
+    );
+
+    expect(spec.pan).to.be.at.least(-127);
+    expect(spec.pan).to.be.at.most(127);
+  });
+
+  it('falls back to view pan defaults when config values are null', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        panRange: null,
+        panDeadZonePct: null,
+        panOnscreenWeight: null,
+        panOffscreenWeight: null,
+        panOffscreenRange: null,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 80 },
+      { viewRect: { x: 0, w: 100 } },
+      0
+    );
+
+    expect(spec.pan).to.be.within(-127, 127);
+    expect(spec.pan).to.not.equal(0);
   });
 
   it('keeps view pan at zero when weights are zero', function() {
@@ -352,6 +508,68 @@ describe('MidiMapping', function() {
     expect(spec.notes).to.have.length(3);
     expect(spec.velocity).to.be.greaterThan(0);
     expect(spec.releaseVelocity).to.be.greaterThan(0);
+  });
+
+  it('builds scale notes from degree without chords', function() {
+    const mapping = new MidiMapping({
+      scale: { degrees: [0, 2, 4, 5, 7, 9, 11], root: 0 },
+      noteRange: { min: 60, max: 72 },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false },
+      sfx: { '1': { degree: 2, octave: 4 } }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec.note).to.be.within(60, 72);
+  });
+
+  it('uses octave defaults when mapping degrees', function() {
+    const mapping = new MidiMapping({
+      noteDefaults: { degree: null, octave: null },
+      position: { xToNote: false, yToVelocity: false, yToTimbre: false, viewPan: false },
+      sfx: { '1': { degree: 2 }, '2': { degree: 2, octave: 5 } }
+    });
+
+    const fallback = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(fallback.note).to.equal(50);
+
+    const explicit = mapping.mapEvent({ sfxId: 2 }, {}, 0);
+    expect(explicit.note).to.equal(62);
+  });
+
+  it('computes view pan using level width when viewRect is missing', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        panRange: { min: -127, max: 127 },
+        panDeadZonePct: 0.1,
+        panOnscreenWeight: 0.8,
+        panOffscreenWeight: 0.2,
+        panOffscreenRange: 1,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+    const spec = mapping.mapEvent({ sfxId: 1, x: 75 }, { levelWidth: 100 }, 0);
+    expect(spec.pan).to.be.a('number');
+  });
+
+  it('keeps view pan null when view width is unavailable', function() {
+    const mapping = new MidiMapping({
+      position: {
+        viewPan: true,
+        panRange: null,
+        panDeadZonePct: null,
+        panOnscreenWeight: null,
+        panOffscreenWeight: null,
+        panOffscreenRange: null,
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false
+      }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1, x: 10 }, {}, 0);
+    expect(spec.pan).to.equal(null);
   });
 
   it('falls back to the default scale when the name is unknown', function() {
@@ -959,5 +1177,25 @@ describe('MidiMapping', function() {
 
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(50);
+  });
+
+  it('defaults axisOp to add when not provided', function() {
+    const mapping = new MidiMapping({
+      velocityRange: { min: 0, max: 100, default: 0 },
+      position: {
+        mappings: [{ axis: 'xy', target: 'velocity', min: 0, max: 100, enabled: true }],
+        xToNote: false,
+        yToVelocity: false,
+        yToTimbre: false,
+        viewPan: false
+      }
+    });
+
+    const spec = mapping.mapEvent(
+      { sfxId: 1, x: 50, y: 50 },
+      { levelWidth: 100, levelHeight: 100 },
+      0
+    );
+    expect(spec.velocity).to.equal(50);
   });
 });
