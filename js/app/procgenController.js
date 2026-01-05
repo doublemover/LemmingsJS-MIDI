@@ -42,7 +42,7 @@ class ProcgenController {
     this._gapCooldown = 0;
     this._structurePlan = null;
     this._aiLastDecisionTick = 0;
-    this._aiDecisionInterval = 6;
+    this._aiDecisionInterval = 3;
     this._aiBudget = null;
     this._aiBudgetMax = null;
     this._aiBudgetRegen = null;
@@ -71,13 +71,13 @@ class ProcgenController {
     this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
     this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
     this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
-    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 6;
+    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 3;
     this.aiScanAhead = Number.isFinite(options.aiScanAhead) ? options.aiScanAhead : 24;
     this.aiWallHeight = Number.isFinite(options.aiWallHeight) ? options.aiWallHeight : 10;
     this.aiHazardDistance = Number.isFinite(options.aiHazardDistance) ? options.aiHazardDistance : 18;
     this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
     this.aiDebugOverlay = options.aiDebugOverlay === true;
-    this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 12;
+    this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 5;
     this.entranceX = Number.isFinite(options.entranceX) ? options.entranceX : null;
     this.entranceY = Number.isFinite(options.entranceY) ? options.entranceY : null;
     this.entranceClearance = Number.isFinite(options.entranceClearance) ? options.entranceClearance : 24;
@@ -227,28 +227,28 @@ class ProcgenController {
   _initAiDirector() {
     this._aiDecisionInterval = Math.max(1, Math.floor(this.aiDecisionInterval));
     this._aiBudgetMax = {
-      builder: 8,
-      floater: 6,
-      bash: 4,
-      mine: 2,
-      dig: 3,
-      blocker: 3
+      builder: 14,
+      floater: 10,
+      bash: 8,
+      mine: 5,
+      dig: 6,
+      blocker: 6
     };
     this._aiBudget = {
-      builder: 5,
-      floater: 4,
-      bash: 3,
-      mine: 1,
-      dig: 2,
-      blocker: 2
+      builder: 10,
+      floater: 8,
+      bash: 6,
+      mine: 4,
+      dig: 5,
+      blocker: 5
     };
     this._aiBudgetRegen = {
-      builder: 1.0,
-      floater: 0.8,
-      bash: 0.4,
-      mine: 0.2,
-      dig: 0.3,
-      blocker: 0.2
+      builder: 2.2,
+      floater: 1.4,
+      bash: 1.1,
+      mine: 0.7,
+      dig: 0.9,
+      blocker: 0.8
     };
   }
 
@@ -295,8 +295,12 @@ class ProcgenController {
       const actionName = lem.action?.getActionName?.() || '';
       if (actionName && actionName !== 'walking') continue;
       if (this._shouldSkipAiFor(lem, tick)) continue;
-      const drop = this._getDropAt(ground, Math.floor(lem.x) - 1, Math.floor(lem.y), this.maxDrop);
-      if (drop > 0 && this._canSpend('blocker')) {
+      const x = Number.isFinite(lem.x) ? Math.floor(lem.x) : null;
+      const y = Number.isFinite(lem.y) ? Math.floor(lem.y) : null;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      const nearLeftEdge = x <= 2;
+      const drop = this._getDropAt(ground, x - 1, y, this.maxDrop);
+      if ((nearLeftEdge || drop > 0) && this._canSpend('blocker')) {
         if (manager.doLemmingAction(lem, SkillTypes.BLOCKER)) {
           this._noteAiAction(lem, tick, 32);
           return;
