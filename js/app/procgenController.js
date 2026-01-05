@@ -40,6 +40,7 @@ class ProcgenController {
     this._pendingDrop = false;
     this._gaps = [];
     this._gapCooldown = 0;
+    this._structurePlan = null;
     this._aiLastDecisionTick = 0;
     this._aiDecisionInterval = 6;
     this._aiBudget = null;
@@ -47,6 +48,7 @@ class ProcgenController {
     this._aiBudgetRegen = null;
     this._aiLastDecision = null;
     this._aiDebug = null;
+    this._aiLemmingCooldown = new Map();
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -63,12 +65,13 @@ class ProcgenController {
     this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
     this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
     this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
-    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 6;
+    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 12;
     this.aiScanAhead = Number.isFinite(options.aiScanAhead) ? options.aiScanAhead : 24;
     this.aiWallHeight = Number.isFinite(options.aiWallHeight) ? options.aiWallHeight : 10;
     this.aiHazardDistance = Number.isFinite(options.aiHazardDistance) ? options.aiHazardDistance : 18;
     this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
     this.aiDebugOverlay = options.aiDebugOverlay === true;
+    this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 24;
   }
 
   start() {
@@ -233,9 +236,10 @@ class ProcgenController {
     this._aiLastDecisionTick = tick;
 
     const lemming = this._getFollowLemming();
-    if (!lemming || !lemming.lookRight) return;
+    if (!lemming) return;
+    if (this._shouldSkipAiFor(lemming, tick)) return;
     const scan = this._scanAhead(lemming);
-    const action = this._decideAssist(lemming, scan);
+    const action = this._decideAssist(lemming, scan, tick);
     if (action) {
       this._aiLastDecision = { tick, action, scan };
     } else if (this._aiLastDecision && this._aiLastDecision.tick !== tick) {
@@ -252,22 +256,24 @@ class ProcgenController {
     const scanAhead = Math.max(6, Math.floor(this.aiScanAhead));
     const levelHeight = this.level?.height ?? 0;
     const maxDrop = Math.min(this.maxDrop, levelHeight);
+    const dir = lemming.lookRight ? 1 : -1;
     let gap = null;
     let wall = null;
     for (let dx = 1; dx <= scanAhead; dx++) {
-      const drop = this._getDropAt(ground, x0 + dx, y0, maxDrop);
+      const testX = x0 + dx * dir;
+      const drop = this._getDropAt(ground, testX, y0, maxDrop);
       if (drop > 0 && !gap) {
-        const gapWidth = this._measureGapWidth(ground, x0 + dx, y0, scanAhead);
+        const gapWidth = this._measureGapWidth(ground, testX, y0, scanAhead, dir);
         gap = { dx, drop, width: gapWidth };
       }
-      const wallHeight = this._getWallHeight(ground, x0 + dx, y0, this.aiWallHeight);
+      const wallHeight = this._getWallHeight(ground, testX, y0, this.aiWallHeight, dir);
       if (wallHeight > 0 && !wall) {
         wall = { dx, height: wallHeight };
       }
       if (gap && wall) break;
     }
-    const hazard = this._findHazardAhead(x0, y0, scanAhead);
-    return { gap, wall, hazard };
+    const hazard = this._findHazardAhead(x0, y0, scanAhead, dir);
+    return { gap, wall, hazard, direction: dir };
   }
 
   _getDropAt(ground, x, y, maxDrop) {
@@ -280,10 +286,10 @@ class ProcgenController {
     return depth - 1;
   }
 
-  _measureGapWidth(ground, startX, y, scanAhead) {
+  _measureGapWidth(ground, startX, y, scanAhead, dir) {
     let width = 0;
     for (let dx = 0; dx <= scanAhead; dx++) {
-      const drop = this._getDropAt(ground, startX + dx, y, this.maxDrop);
+      const drop = this._getDropAt(ground, startX + dx * dir, y, this.maxDrop);
       if (drop <= 0) break;
       width += 1;
       if (width >= scanAhead) break;
@@ -291,7 +297,7 @@ class ProcgenController {
     return width;
   }
 
-  _getWallHeight(ground, x, y, maxHeight) {
+  _getWallHeight(ground, x, y, maxHeight, dir) {
     const height = Math.max(1, Math.floor(maxHeight));
     let wall = 0;
     for (let dy = 1; dy <= height; dy++) {
@@ -300,7 +306,7 @@ class ProcgenController {
     return wall;
   }
 
-  _findHazardAhead(x, y, scanAhead) {
+  _findHazardAhead(x, y, scanAhead, dir) {
     const triggers = this.level?.triggers;
     if (!Array.isArray(triggers) || triggers.length === 0) return null;
     const hazardSet = new Set([
@@ -311,7 +317,7 @@ class ProcgenController {
     ]);
     const maxDx = Math.max(1, Math.floor(scanAhead));
     for (let dx = 1; dx <= maxDx; dx++) {
-      const px = x + dx;
+      const px = x + dx * dir;
       for (const trigger of triggers) {
         if (!trigger || !hazardSet.has(trigger.type)) continue;
         if (px >= trigger.x1 && px <= trigger.x2 && y >= trigger.y1 && y <= trigger.y2) {
@@ -322,34 +328,54 @@ class ProcgenController {
     return null;
   }
 
-  _decideAssist(lemming, scan) {
+  _decideAssist(lemming, scan, tick) {
     if (!scan) return null;
     const manager = this.game?.getLemmingManager?.();
     if (!manager) return null;
+    const actionName = lemming.action?.getActionName?.() || '';
+    if (actionName && actionName !== 'walking') return null;
     const skillOrder = [];
+    if (scan.direction === -1 && scan.gap && scan.gap.dx <= 2) {
+      skillOrder.push({ skill: SkillTypes.BLOCKER, key: 'blocker', cooldown: 40 });
+    }
     if (scan.hazard && scan.hazard.dx <= this.aiHazardDistance) {
       skillOrder.push({ skill: SkillTypes.BLOCKER, key: 'blocker' });
     }
-    if (scan.gap && scan.gap.width >= 2) {
-      skillOrder.push({ skill: SkillTypes.BUILDER, key: 'builder' });
+    if (scan.gap && scan.gap.width >= 2 && scan.gap.width <= 8) {
+      skillOrder.push({ skill: SkillTypes.BUILDER, key: 'builder', cooldown: 48 });
     }
     if (scan.gap && scan.gap.drop >= this.aiFloaterDrop) {
       skillOrder.push({ skill: SkillTypes.FLOATER, key: 'floater' });
     }
     if (scan.wall && scan.wall.height >= 6) {
       skillOrder.push({ skill: SkillTypes.BASHER, key: 'bash' });
-      skillOrder.push({ skill: SkillTypes.MINER, key: 'mine' });
       skillOrder.push({ skill: SkillTypes.DIGGER, key: 'dig' });
+      if (scan.wall.height >= this.aiWallHeight + 4 || Math.random() < 0.15) {
+        skillOrder.push({ skill: SkillTypes.MINER, key: 'mine' });
+      }
     }
     if (!skillOrder.length) return null;
     for (const option of skillOrder) {
       if (!this._canSpend(option.key)) continue;
       if (manager.doLemmingAction(lemming, option.skill)) {
+        this._noteAiAction(lemming, tick, option.cooldown);
         return option.key;
       }
       this._refundBudget(option.key);
     }
     return null;
+  }
+
+  _shouldSkipAiFor(lemming, tick) {
+    if (!lemming || !Number.isFinite(tick)) return true;
+    const last = this._aiLemmingCooldown.get(lemming.id);
+    if (Number.isFinite(last) && tick < last) return true;
+    return false;
+  }
+
+  _noteAiAction(lemming, tick, extraCooldown = 0) {
+    const cooldown = Math.max(this.aiActionCooldown, extraCooldown || 0);
+    this._aiLemmingCooldown.set(lemming.id, tick + cooldown);
   }
 
   _canSpend(key) {
@@ -480,6 +506,8 @@ class ProcgenController {
       let bestDist = Infinity;
       for (const lem of lems) {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
+        const actionName = lem.action?.getActionName?.() || '';
+        if (actionName && actionName !== 'walking') continue;
         const dist = Math.abs((lem.x ?? 0) - gap.x);
         if (dist < bestDist) {
           bestDist = dist;
@@ -491,6 +519,9 @@ class ProcgenController {
         if (best.x < leadX - 8) continue;
       }
       if (manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+        const timer = this.game?.getGameTimer?.();
+        const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+        this._noteAiAction(best, tick, 48);
         gap.assigned = true;
       }
     }
@@ -512,6 +543,9 @@ class ProcgenController {
       let bestDist = Infinity;
       for (const lem of lems) {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
+        const actionName = lem.action?.getActionName?.() || '';
+        if (actionName && actionName !== 'walking') continue;
+        if (this._shouldSkipAiFor(lem, this.game?.getGameTimer?.().tickIndex ?? 0)) continue;
         if (burst.used?.has?.(lem.id)) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.originX);
         if (dist < bestDist) {
@@ -520,6 +554,8 @@ class ProcgenController {
         }
       }
       if (best && manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+        const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
+        this._noteAiAction(best, tick, 48);
         burst.used?.add?.(best.id);
         return true;
       }
@@ -530,8 +566,12 @@ class ProcgenController {
       const idx = (start + i) % lems.length;
       const lem = lems[idx];
       if (!lem || lem.removed || lem.disabled) continue;
+      const actionName = lem.action?.getActionName?.() || '';
+      if (actionName && actionName !== 'walking') continue;
       this._builderCursorId = idx + 1;
       if (manager.doLemmingAction(lem, SkillTypes.BUILDER)) {
+        const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
+        this._noteAiAction(lem, tick, 48);
         return true;
       }
     }
@@ -599,12 +639,20 @@ class ProcgenController {
     const floorY = (Number.isFinite(topY) ? topY : 0) + this.groundHeight - 1;
     let cursor = Math.max(0, startX);
     const decorBias = Number.isFinite(colorIndex) ? (colorIndex % 4) : 0;
+    const structure = this._getStructurePlan();
     while (cursor < maxX) {
       const remaining = maxX - cursor;
-      const piece = this.assets.pickGroundPiece(remaining, this.groundHeight);
+      const surfaceY = this._nextSurfaceY(structure, floorY);
+      const minHeight = structure?.type === 'pillar'
+        ? Math.max(this.groundHeight * 3, 8)
+        : this.groundHeight;
+      const minWidth = structure?.type === 'shelf'
+        ? Math.max(6, this.segmentMinWidth)
+        : 1;
+      const piece = this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
       const destX = cursor - piece.bounds.minX;
-      const destY = floorY - piece.bounds.maxY;
+      const destY = surfaceY - piece.bounds.maxY;
       this.stamper.stamp(piece, destX, destY);
       if (Math.random() < (this.decorChance + decorBias * 0.01)) {
         this._placeDecoration(destX, destY, piece);
@@ -612,6 +660,64 @@ class ProcgenController {
       cursor += Math.max(1, piece.bounds.width);
       if (cursor >= maxX) break;
     }
+  }
+
+  _getStructurePlan() {
+    if (!this._structurePlan || this._structurePlan.remaining <= 0) {
+      this._structurePlan = this._seedStructurePlan();
+    }
+    return this._structurePlan;
+  }
+
+  _seedStructurePlan() {
+    const roll = Math.random();
+    let type = 'flat';
+    if (roll < 0.25) type = 'steps-up';
+    else if (roll < 0.5) type = 'steps-down';
+    else if (roll < 0.65) type = 'shelf';
+    else if (roll < 0.8) type = 'pillar';
+    else type = 'staircase';
+    const length = type === 'staircase'
+      ? this._randInt(4, 10)
+      : this._randInt(2, 6);
+    return {
+      type,
+      remaining: length,
+      step: this._randInt(1, Math.max(2, this.maxStepUp)),
+      surface: null,
+      direction: Math.random() < 0.5 ? -1 : 1,
+      turnAt: Math.max(1, Math.floor(length / 2))
+    };
+  }
+
+  _nextSurfaceY(plan, baseSurfaceY) {
+    if (!plan) return baseSurfaceY;
+    const levelHeight = this.level?.height ?? 0;
+    const maxSurface = Math.max(0, levelHeight - 1);
+    if (!Number.isFinite(plan.surface)) {
+      plan.surface = baseSurfaceY;
+    }
+    let surface = plan.surface;
+    if (plan.type === 'steps-up') {
+      surface -= plan.step;
+    } else if (plan.type === 'steps-down') {
+      surface += plan.step;
+    } else if (plan.type === 'shelf') {
+      surface += this._randInt(-2, 2);
+    } else if (plan.type === 'pillar') {
+      surface += this._randInt(-1, 1);
+    } else if (plan.type === 'staircase') {
+      surface += plan.step * plan.direction;
+      if (plan.remaining <= plan.turnAt) {
+        plan.direction = -plan.direction;
+      }
+    }
+    plan.remaining -= 1;
+    if (plan.remaining <= 0) {
+      this._structurePlan = null;
+    }
+    plan.surface = surface;
+    return Math.max(0, Math.min(maxSurface, surface));
   }
 
   _placeDecoration(baseX, baseY, basePiece) {

@@ -125,7 +125,7 @@ class ProcgenAssetManager {
     }
   }
 
-  _pickFromList(list, maxWidth, minHeight = 1) {
+  _pickFromList(list, maxWidth, minHeight = 1, minWidth = 1) {
     if (!Array.isArray(list) || list.length === 0) return null;
     let candidates = list;
     if (Number.isFinite(maxWidth)) {
@@ -134,6 +134,9 @@ class ProcgenAssetManager {
     if (Number.isFinite(minHeight)) {
       candidates = candidates.filter(piece => piece.bounds.height >= minHeight);
     }
+    if (Number.isFinite(minWidth)) {
+      candidates = candidates.filter(piece => piece.bounds.width >= minWidth);
+    }
     if (candidates.length === 0) {
       candidates = list;
     }
@@ -141,8 +144,8 @@ class ProcgenAssetManager {
     return candidates[idx];
   }
 
-  pickGroundPiece(maxWidth, minHeight) {
-    return this._pickFromList(this.groundPieces, maxWidth, minHeight);
+  pickGroundPiece(maxWidth, minHeight, minWidth) {
+    return this._pickFromList(this.groundPieces, maxWidth, minHeight, minWidth);
   }
 
   pickDecorPiece(maxWidth) {

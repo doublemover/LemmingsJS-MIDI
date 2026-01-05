@@ -19,6 +19,8 @@ const PROCGEN_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
 const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
 const PROCGEN_GROUND_HEIGHT = 4;
+const PROCGEN_ENTRANCE_OFFSET = 56;
+const PROCGEN_INITIAL_GROUND_WIDTH = 220;
 
 const shuffle = (list) => {
   for (let i = list.length - 1; i > 0; i--) {
@@ -85,7 +87,7 @@ const buildProcgenEditorLevel = (styleName) => {
   level.setHeader('MAX_SPAWN_INTERVAL', PROCGEN_RELEASE_RATE);
   level.setHeader('TIME_LIMIT', 'INFINITE');
   const entranceX = 64;
-  const entranceY = PROCGEN_LEVEL_HEIGHT - PROCGEN_GROUND_HEIGHT - 40;
+  const entranceY = PROCGEN_LEVEL_HEIGHT - PROCGEN_GROUND_HEIGHT - PROCGEN_ENTRANCE_OFFSET;
   level.setHeader('START_X', entranceX);
   level.gadgets.push({
     props: { PIECE: 1, X: entranceX, Y: entranceY }
@@ -158,7 +160,11 @@ const init = async () => {
     level,
     assets: assetManager,
     stamper,
-    options: { groundHeight: PROCGEN_GROUND_HEIGHT, aiDebugOverlay }
+    options: {
+      groundHeight: PROCGEN_GROUND_HEIGHT,
+      initialGroundWidth: PROCGEN_INITIAL_GROUND_WIDTH,
+      aiDebugOverlay
+    }
   });
   controller.start();
 
