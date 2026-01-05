@@ -4,7 +4,7 @@ import { EditorController } from '../../js/editor/EditorController.js';
 import { EditorSession } from '../../js/editor/EditorSession.js';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
 import { EditorTools } from '../../js/editor/EditorTools.js';
-import { createTerrainEntry, createGadgetEntry } from '../../js/editor/EditorEntryFactory.js';
+import { createTerrainEntry, createGadgetEntry, createSteelEntry } from '../../js/editor/EditorEntryFactory.js';
 
 class FakeHistory {
   constructor() {
@@ -588,15 +588,13 @@ describe('EditorController', () => {
     controller.setTool(EditorTools.SELECT);
     expect(controller.getHandleSize()).to.equal(2);
 
-    const entry = createTerrainEntry({
-      styleName: 'dirt',
-      piece: 2,
+    const entry = createSteelEntry({
       x: 10,
       y: 10,
       width: 8,
       height: 8
     });
-    session.level.terrains.push(entry);
+    session.level.steel.push(entry);
 
     controller.handlePointerDown({ x: 10, y: 10 }, 0);
     controller.handlePointerUp();
@@ -622,15 +620,13 @@ describe('EditorController', () => {
     let selectionChanges = 0;
     controller.setCallbacks({ onSelectionChange: () => selectionChanges++ });
 
-    const entry = createTerrainEntry({
-      styleName: 'dirt',
-      piece: 2,
+    const entry = createSteelEntry({
       x: 8,
       y: 8,
       width: 8,
       height: 8
     });
-    session.level.terrains.push(entry);
+    session.level.steel.push(entry);
 
     controller.handlePointerDown({ x: 8, y: 8 }, 0);
     controller.handlePointerUp();
@@ -652,15 +648,13 @@ describe('EditorController', () => {
     controller.setAssets(buildAssets());
     controller.setTool(EditorTools.SELECT);
 
-    const entry = createTerrainEntry({
-      styleName: 'dirt',
-      piece: 2,
+    const entry = createSteelEntry({
       x: 10,
       y: 10,
       width: 8,
       height: 8
     });
-    session.level.terrains.push(entry);
+    session.level.steel.push(entry);
 
     controller.handlePointerDown({ x: 10, y: 10 }, 0);
     controller.handlePointerUp();

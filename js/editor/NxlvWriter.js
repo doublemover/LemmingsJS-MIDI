@@ -158,6 +158,12 @@ class NxlvWriter {
       for (const skill of remaining) {
         out.push(`  SKILL ${skill} ${formatValue(level.skillset.get(skill))}`);
       }
+      const skillsetUnknown = Array.isArray(level?.skillsetUnknownLines)
+        ? level.skillsetUnknownLines
+        : [];
+      for (const line of skillsetUnknown) {
+        out.push(`  ${String(line).trim()}`);
+      }
       out.push('$END');
     }
 

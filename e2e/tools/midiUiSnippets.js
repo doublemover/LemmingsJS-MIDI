@@ -69,6 +69,7 @@ export const openMidiUi = async (page, { url = '/', navigate = true } = {}) => {
     await toggle.check();
   }
   await page.waitForSelector(MIDI_SELECTORS.eventList, { state: 'attached' });
+  await page.waitForSelector('#controlRight', { state: 'visible' });
 };
 
 export const getMidiErrorDisplay = async (page) => {
@@ -78,6 +79,8 @@ export const getMidiErrorDisplay = async (page) => {
 
 export const openFirstMidiEvent = async (page) => {
   const details = page.locator(MIDI_SELECTORS.eventList).first();
+  await details.waitFor({ state: 'attached' });
+  await details.locator('summary').waitFor({ state: 'visible' });
   await details.locator('summary').click();
   await details.evaluate((node) => {
     node.open = true;

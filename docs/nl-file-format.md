@@ -301,8 +301,8 @@ $SKILLSET
 $END
 ```
 
-`INFINITE` is accepted but will be stored as a large sentinel in the classic
-runtime. The editor will clamp values to practical limits.
+`INFINITE` is accepted but will be stored as 6039 seconds (99:99) in the        
+classic runtime. The editor will clamp values to practical limits.
 
 ### 8.3 `$TERRAIN`
 

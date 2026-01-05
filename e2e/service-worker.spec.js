@@ -12,13 +12,21 @@ async function ensureServiceWorkerControls(page) {
         updateViaCache: 'none'
       });
     }
-    await registration.update();
-    const state = registration.active?.state ||
-      registration.installing?.state ||
-      registration.waiting?.state ||
+    try {
+      await registration.update();
+    } catch (error) {
+      if (error?.name !== 'InvalidStateError') {
+        throw error;
+      }
+    }
+    const ready = await navigator.serviceWorker.ready;
+    const readyRegistration = ready || registration;
+    const state = readyRegistration.active?.state ||
+      readyRegistration.installing?.state ||
+      readyRegistration.waiting?.state ||
       null;
     return {
-      scope: registration.scope || '',
+      scope: readyRegistration.scope || registration.scope || '',
       state,
       registeredByApp
     };

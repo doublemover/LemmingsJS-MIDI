@@ -31,6 +31,9 @@
         </label>
         <button id="editorNewLevel" type="button" title="Create a new blank level.">New Level</button>
         <button id="editorSavedSave" type="button" title="Save the current level to local storage.">Save</button>
+        <button class="secondary" id="editorUndo" type="button" title="Undo the last change.">Undo</button>
+        <button class="secondary" id="editorRedo" type="button" title="Redo the last undone change.">Redo</button>
+        <span id="editorDirtyStatus" class="dirty-indicator" title="Shows whether there are unsaved changes.">Saved</span>
         <button id="editorSavedExport" type="button" title="Export the current level in editor format (.nxlv).">Export</button>
         <button id="editorSavedExportClassic" type="button" title="Export the current level as a classic LVL file.">Export LVL</button>
         <button class="secondary" id="editorSavedImport" type="button" title="Import a saved editor level (.nxlv).">Import</button>
@@ -67,7 +70,7 @@
         </label>
         <label class="control-row" title="Set the brush size for painting terrain.">
           Brush size
-          <input id="editorBrushSize" type="number" min="1" value="1" title="Set the brush size for painting terrain." />
+          <input id="editorBrushSize" type="number" min="1" max="64" value="1" title="Set the brush size for painting terrain." />
         </label>
         <label class="control-row" title="Allow the eraser tool to remove gadgets as well as terrain.">
           Erase gadgets

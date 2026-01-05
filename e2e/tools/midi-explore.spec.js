@@ -175,6 +175,12 @@ test('Explore MIDI UI mappings', async ({ page }) => {
     if (!(await chordSelect.isDisabled())) issues.push('Chord enabled in note mode.');
 
     await trySelectOption(keyRowSelect, '1', 'Key');
+    if (!(await ensureVisible(noteOctaveInput, 'Octave input'))) {
+      if (issues.length) {
+        console.log('midi exploration issues:', JSON.stringify(issues, null, 2));
+      }
+      return;
+    }
     await noteOctaveInput.fill('4');
     await noteOctaveInput.dispatchEvent('change');
 
@@ -198,6 +204,13 @@ test('Explore MIDI UI mappings', async ({ page }) => {
     if (await scaleOctaveInput.isDisabled()) issues.push('Scale octave disabled in chord mode.');
     if (await chordSelect.isDisabled()) issues.push('Chord disabled in chord mode.');
 
+    if (!(await ensureVisible(degreeInput, 'Degree input'))
+      || !(await ensureVisible(scaleOctaveInput, 'Scale octave input'))) {
+      if (issues.length) {
+        console.log('midi exploration issues:', JSON.stringify(issues, null, 2));
+      }
+      return;
+    }
     await degreeInput.fill('2');
     await degreeInput.dispatchEvent('change');
     await scaleOctaveInput.fill('4');

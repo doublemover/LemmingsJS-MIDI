@@ -14,6 +14,7 @@
 ### Skillset
 - Stored as `Map` keyed by classic skill names.
 - NeoLemmix skills not in classic Lemmings are currently ignored.
+- `skillsetUnknownLines` preserves section-local comments/unknown lines.
 
 ### Terrain and gadget entries
 - Each entry is `{ props, order, unknownLines }`.
@@ -54,5 +55,5 @@ Editor asset metadata is loaded from classic DAT files and used for:
 The editor mapping converts `EditorLevel` to classic runtime data:
 - `STYLE` -> `graphicSet1` via `StyleRegistry` ground set.
 - Terrain and gadget entries -> `LevelElement` with `DrawProperties`.
-- `TIME_LIMIT` of `INFINITE` -> 0 seconds for classic runtime.
+- `TIME_LIMIT` of `INFINITE` -> 6039 seconds (99:99) for classic runtime.
 - Steel rectangles are projected into classic `Level.steel` ranges.

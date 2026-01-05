@@ -20,6 +20,7 @@ describe('NxlvParser', function () {
       'BACKGROUND sky',
       '',
       '$SKILLSET',
+      '  # skill comment',
       '  SKILL CLIMBER 5',
       '  SKILL FLOATER INFINITE',
       '  SKILL UNKNOWN 3',
@@ -27,6 +28,7 @@ describe('NxlvParser', function () {
       '$END',
       '',
       '$TERRAIN',
+      '  # terrain comment',
       '  STYLE dirt',
       '  PIECE terrain_1',
       '  X 10',
@@ -80,12 +82,14 @@ describe('NxlvParser', function () {
     assert.strictEqual(level.skillset.get('CLIMBER'), 5);
     assert.strictEqual(level.skillset.get('FLOATER'), 'INFINITE');
     assert.strictEqual(level.skillset.get('UNKNOWN'), 3);
+    assert.ok(level.skillsetUnknownLines.some(line => line.includes('# skill comment')));
 
     assert.strictEqual(level.terrains.length, 1);
     assert.strictEqual(level.terrains[0].props.X, 10);
     assert.strictEqual(level.terrains[0].props.NO_OVERWRITE, true);
     assert.strictEqual(level.terrains[0].props.ERASE, false);
     assert.strictEqual(level.terrains[0].props.ONE_WAY, 'maybe');
+    assert.ok(level.terrains[0].unknownLines.some(line => line.includes('# terrain comment')));
 
     assert.strictEqual(level.terrainGroups.length, 1);
     assert.strictEqual(level.terrainGroups[0].props.STEEL, true);
@@ -103,7 +107,7 @@ describe('NxlvParser', function () {
     assert.strictEqual(level.unknownSections.length, 1);
     assert.strictEqual(level.unknownSections[0].name, 'FOO');
     assert.ok(level.unknownLines.some(line => line.includes('# comment')));
-    assert.ok(level.unknownLines.some(line => line.includes('EXTRA something')));
+    assert.ok(level.skillsetUnknownLines.some(line => line.includes('EXTRA something')));
   });
 
   it('closes dangling sections at EOF', function () {

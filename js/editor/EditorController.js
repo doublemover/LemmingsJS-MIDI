@@ -14,6 +14,7 @@ const DEFAULT_GRID = 4;
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
 const DEFAULT_HANDLE_SIZE = 2;
+const MAX_BRUSH_SIZE = 64;
 
 const snapValue = (value, gridSize) => {
   if (!Number.isFinite(gridSize) || gridSize <= 1) return Math.round(value);
@@ -21,6 +22,7 @@ const snapValue = (value, gridSize) => {
 };
 
 const clampSize = (value) => Math.max(1, Math.round(value));
+const clampBrushSize = (value) => Math.min(MAX_BRUSH_SIZE, clampSize(value));
 
 const cloneEntry = (entry, options = {}) => {
   const props = entry?.props ? { ...entry.props } : {};
@@ -67,7 +69,8 @@ class EditorController {
     this.tool = options.tool || EditorTools.SELECT;
     this.gridSize = Number.isFinite(options.gridSize) ? options.gridSize : DEFAULT_GRID;
     this.snapEnabled = options.snapEnabled !== false;
-    this.brushSize = Number.isFinite(options.brushSize) ? options.brushSize : 1;
+    this.brushSize = 1;
+    this.setBrushSize(Number.isFinite(options.brushSize) ? options.brushSize : 1);
     this.eraseGadgets = !!options.eraseGadgets;
     this.assets = options.assets || null;
     this.selectedTerrainId = 0;
@@ -129,7 +132,8 @@ class EditorController {
   }
 
   setBrushSize(size) {
-    this.brushSize = Math.max(1, Number.isFinite(size) ? size : 1);
+    const value = Number.isFinite(size) ? size : 1;
+    this.brushSize = clampBrushSize(value);
   }
 
   setEraseGadgets(enabled) {
@@ -197,6 +201,11 @@ class EditorController {
 
   getHandleSize() {
     return this.handleSize;
+  }
+
+  canResizeSelection() {
+    if (!Array.isArray(this.selection) || this.selection.length !== 1) return false;
+    return this.selection[0].type === 'steel';
   }
 
   clearSelection() {
@@ -564,6 +573,7 @@ class EditorController {
   }
 
   _getResizeHandleAt(x, y) {
+    if (!this.canResizeSelection()) return null;
     const bounds = this.getSelectionBounds();
     if (!bounds) return null;
     const half = Math.max(1, Math.floor(this.handleSize / 2));

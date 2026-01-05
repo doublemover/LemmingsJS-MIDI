@@ -113,10 +113,6 @@ Notes:
 - [ ] High resolution and 32-bit color sprite support.
 - [ ] Procedural endless level generation.
 
-## Phase 8: Documentation
-- [x] Improved documentation (usage, editor workflows, MIDI, performance).      
-- [ ] Keep this roadmap current as work lands.
-
 ## Phase 9: Gamepad support (deferred)
 - [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
   support (gameplay + editor bindings, navigation, remapping).
@@ -199,14 +195,14 @@ Notes:
   selection, history, validate).
 
 ## Phase 19: Editor audit fixes + parity guardrails
-- [ ] Load `terrainGroups` into editor preview/runtime or warn as unsupported.
-- [ ] Preserve section-local comments in NXLV round-trips.
-- [ ] Add validation caps for width/height/brush/steel sizes and unsafe header
-  values; clarify INFINITE time handling.
-- [ ] Hide/disable or implement unsupported inspector fields (rotate, flip H,
-  resize, one-way) and add warnings for gadget-only props in classic mode.
-- [ ] Add editor UX safety upgrades (history cap, dirty indicator, undo/redo
-  buttons, preview refresh label coalescing).
+  - [x] Load `terrainGroups` into editor preview/runtime or warn as unsupported.
+  - [x] Preserve section-local comments in NXLV round-trips.
+  - [x] Add validation caps for width/height/brush/steel sizes and unsafe header
+    values; clarify INFINITE time handling.
+  - [x] Hide/disable or implement unsupported inspector fields (rotate, flip H,
+    resize, one-way) and add warnings for gadget-only props in classic mode.
+  - [x] Add editor UX safety upgrades (history cap, dirty indicator, undo/redo
+    buttons, preview refresh label coalescing).
 
 ## Phase 20: Procgen terrain stamping + assets
 - [ ] Add procgen asset manager (terrain/object categorization from packs).

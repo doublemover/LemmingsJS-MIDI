@@ -225,4 +225,52 @@ describe('EditorValidator', () => {
     const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
     expect(issues.some(issue => issue.message.includes('Missing entrance'))).to.equal(true);
   });
+
+  it('warns when terrain groups are present', () => {
+    const level = createLevel();
+    level.terrainGroups = [{ name: 'group-1' }];
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    expect(issues.some(issue => issue.message.includes('Terrain groups'))).to.equal(true);
+  });
+
+  it('warns about classic caps and unsupported props', () => {
+    const level = createLevel();
+    level.setHeader('WIDTH', 2000);
+    level.setHeader('HEIGHT', 300);
+    level.setHeader('LEMMINGS', 1500);
+    level.setHeader('SAVE_REQUIREMENT', 2000);
+    level.setHeader('MAX_SPAWN_INTERVAL', 0);
+    level.setHeader('TIME_LIMIT', 99999);
+    level.terrains.push({
+      props: { X: 0, Y: 0, ROTATE: 45, FLIP_HORIZONTAL: true, ONE_WAY: true, WIDTH: 4, HEIGHT: 4, SKILL: 1 }
+    });
+    level.gadgets.push({
+      props: { X: 0, Y: 0, ROTATE: 45, FLIP_HORIZONTAL: true, WIDTH: 4, HEIGHT: 4 }
+    });
+    level.steel = [
+      { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999, LEMMINGS: 5 } }
+    ];
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    expect(issues.some(issue => issue.message.includes('Width exceeds classic preview max'))).to.equal(true);
+    expect(issues.some(issue => issue.message.includes('Height exceeds classic preview max'))).to.equal(true);
+    expect(issues.some(issue => issue.message.includes('Lemmings count exceeds safe max'))).to.equal(true);
+    expect(issues.some(issue => issue.message.includes('Save requirement exceeds safe max'))).to.equal(true);
+    expect(issues.some(issue => issue.message.includes('Spawn interval is out of range'))).to.equal(true);
+    expect(issues.some(issue => issue.message.includes('Time limit exceeds classic max'))).to.equal(true);
+    const gadgetPropsIssue = issues.find(issue => issue.message.includes('Gadget-only properties'));
+    const terrainUnsupportedIssue = issues.find(issue => issue.message.includes('Terrain entries include unsupported classic properties'));
+    const gadgetUnsupportedIssue = issues.find(issue => issue.message.includes('Gadget entries include unsupported classic properties'));
+    expect(gadgetPropsIssue).to.exist;
+    expect(terrainUnsupportedIssue).to.exist;
+    expect(gadgetUnsupportedIssue).to.exist;
+
+    gadgetPropsIssue.fix();
+    terrainUnsupportedIssue.fix();
+    gadgetUnsupportedIssue.fix();
+    expect(level.terrains[0].props).to.not.have.property('SKILL');
+    expect(level.terrains[0].props).to.not.have.property('ROTATE');
+    expect(level.gadgets[0].props).to.not.have.property('ROTATE');
+    expect(level.steel[0].props).to.not.have.property('LEMMINGS');
+  });
 });

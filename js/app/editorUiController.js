@@ -32,7 +32,8 @@ import {
   saveLevel
 } from '../editor/EditorStorage.js';
 
-const MAX_HISTORY = Number.MAX_SAFE_INTEGER;
+const MAX_HISTORY = 200;
+const MAX_BRUSH_SIZE = 64;
 const EDITOR_SHORTCUT_SECTIONS = [
   {
     title: 'General',
@@ -120,6 +121,8 @@ class EditorUiController {
     this._antsOffset = 0;
     this._needsDefaultEntrances = false;
     this.shortcutOverlay = null;
+    this._dirty = false;
+    this._baseTitle = this.document?.title || 'Lemmings Editor';
 
     this._bindElements();
     this._bindController();
@@ -135,6 +138,8 @@ class EditorUiController {
     ensureLevelEntryUids(this.session?.level);
     await this._reloadAssets();
     this.controller.resetHistory('Init');
+    this._setDirty(false);
+    this._refreshUndoRedo();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
@@ -152,6 +157,9 @@ class EditorUiController {
       savedSelect: get('editorSavedSelect'),
       newLevel: get('editorNewLevel'),
       savedSave: get('editorSavedSave'),
+      undo: get('editorUndo'),
+      redo: get('editorRedo'),
+      dirtyStatus: get('editorDirtyStatus'),
       savedExport: get('editorSavedExport'),
       savedExportClassic: get('editorSavedExportClassic'),
       savedImport: get('editorSavedImport'),
@@ -233,6 +241,7 @@ class EditorUiController {
     this._bindHeaderFields();
     this._bindSelectionFields();
     this._bindSelectionActions();
+    this._bindUndoRedo();
     this._bindBrushControls();
     this._bindSavedControls();
     this._bindLevelSelectors();
@@ -480,7 +489,9 @@ class EditorUiController {
     if (this.el.brushSize) {
       this.el.brushSize.addEventListener('change', () => {
         const value = parseNumber(this.el.brushSize.value);
-        this.controller.setBrushSize(value || 1);
+        const next = Number.isFinite(value) ? Math.min(Math.max(value, 1), MAX_BRUSH_SIZE) : 1;
+        this.controller.setBrushSize(next);
+        this.el.brushSize.value = String(next);
       });
     }
     if (this.el.eraseGadgets) {
@@ -960,6 +971,7 @@ class EditorUiController {
     const meta = data.meta || null;
     const isGadget = data.type === 'gadget';
     const isSteel = data.type === 'steel';
+    const supportsResize = isSteel;
     const widthValue = props.WIDTH ?? (isSteel ? undefined : meta?.width);
     const heightValue = props.HEIGHT ?? (isSteel ? undefined : meta?.height);
 
@@ -973,15 +985,15 @@ class EditorUiController {
     }
     if (this.el.selWidth) {
       this.el.selWidth.value = formatValue(widthValue);
-      this.el.selWidth.disabled = false;
+      this.el.selWidth.disabled = !supportsResize;
     }
     if (this.el.selHeight) {
       this.el.selHeight.value = formatValue(heightValue);
-      this.el.selHeight.disabled = false;
+      this.el.selHeight.disabled = !supportsResize;
     }
     if (this.el.selRotate) {
       this.el.selRotate.value = formatRotation(props.ROTATE);
-      this.el.selRotate.disabled = isSteel;
+      this.el.selRotate.disabled = true;
     }
     if (this.el.selSkill) {
       this.el.selSkill.value = formatValue(props.SKILL);
@@ -998,7 +1010,7 @@ class EditorUiController {
 
     if (this.el.selFlipH) {
       this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
-      this.el.selFlipH.disabled = isSteel;
+      this.el.selFlipH.disabled = true;
     }
     if (this.el.selFlipV) {
       this.el.selFlipV.checked = !!props.FLIP_VERTICAL;
@@ -1014,7 +1026,7 @@ class EditorUiController {
     }
     if (this.el.selOneWay) {
       this.el.selOneWay.checked = !!props.ONE_WAY;
-      this.el.selOneWay.disabled = isGadget || isSteel;
+      this.el.selOneWay.disabled = true;
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
 
@@ -1061,6 +1073,7 @@ class EditorUiController {
     if (!id) return;
     this._currentSavedId = id;
     this._refreshSavedList(id);
+    this._setDirty(false);
   }
 
   async _createNewLevel() {
@@ -1070,6 +1083,8 @@ class EditorUiController {
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.resetHistory('New');
+    this._setDirty(false);
+    this._refreshUndoRedo();
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
     this._refreshSavedList('');
@@ -1092,6 +1107,23 @@ class EditorUiController {
     bind(this.el.selectionMoveForward, () => this.controller.moveSelectionForward());
     bind(this.el.selectionMoveBackward, () => this.controller.moveSelectionBackward());
     bind(this.el.selectionSendBack, () => this.controller.sendSelectionToBack());
+  }
+
+  _bindUndoRedo() {
+    if (this.el.undo) {
+      this.el.undo.addEventListener('click', () => {
+        if (this.controller.undo()) {
+          this._refreshAfterEdit('Undo');
+        }
+      });
+    }
+    if (this.el.redo) {
+      this.el.redo.addEventListener('click', () => {
+        if (this.controller.redo()) {
+          this._refreshAfterEdit('Redo');
+        }
+      });
+    }
   }
 
   _ensureDefaultEntrancesExits() {
@@ -1156,6 +1188,8 @@ class EditorUiController {
     this.controller.clearSelection();
     await this._reloadAssets();
     this.controller.resetHistory(label || 'Load');
+    this._setDirty(false);
+    this._refreshUndoRedo();
     this._refreshHeaderFields(this.session?.level);
     this._refreshSelection(null);
     this._refreshValidation();
@@ -1174,6 +1208,8 @@ class EditorUiController {
     this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import');
+      this._setDirty(false);
+      this._refreshUndoRedo();
       this._refreshHeaderFields(level);
       this._refreshSelection(null);
       this._refreshValidation();
@@ -1194,6 +1230,8 @@ class EditorUiController {
     this.controller.clearSelection();
     this._reloadAssets().then(async () => {
       this.controller.resetHistory('Import LVL');
+      this._setDirty(false);
+      this._refreshUndoRedo();
       this._refreshHeaderFields(editorLevel);
       this._refreshSelection(null);
       this._refreshValidation();
@@ -1220,8 +1258,14 @@ class EditorUiController {
     const preserveView = options.preserveView !== false;
     if (this._previewInFlight) {
       this._previewQueued = true;
-      this._previewQueuedLabel = label || 'Queued';
-      this._previewQueuedOptions = { preserveView };
+      const nextLabel = label || 'Preview';
+      if (this._previewQueuedLabel && this._previewQueuedLabel !== nextLabel) {
+        this._previewQueuedLabel = 'Preview';
+      } else {
+        this._previewQueuedLabel = nextLabel;
+      }
+      const queuedPreserve = this._previewQueuedOptions?.preserveView ?? true;
+      this._previewQueuedOptions = { preserveView: queuedPreserve && preserveView };
       return;
     }
     this._previewInFlight = true;
@@ -1251,6 +1295,26 @@ class EditorUiController {
     this._refreshValidation();
     this._drawSelectionOverlay();
     this._updateStatus(label || 'Edit');
+    this._setDirty(true);
+    this._refreshUndoRedo();
+  }
+
+  _setDirty(isDirty) {
+    this._dirty = !!isDirty;
+    if (this.el.dirtyStatus) {
+      this.el.dirtyStatus.textContent = this._dirty ? 'Unsaved' : 'Saved';
+      this.el.dirtyStatus.classList.toggle('is-dirty', this._dirty);
+    }
+    if (this.document) {
+      this.document.title = this._dirty ? `${this._baseTitle} *` : this._baseTitle;
+    }
+  }
+
+  _refreshUndoRedo() {
+    const canUndo = !!this.controller?.history?.canUndo?.();
+    const canRedo = !!this.controller?.history?.canRedo?.();
+    if (this.el.undo) this.el.undo.disabled = !canUndo;
+    if (this.el.redo) this.el.redo.disabled = !canRedo;
   }
 
   _refreshValidation() {
@@ -1378,7 +1442,7 @@ class EditorUiController {
       const bounds = getEntryBounds(selected.entry, meta);
       display.drawDashedRect(bounds.x, bounds.y, bounds.width, bounds.height, 210, 106, 60, 3);
     }
-    if (selectedEntries.length === 1) {
+    if (selectedEntries.length === 1 && this.controller.canResizeSelection?.()) {
       const selected = selectedEntries[0];
       const meta = selected.type === 'steel'
         ? null

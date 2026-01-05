@@ -64,19 +64,22 @@ test('MIDI panels match layout snapshots', async ({ page }) => {
   await expect(leftPanel).toHaveScreenshot('midi-left-global-fx.png');
 });
 
-test('MIDI event and trigger titles render with width', async ({ page }) => {
+test('MIDI event and trigger titles render with width', async ({ page }) => {   
   await page.goto('/');
   await page.locator('#midiEnabledToggle').check();
   await page.waitForSelector('#midiEventList details');
+  await expect(page.locator('#controlRight')).toBeVisible();
+  await page.waitForSelector('#midiEventList summary .panel-title-text', { state: 'visible' });
   const eventTitle = page.locator('#midiEventList summary .panel-title-text').first();
   await expect(eventTitle).toContainText('#');
-  const eventBox = await eventTitle.boundingBox();
-  expect(eventBox?.width ?? 0).toBeGreaterThan(20);
+  const eventWidth = await eventTitle.evaluate(el => el.getBoundingClientRect().width);
+  expect(eventWidth).toBeGreaterThan(20);
   await page.locator('[data-tab-target="midiTabTriggers"]').click();
+  await page.waitForSelector('#midiTriggerList summary .panel-title-text', { state: 'visible' });
   const triggerTitle = page.locator('#midiTriggerList summary .panel-title-text').first();
   await expect(triggerTitle).toContainText('#');
-  const triggerBox = await triggerTitle.boundingBox();
-  expect(triggerBox?.width ?? 0).toBeGreaterThan(20);
+  const triggerWidth = await triggerTitle.evaluate(el => el.getBoundingClientRect().width);
+  expect(triggerWidth).toBeGreaterThan(20);
 });
 
 test('MIDI event list excludes unknown-0B', async ({ page }) => {

@@ -16,6 +16,7 @@ describe('NxlvWriter', function () {
     level.setSkill('BOMBER', false);
     level.setSkill('FLOATER', null);
     level.setSkill('MINER', undefined);
+    level.skillsetUnknownLines.push('# skill note');
 
     level.terrains.push({
       props: { STYLE: 'dirt', PIECE: 'terrain_1', X: 1, Y: 2 },
@@ -52,10 +53,12 @@ describe('NxlvWriter', function () {
     assert.ok(text.includes('$STEEL'));
     assert.ok(text.includes('NOTE keep'));
     assert.ok(text.includes('GROUP_NOTE keep'));
+    assert.ok(text.includes('# skill note'));
 
     const parsed = NxlvParser.parse(text);
     assert.strictEqual(parsed.getHeader('TITLE'), 'Test Level');
     assert.strictEqual(parsed.skillset.get('CUSTOM'), 7);
+    assert.ok(parsed.skillsetUnknownLines.some(line => line.includes('# skill note')));
     assert.strictEqual(parsed.terrainGroups[0].props.STEEL, true);
     assert.strictEqual(parsed.steel[0].props.WIDTH, 12);
     assert.strictEqual(parsed.gadgets[0].props.FLIP_VERTICAL, true);

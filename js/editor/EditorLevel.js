@@ -3,6 +3,7 @@ class EditorLevel {
     this.header = {};
     this.headerOrder = [];
     this.skillset = new Map();
+    this.skillsetUnknownLines = [];
     this.terrains = [];
     this.gadgets = [];
     this.steel = [];

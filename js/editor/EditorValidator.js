@@ -11,6 +11,12 @@ const isFiniteNumber = (value) => Number.isFinite(value);
 const ROTATION_STEPS = new Set([0, 90, 180, 270]);
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
+const MAX_LEVEL_WIDTH = DEFAULT_LEVEL_WIDTH;
+const MAX_LEVEL_HEIGHT = DEFAULT_LEVEL_HEIGHT;
+const MAX_TIME_LIMIT_SECONDS = 99 * 60 + 99;
+const MAX_LEMMINGS = 999;
+const MIN_SPAWN_INTERVAL = 1;
+const MAX_SPAWN_INTERVAL = 99;
 
 const getHeaderNumber = (level, key, fallback) => {
   const raw = level?.getHeader?.(key);
@@ -45,6 +51,8 @@ const validateLevel = (level, assets = null, options = {}) => {
   const height = getHeaderNumber(level, 'HEIGHT', DEFAULT_LEVEL_HEIGHT);
   const safeWidth = isFiniteNumber(width) && width > 0 ? width : DEFAULT_LEVEL_WIDTH;
   const safeHeight = isFiniteNumber(height) && height > 0 ? height : DEFAULT_LEVEL_HEIGHT;
+  const cappedWidth = Math.min(safeWidth, MAX_LEVEL_WIDTH);
+  const cappedHeight = Math.min(safeHeight, MAX_LEVEL_HEIGHT);
   const lemmings = getHeaderNumber(level, 'LEMMINGS', 0);
   const saveReq = getHeaderNumber(level, 'SAVE_REQUIREMENT', 0);
   const spawnInterval = level.getHeader?.('MAX_SPAWN_INTERVAL');
@@ -59,6 +67,13 @@ const validateLevel = (level, assets = null, options = {}) => {
     }));
   }
 
+  if (Array.isArray(level.terrainGroups) && level.terrainGroups.length > 0) {
+    issues.push(createIssue(
+      'warning',
+      'Terrain groups are not supported in editor preview/runtime.'
+    ));
+  }
+
   if (!isFiniteNumber(width) || width <= 0) {
     issues.push(createIssue('error', 'Width is invalid.', 'Reset width', () => {
       level.setHeader('WIDTH', DEFAULT_LEVEL_WIDTH);
@@ -71,10 +86,43 @@ const validateLevel = (level, assets = null, options = {}) => {
     }));
   }
 
+  if (isFiniteNumber(width) && width > MAX_LEVEL_WIDTH) {
+    issues.push(createIssue(
+      'warning',
+      `Width exceeds classic preview max (${MAX_LEVEL_WIDTH}).`,
+      'Clamp width',
+      () => {
+        level.setHeader('WIDTH', MAX_LEVEL_WIDTH);
+      }
+    ));
+  }
+
+  if (isFiniteNumber(height) && height > MAX_LEVEL_HEIGHT) {
+    issues.push(createIssue(
+      'warning',
+      `Height exceeds classic preview max (${MAX_LEVEL_HEIGHT}).`,
+      'Clamp height',
+      () => {
+        level.setHeader('HEIGHT', MAX_LEVEL_HEIGHT);
+      }
+    ));
+  }
+
   if (!isFiniteNumber(lemmings) || lemmings < 0) {
     issues.push(createIssue('error', 'Lemmings count is invalid.', 'Reset lemmings', () => {
       level.setHeader('LEMMINGS', 0);
     }));
+  }
+
+  if (isFiniteNumber(lemmings) && lemmings > MAX_LEMMINGS) {
+    issues.push(createIssue(
+      'warning',
+      `Lemmings count exceeds safe max (${MAX_LEMMINGS}).`,
+      'Clamp lemmings',
+      () => {
+        level.setHeader('LEMMINGS', MAX_LEMMINGS);
+      }
+    ));
   }
 
   if (!isFiniteNumber(saveReq) || saveReq < 0) {
@@ -83,33 +131,84 @@ const validateLevel = (level, assets = null, options = {}) => {
     }));
   }
 
+  if (isFiniteNumber(saveReq) && saveReq > MAX_LEMMINGS) {
+    issues.push(createIssue(
+      'warning',
+      `Save requirement exceeds safe max (${MAX_LEMMINGS}).`,
+      'Clamp save requirement',
+      () => {
+        level.setHeader('SAVE_REQUIREMENT', MAX_LEMMINGS);
+      }
+    ));
+  }
+
   if (isFiniteNumber(lemmings) && isFiniteNumber(saveReq) && saveReq > lemmings) {
     issues.push(createIssue('error', 'Save requirement exceeds lemmings.', 'Clamp save requirement', () => {
       level.setHeader('SAVE_REQUIREMENT', Math.max(0, lemmings));
     }));
   }
 
-  if (spawnInterval != null && !isFiniteNumber(spawnInterval)) {
-    issues.push(createIssue('warning', 'Spawn interval is invalid.', 'Reset spawn interval', () => {
-      level.setHeader('MAX_SPAWN_INTERVAL', 50);
+  if (spawnInterval != null) {
+    const numeric = Number(spawnInterval);
+    if (!isFiniteNumber(numeric)) {
+      issues.push(createIssue('warning', 'Spawn interval is invalid.', 'Reset spawn interval', () => {
+        level.setHeader('MAX_SPAWN_INTERVAL', 50);
+      }));
+    } else if (numeric < MIN_SPAWN_INTERVAL || numeric > MAX_SPAWN_INTERVAL) {
+      issues.push(createIssue(
+        'warning',
+        `Spawn interval is out of range (${MIN_SPAWN_INTERVAL}-${MAX_SPAWN_INTERVAL}).`,
+        'Clamp spawn interval',
+        () => {
+          level.setHeader('MAX_SPAWN_INTERVAL', clamp(numeric, MIN_SPAWN_INTERVAL, MAX_SPAWN_INTERVAL));
+        }
+      ));
+    }
+  }
+
+  if (timeLimit != null && timeLimit !== 'INFINITE') {
+    const numeric = Number(timeLimit);
+    if (!isFiniteNumber(numeric)) {
+      issues.push(createIssue('warning', 'Time limit is invalid.', 'Set infinite', () => {
+        level.setHeader('TIME_LIMIT', 'INFINITE');
+      }));
+    } else if (numeric < 0) {
+      issues.push(createIssue('warning', 'Time limit cannot be negative.', 'Set to 0', () => {
+        level.setHeader('TIME_LIMIT', 0);
+      }));
+    } else if (numeric > MAX_TIME_LIMIT_SECONDS) {
+      issues.push(createIssue(
+        'warning',
+        `Time limit exceeds classic max (${MAX_TIME_LIMIT_SECONDS}s).`,
+        'Clamp time limit',
+        () => {
+          level.setHeader('TIME_LIMIT', MAX_TIME_LIMIT_SECONDS);
+        }
+      ));
+    }
+  }
+
+  if (!isFiniteNumber(startX)) {
+    issues.push(createIssue('warning', 'Start X is invalid.', 'Reset Start X', () => {
+      level.setHeader('START_X', 0);
     }));
   }
 
-  if (timeLimit != null && timeLimit !== 'INFINITE' && !isFiniteNumber(timeLimit)) {
-    issues.push(createIssue('warning', 'Time limit is invalid.', 'Set infinite', () => {
-      level.setHeader('TIME_LIMIT', 'INFINITE');
+  if (!isFiniteNumber(startY)) {
+    issues.push(createIssue('warning', 'Start Y is invalid.', 'Reset Start Y', () => {
+      level.setHeader('START_Y', 0);
     }));
   }
 
-  if (safeWidth > 0 && (startX < 0 || startX >= safeWidth)) {
+  if (cappedWidth > 0 && (startX < 0 || startX >= cappedWidth)) {
     issues.push(createIssue('warning', 'Start X is out of bounds.', 'Clamp Start X', () => {
-      level.setHeader('START_X', clamp(startX, 0, Math.max(safeWidth - 1, 0)));
+      level.setHeader('START_X', clamp(startX, 0, Math.max(cappedWidth - 1, 0)));
     }));
   }
 
-  if (safeHeight > 0 && (startY < 0 || startY >= safeHeight)) {
+  if (cappedHeight > 0 && (startY < 0 || startY >= cappedHeight)) {
     issues.push(createIssue('warning', 'Start Y is out of bounds.', 'Clamp Start Y', () => {
-      level.setHeader('START_Y', clamp(startY, 0, Math.max(safeHeight - 1, 0)));
+      level.setHeader('START_Y', clamp(startY, 0, Math.max(cappedHeight - 1, 0)));
     }));
   }
 
@@ -176,18 +275,20 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Exit piece is unknown for this style.'));
   }
 
-  if (safeWidth > 0 && safeHeight > 0) {
+  if (cappedWidth > 0 && cappedHeight > 0) {
+    const boundsWidth = cappedWidth;
+    const boundsHeight = cappedHeight;
     const clampList = (entries) => {
       for (const entry of entries) {
         if (!entry?.props) continue;
-        entry.props.X = clamp(coerceNumber(entry.props.X, 0), 0, Math.max(safeWidth - 1, 0));
-        entry.props.Y = clamp(coerceNumber(entry.props.Y, 0), 0, Math.max(safeHeight - 1, 0));
+        entry.props.X = clamp(coerceNumber(entry.props.X, 0), 0, Math.max(boundsWidth - 1, 0));
+        entry.props.Y = clamp(coerceNumber(entry.props.Y, 0), 0, Math.max(boundsHeight - 1, 0));
       }
     };
     const outOfBounds = (entries) => entries.some(entry => {
       const x = coerceNumber(entry?.props?.X, 0);
       const y = coerceNumber(entry?.props?.Y, 0);
-      return x < 0 || y < 0 || x >= safeWidth || y >= safeHeight;
+      return x < 0 || y < 0 || x >= boundsWidth || y >= boundsHeight;
     });
     const terrains = Array.isArray(level.terrains) ? level.terrains : [];
     const hasBadTerrain = outOfBounds(terrains);
@@ -211,10 +312,30 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Steel rectangles must have width/height.', 'Fix steel sizes', () => {
       for (const entry of invalidSteel) {
         if (!entry?.props) continue;
-        entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, safeWidth);
-        entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, safeHeight);
+        entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth || safeWidth);
+        entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight || safeHeight);
       }
     }));
+  }
+
+  const oversizedSteel = steelEntries.filter(entry => {
+    const width = coerceNumber(entry?.props?.WIDTH, 0);
+    const height = coerceNumber(entry?.props?.HEIGHT, 0);
+    return (cappedWidth > 0 && width > cappedWidth) || (cappedHeight > 0 && height > cappedHeight);
+  });
+  if (oversizedSteel.length) {
+    issues.push(createIssue(
+      'warning',
+      'Steel sizes exceed the level bounds.',
+      'Clamp steel sizes',
+      () => {
+        for (const entry of oversizedSteel) {
+          if (!entry?.props) continue;
+          entry.props.WIDTH = clamp(coerceNumber(entry.props.WIDTH, 1), 1, cappedWidth || safeWidth);
+          entry.props.HEIGHT = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, cappedHeight || safeHeight);
+        }
+      }
+    ));
   }
 
   const steelOutOfBounds = steelEntries.some(entry => {
@@ -222,22 +343,86 @@ const validateLevel = (level, assets = null, options = {}) => {
     const y = coerceNumber(entry?.props?.Y, 0);
     const width = coerceNumber(entry?.props?.WIDTH, 0);
     const height = coerceNumber(entry?.props?.HEIGHT, 0);
-    return x < 0 || y < 0 || x + width > safeWidth || y + height > safeHeight;
+    return x < 0 || y < 0 || x + width > cappedWidth || y + height > cappedHeight;
   });
   if (steelOutOfBounds) {
     issues.push(createIssue('warning', 'Steel is out of bounds.', 'Clamp steel', () => {
       for (const entry of steelEntries) {
         if (!entry?.props) continue;
-        const x = clamp(coerceNumber(entry.props.X, 0), 0, Math.max(safeWidth - 1, 0));
-        const y = clamp(coerceNumber(entry.props.Y, 0), 0, Math.max(safeHeight - 1, 0));
-        const width = clamp(coerceNumber(entry.props.WIDTH, 1), 1, Math.max(safeWidth - x, 1));
-        const height = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, Math.max(safeHeight - y, 1));
+        const x = clamp(coerceNumber(entry.props.X, 0), 0, Math.max(cappedWidth - 1, 0));
+        const y = clamp(coerceNumber(entry.props.Y, 0), 0, Math.max(cappedHeight - 1, 0));
+        const width = clamp(coerceNumber(entry.props.WIDTH, 1), 1, Math.max(cappedWidth - x, 1));
+        const height = clamp(coerceNumber(entry.props.HEIGHT, 1), 1, Math.max(cappedHeight - y, 1));
         entry.props.X = x;
         entry.props.Y = y;
         entry.props.WIDTH = width;
         entry.props.HEIGHT = height;
       }
     }));
+  }
+
+  const terrainEntries = [
+    ...(Array.isArray(level.terrains) ? level.terrains : []),
+    ...(Array.isArray(level.terrainGroups)
+      ? level.terrainGroups.flatMap(group => Array.isArray(group?.terrains) ? group.terrains : [])
+      : [])
+  ];
+  const gadgetEntries = Array.isArray(level.gadgets) ? level.gadgets : [];
+  const gadgetOnlyProps = ['SKILL', 'LEMMINGS', 'PAIRING'];
+  const terrainUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'ONE_WAY', 'WIDTH', 'HEIGHT'];
+  const gadgetUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
+
+  const hasAnyProps = (entry, keys) => {
+    const props = entry?.props;
+    if (!props) return false;
+    return keys.some(key => Object.prototype.hasOwnProperty.call(props, key));
+  };
+
+  const stripProps = (entry, keys) => {
+    if (!entry?.props) return;
+    for (const key of keys) {
+      if (Object.prototype.hasOwnProperty.call(entry.props, key)) {
+        delete entry.props[key];
+      }
+    }
+  };
+
+  const terrainWithGadgetProps = terrainEntries.filter(entry => hasAnyProps(entry, gadgetOnlyProps));
+  const steelWithGadgetProps = steelEntries.filter(entry => hasAnyProps(entry, gadgetOnlyProps));
+  if (terrainWithGadgetProps.length || steelWithGadgetProps.length) {
+    issues.push(createIssue(
+      'warning',
+      'Gadget-only properties are set on terrain/steel entries.',
+      'Remove gadget-only props',
+      () => {
+        for (const entry of terrainWithGadgetProps) stripProps(entry, gadgetOnlyProps);
+        for (const entry of steelWithGadgetProps) stripProps(entry, gadgetOnlyProps);
+      }
+    ));
+  }
+
+  const terrainWithUnsupported = terrainEntries.filter(entry => hasAnyProps(entry, terrainUnsupportedProps));
+  if (terrainWithUnsupported.length) {
+    issues.push(createIssue(
+      'warning',
+      'Terrain entries include unsupported classic properties (rotate/flip H/resize/one-way).',
+      'Remove unsupported terrain props',
+      () => {
+        for (const entry of terrainWithUnsupported) stripProps(entry, terrainUnsupportedProps);
+      }
+    ));
+  }
+
+  const gadgetWithUnsupported = gadgetEntries.filter(entry => hasAnyProps(entry, gadgetUnsupportedProps));
+  if (gadgetWithUnsupported.length) {
+    issues.push(createIssue(
+      'warning',
+      'Gadget entries include unsupported classic properties (rotate/flip H/resize).',
+      'Remove unsupported gadget props',
+      () => {
+        for (const entry of gadgetWithUnsupported) stripProps(entry, gadgetUnsupportedProps);
+      }
+    ));
   }
 
   const invalidRotations = [];

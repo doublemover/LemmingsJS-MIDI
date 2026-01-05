@@ -85,6 +85,26 @@ function applyProperty(target, key, value) {
   target.props[key] = value;
 }
 
+function pushUnknownLine(level, ctx, line) {
+  if (!ctx) {
+    level.unknownLines.push(line);
+    return;
+  }
+  if (ctx.type === 'UNKNOWN') {
+    ctx.data.lines.push(line);
+    return;
+  }
+  if (ctx.type === 'SKILLSET') {
+    ctx.data.unknownLines.push(line);
+    return;
+  }
+  if (Array.isArray(ctx.data?.unknownLines)) {
+    ctx.data.unknownLines.push(line);
+    return;
+  }
+  level.unknownLines.push(line);
+}
+
 class NxlvParser {
   parse(text) {
     const level = new EditorLevel();
@@ -97,7 +117,10 @@ class NxlvParser {
       case 'SKILLSET':
         level.skillset = ctx.data.skills;
         if (ctx.data.unknownLines.length) {
-          level.unknownLines.push(...ctx.data.unknownLines);
+          if (!Array.isArray(level.skillsetUnknownLines)) {
+            level.skillsetUnknownLines = [];
+          }
+          level.skillsetUnknownLines.push(...ctx.data.unknownLines);
         }
         break;
       case 'TERRAIN':
@@ -126,7 +149,8 @@ class NxlvParser {
       const trimmed = rawLine.trim();
       if (!trimmed) continue;
       if (trimmed.startsWith('#')) {
-        level.unknownLines.push(rawLine);
+        const ctx = stack[stack.length - 1];
+        pushUnknownLine(level, ctx, rawLine);
         continue;
       }
       if (trimmed.startsWith('$')) {
