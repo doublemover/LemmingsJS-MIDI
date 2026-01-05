@@ -154,3 +154,30 @@ Notes:
 - [x] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
 - [x] Implement rightmost-lemming camera tracking with clamping and smooth follow.
 - [x] Add minimal E2E smoke coverage for procgen readiness and endless spawning.
+
+## Phase 14: MCP v2 compact defaults and tool ergonomics
+- [x] Switch tool responses to compact JSON by default (no pretty printing) and
+  omit excluded sections instead of returning null placeholders.
+- [x] Make short tool names primary (dots mapped to underscores) and retain
+  legacy aliases for compatibility.
+- [x] Set default event envelopes to `minimal` and avoid auto-attaching agent
+  echo events unless explicitly requested.
+- [x] Shorten session/resource/watch/event IDs to reduce payload size and URI
+  length in responses.
+
+## Phase 15: MCP v2 deltas, summaries, and skill semantics
+- [x] Expose HistoryStore deltas via the harness and implement `state.delta`
+  with filtering defaults that suppress x/y motion churn.
+- [x] Fix lemming summary counts and top-K selection heuristics; support both
+  rect schemas and include selected lemming when requested.
+- [x] Add protocol mappings on `session.create` (skill names + lemming field
+  codes) and clamp non-finite skill counts to JSON-safe values.
+- [x] Improve `skill.apply` verification with skill-specific checks and
+  fast-fail when skills are unavailable.
+
+## Phase 16: MCP v2 docs, examples, and compatibility checks
+- [x] Document compact defaults, delta usage, and event modes in `docs/mcp/`.
+- [x] Update client call examples/configs for the short tool names and default
+  compact preset.
+- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new
+  defaults and update the compatibility matrix.

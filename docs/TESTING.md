@@ -14,6 +14,7 @@ npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
 npm run test-editor     # editor-related tests
 npm run coverage-editor # 100% coverage for editor modules
+npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
 

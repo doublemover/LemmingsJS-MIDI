@@ -128,24 +128,24 @@ Each session maintains a ring buffer of events:
 - `summary` + optional structured `data`
 - optional `resourceUris`
 
-### Non-streaming requirement
-If the MCP host is not consuming streaming notifications, then:
+### Events mode
+`session.create.events.mode` controls event verbosity:
+- `none`: suppress envelopes (poll explicitly).
+- `minimal` (default): non-agent events only, trimmed fields.
+- `full`: includes all events with full fields.
 
-**Every tool response SHOULD include an `events` envelope** with:
-- new events since the last tool call in that session
-- a condensed `humanSummary` if any human inputs occurred
-
-Additionally, the agent can call `events.poll` for explicit polling.
+If the MCP host is not consuming streaming notifications, use `events.poll`
+to fetch the latest envelope when needed.
 
 ---
 
 ## 6) Tool names and responsibilities
 
 ### High-level tool groups
-Note: the MCP server exposes tool names with dots replaced by underscores
-(`session.create` → `session_create`) to satisfy host naming constraints. The
+Note: the MCP server exposes short tool names (primary) with dots replaced by
+underscores (`state.get` → `state_get`) to satisfy host naming constraints. The
 canonical names below are dotted; use underscores when calling (full tool:
-`lemmings.session_create`).
+`lemmings.state_get`). Legacy aliases remain for compatibility.
 
 ### High-level tool groups
 - **Session**: `session.*`
@@ -176,7 +176,7 @@ Create a new session and launch the game page.
 - `enableSpectator` (optional): default `false`
 - `spectator` (optional): `{ port?, allowHumanInput?, openBrowser? }`
 - `resources` (optional): `{ maxBytes?, ttlMs?, maxItems? }`
-- `events` (optional): `{ maxEvents? }`
+- `events` (optional): `{ maxEvents?, mode? }` (`mode`: `none` | `minimal` | `full`)
 
 **Outputs**
 - `sessionId`
@@ -233,6 +233,7 @@ Return structured state snapshot (from `__E2E__.getState()`), optionally filtere
 
 **Inputs**
 - `sessionId`
+- `preset` (optional): `compact | debug` (default `compact`)
 - `include` (optional object):
   - `view?: boolean`
   - `stage?: boolean`
@@ -240,26 +241,49 @@ Return structured state snapshot (from `__E2E__.getState()`), optionally filtere
   - `editor?: boolean`
   - `midi?: boolean`
 - `lemmings` (optional):
-  - `mode`: `"none" | "summary" | "all" | "ids"`
+  - `mode`: `"none" | "summary" | "selected" | "all" | "ids"` (default `summary`)
   - `ids?: number[]` (if mode = `ids`)
   - `max?: number` (cap returned lemmings for `all`)
+  - `topK?`, `includeSelected?`, `activeOnly?`, `inViewOnly?`, `rectWorld?`
 - `format` (optional):
   - `delivery`: `"inline" | "resource"` (default `"inline"`)
   - `pretty`: boolean (default `false`)
+  - `includeSizeEstimate`: boolean (default `false`)
 
 **Outputs**
+- `ok`, `tickIndex`, `preset`
 - If `delivery="inline"`:
-  - `{ snapshot: <object>, sizeBytesEstimate }`
+  - `{ snapshot: <object> }` plus optional `sizeBytesEstimate`
 - If `delivery="resource"`:
-  - `{ resourceUri, mimeType:"application/json", sizeBytes, expiresAt? }`
+  - `{ resourceUri, sizeBytes, expiresAt? }`
 
 **Notes**
-- Even in `inline`, the server may omit huge fields unless explicitly requested.
-- This tool should include an `events` envelope by default.
+- Even in `inline`, the server may omit large fields unless explicitly requested.
 
 ---
 
-### 7.6 `lemming.summary`
+### 7.6 `state.delta`
+Return filtered history deltas between ticks (defaults to changes since the last
+`state.get` tick).
+
+**Inputs**
+- `sessionId`
+- `afterTick?`, `toTick?`, `maxTicks?`
+- `include` (optional): `{ lemmings?, lemmingManager?, skills?, victory?, timer?, game?, sound?, minimap?, triggers?, objects?, ground?, entrances? }`
+- `lemmings` (optional):
+  - `fields?` (field codes)
+  - `includePrev?`
+  - `includeXY?` (`none` | `tracked` | `all`)
+  - `trackedIds?`, `maxChanges?`
+- `format` (optional):
+  - `delivery`: `"inline" | "resource"`
+  - `pretty`: boolean (default `false`)
+
+**Outputs**
+- `ok`, `cursor`, `afterTick`, `fromTick`, `toTick`, `deltas`
+- `resourceUri` + `sizeBytes` (if `delivery="resource"`)
+
+### 7.7 `lemming.summary`
 Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 **Inputs**
@@ -267,7 +291,7 @@ Agent-friendly lemming summary computed from `getState().game.lemmings`.
 - `filter` (optional):
   - `activeOnly?: boolean` (default true)
   - `inViewOnly?: boolean` (default false)
-  - `rectWorld?: { x, y, w, h }` (optional; uses `stage.viewRect` coordinates)
+  - `rectWorld?: { x, y, width, height }` (or `{ x, y, w, h }`)
 - `topK` (optional): include a small sample of lemmings (default `10`)
 - `includeSelected` (optional, default `true`)
 
@@ -288,7 +312,7 @@ Agent-friendly lemming summary computed from `getState().game.lemmings`.
 
 ---
 
-### 7.7 `lemming.select`
+### 7.8 `lemming.select`
 Directly select a specific lemming by ID.
 
 **Inputs**
@@ -307,7 +331,7 @@ Directly select a specific lemming by ID.
 
 ---
 
-### 7.8 `skill.apply`
+### 7.9 `skill.apply`
 Apply a skill to a selected lemming using keyboard shortcuts.
 
 **Inputs**
@@ -316,6 +340,8 @@ Apply a skill to a selected lemming using keyboard shortcuts.
 - `lemmingId` (optional)
   - If provided, the server must select it first (via `lemming.select`).
 - `ensurePaused` (optional, default `true`)
+- `requireAvailable` (optional, default `false`)
+- `postStep` (optional, default `1`)
 - `verify` (optional, default `true`)
   - If true, server reads state before/after and reports whether the lemming’s state/flags changed.
 
@@ -332,7 +358,7 @@ Apply a skill to a selected lemming using keyboard shortcuts.
 
 ---
 
-### 7.9 `input.action`
+### 7.10 `input.action`
 Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`).
 
 **Inputs**
@@ -345,7 +371,7 @@ Execute a named action from `keybindings.json` (e.g., `nuke`, `releaseRateUpMax`
 
 ---
 
-### 7.10 `input.keys`
+### 7.11 `input.keys`
 Low-level key event injection (for chords and “hold shift” behaviors like panBoost).
 
 **Inputs (two supported shapes)**

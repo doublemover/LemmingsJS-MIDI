@@ -9,7 +9,7 @@
       "configExample": "docs/mcp/config-examples/codex-cli.toml",
       "transport": "stdio",
       "needsReview": false,
-      "reviewReason": ""
+      "reviewReason": "Verified via test-mcp-smoke."
     },
     {
       "id": "claude-code",

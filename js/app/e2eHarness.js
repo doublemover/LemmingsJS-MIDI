@@ -467,7 +467,11 @@ const getGameState = (view) => {
       ? {
         selectedSkill: skills.selectedSkill,
         cheatMode: !!skills.cheatMode,
-        skills: Array.isArray(skills.skills) ? skills.skills.slice() : []
+        skills: Array.isArray(skills.skills)
+          ? skills.skills.map((_, idx) =>
+            typeof skills.getSkill === 'function' ? skills.getSkill(idx) : skills.skills[idx]
+          )
+          : []
       }
       : null,
     commandManager: commandManager
@@ -745,6 +749,36 @@ const flushSoundEvents = (view) => {
   return true;
 };
 
+const getHistoryDelta = (view, tickIndex) => {
+  const history = view?.game?.history;
+  const t = Math.trunc(Number(tickIndex));
+  if (!history?.getDelta || !Number.isFinite(t)) return null;
+  return history.getDelta(t) || null;
+};
+
+const getHistoryDeltas = (view, fromTick, toTick, maxTicks = 0) => {
+  const history = view?.game?.history;
+  if (!history?.getDelta) return [];
+
+  const start = Math.trunc(Number(fromTick));
+  const end = Math.trunc(Number(toTick));
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return [];
+
+  const step = start <= end ? 1 : -1;
+  const limit = Number.isFinite(maxTicks) && maxTicks > 0 ? Math.trunc(maxTicks) : Infinity;
+
+  const deltas = [];
+  let n = 0;
+  for (let t = start; ; t += step) {
+    if (n >= limit) break;
+    const delta = history.getDelta(t);
+    if (delta) deltas.push(delta);
+    n += 1;
+    if (t === end) break;
+  }
+  return deltas;
+};
+
 const startBenchSequence = async (view) => {
   if (!view?.benchSequenceStart) return false;
   await view.benchSequenceStart();
@@ -804,6 +838,9 @@ const createE2EApi = (context) => ({
   stopReverse: () => stopReverse(context.view),
   toggleReverse: () => toggleReverse(context.view),
   flushSoundEvents: () => flushSoundEvents(context.view),
+  getDelta: (tickIndex) => getHistoryDelta(context.view, tickIndex),
+  getDeltas: (fromTick, toTick, maxTicks = 0) =>
+    getHistoryDeltas(context.view, fromTick, toTick, maxTicks),
   selectLemmingById: (id) => selectLemmingById(context.view, id),
   getBenchMetrics: () => getBenchMetrics(context.view),
   startBenchSequence: () => startBenchSequence(context.view),

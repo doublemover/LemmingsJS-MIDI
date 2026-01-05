@@ -1,0 +1,40 @@
+{
+  "skillNames": [
+    "climber",
+    "floater",
+    "bomber",
+    "blocker",
+    "builder",
+    "basher",
+    "miner",
+    "digger"
+  ],
+  "lemmingDeltaFields": [
+    "x",
+    "y",
+    "lookRight",
+    "frameIndex",
+    "state",
+    "canClimb",
+    "hasParachute",
+    "removed",
+    "disabled",
+    "countdown",
+    "hasExploded",
+    "lastTriggerType",
+    "actionType",
+    "countdownActive"
+  ],
+  "defaultLemmaDeltaFields": [
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ]
+}

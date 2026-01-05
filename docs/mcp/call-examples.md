@@ -1,0 +1,55 @@
+# MCP call examples (short tool names)
+
+These examples use the short tool names (dots replaced with underscores) and the
+compact `state.get` preset defaults.
+
+## Create a session with minimal events
+
+```json
+{
+  "headless": true,
+  "events": { "mode": "minimal" }
+}
+```
+
+## Get a compact snapshot with lemming summary
+
+```json
+{
+  "sessionId": "<id>",
+  "preset": "compact",
+  "lemmings": { "mode": "summary", "topK": 8, "includeSelected": true }
+}
+```
+
+## Get deltas since last state.get (no x/y churn)
+
+```json
+{
+  "sessionId": "<id>",
+  "lemmings": { "includeXY": "none" }
+}
+```
+
+## Apply a skill with semantic verification
+
+```json
+{
+  "sessionId": "<id>",
+  "skill": "builder",
+  "lemmingId": 12,
+  "requireAvailable": true,
+  "verify": true
+}
+```
+
+## Debug: full state as a resource
+
+```json
+{
+  "sessionId": "<id>",
+  "preset": "debug",
+  "lemmings": { "mode": "all", "max": 80 },
+  "format": { "delivery": "resource", "pretty": true }
+}
+```

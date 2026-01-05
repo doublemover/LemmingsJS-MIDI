@@ -46,26 +46,26 @@ export const LemmingSchema = z.object({
   id: z.number().int(),
   x: z.number(),
   y: z.number(),
-  lookRight: z.boolean(),
-  frameIndex: z.number().int(),
   state: z.number().int().nullable(),
   actionType: z.number().int().nullable(),
-  canClimb: z.boolean(),
-  hasParachute: z.boolean(),
-  removed: z.boolean(),
-  disabled: z.boolean(),
-  countdown: z.number().int(),
-  countdownActive: z.boolean(),
-  hasExploded: z.boolean(),
-  lastTriggerType: z.number().int().nullable(),
+  lookRight: z.boolean().optional(),
+  frameIndex: z.number().int().optional(),
+  canClimb: z.boolean().optional(),
+  hasParachute: z.boolean().optional(),
+  removed: z.boolean().optional(),
+  disabled: z.boolean().optional(),
+  countdown: z.number().int().optional(),
+  countdownActive: z.boolean().optional(),
+  hasExploded: z.boolean().optional(),
+  lastTriggerType: z.number().int().nullable().optional(),
 });
 
 export const GameTimerSchema = z.object({
   tickIndex: TickIndexSchema,
   speedFactor: z.number(),
-  frameTime: z.number(),
-  tps: z.number(),
   running: z.boolean(),
+  frameTime: z.number().optional(),
+  tps: z.number().optional(),
 }).nullable();
 
 export const VictorySchema = z.object({
@@ -79,8 +79,11 @@ export const VictorySchema = z.object({
 
 export const SkillsSchema = z.object({
   selectedSkill: z.number().int().nullable(),
+  selectedSkillName: z.string().nullable().optional(),
   cheatMode: z.boolean(),
-  skills: z.array(z.any()),
+  counts: z.array(z.number()).optional(),
+  availableMask: z.number().int().optional(),
+  skills: z.array(z.any()).optional(),
 }).nullable();
 
 export const LemmingManagerSchema = z.object({
@@ -94,33 +97,37 @@ export const LemmingManagerSchema = z.object({
 }).nullable();
 
 export const GameSnapshotSchema = z.object({
-  ready: z.boolean(),
-  finalGameState: z.any().nullable(),
-  state: z.any().nullable(),
-  timer: GameTimerSchema,
-  history: z.any().nullable(),
-  timeTravel: z.any().nullable(),
-  victory: VictorySchema,
-  skills: SkillsSchema,
-  commandManager: z.any().nullable(),
-  lemmingManager: LemmingManagerSchema,
-  lemmings: z.array(LemmingSchema.nullable()),
-  level: z.any().nullable(),
-  triggers: z.any().nullable(),
-  objects: z.any().nullable(),
-  minimap: z.any().nullable(),
-  soundEvents: z.any().nullable(),
+  ready: z.boolean().optional(),
+  finalGameState: z.any().nullable().optional(),
+  state: z.any().nullable().optional(),
+  timer: GameTimerSchema.optional(),
+  history: z.any().nullable().optional(),
+  timeTravel: z.any().nullable().optional(),
+  victory: VictorySchema.optional(),
+  skills: SkillsSchema.optional(),
+  skillsInfo: SkillsSchema.optional(),
+  commandManager: z.any().nullable().optional(),
+  lemmingManager: LemmingManagerSchema.optional(),
+  lemmings: z.array(LemmingSchema.nullable()).optional(),
+  lemmingsSummary: z.any().optional(),
+  selectedLemmingId: z.number().int().nullable().optional(),
+  selectedLemming: LemmingSchema.nullable().optional(),
+  level: z.any().nullable().optional(),
+  triggers: z.any().nullable().optional(),
+  objects: z.any().nullable().optional(),
+  minimap: z.any().nullable().optional(),
+  soundEvents: z.any().nullable().optional(),
 }).nullable();
 
 export const E2ESnapshotSchema = z.object({
   version: z.number().int(),
   mode: z.enum(["game", "editor"]),
   ready: z.boolean(),
-  view: z.any().nullable(),
-  stage: z.any().nullable(),
-  game: GameSnapshotSchema,
-  editor: z.any().nullable(),
-  midi: z.any().nullable(),
+  view: z.any().nullable().optional(),
+  stage: z.any().nullable().optional(),
+  game: GameSnapshotSchema.optional(),
+  editor: z.any().nullable().optional(),
+  midi: z.any().nullable().optional(),
 });
 
 /* ---------------------------------- */
@@ -129,7 +136,7 @@ export const E2ESnapshotSchema = z.object({
 
 export const ImageFormatSchema = z.enum(["png", "jpeg", "webp"]);
 
-export const CaptureTargetSchema = z.enum(["page", "gameCanvas", "guiCanvas", "rect"]);
+export const CaptureTargetSchema = z.enum(["page", "gameCanvas", "guiCanvas", "stageCanvas", "rect"]);
 
 export const FrameDescriptorSchema = z.object({
   id: z.string().min(1),
@@ -168,19 +175,19 @@ export const EventTypeSchema = z.enum([
 ]);
 
 export const McpEventSchema = z.object({
-  id: z.string().min(1),
+  id: z.string().min(1).optional(),
   source: EventSourceSchema,
   type: EventTypeSchema,
   tickIndex: TickIndexSchema.nullable().optional(),
-  time: IsoDateTimeSchema,
-  summary: z.string().min(1),
+  time: IsoDateTimeSchema.optional(),
+  summary: z.string().min(1).optional(),
   data: z.any().optional(),
   resourceUris: z.array(ResourceUriSchema).optional(),
 });
 
 export const EventsEnvelopeSchema = z.object({
   cursor: z.string().min(1),
-  events: z.array(McpEventSchema),
+  events: z.array(McpEventSchema).optional(),
   humanSummary: z.string().optional(),
 }).optional();
 
@@ -210,12 +217,17 @@ export const SessionCreateInputSchema = z.object({
   }).optional(),
   events: z.object({
     maxEvents: z.number().int().positive().optional(),
+    mode: z.enum(["none", "minimal", "full"]).optional(),
   }).optional(),
 });
 
 export const SessionCreateOutputSchema = z.object({
+  ok: z.boolean().optional(),
   sessionId: SessionIdSchema,
-  baseUrl: z.string(),
+  protocol: z.object({
+    skillNames: z.array(z.string()),
+    lemmingDeltaFields: z.array(z.string()),
+  }).optional(),
   gameUrl: z.string(),
   spectatorUrl: z.string().optional(),
   keybindings: z.object({
@@ -276,6 +288,7 @@ export const TimeStepOutputSchema = z.object({
 
 export const StateGetInputSchema = z.object({
   sessionId: SessionIdSchema,
+  preset: z.enum(["compact", "debug"]).optional(),
   include: z.object({
     view: z.boolean().optional(),
     stage: z.boolean().optional(),
@@ -284,9 +297,70 @@ export const StateGetInputSchema = z.object({
     midi: z.boolean().optional(),
   }).optional(),
   lemmings: z.object({
-    mode: z.enum(["none", "summary", "all", "ids"]),
+    mode: z.enum(["none", "summary", "selected", "all", "ids"]),
     ids: z.array(z.number().int()).optional(),
     max: z.number().int().positive().optional(),
+    topK: z.number().int().positive().optional(),
+    includeSelected: z.boolean().optional(),
+    activeOnly: z.boolean().optional(),
+    inViewOnly: z.boolean().optional(),
+    rectWorld: z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number().positive().optional(),
+      height: z.number().positive().optional(),
+      w: z.number().positive().optional(),
+      h: z.number().positive().optional(),
+    }).optional(),
+  }).optional(),
+  format: z.object({
+    delivery: z.enum(["inline", "resource"]).optional(),
+    pretty: z.boolean().optional(),
+    includeSizeEstimate: z.boolean().optional(),
+  }).optional(),
+});
+
+export const StateGetOutputSchema = z.object({
+  ok: z.boolean().optional(),
+  tickIndex: TickIndexSchema.optional(),
+  preset: z.enum(["compact", "debug"]).optional(),
+  snapshot: E2ESnapshotSchema.optional(),
+  resourceUri: ResourceUriSchema.optional(),
+  sizeBytes: z.number().int().nonnegative().optional(),
+  expiresAt: IsoDateTimeSchema.optional(),
+  sizeBytesEstimate: z.number().int().nonnegative().optional(),
+  events: EventsEnvelopeSchema,
+});
+
+/* ---------------------------------- */
+/* Tool: state.delta                   */
+/* ---------------------------------- */
+
+export const StateDeltaInputSchema = z.object({
+  sessionId: SessionIdSchema,
+  afterTick: TickIndexSchema.optional(),
+  toTick: TickIndexSchema.optional(),
+  maxTicks: z.number().int().positive().optional(),
+  include: z.object({
+    lemmings: z.boolean().optional(),
+    lemmingManager: z.boolean().optional(),
+    skills: z.boolean().optional(),
+    victory: z.boolean().optional(),
+    timer: z.boolean().optional(),
+    game: z.boolean().optional(),
+    sound: z.boolean().optional(),
+    minimap: z.boolean().optional(),
+    triggers: z.boolean().optional(),
+    objects: z.boolean().optional(),
+    ground: z.boolean().optional(),
+    entrances: z.boolean().optional(),
+  }).optional(),
+  lemmings: z.object({
+    fields: z.array(z.number().int()).optional(),
+    includePrev: z.boolean().optional(),
+    includeXY: z.enum(["none", "tracked", "all"]).optional(),
+    trackedIds: z.array(z.number().int()).optional(),
+    maxChanges: z.number().int().positive().optional(),
   }).optional(),
   format: z.object({
     delivery: z.enum(["inline", "resource"]).optional(),
@@ -294,12 +368,15 @@ export const StateGetInputSchema = z.object({
   }).optional(),
 });
 
-export const StateGetOutputSchema = z.object({
-  snapshot: E2ESnapshotSchema.optional(),
+export const StateDeltaOutputSchema = z.object({
+  ok: z.boolean().optional(),
+  cursor: TickIndexSchema.optional(),
+  afterTick: TickIndexSchema.optional(),
+  fromTick: TickIndexSchema.optional(),
+  toTick: TickIndexSchema.optional(),
+  deltas: z.array(z.any()).optional(),
   resourceUri: ResourceUriSchema.optional(),
-  mimeType: MimeTypeSchema.optional(),
   sizeBytes: z.number().int().nonnegative().optional(),
-  expiresAt: IsoDateTimeSchema.optional(),
   events: EventsEnvelopeSchema,
 });
 
@@ -312,7 +389,14 @@ export const LemmingsSummaryInputSchema = z.object({
   filter: z.object({
     activeOnly: z.boolean().optional(),
     inViewOnly: z.boolean().optional(),
-    rectWorld: z.object({ x: z.number(), y: z.number(), w: z.number(), h: z.number() }).optional(),
+    rectWorld: z.object({
+      x: z.number(),
+      y: z.number(),
+      width: z.number().positive().optional(),
+      height: z.number().positive().optional(),
+      w: z.number().positive().optional(),
+      h: z.number().positive().optional(),
+    }).optional(),
   }).optional(),
   topK: z.number().int().positive().optional(),
   includeSelected: z.boolean().optional(),
@@ -375,15 +459,14 @@ export const SkillApplyInputSchema = z.object({
   skill: SkillSchema,
   lemmingId: z.number().int().optional(),
   ensurePaused: z.boolean().optional(),
+  requireAvailable: z.boolean().optional(),
+  postStep: z.number().int().nonnegative().optional(),
   verify: z.boolean().optional(),
 });
 
 export const SkillApplyVerificationSchema = z.object({
-  selectedBefore: z.number().int().nullable().optional(),
-  selectedAfter: z.number().int().nullable().optional(),
-  lemmingBefore: LemmingSchema.nullable().optional(),
-  lemmingAfter: LemmingSchema.nullable().optional(),
-  notes: z.array(z.string()).optional(),
+  applied: z.boolean().optional(),
+  changedFields: z.array(z.string()).optional(),
 });
 
 export const SkillApplyOutputSchema = z.object({
@@ -562,6 +645,7 @@ export const ToolNameSchema = z.enum([
   "time.resume",
   "time.step",
   "state.get",
+  "state.delta",
   "lemming.summary",
   "lemming.select",
   "skill.apply",
@@ -585,6 +669,7 @@ export const ToolSchemas = {
   "time.resume": { input: TimePauseResumeInputSchema, output: TimePauseResumeOutputSchema },
   "time.step": { input: TimeStepInputSchema, output: TimeStepOutputSchema },
   "state.get": { input: StateGetInputSchema, output: StateGetOutputSchema },
+  "state.delta": { input: StateDeltaInputSchema, output: StateDeltaOutputSchema },
   "lemming.summary": { input: LemmingsSummaryInputSchema, output: LemmingsSummaryOutputSchema },
   "lemming.select": { input: LemmingSelectInputSchema, output: LemmingSelectOutputSchema },
   "skill.apply": { input: SkillApplyInputSchema, output: SkillApplyOutputSchema },

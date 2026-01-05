@@ -20,7 +20,7 @@ This document is the “how to build it” companion to the interface spec. It f
   - `controller.pressAction(name)` for keybindings
   - `controller.capture()` for screenshots (into resource store)
 - Every tool call returns:
-  - structured output + an `events` envelope (new events since last call)
+  - structured output + an `events` envelope (when `events.mode` is not `none`)
 
 ---
 
@@ -238,8 +238,7 @@ If `allowHumanInput=true`:
 
 ### “Next MCP response notifies agent” behavior
 - Any human input should enqueue events with `source="human"`.
-- Every MCP tool call should include an `events` envelope with:
-  - new human events since last tool call
+- Event envelopes default to `minimal` and omit agent echoes unless requested.
   - a condensed `humanSummary` (e.g. “Human pressed Space (pause) and ArrowRight x3”)
 
 This works even when the host isn’t consuming streaming notifications.
@@ -269,15 +268,16 @@ Inspector gives you:
 ## 11) Suggested implementation order
 1. MCP server skeleton + stdio transport
 2. Session create/close + Playwright boot + wait ready
-3. State read (`state.get`) + basic events envelope
-4. Keybindings loader + `input.action`
-5. Direct selection by ID (`lemming.select`) (plus harness method)
-6. Skill apply
-7. Vision capture to in-memory resources
-8. Sequence capture + manifest
-9. Event polling tool
-10. Spectator UI + human input relay
-11. Watches
+3. State read (`state.get`, compact default) + basic events envelope
+4. History delta support (`state.delta`)
+5. Keybindings loader + `input.action`
+6. Direct selection by ID (`lemming.select`) (plus harness method)
+7. Skill apply
+8. Vision capture to in-memory resources
+9. Sequence capture + manifest
+10. Event polling tool
+11. Spectator UI + human input relay
+12. Watches
 
 ---
 

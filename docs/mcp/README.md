@@ -6,6 +6,9 @@ Files:
 - `docs/mcp/lemmings-mcp-interface-spec-memresources.md`
 - `docs/mcp/lemmings-mcp-implementation-notes-memresources.md`
 - `docs/mcp/lemmings-mcp-zod-schema.ts`
+- `docs/mcp/protocol-v2.md`
+- `docs/mcp/protocol-mappings.json`
+- `docs/mcp/call-examples.md`
 
 ## Server usage
 - Start the game server: `npm run start-https` (serves `https://localhost:8080`).
@@ -26,11 +29,17 @@ Files:
 
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).
-  Example: `session.create` becomes `session_create` (full tool: `lemmings.session_create`).
+  Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
+- Short tool names are primary; legacy aliases remain for compatibility.
+
+## Defaults (protocol v2)
+- `state.get` defaults to the compact preset.
+- Events default to `minimal` (only non-agent, trimmed fields).
 
 ## Smoke test checklist
 - `session.create` returns a session id and `ready=true`.
 - `state.get` returns a snapshot with `game.timer.tickIndex`.
+- `state.delta` returns at least one delta (or an empty array when no changes).
 - `input.action` with `togglePause` toggles `game.timer.running`.
 - `lemming.summary` returns counts and selected lemming data.
 - `vision.capture` returns a resource URI and `resources/read` can fetch it.
