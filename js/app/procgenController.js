@@ -493,6 +493,7 @@ class ProcgenController {
       nextDelay: this._randInt(10, 20),
       dueTick: 0,
       originX: Number.isFinite(originX) ? originX : null,
+      edgeX: Number.isFinite(originX) ? originX : null,
       used: new Set()
     };
     this._builderBurst.dueTick = tick + this._builderBurst.nextDelay;
@@ -565,6 +566,29 @@ class ProcgenController {
     const manager = this.game?.getLemmingManager?.();
     const lems = manager?.lemmings || [];
     if (!lems.length) return false;
+    if (Number.isFinite(burst?.edgeX)) {
+      let best = null;
+      let bestDist = Infinity;
+      for (const lem of lems) {
+        if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
+        const actionName = lem.action?.getActionName?.() || '';
+        if (actionName && actionName !== 'walking') continue;
+        if (this._shouldSkipAiFor(lem, this.game?.getGameTimer?.().tickIndex ?? 0)) continue;
+        if (burst.used?.has?.(lem.id)) continue;
+        if (lem.x > burst.edgeX + 8) continue;
+        const dist = Math.abs((lem.x ?? 0) - burst.edgeX);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = lem;
+        }
+      }
+      if (best && manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+        const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
+        this._noteAiAction(best, tick, 48);
+        burst.used?.add?.(best.id);
+        return true;
+      }
+    }
     if (Number.isFinite(burst?.originX)) {
       let best = null;
       let bestDist = Infinity;
@@ -667,6 +691,7 @@ class ProcgenController {
     let cursor = Math.max(0, startX);
     const decorBias = Number.isFinite(colorIndex) ? (colorIndex % 4) : 0;
     const structure = this._getStructurePlan();
+    let repeatPiece = null;
     while (cursor < maxX) {
       const remaining = maxX - cursor;
       let surfaceY = this._nextSurfaceY(structure, floorY);
@@ -676,18 +701,49 @@ class ProcgenController {
       const minWidth = structure?.type === 'shelf'
         ? Math.max(6, this.segmentMinWidth)
         : 1;
-      const piece = this.assets.pickGroundPiece(remaining, minHeight, minWidth);
+      const piece = repeatPiece && remaining >= repeatPiece.bounds.width
+        ? repeatPiece
+        : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
-      surfaceY = this._clampSurfaceForEntrance(surfaceY, piece, cursor);
-      const destX = cursor - piece.bounds.minX;
-      const destY = surfaceY - piece.bounds.maxY;
+      if (!repeatPiece || Math.random() < 0.25) {
+        repeatPiece = piece;
+      }
+      const stamped = structure?.type === 'pillar'
+        ? this._stampVerticalRun(cursor, surfaceY, piece)
+        : this._stampHorizontalRun(cursor, surfaceY, piece, maxX, decorBias);
+      cursor += stamped;
+      if (cursor >= maxX) break;
+    }
+  }
+
+  _stampHorizontalRun(cursorX, surfaceY, piece, maxX, decorBias) {
+    const pieceWidth = Math.max(1, piece.bounds.width);
+    const repeats = Math.max(1, Math.floor((maxX - cursorX) / pieceWidth));
+    let stamped = 0;
+    for (let i = 0; i < repeats; i++) {
+      const destX = cursorX + stamped - piece.bounds.minX;
+      const destY = this._clampSurfaceForEntrance(surfaceY, piece, cursorX + stamped) - piece.bounds.maxY;
       this.stamper.stamp(piece, destX, destY);
       if (Math.random() < (this.decorChance + decorBias * 0.01)) {
         this._placeDecoration(destX, destY, piece);
       }
-      cursor += Math.max(1, piece.bounds.width);
-      if (cursor >= maxX) break;
+      stamped += pieceWidth;
     }
+    return stamped || pieceWidth;
+  }
+
+  _stampVerticalRun(cursorX, surfaceY, piece) {
+    const pieceWidth = Math.max(1, piece.bounds.width);
+    const pieceHeight = Math.max(1, piece.bounds.height);
+    const repeats = Math.max(2, Math.ceil(this.groundHeight / pieceHeight));
+    let topY = surfaceY;
+    for (let i = 0; i < repeats; i++) {
+      const destX = cursorX - piece.bounds.minX;
+      const destY = topY - piece.bounds.maxY;
+      this.stamper.stamp(piece, destX, destY);
+      topY -= pieceHeight;
+    }
+    return pieceWidth;
   }
 
   _getStructurePlan() {
