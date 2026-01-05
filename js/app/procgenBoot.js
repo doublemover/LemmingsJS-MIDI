@@ -22,6 +22,14 @@ const PROCGEN_GROUND_HEIGHT = 4;
 const PROCGEN_ENTRANCE_OFFSET = 80;
 const PROCGEN_INITIAL_GROUND_WIDTH = 280;
 const PROCGEN_ENTRANCE_CLEARANCE = 28;
+const PROCGEN_GROUND_SETS_BY_PATH = {
+  lemmings: [0, 1, 2, 3, 4],
+  lemmings_ohNo: [0, 1, 2, 3],
+  xmas91: [0, 2],
+  xmas92: [0, 2],
+  holiday93: [1, 2],
+  holiday94: [1, 2]
+};
 const PROCGEN_SKILLS = {
   CLIMBER: 9999,
   FLOATER: 9999,
@@ -41,9 +49,16 @@ const shuffle = (list) => {
   return list;
 };
 
+const getProcgenGroundSets = (config) => {
+  const key = config?.path || null;
+  const sets = key ? PROCGEN_GROUND_SETS_BY_PATH[key] : null;
+  return Array.isArray(sets) && sets.length ? sets : null;
+};
+
 const pickProcgenStyle = async (fileProvider, config) => {
   const names = getStyleNames();
   if (!names.length) return 'fire';
+  const allowedGroundSets = getProcgenGroundSets(config);
   let last = null;
   try {
     last = window.localStorage?.getItem('procgen.style') || null;
@@ -54,9 +69,22 @@ const pickProcgenStyle = async (fileProvider, config) => {
   const candidates = normalizedLast
     ? names.filter(name => name.toLowerCase() !== normalizedLast)
     : names.slice();
-  const shuffled = shuffle(candidates);
+  const filtered = allowedGroundSets
+    ? candidates.filter(name => {
+      const style = getStyle(name);
+      return Number.isFinite(style?.groundSet)
+        && allowedGroundSets.includes(style.groundSet | 0);
+    })
+    : candidates.slice();
+  const shuffled = shuffle(filtered);
   if (normalizedLast && !shuffled.some(name => name.toLowerCase() === normalizedLast)) {
-    shuffled.push(last);
+    const lastStyle = getStyle(last);
+    const lastGroundSet = Number.isFinite(lastStyle?.groundSet) ? lastStyle.groundSet | 0 : null;
+    const allowLast = !allowedGroundSets
+      || (lastGroundSet != null && allowedGroundSets.includes(lastGroundSet));
+    if (allowLast) {
+      shuffled.push(last);
+    }
   }
   const list = shuffled.length ? shuffled : names.slice();
   let choice = names[0];
