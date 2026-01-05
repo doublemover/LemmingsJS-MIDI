@@ -93,7 +93,7 @@
 
       <section class="editor-canvas-panel">
         <div class="canvas-wrap">
-          <canvas id="editorCanvas" width="800" height="480" title="Editor canvas. Click to place or edit items."></canvas>
+          <canvas id="editorCanvas" width="800" height="480"></canvas>
         </div>
         <div class="status-strip">
           <span id="editorCursorStatus">X:— Y:—</span>
@@ -106,7 +106,7 @@
         <div class="panel-title">Level Settings</div>
         <div class="inspector-grid">
           <label title="Set the level title shown in menus.">Title<input id="editorHeaderTitle" type="text" title="Set the level title shown in menus." /></label>
-          <label title="Choose the style/tileset used for terrain and objects.">Style<input id="editorHeaderStyle" type="text" title="Choose the style/tileset used for terrain and objects." /></label>
+          <label title="Choose the style/tileset used for terrain and objects.">Style<select id="editorHeaderStyle" title="Choose the style/tileset used for terrain and objects."></select></label>
           <div class="field-help" title="The style controls which terrain and object set is used for previews and exports.">Style chooses the tileset for terrain and objects.</div>
           <label title="Set the level width in pixels.">Width<input id="editorHeaderWidth" type="number" min="1" title="Set the level width in pixels." /></label>
           <label title="Set the level height in pixels.">Height<input id="editorHeaderHeight" type="number" min="1" title="Set the level height in pixels." /></label>
@@ -132,33 +132,38 @@
           <label title="Lemmings emitted by entrance gadgets.">Lemmings<input id="editorSelLemmings" type="number" title="Lemmings emitted by entrance gadgets." /></label>
           <label title="Pairing value for linked gadgets.">Pairing<input id="editorSelPairing" type="number" title="Pairing value for linked gadgets." /></label>
         </div>
-        <label class="control-row" title="Flip the selection horizontally.">
-          Flip H
-          <input id="editorSelFlipH" type="checkbox" title="Flip the selection horizontally." />
-        </label>
-        <label class="control-row" title="Flip the selection vertically.">
-          Flip V
-          <input id="editorSelFlipV" type="checkbox" title="Flip the selection vertically." />
-        </label>
-        <label class="control-row" title="Prevent placing terrain over existing terrain.">
-          No Overwrite
-          <input id="editorSelNoOverwrite" type="checkbox" title="Prevent placing terrain over existing terrain." />
-        </label>
-        <label class="control-row" title="Erase terrain where this piece is placed.">
-          Erase
-          <input id="editorSelErase" type="checkbox" title="Erase terrain where this piece is placed." />
-        </label>
-        <label class="control-row" title="Only allow lemmings to move in one direction.">
-          One Way
-          <input id="editorSelOneWay" type="checkbox" title="Only allow lemmings to move in one direction." />
-        </label>
-        <div class="selection-order">
-          <button class="editor-button" id="editorSelectionBringFront" type="button" title="Bring selection to front (top layer).">Bring to Front</button>
-          <button class="editor-button" id="editorSelectionMoveForward" type="button" title="Move selection forward by one layer.">Move Forward</button>
-          <button class="editor-button" id="editorSelectionMoveBackward" type="button" title="Move selection backward by one layer.">Move Back</button>
-          <button class="editor-button" id="editorSelectionSendBack" type="button" title="Send selection to back (bottom layer).">Send to Back</button>
+        <details class="selection-flags" id="editorSelectionFlags">
+          <summary title="Toggle placement flags for the selected item.">Placement Flags</summary>
+          <label class="control-row" title="Flip the selection horizontally.">
+            Flip H
+            <input id="editorSelFlipH" type="checkbox" title="Flip the selection horizontally." />
+          </label>
+          <label class="control-row" title="Flip the selection vertically.">
+            Flip V
+            <input id="editorSelFlipV" type="checkbox" title="Flip the selection vertically." />
+          </label>
+          <label class="control-row" title="Prevent placing terrain over existing terrain.">
+            No Overwrite
+            <input id="editorSelNoOverwrite" type="checkbox" title="Prevent placing terrain over existing terrain." />
+          </label>
+          <label class="control-row" title="Erase terrain where this piece is placed.">
+            Erase
+            <input id="editorSelErase" type="checkbox" title="Erase terrain where this piece is placed." />
+          </label>
+          <label class="control-row" title="Only allow lemmings to move in one direction.">
+            One Way
+            <input id="editorSelOneWay" type="checkbox" title="Only allow lemmings to move in one direction." />
+          </label>
+        </details>
+        <div class="selection-actions" id="editorSelectionActions">
+          <div class="selection-order">
+            <button class="editor-button" id="editorSelectionBringFront" type="button" title="Bring selection to front (top layer).">Bring to Front</button>
+            <button class="editor-button" id="editorSelectionMoveForward" type="button" title="Move selection forward by one layer.">Move Forward</button>
+            <button class="editor-button" id="editorSelectionMoveBackward" type="button" title="Move selection backward by one layer.">Move Back</button>
+            <button class="editor-button" id="editorSelectionSendBack" type="button" title="Send selection to back (bottom layer).">Send to Back</button>
+          </div>
+          <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Object</button>
         </div>
-        <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Selection</button>
 
         <div class="panel-title">Validation</div>
         <div class="issue-list" id="editorIssuesList"></div>

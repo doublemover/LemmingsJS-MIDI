@@ -9,6 +9,7 @@ import { createClassicLevelData } from '../editor/EditorLevelLoader.js';
 import { validateLevel } from '../editor/EditorValidator.js';
 import { getEntryBounds } from '../editor/EditorHitTest.js';
 import { ensureLevelEntryUids } from '../editor/EditorEntryFactory.js';
+import { getStyleNames } from '../editor/StyleRegistry.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
@@ -140,6 +141,7 @@ class EditorUiController {
     this.controller.resetHistory('Init');
     this._setDirty(false);
     this._refreshUndoRedo();
+    this._refreshStyleOptions();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
@@ -205,6 +207,8 @@ class EditorUiController {
       selNoOverwrite: get('editorSelNoOverwrite'),
       selErase: get('editorSelErase'),
       selOneWay: get('editorSelOneWay'),
+      selectionActions: get('editorSelectionActions'),
+      selectionFlags: get('editorSelectionFlags'),
       selectionBringFront: get('editorSelectionBringFront'),
       selectionMoveForward: get('editorSelectionMoveForward'),
       selectionMoveBackward: get('editorSelectionMoveBackward'),
@@ -848,6 +852,26 @@ class EditorUiController {
     this._suppressHeader = false;
   }
 
+  _refreshStyleOptions() {
+    const select = this.el.headerStyle;
+    if (!select) return;
+    const current = normalizeText(this.session?.level?.getHeader?.('STYLE'));
+    const styles = getStyleNames();
+    const options = current && !styles.includes(current)
+      ? styles.concat([current])
+      : styles.slice();
+    select.innerHTML = '';
+    for (const name of options) {
+      const opt = this.document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    }
+    if (current) {
+      select.value = current;
+    }
+  }
+
   _refreshSelection(selection) {
     const entries = Array.isArray(selection)
       ? selection
@@ -891,6 +915,7 @@ class EditorUiController {
   _setSelectionFields(data) {
     this._suppressInspector = true;
     if (!data) {
+      this._toggleSelectionActions(false);
       if (this.el.selType) this.el.selType.textContent = 'None';
       if (this.el.selName) this.el.selName.textContent = '';
       const inputs = [
@@ -928,6 +953,7 @@ class EditorUiController {
     }
 
     if (data.multi) {
+      this._toggleSelectionActions(true);
       if (this.el.selType) this.el.selType.textContent = 'Multiple';
       if (this.el.selName) this.el.selName.textContent = `${data.count} items`;
       const inputs = [
@@ -964,6 +990,7 @@ class EditorUiController {
       return;
     }
 
+    this._toggleSelectionActions(true);
     if (this.el.selType) this.el.selType.textContent = data.type;
     if (this.el.selName) this.el.selName.textContent = data.name || '';
 
@@ -1033,6 +1060,12 @@ class EditorUiController {
     this._suppressInspector = false;
   }
 
+  _toggleSelectionActions(visible) {
+    if (this.el.selectionActions) {
+      this.el.selectionActions.hidden = !visible;
+    }
+  }
+
   _commitSelectionPatch(patch) {
     const updated = this.controller.updateSelectedProps(patch);
     if (!updated) return;
@@ -1088,6 +1121,8 @@ class EditorUiController {
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
     this._refreshSavedList('');
+    await this._reloadAssets();
+    this._refreshStyleOptions();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
@@ -1128,6 +1163,7 @@ class EditorUiController {
 
   _ensureDefaultEntrancesExits() {
     if (!this._needsDefaultEntrances) return;
+    if (!this.assets) return;
     const viewRect = this.view?.stage?.getGameViewRect?.() || null;
     const added = this.controller.ensureDefaultEntrancesExits({
       entranceId: this.assets?.entranceId,
@@ -1138,7 +1174,9 @@ class EditorUiController {
       this._refreshSelection(null);
       this._refreshValidation();
     }
-    this._needsDefaultEntrances = false;
+    if (this.assets?.entranceId != null || this.assets?.exitId != null) {
+      this._needsDefaultEntrances = false;
+    }
   }
 
   _exportCurrentLevel() {
@@ -1251,6 +1289,7 @@ class EditorUiController {
     );
     this.controller.setAssets(this.assets);
     this._refreshPalettes();
+    this._refreshStyleOptions();
   }
 
   async _refreshPreview(label, options = {}) {

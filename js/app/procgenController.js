@@ -1,12 +1,14 @@
 import { Lemming } from '../lemmings/Lemming.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { SoundEventTypes } from '../game/SoundEvents.js';
+import { TriggerTypes } from '../level/TriggerTypes.js';
 
 class ProcgenController {
   constructor({ view, game, level, assets, stamper, options = {} }) {
     this.view = view || null;
     this.game = game || null;
     this.level = level || null;
+    this.window = options.window || globalThis?.window;
     this.assets = assets || null;
     this.stamper = stamper || null;
     this._tickHandler = null;
@@ -38,6 +40,13 @@ class ProcgenController {
     this._pendingDrop = false;
     this._gaps = [];
     this._gapCooldown = 0;
+    this._aiLastDecisionTick = 0;
+    this._aiDecisionInterval = 6;
+    this._aiBudget = null;
+    this._aiBudgetMax = null;
+    this._aiBudgetRegen = null;
+    this._aiLastDecision = null;
+    this._aiDebug = null;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -54,6 +63,12 @@ class ProcgenController {
     this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
     this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
     this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
+    this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 6;
+    this.aiScanAhead = Number.isFinite(options.aiScanAhead) ? options.aiScanAhead : 24;
+    this.aiWallHeight = Number.isFinite(options.aiWallHeight) ? options.aiWallHeight : 10;
+    this.aiHazardDistance = Number.isFinite(options.aiHazardDistance) ? options.aiHazardDistance : 18;
+    this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
+    this.aiDebugOverlay = options.aiDebugOverlay === true;
   }
 
   start() {
@@ -61,6 +76,10 @@ class ProcgenController {
     if (!this.game || !this.level) return;
     this._running = true;
     this._initGround();
+    this._initAiDirector();
+    if (this.aiDebugOverlay) {
+      this._initDebugOverlay();
+    }
     const stage = this.view?.stage || null;
     if (stage?.gameImgProps?.viewPoint) {
       this._cameraX = stage.gameImgProps.viewPoint.x || 0;
@@ -146,6 +165,7 @@ class ProcgenController {
     this._ensureGround(guideX);
     this._processBuilderBurst();
     this._processGapBridges();
+    this._updateAiDirector();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
   }
 
@@ -163,8 +183,187 @@ class ProcgenController {
     this._lastSecond = seconds;
     this._bombCheckElapsed += delta;
     this._nukeElapsed += delta;
+    this._updateAiBudget(delta);
     this._maybeTriggerBomber();
     this._maybeTriggerNuke();
+  }
+
+  _initAiDirector() {
+    this._aiDecisionInterval = Math.max(1, Math.floor(this.aiDecisionInterval));
+    this._aiBudgetMax = {
+      builder: 6,
+      floater: 6,
+      bash: 3,
+      mine: 3,
+      dig: 3,
+      blocker: 2
+    };
+    this._aiBudget = {
+      builder: 4,
+      floater: 3,
+      bash: 2,
+      mine: 2,
+      dig: 2,
+      blocker: 1
+    };
+    this._aiBudgetRegen = {
+      builder: 0.5,
+      floater: 0.4,
+      bash: 0.2,
+      mine: 0.2,
+      dig: 0.2,
+      blocker: 0.1
+    };
+  }
+
+  _updateAiBudget(deltaSeconds) {
+    if (!this._aiBudget || !this._aiBudgetMax || !this._aiBudgetRegen) return;
+    const delta = Math.max(0, deltaSeconds);
+    for (const key of Object.keys(this._aiBudget)) {
+      const next = this._aiBudget[key] + this._aiBudgetRegen[key] * delta;
+      this._aiBudget[key] = Math.min(this._aiBudgetMax[key], next);
+    }
+  }
+
+  _updateAiDirector() {
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    if (!Number.isFinite(tick)) return;
+    if (tick - this._aiLastDecisionTick < this._aiDecisionInterval) return;
+    this._aiLastDecisionTick = tick;
+
+    const lemming = this._getFollowLemming();
+    if (!lemming || !lemming.lookRight) return;
+    const scan = this._scanAhead(lemming);
+    const action = this._decideAssist(lemming, scan);
+    if (action) {
+      this._aiLastDecision = { tick, action, scan };
+    } else if (this._aiLastDecision && this._aiLastDecision.tick !== tick) {
+      this._aiLastDecision = { tick, action: null, scan };
+    }
+    this._updateDebugOverlay();
+  }
+
+  _scanAhead(lemming) {
+    const ground = this.level?.groundMask;
+    if (!ground) return null;
+    const x0 = Math.floor(lemming.x);
+    const y0 = Math.floor(lemming.y);
+    const scanAhead = Math.max(6, Math.floor(this.aiScanAhead));
+    const levelHeight = this.level?.height ?? 0;
+    const maxDrop = Math.min(this.maxDrop, levelHeight);
+    let gap = null;
+    let wall = null;
+    for (let dx = 1; dx <= scanAhead; dx++) {
+      const drop = this._getDropAt(ground, x0 + dx, y0, maxDrop);
+      if (drop > 0 && !gap) {
+        const gapWidth = this._measureGapWidth(ground, x0 + dx, y0, scanAhead);
+        gap = { dx, drop, width: gapWidth };
+      }
+      const wallHeight = this._getWallHeight(ground, x0 + dx, y0, this.aiWallHeight);
+      if (wallHeight > 0 && !wall) {
+        wall = { dx, height: wallHeight };
+      }
+      if (gap && wall) break;
+    }
+    const hazard = this._findHazardAhead(x0, y0, scanAhead);
+    return { gap, wall, hazard };
+  }
+
+  _getDropAt(ground, x, y, maxDrop) {
+    const height = this.level?.height ?? 0;
+    const top = y + 1;
+    if (top < 0 || top >= height) return 0;
+    const available = Math.max(1, Math.min(maxDrop + 2, height - top));
+    const depth = ground.getColumnGapDepth(x, top, available);
+    if (depth <= 1) return 0;
+    return depth - 1;
+  }
+
+  _measureGapWidth(ground, startX, y, scanAhead) {
+    let width = 0;
+    for (let dx = 0; dx <= scanAhead; dx++) {
+      const drop = this._getDropAt(ground, startX + dx, y, this.maxDrop);
+      if (drop <= 0) break;
+      width += 1;
+      if (width >= scanAhead) break;
+    }
+    return width;
+  }
+
+  _getWallHeight(ground, x, y, maxHeight) {
+    const height = Math.max(1, Math.floor(maxHeight));
+    let wall = 0;
+    for (let dy = 1; dy <= height; dy++) {
+      if (ground.hasGroundAt(x, y - dy)) wall = dy;
+    }
+    return wall;
+  }
+
+  _findHazardAhead(x, y, scanAhead) {
+    const triggers = this.level?.triggers;
+    if (!Array.isArray(triggers) || triggers.length === 0) return null;
+    const hazardSet = new Set([
+      TriggerTypes.TRAP,
+      TriggerTypes.DROWN,
+      TriggerTypes.KILL,
+      TriggerTypes.FRYING
+    ]);
+    const maxDx = Math.max(1, Math.floor(scanAhead));
+    for (let dx = 1; dx <= maxDx; dx++) {
+      const px = x + dx;
+      for (const trigger of triggers) {
+        if (!trigger || !hazardSet.has(trigger.type)) continue;
+        if (px >= trigger.x1 && px <= trigger.x2 && y >= trigger.y1 && y <= trigger.y2) {
+          return { dx, type: trigger.type };
+        }
+      }
+    }
+    return null;
+  }
+
+  _decideAssist(lemming, scan) {
+    if (!scan) return null;
+    const manager = this.game?.getLemmingManager?.();
+    if (!manager) return null;
+    const skillOrder = [];
+    if (scan.hazard && scan.hazard.dx <= this.aiHazardDistance) {
+      skillOrder.push({ skill: SkillTypes.BLOCKER, key: 'blocker' });
+    }
+    if (scan.gap && scan.gap.width >= 2) {
+      skillOrder.push({ skill: SkillTypes.BUILDER, key: 'builder' });
+    }
+    if (scan.gap && scan.gap.drop >= this.aiFloaterDrop) {
+      skillOrder.push({ skill: SkillTypes.FLOATER, key: 'floater' });
+    }
+    if (scan.wall && scan.wall.height >= 6) {
+      skillOrder.push({ skill: SkillTypes.BASHER, key: 'bash' });
+      skillOrder.push({ skill: SkillTypes.MINER, key: 'mine' });
+      skillOrder.push({ skill: SkillTypes.DIGGER, key: 'dig' });
+    }
+    if (!skillOrder.length) return null;
+    for (const option of skillOrder) {
+      if (!this._canSpend(option.key)) continue;
+      if (manager.doLemmingAction(lemming, option.skill)) {
+        return option.key;
+      }
+      this._refundBudget(option.key);
+    }
+    return null;
+  }
+
+  _canSpend(key) {
+    if (!this._aiBudget || !this._aiBudgetMax) return false;
+    if (!Object.prototype.hasOwnProperty.call(this._aiBudget, key)) return false;
+    if (this._aiBudget[key] < 1) return false;
+    this._aiBudget[key] -= 1;
+    return true;
+  }
+
+  _refundBudget(key) {
+    if (!this._aiBudget || !this._aiBudgetMax) return;
+    if (!Object.prototype.hasOwnProperty.call(this._aiBudget, key)) return;
+    this._aiBudget[key] = Math.min(this._aiBudgetMax[key], this._aiBudget[key] + 1);
   }
 
   _maybeTriggerBomber() {
@@ -598,6 +797,33 @@ class ProcgenController {
     const alpha = Math.min(1, Math.max(0.01, frameMs / 500));
     this._cameraX += (this._cameraTargetX - this._cameraX) * alpha;
     stage.applyViewport(stageImage, this._cameraX, 0, stageImage.viewPoint.scale);
+  }
+
+  _initDebugOverlay() {
+    if (!this.window?.document || this._aiDebug) return;
+    const doc = this.window.document;
+    const panel = doc.createElement('div');
+    panel.className = 'procgen-debug';
+    panel.textContent = 'AI: ready';
+    doc.body.appendChild(panel);
+    this._aiDebug = panel;
+  }
+
+  _updateDebugOverlay() {
+    if (!this._aiDebug) return;
+    const decision = this._aiLastDecision;
+    if (!decision) return;
+    const action = decision.action || 'none';
+    const scan = decision.scan || {};
+    const gap = scan.gap ? `gap dx=${scan.gap.dx} w=${scan.gap.width} drop=${scan.gap.drop}` : 'gap none';
+    const wall = scan.wall ? `wall dx=${scan.wall.dx} h=${scan.wall.height}` : 'wall none';
+    const hazard = scan.hazard ? `hazard dx=${scan.hazard.dx} type=${scan.hazard.type}` : 'hazard none';
+    const budget = this._aiBudget
+      ? Object.entries(this._aiBudget)
+        .map(([key, value]) => `${key}:${value.toFixed(1)}`)
+        .join(' ')
+      : '';
+    this._aiDebug.textContent = `AI ${action} | ${gap} | ${wall} | ${hazard} | ${budget}`;
   }
 }
 

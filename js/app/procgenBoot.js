@@ -65,6 +65,8 @@ const buildProcgenEditorLevel = (styleName) => {
 const init = async () => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
+  const params = new URLSearchParams(window.location.search);
+  const aiDebugOverlay = params.has('aiDebug');
   const view = new GameView();
   view.gameType = PROCGEN_GAME_TYPE;
   view.levelGroupIndex = 0;
@@ -122,7 +124,7 @@ const init = async () => {
     level,
     assets: assetManager,
     stamper,
-    options: { groundHeight: PROCGEN_GROUND_HEIGHT }
+    options: { groundHeight: PROCGEN_GROUND_HEIGHT, aiDebugOverlay }
   });
   controller.start();
 

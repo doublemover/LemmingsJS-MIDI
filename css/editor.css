@@ -295,6 +295,7 @@ body {
   max-height: 100%;
   image-rendering: pixelated;
   display: block;
+  cursor: none;
 }
 
 .status-strip {
@@ -342,6 +343,39 @@ body {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 6px;
+}
+
+.selection-actions {
+  display: grid;
+  gap: 8px;
+}
+
+.selection-flags {
+  border: 1px solid var(--panel-border);
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 11px;
+}
+
+.selection-flags summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--muted);
+  list-style: none;
+}
+
+.selection-flags summary::-webkit-details-marker {
+  display: none;
+}
+
+.selection-flags .control-row {
+  font-size: 11px;
+  padding: 2px 0;
+}
+
+.selection-flags input[type="checkbox"] {
+  transform: scale(0.9);
+  transform-origin: right center;
 }
 
 .issue-list {

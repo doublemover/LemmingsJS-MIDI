@@ -210,7 +210,7 @@ Notes:
 - [x] Add decoration and hazard placement with counterplay rules.
 
 ## Phase 21: Procgen AI director + solvability
-- [ ] Add environment sensing primitives (drop/wall/gap/hazard scans).
-- [ ] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
+- [x] Add environment sensing primitives (drop/wall/gap/hazard scans).
+- [x] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
   blocker coordination).
-- [ ] Add pacing/budget controls plus debug overlay for AI decisions.
+- [x] Add pacing/budget controls plus debug overlay for AI decisions.
