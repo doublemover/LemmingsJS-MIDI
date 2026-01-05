@@ -49,6 +49,8 @@ class ProcgenController {
     this._aiLastDecision = null;
     this._aiDebug = null;
     this._aiLemmingCooldown = new Map();
+    this._aiStallState = new Map();
+    this._leftFallCounter = 0;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -128,7 +130,16 @@ class ProcgenController {
       if (this._seenFalls.has(lemmingId)) return;
       this._seenFalls.add(lemmingId);
       const originX = Number.isFinite(event?.x) ? event.x : null;
-      this._scheduleBuilderBurst(originX);
+      const manager = this.game?.getLemmingManager?.();
+      const lem = Number.isFinite(lemmingId) ? manager?.getLemming?.(lemmingId) : null;
+      const fellLeft = lem ? !lem.lookRight : false;
+      if (fellLeft) {
+        this._leftFallCounter += 1;
+        const isBuilder = this._leftFallCounter % 20 === 0;
+        this._scheduleEdgeResponse(originX, isBuilder ? 'builder-left' : 'blocker');
+      } else {
+        this._scheduleBuilderBurst(originX);
+      }
     };
     bus.onEvent.on(this._soundHandler);
   }
@@ -239,6 +250,7 @@ class ProcgenController {
     this._aiLastDecisionTick = tick;
 
     this._applyEdgeBlockers(tick);
+    this._applyBunchingAssist(tick);
 
     const lemming = this._getFollowLemming();
     if (!lemming) return;
@@ -272,6 +284,69 @@ class ProcgenController {
         }
         this._refundBudget('blocker');
       }
+    }
+  }
+
+  _applyBunchingAssist(tick) {
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length) return;
+    const levelHeight = this.level?.height ?? 0;
+    for (const lem of lems) {
+      if (!lem || lem.removed || lem.disabled) continue;
+      const actionName = lem.action?.getActionName?.() || '';
+      if (actionName && actionName !== 'walking') continue;
+      if (this._shouldSkipAiFor(lem, tick)) continue;
+      const key = lem.id;
+      const prev = this._aiStallState.get(key) || {
+        lastX: lem.x,
+        lastDir: lem.lookRight,
+        stallTicks: 0,
+        flipCount: 0
+      };
+      const deltaX = Math.abs((lem.x ?? 0) - (prev.lastX ?? 0));
+      const sameDir = prev.lastDir === lem.lookRight;
+      let stallTicks = prev.stallTicks;
+      let flipCount = prev.flipCount;
+      if (deltaX < 0.5) {
+        stallTicks += 1;
+      } else {
+        stallTicks = Math.max(0, stallTicks - 1);
+      }
+      if (!sameDir && deltaX < 6) {
+        flipCount += 1;
+      } else if (deltaX > 2) {
+        flipCount = Math.max(0, flipCount - 1);
+      }
+
+      const stuck = stallTicks >= 18 || flipCount >= 3;
+      if (stuck) {
+        const highEnough = levelHeight > 0 && (lem.y ?? 0) < levelHeight * 0.6;
+        const attempts = [];
+        attempts.push({ skill: SkillTypes.BASHER, key: 'bash', cooldown: 32 });
+        attempts.push({ skill: SkillTypes.BUILDER, key: 'builder', cooldown: 36 });
+        if (highEnough) {
+          attempts.push({ skill: SkillTypes.DIGGER, key: 'dig', cooldown: 36 });
+          attempts.push({ skill: SkillTypes.MINER, key: 'mine', cooldown: 36 });
+        }
+        for (const option of attempts) {
+          if (!this._canSpend(option.key)) continue;
+          if (manager.doLemmingAction(lem, option.skill)) {
+            this._noteAiAction(lem, tick, option.cooldown);
+            stallTicks = 0;
+            flipCount = 0;
+            break;
+          }
+          this._refundBudget(option.key);
+        }
+      }
+
+      this._aiStallState.set(key, {
+        lastX: lem.x,
+        lastDir: lem.lookRight,
+        stallTicks,
+        flipCount
+      });
     }
   }
 
@@ -494,9 +569,24 @@ class ProcgenController {
       dueTick: 0,
       originX: Number.isFinite(originX) ? originX : null,
       edgeX: Number.isFinite(originX) ? originX : null,
+      edgeAction: null,
       used: new Set()
     };
     this._builderBurst.dueTick = tick + this._builderBurst.nextDelay;
+  }
+
+  _scheduleEdgeResponse(edgeX, edgeAction) {
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    this._builderBurst = {
+      remaining: 1,
+      nextDelay: this._randInt(6, 14),
+      dueTick: tick + this._randInt(6, 14),
+      originX: Number.isFinite(edgeX) ? edgeX : null,
+      edgeX: Number.isFinite(edgeX) ? edgeX : null,
+      edgeAction: edgeAction || 'blocker',
+      used: new Set()
+    };
   }
 
   _processBuilderBurst() {
@@ -505,6 +595,16 @@ class ProcgenController {
     const timer = this.game?.getGameTimer?.();
     const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
     if (burst.dueTick > tick) return;
+    if (burst.edgeAction) {
+      const handled = this._applyEdgeResponse(burst, tick);
+      burst.remaining -= handled ? 1 : 0;
+      if (burst.remaining <= 0) {
+        this._builderBurst = null;
+      } else {
+        burst.dueTick = tick + burst.nextDelay;
+      }
+      return;
+    }
     const applied = this._applyBuilderToNextLemming(burst);
     if (applied) {
       burst.remaining -= 1;
@@ -515,6 +615,38 @@ class ProcgenController {
       burst.nextDelay = Math.round(burst.nextDelay * 2) + this._randInt(1, 5);
     }
     burst.dueTick = tick + burst.nextDelay;
+  }
+
+  _applyEdgeResponse(burst, tick) {
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length || !Number.isFinite(burst.edgeX)) return false;
+    const edgeX = burst.edgeX + (burst.edgeAction === 'blocker' ? 2 : 0);
+    let best = null;
+    let bestDist = Infinity;
+    for (const lem of lems) {
+      if (!lem || lem.removed || lem.disabled) continue;
+      if (this._shouldSkipAiFor(lem, tick)) continue;
+      const actionName = lem.action?.getActionName?.() || '';
+      if (actionName && actionName !== 'walking') continue;
+      if (burst.edgeAction === 'builder-left' && lem.lookRight) continue;
+      if (burst.edgeAction === 'blocker' && lem.lookRight) continue;
+      const dist = Math.abs((lem.x ?? 0) - edgeX);
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = lem;
+      }
+    }
+    if (!best) return false;
+    const skill = burst.edgeAction === 'builder-left' ? SkillTypes.BUILDER : SkillTypes.BLOCKER;
+    const key = burst.edgeAction === 'builder-left' ? 'builder' : 'blocker';
+    if (!this._canSpend(key)) return false;
+    if (manager.doLemmingAction(best, skill)) {
+      this._noteAiAction(best, tick, burst.edgeAction === 'builder-left' ? 48 : 32);
+      return true;
+    }
+    this._refundBudget(key);
+    return false;
   }
 
   _processGapBridges() {
