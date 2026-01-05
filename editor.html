@@ -84,7 +84,13 @@
             <button type="button" data-tab="gadgets" title="Show object palette.">Objects</button>
             <button type="button" data-tab="triggers" title="Show trigger palette.">Triggers</button>
           </div>
-          <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" title="Filter palette entries by name or id." />
+          <div class="palette-toolbar">
+            <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" title="Filter palette entries by name or id." />
+            <div class="palette-view-toggle" role="group" aria-label="Palette view mode">
+              <button type="button" id="editorPaletteViewList" class="active" title="List view">List</button>
+              <button type="button" id="editorPaletteViewGrid" title="Grid view">Grid</button>
+            </div>
+          </div>
           <div class="palette-list" id="editorPaletteTerrain"></div>
           <div class="palette-list" id="editorPaletteGadgets" hidden></div>
           <div class="palette-list" id="editorPaletteTriggers" hidden></div>

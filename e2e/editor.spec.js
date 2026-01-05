@@ -42,6 +42,23 @@ test('Palette tabs switch visible lists', async ({ page }) => {
   await expect(page.locator('#editorPaletteTerrain')).toBeHidden();
 });
 
+test('Palette view toggle switches list and grid layouts', async ({ page }) => {
+  const listButton = page.locator('#editorPaletteViewList');
+  const gridButton = page.locator('#editorPaletteViewGrid');
+  const terrainList = page.locator('#editorPaletteTerrain');
+
+  await expect(listButton).toHaveClass(/active/);
+  await expect(terrainList).not.toHaveClass(/grid/);
+
+  await gridButton.click();
+  await expect(gridButton).toHaveClass(/active/);
+  await expect(terrainList).toHaveClass(/grid/);
+
+  await listButton.click();
+  await expect(listButton).toHaveClass(/active/);
+  await expect(terrainList).not.toHaveClass(/grid/);
+});
+
 test('Save and import keep saved list wired up', async ({ page }) => {
   await page.click('#editorSavedSave');
   await expect(page.locator('#editorSavedSelect')).toContainText('E2E Save');

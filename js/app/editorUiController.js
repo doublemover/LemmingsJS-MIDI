@@ -114,6 +114,7 @@ class EditorUiController {
     this._previewQueuedLabel = null;
     this._previewQueuedOptions = null;
     this._cursorPos = null;
+    this._paletteViewMode = 'list';
     this._suppressHeader = false;
     this._suppressInspector = false;
     this._pointerDown = false;
@@ -176,6 +177,8 @@ class EditorUiController {
       eraseGadgets: get('editorEraseGadgets'),
       paletteTabs: get('editorPaletteTabs'),
       paletteSearch: get('editorPaletteSearch'),
+      paletteViewList: get('editorPaletteViewList'),
+      paletteViewGrid: get('editorPaletteViewGrid'),
       paletteTerrain: get('editorPaletteTerrain'),
       paletteGadgets: get('editorPaletteGadgets'),
       paletteTriggers: get('editorPaletteTriggers'),
@@ -242,6 +245,7 @@ class EditorUiController {
     this._bindToolButtons();
     this._bindPaletteTabs();
     this._bindPaletteSearch();
+    this._bindPaletteView();
     this._bindHeaderFields();
     this._bindSelectionFields();
     this._bindSelectionActions();
@@ -739,6 +743,38 @@ class EditorUiController {
     this._applyPaletteFilter();
     this._setPaletteTab(this._activeTab);
     this._refreshPaletteSelection();
+  }
+
+  _bindPaletteView() {
+    const setMode = (mode) => {
+      this._paletteViewMode = mode;
+      const isList = mode === 'list';
+      if (this.el.paletteViewList) {
+        this.el.paletteViewList.classList.toggle('active', isList);
+      }
+      if (this.el.paletteViewGrid) {
+        this.el.paletteViewGrid.classList.toggle('active', !isList);
+      }
+      this._applyPaletteViewMode();
+    };
+    if (this.el.paletteViewList) {
+      this.el.paletteViewList.addEventListener('click', () => setMode('list'));
+    }
+    if (this.el.paletteViewGrid) {
+      this.el.paletteViewGrid.addEventListener('click', () => setMode('grid'));
+    }
+    this._applyPaletteViewMode();
+  }
+
+  _applyPaletteViewMode() {
+    const useGrid = this._paletteViewMode === 'grid';
+    const setGrid = (container) => {
+      if (!container) return;
+      container.classList.toggle('grid', useGrid);
+    };
+    setGrid(this.el.paletteTerrain);
+    setGrid(this.el.paletteGadgets);
+    setGrid(this.el.paletteTriggers);
   }
 
   _getPreviewUrl(entry, type) {

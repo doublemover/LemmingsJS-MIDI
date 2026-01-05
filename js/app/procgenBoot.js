@@ -3,7 +3,7 @@ import { GameView } from '../game/GameView.js';
 import { GameTypes } from '../game/GameTypes.js';
 import { EditorLevel } from '../editor/EditorLevel.js';
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
-import { getStyleNames } from '../editor/StyleRegistry.js';
+import { getStyle, getStyleNames } from '../editor/StyleRegistry.js';
 import { ProcgenController } from './procgenController.js';
 import { ProcgenAssetManager } from './procgenAssetManager.js';
 import { ProcgenTerrainStamper } from './procgenTerrainStamper.js';
@@ -20,7 +20,15 @@ const PROCGEN_RELEASE_RATE = 50;
 const PROCGEN_RELEASE_COUNT = 50;
 const PROCGEN_GROUND_HEIGHT = 4;
 
-const pickProcgenStyle = () => {
+const shuffle = (list) => {
+  for (let i = list.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return list;
+};
+
+const pickProcgenStyle = async (fileProvider, config) => {
   const names = getStyleNames();
   if (!names.length) return 'fire';
   let last = null;
@@ -33,8 +41,31 @@ const pickProcgenStyle = () => {
   const candidates = normalizedLast
     ? names.filter(name => name.toLowerCase() !== normalizedLast)
     : names.slice();
-  const list = candidates.length ? candidates : names;
-  const choice = list[Math.floor(Math.random() * list.length)] || names[0];
+  const shuffled = shuffle(candidates);
+  if (normalizedLast && !shuffled.some(name => name.toLowerCase() === normalizedLast)) {
+    shuffled.push(last);
+  }
+  const list = shuffled.length ? shuffled : names.slice();
+  let choice = names[0];
+  if (fileProvider && config) {
+    for (const candidate of list) {
+      const style = getStyle(candidate);
+      const groundSet = Number.isFinite(style?.groundSet) ? style.groundSet | 0 : null;
+      if (groundSet == null) continue;
+      try {
+        await Promise.all([
+          fileProvider.loadBinary(config.path, `VGAGR${groundSet}.DAT`),
+          fileProvider.loadBinary(config.path, `GROUND${groundSet}O.DAT`)
+        ]);
+        choice = candidate;
+        break;
+      } catch (err) {
+        continue;
+      }
+    }
+  } else {
+    choice = list[Math.floor(Math.random() * list.length)] || names[0];
+  }
   try {
     window.localStorage?.setItem('procgen.style', choice);
   } catch (err) {
@@ -86,7 +117,10 @@ const init = async () => {
   const resources = await view.gameFactory.getGameResources(PROCGEN_GAME_TYPE);
   view.gameResources = resources;
 
-  const styleName = pickProcgenStyle();
+  const styleName = await pickProcgenStyle(
+    view.gameFactory.fileProvider,
+    config
+  );
   const { level: editorLevel } = buildProcgenEditorLevel(styleName);
   const level = await loadEditorLevel(
     editorLevel,

@@ -262,6 +262,33 @@ body {
   line-height: 1.25;
 }
 
+.palette-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#editorPaletteSearch {
+  width: 150px;
+  min-width: 120px;
+  flex: 0 0 auto;
+}
+
+.palette-view-toggle {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.palette-view-toggle button {
+  padding: 4px 8px;
+  font-size: 11px;
+}
+
+.palette-view-toggle button.active {
+  background: var(--accent);
+  color: #fff;
+}
+
 .editor-canvas-panel {
   background: var(--panel);
   border: 1px solid var(--panel-border);
@@ -391,6 +418,23 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.palette-list.grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.palette-list.grid button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+}
+
+.palette-list.grid .palette-label {
+  display: none;
 }
 
 .issue-item.error {
