@@ -22,6 +22,16 @@ const PROCGEN_GROUND_HEIGHT = 4;
 const PROCGEN_ENTRANCE_OFFSET = 80;
 const PROCGEN_INITIAL_GROUND_WIDTH = 280;
 const PROCGEN_ENTRANCE_CLEARANCE = 28;
+const PROCGEN_SKILLS = {
+  CLIMBER: 99,
+  FLOATER: 99,
+  BOMBER: 99,
+  BLOCKER: 99,
+  BUILDER: 99,
+  BASHER: 99,
+  MINER: 99,
+  DIGGER: 99
+};
 
 const shuffle = (list) => {
   for (let i = list.length - 1; i > 0; i--) {
@@ -90,6 +100,9 @@ const buildProcgenEditorLevel = (styleName) => {
   const entranceX = 64;
   const entranceY = PROCGEN_LEVEL_HEIGHT - PROCGEN_GROUND_HEIGHT - PROCGEN_ENTRANCE_OFFSET;
   level.setHeader('START_X', entranceX);
+  for (const [skill, count] of Object.entries(PROCGEN_SKILLS)) {
+    level.setSkill(skill, count);
+  }
   level.gadgets.push({
     props: { PIECE: 1, X: entranceX, Y: entranceY }
   });

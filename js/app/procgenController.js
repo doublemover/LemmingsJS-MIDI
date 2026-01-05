@@ -51,6 +51,9 @@ class ProcgenController {
     this._aiLemmingCooldown = new Map();
     this._aiStallState = new Map();
     this._leftFallCounter = 0;
+    this._splatStreak = 0;
+    this._splatTarget = this._randInt(3, 10);
+    this._pendingMidairBuilder = null;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -129,6 +132,20 @@ class ProcgenController {
       const lemmingId = event?.lemmingId;
       if (this._seenFalls.has(lemmingId)) return;
       this._seenFalls.add(lemmingId);
+      if (event?.type === SoundEventTypes.LEMMING_SPLAT) {
+        this._splatStreak += 1;
+        if (this._splatStreak >= this._splatTarget && !this._pendingMidairBuilder) {
+          this._pendingMidairBuilder = {
+            delay: this._randInt(4, 12),
+            dueTick: null,
+            targetId: null
+          };
+          this._splatStreak = 0;
+          this._splatTarget = this._randInt(3, 10);
+        }
+      } else {
+        this._splatStreak = 0;
+      }
       const originX = Number.isFinite(event?.x) ? event.x : null;
       const manager = this.game?.getLemmingManager?.();
       const lem = Number.isFinite(lemmingId) ? manager?.getLemming?.(lemmingId) : null;
@@ -182,6 +199,7 @@ class ProcgenController {
     this._ensureGround(guideX);
     this._processBuilderBurst();
     this._processGapBridges();
+    this._processMidairBuilder();
     this._updateAiDirector();
     this._updateCamera(Number.isFinite(followX) ? followX : guideX);
   }
@@ -692,6 +710,61 @@ class ProcgenController {
       if (cutoff == null) return false;
       return gap.x + gap.width > cutoff;
     });
+  }
+
+  _processMidairBuilder() {
+    const pending = this._pendingMidairBuilder;
+    if (!pending) return;
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    if (!lems.length) return;
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    const ground = this.level?.groundMask;
+    const levelHeight = this.level?.height ?? 0;
+    const maxDrop = Math.min(this.maxDrop, levelHeight);
+    let target = null;
+
+    if (Number.isFinite(pending.targetId)) {
+      target = manager?.getLemming?.(pending.targetId) || null;
+      const actionName = target?.action?.getActionName?.() || '';
+      if (!target || target.removed || target.disabled || actionName !== 'falling') {
+        pending.targetId = null;
+        pending.dueTick = null;
+        target = null;
+      }
+    }
+
+    if (!target) {
+      for (const lem of lems) {
+        if (!lem || lem.removed || lem.disabled) continue;
+        const actionName = lem.action?.getActionName?.() || '';
+        if (actionName !== 'falling') continue;
+        pending.targetId = lem.id;
+        pending.dueTick = tick + pending.delay;
+        target = lem;
+        break;
+      }
+    }
+
+    if (!target || !Number.isFinite(pending.dueTick)) return;
+    if (tick < pending.dueTick) return;
+    if (!this._canSpend('builder')) return;
+
+    const drop = ground && Number.isFinite(target.x) && Number.isFinite(target.y)
+      ? this._getDropAt(ground, Math.floor(target.x), Math.floor(target.y), maxDrop)
+      : null;
+    if (drop != null && drop <= 1) {
+      this._refundBudget('builder');
+      return;
+    }
+
+    if (manager.doLemmingAction(target, SkillTypes.BUILDER)) {
+      this._noteAiAction(target, tick, 48);
+      this._pendingMidairBuilder = null;
+      return;
+    }
+    this._refundBudget('builder');
   }
 
   _applyBuilderToNextLemming(burst) {
