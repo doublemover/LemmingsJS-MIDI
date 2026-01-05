@@ -54,6 +54,7 @@ class ProcgenController {
     this._splatStreak = 0;
     this._splatTarget = this._randInt(3, 10);
     this._pendingMidairBuilder = null;
+    this._recentDecor = [];
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
@@ -906,9 +907,10 @@ class ProcgenController {
       const minWidth = structure?.type === 'shelf'
         ? Math.max(6, this.segmentMinWidth)
         : 1;
-      const piece = repeatPiece && remaining >= repeatPiece.bounds.width
-        ? repeatPiece
-        : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
+        const repeatWidth = repeatPiece?.width ?? repeatPiece?.bounds?.width ?? 0;
+        const piece = repeatPiece && remaining >= repeatWidth
+          ? repeatPiece
+          : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
       if (!repeatPiece || Math.random() < 0.25) {
         repeatPiece = piece;
@@ -922,7 +924,7 @@ class ProcgenController {
   }
 
   _stampHorizontalRun(cursorX, surfaceY, piece, maxX, decorBias) {
-    const pieceWidth = Math.max(1, piece.bounds.width);
+    const pieceWidth = Math.max(1, piece.width || piece.bounds.width);
     const repeats = Math.max(1, Math.floor((maxX - cursorX) / pieceWidth));
     let stamped = 0;
     for (let i = 0; i < repeats; i++) {
@@ -938,8 +940,8 @@ class ProcgenController {
   }
 
   _stampVerticalRun(cursorX, surfaceY, piece) {
-    const pieceWidth = Math.max(1, piece.bounds.width);
-    const pieceHeight = Math.max(1, piece.bounds.height);
+    const pieceWidth = Math.max(1, piece.width || piece.bounds.width);
+    const pieceHeight = Math.max(1, piece.height || piece.bounds.height);
     const repeats = Math.max(2, Math.ceil(this.groundHeight / pieceHeight));
     let topY = surfaceY;
     for (let i = 0; i < repeats; i++) {
@@ -1029,7 +1031,39 @@ class ProcgenController {
     const destX = baseX + offsetX + this._randInt(-4, 6);
     const raise = this._randInt(6, 22);
     const destY = baseY - decor.bounds.height - raise;
+    if (this._overlapsRecentDecor(destX, destY, decor)) return;
     this.stamper.stamp(decor, destX, destY);
+    this._trackDecorPlacement(destX, destY, decor);
+  }
+
+  _overlapsRecentDecor(destX, destY, decor) {
+    const rect = {
+      x: destX + decor.bounds.minX,
+      y: destY + decor.bounds.minY,
+      w: decor.bounds.width,
+      h: decor.bounds.height
+    };
+    for (const other of this._recentDecor) {
+      if (!other) continue;
+      const xOverlap = Math.min(rect.x + rect.w, other.x + other.w) - Math.max(rect.x, other.x);
+      const yOverlap = Math.min(rect.y + rect.h, other.y + other.h) - Math.max(rect.y, other.y);
+      if (xOverlap > 2 && yOverlap > 2) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  _trackDecorPlacement(destX, destY, decor) {
+    this._recentDecor.push({
+      x: destX + decor.bounds.minX,
+      y: destY + decor.bounds.minY,
+      w: decor.bounds.width,
+      h: decor.bounds.height
+    });
+    if (this._recentDecor.length > 40) {
+      this._recentDecor.splice(0, this._recentDecor.length - 40);
+    }
   }
 
   _pickSegmentWidth() {
