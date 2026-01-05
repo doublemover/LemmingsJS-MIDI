@@ -649,7 +649,6 @@ class ProcgenController {
     let bestDist = Infinity;
     for (const lem of lems) {
       if (!lem || lem.removed || lem.disabled) continue;
-      if (this._shouldSkipAiFor(lem, tick)) continue;
       const actionName = lem.action?.getActionName?.() || '';
       if (actionName && actionName !== 'walking') continue;
       if (burst.edgeAction === 'builder-left' && lem.lookRight) continue;
@@ -783,7 +782,6 @@ class ProcgenController {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
         const actionName = lem.action?.getActionName?.() || '';
         if (actionName && actionName !== 'walking') continue;
-        if (this._shouldSkipAiFor(lem, this.game?.getGameTimer?.().tickIndex ?? 0)) continue;
         if (burst.used?.has?.(lem.id)) continue;
         if (lem.x > burst.edgeX + 8) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.edgeX);
@@ -806,7 +804,6 @@ class ProcgenController {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
         const actionName = lem.action?.getActionName?.() || '';
         if (actionName && actionName !== 'walking') continue;
-        if (this._shouldSkipAiFor(lem, this.game?.getGameTimer?.().tickIndex ?? 0)) continue;
         if (burst.used?.has?.(lem.id)) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.originX);
         if (dist < bestDist) {
