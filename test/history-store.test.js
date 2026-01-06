@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withConsoleStub } from './helpers/console.js';
 import { HistoryStore, __test__ } from '../js/game/HistoryStore.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
 import { Trigger } from '../js/level/Trigger.js';
@@ -103,71 +104,49 @@ const createHistoryFixture = () => {
   };
 };
 
+const recordTick = (history, timer, tickIndex, mutate, nextTick = tickIndex + 1) => {
+  history.beginTick(tickIndex);
+  if (mutate) mutate();
+  if (timer) timer.tickIndex = nextTick;
+  history.endTick();
+};
+
+const runHistoryOps = (history, ops) => {
+  for (const [method, ...args] of ops) {
+    history[method](...args);
+  }
+};
+
+const scenario = (history, timer) => {
+  const api = {
+    tick(tickIndex, { ops = null, mutate = null, nextTick } = {}) {
+      recordTick(history, timer, tickIndex, () => {
+        if (ops && ops.length) runHistoryOps(history, ops);
+        if (mutate) mutate();
+      }, nextTick);
+      return api;
+    }
+  };
+  return api;
+};
+
+const seedHistory = (history, { deltas = [], keyframes = [] } = {}) => {
+  for (const tick of deltas) {
+    history._setDelta(tick, history._allocDelta(tick));
+  }
+  for (const tick of keyframes) {
+    history._setKeyframe(tick, { tickIndex: tick });
+  }
+};
+
 describe('HistoryStore', function() {
   it('captures lemming deltas and can replay them', function() {
-    const timer = { tickIndex: 0, speedFactor: 1, frameTime: 60 };
-    const walkAction = { name: 'walk' };
-    const bomberAction = { name: 'bomber' };
-    const lemming = {
-      id: 0,
-      x: 5,
-      y: 6,
-      lookRight: true,
-      frameIndex: 0,
-      state: 1,
-      canClimb: false,
-      hasParachute: false,
-      removed: false,
-      disabled: false,
-      countdown: 0,
-      hasExploded: false,
-      lastTriggerType: null,
-      action: walkAction,
-      countdownAction: null
-    };
-    const skillActions = [];
-    skillActions[SkillTypes.BOMBER] = bomberAction;
-    const manager = {
-      lemmings: [lemming],
-      activeLemmings: [lemming],
-      _activeDirty: false,
-      actions: [walkAction],
-      skillActions,
-      actionTypeByAction: new Map([[walkAction, 0]]),
-      selectedIndex: -1,
-      spawnTotal: 1,
-      releaseTickIndex: 0,
-      mmTickCounter: 0,
-      nextNukingLemmingsIndex: -1,
-      _nukeTargets: null
-    };
-    const skills = { selectedSkill: 0, cheatMode: false, skills: [1] };
-    const victory = {
-      releaseRate: 1,
-      minReleaseRate: 1,
-      leftCount: 1,
-      outCount: 0,
-      survivorCount: 0,
-      isFinalize: false
-    };
-    const game = {
-      level: { entrances: [] },
-      finalGameState: 0,
-      getLemmingManager: () => manager,
-      getGameTimer: () => timer,
-      getGameSkills: () => skills,
-      getVictoryCondition: () => victory
-    };
-
-    const history = new HistoryStore({ keyframeInterval: 5 });
-    history.attach(game, { captureBaseline: true });
-
-    history.beginTick(0);
-    manager.lemmings[0].x = 10;
-    manager.lemmings[0].y = 12;
-    manager.selectedIndex = 0;
-    timer.tickIndex = 1;
-    history.endTick();
+    const { history, game, timer, manager } = createHistoryFixture();
+    recordTick(history, timer, 0, () => {
+      manager.lemmings[0].x = 10;
+      manager.lemmings[0].y = 12;
+      manager.selectedIndex = 0;
+    });
 
     const delta = history.getDelta(0);
     expect(delta).to.be.ok;
@@ -185,17 +164,13 @@ describe('HistoryStore', function() {
 
   it('truncates future history unless preservation is enabled', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(0, { tickIndex: 0 });
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
 
     history.truncateAfter(0);
     expect(!!history.deltas[2]).to.equal(false);
     expect(!!history.keyframes[2]).to.equal(false);
 
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [2], keyframes: [2] });
     history.setPreserveFutureHistory(true);
     history.truncateAfter(0);
     expect(!!history.deltas[2]).to.equal(true);
@@ -362,29 +337,27 @@ describe('HistoryStore', function() {
     level.groundImage[9] = 21;
     level.groundImage[10] = 31;
 
-    history.beginTick(0);
-    history.recordGroundChange(1, 1, 10, 20, 30, 0, 0, 0, 0);
-    history.recordGroundChange(2, 1, 11, 21, 31, 0, 0, 0, 0);
-    history.recordEntranceChange(0, false, true);
-    history.recordObjectAnimation(
-      obj,
-      { firstFrameIndex: 0, isFinished: false },
-      { firstFrameIndex: 5, isFinished: true }
-    );
-    history.recordMinimapDeath({ x: 1, y: 2, ttl: 3, prevCount: 0 });
-
-    skills.selectedSkill = 1;
-    skills.cheatMode = true;
-    skills.skills[0] = 2;
-    victory.releaseRate = 2;
-    victory.leftCount = 0;
-    victory.outCount = 2;
-    victory.survivorCount = 1;
-    victory.isFinalize = true;
-    timer.speedFactor = 2;
-    game.finalGameState = 3;
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      ops: [
+        ['recordGroundChange', 1, 1, 10, 20, 30, 0, 0, 0, 0],
+        ['recordGroundChange', 2, 1, 11, 21, 31, 0, 0, 0, 0],
+        ['recordEntranceChange', 0, false, true],
+        ['recordObjectAnimation', obj, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 5, isFinished: true }],
+        ['recordMinimapDeath', { x: 1, y: 2, ttl: 3, prevCount: 0 }]
+      ],
+      mutate() {
+        skills.selectedSkill = 1;
+        skills.cheatMode = true;
+        skills.skills[0] = 2;
+        victory.releaseRate = 2;
+        victory.leftCount = 0;
+        victory.outCount = 2;
+        victory.survivorCount = 1;
+        victory.isFinalize = true;
+        timer.speedFactor = 2;
+        game.finalGameState = 3;
+      }
+    });
 
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
@@ -453,10 +426,9 @@ describe('HistoryStore', function() {
     );
     triggerManager.add(trigger);
 
-    history.beginTick(0);
-    history.recordTriggerCooldown(trigger, 0, 5);
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      ops: [['recordTriggerCooldown', trigger, 0, 5]]
+    });
 
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
@@ -479,20 +451,23 @@ describe('HistoryStore', function() {
       owner
     );
 
-    history.beginTick(0);
-    history.recordTriggerAdd(trigger, {
-      type: trigger.type,
-      x1: trigger.x1,
-      y1: trigger.y1,
-      x2: trigger.x2,
-      y2: trigger.y2,
-      disableTicksCount: trigger.disableTicksCount,
-      soundIndex: trigger.soundIndex,
-      ownerId: owner.id,
-      disabledUntilTick: 0
+    scenario(history, timer).tick(0, {
+      ops: [[
+        'recordTriggerAdd',
+        trigger,
+        {
+          type: trigger.type,
+          x1: trigger.x1,
+          y1: trigger.y1,
+          x2: trigger.x2,
+          y2: trigger.y2,
+          disableTicksCount: trigger.disableTicksCount,
+          soundIndex: trigger.soundIndex,
+          ownerId: owner.id,
+          disabledUntilTick: 0
+        }
+      ]]
     });
-    timer.tickIndex = 1;
-    history.endTick();
 
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
@@ -514,7 +489,7 @@ describe('HistoryStore', function() {
     expect(history.getKeyframeAtOrBefore(NaN)).to.equal(null);
     expect(history.getKeyframeAtOrBefore(1)).to.equal(null);
 
-    history._setKeyframe(3, { tickIndex: 3 });
+    seedHistory(history, { keyframes: [3] });
     expect(history.getKeyframeAtOrBefore(2)).to.equal(null);
     expect(history.getKeyframeAtOrBefore(3)).to.be.ok;
   });
@@ -588,7 +563,7 @@ describe('HistoryStore', function() {
       enableHistoryCap: true,
       historyCapTicks: 0
     });
-    history._setDelta(0, history._allocDelta(0));
+    seedHistory(history, { deltas: [0] });
     history._enforceHistoryCap();
     expect(history.getDelta(0)).to.be.ok;
 
@@ -596,9 +571,7 @@ describe('HistoryStore', function() {
       enableHistoryCap: true,
       historyCapTicks: 3
     });
-    capped._setDelta(0, capped._allocDelta(0));
-    capped._setDelta(1, capped._allocDelta(1));
-    capped._setDelta(2, capped._allocDelta(2));
+    seedHistory(capped, { deltas: [0, 1, 2] });
     capped._enforceHistoryCap();
     expect(capped.getDelta(0)).to.be.ok;
   });
@@ -670,11 +643,7 @@ describe('HistoryStore', function() {
 
   it('truncates history before a cutoff', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(1, history._allocDelta(1));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(0, { tickIndex: 0 });
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [0, 1, 2], keyframes: [0, 2] });
 
     history._truncateBefore(2);
 
@@ -755,23 +724,21 @@ describe('HistoryStore', function() {
       historyWarnTicks: 2
     });
     const warnings = [];
-    const originalWarn = console.warn;
-    console.warn = (msg) => warnings.push(msg);
+    const restoreConsole = withConsoleStub({ warn: msg => warnings.push(msg) });
     try {
-      history._setDelta(0, history._allocDelta(0));
-      history._setDelta(1, history._allocDelta(1));
+      seedHistory(history, { deltas: [0, 1] });
       history._maybeWarnHistory();
       expect(warnings).to.have.length(1);
       history._maybeWarnHistory();
       expect(warnings).to.have.length(1);
 
-      history._setDelta(2, history._allocDelta(2));
+      seedHistory(history, { deltas: [2] });
       history._enforceHistoryCap();
       expect(history.getDelta(0)).to.equal(null);
       expect(history.getDelta(1)).to.be.ok;
       expect(history.getDelta(2)).to.be.ok;
     } finally {
-      console.warn = originalWarn;
+      restoreConsole();
     }
   });
 
@@ -837,11 +804,12 @@ describe('HistoryStore', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
 
-    history.beginTick(0);
-    manager.lemmings[0] = null;
-    manager.lemmings.length = 1;
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      mutate() {
+        manager.lemmings[0] = null;
+        manager.lemmings.length = 1;
+      }
+    });
 
     const delta = history.getDelta(0);
     expect(delta.lemRemoved).to.have.length(2);
@@ -903,23 +871,24 @@ describe('HistoryStore', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
 
-    history.beginTick(0);
-    lemming.x = 11;
-    lemming.y = 22;
-    lemming.lookRight = false;
-    lemming.frameIndex = 3;
-    lemming.state = 2;
-    lemming.canClimb = true;
-    lemming.hasParachute = true;
-    lemming.removed = true;
-    lemming.disabled = true;
-    lemming.countdown = 5;
-    lemming.hasExploded = true;
-    lemming.lastTriggerType = null;
-    lemming.action = null;
-    lemming.countdownAction = bomberAction;
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      mutate() {
+        lemming.x = 11;
+        lemming.y = 22;
+        lemming.lookRight = false;
+        lemming.frameIndex = 3;
+        lemming.state = 2;
+        lemming.canClimb = true;
+        lemming.hasParachute = true;
+        lemming.removed = true;
+        lemming.disabled = true;
+        lemming.countdown = 5;
+        lemming.hasExploded = true;
+        lemming.lastTriggerType = null;
+        lemming.action = null;
+        lemming.countdownAction = bomberAction;
+      }
+    });
 
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
@@ -1003,12 +972,13 @@ describe('HistoryStore', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
 
-    history.beginTick(0);
-    manager.selectedIndex = 1;
-    manager.nextNukingLemmingsIndex = 2;
-    manager._nukeTargets = [lemmingB, null];
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      mutate() {
+        manager.selectedIndex = 1;
+        manager.nextNukingLemmingsIndex = 2;
+        manager._nukeTargets = [lemmingB, null];
+      }
+    });
 
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
@@ -1050,10 +1020,11 @@ describe('HistoryStore', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
 
-    history.beginTick(0);
-    level.entrances.push({ _opened: true });
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      mutate() {
+        level.entrances.push({ _opened: true });
+      }
+    });
 
     const delta = history.getDelta(0);
     expect(delta.entranceChanges.indices).to.have.length(0);
@@ -1176,10 +1147,11 @@ describe('HistoryStore', function() {
       countdownAction: null
     };
 
-    history.beginTick(0);
-    manager.lemmings.push(newLem);
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      mutate() {
+        manager.lemmings.push(newLem);
+      }
+    });
 
     const delta = history.getDelta(0);
     expect(delta.lemAdded).to.have.length(1);
@@ -1348,14 +1320,16 @@ describe('HistoryStore', function() {
     history.endTick();
     history.captureBaseline(null);
 
-    history.recordSoundEvent({ type: 'sfx' });
-    history.recordGroundChange(0, 0, 0, 0, 0, 1, 1, 1, 1);
-    history.recordEntranceChange(0, false, true);
-    history.recordTriggerCooldown(null, 0, 1);
-    history.recordTriggerAdd(null, {});
-    history.recordTriggerRemove(null, {});
-    history.recordObjectAnimation(null, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 1, isFinished: true });
-    history.recordMinimapDeath({ x: 1 });
+    runHistoryOps(history, [
+      ['recordSoundEvent', { type: 'sfx' }],
+      ['recordGroundChange', 0, 0, 0, 0, 0, 1, 1, 1, 1],
+      ['recordEntranceChange', 0, false, true],
+      ['recordTriggerCooldown', null, 0, 1],
+      ['recordTriggerAdd', null, {}],
+      ['recordTriggerRemove', null, {}],
+      ['recordObjectAnimation', null, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 1, isFinished: true }],
+      ['recordMinimapDeath', { x: 1 }]
+    ]);
 
     expect(history._ensureTriggerId(null)).to.equal(0);
     expect(history._ensureObjectId(null)).to.equal(0);
@@ -1366,17 +1340,14 @@ describe('HistoryStore', function() {
     const obj = { animation: { firstFrameIndex: 0, isFinished: false } };
     level.objects = [obj];
 
-    history.beginTick(0);
-    history.recordSoundEvent({ type: 'step' });
-    history.recordEntranceChange(0, false, true);
-    history.recordObjectAnimation(
-      obj,
-      { firstFrameIndex: 0, isFinished: false },
-      { firstFrameIndex: 2, isFinished: true }
-    );
-    history.recordMinimapDeath({ x: 2, y: 3, ttl: 4, prevCount: 0 });
-    timer.tickIndex = 1;
-    history.endTick();
+    scenario(history, timer).tick(0, {
+      ops: [
+        ['recordSoundEvent', { type: 'step' }],
+        ['recordEntranceChange', 0, false, true],
+        ['recordObjectAnimation', obj, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 2, isFinished: true }],
+        ['recordMinimapDeath', { x: 2, y: 3, ttl: 4, prevCount: 0 }]
+      ]
+    });
 
     const delta = history.getDelta(0);
     expect(delta.soundEvents).to.have.length(1);
@@ -1389,21 +1360,18 @@ describe('HistoryStore', function() {
 
   it('truncates deltas and keyframes when removing all history', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(0, { tickIndex: 0 });
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
 
     history._truncateDeltasAfter(-1);
     expect(history.minDeltaTick).to.equal(null);
     expect(history.maxDeltaTick).to.equal(null);
 
-    history._setKeyframe(1, { tickIndex: 1 });
+    seedHistory(history, { keyframes: [1] });
     history._truncateKeyframesAfter(0);
     expect(history.keyframeTicks).to.have.length(1);
     expect(history.keyframeTicks[0]).to.equal(0);
 
-    history._setDelta(0, history._allocDelta(0));
+    seedHistory(history, { deltas: [0] });
     history._truncateBefore(5);
     expect(history.minDeltaTick).to.equal(null);
   });
@@ -1666,9 +1634,7 @@ describe('HistoryStore', function() {
     expect(history.getKeyframe(NaN)).to.equal(null);
     expect(history.getHistoryStats().spanTicks).to.equal(0);
 
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [0, 2], keyframes: [2] });
     expect(history.getKeyframe(2)).to.be.ok;
     expect(history.getKeyframe(4)).to.equal(null);
 
@@ -1676,7 +1642,7 @@ describe('HistoryStore', function() {
     expect(stats.spanTicks).to.equal(3);
     expect(stats.deltaCount).to.equal(2);
 
-    history._setKeyframe(5, { tickIndex: 5 });
+    seedHistory(history, { keyframes: [5] });
     const found = history.getKeyframeAtOrBefore(4);
     expect(found.tickIndex).to.equal(2);
   });
@@ -1695,10 +1661,7 @@ describe('HistoryStore', function() {
 
   it('truncates deltas and keyframes across gaps', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(0, { tickIndex: 0 });
-    history._setKeyframe(2, { tickIndex: 2 });
+    seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
 
     history._truncateDeltasAfter(1);
     expect(history.maxDeltaTick).to.equal(0);
@@ -1712,10 +1675,7 @@ describe('HistoryStore', function() {
 
   it('truncates before gaps and clears keyframes', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(2, history._allocDelta(2));
-    history._setKeyframe(0, { tickIndex: 0 });
-    history._setKeyframe(1, { tickIndex: 1 });
+    seedHistory(history, { deltas: [0, 2], keyframes: [0, 1] });
 
     history._truncateBefore(1);
     expect(history.minDeltaTick).to.equal(2);
@@ -1724,9 +1684,7 @@ describe('HistoryStore', function() {
     expect(history.minDeltaTick).to.equal(null);
 
     const history2 = new HistoryStore({ keyframeInterval: 2 });
-    history2._setDelta(0, history2._allocDelta(0));
-    history2._setKeyframe(0, { tickIndex: 0 });
-    history2._setKeyframe(1, { tickIndex: 1 });
+    seedHistory(history2, { deltas: [0], keyframes: [0, 1] });
     history2._truncateBefore(2);
     expect(history2.keyframeTicks).to.have.length(0);
   });
@@ -1737,20 +1695,15 @@ describe('HistoryStore', function() {
       historyCapTicks: 2,
       historyWarnTicks: 2
     });
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(1, history._allocDelta(1));
-    history._setDelta(2, history._allocDelta(2));
-    history._setDelta(3, history._allocDelta(3));
-    history._setKeyframe(1, { tickIndex: 1 });
+    seedHistory(history, { deltas: [0, 1, 2, 3], keyframes: [1] });
 
     let warned = 0;
-    const originalWarn = console.warn;
-    console.warn = () => { warned += 1; };
+    const restoreConsole = withConsoleStub({ warn: () => { warned += 1; } });
     try {
       history._maybeWarnHistory();
       history._maybeWarnHistory();
     } finally {
-      console.warn = originalWarn;
+      restoreConsole();
     }
     expect(warned).to.equal(1);
 
@@ -1763,10 +1716,7 @@ describe('HistoryStore', function() {
       enableHistoryCap: true,
       historyCapTicks: 2
     });
-    history._setDelta(5, history._allocDelta(5));
-    history._setDelta(6, history._allocDelta(6));
-    history._setDelta(7, history._allocDelta(7));
-    history._setKeyframe(0, { tickIndex: 0 });
+    seedHistory(history, { deltas: [5, 6, 7], keyframes: [0] });
 
     history._enforceHistoryCap();
     expect(history.minDeltaTick).to.equal(5);
@@ -2063,18 +2013,16 @@ describe('HistoryStore', function() {
     history.beginTick(0);
     history.captureBaseline(null);
 
-    history.recordSoundEvent({});
-    history.recordGroundChange(0, 0, 0, 0, 0, 0, 0, 0, 0);
-    history.recordEntranceChange(0, false, false);
-    history.recordTriggerCooldown(null, 0, 0);
-    history.recordTriggerAdd(null, {});
-    history.recordTriggerRemove(null, {});
-    history.recordObjectAnimation(
-      {},
-      { firstFrameIndex: 0, isFinished: false },
-      { firstFrameIndex: 0, isFinished: false }
-    );
-    history.recordMinimapDeath({});
+    runHistoryOps(history, [
+      ['recordSoundEvent', {}],
+      ['recordGroundChange', 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      ['recordEntranceChange', 0, false, false],
+      ['recordTriggerCooldown', null, 0, 0],
+      ['recordTriggerAdd', null, {}],
+      ['recordTriggerRemove', null, {}],
+      ['recordObjectAnimation', {}, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 0, isFinished: false }],
+      ['recordMinimapDeath', {}]
+    ]);
 
     const historyWithTimer = new HistoryStore();
     const timer = createStubTimer();
@@ -2105,45 +2053,36 @@ describe('HistoryStore', function() {
     const history = new HistoryStore();
     history._recording = true;
     history.beginTick(0);
-
-    history.recordEntranceChange(0, false, true);
-    history.recordEntranceChange(1, true, false);
-
     const obj = {};
-    history.recordObjectAnimation(
-      obj,
-      { firstFrameIndex: 1, isFinished: false },
-      { firstFrameIndex: 2, isFinished: true }
-    );
-    history.recordObjectAnimation(
-      obj,
-      { firstFrameIndex: 2, isFinished: true },
-      { firstFrameIndex: 3, isFinished: false }
-    );
-
     const trigger = new Trigger(TriggerTypes.TRAP, 0, 0, 1, 1);
-    history.recordTriggerCooldown(trigger, 0, 2);
-    history.recordTriggerAdd(trigger, {
-      type: trigger.type,
-      x1: trigger.x1,
-      y1: trigger.y1,
-      x2: trigger.x2,
-      y2: trigger.y2,
-      disableTicksCount: trigger.disableTicksCount,
-      soundIndex: trigger.soundIndex,
-      ownerId: null
-    });
-    history.recordTriggerRemove(trigger, {
-      type: trigger.type,
-      x1: trigger.x1,
-      y1: trigger.y1,
-      x2: trigger.x2,
-      y2: trigger.y2,
-      disableTicksCount: trigger.disableTicksCount,
-      soundIndex: trigger.soundIndex,
-      ownerId: null
-    });
-    history.recordMinimapDeath({ x: 1, y: 2, ttl: 3, prevCount: 0 });
+    runHistoryOps(history, [
+      ['recordEntranceChange', 0, false, true],
+      ['recordEntranceChange', 1, true, false],
+      ['recordObjectAnimation', obj, { firstFrameIndex: 1, isFinished: false }, { firstFrameIndex: 2, isFinished: true }],
+      ['recordObjectAnimation', obj, { firstFrameIndex: 2, isFinished: true }, { firstFrameIndex: 3, isFinished: false }],
+      ['recordTriggerCooldown', trigger, 0, 2],
+      ['recordTriggerAdd', trigger, {
+        type: trigger.type,
+        x1: trigger.x1,
+        y1: trigger.y1,
+        x2: trigger.x2,
+        y2: trigger.y2,
+        disableTicksCount: trigger.disableTicksCount,
+        soundIndex: trigger.soundIndex,
+        ownerId: null
+      }],
+      ['recordTriggerRemove', trigger, {
+        type: trigger.type,
+        x1: trigger.x1,
+        y1: trigger.y1,
+        x2: trigger.x2,
+        y2: trigger.y2,
+        disableTicksCount: trigger.disableTicksCount,
+        soundIndex: trigger.soundIndex,
+        ownerId: null
+      }],
+      ['recordMinimapDeath', { x: 1, y: 2, ttl: 3, prevCount: 0 }]
+    ]);
 
     const existingTrigger = { __historyId: 9 };
     expect(history._ensureTriggerId(existingTrigger)).to.equal(9);
@@ -2187,25 +2126,22 @@ describe('HistoryStore', function() {
     empty._truncateBefore(1);
 
     const history = new HistoryStore();
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(1, history._allocDelta(1));
+    seedHistory(history, { deltas: [0, 1] });
     history._truncateDeltasAfter(1);
     expect(history.maxDeltaTick).to.equal(1);
 
     const historyGap = new HistoryStore();
-    historyGap._setDelta(0, historyGap._allocDelta(0));
-    historyGap._setDelta(3, historyGap._allocDelta(3));
+    seedHistory(historyGap, { deltas: [0, 3] });
     historyGap._truncateDeltasAfter(1);
     expect(historyGap.maxDeltaTick).to.equal(0);
 
     const historyAll = new HistoryStore();
-    historyAll._setDelta(2, historyAll._allocDelta(2));
+    seedHistory(historyAll, { deltas: [2] });
     historyAll._truncateDeltasAfter(1);
     expect(historyAll.minDeltaTick).to.equal(null);
 
     const keyframesAll = new HistoryStore();
-    keyframesAll._setKeyframe(2, { tickIndex: 2 });
-    keyframesAll._setKeyframe(3, { tickIndex: 3 });
+    seedHistory(keyframesAll, { keyframes: [2, 3] });
     keyframesAll._truncateKeyframesAfter(1);
     expect(keyframesAll.keyframeTicks).to.have.length(0);
 
@@ -2218,22 +2154,18 @@ describe('HistoryStore', function() {
     expect(keyframesMissing._lastKeyframe).to.equal(null);
 
     const beforeGap = new HistoryStore();
-    beforeGap._setDelta(0, beforeGap._allocDelta(0));
-    beforeGap._setDelta(3, beforeGap._allocDelta(3));
-    beforeGap._setKeyframe(0, { tickIndex: 0 });
-    beforeGap._setKeyframe(3, { tickIndex: 3 });
+    seedHistory(beforeGap, { deltas: [0, 3], keyframes: [0, 3] });
     beforeGap._truncateBefore(2);
     expect(beforeGap.minDeltaTick).to.equal(3);
 
     const beforeAll = new HistoryStore();
-    beforeAll._setDelta(0, beforeAll._allocDelta(0));
-    beforeAll._setKeyframe(0, { tickIndex: 0 });
+    seedHistory(beforeAll, { deltas: [0], keyframes: [0] });
     beforeAll._truncateBefore(2);
     expect(beforeAll.minDeltaTick).to.equal(null);
     expect(beforeAll.keyframeTicks).to.have.length(0);
 
     const beforeLast = new HistoryStore();
-    beforeLast._setDelta(0, beforeLast._allocDelta(0));
+    seedHistory(beforeLast, { deltas: [0] });
     beforeLast.keyframeTicks = [2];
     beforeLast.keyframes[2] = undefined;
     beforeLast.minKeyframeTick = 2;
@@ -2242,24 +2174,22 @@ describe('HistoryStore', function() {
     expect(beforeLast._lastKeyframe).to.equal(null);
 
     const historySpan = new HistoryStore();
-    historySpan._setDelta(0, historySpan._allocDelta(0));
-    historySpan._setDelta(5, historySpan._allocDelta(5));
+    seedHistory(historySpan, { deltas: [0, 5] });
     historySpan._truncateDeltasAfter(3);
     expect(historySpan.maxDeltaTick).to.equal(0);
 
     const historyClear = new HistoryStore();
-    historyClear._setDelta(5, historyClear._allocDelta(5));
+    seedHistory(historyClear, { deltas: [5] });
     historyClear._truncateDeltasAfter(3);
     expect(historyClear.minDeltaTick).to.equal(null);
 
     const beforeSpan = new HistoryStore();
-    beforeSpan._setDelta(0, beforeSpan._allocDelta(0));
-    beforeSpan._setDelta(5, beforeSpan._allocDelta(5));
+    seedHistory(beforeSpan, { deltas: [0, 5] });
     beforeSpan._truncateBefore(2);
     expect(beforeSpan.minDeltaTick).to.equal(5);
 
     const beforeClear = new HistoryStore();
-    beforeClear._setDelta(0, beforeClear._allocDelta(0));
+    seedHistory(beforeClear, { deltas: [0] });
     beforeClear._truncateBefore(2);
     expect(beforeClear.maxDeltaTick).to.equal(null);
   });
@@ -2267,8 +2197,7 @@ describe('HistoryStore', function() {
   it('handles history warning and cap edge cases', function() {
     const history = new HistoryStore({ historyWarnTicks: 5 });
     history._maybeWarnHistory();
-    history._setDelta(0, history._allocDelta(0));
-    history._setDelta(1, history._allocDelta(1));
+    seedHistory(history, { deltas: [0, 1] });
     history._maybeWarnHistory();
 
     const capDefault = new HistoryStore({ enableHistoryCap: true });
@@ -2285,10 +2214,7 @@ describe('HistoryStore', function() {
       enableHistoryCap: true,
       historyCapTicks: 2
     });
-    capWithFrame._setDelta(0, capWithFrame._allocDelta(0));
-    capWithFrame._setDelta(1, capWithFrame._allocDelta(1));
-    capWithFrame._setDelta(2, capWithFrame._allocDelta(2));
-    capWithFrame._setKeyframe(0, { tickIndex: 0 });
+    seedHistory(capWithFrame, { deltas: [0, 1, 2], keyframes: [0] });
     capWithFrame._enforceHistoryCap();
     expect(capWithFrame.minDeltaTick).to.equal(0);
 
@@ -2296,9 +2222,7 @@ describe('HistoryStore', function() {
       enableHistoryCap: true,
       historyCapTicks: 2
     });
-    capNoFrame._setDelta(0, capNoFrame._allocDelta(0));
-    capNoFrame._setDelta(1, capNoFrame._allocDelta(1));
-    capNoFrame._setDelta(2, capNoFrame._allocDelta(2));
+    seedHistory(capNoFrame, { deltas: [0, 1, 2] });
     capNoFrame._enforceHistoryCap();
     expect(capNoFrame.minDeltaTick).to.equal(1);
   });
@@ -2991,9 +2915,7 @@ describe('HistoryStore', function() {
 
   it('captures interval keyframes during endTick', function() {
     const { history, timer } = createHistoryFixture();
-    history.beginTick(0);
-    timer.tickIndex = 5;
-    history.endTick();
+    recordTick(history, timer, 0, null, 5);
     expect(history.getKeyframe(5)).to.be.ok;
   });
 

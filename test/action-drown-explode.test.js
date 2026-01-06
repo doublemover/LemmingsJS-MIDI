@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { ActionDrowningSystem } from '../js/actions/ActionDrowningSystem.js';
 import { ActionExplodingSystem } from '../js/actions/ActionExplodingSystem.js';
 import '../js/level/Trigger.js';
@@ -44,17 +44,11 @@ function stubMasks() {
 }
 
 describe('ActionDrowningSystem behavior', function() {
-  let originalLemmings;
-  beforeEach(() => {
-    originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = { game: { lemmingManager: { miniMap: { deaths: 0, addDeath() { this.deaths++; }, invalidateRegion() {} } } } };
-  });
-
-  afterEach(() => {
-    if (originalLemmings === undefined) {
-      delete globalThis.lemmings;
-    } else {
-      globalThis.lemmings = originalLemmings;
+  useGlobalLemmings({
+    game: {
+      lemmingManager: {
+        miniMap: { deaths: 0, addDeath() { this.deaths++; }, invalidateRegion() {} }
+      }
     }
   });
 

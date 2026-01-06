@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings, withGlobalLemmings, withMissingGlobalLemmings } from './helpers/lemmings.js';
 import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 
 // minimal global environment
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('GameVictoryCondition methods', function () {
   function makeVC() {
@@ -146,19 +146,11 @@ describe('GameVictoryCondition methods', function () {
 
   it('handles missing app in getCurrentReleaseRate', function () {
     const vc = makeVC();
-    const prev = globalThis.lemmings;
-    globalThis.lemmings = null;
-    try {
+    withGlobalLemmings(null, () => {
       expect(vc.getCurrentReleaseRate()).to.equal(vc.releaseRate);
-    } finally {
-      globalThis.lemmings = prev;
-    }
-    const prevProp = globalThis.lemmings;
-    delete globalThis.lemmings;
-    try {
+    });
+    withMissingGlobalLemmings(() => {
       expect(vc.getCurrentReleaseRate()).to.equal(vc.releaseRate);
-    } finally {
-      globalThis.lemmings = prevProp;
-    }
+    });
   });
 });

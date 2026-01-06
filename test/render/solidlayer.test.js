@@ -1,8 +1,9 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from '../helpers/lemmings.js';
 import { SolidLayer } from '../../js/render/SolidLayer.js';
 import '../../js/util/LogHandler.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('SolidLayer', function() {
   it('computes column gaps and counts mask regions', function() {

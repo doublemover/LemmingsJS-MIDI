@@ -1,9 +1,25 @@
 import assert from 'assert';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings, withShowDebug } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/util/LogHandler.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+class MockLogHandler {
+  constructor() { this.logged = []; }
+  log(msg) { this.logged.push(msg); }
+  debug() {}
+}
+
+const withMockLogHandler = (fn) => {
+  const origHandler = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return withShowDebug(true, fn);
+  } finally {
+    setDependency('LogHandler', origHandler);
+  }
+};
 
 describe('BinaryReader', function () {
   it('reads data from Blob asynchronously', async function () {
@@ -49,27 +65,15 @@ describe('BinaryReader', function () {
   });
 
   it('logs warnings for invalid offsets', function () {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-      debug() {}
-    }
+    const logs = withMockLogHandler(() => {
+      const bytes = Uint8Array.from([0x00, 0x01]);
+      const reader = new BinaryReader(bytes, 0, bytes.length, 'test.bin');
+      reader.readByte(-1);
+      reader.readByte(5);
+      return reader.log.logged;
+    });
 
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const bytes = Uint8Array.from([0x00, 0x01]);
-    const reader = new BinaryReader(bytes, 0, bytes.length, 'test.bin');
-
-    const prev = globalThis.lemmings.game.showDebug;
-    globalThis.lemmings.game.showDebug = true;
-
-    reader.readByte(-1);
-    reader.readByte(5);
-
-    globalThis.lemmings.game.showDebug = prev;
-
-    assert.ok(reader.log.logged.filter(m => m.includes('read out of data')).length >= 2);
-    setDependency('LogHandler', origHandler);
+    assert.ok(logs.filter(m => m.includes('read out of data')).length >= 2);
   });
 
   it('falls back to FileReader when arrayBuffer is unavailable', async function () {

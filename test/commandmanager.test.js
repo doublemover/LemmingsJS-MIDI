@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { CommandManager } from '../js/commands/CommandManager.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('CommandManager', function() {
   class MockTimer {

@@ -149,6 +149,41 @@ describe('FileProvider', function () {
   let requests;
   let restore;
   let origFetch;
+  const makeUrl = (name) => rootPath + name;
+  const cacheKey = (url) => `lem-cache:${url}`;
+  const setCacheEntry = (url, entry) => {
+    global.localStorage.setItem(cacheKey(url), JSON.stringify(entry));
+  };
+  const setCacheRaw = (url, raw) => {
+    global.localStorage.setItem(cacheKey(url), raw);
+  };
+  const setBinaryCache = (url, buffer, hash) => {
+    const entry = {
+      type: 'binary',
+      data: provider._arrayBufferToBase64(buffer),
+      ...(hash ? { hash } : {})
+    };
+    setCacheEntry(url, entry);
+  };
+  const setTextCache = (url, data) => {
+    setCacheEntry(url, { type: 'text', data });
+  };
+  const setupIndexedDb = ({
+    loadFromIndexedDb = async () => null,
+    loadFromLocalStorage = () => null
+  } = {}) => {
+    provider._canUseIndexedDb = () => true;
+    provider._loadFromIndexedDb = loadFromIndexedDb;
+    provider._loadFromLocalStorage = loadFromLocalStorage;
+  };
+  const makeFetchCounter = (impl) => {
+    let calls = 0;
+    const fn = async (...args) => {
+      calls += 1;
+      return impl(...args);
+    };
+    return { fn, get calls() { return calls; } };
+  };
 
   beforeEach(function () {
     origBR = Lemmings.BinaryReader;
@@ -242,7 +277,7 @@ describe('FileProvider', function () {
   });
 
   it('loadString caches identical requests', async function () {
-    const url = rootPath + 'text.txt';
+    const url = makeUrl('text.txt');
     const p1 = provider.loadString(url);
     const p2 = provider.loadString(url);
     assert.strictEqual(p1, p2);
@@ -258,7 +293,7 @@ describe('FileProvider', function () {
   });
 
   it('loadString clears cache on failure', async function () {
-    const url = rootPath + 'fail.txt';
+    const url = makeUrl('fail.txt');
     const promise = provider.loadString(url);
     assert.strictEqual(provider._cache.size, 1);
     requests[0].respond(500, 'err');
@@ -267,7 +302,7 @@ describe('FileProvider', function () {
   });
 
   it('clearCache() empties the internal cache', async function () {
-    const url = rootPath + 'file.txt';
+    const url = makeUrl('file.txt');
     const p1 = provider.loadString(url);
     requests[0].respond(200, 'ok');
     await p1;
@@ -288,12 +323,12 @@ describe('FileProvider', function () {
   });
 
   it('stores data in localStorage and reuses it', async function () {
-    const url = rootPath + 'text.txt';
+    const url = makeUrl('text.txt');
     const p1 = provider.loadString(url);
     requests[0].respond(200, 'hello');
     const result1 = await p1;
     assert.strictEqual(result1, 'hello');
-    const stored = global.localStorage.getItem('lem-cache:' + url);
+    const stored = global.localStorage.getItem(cacheKey(url));
     assert.ok(stored, 'entry stored');
 
     // new provider simulating page reload
@@ -307,13 +342,8 @@ describe('FileProvider', function () {
   it('loadBinary uses cached binary entries from localStorage', async function () {
     provider = new FileProvider(rootPath);
     const data = Uint8Array.from([1, 2, 3]).buffer;
-    const url = rootPath + 'data/file.bin';
-    const entry = {
-      type: 'binary',
-      data: provider._arrayBufferToBase64(data),
-      hash: 'h'
-    };
-    global.localStorage.setItem('lem-cache:' + url, JSON.stringify(entry));
+    const url = makeUrl('data/file.bin');
+    setBinaryCache(url, data, 'h');
 
     const result = await provider.loadBinary('data', 'file.bin');
     assert.ok(result instanceof MockBinaryReader);
@@ -321,8 +351,8 @@ describe('FileProvider', function () {
   });
 
   it('falls back to fetching when cached JSON is invalid', async function () {
-    const url = rootPath + 'bad.txt';
-    global.localStorage.setItem('lem-cache:' + url, '{bad');
+    const url = makeUrl('bad.txt');
+    setCacheRaw(url, '{bad');
     const promise = provider.loadString(url);
     requests[0].respond(200, 'ok');
     const result = await promise;
@@ -362,39 +392,30 @@ describe('FileProvider', function () {
   });
 
   it('loadBinary uses indexedDB path when enabled and uncached', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => null;
-    provider._loadFromLocalStorage = () => null;
-    let fetchCalls = 0;
-    provider._fetchBinary = async () => {
-      fetchCalls++;
-      return new MockBinaryReader();
-    };
+    setupIndexedDb();
+    const fetchBinary = makeFetchCounter(async () => new MockBinaryReader());
+    provider._fetchBinary = fetchBinary.fn;
 
     const result = await provider.loadBinary('data', 'missing.bin');
     assert.ok(result instanceof MockBinaryReader);
-    assert.strictEqual(fetchCalls, 1);
+    assert.strictEqual(fetchBinary.calls, 1);
   });
 
   it('loadBinary falls back when indexedDB rejects', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
-    provider._loadFromLocalStorage = () => null;
-    let fetchCalls = 0;
-    provider._fetchBinary = async () => {
-      fetchCalls++;
-      return new MockBinaryReader();
-    };
+    setupIndexedDb({ loadFromIndexedDb: async () => { throw new Error('fail'); } });
+    const fetchBinary = makeFetchCounter(async () => new MockBinaryReader());
+    provider._fetchBinary = fetchBinary.fn;
 
     const result = await provider.loadBinary('data', 'missing.bin');
     assert.ok(result instanceof MockBinaryReader);
-    assert.strictEqual(fetchCalls, 1);
+    assert.strictEqual(fetchBinary.calls, 1);
   });
 
   it('loadBinary uses localStorage fallback after indexedDB error', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
-    provider._loadFromLocalStorage = () => ({ value: new MockBinaryReader() });
+    setupIndexedDb({
+      loadFromIndexedDb: async () => { throw new Error('fail'); },
+      loadFromLocalStorage: () => ({ value: new MockBinaryReader() })
+    });
     provider._fetchBinary = async () => { throw new Error('should not fetch'); };
 
     const result = await provider.loadBinary('data', 'missing.bin');
@@ -402,14 +423,10 @@ describe('FileProvider', function () {
   });
 
   it('loadBinary reads localStorage when indexedDB rejects', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
+    setupIndexedDb({ loadFromIndexedDb: async () => { throw new Error('fail'); } });
     const url = provider._buildUrl('data', 'cached.bin');
     const buf = Uint8Array.from([1, 2, 3]).buffer;
-    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({
-      type: 'binary',
-      data: provider._arrayBufferToBase64(buf)
-    }));
+    setBinaryCache(url, buf);
     provider._fetchBinary = async () => { throw new Error('should not fetch'); };
 
     const result = await provider.loadBinary('data', 'cached.bin');
@@ -417,60 +434,46 @@ describe('FileProvider', function () {
   });
 
   it('loadString uses indexedDB path when enabled and uncached', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => null;
-    provider._loadFromLocalStorage = () => null;
-    let fetchCalls = 0;
-    provider._fetchText = async () => {
-      fetchCalls++;
-      return 'ok';
-    };
+    setupIndexedDb();
+    const fetchText = makeFetchCounter(async () => 'ok');
+    provider._fetchText = fetchText.fn;
 
-    const result = await provider.loadString(rootPath + 'missing.txt');
+    const result = await provider.loadString(makeUrl('missing.txt'));
     assert.strictEqual(result, 'ok');
-    assert.strictEqual(fetchCalls, 1);
+    assert.strictEqual(fetchText.calls, 1);
   });
 
   it('loadString falls back when indexedDB rejects', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
-    provider._loadFromLocalStorage = () => null;
-    let fetchCalls = 0;
-    provider._fetchText = async () => {
-      fetchCalls++;
-      return 'ok';
-    };
+    setupIndexedDb({ loadFromIndexedDb: async () => { throw new Error('fail'); } });
+    const fetchText = makeFetchCounter(async () => 'ok');
+    provider._fetchText = fetchText.fn;
 
-    const result = await provider.loadString(rootPath + 'missing.txt');
+    const result = await provider.loadString(makeUrl('missing.txt'));
     assert.strictEqual(result, 'ok');
-    assert.strictEqual(fetchCalls, 1);
+    assert.strictEqual(fetchText.calls, 1);
   });
 
   it('loadString uses cached indexedDB value', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => ({ value: 'cached' });
+    setupIndexedDb({ loadFromIndexedDb: async () => ({ value: 'cached' }) });
     provider._fetchText = async () => { throw new Error('should not fetch'); };
-    const result = await provider.loadString(rootPath + 'cached.txt');
+    const result = await provider.loadString(makeUrl('cached.txt'));
     assert.strictEqual(result, 'cached');
   });
 
   it('loadString uses localStorage fallback after indexedDB error', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
-    provider._loadFromLocalStorage = () => ({ value: 'cached' });
+    setupIndexedDb({
+      loadFromIndexedDb: async () => { throw new Error('fail'); },
+      loadFromLocalStorage: () => ({ value: 'cached' })
+    });
     provider._fetchText = async () => { throw new Error('should not fetch'); };
-    const result = await provider.loadString(rootPath + 'cached.txt');
+    const result = await provider.loadString(makeUrl('cached.txt'));
     assert.strictEqual(result, 'cached');
   });
 
   it('loadString uses localStorage after indexedDB rejection', async function () {
-    provider._canUseIndexedDb = () => true;
-    provider._loadFromIndexedDb = async () => { throw new Error('fail'); };
-    const url = rootPath + 'cached.txt';
-    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({
-      type: 'text',
-      data: 'stored'
-    }));
+    setupIndexedDb({ loadFromIndexedDb: async () => { throw new Error('fail'); } });
+    const url = makeUrl('cached.txt');
+    setTextCache(url, 'stored');
     provider._fetchText = async () => { throw new Error('should not fetch'); };
     const result = await provider.loadString(url);
     assert.strictEqual(result, 'stored');
@@ -511,11 +514,11 @@ describe('FileProvider', function () {
     HeaderXHR.instances = [];
     global.XMLHttpRequest = HeaderXHR;
 
-    const textUrl = rootPath + 'headers.txt';
+    const textUrl = makeUrl('headers.txt');
     const textPromise = provider.loadString(textUrl);
     HeaderXHR.instances[0].respond(200, 'ok');
     await textPromise;
-    const textEntry = JSON.parse(global.localStorage.getItem('lem-cache:' + textUrl));
+    const textEntry = JSON.parse(global.localStorage.getItem(cacheKey(textUrl)));
     assert.strictEqual(textEntry.etag, 'etag-value');
 
     const binPromise = provider.loadBinary('data', 'file.bin');
@@ -523,7 +526,7 @@ describe('FileProvider', function () {
     HeaderXHR.instances[1].respond(200, buffer);
     await binPromise;
     const binUrl = provider._buildUrl('data', 'file.bin');
-    const binEntry = JSON.parse(global.localStorage.getItem('lem-cache:' + binUrl));
+    const binEntry = JSON.parse(global.localStorage.getItem(cacheKey(binUrl)));
     assert.strictEqual(binEntry.lastModified, 'modified');
   });
 
@@ -552,18 +555,18 @@ describe('FileProvider', function () {
     requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
     requests[0].respond(200, new ArrayBuffer(1));
     await p;
-    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.etag, 'etag');
     assert.strictEqual(entry.lastModified, 'last');
   });
 
   it('stores response headers for text entries when available', async function () {
-    const url = rootPath + 'with-headers.txt';
+    const url = makeUrl('with-headers.txt');
     const p = provider.loadString(url);
     requests[0].getResponseHeader = key => (key === 'ETag' ? 'etag' : 'last');
     requests[0].respond(200, 'ok');
     await p;
-    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.etag, 'etag');
     assert.strictEqual(entry.lastModified, 'last');
   });
@@ -663,19 +666,19 @@ describe('FileProvider', function () {
 
   it('_fetchText stores data and headers in localStorage', async function () {
     provider._hashString = async () => 'h';
-    const url = rootPath + 'text.txt';
+    const url = makeUrl('text.txt');
     const promise = provider._fetchText(url);
     requests[0].respond(200, 'hi');
     const result = await promise;
     assert.strictEqual(result, 'hi');
-    const entry = JSON.parse(global.localStorage.getItem('lem-cache:' + url));
+    const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
     assert.strictEqual(entry.type, 'text');
     assert.strictEqual(entry.data, 'hi');
     assert.strictEqual(entry.hash, 'h');
   });
 
   it('_fetchText logs and rejects on failure', async function () {
-    const promise = provider._fetchText(rootPath + 'bad.txt');
+    const promise = provider._fetchText(makeUrl('bad.txt'));
     requests[0].respond(404, 'err');
     await assert.rejects(promise);
     assert.ok(provider.log.logged.some(m => m.includes('error load file')));
@@ -692,7 +695,7 @@ describe('FileProvider', function () {
   });
 
   it('_fetchText rejects when onload reports error status', async function () {
-    const promise = provider._fetchText(rootPath + 'bad2.txt');
+    const promise = provider._fetchText(makeUrl('bad2.txt'));
     const xhr = requests[0];
     xhr.status = 500;
     xhr.response = 'err';
@@ -745,7 +748,7 @@ describe('FileProvider', function () {
     await provider._openIndexedDb();
     const entries = idb._stores.get('entries');
     const payloads = idb._stores.get('payloads');
-    const url = rootPath + 'cached.txt';
+    const url = makeUrl('cached.txt');
     entries.set(url, { url, type: 'text', size: 4, lastAccess: 1 });
     payloads.set(url, { url, data: 'ok' });
 
@@ -804,7 +807,7 @@ describe('FileProvider', function () {
 
   it('returns null when localStorage entries are wrong type', function () {
     const url = rootPath + 'wrong.bin';
-    global.localStorage.setItem('lem-cache:' + url, JSON.stringify({ type: 'text', data: 'ok' }));
+    setTextCache(url, 'ok');
     const result = provider._loadFromLocalStorage(url, 'binary', 'data');
     assert.strictEqual(result, null);
   });
@@ -902,20 +905,14 @@ describe('FileProvider', function () {
 
     const binUrl = provider._buildUrl('data', 'fallback.bin');
     const buf = Uint8Array.from([1]).buffer;
-    global.localStorage.setItem('lem-cache:' + binUrl, JSON.stringify({
-      type: 'binary',
-      data: provider._arrayBufferToBase64(buf)
-    }));
+    setBinaryCache(binUrl, buf);
 
     const bin = await provider.loadBinary('data', 'fallback.bin');
     assert.ok(bin instanceof MockBinaryReader);
     assert.strictEqual(requests.length, 0);
 
-    const textUrl = rootPath + 'fallback.txt';
-    global.localStorage.setItem('lem-cache:' + textUrl, JSON.stringify({
-      type: 'text',
-      data: 'hello'
-    }));
+    const textUrl = makeUrl('fallback.txt');
+    setTextCache(textUrl, 'hello');
     const text = await provider.loadString(textUrl);
     assert.strictEqual(text, 'hello');
   });

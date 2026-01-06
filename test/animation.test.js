@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { Animation } from '../js/render/Animation.js';
 import '../js/render/ColorPalette.js';
 import '../js/render/PaletteImage.js';
 import '../js/render/Frame.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Animation.loadFromFileWithPaletteSwap', function () {
   it('replaces FIRE_INDICES colors with ICE_COLORS', function () {

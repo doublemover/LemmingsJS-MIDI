@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/game/GameSkills.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 function createGameSkills(initial) {
   const level = { skills: new Array(Object.keys(Lemmings.SkillTypes).length).fill(0) };

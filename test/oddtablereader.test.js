@@ -1,9 +1,10 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/game/SkillTypes.js';
 import { OddTableReader } from '../js/data/OddTableReader.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('OddTableReader', function() {
   it('returns null for out-of-range levels', function() {

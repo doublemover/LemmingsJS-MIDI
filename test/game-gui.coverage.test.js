@@ -6,7 +6,12 @@ import { CommandNuke } from '../js/commands/CommandNuke.js';
 import { CommandSelectSkill } from '../js/commands/CommandSelectSkill.js';
 import { CommandReleaseRateIncrease } from '../js/commands/CommandReleaseRateIncrease.js';
 import { CommandReleaseRateDecrease } from '../js/commands/CommandReleaseRateDecrease.js';
-import { setDependency, resetDependencies } from './helpers/lemmings.js';
+import {
+  resetDependencies,
+  setDependency,
+  useGlobalLemmings,
+  withGlobalLemmings
+} from './helpers/lemmings.js';
 
 const makeSprites = () => {
   const panelSprite = {
@@ -119,7 +124,7 @@ const makeGui = (options = {}) => {
 describe('GameGui coverage', function() {
   const originalWindow = globalThis.window;
   const originalPerformance = globalThis.performance;
-  const originalLemmings = globalThis.lemmings;
+  useGlobalLemmings({});
 
   beforeEach(function() {
     globalThis.window = {
@@ -136,7 +141,6 @@ describe('GameGui coverage', function() {
     resetDependencies();
     globalThis.window = originalWindow;
     globalThis.performance = originalPerformance;
-    globalThis.lemmings = originalLemmings;
   });
 
   it('applies release rate changes and queues commands', function() {
@@ -173,69 +177,65 @@ describe('GameGui coverage', function() {
 
   it('tracks nuke countdown and skill change flags', function() {
     const { gui, game, skills } = makeGui({ running: true });
-    const originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = { nukeAfter: 1 };
-    gui.nukePrepared = true;
+    withGlobalLemmings({ nukeAfter: 1 }, () => {
+      gui.nukePrepared = true;
 
-    gui._onEachGameSecond();
-    const nukeCmd = game.commands.find(cmd => cmd instanceof CommandNuke);
-    expect(nukeCmd).to.not.equal(undefined);
-    expect(gui.nukePrepared).to.equal(false);
+      gui._onEachGameSecond();
+      const nukeCmd = game.commands.find(cmd => cmd instanceof CommandNuke);
+      expect(nukeCmd).to.not.equal(undefined);
+      expect(gui.nukePrepared).to.equal(false);
 
-    gui.backgroundChanged = false;
-    gui._selectionOffset = 5;
-    skills.onCountChanged.trigger();
-    skills.onSelectionChanged.trigger();
-    expect(gui.backgroundChanged).to.equal(true);
-    expect(gui._selectionOffset).to.equal(0);
-
-    globalThis.lemmings = originalLemmings;
+      gui.backgroundChanged = false;
+      gui._selectionOffset = 5;
+      skills.onCountChanged.trigger();
+      skills.onSelectionChanged.trigger();
+      expect(gui.backgroundChanged).to.equal(true);
+      expect(gui._selectionOffset).to.equal(0);
+    });
   });
 
   it('adjusts release rate and speed from panel clicks', function() {
     const { gui, timer, victory, skills } = makeGui({ running: true });
     const app = { gameSpeedFactor: 1 };
-    const originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = app;
-    gui.drawSpeedChange = () => {};
+    withGlobalLemmings(app, () => {
+      gui.drawSpeedChange = () => {};
 
-    victory.releaseRate = 20;
-    gui.handleSkillMouseDown({ x: 0, y: 20 });
-    expect(victory.releaseRate).to.equal(14);
+      victory.releaseRate = 20;
+      gui.handleSkillMouseDown({ x: 0, y: 20 });
+      expect(victory.releaseRate).to.equal(14);
 
-    victory.releaseRate = 20;
-    gui.handleSkillMouseDown({ x: 16, y: 20 });
-    expect(victory.releaseRate).to.equal(26);
+      victory.releaseRate = 20;
+      gui.handleSkillMouseDown({ x: 16, y: 20 });
+      expect(victory.releaseRate).to.equal(26);
 
-    timer.speedFactor = 11;
-    gui.handleSkillMouseDown({ x: 160, y: 32 });
-    expect(timer.speedFactor).to.equal(1);
-    timer.speedFactor = 2;
-    gui.handleSkillMouseDown({ x: 160, y: 32 });
-    expect(timer.speedFactor).to.equal(1);
-    timer.speedFactor = 1;
-    gui.handleSkillMouseDown({ x: 160, y: 32 });
-    expect(timer.speedFactor).to.equal(0.9);
+      timer.speedFactor = 11;
+      gui.handleSkillMouseDown({ x: 160, y: 32 });
+      expect(timer.speedFactor).to.equal(1);
+      timer.speedFactor = 2;
+      gui.handleSkillMouseDown({ x: 160, y: 32 });
+      expect(timer.speedFactor).to.equal(1);
+      timer.speedFactor = 1;
+      gui.handleSkillMouseDown({ x: 160, y: 32 });
+      expect(timer.speedFactor).to.equal(0.9);
 
-    timer.speedFactor = 0.5;
-    gui.handleSkillMouseDown({ x: 170, y: 32 });
-    expect(timer.speedFactor).to.equal(0.6);
-    timer.speedFactor = 20;
-    gui.handleSkillMouseDown({ x: 170, y: 32 });
-    expect(timer.speedFactor).to.equal(30);
-    timer.speedFactor = 5;
-    gui.handleSkillMouseDown({ x: 170, y: 32 });
-    expect(timer.speedFactor).to.equal(6);
+      timer.speedFactor = 0.5;
+      gui.handleSkillMouseDown({ x: 170, y: 32 });
+      expect(timer.speedFactor).to.equal(0.6);
+      timer.speedFactor = 20;
+      gui.handleSkillMouseDown({ x: 170, y: 32 });
+      expect(timer.speedFactor).to.equal(30);
+      timer.speedFactor = 5;
+      gui.handleSkillMouseDown({ x: 170, y: 32 });
+      expect(timer.speedFactor).to.equal(6);
 
-    skills.getSkill = () => 0;
-    gui.handleSkillMouseDown({ x: 32, y: 20 });
-    expect(gui.skillSelectionChanged).to.equal(true);
+      skills.getSkill = () => 0;
+      gui.handleSkillMouseDown({ x: 32, y: 20 });
+      expect(gui.skillSelectionChanged).to.equal(true);
 
-    gui.handleSkillDoubleClick({ x: 176, y: 20 });
-    const doubleNuke = gui.game.commands.find(cmd => cmd instanceof CommandNuke);
-    expect(doubleNuke).to.not.equal(undefined);
-
-    globalThis.lemmings = originalLemmings;
+      gui.handleSkillDoubleClick({ x: 176, y: 20 });
+      const doubleNuke = gui.game.commands.find(cmd => cmd instanceof CommandNuke);
+      expect(doubleNuke).to.not.equal(undefined);
+    });
   });
 
   it('handles right-click actions and hover state', function() {
@@ -335,12 +335,13 @@ describe('GameGui coverage', function() {
     expect(display.ants).to.be.greaterThan(0);
     expect(miniMap.renderCalls).to.equal(1);
 
-    globalThis.lemmings = { bench: true, performanceAPI: true, tps: 60, steps: 1 };
-    game.getLemmingManager = () => ({ getLemmings() { return [1, 2]; }, spawnTotal: 2 });
-    timer.isRunning = () => true;
-    gui.gameTimeChanged = true;
-    gui.render();
-    expect(display.frames.length).to.be.greaterThan(0);
+    withGlobalLemmings({ bench: true, performanceAPI: true, tps: 60, steps: 1 }, () => {
+      game.getLemmingManager = () => ({ getLemmings() { return [1, 2]; }, spawnTotal: 2 });
+      timer.isRunning = () => true;
+      gui.gameTimeChanged = true;
+      gui.render();
+      expect(display.frames.length).to.be.greaterThan(0);
+    });
   });
 
   it('renders status text, speed, and lock variations', function() {
@@ -384,10 +385,10 @@ describe('GameGui coverage', function() {
 
     timer.isRunning = () => true;
     skills.setSelectedSkill(SkillTypes.BUILDER);
-    globalThis.lemmings = { endless: true };
-    gui.gameTimeChanged = true;
-    gui.render();
-    delete globalThis.lemmings;
+    withGlobalLemmings({ endless: true }, () => {
+      gui.gameTimeChanged = true;
+      gui.render();
+    });
 
     timer.speedFactor = 0.5;
     gui._hoverSpeedDown = true;
@@ -418,13 +419,12 @@ describe('GameGui coverage', function() {
     gui.render();
 
     const originalPerformance = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
-    globalThis.lemmings = { performanceAPI: true };
-    gui.gameTimeChanged = true;
-    gui.render();
+    withGlobalLemmings({ performanceAPI: true }, () => {
+      gui.gameTimeChanged = true;
+      gui.render();
+    });
     globalThis.performance = originalPerformance;
-    globalThis.lemmings = originalLemmings;
 
     expect(miniMap.args).to.eql({ x: 3, w: display.worldDataSize.width });
   });
@@ -433,36 +433,32 @@ describe('GameGui coverage', function() {
     const { gui } = makeGui({ running: true });
     let measured = 0;
     const originalPerformance = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = { now() { return 0; }, measure() { measured += 1; } };
-    globalThis.lemmings = { performanceAPI: true };
+    withGlobalLemmings({ performanceAPI: true }, () => {
+      gui.display = null;
+      gui.render();
+      expect(measured).to.equal(1);
 
-    gui.display = null;
-    gui.render();
-    expect(measured).to.equal(1);
-
-    gui._onEachGameSecond();
+      gui._onEachGameSecond();
+    });
     globalThis.performance = originalPerformance;
-    globalThis.lemmings = originalLemmings;
   });
 
   it('swallows perf errors when display is missing', function() {
     const { gui } = makeGui({ running: true });
     let measured = 0;
     const originalPerformance = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = {
       now() { return 0; },
       measure() { measured += 1; throw new Error('boom'); }
     };
-    globalThis.lemmings = { performanceAPI: true };
+    withGlobalLemmings({ performanceAPI: true }, () => {
+      gui.display = null;
+      gui.render();
 
-    gui.display = null;
-    gui.render();
-
-    expect(measured).to.equal(1);
+      expect(measured).to.equal(1);
+    });
     globalThis.performance = originalPerformance;
-    globalThis.lemmings = originalLemmings;
   });
 
   it('runs the GUI loop once', function() {

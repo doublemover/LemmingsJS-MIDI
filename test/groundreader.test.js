@@ -1,5 +1,6 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings, withShowDebug } from './helpers/lemmings.js';
+import { withConsoleStub } from './helpers/console.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
@@ -10,15 +11,43 @@ import '../js/level/ObjectImageInfo.js';
 import { GroundReader } from '../js/level/GroundReader.js';
 
 // Silence debug output
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+const withFetchStub = async (stub, fn) => {
+  const origFetch = globalThis.fetch;
+  globalThis.fetch = stub;
+  try {
+    return await fn();
+  } finally {
+    globalThis.fetch = origFetch;
+  }
+};
+
+class MockLogHandler {
+  constructor() { this.logged = []; }
+  log(msg) { this.logged.push(msg); }
+  debug() {}
+}
+
+const withMockLogHandler = (fn) => {
+  const origHandler = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return fn();
+  } finally {
+    setDependency('LogHandler', origHandler);
+  }
+};
 
 describe('GroundReader', function() {
   it('reads palettes and detects steel', async function() {
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = async () => ({ json: async () => ({ lemmings: { 'GROUND0O.DAT': [0] } }) });
-    Lemmings.resetSteelSprites();
-    await Lemmings.loadSteelSprites();
-    globalThis.fetch = origFetch;
+    await withFetchStub(
+      async () => ({ json: async () => ({ lemmings: { 'GROUND0O.DAT': [0] } }) }),
+      async () => {
+        Lemmings.resetSteelSprites();
+        await Lemmings.loadSteelSprites();
+      }
+    );
 
     const buf = new Uint8Array(1056);
     // object0 width/height
@@ -67,74 +96,55 @@ describe('GroundReader', function() {
   });
 
   it('logs warnings for inconsistent object fields', function() {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-      debug() {}
-    }
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const prev = globalThis.lemmings.game.showDebug;
-    globalThis.lemmings.game.showDebug = true;
+    const logs = withShowDebug(true, () => withMockLogHandler(() => {
+      const buf = new Uint8Array(1056);
+      // object0: minimal data with mismatched unknown fields
+      buf[4] = 1; buf[5] = 1; // width, height
+      buf[6] = 0; buf[7] = 5; // frameDataSize
+      buf[8] = 0x04; buf[9] = 0x00; // maskLoc = 0x0400? Wait big-endian -> we want 0x0400 maybe 1024; but we can set 0x04 0x00 -> 1024
+      buf[10] = 0; buf[11] = 0; // unknown1 (should be 0x0400)
+      buf[12] = 0; buf[13] = 0; // unknown2 (should be 0x0200)
+      // rest of object0 left zero (trigger etc)
 
-    const buf = new Uint8Array(1056);
-    // object0: minimal data with mismatched unknown fields
-    buf[4] = 1; buf[5] = 1; // width, height
-    buf[6] = 0; buf[7] = 5; // frameDataSize
-    buf[8] = 0x04; buf[9] = 0x00; // maskLoc = 0x0400? Wait big-endian -> we want 0x0400 maybe 1024; but we can set 0x04 0x00 -> 1024
-    buf[10] = 0; buf[11] = 0; // unknown1 (should be 0x0400)
-    buf[12] = 0; buf[13] = 0; // unknown2 (should be 0x0200)
-    // rest of object0 left zero (trigger etc)
+      // terrain0 to satisfy reader
+      const tOff = 28 * 16;
+      buf[tOff] = 1; buf[tOff + 1] = 1;
+      buf[tOff + 5] = 3;
 
-    // terrain0 to satisfy reader
-    const tOff = 28 * 16;
-    buf[tOff] = 1; buf[tOff + 1] = 1;
-    buf[tOff + 5] = 3;
+      const pal = 960 + 24;
+      for (let i = 0; i < 48; i++) buf[pal + i] = 0;
 
-    const pal = 960 + 24;
-    for (let i = 0; i < 48; i++) buf[pal + i] = 0;
-
-    const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT', 'lemmings');
-    const vgaT = new BinaryReader(new Uint8Array([0,0,0,0]));
-    const vgaO = new BinaryReader(new Uint8Array([0,0,0,0,0]));
-    const gr = new GroundReader(ground, vgaT, vgaO);
-
-    globalThis.lemmings.game.showDebug = prev;
-    const logs = gr.log.logged;
-    setDependency('LogHandler', origHandler);
+      const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT', 'lemmings');
+      const vgaT = new BinaryReader(new Uint8Array([0,0,0,0]));
+      const vgaO = new BinaryReader(new Uint8Array([0,0,0,0,0]));
+      const gr = new GroundReader(ground, vgaT, vgaO);
+      return gr.log.logged;
+    }));
     expect(logs.some(m => m.includes('unknown1 diverges'))).to.equal(true);
     expect(logs.some(m => m.includes('unknown2 should be'))).to.equal(true);
   });
 
   it('returns early when ground file size is invalid', function() {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-      debug() {}
-    }
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const br = new BinaryReader(new Uint8Array(10), 0, 10, 'bad.dat');
-    const vgaT = new BinaryReader(new Uint8Array([0]));
-    const vgaO = new BinaryReader(new Uint8Array([0]));
-    const gr = new GroundReader(br, vgaT, vgaO);
-    setDependency('LogHandler', origHandler);
-    expect(gr.log.logged.some(m => m.includes('wrong size'))).to.equal(true);
+    const logs = withMockLogHandler(() => {
+      const br = new BinaryReader(new Uint8Array(10), 0, 10, 'bad.dat');
+      const vgaT = new BinaryReader(new Uint8Array([0]));
+      const vgaO = new BinaryReader(new Uint8Array([0]));
+      const gr = new GroundReader(br, vgaT, vgaO);
+      return gr.log.logged;
+    });
+    expect(logs.some(m => m.includes('wrong size'))).to.equal(true);
   });
 
   it('loads steel sprites from disk when fetch fails', async function() {
-    const origFetch = globalThis.fetch;
-    globalThis.fetch = async () => { throw new Error('fail'); };
-    Lemmings.resetSteelSprites();
-    const sprites = await Lemmings.loadSteelSprites();
-    globalThis.fetch = origFetch;
+    const sprites = await withFetchStub(async () => { throw new Error('fail'); }, async () => {
+      Lemmings.resetSteelSprites();
+      return Lemmings.loadSteelSprites();
+    });
     expect(sprites).to.be.an('object');
   });
 
   it('rethrows when fetch fails on non-file URLs', async function() {
-    const origFetch = globalThis.fetch;
     const origURL = globalThis.URL;
-    globalThis.fetch = async () => { throw new Error('fail'); };
     globalThis.URL = class {
       constructor() {
         this.protocol = 'http:';
@@ -144,12 +154,14 @@ describe('GroundReader', function() {
     Lemmings.resetSteelSprites();
     let err = null;
     try {
-      await Lemmings.loadSteelSprites();
+      await withFetchStub(async () => { throw new Error('fail'); }, async () => {
+        await Lemmings.loadSteelSprites();
+      });
     } catch (e) {
       err = e;
+    } finally {
+      globalThis.URL = origURL;
     }
-    globalThis.fetch = origFetch;
-    globalThis.URL = origURL;
     expect(err).to.be.instanceOf(Error);
   });
 
@@ -165,10 +177,9 @@ describe('GroundReader', function() {
     const vgaT = new BinaryReader(new Uint8Array([0, 0, 0, 0]));
     const vgaO = new BinaryReader(new Uint8Array([0, 0, 0, 0, 0]));
     const logs = [];
-    const orig = console.log;
-    console.log = (...args) => logs.push(args);
+    const restoreConsole = withConsoleStub({ log: (...args) => logs.push(args) });
     new GroundReader(ground, vgaT, vgaO);
-    console.log = orig;
+    restoreConsole();
     expect(logs.length).to.be.greaterThan(0);
   });
 

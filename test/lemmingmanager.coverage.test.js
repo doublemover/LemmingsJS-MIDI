@@ -1,74 +1,37 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
-import { Level } from '../js/level/Level.js';
+import { DummyAction, withActionStubs } from './helpers/lemming-actions.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
+import { makeManager as makeLemmingManager } from './helpers/lemming-manager.js';
 import { Lemming } from '../js/lemmings/Lemming.js';
-import { LemmingManager } from '../js/lemmings/LemmingManager.js';
 import { LemmingStateType } from '../js/lemmings/LemmingStateType.js';
-import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { COUNTER_LIMIT } from '../js/core/constants.js';
 import '../js/LemmingsBootstrap.js';
 
-const spriteStub = {
-  getAnimation() {
-    return { frames: [], getFrame() { return {}; } };
-  }
-};
-const maskStub = {
-  GetMask() {
-    return { width: 0, height: 0, offsetX: 0, offsetY: 0, at() { return 0; } };
-  }
-};
-const triggerStub = { trigger() { return 0; }, removeByOwner() {} };
-const particleStub = {};
-
-class DummyAction {
-  constructor(name = 'dummy') { this.name = name; }
-  getActionName() { return this.name; }
-  triggerLemAction(lem) { lem.setAction(this); return true; }
-  process() { return LemmingStateType.NO_STATE_TYPE; }
-  draw() {}
-}
 class BashAction extends DummyAction {}
 class BlockAction extends DummyAction {}
 class DigAction extends DummyAction {}
 class MineAction extends DummyAction {}
 
-const actionKeys = [
-  'ActionWalkSystem','ActionFallSystem','ActionJumpSystem','ActionDiggSystem',
-  'ActionExitingSystem','ActionFloatingSystem','ActionBlockerSystem',
-  'ActionMineSystem','ActionClimbSystem','ActionHoistSystem','ActionBashSystem',
-  'ActionBuildSystem','ActionShrugSystem','ActionExplodingSystem','ActionOhNoSystem',
-  'ActionSplatterSystem','ActionDrowningSystem','ActionFryingSystem','ActionCountdownSystem'
-];
-
-const originals = {};
-
-const makeManager = () => {
-  const level = new Level(32, 32);
-  level.entrances = [{ x: 0, y: 0 }];
-  level.releaseCount = 2;
-  level.releaseRate = 99;
-  const gvc = new GameVictoryCondition(level);
-  const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
-  return { manager, gvc, level };
-};
+const makeManager = () => (
+  makeLemmingManager({ width: 32, height: 32, releaseCount: 2, releaseRate: 99 })
+);
 
 describe('LemmingManager coverage', function() {
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: false } });
+
   beforeEach(function() {
-    globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: false } };
-    for (const key of actionKeys) originals[key] = Lemmings[key];
-    for (const key of actionKeys) Lemmings[key] = DummyAction;
-    setDependency('ActionBashSystem', BashAction);
-    setDependency('ActionBlockerSystem', BlockAction);
-    setDependency('ActionDiggSystem', DigAction);
-    setDependency('ActionMineSystem', MineAction);
+    this._restoreActions = withActionStubs({
+      ActionBashSystem: BashAction,
+      ActionBlockerSystem: BlockAction,
+      ActionDiggSystem: DigAction,
+      ActionMineSystem: MineAction
+    });
   });
 
   afterEach(function() {
-    delete globalThis.lemmings;
-    for (const key of actionKeys) Lemmings[key] = originals[key];
+    this._restoreActions();
   });
 
   it('wraps counters and selection helpers', function() {

@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { ActionBaseSystem } from '../js/actions/ActionBaseSystem.js';
 import { MaskProvider } from '../js/render/MaskProvider.js';
 import '../js/render/MaskTypes.js';
 import '../js/render/MaskList.js';
 
 // Minimal environment for LogHandler
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('ActionBaseSystem mask caching', function() {
   beforeEach(function() {

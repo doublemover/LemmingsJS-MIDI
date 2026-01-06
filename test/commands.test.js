@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/commands/CommandNuke.js';
 import '../js/commands/CommandReleaseRateIncrease.js';
 import '../js/commands/CommandReleaseRateDecrease.js';
@@ -7,7 +7,23 @@ import '../js/commands/CommandLemmingsAction.js';
 import '../js/commands/CommandSelectSkill.js';
 
 // minimal global for logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+const withSoundEvents = (soundEvents, fn) => {
+  const game = globalThis.lemmings.game;
+  const hadProp = Object.prototype.hasOwnProperty.call(game, 'soundEvents');
+  const prev = game.soundEvents;
+  game.soundEvents = soundEvents;
+  try {
+    return fn();
+  } finally {
+    if (hadProp) {
+      game.soundEvents = prev;
+    } else {
+      delete game.soundEvents;
+    }
+  }
+};
 
 describe('Commands', function() {
   it('CommandNuke triggers doNukeAllLemmings and doNuke once', function() {
@@ -154,57 +170,56 @@ describe('Commands', function() {
 
   it('CommandLemmingsAction emits sfx on success', function() {
     let called = null;
-    globalThis.lemmings.game.soundEvents = {
+    withSoundEvents({
       emitSfx(type, id, payload) { called = { type, id, payload }; }
-    };
-    const game = {
-      getLemmingManager() {
-        return {
-          getLemming() { return { id: 7, x: 1, y: 2 }; },
-          doLemmingAction() { return true; }
-        };
-      },
-      getGameSkills() {
-        return {
-          getSelectedSkill() { return 'skill'; },
-          canReuseSkill() { return true; },
-          reuseSkill() { return true; }
-        };
-      }
-    };
-    const cmd = new Lemmings.CommandLemmingsAction(7);
-    expect(cmd.execute(game)).to.equal(true);
-    expect(called).to.be.an('object');
-    delete globalThis.lemmings.game.soundEvents;
+    }, () => {
+      const game = {
+        getLemmingManager() {
+          return {
+            getLemming() { return { id: 7, x: 1, y: 2 }; },
+            doLemmingAction() { return true; }
+          };
+        },
+        getGameSkills() {
+          return {
+            getSelectedSkill() { return 'skill'; },
+            canReuseSkill() { return true; },
+            reuseSkill() { return true; }
+          };
+        }
+      };
+      const cmd = new Lemmings.CommandLemmingsAction(7);
+      expect(cmd.execute(game)).to.equal(true);
+      expect(called).to.be.an('object');
+    });
   });
 
   it('CommandSelectSkill applies selection and optional action', function() {
     const calls = [];
-    globalThis.lemmings.game.soundEvents = {
+    withSoundEvents({
       emitSfx(type, id, payload) { calls.push({ type, id, payload }); }
-    };
-    const lem = { id: 1, x: 2, y: 3 };
-    const skills = {
-      setSelectedSkill() { return true; },
-      canReuseSkill() { return true; },
-      reuseSkill() { return true; }
-    };
-    const lemMgr = {
-      getSelectedLemming() { return lem; },
-      doLemmingAction() { return true; }
-    };
-    const game = {
-      getGameSkills() { return skills; },
-      getLemmingManager() { return lemMgr; }
-    };
-    const cmd = new Lemmings.CommandSelectSkill(5, true);
-    expect(cmd.execute(game)).to.equal(true);
-    expect(calls.length).to.equal(2);
+    }, () => {
+      const lem = { id: 1, x: 2, y: 3 };
+      const skills = {
+        setSelectedSkill() { return true; },
+        canReuseSkill() { return true; },
+        reuseSkill() { return true; }
+      };
+      const lemMgr = {
+        getSelectedLemming() { return lem; },
+        doLemmingAction() { return true; }
+      };
+      const game = {
+        getGameSkills() { return skills; },
+        getLemmingManager() { return lemMgr; }
+      };
+      const cmd = new Lemmings.CommandSelectSkill(5, true);
+      expect(cmd.execute(game)).to.equal(true);
+      expect(calls.length).to.equal(2);
 
-    const noApply = new Lemmings.CommandSelectSkill(2, false);
-    expect(noApply.execute(game)).to.equal(true);
-
-    delete globalThis.lemmings.game.soundEvents;
+      const noApply = new Lemmings.CommandSelectSkill(2, false);
+      expect(noApply.execute(game)).to.equal(true);
+    });
   });
 
   it('CommandSelectSkill handles missing skills and action failures', function() {

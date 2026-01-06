@@ -1,15 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/lemmings/LemmingStateType.js';
 import { Lemming } from '../js/lemmings/Lemming.js';
 
 describe('Lemming state boundary checks', function () {
-  beforeEach(function () {
-    globalThis.lemmings = {
-      game: { lemmingManager: { miniMap: { calls: [], addDeath(...a) { this.calls.push(a); } } } }
-    };
+  useGlobalLemmings({
+    game: { lemmingManager: { miniMap: { calls: [], addDeath(...a) { this.calls.push(a); } } } }
   });
-  afterEach(function () { delete globalThis.lemmings; });
 
   it('renderDebug sets pixel only with action', function () {
     const lem = new Lemming(4, 8);

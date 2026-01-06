@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
 import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('BaseImageInfo', function() {
   it('uses default values in constructor', function() {

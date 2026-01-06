@@ -5,17 +5,17 @@ import { BinaryReader } from '../js/data/BinaryReader.js';
 import { LevelReader } from '../js/level/LevelReader.js';
 import { MidiMapping } from '../js/midi/MidiMapping.js';
 import { EventHandler } from '../js/util/EventHandler.js';
-import { setDependency, resetDependencies } from './helpers/lemmings.js';
+import { setDependency, resetDependencies, useGlobalLemmings } from './helpers/lemmings.js';
 
 describe('GameView coverage', function() {
   const originalWindow = globalThis.window;
   const originalHistory = globalThis.history;
-  const originalLemmings = globalThis.lemmings;
   const originalWebMidi = globalThis.WebMidi;
   const originalOnMidiError = globalThis.onMidiError;
   const originalOnEnabled = globalThis.onEnabled;
   const originalLocalStorage = globalThis.localStorage;
   const originalDocument = globalThis.document;
+  useGlobalLemmings({});
 
   beforeEach(function() {
     setDependency('GameFactory', class { constructor() {} });
@@ -26,7 +26,6 @@ describe('GameView coverage', function() {
     resetDependencies();
     globalThis.window = originalWindow;
     globalThis.history = originalHistory;
-    globalThis.lemmings = originalLemmings;
     globalThis.WebMidi = originalWebMidi;
     globalThis.onMidiError = originalOnMidiError;
     globalThis.onEnabled = originalOnEnabled;

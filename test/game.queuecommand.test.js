@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import { Game } from '../js/game/Game.js';
 
 // minimal global for logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Game.queueCommand', function() {
   it('forwards commands to CommandManager', function() {

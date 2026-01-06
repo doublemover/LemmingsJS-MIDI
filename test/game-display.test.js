@@ -6,12 +6,13 @@ import { SkillTypes } from '../js/game/SkillTypes.js';
 describe('GameDisplay', function() {
   let originalWindow;
 
-  function makeDisplay() {
+  function makeDisplay(overrides = {}) {
     return {
       onMouseDown: new EventHandler(),
       onMouseMove: new EventHandler(),
       drawCornerRect() {},
-      drawDashedRect() {}
+      drawDashedRect() {},
+      ...overrides
     };
   }
 
@@ -25,6 +26,25 @@ describe('GameDisplay', function() {
       action: null,
       getClickDistance() { return 1; }
     };
+  }
+
+  function makeContext(overrides = {}) {
+    const game = {
+      showDebug: false,
+      gameGui: { backgroundChanged: false, gameTimeChanged: false },
+      ...overrides.game
+    };
+    const lemmingManager = {
+      render() {},
+      renderDebug() {},
+      getNearestLemming() { return null; },
+      getSelectedLemming() { return null; },
+      ...overrides.lemmingManager
+    };
+    const level = { render() {}, renderDebug() {}, ...overrides.level };
+    const objectManager = { render() {}, ...overrides.objectManager };
+    const triggerManager = { renderDebug() {}, ...overrides.triggerManager };
+    return { game, lemmingManager, level, objectManager, triggerManager };
   }
 
   beforeEach(function() {
@@ -42,16 +62,10 @@ describe('GameDisplay', function() {
   it('wires mouse handlers and updates hover position', function() {
     const lem = makeLemming(3);
     const calls = [];
-    const game = { queueCommand(cmd) { calls.push(cmd); }, showDebug: false };
-    const lemmingManager = {
-      render() {},
-      renderDebug() {},
-      getNearestLemming() { return lem; },
-      getSelectedLemming() { return null; }
-    };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      game: { queueCommand(cmd) { calls.push(cmd); } },
+      lemmingManager: { getNearestLemming() { return lem; } }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
 
     const display = makeDisplay();
@@ -68,16 +82,9 @@ describe('GameDisplay', function() {
     const prev = makeLemming(1);
     prev.removed = true;
     const next = makeLemming(2);
-    const game = { gameGui: { backgroundChanged: false, gameTimeChanged: false } };
-    const lemmingManager = {
-      render() {},
-      renderDebug() {},
-      getNearestLemming() { return next; },
-      getSelectedLemming() { return null; }
-    };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: { getNearestLemming() { return next; } }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
 
     gd.hoverLemming = prev;
@@ -93,16 +100,9 @@ describe('GameDisplay', function() {
   it('ignores exploding lemmings when hovering', function() {
     const lem = makeLemming(5);
     lem.action = { getActionName() { return 'exploding'; } };
-    const game = { gameGui: { backgroundChanged: false, gameTimeChanged: false } };
-    const lemmingManager = {
-      render() {},
-      renderDebug() {},
-      getNearestLemming() { return lem; },
-      getSelectedLemming() { return null; }
-    };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: { getNearestLemming() { return lem; } }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
 
     gd._hoverX = 0;
@@ -113,30 +113,21 @@ describe('GameDisplay', function() {
 
   it('renders selection and hover decorations', function() {
     const calls = [];
-    const display = {
-      onMouseDown: new EventHandler(),
-      onMouseMove: new EventHandler(),
-      drawCornerRect(...args) { calls.push(args); },
-      drawDashedRect() {}
-    };
+    const display = makeDisplay({ drawCornerRect(...args) { calls.push(args); } });
     const DummyAction = class {};
     const skills = { getSelectedSkill() { return SkillTypes.BASHER; } };
     const selected = makeLemming(1);
     selected.action = new DummyAction();
     const hover = makeLemming(2);
-    const game = {
-      showDebug: false,
-      getGameSkills() { return skills; }
-    };
-    const lemmingManager = {
-      render() { this.rendered = true; },
-      renderDebug() {},
-      getNearestLemming() { return null; },
-      getSelectedLemming() { return selected; }
-    };
-    const level = { render() { this.rendered = true; }, renderDebug() {} };
-    const objectManager = { render() { this.rendered = true; } };
-    const triggerManager = { renderDebug() {} };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      game: { getGameSkills() { return skills; } },
+      lemmingManager: {
+        render() { this.rendered = true; },
+        getSelectedLemming() { return selected; }
+      },
+      level: { render() { this.rendered = true; } },
+      objectManager: { render() { this.rendered = true; } }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd._redundantActions[SkillTypes.BASHER] = DummyAction;
     gd.display = display;
@@ -154,18 +145,9 @@ describe('GameDisplay', function() {
   });
 
   it('exposes drawCorner test hook', function() {
-    const display = {
-      drawRect(...args) { this.args = args; },
-      onMouseDown: new EventHandler(),
-      onMouseMove: new EventHandler(),
-      drawCornerRect() {},
-      drawDashedRect() {}
-    };
-    const lemmingManager = { render() {}, renderDebug() {}, getNearestLemming() { return null; }, getSelectedLemming() { return null; } };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
-    const gd = new GameDisplay({}, level, lemmingManager, objectManager, triggerManager);
+    const display = makeDisplay({ drawRect(...args) { this.args = args; } });
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd.display = display;
 
     GameDisplay.__test__.drawCorner(gd, 1, 2, 3, 4, 5);
@@ -174,14 +156,12 @@ describe('GameDisplay', function() {
   });
 
   it('renders debug overlays and advances dash offset', function() {
-    const display = {
-      drawDashedRect(...args) { this.args = args; }
-    };
-    const lemmingManager = { renderDebug() { this.called = true; } };
-    const level = { renderDebug() { this.called = true; } };
-    const triggerManager = { renderDebug() { this.called = true; } };
-    const objectManager = { render() {} };
-    const game = {};
+    const display = { drawDashedRect(...args) { this.args = args; } };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: { renderDebug() { this.called = true; } },
+      level: { renderDebug() { this.called = true; } },
+      triggerManager: { renderDebug() { this.called = true; } }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd.display = display;
     gd.hoverLemming = makeLemming(1);
@@ -195,20 +175,15 @@ describe('GameDisplay', function() {
     const display = makeDisplay();
     let queued = 0;
     let nearestCalls = 0;
-    const game = {
-      inputEnabled: false,
-      queueCommand() { queued += 1; },
-      gameGui: { backgroundChanged: false, gameTimeChanged: false }
-    };
-    const lemmingManager = {
-      render() {},
-      renderDebug() {},
-      getNearestLemming() { nearestCalls += 1; return makeLemming(2); },
-      getSelectedLemming() { return null; }
-    };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      game: {
+        inputEnabled: false,
+        queueCommand() { queued += 1; }
+      },
+      lemmingManager: {
+        getNearestLemming() { nearestCalls += 1; return makeLemming(2); }
+      }
+    });
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd.setGuiDisplay(display);
 
@@ -240,11 +215,7 @@ describe('GameDisplay', function() {
   });
 
   it('skips rendering when no display is assigned', function() {
-    const lemmingManager = { render() {}, renderDebug() {} };
-    const level = { render() {}, renderDebug() {} };
-    const triggerManager = { renderDebug() {} };
-    const objectManager = { render() {} };
-    const game = {};
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd.render();
     gd.renderDebug();
@@ -256,11 +227,7 @@ describe('GameDisplay', function() {
     let cancelled = 0;
     globalThis.window.cancelAnimationFrame = () => { cancelled += 1; };
     globalThis.window.requestAnimationFrame = () => 2;
-    const lemmingManager = { render() {}, renderDebug() {}, getNearestLemming() { return null; }, getSelectedLemming() { return null; } };
-    const level = { render() {}, renderDebug() {} };
-    const objectManager = { render() {} };
-    const triggerManager = { renderDebug() {} };
-    const game = {};
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
     const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
     gd.setGuiDisplay(display);
     display.onMouseMove.trigger({ x: 1, y: 2 });

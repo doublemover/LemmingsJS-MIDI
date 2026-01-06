@@ -15,10 +15,19 @@ function patchModule() {
     'const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');',
     'cfgPath = cfgPath || path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');'
   );
-  const tmp = path.join(path.dirname(fileURLToPath(origPath)), 'listSprites.patched.js');
+const tmp = path.join(path.dirname(fileURLToPath(origPath)), 'listSprites.patched.js');
   fs.writeFileSync(tmp, code);
   return tmp;
 }
+
+const withTempDir = (fn) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-'));
+  try {
+    return fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+};
 
 let modulePath;
 let loadDefaultPack;
@@ -29,27 +38,29 @@ before(async function () {
 });
 
 after(function () {
-  fs.unlinkSync(modulePath);
+  if (modulePath) {
+    fs.rmSync(modulePath, { force: true });
+  }
 });
 
 describe('loadDefaultPack', function () {
   it('reads path from config file', function () {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-'));
-    const cfgFile = path.join(dir, 'config.json');
-    fs.writeFileSync(cfgFile, JSON.stringify([{ path: 'foo' }]));
-    const result = loadDefaultPack(cfgFile);
-    expect(result).to.equal('foo');
-    fs.rmSync(dir, { recursive: true, force: true });
+    withTempDir((dir) => {
+      const cfgFile = path.join(dir, 'config.json');
+      fs.writeFileSync(cfgFile, JSON.stringify([{ path: 'foo' }]));
+      const result = loadDefaultPack(cfgFile);
+      expect(result).to.equal('foo');
+    });
   });
 
   it('returns "lemmings" on missing or invalid config', function () {
     const missing = path.join(os.tmpdir(), 'no-such.json');
     expect(loadDefaultPack(missing)).to.equal('lemmings');
 
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'cfg-'));
-    const badFile = path.join(dir, 'config.json');
-    fs.writeFileSync(badFile, '{');
-    expect(loadDefaultPack(badFile)).to.equal('lemmings');
-    fs.rmSync(dir, { recursive: true, force: true });
+    withTempDir((dir) => {
+      const badFile = path.join(dir, 'config.json');
+      fs.writeFileSync(badFile, '{');
+      expect(loadDefaultPack(badFile)).to.equal('lemmings');
+    });
   });
 });

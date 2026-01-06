@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withGlobalLemmings } from './helpers/lemmings.js';
 import { SoundEventBus, getSoundBus } from '../js/game/SoundEvents.js';
 
 describe('SoundEventBus', function() {
@@ -58,13 +59,9 @@ describe('SoundEventBus', function() {
 describe('getSoundBus', function() {
   it('returns the global sound bus when available', function() {
     const bus = new SoundEventBus(null);
-    const prev = globalThis.lemmings;
-    globalThis.lemmings = { game: { soundEvents: bus } };
-    try {
+    withGlobalLemmings({ game: { soundEvents: bus } }, () => {
       expect(getSoundBus()).to.equal(bus);
-    } finally {
-      globalThis.lemmings = prev;
-    }
+    });
   });
 
   it('falls back to lemmings global when globalThis is missing', function() {

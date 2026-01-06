@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import { LemmingsSprite } from '../js/lemmings/LemmingsSprite.js';
 import '../js/lemmings/SpriteTypes.js';
 import '../js/render/ColorPalette.js';
 import '../js/render/Animation.js';
 
 // Ensure quiet logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 /** Simple stub to track instantiations */
 class StubAnimation {

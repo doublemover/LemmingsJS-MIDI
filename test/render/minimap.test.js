@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { MiniMap } from '../../js/render/MiniMap.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
+import { useGlobalLemmings, withGlobalLemmings } from '../helpers/lemmings.js';
 
 const makeGuiDisplay = () => ({
   worldDataSize: { width: 200, height: 120 },
@@ -29,15 +30,7 @@ const makeLevel = (counter) => ({
 });
 
 describe('MiniMap', function() {
-  let originalLemmings;
-
-  beforeEach(function() {
-    originalLemmings = globalThis.lemmings;
-  });
-
-  afterEach(function() {
-    globalThis.lemmings = originalLemmings;
-  });
+  useGlobalLemmings({});
 
   it('builds terrain and responds to updates', function() {
     const counter = { value: 100 };
@@ -87,15 +80,16 @@ describe('MiniMap', function() {
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
 
     const records = [];
-    globalThis.lemmings = {
+    withGlobalLemmings({
       game: {
         history: { recordMinimapDeath: (entry) => records.push(entry) }
       }
-    };
-    miniMap.deadCount = miniMap.deadTTLs.length;
-    miniMap.addDeath(5, 5);
-    expect(records.length).to.equal(1);
-    expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
+    }, () => {
+      miniMap.deadCount = miniMap.deadTTLs.length;
+      miniMap.addDeath(5, 5);
+      expect(records.length).to.equal(1);
+      expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
+    });
   });
 
   it('renders viewport, dots, and death flashes', function() {
@@ -118,16 +112,18 @@ describe('MiniMap', function() {
     miniMap.deadTTLs[0] = 5;
     miniMap.deadTTLs[1] = 1;
 
-    globalThis.lemmings = {
+    const app = {
       stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
       game: { timeTravel: { isReversing: true } }
     };
-    miniMap.render();
-    expect(guiDisplay.drawFrameCalls.length).to.equal(1);
+    withGlobalLemmings(app, () => {
+      miniMap.render();
+      expect(guiDisplay.drawFrameCalls.length).to.equal(1);
 
-    globalThis.lemmings.game.timeTravel.isReversing = false;
-    miniMap.render();
-    expect(miniMap.deadCount).to.equal(1);
+      app.game.timeTravel.isReversing = false;
+      miniMap.render();
+      expect(miniMap.deadCount).to.equal(1);
+    });
   });
 
   it('advances viewport dash and clamps viewport width', function() {
@@ -140,15 +136,15 @@ describe('MiniMap', function() {
     miniMap._viewportCounter = miniMap.viewportDashDelay - 1;
     miniMap.viewportDashOffset = 3;
 
-    globalThis.lemmings = {
+    withGlobalLemmings({
       stage: { getGameViewRect() { return { x: 0, y: 0, w: level.width, h: level.height }; } },
       game: { timeTravel: { isReversing: false } }
-    };
-
-    miniMap.render();
-    expect(miniMap._viewportCounter).to.equal(0);
-    expect(miniMap.viewportDashOffset).to.equal(4);
-    expect(rectArgs[2]).to.equal(miniMap.width - 1);
+    }, () => {
+      miniMap.render();
+      expect(miniMap._viewportCounter).to.equal(0);
+      expect(miniMap.viewportDashOffset).to.equal(4);
+      expect(rectArgs[2]).to.equal(miniMap.width - 1);
+    });
   });
 
   it('disposes display listeners', function() {
@@ -170,8 +166,9 @@ describe('MiniMap', function() {
     miniMap.invalidateRegion(0, 0, 1, 1);
     expect(miniMap.terrain[0]).to.equal(72);
 
-    globalThis.lemmings = null;
-    miniMap.addDeath(0, 0);
+    withGlobalLemmings(null, () => {
+      miniMap.addDeath(0, 0);
+    });
   });
 
   it('returns early without a gui display and skips expired death dots', function() {
@@ -186,11 +183,12 @@ describe('MiniMap', function() {
     activeMap.deadTTLs[0] = 0;
     activeMap.deadDots[0] = 1;
     activeMap.deadDots[1] = 1;
-    globalThis.lemmings = {
+    withGlobalLemmings({
       stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
       game: { timeTravel: { isReversing: true } }
-    };
-    activeMap.render();
+    }, () => {
+      activeMap.render();
+    });
   });
 
   it('returns early for invalid pointer state and bounds', function() {

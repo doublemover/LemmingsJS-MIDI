@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/level/LevelProperties.js';
@@ -10,7 +10,7 @@ import { LevelReader } from '../js/level/LevelReader.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 
 // Disable verbose debug output
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('LevelReader.readLevelObjects', function() {
   it('parses objects and skips empty entries', function() {

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 import { ParticleTable } from '../js/render/ParticleTable.js';
 
@@ -14,22 +14,23 @@ function makePalette() {
 }
 
 describe('ParticleTable', function() {
+  useGlobalLemmings({ game: { showDebug: false } });
+
+  beforeEach(function() {
+    ParticleTable._sharedParticleData = undefined;
+  });
+
   afterEach(function() {
-    delete globalThis.lemmings;
     ParticleTable._sharedParticleData = undefined;
   });
 
   it('decodes Base64 data into 51 frames', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-    ParticleTable._sharedParticleData = undefined;
     const pal = makePalette();
     const pt = new ParticleTable(pal);
     expect(pt.particleData.length).to.equal(51);
   });
 
   it('draw() calls drawFrame with a populated frame', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-    ParticleTable._sharedParticleData = undefined;
     const pal = makePalette();
     const pt = new ParticleTable(pal);
     const calls = [];
@@ -43,8 +44,6 @@ describe('ParticleTable', function() {
   });
 
   it('decodes shared data only once for multiple instances', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-    ParticleTable._sharedParticleData = undefined;
     const pal = makePalette();
     const pt1 = new ParticleTable(pal);
     const shared = ParticleTable._sharedParticleData;
@@ -55,15 +54,12 @@ describe('ParticleTable', function() {
   });
 
   it('draw() returns early when display is null', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-    ParticleTable._sharedParticleData = undefined;
     const pal = makePalette();
     const pt = new ParticleTable(pal);
     expect(() => pt.draw(null, 0, 0, 0)).to.not.throw();
   });
 
   it('builds a placeholder frame when particle data is empty', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
     const originalCache = ParticleTable._frameCache;
     ParticleTable._frameCache = new WeakMap();
     ParticleTable._sharedParticleData = [Int8Array.from([-128, -128])];
@@ -77,12 +73,10 @@ describe('ParticleTable', function() {
   });
 
   it('uses window.atob when available', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
     const originalWindow = globalThis.window;
     globalThis.window = {
       atob: (value) => Buffer.from(value, 'base64').toString('binary')
     };
-    ParticleTable._sharedParticleData = undefined;
     ParticleTable._frameCache = new WeakMap();
     const pal = makePalette();
     const pt = new ParticleTable(pal);

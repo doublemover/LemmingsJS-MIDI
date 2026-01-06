@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/level/LevelProperties.js';
@@ -28,7 +28,7 @@ import '../js/render/DrawProperties.js';
 import '../js/util/Range.js';
 import '../js/game/SkillTypes.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('LevelWriter', function() {
   it('round-trips a level without changes', function() {

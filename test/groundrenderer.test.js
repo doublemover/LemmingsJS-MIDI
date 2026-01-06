@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/render/ColorPalette.js';
 import { DrawProperties } from '../js/render/DrawProperties.js';
 import { GroundRenderer } from '../js/render/GroundRenderer.js';
@@ -37,11 +37,9 @@ function color32(r, g, b) {
 }
 
 describe('GroundRenderer small maps', function() {
-  afterEach(function() { delete globalThis.lemmings; });
+  useGlobalLemmings({ game: { showDebug: false } });
 
   it('renders a simple 2x2 block', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-
     const pal = makePalette(color32(10, 20, 30));
     const terrainImages = [makeTerrain([1,1,1,1], 2, 2, pal)];
 
@@ -71,8 +69,6 @@ describe('GroundRenderer small maps', function() {
   });
 
   it('applies vertical flip', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-
     const pal = makePalette(color32(1,2,3));
     const arr = [1,0x81,0x81,1]; // bottom row transparent
     const terrainImages = [makeTerrain(arr, 2, 2, pal)];
@@ -100,8 +96,6 @@ describe('GroundRenderer small maps', function() {
   });
 
   it('clears pixels when erasing upside down', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-
     const pal = makePalette(color32(5, 10, 15));
     const terrainImages = [makeTerrain([1, 1, 1, 1], 2, 2, pal)];
     const levelReader = {
@@ -126,8 +120,6 @@ describe('GroundRenderer small maps', function() {
   });
 
   it('skips missing images and handles null palettes', function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-
     const terrainImages = [{
       width: 1,
       height: 1,

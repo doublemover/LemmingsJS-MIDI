@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, withLemmingsGame } from './helpers/lemmings.js';
 import { Level } from '../js/level/Level.js';
 import { Range } from '../js/util/Range.js';
 import { Mask } from '../js/render/Mask.js';
@@ -9,12 +9,11 @@ import '../js/render/Frame.js';
 const miniMapStub = { onGroundChanged() {} };
 
 describe('Level arrow areas', function() {
-  let saved;
+  let restore;
   beforeEach(function() {
-    saved = globalThis.lemmings;
-    globalThis.lemmings = { game: { lemmingManager: { miniMap: miniMapStub }, showDebug: false } };
+    restore = withLemmingsGame({ lemmingManager: { miniMap: miniMapStub }, showDebug: false });
   });
-  afterEach(function() { globalThis.lemmings = saved; });
+  afterEach(function() { restore(); });
 
   it('detects arrows and builds debug frame', function() {
     const level = new Level(4, 4);

@@ -1,48 +1,21 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { DummyAction, withActionStubs } from './helpers/lemming-actions.js';
+import { makeManager } from './helpers/lemming-manager.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
 import '../js/game/SkillTypes.js';
-import { Level } from '../js/level/Level.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
-import { LemmingManager } from '../js/lemmings/LemmingManager.js';
-import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/LemmingsBootstrap.js';
 
-// minimal sprite and mask providers so the constructor doesn't fail
-const spriteStub = {
-  getAnimation() {
-    return { frames: [], getFrame() { return {}; } };
-  }
-};
-
-const maskStub = {
-  GetMask() {
-    return { width: 0, height: 0, offsetX: 0, offsetY: 0, at() { return 0; } };
-  }
-};
-
-const triggerStub = { trigger() { return 0; }, removeByOwner() {} };
-const particleStub = {};
-
-// stub action systems used during initialization
-class DummyAction {
-  constructor(name) { this.name = name; }
-  getActionName() { return this.name; }
-  triggerLemAction(lem) { lem.setAction(this); return true; }
-  process() { return Lemmings.LemmingStateType.NO_STATE_TYPE; }
-}
-
-const actionKeys = [
-  'ActionWalkSystem','ActionFallSystem','ActionJumpSystem','ActionDiggSystem',
-  'ActionExitingSystem','ActionFloatingSystem','ActionBlockerSystem',
-  'ActionMineSystem','ActionClimbSystem','ActionHoistSystem','ActionBashSystem',
-  'ActionBuildSystem','ActionShrugSystem','ActionExplodingSystem','ActionOhNoSystem',
-  'ActionSplatterSystem','ActionDrowningSystem','ActionFryingSystem','ActionCountdownSystem'
-];
-const originalActions = {};
-for (const key of actionKeys) originalActions[key] = Lemmings[key];
+const makeMiniMap = (overrides = {}) => ({
+  scaleX: 1,
+  scaleY: 1,
+  setLiveDots(arr) { this.dots = arr; },
+  setSelectedDot() {},
+  ...overrides
+});
 
 // unique classes for redundant skill detection
 class BashAction extends DummyAction {}
@@ -50,8 +23,9 @@ class BlockAction extends DummyAction {}
 class DigAction extends DummyAction {}
 class MineAction extends DummyAction {}
 
+useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
+
 beforeEach(function() {
-  globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
   this._winW = global.winW;
   this._winH = global.winH;
   this._worldW = global.worldW;
@@ -60,25 +34,21 @@ beforeEach(function() {
   global.winH = 1200;
   global.worldW = 1600;
   global.worldH = 1200;
-  for (const key of actionKeys) Lemmings[key] = DummyAction;
-  setDependency('ActionBashSystem', BashAction);
-  setDependency('ActionBlockerSystem', BlockAction);
-  setDependency('ActionDiggSystem', DigAction);
-  setDependency('ActionMineSystem', MineAction);
+  this._restoreActions = withActionStubs({
+    ActionBashSystem: BashAction,
+    ActionBlockerSystem: BlockAction,
+    ActionDiggSystem: DigAction,
+    ActionMineSystem: MineAction
+  });
 });
 
 afterEach(function() {
-  delete globalThis.lemmings;
-  for (const key of actionKeys) Lemmings[key] = originalActions[key];
+  this._restoreActions();
 });
 
 describe('LemmingManager core behavior', function() {
   it('addLemming and addNewLemmings use release counts', function() {
-    const level = new Level(100, 50);
-    level.entrances = [{ x: 0, y: 0 }];
-    level.releaseCount = 2;
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager, gvc } = makeManager({ width: 100, height: 50, releaseCount: 2 });
 
     expect(gvc.getLeftCount()).to.equal(2);
     manager.addLemming(10, 10);
@@ -101,10 +71,7 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('setLemmingState removes lemming on unknown state', function() {
-    const level = new Level(50, 50);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager({ width: 50, height: 50 });
 
     manager.addLemming(5, 5);
     const lem = manager.lemmings[0];
@@ -118,10 +85,7 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('doLemmingAction rejects redundant skills and sets valid ones', function() {
-    const level = new Level(50, 50);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager({ width: 50, height: 50 });
 
     manager.addLemming(5, 5);
     const lem = manager.lemmings[0];
@@ -140,13 +104,10 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('updates minimap dots on tick', function() {
-    const level = new Level(40, 40);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager({ width: 40, height: 40 });
     manager.addLemming(10, 10);
 
-    const mm = { scaleX: 1, scaleY: 1, setLiveDots(arr) { this.dots = arr; }, setSelectedDot() {} };
+    const mm = makeMiniMap();
     manager.setMiniMap(mm);
     manager.mmTickCounter = 9;
     manager.tick();
@@ -155,13 +116,9 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('spawns and removes lemmings mid-level', function() {
-    const level = new Level(50, 50);
-    level.entrances = [{ x: 0, y: 0 }];
-    level.releaseCount = 1;
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager, gvc } = makeManager({ width: 50, height: 50, releaseCount: 1 });
 
-    const mm = { scaleX: 1, scaleY: 1, setLiveDots(arr) { this.dots = arr; }, setSelectedDot() {}, addDeath(x, y) { this.deaths = [x, y]; } };
+    const mm = makeMiniMap({ addDeath(x, y) { this.deaths = [x, y]; } });
     manager.setMiniMap(mm);
 
     manager.releaseTickIndex = 103;
@@ -186,10 +143,7 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('getNearestLemming picks closest active lemming', function() {
-    const level = new Level(60, 60);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager({ width: 60, height: 60 });
 
     manager.addLemming(5, 5);
     manager.addLemming(20, 20);
@@ -209,10 +163,7 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('cycleSelection skips removed and disabled lemmings', function() {
-    const level = new Level(20, 20);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager({ width: 20, height: 20 });
 
     manager.addLemming(1, 1);
     manager.addLemming(2, 2);
@@ -232,13 +183,10 @@ describe('LemmingManager core behavior', function() {
   });
 
   it('dispose resets key fields', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(5, 5);
 
-    const mm = { scaleX: 1, scaleY: 1, setLiveDots() {}, setSelectedDot() {} };
+    const mm = makeMiniMap();
     manager.setMiniMap(mm);
 
     manager.dispose();
@@ -252,9 +200,7 @@ describe('LemmingManager core behavior', function() {
 describe('LemmingManager additional', function() {
 
   it('setLemmingState clears countdown on lethal state', function() {
-    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(1,1);
     const lem = manager.lemmings[0];
     lem.countdown = 5; lem.countdownAction = {};
@@ -264,9 +210,7 @@ describe('LemmingManager additional', function() {
   });
 
   it('setLemmingState OUT_OF_LEVEL calls removeOne', function() {
-    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(2,2);
     const lem = manager.lemmings[0];
     let removed=false; manager.removeOne=()=>{removed=true;};
@@ -275,9 +219,7 @@ describe('LemmingManager additional', function() {
   });
 
   it('doLemmingAction removes blocker wall when switching skills', function() {
-    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(3,3);
     const lem = manager.lemmings[0];
     manager.setLemmingState(lem, Lemmings.LemmingStateType.BLOCKING);
@@ -290,10 +232,7 @@ describe('LemmingManager additional', function() {
 
 describe('LemmingManager triggers and nuking', function() {
   it('runTrigger maps triggers and flips blockers', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(5, 5);
     const lem = manager.lemmings[0];
 
@@ -336,10 +275,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('runTrigger logs unknown trigger types', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(4, 4);
     const lem = manager.lemmings[0];
 
@@ -353,10 +289,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('nuking skips disabled targets and ends when applied', function() {        
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.addLemming(1, 1);
     manager.addLemming(2, 2);
 
@@ -379,10 +312,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('clears nuke targets when index is out of range', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager._nukeTargets = [{ id: 1 }];
     manager.nextNukingLemmingsIndex = 1;
 
@@ -393,10 +323,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('clears nuke targets when index jumps beyond count', function() {     
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager._nukeTargets = [{ id: 1 }];
     let calls = 0;
     Object.defineProperty(manager, 'nextNukingLemmingsIndex', {
@@ -416,10 +343,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('returns early when nuking with no targets', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager._nukeTargets = null;
     manager.nextNukingLemmingsIndex = 0;
     manager._nukeNextLemming();
@@ -427,10 +351,7 @@ describe('LemmingManager triggers and nuking', function() {
   });
 
   it('cycleSelection returns null when no active lemmings exist', function() {
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+    const { manager } = makeManager();
     manager.activeLemmings.length = 0;
     expect(manager.cycleSelection()).to.equal(null);
   });

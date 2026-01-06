@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { UserInputManager } from '../../js/input/UserInputManager.js';
 import { Position2D } from '../../js/util/Position2D.js';
 
@@ -115,16 +116,15 @@ describe('UserInputManager', function() {
       getStageImageAt() { return stageImage; },
       updateViewPoint() { stage.updated = true; }
     };
-    const originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = { stage };
-    manager.handleWheel(new Position2D(5, 5), 1);
-    expect(stage.updated).to.equal(true);
+    withGlobalLemmings({ stage }, () => {
+      manager.handleWheel(new Position2D(5, 5), 1);
+      expect(stage.updated).to.equal(true);
 
-    stage.getStageImageAt = () => null;
-    manager.handleWheel(new Position2D(5, 5), 1);
-    expect(zoomEvents.length).to.equal(2);
+      stage.getStageImageAt = () => null;
+      manager.handleWheel(new Position2D(5, 5), 1);
+      expect(zoomEvents.length).to.equal(2);
+    });
 
-    globalThis.lemmings = originalLemmings;
     manager.handleWheel(new Position2D(5, 5), 1);
     expect(zoomEvents.length).to.equal(3);
   });

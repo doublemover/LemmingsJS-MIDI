@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withConsoleStub } from './helpers/console.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { GameGui, SmoothScroller } from '../js/game/GameGui.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
@@ -119,9 +120,8 @@ describe('GameGui utilities', function() {
 describe('SmoothScroller', function() {
   it('handles impulses and velocity updates', function() {
     const scroller = new SmoothScroller();
-    const originalLog = console.log;
     const logs = [];
-    console.log = msg => logs.push(msg);
+    const restoreConsole = withConsoleStub({ log: msg => logs.push(msg) });
     scroller.addImpulse(0);
     scroller.addImpulse(100);
     expect(scroller.velocity).to.equal(50);
@@ -133,7 +133,7 @@ describe('SmoothScroller', function() {
     scroller.velocity = -490;
     scroller.addImpulse(-1000);
     expect(scroller.velocity).to.equal(-500);
-    console.log = originalLog;
+    restoreConsole();
 
     let last = null;
     scroller.onHasVelocity.on(v => { last = v; });

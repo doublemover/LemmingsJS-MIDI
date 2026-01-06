@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { TerrainImageInfo } from '../js/render/TerrainImageInfo.js';
 import { BaseImageInfo } from '../js/render/BaseImageInfo.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 import { Frame } from '../js/render/Frame.js';
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 // Simple helper replicates GroundReader steel cropping
 function computeSteelSize(info) {

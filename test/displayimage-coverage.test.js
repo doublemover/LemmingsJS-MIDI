@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import {
   DisplayImage,
   drawMarchingAntRect,
@@ -60,13 +61,7 @@ const makeFrame = (width, height, options = {}) => {
 };
 
 describe('DisplayImage coverage', function() {
-  beforeEach(function() {
-    globalThis.lemmings = { game: { showDebug: false } };
-  });
-
-  afterEach(function() {
-    delete globalThis.lemmings;
-  });
+  useGlobalLemmings({ game: { showDebug: false } });
 
   it('initializes buffers and background helpers', function() {
     const stage = makeStage();

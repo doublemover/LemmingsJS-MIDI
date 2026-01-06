@@ -11,26 +11,29 @@ class MockLogHandler {
   debug() {}
 }
 
-describe('FileContainer.read errors', function () {
-  let origLog;
-  beforeEach(function () {
-    origLog = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-  });
-
-  afterEach(function () {
+const withMockLogHandler = (fn) => {
+  const origLog = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return fn();
+  } finally {
     setDependency('LogHandler', origLog);
-  });
+  }
+};
 
+describe('FileContainer.read errors', function () {
   it('handles invalid part size', function () {
-    const header = Uint8Array.from([
-      0, 0, 0, 0, 0, 0, 0, 0, 0, 8
-    ]);
-    const buf = new Uint8Array(header.length + 2);
-    buf.set(header, 0);
-    const br = new Lemmings.BinaryReader(buf, 0, buf.length, 'bad.dat');
-    const fc = new FileContainer(br);
-    assert.strictEqual(fc.count(), 0);
-    assert.ok(fc.log.logged.some(m => m.includes('out of sync bad.dat')));
+    const logs = withMockLogHandler(() => {
+      const header = Uint8Array.from([
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 8
+      ]);
+      const buf = new Uint8Array(header.length + 2);
+      buf.set(header, 0);
+      const br = new Lemmings.BinaryReader(buf, 0, buf.length, 'bad.dat');
+      const fc = new FileContainer(br);
+      assert.strictEqual(fc.count(), 0);
+      return fc.log.logged;
+    });
+    assert.ok(logs.some(m => m.includes('out of sync bad.dat')));
   });
 });

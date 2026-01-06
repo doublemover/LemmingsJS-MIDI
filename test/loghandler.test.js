@@ -1,5 +1,13 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { withConsoleStub } from './helpers/console.js';
+import {
+  Lemmings,
+  setDependency,
+  useGlobalLemmings,
+  withGlobalLemmings,
+  withMissingGlobalLemmings,
+  withShowDebug
+} from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 
 /* Test custom LogHandler usage and withPerformance wrapper */
@@ -18,16 +26,39 @@ class Dummy extends Lemmings.BaseLogger {
   constructor() { super(); }
 }
 
+const captureConsole = () => {
+  const calls = { infos: [], warns: [], errors: [], logs: [] };
+  const restore = withConsoleStub({
+    info: msg => calls.infos.push(String(msg)),
+    warn: msg => calls.warns.push(String(msg)),
+    error: msg => calls.errors.push(String(msg)),
+    log: msg => calls.logs.push(String(msg))
+  });
+  return {
+    calls,
+    restore
+  };
+};
+
+const withDebugConsole = (fn) => withShowDebug(true, () => {
+  const consoleCapture = captureConsole();
+  try {
+    return fn(consoleCapture);
+  } finally {
+    consoleCapture.restore();
+  }
+});
+
+useGlobalLemmings({ game: { showDebug: false } });
+
 describe('LogHandler', function() {
   let origHandler;
   before(function() {
-    globalThis.lemmings = { game: { showDebug: false } };
     origHandler = Lemmings.LogHandler;
     setDependency('LogHandler', RecordingHandler);
   });
   after(function() {
     setDependency('LogHandler', origHandler);
-    delete globalThis.lemmings;
   });
 
   it('uses custom handler for BaseLogger', function() {
@@ -39,49 +70,28 @@ describe('LogHandler', function() {
 });
 
 describe('Logger output levels', function() {
-  let origConsole;
-  beforeEach(function() {
-    globalThis.lemmings.game.showDebug = true;
-    origConsole = {
-      info: console.info,
-      warn: console.warn,
-      error: console.error,
-      log: console.log
-    };
-    this.infos = [];
-    this.warns = [];
-    this.errors = [];
-    this.logs = [];
-    console.info = msg => this.infos.push(String(msg));
-    console.warn = msg => this.warns.push(String(msg));
-    console.error = msg => this.errors.push(String(msg));
-    console.log = msg => this.logs.push(String(msg));
-  });
-  afterEach(function() {
-    console.info = origConsole.info;
-    console.warn = origConsole.warn;
-    console.error = origConsole.error;
-    console.log = origConsole.log;
-  });
-
   it('formats info, warning and error messages', function() {
-    const logger = new Lemmings.Logger('Mod');
-    logger.info('hello');
-    logger.warn('caution');
-    logger.error('boom', new Error('bad'));
-    expect(this.infos).to.eql(['Mod\thello']);
-    expect(this.warns).to.eql(['Mod\tcaution']);
-    expect(this.errors).to.eql(['Mod\tboom', 'Mod\tbad']);
+    withDebugConsole(({ calls }) => {
+      const logger = new Lemmings.Logger('Mod');
+      logger.info('hello');
+      logger.warn('caution');
+      logger.error('boom', new Error('bad'));
+      expect(calls.infos).to.eql(['Mod\thello']);
+      expect(calls.warns).to.eql(['Mod\tcaution']);
+      expect(calls.errors).to.eql(['Mod\tboom', 'Mod\tbad']);
+    });
   });
 
   it('toggles debug logging based on environment', function() {
-    const logger = new Lemmings.Logger('Dbg');
-    globalThis.lemmings.game.showDebug = false;
-    logger.debug('off');
-    expect(this.logs).to.eql([]);
-    globalThis.lemmings.game.showDebug = true;
-    logger.debug('on');
-    expect(this.logs).to.eql(['Dbg\ton']);
+    withDebugConsole(({ calls }) => {
+      const logger = new Lemmings.Logger('Dbg');
+      withShowDebug(false, () => {
+        logger.debug('off');
+        expect(calls.logs).to.eql([]);
+      });
+      logger.debug('on');
+      expect(calls.logs).to.eql(['Dbg\ton']);
+    });
   });
 });
 
@@ -101,18 +111,20 @@ describe('withPerformance', function() {
   });
 
   it('measures only when flags enabled', function() {
-    globalThis.lemmings = { performanceAPI: true };
-    const fn = (a, b) => a + b;
-    const wrapped = Lemmings.withPerformance('sum', { t: 1 }, fn);
-    const result = wrapped(2, 3);
-    expect(result).to.equal(5);
-    expect(performance.measureCalls.length).to.equal(1);
-    expect(performance.measureCalls[0].name).to.equal('sum');
+    withGlobalLemmings({ performanceAPI: true }, () => {
+      const fn = (a, b) => a + b;
+      const wrapped = Lemmings.withPerformance('sum', { t: 1 }, fn);
+      const result = wrapped(2, 3);
+      expect(result).to.equal(5);
+      expect(performance.measureCalls.length).to.equal(1);
+      expect(performance.measureCalls[0].name).to.equal('sum');
 
-    performance.measureCalls.length = 0;
-    globalThis.lemmings = { performanceAPI: false, perfMetrics: false };
-    wrapped(1, 1);
-    expect(performance.measureCalls.length).to.equal(0);
+      performance.measureCalls.length = 0;
+      withGlobalLemmings({ performanceAPI: false, perfMetrics: false }, () => {
+        wrapped(1, 1);
+        expect(performance.measureCalls.length).to.equal(0);
+      });
+    });
   });
 });
 
@@ -123,58 +135,60 @@ describe('startMeasure and withPerformance error handling', function() {
   });
   afterEach(function() {
     globalThis.performance = origPerf;
-    delete globalThis.lemmings;
   });
 
   it('returns noop when metrics disabled', function() {
-    globalThis.lemmings = { perfMetrics: false, debug: false };
-    globalThis.performance = { now() { throw new Error('called'); }, measure() { throw new Error('called'); } };
-    const dummy = new Dummy();
-    const end = dummy.startMeasure('t');
-    expect(() => end()).to.not.throw();
+    withGlobalLemmings({ perfMetrics: false, debug: false }, () => {
+      globalThis.performance = { now() { throw new Error('called'); }, measure() { throw new Error('called'); } };
+      const dummy = new Dummy();
+      const end = dummy.startMeasure('t');
+      expect(() => end()).to.not.throw();
+    });
   });
 
   it('records measures when performance metrics are enabled', function() {
     const calls = [];
-    globalThis.lemmings = { perfMetrics: true };
-    globalThis.performance = {
-      now() { return 1; },
-      measure(name, opts) { calls.push({ name, opts }); }
-    };
-    const dummy = new Dummy();
-    const end = dummy.startMeasure('tick', { tag: 'x' });
-    end();
-    expect(calls.length).to.equal(1);
-    expect(calls[0].name).to.equal('tick');
+    withGlobalLemmings({ perfMetrics: true }, () => {
+      globalThis.performance = {
+        now() { return 1; },
+        measure(name, opts) { calls.push({ name, opts }); }
+      };
+      const dummy = new Dummy();
+      const end = dummy.startMeasure('tick', { tag: 'x' });
+      end();
+      expect(calls.length).to.equal(1);
+      expect(calls[0].name).to.equal('tick');
+    });
   });
 
   it('swallows measure errors', function() {
     let count = 0;
-    globalThis.lemmings = { perfMetrics: true, debug: true };
-    globalThis.performance = { now() { return 0; }, measure() { count++; throw new Error('boom'); } };
-    const fn = Lemmings.withPerformance('t', {}, x => x + 1);
-    const result = fn(1);
-    expect(result).to.equal(2);
-    expect(count).to.equal(1);
+    withGlobalLemmings({ perfMetrics: true, debug: true }, () => {
+      globalThis.performance = { now() { return 0; }, measure() { count++; throw new Error('boom'); } };
+      const fn = Lemmings.withPerformance('t', {}, x => x + 1);
+      const result = fn(1);
+      expect(result).to.equal(2);
+      expect(count).to.equal(1);
+    });
   });
 
   it('swallows startMeasure errors', function() {
-    globalThis.lemmings = { perfMetrics: true, debug: true };
-    globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
-    const dummy = new Dummy();
-    const end = dummy.startMeasure('oops');
-    expect(() => end()).to.not.throw();
+    withGlobalLemmings({ perfMetrics: true, debug: true }, () => {
+      globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
+      const dummy = new Dummy();
+      const end = dummy.startMeasure('oops');
+      expect(() => end()).to.not.throw();
+    });
   });
 
   it('returns noop when lemmings is undefined', function() {
-    const prev = globalThis.lemmings;
-    delete globalThis.lemmings;
-    globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
-    const dummy = new Dummy();
-    const end = dummy.startMeasure('noop');
-    expect(() => end()).to.not.throw();
-    const wrapped = Lemmings.withPerformance('noop', {}, x => x + 1);
-    expect(wrapped(1)).to.equal(2);
-    globalThis.lemmings = prev;
+    withMissingGlobalLemmings(() => {
+      globalThis.performance = { now() { return 0; }, measure() { throw new Error('boom'); } };
+      const dummy = new Dummy();
+      const end = dummy.startMeasure('noop');
+      expect(() => end()).to.not.throw();
+      const wrapped = Lemmings.withPerformance('noop', {}, x => x + 1);
+      expect(wrapped(1)).to.equal(2);
+    });
   });
 });

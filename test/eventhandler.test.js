@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('EventHandler', function() {
   it('invokes listeners in order and supports removal', function() {

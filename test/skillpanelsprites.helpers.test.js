@@ -1,12 +1,12 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Frame } from '../js/render/Frame.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 import { SkillPanelSprites } from '../js/render/SkillPanelSprites.js';
 import '../js/util/LogHandler.js';
 import '../js/render/PaletteImage.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 class FakeReader {
   setOffset() {}

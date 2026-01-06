@@ -1,4 +1,6 @@
 import { expect } from 'chai';
+import { withConsoleStub } from '../helpers/console.js';
+import { withGlobalLemmings, withMissingGlobalLemmings } from '../helpers/lemmings.js';
 import FakeTimers from '@sinonjs/fake-timers';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 
@@ -240,9 +242,8 @@ describe('MidiScheduler coverage', function() {
     scheduler.setOutput(output);
     scheduler._maxBytesPerSecond = 1;
     scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
-    const originalConsole = console.error;
     const errors = [];
-    console.error = msg => errors.push(msg);
+    const restoreConsole = withConsoleStub({ error: msg => errors.push(msg) });
     scheduler.sendNote({
       note: 60,
       velocity: 64,
@@ -252,7 +253,7 @@ describe('MidiScheduler coverage', function() {
       pan: 20,
       timeMs: 2000
     }, { sfxId: 1 });
-    console.error = originalConsole;
+    restoreConsole();
     expect(calls.some(call => call.type === 'noteOff')).to.equal(true);
   });
 
@@ -402,12 +403,11 @@ describe('MidiScheduler coverage', function() {
     scheduler._maxBytesPerSecond = 1;
     scheduler._rateSent = [{ timeMs: 1999, count: 1, bytes: 3 }];
     const errors = [];
-    const originalError = console.error;
-    console.error = msg => errors.push(msg);
+    const restoreConsole = withConsoleStub({ error: msg => errors.push(msg) });
     try {
       scheduler._checkByteRate(2000);
     } finally {
-      console.error = originalError;
+      restoreConsole();
     }
     expect(errors.length).to.equal(1);
   });
@@ -417,16 +417,15 @@ describe('MidiScheduler coverage', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 1 });
     scheduler.setOutput(makeOutput([1], calls));
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     let measures = 0;
     globalThis.performance = { now: () => 1, measure: () => { measures += 1; } };
-    globalThis.lemmings = { performanceAPI: true };
     try {
-      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
-      expect(measures).to.equal(1);
+      withGlobalLemmings({ performanceAPI: true }, () => {
+        scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
+        expect(measures).to.equal(1);
+      });
     } finally {
       globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
     }
   });
 
@@ -539,34 +538,35 @@ describe('MidiScheduler coverage', function() {
     });
     scheduler.setOutput(makeOutput([1], calls));
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     try {
-      globalThis.lemmings = undefined;
-      scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-
-      globalThis.lemmings = { perfMetrics: true };
-      globalThis.performance = undefined;
-      scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-
-      globalThis.lemmings = { performanceAPI: true };
-      globalThis.performance = { now: () => 1 };
-      scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-
-      globalThis.performance = { now: () => 1, measure: () => {} };
-      scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-
-      let measures = 0;
-      scheduler.setConfig({
-        position: { panRange: { min: -127, max: 127 } },
-        defaultChannel: 1,
-        mpe: { enabled: false }
+      withMissingGlobalLemmings(() => {
+        scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
       });
-      globalThis.performance = { now: () => 1, measure: () => { measures += 1; } };
-      scheduler.sendNote({ note: 60, pan: -10, durationTicks: 1 });
-      expect(measures).to.equal(1);
+
+      withGlobalLemmings({ perfMetrics: true }, () => {
+        globalThis.performance = undefined;
+        scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
+      });
+
+      withGlobalLemmings({ performanceAPI: true }, () => {
+        globalThis.performance = { now: () => 1 };
+        scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
+
+        globalThis.performance = { now: () => 1, measure: () => {} };
+        scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
+
+        let measures = 0;
+        scheduler.setConfig({
+          position: { panRange: { min: -127, max: 127 } },
+          defaultChannel: 1,
+          mpe: { enabled: false }
+        });
+        globalThis.performance = { now: () => 1, measure: () => { measures += 1; } };
+        scheduler.sendNote({ note: 60, pan: -10, durationTicks: 1 });
+        expect(measures).to.equal(1);
+      });
     } finally {
       globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
     }
   });
 
@@ -608,26 +608,21 @@ describe('MidiScheduler coverage', function() {
     expect(estimate.messages).to.equal(2);
 
     scheduler._maxBytesPerSecond = 1000;
-    const originalError = console.error;
     let errorCount = 0;
-    console.error = () => { errorCount += 1; };
+    const restoreConsole = withConsoleStub({ error: () => { errorCount += 1; } });
     try {
       scheduler._checkByteRate(0);
     } finally {
-      console.error = originalError;
+      restoreConsole();
     }
     expect(errorCount).to.equal(0);
 
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = { now: () => 1, measure: () => {} };
-    delete globalThis.lemmings;
-    try {
+    withMissingGlobalLemmings(() => {
       scheduler.sendNote({ note: 60, durationTicks: NaN, pan: 0 });
-    } finally {
-      globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
-    }
+    });
+    globalThis.performance = originalPerf;
 
     const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
     globalThis.performance = { now: () => 0 };

@@ -1,86 +1,31 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setGlobalLemmings } from './helpers/lemmings.js';
+import { withActionStubs } from './helpers/lemming-actions.js';
+import { withConsoleStub } from './helpers/console.js';
+import { makeManager } from './helpers/lemming-manager.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
 import '../js/game/SkillTypes.js';
-import { Level } from '../js/level/Level.js';
-import { LemmingManager } from '../js/lemmings/LemmingManager.js';
-import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/LemmingsBootstrap.js';
-import '../js/render/SolidLayer.js';
-import '../js/lemmings/LemmingStateType.js';
-import '../js/game/SkillTypes.js';
-import '../js/lemmings/Lemming.js';
-// enable debug logging
-globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
-
-
-// minimal sprite and mask providers so the constructor doesn't fail
-const spriteStub = {
-  getAnimation() {
-    return { frames: [] };
-  }
-};
-
-const maskStub = {
-  GetMask() {
-    return { width: 0, height: 0, offsetX: 0, offsetY: 0, at() { return 0; } };
-  }
-};
-
-const triggerStub = { trigger() { return 0; }, removeByOwner() {} };
-const particleStub = {};
-
-// stub action systems used during initialization
-const dummyAction = class {};
-setDependency('ActionWalkSystem', dummyAction);
-setDependency('ActionFallSystem', dummyAction);
-setDependency('ActionJumpSystem', dummyAction);
-setDependency('ActionDiggSystem', dummyAction);
-setDependency('ActionExitingSystem', dummyAction);
-setDependency('ActionFloatingSystem', dummyAction);
-setDependency('ActionBlockerSystem', dummyAction);
-setDependency('ActionMineSystem', dummyAction);
-setDependency('ActionClimbSystem', dummyAction);
-setDependency('ActionHoistSystem', dummyAction);
-setDependency('ActionBashSystem', dummyAction);
-setDependency('ActionBuildSystem', dummyAction);
-setDependency('ActionShrugSystem', dummyAction);
-setDependency('ActionExplodingSystem', dummyAction);
-setDependency('ActionOhNoSystem', dummyAction);
-setDependency('ActionSplatterSystem', dummyAction);
-setDependency('ActionDrowningSystem', dummyAction);
-setDependency('ActionFryingSystem', dummyAction);
-setDependency('ActionCountdownSystem', dummyAction);
 
 describe('LemmingManager', function() {
-
   beforeEach(function() {
-    globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
+    this.restoreLemmings = setGlobalLemmings({
+      bench: false,
+      extraLemmings: 0,
+      game: { showDebug: true }
+    });
+    this.restoreActions = withActionStubs();
   });
-  
-  afterEach(function() { delete globalThis.lemmings; });
-  
-  it('logs state changes when lemmings transition actions', function() {
-    const stub = class {};
-    [
-      'ActionWalkSystem','ActionFallSystem','ActionJumpSystem','ActionDiggSystem',
-      'ActionExitingSystem','ActionFloatingSystem','ActionBlockerSystem',
-      'ActionMineSystem','ActionClimbSystem','ActionHoistSystem','ActionBashSystem',
-      'ActionBuildSystem','ActionShrugSystem','ActionExplodingSystem','ActionOhNoSystem',
-      'ActionSplatterSystem','ActionDrowningSystem','ActionFryingSystem','ActionCountdownSystem'
-    ].forEach(n => { Lemmings[n] = stub; });
-  });
-  it('logs state changes when lemmings transition actions', function() {
-    globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: true } };
-    const level = new Level(10, 10);
-    level.entrances = [{ x: 0, y: 0 }];
-    const gvc = new GameVictoryCondition(level);
-    const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
 
-    // ensure debug logging is enabled
-    globalThis.lemmings.game.showDebug = true;
+  afterEach(function() {
+    this.restoreActions();
+    this.restoreLemmings();
+  });
+
+  it('logs state changes when lemmings transition actions', function() {
+    const { manager } = makeManager();
 
     class StubAction {
       constructor(name, next) { this.name = name; this.next = next; }
@@ -95,20 +40,15 @@ describe('LemmingManager', function() {
     manager.actions[Lemmings.LemmingStateType.FALLING] = fallAction;
     manager.actions[Lemmings.LemmingStateType.WALKING] = walkAction;
 
-    const logs = [];
-    const originalLog = console.log;
-    console.log = msg => logs.push(String(msg));
-    lemmings.game = lemmings.game || {};
-    lemmings.game.showDebug = true;
+    const restoreConsole = withConsoleStub({ log: () => {} });
 
     manager.addLemming(5, 5);
     expect(manager.lemmings.length).to.equal(1);
 
     manager.tick();
 
-    console.log = originalLog;
+    restoreConsole();
 
-    // log output may vary, just ensure the action updated
     const lem = manager.getLemming(0);
     expect(lem.action).to.equal(walkAction);
   });

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { ActionBashSystem } from '../js/actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../js/actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../js/actions/ActionBuildSystem.js';
@@ -27,10 +27,21 @@ import '../js/lemmings/SpriteTypes.js';
 import '../js/render/MaskTypes.js';
 import '../js/lemmings/Lemming.js';
 
+const makeMiniMap = () => ({
+  addDeath() {},
+  invalidateRegion() {},
+  onGroundChanged() {}
+});
+
+const makeLemmings = () => ({
+  game: {
+    lemmingManager: { miniMap: makeMiniMap() },
+    showDebug: false
+  }
+});
+
 // minimal global environment
-globalThis.lemmings = {
-  game: { lemmingManager: { miniMap: { addDeath() {}, invalidateRegion() {}, onGroundChanged() {} } }, showDebug: false }
-};
+useGlobalLemmings(makeLemmings);
 globalThis.winW = 800;
 globalThis.winH = 600;
 
@@ -129,52 +140,43 @@ function stubMasks() {
 }
 
 function useSoundBus(calls) {
-  if (!globalThis.lemmings) globalThis.lemmings = {};
-  if (!globalThis.lemmings.game) globalThis.lemmings.game = {};
-  const prev = globalThis.lemmings.game.soundEvents;
-  globalThis.lemmings.game.soundEvents = {
-    emitSfx(type, sfxId, data) {
-      calls.push({ type, sfxId, data });
+  const base = globalThis.lemmings ?? {};
+  return setGlobalLemmings({
+    ...base,
+    game: {
+      ...(base.game ?? {}),
+      soundEvents: {
+        emitSfx(type, sfxId, data) {
+          calls.push({ type, sfxId, data });
+        }
+      }
     }
-  };
-  return () => {
-    globalThis.lemmings.game.soundEvents = prev;
-  };
+  });
 }
 
 function withoutSoundBus() {
-  if (!globalThis.lemmings) globalThis.lemmings = {};
-  if (!globalThis.lemmings.game) globalThis.lemmings.game = {};
-  const prev = globalThis.lemmings.game.soundEvents;
-  globalThis.lemmings.game.soundEvents = null;
-  return () => {
-    globalThis.lemmings.game.soundEvents = prev;
-  };
+  const base = globalThis.lemmings ?? {};
+  return setGlobalLemmings({
+    ...base,
+    game: {
+      ...(base.game ?? {}),
+      soundEvents: null
+    }
+  });
 }
 
 function withoutLemmingManager() {
-  if (!globalThis.lemmings) globalThis.lemmings = {};
-  if (!globalThis.lemmings.game) globalThis.lemmings.game = {};
-  const prev = globalThis.lemmings.game.lemmingManager;
-  globalThis.lemmings.game.lemmingManager = null;
-  return () => {
-    globalThis.lemmings.game.lemmingManager = prev;
-  };
+  const base = globalThis.lemmings ?? {};
+  return setGlobalLemmings({
+    ...base,
+    game: {
+      ...(base.game ?? {}),
+      lemmingManager: null
+    }
+  });
 }
 
 function ensureMiniMap() {
-  if (!globalThis.lemmings) globalThis.lemmings = {};
-  if (!globalThis.lemmings.game) globalThis.lemmings.game = {};
-  if (!globalThis.lemmings.game.lemmingManager) {
-    globalThis.lemmings.game.lemmingManager = {};
-  }
-  if (!globalThis.lemmings.game.lemmingManager.miniMap) {
-    globalThis.lemmings.game.lemmingManager.miniMap = {
-      addDeath() {},
-      invalidateRegion() {},
-      onGroundChanged() {}
-    };
-  }
   return globalThis.lemmings.game.lemmingManager;
 }
 

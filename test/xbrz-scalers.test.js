@@ -1,7 +1,8 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { scaleImage } from '../js/xbrz/xbrz.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 function color32(r, g, b) {
   return (0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF)) >>> 0;

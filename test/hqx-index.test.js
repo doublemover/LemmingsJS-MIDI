@@ -17,18 +17,28 @@ function setupTemp() {
   return dir;
 }
 
+const withTempDir = async (fn) => {
+  const dir = setupTemp();
+  try {
+    return await fn(dir);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+};
+
 describe('vendor/hqx/index.js', function () {
   it('initializes once and forwards resize args', async function () {
-    const dir = setupTemp();
-    const indexUrl = pathToFileURL(path.join(dir, 'index.js')).href + `?t=${Date.now()}`;
-    const { initHqx, hqxScale } = await import(indexUrl);
-    const stub = await import(pathToFileURL(path.join(dir, 'squooshhqx.stub.js')).href);
-    initHqx();
-    initHqx();
-    expect(stub.calls.initSync).to.equal(1);
-    const buf = new Uint32Array([1, 2, 3, 4]);
-    const result = hqxScale(buf, 2, 2, 3);
-    expect(result).to.equal('scaled');
-    expect(stub.calls.resize).to.eql([[buf, 2, 2, 3]]);
+    await withTempDir(async (dir) => {
+      const indexUrl = pathToFileURL(path.join(dir, 'index.js')).href + `?t=${Date.now()}`;
+      const { initHqx, hqxScale } = await import(indexUrl);
+      const stub = await import(pathToFileURL(path.join(dir, 'squooshhqx.stub.js')).href);
+      initHqx();
+      initHqx();
+      expect(stub.calls.initSync).to.equal(1);
+      const buf = new Uint32Array([1, 2, 3, 4]);
+      const result = hqxScale(buf, 2, 2, 3);
+      expect(result).to.equal('scaled');
+      expect(stub.calls.resize).to.eql([[buf, 2, 2, 3]]);
+    });
   });
 });

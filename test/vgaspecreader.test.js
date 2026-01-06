@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings, withShowDebug } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
@@ -11,7 +11,23 @@ import '../js/render/Frame.js';
 import '../js/render/ColorPalette.js';
 import { VGASpecReader } from '../js/data/VGASpecReader.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+class MockLogHandler {
+  constructor() { this.logged = []; }
+  log(msg) { this.logged.push(msg); }
+  debug() {}
+}
+
+const withMockLogHandler = (fn) => {
+  const orig = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return withShowDebug(true, fn);
+  } finally {
+    setDependency('LogHandler', orig);
+  }
+};
 
 describe('VGASpecReader', function() {
   it('decodes image and palettes', function() {
@@ -72,33 +88,18 @@ describe('VGASpecReader', function() {
   }
 
   it('logs when the file container is missing', function() {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-      debug() {}
-    }
-    const orig = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const prev = globalThis.lemmings.game.showDebug;
-    globalThis.lemmings.game.showDebug = true;
+    const logs = withMockLogHandler(() => {
+      const br = new BinaryReader(new Uint8Array(5));
+      const reader = new VGASpecReader(br, 320, 40);
+      return reader.log.logged;
+    });
 
-    const br = new BinaryReader(new Uint8Array(5));
-    const reader = new VGASpecReader(br, 320, 40);
-
-    globalThis.lemmings.game.showDebug = prev;
-    setDependency('LogHandler', orig);
-
-    expect(reader.log.logged.some(m => m.includes('No FileContainer found!')))
+    expect(logs.some(m => m.includes('No FileContainer found!')))
       .to.be.true;
   });
 
 
   it('logs when palette data ends prematurely', function() {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-      debug() {}
-    }
     const part = new Uint8Array(24);
     for (let i = 0; i < 8; i++) {
       part[i * 3] = 1 + i;
@@ -106,14 +107,11 @@ describe('VGASpecReader', function() {
       part[i * 3 + 2] = 3 + i;
     }
     const container = buildContainer(part);
-    const orig = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const prev = globalThis.lemmings.game.showDebug;
-    globalThis.lemmings.game.showDebug = true;
-    const reader = new VGASpecReader(new BinaryReader(container), 320, 40);
-    globalThis.lemmings.game.showDebug = prev;
-    setDependency('LogHandler', orig);
-    expect(reader.log.logged.some(m => m.includes('unexpected end of file')))
+    const logs = withMockLogHandler(() => {
+      const reader = new VGASpecReader(new BinaryReader(container), 320, 40);
+      return reader.log.logged;
+    });
+    expect(logs.some(m => m.includes('unexpected end of file')))
       .to.be.true;
   });
 

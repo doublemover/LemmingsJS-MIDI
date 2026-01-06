@@ -1,14 +1,14 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
 
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
 import '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('ODDTABLE offsets', function() {
   it('parses part offsets from LEVEL000.DAT', function() {

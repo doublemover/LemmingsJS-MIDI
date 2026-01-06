@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { ActionExitingSystem } from '../js/actions/ActionExitingSystem.js';
 import { ActionFryingSystem } from '../js/actions/ActionFryingSystem.js';
 import { ActionShrugSystem } from '../js/actions/ActionShrugSystem.js';
@@ -7,7 +7,7 @@ import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/SpriteTypes.js';
 
 // minimal globals
-globalThis.lemmings = { game: { showDebug: false, lemmingManager: { miniMap: { addDeath() {} } } } };
+useGlobalLemmings({ game: { showDebug: false, lemmingManager: { miniMap: { addDeath() {} } } } });
 
 const stubSprites = { getAnimation: () => ({ getFrame() { return {}; } }) };
 

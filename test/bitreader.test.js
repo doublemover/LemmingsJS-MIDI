@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { BitReader } from '../js/data/BitReader.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('BitReader', function() {
   it('reads reversed bytes and tracks checksum', function() {

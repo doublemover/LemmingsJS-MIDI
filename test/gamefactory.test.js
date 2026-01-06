@@ -1,8 +1,21 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+const applyDeps = (overrides) => {
+  const originals = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    originals[key] = Lemmings[key];
+    setDependency(key, value);
+  }
+  return () => {
+    for (const [key, value] of Object.entries(originals)) {
+      setDependency(key, value);
+    }
+  };
+};
 
 describe('GameFactory.createFromConfig', function () {
   it('builds a Game with GameResources and timer', async function () {
@@ -31,35 +44,26 @@ describe('GameFactory.createFromConfig', function () {
       }
     }
 
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader,
-      GameResources: Lemmings.GameResources,
-      Game: Lemmings.Game,
-      GameTimer: Lemmings.GameTimer
-    };
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub,
+      GameResources: GameResourcesStub,
+      Game: GameStub,
+      GameTimer: GameTimerStub
+    });
+    try {
+      const config = { path: 'data', level: {} };
+      const gf = new GameFactory('root');
+      const game = await gf.createFromConfig(config, 1, 2);
 
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-    setDependency('GameResources', GameResourcesStub);
-    setDependency('Game', GameStub);
-    setDependency('GameTimer', GameTimerStub);
-
-    const config = { path: 'data', level: {} };
-    const gf = new GameFactory('root');
-    const game = await gf.createFromConfig(config, 1, 2);
-
-    expect(game).to.be.instanceOf(GameStub);
-    expect(game.res).to.be.instanceOf(GameResourcesStub);
-    expect(game.res.fp).to.be.instanceOf(FileProviderStub);
-    expect(game.res.cfg).to.equal(config);
-    expect(game.loadArgs).to.eql([1, 2]);
-    expect(game.gameTimer).to.be.instanceOf(GameTimerStub);
-
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
-    setDependency('GameResources', orig.GameResources);
-    setDependency('Game', orig.Game);
-    setDependency('GameTimer', orig.GameTimer);
+      expect(game).to.be.instanceOf(GameStub);
+      expect(game.res).to.be.instanceOf(GameResourcesStub);
+      expect(game.res.fp).to.be.instanceOf(FileProviderStub);
+      expect(game.res.cfg).to.equal(config);
+      expect(game.loadArgs).to.eql([1, 2]);
+      expect(game.gameTimer).to.be.instanceOf(GameTimerStub);
+    } finally {
+      restore();
+    }
   });
 });

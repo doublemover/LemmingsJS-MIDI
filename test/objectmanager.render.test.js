@@ -1,7 +1,8 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { ObjectManager } from '../js/level/ObjectManager.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('ObjectManager.render', function () {
   it('draws current frame of each object based on tick', function () {

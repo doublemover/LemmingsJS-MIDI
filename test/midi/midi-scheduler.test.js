@@ -1,5 +1,7 @@
 import { expect } from 'chai';
 import FakeTimers from '@sinonjs/fake-timers';
+import { withConsoleStub } from '../helpers/console.js';
+import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 
 const makeChannel = (id, calls) => ({
@@ -385,10 +387,9 @@ describe('MidiScheduler', function() {
     const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1000 } });
     scheduler.getRateSnapshot = () => ({ past: { bytes: 1 }, next: { bytes: 1 } });
     const logs = [];
-    const originalError = console.error;
-    console.error = msg => logs.push(msg);
+    const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
     scheduler._checkByteRate(0);
-    console.error = originalError;
+    restoreConsole();
     expect(logs.length).to.equal(0);
   });
 
@@ -454,16 +455,15 @@ describe('MidiScheduler', function() {
 
   it('logs when byte rate limits are exceeded', function() {
     const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1 } });
-    const originalError = console.error;
     const logs = [];
-    console.error = msg => logs.push(msg);
+    const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
     scheduler.getRateSnapshot = () => ({
       past: { bytes: 2 },
       next: { bytes: 0 }
     });
     scheduler._lastRateErrorMs = -2000;
     scheduler._checkByteRate(0);
-    console.error = originalError;
+    restoreConsole();
     expect(logs.length).to.equal(1);
   });
 
@@ -471,17 +471,16 @@ describe('MidiScheduler', function() {
     const calls = [];
     const output = makeOutput([1], calls);
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = { now: () => 0, measure: () => { throw new Error('boom'); } };
-    globalThis.lemmings = { performanceAPI: true };
     try {
-      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-      scheduler.setOutput(output);
-      const ok = scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
-      expect(ok).to.equal(true);
+      withGlobalLemmings({ performanceAPI: true }, () => {
+        const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+        scheduler.setOutput(output);
+        const ok = scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
+        expect(ok).to.equal(true);
+      });
     } finally {
       globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
     }
   });
 

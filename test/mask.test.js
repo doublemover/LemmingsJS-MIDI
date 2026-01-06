@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Mask } from '../js/render/Mask.js';
 import { MaskList } from '../js/render/MaskList.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 class StubReader {
   constructor(bytes) {

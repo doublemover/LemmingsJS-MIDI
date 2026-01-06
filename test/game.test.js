@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings, withGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/GameStateTypes.js';
 import { Game } from '../js/game/Game.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Game', function() {
   let originals;
@@ -241,28 +241,20 @@ describe('Game', function() {
     expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
   });
 
-  it('getGameState returns RUNNING when bench mode is enabled', function() {
+  it('getGameState returns RUNNING when bench mode is enabled', function() {    
     const res = new Lemmings.GameResources();
     const game = new Game(res);
-    const prevLemmings = globalThis.lemmings;
-    globalThis.lemmings = { ...(prevLemmings ?? {}), bench: true };
-    try {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
-    } finally {
-      globalThis.lemmings = prevLemmings;
-    }
+    withGlobalLemmings({ bench: true }, () => {
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+    });
   });
 
-  it('getGameState returns RUNNING when benchReverse is enabled', function() {
+  it('getGameState returns RUNNING when benchReverse is enabled', function() {  
     const res = new Lemmings.GameResources();
     const game = new Game(res);
-    const prevLemmings = globalThis.lemmings;
-    globalThis.lemmings = { ...(prevLemmings ?? {}), benchReverse: true };
-    try {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
-    } finally {
-      globalThis.lemmings = prevLemmings;
-    }
+    withGlobalLemmings({ benchReverse: true }, () => {
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+    });
   });
 
   it('setGameDisplay uses a default screen position without level data', function() {
@@ -295,11 +287,10 @@ describe('Game', function() {
     const game = new Game(res);
     const victory = new Lemmings.GameVictoryCondition();
     game.gameVictoryCondition = victory;
-    const prevLemmings = globalThis.lemmings;
-    globalThis.lemmings = { ...(prevLemmings ?? {}), bench: true };
-    game.checkForGameOver();
-    expect(victory.finalizeCalled).to.equal(0);
-    globalThis.lemmings = prevLemmings;
+    withGlobalLemmings({ bench: true }, () => {
+      game.checkForGameOver();
+      expect(victory.finalizeCalled).to.equal(0);
+    });
 
     game.finalGameState = Lemmings.GameStateTypes.SUCCEEDED;
     game.checkForGameOver();
@@ -357,16 +348,12 @@ describe('Game', function() {
   it('getGameState returns RUNNING for endless mode', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
-    const prevLemmings = globalThis.lemmings;
-    globalThis.lemmings = { ...(prevLemmings ?? {}), endless: true };
-    try {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
-    } finally {
-      globalThis.lemmings = prevLemmings;
-    }
+    withGlobalLemmings({ endless: true }, () => {
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+    });
   });
 
-  it('getGameState returns failed out of time when needed', function() {
+  it('getGameState returns failed out of time when needed', function() {        
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     game.gameTimer = { getGameLeftTime: () => 0 };
@@ -376,13 +363,9 @@ describe('Game', function() {
       getLeftCount() { return 1; },
       getOutCount() { return 0; }
     };
-    const prevLemmings = globalThis.lemmings;
-    globalThis.lemmings = { ...(prevLemmings ?? {}) };
-    try {
+    withGlobalLemmings({}, () => {
       expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
-    } finally {
-      globalThis.lemmings = prevLemmings;
-    }
+    });
   });
 
   it('start emits sound events when available', function() {

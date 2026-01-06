@@ -1,8 +1,9 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { alphaBlend } from '../js/xbrz/scalers/Blender.js';
 import Scaler4x from '../js/xbrz/scalers/Scaler4x.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 function color32(r, g, b) {
   return (0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF)) >>> 0;

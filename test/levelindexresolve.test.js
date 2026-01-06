@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { LevelIndexResolve } from '../js/level/LevelIndexResolve.js';
 import '../js/level/LevelIndexType.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('LevelIndexResolve and LevelIndexType', function () {
   const config = {

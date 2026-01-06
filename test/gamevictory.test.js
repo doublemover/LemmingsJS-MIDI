@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/game/GameStateTypes.js';
 import { Game } from '../js/game/Game.js';
@@ -7,7 +7,7 @@ import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/game/GameResult.js';
 
 // minimal environment
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Game victory condition', function () {
   function makeGame(release, needPct, time = 60) {

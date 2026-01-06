@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { Range } from '../js/util/Range.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('Range', function() {
   it('initializes fields to zero', function() {

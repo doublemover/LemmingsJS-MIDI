@@ -1,46 +1,16 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { DummyAction } from './helpers/lemming-actions.js';
+import { makeManager } from './helpers/lemming-manager.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
-import { Level } from '../js/level/Level.js';
-import { LemmingManager } from '../js/lemmings/LemmingManager.js';
-import { GameVictoryCondition } from '../js/game/GameVictoryCondition.js';
 import '../js/LemmingsBootstrap.js';
 
-const spriteStub = {
-  getAnimation() {
-    return { frames: [], getFrame() { return {}; } };
-  }
-};
+useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: true } });
 
-const maskStub = {
-  GetMask() {
-    return { width:0,height:0,offsetX:0,offsetY:0,at() { return 0; } };
-  }
-};
-
-const triggerStub = { trigger() { return 0; }, removeByOwner() {} };
-const particleStub = {};
-
-class DummyAction {
-  constructor(name){ this.name=name; }
-  getActionName(){ return this.name; }
-  triggerLemAction(lem){ lem.setAction(this); return true; }
-  process(){ return Lemmings.LemmingStateType.NO_STATE_TYPE; }
-}
-
-beforeEach(function(){
-  globalThis.lemmings = { bench:false, extraLemmings:0, game:{ showDebug:true } };
-});
-
-afterEach(function(){
-  delete globalThis.lemmings;
-});
-
-function makeManager(level){
-  const gvc = new GameVictoryCondition(level);
-  const manager = new LemmingManager(level, spriteStub, triggerStub, gvc, maskStub, particleStub);
+function makeManagerWithActions(options){
+  const { manager, gvc } = makeManager(options);
   for (const key in manager.actions) manager.actions[key] = new DummyAction(key);
   for (const key in manager.skillActions) manager.skillActions[key] = manager.actions[key] || new DummyAction(key);
   return { manager, gvc };
@@ -48,8 +18,7 @@ function makeManager(level){
 
 describe('LemmingManager spawning and removal', function(){
   it('adds extra lemmings when extraLemmings is set', function(){
-    const level = new Level(20,20); level.entrances=[{x:0,y:0}];
-    const { manager } = makeManager(level);
+    const { manager } = makeManagerWithActions({ width: 20, height: 20 });
     lemmings.extraLemmings = 2;
     manager.addLemming(5,5);
     expect(manager.lemmings.length).to.equal(3);
@@ -57,8 +26,7 @@ describe('LemmingManager spawning and removal', function(){
   });
 
   it('addNewLemmings ignores left count in bench mode', function(){
-    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
-    const { manager, gvc } = makeManager(level);
+    const { manager, gvc } = makeManagerWithActions();
     gvc.leftCount = 0;
     lemmings.bench = true;
     manager.releaseTickIndex = 103;
@@ -68,8 +36,7 @@ describe('LemmingManager spawning and removal', function(){
   });
 
   it('removeOne records deaths except when exiting', function(){
-    const level = new Level(10,10); level.entrances=[{x:0,y:0}];
-    const { manager, gvc } = makeManager(level);
+    const { manager, gvc } = makeManagerWithActions();
     gvc.leftCount = 1;
     gvc.releaseCount = 1;
     manager.addLemming(1,1);

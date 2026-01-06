@@ -1,8 +1,8 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { Rectangle } from '../js/util/Rectangle.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('Rectangle', function() {
   it('assigns constructor parameters', function() {

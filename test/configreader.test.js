@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import fs from 'fs';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/game/GameConfig.js';
 import '../js/level/LevelConfig.js';
@@ -8,7 +8,7 @@ import '../js/game/GameTypes.js';
 import { ConfigReader } from '../js/data/ConfigReader.js';
 import { packMechanics } from '../js/level/packMechanics.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('ConfigReader', function () {
   it('returns configs containing mechanics', async function () {

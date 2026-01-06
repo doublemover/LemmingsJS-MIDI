@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { CommandLemmingsAction } from '../js/commands/CommandLemmingsAction.js';
 
 // minimal global
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('CommandLemmingsAction extras', function() {
   it('serializes and deserializes correctly', function() {

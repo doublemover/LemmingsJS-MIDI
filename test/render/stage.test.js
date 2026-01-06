@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { Stage } from '../../js/render/Stage.js';
 import { ViewPoint } from '../../js/render/ViewPoint.js';
-import { setDependency, resetDependencies } from '../helpers/lemmings.js';
+import { setDependency, resetDependencies, useGlobalLemmings, withGlobalLemmings } from '../helpers/lemmings.js';
 
 const makeContext = () => {
   const ctx = {
@@ -51,7 +51,7 @@ describe('Stage', function() {
   const originalImageData = globalThis.ImageData;
   const originalSetInterval = globalThis.setInterval;
   const originalClearInterval = globalThis.clearInterval;
-  const originalLemmings = globalThis.lemmings;
+  useGlobalLemmings({});
 
   let intervalCbs = [];
 
@@ -87,7 +87,6 @@ describe('Stage', function() {
     globalThis.ImageData = originalImageData;
     globalThis.setInterval = originalSetInterval;
     globalThis.clearInterval = originalClearInterval;
-    globalThis.lemmings = originalLemmings;
   });
 
   it('routes pointer events and handles zoom', function() {
@@ -279,10 +278,11 @@ describe('Stage', function() {
     expect(applied[3]).to.equal(1.5);
     expect(redraws).to.equal(1);
 
-    globalThis.lemmings = { scale: 3 };
-    stage.applyViewport = originalApply;
-    stage.setGameViewPointPosition(2, 3);
-    expect(stage.gameImgProps.viewPoint.scale).to.equal(stage.snapScale(3));
+    withGlobalLemmings({ scale: 3 }, () => {
+      stage.applyViewport = originalApply;
+      stage.setGameViewPointPosition(2, 3);
+      expect(stage.gameImgProps.viewPoint.scale).to.equal(stage.snapScale(3));
+    });
 
     stage._rawScale = NaN;
     stage.setGameViewPointPosition(4, 5, { preserveScale: true });
@@ -293,13 +293,14 @@ describe('Stage', function() {
     stage.setGameViewPointPosition(4, Number.NaN, { preserveScale: true });
     expect(stage._rawScale).to.equal(1);
 
-    globalThis.lemmings = { scale: 0 };
-    stage.gameImgProps.display.worldDataSize = { width: 200, height: 100 };
-    stage.gameImgProps.canvasViewportSize = { width: 100, height: 100 };
-    stage.gameImgProps.viewPoint.scale = 2;
-    stage.setGameViewPointPosition(7, 8);
-    expect(stage.gameImgProps.viewPoint.x).to.equal(7);
-    expect(stage.gameImgProps.viewPoint.y).to.equal(8);
+    withGlobalLemmings({ scale: 0 }, () => {
+      stage.gameImgProps.display.worldDataSize = { width: 200, height: 100 };
+      stage.gameImgProps.canvasViewportSize = { width: 100, height: 100 };
+      stage.gameImgProps.viewPoint.scale = 2;
+      stage.setGameViewPointPosition(7, 8);
+      expect(stage.gameImgProps.viewPoint.x).to.equal(7);
+      expect(stage.gameImgProps.viewPoint.y).to.equal(8);
+    });
 
     stage.clampViewPoint(null);
     stage.clampViewPoint({ display: null });

@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
@@ -13,8 +13,7 @@ class SeqAction {
 }
 
 describe('Lemming sequential transitions', function() {
-  beforeEach(function() { globalThis.lemmings = { bench: false, extraLemmings: 0, game: { showDebug: false } }; });
-  afterEach(function() { delete globalThis.lemmings; });
+  useGlobalLemmings({ bench: false, extraLemmings: 0, game: { showDebug: false } });
   it('walk -> climb -> float -> explode', function() {
     const level = new Level(20, 20);
     const lem = new Lemmings.Lemming(5, 5, 0);
@@ -25,37 +24,21 @@ describe('Lemming sequential transitions', function() {
     actions[Lemmings.LemmingStateType.FLOATING] = new SeqAction('float', Lemmings.LemmingStateType.EXPLODING);
     actions[Lemmings.LemmingStateType.EXPLODING] = new SeqAction('explode', Lemmings.LemmingStateType.NO_STATE_TYPE);
 
-    lem.setAction(actions[Lemmings.LemmingStateType.WALKING]);
-    expect(lem.frameIndex).to.equal(0);
-    expect(lem.state).to.equal(0);
-
-    let next = lem.process(level);
-    expect(next).to.equal(Lemmings.LemmingStateType.CLIMBING);
-    expect(lem.frameIndex).to.equal(1);
-
-    lem.setAction(actions[next]);
-    expect(lem.frameIndex).to.equal(0);
-    expect(lem.state).to.equal(0);
-
-    next = lem.process(level);
-    expect(next).to.equal(Lemmings.LemmingStateType.FLOATING);
-    expect(lem.frameIndex).to.equal(1);
-
-    lem.setAction(actions[next]);
-    expect(lem.frameIndex).to.equal(0);
-    expect(lem.state).to.equal(0);
-
-    next = lem.process(level);
-    expect(next).to.equal(Lemmings.LemmingStateType.EXPLODING);
-    expect(lem.frameIndex).to.equal(1);
-
-    lem.setAction(actions[next]);
-    expect(lem.frameIndex).to.equal(0);
-    expect(lem.state).to.equal(0);
-
-    next = lem.process(level);
-    expect(next).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
-    expect(lem.frameIndex).to.equal(1);
+    const steps = [
+      [Lemmings.LemmingStateType.WALKING, Lemmings.LemmingStateType.CLIMBING],
+      [Lemmings.LemmingStateType.CLIMBING, Lemmings.LemmingStateType.FLOATING],
+      [Lemmings.LemmingStateType.FLOATING, Lemmings.LemmingStateType.EXPLODING],
+      [Lemmings.LemmingStateType.EXPLODING, Lemmings.LemmingStateType.NO_STATE_TYPE]
+    ];
+    let next = null;
+    for (const [current, expected] of steps) {
+      lem.setAction(actions[current]);
+      expect(lem.frameIndex).to.equal(0);
+      expect(lem.state).to.equal(0);
+      next = lem.process(level);
+      expect(next).to.equal(expected);
+      expect(lem.frameIndex).to.equal(1);
+    }
     expect(lem.disabled).to.be.true;
   });
 });

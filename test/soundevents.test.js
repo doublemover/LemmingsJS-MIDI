@@ -5,6 +5,7 @@ import {
   SoundEffectIds,
   getSoundBus
 } from '../js/game/SoundEvents.js';
+import { withGlobalLemmings } from './helpers/lemmings.js';
 
 describe('SoundEventBus', function() {
   it('emits payloads with timer context and queues them', function() {
@@ -51,8 +52,8 @@ describe('SoundEventBus', function() {
 describe('getSoundBus', function() {
   it('returns the global game sound bus when available', function() {
     const bus = new SoundEventBus({ getGameTicks: () => 0, frameTime: 60 });
-    globalThis.lemmings = { game: { soundEvents: bus } };
-    expect(getSoundBus()).to.equal(bus);
-    delete globalThis.lemmings;
+    withGlobalLemmings({ game: { soundEvents: bus } }, () => {
+      expect(getSoundBus()).to.equal(bus);
+    });
   });
 });

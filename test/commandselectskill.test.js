@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/EventHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/commands/CommandSelectSkill.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('CommandSelectSkill', function() {
   function createGame(skillReturn = true, actionReturn = true) {

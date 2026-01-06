@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/game/SkillTypes.js';
 import '../js/lemmings/SpriteTypes.js';
@@ -29,7 +29,26 @@ class FakeMasks {
   }
 }
 
-globalThis.lemmings = { game: { showDebug: false } };
+const expectSpritePair = (sys, spriteType) => {
+  expect(sys.sprites.get('left').label)
+    .to.equal(`anim-${spriteType}-false`);
+  expect(sys.sprites.get('right').label)
+    .to.equal(`anim-${spriteType}-true`);
+};
+
+const expectSpriteSingle = (sys, spriteType) => {
+  expect(sys.sprites.get('both').label)
+    .to.equal(`anim-${spriteType}-false`);
+};
+
+const expectMaskPair = (sys, leftType, rightType) => {
+  expect(sys.masks.get('left').label)
+    .to.equal(`mask-${leftType}`);
+  expect(sys.masks.get('right').label)
+    .to.equal(`mask-${rightType}`);
+};
+
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Skill panel action sprites', function () {
   it('retrieves animations and masks for each SkillType', function () {
@@ -61,62 +80,36 @@ describe('Skill panel action sprites', function () {
     };
 
     // CLIMBER
-    let sys = systems[Lemmings.SkillTypes.CLIMBER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.CLIMBING}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.CLIMBING}-true`);
+    const pairCases = [
+      [Lemmings.SkillTypes.CLIMBER, Lemmings.SpriteTypes.CLIMBING],
+      [Lemmings.SkillTypes.FLOATER, Lemmings.SpriteTypes.UMBRELLA],
+      [Lemmings.SkillTypes.BUILDER, Lemmings.SpriteTypes.BUILDING],
+      [Lemmings.SkillTypes.BASHER, Lemmings.SpriteTypes.BASHING],
+      [Lemmings.SkillTypes.MINER, Lemmings.SpriteTypes.MINING],
+      [Lemmings.SkillTypes.DIGGER, Lemmings.SpriteTypes.DIGGING]
+    ];
+    for (const [skill, spriteType] of pairCases) {
+      expectSpritePair(systems[skill], spriteType);
+    }
 
-    // FLOATER
-    sys = systems[Lemmings.SkillTypes.FLOATER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.UMBRELLA}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.UMBRELLA}-true`);
+    expectSpriteSingle(
+      systems[Lemmings.SkillTypes.BLOCKER],
+      Lemmings.SpriteTypes.BLOCKING
+    );
 
-    // BLOCKER (single sprite)
-    sys = systems[Lemmings.SkillTypes.BLOCKER];
-    expect(sys.sprites.get('both').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.BLOCKING}-false`);
-
-    // BUILDER
-    sys = systems[Lemmings.SkillTypes.BUILDER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.BUILDING}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.BUILDING}-true`);
-
-    // BASHER with masks
-    sys = systems[Lemmings.SkillTypes.BASHER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.BASHING}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.BASHING}-true`);
-    expect(sys.masks.get('left').label)
-      .to.equal(`mask-${Lemmings.MaskTypes.BASHING_L}`);
-    expect(sys.masks.get('right').label)
-      .to.equal(`mask-${Lemmings.MaskTypes.BASHING_R}`);
-
-    // MINER with masks
-    sys = systems[Lemmings.SkillTypes.MINER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.MINING}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.MINING}-true`);
-    expect(sys.masks.get('left').label)
-      .to.equal(`mask-${Lemmings.MaskTypes.MINING_L}`);
-    expect(sys.masks.get('right').label)
-      .to.equal(`mask-${Lemmings.MaskTypes.MINING_R}`);
-
-    // DIGGER
-    sys = systems[Lemmings.SkillTypes.DIGGER];
-    expect(sys.sprites.get('left').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.DIGGING}-false`);
-    expect(sys.sprites.get('right').label)
-      .to.equal(`anim-${Lemmings.SpriteTypes.DIGGING}-true`);
+    expectMaskPair(
+      systems[Lemmings.SkillTypes.BASHER],
+      Lemmings.MaskTypes.BASHING_L,
+      Lemmings.MaskTypes.BASHING_R
+    );
+    expectMaskPair(
+      systems[Lemmings.SkillTypes.MINER],
+      Lemmings.MaskTypes.MINING_L,
+      Lemmings.MaskTypes.MINING_R
+    );
 
     // BOMBER uses countdown masks
-    sys = systems[Lemmings.SkillTypes.BOMBER];
+    const sys = systems[Lemmings.SkillTypes.BOMBER];
     const m = ActionCountdownSystem.numberMasks.get('numbers');
     expect(m.label).to.equal(`mask-${Lemmings.MaskTypes.NUMBERS}`);
     expect(m.GetMask(2)).to.equal(`mask-${Lemmings.MaskTypes.NUMBERS}-2`);

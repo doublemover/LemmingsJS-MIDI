@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { setDependency, resetDependencies } from './helpers/lemmings.js';
+import { setDependency, resetDependencies, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameView } from '../js/game/GameView.js';
 
 describe('GameView benchReverse flags', function() {
   const originalWindow = globalThis.window;
-  const originalLemmings = globalThis.lemmings;
+  useGlobalLemmings({});
 
   beforeEach(function() {
     setDependency('GameFactory', class { constructor() {} });
@@ -14,7 +14,6 @@ describe('GameView benchReverse flags', function() {
   afterEach(function() {
     resetDependencies();
     globalThis.window = originalWindow;
-    globalThis.lemmings = originalLemmings;
   });
 
   it('honors benchReverse when it is the only bench flag', function() {

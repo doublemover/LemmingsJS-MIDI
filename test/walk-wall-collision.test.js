@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/render/SolidLayer.js';
 import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/Lemming.js';
@@ -7,7 +7,7 @@ import { Level } from '../js/level/Level.js';
 import { ActionWalkSystem } from '../js/actions/ActionWalkSystem.js';
 
 // minimal global for logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('ActionWalkSystem wall collision', function() {
   it('reverts position when walking into a wall', function() {

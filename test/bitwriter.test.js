@@ -1,9 +1,25 @@
 import assert from 'assert';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import { BitWriter } from '../js/data/BitWriter.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 // minimal global environment for logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+class MockLogHandler {
+  constructor() { this.logged = []; }
+  log(msg) { this.logged.push(msg); }
+  debug() {}
+}
+
+const withMockLogHandler = (fn) => {
+  const origHandler = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return fn();
+  } finally {
+    setDependency('LogHandler', origHandler);
+  }
+};
 
 class StubReader {
   constructor(values) {
@@ -33,44 +49,28 @@ describe('BitWriter', function () {
   });
 
   it('truncates copyRawData when length exceeds buffer', function () {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-    }
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
+    const { outData, log } = withMockLogHandler(() => {
+      const stub = new StubReader([0x01, 0x02, 0x03]);
+      const writer = new BitWriter(stub, 2);
+      writer.copyRawData(3);
+      return { outData: writer.outData, log: writer.log };
+    });
 
-    const stub = new StubReader([0x01, 0x02, 0x03]);
-    const writer = new BitWriter(stub, 2);
-    const log = writer.log;
-
-    writer.copyRawData(3);
-
-    assert.deepStrictEqual(Array.from(writer.outData), [0x02, 0x01]);
+    assert.deepStrictEqual(Array.from(outData), [0x02, 0x01]);
     assert.ok(log.logged.some(m => m.includes('out of out buffer')));
-
-    setDependency('LogHandler', origHandler);
   });
 
   it('truncates copyReferencedData when length exceeds buffer', function () {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-    }
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
+    const { outData, log } = withMockLogHandler(() => {
+      const stub = new StubReader([0xAA, 0xBB, 0x00]);
+      const writer = new BitWriter(stub, 3);
+      writer.copyRawData(2);
+      writer.copyReferencedData(3, 1); // offset=0 -> 1
+      return { outData: writer.outData, log: writer.log };
+    });
 
-    const stub = new StubReader([0xAA, 0xBB, 0x00]);
-    const writer = new BitWriter(stub, 3);
-    const log = writer.log;
-
-    writer.copyRawData(2);
-    writer.copyReferencedData(3, 1); // offset=0 -> 1
-
-    assert.deepStrictEqual(Array.from(writer.outData), [0xBB, 0xBB, 0xAA]);
+    assert.deepStrictEqual(Array.from(outData), [0xBB, 0xBB, 0xAA]);
     assert.ok(log.logged.some(m => m.includes('out of out buffer')));
-
-    setDependency('LogHandler', origHandler);
   });
 
   it('validates constructor arguments', function () {
@@ -93,27 +93,24 @@ describe('BitWriter', function () {
   });
 
   it('handles out-of-range referenced copy', function () {
-    class MockLogHandler {
-      constructor() { this.logged = []; }
-      log(msg) { this.logged.push(msg); }
-    }
-    const origHandler = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
+    const { outData, outPos, log, before, posBefore } = withMockLogHandler(() => {
+      const stub = new StubReader([0xaa, 0xbb, 3]);
+      const writer = new BitWriter(stub, 3);
+      writer.copyRawData(2);
+      const before = Array.from(writer.outData);
+      const posBefore = writer.outPos;
+      writer.copyReferencedData(1, 2); // offset=3 + 1 = 4 -> out of range
+      return {
+        outData: writer.outData,
+        outPos: writer.outPos,
+        log: writer.log,
+        before,
+        posBefore
+      };
+    });
 
-    const stub = new StubReader([0xaa, 0xbb, 3]);
-    const writer = new BitWriter(stub, 3);
-    const log = writer.log;
-
-    writer.copyRawData(2);
-    const before = Array.from(writer.outData);
-    const posBefore = writer.outPos;
-
-    writer.copyReferencedData(1, 2); // offset=3 + 1 = 4 -> out of range
-
-    assert.deepStrictEqual(Array.from(writer.outData), before);
-    assert.strictEqual(writer.outPos, posBefore);
+    assert.deepStrictEqual(Array.from(outData), before);
+    assert.strictEqual(outPos, posBefore);
     assert.ok(log.logged.some(m => m.includes('offset out of range')));
-
-    setDependency('LogHandler', origHandler);
   });
 });

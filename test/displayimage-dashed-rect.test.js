@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { DisplayImage } from '../js/render/DisplayImage.js';
 
 class SimpleImageData {
@@ -23,13 +24,7 @@ const color32 = (r, g, b) => (
 );
 
 describe('DisplayImage dashed/marching rectangles', function () {
-  beforeEach(function () {
-    globalThis.lemmings = { game: { showDebug: false } };
-  });
-
-  afterEach(function () {
-    delete globalThis.lemmings;
-  });
+  useGlobalLemmings({ game: { showDebug: false } });
 
   it('drawDashedRect uses RGB signature to draw expected pixels', function () {
     const stage = new MockStage();

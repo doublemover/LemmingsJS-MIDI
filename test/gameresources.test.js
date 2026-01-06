@@ -1,10 +1,10 @@
 import assert from 'assert';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import { GameResources } from '../js/game/GameResources.js';
 import { NodeFileProvider } from '../tools/NodeFileProvider.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('GameResources', function () {
   let origFileContainer;

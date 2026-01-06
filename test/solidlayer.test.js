@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { SolidLayer } from '../js/render/SolidLayer.js';
 import { Mask } from '../js/render/Mask.js';
 
-globalThis.lemmings = Lemmings;
+useGlobalLemmings(Lemmings);
 
 describe('SolidLayer', function() {
   it('updates mask when setting and clearing ground', function() {

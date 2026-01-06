@@ -1,23 +1,51 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
+
+class FileProviderStub {
+  constructor(root) { this.root = root; }
+  loadString() { return Promise.resolve('[]'); }
+}
+
+const makeConfigReaderStub = (getConfig) => class ConfigReaderStub {
+  constructor() { this.calls = []; }
+  getConfig(gt) {
+    this.calls.push(gt);
+    return Promise.resolve(getConfig(gt));
+  }
+};
+
+const applyDeps = (overrides) => {
+  const originals = {};
+  for (const [key, value] of Object.entries(overrides)) {
+    originals[key] = Lemmings[key];
+    setDependency(key, value);
+  }
+  return () => {
+    for (const [key, value] of Object.entries(originals)) {
+      setDependency(key, value);
+    }
+  };
+};
+
+const withPerfStub = async (perf, lemmings, fn) => {
+  const origPerf = globalThis.performance;
+  globalThis.performance = perf;
+  const restoreLemmings = setGlobalLemmings(lemmings);
+  try {
+    return await fn();
+  } finally {
+    globalThis.performance = origPerf;
+    restoreLemmings();
+  }
+};
 
 describe('GameFactory resource helpers', function () {
   it('loads config and resources and builds Game', async function () {
     const mockConfig = { path: 'data', level: {} };
-
-    class FileProviderStub {
-      constructor(root) { this.root = root; }
-      loadString() { return Promise.resolve('[]'); }
-    }
-
-    class ConfigReaderStub {
-      constructor() { this.calls = []; }
-      getConfig(gt) { this.calls.push(gt); return Promise.resolve(mockConfig); }
-    }
-
+    const ConfigReaderStub = makeConfigReaderStub(() => mockConfig);
     class GameResourcesStub {
       constructor(fp, cfg) { this.fp = fp; this.cfg = cfg; }
     }
@@ -25,53 +53,35 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub,
+      GameResources: GameResourcesStub,
+      Game: GameStub
+    });
+    try {
+      const gf = new GameFactory('root');
 
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader,
-      GameResources: Lemmings.GameResources,
-      Game: Lemmings.Game
-    };
+      const cfg = await gf.getConfig(1);
+      expect(cfg).to.equal(mockConfig);
 
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-    setDependency('GameResources', GameResourcesStub);
-    setDependency('Game', GameStub);
+      const resources = await gf.getGameResources(2);
+      expect(resources).to.be.instanceOf(GameResourcesStub);
+      expect(resources.cfg).to.equal(mockConfig);
+      expect(resources.fp).to.be.instanceOf(FileProviderStub);
+      expect(gf.configReader.calls).to.eql([1, 2]);
 
-    const gf = new GameFactory('root');
-
-    const cfg = await gf.getConfig(1);
-    expect(cfg).to.equal(mockConfig);
-
-    const resources = await gf.getGameResources(2);
-    expect(resources).to.be.instanceOf(GameResourcesStub);
-    expect(resources.cfg).to.equal(mockConfig);
-    expect(resources.fp).to.be.instanceOf(FileProviderStub);
-    expect(gf.configReader.calls).to.eql([1, 2]);
-
-    const game = await gf.getGame(3, resources);
-    expect(game).to.be.instanceOf(GameStub);
-    expect(game.res).to.equal(resources);
-
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
-    setDependency('GameResources', orig.GameResources);
-    setDependency('Game', orig.Game);
+      const game = await gf.getGame(3, resources);
+      expect(game).to.be.instanceOf(GameStub);
+      expect(game.res).to.equal(resources);
+    } finally {
+      restore();
+    }
   });
 
   it('creates Game when resources are not provided', async function () {
     const mockConfig = { path: 'data', level: {} };
-
-    class FileProviderStub {
-      constructor(root) { this.root = root; }
-      loadString() { return Promise.resolve('[]'); }
-    }
-
-    class ConfigReaderStub {
-      constructor() { this.calls = []; }
-      getConfig(gt) { this.calls.push(gt); return Promise.resolve(mockConfig); }
-    }
-
+    const ConfigReaderStub = makeConfigReaderStub(() => mockConfig);
     class GameResourcesStub {
       constructor(fp, cfg) { this.fp = fp; this.cfg = cfg; }
     }
@@ -79,144 +89,91 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub,
+      GameResources: GameResourcesStub,
+      Game: GameStub
+    });
+    try {
+      const gf = new GameFactory('root');
 
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader,
-      GameResources: Lemmings.GameResources,
-      Game: Lemmings.Game
-    };
-
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-    setDependency('GameResources', GameResourcesStub);
-    setDependency('Game', GameStub);
-
-    const gf = new GameFactory('root');
-
-    const game = await gf.getGame(5);
-    expect(game).to.be.instanceOf(GameStub);
-    expect(game.res).to.be.instanceOf(GameResourcesStub);
-    expect(game.res.cfg).to.equal(mockConfig);
-    expect(gf.configReader.calls).to.eql([5]);
-
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
-    setDependency('GameResources', orig.GameResources);
-    setDependency('Game', orig.Game);
+      const game = await gf.getGame(5);
+      expect(game).to.be.instanceOf(GameStub);
+      expect(game.res).to.be.instanceOf(GameResourcesStub);
+      expect(game.res.cfg).to.equal(mockConfig);
+      expect(gf.configReader.calls).to.eql([5]);
+    } finally {
+      restore();
+    }
   });
 
   it('rejects when config is missing', async function () {
-    class FileProviderStub {
-      constructor(root) { this.root = root; }
-      loadString() { return Promise.resolve('[]'); }
-    }
-
-    class ConfigReaderStub {
-      getConfig() { return Promise.resolve(null); }
-    }
-
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader
-    };
-
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-
-    const gf = new GameFactory('root');
-
-    let rejected = false;
+    const ConfigReaderStub = makeConfigReaderStub(() => null);
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub
+    });
     try {
-      await gf.getGameResources(1);
-    } catch (e) {
-      rejected = true;
-    }
-    expect(rejected).to.be.true;
+      const gf = new GameFactory('root');
 
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
+      let rejected = false;
+      try {
+        await gf.getGameResources(1);
+      } catch (e) {
+        rejected = true;
+      }
+      expect(rejected).to.be.true;
+    } finally {
+      restore();
+    }
   });
 
   it('records performance measures when enabled', async function () {
     const measures = [];
-    const origPerf = globalThis.performance;
-    const origLemmings = globalThis.lemmings;
-    globalThis.performance = { now: () => 1, measure: (name) => measures.push(name) };
-    globalThis.lemmings = { performanceAPI: true, game: { showDebug: false } };
-
-    class FileProviderStub {
-      constructor(root) { this.root = root; }
-      loadString() { return Promise.resolve('[]'); }
-    }
-    class ConfigReaderStub {
-      getConfig() { return Promise.resolve({ path: 'data', level: {} }); }
-    }
+    const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader,
-      GameResources: Lemmings.GameResources,
-      Game: Lemmings.Game
-    };
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-    setDependency('GameResources', GameResourcesStub);
-    setDependency('Game', GameStub);
-
-    const gf = new GameFactory('root');
-    await gf.getGameResources(1);
-    await gf.getGame(1, new GameResourcesStub());
-
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
-    setDependency('GameResources', orig.GameResources);
-    setDependency('Game', orig.Game);
-    globalThis.performance = origPerf;
-    globalThis.lemmings = origLemmings;
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub,
+      GameResources: GameResourcesStub,
+      Game: GameStub
+    });
+    await withPerfStub(
+      { now: () => 1, measure: (name) => measures.push(name) },
+      { performanceAPI: true, game: { showDebug: false } },
+      async () => {
+        const gf = new GameFactory('root');
+        await gf.getGameResources(1);
+        await gf.getGame(1, new GameResourcesStub());
+      }
+    );
+    restore();
 
     expect(measures).to.include('GameFactory getGameResources');
     expect(measures).to.include('GameFactory getGame');
   });
 
   it('swallows performance measurement errors', async function () {
-    const origPerf = globalThis.performance;
-    const origLemmings = globalThis.lemmings;
-    globalThis.performance = { now: () => 1, measure: () => { throw new Error('boom'); } };
-    globalThis.lemmings = { performanceAPI: true, game: { showDebug: false } };
-
-    class FileProviderStub {
-      constructor(root) { this.root = root; }
-      loadString() { return Promise.resolve('[]'); }
-    }
-    class ConfigReaderStub {
-      getConfig() { return Promise.resolve({ path: 'data', level: {} }); }
-    }
+    const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-
-    const orig = {
-      FileProvider: Lemmings.FileProvider,
-      ConfigReader: Lemmings.ConfigReader,
-      GameResources: Lemmings.GameResources,
-      Game: Lemmings.Game
-    };
-    setDependency('FileProvider', FileProviderStub);
-    setDependency('ConfigReader', ConfigReaderStub);
-    setDependency('GameResources', GameResourcesStub);
-    setDependency('Game', GameStub);
-
-    const gf = new GameFactory('root');
-    await gf.getGameResources(1);
-    await gf.getGame(1, new GameResourcesStub());
-
-    setDependency('FileProvider', orig.FileProvider);
-    setDependency('ConfigReader', orig.ConfigReader);
-    setDependency('GameResources', orig.GameResources);
-    setDependency('Game', orig.Game);
-    globalThis.performance = origPerf;
-    globalThis.lemmings = origLemmings;
+    const restore = applyDeps({
+      FileProvider: FileProviderStub,
+      ConfigReader: ConfigReaderStub,
+      GameResources: GameResourcesStub,
+      Game: GameStub
+    });
+    await withPerfStub(
+      { now: () => 1, measure: () => { throw new Error('boom'); } },
+      { performanceAPI: true, game: { showDebug: false } },
+      async () => {
+        const gf = new GameFactory('root');
+        await gf.getGameResources(1);
+        await gf.getGame(1, new GameResourcesStub());
+      }
+    );
+    restore();
   });
 });

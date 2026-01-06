@@ -1,18 +1,27 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency } from './helpers/lemmings.js';
+import { Lemmings, setDependency, useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { BitReader } from '../js/data/BitReader.js';
 import { BitWriter } from '../js/data/BitWriter.js';
 import { PackFilePart } from '../js/data/PackFilePart.js';
 import { UnpackFilePart } from '../js/data/UnpackFilePart.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 class MockLogHandler {
   constructor() { this.logged = []; this.debugged = []; }
   log(msg) { this.logged.push(msg); }
   debug(msg) { this.debugged.push(msg); }
 }
+const withMockLogHandler = (fn) => {
+  const origLog = Lemmings.LogHandler;
+  setDependency('LogHandler', MockLogHandler);
+  try {
+    return fn();
+  } finally {
+    setDependency('LogHandler', origLog);
+  }
+};
 
 describe('UnpackFilePart', function () {
   function roundTrip(data) {
@@ -40,73 +49,73 @@ describe('UnpackFilePart', function () {
   });
 
   it('logs a warning on checksum mismatch', function () {
-    const origLog = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const arr = Uint8Array.from([9, 8, 7]);
-    const packed = PackFilePart.pack(arr);
-    const br = new BinaryReader(packed.byteArray);
-    const part = new UnpackFilePart(br);
-    part.offset = 0;
-    part.compressedSize = br.length;
-    part.initialBufferLen = packed.initialBits;
-    part.checksum = packed.checksum ^ 0xFF;
-    part.decompressedSize = arr.length;
-    part.unpack();
-    setDependency('LogHandler', origLog);
-    expect(part.log.logged.some(m => m.includes('Checksum mismatch'))).to.be.true;
+    const logs = withMockLogHandler(() => {
+      const arr = Uint8Array.from([9, 8, 7]);
+      const packed = PackFilePart.pack(arr);
+      const br = new BinaryReader(packed.byteArray);
+      const part = new UnpackFilePart(br);
+      part.offset = 0;
+      part.compressedSize = br.length;
+      part.initialBufferLen = packed.initialBits;
+      part.checksum = packed.checksum ^ 0xFF;
+      part.decompressedSize = arr.length;
+      part.unpack();
+      return part.log.logged;
+    });
+    expect(logs.some(m => m.includes('Checksum mismatch'))).to.be.true;
   });
 
   it('returns a new reader when unpack() is called twice with bad checksum', function () {
-    const origLog = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const arr = Uint8Array.from([3, 2, 1]);
-    const packed = PackFilePart.pack(arr);
-    const br = new BinaryReader(packed.byteArray);
-    const part = new UnpackFilePart(br);
-    part.offset = 0;
-    part.compressedSize = br.length;
-    part.initialBufferLen = packed.initialBits;
-    part.checksum = packed.checksum ^ 1;
-    part.decompressedSize = arr.length;
-    const first = part.unpack();
-    const second = part.unpack();
-    setDependency('LogHandler', origLog);
+    const { first, second, logs } = withMockLogHandler(() => {
+      const arr = Uint8Array.from([3, 2, 1]);
+      const packed = PackFilePart.pack(arr);
+      const br = new BinaryReader(packed.byteArray);
+      const part = new UnpackFilePart(br);
+      part.offset = 0;
+      part.compressedSize = br.length;
+      part.initialBufferLen = packed.initialBits;
+      part.checksum = packed.checksum ^ 1;
+      part.decompressedSize = arr.length;
+      const first = part.unpack();
+      const second = part.unpack();
+      return { first, second, logs: part.log.logged };
+    });
     expect(first).to.not.equal(second);
-    expect(part.log.logged.some(m => m.includes('Checksum mismatch'))).to.be.true;
+    expect(logs.some(m => m.includes('Checksum mismatch'))).to.be.true;
   });
 
   it('logs debug on checksum match', function () {
-    const origLog = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const arr = Uint8Array.from([4, 5, 6]);
-    const packed = PackFilePart.pack(arr);
-    const br = new BinaryReader(packed.byteArray);
-    const part = new UnpackFilePart(br);
-    part.offset = 0;
-    part.compressedSize = br.length;
-    part.initialBufferLen = packed.initialBits;
-    part.checksum = packed.checksum;
-    part.decompressedSize = arr.length;
-    part.unpack();
-    setDependency('LogHandler', origLog);
-    expect(part.log.debugged.some(m => m.includes('done!'))).to.be.true;
+    const debugged = withMockLogHandler(() => {
+      const arr = Uint8Array.from([4, 5, 6]);
+      const packed = PackFilePart.pack(arr);
+      const br = new BinaryReader(packed.byteArray);
+      const part = new UnpackFilePart(br);
+      part.offset = 0;
+      part.compressedSize = br.length;
+      part.initialBufferLen = packed.initialBits;
+      part.checksum = packed.checksum;
+      part.decompressedSize = arr.length;
+      part.unpack();
+      return part.log.debugged;
+    });
+    expect(debugged.some(m => m.includes('done!'))).to.be.true;
   });
 
   it('skips validation when checksum is zero', function () {
-    const origLog = Lemmings.LogHandler;
-    setDependency('LogHandler', MockLogHandler);
-    const arr = Uint8Array.from([4, 5, 6]);
-    const packed = PackFilePart.pack(arr);
-    const br = new BinaryReader(packed.byteArray);
-    const part = new UnpackFilePart(br);
-    part.offset = 0;
-    part.compressedSize = br.length;
-    part.initialBufferLen = packed.initialBits;
-    part.checksum = 0;
-    part.decompressedSize = arr.length;
-    part.unpack();
-    setDependency('LogHandler', origLog);
-    expect(part.log.debugged.some(m => m.includes('skipping checksum'))).to.be.true;
+    const debugged = withMockLogHandler(() => {
+      const arr = Uint8Array.from([4, 5, 6]);
+      const packed = PackFilePart.pack(arr);
+      const br = new BinaryReader(packed.byteArray);
+      const part = new UnpackFilePart(br);
+      part.offset = 0;
+      part.compressedSize = br.length;
+      part.initialBufferLen = packed.initialBits;
+      part.checksum = 0;
+      part.decompressedSize = arr.length;
+      part.unpack();
+      return part.log.debugged;
+    });
+    expect(debugged.some(m => m.includes('skipping checksum'))).to.be.true;
   });
 
   it('exposes metadata getters', function () {

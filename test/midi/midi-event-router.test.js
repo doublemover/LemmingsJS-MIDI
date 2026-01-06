@@ -1,7 +1,10 @@
 import { expect } from 'chai';
+import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
+
+const defaultSpec = () => ({ note: 60, velocity: 64, durationTicks: 1 });
 
 const makeSchedulerStub = (sent) => {
   const planned = [];
@@ -71,18 +74,63 @@ const makeSchedulerStub = (sent) => {
   };
 };
 
+const makeRateSnapshot = (next = {}, past = {}, maxBytesPerSecond = 1000) => ({
+  next: { count: 0, bytes: 0, bySfx: new Map(), ...next },
+  past: { count: 0, bytes: 0, bySfx: new Map(), ...past },
+  maxBytesPerSecond
+});
+
+const makeRateScheduler = (snapshot, usageShare = []) => ({
+  getRateSnapshot(now = 0) {
+    return typeof snapshot === 'function' ? snapshot(now) : snapshot;
+  },
+  getUsageShare() { return usageShare; }
+});
+
+const makeRateRouter = (config, snapshot, usageShare = []) => (
+  makeRouter(config, { scheduler: makeRateScheduler(snapshot, usageShare) })
+);
+
+const makePlan = ({ timeMs = 0, on = {}, off = {} } = {}) => ({
+  on: { timeMs, count: 0, bytes: 0, ...on },
+  off: { timeMs, count: 0, bytes: 0, ...off }
+});
+
+const makeRouter = (config = {}, options = {}) => {
+  const sent = options.sent ?? [];
+  const mapping = config instanceof MidiMapping ? config : new MidiMapping(config);
+  const router = new MidiEventRouter(mapping);
+  router.scheduler = options.scheduler ?? makeSchedulerStub(sent);
+  if (options.output === false) router.scheduler.output = null;
+  if (options.mapEvent) {
+    router.mapping.mapEvent = options.mapEvent;
+  } else if (options.defaultMapEvent) {
+    router.mapping.mapEvent = () => defaultSpec();
+  }
+  return { router, sent, mapping };
+};
+
+const makeArpRouter = (arp, overrides = {}, notes = [60, 64, 67]) => (
+  makeRouter({ limits: { maxEventsPerSecond: 1000 }, ...overrides }, {
+    mapEvent: () => ({
+      notes,
+      note: notes[0],
+      velocity: 64,
+      durationTicks: 1,
+      arp
+    })
+  })
+);
+
 describe('MidiEventRouter', function() {
   it('computes density and tick duration', function() {
-    const mapping = new MidiMapping({ density: { windowTicks: 10 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-
     const densities = [];
-    router.mapping.mapEvent = (event, context, density) => {
+    const { router, sent } = makeRouter({ density: { windowTicks: 10 } }, {
+      mapEvent: (event, context, density) => {
       densities.push(density);
-      return { note: 60, velocity: 64, durationTicks: 1 };
-    };
+      return defaultSpec();
+      }
+    });
 
     let now = 0;
     router._nowMs = () => now;
@@ -96,10 +144,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('passes reverse flags to the scheduler', function() {
-    const router = new MidiEventRouter(new MidiMapping());
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    const { router, sent } = makeRouter(new MidiMapping(), { defaultMapEvent: true });
 
     router._onEvent({ sfxId: 1, tick: 1, reverse: true });
 
@@ -107,31 +152,38 @@ describe('MidiEventRouter', function() {
   });
 
   it('ignores events when disabled or output is missing', function() {
-    const disabled = new MidiEventRouter(new MidiMapping({ enabled: false }));
-    const sent = [];
-    disabled.scheduler = makeSchedulerStub(sent);
-    disabled.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
-    disabled._onEvent({ sfxId: 1, tick: 1 });
-    expect(sent.length).to.equal(0);
+    const cases = [
+      {
+        name: 'disabled mapping',
+        config: { enabled: false },
+        output: true,
+        events: [{ sfxId: 1, tick: 1 }]
+      },
+      {
+        name: 'missing output',
+        config: { enabled: true },
+        output: false,
+        events: [{ sfxId: 1, tick: 1 }, {}]
+      }
+    ];
 
-    const noOutput = new MidiEventRouter(new MidiMapping({ enabled: true }));
-    noOutput.scheduler = makeSchedulerStub(sent);
-    noOutput.scheduler.output = null;
-    noOutput.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
-    noOutput._onEvent({ sfxId: 1, tick: 1 });
-    noOutput._onEvent({});
-    expect(sent.length).to.equal(0);
+    for (const testCase of cases) {
+      const { router, sent } = makeRouter(testCase.config, {
+        defaultMapEvent: true,
+        output: testCase.output
+      });
+      for (const event of testCase.events) {
+        router._onEvent(event);
+      }
+      expect(sent.length, testCase.name).to.equal(0);
+    }
   });
 
   it('schedules ahead when event time is behind', function() {
-    const mapping = new MidiMapping({
+    const { router, sent } = makeRouter({
       timing: { scheduleAheadMs: 50 },
       limits: { maxEventsPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    }, { defaultMapEvent: true });
     router._nowMs = () => 1000;
     router._resolveScheduleBase = () => 900;
 
@@ -141,13 +193,9 @@ describe('MidiEventRouter', function() {
   });
 
   it('enforces per-tick and per-second limits', function() {
-    const mapping = new MidiMapping({
+    const { router, sent } = makeRouter({
       limits: { maxEventsPerTick: 1, maxEventsPerSecond: 2 }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    }, { defaultMapEvent: true });
 
     let now = 0;
     router._nowMs = () => now;
@@ -165,73 +213,43 @@ describe('MidiEventRouter', function() {
   });
 
   it('rejects events when higher-priority bytes saturate the window', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 9 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 0, bytes: 9, priority: 2 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 11, bytes: 9, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 9
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = {
-      on: { timeMs: 0, count: 0, bytes: 0 },
-      off: { timeMs: 0, count: 0, bytes: 0 }
-    };
+    const snapshot = makeRateSnapshot(
+      { count: 11, bytes: 9, bySfx },
+      { count: 0, bytes: 0 },
+      9
+    );
+    const { router } = makeRateRouter({
+      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 9 }
+    }, snapshot);
+    const plan = makePlan();
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('byte-limit');
   });
 
   it('allows events when spacing and budgets are available', function() {
-    const mapping = new MidiMapping({
+    const snapshot = makeRateSnapshot(
+      { count: 10, bytes: 100 },
+      { count: 0, bytes: 0 },
+      1000
+    );
+    const { router } = makeRateRouter({
       limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 10, bytes: 100, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = {
-      on: { timeMs: 0, count: 1, bytes: 3 },
-      off: { timeMs: 0, count: 0, bytes: 0 }
-    };
+    }, snapshot);
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(true);
   });
 
   it('exposes the scheduler rate snapshot', function() {
-    const mapping = new MidiMapping();
-    const router = new MidiEventRouter(mapping);
     const snapshot = { next: { count: 0, bytes: 0, bySfx: new Map() } };
-    router.scheduler = { getRateSnapshot: () => snapshot };
+    const { router } = makeRouter({}, { scheduler: makeRateScheduler(snapshot) });
     expect(router.getRateSnapshot()).to.equal(snapshot);
   });
 
   it('steps through arpeggio notes across events', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64, 67],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'up', length: 3 }
-    });
+    const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
@@ -241,17 +259,11 @@ describe('MidiEventRouter', function() {
   });
 
   it('handles single-note arps without advancing', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'up', length: 1 }
-    });
+    const { router, sent } = makeArpRouter(
+      { enabled: true, mode: 'up', length: 1 },
+      {},
+      [60]
+    );
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
@@ -262,20 +274,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('handles downward arps with independent trigger keys', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 1000 },
-      triggers: { '5': { arp: { independent: true } } }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64, 67],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'down', length: 3 }
-    });
+    const { router, sent } = makeArpRouter(
+      { enabled: true, mode: 'down', length: 3 },
+      { triggers: { '5': { arp: { independent: true } } } }
+    );
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, triggerType: 5, objectId: 100 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50, triggerType: 5, objectId: 100 });
@@ -287,17 +289,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('reverses direction for updown arps at bounds', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64, 67],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'updown', length: 3 }
-    });
+    const { router, sent } = makeArpRouter({ enabled: true, mode: 'updown', length: 3 });
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
@@ -308,17 +300,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('resets arpeggio state when the mode changes', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64, 67],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'up', length: 3 }
-    });
+    const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router.mapping.mapEvent = () => ({
@@ -334,14 +316,14 @@ describe('MidiEventRouter', function() {
   });
 
   it('resets scheduling when speed changes', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
     const sent = [];
     const scheduler = makeSchedulerStub(sent);
     let allOffCalls = 0;
     scheduler.allNotesOff = () => { allOffCalls += 1; };
-    router.scheduler = scheduler;
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    const { router } = makeRouter({ limits: { maxEventsPerSecond: 1000 } }, {
+      scheduler,
+      mapEvent: () => defaultSpec()
+    });
     router._nowMs = () => 1000;
 
     router._onEvent({ sfxId: 1, tick: 1, timeMs: 0, frameMs: 60, speedFactor: 1 });
@@ -351,7 +333,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('scales repeat intensity within a beat window', function() {
-    const mapping = new MidiMapping({
+    const { router, sent } = makeRouter({
       repeat: {
         maxRepeats: 2,
         windowBeats: 4,
@@ -361,11 +343,7 @@ describe('MidiEventRouter', function() {
       },
       timing: { bpmBase: 120 },
       limits: { maxEventsPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 40, durationTicks: 2 });
+    }, { mapEvent: () => ({ note: 60, velocity: 40, durationTicks: 2 }) });
 
     router._nowMs = () => 1000;
     router._onEvent({ sfxId: 1, tick: 1 });
@@ -377,7 +355,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('applies repeat targets when amount is configured', function() {
-    const mapping = new MidiMapping({
+    const { router, sent } = makeRouter({
       repeat: {
         maxRepeats: 4,
         windowBeats: 1,
@@ -386,11 +364,7 @@ describe('MidiEventRouter', function() {
       },
       timing: { bpmBase: 120 },
       limits: { maxEventsPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 40, durationTicks: 1 });
+    }, { mapEvent: () => ({ note: 60, velocity: 40, durationTicks: 1 }) });
 
     let now = 0;
     router._nowMs = () => now;
@@ -403,30 +377,24 @@ describe('MidiEventRouter', function() {
   });
 
   it('drops events when byte limits are exceeded', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 1000, maxBytesPerSecond: 3 }
-    });
-    const router = new MidiEventRouter(mapping);
     const sent = [];
-    router.scheduler = {
+    const baseSnapshot = makeRateSnapshot({ count: 1, bytes: 3 }, { count: 0, bytes: 0 }, 3);
+    const usageShare = [{ sfxId: 99, count: 1, bytes: 3, priority: 1, percentCount: 1, percentBytes: 1 }];
+    const scheduler = {
+      ...makeRateScheduler((now = 0) => ({ ...baseSnapshot, now }), usageShare),
       output: {},
       tickMs: 60,
       setTickMs() {},
       estimateMessages() { return { messages: 1, bytes: 3 }; },
-      getRateSnapshot(now = 0) {
-        return {
-          now,
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          next: { count: 1, bytes: 3, bySfx: new Map() },
-          maxBytesPerSecond: 3
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 99, count: 1, bytes: 3, priority: 1, percentCount: 1, percentBytes: 1 }];
-      },
       sendNote() { sent.push(true); }
     };
-    router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 1 });
+    const { router } = makeRouter(
+      { limits: { maxEventsPerSecond: 1000, maxBytesPerSecond: 3 } },
+      {
+        scheduler,
+        mapEvent: () => ({ note: 60, velocity: 64, durationTicks: 1 })
+      }
+    );
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
 
@@ -435,7 +403,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('attaches and detaches from sound buses', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const busA = { onEvent: new EventHandler() };
     const busB = { onEvent: new EventHandler() };
     router.attach(busA);
@@ -448,9 +416,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('accepts plain mapping configs and resets context defaults', function() {
-    const router = new MidiEventRouter();
     let configured = null;
-    router.scheduler = { setConfig(cfg) { configured = cfg; } };
+    const { router } = makeRouter({}, {
+      scheduler: { setConfig(cfg) { configured = cfg; } }
+    });
     router.setMapping({ timing: { bpmBase: 90 } });
     expect(router.mapping).to.be.instanceOf(MidiMapping);
     expect(configured).to.equal(router.mapping.config);
@@ -463,16 +432,16 @@ describe('MidiEventRouter', function() {
 
   it('keeps MidiMapping instances when setting mapping', function() {
     const mapping = new MidiMapping({ timing: { bpmBase: 100 } });
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.setMapping(mapping);
     expect(router.mapping).to.equal(mapping);
   });
 
   it('handles repeat factor and repeat targets directly', function() {
-    const router = new MidiEventRouter(new MidiMapping({
+    const { router } = makeRouter({
       noteRange: { min: 0, max: 127 },
       position: { timbreRange: { min: 0, max: 100 }, panRange: { min: -50, max: 50 } }
-    }));
+    });
     expect(router._getRepeatFactor('x', 10, { enabled: false }, 120)).to.equal(0);
     expect(router._getRepeatFactor('x', Number.NaN, { maxRepeats: 1, windowBeats: 1 }, 120)).to.equal(0);
 
@@ -505,69 +474,44 @@ describe('MidiEventRouter', function() {
   });
 
   it('reports priority saturation', function() {
-    const mapping = new MidiMapping({
+    const bySfx = new Map([[2, { count: 1000, bytes: 10, priority: 2 }]]);
+    const snapshot = makeRateSnapshot({ count: 1000, bytes: 10, bySfx }, {}, 1000);
+    const usageShare = [
+      { sfxId: 2, count: 1000, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }
+    ];
+    const { router } = makeRateRouter({
       timing: { bpmBase: 60 },
       limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 2000, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: {
-            count: 1000,
-            bytes: 10,
-            bySfx: new Map([[2, { count: 1000, bytes: 10, priority: 2 }]])
-          },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 1000, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
-      }
-    };
-    const plan = { on: { timeMs: 2000, count: 0, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    }, snapshot, usageShare);
+    const plan = makePlan({ timeMs: 2000 });
     const saturated = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(saturated).to.equal(false);
     expect(router.getRateReport().reason).to.equal('priority-saturated');
   });
 
   it('defaults priorities when missing', function() {
-    const mapping = new MidiMapping({
+    const snapshot = makeRateSnapshot(
+      { count: 6, bytes: 0, bySfx: new Map([[2, { count: 1, bytes: 0 }]]) },
+      {},
+      1000
+    );
+    const usageShare = [{ sfxId: 2, count: 1, bytes: 0, percentCount: 1, percentBytes: 0 }];
+    const { router } = makeRateRouter({
       timing: { bpmBase: 60 },
       limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 6, bytes: 0, bySfx: new Map([[2, { count: 1, bytes: 0 }]]) },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 1, bytes: 0, percentCount: 1, percentBytes: 0 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    }, snapshot, usageShare);
+    const plan = makePlan({ on: { count: 1 }, off: { timeMs: 2000 } });
     const ok = router._shouldSend({ sfxId: 1 }, {}, plan, 0);
     expect(ok).to.equal(true);
   });
 
   it('reports spacing limits when events arrive too quickly', function() {
-    const mapping = new MidiMapping({
+    const snapshot = makeRateSnapshot({ count: 10, bytes: 0 }, {}, 1000);
+    const { router } = makeRateRouter({
       timing: { bpmBase: 60 },
       limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return { next: { count: 10, bytes: 0, bySfx: new Map() }, maxBytesPerSecond: 1000 };
-      },
-      getUsageShare() {
-        return [];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    }, snapshot);
+    const plan = makePlan({ on: { count: 1 }, off: { timeMs: 2000 } });
     router._lastAcceptedBySfx.set(1, 0);
     const spacing = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
     expect(spacing).to.equal(false);
@@ -575,89 +519,58 @@ describe('MidiEventRouter', function() {
   });
 
   it('accounts for byte-heavy groups in share overage', function() {
-    const mapping = new MidiMapping({
+    const bySfx = new Map([
+      [2, { count: 1, bytes: 90, priority: 2 }],
+      [1, { count: 1, bytes: 20, priority: 1 }]
+    ]);
+    const snapshot = makeRateSnapshot({ count: 20, bytes: 0, bySfx }, {}, 100);
+    const usageShare = [{ sfxId: 1, count: 1, bytes: 20, priority: 1, percentCount: 1, percentBytes: 1 }];
+    const { router } = makeRateRouter({
       timing: { bpmBase: 120 },
       limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: {
-            count: 20,
-            bytes: 0,
-            bySfx: new Map([
-              [2, { count: 1, bytes: 90, priority: 2 }],
-              [1, { count: 1, bytes: 20, priority: 1 }]
-            ])
-          },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 1, count: 1, bytes: 20, priority: 1, percentCount: 1, percentBytes: 1 }];
-      }
-    };
-    const plan = { on: { timeMs: 2000, count: 0, bytes: 0 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    }, snapshot, usageShare);
+    const plan = makePlan({ timeMs: 2000 });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 1000 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('share-throttle');
   });
 
   it('resets arp indices when out of range', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64, 67],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'up', length: 3 }
-    });
+    const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
     router._arpStateBySfx.set('sfx:1', { index: 99, dir: 1, mode: 'up', length: 3, seqKey: '60,64,67' });
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     expect(sent[0].note).to.equal(60);
   });
 
   it('defaults arp length to the note list', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 10000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({
-      notes: [60, 64],
-      note: 60,
-      velocity: 64,
-      durationTicks: 1,
-      arp: { enabled: true, mode: 'down' }
-    });
+    const { router, sent } = makeArpRouter(
+      { enabled: true, mode: 'down' },
+      { limits: { maxEventsPerSecond: 10000 } },
+      [60, 64]
+    );
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     expect(sent[0].note).to.equal(64);
   });
 
   it('builds context from game state and stage when available', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
+    const { router, sent } = makeRouter({ limits: { maxEventsPerSecond: 1000 } }, {
+      mapEvent: (event, context) => {
+        expect(context.levelWidth).to.equal(200);
+        expect(context.levelHeight).to.equal(100);
+        expect(context.viewRect.w).to.equal(200);
+        return { note: 60, velocity: 64, durationTicks: 0 };
+      }
+    });
     router.context = {
       game: { level: { width: 200, height: 100 } },
       stage: { getGameViewRect() { return { x: 0, w: 200 }; } }
-    };
-    router.mapping.mapEvent = (event, context) => {
-      expect(context.levelWidth).to.equal(200);
-      expect(context.levelHeight).to.equal(100);
-      expect(context.viewRect.w).to.equal(200);
-      return { note: 60, velocity: 64, durationTicks: 0 };
     };
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     expect(sent.length).to.equal(1);
   });
 
   it('resolves arp keys with fallback coordinates', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const key = router._resolveArpKey(
       { triggerType: 7, sfxId: 1, x: NaN },
       { arp: { independent: true } }
@@ -667,45 +580,41 @@ describe('MidiEventRouter', function() {
 
   it('emits performance measurements when enabled', function() {
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     let measures = 0;
     globalThis.performance = { now: () => 0, measure: () => { measures += 1; } };
-    globalThis.lemmings = { performanceAPI: true };
     try {
-      const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-      const router = new MidiEventRouter(mapping);
-      const sent = [];
-      router.scheduler = makeSchedulerStub(sent);
-      router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 0 });
-      router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
-      expect(measures).to.equal(1);
+      withGlobalLemmings({ performanceAPI: true }, () => {
+        const { router } = makeRouter(
+          { limits: { maxEventsPerSecond: 1000 } },
+          { mapEvent: () => ({ note: 60, velocity: 64, durationTicks: 0 }) }
+        );
+        router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+        expect(measures).to.equal(1);
+      });
     } finally {
       globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
     }
   });
 
   it('swallows performance measurement errors', function() {
     const originalPerf = globalThis.performance;
-    const originalLemmings = globalThis.lemmings;
     globalThis.performance = { now: () => 0, measure: () => { throw new Error('boom'); } };
-    globalThis.lemmings = { performanceAPI: true };
     try {
-      const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-      const router = new MidiEventRouter(mapping);
-      const sent = [];
-      router.scheduler = makeSchedulerStub(sent);
-      router.mapping.mapEvent = () => ({ note: 60, velocity: 64, durationTicks: 0 });
-      router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
-      expect(sent.length).to.equal(1);
+      withGlobalLemmings({ performanceAPI: true }, () => {
+        const { router, sent } = makeRouter(
+          { limits: { maxEventsPerSecond: 1000 } },
+          { mapEvent: () => ({ note: 60, velocity: 64, durationTicks: 0 }) }
+        );
+        router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+        expect(sent.length).to.equal(1);
+      });
     } finally {
       globalThis.performance = originalPerf;
-      globalThis.lemmings = originalLemmings;
     }
   });
 
   it('dispose detaches and disposes scheduler', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const bus = { onEvent: new EventHandler() };
     const calls = [];
     router.scheduler = { dispose() { calls.push('dispose'); } };
@@ -716,8 +625,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('computes tick duration and density helpers', function() {
-    const mapping = new MidiMapping({ density: { windowTicks: 4 } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ density: { windowTicks: 4 } });
     router.context = { game: { getGameTimer() { return { frameTime: 30 }; } } };
     expect(router._tickMsFromEvent({ tps: 25 })).to.equal(40);
     expect(router._tickMsFromEvent({ frameMs: 10 })).to.equal(10);
@@ -730,13 +638,13 @@ describe('MidiEventRouter', function() {
   });
 
   it('resets schedule base when timing changes', function() {
-    const mapping = new MidiMapping();
-    const router = new MidiEventRouter(mapping);
     let cleared = 0;
-    router.scheduler = {
-      allNotesOff() { cleared += 1; },
-      clearQueue() { cleared += 1; }
-    };
+    const { router } = makeRouter({}, {
+      scheduler: {
+        allNotesOff() { cleared += 1; },
+        clearQueue() { cleared += 1; }
+      }
+    });
     router._nowMs = () => 1000;
 
     expect(router._resolveScheduleBase(NaN, 60, 1)).to.equal(null);
@@ -748,11 +656,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('computes priorities, bpm, and arp keys', function() {
-    const mapping = new MidiMapping({
+    const { router } = makeRouter({
       limits: { prioritySfx: [5] },
       timing: { bpmBase: 10 }
     });
-    const router = new MidiEventRouter(mapping);
     router.context = { game: { getGameTimer() { return { speedFactor: 2 }; } } };
 
     expect(router._getEventPriority({ sfxId: 5 }, {})).to.equal(2);
@@ -771,11 +678,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('computes repeat factors and applies multiple targets', function() {
-    const mapping = new MidiMapping({
+    const { router } = makeRouter({
       noteRange: { min: 0, max: 127 },
       position: { timbreRange: { min: 0, max: 127 }, panRange: { min: -127, max: 127 } }
     });
-    const router = new MidiEventRouter(mapping);
 
     const repeatCfg = { maxRepeats: 2, windowBeats: 1, amount: 0.5, target: 'velocity' };
     expect(router._getRepeatFactor('sfx:1', 0, repeatCfg, 60)).to.equal(0);
@@ -815,8 +721,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('plans entries with mpe-aware off messages', function() {
-    const mapping = new MidiMapping({ mpe: { enabled: true } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ mpe: { enabled: true } });
     router.scheduler.tickMs = 10;
     const plan = router._planEntries({ note: 60, durationTicks: 2 }, 100, 2);
     expect(plan.on.count).to.equal(4);
@@ -826,71 +731,44 @@ describe('MidiEventRouter', function() {
   });
 
   it('drops events when hard count limits are exceeded', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 6 } });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 7, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 0, bytes: 0 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 7, bytes: 0 }, { count: 0, bytes: 0 }, 1000);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 6 } },
+      snapshot
+    );
+    const plan = makePlan();
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('count-limit');
   });
 
   it('drops events when higher priority consumes the budget', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 5, bytes: 0, priority: 2 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 5, bytes: 0, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 5, bytes: 0, bySfx }, { count: 0, bytes: 0 }, 1000);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 1000 } },
+      snapshot
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('priority-saturated');
   });
 
   it('drops events when spacing or share budgets are exceeded', function() {
-    const mapping = new MidiMapping({
+    const scheduler = makeRateScheduler(
+      makeRateSnapshot({ count: 1, bytes: 0 }, { count: 0, bytes: 0 }, 100)
+    );
+    const { router } = makeRouter({
       limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 100, maxBytesPerSecond: 100 },
       timing: { bpmBase: 60 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 1, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() { return []; }
-    };
+    }, { scheduler });
     const maxPerSecond = Math.min(
       Math.max(router.mapping.config?.limits?.maxEventsPerSecond ?? 1000, 1),
       1000
     );
     router._lastAcceptedBySfx.set(1, 0);
-    const spacingPlan = {
-      on: { timeMs: 0, count: maxPerSecond, bytes: 3 },
-      off: { timeMs: 0, count: 0, bytes: 0 }
-    };
+    const spacingPlan = makePlan({ on: { count: maxPerSecond, bytes: 3 } });
     const spacingOk = router._shouldSend(
       { sfxId: 1, priority: 1 },
       { timeMs: 0 },
@@ -901,19 +779,14 @@ describe('MidiEventRouter', function() {
     expect(router.getRateReport().reason).to.equal('spacing');
 
     const bySfx = new Map([[1, { count: 4, bytes: 0, priority: 1 }]]);
-    router.scheduler.getRateSnapshot = () => ({
-      next: { count: 4, bytes: 0, bySfx },
-      past: { count: 0, bytes: 0, bySfx: new Map() },
-      maxBytesPerSecond: 100
-    });
+    router.scheduler.getRateSnapshot = () => (
+      makeRateSnapshot({ count: 4, bytes: 0, bySfx }, { count: 0, bytes: 0 }, 100)
+    );
     router.scheduler.getUsageShare = () => ([
       { sfxId: 1, count: 4, bytes: 0, priority: 1, percentCount: 1, percentBytes: 0 }
     ]);
     router._lastAcceptedBySfx.delete(1);
-    const sharePlan = {
-      on: { timeMs: 2000, count: 1, bytes: 3 },
-      off: { timeMs: 2000, count: 0, bytes: 0 }
-    };
+    const sharePlan = makePlan({ timeMs: 2000, on: { count: 1, bytes: 3 } });
     const shareOk = router._shouldSend(
       { sfxId: 1, priority: 1 },
       { timeMs: 2000 },
@@ -925,10 +798,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('handles rate limits and early exits', function() {
-    const mapping = new MidiMapping({ enabled: false });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
+    const { router, sent } = makeRouter({ enabled: false });
     router._onEvent({ sfxId: 1, tick: 1 });
     expect(sent.length).to.equal(0);
 
@@ -950,9 +820,8 @@ describe('MidiEventRouter', function() {
   });
 
   it('forwards output updates and handles unknown repeat targets', function() {
-    const router = new MidiEventRouter();
     let seen = null;
-    router.scheduler = { setOutput(output) { seen = output; } };
+    const { router } = makeRouter({}, { scheduler: { setOutput(output) { seen = output; } } });
     const output = { channels: {} };
     router.setOutput(output);
     expect(seen).to.equal(output);
@@ -968,15 +837,13 @@ describe('MidiEventRouter', function() {
   });
 
   it('forwards usage share queries to the scheduler', function() {
-    const router = new MidiEventRouter();
-    router.scheduler = { getUsageShare: window => [{ window }] };
+    const { router } = makeRouter({}, { scheduler: { getUsageShare: window => [{ window }] } });
     const share = router.getUsageShare('next');
     expect(share[0].window).to.equal('next');
   });
 
   it('covers tick defaults and density edge cases', function() {
-    const mapping = new MidiMapping({ density: { windowTicks: 0 } });
-    const router = new MidiEventRouter(mapping);
+    const { router, mapping } = makeRouter({ density: { windowTicks: 0 } });
     router.context = {};
 
     expect(router._tickMsFromEvent({})).to.equal(60);
@@ -990,8 +857,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('falls back to Date.now when performance is missing', function() {
-    const mapping = new MidiMapping();
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter();
     const originalPerf = globalThis.performance;
     const originalDateNow = Date.now;
     Date.now = () => 123;
@@ -1005,8 +871,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('reuses schedule base and respects spacing tick repeats', function() {
-    const mapping = new MidiMapping({ repeat: { maxRepeats: 2, spacingTicks: 2 } });
-    const router = new MidiEventRouter(mapping);
+    const { router, mapping } = makeRouter({ repeat: { maxRepeats: 2, spacingTicks: 2 } });
     router._nowMs = () => 1000;
     const base = router._resolveScheduleBase(100, 60, 1);
     expect(base).to.equal(900);
@@ -1020,7 +885,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('returns repeat targets unchanged for missing numeric fields', function() {
-    const router = new MidiEventRouter(new MidiMapping());
+    const { router } = makeRouter();
     const base = { note: 60, velocity: 64, durationTicks: 1 };
     const none = router._applyRepeatTarget(base, [60], { amount: 1, target: 'timbre' }, 1);
     expect(none.spec.timbre).to.equal(undefined);
@@ -1031,54 +896,37 @@ describe('MidiEventRouter', function() {
   });
 
   it('drops events when available bytes are exhausted', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 1, bytes: 100, priority: 2 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 6, bytes: 100, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 0, bytes: 0 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 6, bytes: 100, bySfx }, { count: 0, bytes: 0 }, 100);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } },
+      snapshot
+    );
+    const plan = makePlan();
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('byte-limit');
   });
 
   it('handles share reports without current entries', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 5, bytes: 0, priority: 1 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 6, bytes: 0, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 5, bytes: 0, priority: 1, percentCount: 1, percentBytes: 0 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 2000, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 6, bytes: 0, bySfx }, { count: 0, bytes: 0 }, 100);
+    const usageShare = [{ sfxId: 2, count: 5, bytes: 0, priority: 1, percentCount: 1, percentBytes: 0 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 }, off: { timeMs: 2000 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(true);
   });
 
   it('sends notes when ticks are missing and notes are empty', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
-    router.mapping.mapEvent = () => ({ note: 60, notes: [], velocity: 64, durationTicks: 0 });
+    const { router, sent } = makeRouter(
+      { limits: { maxEventsPerSecond: 1000 } },
+      { mapEvent: () => ({ note: 60, notes: [], velocity: 64, durationTicks: 0 }) }
+    );
     router._nowMs = () => 10;
 
     router._onEvent({ sfxId: 1, timeMs: NaN });
@@ -1096,20 +944,20 @@ describe('MidiEventRouter', function() {
     let offCalls = 0;
     const busA = { onEvent: { on() {}, off() { offCalls += 1; } } };
     const busB = { onEvent: { on() {}, off() {} } };
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.attach(busA);
     router.attach(busB);
     expect(offCalls).to.equal(1);
   });
 
   it('tickMsFromEvent falls back to defaults without timers', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.context = {};
     expect(router._tickMsFromEvent({})).to.equal(60);
   });
 
   it('nowMs uses performance when available', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const originalPerf = globalThis.performance;
     globalThis.performance = { now: () => 456 };
     try {
@@ -1120,12 +968,13 @@ describe('MidiEventRouter', function() {
   });
 
   it('resets schedule base when speed changes without frame changes', function() {
-    const router = new MidiEventRouter(new MidiMapping());
     let cleared = 0;
-    router.scheduler = {
-      allNotesOff() { cleared += 1; },
-      clearQueue() { cleared += 1; }
-    };
+    const { router } = makeRouter({}, {
+      scheduler: {
+        allNotesOff() { cleared += 1; },
+        clearQueue() { cleared += 1; }
+      }
+    });
     router._nowMs = () => 1000;
     router._resolveScheduleBase(100, 60, 1);
     router._resolveScheduleBase(120, 60, 2);
@@ -1134,27 +983,26 @@ describe('MidiEventRouter', function() {
   });
 
   it('getBpm returns scaled values above the minimum', function() {
-    const mapping = new MidiMapping({ timing: { bpmBase: 120 } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ timing: { bpmBase: 120 } });
     router.context = { game: { getGameTimer() { return { speedFactor: 2 }; } } };
     expect(router._getBpm()).to.equal(240);
   });
 
   it('resolveArpKey falls back when independence is disabled', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     expect(router._resolveArpKey({ triggerType: 3, sfxId: 2 }, { arp: { independent: false } }))
       .to.equal('sfx:2');
   });
 
   it('getRepeatFactor returns zero for invalid repeat windows', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     expect(router._getRepeatFactor('sfx:1', 10, { maxRepeats: 0, windowBeats: 1 }, 120)).to.equal(0);
     expect(router._getRepeatFactor('sfx:1', NaN, { maxRepeats: 2, windowBeats: 1 }, 120)).to.equal(0);
     expect(router._getRepeatFactor('sfx:1', 10, { maxRepeats: 2, windowBeats: 1 }, 0)).to.equal(0);
   });
 
   it('applyRepeatTarget handles accent targets and zero factors', function() {
-    const router = new MidiEventRouter(new MidiMapping());
+    const { router } = makeRouter();
     const baseSpec = { note: 60, velocity: 64, durationTicks: 2, releaseVelocity: 64 };
     const unchanged = router._applyRepeatTarget(baseSpec, [60], { amount: 1, target: 'velocity' }, 0);
     expect(unchanged.spec.velocity).to.equal(64);
@@ -1163,61 +1011,47 @@ describe('MidiEventRouter', function() {
   });
 
   it('planEntries uses default off messages without MPE', function() {
-    const router = new MidiEventRouter(new MidiMapping({ mpe: { enabled: false } }));
+    const { router } = makeRouter({ mpe: { enabled: false } });
     router.scheduler.tickMs = 10;
     const plan = router._planEntries({ note: 60, durationTicks: 1 }, 1000, 1);
     expect(plan.off.count).to.equal(1);
   });
 
   it('shouldSend ignores plans outside the next window', function() {
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 10, maxBytesPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 0, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 5000, count: 1, bytes: 3 } };
+    const snapshot = makeRateSnapshot();
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 10, maxBytesPerSecond: 1000 } },
+      snapshot
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 }, off: { timeMs: 5000, count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, {}, plan, 1000);
     expect(ok).to.equal(true);
   });
 
-  it('shouldSend accounts for higher and same priority entries', function() {   
-    const mapping = new MidiMapping({ limits: { maxEventsPerSecond: 10, maxBytesPerSecond: 1000 } });
-    const router = new MidiEventRouter(mapping);
+  it('shouldSend accounts for higher and same priority entries', function() {
     const bySfx = new Map([
       [1, { count: 2, bytes: 6, priority: 1 }],
       [2, { count: 2, bytes: 6, priority: 2 }]
     ]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 4, bytes: 12, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 1000, count: 1, bytes: 3 }, off: { timeMs: 1000, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 4, bytes: 12, bySfx }, {}, 1000);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 10, maxBytesPerSecond: 1000 } },
+      snapshot
+    );
+    const plan = makePlan({ timeMs: 1000, on: { count: 1, bytes: 3 }, off: { timeMs: 1000 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 1000 }, plan, 1000);
     expect(ok).to.equal(true);
   });
 
   it('tickMsFromEvent uses frameMs and timer fallbacks', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     expect(router._tickMsFromEvent({ frameMs: 33 })).to.equal(33);
     router.context = { game: { getGameTimer() { return { frameTime: 42 }; } } };
     expect(router._tickMsFromEvent({})).to.equal(42);
   });
 
   it('density handles zero and window limits', function() {
-    const router = new MidiEventRouter(new MidiMapping({ density: { windowTicks: 4 } }));
+    const { router } = makeRouter({ density: { windowTicks: 4 } });
     router._lastTickBySfx.set(1, 10);
     expect(router._densityForEvent({ sfxId: 1, tick: 10 })).to.equal(1);
     expect(router._densityForEvent({ sfxId: 1, tick: 12 })).to.be.closeTo(0.5, 0.01);
@@ -1226,7 +1060,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('resolveScheduleBase resets on frame or speed changes', function() {
-    const router = new MidiEventRouter(new MidiMapping());
+    const { router } = makeRouter();
     router.scheduler = {};
     router._nowMs = () => 1000;
     expect(router._resolveScheduleBase(NaN, 0, 0)).to.equal(null);
@@ -1241,14 +1075,13 @@ describe('MidiEventRouter', function() {
   });
 
   it('getEventPriority uses sfx priority and priority lists', function() {
-    const mapping = new MidiMapping({ limits: { prioritySfx: [5] } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ limits: { prioritySfx: [5] } });
     expect(router._getEventPriority({ sfxId: 1 }, { priority: 3 })).to.equal(3);
     expect(router._getEventPriority({ sfxId: 5 }, {})).to.equal(2);
   });
 
   it('resolveArpKey builds independent trigger keys', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const sfx = { arp: { independent: true } };
     expect(router._resolveArpKey({ triggerType: 1, sfxId: 2, objectId: 3 }, sfx))
       .to.equal('trigger:1:2:object:3');
@@ -1259,7 +1092,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('getRepeatFactor uses spacingTicks and history', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const repeatCfg = { maxRepeats: 2, spacingTicks: 1 };
     const bpm = 120;
     const first = router._getRepeatFactor('sfx:1', 0, repeatCfg, bpm);
@@ -1269,11 +1102,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('applyRepeatTarget covers additional targets', function() {
-    const mapping = new MidiMapping({
+    const { router } = makeRouter({
       noteRange: { min: 0, max: 127 },
       position: { timbreRange: { min: 0, max: 100 }, panRange: { min: -50, max: 50 } }
     });
-    const router = new MidiEventRouter(mapping);
     const baseSpec = { note: 60, velocity: 64, durationTicks: 4, timbre: 10, pan: 5, pitchBend: 0.2, releaseVelocity: 30 };
     const baseNotes = [60, 64];
 
@@ -1301,7 +1133,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('planEntries accounts for duration and MPE off messages', function() {
-    const router = new MidiEventRouter(new MidiMapping({ mpe: { enabled: true } }));
+    const { router } = makeRouter({ mpe: { enabled: true } });
     router.scheduler.tickMs = 10;
     const plan = router._planEntries({ note: 60, durationTicks: 2 }, 1000, 2);
     expect(plan.off.count).to.equal(4);
@@ -1310,126 +1142,80 @@ describe('MidiEventRouter', function() {
   });
 
   it('shouldSend rejects when count exceeds the hard max', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 6, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 6, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 1, bytes: 3 } };
+    const snapshot = makeRateSnapshot({ count: 6, bytes: 0 }, {}, 1000);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 6, maxBytesPerSecond: 1000 } },
+      snapshot
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 }, off: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('count-limit');
   });
 
   it('shouldSend handles priority saturation', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 5, bytes: 10, priority: 2 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 5, bytes: 10, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 5, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 5, bytes: 10, bySfx }, {}, 100);
+    const usageShare = [{ sfxId: 2, count: 5, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('priority-saturated');
   });
 
   it('shouldSend rejects when available bytes are exhausted', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 10 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[2, { count: 1, bytes: 10, priority: 2 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 1, bytes: 10, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 10
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 1, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 1, bytes: 10, bySfx }, {}, 10);
+    const usageShare = [{ sfxId: 2, count: 1, bytes: 10, priority: 2, percentCount: 1, percentBytes: 1 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 5, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 10 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('byte-limit');
   });
 
   it('shouldSend rejects when spacing is violated', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[1, { count: 1, bytes: 3, priority: 1 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 1, bytes: 3, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 1, count: 1, bytes: 3, priority: 1, percentCount: 1, percentBytes: 0 }];
-      }
-    };
+    const snapshot = makeRateSnapshot({ count: 1, bytes: 3, bySfx }, {}, 1000);
+    const usageShare = [{ sfxId: 1, count: 1, bytes: 3, priority: 1, percentCount: 1, percentBytes: 0 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 } },
+      snapshot,
+      usageShare
+    );
     router._lastAcceptedBySfx.set(1, 1000);
-    const plan = { on: { timeMs: 1000, count: 1, bytes: 3 }, off: { timeMs: 1000, count: 0, bytes: 0 } };
+    const plan = makePlan({ timeMs: 1000, on: { count: 1, bytes: 3 }, off: { timeMs: 1000 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 1000 }, plan, 1000);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('spacing');
   });
 
   it('shouldSend rejects when share budgets are exceeded', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([[1, { count: 2, bytes: 6, priority: 1 }]]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 2, bytes: 6, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 1, count: 2, bytes: 6, priority: 1, percentCount: 1, percentBytes: 0 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 2, bytes: 6, bySfx }, {}, 100);
+    const usageShare = [{ sfxId: 1, count: 2, bytes: 6, priority: 1, percentCount: 1, percentBytes: 0 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('share-throttle');
   });
 
   it('covers setup helpers and schedule resets', function() {
-    const mapping = new MidiMapping({ timing: { bpmBase: 100 } });
-    const router = new MidiEventRouter(mapping);
+    const { router, mapping } = makeRouter({ timing: { bpmBase: 100 } });
     expect(router.mapping).to.equal(mapping);
 
     const routerAlt = new MidiEventRouter({ timing: { bpmBase: 90 } });
@@ -1466,8 +1252,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('covers priority, bpm, and arp keys', function() {
-    const mapping = new MidiMapping({ limits: { prioritySfx: [2] }, timing: { bpmBase: 120 } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ limits: { prioritySfx: [2] }, timing: { bpmBase: 120 } });
     router.context = { game: { getGameTimer() { return { speedFactor: 2 }; } } };
     expect(router._getEventPriority({ sfxId: 2 }, {})).to.equal(2);
     expect(router._getEventPriority({ sfxId: 3 }, { priority: 5 })).to.equal(5);
@@ -1482,10 +1267,10 @@ describe('MidiEventRouter', function() {
   });
 
   it('covers repeat factors and targets', function() {
-    const router = new MidiEventRouter(new MidiMapping({
+    const { router } = makeRouter({
       noteRange: { min: 0, max: 127 },
       position: { timbreRange: { min: 0, max: 127 }, panRange: { min: -127, max: 127 } }
-    }));
+    });
     const repeatCfg = { maxRepeats: 2, windowBeats: 1 };
     expect(router._getRepeatFactor('a', NaN, repeatCfg, 120)).to.equal(0);
     router._getRepeatFactor('a', 0, repeatCfg, 120);
@@ -1515,22 +1300,16 @@ describe('MidiEventRouter', function() {
   });
 
   it('plans entries and handles shouldSend under limits', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
+    const snapshot = makeRateSnapshot();
+    const scheduler = {
+      ...makeRateScheduler(snapshot),
       tickMs: 50,
-      estimateMessages() { return { messages: 2, bytes: 6 }; },
-      getRateSnapshot() {
-        return {
-          next: { count: 0, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
+      estimateMessages() { return { messages: 2, bytes: 6 }; }
     };
+    const { router } = makeRouter(
+      { limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 1000 } },
+      { scheduler }
+    );
     const plan = router._planEntries({ durationTicks: NaN }, -2000, 1);
     expect(plan.off.count).to.equal(0);
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: -2000 }, plan, 0);
@@ -1538,61 +1317,42 @@ describe('MidiEventRouter', function() {
   });
 
   it('shouldSend rejects when hard max is exceeded', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 1, maxBytesPerSecond: 1000 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map();
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 2, bytes: 0, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 1000
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 0, bytes: 0 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 2, bytes: 0, bySfx }, {}, 1000);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 1, hardMaxEventsPerSecond: 1, maxBytesPerSecond: 1000 } },
+      snapshot
+    );
+    const plan = makePlan();
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('count-limit');
   });
 
   it('shouldSend accounts for higher-priority traffic', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([
       [2, { count: 2, bytes: 6, priority: 2 }]
     ]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 2, bytes: 6, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() {
-        return [{ sfxId: 2, count: 2, bytes: 6, priority: 2, percentCount: 1, percentBytes: 1 }];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 3 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 2, bytes: 6, bySfx }, {}, 100);
+    const usageShare = [{ sfxId: 2, count: 2, bytes: 6, priority: 2, percentCount: 1, percentBytes: 1 }];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 100 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('priority-saturated');
   });
 
   it('onEvent applies repeat amount and boost settings', function() {
-    const mapping = new MidiMapping({
+    const { router } = makeRouter({
       enabled: true,
       timing: { bpmBase: 120 },
       repeat: { amount: 0.5, target: 'velocity', maxRepeats: 2, windowBeats: 1 },
       sfx: { '1': { note: 60 } }
     });
-    const router = new MidiEventRouter(mapping);
     const output = { channels: { 1: { sendNoteOn() {}, sendNoteOff() {}, sendPitchBend() {}, sendControlChange() {}, sendAllNotesOff() {}, sendPitchBendRange() {} } } };
     router.scheduler.setOutput(output);
     router._shouldSend = () => true;
@@ -1601,13 +1361,12 @@ describe('MidiEventRouter', function() {
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, timeMs: 0 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50, timeMs: 20 });
 
-    const boostMapping = new MidiMapping({
+    const { router: boostRouter } = makeRouter({
       enabled: true,
       timing: { bpmBase: 120 },
       repeat: { velocityBoost: 0.2, durationBoost: 0.1, maxRepeats: 2, windowBeats: 1 },
       sfx: { '1': { note: 60 } }
     });
-    const boostRouter = new MidiEventRouter(boostMapping);
     boostRouter.scheduler.setOutput(output);
     boostRouter._shouldSend = () => true;
     boostRouter.scheduler.sendNote = () => {};
@@ -1615,19 +1374,15 @@ describe('MidiEventRouter', function() {
   });
 
   it('onEvent fills defaults when repeat boosts are missing', function() {
-    const mapping = new MidiMapping({
+    const { router, sent } = makeRouter({
       enabled: true,
       limits: null,
       timing: null,
       repeat: null,
       triggers: null,
       sfx: { '1': { note: 60, repeat: { maxRepeats: 2, windowBeats: 1 } } }
-    });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
+    }, { mapEvent: () => ({ note: 60 }) });
     router.context = { level: { width: 200, height: 100 } };
-    router.mapping.mapEvent = () => ({ note: 60 });
     router._nowMs = () => 0;
 
     router._onEvent({ sfxId: 1, tick: 1, triggerType: 5, timeMs: 0, tps: 50 });
@@ -1638,8 +1393,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('covers attach cleanup and tick defaults', function() {
-    const mapping = new MidiMapping({ timing: { bpmBase: 10 } });
-    const routerA = new MidiEventRouter(mapping);
+    const { router: routerA, mapping } = makeRouter({ timing: { bpmBase: 10 } });
     const routerB = new MidiEventRouter({ timing: { bpmBase: 120 } });
     expect(routerA.mapping).to.equal(mapping);
     expect(routerB.mapping).to.be.instanceOf(MidiMapping);
@@ -1664,8 +1418,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('covers density and schedule base resets', function() {
-    const mapping = new MidiMapping({ density: { windowTicks: 4 } });
-    const router = new MidiEventRouter(mapping);
+    const { router } = makeRouter({ density: { windowTicks: 4 } });
     expect(router._densityForEvent({})).to.equal(0);
     router._lastTickBySfx.set(1, 5);
     expect(router._densityForEvent({ sfxId: 1, tick: 5 })).to.equal(1);
@@ -1693,8 +1446,7 @@ describe('MidiEventRouter', function() {
   });
 
   it('covers repeat target fallbacks and plan entries', function() {
-    const mapping = new MidiMapping({ repeat: { maxRepeats: 2, spacingTicks: 2 } });
-    const router = new MidiEventRouter(mapping);
+    const { router, mapping } = makeRouter({ repeat: { maxRepeats: 2, spacingTicks: 2 } });
     const bpm = 60;
     expect(router._getRepeatFactor('sfx:1', 0, mapping.config.repeat, bpm)).to.equal(0);
     expect(router._getRepeatFactor('sfx:1', 1000, mapping.config.repeat, bpm)).to.be.greaterThan(0);
@@ -1719,7 +1471,7 @@ describe('MidiEventRouter', function() {
     router._applyRepeatTarget(spec, notes, { target: 'release', amount: 0.5 }, 1);
     router._applyRepeatTarget(spec, notes, { target: 'unknown', amount: 0.5 }, 1);
 
-    const mpeRouter = new MidiEventRouter(new MidiMapping({ mpe: { enabled: true } }));
+    const { router: mpeRouter } = makeRouter({ mpe: { enabled: true } });
     mpeRouter.scheduler.tickMs = 10;
     const planA = mpeRouter._planEntries({ note: 60, durationTicks: NaN }, 1000, 2);
     const planB = mpeRouter._planEntries({ note: 60, durationTicks: 1 }, 1000, 1);
@@ -1728,51 +1480,33 @@ describe('MidiEventRouter', function() {
   });
 
   it('shouldSend enforces hard caps', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 11, maxBytesPerSecond: 100 }
-    });
-    const router = new MidiEventRouter(mapping);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 10, bytes: 0, bySfx: new Map() },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 100
-        };
-      },
-      getUsageShare() { return []; }
-    };
-    const plan = { on: { timeMs: 0, count: 2, bytes: 0 }, off: { timeMs: 0, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 10, bytes: 0 }, {}, 100);
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 10, hardMaxEventsPerSecond: 11, maxBytesPerSecond: 100 } },
+      snapshot
+    );
+    const plan = makePlan({ on: { count: 2 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('count-limit');
   });
 
   it('shouldSend throttles on byte budgets and priorities', function() {
-    const mapping = new MidiMapping({
-      limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 5 }
-    });
-    const router = new MidiEventRouter(mapping);
     const bySfx = new Map([
       [1, { count: 1, bytes: 0, priority: 1 }],
       [2, { count: 1, bytes: 5, priority: 2 }]
     ]);
-    router.scheduler = {
-      getRateSnapshot() {
-        return {
-          next: { count: 2, bytes: 5, bySfx },
-          past: { count: 0, bytes: 0, bySfx: new Map() },
-          maxBytesPerSecond: 5
-        };
-      },
-      getUsageShare() {
-        return [
-          { sfxId: 1, count: 1, bytes: 0, priority: 1, percentCount: 0.5, percentBytes: 0 },
-          { sfxId: 2, count: 1, bytes: 5, priority: 2, percentCount: 0.5, percentBytes: 1 }
-        ];
-      }
-    };
-    const plan = { on: { timeMs: 0, count: 1, bytes: 0 }, off: { timeMs: 500, count: 0, bytes: 0 } };
+    const snapshot = makeRateSnapshot({ count: 2, bytes: 5, bySfx }, {}, 5);
+    const usageShare = [
+      { sfxId: 1, count: 1, bytes: 0, priority: 1, percentCount: 0.5, percentBytes: 0 },
+      { sfxId: 2, count: 1, bytes: 5, priority: 2, percentCount: 0.5, percentBytes: 1 }
+    ];
+    const { router } = makeRateRouter(
+      { limits: { maxEventsPerSecond: 2, hardMaxEventsPerSecond: 10, maxBytesPerSecond: 5 } },
+      snapshot,
+      usageShare
+    );
+    const plan = makePlan({ on: { count: 1 }, off: { timeMs: 500 } });
     const ok = router._shouldSend({ sfxId: 3, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(false);
     expect(router.getRateReport().reason).to.equal('byte-limit');
@@ -1780,41 +1514,40 @@ describe('MidiEventRouter', function() {
 
   it('setMapping accepts MidiMapping instances', function() {
     const mapping = new MidiMapping({ timing: { bpmBase: 90 } });
-    const router = new MidiEventRouter();
     let configured = null;
-    router.scheduler = { setConfig(cfg) { configured = cfg; } };
+    const { router } = makeRouter({}, {
+      scheduler: { setConfig(cfg) { configured = cfg; } }
+    });
     router.setMapping(mapping);
     expect(router.mapping).to.equal(mapping);
     expect(configured).to.equal(mapping.config);
   });
 
   it('returns zero density when window ticks are disabled', function() {
-    const router = new MidiEventRouter(new MidiMapping({ density: null }));
+    const { router } = makeRouter({ density: null });
     expect(router._densityForEvent({ sfxId: 1, tick: 10 })).to.equal(0);
   });
 
   it('resolves arpeggio keys to unknown when sfxId is missing', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const key = router._resolveArpKey({}, {});
     expect(key).to.equal('sfx:unknown');
   });
 
   it('merges trigger config into sfx overrides on events', function() {
-    const mapping = new MidiMapping({
+    let captured = null;
+    const { router, sent } = makeRouter({
       enabled: true,
       limits: { maxEventsPerSecond: 1000 },
       sfx: { '1': { velocity: 10 } },
       triggers: { '7': { velocity: 20 } }
+    }, {
+      mapEvent: (event, context, density, sfx) => {
+        captured = sfx;
+        return { note: 60, velocity: sfx.velocity, durationTicks: 1 };
+      }
     });
-    const router = new MidiEventRouter(mapping);
-    const sent = [];
-    router.scheduler = makeSchedulerStub(sent);
     router.scheduler.output = {};
-    let captured = null;
-    router.mapping.mapEvent = (event, context, density, sfx) => {
-      captured = sfx;
-      return { note: 60, velocity: sfx.velocity, durationTicks: 1 };
-    };
 
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, triggerType: 7 });
 
@@ -1823,13 +1556,13 @@ describe('MidiEventRouter', function() {
   });
 
   it('returns zero repeat factors when repeats are disabled or invalid', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const repeatCfg = { maxRepeats: 0, windowBeats: 0 };
     expect(router._getRepeatFactor('sfx:1', NaN, repeatCfg, 0)).to.equal(0);
   });
 
   it('applies repeat defaults when velocity and duration are missing', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const baseSpec = { note: 60 };
 
     const velocity = router._applyRepeatTarget(
@@ -1891,14 +1624,14 @@ describe('MidiEventRouter', function() {
   });
 
   it('replaces mappings when setMapping receives a plain object', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.setMapping({ enabled: true });
     expect(router.mapping).to.be.instanceOf(MidiMapping);
     expect(router.mapping.config.enabled).to.equal(true);
   });
 
   it('clamps notes to defaults when no note range is configured', function() {
-    const router = new MidiEventRouter(new MidiMapping({ noteRange: null, position: {} }));
+    const { router } = makeRouter({ noteRange: null, position: {} });
     const adjusted = router._applyRepeatTarget(
       { note: 60 },
       [200],
@@ -1910,13 +1643,13 @@ describe('MidiEventRouter', function() {
 
   it('reuses MidiMapping instances in setMapping', function() {
     const mapping = new MidiMapping({ enabled: false });
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.setMapping(mapping);
     expect(router.mapping).to.equal(mapping);
   });
 
   it('uses repeat fallbacks when window beats and max repeats are missing', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     const bpm = router._getBpm();
     const repeatCfg = { maxRepeats: 1, windowBeats: 1 };
     router._getRepeatFactor('sfx:1', 0, repeatCfg, bpm);
@@ -1931,16 +1664,16 @@ describe('MidiEventRouter', function() {
   });
 
   it('replaces null mappings with defaults', function() {
-    const router = new MidiEventRouter();
+    const { router } = makeRouter();
     router.setMapping(null);
     expect(router.mapping).to.be.instanceOf(MidiMapping);
   });
 
   it('uses repeat spacing fallbacks and default targets', function() {
-    const router = new MidiEventRouter(new MidiMapping({
+    const { router } = makeRouter({
       noteRange: { min: null, max: null },
       position: null
-    }));
+    });
     const bpm = router._getBpm();
     router._getRepeatFactor('sfx:1', 0, { maxRepeats: 2, spacingTicks: 2 }, bpm);
     const factor = router._getRepeatFactor('sfx:1', 100, { maxRepeats: 2, spacingTicks: 2 }, bpm);

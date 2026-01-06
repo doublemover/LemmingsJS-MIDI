@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings, withGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/render/ColorPalette.js';
 import '../js/render/Frame.js';
@@ -7,7 +7,7 @@ import { Trigger } from '../js/level/Trigger.js';
 import { TriggerManager } from '../js/level/TriggerManager.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('TriggerManager', function () {
   it('handles bucketed triggers and removal', function () {
@@ -116,42 +116,46 @@ describe('TriggerManager', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);
     const calls = { add: [], remove: [] };
-    const originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = { game: { history: {
-      recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
-      recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
-    } } };
-
-    const owner = { id: 7 };
-    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, 2, owner);
-    tm.add(tr);
-    tm.removeByOwner(owner);
+    withGlobalLemmings({
+      game: {
+        history: {
+          recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
+          recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
+        }
+      }
+    }, () => {
+      const owner = { id: 7 };
+      const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, 2, owner);
+      tm.add(tr);
+      tm.removeByOwner(owner);
+    });
 
     expect(calls.add).to.have.length(1);
     expect(calls.add[0].snapshot.ownerId).to.equal(7);
     expect(calls.remove).to.have.length(1);
 
-    globalThis.lemmings = originalLemmings;
   });
 
   it('records null owner ids in history snapshots', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);
     const calls = { add: [], remove: [] };
-    const originalLemmings = globalThis.lemmings;
-    globalThis.lemmings = { game: { history: {
-      recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
-      recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
-    } } };
-
-    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
-    tm.add(tr);
-    tm.removeByOwner(null);
+    withGlobalLemmings({
+      game: {
+        history: {
+          recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
+          recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
+        }
+      }
+    }, () => {
+      const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
+      tm.add(tr);
+      tm.removeByOwner(null);
+    });
 
     expect(calls.add[0].snapshot.ownerId).to.equal(null);
     expect(calls.remove[0].snapshot.ownerId).to.equal(null);
 
-    globalThis.lemmings = originalLemmings;
   });
 
   it('dispose clears references', function () {

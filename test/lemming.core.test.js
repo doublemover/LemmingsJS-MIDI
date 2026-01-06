@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { withGlobalLemmings } from './helpers/lemmings.js';
 import { Lemming } from '../js/lemmings/Lemming.js';
 import { LemmingStateType } from '../js/lemmings/LemmingStateType.js';
 import { SoundEventTypes } from '../js/game/SoundEvents.js';
@@ -24,24 +25,22 @@ describe('Lemming core', function() {
 
   it('processes out-of-level and missing action states', function() {
     const events = [];
-    globalThis.lemmings = {
+    withGlobalLemmings({
       game: {
         soundEvents: { emitSfx(type, id, payload) { events.push({ type, id, payload }); } },
         lemmingManager: { miniMap: { addDeath() { events.push({ type: 'death' }); } } }
       }
-    };
+    }, () => {
+      const lem = new Lemming(-1, 5, 2);
+      const state = lem.process(makeLevel());
+      expect(state).to.equal(LemmingStateType.OUT_OF_LEVEL);
+      expect(events.some(e => e.type === SoundEventTypes.LEMMING_FELL_OFF)).to.equal(true);
 
-    const lem = new Lemming(-1, 5, 2);
-    const state = lem.process(makeLevel());
-    expect(state).to.equal(LemmingStateType.OUT_OF_LEVEL);
-    expect(events.some(e => e.type === SoundEventTypes.LEMMING_FELL_OFF)).to.equal(true);
-
-    const lem2 = new Lemming(1, 1, 3);
-    const state2 = lem2.process(makeLevel());
-    expect(state2).to.equal(LemmingStateType.OUT_OF_LEVEL);
-    expect(events.some(e => e.type === 'death')).to.equal(true);
-
-    delete globalThis.lemmings;
+      const lem2 = new Lemming(1, 1, 3);
+      const state2 = lem2.process(makeLevel());
+      expect(state2).to.equal(LemmingStateType.OUT_OF_LEVEL);
+      expect(events.some(e => e.type === 'death')).to.equal(true);
+    });
   });
 
   it('processes countdown actions and main actions', function() {

@@ -1,11 +1,11 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { ActionBaseSystem } from '../js/actions/ActionBaseSystem.js';
 import '../js/lemmings/SpriteTypes.js';
 import '../js/render/MaskTypes.js';
 
 // minimal global environment for logging
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 class StubAnimation {
   constructor(label) { this.label = label; }

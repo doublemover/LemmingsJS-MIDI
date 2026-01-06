@@ -1,17 +1,16 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, withLemmingsGame } from './helpers/lemmings.js';
 import { Level } from '../js/level/Level.js';
 import '../js/render/ColorPalette.js';
 
 const miniMapStub = { onGroundChanged() {} };
 
 describe('Level render', function() {
-  let saved;
+  let restore;
   beforeEach(function() {
-    saved = globalThis.lemmings;
-    globalThis.lemmings = { game: { lemmingManager: { miniMap: miniMapStub }, showDebug: false } };
+    restore = withLemmingsGame({ lemmingManager: { miniMap: miniMapStub }, showDebug: false });
   });
-  afterEach(function() { globalThis.lemmings = saved; });
+  afterEach(function() { restore(); });
 
   it('draws ground image via GameDisplay', function() {
     const level = new Level(3, 3);

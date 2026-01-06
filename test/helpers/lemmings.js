@@ -37,3 +37,106 @@ const Lemmings = new Proxy(defaults, {
 });
 
 export { Lemmings, setDependency, clearDependency, resetDependencies };
+
+const setGlobalLemmings = (value) => {
+  const prev = globalThis.lemmings;
+  globalThis.lemmings = value;
+  return () => {
+    if (prev === undefined) {
+      delete globalThis.lemmings;
+    } else {
+      globalThis.lemmings = prev;
+    }
+  };
+};
+
+const withLemmingsGame = (game, extra = {}) => (
+  setGlobalLemmings({ ...extra, game })
+);
+
+const withGlobalLemmings = (value, fn) => {
+  const restore = setGlobalLemmings(value);
+  try {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (err) {
+    restore();
+    throw err;
+  }
+};
+
+const withMissingGlobalLemmings = (fn) => {
+  const hadProp = Object.prototype.hasOwnProperty.call(globalThis, 'lemmings');
+  const prev = globalThis.lemmings;
+  delete globalThis.lemmings;
+  const restore = () => {
+    if (hadProp) {
+      globalThis.lemmings = prev;
+    } else {
+      delete globalThis.lemmings;
+    }
+  };
+  try {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (err) {
+    restore();
+    throw err;
+  }
+};
+
+const withShowDebug = (value, fn) => {
+  const game = globalThis.lemmings?.game;
+  if (!game) {
+    throw new Error('globalThis.lemmings.game is required for withShowDebug');
+  }
+  const hadProp = Object.prototype.hasOwnProperty.call(game, 'showDebug');
+  const prev = game.showDebug;
+  game.showDebug = value;
+  const restore = () => {
+    if (hadProp) {
+      game.showDebug = prev;
+    } else {
+      delete game.showDebug;
+    }
+  };
+  try {
+    const result = fn();
+    if (result && typeof result.then === 'function') {
+      return result.finally(restore);
+    }
+    restore();
+    return result;
+  } catch (err) {
+    restore();
+    throw err;
+  }
+};
+
+const useGlobalLemmings = (value) => {
+  let restore;
+  beforeEach(() => {
+    const resolved = typeof value === 'function' ? value() : value;
+    restore = setGlobalLemmings(resolved);
+  });
+  afterEach(() => {
+    restore();
+  });
+};
+
+export {
+  setGlobalLemmings,
+  withGlobalLemmings,
+  withLemmingsGame,
+  withMissingGlobalLemmings,
+  withShowDebug,
+  useGlobalLemmings
+};

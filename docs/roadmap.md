@@ -142,7 +142,7 @@ Notes:
   verify MCP config formats, and flag format updates we need to track.
 
 ## Phase 12: Broken tests
-- [ ] None recorded (last run: `npm test`).
+- [ ] None recorded (latest run: `npm test`, no errors).
 
 ## Phase 13: Procedural endless mode (procgen)
 - [x] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.

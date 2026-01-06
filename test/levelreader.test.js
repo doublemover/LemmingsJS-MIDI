@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
-import { Lemmings } from './helpers/lemmings.js';
+import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { BitReader } from '../js/data/BitReader.js';
 import { BitWriter } from '../js/data/BitWriter.js';
@@ -14,7 +14,7 @@ import '../js/level/LevelElement.js';
 import '../js/util/Range.js';
 import '../js/data/UnpackFilePart.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('LevelReader', function () {
   it('parses LEVEL000.DAT', function () {

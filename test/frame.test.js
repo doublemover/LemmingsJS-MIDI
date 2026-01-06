@@ -1,9 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Frame } from '../js/render/Frame.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('Frame', function () {
   it('fills entire frame with a color', function () {

@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import { readFileSync } from 'fs';
 
-import { Lemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { BitReader } from '../js/data/BitReader.js';
 import { BitWriter } from '../js/data/BitWriter.js';
@@ -10,7 +10,7 @@ import { UnpackFilePart } from '../js/data/UnpackFilePart.js';
 import { FileContainer } from '../js/data/FileContainer.js';
 import { randomFillSync } from 'crypto';
 
-globalThis.lemmings = { game: { showDebug: false } };
+useGlobalLemmings({ game: { showDebug: false } });
 
 describe('PackFilePart', function () {
   function roundTrip(data) {

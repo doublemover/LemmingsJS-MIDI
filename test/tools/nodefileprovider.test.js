@@ -22,6 +22,12 @@ const packFile = path.join(rootDir, 'lemmings', 'LEVEL000.DAT');
 
 describe('NodeFileProvider', function() {
   let tmpDir;
+  const makeProvider = (options) => new NodeFileProvider(tmpDir, options);
+  const writeRarStub = () => {
+    const rarPath = path.join(tmpDir, 'pack.rar');
+    fs.writeFileSync(rarPath, Buffer.from([0]));
+    return rarPath;
+  };
 
   beforeEach(async function() {
     tmpDir = fs.mkdtempSync(path.join(process.cwd(), 'test', 'tmp-nodefileprovider-'));
@@ -39,7 +45,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('loads plain files and archive entries', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
 
     const buffer = fs.readFileSync(packFile);
     const plain = await provider.loadBinary('.', 'LEVEL000.DAT');
@@ -60,8 +66,8 @@ describe('NodeFileProvider', function() {
     expect(tarLower.length).to.equal(buffer.length);
   });
 
-  it('loads archive strings and validates entries', async function() {      
-    const provider = new NodeFileProvider(tmpDir);
+  it('loads archive strings and validates entries', async function() {
+    const provider = makeProvider();
 
     const zipText = await provider.loadString('pack.zip/data/LEVEL000.DAT');
     expect(zipText.length).to.be.greaterThan(0);
@@ -73,7 +79,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('throws when archive text entries are missing', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     await expectReject(
       provider.loadString('pack.zip/missing.txt'),
       /not found/i
@@ -85,7 +91,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('throws when archive binary entries are missing', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     await expectReject(
       provider.loadBinary('pack.zip', 'missing.dat'),
       /not found/i
@@ -102,12 +108,12 @@ describe('NodeFileProvider', function() {
   });
 
   it('normalizes validated entry paths', function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     expect(provider._validateEntry('data\\LEVEL000.DAT')).to.equal('data/LEVEL000.DAT');
   });
 
   it('reads plain strings from disk', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const textPath = path.join(tmpDir, 'note.txt');
     fs.writeFileSync(textPath, 'hello');
     const text = await provider.loadString('note.txt');
@@ -115,7 +121,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('reads plain strings from absolute paths', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const textPath = path.join(tmpDir, 'abs.txt');
     fs.writeFileSync(textPath, 'abs');
     const text = await provider.loadString(textPath);
@@ -123,13 +129,13 @@ describe('NodeFileProvider', function() {
   });
 
   it('reads binary data from an absolute directory', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const reader = await provider.loadBinary(tmpDir, 'LEVEL000.DAT');
     expect(reader.length).to.equal(fs.readFileSync(packFile).length);
   });
 
   it('caches zip and tar readers', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const zip1 = provider._getZip('pack.zip');
     const zip2 = provider._getZip('pack.zip');
     expect(zip1).to.equal(zip2);
@@ -140,7 +146,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('skips non-file tar entries', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const emptyDir = path.join(tmpDir, 'emptydir');
     fs.mkdirSync(emptyDir, { recursive: true });
     await tar.c(
@@ -152,10 +158,9 @@ describe('NodeFileProvider', function() {
   });
 
   it('loads rar entries using injected extractor', async function() {
-    const rarPath = path.join(tmpDir, 'pack.rar');
-    fs.writeFileSync(rarPath, Buffer.from([0]));
+    writeRarStub();
     let calls = 0;
-    const provider = new NodeFileProvider(tmpDir, {
+    const provider = makeProvider({
       rar: {
         createExtractorFromData: async () => {
           calls += 1;
@@ -181,10 +186,9 @@ describe('NodeFileProvider', function() {
   });
 
   it('skips rar directory entries and finds lower-case keys', async function() {
-    const rarPath = path.join(tmpDir, 'pack.rar');
-    fs.writeFileSync(rarPath, Buffer.from([0]));
+    writeRarStub();
     const extracted = [];
-    const provider = new NodeFileProvider(tmpDir, {
+    const provider = makeProvider({
       rar: {
         createExtractorFromData: async () => ({
           getFileList() {
@@ -221,7 +225,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('finds zip entries by exact and lower-case names', function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     const zip = provider._getZip('pack.zip');
     const entry = provider._findZipEntry(zip, 'data/LEVEL000.DAT');
     expect(entry).to.be.ok;
@@ -230,7 +234,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('loads rar entries using a stubbed extractor', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     provider._getRar = async () => new Map([
       ['data/LEVEL000.DAT', fs.readFileSync(packFile)]
     ]);
@@ -240,7 +244,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('throws when archive entries are missing', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     provider._getRar = async () => new Map();
 
     await expectReject(
@@ -250,7 +254,7 @@ describe('NodeFileProvider', function() {
   });
 
   it('clears cached archives', async function() {
-    const provider = new NodeFileProvider(tmpDir);
+    const provider = makeProvider();
     provider._getZip('pack.zip');
     await provider._getTar('pack.tar');
     provider.rarCache.set('rar', new Map());
