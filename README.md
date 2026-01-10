@@ -9,23 +9,33 @@ High-performance JavaScript port of Lemmings with WebMIDI sequencing support.
 
 ## Highlights
 
-- Accurate, fast Lemmings engine focused on performance first.
-- Smooth zoom, minimap, and precise trigger handling.
-- Bench mode for stress testing with live T/TPS/Active/Spawned stats.
+- Accurate, fast Lemmings engine. 
+  - Supports over 25,000,000 simultaneous Lemmings!
+  - Capable of running at >60x original game speed, with 450,000 Lems
+  - Runs backwards at full speed
+  - Tick-by-tick stepping
 - WebMIDI routing, input mapping, and sequencing controls.
+- Fully featured [level editor](https://doublemover.github.io/LemmingsJS-MIDI/editor.html)
+- MCP servers, so your LLM can play and edit Lemmings levels!
+  - Efficient JSON based communication of game state & user interaction
+  - If you consider that "cheating", vision capture via Playwright is supported
+  - Interactive Spectator mode lets you watch, help, or mess with them
 
 ## Quick Start
 
+You can [Play](https://doublemover.github.io/LemmingsJS-MIDI/) and [Edit](https://doublemover.github.io/LemmingsJS-MIDI/editor.html) in your browser right now!
+
+For a private, local copy: 
 - Install [Node.js 20+](https://nodejs.org)
 - Clone: `git clone https://github.com/doublemover/LemmingsJS-MIDI`
 - Install and run:
   - `npm install`
   - `npm start`
-- Open http://127.0.0.1:8080
-- Open http://127.0.0.1:8080/editor.html for the standalone level editor.
+- Open https://localhost:8080
+- Open https://localhost:8080/editor.html for the standalone level editor.
 - This repo is intended for local development and offline tooling, not npm distribution.
 
-If you hit an issue, please open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
+If you hit an issue, _please_ open one: https://github.com/doublemover/LemmingsJS-MIDI/issues
 
 ## MCP Quick Start
 
@@ -45,35 +55,25 @@ control, and vision capture using Playwright sessions.
   LEMMINGS_MCP_PATH = "/?e2e=1"
 ```
 
-## Performance
-
-- Highly optimized: Capable of >100,000 lemmings/tick at original speed, or ~5,000/tick at 30x (500 Hz).
-- Try it at 30x speed in bench mode:
-  https://doublemover.github.io/LemmingsJS-MIDI/?version=1&difficulty=3&level=8&speed=30&cheat=false&bench=true&scale=0.8&endless=true&nukeAfter=8
-
 ## Features
 
-- Multiple entrances work correctly
-- Traps animate, are deadly, and have cooldowns
-- Frying, Jumping, Hoisting animations
-- Steel terrain improvements using `js/steelSprites.json`
+- Faithful & enhanced port of Lemmings
+- Steel terrain accuracy improvements using `js/steelSprites.json`
 - Minimap
   - Accumulates ground at full resolution
   - Shows entrances, exits, lemmings, and deaths
   - Click and drag to reposition view
-- Zoom in and out with mouse wheel
-- Skill selection while paused
-- Original crosshair cursor (from `MAIN.DAT` part 5)
-- Dashed debug box for nearest lemming
 - Speed display on the Paws (Pause) button
-  - Click left/right side of Paws to slow down or speed up
+  - Click left/right side of bottom bar on Paws to slow down or speed up
   - Use `-` / `=` (Shift for faster steps) to adjust speed
   - Right click Paws resets speed to 1
   - Speed is a divisor of original tick speed `(60ms / gameSpeed)`
 - Right click release rate buttons for instant min or max
+- Configurable key bindings
 
 ## Controls
 
+- `F1` or `Shift+/` Show the keyboard shortcuts overlay in-game
 - `1` / `Shift+1`: Decrease release rate by 1 / to minimum
 - `2` / `Shift+2`: Increase release rate by 1 / to maximum
 - `3, 4, 5, 6`: Select Climber, Floater, Bomber, Blocker
@@ -96,27 +96,66 @@ control, and vision capture using Playwright sessions.
 - `\`: Toggle debug mode
 - `Shift+Backquote`: Toggle editor mode (preview only)
 
+<details>
+  <summary><b>URL parameters (shortcuts in brackets)</b></summary>
+
+
+- `version (v)`:
+  - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1) (default)
+  - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
+  - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=3)
+  - 4: [Xmas 1992](https://doublemover.github.io/LemmingsJS-MIDI?version=4)
+  - 5: [Holiday 1993](https://doublemover.github.io/LemmingsJS-MIDI?version=5)
+  - 6: [Holiday 1994](https://doublemover.github.io/LemmingsJS-MIDI?version=6)
+- `difficulty (d)`: 1-6 (default: 1)
+- `level (l)`: 1-100 (default: 1)
+- `speed (s)`: 0-100 (default: 1)
+- `cheat (c)`: true/false (default: false)
+- `debug (dbg)`: true/false (default: false)
+- `bench (b)`: Benchmark mode
+- `endless (e)`: Disable time limit, win/loss conditions
+- `scale (sc)`: Starting zoom .0125-8 (default: 2)
+- `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
+- `performanceAPI (pa)`: Enable Performance API instrumentation
+- `shortcut`/`_`: Prefer short query keys when updating the URL
+</details>
+
+
+<details>
+  <summary><b>Debug & Benchmarking Notes</b></summary>
+
+  - Right click Nuke toggles debug mode
+    - Blue pixel under lemmings (engine position)
+    - Red rectangles for triggers (traps, blockers, exit)
+    - Cyan rectangles show steel
+    - Orange and green show left/right arrow triggers
+    - Speed can drop below 1 in 0.1 steps and rise to 120 in steps of 10
+  - Bench mode spawns lemmings endlessly at max rate and shows T/TPS/Active/Spawned
+  - Bench sequence measures extra lemming capacity, then runs multiple entrance counts
+</details>
+
 ### Editor
 
 - Standalone editor page at `editor.html`.
 - Import/export `.nxlv` and classic `.lvl` files from the editor header.
-- `P`: Toggle playtest (configurable in `keybindings.json`).
-- Shift-click or marquee to multi-select; drag to move; resize handles adjust size.
+- `P`: Toggle playtest.
+- Shift-click or marquee to multi-select, drag to move. Alt-drag to clone.
 - Palette previews are generated from sprites and cached in browser storage.
-- Steel rectangles are editable with the Steel tool.
-- Copy/paste/duplicate, nudge, and snap actions are configurable in `keybindings.json`.
-- Alt-drag duplicates the current selection; entrance/exit placement is capped at 4 each.
+- Steel areas are editable with the Steel tool.
+- Full Undo/Redo support.
+- Level validation catches missing requirements. 
 
 ## Keybindings
 
-Keybindings are configurable in `keybindings.json`. The in-game defaults map to the controls above, and the editor toggle uses `Shift+Backquote` by default.
+Keybindings are configurable in `keybindings.json`. The in-game defaults map to the controls above.
 
 ## MIDI
 
-- Enable MIDI from the left control panel (toggle persists). When disabled, WebMIDI is not enabled and the MIDI router is detached.
-- Use the I/O section for Input/Output, Input channel, and `MIDI reset`. Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
-- Use `reset all` to clear stored MIDI overrides and UI state.
-- `reverse.allNotesOffOnToggle` in `midi-mapping.json` can auto-reset MIDI when toggling reverse playback.
+- Enable MIDI from the left control panel (toggle persists). 
+  - When disabled, WebMIDI is not enabled and the MIDI router is detached.
+- Use the I/O section for Input/Output, Input channel, and `MIDI reset`.
+  - Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
+- Use `reset all` to clear stored configuration and UI state.
 - Base BPM is the sequencing anchor; current BPM shows `speed x base`, plus ticks per second/beat/measure.
 - Global FX tab:
   - Intensity and Accent adjust default velocity and density scaling.
@@ -177,47 +216,6 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
   | CC | 30 | Chord degree | 0-6 | 0 |
   | CC | 31 | Duration ticks | 1-24 | 6 |
 
-</details>
-
-## Options
-
-URL parameters (shortcuts in brackets):
-
-- `version (v)`:
-  - 1: [Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=1) (default)
-  - 2: [Oh no! More Lemmings](https://doublemover.github.io/LemmingsJS-MIDI?version=2)
-  - 3: [Xmas 1991](https://doublemover.github.io/LemmingsJS-MIDI?version=3)
-  - 4: [Xmas 1992](https://doublemover.github.io/LemmingsJS-MIDI?version=4)
-  - 5: [Holiday 1993](https://doublemover.github.io/LemmingsJS-MIDI?version=5)
-  - 6: [Holiday 1994](https://doublemover.github.io/LemmingsJS-MIDI?version=6)
-- `difficulty (d)`: 1-6 (default: 1)
-- `level (l)`: 1-100 (default: 1)
-- `speed (s)`: 0-100 (default: 1)
-- `cheat (c)`: true/false (default: false)
-- `debug (dbg)`: true/false (default: false)
-- `bench (b)`: Bench mode (endless spawning with speed modulation)
-- `bench2 (b2)`: Bench mode with catchup slowdown (bench2)
-- `benchReverse (bR)`: Bench mode with reverse-playback flag enabled
-- `benchSequence (bs)`: Auto-run bench series (50/25/10/1 entrances + extras)   
-- `preserveHistory (ph)`: Preserve future history when resuming after reverse playback
-- `endless (e)`: Disable time limit
-- `nukeAfter (na)`: Auto-nuke after x*10 seconds
-- `scale (sc)`: Starting zoom .0125-8 (default: 2)
-- `extra (ex)`: Extra lemmings per spawn 1-1000 (default: 0)
-- `performanceAPI (pa)`: Enable Performance API instrumentation
-- `shortcut`/`_`: Prefer short query keys when updating the URL
-
-<details>
-  <summary><b>Debug and Bench Notes</b></summary>
-
-  - Right click Nuke toggles debug mode
-    - Blue pixel under lemmings (engine position)
-    - Red rectangles for triggers (traps, blockers, exit)
-    - Cyan rectangles show steel
-    - Orange and green show left/right arrow triggers
-    - Speed can drop below 1 in 0.1 steps and rise to 120 in steps of 10
-  - Bench mode spawns lemmings endlessly at max rate and shows T/TPS/Active/Spawned
-  - Bench sequence measures extra lemming capacity, then runs multiple entrance counts
 </details>
 
 ## Development and Testing
