@@ -22,6 +22,9 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Local certs
+certs/
+
 # Editor folders
 .jshintconfig
 .jshintignore
