@@ -232,22 +232,12 @@ describe('Stage', function() {
   it('parses overlay colors with and without alpha', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
-    const originalExec = RegExp.prototype.exec;
-    RegExp.prototype.exec = function(str) {
-      if (
-        str === 'rgb(1,2,3)'
-        && this.source === 'rgba?\\((\\d+),(\\d+),(\\d+),(\\d*(?:\\.\\d+)?)\\)'
-      ) {
-        return ['rgb(1,2,3)', '1', '2', '3'];
-      }
-      return originalExec.call(this, str);
-    };
-    try {
-      stage.startOverlayFade('rgb(1,2,3)', null, 1);
-      expect(stage.overlayDashColor >>> 0).to.equal(0xFF030201);
-    } finally {
-      RegExp.prototype.exec = originalExec;
-    }
+    stage.startOverlayFade('rgb(1, 2, 3)', null, 1);
+    expect(stage.overlayDashColor >>> 0).to.equal(0xFF030201);
+    stage.startOverlayFade('rgba(300, -10, 7.4, 1.5)', null, 1);
+    expect(stage.overlayDashColor >>> 0).to.equal(0xFF0700FF);
+    stage.startOverlayFade('rgba(1,2,3,0.5)', null, 1);
+    expect(stage.overlayDashColor >>> 0).to.equal(0x80030201);
     stage.startOverlayFade('invalid', null, 1);
     expect(stage.overlayDashColor >>> 0).to.equal(0xFFFFFFFF);
   });

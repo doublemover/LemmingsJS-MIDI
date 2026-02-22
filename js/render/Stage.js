@@ -5,14 +5,33 @@ import { UserInputManager } from '../input/UserInputManager.js';
 import { ViewPoint } from './ViewPoint.js';
 import { getDependency } from '../core/dependencies.js';
 
+const COLOR_FN_RE = /^rgba?\(/i;
+const COLOR_RE = /^rgba?\(\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:,\s*([-+]?\d*\.?\d+)\s*)?\)$/i;
+
+function clamp(value, min, max) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function toChannel(value) {
+  if (!Number.isFinite(value)) return 255;
+  return clamp(Math.round(value), 0, 255);
+}
+
+function toAlpha(value) {
+  if (!Number.isFinite(value)) return 1;
+  return clamp(value, 0, 1);
+}
+
 function colorStringTo32(str) {
-  const m = /rgba?\((\d+),(\d+),(\d+),(\d*(?:\.\d+)?)\)/.exec(str);
+  if (typeof str !== 'string') return 0xffffffff;
+  if (!COLOR_FN_RE.test(str)) return 0xffffffff;
+  const m = COLOR_RE.exec(str.trim());
   if (!m) return 0xffffffff;
-  const r = parseInt(m[1]);
-  const g = parseInt(m[2]);
-  const b = parseInt(m[3]);
-  const a = m[4] === undefined ? 1 : parseFloat(m[4]);
-  return ((Math.round(a * 255) & 0xff) << 24) | (b << 16) | (g << 8) | r;
+  const r = toChannel(Number(m[1]));
+  const g = toChannel(Number(m[2]));
+  const b = toChannel(Number(m[3]));
+  const a = toAlpha(m[4] === undefined ? 1 : Number(m[4]));
+  return ((Math.round(a * 255) & 0xff) << 24) | ((b & 0xff) << 16) | ((g & 0xff) << 8) | (r & 0xff);
 }
 
 class Stage {
