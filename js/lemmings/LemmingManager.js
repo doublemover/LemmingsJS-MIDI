@@ -26,6 +26,28 @@ import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getDependency } from '../core/dependencies.js';
 
+const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
+  typeof performance.now === 'function' &&
+  typeof performance.measure === 'function');
+
+const TICK_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'LemmingManager',
+    trackGroup: 'Game State',
+    color: 'tertiary-dark',
+    tooltipText: 'tick'
+  })
+});
+
+const RENDER_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'LemmingManager',
+    trackGroup: 'Render',
+    color: 'tertiary-dark',
+    tooltipText: 'render'
+  })
+});
+
 class LemmingManager extends BaseLogger {
   #mmTickCounter = 0;
   #releaseTickIndex = 0;
@@ -189,69 +211,76 @@ class LemmingManager extends BaseLogger {
   }
 
   tick() {
-    const tickNum = this.mmTickCounter;
-    withPerformance(
-      'tick',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Game State',
-        color: 'tertiary-dark',
-        tooltipText: `tick ${tickNum}`
-      },
-      () => {
-        this.addNewLemmings();
-        const lems = this.activeLemmings;
-        const count = lems.length;
-        if (this.isNuking()) {
-          this._nukeNextLemming();
+    const perfEnabled = typeof lemmings !== 'undefined' &&
+      lemmings &&
+      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      this.addNewLemmings();
+      const lems = this.activeLemmings;
+      const count = lems.length;
+      if (this.isNuking()) {
+        this._nukeNextLemming();
+      }
+      for (const lem of lems) {
+        if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
+        const newAction = lem.process(this.level);
+        this.processNewAction(lem, newAction);
+        const triggerAction = this.runTrigger(lem);
+        this.processNewAction(lem, triggerAction);
+      }
+      const sel = this.getSelectedLemming();
+      if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
+      if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
+        lemmings.laggedOut = count;
+      }
+      if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
+        const lemsCount = lems.length;
+        if (this._minimapDotBuffer.length < lemsCount * 2) {
+          this._minimapDotBuffer = new Uint8Array(lemsCount * 2);
         }
+        const dots = this._minimapDotBuffer;
+        const visited = this._mmVisited;
+        visited.fill(0);
+        const scaleX = this.miniMap.scaleX;
+        const scaleY = this.miniMap.scaleY;
+        let idx = 0;
+        let hasSelectedDot = false;
         for (const lem of lems) {
-          if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
-          const newAction = lem.process(this.level);
-          this.processNewAction(lem, newAction);
-          const triggerAction = this.runTrigger(lem);
-          this.processNewAction(lem, triggerAction);
-        }
-        const sel = this.getSelectedLemming();
-        if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
-        if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
-          lemmings.laggedOut = count;
-        }
-        if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
-          const lemsCount = lems.length;
-          if (this._minimapDotBuffer.length < lemsCount * 2) {
-            this._minimapDotBuffer = new Uint8Array(lemsCount * 2);
+          if (lem.removed || lem.disabled) continue;
+          const x = (lem.x * scaleX) | 0;
+          const y = (lem.y * scaleY) | 0;
+          if (lem.id === this.selectedIndex) {
+            this._selectedMiniMapDot[0] = x;
+            this._selectedMiniMapDot[1] = y;
+            hasSelectedDot = true;
           }
-          const dots = this._minimapDotBuffer;
-          const visited = this._mmVisited;
-          visited.fill(0);
-          const scaleX = this.miniMap.scaleX;
-          const scaleY = this.miniMap.scaleY;
-          let idx = 0;
-          let hasSelectedDot = false;
-          for (const lem of lems) {
-            if (lem.removed || lem.disabled) continue;
-            const x = (lem.x * scaleX) | 0;
-            const y = (lem.y * scaleY) | 0;
-            if (lem.id === this.selectedIndex) {
-              this._selectedMiniMapDot[0] = x;
-              this._selectedMiniMapDot[1] = y;
-              hasSelectedDot = true;
-            }
-            const key = (y << 8) | x;
-            if (visited[key]) continue;
-            visited[key] = 1;
-            dots[idx++] = x;
-            dots[idx++] = y;
-          }
-          this.minimapDots = dots.subarray(0, idx);
-          this.miniMap.setLiveDots(this.minimapDots);
-          this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
+          const key = (y << 8) | x;
+          if (visited[key]) continue;
+          visited[key] = 1;
+          dots[idx++] = x;
+          dots[idx++] = y;
         }
-        if (this._activeDirty) {
-          this._compactActiveLemmings();
+        this.minimapDots = dots.subarray(0, idx);
+        this.miniMap.setLiveDots(this.minimapDots);
+        this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
+      }
+      if (this._activeDirty) {
+        this._compactActiveLemmings();
+      }
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('tick', {
+            start: perfStart,
+            detail: TICK_MEASURE_DETAIL
+          });
+        } catch {
+          /* ignored */
         }
-      })();
+      }
+    }
   }
 
   addLemming(x, y) {
@@ -368,34 +397,42 @@ class LemmingManager extends BaseLogger {
   }
 
   render(gameDisplay) {
-    withPerformance(
-      'render',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Render',
-        color: 'tertiary-dark',
-        tooltipText: 'render'
-      },
-      () => {
-        const stage = gameDisplay?.stage;
-        const view = stage?.getGameViewRect?.();
-        let minX = -Infinity;
-        let maxX = Infinity;
-        let minY = -Infinity;
-        let maxY = Infinity;
-        if (view) {
-          const pad = 16;
-          minX = view.x - pad;
-          maxX = view.x + view.w + pad;
-          minY = view.y - pad;
-          maxY = view.y + view.h + pad;
+    const perfEnabled = typeof lemmings !== 'undefined' &&
+      lemmings &&
+      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      const stage = gameDisplay?.stage;
+      const view = stage?.getGameViewRect?.();
+      let minX = -Infinity;
+      let maxX = Infinity;
+      let minY = -Infinity;
+      let maxY = Infinity;
+      if (view) {
+        const pad = 16;
+        minX = view.x - pad;
+        maxX = view.x + view.w + pad;
+        minY = view.y - pad;
+        maxY = view.y + view.h + pad;
+      }
+      for (const lem of this.activeLemmings) {
+        if (lem.removed) continue;
+        if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
+        lem.render(gameDisplay);
+      }
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('render', {
+            start: perfStart,
+            detail: RENDER_MEASURE_DETAIL
+          });
+        } catch {
+          /* ignored */
         }
-        for (const lem of this.activeLemmings) {
-          if (lem.removed) continue;
-          if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
-          lem.render(gameDisplay);
-        }
-      })();
+      }
+    }
   }
 
   renderDebug(gameDisplay) {

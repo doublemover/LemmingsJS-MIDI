@@ -290,6 +290,7 @@ class GameTimer {
         ? `rgba(0,255,0,${intensity})`
         : `rgba(255,0,0,${intensity})`;
       const dashLen = Math.max(2, Math.min(steps, 20));
+      const inBenchMode = app.bench || app.bench2 || app.benchReverse || app.benchSequence;
       const stage = app?.stage;
       if (stage?.startOverlayFade) {
         let rect = null;
@@ -298,7 +299,7 @@ class GameTimer {
           const scale = gui.viewPoint.scale;
           rect = { x: gui.x + 160 * scale, y: gui.y + 32 * scale, width: 16 * scale, height: 10 * scale };
         }
-        stage.startOverlayFade(color, rect, dashLen);
+        stage.startOverlayFade(color, rect, inBenchMode ? 0 : dashLen);
       }
     }
   }

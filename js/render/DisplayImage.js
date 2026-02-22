@@ -771,22 +771,43 @@ function drawMarchingAntRect(
   color2 = 0xFF000000
 ) {
   if (!display?.buffer32) return;
+  if (width < 0 || height < 0) return;
+  if (dashLen <= 0) dashLen = 1;
   const { width: w } = display.imgData;
+  const buffer32 = display.buffer32;
   const pattern = dashLen * 2;
   let pos = ((offset % pattern) + pattern) % pattern;
-  const set = (px, py) => {
-    const useFirst = Math.floor(pos / dashLen) % 2 === 0;
-    const color = useFirst ? color1 : color2;
-    if ((color >>> 24) !== 0) {
-      display.buffer32[py * w + px] = color;
+  const writeColor1 = (color1 >>> 24) !== 0;
+  const writeColor2 = (color2 >>> 24) !== 0;
+  const advance = () => {
+    pos += 1;
+    if (pos === pattern) pos = 0;
+  };
+  const drawAt = (index) => {
+    if (pos < dashLen) {
+      if (writeColor1) buffer32[index] = color1;
+    } else if (writeColor2) {
+      buffer32[index] = color2;
     }
-    pos = (pos + 1) % pattern;
+    advance();
   };
 
-  for (let dx = 0; dx <= width; dx++) set(x + dx, y);
-  for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
-  for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
-  for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+  let idx = y * w + x;
+  for (let dx = 0; dx <= width; dx += 1, idx += 1) {
+    drawAt(idx);
+  }
+  idx = (y + 1) * w + x + width;
+  for (let dy = 1; dy <= height; dy += 1, idx += w) {
+    drawAt(idx);
+  }
+  idx = (y + height) * w + x + width - 1;
+  for (let dx = 1; dx <= width; dx += 1, idx -= 1) {
+    drawAt(idx);
+  }
+  idx = (y + height - 1) * w + x;
+  for (let dy = 1; dy < height; dy += 1, idx -= w) {
+    drawAt(idx);
+  }
 }
 
 function drawDashedRect(

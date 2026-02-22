@@ -76,6 +76,7 @@ class Stage {
     this.stageCtx.imageSmoothingEnabled = false;
     this._ctxAlpha = 1;
     this._ctxFillStyle = '';
+    this._ctxStrokeStyle = '';
     this.gameImgProps = new StageImageProperties();
     this.guiImgProps  = new StageImageProperties();
 
@@ -674,21 +675,33 @@ class Stage {
       this._setGlobalAlpha(1);
       if (this.overlayDashLen > 0) {
         const octx = this.stageCtx;
-        const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
-        const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
-        const drawAnts = getDependency('drawMarchingAntRect', drawMarchingAntRect);
-        drawAnts(
-          disp,
-          0,
-          0,
-          r.width,
-          r.height,
-          this.overlayDashLen,
-          this.overlayDashOffset,
-          this.overlayDashColor,
-          0x00000000
-        );
-        octx.putImageData(img, r.x, r.y);
+        if (typeof octx.setLineDash === 'function' && typeof octx.strokeRect === 'function') {
+          this._setGlobalAlpha(this.overlayAlpha);
+          this._setStrokeStyle(this.overlayColor);
+          octx.lineWidth = 1;
+          octx.setLineDash([this.overlayDashLen, this.overlayDashLen]);
+          octx.lineDashOffset = -this.overlayDashOffset;
+          octx.strokeRect(r.x + 0.5, r.y + 0.5, Math.max(0, r.width - 1), Math.max(0, r.height - 1));
+          octx.setLineDash([]);
+          octx.lineDashOffset = 0;
+          this._setGlobalAlpha(1);
+        } else {
+          const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
+          const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+          const drawAnts = getDependency('drawMarchingAntRect', drawMarchingAntRect);
+          drawAnts(
+            disp,
+            0,
+            0,
+            r.width,
+            r.height,
+            this.overlayDashLen,
+            this.overlayDashOffset,
+            this.overlayDashColor,
+            0x00000000
+          );
+          octx.putImageData(img, r.x, r.y);
+        }
       }
     }
     if (this._perfTrackingFrame) {
@@ -786,6 +799,12 @@ class Stage {
     if (this._ctxFillStyle === value) return;
     this.stageCtx.fillStyle = value;
     this._ctxFillStyle = value;
+  }
+
+  _setStrokeStyle(value) {
+    if (this._ctxStrokeStyle === value) return;
+    this.stageCtx.strokeStyle = value;
+    this._ctxStrokeStyle = value;
   }
 }
 
