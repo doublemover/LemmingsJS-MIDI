@@ -115,6 +115,40 @@ describe('LemmingManager core behavior', function() {
     expect(mm.dots.length).to.equal(2);
   });
 
+  it('processes super lemmings twice per tick', function() {
+    const { manager } = makeManager({
+      width: 40,
+      height: 40,
+      levelInit(level) { level.isSuperLemming = true; }
+    });
+    manager.addLemming(10, 10);
+    const lem = manager.lemmings[0];
+    let processCalls = 0;
+    lem.process = () => {
+      processCalls += 1;
+      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    };
+
+    manager.tick();
+
+    expect(processCalls).to.equal(2);
+  });
+
+  it('processes non-super lemmings once per tick', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    manager.addLemming(10, 10);
+    const lem = manager.lemmings[0];
+    let processCalls = 0;
+    lem.process = () => {
+      processCalls += 1;
+      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    };
+
+    manager.tick();
+
+    expect(processCalls).to.equal(1);
+  });
+
   it('spawns and removes lemmings mid-level', function() {
     const { manager, gvc } = makeManager({ width: 50, height: 50, releaseCount: 1 });
 

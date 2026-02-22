@@ -277,6 +277,17 @@ class LemmingManager extends BaseLogger {
     return true;
   }
 
+  /**
+   * Run one simulation step for a single lemming.
+   * Super lemming levels invoke this twice per tick to match classic speed.
+   */
+  _processLemmingStep(lem, tick) {
+    const newAction = lem.process(this.level);
+    this.processNewAction(lem, newAction);
+    const triggerAction = this.runTrigger(lem, tick);
+    this.processNewAction(lem, triggerAction);
+  }
+
   tick() {
     const perfEnabled = typeof lemmings !== 'undefined' &&
       lemmings &&
@@ -288,16 +299,16 @@ class LemmingManager extends BaseLogger {
       const lems = this.activeLemmings;
       const count = lems.length;
       const tick = this.triggerManager?.gameTimer?.getGameTicks?.() ?? null;
+      const stepsPerTick = this.level?.isSuperLemming ? 2 : 1;
       if (this.isNuking()) {
         this._nukeNextLemming();
       }
       for (let i = 0; i < lems.length; i += 1) {
         const lem = lems[i];
-        if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
-        const newAction = lem.process(this.level);
-        this.processNewAction(lem, newAction);
-        const triggerAction = this.runTrigger(lem, tick);
-        this.processNewAction(lem, triggerAction);
+        for (let step = 0; step < stepsPerTick; step += 1) {
+          if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) break;
+          this._processLemmingStep(lem, tick);
+        }
       }
       const sel = this.getSelectedLemming();
       if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
