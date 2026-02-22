@@ -10,6 +10,8 @@ const DEFAULT_OPTIONS = Object.freeze({
   deltaPoolLimit: 64,
   deltaBlockSizeTicks: 256,
   coldBlockAgeTicks: 2048,
+  coldCompactionIntervalTicks: 1,
+  coldCompactionMaxBlocksPerSweep: 4,
   enableColdBlockCompression: true,
   enableColdBlockDedupe: true
 });
@@ -123,6 +125,14 @@ const normalizeOptions = (options = {}) => {
   const historyCapTicks = toNonNegativeInt(options.historyCapTicks, DEFAULT_OPTIONS.historyCapTicks);
   const deltaBlockSizeTicks = Math.max(1, toNonNegativeInt(options.deltaBlockSizeTicks, DEFAULT_OPTIONS.deltaBlockSizeTicks));
   const coldBlockAgeTicks = Math.max(0, toNonNegativeInt(options.coldBlockAgeTicks, DEFAULT_OPTIONS.coldBlockAgeTicks));
+  const coldCompactionIntervalTicks = Math.max(1, toNonNegativeInt(
+    options.coldCompactionIntervalTicks,
+    DEFAULT_OPTIONS.coldCompactionIntervalTicks
+  ));
+  const coldCompactionMaxBlocksPerSweep = Math.max(1, toNonNegativeInt(
+    options.coldCompactionMaxBlocksPerSweep,
+    DEFAULT_OPTIONS.coldCompactionMaxBlocksPerSweep
+  ));
   let historyWarnTicks = toNonNegativeInt(options.historyWarnTicks, DEFAULT_OPTIONS.historyWarnTicks);
   if (historyCapTicks > 0 && historyWarnTicks > historyCapTicks) {
     historyWarnTicks = historyCapTicks;
@@ -136,6 +146,8 @@ const normalizeOptions = (options = {}) => {
     deltaPoolLimit,
     deltaBlockSizeTicks,
     coldBlockAgeTicks,
+    coldCompactionIntervalTicks,
+    coldCompactionMaxBlocksPerSweep,
     enableColdBlockCompression: options.enableColdBlockCompression !== false,
     enableColdBlockDedupe: options.enableColdBlockDedupe !== false
   };
@@ -287,6 +299,7 @@ class HistoryStore {
     this._coldBlockStore = new Map();
     this._coldBlockCount = 0;
     this._coldBlockBytes = 0;
+    this._coldCompactionCursor = null;
     this._historyWarned = false;
     this._recording = false;
     this._currentTick = null;
@@ -318,6 +331,7 @@ class HistoryStore {
 
   configureRetention(policy = {}) {
     this.options = normalizeOptions({ ...this.options, ...policy });
+    this._coldCompactionCursor = null;
     this._historyWarned = false;
     return this.getRetentionPolicy();
   }
@@ -655,13 +669,38 @@ class HistoryStore {
 
   _maybeCompactDeltaBlocks() {
     const age = this.options.coldBlockAgeTicks ?? 0;
-    if (age <= 0 || this.maxDeltaTick == null) return;
+    if (age <= 0 || this.maxDeltaTick == null || this.minDeltaTick == null) return;
+    const interval = this.options.coldCompactionIntervalTicks || DEFAULT_OPTIONS.coldCompactionIntervalTicks;
+    if (interval > 1 && (this.maxDeltaTick % interval) !== 0) return;
     const cutoff = this.maxDeltaTick - age;
-    for (const block of this._deltaBlocks.values()) {
-      if (block.cold) continue;
-      if (block.endTick > cutoff) continue;
-      this._compactDeltaBlock(block);
+    const firstStart = this._deltaBlockStart(this.minDeltaTick);
+    const lastStart = this._deltaBlockStart(cutoff);
+    if (lastStart < firstStart) return;
+
+    if (!Number.isFinite(this._coldCompactionCursor)
+        || this._coldCompactionCursor < firstStart
+        || this._coldCompactionCursor > lastStart) {
+      this._coldCompactionCursor = firstStart;
     }
+
+    const budget = this.options.coldCompactionMaxBlocksPerSweep
+      || DEFAULT_OPTIONS.coldCompactionMaxBlocksPerSweep;
+    const stride = this.options.deltaBlockSizeTicks || DEFAULT_OPTIONS.deltaBlockSizeTicks;
+    let cursor = this._coldCompactionCursor;
+    let remaining = budget;
+    while (remaining > 0) {
+      const block = this._deltaBlocks.get(cursor);
+      if (block && !block.cold && block.endTick <= cutoff) {
+        this._compactDeltaBlock(block);
+      }
+      remaining -= 1;
+      cursor += stride;
+      if (cursor > lastStart) {
+        cursor = firstStart;
+      }
+      if (cursor === this._coldCompactionCursor) break;
+    }
+    this._coldCompactionCursor = cursor;
   }
 
   _allocDelta(tickIndex) {

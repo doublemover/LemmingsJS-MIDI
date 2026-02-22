@@ -3083,6 +3083,8 @@ describe('HistoryStore', function() {
     history.configureRetention({
       deltaBlockSizeTicks: 4,
       coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 1,
+      coldCompactionMaxBlocksPerSweep: 64,
       enableColdBlockCompression: true
     });
 
@@ -3099,11 +3101,62 @@ describe('HistoryStore', function() {
     expect(delta.tick).to.equal(coldTick);
   });
 
+  it('throttles cold compaction work per sweep budget', function() {
+    const history = new HistoryStore({
+      deltaBlockSizeTicks: 1,
+      coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 1,
+      coldCompactionMaxBlocksPerSweep: 1,
+      enableColdBlockCompression: true
+    });
+    seedHistory(history, { deltas: [0, 1, 2, 3, 4, 5] });
+
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.equal(1);
+    expect(history.deltas[0]).to.equal(1);
+    expect(history.deltas[5]).to.not.equal(1);
+
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.equal(2);
+
+    history._maybeCompactDeltaBlocks();
+    history._maybeCompactDeltaBlocks();
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.equal(5);
+    expect(history.deltas[4]).to.equal(1);
+    expect(history.deltas[5]).to.not.equal(1);
+  });
+
+  it('runs compaction sweeps only on configured interval ticks', function() {
+    const history = new HistoryStore({
+      deltaBlockSizeTicks: 1,
+      coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 3,
+      coldCompactionMaxBlocksPerSweep: 64,
+      enableColdBlockCompression: true
+    });
+    seedHistory(history, { deltas: [0, 1, 2, 3, 4] });
+
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.equal(0);
+
+    history._setDelta(5, history._allocDelta(5));
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.equal(0);
+
+    history._setDelta(6, history._allocDelta(6));
+    history._maybeCompactDeltaBlocks();
+    expect(history._coldBlockCount).to.be.greaterThan(0);
+    expect(history.deltas[0]).to.equal(1);
+  });
+
   it('deduplicates identical cold block payloads by hash', function() {
     const { history, timer } = createHistoryFixture();
     history.configureRetention({
       deltaBlockSizeTicks: 2,
       coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 1,
+      coldCompactionMaxBlocksPerSweep: 64,
       enableColdBlockCompression: true,
       enableColdBlockDedupe: true
     });
@@ -3123,6 +3176,8 @@ describe('HistoryStore', function() {
     history.configureRetention({
       deltaBlockSizeTicks: 3,
       coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 1,
+      coldCompactionMaxBlocksPerSweep: 64,
       enableColdBlockCompression: true
     });
 
