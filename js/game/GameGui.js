@@ -63,7 +63,11 @@ class GameGui {
     this.selectionAnimStep  = 1;   // pixels per animation step
     this._selectionOffset   = 0;
     this._selectionCounter  = 0;
-    this._lastAntSignature = '';
+    this._lastAntPanel = Number.NaN;
+    this._lastAntPaused = null;
+    this._lastAntNukePrepared = null;
+    this._lastAntHoverPanel = Number.NaN;
+    this._lastAntOffset = Number.NaN;
 
     /* hover state */
     this._hoverPanelIdx   = -1;
@@ -123,6 +127,14 @@ class GameGui {
       return;
     }
     this._guiRafId = window.requestAnimationFrame(this._guiBound);
+  }
+
+  _invalidateAntState() {
+    this._lastAntPanel = Number.NaN;
+    this._lastAntPaused = null;
+    this._lastAntNukePrepared = null;
+    this._lastAntHoverPanel = Number.NaN;
+    this._lastAntOffset = Number.NaN;
   }
 
   _applyReleaseRateAuto() {
@@ -463,7 +475,7 @@ class GameGui {
 
     if (this.backgroundChanged) {
       this.backgroundChanged = false;
-      this._lastAntSignature = '';
+      this._invalidateAntState();
       d.initSize(this._panelSprite.width, this._panelSprite.height);
       d.setBackground(this._panelSprite.getData());
 
@@ -606,8 +618,13 @@ class GameGui {
 
     const paused = !this.gameTimer.isRunning();
     const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
-    const antSignature = `${selectedPanel}|${paused ? 1 : 0}|${this.nukePrepared ? 1 : 0}|${this._hoverPanelIdx}|${this._selectionOffset}`;
-    if (this._lastAntSignature !== antSignature) {
+    const antStateChanged =
+      this._lastAntPanel !== selectedPanel ||
+      this._lastAntPaused !== paused ||
+      this._lastAntNukePrepared !== this.nukePrepared ||
+      this._lastAntHoverPanel !== this._hoverPanelIdx ||
+      this._lastAntOffset !== this._selectionOffset;
+    if (antStateChanged) {
       if (paused) {
         this.drawPaused(d);
       }
@@ -615,7 +632,11 @@ class GameGui {
         this.drawNukeHover(d);
       }
       this.drawSelection(d, selectedPanel);
-      this._lastAntSignature = antSignature;
+      this._lastAntPanel = selectedPanel;
+      this._lastAntPaused = paused;
+      this._lastAntNukePrepared = this.nukePrepared;
+      this._lastAntHoverPanel = this._hoverPanelIdx;
+      this._lastAntOffset = this._selectionOffset;
     }
     if (this.releaseRateChanged) {
       this.releaseRateChanged = false;

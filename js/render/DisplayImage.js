@@ -935,6 +935,7 @@ function drawMarchingAntRect(
   const pattern = dashLen * 2;
   const writeColor1 = (color1 >>> 24) !== 0;
   const writeColor2 = (color2 >>> 24) !== 0;
+  if (!writeColor1 && !writeColor2) return;
 
   if (width <= 64 && height <= 64) {
     const baseIndex = (y * w) + x;
@@ -956,31 +957,56 @@ function drawMarchingAntRect(
   }
 
   let pos = ((offset % pattern) + pattern) % pattern;
-  const paint = (index) => {
-    if (pos < dashLen) {
-      if (writeColor1) buffer32[index] = color1;
-    } else if (writeColor2) {
-      buffer32[index] = color2;
-    }
-    pos += 1;
-    if (pos === pattern) pos = 0;
-  };
+  const writeBothColors = writeColor1 && writeColor2;
+  const writeFirstOnly = writeColor1 && !writeColor2;
 
   let idx = y * w + x;
   for (let dx = 0; dx <= width; dx += 1, idx += 1) {
-    paint(idx);
+    if (writeBothColors) {
+      buffer32[idx] = pos < dashLen ? color1 : color2;
+    } else if (writeFirstOnly) {
+      if (pos < dashLen) buffer32[idx] = color1;
+    } else if (pos >= dashLen) {
+      buffer32[idx] = color2;
+    }
+    pos += 1;
+    if (pos === pattern) pos = 0;
   }
   idx = (y + 1) * w + x + width;
   for (let dy = 1; dy <= height; dy += 1, idx += w) {
-    paint(idx);
+    if (writeBothColors) {
+      buffer32[idx] = pos < dashLen ? color1 : color2;
+    } else if (writeFirstOnly) {
+      if (pos < dashLen) buffer32[idx] = color1;
+    } else if (pos >= dashLen) {
+      buffer32[idx] = color2;
+    }
+    pos += 1;
+    if (pos === pattern) pos = 0;
   }
   idx = (y + height) * w + x + width - 1;
   for (let dx = 1; dx <= width; dx += 1, idx -= 1) {
-    paint(idx);
+    if (writeBothColors) {
+      buffer32[idx] = pos < dashLen ? color1 : color2;
+    } else if (writeFirstOnly) {
+      if (pos < dashLen) buffer32[idx] = color1;
+    } else if (pos >= dashLen) {
+      buffer32[idx] = color2;
+    }
+    pos += 1;
+    if (pos === pattern) pos = 0;
   }
   idx = (y + height - 1) * w + x;
   for (let dy = 1; dy < height; dy += 1, idx -= w) {
-    paint(idx);
+    if (writeBothColors) {
+      buffer32[idx] = pos < dashLen ? color1 : color2;
+    } else if (writeFirstOnly) {
+      if (pos < dashLen) buffer32[idx] = color1;
+    } else if (pos >= dashLen) {
+      buffer32[idx] = color2;
+    }
+    pos += 1;
+    if (pos === pattern) pos = 0;
   }
 }
 

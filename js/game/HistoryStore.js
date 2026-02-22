@@ -1823,42 +1823,38 @@ class HistoryStore {
     const mask = level.groundMask?.mask;
     const img = level.groundImage;
     if (!mask || !img) return;
+    const maskValues = useNext ? changes.nextMask : changes.prevMask;
+    const redValues = useNext ? changes.nextR : changes.prevR;
+    const greenValues = useNext ? changes.nextG : changes.prevG;
+    const blueValues = useNext ? changes.nextB : changes.prevB;
+    if (!maskValues || !redValues || !greenValues || !blueValues) return;
     const spans = changes.spans;
     if (spans?.starts?.length) {
-      let valueIndex = 0;
       const starts = spans.starts;
       const lengths = spans.lengths;
-      for (let i = 0; i < starts.length; i++) {
-        const start = starts[i];
-        const length = lengths[i];
-        for (let j = 0; j < length; j++) {
-          const index = start + j;
-          const maskValue = useNext ? changes.nextMask[valueIndex] : changes.prevMask[valueIndex];
-          const r = useNext ? changes.nextR[valueIndex] : changes.prevR[valueIndex];
-          const g = useNext ? changes.nextG[valueIndex] : changes.prevG[valueIndex];
-          const b = useNext ? changes.nextB[valueIndex] : changes.prevB[valueIndex];
-          mask[index] = maskValue;
-          const imgIdx = index * 4;
-          img[imgIdx] = r;
-          img[imgIdx + 1] = g;
-          img[imgIdx + 2] = b;
-          valueIndex += 1;
+      let valueIndex = 0;
+      for (let i = 0; i < starts.length; i += 1) {
+        let index = starts[i];
+        let imgIndex = index << 2;
+        const valueEnd = valueIndex + lengths[i];
+        for (; valueIndex < valueEnd; valueIndex += 1, index += 1, imgIndex += 4) {
+          mask[index] = maskValues[valueIndex];
+          img[imgIndex] = redValues[valueIndex];
+          img[imgIndex + 1] = greenValues[valueIndex];
+          img[imgIndex + 2] = blueValues[valueIndex];
         }
       }
       return;
     }
-    if (!changes.indices?.length) return;
-    for (let i = 0; i < changes.indices.length; i++) {
-      const index = changes.indices[i];
-      const maskValue = useNext ? changes.nextMask[i] : changes.prevMask[i];
-      const r = useNext ? changes.nextR[i] : changes.prevR[i];
-      const g = useNext ? changes.nextG[i] : changes.prevG[i];
-      const b = useNext ? changes.nextB[i] : changes.prevB[i];
-      mask[index] = maskValue;
-      const imgIdx = index * 4;
-      img[imgIdx] = r;
-      img[imgIdx + 1] = g;
-      img[imgIdx + 2] = b;
+    const indices = changes.indices;
+    if (!indices?.length) return;
+    for (let i = 0; i < indices.length; i += 1) {
+      const index = indices[i];
+      const imgIndex = index << 2;
+      mask[index] = maskValues[i];
+      img[imgIndex] = redValues[i];
+      img[imgIndex + 1] = greenValues[i];
+      img[imgIndex + 2] = blueValues[i];
     }
   }
 
