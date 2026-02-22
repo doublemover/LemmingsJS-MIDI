@@ -16,6 +16,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
+import { EventQueue } from './eventQueue.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -224,58 +225,6 @@ class ResourceStore {
       if (!firstKey) break;
       this._remove(firstKey);
     }
-  }
-}
-
-class EventQueue {
-  constructor({ maxEvents = 1000 } = {}) {
-    this.maxEvents = maxEvents;
-    this.events = [];
-    this.seq = 0;
-    this.lastDelivered = 0;
-    this.humanSummaryParts = [];
-  }
-
-  add({ source, type, summary, data, resourceUris, tickIndex } = {}) {
-    const entry = {
-      id: makeId(),
-      source,
-      type,
-      tickIndex: Number.isFinite(tickIndex) ? tickIndex : null,
-      time: nowIso(),
-      summary: summary || '',
-      data,
-      resourceUris
-    };
-    this.seq += 1;
-    entry.seq = this.seq;
-    this.events.push(entry);
-    if (source === 'human' && summary) {
-      this.humanSummaryParts.push(summary);
-    }
-    while (this.events.length > this.maxEvents) {
-      this.events.shift();
-    }
-    return entry;
-  }
-
-  drain(after, { updateCursor = true, includeHumanSummary = true } = {}) {
-    const afterSeq = Number.isFinite(Number(after)) ? Number(after) : this.lastDelivered;
-    const events = this.events.filter((event) => event.seq > afterSeq);
-    if (!events.length) return null;
-    const cursor = String(events[events.length - 1].seq);
-    if (updateCursor) {
-      this.lastDelivered = Number(cursor);
-    }
-    const payload = {
-      cursor,
-      events: events.map(({ seq, ...rest }) => rest)
-    };
-    if (includeHumanSummary && this.humanSummaryParts.length) {
-      payload.humanSummary = this.humanSummaryParts.join('; ');
-      this.humanSummaryParts = [];
-    }
-    return payload;
   }
 }
 

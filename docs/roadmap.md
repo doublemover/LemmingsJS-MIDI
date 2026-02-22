@@ -425,7 +425,7 @@ Notes:
   `test/*procgen*.test.js`.
 
 ## Phase 26: MCP throughput and lifecycle hardening
-- [ ] Replace `EventQueue` shift/filter behavior with a ring-buffer cursor model
+- [x] Replace `EventQueue` shift/filter behavior with a ring-buffer cursor model
   to eliminate O(n) drains and head removals.
   Touchpoints: `mcp/server.js`.
 - [ ] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
