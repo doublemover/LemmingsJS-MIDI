@@ -95,7 +95,8 @@ Notes:
 - [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
 
 ## Phase 7: Gameplay parity, packs, and assets
-- [ ] Find external references that confirm these things before implementing
+- [ ] Build reproducible parity repro cases and fix behavior directly in runtime
+  logic (no research/documentation gate before implementation).
 - [ ] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
   consider built-stairs handling.
 - [ ] Traps: add missing squish, fix generic trap using splat death.
@@ -111,7 +112,8 @@ Notes:
 - [ ] Full support for pack-specific glitches.
 - [ ] Support for other popular pack types.
 - [ ] High resolution and 32-bit color sprite support.
-- [ ] Procedural endless level generation.
+- [ ] Procgen production hardening and long-run stability/perf at high entity
+  counts.
 
 ## Phase 9: Gamepad support (deferred)
 - [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
@@ -214,3 +216,130 @@ Notes:
 - [x] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
   blocker coordination).
 - [x] Add pacing/budget controls plus debug overlay for AI decisions.
+
+## Phase 22: Implementation-First Backlog + Touchpoint Map
+
+This phase folds in outstanding work from:
+`01_codebase_bug_audit.md`, `02_mcp_split_plan.md`,
+`03_agent_prompt_for_mcp_servers.md`, `04_midi_ui_enhancements.md`,
+`05_history_compression_plan.md`, `06_rendering_blitting_optimizations.md`,
+and `08_other_improvements.md`.
+
+### 22.1 Engine correctness hardening
+- [ ] Replace Stage color parsing with a strict parser that accepts practical
+  `rgb/rgba` input variants and clamps channels before packing.
+  Touchpoints: `js/render/Stage.js`, `test/render/stage.test.js`.
+- [ ] Apply explicit radix (`10`) to runtime numeric parsing and normalize
+  parse/validation helpers shared by app/game/render modules.
+  Touchpoints: `js/app/*`, `js/game/*`, `js/render/*`.
+- [ ] Remove non-intentional loose equality in gameplay hot paths to avoid
+  coercion bugs under high-frequency simulation.
+  Touchpoints: `js/actions/*`, `js/lemmings/*`, `js/game/*`.
+- [ ] Replace ad-hoc DOM querying with explicit required/optional resolution
+  helpers and fail-fast initialization for required UI nodes.
+  Touchpoints: `js/app/boot.js`, `js/app/bootstrap.js`.
+- [ ] Route app/runtime/midi access through explicit dependency/context flows
+  instead of broad `globalThis` reads in hot paths.
+  Touchpoints: `js/core/dependencies.js`, `js/app/*`, `js/game/GameTimer.js`.
+- [ ] Enable bounded history defaults and make retention policy explicit in
+  runtime config so long sessions do not silently overgrow memory.
+  Touchpoints: `js/game/HistoryStore.js`, `js/game/TimeTravelController.js`.
+
+### 22.2 MCP implementation split and runtime behavior
+- [ ] Split MCP tool registration into composable modules (`game`, `editor`,
+  `interact`) backed by shared session/state infrastructure.
+  Touchpoints: `mcp/server.js`, `mcp/`.
+- [ ] Publish separate MCPB package manifests for each tool surface while
+  keeping shared code in one implementation core.
+  Touchpoints: `mcpb/manifest.json`, `mcpb/package.json`, `MCP_COMPAT_PUBLISHING/*`.
+- [ ] Implement strict runtime routing per surface (tool namespace ownership,
+  shared session IDs, no accidental cross-surface handler leakage).
+  Touchpoints: `mcp/server.js`, `scripts/mcp-smoke.js`.
+- [ ] Update MCP docs/prompts to exact shipped tool names and call flows after
+  split lands (no speculative docs before implementation).
+  Touchpoints: `docs/mcp/README.md`, `docs/mcp/call-examples.md`.
+
+### 22.3 MIDI UI runtime modernization
+- [ ] Introduce a unified `MidiIntent` state model with reducer-style updates
+  and persistence bridge, then rewire existing control handlers to it.
+  Touchpoints: `js/app/midi-ui/*`, `js/app/midiUiController.js`.
+- [ ] Replace dropdown-first note/chord/arp editing with direct controls
+  (keyboard/grid/pattern interactions) while preserving existing mappings.
+  Touchpoints: `js/app/midiUiController.js`, `css/game.css`.
+- [ ] Expand MIDI-learn to a generalized arm/disarm workflow for all editable
+  controls (notes, CC, chord, arp, transport mappings).
+  Touchpoints: `js/midi/input/MidiInputController.js`, `js/app/midiUiController.js`.
+- [ ] Add deterministic automation hooks to keep E2E coverage robust as UI
+  complexity grows.
+  Touchpoints: `e2e/midi-ui.spec.js`, `e2e/tools/midiUiSnippets.js`.
+
+### 22.4 History compression and rewind storage
+- [ ] Add fixed-size delta block containers over per-tick deltas to reduce
+  metadata overhead and speed seek/index operations.
+  Touchpoints: `js/game/HistoryStore.js`.
+- [ ] Add canonical binary encoding for blocks and optional cold-block
+  compression in storage paths.
+  Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
+- [ ] Add hash-based chunk dedupe for repeated cold blocks to cap growth in
+  repetitive scenarios.
+  Touchpoints: `js/game/HistoryStore.js`.
+- [ ] Add no-op span tokenization/RLE to compress idle periods without
+  affecting replay determinism.
+  Touchpoints: `js/game/HistoryStore.js`.
+- [ ] Add replay-hash validation runs during test flows to guard deterministic
+  seek/replay behavior through compression changes.
+  Touchpoints: `test/history-store.test.js`, `test/time-travel-controller.test.js`.
+
+### 22.5 Canvas2D maximum-performance program
+- [ ] Keep rendering on Canvas2D only; all optimizations target Canvas2D
+  compositing, caching, and memory locality (no WebGL/WebGPU migration).
+  Touchpoints: `js/render/*`, `js/game/GameView.js`.
+- [ ] Add an opt-in in-game perf overlay fed by render/tick timing probes to
+  expose hot stages and frame spikes during play and bench runs.
+  Touchpoints: `js/game/GameView.js`, `js/render/Stage.js`.
+- [ ] Replace full-frame update tendencies with damage-region accumulation and
+  region-scoped layer flushes in Stage + GroundRenderer.
+  Touchpoints: `js/render/Stage.js`, `js/render/GroundRenderer.js`.
+- [ ] Move expensive pixel work out of per-frame paths by precomputing
+  palette-expanded/static assets and reusing typed-array/image buffers.
+  Touchpoints: `js/render/Frame.js`, `js/render/DisplayImage.js`, `js/render/StageImageProperties.js`.
+- [ ] Reduce Canvas2D state churn by batching sprite/text draws, minimizing
+  context property flips, and avoiding unnecessary clear/repaint cycles.
+  Touchpoints: `js/render/*`, `js/game/GameGui.js`.
+- [ ] Add aggressive allocation reduction in hot loops (object reuse, scratch
+  buffers, stable arrays) for render, lemming update, and history flows.
+  Touchpoints: `js/render/*`, `js/lemmings/LemmingManager.js`, `js/game/HistoryStore.js`.
+- [ ] Add level-scale stress profiles focused on sustained high-entity runs and
+  reverse playback to tune for worst-case practical performance.
+  Touchpoints: `scripts/bench-performance.js`, `test/gameview.benchreverse.test.js`.
+
+### 22.6 Editor and workflow throughput improvements
+- [ ] Add runtime startup profiles (`gameplay`, `editor`, `perf`) that preload
+  relevant settings and disable unnecessary subsystems per mode.
+  Touchpoints: `js/app/boot.js`, `js/game/GameView.js`, `docs/config.md`.
+- [ ] Expand editor batch operations (replace selected, align/distribute,
+  randomize-with-rules) as first-class controller actions.
+  Touchpoints: `js/editor/EditorController.js`, `js/app/editorUiController.js`.
+- [ ] Harden offline tooling pipeline performance for large pack processing with
+  streaming I/O and reduced intermediate allocations.
+  Touchpoints: `tools/*`, `scripts/*`.
+- [ ] Add focused architecture docs that explain how renderer/time-travel/MCP
+  internals are intended to behave for fast implementation onboarding.
+  Touchpoints: `docs/`.
+
+### 22.7 Execution order (performance-first)
+- [ ] Wave 1: correctness + low-risk hot-path cleanup (`22.1`, parser/equality/
+  DOM/global cleanup, bounded history defaults).
+- [ ] Wave 2: Canvas2D frame-time reduction (`22.5` damage regions, buffer
+  reuse, draw batching, perf overlay instrumentation).
+- [ ] Wave 3: history storage compaction (`22.4` blocks/encoding/dedupe/no-op
+  tokenization with replay-hash safeguards).
+- [ ] Wave 4: MCP split and MIDI/editor modernization (`22.2`, `22.3`, `22.6`)
+  after core runtime perf characteristics are stable.
+
+### 22.8 Validation matrix for active work
+- [ ] Baseline: `npm run lint`, `npm run check-undefined`, `npm test`.
+- [ ] Performance: `npm run bench-performance -- --mode=sequence`,
+  `npm run bench-history`.
+- [ ] MCP: `npm run check-mcp-clients`, `npm run test-mcp-smoke`.
+- [ ] Editor/MIDI: `npm run test-editor`, `npx mocha \"test/midi/*.test.js\"`.
