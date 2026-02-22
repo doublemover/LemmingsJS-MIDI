@@ -1,0 +1,44 @@
+{
+  "version": 1,
+  "bindings": {
+    "gameplay": {
+      "togglePause": ["button:9"],
+      "stepBackward": ["button:2"],
+      "stepForward": ["button:3"],
+      "toggleReverse": ["button:10"],
+      "nuke": ["button:8"],
+      "restartLevel": ["button:11"],
+      "cycleSkillPrev": ["button:4"],
+      "cycleSkillNext": ["button:5"],
+      "applySkillToSelected": ["button:0"],
+      "levelPrev": ["button:6"],
+      "levelNext": ["button:7"],
+      "toggleShortcutOverlay": ["button:16"],
+      "panLeft": ["button:14", "axis:0:-:0.35"],
+      "panRight": ["button:15", "axis:0:+:0.35"],
+      "panUp": ["button:12", "axis:1:-:0.35"],
+      "panDown": ["button:13", "axis:1:+:0.35"],
+      "zoomIn": ["axis:3:-:0.35"],
+      "zoomOut": ["axis:3:+:0.35"],
+      "zoomReset": ["button:1"]
+    },
+    "editor": {
+      "editorToolSelect": ["button:10"],
+      "editorToolTerrain": ["button:0"],
+      "editorToolGadget": ["button:1"],
+      "editorToolTrigger": ["button:2"],
+      "editorToolMidiFlag": ["button:3"],
+      "editorToolBrush": ["button:4"],
+      "editorToolEraser": ["button:5"],
+      "editorUndo": ["button:6"],
+      "editorRedo": ["button:7"],
+      "editorDelete": ["button:8"],
+      "editorTogglePlaytest": ["button:9"],
+      "editorToggleShortcutOverlay": ["button:16"],
+      "editorNudgeLeft": ["button:14", "axis:0:-:0.35"],
+      "editorNudgeRight": ["button:15", "axis:0:+:0.35"],
+      "editorNudgeUp": ["button:12", "axis:1:-:0.35"],
+      "editorNudgeDown": ["button:13", "axis:1:+:0.35"]
+    }
+  }
+}

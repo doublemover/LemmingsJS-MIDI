@@ -123,7 +123,7 @@ Notes:
   terrain/asset hot paths).
 
 ## Phase 9: Gamepad support (deferred)
-- [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
+- [x] Add `joypad.js` as a dependency and implement full gamepad
   support (gameplay + editor bindings, navigation, remapping).
 
 ## Phase 10: MCP automation + in-memory resources

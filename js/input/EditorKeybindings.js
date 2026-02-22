@@ -1,5 +1,6 @@
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
 import { formatBindingSpec } from './KeybindingFormatter.js';
+import { GamepadInputController } from './GamepadInputController.js';
 import { EditorTools } from '../editor/EditorTools.js';
 
 class EditorKeybindings {
@@ -25,6 +26,13 @@ class EditorKeybindings {
     this._down = this._onKeyDown.bind(this);
     this.keybindings = new KeybindingRegistry();
     this._actions = this._createActionHandlers();
+    this.gamepad = new GamepadInputController({
+      mode: 'editor',
+      fileProvider: options.fileProvider || null,
+      onAction: (action, type) => {
+        this._handleAction(action, type);
+      }
+    });
     this._loadKeybindings(options.fileProvider || null);
   }
 
@@ -34,6 +42,8 @@ class EditorKeybindings {
 
   dispose() {
     window.removeEventListener('keydown', this._down);
+    this.gamepad?.dispose?.();
+    this.gamepad = null;
   }
 
   _loadKeybindings(fileProvider) {
@@ -65,6 +75,14 @@ class EditorKeybindings {
   getDisplayBindings(action) {
     const specs = this.keybindings.getBindingsForAction(action);
     return specs.map(spec => formatBindingSpec(spec)).filter(Boolean);
+  }
+
+  getGamepadDisplayBindings(action) {
+    return this.gamepad?.getDisplayBindings(action) || [];
+  }
+
+  setGamepadBindings(config, options) {
+    this.gamepad?.setConfig?.(config, options);
   }
 
   _createActionHandlers() {
@@ -145,10 +163,11 @@ class EditorKeybindings {
     };
   }
 
-  _handleAction(action) {
+  _handleAction(action, type = 'down') {
     const handler = this._actions[action];
-    if (!handler?.down) return false;
-    handler.down();
+    const fn = type === 'up' ? handler?.up : handler?.down;
+    if (!fn) return false;
+    fn();
     this._onPreview?.();
     return true;
   }

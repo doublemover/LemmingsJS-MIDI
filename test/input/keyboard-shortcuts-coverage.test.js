@@ -412,18 +412,19 @@ describe('KeyboardShortcuts coverage', function() {
 
   it('loads keybindings when available', async function() {
     const { view } = createFixture();
-    let requested = 0;
+    const requested = [];
     view.gameFactory = {
       fileProvider: {
-        loadString() {
-          requested += 1;
+        loadString(name) {
+          requested.push(name);
           return Promise.resolve(JSON.stringify({ version: 2, bindings: { toggleDebug: ['KeyZ'] } }));
         }
       }
     };
     const shortcuts = new KeyboardShortcuts(view);
     await new Promise(resolve => setTimeout(resolve, 0));
-    expect(requested).to.equal(1);
+    expect(requested).to.include('keybindings.json');
+    expect(requested).to.include('gamepadbindings.json');
     expect(shortcuts.keybindings.config.version).to.equal(2);
     shortcuts.dispose();
   });

@@ -6,6 +6,7 @@ import { CommandSelectSkill } from '../commands/CommandSelectSkill.js';
 import { GameVictoryCondition } from '../game/GameVictoryCondition.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SkillTypes } from '../game/SkillTypes.js';
+import { GamepadInputController } from './GamepadInputController.js';
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
 import { formatBindingSpec } from './KeybindingFormatter.js';
 
@@ -21,6 +22,13 @@ class KeyboardShortcuts {
     this.zoom = { dir:0,v:0,reset:null };
     this.keybindings = new KeybindingRegistry();
     this._actions = this._createActionHandlers();
+    this.gamepad = new GamepadInputController({
+      mode: 'gameplay',
+      fileProvider: this.view?.gameFactory?.fileProvider || null,
+      onAction: (action, type) => {
+        this._handleAction(action, type, null);
+      }
+    });
     this._raf = null;
     this._last = 0;
     this._loadKeybindings();
@@ -31,6 +39,8 @@ class KeyboardShortcuts {
       window.cancelAnimationFrame(this._raf);
       this._raf = null;
     }
+    this.gamepad?.dispose?.();
+    this.gamepad = null;
     window.removeEventListener('keydown', this._down);
     window.removeEventListener('keyup', this._up);
   }
@@ -221,6 +231,14 @@ class KeyboardShortcuts {
   getDisplayBindings(action) {
     const specs = this.keybindings.getBindingsForAction(action);
     return specs.map(spec => formatBindingSpec(spec)).filter(Boolean);
+  }
+
+  getGamepadDisplayBindings(action) {
+    return this.gamepad?.getDisplayBindings(action) || [];
+  }
+
+  setGamepadBindings(config, options) {
+    this.gamepad?.setConfig?.(config, options);
   }
 
   _createActionHandlers() {
