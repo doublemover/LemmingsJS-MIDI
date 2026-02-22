@@ -374,6 +374,27 @@ describe('GameGui coverage', function() {
     });
   });
 
+  it('throttles marching-ant offset updates while paused and idle', function() {
+    const display = makeDisplay();
+    const { gui } = makeGui({ running: false });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.backgroundChanged = true;
+    gui.gameTimeChanged = true;
+    gui.selectionAnimDelay = 2;
+    gui.selectionAnimIdleMultiplier = 2;
+    gui._selectionOffset = 0;
+    gui._selectionCounter = gui.selectionAnimDelay - 1;
+
+    gui.render();
+    expect(gui._selectionOffset).to.equal(0);
+
+    gui._selectionCounter = (gui.selectionAnimDelay * gui.selectionAnimIdleMultiplier) - 1;
+    gui.gameTimeChanged = true;
+    gui.render();
+    expect(gui._selectionOffset).to.equal(1);
+  });
+
   it('renders status text, speed, and lock variations', function() {
     const display = makeDisplay();
     const { gui, game, skills, timer, victory } = makeGui({ running: true, speedFactor: 12 });

@@ -61,6 +61,7 @@ class GameGui {
     this.selectionDashLen   = 4;   // length of dash segments (1px longer)
     this.selectionAnimDelay = 60;  // frames between offset increments (slower)
     this.selectionAnimStep  = 1;   // pixels per animation step
+    this.selectionAnimIdleMultiplier = 2;
     this._selectionOffset   = 0;
     this._selectionCounter  = 0;
     this._lastAntPanel = Number.NaN;
@@ -141,6 +142,19 @@ class GameGui {
     const value = this.game?.level?.mechanics?.[name];
     if (typeof value === 'boolean') return value;
     return fallback;
+  }
+
+  _getSelectionAnimDelay(paused) {
+    const baseDelay = Math.max(1, Math.trunc(this.selectionAnimDelay) || 1);
+    if (!paused) return baseDelay;
+    const isIdle =
+      this._hoverPanelIdx < 0 &&
+      !this._hoverSpeedUp &&
+      !this._hoverSpeedDown &&
+      !this.nukePrepared;
+    if (!isIdle) return baseDelay;
+    const idleMultiplier = Math.max(1, Math.trunc(this.selectionAnimIdleMultiplier) || 1);
+    return baseDelay * idleMultiplier;
   }
 
   _applyReleaseRateAuto() {
@@ -623,14 +637,13 @@ class GameGui {
       }
     }
 
-    // update marching ants animation
-    if (++this._selectionCounter >= this.selectionAnimDelay) {
+    const paused = !this.gameTimer.isRunning();
+    const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
+    const antDelay = this._getSelectionAnimDelay(paused);
+    if (++this._selectionCounter >= antDelay) {
       this._selectionCounter = 0;
       this._selectionOffset += this.selectionAnimStep;
     }
-
-    const paused = !this.gameTimer.isRunning();
-    const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
     const antStateChanged =
       this._lastAntPanel !== selectedPanel ||
       this._lastAntPaused !== paused ||

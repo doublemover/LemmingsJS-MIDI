@@ -69,4 +69,17 @@ describe('DisplayImage dashed/marching rectangles', function () {
 
     expect(Array.from(display.buffer32)).to.eql(expected);
   });
+
+  it('clips marching ant rectangles that extend outside the display bounds', function () {
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(4, 3);
+    display.clear(0);
+
+    display.drawMarchingAntRect(-1, -1, 3, 2, 2, 0, 0xFFFFFFFF, 0xFF000000);
+
+    expect(Object.prototype.hasOwnProperty.call(display.buffer32, '-1')).to.equal(false);
+    const changed = Array.from(display.buffer32).some(value => value !== 0);
+    expect(changed).to.equal(true);
+  });
 });

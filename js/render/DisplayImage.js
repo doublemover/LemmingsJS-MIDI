@@ -28,6 +28,7 @@ const marchingAntPerimeterCache = new Map();
 const marchingAntPatternCache = new Map();
 const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
 const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
+const MAX_MARCHING_ANT_FAST_PERIMETER = 2048;
 const DIRTY_RECT_MERGE_PAD = 1;
 const DIRTY_RECT_FULL_LIMIT = 96;
 const EMPTY_DIRTY_RECTS = Object.freeze([]);
@@ -1101,16 +1102,25 @@ function drawMarchingAntRect(
   color2 = 0xFF000000
 ) {
   if (!display?.buffer32) return;
+  x = Math.trunc(x);
+  y = Math.trunc(y);
+  width = Math.trunc(width);
+  height = Math.trunc(height);
   if (width < 0 || height < 0) return;
   if (dashLen <= 0) dashLen = 1;
-  const { width: w } = display.imgData;
+  const { width: w, height: h } = display.imgData;
+  if (!w || !h) return;
   const buffer32 = display.buffer32;
   const pattern = dashLen * 2;
   const writeColor1 = (color1 >>> 24) !== 0;
   const writeColor2 = (color2 >>> 24) !== 0;
   if (!writeColor1 && !writeColor2) return;
+  const perimeter = (width + 1) + height + width + Math.max(0, height - 1);
+  const x2 = x + width;
+  const y2 = y + height;
+  const fullyInBounds = x >= 0 && y >= 0 && x2 < w && y2 < h;
 
-  if (width <= 64 && height <= 64) {
+  if (fullyInBounds && perimeter <= MAX_MARCHING_ANT_FAST_PERIMETER) {
     const baseIndex = (y * w) + x;
     const offsets = getMarchingAntPerimeterOffsets(w, width, height);
     const paintPattern = getMarchingAntPaintPattern(offsets.length, dashLen, offset);
@@ -1130,56 +1140,75 @@ function drawMarchingAntRect(
   }
 
   let pos = ((offset % pattern) + pattern) % pattern;
-  const writeBothColors = writeColor1 && writeColor2;
-  const writeFirstOnly = writeColor1 && !writeColor2;
+  const writeAtIndex = (idx) => {
+    if (writeColor1 && writeColor2) {
+      buffer32[idx] = pos < dashLen ? color1 : color2;
+      return;
+    }
+    if (writeColor1) {
+      if (pos < dashLen) buffer32[idx] = color1;
+      return;
+    }
+    if (pos >= dashLen) {
+      buffer32[idx] = color2;
+    }
+  };
+  const advancePattern = () => {
+    pos += 1;
+    if (pos === pattern) pos = 0;
+  };
 
-  let idx = y * w + x;
-  for (let dx = 0; dx <= width; dx += 1, idx += 1) {
-    if (writeBothColors) {
-      buffer32[idx] = pos < dashLen ? color1 : color2;
-    } else if (writeFirstOnly) {
-      if (pos < dashLen) buffer32[idx] = color1;
-    } else if (pos >= dashLen) {
-      buffer32[idx] = color2;
+  if (fullyInBounds) {
+    let idx = y * w + x;
+    for (let dx = 0; dx <= width; dx += 1, idx += 1) {
+      writeAtIndex(idx);
+      advancePattern();
     }
-    pos += 1;
-    if (pos === pattern) pos = 0;
+    idx = (y + 1) * w + x + width;
+    for (let dy = 1; dy <= height; dy += 1, idx += w) {
+      writeAtIndex(idx);
+      advancePattern();
+    }
+    idx = (y + height) * w + x + width - 1;
+    for (let dx = 1; dx <= width; dx += 1, idx -= 1) {
+      writeAtIndex(idx);
+      advancePattern();
+    }
+    idx = (y + height - 1) * w + x;
+    for (let dy = 1; dy < height; dy += 1, idx -= w) {
+      writeAtIndex(idx);
+      advancePattern();
+    }
+    return;
   }
-  idx = (y + 1) * w + x + width;
-  for (let dy = 1; dy <= height; dy += 1, idx += w) {
-    if (writeBothColors) {
-      buffer32[idx] = pos < dashLen ? color1 : color2;
-    } else if (writeFirstOnly) {
-      if (pos < dashLen) buffer32[idx] = color1;
-    } else if (pos >= dashLen) {
-      buffer32[idx] = color2;
+
+  for (let dx = 0; dx <= width; dx += 1) {
+    const xx = x + dx;
+    if (y >= 0 && y < h && xx >= 0 && xx < w) {
+      writeAtIndex((y * w) + xx);
     }
-    pos += 1;
-    if (pos === pattern) pos = 0;
+    advancePattern();
   }
-  idx = (y + height) * w + x + width - 1;
-  for (let dx = 1; dx <= width; dx += 1, idx -= 1) {
-    if (writeBothColors) {
-      buffer32[idx] = pos < dashLen ? color1 : color2;
-    } else if (writeFirstOnly) {
-      if (pos < dashLen) buffer32[idx] = color1;
-    } else if (pos >= dashLen) {
-      buffer32[idx] = color2;
+  for (let dy = 1; dy <= height; dy += 1) {
+    const yy = y + dy;
+    if (yy >= 0 && yy < h && x2 >= 0 && x2 < w) {
+      writeAtIndex((yy * w) + x2);
     }
-    pos += 1;
-    if (pos === pattern) pos = 0;
+    advancePattern();
   }
-  idx = (y + height - 1) * w + x;
-  for (let dy = 1; dy < height; dy += 1, idx -= w) {
-    if (writeBothColors) {
-      buffer32[idx] = pos < dashLen ? color1 : color2;
-    } else if (writeFirstOnly) {
-      if (pos < dashLen) buffer32[idx] = color1;
-    } else if (pos >= dashLen) {
-      buffer32[idx] = color2;
+  for (let dx = 1; dx <= width; dx += 1) {
+    const xx = x2 - dx;
+    if (y2 >= 0 && y2 < h && xx >= 0 && xx < w) {
+      writeAtIndex((y2 * w) + xx);
     }
-    pos += 1;
-    if (pos === pattern) pos = 0;
+    advancePattern();
+  }
+  for (let dy = 1; dy < height; dy += 1) {
+    const yy = y2 - dy;
+    if (yy >= 0 && yy < h && x >= 0 && x < w) {
+      writeAtIndex((yy * w) + x);
+    }
+    advancePattern();
   }
 }
 

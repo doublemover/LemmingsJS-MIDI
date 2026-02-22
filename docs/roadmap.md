@@ -386,7 +386,7 @@ Notes:
 - [x] Upgrade scaled-frame variant cache to true LRU semantics so hot scale
   variants stay resident and expensive recalculation is avoided.
   Touchpoints: `js/render/DisplayImage.js`.
-- [ ] Reduce marching-ants and dashed-outline cost via cached edge spans and
+- [x] Reduce marching-ants and dashed-outline cost via cached edge spans and
   throttled offset updates at low movement.
   Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`.
 - [ ] Optimize Stage overlay fallback path to avoid repeated
