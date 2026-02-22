@@ -439,9 +439,10 @@ Notes:
   dedicated modules while preserving tool contracts.
   Touchpoints: `mcp/server.js`, `mcp/eventEnvelope.js`, `mcp/resourceStore.js`,
   `mcp/sessionStore.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.
-- [ ] Add shutdown/leak tests to ensure intervals, sockets, and browser
+- [x] Add shutdown/leak tests to ensure intervals, sockets, and browser
   resources are always reclaimed.
-  Touchpoints: `mcp/server.js`, `scripts/mcp-smoke.js`, `test/mcp*.test.js`.
+  Touchpoints: `mcp/server.js`, `mcp/sessionLifecycle.js`,
+  `scripts/mcp-smoke.js`, `test/mcp*.test.js`.
 
 ## Phase 27: Test and benchmark throughput
 - [ ] Add changed-file targeted test selection with stable category mapping and

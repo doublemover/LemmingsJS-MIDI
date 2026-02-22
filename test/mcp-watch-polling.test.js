@@ -141,4 +141,26 @@ describe('WatchPollingController', function () {
     expect(callCount).to.equal(2);
     controller.stop();
   });
+
+  it('clears scheduled timers when stopped', async function () {
+    const clock = createFakeClock();
+    const controller = new WatchPollingController({
+      hasWatchesFn: () => true,
+      pollFn: async () => ({ triggeredCount: 0 }),
+      setTimerFn: clock.setTimerFn,
+      clearTimerFn: clock.clearTimerFn,
+      nowFn: clock.nowFn,
+      config: {
+        minMs: 0,
+        activeMs: 100,
+        maxMs: 400
+      }
+    });
+
+    controller.start();
+    await clock.flush();
+    expect(clock.nextDueIn()).to.equal(100);
+    controller.stop();
+    expect(clock.nextDueIn()).to.equal(null);
+  });
 });

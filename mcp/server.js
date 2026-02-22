@@ -22,6 +22,7 @@ import { normalizeSpectatorStreamConfig, SpectatorBroadcaster } from './spectato
 import { ResourceStore } from './resourceStore.js';
 import { getSession, sessions } from './sessionStore.js';
 import { attachEvents } from './eventEnvelope.js';
+import { disposeAllSessionRuntimes, disposeSessionRuntime } from './sessionLifecycle.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -1243,12 +1244,11 @@ const createSession = async (args) => {
 const closeSession = async (args) => {
   const { sessionId } = SessionCloseSchema.parse(args || {});
   const session = getSession(sessionId);
-  stopSpectatorServer(session);
-  stopWatchLoop(session);
-  session.resources.clearSession(sessionId);
+  await disposeSessionRuntime(session, {
+    stopSpectatorServer,
+    stopWatchLoop
+  });
   sessions.delete(sessionId);
-  await session.context.close();
-  await session.browser.close();
   return { ok: true };
 };
 
@@ -2122,16 +2122,10 @@ const transport = new StdioServerTransport();
 await server.connect(transport);
 
 const shutdown = async () => {
-  for (const session of sessions.values()) {
-    stopSpectatorServer(session);
-    stopWatchLoop(session);
-    try {
-      await session.context.close();
-      await session.browser.close();
-    } catch (err) {
-      // ignore
-    }
-  }
+  await disposeAllSessionRuntimes(sessions.values(), {
+    stopSpectatorServer,
+    stopWatchLoop
+  });
   sessions.clear();
 };
 

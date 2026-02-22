@@ -87,4 +87,17 @@ describe('SpectatorBroadcaster', function () {
     expect(normalized.jpegQuality).to.equal(100);
     expect(normalized.frameSkipPolicy).to.equal(SPECTATOR_SKIP_POLICIES.LATEST);
   });
+
+  it('closes and removes all tracked sockets during cleanup', function () {
+    const broadcaster = new SpectatorBroadcaster();
+    const first = new FakeSocket();
+    const second = new FakeSocket();
+    broadcaster.attach(first);
+    broadcaster.attach(second);
+    broadcaster.closeAll();
+
+    expect(first.readyState).to.equal(3);
+    expect(second.readyState).to.equal(3);
+    expect(broadcaster.getSnapshot().connectedClients).to.equal(0);
+  });
 });
