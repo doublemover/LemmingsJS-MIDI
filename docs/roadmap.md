@@ -395,7 +395,7 @@ Notes:
 - [x] Skip redundant resize-triggered redraw work when canvas dimensions are
   unchanged and displays have no pending dirty state.
   Touchpoints: `js/render/Stage.js`.
-- [ ] Add CPU-only render hotpath benchmark (no browser launch) for dirty-rect,
+- [x] Add CPU-only render hotpath benchmark (no browser launch) for dirty-rect,
   marching-ants, and GUI overlay paths.
   Touchpoints: `scripts/bench-hotpaths.js`, `js/render/*`, `js/game/GameGui.js`.
 

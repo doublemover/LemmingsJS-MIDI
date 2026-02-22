@@ -1,5 +1,8 @@
-import { GameTimer } from '../js/game/GameTimer.js';
-import { HistoryStore } from '../js/game/HistoryStore.js';
+import { DisplayImage } from '../js/render/DisplayImage.js';
+import { Stage } from '../js/render/Stage.js';
+import { GameGui } from '../js/game/GameGui.js';
+import { SkillTypes } from '../js/game/SkillTypes.js';
+import { EventHandler } from '../js/util/EventHandler.js';
 
 const parseArgs = (argv) => {
   const out = new Map();
@@ -49,128 +52,253 @@ const measureN = (iterations, fn) => {
   }
   const total = samples.reduce((acc, value) => acc + value, 0);
   return {
-    samplesMs: samples.map((value) => Number(value.toFixed(2))),
+    samplesMs: samples,
     avgMs: total / samples.length
   };
 };
 
-const setupTimerEnvironment = (measureEnabled) => {
-  let now = 0;
-  const listeners = new Map();
-  globalThis.performance = {
-    now: () => now,
-    measure: measureEnabled ? () => {} : undefined
+const summarizeSamples = (samplesMs, iterations) => {
+  const avg = samplesMs.reduce((acc, value) => acc + value, 0) / Math.max(1, samplesMs.length);
+  return {
+    samplesMs: samplesMs.map((value) => Number(value.toFixed(2))),
+    avgMs: Number(avg.toFixed(2)),
+    usPerIteration: Number(((avg * 1000) / Math.max(1, iterations)).toFixed(4))
   };
-  globalThis.document = {
-    visibilityState: 'visible',
-    hasFocus() { return true; },
-    addEventListener(type, handler) { listeners.set(type, handler); },
-    removeEventListener(type, handler) {
-      if (listeners.get(type) === handler) listeners.delete(type);
-    }
+};
+
+const makeContext = (canvas) => ({
+  canvas,
+  imageSmoothingEnabled: false,
+  globalAlpha: 1,
+  fillStyle: '#000',
+  strokeStyle: '#000',
+  lineWidth: 1,
+  lineDashOffset: 0,
+  createImageData(width, height) {
+    return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+  },
+  putImageData() {},
+  getImageData(_x, _y, width, height) {
+    return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+  },
+  fillRect() {},
+  drawImage() {},
+  strokeRect() {},
+  setLineDash() {},
+  fillText() {}
+});
+
+const makeCanvas = (width, height) => {
+  const canvas = {
+    width,
+    height,
+    style: {},
+    addEventListener() {},
+    removeEventListener() {},
+    getContext() { return this._ctx; }
+  };
+  canvas._ctx = makeContext(canvas);
+  return canvas;
+};
+
+const setupRenderEnvironment = () => {
+  globalThis.performance = {
+    now: () => Date.now(),
+    measure() {}
   };
   globalThis.window = {
-    requestAnimationFrame(cb) {
-      globalThis.window._raf = cb;
-      return 1;
-    },
+    requestAnimationFrame() { return 1; },
     cancelAnimationFrame() {},
     addEventListener() {},
     removeEventListener() {}
   };
-  globalThis.lemmings = {
-    bench2: true,
-    endless: false,
-    performanceAPI: measureEnabled,
-    perfMetrics: measureEnabled,
-    logBenchCatchup: false
+  globalThis.document = {
+    createElement() { return makeCanvas(16, 16); }
   };
-  return {
-    advance(ms) {
-      now += ms;
-      globalThis.window._raf(now);
-    }
+  globalThis.lemmings = {
+    bench: false,
+    bench2: false,
+    benchReverse: false,
+    benchSequence: false,
+    performanceAPI: false,
+    perfMetrics: false,
+    endless: false
   };
 };
 
-const runTimerBench = ({ frames, frameStepMs, repeats }) => withGlobalStubs(() => {
-  const run = (measureEnabled) => {
-    const samples = measureN(repeats + 1, () => {
-      const env = setupTimerEnvironment(measureEnabled);
-      const timer = new GameTimer({ timeLimit: 1 });
-      timer.continue();
-      for (let i = 0; i < frames; i += 1) {
-        env.advance(frameStepMs);
+const runDirtyRectBench = ({ iterations, rectsPerIter, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+  const stageCanvas = makeCanvas(640, 360);
+  const stage = new Stage(stageCanvas);
+  stage.setGuiEnabled(false);
+  stage.gameImgProps.display.initSize(640, 320);
+  stage.updateStageSize();
+
+  const display = stage.gameImgProps.display;
+  const img = display.getImageData();
+  const width = display.getWidth();
+  const height = display.getHeight();
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      for (let r = 0; r < rectsPerIter; r += 1) {
+        const rw = 4 + ((i + r) % 12);
+        const rh = 3 + ((i + (r * 3)) % 10);
+        const x = (i * 31 + r * 47) % Math.max(1, width - rw);
+        const y = (i * 17 + r * 29) % Math.max(1, height - rh);
+        display.markDirtyRect(x, y, rw, rh);
       }
-      timer.stop();
-    });
-    const trimmed = samples.samplesMs.slice(1);
-    const avg = trimmed.reduce((acc, value) => acc + value, 0) / Math.max(trimmed.length, 1);
-    return {
-      samplesMs: trimmed,
-      avgMs: Number(avg.toFixed(2)),
-      msPerFrame: Number((avg / frames).toFixed(6))
-    };
+      stage.draw(stage.gameImgProps, img);
+    }
   };
-  return {
-    noPerfMeasure: run(false),
-    perfMeasure: run(true)
-  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  stage.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
 });
 
-const runHistoryBench = ({ deltas, boundedLoops, wideLoops, boundedBudget, wideBudget }) => {
-  const seed = (history, count) => {
-    for (let i = 0; i < count; i += 1) {
-      history._setDelta(i, history._allocDelta(i));
+const runMarchingAntBench = ({ iterations, repeats }) => {
+  const stage = {
+    createImage(_display, width, height) {
+      return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+    },
+    redraw() {},
+    setGameViewPointPosition() {}
+  };
+  const display = new DisplayImage(stage);
+  display.initSize(640, 360);
+  display.clear(0);
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      const offset = i & 15;
+      display.drawMarchingAntRect(32, 24, 220, 120, 4, offset);
+      display.drawMarchingAntRect(300, 32, 96, 52, 3, offset + 2);
+      display.drawMarchingAntRect(120, 180, 300, 100, 5, offset + 4, 0xFF00FFFF, 0xFF0044AA);
     }
   };
-  const run = (budget, loops) => {
-    const history = new HistoryStore({
-      deltaBlockSizeTicks: 1,
-      coldBlockAgeTicks: 1,
-      coldCompactionIntervalTicks: 1,
-      coldCompactionMaxBlocksPerSweep: budget,
-      enableColdBlockCompression: true
-    });
-    seed(history, deltas);
-    const result = measureN(1, () => {
-      for (let i = 0; i < loops; i += 1) {
-        history._maybeCompactDeltaBlocks();
-      }
-    });
-    const totalMs = result.avgMs;
-    return {
-      budget,
-      loops,
-      totalMs: Number(totalMs.toFixed(2)),
-      msPerSweep: Number((totalMs / loops).toFixed(6)),
-      coldBlocks: history._coldBlockCount
-    };
-  };
-  return {
-    bounded: run(boundedBudget, boundedLoops),
-    wide: run(wideBudget, wideLoops)
-  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
 };
 
+const makeGuiDisplay = () => ({
+  worldDataSize: { width: 320, height: 40 },
+  stage: { updateStageSize() {} },
+  onMouseDown: new EventHandler(),
+  onMouseUp: new EventHandler(),
+  onMouseRightDown: new EventHandler(),
+  onMouseRightUp: new EventHandler(),
+  onDoubleClick: new EventHandler(),
+  onMouseMove: new EventHandler(),
+  initSize(width, height) { this.worldDataSize = { width, height }; },
+  setBackground() {},
+  redraw() {},
+  drawRect() {},
+  drawFrame() {},
+  drawFrameCovered() {},
+  drawFrameResized() {},
+  drawStippleRect() {},
+  drawMarchingAntRect() {},
+  drawHorizontalLine() {},
+  setPixel() {}
+});
+
+const runGuiOverlayBench = ({ iterations, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+
+  const skills = {
+    onCountChanged: new EventHandler(),
+    onSelectionChanged: new EventHandler(),
+    getSelectedSkill() { return SkillTypes.BASHER; },
+    getSkill() { return 5; },
+    clearSelectedSkill() { return false; }
+  };
+  const timer = {
+    speedFactor: 1,
+    tickIndex: 99,
+    eachGameSecond: new EventHandler(),
+    isRunning() { return false; },
+    getGameTime() { return 0; },
+    getGameLeftTimeString() { return '1-00'; },
+    getGameLeftTimeSString() { return '1-00'; }
+  };
+  const victory = {
+    releaseRate: 20,
+    getMinReleaseRate() { return 1; },
+    getCurrentReleaseRate() { return this.releaseRate; },
+    getMaxReleaseRate() { return 99; },
+    getReleaseCount() { return 25; },
+    getSurvivorPercentage() { return 75; }
+  };
+  const panelSprite = {
+    width: 320,
+    height: 40,
+    getData() { return new Uint8ClampedArray(320 * 40 * 4); }
+  };
+  const sprites = {
+    getPanelSprite() { return panelSprite; },
+    getNumberSpriteEmpty() { return { id: 'empty' }; },
+    getNumberSpriteLeft(v) { return { id: `L${v}` }; },
+    getNumberSpriteRight(v) { return { id: `R${v}` }; },
+    getLetterSprite(ch) { return { id: `G${ch}` }; }
+  };
+  const game = {
+    queueCommand() {},
+    showDebug: false,
+    level: {
+      width: 100,
+      height: 50,
+      mechanics: {},
+      objects: [],
+      screenPositionX: 0,
+      getGroundMaskLayer() { return { countMaskInRect() { return 0; } }; }
+    },
+    gameDisplay: { hoverLemming: null },
+    lemmingManager: { setMiniMap() {} },
+    getLemmingManager() { return { spawnTotal: 20, getLemmings() { return []; } }; }
+  };
+
+  const gui = new GameGui(game, sprites, skills, timer, victory);
+  gui.display = makeGuiDisplay();
+  gui.backgroundChanged = true;
+  gui.gameTimeChanged = true;
+  gui.skillsCountChanged = true;
+  gui.releaseRateChanged = true;
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      gui.nukePrepared = (i & 1) === 0;
+      gui._hoverPanelIdx = gui.nukePrepared ? 11 : 10;
+      gui.gameTimeChanged = true;
+      gui.render();
+    }
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  gui.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+});
+
 const args = parseArgs(process.argv.slice(2));
-const frames = toPositiveInt(args.get('frames'), 300000);
-const frameStepMs = toPositiveInt(args.get('step'), 120);
-const repeats = toPositiveInt(args.get('repeats'), 5);
-const deltas = toPositiveInt(args.get('history-deltas'), 5000);
-const boundedLoops = toPositiveInt(args.get('history-bounded-loops'), 10000);
-const wideLoops = toPositiveInt(args.get('history-wide-loops'), 100);
-const boundedBudget = toPositiveInt(args.get('history-bounded-budget'), 4);
-const wideBudget = toPositiveInt(args.get('history-wide-budget'), 100000);
+const repeats = toPositiveInt(args.get('repeats'), 6);
+const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), 3000);
+const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), 8);
+const antsIterations = toPositiveInt(args.get('ants-iterations'), 6000);
+const guiIterations = toPositiveInt(args.get('gui-iterations'), 2000);
 
 const summary = {
-  timer: runTimerBench({ frames, frameStepMs, repeats }),
-  history: runHistoryBench({
-    deltas,
-    boundedLoops,
-    wideLoops,
-    boundedBudget,
-    wideBudget
+  dirtyRectUpload: runDirtyRectBench({
+    iterations: dirtyIterations,
+    rectsPerIter: dirtyRectsPerIter,
+    repeats
+  }),
+  marchingAnts: runMarchingAntBench({
+    iterations: antsIterations,
+    repeats
+  }),
+  guiOverlay: runGuiOverlayBench({
+    iterations: guiIterations,
+    repeats
   })
 };
 
