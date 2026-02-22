@@ -3,7 +3,9 @@ import {
   getDependency,
   setDependency,
   clearDependency,
-  resetDependencies
+  resetDependencies,
+  getAppContext,
+  setAppContext
 } from '../../js/core/dependencies.js';
 
 const defaults = { ...Exports };
@@ -40,13 +42,16 @@ export { Lemmings, setDependency, clearDependency, resetDependencies };
 
 const setGlobalLemmings = (value) => {
   const prev = globalThis.lemmings;
+  const prevApp = getAppContext();
   globalThis.lemmings = value;
+  setAppContext(value || null);
   return () => {
     if (prev === undefined) {
       delete globalThis.lemmings;
     } else {
       globalThis.lemmings = prev;
     }
+    setAppContext(prevApp);
   };
 };
 
@@ -72,13 +77,16 @@ const withGlobalLemmings = (value, fn) => {
 const withMissingGlobalLemmings = (fn) => {
   const hadProp = Object.prototype.hasOwnProperty.call(globalThis, 'lemmings');
   const prev = globalThis.lemmings;
+  const prevApp = getAppContext();
   delete globalThis.lemmings;
+  setAppContext(null);
   const restore = () => {
     if (hadProp) {
       globalThis.lemmings = prev;
     } else {
       delete globalThis.lemmings;
     }
+    setAppContext(prevApp);
   };
   try {
     const result = fn();
