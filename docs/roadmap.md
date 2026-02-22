@@ -445,7 +445,7 @@ Notes:
   `scripts/mcp-smoke.js`, `test/mcp*.test.js`.
 
 ## Phase 27: Test and benchmark throughput
-- [ ] Add changed-file targeted test selection with stable category mapping and
+- [x] Add changed-file targeted test selection with stable category mapping and
   fallback to full-suite safety.
   Touchpoints: `scripts/runTests.js`, `package.json`.
 - [ ] Add short performance smoke gates (<2 min) for CI/PR and keep long soak

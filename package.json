@@ -24,6 +24,7 @@
     "test-tools": "mocha \"test/tools/*.test.js\"",
     "test-offline-tools": "node scripts/runTests.js offline-tools",
     "test-editor": "mocha \"test/editor/*.test.js\"",
+    "test:changed": "node scripts/runTests.js --changed",
     "test-e2e": "playwright test",
     "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor.spec.js",
     "test-e2e:ui": "playwright test --ui",
