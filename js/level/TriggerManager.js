@@ -195,13 +195,15 @@ class TriggerManager {
     const r0 = y0 >> this._shift;
     const r1 = y1 >> this._shift;
 
-    const buckets = new Set();
+    const bucketCount = (r1 - r0 + 1) * (c1 - c0 + 1);
+    const buckets = new Array(bucketCount);
+    let bucketIndex = 0;
     for (let r = r0; r <= r1; ++r) {
       const base = r * this._cols;
       for (let c = c0; c <= c1; ++c) {
         const idx = base + c;
         this._grid[idx].add(trigger);
-        buckets.add(idx);
+        buckets[bucketIndex++] = idx;
       }
     }
     trigger.__bucketIndices = buckets;   // fast removal
@@ -211,10 +213,9 @@ class TriggerManager {
     this._triggers.delete(trigger);
     const buckets = trigger.__bucketIndices;
     if (buckets) {
-      for (const idx of buckets) {
-        const arr = this._grid[idx];
-
-        arr.delete(trigger);
+      for (let i = 0; i < buckets.length; i += 1) {
+        const idx = buckets[i];
+        this._grid[idx].delete(trigger);
       }
     }
     const history = globalThis?.lemmings?.game?.history ?? null;
