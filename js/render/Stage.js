@@ -42,6 +42,9 @@ const perfNow = () => {
   return Date.now();
 };
 
+const DIRTY_RECT_FULL_BLIT_THRESHOLD = 24;
+const DIRTY_RECT_FULL_BLIT_AREA_RATIO = 0.4;
+
 class Stage {
   constructor(canvasForOutput) {
     this.controller = null;
@@ -643,16 +646,29 @@ class Stage {
     if (dirtyRects === null) {
       display.ctx.putImageData(img, 0, 0);
     } else if (dirtyRects.length) {
-      for (const rect of dirtyRects) {
-        display.ctx.putImageData(
-          img,
-          0,
-          0,
-          rect.x,
-          rect.y,
-          rect.width,
-          rect.height
-        );
+      const fullArea = img.width * img.height;
+      let dirtyArea = 0;
+      for (let i = 0; i < dirtyRects.length; i += 1) {
+        const rect = dirtyRects[i];
+        dirtyArea += rect.width * rect.height;
+      }
+      const useFullBlit =
+        dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD ||
+        dirtyArea >= (fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO);
+      if (useFullBlit) {
+        display.ctx.putImageData(img, 0, 0);
+      } else {
+        for (const rect of dirtyRects) {
+          display.ctx.putImageData(
+            img,
+            0,
+            0,
+            rect.x,
+            rect.y,
+            rect.width,
+            rect.height
+          );
+        }
       }
     }
 
