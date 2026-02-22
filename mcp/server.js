@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
 import { EventQueue } from './eventQueue.js';
+import { WatchPollingController } from './watchPolling.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -1154,95 +1155,97 @@ const stopSpectatorServer = (session) => {
 };
 
 const startWatchLoop = (session) => {
-  if (session.watchTimer) return;
-  session.watchTimer = setInterval(() => pollWatches(session), 250);
+  session.watchController?.start();
 };
 
 const stopWatchLoop = (session) => {
-  if (session.watchTimer) {
-    clearInterval(session.watchTimer);
-  }
-  session.watchTimer = null;
+  session.watchController?.stop();
+};
+
+const requestWatchPoll = (session, { immediate = false } = {}) => {
+  session.watchController?.request({ immediate });
+};
+
+const nudgeWatchPolling = (session) => {
+  if (!session?.watches?.size) return;
+  requestWatchPoll(session, { immediate: true });
 };
 
 const pollWatches = async (session) => {
-  if (session.watchPolling) return;
-  if (!session.watches.size) return;
-  session.watchPolling = true;
-  try {
-    const state = await getState(session);
-    if (!state) return;
-    const tickIndex = state.game?.timer?.tickIndex ?? null;
-    for (const watch of session.watches.values()) {
-      if (!watch.enabled) continue;
-      let triggered = false;
-      if (watch.type === 'everyTicks') {
-        if (Number.isFinite(tickIndex) && tickIndex - watch.lastTick >= watch.everyTicks) {
-          watch.lastTick = tickIndex;
-          triggered = true;
-        }
-      } else if (watch.type === 'onChange') {
-        const value = readPointer(state, watch.jsonPointer);
-        const serialized = JSON.stringify(value);
-        if (serialized !== watch.lastValue) {
-          watch.lastValue = serialized;
-          triggered = true;
-        }
+  if (!session.watches.size) return { triggeredCount: 0 };
+  const state = await getState(session);
+  if (!state) return { triggeredCount: 0 };
+  const tickIndex = state.game?.timer?.tickIndex ?? null;
+  let triggeredCount = 0;
+  for (const watch of session.watches.values()) {
+    if (!watch.enabled) continue;
+    let triggered = false;
+    if (watch.type === 'everyTicks') {
+      if (Number.isFinite(tickIndex) && tickIndex - watch.lastTick >= watch.everyTicks) {
+        watch.lastTick = tickIndex;
+        triggered = true;
       }
+    } else if (watch.type === 'onChange') {
+      const value = readPointer(state, watch.jsonPointer);
+      const serialized = JSON.stringify(value);
+      if (serialized !== watch.lastValue) {
+        watch.lastValue = serialized;
+        triggered = true;
+      }
+    }
 
-      if (!triggered) continue;
-      if (!Array.isArray(watch.actions) || !watch.actions.length) {
+    if (!triggered) continue;
+    triggeredCount += 1;
+    if (!Array.isArray(watch.actions) || !watch.actions.length) {
+      session.events.add({
+        source: 'system',
+        type: 'watch-trigger',
+        summary: `watch:${watch.id} triggered`,
+        tickIndex
+      });
+      continue;
+    }
+
+    for (const action of watch.actions) {
+      if (action.type === 'emitSummary') {
+        const data = {};
+        if (action.include?.lemmingsSummary) {
+          data.lemmingsSummary = buildLemmingSummary(state, {});
+        }
+        if (Array.isArray(action.include?.statePointers)) {
+          data.statePointers = {};
+          for (const pointer of action.include.statePointers) {
+            data.statePointers[pointer] = readPointer(state, pointer);
+          }
+        }
         session.events.add({
           source: 'system',
           type: 'watch-trigger',
-          summary: `watch:${watch.id} triggered`,
-          tickIndex
+          summary: `watch:${watch.id} summary`,
+          tickIndex,
+          data
         });
-        continue;
-      }
-
-      for (const action of watch.actions) {
-        if (action.type === 'emitSummary') {
-          const data = {};
-          if (action.include?.lemmingsSummary) {
-            data.lemmingsSummary = buildLemmingSummary(state, {});
-          }
-          if (Array.isArray(action.include?.statePointers)) {
-            data.statePointers = {};
-            for (const pointer of action.include.statePointers) {
-              data.statePointers[pointer] = readPointer(state, pointer);
-            }
-          }
+      } else if (action.type === 'capture') {
+        const throttle = action.throttleTicks ?? 0;
+        if (Number.isFinite(tickIndex) && throttle > 0 && tickIndex - watch.lastCaptureTick < throttle) {
+          continue;
+        }
+        const captureOptions = action.capture || { target: 'page', delivery: 'resource' };
+        const result = await captureFrame(session, captureOptions);
+        if (result.ok && result.frame?.resourceUri) {
+          watch.lastCaptureTick = Number.isFinite(tickIndex) ? tickIndex : watch.lastCaptureTick;
           session.events.add({
             source: 'system',
-            type: 'watch-trigger',
-            summary: `watch:${watch.id} summary`,
+            type: 'capture',
+            summary: `watch:${watch.id} capture`,
             tickIndex,
-            data
+            resourceUris: [result.frame.resourceUri]
           });
-        } else if (action.type === 'capture') {
-          const throttle = action.throttleTicks ?? 0;
-          if (Number.isFinite(tickIndex) && throttle > 0 && tickIndex - watch.lastCaptureTick < throttle) {
-            continue;
-          }
-          const captureOptions = action.capture || { target: 'page', delivery: 'resource' };
-          const result = await captureFrame(session, captureOptions);
-          if (result.ok && result.frame?.resourceUri) {
-            watch.lastCaptureTick = Number.isFinite(tickIndex) ? tickIndex : watch.lastCaptureTick;
-            session.events.add({
-              source: 'system',
-              type: 'capture',
-              summary: `watch:${watch.id} capture`,
-              tickIndex,
-              resourceUris: [result.frame.resourceUri]
-            });
-          }
         }
       }
     }
-  } finally {
-    session.watchPolling = false;
   }
+  return { triggeredCount };
 };
 
 const createSession = async (args) => {
@@ -1287,10 +1290,14 @@ const createSession = async (args) => {
     eventsMode: options.events?.mode || 'minimal',
     lastStateTick: null,
     watches: new Map(),
-    watchTimer: null,
-    watchPolling: false,
+    watchController: null,
     spectator: null
   };
+
+  session.watchController = new WatchPollingController({
+    hasWatchesFn: () => session.watches.size > 0,
+    pollFn: () => pollWatches(session)
+  });
 
   sessions.set(sessionId, session);
 
@@ -1372,6 +1379,9 @@ const pauseTime = async (args) => {
   const { sessionId } = TimeSchema.parse(args || {});
   const session = getSession(sessionId);
   const result = await callE2E(session, 'pause');
+  if (result.ok && result.value) {
+    nudgeWatchPolling(session);
+  }
   const tickIndex = await getTickIndex(session);
   return attachEvents(session, {
     ok: !!result.ok && !!result.value,
@@ -1383,6 +1393,9 @@ const resumeTime = async (args) => {
   const { sessionId } = TimeSchema.parse(args || {});
   const session = getSession(sessionId);
   const result = await callE2E(session, 'resume');
+  if (result.ok && result.value) {
+    nudgeWatchPolling(session);
+  }
   const tickIndex = await getTickIndex(session);
   return attachEvents(session, {
     ok: !!result.ok && !!result.value,
@@ -1398,6 +1411,9 @@ const stepTime = async (args) => {
   }
   const tickIndexBefore = await getTickIndex(session);
   const result = await callE2E(session, 'step', count);
+  if (result.ok && result.value) {
+    nudgeWatchPolling(session);
+  }
   const tickIndexAfter = await getTickIndex(session);
   return attachEvents(session, {
     ok: !!result.ok && !!result.value,
@@ -1758,6 +1774,8 @@ const editorApplyTool = async (args) => {
     return attachEvents(session, payload);
   }
 
+  nudgeWatchPolling(session);
+
   const resources = [];
   if (Array.isArray(payload.resources)) {
     for (const resource of payload.resources) {
@@ -1839,6 +1857,7 @@ const selectLemmingTool = async (args) => {
   if (alsoCenterView) {
     await centerViewOnLemming(session, lemmingId);
   }
+  nudgeWatchPolling(session);
 
   let selectedNow = null;
   if (confirm !== false) {
@@ -1947,6 +1966,7 @@ const applySkillTool = async (args) => {
     };
   }
 
+  nudgeWatchPolling(session);
   return attachEvents(session, {
     ok: true,
     skill,
@@ -1960,7 +1980,11 @@ const applySkillTool = async (args) => {
 const inputActionTool = async (args) => {
   const { sessionId, action, repeat } = InputActionSchema.parse(args || {});
   const session = getSession(sessionId);
-  return attachEvents(session, await pressAction(session, action, repeat || 1));
+  const response = await pressAction(session, action, repeat || 1);
+  if (response.ok) {
+    nudgeWatchPolling(session);
+  }
+  return attachEvents(session, response);
 };
 
 const inputKeysTool = async (args) => {
@@ -1997,6 +2021,7 @@ const inputKeysTool = async (args) => {
       type: 'input',
       summary: `keys:${injected}`
     });
+    nudgeWatchPolling(session);
   }
 
   return attachEvents(session, { ok: true, eventsInjected: injected });
@@ -2046,6 +2071,7 @@ const watchCreateTool = async (args) => {
 
   session.watches.set(watchId, entry);
   startWatchLoop(session);
+  requestWatchPoll(session, { immediate: true });
 
   return attachEvents(session, {
     watchId,
@@ -2066,8 +2092,14 @@ const watchCancelTool = async (args) => {
 const eventsPollTool = async (args) => {
   const { sessionId, after } = EventsPollSchema.parse(args || {});
   const session = getSession(sessionId);
+  if (session.watches.size) {
+    await session.watchController?.tickNow();
+  }
   const envelope = session.events.drain(after, { updateCursor: true });
   const cursor = String(Number.isFinite(Number(after)) ? Number(after) : session.events.lastDelivered);
+  if (!envelope && session.watches.size) {
+    requestWatchPoll(session, { immediate: true });
+  }
   return envelope || { cursor, events: [] };
 };
 

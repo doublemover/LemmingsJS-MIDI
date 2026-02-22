@@ -428,9 +428,9 @@ Notes:
 - [x] Replace `EventQueue` shift/filter behavior with a ring-buffer cursor model
   to eliminate O(n) drains and head removals.
   Touchpoints: `mcp/server.js`.
-- [ ] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
+- [x] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
   idle sessions do less work.
-  Touchpoints: `mcp/server.js`.
+  Touchpoints: `mcp/server.js`, `mcp/watchPolling.js`.
 - [ ] Add spectator backpressure controls (frame skip policy, configurable
   cadence/quality) for multi-client sessions.
   Touchpoints: `mcp/server.js`, `mcp/spectator.html`.
