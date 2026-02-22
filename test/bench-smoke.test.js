@@ -6,7 +6,10 @@ describe('bench smoke gates', function () {
     perfP95FrameMsMax: 250,
     perfP50TpsMin: 15,
     historySpanRatioMin: 0.5,
-    antsAvgMsMax: 250
+    antsAvgMsMax: 250,
+    tileCompositionAvgMsMax: 250,
+    overlayPlaneAvgMsMax: 250,
+    scaledBlitAvgMsMax: 250
   };
 
   it('passes when all smoke metrics are within thresholds', function () {
@@ -19,7 +22,10 @@ describe('bench smoke gates', function () {
         results: [{ maxSpanTicks: 24000, targetSpanTicks: 30000 }]
       },
       hotpaths: {
-        marchingAnts: { avgMs: 90 }
+        marchingAnts: { avgMs: 90 },
+        tileComposition: { avgMs: 90 },
+        overlayPlane: { avgMs: 90 },
+        scaledBlit: { avgMs: 90 }
       }
     }, thresholds);
 
@@ -37,11 +43,14 @@ describe('bench smoke gates', function () {
         results: [{ maxSpanTicks: 2000, targetSpanTicks: 30000 }]
       },
       hotpaths: {
-        marchingAnts: { avgMs: 1000 }
+        marchingAnts: { avgMs: 1000 },
+        tileComposition: { avgMs: 1000 },
+        overlayPlane: { avgMs: 1000 },
+        scaledBlit: { avgMs: 1000 }
       }
     }, thresholds);
 
     expect(gate.ok).to.equal(false);
-    expect(gate.failures.length).to.be.greaterThanOrEqual(4);
+    expect(gate.failures.length).to.be.greaterThanOrEqual(7);
   });
 });

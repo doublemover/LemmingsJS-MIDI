@@ -160,6 +160,37 @@ const runDirtyRectBench = ({ iterations, rectsPerIter, repeats }) => withGlobalS
   return summarizeSamples(measured.samplesMs.slice(1), iterations);
 });
 
+const runTileCompositionBench = ({ iterations, tilesPerIter, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+  const stageCanvas = makeCanvas(960, 540);
+  const stage = new Stage(stageCanvas);
+  stage.setGuiEnabled(false);
+  stage.gameImgProps.display.initSize(960, 512);
+  stage.updateStageSize();
+
+  const display = stage.gameImgProps.display;
+  display.setDirtyTileSize(32);
+  const img = display.getImageData();
+  const width = display.getWidth();
+  const height = display.getHeight();
+  const tileSize = 32;
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      for (let t = 0; t < tilesPerIter; t += 1) {
+        const x = ((i * 37) + (t * 59)) % Math.max(1, width - tileSize);
+        const y = ((i * 23) + (t * 43)) % Math.max(1, height - tileSize);
+        display.markPresentDirtyRect(x, y, tileSize, tileSize);
+      }
+      stage.draw(stage.gameImgProps, img);
+    }
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  stage.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+});
+
 const runMarchingAntBench = ({ iterations, repeats }) => {
   const stage = {
     createImage(_display, width, height) {
@@ -283,6 +314,91 @@ const runGuiOverlayBench = ({ iterations, repeats }) => withGlobalStubs(() => {
   return summarizeSamples(measured.samplesMs.slice(1), iterations);
 });
 
+const runOverlayPlaneBench = ({ iterations, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+  const stageCanvas = makeCanvas(640, 360);
+  const stage = new Stage(stageCanvas);
+  stage.setGuiEnabled(false);
+  stage.gameImgProps.display.initSize(640, 320);
+  stage.updateStageSize();
+  stage.redraw(true);
+
+  const overlay = stage.getGameOverlayDisplay();
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      const offset = i & 15;
+      overlay.clear(0x00000000);
+      overlay.drawMarchingAntRect(32, 24, 220, 120, 4, offset);
+      overlay.drawMarchingAntRect(300, 40, 96, 52, 3, offset + 2);
+      stage.setGameOverlayVisible(true);
+      stage.redraw();
+    }
+    overlay.clear(0x00000000);
+    stage.setGameOverlayVisible(false);
+    stage.redraw();
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  stage.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+});
+
+const makeScaleFrame = (size = 16) => {
+  const width = Math.max(2, Math.trunc(size));
+  const height = width;
+  const pixels = new Uint32Array(width * height);
+  const mask = new Uint8Array(width * height);
+  for (let y = 0; y < height; y += 1) {
+    const row = y * width;
+    for (let x = 0; x < width; x += 1) {
+      const idx = row + x;
+      const r = (x * 17 + y * 9) & 0xff;
+      const g = (x * 11 + y * 13) & 0xff;
+      const b = (x * 7 + y * 19) & 0xff;
+      pixels[idx] = 0xFF000000 | (b << 16) | (g << 8) | r;
+      mask[idx] = ((x + y) % 5) === 0 ? 0 : 1;
+    }
+  }
+  return {
+    width,
+    height,
+    getBuffer() { return pixels; },
+    getMask() { return mask; },
+    _version: 1
+  };
+};
+
+const runScaledBlitBench = ({ iterations, repeats }) => {
+  const stage = {
+    createImage(_display, width, height) {
+      return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+    },
+    redraw() {},
+    setGameViewPointPosition() {}
+  };
+  const display = new DisplayImage(stage);
+  display.initSize(640, 360);
+  display.clear(0);
+  const frame = makeScaleFrame(16);
+  const modes = ['nearest', 'xbrz', 'hqx'];
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      const mode = modes[i % modes.length];
+      const x = (i * 13) % 560;
+      const y = (i * 7) % 280;
+      display._blit(frame, x, y, {
+        size: { width: 64, height: 64 },
+        scaleMode: mode
+      });
+    }
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+};
+
 const makeMidiOutput = (channelCount = 16) => {
   const channels = {};
   for (let i = 1; i <= channelCount; i += 1) {
@@ -381,8 +497,12 @@ const buildHotpathSummary = (argv = process.argv.slice(2)) => {
   const repeats = toPositiveInt(args.get('repeats'), smokeRequested ? 4 : 6);
   const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), smokeRequested ? 1500 : 3000);
   const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), smokeRequested ? 6 : 8);
+  const tileIterations = toPositiveInt(args.get('tile-iterations'), smokeRequested ? 1200 : 2800);
+  const tilePerIter = toPositiveInt(args.get('tile-per-iter'), smokeRequested ? 6 : 10);
   const antsIterations = toPositiveInt(args.get('ants-iterations'), smokeRequested ? 3000 : 6000);
   const guiIterations = toPositiveInt(args.get('gui-iterations'), smokeRequested ? 1000 : 2000);
+  const overlayIterations = toPositiveInt(args.get('overlay-iterations'), smokeRequested ? 700 : 1800);
+  const scaledIterations = toPositiveInt(args.get('scaled-iterations'), smokeRequested ? 1600 : 3800);
   const midiRouterIterations = toPositiveInt(args.get('midi-router-iterations'), smokeRequested ? 700 : 1600);
   const midiRouterEvents = toPositiveInt(args.get('midi-router-events'), smokeRequested ? 12 : 24);
   const midiSchedulerIterations = toPositiveInt(args.get('midi-scheduler-iterations'), smokeRequested ? 700 : 1600);
@@ -394,12 +514,25 @@ const buildHotpathSummary = (argv = process.argv.slice(2)) => {
       rectsPerIter: dirtyRectsPerIter,
       repeats
     }),
+    tileComposition: runTileCompositionBench({
+      iterations: tileIterations,
+      tilesPerIter: tilePerIter,
+      repeats
+    }),
     marchingAnts: runMarchingAntBench({
       iterations: antsIterations,
       repeats
     }),
     guiOverlay: runGuiOverlayBench({
       iterations: guiIterations,
+      repeats
+    }),
+    overlayPlane: runOverlayPlaneBench({
+      iterations: overlayIterations,
+      repeats
+    }),
+    scaledBlit: runScaledBlitBench({
+      iterations: scaledIterations,
       repeats
     }),
     midiRouter: runMidiRouterBench({

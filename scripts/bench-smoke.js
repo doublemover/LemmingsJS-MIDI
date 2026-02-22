@@ -83,6 +83,20 @@ const evaluateSmokeResults = ({ performance, history, hotpaths }, thresholds) =>
   if (antsAvgMs > thresholds.antsAvgMsMax) {
     failures.push(`marching ants avg ${antsAvgMs.toFixed(2)}ms > ${thresholds.antsAvgMsMax.toFixed(2)}ms`);
   }
+  const tileCompositionAvgMs = Number(hotpaths?.tileComposition?.avgMs ?? 0);
+  if (tileCompositionAvgMs > thresholds.tileCompositionAvgMsMax) {
+    failures.push(`tile composition avg ${tileCompositionAvgMs.toFixed(2)}ms > ${thresholds.tileCompositionAvgMsMax.toFixed(2)}ms`);
+  }
+
+  const overlayPlaneAvgMs = Number(hotpaths?.overlayPlane?.avgMs ?? 0);
+  if (overlayPlaneAvgMs > thresholds.overlayPlaneAvgMsMax) {
+    failures.push(`overlay plane avg ${overlayPlaneAvgMs.toFixed(2)}ms > ${thresholds.overlayPlaneAvgMsMax.toFixed(2)}ms`);
+  }
+
+  const scaledBlitAvgMs = Number(hotpaths?.scaledBlit?.avgMs ?? 0);
+  if (scaledBlitAvgMs > thresholds.scaledBlitAvgMsMax) {
+    failures.push(`scaled blit avg ${scaledBlitAvgMs.toFixed(2)}ms > ${thresholds.scaledBlitAvgMsMax.toFixed(2)}ms`);
+  }
 
   return {
     ok: failures.length === 0,
@@ -91,7 +105,10 @@ const evaluateSmokeResults = ({ performance, history, hotpaths }, thresholds) =>
       perfP95Frame,
       perfP50Tps,
       historyRatio,
-      antsAvgMs
+      antsAvgMs,
+      tileCompositionAvgMs,
+      overlayPlaneAvgMs,
+      scaledBlitAvgMs
     }
   };
 };
@@ -103,6 +120,9 @@ const main = (argv = process.argv.slice(2)) => {
   const perfP50TpsMin = toPositiveNumber(args.get('perfP50TpsMin') || process.env.BENCH_SMOKE_PERF_TPS_MIN, 15);
   const historySpanRatioMin = toPositiveNumber(args.get('historySpanRatioMin') || process.env.BENCH_SMOKE_HISTORY_RATIO_MIN, 0.5);
   const antsAvgMsMax = toPositiveNumber(args.get('antsAvgMsMax') || process.env.BENCH_SMOKE_ANTS_MAX_MS, 250);
+  const tileCompositionAvgMsMax = toPositiveNumber(args.get('tileCompositionAvgMsMax') || process.env.BENCH_SMOKE_TILE_MAX_MS, 250);
+  const overlayPlaneAvgMsMax = toPositiveNumber(args.get('overlayPlaneAvgMsMax') || process.env.BENCH_SMOKE_OVERLAY_MAX_MS, 250);
+  const scaledBlitAvgMsMax = toPositiveNumber(args.get('scaledBlitAvgMsMax') || process.env.BENCH_SMOKE_SCALED_MAX_MS, 250);
   const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
   const headless = (args.get('headless') || process.env.BENCH_HEADLESS || 'true') !== 'false';
 
@@ -144,7 +164,10 @@ const main = (argv = process.argv.slice(2)) => {
     perfP95FrameMsMax,
     perfP50TpsMin,
     historySpanRatioMin,
-    antsAvgMsMax
+    antsAvgMsMax,
+    tileCompositionAvgMsMax,
+    overlayPlaneAvgMsMax,
+    scaledBlitAvgMsMax
   };
   const gate = evaluateSmokeResults({
     performance: performance.data,
