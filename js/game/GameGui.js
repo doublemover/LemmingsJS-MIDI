@@ -15,6 +15,13 @@ const getApp = () => {
   return null;
 };
 
+const formatSkillLabel = (key) => (
+  key ? (key.charAt(0) + key.slice(1).toLowerCase()) : ''
+);
+const SKILL_KEYS = Object.freeze(Object.keys(SkillTypes));
+const SKILL_COUNT = SKILL_KEYS.length;
+const SKILL_LABELS = Object.freeze(SKILL_KEYS.map(formatSkillLabel));
+
 /**
  * GameGui – unchanged public API, now updates itself
  * even while the simulation is paused.
@@ -465,10 +472,7 @@ class GameGui {
         } else {
           const sel = this.skills.getSelectedSkill();
           if (sel !== SkillTypes.UNKNOWN) {
-            const key = Object.keys(SkillTypes)[sel];
-            if (key) {
-              text = key.charAt(0) + key.slice(1).toLowerCase();
-            }
+            text = SKILL_LABELS[sel] || '';
           }
         }
         const statusText = this._composeStatusText(this._formatTickIndicator(), text);
@@ -548,13 +552,13 @@ class GameGui {
 
     if (this.skillsCountChanged) {
       this.skillsCountChanged = false;
-      for (let s = 1; s < Object.keys(SkillTypes).length; ++s) {
+      for (let s = 1; s < SKILL_COUNT; ++s) {
         const panel = this.getPanelIndexBySkill(s);
         const count = this.skills.getSkill(s);
         this.drawPanelNumber(d, count, panel);
       }
     }
-    for (let s = 1; s < Object.keys(SkillTypes).length; ++s) {
+    for (let s = 1; s < SKILL_COUNT; ++s) {
       if (this.skills.getSkill(s) <= 0) {
         const panel = this.getPanelIndexBySkill(s);
         d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
@@ -698,8 +702,7 @@ class GameGui {
     default:
       const skill = this.getSkillByPanelIndex(idx);
       if (skill !== SkillTypes.UNKNOWN) {
-        const key = Object.keys(SkillTypes)[skill];
-        if (key) return key.charAt(0) + key.slice(1).toLowerCase();
+        return SKILL_LABELS[skill] || '';
       }
       return '';
     }
