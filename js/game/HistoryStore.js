@@ -323,6 +323,9 @@ class HistoryStore {
     this._afterTick = null;
     this._groundDirty = true;
     this._lastKeyframe = null;
+    this._scratchTouchedBlocks = new Set();
+    this._scratchStaticTriggers = new Set();
+    this._scratchRemoveOwners = new Set();
   }
 
   setPreserveFutureHistory(enabled) {
@@ -904,7 +907,8 @@ class HistoryStore {
 
   _truncateDeltasAfter(cutoff) {
     if (this.maxDeltaTick == null) return;
-    const touchedBlocks = new Set();
+    const touchedBlocks = this._scratchTouchedBlocks;
+    touchedBlocks.clear();
     for (let tick = this.maxDeltaTick; tick > cutoff; tick -= 1) {
       const delta = this.deltas[tick];
       if (!delta) continue;
@@ -921,6 +925,7 @@ class HistoryStore {
     for (const blockStart of touchedBlocks) {
       this._cleanupDeltaBlock(blockStart);
     }
+    touchedBlocks.clear();
     let nextMax = Math.min(this.maxDeltaTick, cutoff);
     while (nextMax >= this.minDeltaTick && !this.deltas[nextMax]) {
       nextMax -= 1;
@@ -959,7 +964,8 @@ class HistoryStore {
   _truncateBefore(cutoff) {
     if (this.minDeltaTick == null || this.maxDeltaTick == null) return;
     const start = Math.max(0, Math.trunc(cutoff));
-    const touchedBlocks = new Set();
+    const touchedBlocks = this._scratchTouchedBlocks;
+    touchedBlocks.clear();
     for (let tick = this.minDeltaTick; tick < start; tick += 1) {
       const delta = this.deltas[tick];
       if (!delta) continue;
@@ -976,6 +982,7 @@ class HistoryStore {
     for (const blockStart of touchedBlocks) {
       this._cleanupDeltaBlock(blockStart);
     }
+    touchedBlocks.clear();
     let nextMin = Math.max(this.minDeltaTick, start);
     while (nextMin <= this.maxDeltaTick && !this.deltas[nextMin]) {
       nextMin += 1;
@@ -2013,7 +2020,11 @@ class HistoryStore {
     const staticTriggers = [];
     const dynamicTriggers = [];
     const levelTriggers = level.triggers || [];
-    const staticSet = new Set(levelTriggers);
+    const staticSet = this._scratchStaticTriggers;
+    staticSet.clear();
+    for (let i = 0; i < levelTriggers.length; i += 1) {
+      staticSet.add(levelTriggers[i]);
+    }
     for (let i = 0; i < levelTriggers.length; i++) {
       const trig = levelTriggers[i];
       if (!trig) continue;
@@ -2038,6 +2049,7 @@ class HistoryStore {
         disabledUntilTick: trig.disabledUntilTick
       });
     }
+    staticSet.clear();
     return { staticTriggers, dynamicTriggers };
   }
 
@@ -2056,7 +2068,8 @@ class HistoryStore {
 
     const dynamic = state.dynamicTriggers || [];
     if (dynamic.length) {
-      const removeOwners = new Set();
+      const removeOwners = this._scratchRemoveOwners;
+      removeOwners.clear();
       for (const trig of triggerManager._triggers || []) {
         const ownerId = Number.isFinite(trig.owner?.id) ? trig.owner.id : null;
         if (ownerId != null) removeOwners.add(ownerId);
@@ -2065,6 +2078,7 @@ class HistoryStore {
         const owner = game.getLemmingManager?.()?.getLemming?.(ownerId) ?? null;
         if (owner) triggerManager.removeByOwner(owner);
       }
+      removeOwners.clear();
       for (const snap of dynamic) {
         const owner = game.getLemmingManager?.()?.getLemming?.(snap.ownerId) ?? null;
         const trig = new Trigger(
