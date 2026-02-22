@@ -165,14 +165,14 @@ class MiniMap {
     this._terrainDirtyCount += 1;
   }
 
-  #refreshTerrainCell(idx) {
+  #refreshTerrainCell(idx, groundMaskLayer = null) {
     const mX = idx % this.width;
     const mY = (idx / this.width) | 0;
     const lx1 = Math.floor(mX / this.scaleX);
     const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
     const ly1 = Math.floor(mY / this.scaleY);
     const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
-    const gm = this.level.getGroundMaskLayer();
+    const gm = groundMaskLayer || this.level.getGroundMaskLayer();
     let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
     if (count > 71) count = 72;
     this.#setTerrainCount(idx, count);
@@ -193,13 +193,14 @@ class MiniMap {
     if (budget <= 0 || budget > dirtyCount) budget = dirtyCount;
     const dirty = this._terrainDirtyIndices;
     const flags = this._terrainDirtyFlags;
+    const groundMaskLayer = this.level.getGroundMaskLayer();
     let read = this._terrainDirtyRead;
     for (let i = 0; i < budget; i += 1) {
       const idx = dirty[read];
       read += 1;
       if (read === this.size) read = 0;
       flags[idx] = 0;
-      this.#refreshTerrainCell(idx);
+      this.#refreshTerrainCell(idx, groundMaskLayer);
     }
     this._terrainDirtyRead = read;
     this._terrainDirtyCount = dirtyCount - budget;
