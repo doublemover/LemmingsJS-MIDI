@@ -4,6 +4,7 @@ import { ActionBlockerSystem } from '../actions/ActionBlockerSystem.js';
 import { ActionDiggSystem } from '../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../actions/ActionMineSystem.js';
 import { SkillTypes } from './SkillTypes.js';
+import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { getDependency } from '../core/dependencies.js';
 
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
@@ -74,7 +75,15 @@ class GameDisplay {
     if (!cand) {
       cand = this.lemmingManager.getNearestLemming(x, y);
     }
-    if (cand?.action?.getActionName?.() === 'exploding') cand = null;
+    const exploding =
+      !!cand && (
+        cand.state === LemmingStateType.EXPLODING ||
+        cand.action === this.lemmingManager?.actions?.[LemmingStateType.EXPLODING] ||
+        cand?.action?.getActionName?.() === 'exploding'
+      );
+    if (exploding) {
+      cand = null;
+    }
     if (prev !== cand && this.game?.gameGui) {
       this.hoverLemming = cand;
       this.game.gameGui.backgroundChanged = true;
