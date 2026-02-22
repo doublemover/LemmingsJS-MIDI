@@ -55,7 +55,7 @@ describe('GameView coverage', function() {
 
   it('parses query params and updates history state', function() {
     globalThis.window = {
-      location: { search: '?version=2&difficulty=2&level=3&speed=2.2&cheat=true&debug=true&bench=true&scale=0.5&shortcut=true' }
+      location: { search: '?version=2&difficulty=2&level=3&speed=2.2&cheat=true&debug=true&bench=true&scale=0.5&shortcut=true&profile=perf' }
     };
     let replaced = null;
     globalThis.history = {
@@ -69,12 +69,16 @@ describe('GameView coverage', function() {
     expect(view.gameSpeedFactor).to.equal(2);
     expect(view.cheatEnabled).to.equal(true);
     expect(view.benchReverse).to.equal(false);
+    expect(view.startupProfile).to.equal('perf');
+    expect(view.performanceAPI).to.equal(true);
+    expect(view.perfOverlay).to.equal(true);
 
     view.updateQuery();
     expect(replaced).to.include('?');
     expect(replaced).to.include('v=2');
     expect(replaced).to.include('d=2');
     expect(replaced).to.include('_=true');
+    expect(replaced).to.include('pr=perf');
 
     view.setHistoryState('a=1');
     expect(replaced).to.equal('?a=1');

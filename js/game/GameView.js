@@ -22,6 +22,7 @@ const getGameTypes = () => getDependency('GameTypes', GameTypes);
 const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
 const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
+const STARTUP_PROFILES = new Set(['gameplay', 'editor', 'perf']);
 
 const cloneConfig = (config) => JSON.parse(JSON.stringify(config || {}));
 
@@ -62,6 +63,7 @@ class GameView extends BaseLogger {
     this.perfMetrics = false;
     this.performanceAPI = false;
     this.perfOverlay = false;
+    this.startupProfile = 'gameplay';
     this.steps = 0;
     this._benchMonitor = null;
     this._benchSpeedTrack = null;
@@ -592,6 +594,13 @@ class GameView extends BaseLogger {
     this.performanceAPI = this.parseBool(query, ['performanceAPI', 'pa']);
     this.perfMetrics = this.performanceAPI;
     this.perfOverlay = this.parseBool(query, ['perfOverlay', 'po']);
+    const profileRaw = (query.get('profile') || query.get('pr') || 'gameplay').toLowerCase();
+    this.startupProfile = STARTUP_PROFILES.has(profileRaw) ? profileRaw : 'gameplay';
+    if (this.startupProfile === 'perf') {
+      this.performanceAPI = true;
+      this.perfMetrics = true;
+      this.perfOverlay = true;
+    }
   }
   updateQuery() {
     const params = typeof window === 'undefined'
@@ -625,6 +634,7 @@ class GameView extends BaseLogger {
     setParam('scale', 'sc', this.scale, 0);
     setParam('performanceAPI', 'pa', this.performanceAPI, false);
     setParam('perfOverlay', 'po', this.perfOverlay, false);
+    setParam('profile', 'pr', this.startupProfile, 'gameplay');
 
     if (this.shortcut) {
       params.set('_', true);

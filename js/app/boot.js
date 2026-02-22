@@ -115,7 +115,13 @@ function init() {
   bindCanvasFocusBlur(lemmings.gameCanvas);
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
-    setupPromise.then(() => midiUi?.refreshMidiUiFromConfig?.()).catch(() => {});
+    setupPromise.then(async () => {
+      if (lemmings.startupProfile === 'editor') {
+        lemmings.enterEditorMode();
+        await lemmings.loadEditorLevelFromSelection();
+      }
+      midiUi?.refreshMidiUiFromConfig?.();
+    }).catch(() => {});
   }
   // use GameView.strToNum to parse dropdown values
   lemmings.elementSelectGameType.addEventListener('change', (e) => {
