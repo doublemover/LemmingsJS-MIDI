@@ -85,6 +85,9 @@ Notes:
 - [x] Add MIDI debug display.
 - [ ] [Deferred] Ability to place flags to trigger MIDI events.
 
+Notes:
+- Deferred implementation details now tracked under Phase 29.
+
 ## Phase 6: Performance and benchmarks
 - [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
 - [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for     
@@ -351,3 +354,153 @@ Notes:
 - Performance matrix runs on February 22, 2026 used shortened local durations
   (`BENCH_DURATION_MS=5000`, `HISTORY_DURATION_MS=5000`) while preserving the
   same scripts and runtime paths.
+
+## Phase 23: Runtime hard-cutover and dependency cleanup
+- [ ] Remove remaining gameplay/render/action hot-path `globalThis.lemmings`
+  reads and route through explicit runtime dependencies/context.
+  Touchpoints: `js/actions/*`, `js/level/Level.js`, `js/level/Trigger*.js`,
+  `js/render/MiniMap.js`, `js/game/GameDisplay.js`, `js/game/SoundEvents.js`.
+- [ ] Remove `globalThis` MIDI override bridge variables and replace with
+  explicit state handoff between boot, `GameView`, and MIDI UI controller.
+  Touchpoints: `js/game/GameView.js`, `js/app/boot.js`,
+  `js/app/midiUiController.js`.
+- [ ] Remove magic world-width assumptions in zoom/input flow and derive zoom
+  eligibility from stage/image metadata.
+  Touchpoints: `js/input/UserInputManager.js`, `js/render/Stage.js`.
+- [ ] Add explicit app-context injection for MCP helpers currently reading the
+  singleton directly.
+  Touchpoints: `mcp/server.js`, `js/core/dependencies.js`.
+
+## Phase 24: Canvas2D performance tier 3 (no WebGL/WebGPU)
+- [ ] Stop full background upload on every frame; only push ground updates when
+  terrain changed and keep cached background state otherwise.
+  Touchpoints: `js/game/GameDisplay.js`, `js/level/Level.js`,
+  `js/render/DisplayImage.js`.
+- [ ] Add a bulk terrain-write API so high-volume generators can update spans/
+  chunks without per-pixel history/minimap callbacks.
+  Touchpoints: `js/level/Level.js`, `js/app/procgenController.js`,
+  `js/app/procgenTerrainStamper.js`.
+- [ ] Replace dirty-rect array copies with zero-copy handoff/reuse buffers to
+  reduce per-frame allocations.
+  Touchpoints: `js/render/DisplayImage.js`, `js/render/Stage.js`.
+- [ ] Upgrade scaled-frame variant cache to true LRU semantics so hot scale
+  variants stay resident and expensive recalculation is avoided.
+  Touchpoints: `js/render/DisplayImage.js`.
+- [ ] Reduce marching-ants and dashed-outline cost via cached edge spans and
+  throttled offset updates at low movement.
+  Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`.
+- [ ] Optimize Stage overlay fallback path to avoid repeated
+  `getImageData/putImageData` churn on browsers without line-dash support.
+  Touchpoints: `js/render/Stage.js`.
+- [ ] Skip redundant resize-triggered redraw work when canvas dimensions are
+  unchanged and displays have no pending dirty state.
+  Touchpoints: `js/render/Stage.js`.
+- [ ] Add CPU-only render hotpath benchmark (no browser launch) for dirty-rect,
+  marching-ants, and GUI overlay paths.
+  Touchpoints: `scripts/bench-hotpaths.js`, `js/render/*`, `js/game/GameGui.js`.
+
+## Phase 25: Procgen production tier 3
+- [ ] Add deterministic seeded RNG for procgen generation/AI so scenarios can be
+  replayed and benchmarked exactly.
+  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenController.js`,
+  `docs/procgen.md`.
+- [ ] Replace full gap-array scans with cursored/partitioned processing so cost
+  scales with nearby gaps instead of total historical gaps.
+  Touchpoints: `js/app/procgenController.js`.
+- [ ] Ensure procgen stage adapter has full listener lifecycle cleanup so repeat
+  start/stop cycles do not leak wheel/resize handlers.
+  Touchpoints: `js/app/procgenStageAdapter.js`, `js/app/procgenBoot.js`.
+- [ ] Add scan-cache strategy for repeated environment queries
+  (gap/wall/drop/hazard) during the same AI decision window.
+  Touchpoints: `js/app/procgenController.js`, `js/render/SolidLayer.js`.
+- [ ] Add entity pooling/reuse path for long bench/procgen runs to reduce GC
+  churn from repeated lemming object allocation.
+  Touchpoints: `js/lemmings/LemmingManager.js`, `js/lemmings/Lemming.js`.
+- [ ] Add long-run headless soak benchmark for procgen (entity growth + memory
+  ceilings + frame-time summary) with strict cleanup.
+  Touchpoints: `scripts/bench-procgen-soak.js`, `test/procgen*.test.js`.
+- [ ] Expand procgen coverage for bootstrap/style selection/stage adapter
+  branches and shutdown behavior.
+  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`,
+  `test/*procgen*.test.js`.
+
+## Phase 26: MCP throughput and lifecycle hardening
+- [ ] Replace `EventQueue` shift/filter behavior with a ring-buffer cursor model
+  to eliminate O(n) drains and head removals.
+  Touchpoints: `mcp/server.js`.
+- [ ] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
+  idle sessions do less work.
+  Touchpoints: `mcp/server.js`.
+- [ ] Add spectator backpressure controls (frame skip policy, configurable
+  cadence/quality) for multi-client sessions.
+  Touchpoints: `mcp/server.js`, `mcp/spectator.html`.
+- [ ] Split `mcp/server.js` transport/session/resource/watch/event logic into
+  dedicated modules while preserving tool contracts.
+  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.
+- [ ] Add shutdown/leak tests to ensure intervals, sockets, and browser
+  resources are always reclaimed.
+  Touchpoints: `mcp/server.js`, `scripts/mcp-smoke.js`, `test/mcp*.test.js`.
+
+## Phase 27: Test and benchmark throughput
+- [ ] Add changed-file targeted test selection with stable category mapping and
+  fallback to full-suite safety.
+  Touchpoints: `scripts/runTests.js`, `package.json`.
+- [ ] Add short performance smoke gates (<2 min) for CI/PR and keep long soak
+  suites for explicit/nightly runs.
+  Touchpoints: `scripts/bench-performance.js`, `scripts/bench-history-stress.js`,
+  `scripts/bench-hotpaths.js`.
+- [ ] Add branch-coverage tests for large remaining bootstrap/input modules that
+  still rely mostly on integration coverage.
+  Touchpoints: `js/app/boot.js`, `js/input/UserInputManager.js`,
+  `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.
+- [ ] Remove expected-error console noise in tests by scoped stubbing so real
+  regressions stay visible in output.
+  Touchpoints: `test/midi/midi-ui-controller.test.js`, `test/helpers/*`.
+
+## Phase 28: Editor runtime throughput and data integrity
+- [ ] Add indexed lookup tables for selected entries/UIDs in editor hot paths to
+  avoid repeated linear scans on large maps.
+  Touchpoints: `js/editor/EditorController.js`, `js/editor/EditorEntryFactory.js`.
+- [ ] Add parser/writer fuzz/property tests for NXLV comment/unknown-section
+  round trips and malformed payload recovery.
+  Touchpoints: `js/editor/NxlvParser.js`, `js/editor/NxlvWriter.js`,
+  `test/editor/*.test.js`.
+- [ ] Add palette/search filtering with cached preview invalidation policies for
+  large style sets.
+  Touchpoints: `js/app/editorUiController.js`, `js/app/editorPreviewCache.js`,
+  `css/editor.css`.
+- [ ] Add explicit undo/redo transaction grouping for batch operations so
+  generated edits remain predictable and reversible.
+  Touchpoints: `js/editor/EditorHistory.js`, `js/editor/EditorController.js`.
+
+## Phase 29: MIDI runtime scalability and modularity
+- [ ] Implement end-to-end MIDI flag trigger workflow (editor placement,
+  runtime trigger registration, and mapping UI integration) and retire the
+  deferred Phase 5 flag item.
+  Touchpoints: `js/editor/EditorTools.js`, `js/editor/EditorController.js`,
+  `js/app/midiUiController.js`, `js/game/GameView.js`, `test/midi/*.test.js`.
+- [ ] Split `midiUiController` into smaller feature modules (state, binding,
+  rendering sections, learn flow) behind a stable facade.
+  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
+- [ ] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
+  single-control changes.
+  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiDomain.js`.
+- [ ] Add strict intent payload validation and migration guards for persisted
+  overrides/state.
+  Touchpoints: `js/app/midi-ui/midiUiIntent.js`, `js/app/midi-ui/midiUiStorage.js`.
+- [ ] Add focused bench coverage for MIDI routing/scheduler throughput under high
+  event density.
+  Touchpoints: `js/midi/MidiEventRouter.js`, `js/midi/MidiScheduler.js`,
+  `scripts/bench-hotpaths.js`.
+
+## Phase 30: Platform and dev-loop reliability
+- [ ] Ensure service worker is disabled or bypassed in `dev/e2e/perf` profiles
+  and add explicit cache-busting for static assets/config changes.
+  Touchpoints: `js/app/registerServiceWorker.js`, `js/app/boot.js`,
+  `js/game/GameFactory.js`.
+- [ ] Audit pointer/touch listener passive flags and latency-sensitive handlers
+  for mobile responsiveness.
+  Touchpoints: `js/input/*`, `js/render/Stage.js`, `js/game/GameView.js`.
+- [ ] Add deterministic environment diagnostics endpoint for runtime profile,
+  feature flags, and active caches to simplify bug triage.
+  Touchpoints: `js/app/e2eHarness.js`, `js/game/GameView.js`, `docs/e2e-state.md`.
