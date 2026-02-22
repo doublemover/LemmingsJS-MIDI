@@ -377,6 +377,40 @@ body {
   gap: 8px;
 }
 
+.compact-row {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.inline-controls input[type="number"],
+.inline-controls input[type="text"] {
+  min-width: 64px;
+  max-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.inline-controls .editor-button {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .selection-flags {
   border: 1px solid var(--panel-border);
   border-radius: 8px;

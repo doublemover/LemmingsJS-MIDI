@@ -217,6 +217,23 @@ class EditorUiController {
       selectionMoveForward: get('editorSelectionMoveForward'),
       selectionMoveBackward: get('editorSelectionMoveBackward'),
       selectionSendBack: get('editorSelectionSendBack'),
+      selectionAlignLeft: get('editorSelectionAlignLeft'),
+      selectionAlignCenter: get('editorSelectionAlignCenter'),
+      selectionAlignRight: get('editorSelectionAlignRight'),
+      selectionAlignTop: get('editorSelectionAlignTop'),
+      selectionAlignMiddle: get('editorSelectionAlignMiddle'),
+      selectionAlignBottom: get('editorSelectionAlignBottom'),
+      selectionDistributeX: get('editorSelectionDistributeX'),
+      selectionDistributeY: get('editorSelectionDistributeY'),
+      selectionReplacePiece: get('editorSelectionReplacePiece'),
+      selectionReplaceApply: get('editorSelectionReplaceApply'),
+      selectionRandomPieces: get('editorSelectionRandomPieces'),
+      selectionRandomSeed: get('editorSelectionRandomSeed'),
+      selectionRandomSameSize: get('editorSelectionRandomSameSize'),
+      selectionRandomApply: get('editorSelectionRandomApply'),
+      selectionScaleX: get('editorSelectionScaleX'),
+      selectionScaleY: get('editorSelectionScaleY'),
+      selectionTransformApply: get('editorSelectionTransformApply'),
       deleteSelection: get('editorDeleteSelection'),
       issuesList: get('editorIssuesList'),
       shortcutOverlay: get('editorShortcutOverlay')
@@ -1235,18 +1252,60 @@ class EditorUiController {
   }
 
   _bindSelectionActions() {
-    const bind = (el, handler) => {
+    const bind = (el, handler, label = 'Selection') => {
       if (!el) return;
       el.addEventListener('click', () => {
         if (handler()) {
-          this._refreshAfterEdit('Reorder');
+          this._refreshAfterEdit(label);
         }
       });
     };
-    bind(this.el.selectionBringFront, () => this.controller.bringSelectionToFront());
-    bind(this.el.selectionMoveForward, () => this.controller.moveSelectionForward());
-    bind(this.el.selectionMoveBackward, () => this.controller.moveSelectionBackward());
-    bind(this.el.selectionSendBack, () => this.controller.sendSelectionToBack());
+    const parsePieceIds = (value) => {
+      const text = normalizeText(value);
+      if (!text) return [];
+      return text
+        .split(/[,\s]+/)
+        .map(token => parseNumber(token))
+        .filter(id => Number.isFinite(id));
+    };
+
+    bind(this.el.selectionBringFront, () => this.controller.bringSelectionToFront(), 'Reorder');
+    bind(this.el.selectionMoveForward, () => this.controller.moveSelectionForward(), 'Reorder');
+    bind(this.el.selectionMoveBackward, () => this.controller.moveSelectionBackward(), 'Reorder');
+    bind(this.el.selectionSendBack, () => this.controller.sendSelectionToBack(), 'Reorder');
+
+    bind(this.el.selectionAlignLeft, () => this.controller.alignSelection('x', 'min'), 'Align');
+    bind(this.el.selectionAlignCenter, () => this.controller.alignSelection('x', 'center'), 'Align');
+    bind(this.el.selectionAlignRight, () => this.controller.alignSelection('x', 'max'), 'Align');
+    bind(this.el.selectionAlignTop, () => this.controller.alignSelection('y', 'min'), 'Align');
+    bind(this.el.selectionAlignMiddle, () => this.controller.alignSelection('y', 'center'), 'Align');
+    bind(this.el.selectionAlignBottom, () => this.controller.alignSelection('y', 'max'), 'Align');
+    bind(this.el.selectionDistributeX, () => this.controller.distributeSelection('x'), 'Distribute');
+    bind(this.el.selectionDistributeY, () => this.controller.distributeSelection('y'), 'Distribute');
+
+    bind(this.el.selectionReplaceApply, () => {
+      const pieceId = parseNumber(this.el.selectionReplacePiece?.value);
+      return this.controller.replaceSelectionPiece(pieceId);
+    }, 'Replace');
+
+    bind(this.el.selectionRandomApply, () => {
+      const pieceIds = parsePieceIds(this.el.selectionRandomPieces?.value);
+      const seed = parseNumber(this.el.selectionRandomSeed?.value);
+      const requireSameSize = !!this.el.selectionRandomSameSize?.checked;
+      return this.controller.randomizeSelectionPieces(pieceIds, {
+        requireSameSize,
+        seed
+      });
+    }, 'Randomize');
+
+    bind(this.el.selectionTransformApply, () => {
+      const scaleX = parseNumber(this.el.selectionScaleX?.value);
+      const scaleY = parseNumber(this.el.selectionScaleY?.value);
+      return this.controller.transformSelectionGroup({
+        scaleX: Number.isFinite(scaleX) ? scaleX : 1,
+        scaleY: Number.isFinite(scaleY) ? scaleY : 1
+      });
+    }, 'Transform');
   }
 
   _bindUndoRedo() {

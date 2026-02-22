@@ -361,6 +361,78 @@ describe('EditorController', () => {
     expect(session.level.terrains[2].props.X).to.equal(16);
   });
 
+  it('applies batch selection actions for align, distribute, replace, and randomize', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history, snapEnabled: false });
+    const assets = buildAssets();
+    assets.terrain.push({ id: 7, name: 'terrain_7', width: 16, height: 16 });
+    assets.terrainById.set(7, assets.terrain[1]);
+    controller.setAssets(assets);
+
+    const t0 = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 0, y: 0 });
+    const t1 = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 20, y: 10 });
+    const t2 = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 40, y: 30 });
+    session.level.terrains.push(t0, t1, t2);
+    controller._setSelection([
+      { type: 'terrain', index: 0 },
+      { type: 'terrain', index: 1 },
+      { type: 'terrain', index: 2 }
+    ]);
+
+    expect(controller.alignSelection('y', 'min')).to.equal(true);
+    expect(t0.props.Y).to.equal(0);
+    expect(t1.props.Y).to.equal(0);
+    expect(t2.props.Y).to.equal(0);
+
+    t1.props.X = 36;
+    expect(controller.distributeSelection('x')).to.equal(true);
+    expect(t1.props.X).to.equal(20);
+
+    expect(controller.replaceSelectionPiece(7, 'terrain')).to.equal(true);
+    expect(t0.props.PIECE).to.equal(7);
+    expect(t1.props.PIECE).to.equal(7);
+    expect(t2.props.PIECE).to.equal(7);
+
+    expect(controller.randomizeSelectionPieces([2, 7], {
+      type: 'terrain',
+      requireSameSize: true,
+      seed: 123
+    })).to.equal(false);
+    expect(t0.props.PIECE).to.equal(7);
+
+    expect(controller.randomizeSelectionPieces([2], {
+      type: 'terrain',
+      requireSameSize: false,
+      seed: 123
+    })).to.equal(true);
+    expect(t0.props.PIECE).to.equal(2);
+    expect(t1.props.PIECE).to.equal(2);
+    expect(t2.props.PIECE).to.equal(2);
+    expect(history.snapshots.some(entry => entry.label === 'Align')).to.equal(true);
+    expect(history.snapshots.some(entry => entry.label === 'Distribute')).to.equal(true);
+    expect(history.snapshots.some(entry => entry.label === 'Replace')).to.equal(true);
+    expect(history.snapshots.some(entry => entry.label === 'Randomize')).to.equal(true);
+  });
+
+  it('scales grouped selections with transformSelectionGroup', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history, snapEnabled: false });
+    controller.setAssets(buildAssets());
+
+    const steel = createSteelEntry({ x: 10, y: 12, width: 4, height: 8 });
+    session.level.steel = [steel];
+    controller._setSelection([{ type: 'steel', index: 0 }]);
+
+    expect(controller.transformSelectionGroup({ scaleX: 1.5, scaleY: 0.5 })).to.equal(true);
+    expect(steel.props.WIDTH).to.equal(6);
+    expect(steel.props.HEIGHT).to.equal(4);
+    expect(steel.props.X).to.equal(9);
+    expect(steel.props.Y).to.equal(14);
+    expect(history.snapshots.some(entry => entry.label === 'Transform')).to.equal(true);
+  });
+
   it('coerces non-finite positions when copying', () => {
     const session = buildSession();
     const controller = new EditorController({ session, snapEnabled: false });

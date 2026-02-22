@@ -168,6 +168,43 @@
             <button class="editor-button" id="editorSelectionMoveBackward" type="button" title="Move selection backward by one layer.">Move Back</button>
             <button class="editor-button" id="editorSelectionSendBack" type="button" title="Send selection to back (bottom layer).">Send to Back</button>
           </div>
+          <div class="selection-order">
+            <button class="editor-button" id="editorSelectionAlignLeft" type="button" title="Align selected items to the left edge.">Align Left</button>
+            <button class="editor-button" id="editorSelectionAlignCenter" type="button" title="Align selected items to the horizontal center.">Align Center</button>
+            <button class="editor-button" id="editorSelectionAlignRight" type="button" title="Align selected items to the right edge.">Align Right</button>
+            <button class="editor-button" id="editorSelectionDistributeX" type="button" title="Distribute selected items evenly across X.">Distribute X</button>
+            <button class="editor-button" id="editorSelectionAlignTop" type="button" title="Align selected items to the top edge.">Align Top</button>
+            <button class="editor-button" id="editorSelectionAlignMiddle" type="button" title="Align selected items to the vertical center.">Align Middle</button>
+            <button class="editor-button" id="editorSelectionAlignBottom" type="button" title="Align selected items to the bottom edge.">Align Bottom</button>
+            <button class="editor-button" id="editorSelectionDistributeY" type="button" title="Distribute selected items evenly across Y.">Distribute Y</button>
+          </div>
+          <label class="control-row compact-row" title="Replace selected terrain/object pieces with this id.">
+            Replace Piece
+            <div class="inline-controls">
+              <input id="editorSelectionReplacePiece" type="number" title="Piece id to apply to the current selection." />
+              <button class="editor-button" id="editorSelectionReplaceApply" type="button" title="Apply replacement piece id to selected terrain/object entries.">Apply</button>
+            </div>
+          </label>
+          <label class="control-row compact-row" title="Randomize selected terrain/object entries from a piece-id list.">
+            Randomize Pieces
+            <div class="inline-controls">
+              <input id="editorSelectionRandomPieces" type="text" placeholder="1,2,3" title="Comma-separated piece ids to randomize from." />
+              <input id="editorSelectionRandomSeed" type="number" placeholder="seed" title="Optional seed for deterministic randomization." />
+              <label class="inline-toggle" title="Only choose pieces with matching width and height.">
+                <input id="editorSelectionRandomSameSize" type="checkbox" />
+                Same size
+              </label>
+              <button class="editor-button" id="editorSelectionRandomApply" type="button" title="Randomize selected terrain/object pieces using these ids.">Apply</button>
+            </div>
+          </label>
+          <label class="control-row compact-row" title="Scale selected entries around their selection center.">
+            Transform
+            <div class="inline-controls">
+              <input id="editorSelectionScaleX" type="number" value="1" step="0.05" title="Horizontal scale factor." />
+              <input id="editorSelectionScaleY" type="number" value="1" step="0.05" title="Vertical scale factor." />
+              <button class="editor-button" id="editorSelectionTransformApply" type="button" title="Scale the current selection group around its center.">Apply</button>
+            </div>
+          </label>
           <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Object</button>
         </div>
 
