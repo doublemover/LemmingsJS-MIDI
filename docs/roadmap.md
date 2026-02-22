@@ -99,11 +99,11 @@ Notes:
   logic (no research/documentation gate before implementation).
 - [ ] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
   consider built-stairs handling.
-- [ ] Traps: add missing squish, fix generic trap using splat death.
-- [ ] Bombs: remove ground overlapping steel to reveal it.
-- [ ] Super lemmings act twice per tick.
+- [x] Traps: add missing squish, fix generic trap using splat death.
+- [x] Bombs: remove ground overlapping steel to reveal it.
+- [x] Super lemmings act twice per tick.
 - [ ] No palette-swapped frying animation (2-2-9, 1-4-30).
-- [ ] Building stairs off horizontal edge causes wraparound steps.
+- [x] Building stairs off horizontal edge causes wraparound steps.
 - [ ] Pack navigation bugs: previous pack flashing/crash when navigating
   1 -> 2 then past 2-4-20; cannot go back to version 1 from version 2.
 - [ ] Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers,
