@@ -2,6 +2,7 @@ const STORAGE_KEYS = Object.freeze({
   index: 'lemmings.editor.levels',
   levelPrefix: 'lemmings.editor.level.'
 });
+const EDITOR_STORAGE_VERSION = 2;
 
 let idCounter = 0;
 
@@ -39,12 +40,20 @@ const normalizeName = (name) => {
 };
 
 const parseIndex = (raw) => {
-  if (!raw) return [];
+  if (!raw) return { entries: [], shouldMigrate: false };
   try {
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (Array.isArray(parsed)) {
+      return { entries: parsed, shouldMigrate: true };
+    }
+    if (parsed && typeof parsed === 'object' && Array.isArray(parsed.entries)) {
+      const parsedVersion = Number(parsed.version);
+      const shouldMigrate = !Number.isFinite(parsedVersion) || parsedVersion !== EDITOR_STORAGE_VERSION;
+      return { entries: parsed.entries, shouldMigrate };
+    }
+    return { entries: [], shouldMigrate: false };
   } catch (e) {
-    return [];
+    return { entries: [], shouldMigrate: false };
   }
 };
 
@@ -57,7 +66,10 @@ const sanitizeIndex = (entries) => entries
   }));
 
 const writeIndex = (storage, entries) => {
-  const payload = JSON.stringify(entries);
+  const payload = JSON.stringify({
+    version: EDITOR_STORAGE_VERSION,
+    entries
+  });
   safeSetItem(storage, STORAGE_KEYS.index, payload);
 };
 
@@ -76,7 +88,11 @@ const compareSavedLevels = (a, b) => {
 
 const listSavedLevels = (storage = getDefaultStorage()) => {
   const raw = safeGetItem(storage, STORAGE_KEYS.index);
-  const entries = sanitizeIndex(parseIndex(raw));
+  const parsed = parseIndex(raw);
+  const entries = sanitizeIndex(parsed.entries);
+  if (parsed.shouldMigrate && storage) {
+    writeIndex(storage, entries);
+  }
   entries.sort(compareSavedLevels);
   return entries;
 };
@@ -93,7 +109,8 @@ const saveLevel = (storage = getDefaultStorage(), payload = {}) => {
   const id = payload.id || createLevelId(payload.now || (() => now));
   const name = normalizeName(payload.name);
   const text = typeof payload.text === 'string' ? payload.text : '';
-  const index = sanitizeIndex(parseIndex(safeGetItem(storage, STORAGE_KEYS.index)));
+  const parsed = parseIndex(safeGetItem(storage, STORAGE_KEYS.index));
+  const index = sanitizeIndex(parsed.entries);
   const existing = index.find(entry => entry.id === id);
   if (existing) {
     existing.name = name;
@@ -109,7 +126,8 @@ const saveLevel = (storage = getDefaultStorage(), payload = {}) => {
 const deleteLevel = (storage = getDefaultStorage(), id) => {
   if (!storage || !id) return false;
   safeRemoveItem(storage, STORAGE_KEYS.levelPrefix + id);
-  const index = sanitizeIndex(parseIndex(safeGetItem(storage, STORAGE_KEYS.index)));
+  const parsed = parseIndex(safeGetItem(storage, STORAGE_KEYS.index));
+  const index = sanitizeIndex(parsed.entries);
   const next = index.filter(entry => entry.id !== id);
   writeIndex(storage, next);
   return true;

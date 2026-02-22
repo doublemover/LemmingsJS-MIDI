@@ -1,4 +1,5 @@
 const midiStorageKeys = {
+  storageVersion: 'lemmings.midi.storageVersion',
   inputId: 'lemmings.midi.inputId',
   outputId: 'lemmings.midi.outputId',
   viewPan: 'lemmings.midi.viewPan',
@@ -12,6 +13,8 @@ const midiStorageKeys = {
   tabRight: 'lemmings.midi.tabRight',
   sectionStates: 'lemmings.midi.sectionStates'
 };
+const MIDI_STORAGE_VERSION = 2;
+const migratedMidiStorages = new WeakSet();
 
 const isPlainObject = (value) => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -92,20 +95,26 @@ const migrateMidiOverrides = (value) => {
   return overrides;
 };
 
-const readStoredSectionStates = (storage) => {
-  const raw = readStoredJson(storage, midiStorageKeys.sectionStates);
-  if (!isPlainObject(raw)) return {};
+const normalizeSectionStatesPayload = (value) => {
+  if (!isPlainObject(value)) return {};
   const out = {};
-  for (const [key, value] of Object.entries(raw)) {
+  for (const [key, entry] of Object.entries(value)) {
     if (key.length > 96) continue;
-    if (typeof value === 'boolean') {
-      out[key] = value;
+    if (typeof entry === 'boolean') {
+      out[key] = entry;
     }
   }
   return out;
 };
 
+const readStoredSectionStates = (storage) => {
+  ensureMidiStorageMigrated(storage);
+  const raw = readStoredJson(storage, midiStorageKeys.sectionStates);
+  return normalizeSectionStatesPayload(raw);
+};
+
 const readStoredMidiOverrides = (storage) => {
+  ensureMidiStorageMigrated(storage);
   const raw = readStoredJson(storage, midiStorageKeys.overrides);
   return migrateMidiOverrides(raw);
 };
@@ -154,6 +163,27 @@ const storeJson = (storage, key, value) => {
     // ignore
   }
 };
+
+function ensureMidiStorageMigrated(storage) {
+  if (!storage || typeof storage !== 'object') return;
+  if (migratedMidiStorages.has(storage)) return;
+  migratedMidiStorages.add(storage);
+
+  const rawVersion = readStoredMidiId(storage, midiStorageKeys.storageVersion);
+  const version = Number(rawVersion);
+  if (Number.isFinite(version) && version >= MIDI_STORAGE_VERSION) {
+    return;
+  }
+
+  const overridesRaw = readStoredJson(storage, midiStorageKeys.overrides);
+  const sectionStatesRaw = readStoredJson(storage, midiStorageKeys.sectionStates);
+  const migratedOverrides = migrateMidiOverrides(overridesRaw);
+  const migratedSectionStates = normalizeSectionStatesPayload(sectionStatesRaw);
+
+  storeJson(storage, midiStorageKeys.overrides, migratedOverrides);
+  storeJson(storage, midiStorageKeys.sectionStates, migratedSectionStates);
+  storeMidiId(storage, midiStorageKeys.storageVersion, String(MIDI_STORAGE_VERSION));
+}
 
 export {
   midiStorageKeys,

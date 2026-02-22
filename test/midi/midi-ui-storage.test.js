@@ -29,6 +29,7 @@ const createStorage = () => {
 
 describe('midiUiStorage', function() {
   it('exports storage keys for MIDI settings', function() {
+    expect(midiStorageKeys.storageVersion).to.equal('lemmings.midi.storageVersion');
     expect(midiStorageKeys.inputId).to.equal('lemmings.midi.inputId');
     expect(midiStorageKeys.outputId).to.equal('lemmings.midi.outputId');
     expect(midiStorageKeys.sectionStates).to.equal('lemmings.midi.sectionStates');
@@ -134,5 +135,35 @@ describe('midiUiStorage', function() {
     expect(overrides.input.channel).to.equal('omni');
     expect(overrides.repeat.windowBeats).to.equal(2);
     expect(sections).to.deep.equal({ main: true });
+  });
+
+  it('migrates legacy MIDI storage payloads to a versioned schema', function() {
+    const backing = new Map();
+    backing.set(midiStorageKeys.overrides, '{"repeat":{"spacingTicks":3},"input":{"channel":"18"}}');
+    backing.set(midiStorageKeys.sectionStates, '{"io":true,"invalid":"x"}');
+    const writes = [];
+    const storage = {
+      getItem(key) {
+        return backing.has(key) ? backing.get(key) : null;
+      },
+      setItem(key, value) {
+        writes.push([key, value]);
+        backing.set(key, value);
+      },
+      removeItem(key) {
+        backing.delete(key);
+      }
+    };
+
+    const overrides = readStoredMidiOverrides(storage);
+    const sections = readStoredSectionStates(storage);
+    expect(overrides.repeat.windowBeats).to.equal(3);
+    expect(overrides.input.channel).to.equal(16);
+    expect(sections).to.deep.equal({ io: true });
+
+    const storedVersion = backing.get(midiStorageKeys.storageVersion);
+    expect(storedVersion).to.equal('2');
+    const versionWrites = writes.filter(([key]) => key === midiStorageKeys.storageVersion);
+    expect(versionWrites).to.have.lengthOf(1);
   });
 });
