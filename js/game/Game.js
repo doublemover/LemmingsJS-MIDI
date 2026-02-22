@@ -354,6 +354,7 @@ class Game extends BaseLogger {
       if (this.gameDisplay) {
         this.gameDisplay.render();
         if (this.showDebug) this.gameDisplay.renderDebug();
+        this.display?.commitFrameForBackgroundRestore?.();
       }
       if (this.guiDisplay) {
         this.gameGui.render();

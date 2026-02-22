@@ -29,6 +29,15 @@ const marchingAntPatternCache = new Map();
 const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
 const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const DIRTY_RECT_MERGE_PAD = 1;
+const DIRTY_RECT_FULL_LIMIT = 96;
+
+const toUint32Source = (source) => {
+  if (source instanceof Uint32Array) return source;
+  if (source instanceof Uint8ClampedArray || source instanceof Uint8Array) {
+    return new Uint32Array(source.buffer, source.byteOffset, source.byteLength >>> 2);
+  }
+  return null;
+};
 
 const getMarchingAntPerimeterOffsets = (stride, width, height) => {
   const key = (stride * 8192) + (width * 128) + height;
@@ -173,8 +182,14 @@ class DisplayImage extends BaseLogger {
     this.onDoubleClick = new EventHandler();
     // 32‑bit view reused everywhere; set by initSize()
     this.buffer32 = null;
+    this.background32 = null;
+    this._hasBackground = false;
     this._dirtyFull = true;
     this._dirtyRects = [];
+    this._dynamicDirtyFull = false;
+    this._dynamicDirtyRects = [];
+    this._restoreFull = false;
+    this._restoreRects = [];
     // this.onMouseDown.on(e => {
     //     // this.setDebugPixel(e.x, e.y);
     // });
@@ -200,6 +215,12 @@ class DisplayImage extends BaseLogger {
       this.imgData  = this.stage.createImage(this, width, height);
       // Single 32‑bit view that aliases the same buffer – no copying.
       this.buffer32 = new Uint32Array(this.imgData.data.buffer);
+      this.background32 = new Uint32Array(width * height);
+      this._hasBackground = false;
+      this._restoreFull = false;
+      this._restoreRects.length = 0;
+      this._dynamicDirtyFull = false;
+      this._dynamicDirtyRects.length = 0;
       this.clear();
     }
   }
@@ -212,48 +233,143 @@ class DisplayImage extends BaseLogger {
 
   /** Bulk background copy – copy 32‑bit words where possible. */
   setBackground(groundImage, groundMask = null) {
-    if (groundImage instanceof Uint8ClampedArray) {
-      // Uint8 – copy bytes directly.
-      this.imgData.data.set(groundImage);
-    } else if (groundImage instanceof Uint32Array) {
-      // Faster 32‑bit path.
-      this.buffer32.set(groundImage);
-    } else {
-      // Fallback (ArrayLike)
+    this.syncBackground(groundImage, groundMask, null);
+  }
+
+  hasBackground() {
+    return this._hasBackground === true;
+  }
+
+  syncBackground(groundImage, groundMask = null, dirtyRects = null) {
+    const source32 = toUint32Source(groundImage);
+    if (!source32) {
       this.log.log('error: setBackground fallback');
-      // this.imgData.data.set(groundImage);
-    }
-    this.groundMask = groundMask;
-    this.markDirtyAll();
-  }
-
-  markDirtyAll() {
-    this._dirtyFull = true;
-    this._dirtyRects.length = 0;
-  }
-
-  markDirtyRect(x, y, width, height) {
-    if (!Number.isFinite(width) || !Number.isFinite(height)) {
-      this.markDirtyAll();
+      this.groundMask = groundMask;
+      this.markDirtyAll({ captureDynamic: false });
       return;
     }
-    if (width <= 0 || height <= 0) return;
-    if (this._dirtyFull) return;
+    if (!this.buffer32) return;
+    if (!this.background32 || this.background32.length !== this.buffer32.length) {
+      this.background32 = new Uint32Array(this.buffer32.length);
+      this._hasBackground = false;
+    }
+    const applyFull = dirtyRects === null || !this._hasBackground;
+    if (applyFull) {
+      this.background32.set(source32);
+      this.buffer32.set(source32);
+      this.groundMask = groundMask;
+      this._hasBackground = true;
+      this._restoreFull = false;
+      this._restoreRects.length = 0;
+      this.markDirtyAll({ captureDynamic: false });
+      return;
+    }
+    if (!Array.isArray(dirtyRects) || dirtyRects.length < 1) {
+      this.groundMask = groundMask;
+      return;
+    }
+    for (let i = 0; i < dirtyRects.length; i += 1) {
+      const rect = this._normalizeRect(
+        dirtyRects[i]?.x,
+        dirtyRects[i]?.y,
+        dirtyRects[i]?.width,
+        dirtyRects[i]?.height
+      );
+      if (!rect) continue;
+      this._copyRect(this.background32, source32, rect);
+      this._copyRect(this.buffer32, this.background32, rect);
+      this.markPresentDirtyRect(rect.x, rect.y, rect.width, rect.height);
+    }
+    this.groundMask = groundMask;
+    this._hasBackground = true;
+  }
+
+  restoreBackground() {
+    if (!this._hasBackground || !this.buffer32 || !this.background32) return;
+    if (this._restoreFull) {
+      this.buffer32.set(this.background32);
+      this._restoreFull = false;
+      this._restoreRects.length = 0;
+      this.markDirtyAll({ captureDynamic: false });
+      return;
+    }
+    if (!this._restoreRects.length) return;
+    for (let i = 0; i < this._restoreRects.length; i += 1) {
+      const rect = this._restoreRects[i];
+      this._copyRect(this.buffer32, this.background32, rect);
+      this.markPresentDirtyRect(rect.x, rect.y, rect.width, rect.height);
+    }
+    this._restoreRects.length = 0;
+  }
+
+  commitFrameForBackgroundRestore() {
+    if (!this._hasBackground) {
+      this._dynamicDirtyFull = false;
+      this._dynamicDirtyRects.length = 0;
+      return;
+    }
+    this._restoreFull = this._dynamicDirtyFull === true;
+    if (this._restoreFull) {
+      this._restoreRects.length = 0;
+    } else {
+      this._restoreRects = this._dynamicDirtyRects.map(rect => ({ ...rect }));
+    }
+    this._dynamicDirtyFull = false;
+    this._dynamicDirtyRects.length = 0;
+  }
+
+  markDirtyAll({ captureDynamic = true } = {}) {
+    this._dirtyFull = true;
+    this._dirtyRects.length = 0;
+    if (captureDynamic) {
+      this._dynamicDirtyFull = true;
+      this._dynamicDirtyRects.length = 0;
+    }
+  }
+
+  _normalizeRect(x, y, width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+      return null;
+    }
+    if (width <= 0 || height <= 0) return null;
     const w = this.getWidth();
     const h = this.getHeight();
-    if (!w || !h) return;
+    if (!w || !h) return null;
     const x1 = Math.max(0, Math.floor(x));
     const y1 = Math.max(0, Math.floor(y));
     const x2 = Math.min(w, Math.ceil(x + width));
     const y2 = Math.min(h, Math.ceil(y + height));
-    if (x2 <= x1 || y2 <= y1) return;
+    if (x2 <= x1 || y2 <= y1) return null;
+    return {
+      x: x1,
+      y: y1,
+      width: x2 - x1,
+      height: y2 - y1
+    };
+  }
 
-    let mergedX1 = x1;
-    let mergedY1 = y1;
-    let mergedX2 = x2;
-    let mergedY2 = y2;
-    for (let i = 0; i < this._dirtyRects.length;) {
-      const rect = this._dirtyRects[i];
+  _copyRect(dest32, source32, rect) {
+    if (!dest32 || !source32 || !rect) return;
+    const w = this.getWidth();
+    for (let row = 0; row < rect.height; row += 1) {
+      const offset = (rect.y + row) * w + rect.x;
+      const end = offset + rect.width;
+      dest32.set(source32.subarray(offset, end), offset);
+    }
+  }
+
+  _mergeDirtyRect(rect, fullProp, rectsProp) {
+    if (!rect) return;
+    if (this[fullProp]) return;
+    const w = this.getWidth();
+    const h = this.getHeight();
+    let mergedX1 = rect.x;
+    let mergedY1 = rect.y;
+    let mergedX2 = rect.x + rect.width;
+    let mergedY2 = rect.y + rect.height;
+    const rects = this[rectsProp];
+    for (let i = 0; i < rects.length;) {
+      const rect = rects[i];
       const rectX1 = rect.x;
       const rectY1 = rect.y;
       const rectX2 = rect.x + rect.width;
@@ -271,23 +387,42 @@ class DisplayImage extends BaseLogger {
       mergedY1 = Math.min(mergedY1, rectY1);
       mergedX2 = Math.max(mergedX2, rectX2);
       mergedY2 = Math.max(mergedY2, rectY2);
-      const last = this._dirtyRects.length - 1;
-      this._dirtyRects[i] = this._dirtyRects[last];
-      this._dirtyRects.length = last;
+      const last = rects.length - 1;
+      rects[i] = rects[last];
+      rects.length = last;
     }
     if (mergedX1 === 0 && mergedY1 === 0 && mergedX2 === w && mergedY2 === h) {
-      this.markDirtyAll();
+      this[fullProp] = true;
+      rects.length = 0;
       return;
     }
-    this._dirtyRects.push({
+    rects.push({
       x: mergedX1,
       y: mergedY1,
       width: mergedX2 - mergedX1,
       height: mergedY2 - mergedY1
     });
-    if (this._dirtyRects.length > 96) {
-      this.markDirtyAll();
+    if (rects.length > DIRTY_RECT_FULL_LIMIT) {
+      this[fullProp] = true;
+      rects.length = 0;
     }
+  }
+
+  markPresentDirtyRect(x, y, width, height) {
+    const rect = this._normalizeRect(x, y, width, height);
+    this._mergeDirtyRect(rect, '_dirtyFull', '_dirtyRects');
+  }
+
+  markDirtyRect(x, y, width, height) {
+    const rect = this._normalizeRect(x, y, width, height);
+    if (!rect) {
+      if (!Number.isFinite(width) || !Number.isFinite(height)) {
+        this.markDirtyAll();
+      }
+      return;
+    }
+    this._mergeDirtyRect(rect, '_dirtyFull', '_dirtyRects');
+    this._mergeDirtyRect(rect, '_dynamicDirtyFull', '_dynamicDirtyRects');
   }
 
   consumeDirtyRects() {
@@ -721,8 +856,14 @@ class DisplayImage extends BaseLogger {
     this.onMouseMove.dispose();
     this.onDoubleClick.dispose();
     this.buffer32 = null;
+    this.background32 = null;
     this.imgData = null;
     this.stage = null;
+    this._hasBackground = false;
+    this._restoreFull = false;
+    this._restoreRects.length = 0;
+    this._dynamicDirtyFull = false;
+    this._dynamicDirtyRects.length = 0;
   }
 }
 

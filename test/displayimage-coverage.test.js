@@ -91,6 +91,13 @@ describe('DisplayImage coverage', function() {
     words[0] = 0x89ABCDEF;
     display.setBackground(words);
     expect(display.buffer32[0]).to.equal(0x89ABCDEF);
+    expect(display.hasBackground()).to.equal(true);
+
+    display.drawRect(0, 0, 0, 0, 255, 0, 0, true);
+    display.commitFrameForBackgroundRestore();
+    display.buffer32[0] = 0;
+    display.restoreBackground();
+    expect(display.buffer32[0]).to.equal(0x89ABCDEF);
 
     const logs = [];
     display.log.log = (msg) => logs.push(msg);

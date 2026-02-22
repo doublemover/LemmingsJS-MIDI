@@ -79,6 +79,8 @@ class Level extends BaseLogger {
 
     /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
+    this._groundDirtyFull = true;
+    this._groundDirtyRects = [];
   }
 
   setMapObjects(objects, objectImg) {
@@ -173,11 +175,43 @@ class Level extends BaseLogger {
   getGroundMaskLayer() { return this.groundMask; }
   setGroundMaskLayer(solidLayer) { this.groundMask = solidLayer; }
 
+  _markGroundDirtyAll() {
+    this._groundDirtyFull = true;
+    this._groundDirtyRects.length = 0;
+  }
+
+  _markGroundDirtyRect(x, y, width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+      this._markGroundDirtyAll();
+      return;
+    }
+    if (width <= 0 || height <= 0) return;
+    if (this._groundDirtyFull) return;
+    const x1 = Math.max(0, Math.floor(x));
+    const y1 = Math.max(0, Math.floor(y));
+    const x2 = Math.min(this.width, Math.ceil(x + width));
+    const y2 = Math.min(this.height, Math.ceil(y + height));
+    if (x2 <= x1 || y2 <= y1) return;
+    this._groundDirtyRects.push({
+      x: x1,
+      y: y1,
+      width: x2 - x1,
+      height: y2 - y1
+    });
+    if (this._groundDirtyRects.length > 128) {
+      this._markGroundDirtyAll();
+    }
+  }
+
   isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
   _clearGroundWithMaskInternal(mask, x, y, opts = null) {
     let changed = false;
     let removed = 0;
+    let minX = this.width;
+    let minY = this.height;
+    let maxX = -1;
+    let maxY = -1;
     const revealSteel = opts?.revealSteel === true;
     const history = getRuntimeHistory();
     const gm = this.groundMask;
@@ -213,6 +247,7 @@ class Level extends BaseLogger {
             0
           );
         }
+        const pixelChanged = (prevMask && !isSteel) || !!(prevR || prevG || prevB);
         if (prevMask && !isSteel) {
           changed = true;
           gmMask[maskIdx] = 0;
@@ -221,8 +256,17 @@ class Level extends BaseLogger {
           removed += 1;
           changed = true;
         }
+        if (pixelChanged) {
+          if (px < minX) minX = px;
+          if (py < minY) minY = py;
+          if (px > maxX) maxX = px;
+          if (py > maxY) maxY = py;
+        }
         img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
       }
+    }
+    if (changed && maxX >= minX && maxY >= minY) {
+      this._markGroundDirtyRect(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
     }
     return { changed, removed };
   }
@@ -264,6 +308,7 @@ class Level extends BaseLogger {
     gp[idx]     = this.colorPalette.getR(paletteIndex);
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
+    this._markGroundDirtyRect(x, y, 1, 1);
     getRuntimeMiniMap()?.onGroundChanged(x, y, false);
   }
 
@@ -294,6 +339,7 @@ class Level extends BaseLogger {
     }
     this.groundMask.clearGroundAt(x, y);
     gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
+    this._markGroundDirtyRect(x, y, 1, 1);
     getRuntimeMiniMap()?.onGroundChanged(x, y, true);
   }
 
@@ -435,7 +481,10 @@ class Level extends BaseLogger {
     return false;
   }
 
-  setGroundImage(img) { this.groundImage = new Uint8ClampedArray(img); }
+  setGroundImage(img) {
+    this.groundImage = new Uint8ClampedArray(img);
+    this._markGroundDirtyAll();
+  }
   setPalettes(colorPalette, groundPalette) {
     this.colorPalette = colorPalette;
     this.groundPalette = groundPalette;
@@ -443,6 +492,24 @@ class Level extends BaseLogger {
 
   render(gameDisplay) {
     gameDisplay.initSize(this.width, this.height);
+    if (typeof gameDisplay.restoreBackground === 'function' &&
+        typeof gameDisplay.syncBackground === 'function') {
+      gameDisplay.restoreBackground();
+      if (this._groundDirtyFull || !gameDisplay.hasBackground?.()) {
+        gameDisplay.syncBackground(this.groundImage, this.groundMask, null);
+        this._groundDirtyFull = false;
+        this._groundDirtyRects.length = 0;
+        return;
+      }
+      if (this._groundDirtyRects.length) {
+        const dirtyRects = this._groundDirtyRects.slice();
+        gameDisplay.syncBackground(this.groundImage, this.groundMask, dirtyRects);
+        this._groundDirtyRects.length = 0;
+        return;
+      }
+      gameDisplay.groundMask = this.groundMask;
+      return;
+    }
     gameDisplay.setBackground(this.groundImage, this.groundMask);
   }
 

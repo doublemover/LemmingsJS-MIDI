@@ -372,9 +372,9 @@ Notes:
   Touchpoints: `mcp/server.js`, `js/app/e2eHarness.js`.
 
 ## Phase 24: Canvas2D performance tier 3 (no WebGL/WebGPU)
-- [ ] Stop full background upload on every frame; only push ground updates when
+- [x] Stop full background upload on every frame; only push ground updates when
   terrain changed and keep cached background state otherwise.
-  Touchpoints: `js/game/GameDisplay.js`, `js/level/Level.js`,
+  Touchpoints: `js/game/Game.js`, `js/level/Level.js`,
   `js/render/DisplayImage.js`.
 - [ ] Add a bulk terrain-write API so high-volume generators can update spans/
   chunks without per-pixel history/minimap callbacks.

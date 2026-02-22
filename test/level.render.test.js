@@ -31,4 +31,33 @@ describe('Level render', function() {
     expect(calls[1][1]).to.equal(level.groundImage);
     expect(calls[1][2]).to.equal(level.groundMask);
   });
+
+  it('syncs cached backgrounds and only pushes terrain deltas', function() {
+    const level = new Level(4, 4);
+    const pal = new Lemmings.ColorPalette();
+    level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+    level.setPalettes(pal, pal);
+
+    const syncCalls = [];
+    let hasBackground = false;
+    const gd = {
+      initSize() {},
+      restoreBackground() {},
+      hasBackground() { return hasBackground; },
+      syncBackground(img, mask, dirtyRects) {
+        syncCalls.push([img, mask, dirtyRects]);
+        hasBackground = true;
+      }
+    };
+
+    level.render(gd);
+    level.render(gd);
+    level.setGroundAt(1, 1, 7);
+    level.render(gd);
+
+    expect(syncCalls.length).to.equal(2);
+    expect(syncCalls[0][2]).to.equal(null);
+    expect(Array.isArray(syncCalls[1][2])).to.equal(true);
+    expect(syncCalls[1][2].length).to.equal(1);
+  });
 });
