@@ -65,6 +65,10 @@ const disposeProcgenRuntime = () => {
   runtime.view?.dispose?.();
 };
 
+const setActiveProcgenRuntimeForTest = (runtime) => {
+  activeProcgenRuntime = runtime || null;
+};
+
 const shuffle = (list, rng = Math.random) => {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -315,15 +319,33 @@ const resizeCanvas = () => {
   }
 };
 
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('beforeunload', disposeProcgenRuntime);
+const shouldAutoBoot = () => (
+  typeof window !== 'undefined' &&
+  globalThis?.__LEMMINGS_PROCGEN_NO_AUTO_BOOT__ !== true
+);
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+if (shouldAutoBoot()) {
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('beforeunload', disposeProcgenRuntime);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      resizeCanvas();
+      init();
+    });
+  } else {
     resizeCanvas();
     init();
-  });
-} else {
-  resizeCanvas();
-  init();
+  }
 }
+
+export {
+  getProcgenGroundSets,
+  pickProcgenStyle,
+  resolveProcgenSeed,
+  buildProcgenEditorLevel,
+  init,
+  resizeCanvas,
+  disposeProcgenRuntime,
+  setActiveProcgenRuntimeForTest
+};

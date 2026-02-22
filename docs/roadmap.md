@@ -419,7 +419,7 @@ Notes:
 - [x] Add long-run headless soak benchmark for procgen (entity growth + memory
   ceilings + frame-time summary) with strict cleanup.
   Touchpoints: `scripts/bench-procgen-soak.js`, `test/procgen*.test.js`.
-- [ ] Expand procgen coverage for bootstrap/style selection/stage adapter
+- [x] Expand procgen coverage for bootstrap/style selection/stage adapter
   branches and shutdown behavior.
   Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`,
   `test/*procgen*.test.js`.
