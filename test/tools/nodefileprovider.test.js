@@ -23,6 +23,28 @@ const packFile = path.join(rootDir, 'lemmings', 'LEVEL000.DAT');
 describe('NodeFileProvider', function() {
   let tmpDir;
   const makeProvider = (options) => new NodeFileProvider(tmpDir, options);
+  const writeNxp = (nxpPath, entries) => {
+    const tableEntrySize = 36;
+    const headerSize = 4 + (entries.length * tableEntrySize);
+    const dataSize = entries.reduce((sum, entry) => sum + entry.data.length, 0);
+    const out = Buffer.alloc(headerSize + dataSize);
+    out.writeUInt32LE(entries.length, 0);
+    let dataOffset = headerSize;
+    for (let i = 0; i < entries.length; i += 1) {
+      const entry = entries[i];
+      const base = 4 + (i * tableEntrySize);
+      const nameBuf = Buffer.from(entry.name, 'utf8');
+      if (nameBuf.length > 27) {
+        throw new Error(`NXP test entry name too long: ${entry.name}`);
+      }
+      nameBuf.copy(out, base);
+      out.writeUInt32LE(dataOffset, base + 28);
+      out.writeUInt32LE(entry.data.length, base + 32);
+      entry.data.copy(out, dataOffset);
+      dataOffset += entry.data.length;
+    }
+    fs.writeFileSync(nxpPath, out);
+  };
   const writeRarStub = () => {
     const rarPath = path.join(tmpDir, 'pack.rar');
     fs.writeFileSync(rarPath, Buffer.from([0]));
@@ -38,6 +60,10 @@ describe('NodeFileProvider', function() {
     zip.addFile('data/LEVEL000.DAT', fs.readFileSync(packFile));
     zip.writeZip(path.join(tmpDir, 'pack.zip'));
     await tar.c({ file: path.join(tmpDir, 'pack.tar'), cwd: tmpDir }, ['data/LEVEL000.DAT']);
+    writeNxp(path.join(tmpDir, 'pack.nxp'), [
+      { name: 'data/LEVEL000.DAT', data: fs.readFileSync(packFile) },
+      { name: 'docs/readme.txt', data: Buffer.from('nxp-text') }
+    ]);
   });
 
   afterEach(function() {
@@ -64,6 +90,12 @@ describe('NodeFileProvider', function() {
 
     const tarLower = await provider.loadBinary('pack.tar', 'data/level000.dat');
     expect(tarLower.length).to.equal(buffer.length);
+
+    const nxpReader = await provider.loadBinary('pack.nxp', 'data/LEVEL000.DAT');
+    expect(nxpReader.length).to.equal(buffer.length);
+
+    const nxpLower = await provider.loadBinary('pack.nxp', 'data/level000.dat');
+    expect(nxpLower.length).to.equal(buffer.length);
   });
 
   it('loads archive strings and validates entries', async function() {
@@ -74,6 +106,9 @@ describe('NodeFileProvider', function() {
 
     const tarText = await provider.loadString('pack.tar/LEVEL000.DAT');
     expect(tarText.length).to.be.greaterThan(0);
+
+    const nxpText = await provider.loadString('pack.nxp/docs/readme.txt');
+    expect(nxpText).to.equal('nxp-text');
 
     expect(() => provider._validateEntry('../evil.txt')).to.throw();        
   });
@@ -86,6 +121,10 @@ describe('NodeFileProvider', function() {
     );
     await expectReject(
       provider.loadString('pack.tar/missing.txt'),
+      /not found/i
+    );
+    await expectReject(
+      provider.loadString('pack.nxp/missing.txt'),
       /not found/i
     );
   });
@@ -103,6 +142,10 @@ describe('NodeFileProvider', function() {
     provider._getRar = async () => new Map();
     await expectReject(
       provider.loadBinary('pack.rar', 'missing.dat'),
+      /not found/i
+    );
+    await expectReject(
+      provider.loadBinary('pack.nxp', 'missing.dat'),
       /not found/i
     );
   });
@@ -143,6 +186,10 @@ describe('NodeFileProvider', function() {
     const tar1 = await provider._getTar('pack.tar');
     const tar2 = await provider._getTar('pack.tar');
     expect(tar1).to.equal(tar2);
+
+    const nxp1 = provider._getNxp('pack.nxp');
+    const nxp2 = provider._getNxp('pack.nxp');
+    expect(nxp1).to.equal(nxp2);
   });
 
   it('skips non-file tar entries', async function() {
@@ -258,9 +305,25 @@ describe('NodeFileProvider', function() {
     provider._getZip('pack.zip');
     await provider._getTar('pack.tar');
     provider.rarCache.set('rar', new Map());
+    provider._getNxp('pack.nxp');
     provider.clearCache();
     expect(provider.zipCache.size).to.equal(0);
     expect(provider.tarCache.size).to.equal(0);
     expect(provider.rarCache.size).to.equal(0);
+    expect(provider.nxpCache.size).to.equal(0);
+  });
+
+  it('rejects invalid nxp archives', function() {
+    const provider = makeProvider();
+    fs.writeFileSync(path.join(tmpDir, 'bad-count.nxp'), Buffer.from([2, 0, 0, 0]));
+    expect(() => provider._getNxp('bad-count.nxp')).to.throw(/invalid nxp table size/i);
+
+    const invalid = Buffer.alloc(4 + 36);
+    invalid.writeUInt32LE(1, 0);
+    Buffer.from('file.bin').copy(invalid, 4);
+    invalid.writeUInt32LE(999, 32);
+    invalid.writeUInt32LE(10, 36);
+    fs.writeFileSync(path.join(tmpDir, 'bad-bounds.nxp'), invalid);
+    expect(() => provider._getNxp('bad-bounds.nxp')).to.throw(/invalid nxp entry bounds/i);
   });
 });

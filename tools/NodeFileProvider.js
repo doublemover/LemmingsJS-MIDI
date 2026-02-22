@@ -11,6 +11,7 @@ class NodeFileProvider {
     this.zipCache = new Map();
     this.tarCache = new Map();
     this.rarCache = new Map();
+    this.nxpCache = new Map();
     this._rar = options.rar || { createExtractorFromData, createExtractorFromFile };
   }
 
@@ -21,6 +22,7 @@ class NodeFileProvider {
     this.zipCache.clear();
     this.tarCache.clear();
     this.rarCache.clear();
+    this.nxpCache.clear();
   }
 
   _validateEntry(name) {
@@ -84,6 +86,48 @@ class NodeFileProvider {
     return map;
   }
 
+  /**
+   * Parse legacy Flexi Toolkit `.nxp` archives:
+   * - uint32le entry count
+   * - table entries (36 bytes): name[28], offset uint32le, size uint32le
+   * - payload bytes follow immediately after the table
+   */
+  _getNxp(nxpPath) {
+    const abs = path.resolve(this.rootPath, nxpPath);
+    let map = this.nxpCache.get(abs);
+    if (map) return map;
+
+    const data = fs.readFileSync(abs);
+    if (data.length < 4) {
+      throw new Error(`Invalid NXP archive: ${nxpPath}`);
+    }
+    const entryCount = data.readUInt32LE(0);
+    const TABLE_ENTRY_SIZE = 36;
+    const tableSize = 4 + (entryCount * TABLE_ENTRY_SIZE);
+    if (tableSize > data.length) {
+      throw new Error(`Invalid NXP table size in ${nxpPath}`);
+    }
+
+    map = new Map();
+    for (let i = 0; i < entryCount; i += 1) {
+      const base = 4 + (i * TABLE_ENTRY_SIZE);
+      const nameRaw = data.subarray(base, base + 28);
+      const zero = nameRaw.indexOf(0);
+      const name = nameRaw.subarray(0, zero >= 0 ? zero : nameRaw.length)
+        .toString('utf8')
+        .replace(/\\/g, '/');
+      const offset = data.readUInt32LE(base + 28);
+      const size = data.readUInt32LE(base + 32);
+      if (!name) continue;
+      if ((offset + size) > data.length) {
+        throw new Error(`Invalid NXP entry bounds for ${name} in ${nxpPath}`);
+      }
+      map.set(name, data.subarray(offset, offset + size));
+    }
+    this.nxpCache.set(abs, map);
+    return map;
+  }
+
   _findEntry(map, entryName) {
     const lower = entryName.replace(/\\/g, '/').toLowerCase();
     if (map.has(entryName)) return map.get(entryName);
@@ -128,6 +172,12 @@ class NodeFileProvider {
       if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
       const arr = new Uint8Array(buf);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
+    } else if (/\.nxp$/i.test(dir)) {
+      const map = this._getNxp(dir);
+      const buf = this._findEntry(map, filename);
+      if (!buf) throw new Error(`File ${filename} not found in ${dir}`);
+      const arr = new Uint8Array(buf);
+      return new Lemmings.BinaryReader(arr, 0, arr.length, filename, dir);
     }
     const fullPath = path.isAbsolute(dir)
       ? path.join(dir, filename)
@@ -139,7 +189,7 @@ class NodeFileProvider {
 
   async loadString(file) {
     file = file.replace(/\\/g, '/');
-    const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar))\/(.+)$/i);
+    const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar|nxp))\/(.+)$/i);
     if (m) {
       const archive = m[1];
       const entryName = this._validateEntry(m[2]);
@@ -155,6 +205,11 @@ class NodeFileProvider {
         return Buffer.from(buf).toString('utf8');
       } else if (/\.rar$/i.test(archive)) {
         const map = await this._getRar(archive);
+        const buf = this._findEntry(map, entryName);
+        if (!buf) throw new Error(`File ${entryName} not found in ${archive}`);
+        return Buffer.from(buf).toString('utf8');
+      } else if (/\.nxp$/i.test(archive)) {
+        const map = this._getNxp(archive);
         const buf = this._findEntry(map, entryName);
         if (!buf) throw new Error(`File ${entryName} not found in ${archive}`);
         return Buffer.from(buf).toString('utf8');

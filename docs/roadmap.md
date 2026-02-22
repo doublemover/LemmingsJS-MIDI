@@ -110,7 +110,7 @@ Notes:
   palettes).
 - [x] Pack decompression/patch/compression pipeline.
 - [ ] Full support for pack-specific glitches.
-- [ ] Support for other popular pack types.
+- [x] Support for other popular pack types (`.nxp` archive reads in tooling).
 - [ ] High resolution and 32-bit color sprite support.
 - [ ] Procgen production hardening and long-run stability/perf at high entity
   counts.
