@@ -45,13 +45,24 @@ const expectLevelProperties = (level, props) => {
   expect(level.skills).to.deep.equal(props.skills);
 };
 
+const countMaskPixels = (mask) => {
+  if (!mask || !Array.isArray(mask) && !mask.length) return 0;
+  let count = 0;
+  for (let i = 0; i < mask.length; i += 1) {
+    if (mask[i]) count += 1;
+  }
+  return count;
+};
+
 const makeProvider = (oddLoader) => class Provider {
   loadBinary(path, file) {
     if (file === 'ODDTABLE.DAT' && oddLoader) {
       return oddLoader();
     }
     const data = readFileSync(new URL(`../${path}/${file}`, import.meta.url));
-    return Promise.resolve(new Lemmings.BinaryReader(new Uint8Array(data)));
+    return Promise.resolve(
+      new Lemmings.BinaryReader(new Uint8Array(data), 0, data.length, file, path)
+    );
   }
 };
 
@@ -208,6 +219,70 @@ describe('LevelLoader', function () {
       { skills: [5, 6] }
     );
     expect(mergedNoSkills.skills).to.eql([5, 6]);
+  });
+
+  it('falls back to seasonal resource packs when local terrain files are missing', async function () {
+    const calls = [];
+    class Provider {
+      loadBinary(path, file) {
+        calls.push(`${path}/${file}`);
+        const data = readFileSync(new URL(`../${path}/${file}`, import.meta.url));
+        return Promise.resolve(
+          new Lemmings.BinaryReader(new Uint8Array(data), 0, data.length, file, path)
+        );
+      }
+    }
+
+    const config = makeConfig({
+      path: 'xmas92',
+      gametype: Lemmings.GameTypes.XMAS92,
+      level: {
+        filePrefix: 'LEVEL',
+        useOddTable: false,
+        order: [[4]]
+      }
+    });
+
+    const loader = new Lemmings.LevelLoader(new Provider(), config);
+    const level = await loader.getLevel(0, 0);
+
+    expect(level).to.be.instanceOf(Lemmings.Level);
+    expect(calls).to.include('xmas92/GROUND0O.DAT');
+    expect(calls).to.include('xmas91/GROUND0O.DAT');
+  });
+
+  it('applies seasonal steel sprite mappings to generate steel masks', async function () {
+    const Provider = makeProvider();
+    const seasonalCases = [
+      {
+        path: 'xmas91',
+        gametype: Lemmings.GameTypes.XMAS91,
+        level: { filePrefix: 'LEVEL', useOddTable: false, order: [[3]] }
+      },
+      {
+        path: 'xmas92',
+        gametype: Lemmings.GameTypes.XMAS92,
+        level: { filePrefix: 'LEVEL', useOddTable: false, order: [[3]] }
+      },
+      {
+        path: 'holiday93',
+        gametype: Lemmings.GameTypes.HOLIDAY93,
+        level: { filePrefix: 'LEVEL', useOddTable: false, order: [[1]] }
+      },
+      {
+        path: 'holiday94',
+        gametype: Lemmings.GameTypes.HOLIDAY94,
+        level: { filePrefix: 'LEVEL', useOddTable: false, order: [[1]] }
+      }
+    ];
+
+    for (let i = 0; i < seasonalCases.length; i += 1) {
+      const config = makeConfig(seasonalCases[i]);
+      const loader = new Lemmings.LevelLoader(new Provider(), config);
+      const level = await loader.getLevel(0, 0);
+      const steelPixels = countMaskPixels(level?.steelMask?.mask);
+      expect(steelPixels, `expected steel mask pixels for ${config.path}`).to.be.greaterThan(0);
+    }
   });
 
 });
