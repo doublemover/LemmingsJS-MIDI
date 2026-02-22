@@ -109,7 +109,10 @@ class TriggerManager {
     if (!this._triggers) return;
     const list = this._ownerTriggers.get(owner);
     if (list?.length) {
-      while (list.length) this.#remove(list[list.length - 1]);
+      const owned = list.slice();
+      for (let i = 0; i < owned.length; i += 1) {
+        this.#remove(owned[i]);
+      }
       return;
     }
     for (const tr of this._triggers) {
