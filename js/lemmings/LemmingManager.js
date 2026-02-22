@@ -77,7 +77,8 @@ class LemmingManager extends BaseLogger {
           (lemmings.extraLemmings | 0)) * 2;
         this._minimapDotBuffer = new Uint8Array(maxDots);
         this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
-        this._mmVisited = new Uint8Array(65536);
+        this._mmVisited = new Uint16Array(65536);
+        this._mmVisitStamp = 1;
         this._selectedMiniMapDot = [0, 0];
         if (!LemmingManager.log) {
           LemmingManager.log = this.log;
@@ -308,7 +309,12 @@ class LemmingManager extends BaseLogger {
         }
         const dots = this._minimapDotBuffer;
         const visited = this._mmVisited;
-        visited.fill(0);
+        let visitStamp = (this._mmVisitStamp + 1) & 0xffff;
+        if (visitStamp === 0) {
+          visited.fill(0);
+          visitStamp = 1;
+        }
+        this._mmVisitStamp = visitStamp;
         const scaleX = this.miniMap.scaleX;
         const scaleY = this.miniMap.scaleY;
         let idx = 0;
@@ -323,8 +329,8 @@ class LemmingManager extends BaseLogger {
             hasSelectedDot = true;
           }
           const key = (y << 8) | x;
-          if (visited[key]) continue;
-          visited[key] = 1;
+          if (visited[key] === visitStamp) continue;
+          visited[key] = visitStamp;
           dots[idx++] = x;
           dots[idx++] = y;
         }
@@ -733,6 +739,7 @@ class LemmingManager extends BaseLogger {
     if (this.minimapDots) this.minimapDots = new Uint8Array(0);
     this._minimapDotBuffer = null;
     this._mmVisited = null;
+    this._mmVisitStamp = null;
     this.level = null;
     this.triggerManager = null;
     this.gameVictoryCondition = null;
