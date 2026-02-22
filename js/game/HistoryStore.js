@@ -1624,7 +1624,7 @@ class HistoryStore {
         }
         let lem = manager.lemmings[i];
         if (!lem) {
-          const ctor = manager._lemmingCtor || globalThis.lemmings?.Lemming || null;
+          const ctor = manager._lemmingCtor || null;
           lem = ctor ? new ctor(state.x[i], state.y[i], i) : { id: i };
           manager.lemmings[i] = lem;
         }
@@ -1804,7 +1804,7 @@ class HistoryStore {
       if (snap == null || !Number.isFinite(snap.id)) continue;
       let lem = manager.lemmings[snap.id];
       if (!lem) {
-        const ctor = manager._lemmingCtor || globalThis.lemmings?.Lemming || null;
+        const ctor = manager._lemmingCtor || null;
         lem = ctor ? new ctor(snap.x, snap.y, snap.id) : { id: snap.id };
         manager.lemmings[snap.id] = lem;
       }

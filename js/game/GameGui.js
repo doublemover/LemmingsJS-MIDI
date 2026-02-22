@@ -10,8 +10,6 @@ import { getDependency, getAppContext } from '../core/dependencies.js';
 const getApp = () => {
   const app = getAppContext();
   if (app) return app;
-  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
-  if (typeof lemmings !== 'undefined') return lemmings;
   return null;
 };
 
