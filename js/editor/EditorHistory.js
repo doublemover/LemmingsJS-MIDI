@@ -9,11 +9,15 @@ class EditorHistory {
     this.writer = options.writer || new NxlvWriter();
     this._entries = [];
     this._cursor = -1;
+    this._transactionDepth = 0;
+    this._transactionPending = null;
   }
 
   clear() {
     this._entries = [];
     this._cursor = -1;
+    this._transactionDepth = 0;
+    this._transactionPending = null;
   }
 
   get entries() {
@@ -36,14 +40,13 @@ class EditorHistory {
     return this.writer.write(level || new EditorLevel());
   }
 
-  pushSnapshot(level, label = '') {
-    const text = this._serialize(level);
+  _pushSerialized(text, label = '', time = Date.now()) {
     const prev = this._entries[this._cursor]?.text;
     if (prev === text) return false;
     if (this._cursor < this._entries.length - 1) {
       this._entries = this._entries.slice(0, this._cursor + 1);
     }
-    this._entries.push({ text, label, time: Date.now() });
+    this._entries.push({ text, label, time });
     if (this._entries.length > this.maxEntries) {
       const overflow = this._entries.length - this.maxEntries;
       this._entries.splice(0, overflow);
@@ -52,6 +55,74 @@ class EditorHistory {
       this._cursor = this._entries.length - 1;
     }
     return true;
+  }
+
+  beginTransaction(label = 'Batch') {
+    this._transactionDepth += 1;
+    if (this._transactionDepth === 1) {
+      this._transactionPending = {
+        text: null,
+        label: label || 'Batch',
+        time: Date.now(),
+        changed: false
+      };
+    } else if (label) {
+      this._transactionPending.label = label;
+    }
+  }
+
+  endTransaction(label = '') {
+    if (this._transactionDepth <= 0) return false;
+    if (label && this._transactionPending) {
+      this._transactionPending.label = label;
+    }
+    this._transactionDepth -= 1;
+    if (this._transactionDepth > 0) return false;
+    const pending = this._transactionPending;
+    this._transactionPending = null;
+    if (!pending?.changed || typeof pending.text !== 'string') return false;
+    return this._pushSerialized(
+      pending.text,
+      pending.label || label || 'Batch',
+      pending.time
+    );
+  }
+
+  cancelTransaction() {
+    if (this._transactionDepth <= 0 && !this._transactionPending) return false;
+    this._transactionDepth = 0;
+    this._transactionPending = null;
+    return true;
+  }
+
+  /**
+   * Queue snapshots as a single undo unit until `endTransaction` is called.
+   * Nested transactions are supported and only commit at the outer boundary.
+   */
+  pushSnapshot(level, label = '') {
+    const text = this._serialize(level);
+    if (this._transactionDepth > 0) {
+      if (!this._transactionPending) {
+        this._transactionPending = {
+          text: null,
+          label: label || 'Batch',
+          time: Date.now(),
+          changed: false
+        };
+      }
+      const baseText = this._transactionPending.changed
+        ? this._transactionPending.text
+        : this._entries[this._cursor]?.text;
+      if (baseText === text) return false;
+      this._transactionPending.text = text;
+      this._transactionPending.time = Date.now();
+      this._transactionPending.changed = true;
+      if (label) {
+        this._transactionPending.label = label;
+      }
+      return true;
+    }
+    return this._pushSerialized(text, label, Date.now());
   }
 
   _applySnapshot(index) {

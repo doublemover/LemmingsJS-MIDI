@@ -62,4 +62,48 @@ describe('EditorHistory', () => {
     history.clear();
     expect(history.undo()).to.equal(null);
   });
+
+  it('groups transaction snapshots into a single undo step', () => {
+    const history = new EditorHistory();
+    const base = new EditorLevel();
+    base.setHeader('TITLE', 'Base');
+    const mid = new EditorLevel();
+    mid.setHeader('TITLE', 'Mid');
+    const fin = new EditorLevel();
+    fin.setHeader('TITLE', 'Final');
+
+    expect(history.pushSnapshot(base, 'Base')).to.equal(true);
+    history.beginTransaction('Batch');
+    expect(history.pushSnapshot(mid, 'Mid')).to.equal(true);
+    expect(history.pushSnapshot(fin, 'Final')).to.equal(true);
+    expect(history.entries).to.have.length(1);
+    expect(history.endTransaction('Batch Done')).to.equal(true);
+
+    expect(history.entries).to.have.length(2);
+    expect(history.entries[1].label).to.equal('Batch Done');
+    expect(history.undo().getHeader('TITLE')).to.equal('Base');
+  });
+
+  it('supports nested transaction boundaries and cancellation', () => {
+    const history = new EditorHistory();
+    const base = new EditorLevel();
+    base.setHeader('TITLE', 'Base');
+    const branch = new EditorLevel();
+    branch.setHeader('TITLE', 'Branch');
+
+    expect(history.pushSnapshot(base, 'Base')).to.equal(true);
+    history.beginTransaction('Outer');
+    history.beginTransaction('Inner');
+    expect(history.pushSnapshot(branch, 'Inner Change')).to.equal(true);
+    expect(history.endTransaction('Inner Done')).to.equal(false);
+    expect(history.entries).to.have.length(1);
+    expect(history.endTransaction('Outer Done')).to.equal(true);
+    expect(history.entries).to.have.length(2);
+    expect(history.entries[1].label).to.equal('Outer Done');
+
+    history.beginTransaction('Cancel');
+    expect(history.pushSnapshot(base, 'Revert')).to.equal(true);
+    expect(history.cancelTransaction()).to.equal(true);
+    expect(history.entries).to.have.length(2);
+  });
 });

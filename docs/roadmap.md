@@ -472,7 +472,7 @@ Notes:
   large style sets.
   Touchpoints: `js/app/editorUiController.js`, `js/app/editorPreviewCache.js`,
   `css/editor.css`.
-- [ ] Add explicit undo/redo transaction grouping for batch operations so
+- [x] Add explicit undo/redo transaction grouping for batch operations so
   generated edits remain predictable and reversible.
   Touchpoints: `js/editor/EditorHistory.js`, `js/editor/EditorController.js`.
 

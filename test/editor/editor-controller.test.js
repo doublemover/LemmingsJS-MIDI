@@ -12,6 +12,9 @@ class FakeHistory {
     this.snapshots = [];
     this.undoValue = null;
     this.redoValue = null;
+    this.beginLabels = [];
+    this.endLabels = [];
+    this.cancelCount = 0;
   }
 
   clear() {
@@ -29,6 +32,20 @@ class FakeHistory {
 
   redo() {
     return this.redoValue;
+  }
+
+  beginTransaction(label) {
+    this.beginLabels.push(label);
+  }
+
+  endTransaction(label) {
+    this.endLabels.push(label);
+    return true;
+  }
+
+  cancelTransaction() {
+    this.cancelCount += 1;
+    return true;
   }
 }
 
@@ -413,6 +430,37 @@ describe('EditorController', () => {
     expect(history.snapshots.some(entry => entry.label === 'Distribute')).to.equal(true);
     expect(history.snapshots.some(entry => entry.label === 'Replace')).to.equal(true);
     expect(history.snapshots.some(entry => entry.label === 'Randomize')).to.equal(true);
+  });
+
+  it('wraps batch selection edits in explicit history transactions', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history, snapEnabled: false });
+    controller.setAssets(buildAssets());
+    const t0 = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 0, y: 0 });
+    const t1 = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 20, y: 10 });
+    session.level.terrains.push(t0, t1);
+    controller._setSelection([
+      { type: 'terrain', index: 0 },
+      { type: 'terrain', index: 1 }
+    ]);
+
+    expect(controller.alignSelection('x', 'min')).to.equal(true);
+    expect(history.beginLabels).to.include('Align');
+    expect(history.endLabels).to.include('Align');
+  });
+
+  it('cancels explicit history transactions when a batch callback throws', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history });
+
+    expect(() => {
+      controller.runHistoryTransaction('Boom', () => {
+        throw new Error('explode');
+      });
+    }).to.throw('explode');
+    expect(history.cancelCount).to.equal(1);
   });
 
   it('scales grouped selections with transformSelectionGroup', () => {
