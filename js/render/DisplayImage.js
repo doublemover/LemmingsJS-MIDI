@@ -22,9 +22,12 @@ const cyrb53 = (str, seed = 0) => {
 };
 
 const scaledFrameCache = new WeakMap();
+const frameOpaqueCache = new WeakMap();
 const MAX_SCALED_VARIANTS_PER_FRAME = 8;
 const marchingAntPerimeterCache = new Map();
+const marchingAntPatternCache = new Map();
 const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
+const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const DIRTY_RECT_MERGE_PAD = 1;
 
 const getMarchingAntPerimeterOffsets = (stride, width, height) => {
@@ -54,6 +57,52 @@ const getMarchingAntPerimeterOffsets = (stride, width, height) => {
   }
   marchingAntPerimeterCache.set(key, offsets);
   return offsets;
+};
+
+const getMarchingAntPaintPattern = (perimeterLen, dashLen, offset) => {
+  const pattern = dashLen * 2;
+  const phase = ((offset % pattern) + pattern) % pattern;
+  const key = `${perimeterLen}:${dashLen}:${phase}`;
+  const cached = marchingAntPatternCache.get(key);
+  if (cached) return cached;
+
+  const first = [];
+  const second = [];
+  for (let i = 0; i < perimeterLen; i += 1) {
+    const pos = (phase + i) % pattern;
+    if (pos < dashLen) first.push(i);
+    else second.push(i);
+  }
+
+  const result = {
+    first: Int32Array.from(first),
+    second: Int32Array.from(second)
+  };
+
+  if (marchingAntPatternCache.size >= MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES) {
+    marchingAntPatternCache.clear();
+  }
+  marchingAntPatternCache.set(key, result);
+  return result;
+};
+
+const isFrameFullyOpaque = (frame) => {
+  if (!frame) return false;
+  const version = Number.isFinite(frame._version) ? frame._version : 0;
+  const cached = frameOpaqueCache.get(frame);
+  if (cached && cached.version === version) {
+    return cached.opaque === true;
+  }
+  const mask = frame.getMask();
+  let opaque = true;
+  for (let i = 0; i < mask.length; i += 1) {
+    if (!mask[i]) {
+      opaque = false;
+      break;
+    }
+  }
+  frameOpaqueCache.set(frame, { version, opaque });
+  return opaque;
 };
 
 function getScaledFrameVariant(frame, dstWidth, dstHeight, mode) {
@@ -547,6 +596,15 @@ class DisplayImage extends BaseLogger {
         (baseX + srcW) <= destW &&
         (baseY + srcH) <= destH;
       if (fullyInBounds) {
+        if (isFrameFullyOpaque(frame)) {
+          for (let sy = 0; sy < srcH; sy += 1) {
+            const sourceY = upsideDown ? srcH - sy - 1 : sy;
+            const srcStart = sourceY * srcW;
+            const destStart = (sy + baseY) * destW + baseX;
+            dest32.set(srcBuf.subarray(srcStart, srcStart + srcW), destStart);
+          }
+          return;
+        }
         for (let sy = 0; sy < srcH; sy += 1) {
           const sourceY = upsideDown ? srcH - sy - 1 : sy;
           let srcRow = sourceY * srcW;
@@ -559,21 +617,26 @@ class DisplayImage extends BaseLogger {
         return;
       }
 
+      let srcXStart = 0;
+      if (baseX < 0) srcXStart = -baseX;
+      let srcXEnd = srcW;
+      const maxRight = destW - baseX;
+      if (srcXEnd > maxRight) srcXEnd = maxRight;
+      if (srcXEnd <= srcXStart) return;
+
       for (let sy = 0; sy < srcH; sy++) {
         const sourceY = upsideDown ? srcH - sy - 1 : sy;
         const outY = sy + baseY;
         if (outY < 0 || outY >= destH) continue;
-        let srcRow  = sourceY * srcW;
-        let destRow = outY * destW + baseX;
-        for (let sx = 0; sx < srcW; sx++, srcRow++, destRow++) {
+        let srcRow  = (sourceY * srcW) + srcXStart;
+        let destRow = outY * destW + baseX + srcXStart;
+        for (let sx = srcXStart; sx < srcXEnd; sx++, srcRow++, destRow++) {
           if (!srcMask[srcRow]) {
             if (nullColor32 !== null) dest32[destRow] = nullColor32; // covered variant
             continue;
           }
-          const outX = sx + baseX;
-          if (outX < 0 || outX >= destW) continue;
           if (checkGround) {
-            const hasGround = groundMask?.hasGroundAt(outX, outY);
+            const hasGround = groundMask?.hasGroundAt(baseX + sx, outY);
             if (noOverwrite && hasGround)    continue;
             if (onlyOverwrite && !hasGround) continue;
           }
@@ -865,9 +928,29 @@ function drawMarchingAntRect(
   const { width: w } = display.imgData;
   const buffer32 = display.buffer32;
   const pattern = dashLen * 2;
-  let pos = ((offset % pattern) + pattern) % pattern;
   const writeColor1 = (color1 >>> 24) !== 0;
   const writeColor2 = (color2 >>> 24) !== 0;
+
+  if (width <= 64 && height <= 64) {
+    const baseIndex = (y * w) + x;
+    const offsets = getMarchingAntPerimeterOffsets(w, width, height);
+    const paintPattern = getMarchingAntPaintPattern(offsets.length, dashLen, offset);
+    if (writeColor1) {
+      const first = paintPattern.first;
+      for (let i = 0; i < first.length; i += 1) {
+        buffer32[baseIndex + offsets[first[i]]] = color1;
+      }
+    }
+    if (writeColor2) {
+      const second = paintPattern.second;
+      for (let i = 0; i < second.length; i += 1) {
+        buffer32[baseIndex + offsets[second[i]]] = color2;
+      }
+    }
+    return;
+  }
+
+  let pos = ((offset % pattern) + pattern) % pattern;
   const paint = (index) => {
     if (pos < dashLen) {
       if (writeColor1) buffer32[index] = color1;
@@ -877,15 +960,6 @@ function drawMarchingAntRect(
     pos += 1;
     if (pos === pattern) pos = 0;
   };
-
-  if (width <= 64 && height <= 64) {
-    const baseIndex = (y * w) + x;
-    const offsets = getMarchingAntPerimeterOffsets(w, width, height);
-    for (let i = 0; i < offsets.length; i += 1) {
-      paint(baseIndex + offsets[i]);
-    }
-    return;
-  }
 
   let idx = y * w + x;
   for (let dx = 0; dx <= width; dx += 1, idx += 1) {
