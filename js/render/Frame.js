@@ -24,6 +24,7 @@ class Frame {
     this._spanCacheEnabled = false;
     this._spanRows = null;
     this._spanBounds = null;
+    this._version = 0;
 
     this.clear();
   }
@@ -162,6 +163,7 @@ class Frame {
   }
 
   #invalidateSpanCache () {
+    this._version += 1;
     if (!this._spanCacheEnabled) return;
     this._spanRows = null;
     this._spanBounds = null;

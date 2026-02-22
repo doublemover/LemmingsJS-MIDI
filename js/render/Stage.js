@@ -73,6 +73,9 @@ class Stage {
 
     this.stageCav = canvasForOutput;
     this.stageCtx = canvasForOutput.getContext('2d', { alpha: true, willReadFrequently: true });
+    this.stageCtx.imageSmoothingEnabled = false;
+    this._ctxAlpha = 1;
+    this._ctxFillStyle = '';
     this.gameImgProps = new StageImageProperties();
     this.guiImgProps  = new StageImageProperties();
 
@@ -511,7 +514,7 @@ class Stage {
   clear(stageImage) {
     const start = this._perfTrackingFrame ? perfNow() : 0;
     const ctx = this.stageCtx;
-    ctx.fillStyle = '#000900';
+    this._setFillStyle('#000900');
     if (!stageImage) {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     } else {
@@ -608,8 +611,7 @@ class Stage {
     }
 
     const ctx = this.stageCtx;
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = 1;
+    this._setGlobalAlpha(1);
 
     let sx = display.viewPoint.x;
     let sy = display.viewPoint.y;
@@ -653,15 +655,15 @@ class Stage {
     );
 
     if (this.fadeAlpha !== 0) {
-      ctx.globalAlpha = this.fadeAlpha;
-      ctx.fillStyle = 'black';
+      this._setGlobalAlpha(this.fadeAlpha);
+      this._setFillStyle('black');
       ctx.fillRect(display.x, display.y, Math.trunc(dw), Math.trunc(dh));
-      ctx.globalAlpha = 1;
+      this._setGlobalAlpha(1);
     }
 
     if (this.overlayAlpha > 0) {
-      ctx.globalAlpha = this.overlayAlpha;
-      ctx.fillStyle = this.overlayColor;
+      this._setGlobalAlpha(this.overlayAlpha);
+      this._setFillStyle(this.overlayColor);
       const r = this.overlayRect || {
         x: display.x,
         y: display.y,
@@ -669,7 +671,7 @@ class Stage {
         height: Math.trunc(dh),
       };
       ctx.fillRect(r.x, r.y, r.width, r.height);
-      ctx.globalAlpha = 1;
+      this._setGlobalAlpha(1);
       if (this.overlayDashLen > 0) {
         const octx = this.stageCtx;
         const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
@@ -714,11 +716,11 @@ class Stage {
     const lineH = 12;
     const width = 280;
     const height = (lines.length * lineH) + 8;
-    ctx.globalAlpha = 0.6;
-    ctx.fillStyle = '#000';
+    this._setGlobalAlpha(0.6);
+    this._setFillStyle('#000');
     ctx.fillRect(x - 4, y - 4, width, height);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = '#8cf';
+    this._setGlobalAlpha(1);
+    this._setFillStyle('#8cf');
     ctx.font = '11px monospace';
     ctx.textBaseline = 'top';
     for (let i = 0; i < lines.length; i++) {
@@ -772,6 +774,18 @@ class Stage {
 
   limitValue(minLimit, value, maxLimit) {
     return Math.min(Math.max(minLimit, value), maxLimit);
+  }
+
+  _setGlobalAlpha(value) {
+    if (this._ctxAlpha === value) return;
+    this.stageCtx.globalAlpha = value;
+    this._ctxAlpha = value;
+  }
+
+  _setFillStyle(value) {
+    if (this._ctxFillStyle === value) return;
+    this.stageCtx.fillStyle = value;
+    this._ctxFillStyle = value;
   }
 }
 

@@ -1,0 +1,31 @@
+import { expect } from 'chai';
+import { Frame } from '../js/render/Frame.js';
+import { __test__ as displayImageTest } from '../js/render/DisplayImage.js';
+
+describe('DisplayImage scale cache', function () {
+  it('reuses scaled buffers for matching frame/version/size and invalidates on frame edits', function () {
+    const frame = new Frame(2, 2);
+    frame.setPixel(0, 0, 0xff00ffff);
+    frame.setPixel(1, 0, 0xff0000ff);
+    frame.setPixel(0, 1, 0xff00ff00);
+    frame.setPixel(1, 1, 0xffffffff);
+
+    const a = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    const b = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    expect(a).to.equal(b);
+    expect(a.scaled).to.be.instanceof(Uint32Array);
+    expect(a.scaledMask).to.be.instanceof(Uint8Array);
+    expect(a.scaled.length).to.equal(16);
+    expect(a.scaledMask.length).to.equal(16);
+
+    frame.setPixel(0, 0, 0xff112233);
+    const c = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    expect(c).to.not.equal(a);
+  });
+
+  it('returns null for unsupported target dimensions', function () {
+    const frame = new Frame(2, 2);
+    const variant = displayImageTest.getScaledFrameVariant(frame, 5, 5, 'xbrz');
+    expect(variant).to.equal(null);
+  });
+});

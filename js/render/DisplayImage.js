@@ -21,6 +21,65 @@ const cyrb53 = (str, seed = 0) => {
   return 4294967296 * (2097151 & h2) + (h1 >>> 0);
 };
 
+const scaledFrameCache = new WeakMap();
+const MAX_SCALED_VARIANTS_PER_FRAME = 8;
+
+function getScaledFrameVariant(frame, dstWidth, dstHeight, mode) {
+  if (!frame) return null;
+  const srcW = frame.width | 0;
+  const srcH = frame.height | 0;
+  if (!srcW || !srcH || !dstWidth || !dstHeight) return null;
+  const scale = Math.round(dstWidth / srcW);
+  if (scale < 2 || scale > 4 || dstWidth !== srcW * scale || dstHeight !== srcH * scale) {
+    return null;
+  }
+
+  const version = Number.isFinite(frame._version) ? frame._version : 0;
+  const key = `${mode}:${dstWidth}x${dstHeight}:v${version}`;
+  let variants = scaledFrameCache.get(frame);
+  if (!variants) {
+    variants = new Map();
+    scaledFrameCache.set(frame, variants);
+  } else if (variants.has(key)) {
+    return variants.get(key);
+  }
+
+  const srcBuf = frame.getBuffer();
+  const srcMask = frame.getMask();
+  const maskLen = srcMask.length;
+  const opaqueSrc = new Uint32Array(maskLen);
+  for (let i = 0; i < maskLen; i++) {
+    opaqueSrc[i] = srcMask[i] ? srcBuf[i] : 0;
+  }
+
+  const scaledMask = new Uint8Array(dstWidth * dstHeight);
+  for (let dy = 0; dy < dstHeight; dy++) {
+    const sy = Math.floor(dy / scale);
+    const srcRow = sy * srcW;
+    const dstRow = dy * dstWidth;
+    for (let dx = 0; dx < dstWidth; dx++) {
+      const sx = Math.floor(dx / scale);
+      scaledMask[dstRow + dx] = srcMask[srcRow + sx];
+    }
+  }
+
+  const scaled = mode === 'hqx'
+    ? hqxScale(opaqueSrc, srcW, srcH, scale)
+    : (() => {
+      const out = new Uint32Array(dstWidth * dstHeight);
+      scaleImage(scale, opaqueSrc, out, srcW, srcH, 0, srcH);
+      return out;
+    })();
+
+  const variant = { scaled, scaledMask };
+  if (!variants.has(key) && variants.size >= MAX_SCALED_VARIANTS_PER_FRAME) {
+    const firstKey = variants.keys().next().value;
+    variants.delete(firstKey);
+  }
+  variants.set(key, variant);
+  return variant;
+}
+
 class DisplayImage extends BaseLogger {
   constructor(stage) {
     super();
@@ -601,26 +660,12 @@ function scaleXbrz(
     return;
   }
 
-  const srcBuf = frame.getBuffer();
-  const srcMask = frame.getMask();
-  const temp = new Uint32Array(srcBuf.length);
-  for (let i = 0; i < srcBuf.length; i++) {
-    temp[i] = srcMask[i] ? srcBuf[i] : 0;
+  const variant = getScaledFrameVariant(frame, dstWidth, dstHeight, 'xbrz');
+  if (!variant) {
+    scaleNearest(frame, dstWidth, dstHeight, opts);
+    return;
   }
-
-  const scaled = new Uint32Array(dstWidth * dstHeight);
-  scaleImage(scale, temp, scaled, srcW, srcH, 0, srcH);
-
-  const scaledMask = new Uint8Array(dstWidth * dstHeight);
-  for (let dy = 0; dy < dstHeight; dy++) {
-    const sy = Math.floor(dy / scale);
-    const srcRow = sy * srcW;
-    const dstRow = dy * dstWidth;
-    for (let dx = 0; dx < dstWidth; dx++) {
-      const sx = Math.floor(dx / scale);
-      scaledMask[dstRow + dx] = srcMask[srcRow + sx];
-    }
-  }
+  const { scaled, scaledMask } = variant;
 
   for (let dy = 0; dy < dstHeight; dy++) {
     const srcY = upsideDown ? dstHeight - 1 - dy : dy;
@@ -679,25 +724,12 @@ function scaleHqx(
     return;
   }
 
-  const srcBuf = frame.getBuffer();
-  const srcMask = frame.getMask();
-  const temp = new Uint32Array(srcBuf.length);
-  for (let i = 0; i < srcBuf.length; i++) {
-    temp[i] = srcMask[i] ? srcBuf[i] : 0;
+  const variant = getScaledFrameVariant(frame, dstWidth, dstHeight, 'hqx');
+  if (!variant) {
+    scaleNearest(frame, dstWidth, dstHeight, opts);
+    return;
   }
-
-  const scaled = hqxScale(temp, srcW, srcH, scale);
-
-  const scaledMask = new Uint8Array(dstWidth * dstHeight);
-  for (let dy = 0; dy < dstHeight; dy++) {
-    const sy = Math.floor(dy / scale);
-    const srcRow = sy * srcW;
-    const dstRow = dy * dstWidth;
-    for (let dx = 0; dx < dstWidth; dx++) {
-      const sx = Math.floor(dx / scale);
-      scaledMask[dstRow + dx] = srcMask[srcRow + sx];
-    }
-  }
+  const { scaled, scaledMask } = variant;
 
   for (let dy = 0; dy < dstHeight; dy++) {
     const srcY = upsideDown ? dstHeight - 1 - dy : dy;
@@ -782,7 +814,9 @@ function drawDashedRect(
 }
 
 const __test__ = {
-  cyrb53
+  cyrb53,
+  getScaledFrameVariant,
+  _scaledFrameCache: scaledFrameCache
 };
 
 export {
