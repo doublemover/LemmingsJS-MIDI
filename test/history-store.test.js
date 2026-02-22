@@ -3077,4 +3077,68 @@ describe('HistoryStore', function() {
     history.applyKeyframe(game, { lemmingState });
     expect(manager.lemmings[0]).to.be.ok;
   });
+
+  it('compacts cold delta blocks and resolves sentinel-backed deltas', function() {
+    const { history, timer } = createHistoryFixture();
+    history.configureRetention({
+      deltaBlockSizeTicks: 4,
+      coldBlockAgeTicks: 1,
+      enableColdBlockCompression: true
+    });
+
+    for (let tick = 0; tick < 10; tick += 1) {
+      recordTick(history, timer, tick, null, tick + 1);
+    }
+
+    const stats = history.getHistoryStats();
+    expect(stats.coldBlockCount).to.be.greaterThan(0);
+    const coldTick = 0;
+    expect(history.deltas[coldTick]).to.equal(1);
+    const delta = history.getDelta(coldTick);
+    expect(delta).to.be.ok;
+    expect(delta.tick).to.equal(coldTick);
+  });
+
+  it('deduplicates identical cold block payloads by hash', function() {
+    const { history, timer } = createHistoryFixture();
+    history.configureRetention({
+      deltaBlockSizeTicks: 2,
+      coldBlockAgeTicks: 1,
+      enableColdBlockCompression: true,
+      enableColdBlockDedupe: true
+    });
+
+    for (let tick = 0; tick < 10; tick += 1) {
+      recordTick(history, timer, tick, null, tick + 1);
+    }
+
+    const uniqueBuckets = Array.from(history._coldBlockStore.values());
+    expect(uniqueBuckets.length).to.be.greaterThan(0);
+    const hasSharedRef = uniqueBuckets.some(bucket => bucket.some(entry => entry.refs > 1));
+    expect(hasSharedRef).to.equal(true);
+  });
+
+  it('preserves replay hash across cold-block thaw and decode', function() {
+    const { history, timer, manager } = createHistoryFixture();
+    history.configureRetention({
+      deltaBlockSizeTicks: 3,
+      coldBlockAgeTicks: 1,
+      enableColdBlockCompression: true
+    });
+
+    for (let tick = 0; tick < 9; tick += 1) {
+      recordTick(history, timer, tick, () => {
+        manager.lemmings[0].x = 10 + (tick % 3);
+        manager.lemmings[0].frameIndex = tick % 5;
+      }, tick + 1);
+    }
+
+    const before = history.computeReplayHash();
+    for (const start of history._deltaBlocks.keys()) {
+      history._thawDeltaBlock(start);
+    }
+    const after = history.computeReplayHash();
+    expect(before).to.be.a('string');
+    expect(after).to.equal(before);
+  });
 });

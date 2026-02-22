@@ -7,8 +7,17 @@ const DEFAULT_OPTIONS = Object.freeze({
   enableHistoryCap: true,
   historyCapTicks: 20000,
   historyWarnTicks: 15000,
-  deltaPoolLimit: 64
+  deltaPoolLimit: 64,
+  deltaBlockSizeTicks: 256,
+  coldBlockAgeTicks: 2048,
+  enableColdBlockCompression: true,
+  enableColdBlockDedupe: true
 });
+
+const COLD_DELTA_SENTINEL = 1;
+
+const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
+const textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : null;
 
 const toNonNegativeInt = (value, fallback) => {
   if (!Number.isFinite(value)) return fallback;
@@ -16,10 +25,104 @@ const toNonNegativeInt = (value, fallback) => {
   return next >= 0 ? next : fallback;
 };
 
+const encodeUtf8 = (value) => {
+  if (textEncoder) return textEncoder.encode(value);
+  const bytes = [];
+  for (let i = 0; i < value.length; i += 1) {
+    bytes.push(value.charCodeAt(i) & 0xff);
+  }
+  return Uint8Array.from(bytes);
+};
+
+const decodeUtf8 = (bytes) => {
+  if (textDecoder) return textDecoder.decode(bytes);
+  let out = '';
+  for (let i = 0; i < bytes.length; i += 1) {
+    out += String.fromCharCode(bytes[i]);
+  }
+  return out;
+};
+
+const stableStringify = (value) => {
+  if (value == null || typeof value !== 'object') {
+    return JSON.stringify(value);
+  }
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+  }
+  const keys = Object.keys(value).sort();
+  const pairs = [];
+  for (const key of keys) {
+    pairs.push(`${JSON.stringify(key)}:${stableStringify(value[key])}`);
+  }
+  return `{${pairs.join(',')}}`;
+};
+
+const bytesEqual = (a, b) => {
+  if (!a || !b || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i] !== b[i]) return false;
+  }
+  return true;
+};
+
+const fnv1aHashBytes = (bytes) => {
+  let hash = 2166136261;
+  for (let i = 0; i < bytes.length; i += 1) {
+    hash ^= bytes[i];
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, '0');
+};
+
+const rleEncodeBytes = (bytes) => {
+  if (!bytes || bytes.length <= 2) return bytes;
+  const out = [];
+  for (let i = 0; i < bytes.length;) {
+    const value = bytes[i];
+    let run = 1;
+    while ((i + run) < bytes.length && bytes[i + run] === value && run < 255) {
+      run += 1;
+    }
+    out.push(run, value);
+    i += run;
+  }
+  return Uint8Array.from(out);
+};
+
+const rleDecodeBytes = (bytes) => {
+  const out = [];
+  for (let i = 0; i < bytes.length; i += 2) {
+    const run = bytes[i];
+    const value = bytes[i + 1];
+    for (let j = 0; j < run; j += 1) {
+      out.push(value);
+    }
+  }
+  return Uint8Array.from(out);
+};
+
+const isNoOpDelta = (delta) => {
+  if (!delta) return true;
+  if (delta.lemChanges?.ids?.length) return false;
+  if (delta.lemAdded?.length || delta.lemRemoved?.length) return false;
+  if (delta.lemmingManagerChanges) return false;
+  if (delta.groundChanges?.indices?.length || delta.groundChanges?.spans) return false;
+  if (delta.entranceChanges?.indices?.length) return false;
+  if (delta.triggerCooldownChanges?.ids?.length) return false;
+  if (delta.triggerAdd?.length || delta.triggerRemove?.length) return false;
+  if (delta.objectAnimChanges?.ids?.length) return false;
+  if (delta.victoryChanges || delta.skillsChanges || delta.timerChanges || delta.gameChanges) return false;
+  if (delta.soundEvents?.length || delta.minimapDeaths?.length) return false;
+  return true;
+};
+
 const normalizeOptions = (options = {}) => {
   const keyframeInterval = Math.max(1, toNonNegativeInt(options.keyframeInterval, DEFAULT_OPTIONS.keyframeInterval));
   const deltaPoolLimit = toNonNegativeInt(options.deltaPoolLimit, DEFAULT_OPTIONS.deltaPoolLimit);
   const historyCapTicks = toNonNegativeInt(options.historyCapTicks, DEFAULT_OPTIONS.historyCapTicks);
+  const deltaBlockSizeTicks = Math.max(1, toNonNegativeInt(options.deltaBlockSizeTicks, DEFAULT_OPTIONS.deltaBlockSizeTicks));
+  const coldBlockAgeTicks = Math.max(0, toNonNegativeInt(options.coldBlockAgeTicks, DEFAULT_OPTIONS.coldBlockAgeTicks));
   let historyWarnTicks = toNonNegativeInt(options.historyWarnTicks, DEFAULT_OPTIONS.historyWarnTicks);
   if (historyCapTicks > 0 && historyWarnTicks > historyCapTicks) {
     historyWarnTicks = historyCapTicks;
@@ -30,7 +133,11 @@ const normalizeOptions = (options = {}) => {
     enableHistoryCap: options.enableHistoryCap !== false,
     historyCapTicks,
     historyWarnTicks,
-    deltaPoolLimit
+    deltaPoolLimit,
+    deltaBlockSizeTicks,
+    coldBlockAgeTicks,
+    enableColdBlockCompression: options.enableColdBlockCompression !== false,
+    enableColdBlockDedupe: options.enableColdBlockDedupe !== false
   };
 };
 
@@ -176,6 +283,10 @@ class HistoryStore {
     this.deltaCount = 0;
     this.keyframeCount = 0;
     this._deltaPool = [];
+    this._deltaBlocks = new Map();
+    this._coldBlockStore = new Map();
+    this._coldBlockCount = 0;
+    this._coldBlockBytes = 0;
     this._historyWarned = false;
     this._recording = false;
     this._currentTick = null;
@@ -222,7 +333,13 @@ class HistoryStore {
 
   getDelta(tickIndex) {
     if (!Number.isFinite(tickIndex)) return null;
-    return this.deltas[Math.trunc(tickIndex)] || null;
+    const tick = Math.trunc(tickIndex);
+    const entry = this.deltas[tick];
+    if (!entry) return null;
+    if (entry === COLD_DELTA_SENTINEL) {
+      return this._resolveColdDelta(tick);
+    }
+    return entry;
   }
 
   getKeyframe(tickIndex) {
@@ -240,8 +357,311 @@ class HistoryStore {
       deltaCount: this.deltaCount,
       keyframeCount: this.keyframeCount,
       spanTicks: span,
+      coldBlockCount: this._coldBlockCount,
+      coldBlockBytes: this._coldBlockBytes,
       retention: this.getRetentionPolicy()
     };
+  }
+
+  computeReplayHash(fromTick = null, toTick = null) {
+    if (this.minDeltaTick == null || this.maxDeltaTick == null) return null;
+    const start = Number.isFinite(fromTick) ? Math.max(this.minDeltaTick, Math.trunc(fromTick)) : this.minDeltaTick;
+    const end = Number.isFinite(toTick) ? Math.min(this.maxDeltaTick, Math.trunc(toTick)) : this.maxDeltaTick;
+    if (start > end) return null;
+    const parts = [];
+    for (let tick = start; tick <= end; tick += 1) {
+      const delta = this.getDelta(tick);
+      if (!delta) continue;
+      parts.push({
+        t: tick,
+        n: isNoOpDelta(delta) ? 1 : 0,
+        lc: delta.lemChanges?.ids?.length || 0,
+        la: delta.lemAdded?.length || 0,
+        lr: delta.lemRemoved?.length || 0,
+        gc: delta.groundChanges?.indices?.length || 0,
+        ec: delta.entranceChanges?.indices?.length || 0,
+        tc: delta.triggerCooldownChanges?.ids?.length || 0,
+        ta: delta.triggerAdd?.length || 0,
+        tr: delta.triggerRemove?.length || 0,
+        oc: delta.objectAnimChanges?.ids?.length || 0,
+        sc: delta.soundEvents?.length || 0,
+        mc: delta.minimapDeaths?.length || 0
+      });
+    }
+    const bytes = encodeUtf8(stableStringify(parts));
+    return fnv1aHashBytes(bytes);
+  }
+
+  _deltaBlockStart(tickIndex) {
+    const size = this.options.deltaBlockSizeTicks || DEFAULT_OPTIONS.deltaBlockSizeTicks;
+    return Math.floor(Math.trunc(tickIndex) / size) * size;
+  }
+
+  _deltaBlockEnd(startTick) {
+    const size = this.options.deltaBlockSizeTicks || DEFAULT_OPTIONS.deltaBlockSizeTicks;
+    return startTick + size - 1;
+  }
+
+  _ensureDeltaBlock(tickIndex) {
+    const start = this._deltaBlockStart(tickIndex);
+    let block = this._deltaBlocks.get(start);
+    if (!block) {
+      block = {
+        startTick: start,
+        endTick: this._deltaBlockEnd(start),
+        cold: false,
+        encoding: null,
+        encodedBytes: null,
+        encodedStoreKey: null,
+        decoded: null
+      };
+      this._deltaBlocks.set(start, block);
+    }
+    return block;
+  }
+
+  _retainColdBytes(storeKey, bytes) {
+    let bucket = this._coldBlockStore.get(storeKey);
+    if (!bucket) {
+      bucket = [];
+      this._coldBlockStore.set(storeKey, bucket);
+    }
+    for (const entry of bucket) {
+      if (bytesEqual(entry.bytes, bytes)) {
+        entry.refs += 1;
+        return entry.bytes;
+      }
+    }
+    bucket.push({ bytes, refs: 1 });
+    this._coldBlockBytes += bytes.length;
+    return bytes;
+  }
+
+  _releaseColdBytes(storeKey, bytes) {
+    if (!storeKey || !bytes) return;
+    const bucket = this._coldBlockStore.get(storeKey);
+    if (!bucket) return;
+    for (let i = 0; i < bucket.length; i += 1) {
+      const entry = bucket[i];
+      if (entry.bytes !== bytes) continue;
+      entry.refs -= 1;
+      if (entry.refs <= 0) {
+        this._coldBlockBytes -= entry.bytes.length;
+        bucket.splice(i, 1);
+      }
+      break;
+    }
+    if (!bucket.length) {
+      this._coldBlockStore.delete(storeKey);
+    }
+  }
+
+  _buildColdBlockPayload(block) {
+    const noOpRanges = [];
+    const deltaEntries = [];
+    let runStart = -1;
+    let runLen = 0;
+    for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
+      const entry = this.deltas[tick];
+      if (!entry || entry === COLD_DELTA_SENTINEL) {
+        if (runLen > 0) {
+          noOpRanges.push([runStart, runLen]);
+          runStart = -1;
+          runLen = 0;
+        }
+        continue;
+      }
+      const offset = tick - block.startTick;
+      if (isNoOpDelta(entry)) {
+        if (runLen === 0) {
+          runStart = offset;
+          runLen = 1;
+        } else if (offset === (runStart + runLen)) {
+          runLen += 1;
+        } else {
+          noOpRanges.push([runStart, runLen]);
+          runStart = offset;
+          runLen = 1;
+        }
+      } else {
+        if (runLen > 0) {
+          noOpRanges.push([runStart, runLen]);
+          runStart = -1;
+          runLen = 0;
+        }
+        const packed = this._packDeltaForStorage(entry);
+        deltaEntries.push([offset, packed]);
+      }
+    }
+    if (runLen > 0) {
+      noOpRanges.push([runStart, runLen]);
+    }
+    return {
+      noOpRanges,
+      deltaEntries
+    };
+  }
+
+  _decodeColdBlock(block) {
+    if (!block?.cold || !block.encodedBytes) return null;
+    if (block.decoded) return block.decoded;
+    const bytes = block.encoding === 'rle'
+      ? rleDecodeBytes(block.encodedBytes)
+      : block.encodedBytes;
+    const payload = JSON.parse(decodeUtf8(bytes));
+    const deltaMap = new Map();
+    for (const [offset, delta] of payload.deltaEntries || []) {
+      const tick = block.startTick + offset;
+      deltaMap.set(offset, this._unpackDeltaFromStorage(delta, tick));
+    }
+    block.decoded = {
+      noOpRanges: payload.noOpRanges || [],
+      deltaMap,
+      noOpCache: new Map()
+    };
+    return block.decoded;
+  }
+
+  _packDeltaForStorage(delta) {
+    const packed = JSON.parse(JSON.stringify(delta));
+    delete packed.tick;
+    if (packed.timerChanges?.prev && Number.isFinite(delta?.tick)) {
+      if (Number.isFinite(packed.timerChanges.prev.tickIndex)) {
+        packed.timerChanges.prev.tickIndex -= delta.tick;
+      }
+    }
+    if (packed.timerChanges?.next && Number.isFinite(delta?.tick)) {
+      if (Number.isFinite(packed.timerChanges.next.tickIndex)) {
+        packed.timerChanges.next.tickIndex -= delta.tick;
+      }
+    }
+    return packed;
+  }
+
+  _unpackDeltaFromStorage(packed, tick) {
+    const delta = { ...packed, tick };
+    if (delta.timerChanges?.prev && Number.isFinite(delta.timerChanges.prev.tickIndex)) {
+      delta.timerChanges.prev.tickIndex += tick;
+    }
+    if (delta.timerChanges?.next && Number.isFinite(delta.timerChanges.next.tickIndex)) {
+      delta.timerChanges.next.tickIndex += tick;
+    }
+    return delta;
+  }
+
+  _buildNoOpDelta(tickIndex) {
+    return createDelta(Math.trunc(tickIndex));
+  }
+
+  _resolveColdDelta(tickIndex) {
+    const tick = Math.trunc(tickIndex);
+    const block = this._deltaBlocks.get(this._deltaBlockStart(tick));
+    if (!block || !block.cold) return null;
+    const decoded = this._decodeColdBlock(block);
+    if (!decoded) return null;
+    const offset = tick - block.startTick;
+    if (decoded.deltaMap.has(offset)) {
+      return decoded.deltaMap.get(offset);
+    }
+    for (const [start, len] of decoded.noOpRanges) {
+      if (offset >= start && offset < (start + len)) {
+        if (!decoded.noOpCache.has(offset)) {
+          decoded.noOpCache.set(offset, this._buildNoOpDelta(tick));
+        }
+        return decoded.noOpCache.get(offset);
+      }
+    }
+    return null;
+  }
+
+  _compactDeltaBlock(block) {
+    if (!block || block.cold) return false;
+    const payload = this._buildColdBlockPayload(block);
+    if (!payload.deltaEntries.length && !payload.noOpRanges.length) return false;
+    const rawBytes = encodeUtf8(stableStringify(payload));
+    const compressed = this.options.enableColdBlockCompression ? rleEncodeBytes(rawBytes) : rawBytes;
+    const useCompressed = compressed.length < rawBytes.length;
+    const encodedBytes = useCompressed ? compressed : rawBytes;
+    const encoding = useCompressed ? 'rle' : 'raw';
+    const hash = fnv1aHashBytes(encodedBytes);
+    const storeKey = `${encoding}:${hash}:${encodedBytes.length}`;
+    const sharedBytes = this.options.enableColdBlockDedupe
+      ? this._retainColdBytes(storeKey, encodedBytes)
+      : encodedBytes;
+    if (!this.options.enableColdBlockDedupe) {
+      this._coldBlockBytes += encodedBytes.length;
+    }
+    block.cold = true;
+    block.encoding = encoding;
+    block.encodedBytes = sharedBytes;
+    block.encodedStoreKey = storeKey;
+    block.decoded = null;
+    this._coldBlockCount += 1;
+
+    for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
+      const entry = this.deltas[tick];
+      if (!entry || entry === COLD_DELTA_SENTINEL) continue;
+      this._releaseDelta(entry);
+      this.deltas[tick] = COLD_DELTA_SENTINEL;
+    }
+    return true;
+  }
+
+  _thawDeltaBlock(blockStart) {
+    const block = this._deltaBlocks.get(blockStart);
+    if (!block || !block.cold) return;
+    for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
+      if (this.deltas[tick] !== COLD_DELTA_SENTINEL) continue;
+      const delta = this._resolveColdDelta(tick);
+      this.deltas[tick] = delta || undefined;
+      if (!delta) {
+        this.deltaCount = Math.max(0, this.deltaCount - 1);
+      }
+    }
+    if (this.options.enableColdBlockDedupe) {
+      this._releaseColdBytes(block.encodedStoreKey, block.encodedBytes);
+    } else if (block.encodedBytes) {
+      this._coldBlockBytes -= block.encodedBytes.length;
+    }
+    block.cold = false;
+    block.encoding = null;
+    block.encodedBytes = null;
+    block.encodedStoreKey = null;
+    block.decoded = null;
+    this._coldBlockCount = Math.max(0, this._coldBlockCount - 1);
+  }
+
+  _cleanupDeltaBlock(blockStart) {
+    const block = this._deltaBlocks.get(blockStart);
+    if (!block) return;
+    let hasEntries = false;
+    for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
+      if (this.deltas[tick]) {
+        hasEntries = true;
+        break;
+      }
+    }
+    if (hasEntries) return;
+    if (block.cold) {
+      if (this.options.enableColdBlockDedupe) {
+        this._releaseColdBytes(block.encodedStoreKey, block.encodedBytes);
+      } else if (block.encodedBytes) {
+        this._coldBlockBytes -= block.encodedBytes.length;
+      }
+      this._coldBlockCount = Math.max(0, this._coldBlockCount - 1);
+    }
+    this._deltaBlocks.delete(blockStart);
+  }
+
+  _maybeCompactDeltaBlocks() {
+    const age = this.options.coldBlockAgeTicks ?? 0;
+    if (age <= 0 || this.maxDeltaTick == null) return;
+    const cutoff = this.maxDeltaTick - age;
+    for (const block of this._deltaBlocks.values()) {
+      if (block.cold) continue;
+      if (block.endTick > cutoff) continue;
+      this._compactDeltaBlock(block);
+    }
   }
 
   _allocDelta(tickIndex) {
@@ -293,7 +713,7 @@ class HistoryStore {
   }
 
   _releaseDelta(delta) {
-    if (!delta) return;
+    if (!delta || delta === COLD_DELTA_SENTINEL || typeof delta !== 'object') return;
     const limit = this.options.deltaPoolLimit ?? DEFAULT_OPTIONS.deltaPoolLimit;
     if (this._deltaPool.length >= limit) return;
     this._resetDelta(delta, 0);
@@ -377,8 +797,15 @@ class HistoryStore {
 
   _setDelta(tickIndex, delta) {
     const tick = Math.trunc(tickIndex);
-    if (!this.deltas[tick]) {
+    const block = this._ensureDeltaBlock(tick);
+    if (block.cold) {
+      this._thawDeltaBlock(block.startTick);
+    }
+    const prev = this.deltas[tick];
+    if (!prev) {
       this.deltaCount += 1;
+    } else if (prev !== COLD_DELTA_SENTINEL) {
+      this._releaseDelta(prev);
     }
     this.deltas[tick] = delta;
     if (this.minDeltaTick == null || tick < this.minDeltaTick) {
@@ -429,12 +856,22 @@ class HistoryStore {
 
   _truncateDeltasAfter(cutoff) {
     if (this.maxDeltaTick == null) return;
+    const touchedBlocks = new Set();
     for (let tick = this.maxDeltaTick; tick > cutoff; tick -= 1) {
       const delta = this.deltas[tick];
       if (!delta) continue;
+      const blockStart = this._deltaBlockStart(tick);
+      touchedBlocks.add(blockStart);
+      if (delta === COLD_DELTA_SENTINEL) {
+        this._thawDeltaBlock(blockStart);
+      }
+      const current = this.deltas[tick];
       this.deltas[tick] = undefined;
       this.deltaCount -= 1;
-      this._releaseDelta(delta);
+      this._releaseDelta(current);
+    }
+    for (const blockStart of touchedBlocks) {
+      this._cleanupDeltaBlock(blockStart);
     }
     let nextMax = Math.min(this.maxDeltaTick, cutoff);
     while (nextMax >= this.minDeltaTick && !this.deltas[nextMax]) {
@@ -474,12 +911,22 @@ class HistoryStore {
   _truncateBefore(cutoff) {
     if (this.minDeltaTick == null || this.maxDeltaTick == null) return;
     const start = Math.max(0, Math.trunc(cutoff));
+    const touchedBlocks = new Set();
     for (let tick = this.minDeltaTick; tick < start; tick += 1) {
       const delta = this.deltas[tick];
       if (!delta) continue;
+      const blockStart = this._deltaBlockStart(tick);
+      touchedBlocks.add(blockStart);
+      if (delta === COLD_DELTA_SENTINEL) {
+        this._thawDeltaBlock(blockStart);
+      }
+      const current = this.deltas[tick];
       this.deltas[tick] = undefined;
       this.deltaCount -= 1;
-      this._releaseDelta(delta);
+      this._releaseDelta(current);
+    }
+    for (const blockStart of touchedBlocks) {
+      this._cleanupDeltaBlock(blockStart);
     }
     let nextMin = Math.max(this.minDeltaTick, start);
     while (nextMin <= this.maxDeltaTick && !this.deltas[nextMin]) {
@@ -588,6 +1035,7 @@ class HistoryStore {
     }
     this._maybeWarnHistory();
     this._enforceHistoryCap();
+    this._maybeCompactDeltaBlocks();
     this._currentDelta = null;
   }
 
@@ -1630,7 +2078,8 @@ const __test__ = {
   cloneLemmingState,
   ensureLemmingCapacity,
   snapshotLemming,
-  applyLemmingSnapshot
+  applyLemmingSnapshot,
+  isNoOpDelta
 };
 
 export { HistoryStore, __test__ };

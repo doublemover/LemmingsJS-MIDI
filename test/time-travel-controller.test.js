@@ -60,6 +60,33 @@ describe('TimeTravelController', function() {
     });
   });
 
+  it('preserves replay hash through seek and reverse playback operations', function() {
+    const timer = { tickIndex: 2, isRunning: () => false, suspend() {} };
+    const timeline = [{ tick: 0, x: 1 }, { tick: 1, x: 2 }];
+    const hash = () => JSON.stringify(timeline);
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 0 }; },
+      getDelta(tick) { return timeline[tick] || null; },
+      applyKeyframe() {},
+      applyDeltaForward() {},
+      applyDeltaBackward() {},
+      computeReplayHash() { return hash(); }
+    };
+    const game = {
+      getGameTimer: () => timer,
+      render() {},
+      gameGui: { gameTimeChanged: false }
+    };
+    const controller = new TimeTravelController(game, history);
+    const before = history.computeReplayHash();
+
+    controller.seekToTick(1);
+    controller.stepBackward(1);
+
+    const after = history.computeReplayHash();
+    expect(after).to.equal(before);
+  });
+
   it('returns early when dependencies are missing', function() {
     const controller = new TimeTravelController(null, null);
     controller.stepBackward(1);
