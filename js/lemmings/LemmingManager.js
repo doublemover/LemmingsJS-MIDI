@@ -91,6 +91,11 @@ class LemmingManager extends BaseLogger {
         this.miniMap = null;
         this.nextNukingLemmingsIndex = -1;
         this._nukeTargets = null;
+        this._nukeScratch = [];
+        this._nearestCellShift = 4;
+        this._nearestGrid = new Map();
+        this._nearestGridPool = [];
+        this._nearestGridDirty = true;
 
         const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
         const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
@@ -204,6 +209,7 @@ class LemmingManager extends BaseLogger {
   _addActiveLemming(lem) {
     lem._activeIndex = this.activeLemmings.length;
     this.activeLemmings.push(lem);
+    this._nearestGridDirty = true;
   }
 
   _compactActiveLemmings() {
@@ -217,6 +223,51 @@ class LemmingManager extends BaseLogger {
     }
     lems.length = write;
     this._activeDirty = false;
+    this._nearestGridDirty = true;
+  }
+
+  _nearestCellKey(cx, cy) {
+    return ((cy & 0xffff) << 16) | (cx & 0xffff);
+  }
+
+  _rebuildNearestGrid() {
+    if (!this._nearestGridDirty) return;
+    const grid = this._nearestGrid;
+    const pool = this._nearestGridPool;
+    for (const list of grid.values()) {
+      list.length = 0;
+      pool.push(list);
+    }
+    grid.clear();
+    const shift = this._nearestCellShift;
+    const lems = this.activeLemmings;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (!lem || lem.removed || lem.disabled) continue;
+      const cx = lem.x >> shift;
+      const cy = lem.y >> shift;
+      const key = this._nearestCellKey(cx, cy);
+      let bucket = grid.get(key);
+      if (!bucket) {
+        bucket = pool.pop() || [];
+        grid.set(key, bucket);
+      }
+      bucket.push(lem);
+    }
+    this._nearestGridDirty = false;
+  }
+
+  _findNearestInBucket(bucket, x, y, best, bestDist) {
+    for (let i = 0; i < bucket.length; i += 1) {
+      const lem = bucket[i];
+      if (!lem || lem.removed) continue;
+      const dist = lem.getClickDistance(x, y);
+      if (dist >= 0 && dist < bestDist) {
+        bestDist = dist;
+        best = lem;
+      }
+    }
+    return { best, bestDist };
   }
 
   processNewAction(lem, newAction) {
@@ -284,6 +335,7 @@ class LemmingManager extends BaseLogger {
       if (this._activeDirty) {
         this._compactActiveLemmings();
       }
+      this._nearestGridDirty = true;
     } finally {
       if (perfEnabled) {
         try {
@@ -330,6 +382,7 @@ class LemmingManager extends BaseLogger {
       Array.prototype.push.apply(this.lemmings, extras);
       this.spawnTotal += extraCount;
     }
+    this._nearestGridDirty = true;
   }
 
   addNewLemmings() {
@@ -484,10 +537,27 @@ class LemmingManager extends BaseLogger {
   }
 
   getNearestLemming(x, y) {
+    this._rebuildNearestGrid();
+    const shift = this._nearestCellShift;
+    const cx = x >> shift;
+    const cy = y >> shift;
+
     let best = null;
     let bestDist = Infinity;
-    for (const lem of this.activeLemmings) {
-      if (lem.removed) continue;
+    for (let dy = -1; dy <= 1; dy += 1) {
+      for (let dx = -1; dx <= 1; dx += 1) {
+        const key = this._nearestCellKey(cx + dx, cy + dy);
+        const bucket = this._nearestGrid.get(key);
+        if (!bucket?.length) continue;
+        ({ best, bestDist } = this._findNearestInBucket(bucket, x, y, best, bestDist));
+      }
+    }
+    if (best) return best;
+
+    const lems = this.activeLemmings;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (!lem || lem.removed) continue;
       const dist = lem.getClickDistance(x, y);
       if (dist >= 0 && dist < bestDist) {
         bestDist = dist;
@@ -578,9 +648,18 @@ class LemmingManager extends BaseLogger {
 
   isNuking() { return this.nextNukingLemmingsIndex >= 0; }
   doNukeAllLemmings() {
-    const targets = this.activeLemmings.filter(lem => lem && !lem.removed && !lem.disabled);
-    this._nukeTargets = targets;
-    this.nextNukingLemmingsIndex = targets.length ? 0 : -1;
+    const scratch = this._nukeScratch;
+    let count = 0;
+    const lems = this.activeLemmings;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (!lem || lem.removed || lem.disabled) continue;
+      scratch[count] = lem;
+      count += 1;
+    }
+    scratch.length = count;
+    this._nukeTargets = scratch;
+    this.nextNukingLemmingsIndex = count ? 0 : -1;
   }
 
   _nukeNextLemming() {
@@ -625,6 +704,7 @@ class LemmingManager extends BaseLogger {
     lem.remove();
     if (lemId !== null && lemId !== undefined) this.lemmings[lemId] = null;
     this._activeDirty = true;
+    this._nearestGridDirty = true;
     this.gameVictoryCondition.removeOne();
   }
 
@@ -664,6 +744,9 @@ class LemmingManager extends BaseLogger {
     this.#mmTickCounter = null;
     this.nextNukingLemmingsIndex = null;
     this._nukeTargets = null;
+    this._nukeScratch = null;
+    this._nearestGrid = null;
+    this._nearestGridPool = null;
     this.selectedIndex = null;
     if (typeof lemmings !== 'undefined' &&
             (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
