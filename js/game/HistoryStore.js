@@ -1870,13 +1870,15 @@ class HistoryStore {
     if (!triggerManager || !delta) return;
     const adds = useNext ? delta.triggerAdd : delta.triggerRemove;
     const removes = useNext ? delta.triggerRemove : delta.triggerAdd;
-    for (const snap of removes || []) {
+    for (let i = 0; i < (removes?.length || 0); i += 1) {
+      const snap = removes[i];
       const trig = this._findTriggerById(triggerManager, snap.id);
       if (trig && trig.owner) {
         triggerManager.removeByOwner(trig.owner);
       }
     }
-    for (const snap of adds || []) {
+    for (let i = 0; i < (adds?.length || 0); i += 1) {
+      const snap = adds[i];
       const owner = Number.isFinite(snap.ownerId)
         ? game.getLemmingManager?.()?.getLemming?.(snap.ownerId)
         : null;
