@@ -16,7 +16,7 @@ describe('numberParsing', function () {
   it('parses and bounds finite numbers', function () {
     assert.strictEqual(
       parseBoundedNumber('2.5', { min: 0, max: 3, multiplier: 2, fallback: -1 }),
-      3
+      5
     );
     assert.strictEqual(
       parseBoundedNumber('5', { min: 0, max: 10, integer: true, fallback: -1 }),
@@ -24,6 +24,18 @@ describe('numberParsing', function () {
     );
     assert.strictEqual(
       parseBoundedNumber('invalid', { min: 0, max: 10, fallback: -1 }),
+      -1
+    );
+    assert.strictEqual(
+      parseBoundedNumber('20', { min: 1, max: 60, multiplier: 10, fallback: -1 }),
+      200
+    );
+    assert.strictEqual(
+      parseBoundedNumber('0', { min: 1, max: 60, multiplier: 10, fallback: -1 }),
+      -1
+    );
+    assert.strictEqual(
+      parseBoundedNumber('61', { min: 1, max: 60, multiplier: 10, fallback: -1 }),
       -1
     );
   });

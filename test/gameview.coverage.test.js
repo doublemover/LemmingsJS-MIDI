@@ -84,6 +84,21 @@ describe('GameView coverage', function() {
     expect(replaced).to.equal('?a=1');
   });
 
+  it('applies query bounds before multipliers for scaled values', function() {
+    globalThis.window = {
+      location: { search: '?nukeAfter=20&extra=0' }
+    };
+    const inRange = new GameView();
+    expect(inRange.nukeAfter).to.equal(200);
+    expect(inRange.extraLemmings).to.equal(0);
+
+    globalThis.window = {
+      location: { search: '?nukeAfter=61' }
+    };
+    const outOfRange = new GameView();
+    expect(outOfRange.nukeAfter).to.equal(0);
+  });
+
   it('formats MIDI errors and handles WebMidi enable', async function() {
     globalThis.window = { isSecureContext: false, location: { protocol: 'http:', hostname: 'example.com', search: '' } };
     const view = new GameView();

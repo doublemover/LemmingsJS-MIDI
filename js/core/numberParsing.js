@@ -20,10 +20,10 @@ const parseBoundedNumber = (value, {
 } = {}) => {
   const parsed = toFiniteNumber(value, null);
   if (parsed == null) return fallback;
+  if (parsed < min || parsed > max) return fallback;
   const scaled = parsed * multiplier;
   if (!Number.isFinite(scaled)) return fallback;
-  const normalized = integer ? Math.trunc(scaled) : scaled;
-  return clampNumber(normalized, min, max);
+  return integer ? Math.trunc(scaled) : scaled;
 };
 
 export {
