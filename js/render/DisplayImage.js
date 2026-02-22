@@ -23,6 +23,37 @@ const cyrb53 = (str, seed = 0) => {
 
 const scaledFrameCache = new WeakMap();
 const MAX_SCALED_VARIANTS_PER_FRAME = 8;
+const marchingAntPerimeterCache = new Map();
+const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
+
+const getMarchingAntPerimeterOffsets = (stride, width, height) => {
+  const key = `${stride}:${width}:${height}`;
+  const cached = marchingAntPerimeterCache.get(key);
+  if (cached) return cached;
+
+  const total = (width + 1) + height + width + Math.max(0, height - 1);
+  const offsets = new Int32Array(total);
+  let i = 0;
+
+  for (let dx = 0; dx <= width; dx += 1) {
+    offsets[i++] = dx;
+  }
+  for (let dy = 1; dy <= height; dy += 1) {
+    offsets[i++] = (dy * stride) + width;
+  }
+  for (let dx = 1; dx <= width; dx += 1) {
+    offsets[i++] = (height * stride) + width - dx;
+  }
+  for (let dy = 1; dy < height; dy += 1) {
+    offsets[i++] = ((height - dy) * stride);
+  }
+
+  if (marchingAntPerimeterCache.size >= MAX_MARCHING_ANT_CACHE_ENTRIES) {
+    marchingAntPerimeterCache.clear();
+  }
+  marchingAntPerimeterCache.set(key, offsets);
+  return offsets;
+};
 
 function getScaledFrameVariant(frame, dstWidth, dstHeight, mode) {
   if (!frame) return null;
@@ -779,34 +810,40 @@ function drawMarchingAntRect(
   let pos = ((offset % pattern) + pattern) % pattern;
   const writeColor1 = (color1 >>> 24) !== 0;
   const writeColor2 = (color2 >>> 24) !== 0;
-  const advance = () => {
-    pos += 1;
-    if (pos === pattern) pos = 0;
-  };
-  const drawAt = (index) => {
+  const paint = (index) => {
     if (pos < dashLen) {
       if (writeColor1) buffer32[index] = color1;
     } else if (writeColor2) {
       buffer32[index] = color2;
     }
-    advance();
+    pos += 1;
+    if (pos === pattern) pos = 0;
   };
+
+  if (width <= 64 && height <= 64) {
+    const baseIndex = (y * w) + x;
+    const offsets = getMarchingAntPerimeterOffsets(w, width, height);
+    for (let i = 0; i < offsets.length; i += 1) {
+      paint(baseIndex + offsets[i]);
+    }
+    return;
+  }
 
   let idx = y * w + x;
   for (let dx = 0; dx <= width; dx += 1, idx += 1) {
-    drawAt(idx);
+    paint(idx);
   }
   idx = (y + 1) * w + x + width;
   for (let dy = 1; dy <= height; dy += 1, idx += w) {
-    drawAt(idx);
+    paint(idx);
   }
   idx = (y + height) * w + x + width - 1;
   for (let dx = 1; dx <= width; dx += 1, idx -= 1) {
-    drawAt(idx);
+    paint(idx);
   }
   idx = (y + height - 1) * w + x;
   for (let dy = 1; dy < height; dy += 1, idx -= w) {
-    drawAt(idx);
+    paint(idx);
   }
 }
 
