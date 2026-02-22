@@ -98,6 +98,15 @@ class GameTimer {
       this.#tickIndex = v;
     }
   }
+  #incrementTickIndex() {
+    const next = this.#tickIndex + 1;
+    if (next >= COUNTER_LIMIT) {
+      console.warn('tickIndex wrapped, resetting to 0');
+      this.#tickIndex = 0;
+      return;
+    }
+    this.#tickIndex = next;
+  }
 
   get speedFactor() { return this.#speedFactor; }
   get tps() { return 1000 / this.#frameTime; }
@@ -151,15 +160,17 @@ class GameTimer {
       this.#timeTravel.stepBackward(count);
       return;
     }
+    const beforeTick = this.onBeforeGameTick;
+    const onTick = this.onGameTick;
     for (let i = 0; i < count; i++) {
       if (dir >= 0) {
-        if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-        ++this.tickIndex;
-        if (this.onGameTick) this.onGameTick.trigger();
-      } else if (this.tickIndex > 0) {
-        --this.tickIndex;
-        if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-        if (this.onGameTick) this.onGameTick.trigger();
+        if (beforeTick) beforeTick.trigger(this.#tickIndex);
+        this.#incrementTickIndex();
+        if (onTick) onTick.trigger();
+      } else if (this.#tickIndex > 0) {
+        this.#tickIndex -= 1;
+        if (beforeTick) beforeTick.trigger(this.#tickIndex);
+        if (onTick) onTick.trigger();
       }
     }
   }
@@ -167,7 +178,10 @@ class GameTimer {
   #loop(now) {
     if (!this.isRunning()) return;
     const app = getApp();
+    const inBenchMode = !!app &&
+      (app.bench === true || app.bench2 === true || app.benchReverse === true || app.benchSequence === true);
     const perfEnabled = !!app &&
+      !inBenchMode &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
@@ -196,10 +210,12 @@ class GameTimer {
         }
         delta -= steps * frameTime;
         this.#lastTime = now - delta;
+        const beforeTick = this.onBeforeGameTick;
+        const onTick = this.onGameTick;
         for (let i = 0; i < steps; ++i) {
-          if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-          ++this.tickIndex;
-          if (this.onGameTick) this.onGameTick.trigger();
+          if (beforeTick) beforeTick.trigger(this.#tickIndex);
+          this.#incrementTickIndex();
+          if (onTick) onTick.trigger();
         }
       }
       this.#rafId = window.requestAnimationFrame(this.#loopBound);
