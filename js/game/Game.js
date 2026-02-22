@@ -17,6 +17,31 @@ import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js
 import { TriggerManager } from '../level/TriggerManager.js';
 import { getDependency } from '../core/dependencies.js';
 
+const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
+  typeof performance.now === 'function' &&
+  typeof performance.measure === 'function');
+
+const RUN_LOGIC_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Game State',
+  color: 'secondary',
+  tooltipText: 'runGameLogic'
+});
+
+const GAME_OVER_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Game State',
+  color: 'tertiary',
+  tooltipText: 'checkForGameOver'
+});
+
+const RENDER_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Render',
+  color: 'primary-dark',
+  tooltipText: 'render'
+});
+
 class Game extends BaseLogger {
   constructor (gameResources) {
     super();
@@ -231,19 +256,29 @@ class Game extends BaseLogger {
   }
 
   runGameLogic () {
-    const endMeasure = this.startMeasure('Game runGameLogic', {
-      track: 'Game',
-      trackGroup: 'Game State',
-      color: 'secondary',
-      tooltipText: 'runGameLogic'
-    });
-    if (!this.level) {
-      this.log.log('level not loaded!');
-      endMeasure();
-      return;
+    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (!this.level) {
+        this.log.log('level not loaded!');
+        return;
+      }
+      this.lemmingManager.tick();
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('Game runGameLogic', {
+            start: perfStart,
+            detail: { devtools: RUN_LOGIC_MEASURE_DETAIL }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
     }
-    this.lemmingManager.tick();
-    endMeasure();
   }
 
   getGameState () {
@@ -275,50 +310,70 @@ class Game extends BaseLogger {
   }
 
   checkForGameOver () {
-    const endMeasure = this.startMeasure('Game checkForGameOver', {
-      track: 'Game',
-      trackGroup: 'Game State',
-      color: 'tertiary',
-      tooltipText: 'checkForGameOver'
-    });
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
-      endMeasure();
-      return;
-    }
-    if (this.finalGameState !== GameStateTypes.UNKNOWN) {
-      endMeasure();
-      return;
-    }
+    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
+        return;
+      }
+      if (this.finalGameState !== GameStateTypes.UNKNOWN) {
+        return;
+      }
 
-    const state = this.getGameState();
-    if (state !== GameStateTypes.RUNNING &&
-        state !== GameStateTypes.UNKNOWN) {
-      this.gameVictoryCondition.doFinalize();
-      this.finalGameState = state;
-      const Result = getDependency('GameResult', GameResult);
-      this.onGameEnd?.trigger(new Result(this));
+      const state = this.getGameState();
+      if (state !== GameStateTypes.RUNNING &&
+          state !== GameStateTypes.UNKNOWN) {
+        this.gameVictoryCondition.doFinalize();
+        this.finalGameState = state;
+        const Result = getDependency('GameResult', GameResult);
+        this.onGameEnd?.trigger(new Result(this));
+      }
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('Game checkForGameOver', {
+            start: perfStart,
+            detail: { devtools: GAME_OVER_MEASURE_DETAIL }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
     }
-    endMeasure();
   }
 
   render () {
-    const endMeasure = this.startMeasure('Game render', {
-      track: 'Game',
-      trackGroup: 'Render',
-      color: 'primary-dark',
-      tooltipText: 'render'
-    });
-    if (this.gameDisplay) {
-      this.gameDisplay.render();
-      if (this.showDebug) this.gameDisplay.renderDebug();
+    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (this.gameDisplay) {
+        this.gameDisplay.render();
+        if (this.showDebug) this.gameDisplay.renderDebug();
+      }
+      if (this.guiDisplay) {
+        this.gameGui.render();
+        this.guiDisplay.redraw();
+      } else if (this.display) {
+        this.display.redraw();
+      }
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('Game render', {
+            start: perfStart,
+            detail: { devtools: RENDER_MEASURE_DETAIL }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
     }
-    if (this.guiDisplay) {
-      this.gameGui.render();
-      this.guiDisplay.redraw();
-    } else if (this.display) {
-      this.display.redraw();
-    }
-    endMeasure();
   }
 }
 export { Game };

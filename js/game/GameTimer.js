@@ -178,8 +178,11 @@ class GameTimer {
   #loop(now) {
     if (!this.isRunning()) return;
     const app = getApp();
-    const inBenchMode = !!app &&
-      (app.bench === true || app.bench2 === true || app.benchReverse === true || app.benchSequence === true);
+    const bench = app?.bench === true;
+    const bench2 = app?.bench2 === true;
+    const benchReverse = app?.benchReverse === true;
+    const benchSequence = app?.benchSequence === true;
+    const inBenchMode = bench || bench2 || benchReverse || benchSequence;
     const perfEnabled = !!app &&
       !inBenchMode &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
@@ -189,7 +192,8 @@ class GameTimer {
     try {
       window.cancelAnimationFrame(this.#rafId);
       this.#rafId = 0;
-      if (app) app.tps = this.tps;
+      const frameTime = this.#frameTime;
+      if (app) app.tps = 1000 / frameTime;
       const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
       if (gameSeconds > this.#lastGameSecond) {
         if (this.eachGameSecond) {
@@ -197,14 +201,13 @@ class GameTimer {
           this.eachGameSecond.trigger();
         }
       }
-      const frameTime = this.#frameTime;
       let delta = now - this.#lastTime;
       if (delta >= frameTime) {
         const steps = Math.floor(delta / frameTime);
-        if (app?.bench === true || app?.benchReverse === true || app?.benchSequence === true) {
+        if (bench || benchReverse || benchSequence) {
           this.#benchSpeedAdjust(steps, app);
         }
-        if (app?.bench2 === true) {
+        if (bench2) {
           if (steps > 1) this.#catchupSpeedAdjust(steps, app);
           else this.#restoreSpeed();
         }
