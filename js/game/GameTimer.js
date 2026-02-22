@@ -188,10 +188,10 @@ class GameTimer {
       if (delta >= frameTime) {
         const steps = Math.floor(delta / frameTime);
         if (app?.bench === true || app?.benchReverse === true || app?.benchSequence === true) {
-          this.#benchSpeedAdjust(steps);
+          this.#benchSpeedAdjust(steps, app);
         }
         if (app?.bench2 === true) {
-          if (steps > 1) this.#catchupSpeedAdjust(steps);
+          if (steps > 1) this.#catchupSpeedAdjust(steps, app);
           else this.#restoreSpeed();
         }
         delta -= steps * frameTime;
@@ -217,12 +217,12 @@ class GameTimer {
     }
   }
 
-  #benchSpeedAdjust(steps) {
+  #benchSpeedAdjust(steps, appRef = null) {
     // dynamically adjust speed based on how far we fall behind
     // slowThreshold and recoverThreshold scale with the current speedFactor.
     // Below speedFactor 6 the values grow too large; use speedFactor * 1.5 so
     // lower speeds still trigger slowdown after at least 10 queued frames.
-    const app = getApp();
+    const app = appRef || getApp();
     if (!app) return;
     app.steps = steps;
     const oldSpeed = this.#speedFactor;
@@ -287,9 +287,9 @@ class GameTimer {
     }
   }
 
-  #catchupSpeedAdjust(steps) {
+  #catchupSpeedAdjust(steps, appRef = null) {
     const newFactor = Math.max(0.1, 1 / steps);
-    const app = getApp();
+    const app = appRef || getApp();
     if (!this.#catchupSlow) {
       this.#catchupBaseSpeed = this.#speedFactor;
     }
