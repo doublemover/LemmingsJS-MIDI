@@ -301,6 +301,11 @@ class DisplayImage extends BaseLogger {
     this._dirtyRects.length = 0;
     return rects;
   }
+
+  hasPendingDirty() {
+    if (!this.imgData) return false;
+    return this._dirtyFull || this._dirtyRects.length > 0;
+  }
     
   /* ---------- primitive drawing ---------- */
   /** Draw rectangle outline */

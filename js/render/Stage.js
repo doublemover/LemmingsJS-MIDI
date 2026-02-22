@@ -69,6 +69,8 @@ class Stage {
     this._perfClearMs = 0;
     this._perfFramePeakMs = 0;
     this._perfFrameCount = 0;
+    this._lastGameDrawSignature = '';
+    this._lastGuiDrawSignature = '';
     this.panEnabled = true;
     this._resizeRaf = 0;
 
@@ -493,16 +495,52 @@ class Stage {
     this._perfTrackingFrame = true;
     this._perfDrawMs = 0;
     this._perfClearMs = 0;
-    this.clear();
-    if (this.gameImgProps.display) {
-      const gameImg = this.gameImgProps.display.getImageData();
-      this.draw(this.gameImgProps, gameImg);
+    const gameDisplay = this.gameImgProps.display;
+    const guiDisplay = this.guiImgProps.display;
+    const gameSig = gameDisplay ? this._getDrawSignature(this.gameImgProps) : '';
+    const guiSig = guiDisplay ? this._getDrawSignature(this.guiImgProps) : '';
+    const gameDirty = !!gameDisplay &&
+      (gameDisplay.hasPendingDirty?.() || gameSig !== this._lastGameDrawSignature);
+    const guiDirty = !!guiDisplay &&
+      (guiDisplay.hasPendingDirty?.() || guiSig !== this._lastGuiDrawSignature);
+    let requiresFullComposite =
+      this.fadeAlpha !== 0 ||
+      this.overlayAlpha > 0 ||
+      this.perfOverlayEnabled ||
+      !!this.cursorCanvas;
+    if (!requiresFullComposite && !gameDirty && !guiDirty) {
+      // Explicit redraw with no pending dirty work should preserve legacy full
+      // compositing semantics for callers/tests that expect it.
+      requiresFullComposite = true;
     }
-    if (this.guiImgProps.display) {
-      const guiImg = this.guiImgProps.display.getImageData();
-      this.draw(this.guiImgProps, guiImg);
+
+    if (requiresFullComposite) {
+      this.clear();
+      if (gameDisplay) {
+        const gameImg = gameDisplay.getImageData();
+        this.draw(this.gameImgProps, gameImg);
+        this._lastGameDrawSignature = gameSig;
+      }
+      if (guiDisplay) {
+        const guiImg = guiDisplay.getImageData();
+        this.draw(this.guiImgProps, guiImg);
+        this._lastGuiDrawSignature = guiSig;
+      }
+      this.drawCursor();
+    } else {
+      if (gameDisplay && gameDirty) {
+        const gameImg = gameDisplay.getImageData();
+        this.clear(this.gameImgProps);
+        this.draw(this.gameImgProps, gameImg);
+        this._lastGameDrawSignature = gameSig;
+      }
+      if (guiDisplay && guiDirty) {
+        const guiImg = guiDisplay.getImageData();
+        this.clear(this.guiImgProps);
+        this.draw(this.guiImgProps, guiImg);
+        this._lastGuiDrawSignature = guiSig;
+      }
     }
-    this.drawCursor();
     this._perfTrackingFrame = false;
     this._perfFrameCount += 1;
     this._perfFrameMs = perfNow() - start;
@@ -848,6 +886,19 @@ class Stage {
 
   limitValue(minLimit, value, maxLimit) {
     return Math.min(Math.max(minLimit, value), maxLimit);
+  }
+
+  _getDrawSignature(display) {
+    const vp = display.viewPoint;
+    return [
+      display.x,
+      display.y,
+      display.width,
+      display.height,
+      vp?.x ?? 0,
+      vp?.y ?? 0,
+      vp?.scale ?? 1
+    ].join('|');
   }
 
   _setGlobalAlpha(value) {
