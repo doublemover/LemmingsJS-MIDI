@@ -435,9 +435,10 @@ Notes:
   cadence/quality) for multi-client sessions.
   Touchpoints: `mcp/server.js`, `mcp/spectator.html`,
   `mcp/spectatorBroadcaster.js`.
-- [ ] Split `mcp/server.js` transport/session/resource/watch/event logic into
+- [x] Split `mcp/server.js` transport/session/resource/watch/event logic into
   dedicated modules while preserving tool contracts.
-  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.
+  Touchpoints: `mcp/server.js`, `mcp/eventEnvelope.js`, `mcp/resourceStore.js`,
+  `mcp/sessionStore.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.
 - [ ] Add shutdown/leak tests to ensure intervals, sockets, and browser
   resources are always reclaimed.
   Touchpoints: `mcp/server.js`, `scripts/mcp-smoke.js`, `test/mcp*.test.js`.

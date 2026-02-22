@@ -19,6 +19,9 @@ import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js'
 import { EventQueue } from './eventQueue.js';
 import { WatchPollingController } from './watchPolling.js';
 import { normalizeSpectatorStreamConfig, SpectatorBroadcaster } from './spectatorBroadcaster.js';
+import { ResourceStore } from './resourceStore.js';
+import { getSession, sessions } from './sessionStore.js';
+import { attachEvents } from './eventEnvelope.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -99,7 +102,6 @@ const KEY_ALIASES = new Map([
 
 const RESOURCE_URI_RE = /^lemmings:\/\/sessions\/([^/]+)\/resources\/([^/]+)$/;
 
-const sessions = new Map();
 let cachedKeybindings = null;
 
 const nowIso = () => new Date().toISOString();
@@ -131,104 +133,6 @@ const formatToMime = (format) => {
     return 'image/png';
   }
 };
-
-class ResourceStore {
-  constructor({ maxBytes = 256 * 1024 * 1024, ttlMs = 10 * 60 * 1000, maxItems = 5000 } = {}) {
-    this.maxBytes = maxBytes;
-    this.defaultTtlMs = ttlMs;
-    this.maxItems = maxItems;
-    this.items = new Map();
-    this.totalBytes = 0;
-  }
-
-  put({ sessionId, bytes, mimeType, meta = {}, ttlMs } = {}) {
-    if (!bytes) return null;
-    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
-    const id = makeId();
-    const uri = `lemmings://sessions/${sessionId}/resources/${id}`;
-    const sizeBytes = buffer.length;
-    const ttl = Number.isFinite(ttlMs) ? ttlMs : this.defaultTtlMs;
-    const expiresAt = ttl > 0 ? Date.now() + ttl : null;
-    const item = {
-      id,
-      uri,
-      sessionId,
-      mimeType,
-      meta,
-      bytes: buffer,
-      sizeBytes,
-      createdAt: nowIso(),
-      expiresAt
-    };
-    this.items.set(id, item);
-    this.totalBytes += sizeBytes;
-    this._evictIfNeeded();
-    return {
-      uri,
-      sizeBytes,
-      expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null
-    };
-  }
-
-  get(uri) {
-    const match = RESOURCE_URI_RE.exec(String(uri || ''));
-    if (!match) return null;
-    const id = match[2];
-    const item = this.items.get(id);
-    if (!item) return null;
-    if (item.expiresAt && Date.now() >= item.expiresAt) {
-      this._remove(id);
-      return null;
-    }
-    this.items.delete(id);
-    this.items.set(id, item);
-    return item;
-  }
-
-  list({ limit = 200 } = {}) {
-    const out = [];
-    for (const item of this.items.values()) {
-      if (item.expiresAt && Date.now() >= item.expiresAt) {
-        this._remove(item.id);
-        continue;
-      }
-      out.push({
-        uri: item.uri,
-        name: item.meta?.tag || item.meta?.kind || item.id,
-        mimeType: item.mimeType,
-        sizeBytes: item.sizeBytes,
-        createdAt: item.createdAt,
-        expiresAt: item.expiresAt ? new Date(item.expiresAt).toISOString() : null
-      });
-      if (out.length >= limit) break;
-    }
-    return out;
-  }
-
-  clearSession(sessionId) {
-    if (!sessionId) return;
-    for (const [id, item] of this.items.entries()) {
-      if (item.sessionId === sessionId) {
-        this._remove(id);
-      }
-    }
-  }
-
-  _remove(id) {
-    const item = this.items.get(id);
-    if (!item) return;
-    this.items.delete(id);
-    this.totalBytes = Math.max(0, this.totalBytes - item.sizeBytes);
-  }
-
-  _evictIfNeeded() {
-    while (this.totalBytes > this.maxBytes || this.items.size > this.maxItems) {
-      const firstKey = this.items.keys().next().value;
-      if (!firstKey) break;
-      this._remove(firstKey);
-    }
-  }
-}
 
 const RectSchema = z.object({
   x: z.number(),
@@ -510,14 +414,6 @@ const buildToolResponse = (payload) => ({
   structuredContent: payload
 });
 
-const getSession = (sessionId) => {
-  const session = sessions.get(sessionId);
-  if (!session) {
-    throw new Error(`Session not found: ${sessionId}`);
-  }
-  return session;
-};
-
 const loadKeybindings = async () => {
   if (cachedKeybindings) return cachedKeybindings;
   const raw = await fs.readFile(KEYBINDINGS_PATH, 'utf8');
@@ -557,45 +453,6 @@ const getState = async (session) => {
 const getTickIndex = async (session) => {
   const state = await getState(session);
   return state?.game?.timer?.tickIndex ?? null;
-};
-
-const attachEvents = (session, payload) => {
-  if (!session) return payload;
-  const mode = session.eventsMode || 'minimal';
-  if (mode === 'none') return payload;
-
-  const envelope = session.events.drain(undefined, {
-    updateCursor: true,
-    includeHumanSummary: mode !== 'none'
-  });
-  if (!envelope) return payload;
-
-  if (mode === 'minimal') {
-    envelope.events = (envelope.events || [])
-      .filter((event) => event && event.source !== 'agent')
-      .map((event) => ({
-        source: event.source,
-        type: event.type,
-        tickIndex: event.tickIndex ?? null,
-        summary: event.summary ?? null,
-        ...(Array.isArray(event.resourceUris) && event.resourceUris.length
-          ? { resourceUris: event.resourceUris }
-          : {})
-      }));
-    if (!envelope.events.length) {
-      delete envelope.events;
-    }
-    if (!envelope.humanSummary) {
-      delete envelope.humanSummary;
-    }
-  }
-
-  const hasEvents = Array.isArray(envelope.events) && envelope.events.length > 0;
-  const hasSummary = typeof envelope.humanSummary === 'string' && envelope.humanSummary.length > 0;
-  if (!hasEvents && !hasSummary) return payload;
-
-  payload.events = envelope;
-  return payload;
 };
 
 const filterStateSnapshot = (snapshot, include) => {
