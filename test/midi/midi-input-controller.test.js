@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { MidiInputController } from '../../js/midi/input/MidiInputController.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
+import { withPatchedGlobals } from '../support/globals.js';
 
 describe('MidiInputController', function() {
   it('filters channels and selects skills', function() {
@@ -129,14 +130,10 @@ describe('MidiInputController', function() {
   it('stores the last MIDI message on window', function() {
     const view = {};
     const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
-    const originalWindow = globalThis.window;
-    globalThis.window = {};
-    try {
+    withPatchedGlobals({ window: {} }, () => {
       controller._onMessage({ data: [0x90, 60, 100] });
       expect(globalThis.window.lastMidiInputMessage).to.eql([0x90, 60, 100]);
-    } finally {
-      globalThis.window = originalWindow;
-    }
+    });
   });
 
   it('sets gameSpeedFactor when no speed selector is present', function() {

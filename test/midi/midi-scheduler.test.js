@@ -1,32 +1,15 @@
 import { expect } from 'chai';
-import FakeTimers from '@sinonjs/fake-timers';
 import { withConsoleStub } from '../helpers/console.js';
 import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
-
-const makeChannel = (id, calls) => ({
-  sendNoteOn(note, opts) { calls.push({ type: 'noteOn', id, note, opts }); },
-  sendNoteOff(note, opts) { calls.push({ type: 'noteOff', id, note, opts }); },
-  sendPitchBend(value, opts) { calls.push({ type: 'pitchBend', id, value, opts }); },
-  sendControlChange(cc, value, opts) { calls.push({ type: 'cc', id, cc, value, opts }); },
-  sendPitchBendRange(semitones, cents) {
-    calls.push({ type: 'bendRange', id, semitones, cents });
-  },
-  sendAllNotesOff() { calls.push({ type: 'allNotesOff', id }); }
-});
-
-const makeOutput = (ids, calls) => ({
-  channels: Object.fromEntries(ids.map(id => [id, makeChannel(id, calls)]))
-});
+import { makeOutput } from '../support/midi-output.js';
+import { withFakeClockAndPerformance } from '../support/timers.js';
 
 describe('MidiScheduler', function() {
   it('schedules note offs and converts signed pan', function() {
     const calls = [];
     const output = makeOutput([1], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({
         mpe: { enabled: false },
         position: { panRange: { min: -127, max: 127 } }
@@ -48,10 +31,7 @@ describe('MidiScheduler', function() {
 
       clock.tick(25);
       expect(scheduler._activeNotes.size).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    });
   });
 
   it('swaps attack and release velocity when reversing', function() {
@@ -79,10 +59,7 @@ describe('MidiScheduler', function() {
   it('steals the oldest note when active count is exceeded', function() {       
     const calls = [];
     const output = makeOutput([1], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({
         mpe: { enabled: false },
         limits: { maxActiveNotes: 1 }
@@ -95,19 +72,13 @@ describe('MidiScheduler', function() {
 
       const noteOffs = calls.filter(c => c.type === 'noteOff').map(c => c.note);
       expect(noteOffs).to.include(60);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    });
   });
 
   it('initializes MPE channels and reuses the oldest member', function() {
     const calls = [];
     const output = makeOutput([1, 2, 3], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({
         mpe: {
           enabled: true,
@@ -136,10 +107,7 @@ describe('MidiScheduler', function() {
       expect(noteOff).to.be.ok;
       const timbreCalls = calls.filter(c => c.type === 'cc' && c.cc === 74);
       expect(timbreCalls.length).to.be.greaterThan(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    });
   });
 
   it('clamps unsigned pan values to 0-127', function() {
@@ -214,10 +182,7 @@ describe('MidiScheduler', function() {
   it('stops active channels and clears scheduled note offs', function() {
     const calls = [];
     const output = makeOutput([1, 2], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({
         mpe: { enabled: true, memberChannels: [2] }
       });
@@ -227,10 +192,7 @@ describe('MidiScheduler', function() {
       expect(scheduler._noteOffs.length).to.be.greaterThan(0);
       scheduler._stopActiveChannel(2);
       expect(scheduler._noteOffs.length).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    });
   });
 
   it('processes note offs safely without output', function() {
@@ -435,10 +397,7 @@ describe('MidiScheduler', function() {
   it('tracks rate snapshots and clears queued events', function() {
     const calls = [];
     const output = makeOutput([1], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now, measure: () => {} };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({ mpe: { enabled: false } });
       scheduler.setOutput(output);
       scheduler.setTickMs(10);
@@ -447,10 +406,7 @@ describe('MidiScheduler', function() {
       expect(snapshot.next.count).to.be.greaterThan(0);
       scheduler.clearQueue();
       expect(scheduler._ratePlanned.length).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    }, { performanceValue: (clock) => ({ now: () => clock.now, measure: () => {} }) });
   });
 
   it('logs when byte rate limits are exceeded', function() {

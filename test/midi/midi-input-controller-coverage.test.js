@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { MidiInputController } from '../../js/midi/input/MidiInputController.js';
+import { withPatchedGlobals } from '../support/globals.js';
 
 const makeConfig = (channel = 'omni') => ({ input: { channel } });
 
@@ -230,14 +231,10 @@ describe('MidiInputController coverage', function() {
 
   it('records last MIDI message when window is defined', function() {
     const controller = new MidiInputController({}, { getConfig: () => makeConfig('omni') });
-    const originalWindow = globalThis.window;
-    globalThis.window = {};
-    try {
+    withPatchedGlobals({ window: {} }, () => {
       controller._onMessage({ data: [0xB0, 10, 20] });
       expect(globalThis.window.lastMidiInputMessage).to.eql([0xB0, 10, 20]);
-    } finally {
-      globalThis.window = originalWindow;
-    }
+    });
   });
 
   it('uses view getMidiConfig when no getConfig is provided', function() {

@@ -1,21 +1,10 @@
 import { expect } from 'chai';
 import { withConsoleStub } from '../helpers/console.js';
 import { withGlobalLemmings, withMissingGlobalLemmings } from '../helpers/lemmings.js';
-import FakeTimers from '@sinonjs/fake-timers';
 import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
-
-const makeChannel = (id, calls) => ({
-  sendNoteOn(note, opts) { calls.push({ type: 'noteOn', id, note, opts }); },
-  sendNoteOff(note, opts) { calls.push({ type: 'noteOff', id, note, opts }); },
-  sendPitchBend(value, opts) { calls.push({ type: 'pitchBend', id, value, opts }); },
-  sendControlChange(cc, value, opts) { calls.push({ type: 'cc', id, cc, value, opts }); },
-  sendPitchBendRange(semitones, cents) { calls.push({ type: 'bendRange', id, semitones, cents }); },
-  sendAllNotesOff() { calls.push({ type: 'allNotesOff', id }); }
-});
-
-const makeOutput = (ids, calls) => ({
-  channels: Object.fromEntries(ids.map(id => [id, makeChannel(id, calls)]))
-});
+import { makeOutput } from '../support/midi-output.js';
+import { withPatchedGlobals } from '../support/globals.js';
+import { withFakeClock, withFakeClockAndPerformance } from '../support/timers.js';
 
 describe('MidiScheduler coverage', function() {
   it('initializes MPE when output is already set', function() {
@@ -120,10 +109,7 @@ describe('MidiScheduler coverage', function() {
   it('processes note offs and clears mpe channel mappings', function() {
     const calls = [];
     const output = makeOutput([2], calls);
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = { now: () => clock.now };
-    try {
+    withFakeClockAndPerformance((clock) => {
       const scheduler = new MidiScheduler({ mpe: { enabled: true } });
       scheduler.setOutput(output);
       scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true, startedAt: 0 });
@@ -131,10 +117,7 @@ describe('MidiScheduler coverage', function() {
       scheduler._noteOffs.push({ timeMs: 0, channel: 2, note: 60, token: 1, mpe: true });
       scheduler._processNoteOffs();
       expect(scheduler._activeByChannel.size).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    });
   });
 
   it('handles allNotesOff when output is missing', function() {
@@ -277,21 +260,17 @@ describe('MidiScheduler coverage', function() {
 
   it('arms timers and processes note offs with missing outputs', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerformance = globalThis.performance;
-    globalThis.performance = undefined;
-    try {
-      scheduler._noteOffTimerId = setTimeout(() => {}, 10);
-      scheduler._noteOffs.push({ timeMs: 0, token: 1 });
-      scheduler._armNoteOffTimer();
-      expect(scheduler._noteOffTimerId).to.not.equal(0);
-      scheduler.output = null;
-      scheduler._processNoteOffs();
-      expect(scheduler._noteOffTimerId).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerformance;
-      clock.uninstall();
-    }
+    withFakeClock(() => {
+      withPatchedGlobals({ performance: undefined }, () => {
+        scheduler._noteOffTimerId = setTimeout(() => {}, 10);
+        scheduler._noteOffs.push({ timeMs: 0, token: 1 });
+        scheduler._armNoteOffTimer();
+        expect(scheduler._noteOffTimerId).to.not.equal(0);
+        scheduler.output = null;
+        scheduler._processNoteOffs();
+        expect(scheduler._noteOffTimerId).to.equal(0);
+      });
+    });
   });
 
   it('allNotesOff handles mpe channel lists and dispose clears active channels', function() {
@@ -438,17 +417,11 @@ describe('MidiScheduler coverage', function() {
 
   it('armNoteOffTimer uses performance timing when available', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerf = globalThis.performance;
-    globalThis.performance = { now: () => 0 };
-    try {
+    withFakeClockAndPerformance(() => {
       scheduler._noteOffs = [{ timeMs: 5 }];
       scheduler._armNoteOffTimer();
       expect(scheduler._noteOffTimerId).to.not.equal(0);
-    } finally {
-      globalThis.performance = originalPerf;
-      clock.uninstall();
-    }
+    }, { performanceValue: { now: () => 0 } });
   });
 
   it('processNoteOffs uses Date.now and skips non-mpe cleanup', function() {
@@ -574,14 +547,10 @@ describe('MidiScheduler coverage', function() {
     const calls = [];
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 1 });
     scheduler.setOutput(makeOutput([1], calls));
-    const originalWindow = globalThis.window;
-    globalThis.window = {};
-    try {
+    withPatchedGlobals({ window: {} }, () => {
       scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
       expect(globalThis.window.lastMidiOutputMessage.type).to.equal('noteOn');
-    } finally {
-      globalThis.window = originalWindow;
-    }
+    });
   });
 
   it('covers additional scheduler branch paths', function() {
@@ -617,25 +586,19 @@ describe('MidiScheduler coverage', function() {
     }
     expect(errorCount).to.equal(0);
 
-    const originalPerf = globalThis.performance;
-    globalThis.performance = { now: () => 1, measure: () => {} };
-    withMissingGlobalLemmings(() => {
-      scheduler.sendNote({ note: 60, durationTicks: NaN, pan: 0 });
+    withPatchedGlobals({ performance: { now: () => 1, measure: () => {} } }, () => {
+      withMissingGlobalLemmings(() => {
+        scheduler.sendNote({ note: 60, durationTicks: NaN, pan: 0 });
+      });
     });
-    globalThis.performance = originalPerf;
 
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    globalThis.performance = { now: () => 0 };
-    try {
+    withFakeClockAndPerformance(() => {
       scheduler.output = makeOutput([1], []);
       scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: false, startedAt: 0 });
       scheduler._noteOffs = [{ timeMs: 0, token: 1, channel: 1, note: 60, mpe: false }];
       scheduler._armNoteOffTimer();
       scheduler._processNoteOffs();
-    } finally {
-      clock.uninstall();
-      globalThis.performance = originalPerf;
-    }
+    }, { performanceValue: { now: () => 0 } });
 
     const scheduler2 = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler2.setOutput(makeOutput([1], []));
@@ -645,24 +608,20 @@ describe('MidiScheduler coverage', function() {
 
   it('uses Date.now in timers when performance is missing', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const originalPerf = globalThis.performance;
-    globalThis.performance = undefined;
-    try {
-      scheduler._noteOffs = [{ timeMs: 5, token: 1 }];
-      scheduler._armNoteOffTimer();
-      expect(scheduler._noteOffTimerId).to.not.equal(0);
+    withFakeClock(() => {
+      withPatchedGlobals({ performance: undefined }, () => {
+        scheduler._noteOffs = [{ timeMs: 5, token: 1 }];
+        scheduler._armNoteOffTimer();
+        expect(scheduler._noteOffTimerId).to.not.equal(0);
 
-      scheduler.output = makeOutput([1], []);
-      scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: true, startedAt: 0 });
-      scheduler._activeByChannel.set(1, { note: 60, token: 1, startedAt: 0 });
-      scheduler._noteOffs = [{ timeMs: 0, channel: 1, note: 60, token: 1, mpe: true }];
-      scheduler._processNoteOffs();
-      expect(scheduler._activeByChannel.size).to.equal(0);
-    } finally {
-      globalThis.performance = originalPerf;
-      clock.uninstall();
-    }
+        scheduler.output = makeOutput([1], []);
+        scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: true, startedAt: 0 });
+        scheduler._activeByChannel.set(1, { note: 60, token: 1, startedAt: 0 });
+        scheduler._noteOffs = [{ timeMs: 0, channel: 1, note: 60, token: 1, mpe: true }];
+        scheduler._processNoteOffs();
+        expect(scheduler._activeByChannel.size).to.equal(0);
+      });
+    });
   });
 
   it('clears mpe channels and timers when outputs are missing', function() {    

@@ -7,13 +7,10 @@ import { MidiMapping } from '../js/midi/MidiMapping.js';
 import { toMidiFlagTriggerType } from '../js/midi/MidiFlagTriggers.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { setDependency, resetDependencies, useGlobalLemmings } from './helpers/lemmings.js';
+import { useGlobalValueRestore } from './support/globals.js';
 
 describe('GameView coverage', function() {
-  const originalWindow = globalThis.window;
-  const originalHistory = globalThis.history;
-  const originalWebMidi = globalThis.WebMidi;
-  const originalLocalStorage = globalThis.localStorage;
-  const originalDocument = globalThis.document;
+  useGlobalValueRestore(['window', 'history', 'WebMidi', 'localStorage', 'document']);
   useGlobalLemmings({});
 
   beforeEach(function() {
@@ -23,11 +20,6 @@ describe('GameView coverage', function() {
 
   afterEach(function() {
     resetDependencies();
-    globalThis.window = originalWindow;
-    globalThis.history = originalHistory;
-    globalThis.WebMidi = originalWebMidi;
-    globalThis.localStorage = originalLocalStorage;
-    globalThis.document = originalDocument;
   });
 
   const makeSelect = () => ({
