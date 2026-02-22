@@ -461,7 +461,7 @@ Notes:
   Touchpoints: `test/midi/midi-ui-controller.test.js`, `test/helpers/*`.
 
 ## Phase 28: Editor runtime throughput and data integrity
-- [ ] Add indexed lookup tables for selected entries/UIDs in editor hot paths to
+- [x] Add indexed lookup tables for selected entries/UIDs in editor hot paths to
   avoid repeated linear scans on large maps.
   Touchpoints: `js/editor/EditorController.js`, `js/editor/EditorEntryFactory.js`.
 - [ ] Add parser/writer fuzz/property tests for NXLV comment/unknown-section

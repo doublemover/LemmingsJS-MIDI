@@ -23,6 +23,7 @@ const snapValue = (value, gridSize) => {
 
 const clampSize = (value) => Math.max(1, Math.round(value));
 const clampBrushSize = (value) => Math.min(MAX_BRUSH_SIZE, clampSize(value));
+const selectionKey = (type, index) => `${type}:${index}`;
 
 const cloneEntry = (entry, options = {}) => {
   const props = entry?.props ? { ...entry.props } : {};
@@ -76,6 +77,21 @@ class EditorController {
     this.selectedTerrainId = 0;
     this.selectedGadgetId = 0;
     this.selectedTriggerId = null;
+    this._selection = [];
+    this._selectionSet = new Set();
+    this._entryIndexCache = {
+      terrain: { list: null, size: -1, map: new Map() },
+      gadget: { list: null, size: -1, map: new Map() },
+      steel: { list: null, size: -1, map: new Map() }
+    };
+    Object.defineProperty(this, 'selection', {
+      configurable: true,
+      enumerable: true,
+      get: () => this._selection,
+      set: (value) => {
+        this._setSelectionState(value);
+      }
+    });
     this.selection = [];
     this._drag = null;
     this._resize = null;
@@ -159,14 +175,98 @@ class EditorController {
     return this.session.level.terrains;
   }
 
+  _setSelectionState(list) {
+    const normalized = Array.isArray(list) ? list.map((entry) => ({
+      type: entry?.type,
+      index: entry?.index,
+      uid: entry?.uid || null
+    })) : [];
+    this._selection = normalized;
+    this._selectionSet.clear();
+    for (const entry of normalized) {
+      if (!entry || !entry.type || !Number.isFinite(entry.index)) continue;
+      this._selectionSet.add(selectionKey(entry.type, entry.index));
+    }
+  }
+
+  _invalidateEntryIndexCache(type = null) {
+    if (type) {
+      const cache = this._entryIndexCache[type];
+      if (!cache) return;
+      cache.list = null;
+      cache.size = -1;
+      cache.map.clear();
+      return;
+    }
+    for (const cache of Object.values(this._entryIndexCache)) {
+      cache.list = null;
+      cache.size = -1;
+      cache.map.clear();
+    }
+  }
+
+  _getEntryIndexByUid(type, uid, list) {
+    if (!uid || !Array.isArray(list)) return -1;
+    const cache = this._entryIndexCache[type];
+    if (!cache) return -1;
+    if (cache.list !== list || cache.size !== list.length) {
+      cache.list = list;
+      cache.size = list.length;
+      cache.map = new Map();
+      for (let index = 0; index < list.length; index += 1) {
+        const entryUid = list[index]?.uid;
+        if (entryUid) {
+          cache.map.set(entryUid, index);
+        }
+      }
+    }
+    return cache.map.get(uid) ?? -1;
+  }
+
+  _resolveSelectionEntry(selected) {
+    const list = this._getListForType(selected?.type);
+    if (!Array.isArray(list)) return null;
+    const currentIndex = Number.isFinite(selected?.index) ? selected.index : -1;
+    const currentEntry = currentIndex >= 0 ? list[currentIndex] : null;
+    if (currentEntry && (!selected.uid || selected.uid === currentEntry.uid)) {
+      if (!selected.uid && currentEntry.uid) {
+        selected.uid = currentEntry.uid;
+      }
+      return { index: currentIndex, entry: currentEntry };
+    }
+    if (selected?.uid) {
+      const nextIndex = this._getEntryIndexByUid(selected.type, selected.uid, list);
+      if (nextIndex >= 0) {
+        const nextEntry = list[nextIndex];
+        if (nextEntry) {
+          if (currentIndex !== nextIndex && Number.isFinite(currentIndex)) {
+            this._selectionSet.delete(selectionKey(selected.type, currentIndex));
+            this._selectionSet.add(selectionKey(selected.type, nextIndex));
+          }
+          selected.index = nextIndex;
+          return { index: nextIndex, entry: nextEntry };
+        }
+      }
+    }
+    if (currentEntry?.uid) {
+      selected.uid = currentEntry.uid;
+      return { index: currentIndex, entry: currentEntry };
+    }
+    return null;
+  }
+
   getSelectedEntries() {
     if (!this.session?.level || !Array.isArray(this.selection)) return [];
     const results = [];
     for (const selected of this.selection) {
-      const list = this._getListForType(selected.type);
-      const entry = Array.isArray(list) ? list[selected.index] : null;
-      if (!entry) continue;
-      results.push({ ...selected, entry });
+      const resolved = this._resolveSelectionEntry(selected);
+      if (!resolved?.entry) continue;
+      results.push({
+        type: selected.type,
+        index: resolved.index,
+        uid: selected.uid || resolved.entry.uid || null,
+        entry: resolved.entry
+      });
     }
     return results;
   }
@@ -216,13 +316,14 @@ class EditorController {
   _setSelection(list) {
     this.selection = Array.isArray(list) ? list.map(entry => ({
       type: entry.type,
-      index: entry.index
+      index: entry.index,
+      uid: entry?.uid || entry?.entry?.uid || this._getListForType(entry.type)?.[entry.index]?.uid || null
     })) : [];
     this._callbacks.onSelectionChange?.(this.getSelectedEntries());
   }
 
   _isSelected(type, index) {
-    return this.selection.some(entry => entry.type === type && entry.index === index);
+    return this._selectionSet.has(selectionKey(type, index));
   }
 
   _toggleSelection(hit) {
@@ -230,7 +331,11 @@ class EditorController {
     if (this._isSelected(hit.type, hit.index)) {
       this.selection = this.selection.filter(entry => !(entry.type === hit.type && entry.index === hit.index));
     } else {
-      this.selection = [...this.selection, { type: hit.type, index: hit.index }];
+      this.selection = [...this.selection, {
+        type: hit.type,
+        index: hit.index,
+        uid: hit?.entry?.uid || null
+      }];
     }
     this._callbacks.onSelectionChange?.(this.getSelectedEntries());
   }
@@ -634,6 +739,7 @@ class EditorController {
     for (const index of steelIndices) {
       removeEntryAt(this.session.level, 'steel', index);
     }
+    this._invalidateEntryIndexCache();
     this.selection = [];
     this._callbacks.onSelectionChange?.(this.getSelectedEntries());
     this._commitHistory('Delete');
@@ -708,6 +814,7 @@ class EditorController {
       }
     }
     if (!nextSelection.length) return false;
+    this._invalidateEntryIndexCache();
     this._setSelection(nextSelection);
     this._commitHistory('Reorder');
     this._requestPreview('Reorder');
@@ -734,6 +841,7 @@ class EditorController {
     const level = this.history.undo();
     if (!level || !this.session) return null;
     this.session.level = level;
+    this._invalidateEntryIndexCache();
     this.clearSelection();
     this._callbacks.onLevelChange?.(level);
     this._requestPreview('Undo');
@@ -744,6 +852,7 @@ class EditorController {
     const level = this.history.redo();
     if (!level || !this.session) return null;
     this.session.level = level;
+    this._invalidateEntryIndexCache();
     this.clearSelection();
     this._callbacks.onLevelChange?.(level);
     this._requestPreview('Redo');
@@ -778,7 +887,11 @@ class EditorController {
     }
     if (options.additive) {
       if (!this._isSelected(hit.type, hit.index)) {
-        this.selection = [...this.selection, { type: hit.type, index: hit.index }];
+        this.selection = [...this.selection, {
+          type: hit.type,
+          index: hit.index,
+          uid: hit?.entry?.uid || null
+        }];
         this._callbacks.onSelectionChange?.(this.getSelectedEntries());
       }
       return hit;
@@ -838,9 +951,9 @@ class EditorController {
     if (!this._marquee || !this.session?.level) return;
     const bounds = this.getMarqueeBounds();
     const next = this._marquee.additive ? [...this.selection] : [];
-    const addSelection = (type, index) => {
+    const addSelection = (type, index, uid = null) => {
       if (next.some(entry => entry.type === type && entry.index === index)) return;
-      next.push({ type, index });
+      next.push({ type, index, uid });
     };
     const scan = (entries, metaById, type) => {
       if (!Array.isArray(entries)) return;
@@ -848,7 +961,7 @@ class EditorController {
         const entry = entries[i];
         const meta = metaById?.get?.(entry?.props?.PIECE);
         const entryBounds = getEntryBounds(entry, meta);
-        if (boundsIntersect(bounds, entryBounds)) addSelection(type, i);
+        if (boundsIntersect(bounds, entryBounds)) addSelection(type, i, entry?.uid || null);
       }
     };
     scan(this.session.level.terrains, this.assets?.terrainById, 'terrain');
@@ -901,6 +1014,7 @@ class EditorController {
 
   _markChanged() {
     this._strokeChanged = true;
+    this._invalidateEntryIndexCache();
   }
 
   _getTerrainMeta(id) {

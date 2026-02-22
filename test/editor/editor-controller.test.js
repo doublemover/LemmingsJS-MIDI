@@ -1167,4 +1167,21 @@ describe('EditorController', () => {
     expect(session.level.gadgets[1].uid.startsWith('g_')).to.equal(true);
     expect(session.level.steel[1].uid.startsWith('s_')).to.equal(true);
   });
+
+  it('resolves selected entries by uid after index shifts', () => {
+    const session = buildSession();
+    const controller = new EditorController({ session });
+    const first = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 0, y: 0 });
+    const second = createTerrainEntry({ styleName: 'dirt', piece: 2, x: 8, y: 0 });
+    session.level.terrains.push(first, second);
+    controller.selection = [{ type: 'terrain', index: 0, uid: first.uid }];
+
+    session.level.terrains = [second, first];
+    const selected = controller.getSelectedEntries();
+
+    expect(selected).to.have.length(1);
+    expect(selected[0].entry).to.equal(first);
+    expect(selected[0].index).to.equal(1);
+    expect(controller._isSelected('terrain', 1)).to.equal(true);
+  });
 });
