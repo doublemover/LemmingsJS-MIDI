@@ -258,6 +258,47 @@ export const patchPack = (origBuf, patches) => {
 
 * **`ldecomp` (C decoder)** — [https://www.camanis.net/lemmings/tools.php](https://www.camanis.net/lemmings/tools.php)
 * **Format write‑up & Compressor.cpp** — [https://www.camanis.net/lemmings/files/docs/lemmings\_dat\_file\_format.txt](https://www.camanis.net/lemmings/files/docs/lemmings_dat_file_format.txt)
+
+---
+
+## 10 · Replay Cold-Block Binary Layout
+
+`HistoryStore` cold compaction now uses a binary payload (`js/game/HistoryStore.js`)
+instead of JSON clone/serialize. This is an internal replay format used only for
+in-memory cold blocks.
+
+### 10.1 Block Envelope
+
+* `magic` (`u32`, LE): `0x42534c48` (`HLSB`)
+* `version` (`u8`): `1`
+* `noOpCount` (`varuint`)
+* repeated `noOpCount` times:
+  * `startOffset` (`varuint`)
+  * `length` (`varuint`)
+* `deltaCount` (`varuint`)
+* `deltaOffsets[deltaCount]` (`varuint[]`)
+* `deltaLengths[deltaCount]` (`varuint[]`)
+* `deltaPayloadBytes` (concatenated byte slices)
+
+The envelope may optionally be RLE-compressed by the existing cold-block
+compression toggle.
+
+### 10.2 Delta Payload
+
+Each delta payload starts with:
+
+* `deltaCodecVersion` (`u8`): `1`
+* `flags` (`u32`, LE): section bitmap
+
+Sections are written in flag order. Lemming mutation streams are field-packed in
+typed-array style sections (contiguous per field) for:
+
+* `lemChanges`
+* `lemAdded`
+* `lemRemoved`
+
+Non-lemming sections use canonical tagged-value encoding with sorted object keys
+to keep payload bytes deterministic for hashing/deduping.
 * **NeoLemmix DAT Manager (C#)** — [https://www.neolemmix.com/old/lemtools.html](https://www.neolemmix.com/old/lemtools.html)
 * **Lemmix Pascal source** — [https://github.com/arjanadriaanse/lemmix](https://github.com/arjanadriaanse/lemmix)
 * **Community edge‑case thread** — [https://www.lemmingsforums.net/index.php?topic=6902.0](https://www.lemmingsforums.net/index.php?topic=6902.0)

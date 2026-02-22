@@ -33,6 +33,10 @@ const DELTA_FLAG_LEMMING_MUTATIONS =
   DELTA_FLAG_LEMMING_CHANGES |
   DELTA_FLAG_LEMMING_REMOVALS;
 
+const COLD_BLOCK_MAGIC = 0x42534c48; // 'HLSB'
+const COLD_BLOCK_VERSION = 1;
+const DELTA_CODEC_VERSION = 1;
+const NULL_INT32 = -2147483648;
 const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 const textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : null;
 
@@ -42,7 +46,7 @@ const toNonNegativeInt = (value, fallback) => {
   return next >= 0 ? next : fallback;
 };
 
-const encodeUtf8 = (value) => {
+const encodeText = (value) => {
   if (textEncoder) return textEncoder.encode(value);
   const bytes = [];
   for (let i = 0; i < value.length; i += 1) {
@@ -51,7 +55,7 @@ const encodeUtf8 = (value) => {
   return Uint8Array.from(bytes);
 };
 
-const decodeUtf8 = (bytes) => {
+const decodeText = (bytes) => {
   if (textDecoder) return textDecoder.decode(bytes);
   let out = '';
   for (let i = 0; i < bytes.length; i += 1) {
@@ -60,19 +64,255 @@ const decodeUtf8 = (bytes) => {
   return out;
 };
 
-const stableStringify = (value) => {
-  if (value == null || typeof value !== 'object') {
-    return JSON.stringify(value);
+const toI32 = (value, fallback = 0) => {
+  if (!Number.isFinite(value)) return fallback;
+  return Math.trunc(value);
+};
+
+const toU8 = (value, fallback = 0) => {
+  if (!Number.isFinite(value)) return fallback;
+  const int = Math.trunc(value);
+  if (int <= 0) return 0;
+  if (int >= 255) return 255;
+  return int;
+};
+
+const toBoolByte = (value) => (value ? 1 : 0);
+
+class BinaryWriter {
+  constructor(initialCapacity = 256) {
+    const size = Math.max(32, initialCapacity | 0);
+    this._bytes = new Uint8Array(size);
+    this.length = 0;
+    this._scratch = new Uint8Array(8);
+    this._scratchView = new DataView(this._scratch.buffer);
+  }
+
+  _ensure(extraBytes) {
+    const needed = this.length + extraBytes;
+    if (needed <= this._bytes.length) return;
+    let nextSize = this._bytes.length;
+    while (nextSize < needed) nextSize *= 2;
+    const next = new Uint8Array(nextSize);
+    next.set(this._bytes.subarray(0, this.length));
+    this._bytes = next;
+  }
+
+  writeU8(value) {
+    this._ensure(1);
+    this._bytes[this.length] = value & 0xff;
+    this.length += 1;
+  }
+
+  writeU32(value) {
+    const v = Number.isFinite(value) ? (Math.trunc(value) >>> 0) : 0;
+    this._ensure(4);
+    this._bytes[this.length] = v & 0xff;
+    this._bytes[this.length + 1] = (v >>> 8) & 0xff;
+    this._bytes[this.length + 2] = (v >>> 16) & 0xff;
+    this._bytes[this.length + 3] = (v >>> 24) & 0xff;
+    this.length += 4;
+  }
+
+  writeI32(value) {
+    this.writeU32((toI32(value) >> 0) >>> 0);
+  }
+
+  writeF64(value) {
+    this._scratchView.setFloat64(0, Number.isFinite(value) ? value : 0, true);
+    this.writeRaw(this._scratch);
+  }
+
+  writeVarUint(value) {
+    let next = Number.isFinite(value) ? Math.max(0, Math.trunc(value)) : 0;
+    while (next >= 0x80) {
+      this.writeU8((next & 0x7f) | 0x80);
+      next = Math.floor(next / 128);
+    }
+    this.writeU8(next);
+  }
+
+  writeRaw(bytes) {
+    if (!bytes || !bytes.length) return;
+    this._ensure(bytes.length);
+    this._bytes.set(bytes, this.length);
+    this.length += bytes.length;
+  }
+
+  writeBytes(bytes) {
+    const src = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes || []);
+    this.writeVarUint(src.length);
+    this.writeRaw(src);
+  }
+
+  toUint8Array() {
+    return this._bytes.slice(0, this.length);
+  }
+}
+
+class BinaryReader {
+  constructor(bytes) {
+    this._bytes = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+    this._view = new DataView(this._bytes.buffer, this._bytes.byteOffset, this._bytes.byteLength);
+    this.offset = 0;
+  }
+
+  _require(length) {
+    if ((this.offset + length) > this._bytes.length) {
+      throw new Error('HistoryStore cold-block decode overflow.');
+    }
+  }
+
+  readU8() {
+    this._require(1);
+    const value = this._bytes[this.offset];
+    this.offset += 1;
+    return value;
+  }
+
+  readU32() {
+    this._require(4);
+    const value = this._view.getUint32(this.offset, true);
+    this.offset += 4;
+    return value;
+  }
+
+  readI32() {
+    this._require(4);
+    const value = this._view.getInt32(this.offset, true);
+    this.offset += 4;
+    return value;
+  }
+
+  readF64() {
+    this._require(8);
+    const value = this._view.getFloat64(this.offset, true);
+    this.offset += 8;
+    return value;
+  }
+
+  readVarUint() {
+    let value = 0;
+    let shift = 0;
+    while (true) {
+      const byte = this.readU8();
+      value += (byte & 0x7f) * Math.pow(2, shift);
+      if ((byte & 0x80) === 0) break;
+      shift += 7;
+      if (shift > 49) {
+        throw new Error('HistoryStore cold-block varuint too large.');
+      }
+    }
+    return value;
+  }
+
+  readRaw(length) {
+    const size = Number.isFinite(length) ? Math.max(0, Math.trunc(length)) : 0;
+    this._require(size);
+    const value = this._bytes.subarray(this.offset, this.offset + size);
+    this.offset += size;
+    return value;
+  }
+
+  readBytes() {
+    const length = this.readVarUint();
+    return this.readRaw(length);
+  }
+
+  eof() {
+    return this.offset >= this._bytes.length;
+  }
+}
+
+const VALUE_TAG_NULL = 0;
+const VALUE_TAG_FALSE = 1;
+const VALUE_TAG_TRUE = 2;
+const VALUE_TAG_NUMBER = 3;
+const VALUE_TAG_STRING = 4;
+const VALUE_TAG_ARRAY = 5;
+const VALUE_TAG_OBJECT = 6;
+const VALUE_TAG_UNDEFINED = 7;
+
+const writeTaggedValue = (writer, value) => {
+  if (value === null) {
+    writer.writeU8(VALUE_TAG_NULL);
+    return;
+  }
+  if (value === undefined) {
+    writer.writeU8(VALUE_TAG_UNDEFINED);
+    return;
+  }
+  if (value === false) {
+    writer.writeU8(VALUE_TAG_FALSE);
+    return;
+  }
+  if (value === true) {
+    writer.writeU8(VALUE_TAG_TRUE);
+    return;
+  }
+  if (typeof value === 'number') {
+    writer.writeU8(VALUE_TAG_NUMBER);
+    writer.writeF64(value);
+    return;
+  }
+  if (typeof value === 'string') {
+    writer.writeU8(VALUE_TAG_STRING);
+    writer.writeBytes(encodeText(value));
+    return;
   }
   if (Array.isArray(value)) {
-    return `[${value.map((item) => stableStringify(item)).join(',')}]`;
+    writer.writeU8(VALUE_TAG_ARRAY);
+    writer.writeVarUint(value.length);
+    for (let i = 0; i < value.length; i += 1) {
+      writeTaggedValue(writer, value[i]);
+    }
+    return;
   }
-  const keys = Object.keys(value).sort();
-  const pairs = [];
-  for (const key of keys) {
-    pairs.push(`${JSON.stringify(key)}:${stableStringify(value[key])}`);
+  writer.writeU8(VALUE_TAG_OBJECT);
+  const keys = Object.keys(value).filter(key => value[key] !== undefined).sort();
+  writer.writeVarUint(keys.length);
+  for (let i = 0; i < keys.length; i += 1) {
+    const key = keys[i];
+    writer.writeBytes(encodeText(key));
+    writeTaggedValue(writer, value[key]);
   }
-  return `{${pairs.join(',')}}`;
+};
+
+const readTaggedValue = (reader) => {
+  const tag = reader.readU8();
+  switch (tag) {
+  case VALUE_TAG_NULL:
+    return null;
+  case VALUE_TAG_FALSE:
+    return false;
+  case VALUE_TAG_TRUE:
+    return true;
+  case VALUE_TAG_NUMBER:
+    return reader.readF64();
+  case VALUE_TAG_STRING:
+    return decodeText(reader.readBytes());
+  case VALUE_TAG_ARRAY: {
+    const length = reader.readVarUint();
+    const out = new Array(length);
+    for (let i = 0; i < length; i += 1) {
+      out[i] = readTaggedValue(reader);
+    }
+    return out;
+  }
+  case VALUE_TAG_OBJECT: {
+    const length = reader.readVarUint();
+    const out = {};
+    for (let i = 0; i < length; i += 1) {
+      const key = decodeText(reader.readBytes());
+      out[key] = readTaggedValue(reader);
+    }
+    return out;
+  }
+  case VALUE_TAG_UNDEFINED:
+    return undefined;
+  default:
+    throw new Error(`HistoryStore cold-block tag ${tag} is unsupported.`);
+  }
 };
 
 const bytesEqual = (a, b) => {
@@ -325,6 +565,189 @@ const createDelta = (tick) => ({
   minimapDeaths: []
 });
 
+const createPackedLemmingMutation = (count) => ({
+  count,
+  id: new Int32Array(count),
+  x: new Int32Array(count),
+  y: new Int32Array(count),
+  lookRight: new Uint8Array(count),
+  frameIndex: new Int32Array(count),
+  state: new Int32Array(count),
+  canClimb: new Uint8Array(count),
+  hasParachute: new Uint8Array(count),
+  removed: new Uint8Array(count),
+  disabled: new Uint8Array(count),
+  countdown: new Int32Array(count),
+  hasExploded: new Uint8Array(count),
+  lastTriggerType: new Int32Array(count),
+  actionType: new Int32Array(count),
+  countdownActive: new Uint8Array(count)
+});
+
+const packLemmingMutationList = (list) => {
+  const count = Array.isArray(list) ? list.length : 0;
+  const packed = createPackedLemmingMutation(count);
+  for (let i = 0; i < count; i += 1) {
+    const snap = list[i] || {};
+    packed.id[i] = toI32(snap.id);
+    packed.x[i] = toI32(snap.x);
+    packed.y[i] = toI32(snap.y);
+    packed.lookRight[i] = toBoolByte(snap.lookRight);
+    packed.frameIndex[i] = toI32(snap.frameIndex);
+    packed.state[i] = toI32(snap.state);
+    packed.canClimb[i] = toBoolByte(snap.canClimb);
+    packed.hasParachute[i] = toBoolByte(snap.hasParachute);
+    packed.removed[i] = toBoolByte(snap.removed);
+    packed.disabled[i] = toBoolByte(snap.disabled);
+    packed.countdown[i] = toI32(snap.countdown);
+    packed.hasExploded[i] = toBoolByte(snap.hasExploded);
+    packed.lastTriggerType[i] = toI32(snap.lastTriggerType, -1);
+    packed.actionType[i] = toI32(snap.actionType, -1);
+    packed.countdownActive[i] = toBoolByte(snap.countdownActive);
+  }
+  return packed;
+};
+
+const unpackLemmingMutationList = (packed) => {
+  const count = packed?.count || 0;
+  const out = new Array(count);
+  for (let i = 0; i < count; i += 1) {
+    out[i] = {
+      id: packed.id[i],
+      x: packed.x[i],
+      y: packed.y[i],
+      lookRight: packed.lookRight[i],
+      frameIndex: packed.frameIndex[i],
+      state: packed.state[i],
+      canClimb: packed.canClimb[i],
+      hasParachute: packed.hasParachute[i],
+      removed: packed.removed[i],
+      disabled: packed.disabled[i],
+      countdown: packed.countdown[i],
+      hasExploded: packed.hasExploded[i],
+      lastTriggerType: packed.lastTriggerType[i],
+      actionType: packed.actionType[i],
+      countdownActive: packed.countdownActive[i]
+    };
+  }
+  return out;
+};
+
+const writePackedLemmingMutation = (writer, packed) => {
+  const count = packed?.count || 0;
+  writer.writeVarUint(count);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.id[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.x[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.y[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.lookRight[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.frameIndex[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.state[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.canClimb[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.hasParachute[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.removed[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.disabled[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.countdown[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.hasExploded[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.lastTriggerType[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.actionType[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.countdownActive[i]);
+};
+
+const readPackedLemmingMutation = (reader) => {
+  const count = reader.readVarUint();
+  const packed = createPackedLemmingMutation(count);
+  for (let i = 0; i < count; i += 1) packed.id[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.x[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.y[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.lookRight[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.frameIndex[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.state[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.canClimb[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.hasParachute[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.removed[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.disabled[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.countdown[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.hasExploded[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.lastTriggerType[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.actionType[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.countdownActive[i] = reader.readU8();
+  return packed;
+};
+
+const createPackedLemmingChanges = (count) => ({
+  count,
+  ids: new Int32Array(count),
+  fields: new Uint8Array(count),
+  prev: new Int32Array(count),
+  next: new Int32Array(count)
+});
+
+const packLemmingChanges = (changes) => {
+  const count = Array.isArray(changes?.ids) ? changes.ids.length : 0;
+  const packed = createPackedLemmingChanges(count);
+  for (let i = 0; i < count; i += 1) {
+    packed.ids[i] = toI32(changes.ids[i]);
+    packed.fields[i] = toU8(changes.fields?.[i]);
+    packed.prev[i] = toI32(changes.prev?.[i]);
+    packed.next[i] = toI32(changes.next?.[i]);
+  }
+  return packed;
+};
+
+const unpackLemmingChanges = (packed) => {
+  const count = packed?.count || 0;
+  const changes = {
+    ids: new Array(count),
+    fields: new Array(count),
+    prev: new Array(count),
+    next: new Array(count)
+  };
+  for (let i = 0; i < count; i += 1) {
+    changes.ids[i] = packed.ids[i];
+    changes.fields[i] = packed.fields[i];
+    changes.prev[i] = packed.prev[i];
+    changes.next[i] = packed.next[i];
+  }
+  return changes;
+};
+
+const writePackedLemmingChanges = (writer, packed) => {
+  const count = packed?.count || 0;
+  writer.writeVarUint(count);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.ids[i]);
+  for (let i = 0; i < count; i += 1) writer.writeU8(packed.fields[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.prev[i]);
+  for (let i = 0; i < count; i += 1) writer.writeI32(packed.next[i]);
+};
+
+const readPackedLemmingChanges = (reader) => {
+  const count = reader.readVarUint();
+  const packed = createPackedLemmingChanges(count);
+  for (let i = 0; i < count; i += 1) packed.ids[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.fields[i] = reader.readU8();
+  for (let i = 0; i < count; i += 1) packed.prev[i] = reader.readI32();
+  for (let i = 0; i < count; i += 1) packed.next[i] = reader.readI32();
+  return packed;
+};
+
+const packTimerStateForStorage = (state, tick) => {
+  if (!state) return null;
+  const out = { ...state };
+  if (Number.isFinite(out.tickIndex) && Number.isFinite(tick)) {
+    out.tickIndex = Math.trunc(out.tickIndex) - Math.trunc(tick);
+  }
+  return out;
+};
+
+const unpackTimerStateFromStorage = (state, tick) => {
+  if (!state) return null;
+  const out = { ...state };
+  if (Number.isFinite(out.tickIndex) && Number.isFinite(tick)) {
+    out.tickIndex = Math.trunc(out.tickIndex) + Math.trunc(tick);
+  }
+  return out;
+};
+
 class HistoryStore {
   constructor(options = {}) {
     this.options = normalizeOptions({ ...DEFAULT_OPTIONS, ...options });
@@ -526,15 +949,18 @@ class HistoryStore {
   }
 
   _buildColdBlockPayload(block) {
-    const noOpRanges = [];
-    const deltaEntries = [];
+    const noOpStarts = [];
+    const noOpLengths = [];
+    const deltaOffsets = [];
+    const deltaBytes = [];
     let runStart = -1;
     let runLen = 0;
     for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
       const entry = this.deltas[tick];
       if (!entry || entry === COLD_DELTA_SENTINEL) {
         if (runLen > 0) {
-          noOpRanges.push([runStart, runLen]);
+          noOpStarts.push(runStart);
+          noOpLengths.push(runLen);
           runStart = -1;
           runLen = 0;
         }
@@ -548,27 +974,90 @@ class HistoryStore {
         } else if (offset === (runStart + runLen)) {
           runLen += 1;
         } else {
-          noOpRanges.push([runStart, runLen]);
+          noOpStarts.push(runStart);
+          noOpLengths.push(runLen);
           runStart = offset;
           runLen = 1;
         }
       } else {
         if (runLen > 0) {
-          noOpRanges.push([runStart, runLen]);
+          noOpStarts.push(runStart);
+          noOpLengths.push(runLen);
           runStart = -1;
           runLen = 0;
         }
         const packed = this._packDeltaForStorage(entry);
-        deltaEntries.push([offset, packed]);
+        deltaOffsets.push(offset);
+        deltaBytes.push(packed);
       }
     }
     if (runLen > 0) {
-      noOpRanges.push([runStart, runLen]);
+      noOpStarts.push(runStart);
+      noOpLengths.push(runLen);
     }
     return {
-      noOpRanges,
-      deltaEntries
+      noOpStarts: Uint32Array.from(noOpStarts),
+      noOpLengths: Uint32Array.from(noOpLengths),
+      deltaOffsets: Uint32Array.from(deltaOffsets),
+      deltaBytes
     };
+  }
+
+  _encodeColdBlockPayload(payload) {
+    const writer = new BinaryWriter();
+    writer.writeU32(COLD_BLOCK_MAGIC);
+    writer.writeU8(COLD_BLOCK_VERSION);
+    const noOpCount = payload?.noOpStarts?.length || 0;
+    writer.writeVarUint(noOpCount);
+    for (let i = 0; i < noOpCount; i += 1) {
+      writer.writeVarUint(payload.noOpStarts[i]);
+      writer.writeVarUint(payload.noOpLengths[i]);
+    }
+    const deltaCount = payload?.deltaOffsets?.length || 0;
+    writer.writeVarUint(deltaCount);
+    for (let i = 0; i < deltaCount; i += 1) {
+      writer.writeVarUint(payload.deltaOffsets[i]);
+    }
+    for (let i = 0; i < deltaCount; i += 1) {
+      const bytes = payload.deltaBytes?.[i] || new Uint8Array(0);
+      writer.writeVarUint(bytes.length);
+    }
+    for (let i = 0; i < deltaCount; i += 1) {
+      writer.writeRaw(payload.deltaBytes?.[i] || new Uint8Array(0));
+    }
+    return writer.toUint8Array();
+  }
+
+  _decodeColdBlockPayload(bytes) {
+    const reader = new BinaryReader(bytes);
+    const magic = reader.readU32();
+    if (magic !== COLD_BLOCK_MAGIC) {
+      throw new Error('HistoryStore cold-block magic mismatch.');
+    }
+    const version = reader.readU8();
+    if (version !== COLD_BLOCK_VERSION) {
+      throw new Error(`HistoryStore cold-block version ${version} is unsupported.`);
+    }
+
+    const noOpCount = reader.readVarUint();
+    const noOpRanges = new Array(noOpCount);
+    for (let i = 0; i < noOpCount; i += 1) {
+      noOpRanges[i] = [reader.readVarUint(), reader.readVarUint()];
+    }
+
+    const deltaCount = reader.readVarUint();
+    const offsets = new Array(deltaCount);
+    const lengths = new Array(deltaCount);
+    for (let i = 0; i < deltaCount; i += 1) offsets[i] = reader.readVarUint();
+    for (let i = 0; i < deltaCount; i += 1) lengths[i] = reader.readVarUint();
+    const deltaEntries = new Array(deltaCount);
+    for (let i = 0; i < deltaCount; i += 1) {
+      deltaEntries[i] = [offsets[i], reader.readRaw(lengths[i])];
+    }
+    if (!reader.eof()) {
+      throw new Error('HistoryStore cold-block payload has trailing bytes.');
+    }
+    return { noOpRanges, deltaEntries };
   }
 
   _decodeColdBlock(block) {
@@ -577,11 +1066,11 @@ class HistoryStore {
     const bytes = block.encoding === 'rle'
       ? rleDecodeBytes(block.encodedBytes)
       : block.encodedBytes;
-    const payload = JSON.parse(decodeUtf8(bytes));
+    const payload = this._decodeColdBlockPayload(bytes);
     const deltaMap = new Map();
-    for (const [offset, delta] of payload.deltaEntries || []) {
+    for (const [offset, deltaBytes] of payload.deltaEntries || []) {
       const tick = block.startTick + offset;
-      deltaMap.set(offset, this._unpackDeltaFromStorage(delta, tick));
+      deltaMap.set(offset, this._unpackDeltaFromStorage(deltaBytes, tick));
     }
     block.decoded = {
       noOpRanges: payload.noOpRanges || [],
@@ -592,28 +1081,118 @@ class HistoryStore {
   }
 
   _packDeltaForStorage(delta) {
-    const packed = JSON.parse(JSON.stringify(delta));
-    delete packed.tick;
-    if (packed.timerChanges?.prev && Number.isFinite(delta?.tick)) {
-      if (Number.isFinite(packed.timerChanges.prev.tickIndex)) {
-        packed.timerChanges.prev.tickIndex -= delta.tick;
-      }
+    const writer = new BinaryWriter();
+    const flags = computeDeltaFlags(delta);
+    const tick = toI32(delta?.tick);
+    writer.writeU8(DELTA_CODEC_VERSION);
+    writer.writeU32(flags);
+    if (flags & DELTA_FLAG_LEMMING_CHANGES) {
+      writePackedLemmingChanges(writer, packLemmingChanges(delta.lemChanges));
     }
-    if (packed.timerChanges?.next && Number.isFinite(delta?.tick)) {
-      if (Number.isFinite(packed.timerChanges.next.tickIndex)) {
-        packed.timerChanges.next.tickIndex -= delta.tick;
-      }
+    if (flags & DELTA_FLAG_LEMMING_ADDS) {
+      writePackedLemmingMutation(writer, packLemmingMutationList(delta.lemAdded));
     }
-    return packed;
+    if (flags & DELTA_FLAG_LEMMING_REMOVALS) {
+      writePackedLemmingMutation(writer, packLemmingMutationList(delta.lemRemoved));
+    }
+    if (flags & DELTA_FLAG_LEMMING_MANAGER) {
+      writeTaggedValue(writer, delta.lemmingManagerChanges || null);
+    }
+    if (flags & DELTA_FLAG_GROUND) {
+      writeTaggedValue(writer, delta.groundChanges || null);
+    }
+    if (flags & DELTA_FLAG_ENTRANCE) {
+      writeTaggedValue(writer, delta.entranceChanges || null);
+    }
+    if (flags & DELTA_FLAG_TRIGGERS) {
+      writeTaggedValue(writer, {
+        triggerCooldownChanges: delta.triggerCooldownChanges || null,
+        triggerAdd: delta.triggerAdd || [],
+        triggerRemove: delta.triggerRemove || []
+      });
+    }
+    if (flags & DELTA_FLAG_OBJECTS) {
+      writeTaggedValue(writer, delta.objectAnimChanges || null);
+    }
+    if (flags & DELTA_FLAG_SCALARS) {
+      writeTaggedValue(writer, {
+        victoryChanges: delta.victoryChanges || null,
+        skillsChanges: delta.skillsChanges || null,
+        timerChanges: delta.timerChanges
+          ? {
+            prev: packTimerStateForStorage(delta.timerChanges.prev, tick),
+            next: packTimerStateForStorage(delta.timerChanges.next, tick)
+          }
+          : null,
+        gameChanges: delta.gameChanges || null
+      });
+    }
+    if (flags & DELTA_FLAG_SOUND_EVENTS) {
+      writeTaggedValue(writer, delta.soundEvents || []);
+    }
+    if (flags & DELTA_FLAG_MINIMAP_DEATHS) {
+      writeTaggedValue(writer, delta.minimapDeaths || []);
+    }
+    return writer.toUint8Array();
   }
 
   _unpackDeltaFromStorage(packed, tick) {
-    const delta = { ...packed, tick };
-    if (delta.timerChanges?.prev && Number.isFinite(delta.timerChanges.prev.tickIndex)) {
-      delta.timerChanges.prev.tickIndex += tick;
+    const reader = new BinaryReader(packed);
+    const version = reader.readU8();
+    if (version !== DELTA_CODEC_VERSION) {
+      throw new Error(`HistoryStore delta codec version ${version} is unsupported.`);
     }
-    if (delta.timerChanges?.next && Number.isFinite(delta.timerChanges.next.tickIndex)) {
-      delta.timerChanges.next.tickIndex += tick;
+    const flags = reader.readU32() | 0;
+    const delta = createDelta(tick);
+    delta.flags = flags;
+
+    if (flags & DELTA_FLAG_LEMMING_CHANGES) {
+      delta.lemChanges = unpackLemmingChanges(readPackedLemmingChanges(reader));
+    }
+    if (flags & DELTA_FLAG_LEMMING_ADDS) {
+      delta.lemAdded = unpackLemmingMutationList(readPackedLemmingMutation(reader));
+    }
+    if (flags & DELTA_FLAG_LEMMING_REMOVALS) {
+      delta.lemRemoved = unpackLemmingMutationList(readPackedLemmingMutation(reader));
+    }
+    if (flags & DELTA_FLAG_LEMMING_MANAGER) {
+      delta.lemmingManagerChanges = readTaggedValue(reader);
+    }
+    if (flags & DELTA_FLAG_GROUND) {
+      delta.groundChanges = readTaggedValue(reader) || delta.groundChanges;
+    }
+    if (flags & DELTA_FLAG_ENTRANCE) {
+      delta.entranceChanges = readTaggedValue(reader) || delta.entranceChanges;
+    }
+    if (flags & DELTA_FLAG_TRIGGERS) {
+      const triggerPayload = readTaggedValue(reader) || {};
+      delta.triggerCooldownChanges = triggerPayload.triggerCooldownChanges || delta.triggerCooldownChanges;
+      delta.triggerAdd = triggerPayload.triggerAdd || delta.triggerAdd;
+      delta.triggerRemove = triggerPayload.triggerRemove || delta.triggerRemove;
+    }
+    if (flags & DELTA_FLAG_OBJECTS) {
+      delta.objectAnimChanges = readTaggedValue(reader) || delta.objectAnimChanges;
+    }
+    if (flags & DELTA_FLAG_SCALARS) {
+      const scalarPayload = readTaggedValue(reader) || {};
+      delta.victoryChanges = scalarPayload.victoryChanges || null;
+      delta.skillsChanges = scalarPayload.skillsChanges || null;
+      delta.timerChanges = scalarPayload.timerChanges
+        ? {
+          prev: unpackTimerStateFromStorage(scalarPayload.timerChanges.prev, tick),
+          next: unpackTimerStateFromStorage(scalarPayload.timerChanges.next, tick)
+        }
+        : null;
+      delta.gameChanges = scalarPayload.gameChanges || null;
+    }
+    if (flags & DELTA_FLAG_SOUND_EVENTS) {
+      delta.soundEvents = readTaggedValue(reader) || [];
+    }
+    if (flags & DELTA_FLAG_MINIMAP_DEATHS) {
+      delta.minimapDeaths = readTaggedValue(reader) || [];
+    }
+    if (!reader.eof()) {
+      throw new Error('HistoryStore delta payload has trailing bytes.');
     }
     return delta;
   }
@@ -646,8 +1225,8 @@ class HistoryStore {
   _compactDeltaBlock(block) {
     if (!block || block.cold) return false;
     const payload = this._buildColdBlockPayload(block);
-    if (!payload.deltaEntries.length && !payload.noOpRanges.length) return false;
-    const rawBytes = encodeUtf8(stableStringify(payload));
+    if (!payload.deltaOffsets.length && !payload.noOpStarts.length) return false;
+    const rawBytes = this._encodeColdBlockPayload(payload);
     const compressed = this.options.enableColdBlockCompression ? rleEncodeBytes(rawBytes) : rawBytes;
     const useCompressed = compressed.length < rawBytes.length;
     const encodedBytes = useCompressed ? compressed : rawBytes;
