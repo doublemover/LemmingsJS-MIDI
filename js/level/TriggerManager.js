@@ -217,34 +217,61 @@ class TriggerManager {
 
     const bucketCount = (r1 - r0 + 1) * (c1 - c0 + 1);
     const buckets = new Array(bucketCount);
+    const bucketPositions = new Array(bucketCount);
     let bucketIndex = 0;
     for (let r = r0; r <= r1; ++r) {
       const base = r * this._cols;
       for (let c = c0; c <= c1; ++c) {
         const idx = base + c;
-        this._grid[idx].push(trigger);
+        const cell = this._grid[idx];
+        const insertPos = cell.length;
+        cell.push(trigger);
         buckets[bucketIndex++] = idx;
+        bucketPositions[bucketIndex - 1] = insertPos;
       }
     }
     trigger.__bucketIndices = buckets;   // fast removal
+    trigger.__bucketCellPositions = bucketPositions;
   }
 
   #remove (trigger) {
     this._triggers.delete(trigger);
     const buckets = trigger.__bucketIndices;
+    const bucketPositions = trigger.__bucketCellPositions;
     if (buckets) {
       for (let i = 0; i < buckets.length; i += 1) {
         const idx = buckets[i];
         const cell = this._grid[idx];
         if (!cell?.length) continue;
-        for (let j = cell.length - 1; j >= 0; j -= 1) {
-          if (cell[j] === trigger) {
-            const last = cell.length - 1;
-            if (j !== last) cell[j] = cell[last];
-            cell.length = last;
-            break;
+
+        let pos = Number.isFinite(bucketPositions?.[i]) ? bucketPositions[i] : -1;
+        const last = cell.length - 1;
+        if (pos < 0 || pos > last || cell[pos] !== trigger) {
+          pos = -1;
+          for (let j = last; j >= 0; j -= 1) {
+            if (cell[j] === trigger) {
+              pos = j;
+              break;
+            }
+          }
+          if (pos < 0) continue;
+        }
+
+        if (pos !== last) {
+          const swapped = cell[last];
+          cell[pos] = swapped;
+          const swappedBuckets = swapped?.__bucketIndices;
+          const swappedPositions = swapped?.__bucketCellPositions;
+          if (swappedBuckets && swappedPositions) {
+            for (let j = 0; j < swappedBuckets.length; j += 1) {
+              if (swappedBuckets[j] !== idx) continue;
+              if (swappedPositions[j] !== last) continue;
+              swappedPositions[j] = pos;
+              break;
+            }
           }
         }
+        cell.length = last;
       }
     }
     const owner = trigger.owner ?? null;
@@ -277,6 +304,7 @@ class TriggerManager {
       });
     }
     delete trigger.__bucketIndices;
+    delete trigger.__bucketCellPositions;
     this._debugFrame = null;
   }
 
