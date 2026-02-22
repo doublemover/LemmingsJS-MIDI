@@ -72,6 +72,7 @@ class Stage {
     this.hudMargin = 20;
 
     this.stageCav = canvasForOutput;
+    this.stageCtx = canvasForOutput.getContext('2d', { alpha: true, willReadFrequently: true });
     this.gameImgProps = new StageImageProperties();
     this.guiImgProps  = new StageImageProperties();
 
@@ -509,7 +510,7 @@ class Stage {
 
   clear(stageImage) {
     const start = this._perfTrackingFrame ? perfNow() : 0;
-    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
+    const ctx = this.stageCtx;
     ctx.fillStyle = '#000900';
     if (!stageImage) {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
@@ -581,6 +582,7 @@ class Stage {
     this.controller = null;
     this.gameImgProps = null;
     this.guiImgProps  = null;
+    this.stageCtx = null;
     this.stageCav     = null;
   }
 
@@ -588,9 +590,24 @@ class Stage {
     const start = this._perfTrackingFrame ? perfNow() : 0;
     if (!display.ctx) return;
 
-    display.ctx.putImageData(img, 0, 0);
+    const dirtyRects = display.display?.consumeDirtyRects?.();
+    if (dirtyRects === null) {
+      display.ctx.putImageData(img, 0, 0);
+    } else if (dirtyRects.length) {
+      for (const rect of dirtyRects) {
+        display.ctx.putImageData(
+          img,
+          0,
+          0,
+          rect.x,
+          rect.y,
+          rect.width,
+          rect.height
+        );
+      }
+    }
 
-    const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
+    const ctx = this.stageCtx;
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = 1;
 
@@ -654,7 +671,7 @@ class Stage {
       ctx.fillRect(r.x, r.y, r.width, r.height);
       ctx.globalAlpha = 1;
       if (this.overlayDashLen > 0) {
-        const octx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
+        const octx = this.stageCtx;
         const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
         const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
         const drawAnts = getDependency('drawMarchingAntRect', drawMarchingAntRect);
@@ -678,7 +695,7 @@ class Stage {
   }
 
   drawPerfOverlay() {
-    const ctx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true });
+    const ctx = this.stageCtx;
     const lines = [
       `frame ${this._perfFrameMs.toFixed(2)}ms`,
       `draw ${this._perfDrawMs.toFixed(2)}ms clear ${this._perfClearMs.toFixed(2)}ms`,
@@ -711,7 +728,7 @@ class Stage {
 
   drawCursor() {
     if (!this.cursorCanvas) return;
-    const ctx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true});
+    const ctx = this.stageCtx;
     const cx = Math.trunc(this.cursorX - this.cursorCanvas.width / 2);
     const cy = Math.trunc(this.cursorY - this.cursorCanvas.height / 2);
     ctx.drawImage(this.cursorCanvas, cx, cy);

@@ -24,3 +24,13 @@ The browser runtime also supports URL startup profiles:
 - `profile=perf`: enables perf-focused runtime defaults (`performanceAPI=true` and `perfOverlay=true`).
 
 Short alias: `pr=<gameplay|editor|perf>`.
+
+## Bench Profiles
+
+`scripts/bench-performance.js` supports benchmark profiles:
+
+- `--profile=default`: sequence benchmark with perf instrumentation.
+- `--profile=stress`: high-entity stress run (`bench2` path).
+- `--profile=reverse`: sustained reverse-playback stress run.
+
+Overrides (`--mode`, `--duration`, `--sample`, `--entrances`) still apply per run.

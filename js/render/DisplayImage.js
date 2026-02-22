@@ -33,6 +33,8 @@ class DisplayImage extends BaseLogger {
     this.onDoubleClick = new EventHandler();
     // 32‑bit view reused everywhere; set by initSize()
     this.buffer32 = null;
+    this._dirtyFull = true;
+    this._dirtyRects = [];
     // this.onMouseDown.on(e => {
     //     // this.setDebugPixel(e.x, e.y);
     // });
@@ -65,6 +67,7 @@ class DisplayImage extends BaseLogger {
   /** Fast clear using .fill() on the uint32 view (default: ARGB 0xFF00FF00). */
   clear(color = 0xFF00FF00) {
     this.buffer32?.fill(color);
+    this.markDirtyAll();
   }
 
   /** Bulk background copy – copy 32‑bit words where possible. */
@@ -81,6 +84,45 @@ class DisplayImage extends BaseLogger {
       // this.imgData.data.set(groundImage);
     }
     this.groundMask = groundMask;
+    this.markDirtyAll();
+  }
+
+  markDirtyAll() {
+    this._dirtyFull = true;
+    this._dirtyRects.length = 0;
+  }
+
+  markDirtyRect(x, y, width, height) {
+    if (!Number.isFinite(width) || !Number.isFinite(height)) {
+      this.markDirtyAll();
+      return;
+    }
+    if (width <= 0 || height <= 0) return;
+    if (this._dirtyFull) return;
+    const w = this.getWidth();
+    const h = this.getHeight();
+    if (!w || !h) return;
+    const x1 = Math.max(0, Math.floor(x));
+    const y1 = Math.max(0, Math.floor(y));
+    const x2 = Math.min(w, Math.ceil(x + width));
+    const y2 = Math.min(h, Math.ceil(y + height));
+    if (x2 <= x1 || y2 <= y1) return;
+    this._dirtyRects.push({ x: x1, y: y1, width: x2 - x1, height: y2 - y1 });
+    if (this._dirtyRects.length > 96) {
+      this.markDirtyAll();
+    }
+  }
+
+  consumeDirtyRects() {
+    if (this._dirtyFull || !this.imgData) {
+      this._dirtyFull = false;
+      this._dirtyRects.length = 0;
+      return null;
+    }
+    if (!this._dirtyRects.length) return [];
+    const rects = this._dirtyRects.slice();
+    this._dirtyRects.length = 0;
+    return rects;
   }
     
   /* ---------- primitive drawing ---------- */
@@ -112,6 +154,7 @@ class DisplayImage extends BaseLogger {
     const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
     let idx = y1 * w + x;
     for (let y = y1; y <= y2; y++, idx += w) this.buffer32[idx] = color32;
+    this.markDirtyRect(x, y1, 1, (y2 - y1) + 1);
   }
 
   /** Horizontal 1‑px line (uint32 writes) */
@@ -125,6 +168,7 @@ class DisplayImage extends BaseLogger {
     const color32 = 0xFF000000 | (b & 0xFF) << 16 | (g & 0xFF) << 8 | (r & 0xFF);
     let idx = y * w + x1;
     for (let x = x1; x <= x2; x++, idx++) this.buffer32[idx] = color32;
+    this.markDirtyRect(x1, y, (x2 - x1) + 1, 1);
   }
 
   /**
@@ -157,6 +201,7 @@ class DisplayImage extends BaseLogger {
       color1,
       color2
     );
+    this.markDirtyRect(x, y, width + 1, height + 1);
   }
 
   /** Draw rectangle outline with a dashed pattern. */
@@ -195,6 +240,7 @@ class DisplayImage extends BaseLogger {
         color,
         0x00000000
       );
+      this.markDirtyRect(x, y, width + 1, height + 1);
       return;
     }
 
@@ -209,6 +255,7 @@ class DisplayImage extends BaseLogger {
       color1OrB,
       color2OrDashLen
     );
+    this.markDirtyRect(x, y, width + 1, height + 1);
   }
 
   /** Draw a stippled rectangle fill (simple checkerboard pattern). */
@@ -222,6 +269,7 @@ class DisplayImage extends BaseLogger {
         if (((dx + dy) & 1) === 0) this.buffer32[idx] = color32;
       }
     }
+    this.markDirtyRect(x, y, width + 1, height + 1);
   }
 
   /**
@@ -289,6 +337,7 @@ class DisplayImage extends BaseLogger {
         this.buffer32[destRow] = WHITE;
       }
     }
+    this.markDirtyRect(baseX, baseY, srcW, srcH);
   }
 
   /**
@@ -319,6 +368,7 @@ class DisplayImage extends BaseLogger {
     const dstW = size?.width  ?? srcW;
     const dstH = size?.height ?? srcH;
     const isScaled = (dstW !== srcW) || (dstH !== srcH);
+    this.markDirtyRect(baseX, baseY, dstW, dstH);
 
     if (!isScaled) {
       const spanCache = frame.getSpanCache?.();
