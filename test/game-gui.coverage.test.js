@@ -374,6 +374,31 @@ describe('GameGui coverage', function() {
     });
   });
 
+  it('draws marching-ants overlays on the dedicated GUI overlay plane when available', function() {
+    const display = makeDisplay();
+    const overlayDisplay = makeDisplay();
+    overlayDisplay.clearCalls = 0;
+    overlayDisplay.clear = function() { this.clearCalls += 1; };
+    display.stage.getGuiOverlayDisplay = () => overlayDisplay;
+    display.stage.setGuiOverlayVisible = (value) => { display.stage.overlayVisible = value; };
+
+    const { gui } = makeGui({ running: false, speedFactor: 1 });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.backgroundChanged = true;
+    gui.gameTimeChanged = true;
+    gui.nukePrepared = true;
+    gui._hoverPanelIdx = 11;
+    gui._selectionCounter = gui.selectionAnimDelay - 1;
+
+    gui.render();
+
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(overlayDisplay.ants).to.be.greaterThan(0);
+    expect(display.ants).to.equal(0);
+    expect(display.stage.overlayVisible).to.equal(true);
+  });
+
   it('throttles marching-ant offset updates while paused and idle', function() {
     const display = makeDisplay();
     const { gui } = makeGui({ running: false });

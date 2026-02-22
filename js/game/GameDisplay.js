@@ -49,6 +49,7 @@ class GameDisplay {
     this._dashOffset = 0;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+    this._overlayHadContent = false;
     this._redundantActions = {
       [SkillTypes.BASHER]: getDependency('ActionBashSystem', ActionBashSystem),
       [SkillTypes.BLOCKER]: getDependency('ActionBlockerSystem', ActionBlockerSystem),
@@ -126,13 +127,31 @@ class GameDisplay {
       this.level.render(this.display);
       this.objectManager.render(this.display);
       this.lemmingManager.render(this.display);
+      const overlayDisplay = this._getGameOverlayDisplay();
+      const targetDisplay = overlayDisplay || this.display;
+      let hasOverlay = false;
       if (!this.game.showDebug) {
         const sel = this.lemmingManager.getSelectedLemming();
-        if (sel && !sel.removed) this.#drawSelection(sel);
+        if (sel && !sel.removed) {
+          hasOverlay = true;
+        }
+        if (this.hoverLemming && !this.hoverLemming.removed) {
+          hasOverlay = true;
+        }
+        if (overlayDisplay && (hasOverlay || this._overlayHadContent)) {
+          overlayDisplay.clear(0x00000000);
+        }
+        if (sel && !sel.removed) this.#drawSelection(sel, targetDisplay);
 
         if (this.hoverLemming && !this.hoverLemming.removed) {
-          this.#drawHover(this.hoverLemming);
+          this.#drawHover(this.hoverLemming, targetDisplay);
         }
+      } else if (overlayDisplay && this._overlayHadContent) {
+        overlayDisplay.clear(0x00000000);
+      }
+      if (overlayDisplay) {
+        this._overlayHadContent = hasOverlay;
+        this.display?.stage?.setGameOverlayVisible?.(hasOverlay);
       }
     } finally {
       if (perfEnabled) {
@@ -159,11 +178,21 @@ class GameDisplay {
       this.level.renderDebug(this.display);
       this.lemmingManager.renderDebug(this.display);
       this.triggerManager.renderDebug(this.display);
+      const overlayDisplay = this._getGameOverlayDisplay();
+      const targetDisplay = overlayDisplay || this.display;
+      const hasOverlay = !!this.hoverLemming;
+      if (overlayDisplay && (hasOverlay || this._overlayHadContent)) {
+        overlayDisplay.clear(0x00000000);
+      }
       if (this.hoverLemming) {
         const x = this.hoverLemming.x - 5;
         const y = this.hoverLemming.y - 11;
-        this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
+        targetDisplay.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
         this._dashOffset = (this._dashOffset + 1) % 6;
+      }
+      if (overlayDisplay) {
+        this._overlayHadContent = hasOverlay;
+        this.display?.stage?.setGameOverlayVisible?.(hasOverlay);
       }
     } finally {
       if (perfEnabled) {
@@ -183,7 +212,7 @@ class GameDisplay {
     this.display.drawRect(x, y, 2, 2, r, g, b, true);
   }
 
-  #drawSelection(lem) {
+  #drawSelection(lem, target = this.display) {
     const x = lem.x - 5;
     const y = lem.y - 11; // sits a bit higher
 
@@ -197,7 +226,7 @@ class GameDisplay {
       }
     }
 
-    this.display.drawCornerRect(
+    target.drawCornerRect(
       x,
       y,
       LEMMING_HIGHLIGHT_SIZE,
@@ -208,12 +237,12 @@ class GameDisplay {
     );
   }
 
-  #drawHover(lem) {
+  #drawHover(lem, target = this.display) {
     const x = lem.x - 5;
     const y = lem.y - 11; // sits a bit higher
     const color = 0x5e5e5e; // slightly lighter grey
 
-    this.display.drawCornerRect(
+    target.drawCornerRect(
       x,
       y,
       LEMMING_HIGHLIGHT_SIZE,
@@ -229,6 +258,10 @@ class GameDisplay {
     }
   };
 
+  _getGameOverlayDisplay() {
+    return this.display?.stage?.getGameOverlayDisplay?.() || null;
+  }
+
   dispose() {
     if (this.display && this._mouseHandler) {
       this.display.onMouseDown.off(this._mouseHandler);
@@ -242,6 +275,7 @@ class GameDisplay {
       window.cancelAnimationFrame(this._hoverRafId);
       this._hoverRafId = 0;
     }
+    this.display?.stage?.setGameOverlayVisible?.(false);
     this.display = null;
     this.game = null;
     this.level = null;
@@ -250,6 +284,7 @@ class GameDisplay {
     this.triggerManager = null;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+    this._overlayHadContent = false;
   }
 }
 

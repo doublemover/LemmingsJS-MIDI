@@ -144,6 +144,43 @@ describe('GameDisplay', function() {
     expect(calls[0][5]).to.equal(255);
   });
 
+  it('renders selection and hover on the stage overlay plane when available', function() {
+    const baseCalls = [];
+    const overlayCalls = [];
+    const overlayDisplay = {
+      clearCalls: 0,
+      clear() { this.clearCalls += 1; },
+      drawCornerRect(...args) { overlayCalls.push(args); }
+    };
+    const stage = {
+      visible: null,
+      getGameOverlayDisplay() { return overlayDisplay; },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({
+      stage,
+      drawCornerRect(...args) { baseCalls.push(args); }
+    });
+    const selected = makeLemming(1);
+    const hover = makeLemming(2);
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: {
+        render() {},
+        getSelectedLemming() { return selected; }
+      }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+    gd.hoverLemming = hover;
+
+    gd.render();
+
+    expect(baseCalls.length).to.equal(0);
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(overlayCalls.length).to.equal(2);
+    expect(stage.visible).to.equal(true);
+  });
+
   it('exposes drawCorner test hook', function() {
     const display = makeDisplay({ drawRect(...args) { this.args = args; } });
     const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();

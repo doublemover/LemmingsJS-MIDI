@@ -71,6 +71,10 @@ class Stage {
     this._perfFrameCount = 0;
     this._lastGameDrawSignature = '';
     this._lastGuiDrawSignature = '';
+    this._lastGameOverlayDrawSignature = '';
+    this._lastGuiOverlayDrawSignature = '';
+    this._gameOverlayVisible = false;
+    this._guiOverlayVisible = false;
     this.panEnabled = true;
     this._resizeRaf = 0;
     this._lastStageWidth = NaN;
@@ -95,9 +99,13 @@ class Stage {
     this._ctxStrokeStyle = '';
     this.gameImgProps = new StageImageProperties();
     this.guiImgProps  = new StageImageProperties();
+    this.gameOverlayImgProps = new StageImageProperties();
+    this.guiOverlayImgProps = new StageImageProperties();
 
     // HUD always starts at scale = 4
     this.guiImgProps.viewPoint = new ViewPoint(0, 0, 4);
+    this.gameOverlayImgProps.viewPoint = this.gameImgProps.viewPoint;
+    this.guiOverlayImgProps.viewPoint = this.guiImgProps.viewPoint;
     this._rawScale = this.gameImgProps.viewPoint.scale || 1;
 
     // Initialize DisplayImage instances
@@ -155,6 +163,9 @@ class Stage {
     this.guiEnabled = !!enabled;
     if (!this.guiEnabled) {
       this.guiImgProps.display = null;
+      this.guiOverlayImgProps.display = null;
+      this._guiOverlayVisible = false;
+      this._lastGuiOverlayDrawSignature = '';
     }
     this.updateStageSize();
   }
@@ -386,6 +397,7 @@ class Stage {
       y: guiActive ? (stageH - hudH - margin) : 0
     });
     this.guiImgProps.canvasViewportSize = { width: hudW, height: hudH };
+    this._syncOverlayLayout();
 
     if (this.gameImgProps.display) {
       const { width: worldW, height: worldH } = this.gameImgProps.display.worldDataSize;
@@ -415,6 +427,9 @@ class Stage {
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }
+
+    this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
+    this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
   }
   getStageImageAt(x, y) {
     const { width: gameW, height: gameH } =
@@ -450,6 +465,30 @@ class Stage {
     if (this.guiImgProps.display) return this.guiImgProps.display;
     this.guiImgProps.display = new DisplayImage(this);
     return this.guiImgProps.display;
+  }
+
+  getGameOverlayDisplay() {
+    if (this.gameOverlayImgProps.display) return this.gameOverlayImgProps.display;
+    this.gameOverlayImgProps.display = new DisplayImage(this);
+    this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
+    this.gameOverlayImgProps.display.clear(0x00000000);
+    return this.gameOverlayImgProps.display;
+  }
+
+  getGuiOverlayDisplay() {
+    if (this.guiOverlayImgProps.display) return this.guiOverlayImgProps.display;
+    this.guiOverlayImgProps.display = new DisplayImage(this);
+    this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
+    this.guiOverlayImgProps.display.clear(0x00000000);
+    return this.guiOverlayImgProps.display;
+  }
+
+  setGameOverlayVisible(visible) {
+    this._gameOverlayVisible = !!visible;
+  }
+
+  setGuiOverlayVisible(visible) {
+    this._guiOverlayVisible = !!visible;
   }
 
   setGameViewPointPosition(x, y, options = {}) {
@@ -516,22 +555,37 @@ class Stage {
     this._perfTrackingFrame = true;
     this._perfDrawMs = 0;
     this._perfClearMs = 0;
+    this._syncOverlayLayout();
+    this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
+    this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
     const gameDisplay = this.gameImgProps.display;
     const guiDisplay = this.guiImgProps.display;
+    const gameOverlayDisplay = this.gameOverlayImgProps.display;
+    const guiOverlayDisplay = this.guiOverlayImgProps.display;
     const gameSig = gameDisplay ? this._getDrawSignature(this.gameImgProps) : '';
     const guiSig = guiDisplay ? this._getDrawSignature(this.guiImgProps) : '';
+    const gameOverlaySig = gameOverlayDisplay ? this._getDrawSignature(this.gameOverlayImgProps) : '';
+    const guiOverlaySig = guiOverlayDisplay ? this._getDrawSignature(this.guiOverlayImgProps) : '';
     const gameDirty = !!gameDisplay &&
       (gameDisplay.hasPendingDirty?.() || gameSig !== this._lastGameDrawSignature);
     const guiDirty = !!guiDisplay &&
       (guiDisplay.hasPendingDirty?.() || guiSig !== this._lastGuiDrawSignature);
+    const gameOverlayDirty = !!gameOverlayDisplay &&
+      (gameOverlayDisplay.hasPendingDirty?.() || gameOverlaySig !== this._lastGameOverlayDrawSignature);
+    const guiOverlayDirty = !!guiOverlayDisplay &&
+      (guiOverlayDisplay.hasPendingDirty?.() || guiOverlaySig !== this._lastGuiOverlayDrawSignature);
+    const overlayDirty = gameOverlayDirty || guiOverlayDirty;
+    const overlayVisible = this._gameOverlayVisible || (this.guiEnabled && this._guiOverlayVisible);
     const requiresFullComposite =
       forceComposite ||
       this.fadeAlpha !== 0 ||
       this.overlayAlpha > 0 ||
       this.perfOverlayEnabled ||
-      !!this.cursorCanvas;
+      !!this.cursorCanvas ||
+      overlayDirty ||
+      (overlayVisible && (gameDirty || guiDirty));
 
-    if (!requiresFullComposite && !gameDirty && !guiDirty) {
+    if (!requiresFullComposite && !gameDirty && !guiDirty && !overlayDirty) {
       this._perfTrackingFrame = false;
       this._perfFrameCount += 1;
       this._perfFrameMs = perfNow() - start;
@@ -556,6 +610,14 @@ class Stage {
         this.draw(this.guiImgProps, guiImg);
         this._lastGuiDrawSignature = guiSig;
       }
+      if (gameOverlayDisplay && (this._gameOverlayVisible || gameOverlayDirty)) {
+        const overlayImg = gameOverlayDisplay.getImageData();
+        this.draw(this.gameOverlayImgProps, overlayImg, { applyStageEffects: false });
+      }
+      if (guiOverlayDisplay && (this._guiOverlayVisible || guiOverlayDirty)) {
+        const overlayImg = guiOverlayDisplay.getImageData();
+        this.draw(this.guiOverlayImgProps, overlayImg, { applyStageEffects: false });
+      }
       this.drawCursor();
     } else {
       if (gameDisplay && gameDirty) {
@@ -571,6 +633,8 @@ class Stage {
         this._lastGuiDrawSignature = guiSig;
       }
     }
+    this._lastGameOverlayDrawSignature = gameOverlaySig;
+    this._lastGuiOverlayDrawSignature = guiOverlaySig;
     this._perfTrackingFrame = false;
     this._perfFrameCount += 1;
     this._perfFrameMs = perfNow() - start;
@@ -583,9 +647,19 @@ class Stage {
   }
 
   createImage(displayOwner, width, height) {
-    return displayOwner === this.gameImgProps.display
-      ? this.gameImgProps.createImage(width, height)
-      : this.guiImgProps.createImage(width, height);
+    if (displayOwner === this.gameImgProps.display) {
+      return this.gameImgProps.createImage(width, height);
+    }
+    if (displayOwner === this.guiImgProps.display) {
+      return this.guiImgProps.createImage(width, height);
+    }
+    if (displayOwner === this.gameOverlayImgProps.display) {
+      return this.gameOverlayImgProps.createImage(width, height);
+    }
+    if (displayOwner === this.guiOverlayImgProps.display) {
+      return this.guiOverlayImgProps.createImage(width, height);
+    }
+    return this.gameImgProps.createImage(width, height);
   }
 
   clear(stageImage) {
@@ -729,10 +803,14 @@ class Stage {
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();
     if (this.guiImgProps.display?.dispose)  this.guiImgProps.display.dispose();
+    if (this.gameOverlayImgProps.display?.dispose) this.gameOverlayImgProps.display.dispose();
+    if (this.guiOverlayImgProps.display?.dispose)  this.guiOverlayImgProps.display.dispose();
     if (this.controller?.dispose)            this.controller.dispose();
     this.controller = null;
     this.gameImgProps = null;
     this.guiImgProps  = null;
+    this.gameOverlayImgProps = null;
+    this.guiOverlayImgProps = null;
     this.stageCtx = null;
     this.stageCav     = null;
     this._overlayFallbackCanvas = null;
@@ -742,7 +820,8 @@ class Stage {
     this._overlayFallbackDisplay = null;
   }
 
-  draw(display, img) {
+  draw(display, img, options = {}) {
+    const applyStageEffects = options.applyStageEffects !== false;
     const start = this._perfTrackingFrame ? perfNow() : 0;
     if (!display.ctx) return;
 
@@ -837,14 +916,14 @@ class Stage {
       Math.trunc(dh)
     );
 
-    if (this.fadeAlpha !== 0) {
+    if (applyStageEffects && this.fadeAlpha !== 0) {
       this._setGlobalAlpha(this.fadeAlpha);
       this._setFillStyle('black');
       ctx.fillRect(display.x, display.y, Math.trunc(dw), Math.trunc(dh));
       this._setGlobalAlpha(1);
     }
 
-    if (this.overlayAlpha > 0) {
+    if (applyStageEffects && this.overlayAlpha > 0) {
       this._setGlobalAlpha(this.overlayAlpha);
       this._setFillStyle(this.overlayColor);
       const r = this.overlayRect || {
@@ -1004,6 +1083,37 @@ class Stage {
       vp?.y ?? 0,
       vp?.scale ?? 1
     ].join('|');
+  }
+
+  _syncOverlayLayout() {
+    this.gameOverlayImgProps.x = this.gameImgProps.x;
+    this.gameOverlayImgProps.y = this.gameImgProps.y;
+    this.gameOverlayImgProps.canvasViewportSize = {
+      width: this.gameImgProps.width,
+      height: this.gameImgProps.height
+    };
+    this.gameOverlayImgProps.viewPoint = this.gameImgProps.viewPoint;
+    this.guiOverlayImgProps.x = this.guiImgProps.x;
+    this.guiOverlayImgProps.y = this.guiImgProps.y;
+    this.guiOverlayImgProps.canvasViewportSize = {
+      width: this.guiImgProps.width,
+      height: this.guiImgProps.height
+    };
+    this.guiOverlayImgProps.viewPoint = this.guiImgProps.viewPoint;
+  }
+
+  _syncOverlayDisplaySize(baseProps, overlayProps) {
+    const baseDisplay = baseProps?.display;
+    const overlayDisplay = overlayProps?.display;
+    if (!baseDisplay || !overlayDisplay) return;
+    const { width, height } = baseDisplay.worldDataSize;
+    if (!Number.isFinite(width) || !Number.isFinite(height) || width < 1 || height < 1) {
+      return;
+    }
+    const needsResize = overlayDisplay.getWidth() !== width || overlayDisplay.getHeight() !== height;
+    if (!needsResize) return;
+    overlayDisplay.initSize(width, height);
+    overlayDisplay.clear(0x00000000);
   }
 
   _setGlobalAlpha(value) {

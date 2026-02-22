@@ -54,6 +54,7 @@ class GameGui {
     this.display          = null;
     this.miniMap          = null;
     this.deltaReleaseRate = 0;
+    this._overlayHadContent = false;
 
     /* marching ants selection animation settings */
     this.selectionDashLen   = 4;   // length of dash segments (1px longer)
@@ -389,6 +390,8 @@ class GameGui {
       }
     }
     this.display = display;
+    this.display?.stage?.setGuiOverlayVisible?.(false);
+    this._overlayHadContent = false;
     if (!this.miniMap) {
       const MiniMapCtor = getDependency('MiniMap', MiniMap);
       this.setMiniMap(new MiniMapCtor(this.game.gameDisplay, this.game.level, display));
@@ -462,6 +465,7 @@ class GameGui {
         this.display[event].off(handler);
       }
     }
+    this.display?.stage?.setGuiOverlayVisible?.(false);
     this._letterCache = null;
     this._numRightCache = null;
     this._numLeftCache = null;
@@ -470,6 +474,7 @@ class GameGui {
     if (this.miniMap?.dispose) this.miniMap.dispose();
     this.miniMap = null;
     this.smoothScroller = null;
+    this._overlayHadContent = false;
 
   }
 
@@ -495,6 +500,7 @@ class GameGui {
       return;
     }
     const d = this.display;
+    const overlayDisplay = d.stage?.getGuiOverlayDisplay?.() || null;
     const bench = app?.bench === true || app?.bench2 === true || app?.benchReverse === true || app?.benchSequence === true;
     if (bench) this.gameTimeChanged = true;
 
@@ -623,18 +629,6 @@ class GameGui {
       this.skillSelectionChanged = false;
     }
 
-    if (this.nukePrepared) {
-      this.drawNukeConfirm(d);
-    }
-
-    if (this._hoverPanelIdx >= 0) {
-      if (this._hoverPanelIdx === 11) {
-        if (!this.nukePrepared) this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
-      } else {
-        this.drawSkillHover(d, this._hoverPanelIdx);
-      }
-    }
-
     const paused = !this.gameTimer.isRunning();
     const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
     const antDelay = this._getSelectionAnimDelay(paused);
@@ -648,14 +642,65 @@ class GameGui {
       this._lastAntNukePrepared !== this.nukePrepared ||
       this._lastAntHoverPanel !== this._hoverPanelIdx ||
       this._lastAntOffset !== this._selectionOffset;
-    if (antStateChanged) {
+    const drawOverlayDecorations = (target) => {
+      let drawn = false;
+      if (this.nukePrepared) {
+        this.drawNukeConfirm(target);
+        drawn = true;
+      }
+      if (this._hoverPanelIdx >= 0) {
+        if (this._hoverPanelIdx === 11) {
+          if (!this.nukePrepared) this.drawSkillHover(target, this._hoverPanelIdx, 255, 128, 0);
+        } else {
+          this.drawSkillHover(target, this._hoverPanelIdx);
+        }
+        drawn = true;
+      }
       if (paused) {
-        this.drawPaused(d);
+        this.drawPaused(target);
+        drawn = true;
       }
       if (this.nukePrepared) {
-        this.drawNukeHover(d);
+        this.drawNukeHover(target);
+        drawn = true;
       }
-      this.drawSelection(d, selectedPanel);
+      if (selectedPanel >= 0) {
+        this.drawSelection(target, selectedPanel);
+        drawn = true;
+      }
+      return drawn;
+    };
+
+    if (overlayDisplay) {
+      if (antStateChanged) {
+        overlayDisplay.clear(0x00000000);
+        this._overlayHadContent = drawOverlayDecorations(overlayDisplay);
+        d.stage?.setGuiOverlayVisible?.(this._overlayHadContent);
+      }
+    } else {
+      if (this.nukePrepared) {
+        this.drawNukeConfirm(d);
+      }
+      if (this._hoverPanelIdx >= 0) {
+        if (this._hoverPanelIdx === 11) {
+          if (!this.nukePrepared) this.drawSkillHover(d, this._hoverPanelIdx, 255, 128, 0);
+        } else {
+          this.drawSkillHover(d, this._hoverPanelIdx);
+        }
+      }
+      if (antStateChanged) {
+        if (paused) {
+          this.drawPaused(d);
+        }
+        if (this.nukePrepared) {
+          this.drawNukeHover(d);
+        }
+        this.drawSelection(d, selectedPanel);
+      }
+      this._overlayHadContent = false;
+    }
+
+    if (antStateChanged) {
       this._lastAntPanel = selectedPanel;
       this._lastAntPaused = paused;
       this._lastAntNukePrepared = this.nukePrepared;

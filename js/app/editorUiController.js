@@ -135,6 +135,7 @@ class EditorUiController {
     this._shiftKey = false;
     this._altKey = false;
     this._antsOffset = 0;
+    this._selectionOverlayVisible = false;
     this._needsDefaultEntrances = false;
     this.shortcutOverlay = null;
     this._dirty = false;
@@ -1717,10 +1718,20 @@ class EditorUiController {
   _drawSelectionOverlay() {
     if (!this.view?.game || !this.view.stage) return;
     this.view.game.render();
-    const display = this.view.stage.getGameDisplay();
+    const stage = this.view.stage;
+    const baseDisplay = stage.getGameDisplay();
+    const overlayDisplay = stage.getGameOverlayDisplay?.() || null;
+    const display = overlayDisplay || baseDisplay;
     const selectedEntries = this.controller.getSelectedEntries();
     const marquee = this.controller.getMarqueeBounds();
     const steelEntries = this.session?.level?.steel;
+    const hasMarquee = !!marquee;
+    const hasSteelOverlay = !!display?.drawStippleRect && Array.isArray(steelEntries) && steelEntries.length > 0;
+    const hasSelectionOverlay = selectedEntries.length > 0;
+    const hasOverlay = hasMarquee || hasSteelOverlay || hasSelectionOverlay;
+    if (overlayDisplay && (hasOverlay || this._selectionOverlayVisible)) {
+      overlayDisplay.clear(0x00000000);
+    }
     if (marquee) {
       this._antsOffset = (this._antsOffset + 1) % 12;
       display.drawMarchingAntRect(
@@ -1790,7 +1801,13 @@ class EditorUiController {
         display.drawRect(hx - half, hy - half, handleSize - 1, handleSize - 1, 255, 255, 255, true);
       }
     }
-    this.view.stage.redraw();
+    if (overlayDisplay) {
+      this._selectionOverlayVisible = hasOverlay;
+      stage.setGameOverlayVisible?.(hasOverlay);
+    } else {
+      this._selectionOverlayVisible = false;
+    }
+    stage.redraw();
   }
 
   _togglePlaytest() {

@@ -265,6 +265,25 @@ describe('Stage', function() {
     expect(releasedTiles).to.equal(consumedTiles);
   });
 
+  it('composites dedicated overlay planes without mutating base display dirty state', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.guiImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+    stage.redraw(true);
+    expect(stage.gameImgProps.display.hasPendingDirty()).to.equal(false);
+
+    const gameOverlay = stage.getGameOverlayDisplay();
+    gameOverlay.clear(0x00000000);
+    gameOverlay.drawMarchingAntRect(1, 1, 6, 6, 2, 0);
+    stage.setGameOverlayVisible(true);
+    stage.redraw();
+
+    expect(stage.gameImgProps.display.hasPendingDirty()).to.equal(false);
+    expect(stage.gameOverlayImgProps.display).to.equal(gameOverlay);
+  });
+
   it('parses overlay colors with and without alpha', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
