@@ -1,4 +1,4 @@
-import { BaseLogger, withPerformance } from '../util/LogHandler.js';
+import { BaseLogger } from '../util/LogHandler.js';
 import { Animation } from '../render/Animation.js';
 import { ColorPalette } from '../render/ColorPalette.js';
 import { Frame } from '../render/Frame.js';
@@ -21,6 +21,28 @@ const ICE_COLORS   = Object.freeze([
   ColorPalette.colorFromRGB(0, 64, 152),
   ColorPalette.colorFromRGB(64, 160, 255)
 ]);
+
+const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
+  typeof performance.now === 'function' &&
+  typeof performance.measure === 'function');
+
+const SET_MAP_OBJECTS_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'Level',
+    trackGroup: 'Game State',
+    color: 'primary-light',
+    tooltipText: 'setMapObjects'
+  })
+});
+
+const SET_STEEL_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'Level',
+    trackGroup: 'Game State',
+    color: 'secondary-light',
+    tooltipText: 'newSetSteelAreas'
+  })
+});
 
 class Level extends BaseLogger {
   constructor(width, height) {
@@ -54,81 +76,92 @@ class Level extends BaseLogger {
   }
 
   setMapObjects(objects, objectImg) {
-    withPerformance(
-      'setMapObjects',
-      {
-        track: 'Level',
-        trackGroup: 'Game State',
-        color: 'primary-light',
-        tooltipText: 'setMapObjects'
-      },
-      () => {
-        this.objects.length = 0;
-        this.entrances.length = 0;
-        this.triggers.length = 0;
-        let arrowRects = [];
-        for (const ob of objects) {
-          let objectInfo = objectImg[ob.id];
-          if (objectInfo == null) continue;
+    const app = globalThis?.lemmings ?? null;
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      this.objects.length = 0;
+      this.entrances.length = 0;
+      this.triggers.length = 0;
+      this.arrowTriggers.length = 0;
+      let arrowRects = [];
+      for (const ob of objects) {
+        let objectInfo = objectImg[ob.id];
+        if (objectInfo == null) continue;
 
-          // // Ice palette swap for fire shooter traps
-          // if (ob.id === 8 || ob.id === 10) {
-          //   const pal = new ColorPalette();
-          //   for (let i = 0; i < 16; ++i) {
-          //     pal.setColorInt(i, objectInfo.palette.getColor(i));
-          //   }
-          //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
-          //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
-          //   }
+        // // Ice palette swap for fire shooter traps
+        // if (ob.id === 8 || ob.id === 10) {
+        //   const pal = new ColorPalette();
+        //   for (let i = 0; i < 16; ++i) {
+        //     pal.setColorInt(i, objectInfo.palette.getColor(i));
+        //   }
+        //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
+        //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
+        //   }
 
-          //   const clone = new ObjectImageInfo();
-          //   Object.assign(clone, objectInfo);
-          //   clone.palette = pal;
-          //   objectInfo = clone;
-          // }
-          let tfxID = objectInfo.trigger_effect_id;
+        //   const clone = new ObjectImageInfo();
+        //   Object.assign(clone, objectInfo);
+        //   clone.palette = pal;
+        //   objectInfo = clone;
+        // }
+        let tfxID = objectInfo.trigger_effect_id;
 
-          if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
-            tfxID = 12;
+        if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
+          tfxID = 12;
+        }
+
+        const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID);
+        this.objects.push(mapOb);
+        if (ob.id === 1) this.entrances.push(ob);
+
+        if (tfxID !== 0) {
+          const x1 = ob.x + objectInfo.trigger_left;
+          const y1 = ob.y + objectInfo.trigger_top;
+          const x2 = x1 + objectInfo.trigger_width;
+          const y2 = y1 + objectInfo.trigger_height;
+          let repeatDelay = 0;
+          if (tfxID != 1) {
+            if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) {
+              repeatDelay = objectInfo.frameCount;
+            }
           }
 
-          const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID);
-          this.objects.push(mapOb);
-          if (ob.id === 1) this.entrances.push(ob);
+          let trigger = new Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
 
-          if (tfxID !== 0) {
-            const x1 = ob.x + objectInfo.trigger_left;
-            const y1 = ob.y + objectInfo.trigger_top;
-            const x2 = x1 + objectInfo.trigger_width;
-            const y2 = y1 + objectInfo.trigger_height;
-            let repeatDelay = 0;
-            if (tfxID != 1) {
-              if (tfxID != 5 && tfxID != 6 && tfxID != 7 && tfxID != 8 && tfxID != 12) {
-                repeatDelay = objectInfo.frameCount;
-              }
-            }
-
-            let trigger = new Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
-
-            if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
-              const newRange = new Range();
-              newRange.x = ob.x + objectInfo.trigger_left;
-              newRange.y = ob.y + objectInfo.trigger_top;
-              newRange.width = objectInfo.trigger_width;
-              newRange.height = objectInfo.trigger_height;
-              newRange.direction = mapOb.triggerType == 8 ? 1 : 0;
-              arrowRects.push(newRange);
-              this.arrowTriggers.push(trigger);
-            }
-
-            this.triggers.push(trigger);
+          if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
+            const newRange = new Range();
+            newRange.x = ob.x + objectInfo.trigger_left;
+            newRange.y = ob.y + objectInfo.trigger_top;
+            newRange.width = objectInfo.trigger_width;
+            newRange.height = objectInfo.trigger_height;
+            newRange.direction = mapOb.triggerType == 8 ? 1 : 0;
+            arrowRects.push(newRange);
+            this.arrowTriggers.push(trigger);
           }
+
+          this.triggers.push(trigger);
         }
-        if (arrowRects.length > 0) {
-          this.setArrowAreas(arrowRects);
+      }
+      if (arrowRects.length > 0) {
+        this.setArrowAreas(arrowRects);
+      } else {
+        this.arrowRanges = new Int32Array(0);
+      }
+      this._debugFrame = null; // invalidate cached debug overlay
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('setMapObjects', {
+            start: perfStart,
+            detail: SET_MAP_OBJECTS_MEASURE_DETAIL
+          });
+        } catch {
+          /* ignored */
         }
-        this._debugFrame = null; // invalidate cached debug overlay
-      })();
+      }
+    }
   }
 
   getGroundMaskLayer() { return this.groundMask; }
@@ -293,48 +326,56 @@ class Level extends BaseLogger {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
-    withPerformance(
-      'newSetSteelAreas',
-      {
-        track: 'Level',
-        trackGroup: 'Game State',
-        color: 'secondary-light',
-        tooltipText: 'newSetSteelAreas'
-      },
-      () => {
-        if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
-          this.steelMask = new SolidLayer(this.width, this.height);
-        } else {
-          // Clear all
-          this.steelMask.mask.fill(0);
-        }
-        const { levelWidth, levelHeight, terrains } = levelReader;
-        let newSteelRanges = [];
-        if (this.steelRanges.length == 0) return;
-        for (let i = 0, len = terrains.length; i < len; ++i) {
-          const tObj = terrains[i];
-          const terImg = terrainImages[tObj.id];
-          if (terImg.isSteel == true) {
-            const newRange = new Range();
-            newRange.x = tObj.x;
-            newRange.y = tObj.y;
-            newRange.width = terImg.steelWidth;
-            newRange.height = terImg.steelHeight;
-            for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
-              for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
-                if (this.isSteelAt(dx,dy, true)) {
-                  newSteelRanges.push(newRange);
-                  this.steelMask.setMaskAt(dx, dy);
-                }
+    const app = globalThis?.lemmings ?? null;
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (!this.steelMask || this.steelMask.width !== this.width || this.steelMask.height !== this.height) {
+        this.steelMask = new SolidLayer(this.width, this.height);
+      } else {
+        // Clear all
+        this.steelMask.mask.fill(0);
+      }
+      const { terrains } = levelReader;
+      let newSteelRanges = [];
+      if (this.steelRanges.length == 0) return;
+      for (let i = 0, len = terrains.length; i < len; ++i) {
+        const tObj = terrains[i];
+        const terImg = terrainImages[tObj.id];
+        if (terImg.isSteel == true) {
+          const newRange = new Range();
+          newRange.x = tObj.x;
+          newRange.y = tObj.y;
+          newRange.width = terImg.steelWidth;
+          newRange.height = terImg.steelHeight;
+          for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
+            for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
+              if (this.isSteelAt(dx,dy, true)) {
+                newSteelRanges.push(newRange);
+                this.steelMask.setMaskAt(dx, dy);
               }
             }
           }
         }
-        if (newSteelRanges.length > 0) {
-          this.steelRanges = new Int32Array(0);
-          this.setSteelAreas(newSteelRanges);
+      }
+      if (newSteelRanges.length > 0) {
+        this.steelRanges = new Int32Array(0);
+        this.setSteelAreas(newSteelRanges);
+      }
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('newSetSteelAreas', {
+            start: perfStart,
+            detail: SET_STEEL_MEASURE_DETAIL
+          });
+        } catch {
+          /* ignored */
         }
-      })();
+      }
+    }
   }
 
   setSteelAreas(ranges = []) {
