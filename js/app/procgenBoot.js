@@ -294,7 +294,7 @@ const init = async () => {
     activeProcgenRuntime = runtime;
 
     installE2EHarness({ view });
-    registerServiceWorker();
+    registerServiceWorker({ profile: 'perf' });
   } catch (err) {
     runtime?.controller?.stop?.();
     runtime?.stageAdapter?.dispose?.();

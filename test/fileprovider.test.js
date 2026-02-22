@@ -256,6 +256,14 @@ describe('FileProvider', function () {
     assert.strictEqual(noFile, rootPath + 'path');
   });
 
+  it('applies cache-bust revision to binary and text urls', function () {
+    provider = new FileProvider(rootPath, { cacheBustRevision: 'phase30a' });
+    const binaryUrl = provider._buildUrl('path', 'file.bin');
+    const textUrl = provider._appendCacheBust(makeUrl('config.json'));
+    assert.strictEqual(binaryUrl, rootPath + 'path/file.bin?rev=phase30a');
+    assert.strictEqual(textUrl, rootPath + 'config.json?rev=phase30a');
+  });
+
   it('_filenameFromUrl strips query and handles empty', function () {
     const name = provider._filenameFromUrl('http://x/y/file.bin?x=1#hash');
     assert.strictEqual(name, 'file.bin');

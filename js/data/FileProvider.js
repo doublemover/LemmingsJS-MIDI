@@ -1,6 +1,7 @@
 import { BaseLogger } from '../util/LogHandler.js';
 import { BinaryReader } from './BinaryReader.js';
 import { getDependency } from '../core/dependencies.js';
+import { appendRevisionParam, sanitizeCacheBust } from '../core/cacheBust.js';
 import '../util/LogHandler.js';
 
 const LOCAL_STORAGE_PREFIX = 'lem-cache:';
@@ -16,9 +17,12 @@ const IDB_MAX_BYTES = 50 * 1024 * 1024;
  * FileProvider with transparent in‑memory caching.
  */
 class FileProvider extends BaseLogger {
-  constructor(rootPath) {
+  constructor(rootPath, options = {}) {
     super();
     this.rootPath = rootPath;
+    this._cacheBustRevision = sanitizeCacheBust(
+      options.cacheBustRevision ?? options.cacheBust ?? null
+    );
 
     /**
      * Cache mapping full URL → Promise<BinaryReader> or Promise<string>.
@@ -103,27 +107,28 @@ class FileProvider extends BaseLogger {
    * Load text file as string; cached with the same rules as binary.
    */
   loadString(url, opts = {}) {
-    if (!opts.forceReload && this._cache.has(url)) {
-      return this._cache.get(url);
+    const resolvedUrl = this._appendCacheBust(url);
+    if (!opts.forceReload && this._cache.has(resolvedUrl)) {
+      return this._cache.get(resolvedUrl);
     }
 
     let promise;
     if (!opts.forceReload) {
       if (this._canUseIndexedDb()) {
-        promise = this._loadFromIndexedDb(url, 'text')
+        promise = this._loadFromIndexedDb(resolvedUrl, 'text')
           .then((cached) => {
             if (cached) return cached.value;
-            const fallback = this._loadFromLocalStorage(url, 'text');
+            const fallback = this._loadFromLocalStorage(resolvedUrl, 'text');
             if (fallback) return fallback.value;
-            return this._fetchText(url);
+            return this._fetchText(resolvedUrl);
           })
           .catch(() => {
-            const fallback = this._loadFromLocalStorage(url, 'text');
+            const fallback = this._loadFromLocalStorage(resolvedUrl, 'text');
             if (fallback) return fallback.value;
-            return this._fetchText(url);
+            return this._fetchText(resolvedUrl);
           });
       } else {
-        const cached = this._loadFromLocalStorage(url, 'text');
+        const cached = this._loadFromLocalStorage(resolvedUrl, 'text');
         if (cached) {
           promise = Promise.resolve(cached.value);
         }
@@ -132,26 +137,31 @@ class FileProvider extends BaseLogger {
 
     if (!promise) {
       // this.log.debug('loading text: ' + url);
-      promise = this._fetchText(url);
+      promise = this._fetchText(resolvedUrl);
     }
 
     const guarded = promise.catch((err) => {
-      if (!opts.forceReload) this._cache.delete(url);
+      if (!opts.forceReload) this._cache.delete(resolvedUrl);
       throw err;
     });
 
     if (!opts.forceReload) {
-      this._cache.set(url, guarded);
+      this._cache.set(resolvedUrl, guarded);
     }
     return guarded;
   }
 
   _buildUrl(path, filename) {
-    return (
+    const raw = (
       this.rootPath +
       path +
       (filename == null ? '' : '/' + filename)
     );
+    return this._appendCacheBust(raw);
+  }
+
+  _appendCacheBust(url) {
+    return appendRevisionParam(url, this._cacheBustRevision);
   }
 
   _filenameFromUrl(url) {

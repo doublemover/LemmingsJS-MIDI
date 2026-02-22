@@ -43,6 +43,10 @@ const withPerfStub = async (perf, lemmings, fn) => {
 };
 
 describe('GameFactory resource helpers', function () {
+  afterEach(function () {
+    delete globalThis.__LEMMINGS_RUNTIME_REVISION__;
+  });
+
   it('loads config and resources and builds Game', async function () {
     const mockConfig = { path: 'data', level: {} };
     const ConfigReaderStub = makeConfigReaderStub(() => mockConfig);
@@ -175,5 +179,34 @@ describe('GameFactory resource helpers', function () {
       }
     );
     restore();
+  });
+
+  it('passes runtime cache-bust revision to FileProvider', async function () {
+    class CapturingFileProvider {
+      constructor(root, options) {
+        this.root = root;
+        this.options = options || {};
+      }
+      loadString() {
+        return Promise.resolve('[]');
+      }
+    }
+    const restore = applyDeps({
+      FileProvider: CapturingFileProvider,
+      ConfigReader: makeConfigReaderStub(() => ({ path: 'data', level: {} }))
+    });
+    const previousLocation = globalThis.location;
+    globalThis.location = { search: '?rev=phase30a' };
+    try {
+      const gf = new GameFactory('root');
+      expect(gf.fileProvider.options.cacheBustRevision).to.equal('phase30a');
+    } finally {
+      if (previousLocation === undefined) {
+        delete globalThis.location;
+      } else {
+        globalThis.location = previousLocation;
+      }
+      restore();
+    }
   });
 });

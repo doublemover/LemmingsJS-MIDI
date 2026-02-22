@@ -26,5 +26,5 @@ const init = async () => {
 
 window.addEventListener('DOMContentLoaded', () => {
   init();
-  registerServiceWorker();
+  registerServiceWorker({ profile: 'editor', dev: true });
 });

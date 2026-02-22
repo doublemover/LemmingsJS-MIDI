@@ -309,7 +309,7 @@ function start() {
   init();
   midiUi?.bindMidiUi();
   midiUi?.scheduleMidiUiRefresh();
-  registerServiceWorker();
+  registerServiceWorker({ profile: lemmings?.startupProfile || 'gameplay' });
   setSize();
   bindResize();
 }

@@ -3,6 +3,7 @@ import { FileProvider } from '../data/FileProvider.js';
 import { Game } from './Game.js';
 import { GameResources } from './GameResources.js';
 import { getDependency, getAppContext } from '../core/dependencies.js';
+import { resolveRuntimeRevision } from '../core/cacheBust.js';
 
 const getApp = () => {
   const app = getAppContext();
@@ -13,10 +14,13 @@ const getApp = () => {
 };
 
 class GameFactory {
-  constructor(rootPath) {
+  constructor(rootPath, options = {}) {
     this.rootPath = rootPath;
+    this.runtimeRevision = resolveRuntimeRevision(options);
     const Provider = getDependency('FileProvider', FileProvider);
-    this.fileProvider = new Provider(rootPath);
+    this.fileProvider = new Provider(rootPath, {
+      cacheBustRevision: this.runtimeRevision
+    });
     let configFileReader = this.fileProvider.loadString('config.json');
     const Reader = getDependency('ConfigReader', ConfigReader);
     this.configReader = new Reader(configFileReader);

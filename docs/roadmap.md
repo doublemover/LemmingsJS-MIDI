@@ -498,7 +498,7 @@ Notes:
   `scripts/bench-hotpaths.js`.
 
 ## Phase 30: Platform and dev-loop reliability
-- [ ] Ensure service worker is disabled or bypassed in `dev/e2e/perf` profiles
+- [x] Ensure service worker is disabled or bypassed in `dev/e2e/perf` profiles
   and add explicit cache-busting for static assets/config changes.
   Touchpoints: `js/app/registerServiceWorker.js`, `js/app/boot.js`,
   `js/game/GameFactory.js`.
