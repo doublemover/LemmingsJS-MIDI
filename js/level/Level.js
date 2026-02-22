@@ -169,9 +169,10 @@ class Level extends BaseLogger {
 
   isOutOfLevel(y) { return y < 0 || y >= this.height; }
 
-  _clearGroundWithMaskInternal(mask, x, y) {
+  _clearGroundWithMaskInternal(mask, x, y, opts = null) {
     let changed = false;
     let removed = 0;
+    const revealSteel = opts?.revealSteel === true;
     const history = globalThis?.lemmings?.game?.history ?? null;
     const gm = this.groundMask;
     const gmMask = gm.mask;
@@ -183,14 +184,16 @@ class Level extends BaseLogger {
         if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT  
         const px = x + offsetX + dx;
         const py = y + offsetY + dy;
-        if (this.isSteelAt(px, py)) continue;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
+        const isSteel = this.isSteelAt(px, py);
+        if (isSteel && !revealSteel) continue;
         const maskIdx = py * w + px;
         const imgIdx = maskIdx * 4;
         const prevMask = gmMask[maskIdx];
         const prevR = img[imgIdx];
         const prevG = img[imgIdx + 1];
         const prevB = img[imgIdx + 2];
+        const nextMask = isSteel ? prevMask : 0;
         if (prevMask || prevR || prevG || prevB) {
           history?.recordGroundChange?.(
             maskIdx,
@@ -198,18 +201,19 @@ class Level extends BaseLogger {
             prevR,
             prevG,
             prevB,
-            0,
+            nextMask,
             0,
             0,
             0
           );
         }
-        if (prevMask) {
+        if (prevMask && !isSteel) {
           changed = true;
           gmMask[maskIdx] = 0;
         }
         if (prevR || prevG || prevB) {
           removed += 1;
+          changed = true;
         }
         img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
       }
@@ -217,12 +221,12 @@ class Level extends BaseLogger {
     return { changed, removed };
   }
 
-  clearGroundWithMask(mask, x, y) {
-    return this._clearGroundWithMaskInternal(mask, x, y).changed;
+  clearGroundWithMask(mask, x, y, opts = null) {
+    return this._clearGroundWithMaskInternal(mask, x, y, opts).changed;
   }
 
-  clearGroundWithMaskCount(mask, x, y) {
-    return this._clearGroundWithMaskInternal(mask, x, y).removed;
+  clearGroundWithMaskCount(mask, x, y, opts = null) {
+    return this._clearGroundWithMaskInternal(mask, x, y, opts).removed;
   }
 
   setGroundAt(x, y, paletteIndex) {

@@ -48,7 +48,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
     if (lem.frameIndex === 1) {
       this.triggerManager.removeByOwner(lem);
       const mask = this.masks.get('both').GetMask(0);
-      const changed = level.clearGroundWithMask(mask, lem.x, lem.y);
+      const changed = level.clearGroundWithMask(mask, lem.x, lem.y, { revealSteel: true });
       const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
       if (changed && miniMap) {
         miniMap.invalidateRegion(

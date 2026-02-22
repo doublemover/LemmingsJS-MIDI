@@ -56,6 +56,35 @@ describe('Level ground operations', function() {
     expect(result.removed).to.be.greaterThan(0);
   });
 
+  it('reveals steel terrain on demand without clearing the steel mask', function() {
+    const level = new Level(2, 2);
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(2 * 2 * 4));
+    level.setPalettes(palette, palette);
+
+    level.setGroundAt(0, 0, 1);
+    level.steelMask.setMaskAt(0, 0);
+
+    const mask = {
+      offsetX: 0,
+      offsetY: 0,
+      width: 1,
+      height: 1,
+      at() { return false; }
+    };
+
+    const unchanged = level._clearGroundWithMaskInternal(mask, 0, 0);
+    expect(unchanged.changed).to.equal(false);
+    expect(level.hasGroundAt(0, 0)).to.equal(true);
+    expect(Array.from(level.groundImage.slice(0, 3))).to.eql([10, 20, 30]);
+
+    const revealed = level._clearGroundWithMaskInternal(mask, 0, 0, { revealSteel: true });
+    expect(revealed.changed).to.equal(true);
+    expect(level.hasGroundAt(0, 0)).to.equal(true);
+    expect(Array.from(level.groundImage.slice(0, 3))).to.eql([0, 0, 0]);
+  });
+
   it('records ground changes when history is available', function() {
     const calls = [];
     globalThis.lemmings.game.history = {
