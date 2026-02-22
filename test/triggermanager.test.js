@@ -33,6 +33,25 @@ describe('TriggerManager', function () {
     expect(tm.trigger(2, 2)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 
+  it('removes all same-owner triggers without skipping swap-pop entries', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 63, 31, 16);
+    const owner = { id: 'shared-owner' };
+    const a = new Trigger(TriggerTypes.BLOCKER_LEFT, 1, 1, 5, 5, 0, -1, owner);
+    const b = new Trigger(TriggerTypes.BLOCKER_RIGHT, 20, 1, 25, 5, 0, -1, owner);
+    tm.addRange([a, b]);
+
+    expect(tm.trigger(2, 2)).to.equal(TriggerTypes.BLOCKER_LEFT);
+    expect(tm.trigger(22, 2)).to.equal(TriggerTypes.BLOCKER_RIGHT);
+
+    tm.removeByOwner(owner);
+
+    expect(tm.trigger(2, 2)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(22, 2)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm._ownerTriggers.has(owner)).to.equal(false);
+    expect(tm._triggers.size).to.equal(0);
+  });
+
   it('reuses debug frame', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);
