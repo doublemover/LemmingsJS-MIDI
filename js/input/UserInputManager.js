@@ -1,5 +1,6 @@
 import { EventHandler } from '../util/EventHandler.js';
 import { Position2D } from '../util/Position2D.js';
+import { getAppContext } from '../core/dependencies.js';
 
 class MouseMoveEventArguements extends Position2D {
   constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
@@ -305,7 +306,7 @@ class UserInputManager {
     this.lastMouseY = position.y;
 
 
-    const stage = globalThis?.lemmings?.stage;
+    const stage = getAppContext()?.stage;
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
 
     if (stage && stage.getStageImageAt) {
@@ -313,9 +314,8 @@ class UserInputManager {
 
       const stageImage = stage.getStageImageAt(position.x, position.y);
       if (
-        stageImage &&
-        stageImage.display &&
-        stageImage.display.worldDataSize.width === 1600
+        stageImage === stage.gameImgProps &&
+        stageImage?.display
       ) {
         stage.updateViewPoint(stageImage, position.x, position.y, deltaY);
         return;

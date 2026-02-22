@@ -1,5 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { setAppContext } from '../js/core/dependencies.js';
 import { ActionBashSystem } from '../js/actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../js/actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../js/actions/ActionBuildSystem.js';
@@ -188,6 +189,7 @@ function ensureMiniMap() {
   if (!globalThis.lemmings.game.lemmingManager || typeof globalThis.lemmings.game.lemmingManager !== 'object') {
     globalThis.lemmings.game.lemmingManager = { miniMap: makeMiniMap() };
   }
+  setAppContext(globalThis.lemmings);
   return globalThis.lemmings.game.lemmingManager;
 }
 

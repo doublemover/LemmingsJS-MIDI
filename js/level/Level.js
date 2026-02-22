@@ -7,6 +7,7 @@ import { Range } from '../util/Range.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { Trigger } from './Trigger.js';
+import { getAppContext } from '../core/dependencies.js';
 
 // Palette remapping for the fire shooter trap. 
 const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
@@ -44,6 +45,11 @@ const SET_STEEL_MEASURE_DETAIL = Object.freeze({
   })
 });
 
+const getRuntimeApp = () => getAppContext();
+const getRuntimeGame = () => getRuntimeApp()?.game ?? null;
+const getRuntimeHistory = () => getRuntimeGame()?.history ?? null;
+const getRuntimeMiniMap = () => getRuntimeGame()?.lemmingManager?.miniMap ?? null;
+
 class Level extends BaseLogger {
   constructor(width, height) {
     super();
@@ -76,7 +82,7 @@ class Level extends BaseLogger {
   }
 
   setMapObjects(objects, objectImg) {
-    const app = globalThis?.lemmings ?? null;
+    const app = getRuntimeApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -173,7 +179,7 @@ class Level extends BaseLogger {
     let changed = false;
     let removed = 0;
     const revealSteel = opts?.revealSteel === true;
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getRuntimeHistory();
     const gm = this.groundMask;
     const gmMask = gm.mask;
     const img = this.groundImage;
@@ -233,7 +239,7 @@ class Level extends BaseLogger {
     const maskIdx = y * this.width + x;
     const idx = (y * this.width + x) * 4;
     const gp = this.groundImage;
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getRuntimeHistory();
     if (history?.recordGroundChange) {
       const prevMask = this.groundMask.mask[maskIdx];
       const prevR = gp[idx];
@@ -258,7 +264,7 @@ class Level extends BaseLogger {
     gp[idx]     = this.colorPalette.getR(paletteIndex);
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
-    globalThis?.lemmings?.game?.lemmingManager?.miniMap?.onGroundChanged(x, y, false);
+    getRuntimeMiniMap()?.onGroundChanged(x, y, false);
   }
 
   hasGroundAt(x, y) { return this.groundMask.hasGroundAt(x, y); }
@@ -267,7 +273,7 @@ class Level extends BaseLogger {
     if (this.isSteelAt(x, y)) return;
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getRuntimeHistory();
     if (history?.recordGroundChange) {
       const maskIdx = y * this.width + x;
       const prevMask = this.groundMask.mask[maskIdx];
@@ -288,7 +294,7 @@ class Level extends BaseLogger {
     }
     this.groundMask.clearGroundAt(x, y);
     gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
-    globalThis?.lemmings?.game?.lemmingManager?.miniMap?.onGroundChanged(x, y, true);
+    getRuntimeMiniMap()?.onGroundChanged(x, y, true);
   }
 
   setArrowAreas(ranges = []) {
@@ -330,7 +336,7 @@ class Level extends BaseLogger {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
-    const app = globalThis?.lemmings ?? null;
+    const app = getRuntimeApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();

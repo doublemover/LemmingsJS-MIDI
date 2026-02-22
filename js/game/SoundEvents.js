@@ -73,7 +73,7 @@ class SoundEventBus {
   }
 
   emit(event) {
-    const app = getAppContext() || globalThis?.lemmings || (typeof lemmings !== 'undefined' ? lemmings : null);
+    const app = getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -156,12 +156,6 @@ const getSoundBus = () => {
   const app = getAppContext();
   if (app?.game?.soundEvents) {
     return app.game.soundEvents;
-  }
-  if (typeof globalThis !== 'undefined' && globalThis.lemmings?.game?.soundEvents) {
-    return globalThis.lemmings.game.soundEvents;
-  }
-  if (typeof lemmings !== 'undefined' && lemmings?.game?.soundEvents) {
-    return lemmings.game.soundEvents;
   }
   return null;
 };

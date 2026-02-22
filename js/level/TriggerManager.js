@@ -1,6 +1,7 @@
 import { ColorPalette } from '../render/ColorPalette.js';
 import { Frame } from '../render/Frame.js';
 import { TriggerTypes } from './TriggerTypes.js';
+import { getAppContext } from '../core/dependencies.js';
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
   typeof performance.now === 'function' &&
   typeof performance.measure === 'function');
@@ -83,7 +84,7 @@ class TriggerManager {
     }
     this.#insert(trigger);
     this._debugFrame = null;
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getAppContext()?.game?.history ?? null;
     if (history?.recordTriggerAdd) {
       history.recordTriggerAdd(trigger, {
         type: trigger.type,
@@ -129,7 +130,7 @@ class TriggerManager {
    * Query at pixel (x,y).  Returns a value from TriggerTypes
    */
   trigger (x, y, lemming = null, tickOverride = null) {
-    const app = globalThis?.lemmings;
+    const app = getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -297,7 +298,7 @@ class TriggerManager {
         }
       }
     }
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getAppContext()?.game?.history ?? null;
     if (history?.recordTriggerRemove) {
       history.recordTriggerRemove(trigger, {
         type: trigger.type,

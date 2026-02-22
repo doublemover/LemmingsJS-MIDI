@@ -2,6 +2,7 @@ import { Animation } from '../render/Animation.js';
 import { Frame } from '../render/Frame.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
 import { TriggerTypes } from './TriggerTypes.js';
+import { getAppContext } from '../core/dependencies.js';
 
 class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
@@ -80,7 +81,7 @@ class MapObject {
   onTrigger (globalTick, lemming = null, trigger = null, x = null, y = null) {
     // 1. restart visual cue
     if (this.animation && !this.animation.loop) {
-      const history = globalThis?.lemmings?.game?.history ?? null;
+      const history = getAppContext()?.game?.history ?? null;
       if (history?.recordObjectAnimation) {
         const prev = {
           firstFrameIndex: this.animation.firstFrameIndex,

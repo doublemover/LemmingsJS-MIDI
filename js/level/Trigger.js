@@ -1,5 +1,6 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { TriggerTypes } from './TriggerTypes.js';
+import { getAppContext } from '../core/dependencies.js';
 
 class Trigger {
   #disabledUntilTick;
@@ -30,7 +31,7 @@ class Trigger {
         const prev = this.disabledUntilTick;
         const next = tick + this.disableTicksCount;
         if (prev !== next) {
-          const history = globalThis?.lemmings?.game?.history ?? null;
+          const history = getAppContext()?.game?.history ?? null;
           history?.recordTriggerCooldown?.(this, prev, next);
         }
         this.disabledUntilTick = next;

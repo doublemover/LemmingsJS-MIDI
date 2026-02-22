@@ -2,6 +2,7 @@ import { ActionBaseSystem } from './ActionBaseSystem.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { getAppContext } from '../core/dependencies.js';
 
 class ActionDrowningSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -13,7 +14,7 @@ class ActionDrowningSystem extends ActionBaseSystem {
   draw(gameDisplay, lem) {
     super.draw(gameDisplay, lem);
     if (lem.frameIndex === 15) {
-      const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
+      const miniMap = getAppContext()?.game?.lemmingManager?.miniMap;
       if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
   }

@@ -64,26 +64,7 @@ describe('getSoundBus', function() {
     });
   });
 
-  it('falls back to lemmings global when globalThis is missing', function() {
-    const bus = new SoundEventBus(null);
-    const prev = Object.getOwnPropertyDescriptor(globalThis, 'lemmings');
-    let access = 0;
-    Object.defineProperty(globalThis, 'lemmings', {
-      configurable: true,
-      get() {
-        access += 1;
-        if (access === 1) return null;
-        return { game: { soundEvents: bus } };
-      }
-    });
-    try {
-      expect(getSoundBus()).to.equal(bus);
-    } finally {
-      if (prev) {
-        Object.defineProperty(globalThis, 'lemmings', prev);
-      } else {
-        delete globalThis.lemmings;
-      }
-    }
+  it('returns null when no app context is available', function() {
+    expect(getSoundBus()).to.equal(null);
   });
 });

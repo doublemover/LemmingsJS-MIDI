@@ -2,13 +2,7 @@ import { Frame } from './Frame.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
 
-const getApp = () => {
-  const app = getAppContext();
-  if (app) return app;
-  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
-  if (typeof lemmings !== 'undefined') return lemmings;
-  return null;
-};
+const getApp = () => getAppContext();
 
 class MiniMap {
   static palette = null;

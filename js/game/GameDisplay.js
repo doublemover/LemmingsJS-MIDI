@@ -5,7 +5,7 @@ import { ActionDiggSystem } from '../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../actions/ActionMineSystem.js';
 import { SkillTypes } from './SkillTypes.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
-import { getDependency } from '../core/dependencies.js';
+import { getAppContext, getDependency } from '../core/dependencies.js';
 
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
   typeof performance.now === 'function' &&
@@ -115,7 +115,7 @@ class GameDisplay {
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
   render() {
-    const app = globalThis?.lemmings;
+    const app = getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -148,7 +148,7 @@ class GameDisplay {
     }
   }
   renderDebug() {
-    const app = globalThis?.lemmings;
+    const app = getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();

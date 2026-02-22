@@ -111,8 +111,9 @@ describe('UserInputManager', function() {
     const zoomEvents = [];
     manager.onZoom.on((evt) => zoomEvents.push(evt));
 
-    const stageImage = { display: { worldDataSize: { width: 1600 } } };
+    const stageImage = { display: { worldDataSize: { width: 3000 } } };
     const stage = {
+      gameImgProps: stageImage,
       getStageImageAt() { return stageImage; },
       updateViewPoint() { stage.updated = true; }
     };

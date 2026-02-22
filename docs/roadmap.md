@@ -356,7 +356,7 @@ Notes:
   same scripts and runtime paths.
 
 ## Phase 23: Runtime hard-cutover and dependency cleanup
-- [ ] Remove remaining gameplay/render/action hot-path `globalThis.lemmings`
+- [x] Remove remaining gameplay/render/action hot-path `globalThis.lemmings`
   reads and route through explicit runtime dependencies/context.
   Touchpoints: `js/actions/*`, `js/level/Level.js`, `js/level/Trigger*.js`,
   `js/render/MiniMap.js`, `js/game/GameDisplay.js`, `js/game/SoundEvents.js`.
@@ -364,7 +364,7 @@ Notes:
   explicit state handoff between boot, `GameView`, and MIDI UI controller.
   Touchpoints: `js/game/GameView.js`, `js/app/boot.js`,
   `js/app/midiUiController.js`.
-- [ ] Remove magic world-width assumptions in zoom/input flow and derive zoom
+- [x] Remove magic world-width assumptions in zoom/input flow and derive zoom
   eligibility from stage/image metadata.
   Touchpoints: `js/input/UserInputManager.js`, `js/render/Stage.js`.
 - [ ] Add explicit app-context injection for MCP helpers currently reading the

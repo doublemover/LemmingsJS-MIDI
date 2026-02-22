@@ -1,3 +1,5 @@
+import { getAppContext } from '../core/dependencies.js';
+
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
   typeof performance.now === 'function' &&
   typeof performance.measure === 'function');
@@ -36,7 +38,7 @@ class ObjectManager {
   }
   /** render all Objects to the GameDisplay */
   render(gameDisplay) {
-    const app = globalThis?.lemmings;
+    const app = getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
