@@ -137,9 +137,16 @@ class GameGui {
     this._lastAntOffset = Number.NaN;
   }
 
+  _isMechanicEnabled(name, fallback = false) {
+    const value = this.game?.level?.mechanics?.[name];
+    if (typeof value === 'boolean') return value;
+    return fallback;
+  }
+
   _applyReleaseRateAuto() {
     if (!this.deltaReleaseRate) return;
-    if (this.gameTimer.isRunning()) {
+    const isRunning = this.gameTimer.isRunning();
+    if (isRunning) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
       const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
       const cur = this.gameVictoryCondition.getCurrentReleaseRate();
@@ -149,6 +156,9 @@ class GameGui {
       this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
                 (this.gameVictoryCondition.releaseRate = neu);
       this.releaseRateChanged = true;
+    }
+    if (!isRunning && !this._isMechanicEnabled('pauseGlitch', true)) {
+      return;
     }
     if (this.deltaReleaseRate > 0)
       this.game.queueCommand(new CommandReleaseRateIncrease(this.deltaReleaseRate));
@@ -275,6 +285,9 @@ class GameGui {
 
     this.nukePrepared = false; // always cancel nuke confirmation on right click
     this.gameTimeChanged = true;
+    if (!this._isMechanicEnabled('rightClickGlitch', true)) {
+      return;
+    }
 
     if (panelIndex === 0) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
@@ -311,7 +324,7 @@ class GameGui {
   }
 
   handleSkillDoubleClick(e) {
-    if (Math.trunc(e.x / 16) === 11)
+    if (Math.trunc(e.x / 16) === 11 && this._isMechanicEnabled('nukeGlitch', true))
       this.game.queueCommand(new CommandNuke());
   }
 

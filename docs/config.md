@@ -13,7 +13,7 @@
 - `level.useOddTable` – Set to `true` when the pack uses an ODDTABLE resource.
 - `mechanics` *(optional)* – Object of gameplay flags that override or extend the defaults.
 
-`packMechanics.js` supplies defaults like `classicBuilder` or `bomberAssist` for each pack. `ConfigReader` merges these defaults with the `mechanics` object from `config.json` so game code only needs to consult a single merged `mechanics` field.
+`packMechanics.js` supplies defaults like `classicBuilder`, `bomberAssist`, `pauseGlitch`, `nukeGlitch`, and `rightClickGlitch` for each pack. `ConfigReader` merges these defaults with the `mechanics` object from `config.json` so game code only needs to consult a single merged `mechanics` field.
 
 ## Runtime Startup Profiles
 

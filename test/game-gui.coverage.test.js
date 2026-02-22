@@ -105,6 +105,7 @@ const makeGui = (options = {}) => {
     level: {
       width: 100,
       height: 50,
+      mechanics: options.mechanics ?? {},
       objects: [],
       getGroundMaskLayer() { return { countMaskInRect() { return 0; } }; }
     },
@@ -261,6 +262,35 @@ describe('GameGui coverage', function() {
     timer.speedFactor = 1;
     gui.handleMouseMove({ x: 168, y: 40 });
     expect(gui._hoverSpeedUp || gui._hoverSpeedDown).to.equal(true);
+  });
+
+  it('disables glitch actions when mechanics flags are off', function() {
+    const { gui, game, timer, victory } = makeGui({
+      running: false,
+      mechanics: {
+        rightClickGlitch: false,
+        nukeGlitch: false,
+        pauseGlitch: false
+      }
+    });
+
+    gui.deltaReleaseRate = 3;
+    gui._applyReleaseRateAuto();
+    expect(game.commands.length).to.equal(0);
+
+    timer.speedFactor = 2;
+    gui.drawSpeedChange = () => { gui.speedDrawn = true; };
+    gui.handleSkillMouseRightDown({ x: 0, y: 20 });
+    gui.handleSkillMouseRightDown({ x: 16, y: 20 });
+    gui.handleSkillMouseRightDown({ x: 160, y: 20 });
+    gui.handleSkillMouseRightDown({ x: 176, y: 20 });
+    expect(game.commands.length).to.equal(0);
+    expect(victory.releaseRate).to.equal(20);
+    expect(gui.speedDrawn).to.equal(undefined);
+    expect(game.showDebug).to.equal(false);
+
+    gui.handleSkillDoubleClick({ x: 176, y: 20 });
+    expect(game.commands.length).to.equal(0);
   });
 
   it('suppresses hover when paused or skill counts are empty', function() {     

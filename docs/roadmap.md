@@ -109,7 +109,8 @@ Notes:
 - [x] Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers,
   palettes).
 - [x] Pack decompression/patch/compression pipeline.
-- [ ] Full support for pack-specific glitches.
+- [x] Full support for pack-specific glitches (pack mechanics now gate pause,
+  nuke-doubleclick, and right-click glitch behavior).
 - [x] Support for other popular pack types (`.nxp` archive reads in tooling).
 - [ ] High resolution and 32-bit color sprite support.
 - [ ] Procgen production hardening and long-run stability/perf at high entity
