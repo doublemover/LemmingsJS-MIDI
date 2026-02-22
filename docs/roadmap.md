@@ -376,7 +376,7 @@ Notes:
   terrain changed and keep cached background state otherwise.
   Touchpoints: `js/game/Game.js`, `js/level/Level.js`,
   `js/render/DisplayImage.js`.
-- [ ] Add a bulk terrain-write API so high-volume generators can update spans/
+- [x] Add a bulk terrain-write API so high-volume generators can update spans/
   chunks without per-pixel history/minimap callbacks.
   Touchpoints: `js/level/Level.js`, `js/app/procgenController.js`,
   `js/app/procgenTerrainStamper.js`.

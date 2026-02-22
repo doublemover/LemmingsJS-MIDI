@@ -932,8 +932,15 @@ class ProcgenController {
     const paletteIndex = Number.isFinite(colorIndex)
       ? colorIndex
       : this.groundColorIndex;
-    for (let y = y0; y < y1; y++) {
-      for (let x = x0; x < x1; x++) {
+    if (typeof this.level.setGroundRect === 'function') {
+      this.level.setGroundRect(x0, y0, x1 - x0, y1 - y0, paletteIndex, {
+        recordHistory: false,
+        invalidateMiniMap: true
+      });
+      return;
+    }
+    for (let y = y0; y < y1; y += 1) {
+      for (let x = x0; x < x1; x += 1) {
         this.level.setGroundAt(x, y, paletteIndex);
       }
     }

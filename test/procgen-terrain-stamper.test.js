@@ -7,12 +7,15 @@ const createLevel = (width, height) => ({
   groundImage: new Uint8ClampedArray(width * height * 4),
   groundMask: {
     mask: new Uint8Array(width * height)
-  }
+  },
+  applyGroundBulkChange() {}
 });
 
 describe('ProcgenTerrainStamper', function () {
   it('clips partially offscreen stamps and reuses cached destination views', function () {
     const level = createLevel(4, 4);
+    const bulkCalls = [];
+    level.applyGroundBulkChange = (...args) => bulkCalls.push(args);
     const stamper = new ProcgenTerrainStamper(level);
     const piece = {
       image: {
@@ -37,6 +40,9 @@ describe('ProcgenTerrainStamper', function () {
     expect(level.groundMask.mask[idxB]).to.equal(1);
     expect(firstView[idxA]).to.equal(1002);
     expect(firstView[idxB]).to.equal(1004);
+    expect(bulkCalls.length).to.equal(1);
+    expect(bulkCalls[0][0]).to.equal(0);
+    expect(bulkCalls[0][1]).to.equal(1);
 
     stamper.stamp(piece, 1, 1);
     expect(stamper._dest32).to.equal(firstView);

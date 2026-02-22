@@ -56,6 +56,10 @@ class ProcgenTerrainStamper {
     const onlyOverwrite = !!drawProperties.onlyOverwrite;
     const isErase = !!drawProperties.isErase;
     const black = ColorPalette.black;
+    let minX = levelW;
+    let minY = levelH;
+    let maxX = -1;
+    let maxY = -1;
 
     for (let dy = srcY0; dy < srcY1; dy++) {
       const srcY = isUpsideDown ? (height - 1 - dy) : dy;
@@ -68,15 +72,31 @@ class ProcgenTerrainStamper {
         if (ci & 0x80) continue;
         const idx = destRow + outX;
         if (isErase) {
+          if (mask[idx] === 0 && dest32[idx] === black) continue;
           mask[idx] = 0;
           dest32[idx] = black;
+          if (outX < minX) minX = outX;
+          if (outY < minY) minY = outY;
+          if (outX > maxX) maxX = outX;
+          if (outY > maxY) maxY = outY;
           continue;
         }
         if (noOverwrite && mask[idx]) continue;
         if (onlyOverwrite && !mask[idx]) continue;
+        const next = palLookup[ci];
+        if (mask[idx] === 1 && dest32[idx] === next) continue;
         mask[idx] = 1;
-        dest32[idx] = palLookup[ci];
+        dest32[idx] = next;
+        if (outX < minX) minX = outX;
+        if (outY < minY) minY = outY;
+        if (outX > maxX) maxX = outX;
+        if (outY > maxY) maxY = outY;
       }
+    }
+    if (maxX >= minX && maxY >= minY) {
+      level.applyGroundBulkChange?.(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1, {
+        invalidateMiniMap: true
+      });
     }
   }
 

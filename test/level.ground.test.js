@@ -109,4 +109,27 @@ describe('Level ground operations', function() {
 
     expect(calls.length).to.equal(3);
   });
+
+  it('writes rectangular terrain in bulk and invalidates minimap region once', function() {
+    const invalidateCalls = [];
+    globalThis.lemmings.game.lemmingManager.miniMap = {
+      onGroundChanged() {},
+      invalidateRegion(...args) { invalidateCalls.push(args); }
+    };
+    const level = new Level(4, 4);
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+    level.setPalettes(palette, palette);
+
+    const changed = level.setGroundRect(1, 1, 2, 2, 1, {
+      recordHistory: false,
+      invalidateMiniMap: true
+    });
+
+    expect(changed).to.equal(4);
+    expect(level.hasGroundAt(1, 1)).to.equal(true);
+    expect(level.hasGroundAt(2, 2)).to.equal(true);
+    expect(invalidateCalls).to.eql([[1, 1, 2, 2]]);
+  });
 });
