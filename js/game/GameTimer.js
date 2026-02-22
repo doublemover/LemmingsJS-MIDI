@@ -1,8 +1,11 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
+import { getAppContext } from '../core/dependencies.js';
 import { EventHandler } from '../util/EventHandler.js';
 import { withPerformance } from '../util/LogHandler.js';
 
 const getApp = () => {
+  const app = getAppContext();
+  if (app) return app;
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
   if (typeof lemmings !== 'undefined') return lemmings;
   return null;

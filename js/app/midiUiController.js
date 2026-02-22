@@ -1,5 +1,6 @@
 import { MidiMapping, ScaleLibrary } from '../midi/MidiMapping.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
+import { getAppContext } from '../core/dependencies.js';
 import {
   CHORD_OPTIONS,
   EXCLUDED_TRIGGER_NAMES,
@@ -69,7 +70,7 @@ const formatDebugOutput = (payload) => {
 export const createMidiUiController = ({
   window = globalThis.window,
   document = globalThis.document,
-  getLemmings = () => globalThis.lemmings,
+  getLemmings = () => getAppContext() || globalThis.lemmings,
   getWebMidi = () => globalThis.WebMidi,
   getMidiConfig = null
 } = {}) => {

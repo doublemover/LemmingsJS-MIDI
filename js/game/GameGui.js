@@ -5,9 +5,11 @@ import { CommandSelectSkill } from '../commands/CommandSelectSkill.js';
 import { EventHandler } from '../util/EventHandler.js';
 import { MiniMap } from '../render/MiniMap.js';
 import { SkillTypes } from './SkillTypes.js';
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getAppContext } from '../core/dependencies.js';
 
 const getApp = () => {
+  const app = getAppContext();
+  if (app) return app;
   if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
   if (typeof lemmings !== 'undefined') return lemmings;
   return null;
@@ -411,8 +413,9 @@ class GameGui {
   }
 
   render() {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
       typeof performance.measure === 'function' &&
       typeof performance.now === 'function';
@@ -431,7 +434,6 @@ class GameGui {
       return;
     }
     const d = this.display;
-    const app = getApp();
     const bench = app?.bench === true || app?.bench2 === true || app?.benchReverse === true || app?.benchSequence === true;
     if (bench) this.gameTimeChanged = true;
 

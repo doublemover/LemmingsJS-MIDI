@@ -1,5 +1,14 @@
 import { Frame } from './Frame.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
+import { getAppContext } from '../core/dependencies.js';
+
+const getApp = () => {
+  const app = getAppContext();
+  if (app) return app;
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
+  if (typeof lemmings !== 'undefined') return lemmings;
+  return null;
+};
 
 class MiniMap {
   static palette = null;
@@ -201,7 +210,7 @@ class MiniMap {
   addDeath(x, y) {
     const sx = Math.max(0, Math.min(this.width - 1, (x * this.scaleX) | 0));
     const sy = Math.max(0, Math.min(this.height - 1, (y * this.scaleY) | 0));
-    const history = globalThis?.lemmings?.game?.history ?? null;
+    const history = getApp()?.game?.history ?? null;
     if (history?.recordMinimapDeath) {
       history.recordMinimapDeath({
         x: sx,
@@ -229,7 +238,7 @@ class MiniMap {
 
   render() {
     if (!this.guiDisplay) return;
-    const reversing = !!globalThis?.lemmings?.game?.timeTravel?.isReversing;
+    const reversing = !!getApp()?.game?.timeTravel?.isReversing;
 
     if (++this._viewportCounter >= this.viewportDashDelay) {
       this._viewportCounter = 0;
@@ -254,7 +263,7 @@ class MiniMap {
       frame.mask[idx] = 1;
     }
 
-    const viewRect = globalThis.lemmings?.stage?.getGameViewRect?.();
+    const viewRect = getApp()?.stage?.getGameViewRect?.();
     if (!viewRect) return;
     const vpX = (viewRect.x * this.scaleX) | 0;
     let vpW = (viewRect.w * this.scaleX) | 0;

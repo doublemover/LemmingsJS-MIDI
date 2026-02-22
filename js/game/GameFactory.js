@@ -2,7 +2,15 @@ import { ConfigReader } from '../data/ConfigReader.js';
 import { FileProvider } from '../data/FileProvider.js';
 import { Game } from './Game.js';
 import { GameResources } from './GameResources.js';
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getAppContext } from '../core/dependencies.js';
+
+const getApp = () => {
+  const app = getAppContext();
+  if (app) return app;
+  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
+  if (typeof lemmings !== 'undefined') return lemmings;
+  return null;
+};
 
 class GameFactory {
   constructor(rootPath) {
@@ -15,8 +23,9 @@ class GameFactory {
   }
   /** return a game object to control/run the game */
   async getGame(gameType, gameResources = null) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
       typeof performance.measure === 'function' &&
       typeof performance.now === 'function';
@@ -50,8 +59,9 @@ class GameFactory {
   }
   /** return a Game Resources that gives access to images, maps, sounds  */
   async getGameResources(gameType) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
       typeof performance.measure === 'function' &&
       typeof performance.now === 'function';

@@ -16,7 +16,7 @@ import { EditorSession } from '../editor/EditorSession.js';
 import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js';
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { listSavedLevels, loadSavedLevel } from '../editor/EditorStorage.js';
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, setAppContext, clearAppContext } from '../core/dependencies.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
 const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
@@ -39,6 +39,7 @@ class GameView extends BaseLogger {
   constructor() {
     super();
     globalThis.lemmings = this;
+    setAppContext(this);
     this.gameType = null;
     this.levelIndex = 0;
     this.levelGroupIndex = 0;
@@ -1460,6 +1461,7 @@ class GameView extends BaseLogger {
 
   /** cleanup keyboard and stage handlers */
   dispose() {
+    clearAppContext(this);
     if (this.shortcuts) {
       this.shortcuts.dispose();
       this.shortcuts = null;

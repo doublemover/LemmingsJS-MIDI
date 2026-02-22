@@ -1,4 +1,5 @@
 import { EventHandler } from '../util/EventHandler.js';
+import { getAppContext } from '../core/dependencies.js';
 import { withPerformance } from '../util/LogHandler.js';
 
 const SoundEventTypes = Object.freeze({
@@ -119,6 +120,10 @@ class SoundEventBus {
 }
 
 const getSoundBus = () => {
+  const app = getAppContext();
+  if (app?.game?.soundEvents) {
+    return app.game.soundEvents;
+  }
   if (typeof globalThis !== 'undefined' && globalThis.lemmings?.game?.soundEvents) {
     return globalThis.lemmings.game.soundEvents;
   }

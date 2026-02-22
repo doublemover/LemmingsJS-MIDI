@@ -1,4 +1,5 @@
 const overrides = new Map();
+let appContext = null;
 
 function setDependency(key, value) {
   if (!key) return;
@@ -19,9 +20,26 @@ function resetDependencies() {
   overrides.clear();
 }
 
+function setAppContext(app) {
+  appContext = app || null;
+}
+
+function getAppContext() {
+  return appContext;
+}
+
+function clearAppContext(expectedApp = null) {
+  if (!expectedApp || expectedApp === appContext) {
+    appContext = null;
+  }
+}
+
 export {
   setDependency,
   getDependency,
   clearDependency,
-  resetDependencies
+  resetDependencies,
+  setAppContext,
+  getAppContext,
+  clearAppContext
 };
