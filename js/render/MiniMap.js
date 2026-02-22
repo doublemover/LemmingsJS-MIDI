@@ -345,10 +345,6 @@ class MiniMap {
       frame,
     } = this;
     const frameData = frame.data;
-    const writePixel = (x, y, color) => {
-      if ((x >>> 0) >= W || (y >>> 0) >= H) return;
-      frameData[(y * W) + x] = color;
-    };
 
     frameData.set(this.terrainColors);
     this.#paintObjectMarkers(frameData);
@@ -361,7 +357,7 @@ class MiniMap {
     const vpH = (viewRect.h * this.scaleY) | 0;
     let vpXW = vpX + vpW;
     // dumb fix to keep right edge of viewport rect visible
-    if (vpXW == this.width) {
+    if (vpXW === this.width) {
       vpW -= 1;
     }
     frame.drawMarchingAntRect(
@@ -379,10 +375,16 @@ class MiniMap {
     for (let i = 0; i < this.liveDots.length; i += 2) {
       const x = this.liveDots[i];
       const y = this.liveDots[i + 1];
-      writePixel(x, y, 0xFF00FFFF);
+      if ((x >>> 0) < W && (y >>> 0) < H) {
+        frameData[(y * W) + x] = 0xFF00FFFF;
+      }
     }
     if (this.selectedDot) {
-      writePixel(this.selectedDot[0], this.selectedDot[1], 0xFFFFFFFF);
+      const x = this.selectedDot[0];
+      const y = this.selectedDot[1];
+      if ((x >>> 0) < W && (y >>> 0) < H) {
+        frameData[(y * W) + x] = 0xFFFFFFFF;
+      }
     }
 
     /* Death flashes */
@@ -394,7 +396,9 @@ class MiniMap {
         if (ttl & 4) {
           const x = this.deadDots[i * 2];
           const y = this.deadDots[i * 2 + 1];
-          writePixel(x, y, 0xFF0000FF);
+          if ((x >>> 0) < W && (y >>> 0) < H) {
+            frameData[(y * W) + x] = 0xFF0000FF;
+          }
         }
       }
     } else {
@@ -409,7 +413,9 @@ class MiniMap {
         this.deadDots[write * 2] = x;
         this.deadDots[write * 2 + 1] = y;
         if (ttl & 4) {
-          writePixel(x, y, 0xFF0000FF);
+          if ((x >>> 0) < W && (y >>> 0) < H) {
+            frameData[(y * W) + x] = 0xFF0000FF;
+          }
         }
         write++;
       }
