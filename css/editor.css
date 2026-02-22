@@ -245,6 +245,14 @@ body {
   image-rendering: pixelated;
 }
 
+.palette-preview.pending {
+  background:
+    linear-gradient(90deg, rgba(210, 106, 60, 0.08), rgba(210, 106, 60, 0.18), rgba(210, 106, 60, 0.08)),
+    #fffdf9;
+  background-size: 180% 100%;
+  animation: palette-preview-pulse 900ms linear infinite;
+}
+
 .palette-preview.empty {
   background:
     repeating-linear-gradient(
@@ -255,6 +263,15 @@ body {
       transparent 12px
     ),
     #fffdf9;
+}
+
+@keyframes palette-preview-pulse {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
 }
 
 .palette-label {

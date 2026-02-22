@@ -468,7 +468,7 @@ Notes:
   round trips and malformed payload recovery.
   Touchpoints: `js/editor/NxlvParser.js`, `js/editor/NxlvWriter.js`,
   `test/editor/*.test.js`.
-- [ ] Add palette/search filtering with cached preview invalidation policies for
+- [x] Add palette/search filtering with cached preview invalidation policies for
   large style sets.
   Touchpoints: `js/app/editorUiController.js`, `js/app/editorPreviewCache.js`,
   `css/editor.css`.

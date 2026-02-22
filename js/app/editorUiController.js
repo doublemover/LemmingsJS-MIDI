@@ -35,6 +35,8 @@ import {
 
 const MAX_HISTORY = 200;
 const MAX_BRUSH_SIZE = 64;
+const PALETTE_PREVIEW_BATCH_SIZE = 24;
+const PALETTE_SEARCH_DEBOUNCE_MS = 30;
 const EDITOR_SHORTCUT_SECTIONS = [
   {
     title: 'General',
@@ -116,6 +118,15 @@ class EditorUiController {
     this._cursorPos = null;
     this._paletteViewMode = 'list';
     this._paletteGridColumns = 4;
+    this._paletteEntries = {
+      terrain: [],
+      gadget: [],
+      trigger: []
+    };
+    this._palettePreviewQueue = [];
+    this._palettePreviewTimer = null;
+    this._palettePreviewToken = 0;
+    this._paletteFilterTimer = null;
     this._styleAvailability = new Map();
     this._suppressHeader = false;
     this._suppressInspector = false;
@@ -422,7 +433,13 @@ class EditorUiController {
   _bindPaletteSearch() {
     if (!this.el.paletteSearch) return;
     this.el.paletteSearch.addEventListener('input', () => {
-      this._applyPaletteFilter();
+      if (this._paletteFilterTimer) {
+        clearTimeout(this._paletteFilterTimer);
+      }
+      this._paletteFilterTimer = setTimeout(() => {
+        this._paletteFilterTimer = null;
+        this._applyPaletteFilter();
+      }, PALETTE_SEARCH_DEBOUNCE_MS);
     });
   }
 
@@ -741,6 +758,7 @@ class EditorUiController {
     if (this.el.paletteTerrain) this.el.paletteTerrain.hidden = tab !== 'terrain';
     if (this.el.paletteGadgets) this.el.paletteGadgets.hidden = tab !== 'gadgets';
     if (this.el.paletteTriggers) this.el.paletteTriggers.hidden = tab !== 'triggers';
+    this._schedulePalettePreviewHydration();
   }
 
   _syncPaletteTabForTool(tool) {
@@ -755,6 +773,7 @@ class EditorUiController {
 
   _refreshPalettes() {
     if (!this.assets) return;
+    this._cancelPalettePreviewHydration();
     this._renderPaletteList(this.el.paletteTerrain, this.assets.terrain, 'terrain');
     this._renderPaletteList(this.el.paletteGadgets, this.assets.gadgets, 'gadget');
     this._renderPaletteList(this.el.paletteTriggers, this.assets.triggers, 'trigger');
@@ -830,20 +849,82 @@ class EditorUiController {
 
   _getPreviewUrl(entry, type) {
     if (!this.previewCache || !this.assets) return null;
+    const cacheType = type === 'trigger' ? 'gadget' : type;
     const image = type === 'terrain'
       ? this.assets.terrainImages?.[entry.id]
       : this.assets.gadgetImages?.[entry.id];
     if (!image) return null;
     return this.previewCache.getPreviewUrl({
-      type,
+      type: cacheType,
       id: entry.id,
       image
     });
   }
 
+  _cancelPalettePreviewHydration() {
+    this._palettePreviewToken += 1;
+    this._palettePreviewQueue = [];
+    if (this._palettePreviewTimer) {
+      clearTimeout(this._palettePreviewTimer);
+      this._palettePreviewTimer = null;
+    }
+  }
+
+  _getActivePaletteTypes() {
+    if (this._activeTab === 'gadgets') return ['gadget'];
+    if (this._activeTab === 'triggers') return ['trigger'];
+    return ['terrain'];
+  }
+
+  _schedulePalettePreviewHydration() {
+    const types = this._getActivePaletteTypes();
+    const queue = [];
+    for (const type of types) {
+      const records = this._paletteEntries[type] || [];
+      for (const record of records) {
+        if (record.button.hidden || record.previewLoaded) continue;
+        queue.push(record);
+      }
+    }
+    this._palettePreviewToken += 1;
+    const token = this._palettePreviewToken;
+    this._palettePreviewQueue = queue;
+    if (this._palettePreviewTimer) {
+      clearTimeout(this._palettePreviewTimer);
+      this._palettePreviewTimer = null;
+    }
+    const pump = () => {
+      if (token !== this._palettePreviewToken) return;
+      let remaining = PALETTE_PREVIEW_BATCH_SIZE;
+      while (remaining > 0 && this._palettePreviewQueue.length > 0) {
+        const record = this._palettePreviewQueue.shift();
+        if (!record || record.button.hidden || record.previewLoaded) {
+          continue;
+        }
+        const previewUrl = this._getPreviewUrl(record.entry, record.type);
+        if (previewUrl) {
+          record.previewImg.src = previewUrl;
+          record.previewWrap.classList.remove('empty');
+        } else {
+          record.previewWrap.classList.add('empty');
+        }
+        record.previewLoaded = true;
+        record.previewWrap.classList.remove('pending');
+        remaining -= 1;
+      }
+      if (this._palettePreviewQueue.length > 0) {
+        this._palettePreviewTimer = setTimeout(pump, 0);
+      } else {
+        this._palettePreviewTimer = null;
+      }
+    };
+    this._palettePreviewTimer = setTimeout(pump, 0);
+  }
+
   _renderPaletteList(container, items, type) {
     if (!container) return;
     container.innerHTML = '';
+    const nextEntries = [];
     for (const entry of items || []) {
       const width = Number(entry.width || 0);
       const height = Number(entry.height || 0);
@@ -863,6 +944,7 @@ class EditorUiController {
       button.title = `Select ${labelText}`;
       const previewWrap = this.document.createElement('span');
       previewWrap.className = 'palette-preview';
+      previewWrap.classList.add('pending');
       const previewImg = this.document.createElement('img');
       previewImg.alt = labelText;
       previewImg.loading = 'lazy';
@@ -880,47 +962,46 @@ class EditorUiController {
         }
         this._refreshPaletteSelection();
       });
-      const previewUrl = this._getPreviewUrl(entry, type);
-      if (previewUrl) {
-        previewImg.src = previewUrl;
-      } else {
-        previewWrap.classList.add('empty');
-      }
       container.appendChild(button);
+      nextEntries.push({
+        id: Number(entry.id),
+        type,
+        entry,
+        searchKey: normalizeText(labelText).toLowerCase(),
+        button,
+        previewWrap,
+        previewImg,
+        previewLoaded: false
+      });
     }
+    this._paletteEntries[type] = nextEntries;
   }
 
   _applyPaletteFilter() {
     const term = normalizeText(this.el.paletteSearch?.value || '').toLowerCase();
-    const filterList = (container) => {
-      if (!container) return;
-      const items = container.querySelectorAll('button');
-      items.forEach(button => {
-        if (!term) {
-          button.hidden = false;
-          return;
-        }
-        const text = button.textContent?.toLowerCase() || '';
-        button.hidden = !text.includes(term);
-      });
+    const filterList = (type) => {
+      const entries = this._paletteEntries[type] || [];
+      for (const record of entries) {
+        record.button.hidden = !!(term && !record.searchKey.includes(term));
+      }
     };
-    filterList(this.el.paletteTerrain);
-    filterList(this.el.paletteGadgets);
-    filterList(this.el.paletteTriggers);
+    filterList('terrain');
+    filterList('gadget');
+    filterList('trigger');
+    this._schedulePalettePreviewHydration();
   }
 
   _refreshPaletteSelection() {
-    const setActive = (container, id) => {
-      if (!container) return;
-      const buttons = container.querySelectorAll('button');
-      buttons.forEach(button => {
-        const match = Number(button.dataset.id) === id;
-        button.classList.toggle('active', match);
-      });
+    const setActive = (type, id) => {
+      const entries = this._paletteEntries[type] || [];
+      for (const record of entries) {
+        const match = Number(record.id) === id;
+        record.button.classList.toggle('active', match);
+      }
     };
-    setActive(this.el.paletteTerrain, this.controller.selectedTerrainId);
-    setActive(this.el.paletteGadgets, this.controller.selectedGadgetId);
-    setActive(this.el.paletteTriggers, this.controller.selectedTriggerId);
+    setActive('terrain', this.controller.selectedTerrainId);
+    setActive('gadget', this.controller.selectedGadgetId);
+    setActive('trigger', this.controller.selectedTriggerId);
   }
 
   _refreshHeaderFields(level = this.session?.level) {
@@ -1451,6 +1532,16 @@ class EditorUiController {
       config,
       this.view?.gameFactory?.fileProvider
     );
+    if (this.previewCache?.invalidateTypeIds) {
+      this.previewCache.invalidateTypeIds(
+        'terrain',
+        this.assets?.terrain?.map(entry => Number(entry?.id))
+      );
+      const gadgetIds = this.assets?.gadgets?.map(entry => Number(entry?.id));
+      this.previewCache.invalidateTypeIds('gadget', gadgetIds);
+      // Remove older trigger-scoped cache keys after hard-cutover to gadget previews.
+      this.previewCache.invalidateTypeIds('trigger', gadgetIds);
+    }
     this.controller.setAssets(this.assets);
     this._refreshPalettes();
     await this._refreshStyleOptions();
