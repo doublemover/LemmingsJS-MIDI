@@ -12,6 +12,7 @@ const makeContext = () => {
     putCalls: [],
     drawCalls: [],
     fillCalls: [],
+    textCalls: [],
     createImageData(width, height) {
       return { width, height, data: new Uint8ClampedArray(width * height * 4) };
     },
@@ -23,6 +24,9 @@ const makeContext = () => {
     },
     fillRect(x, y, width, height) {
       this.fillCalls.push({ x, y, width, height });
+    },
+    fillText(text, x, y) {
+      this.textCalls.push({ text, x, y });
     },
     drawImage(...args) {
       this.drawCalls.push(args);
@@ -240,6 +244,23 @@ describe('Stage', function() {
     expect(stage.overlayDashColor >>> 0).to.equal(0x80030201);
     stage.startOverlayFade('invalid', null, 1);
     expect(stage.overlayDashColor >>> 0).to.equal(0xFFFFFFFF);
+  });
+
+  it('renders an opt-in perf overlay and reports stage perf snapshots', function() {
+    const { canvas, ctx } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.guiImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    stage.setPerfOverlay(true, () => ({ lines: ['custom metric'] }));
+    stage.redraw();
+
+    const perf = stage.getPerfSnapshot();
+    expect(perf.frameCount).to.be.greaterThan(0);
+    expect(perf.frameMs).to.be.greaterThan(0);
+    expect(ctx.textCalls.some(call => call.text.includes('frame'))).to.equal(true);
+    expect(ctx.textCalls.some(call => call.text.includes('custom metric'))).to.equal(true);
   });
 
   it('clamps viewports and snaps scales', function() {

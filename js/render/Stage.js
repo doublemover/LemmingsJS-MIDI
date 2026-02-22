@@ -34,6 +34,13 @@ function colorStringTo32(str) {
   return ((Math.round(a * 255) & 0xff) << 24) | ((b & 0xff) << 16) | ((g & 0xff) << 8) | (r & 0xff);
 }
 
+const perfNow = () => {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now();
+  }
+  return Date.now();
+};
+
 class Stage {
   constructor(canvasForOutput) {
     this.controller = null;
@@ -46,6 +53,14 @@ class Stage {
     this.overlayDashLen = 0;
     this.overlayDashColor = 0;
     this.overlayDashOffset = 0;
+    this.perfOverlayEnabled = false;
+    this.perfOverlayProvider = null;
+    this._perfTrackingFrame = false;
+    this._perfFrameMs = 0;
+    this._perfDrawMs = 0;
+    this._perfClearMs = 0;
+    this._perfFramePeakMs = 0;
+    this._perfFrameCount = 0;
     this.panEnabled = true;
     this._resizeRaf = 0;
 
@@ -78,6 +93,21 @@ class Stage {
 
     this.updateStageSize();
     this.clear();
+  }
+
+  setPerfOverlay(enabled, provider = null) {
+    this.perfOverlayEnabled = !!enabled;
+    this.perfOverlayProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  getPerfSnapshot() {
+    return {
+      frameMs: this._perfFrameMs,
+      drawMs: this._perfDrawMs,
+      clearMs: this._perfClearMs,
+      peakFrameMs: this._perfFramePeakMs,
+      frameCount: this._perfFrameCount
+    };
   }
 
   setCursorSprite(frame) {
@@ -445,6 +475,10 @@ class Stage {
   }
 
   redraw() {
+    const start = perfNow();
+    this._perfTrackingFrame = true;
+    this._perfDrawMs = 0;
+    this._perfClearMs = 0;
     this.clear();
     if (this.gameImgProps.display) {
       const gameImg = this.gameImgProps.display.getImageData();
@@ -455,6 +489,15 @@ class Stage {
       this.draw(this.guiImgProps, guiImg);
     }
     this.drawCursor();
+    this._perfTrackingFrame = false;
+    this._perfFrameCount += 1;
+    this._perfFrameMs = perfNow() - start;
+    if (this._perfFrameMs > this._perfFramePeakMs) {
+      this._perfFramePeakMs = this._perfFrameMs;
+    }
+    if (this.perfOverlayEnabled) {
+      this.drawPerfOverlay();
+    }
   }
 
   createImage(displayOwner, width, height) {
@@ -464,12 +507,16 @@ class Stage {
   }
 
   clear(stageImage) {
+    const start = this._perfTrackingFrame ? perfNow() : 0;
     const ctx = this.stageCav.getContext('2d', { willReadFrequently: true });
     ctx.fillStyle = '#000900';
     if (!stageImage) {
       ctx.fillRect(0, 0, ctx.canvas.width, ctx.canvas.height);
     } else {
       ctx.fillRect(stageImage.x, stageImage.y, stageImage.width, stageImage.height);
+    }
+    if (this._perfTrackingFrame) {
+      this._perfClearMs += perfNow() - start;
     }
   }
 
@@ -537,6 +584,7 @@ class Stage {
   }
 
   draw(display, img) {
+    const start = this._perfTrackingFrame ? perfNow() : 0;
     if (!display.ctx) return;
 
     display.ctx.putImageData(img, 0, 0);
@@ -622,6 +670,41 @@ class Stage {
         );
         octx.putImageData(img, r.x, r.y);
       }
+    }
+    if (this._perfTrackingFrame) {
+      this._perfDrawMs += perfNow() - start;
+    }
+  }
+
+  drawPerfOverlay() {
+    const ctx = this.stageCav.getContext('2d', { alpha: true, willReadFrequently: true });
+    const lines = [
+      `frame ${this._perfFrameMs.toFixed(2)}ms`,
+      `draw ${this._perfDrawMs.toFixed(2)}ms clear ${this._perfClearMs.toFixed(2)}ms`,
+      `peak ${this._perfFramePeakMs.toFixed(2)}ms`
+    ];
+    if (this.perfOverlayProvider) {
+      const data = this.perfOverlayProvider() || {};
+      if (Array.isArray(data.lines)) {
+        for (const line of data.lines) {
+          if (line) lines.push(String(line));
+        }
+      }
+    }
+    const x = 8;
+    const y = 8;
+    const lineH = 12;
+    const width = 280;
+    const height = (lines.length * lineH) + 8;
+    ctx.globalAlpha = 0.6;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(x - 4, y - 4, width, height);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#8cf';
+    ctx.font = '11px monospace';
+    ctx.textBaseline = 'top';
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i], x, y + (i * lineH));
     }
   }
 

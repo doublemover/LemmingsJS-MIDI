@@ -61,6 +61,7 @@ class GameView extends BaseLogger {
     this.extraLemmings = 0;
     this.perfMetrics = false;
     this.performanceAPI = false;
+    this.perfOverlay = false;
     this.steps = 0;
     this._benchMonitor = null;
     this._benchSpeedTrack = null;
@@ -112,6 +113,7 @@ class GameView extends BaseLogger {
     }
     const StageCtor = getDependency('Stage', Stage);
     this.stage = new StageCtor(el);
+    this.stage.setPerfOverlay?.(this.perfOverlay, () => this.getPerfOverlayData());
     this._stageResize = () => this.stage.scheduleUpdateStageSize();
     window.addEventListener('resize', this._stageResize);
     window.addEventListener('orientationchange', this._stageResize);
@@ -589,6 +591,7 @@ class GameView extends BaseLogger {
     }
     this.performanceAPI = this.parseBool(query, ['performanceAPI', 'pa']);
     this.perfMetrics = this.performanceAPI;
+    this.perfOverlay = this.parseBool(query, ['perfOverlay', 'po']);
   }
   updateQuery() {
     const params = typeof window === 'undefined'
@@ -621,6 +624,7 @@ class GameView extends BaseLogger {
     setParam('extra', 'ex', this.extraLemmings, 0);
     setParam('scale', 'sc', this.scale, 0);
     setParam('performanceAPI', 'pa', this.performanceAPI, false);
+    setParam('perfOverlay', 'po', this.perfOverlay, false);
 
     if (this.shortcut) {
       params.set('_', true);
@@ -629,6 +633,22 @@ class GameView extends BaseLogger {
     }
 
     this.setHistoryState(params);
+  }
+
+  getPerfOverlayData() {
+    const timer = this.game?.getGameTimer?.() || null;
+    const lines = [];
+    if (timer) {
+      lines.push(`tick ${timer.tickIndex ?? 0} speed ${Number(timer.speedFactor || 0).toFixed(2)}`);
+      lines.push(`tps ${Number(timer.tps || 0).toFixed(1)} frame ${Number(timer.frameTime || 0).toFixed(2)}ms`);
+    }
+    if (this.bench || this.bench2 || this.benchReverse || this.benchSequence) {
+      lines.push(`bench steps ${this.steps | 0} lag ${this.laggedOut | 0}`);
+    }
+    if (this.game?.timeTravel?.isReversing) {
+      lines.push('reverse playback active');
+    }
+    return { lines };
   }
   setHistoryState(params) {
     const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
