@@ -291,7 +291,8 @@ class LemmingManager extends BaseLogger {
       if (this.isNuking()) {
         this._nukeNextLemming();
       }
-      for (const lem of lems) {
+      for (let i = 0; i < lems.length; i += 1) {
+        const lem = lems[i];
         if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
         const newAction = lem.process(this.level);
         this.processNewAction(lem, newAction);
@@ -320,7 +321,8 @@ class LemmingManager extends BaseLogger {
         const scaleY = this.miniMap.scaleY;
         let idx = 0;
         let hasSelectedDot = false;
-        for (const lem of lems) {
+        for (let i = 0; i < lems.length; i += 1) {
+          const lem = lems[i];
           if (lem.removed || lem.disabled) continue;
           const x = (lem.x * scaleX) | 0;
           const y = (lem.y * scaleY) | 0;
@@ -481,7 +483,9 @@ class LemmingManager extends BaseLogger {
         minY = view.y - pad;
         maxY = view.y + view.h + pad;
       }
-      for (const lem of this.activeLemmings) {
+      const lems = this.activeLemmings;
+      for (let i = 0; i < lems.length; i += 1) {
+        const lem = lems[i];
         if (lem.removed) continue;
         if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
         lem.render(gameDisplay);
@@ -514,7 +518,9 @@ class LemmingManager extends BaseLogger {
       minY = view.y - pad;
       maxY = view.y + view.h + pad;
     }
-    for (const lem of this.activeLemmings) {
+    const lems = this.activeLemmings;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
       if (lem.removed) continue;
       if (lem.x < minX || lem.x > maxX || lem.y < minY || lem.y > maxY) continue;
       lem.renderDebug(gameDisplay);
@@ -581,7 +587,8 @@ class LemmingManager extends BaseLogger {
     const right = left + mask.width;
     const top = y + mask.offsetY;
     const bottom = top + mask.height;
-    for (const val of lems) {
+    for (let i = 0; i < lems.length; i += 1) {
+      const val = lems[i];
       if (val.removed) continue;
       const lx = val.x;
       const ly = val.y;
