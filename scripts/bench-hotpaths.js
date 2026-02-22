@@ -280,11 +280,12 @@ const runGuiOverlayBench = ({ iterations, repeats }) => withGlobalStubs(() => {
 });
 
 const args = parseArgs(process.argv.slice(2));
-const repeats = toPositiveInt(args.get('repeats'), 6);
-const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), 3000);
-const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), 8);
-const antsIterations = toPositiveInt(args.get('ants-iterations'), 6000);
-const guiIterations = toPositiveInt(args.get('gui-iterations'), 2000);
+const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+const repeats = toPositiveInt(args.get('repeats'), smokeRequested ? 4 : 6);
+const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), smokeRequested ? 1500 : 3000);
+const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), smokeRequested ? 6 : 8);
+const antsIterations = toPositiveInt(args.get('ants-iterations'), smokeRequested ? 3000 : 6000);
+const guiIterations = toPositiveInt(args.get('gui-iterations'), smokeRequested ? 1000 : 2000);
 
 const summary = {
   dirtyRectUpload: runDirtyRectBench({

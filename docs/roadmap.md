@@ -448,7 +448,7 @@ Notes:
 - [x] Add changed-file targeted test selection with stable category mapping and
   fallback to full-suite safety.
   Touchpoints: `scripts/runTests.js`, `package.json`.
-- [ ] Add short performance smoke gates (<2 min) for CI/PR and keep long soak
+- [x] Add short performance smoke gates (<2 min) for CI/PR and keep long soak
   suites for explicit/nightly runs.
   Touchpoints: `scripts/bench-performance.js`, `scripts/bench-history-stress.js`,
   `scripts/bench-hotpaths.js`.

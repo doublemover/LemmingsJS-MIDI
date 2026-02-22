@@ -40,7 +40,12 @@ const closeQuietly = async (target, label) => {
 
 const args = parseArgs(process.argv.slice(2));
 const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
-const requestedProfile = (args.get('profile') || process.env.BENCH_PROFILE || 'default').toLowerCase();
+const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+const requestedProfile = (
+  args.get('profile') ||
+  process.env.BENCH_PROFILE ||
+  (smokeRequested ? 'smoke' : 'default')
+).toLowerCase();
 const headless = (args.get('headless') || process.env.BENCH_HEADLESS || 'true') !== 'false';
 
 const BENCH_PROFILES = {
@@ -64,6 +69,13 @@ const BENCH_PROFILES = {
     sampleMs: 500,
     entrances: 160,
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true', benchReverse: 'true' }
+  },
+  smoke: {
+    mode: 'sequence',
+    durationMs: 12000,
+    sampleMs: 500,
+    entrances: 30,
+    query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'false' }
   }
 };
 

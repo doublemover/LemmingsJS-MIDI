@@ -40,10 +40,20 @@ const closeQuietly = async (target, label) => {
 
 const args = parseArgs(process.argv.slice(2));
 const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
-const durationMs = toPositiveNumber(args.get('duration') || process.env.HISTORY_DURATION_MS, 60000);
-const sampleMs = toPositiveNumber(args.get('sample') || process.env.HISTORY_SAMPLE_MS, 1000);
-const targetSpan = toPositiveNumber(args.get('target') || process.env.HISTORY_TARGET_TICKS, 60000);
-const speeds = (args.get('speeds') || process.env.HISTORY_SPEEDS || '30,60,120')
+const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+const durationMs = toPositiveNumber(
+  args.get('duration') || process.env.HISTORY_DURATION_MS,
+  smokeRequested ? 10000 : 60000
+);
+const sampleMs = toPositiveNumber(
+  args.get('sample') || process.env.HISTORY_SAMPLE_MS,
+  smokeRequested ? 500 : 1000
+);
+const targetSpan = toPositiveNumber(
+  args.get('target') || process.env.HISTORY_TARGET_TICKS,
+  smokeRequested ? 30000 : 60000
+);
+const speeds = (args.get('speeds') || process.env.HISTORY_SPEEDS || (smokeRequested ? '30,60' : '30,60,120'))
   .split(',')
   .map(value => Number(value.trim()))
   .filter(value => Number.isFinite(value) && value > 0);
