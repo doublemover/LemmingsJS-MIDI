@@ -1,5 +1,7 @@
 import { getDependency } from '../core/dependencies.js';
 
+const NOOP = () => {};
+
 class Logger {
   constructor(moduleName) {
     this._moduleName = moduleName;
@@ -73,7 +75,7 @@ class BaseLogger {
             typeof performance === 'undefined' ||
             typeof performance.now !== 'function' ||
             typeof performance.measure !== 'function') {
-      return () => {};
+      return NOOP;
     }
     const start = performance.now();
     return () => {
