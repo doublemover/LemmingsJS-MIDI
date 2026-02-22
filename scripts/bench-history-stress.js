@@ -15,6 +15,14 @@ const toPositiveNumber = (value, fallback) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+const toBoolean = (value, fallback) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+};
+
 const withTimeout = async (promise, timeoutMs, label) => {
   let timeoutId = null;
   const timeoutPromise = new Promise((_, reject) => {
@@ -63,6 +71,18 @@ const maxRuntimeMs = toPositiveNumber(
   args.get('maxRuntime') || process.env.HISTORY_MAX_RUNTIME_MS,
   (durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20)
 );
+const seekSamples = Math.max(1, Math.trunc(toPositiveNumber(
+  args.get('seekSamples') || process.env.HISTORY_SEEK_SAMPLES,
+  smokeRequested ? 6 : 12
+)));
+const seekP95MsMax = toPositiveNumber(
+  args.get('seekP95MsMax') || process.env.HISTORY_SEEK_P95_MS_MAX,
+  smokeRequested ? 200 : 400
+);
+const requireReplayParity = toBoolean(
+  args.get('requireReplayParity') || process.env.HISTORY_REQUIRE_REPLAY_PARITY,
+  true
+);
 
 const buildUrl = (raw) => {
   const url = new URL(raw);
@@ -74,11 +94,34 @@ const buildUrl = (raw) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+const percentile = (sorted, p) => {
+  if (!sorted.length) return 0;
+  const clamped = Math.min(1, Math.max(0, p));
+  const index = Math.max(0, Math.min(sorted.length - 1, Math.ceil((sorted.length - 1) * clamped)));
+  return sorted[index];
+};
+
+const summarizeTimings = (timingsMs) => {
+  const clean = (Array.isArray(timingsMs) ? timingsMs : [])
+    .map(value => Number(value))
+    .filter(value => Number.isFinite(value) && value >= 0)
+    .sort((a, b) => a - b);
+  const max = clean.length ? clean[clean.length - 1] : 0;
+  return {
+    count: clean.length,
+    p50Ms: percentile(clean, 0.5),
+    p95Ms: percentile(clean, 0.95),
+    maxMs: max,
+    samplesMs: clean
+  };
+};
+
 const run = async () => {
   let browser = null;
   let context = null;
   let page = null;
   const runStart = Date.now();
+  const failures = [];
 
   const assertRuntimeBudget = (phase) => {
     const elapsed = Date.now() - runStart;
@@ -130,6 +173,94 @@ const run = async () => {
       }
 
       await withTimeout(page.evaluate(() => window.__E2E__.pause()), opTimeoutMs, 'e2e.pause');
+      const seekProbe = await withTimeout(
+        page.evaluate(({ samples }) => {
+          const api = window.__E2E__;
+          const gameState = api?.getState?.()?.game;
+          const historyState = gameState?.history || null;
+          const minTick = Number.isFinite(historyState?.minTick) ? Math.trunc(historyState.minTick) : 0;
+          const maxTick = Number.isFinite(historyState?.maxTick)
+            ? Math.trunc(historyState.maxTick)
+            : Math.trunc(gameState?.timer?.tickIndex || 0);
+          const startTick = Math.max(minTick, Math.min(maxTick, Math.trunc(gameState?.timer?.tickIndex || maxTick)));
+          const seekMs = [];
+          const count = Math.max(1, Math.trunc(samples || 1));
+          const span = Math.max(1, startTick - minTick);
+
+          const computeReplayHash = () => {
+            if (!api?.getDelta || maxTick < minTick) return null;
+            let hash = 2166136261;
+            const pushByte = (value) => {
+              hash ^= value & 0xff;
+              hash = Math.imul(hash, 16777619);
+            };
+            const pushAscii = (value) => {
+              const text = String(value);
+              for (let i = 0; i < text.length; i += 1) {
+                pushByte(text.charCodeAt(i));
+              }
+              pushByte(124);
+            };
+            for (let tick = minTick; tick <= maxTick; tick += 1) {
+              const delta = api.getDelta(tick);
+              if (!delta) continue;
+              const noOp = Number.isFinite(delta.flags)
+                ? ((delta.flags | 0) === 0 ? 1 : 0)
+                : 0;
+              pushAscii(tick);
+              pushAscii(noOp);
+              pushAscii(delta.lemChanges?.ids?.length || 0);
+              pushAscii(delta.lemAdded?.length || 0);
+              pushAscii(delta.lemRemoved?.length || 0);
+              pushAscii(delta.groundChanges?.indices?.length || 0);
+              pushAscii(delta.entranceChanges?.indices?.length || 0);
+              pushAscii(delta.triggerCooldownChanges?.ids?.length || 0);
+              pushAscii(delta.triggerAdd?.length || 0);
+              pushAscii(delta.triggerRemove?.length || 0);
+              pushAscii(delta.objectAnimChanges?.ids?.length || 0);
+              pushAscii(delta.soundEvents?.length || 0);
+              pushAscii(delta.minimapDeaths?.length || 0);
+              pushByte(10);
+            }
+            return (hash >>> 0).toString(16).padStart(8, '0');
+          };
+
+          const hashBefore = computeReplayHash();
+          for (let i = 0; i < count; i += 1) {
+            const ratio = (i + 1) / (count + 1);
+            const target = Math.max(minTick, startTick - Math.trunc(span * ratio));
+            const start = performance.now();
+            api.seek(target);
+            seekMs.push(performance.now() - start);
+          }
+          const returnStart = performance.now();
+          api.seek(startTick);
+          seekMs.push(performance.now() - returnStart);
+          const hashAfter = computeReplayHash();
+          return {
+            minTick,
+            maxTick,
+            startTick,
+            seekMs,
+            hashBefore,
+            hashAfter,
+            hashMatch: hashBefore === hashAfter
+          };
+        }, { samples: seekSamples }),
+        opTimeoutMs,
+        'seekReplayProbe'
+      );
+      const seekStats = summarizeTimings(seekProbe?.seekMs);
+      if (seekStats.p95Ms > seekP95MsMax) {
+        failures.push(
+          `speed=${speed} seek p95 ${seekStats.p95Ms.toFixed(2)}ms > ${seekP95MsMax.toFixed(2)}ms`
+        );
+      }
+      if (requireReplayParity && seekProbe?.hashMatch === false) {
+        failures.push(
+          `speed=${speed} replay parity mismatch after seeks (${seekProbe.hashBefore} != ${seekProbe.hashAfter})`
+        );
+      }
       const memory = await withTimeout(page.evaluate(() => {
         if (typeof performance === 'undefined' || !performance.memory) return null;
         return {
@@ -144,6 +275,15 @@ const run = async () => {
         durationMs: Date.now() - start,
         maxSpanTicks: maxSpan,
         targetSpanTicks: targetSpan,
+        seekProbe: {
+          minTick: seekProbe?.minTick ?? 0,
+          maxTick: seekProbe?.maxTick ?? 0,
+          startTick: seekProbe?.startTick ?? 0,
+          hashBefore: seekProbe?.hashBefore ?? null,
+          hashAfter: seekProbe?.hashAfter ?? null,
+          hashMatch: !!seekProbe?.hashMatch,
+          ...seekStats
+        },
         memory
       });
     }
@@ -151,8 +291,17 @@ const run = async () => {
     console.log(JSON.stringify({
       targetSpanTicks: targetSpan,
       sampleMs,
-      results
+      seekGate: {
+        seekSamples,
+        seekP95MsMax,
+        requireReplayParity
+      },
+      results,
+      failures
     }, null, 2));
+    if (failures.length) {
+      process.exitCode = 1;
+    }
   } finally {
     await closeQuietly(page, 'page.close');
     await closeQuietly(context, 'context.close');

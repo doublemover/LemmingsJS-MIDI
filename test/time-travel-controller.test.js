@@ -87,6 +87,40 @@ describe('TimeTravelController', function() {
     expect(after).to.equal(before);
   });
 
+  it('preserves replay hash through long seek and reverse cycles', function() {
+    const timer = { tickIndex: 180, isRunning: () => false, suspend() {} };
+    const timeline = Array.from({ length: 240 }, (_, tick) => ({
+      tick,
+      soundEvents: tick % 15 === 0 ? [{ sfxId: tick % 8 }] : []
+    }));
+    const hash = () => JSON.stringify(timeline);
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 0 }; },
+      getDelta(tick) { return timeline[tick] || null; },
+      applyKeyframe() {},
+      applyDeltaForward() {},
+      applyDeltaBackward() {},
+      computeReplayHash() { return hash(); }
+    };
+    const game = {
+      getGameTimer: () => timer,
+      render() {},
+      gameGui: { gameTimeChanged: false }
+    };
+    const controller = new TimeTravelController(game, history);
+    const before = history.computeReplayHash();
+
+    for (let i = 0; i < 40; i += 1) {
+      const seekTarget = (i * 13) % 180;
+      controller.seekToTick(seekTarget);
+      controller.stepBackward((i % 5) + 1);
+    }
+    controller.seekToTick(180);
+
+    const after = history.computeReplayHash();
+    expect(after).to.equal(before);
+  });
+
   it('returns early when dependencies are missing', function() {
     const controller = new TimeTravelController(null, null);
     controller.stepBackward(1);
