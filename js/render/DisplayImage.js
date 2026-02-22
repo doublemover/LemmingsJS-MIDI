@@ -539,6 +539,26 @@ class DisplayImage extends BaseLogger {
         return;
       }
 
+      const fullyInBounds =
+        !checkGround &&
+        nullColor32 === null &&
+        baseX >= 0 &&
+        baseY >= 0 &&
+        (baseX + srcW) <= destW &&
+        (baseY + srcH) <= destH;
+      if (fullyInBounds) {
+        for (let sy = 0; sy < srcH; sy += 1) {
+          const sourceY = upsideDown ? srcH - sy - 1 : sy;
+          let srcRow = sourceY * srcW;
+          let destRow = (sy + baseY) * destW + baseX;
+          for (let sx = 0; sx < srcW; sx += 1, srcRow += 1, destRow += 1) {
+            if (!srcMask[srcRow]) continue;
+            dest32[destRow] = srcBuf[srcRow];
+          }
+        }
+        return;
+      }
+
       for (let sy = 0; sy < srcH; sy++) {
         const sourceY = upsideDown ? srcH - sy - 1 : sy;
         const outY = sy + baseY;
