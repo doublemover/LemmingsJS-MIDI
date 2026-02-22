@@ -130,4 +130,28 @@ describe('GameView moveToLevel', function() {
     await view.moveToLevel(-1);
     expectState(view, { gameType: 1, levelGroupIndex: 3, levelIndex: 19 });
   });
+
+  it('wraps after the last level of pack 2 and still allows moving back to pack 2', async function() {
+    const denseConfigs = {
+      1: makeConfig([20, 20, 20, 20]),
+      2: makeConfig([20, 20, 20, 20])
+    };
+    setDependency('GameFactory', class {
+      constructor() {}
+      async getConfig(gameType) {
+        return denseConfigs[gameType] || makeConfig([0]);
+      }
+      async getGameResources(gameType) {
+        return { gameType };
+      }
+    });
+    setDependency('GameTypes', { length: 3 });
+
+    const view = makeView({ gameType: 2, levelGroupIndex: 3, levelIndex: 19 });
+    await view.moveToLevel(1);
+    expectState(view, { gameType: 1, levelGroupIndex: 0, levelIndex: 0 });
+
+    await view.moveToLevel(-1);
+    expectState(view, { gameType: 2, levelGroupIndex: 3, levelIndex: 19 });
+  });
 });

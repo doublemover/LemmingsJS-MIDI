@@ -461,7 +461,14 @@ class GameView extends BaseLogger {
         type > 0 && type < gameTypes.length;
 
       if (moveInterval < 0) {
+        let rewindAttempts = 0;
+        const rewindLimit = Math.max(1, gameTypes.length * 4);
         while (levelIndex < 0) {
+          rewindAttempts += 1;
+          if (rewindAttempts > rewindLimit) {
+            levelIndex = 0;
+            break;
+          }
           if (levelGroupIndex > 0) {
             levelGroupIndex--;
             levelIndex += getGroupLength(config, levelGroupIndex);
@@ -469,6 +476,14 @@ class GameView extends BaseLogger {
           }
           if (gameType > 1) {
             gameType--;
+            config = await this.gameFactory.getConfig(gameType);
+            levelGroupIndex = Math.max(0, getGroupCount(config) - 1);
+            levelIndex += getGroupLength(config, levelGroupIndex);
+            continue;
+          }
+          const lastType = gameTypes.length - 1;
+          if (isValidGameType(lastType) && lastType !== gameType) {
+            gameType = lastType;
             config = await this.gameFactory.getConfig(gameType);
             levelGroupIndex = Math.max(0, getGroupCount(config) - 1);
             levelIndex += getGroupLength(config, levelGroupIndex);
