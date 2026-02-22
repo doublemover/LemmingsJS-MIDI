@@ -83,10 +83,11 @@ Notes:
 ## Phase 5: MIDI sequencing and UI
 - [x] Iterate on the MIDI UI and mapping UX.
 - [x] Add MIDI debug display.
-- [ ] [Deferred] Ability to place flags to trigger MIDI events.
+- [x] Ability to place flags to trigger MIDI events.
 
 Notes:
-- Deferred implementation details now tracked under Phase 29.
+- MIDI flag workflow now lands via Phase 29 (editor placement, runtime trigger
+  registration, and mapping UI integration).
 
 ## Phase 6: Performance and benchmarks
 - [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
@@ -477,7 +478,7 @@ Notes:
   Touchpoints: `js/editor/EditorHistory.js`, `js/editor/EditorController.js`.
 
 ## Phase 29: MIDI runtime scalability and modularity
-- [ ] Implement end-to-end MIDI flag trigger workflow (editor placement,
+- [x] Implement end-to-end MIDI flag trigger workflow (editor placement,
   runtime trigger registration, and mapping UI integration) and retire the
   deferred Phase 5 flag item.
   Touchpoints: `js/editor/EditorTools.js`, `js/editor/EditorController.js`,

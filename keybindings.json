@@ -47,6 +47,7 @@
     "editorToolTerrain": ["KeyT"],
     "editorToolGadget": ["KeyG"],
     "editorToolTrigger": ["KeyR"],
+    "editorToolMidiFlag": ["KeyM"],
     "editorToolEntrance": ["KeyE"],
     "editorToolExit": ["KeyX"],
     "editorToolSteel": ["KeyF"],

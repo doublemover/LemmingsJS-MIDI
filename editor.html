@@ -52,6 +52,7 @@
           <button type="button" data-tool="terrain" data-tooltip="Place terrain pieces.">Terrain</button>
           <button type="button" data-tool="gadget" data-tooltip="Place interactive objects.">Object</button>
           <button type="button" data-tool="trigger" data-tooltip="Place trigger regions.">Trigger</button>
+          <button type="button" data-tool="midi-flag" data-tooltip="Place MIDI flag triggers.">MIDI Flag</button>
           <button type="button" data-tool="entrance" data-tooltip="Place entrances (spawners).">Entrance</button>
           <button type="button" data-tool="exit" data-tooltip="Place exits.">Exit</button>
           <button type="button" data-tool="steel" data-tooltip="Draw steel areas.">Steel</button>
@@ -140,6 +141,14 @@
         </div>
         <details class="selection-flags" id="editorSelectionFlags">
           <summary title="Toggle placement flags for the selected item.">Placement Flags</summary>
+          <label class="control-row" title="Emit a dedicated MIDI trigger event for this gadget trigger area.">
+            MIDI Flag
+            <input id="editorSelMidiFlag" type="checkbox" title="Emit a dedicated MIDI trigger event for this gadget trigger area." />
+          </label>
+          <label class="control-row" title="MIDI flag id used for trigger mapping in the MIDI panel.">
+            MIDI Flag ID
+            <input id="editorSelMidiFlagId" type="number" min="1" max="9999" title="MIDI flag id used for trigger mapping in the MIDI panel." />
+          </label>
           <label class="control-row" title="Flip the selection horizontally.">
             Flip H
             <input id="editorSelFlipH" type="checkbox" title="Flip the selection horizontally." />

@@ -4,6 +4,7 @@ import { GameView } from '../js/game/GameView.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import { LevelReader } from '../js/level/LevelReader.js';
 import { MidiMapping } from '../js/midi/MidiMapping.js';
+import { toMidiFlagTriggerType } from '../js/midi/MidiFlagTriggers.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { setDependency, resetDependencies, useGlobalLemmings } from './helpers/lemmings.js';
 
@@ -219,6 +220,42 @@ describe('GameView coverage', function() {
     expect(timer.continueCalls).to.equal(2);
     expect(view.stage.panEnabled).to.equal(true);
     expect(view.game.inputEnabled).to.equal(true);
+  });
+
+  it('registers midi flag triggers and emits flag events', function() {
+    const view = new GameView();
+    const added = [];
+    const emitted = [];
+    const game = {
+      level: {
+        midiFlags: [
+          { id: 4, x1: 2, y1: 3, x2: 8, y2: 9, cooldownTicks: 2, pieceId: 7 }
+        ]
+      },
+      triggerManager: {
+        add(trigger) {
+          added.push(trigger);
+        }
+      },
+      soundEvents: {
+        emit(payload) {
+          emitted.push(payload);
+        }
+      }
+    };
+
+    view._registerMidiFlagTriggers(game);
+    view._registerMidiFlagTriggers(game);
+    expect(added).to.have.length(1);
+
+    const trigger = added[0];
+    const triggerType = toMidiFlagTriggerType(4);
+    const result = trigger.trigger(4, 5, 0, { id: 11 });
+    expect(result).to.equal(0);
+    expect(emitted).to.have.length(1);
+    expect(emitted[0].triggerType).to.equal(triggerType);
+    expect(emitted[0].midiFlagId).to.equal(4);
+    expect(emitted[0].lemmingId).to.equal(11);
   });
 
   it('loads and renders levels when not using saved entries', async function() {

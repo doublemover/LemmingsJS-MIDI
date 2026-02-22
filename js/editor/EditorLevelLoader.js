@@ -7,6 +7,7 @@ import { SolidLayer } from '../render/SolidLayer.js';
 import { DrawProperties } from '../render/DrawProperties.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { DEFAULT_LEVEL_WIDTH, DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
+import { MIDI_FLAG_TRIGGER_MAX, clampMidiFlagId, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import {
   getDefaultStyle,
   getStyle,
@@ -16,6 +17,7 @@ import {
 
 const DEFAULT_RELEASE_RATE = 50;
 const MAX_TIME_LIMIT_SECONDS = 99 * 60 + 99;
+const DEFAULT_MIDI_FLAG_COOLDOWN = 8;
 
 const coerceNumber = (value, fallback) => {
   return Number.isFinite(value) ? value : fallback;
@@ -23,7 +25,7 @@ const coerceNumber = (value, fallback) => {
 
 const normalizeBoolean = (value) => {
   if (value === true || value === 1) return true;
-  if (value === false || value === 0 || value == null) return false;
+  if (value === false || value === 0 || value === null || value === undefined) return false;
   if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
     if (normalized === 'true' || normalized === '1') return true;
@@ -93,6 +95,77 @@ const createSteelRanges = (entries) => {
     .filter(Boolean);
 };
 
+/**
+ * Convert editor gadget props tagged with MIDI flag metadata into runtime
+ * trigger descriptors consumed by GameView.
+ */
+const extractMidiFlags = (entries, styleName, objectImages) => {
+  if (!Array.isArray(entries) || !Array.isArray(objectImages)) return [];
+  const flags = [];
+  const usedIds = new Set();
+  for (const entry of entries) {
+    const props = entry?.props || {};
+    if (!normalizeBoolean(props.MIDI_FLAG)) continue;
+    const explicitId = clampMidiFlagId(Number(props.MIDI_FLAG_ID));
+    if (explicitId) usedIds.add(explicitId);
+  }
+  let autoId = 1;
+  const nextAutoId = () => {
+    while (autoId <= MIDI_FLAG_TRIGGER_MAX && usedIds.has(autoId)) {
+      autoId += 1;
+    }
+    if (autoId > MIDI_FLAG_TRIGGER_MAX) return null;
+    const id = autoId;
+    usedIds.add(id);
+    autoId += 1;
+    return id;
+  };
+
+  for (const entry of entries) {
+    const props = entry?.props || {};
+    const enabled = normalizeBoolean(props.MIDI_FLAG);
+    if (!enabled) continue;
+    const explicitId = clampMidiFlagId(Number(props.MIDI_FLAG_ID));
+    const flagId = explicitId || nextAutoId();
+    if (!flagId) continue;
+    usedIds.add(flagId);
+    const triggerType = toMidiFlagTriggerType(flagId);
+    if (!triggerType) continue;
+    const pieceId = resolvePieceId(resolveGadgetId, styleName, props.PIECE);
+    const objectInfo = objectImages[pieceId] || null;
+    const hasTriggerArea = objectInfo &&
+      Number.isFinite(objectInfo.trigger_width) &&
+      Number.isFinite(objectInfo.trigger_height) &&
+      objectInfo.trigger_width > 0 &&
+      objectInfo.trigger_height > 0;
+    const x = coerceNumber(props.X, 0);
+    const y = coerceNumber(props.Y, 0);
+    const x1 = x + (hasTriggerArea ? coerceNumber(objectInfo.trigger_left, 0) : 0);
+    const y1 = y + (hasTriggerArea ? coerceNumber(objectInfo.trigger_top, 0) : 0);
+    const width = hasTriggerArea
+      ? objectInfo.trigger_width
+      : Math.max(1, objectInfo?.width || 8);
+    const height = hasTriggerArea
+      ? objectInfo.trigger_height
+      : Math.max(1, objectInfo?.height || 8);
+    const cooldownRaw = Number(props.MIDI_FLAG_COOLDOWN);
+    const cooldownTicks = Number.isFinite(cooldownRaw)
+      ? Math.max(0, Math.trunc(cooldownRaw))
+      : DEFAULT_MIDI_FLAG_COOLDOWN;
+    flags.push({
+      id: flagId,
+      triggerType,
+      pieceId,
+      x1,
+      y1,
+      x2: x1 + Math.max(1, width),
+      y2: y1 + Math.max(1, height),
+      cooldownTicks
+    });
+  }
+  return flags;
+};
+
 const buildSkills = (skillset) => {
   const skills = new Array(Object.keys(SkillTypes).length).fill(0);
   if (!skillset) return skills;
@@ -152,7 +225,7 @@ const createClassicLevelData = (editorLevel, options = {}) => {
 
 const loadEditorLevel = async (editorLevel, config, fileProvider, options = {}) => {
   if (!editorLevel || !config || !fileProvider) return null;
-  const { levelReader, groundSet } = createClassicLevelData(editorLevel, {
+  const { levelReader, groundSet, styleName } = createClassicLevelData(editorLevel, {
     styleName: options.styleName,
     steelRanges: options.steelRanges
   });
@@ -201,8 +274,10 @@ const loadEditorLevel = async (editorLevel, config, fileProvider, options = {}) 
 
   level.setGroundImage(renderer.img.getData());
   level.setGroundMaskLayer(new SolidLayerCtor(level.width, level.height, renderer.img.mask));
-  level.setMapObjects(levelReader.objects, groundReader.getObjectImages());
+  const objectImages = groundReader.getObjectImages();
+  level.setMapObjects(levelReader.objects, objectImages);
   level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
+  level.midiFlags = extractMidiFlags(editorLevel.gadgets, styleName, objectImages);
 
   if (Array.isArray(levelReader.steel) && levelReader.steel.length) {
     level.setSteelAreas(levelReader.steel);

@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
 import { createClassicLevelData, loadEditorLevel } from '../../js/editor/EditorLevelLoader.js';
 import { resetStyleRegistry, registerClassicStyles, registerStyle } from '../../js/editor/StyleRegistry.js';
+import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 const buildEntry = (props) => ({ props, order: Object.keys(props), unknownLines: [] });
 
@@ -343,6 +344,99 @@ describe('EditorLevelLoader', () => {
       steelRanges: [{ x: 0, y: 0, width: 1, height: 1 }]
     });
     expect(runtime.newSetSteelAreasArgs).to.equal(null);
+  });
+
+  it('extracts midi flag triggers using trigger bounds and strict enabled semantics', async () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 3,
+      gadgetPieces: [{ id: 0, name: 'flagobj' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('STYLE', 'preview');
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 10,
+        Y: 20,
+        MIDI_FLAG: true,
+        MIDI_FLAG_ID: 5,
+        MIDI_FLAG_COOLDOWN: 12
+      }),
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 30,
+        Y: 40,
+        MIDI_FLAG: true
+      }),
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 50,
+        Y: 60,
+        MIDI_FLAG: false,
+        MIDI_FLAG_ID: 8
+      })
+    ];
+    const { deps, fileProvider } = createFakeDeps();
+    const GroundReaderWithTriggers = class extends deps.GroundReader {
+      constructor(ground, terrain, objects) {
+        super(ground, terrain, objects);
+        this.objectImages = [{
+          id: 0,
+          width: 16,
+          height: 10,
+          trigger_left: 2,
+          trigger_top: 3,
+          trigger_width: 4,
+          trigger_height: 5
+        }];
+      }
+    };
+    const runtime = await loadEditorLevel(level, { gametype: 1, path: 'game' }, fileProvider, {
+      ...deps,
+      GroundReader: GroundReaderWithTriggers
+    });
+    expect(runtime.midiFlags).to.deep.equal([
+      {
+        id: 5,
+        triggerType: toMidiFlagTriggerType(5),
+        pieceId: 0,
+        x1: 12,
+        y1: 23,
+        x2: 16,
+        y2: 28,
+        cooldownTicks: 12
+      },
+      {
+        id: 1,
+        triggerType: toMidiFlagTriggerType(1),
+        pieceId: 0,
+        x1: 32,
+        y1: 43,
+        x2: 36,
+        y2: 48,
+        cooldownTicks: 8
+      }
+    ]);
+  });
+
+  it('extracts midi flags with fallback dimensions when trigger bounds are unavailable', async () => {
+    resetStyleRegistry();
+    registerStyle('preview', { groundSet: 3 });
+    const level = buildLevel();
+    level.gadgets[0].props.MIDI_FLAG = true;
+    const { deps, fileProvider } = createFakeDeps();
+    const runtime = await loadEditorLevel(level, { gametype: 1, path: 'game' }, fileProvider, deps);
+    expect(runtime.midiFlags).to.have.length(1);
+    expect(runtime.midiFlags[0].id).to.equal(1);
+    expect(runtime.midiFlags[0].x1).to.equal(30);
+    expect(runtime.midiFlags[0].y1).to.equal(40);
+    expect(runtime.midiFlags[0].x2).to.equal(38);
+    expect(runtime.midiFlags[0].y2).to.equal(48);
+    expect(runtime.midiFlags[0].cooldownTicks).to.equal(8);
   });
 
   it('skips steel processing when no steel ranges are provided', async () => {

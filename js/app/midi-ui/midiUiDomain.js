@@ -1,6 +1,7 @@
 import { SoundEffectIds } from '../../game/SoundEvents.js';
 import { SkillTypes } from '../../game/SkillTypes.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
+import { fromMidiFlagTriggerType, toMidiFlagTriggerType } from '../../midi/MidiFlagTriggers.js';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const CHORD_OPTIONS = [
@@ -139,7 +140,58 @@ const collectTriggerTypes = (level) => {
   if (levelHasSteel(level)) {
     types.add(TriggerTypes.STEEL);
   }
+  const midiFlags = Array.isArray(level.midiFlags) ? level.midiFlags : [];
+  for (const flag of midiFlags) {
+    const triggerType = Number.isFinite(flag?.triggerType)
+      ? Math.trunc(flag.triggerType)
+      : toMidiFlagTriggerType(flag?.id);
+    if (Number.isFinite(triggerType)) {
+      types.add(triggerType);
+    }
+  }
   return types;
+};
+
+const buildTriggerLabel = (triggerType) => {
+  if (TRIGGER_NAME_BY_VALUE.has(triggerType)) {
+    return TRIGGER_NAME_BY_VALUE.get(triggerType);
+  }
+  const midiFlagId = fromMidiFlagTriggerType(triggerType);
+  if (midiFlagId != null) {
+    return `MIDI_FLAG_${midiFlagId}`;
+  }
+  return `TRIGGER_${triggerType}`;
+};
+
+const listTriggerEntries = (config = null, availableTriggerTypes = null, level = null) => {
+  const values = new Set();
+  const addValue = (value) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    const triggerValue = Math.trunc(value);
+    if (availableTriggerTypes && !availableTriggerTypes.has(triggerValue)) return;
+    values.add(triggerValue);
+  };
+  for (const [name, value] of Object.entries(TriggerTypes)) {
+    if (!Number.isFinite(value) || value <= 0 || EXCLUDED_TRIGGER_NAMES.has(name)) continue;
+    addValue(value);
+  }
+  const overrideIds = Object.keys(config?.triggers || {})
+    .map(key => Number(key))
+    .filter(value => Number.isFinite(value));
+  overrideIds.forEach(addValue);
+  if (availableTriggerTypes) {
+    for (const value of availableTriggerTypes) {
+      addValue(value);
+    }
+  }
+  const midiFlags = Array.isArray(level?.midiFlags) ? level.midiFlags : [];
+  for (const flag of midiFlags) {
+    addValue(flag?.triggerType);
+    addValue(toMidiFlagTriggerType(flag?.id));
+  }
+  return Array.from(values)
+    .sort((a, b) => a - b)
+    .map(value => ({ value, name: buildTriggerLabel(value) }));
 };
 
 const collectTrapSfxIds = (level) => {
@@ -244,6 +296,8 @@ export {
   REPEAT_WINDOW_OPTIONS,
   EXCLUDED_TRIGGER_NAMES,
   TRIGGER_NAME_BY_VALUE,
+  buildTriggerLabel,
+  listTriggerEntries,
   TRAP_SFX_IDS,
   EXCLUDED_SFX_IDS,
   SFX_NAME_BY_ID,

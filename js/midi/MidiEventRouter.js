@@ -1,5 +1,6 @@
 import { MidiMapping } from './MidiMapping.js';
 import { MidiScheduler } from './MidiScheduler.js';
+import { isMidiFlagTriggerType } from './MidiFlagTriggers.js';
 
 const MAX_EVENTS_PER_TICK = 32;
 const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
@@ -388,6 +389,9 @@ class MidiEventRouter {
       const triggerCfg = event?.triggerType != null
         ? this.mapping.config?.triggers?.[String(event.triggerType)] || null
         : null;
+      if (isMidiFlagTriggerType(event?.triggerType) && !triggerCfg) {
+        return;
+      }
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
       const spec = this.mapping.mapEvent(event, context, density, sfx);
       if (!spec) return;

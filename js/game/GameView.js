@@ -8,7 +8,9 @@ import { BaseLogger } from '../util/LogHandler.js';
 import { MidiEventRouter } from '../midi/MidiEventRouter.js';
 import { MidiMapping } from '../midi/MidiMapping.js';
 import { Stage } from '../render/Stage.js';
+import { Trigger } from '../level/Trigger.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
+import { SoundEffectIds, SoundEventTypes } from './SoundEvents.js';
 import { FileContainer } from '../data/FileContainer.js';
 import { LevelIndexResolve } from '../level/LevelIndexResolve.js';
 import { LevelReader } from '../level/LevelReader.js';
@@ -17,6 +19,7 @@ import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { listSavedLevels, loadSavedLevel } from '../editor/EditorStorage.js';
 import { getDependency, setAppContext, clearAppContext } from '../core/dependencies.js';
+import { clampMidiFlagId, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import { parseBoundedNumber, parseInt10 } from '../core/numberParsing.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
@@ -24,6 +27,7 @@ const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
 const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
 const STARTUP_PROFILES = new Set(['gameplay', 'editor', 'perf']);
+const MIDI_FLAG_REGISTRATION_KEY = Symbol('midi-flag-registration');
 
 const cloneConfig = (config) => JSON.parse(JSON.stringify(config || {}));
 
@@ -146,6 +150,7 @@ class GameView extends BaseLogger {
       if (this.preserveHistory || replayString != null) {
         game.history?.setPreserveFutureHistory?.(true);
       }
+      this._registerMidiFlagTriggers(game);
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
@@ -1332,6 +1337,7 @@ class GameView extends BaseLogger {
         this._preserveEditorViewport = false;
       }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
+      this._registerMidiFlagTriggers(game);
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
@@ -1438,6 +1444,67 @@ class GameView extends BaseLogger {
       timer?.continue?.();
     }
     return level;
+  }
+
+  /**
+   * Register runtime owner triggers that emit MIDI-routing events for editor
+   * MIDI flags.
+   */
+  _registerMidiFlagTriggers(game) {
+    if (!game?.triggerManager || !game?.soundEvents) return;
+    if (game[MIDI_FLAG_REGISTRATION_KEY]) return;
+    game[MIDI_FLAG_REGISTRATION_KEY] = true;
+    const flags = Array.isArray(game?.level?.midiFlags) ? game.level.midiFlags : [];
+    if (!flags.length) return;
+    for (let i = 0; i < flags.length; i += 1) {
+      const flag = flags[i] || {};
+      const midiFlagId = clampMidiFlagId(Number(flag.id));
+      const triggerType = Number.isFinite(flag.triggerType)
+        ? flag.triggerType
+        : toMidiFlagTriggerType(midiFlagId);
+      if (!Number.isFinite(triggerType)) continue;
+      const x1 = Number(flag.x1);
+      const y1 = Number(flag.y1);
+      const x2 = Number(flag.x2);
+      const y2 = Number(flag.y2);
+      if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) {
+        continue;
+      }
+      const cooldownTicks = Number.isFinite(flag.cooldownTicks)
+        ? Math.max(0, Math.trunc(flag.cooldownTicks))
+        : 0;
+      const owner = {
+        id: `midi_flag_${midiFlagId ?? i}_${i}`,
+        onTrigger: (_tick, lemming, trigger, x, y) => {
+          game.soundEvents.emit({
+            type: SoundEventTypes.TRAP_TRIGGER,
+            sfxId: SoundEffectIds.NONE,
+            triggerType,
+            midiFlagId,
+            pieceId: flag.pieceId ?? null,
+            x,
+            y,
+            lemmingId: lemming?.id ?? null,
+            triggerBounds: {
+              x1: trigger?.x1 ?? x1,
+              y1: trigger?.y1 ?? y1,
+              x2: trigger?.x2 ?? x2,
+              y2: trigger?.y2 ?? y2
+            }
+          });
+        }
+      };
+      game.triggerManager.add(new Trigger(
+        TriggerTypes.NO_TRIGGER,
+        x1,
+        y1,
+        x2,
+        y2,
+        cooldownTicks,
+        -1,
+        owner
+      ));
+    }
   }
 
   async loadSavedLevelFromSelection(savedEntries = null) {

@@ -73,6 +73,7 @@ class EditorKeybindings {
       editorToolTerrain: { down: () => this._setTool(EditorTools.TERRAIN) },
       editorToolGadget: { down: () => this._setTool(EditorTools.GADGET) },
       editorToolTrigger: { down: () => this._setTool(EditorTools.TRIGGER) },
+      editorToolMidiFlag: { down: () => this._setTool(EditorTools.MIDI_FLAG) },
       editorToolEntrance: { down: () => this._setTool(EditorTools.ENTRANCE) },
       editorToolExit: { down: () => this._setTool(EditorTools.EXIT) },
       editorToolSteel: { down: () => this._setTool(EditorTools.STEEL) },

@@ -9,12 +9,14 @@ import {
   removeEntryAt
 } from './EditorEntryFactory.js';
 import { findEntryAt, getEntryBounds } from './EditorHitTest.js';
+import { MIDI_FLAG_TRIGGER_MAX, clampMidiFlagId } from '../midi/MidiFlagTriggers.js';
 
 const DEFAULT_GRID = 4;
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
 const DEFAULT_HANDLE_SIZE = 2;
 const MAX_BRUSH_SIZE = 64;
+const MAX_MIDI_FLAG_ID = MIDI_FLAG_TRIGGER_MAX;
 
 const snapValue = (value, gridSize) => {
   if (!Number.isFinite(gridSize) || gridSize <= 1) return Math.round(value);
@@ -24,6 +26,7 @@ const snapValue = (value, gridSize) => {
 const clampSize = (value) => Math.max(1, Math.round(value));
 const clampBrushSize = (value) => Math.min(MAX_BRUSH_SIZE, clampSize(value));
 const selectionKey = (type, index) => `${type}:${index}`;
+const isMidiFlagEnabled = (value) => value === true || value === 1 || value === '1';
 
 const cloneEntry = (entry, options = {}) => {
   const props = entry?.props ? { ...entry.props } : {};
@@ -1152,6 +1155,36 @@ class EditorController {
     return entry;
   }
 
+  _nextMidiFlagId() {
+    const list = this.session?.level?.gadgets;
+    if (!Array.isArray(list) || !list.length) return 1;
+    const used = new Set();
+    for (const entry of list) {
+      if (!isMidiFlagEnabled(entry?.props?.MIDI_FLAG)) continue;
+      const id = clampMidiFlagId(Number(entry?.props?.MIDI_FLAG_ID));
+      if (id !== null) used.add(id);
+    }
+    for (let id = 1; id <= MAX_MIDI_FLAG_ID; id += 1) {
+      if (!used.has(id)) return id;
+    }
+    return MAX_MIDI_FLAG_ID;
+  }
+
+  _placeMidiFlagAt(x, y) {
+    if (!this.session?.level) return null;
+    const pieceId = Number.isFinite(this.selectedTriggerId)
+      ? this.selectedTriggerId
+      : this.selectedGadgetId;
+    if (!Number.isFinite(pieceId)) return null;
+    const entry = this._placeGadgetAt(x, y, pieceId);
+    if (!entry?.props) return null;
+    setEntryProp(entry, 'MIDI_FLAG', true, { removeIfFalse: true });
+    if (clampMidiFlagId(Number(entry.props.MIDI_FLAG_ID)) === null) {
+      setEntryProp(entry, 'MIDI_FLAG_ID', this._nextMidiFlagId(), { removeIfEmpty: false });
+    }
+    return entry;
+  }
+
   ensureDefaultEntrancesExits(options = {}) {
     if (!this.session?.level) return false;
     const entranceId = Number.isFinite(options.entranceId)
@@ -1374,6 +1407,11 @@ class EditorController {
       this._placeGadgetAt(x, y, this.selectedTriggerId ?? this.selectedGadgetId);
       this._commitHistory('Trigger');
       this._requestPreview('Trigger');
+      break;
+    case EditorTools.MIDI_FLAG:
+      this._placeMidiFlagAt(x, y);
+      this._commitHistory('MIDI Flag');
+      this._requestPreview('MIDI Flag');
       break;
     case EditorTools.ENTRANCE: {
       const entranceId = this.assets?.entranceId ?? 1;

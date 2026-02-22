@@ -52,6 +52,7 @@ const EDITOR_SHORTCUT_SECTIONS = [
       { action: 'editorToolTerrain', label: 'Terrain' },
       { action: 'editorToolGadget', label: 'Object' },
       { action: 'editorToolTrigger', label: 'Trigger' },
+      { action: 'editorToolMidiFlag', label: 'MIDI Flag' },
       { action: 'editorToolEntrance', label: 'Entrance' },
       { action: 'editorToolExit', label: 'Exit' },
       { action: 'editorToolSteel', label: 'Steel' },
@@ -217,6 +218,8 @@ class EditorUiController {
       selSkill: get('editorSelSkill'),
       selLemmings: get('editorSelLemmings'),
       selPairing: get('editorSelPairing'),
+      selMidiFlag: get('editorSelMidiFlag'),
+      selMidiFlagId: get('editorSelMidiFlagId'),
       selFlipH: get('editorSelFlipH'),
       selFlipV: get('editorSelFlipV'),
       selNoOverwrite: get('editorSelNoOverwrite'),
@@ -499,6 +502,15 @@ class EditorUiController {
     bindField(this.el.selSkill, () => this._commitSelectionPatch({ SKILL: normalizeText(this.el.selSkill.value) }));
     bindField(this.el.selLemmings, () => this._commitSelectionPatch({ LEMMINGS: parseNumber(this.el.selLemmings.value) }));
     bindField(this.el.selPairing, () => this._commitSelectionPatch({ PAIRING: parseNumber(this.el.selPairing.value) }));
+    bindField(this.el.selMidiFlag, () => {
+      const enabled = !!this.el.selMidiFlag.checked;
+      const flagId = parseNumber(this.el.selMidiFlagId?.value);
+      this._commitSelectionPatch({
+        MIDI_FLAG: enabled,
+        MIDI_FLAG_ID: enabled ? flagId : null
+      });
+    });
+    bindField(this.el.selMidiFlagId, () => this._commitSelectionPatch({ MIDI_FLAG_ID: parseNumber(this.el.selMidiFlagId.value) }));
 
     bindField(this.el.selFlipH, () => this._commitSelectionPatch({ FLIP_HORIZONTAL: !!this.el.selFlipH.checked }));
     bindField(this.el.selFlipV, () => this._commitSelectionPatch({ FLIP_VERTICAL: !!this.el.selFlipV.checked }));
@@ -727,6 +739,7 @@ class EditorUiController {
       terrain: 'editorToolTerrain',
       gadget: 'editorToolGadget',
       trigger: 'editorToolTrigger',
+      'midi-flag': 'editorToolMidiFlag',
       entrance: 'editorToolEntrance',
       exit: 'editorToolExit',
       steel: 'editorToolSteel',
@@ -766,7 +779,7 @@ class EditorUiController {
       this._setPaletteTab('terrain');
     } else if (tool === 'gadget') {
       this._setPaletteTab('gadgets');
-    } else if (tool === 'trigger') {
+    } else if (tool === 'trigger' || tool === 'midi-flag') {
       this._setPaletteTab('triggers');
     }
   }
@@ -1129,7 +1142,8 @@ class EditorUiController {
         this.el.selRotate,
         this.el.selSkill,
         this.el.selLemmings,
-        this.el.selPairing
+        this.el.selPairing,
+        this.el.selMidiFlagId
       ];
       inputs.forEach(input => {
         if (input) {
@@ -1140,6 +1154,7 @@ class EditorUiController {
       const checks = [
         this.el.selFlipH,
         this.el.selFlipV,
+        this.el.selMidiFlag,
         this.el.selNoOverwrite,
         this.el.selErase,
         this.el.selOneWay
@@ -1167,7 +1182,8 @@ class EditorUiController {
         this.el.selRotate,
         this.el.selSkill,
         this.el.selLemmings,
-        this.el.selPairing
+        this.el.selPairing,
+        this.el.selMidiFlagId
       ];
       inputs.forEach(input => {
         if (input) {
@@ -1178,6 +1194,7 @@ class EditorUiController {
       const checks = [
         this.el.selFlipH,
         this.el.selFlipV,
+        this.el.selMidiFlag,
         this.el.selNoOverwrite,
         this.el.selErase,
         this.el.selOneWay
@@ -1236,6 +1253,17 @@ class EditorUiController {
     if (this.el.selPairing) {
       this.el.selPairing.value = formatValue(props.PAIRING);
       this.el.selPairing.disabled = !isGadget;
+    }
+    if (this.el.selMidiFlag) {
+      const enabled = !!props.MIDI_FLAG;
+      this.el.selMidiFlag.checked = enabled;
+      this.el.selMidiFlag.disabled = !isGadget;
+    }
+    if (this.el.selMidiFlagId) {
+      const flagId = props.MIDI_FLAG_ID;
+      this.el.selMidiFlagId.value = formatValue(flagId);
+      const enabled = !!props.MIDI_FLAG;
+      this.el.selMidiFlagId.disabled = !isGadget || !enabled;
     }
 
     if (this.el.selFlipH) {

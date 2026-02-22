@@ -1,9 +1,7 @@
 import { MidiMapping, ScaleLibrary } from '../midi/MidiMapping.js';
-import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
 import {
   CHORD_OPTIONS,
-  EXCLUDED_TRIGGER_NAMES,
   EXCLUDED_SFX_IDS,
   NOTE_NAMES,
   POSITION_AXIS_OPERATORS,
@@ -12,8 +10,8 @@ import {
   REPEAT_WINDOW_OPTIONS,
   SFX_NAME_BY_ID,
   TRAP_SFX_IDS,
-  TRIGGER_NAME_BY_VALUE,
   collectTriggerTypes,
+  listTriggerEntries,
   resolveAvailableSfxIds,
   resolvePositionMappings
 } from './midi-ui/midiUiDomain.js';
@@ -423,6 +421,7 @@ export const createMidiUiController = ({
       lemmings?.levelGroupIndex ?? 'none',
       lemmings?.levelIndex ?? 'none',
       level?.triggers?.length ?? -1,
+      Array.isArray(level?.midiFlags) ? level.midiFlags.map(flag => `${flag.id}:${flag.triggerType}`).join(',') : '-',
       level?.steelRanges?.length ?? -1,
       level?.arrowRanges?.length ?? -1,
       skills?.cheatMode ? 'cheat' : 'no-cheat',
@@ -1216,16 +1215,13 @@ export const createMidiUiController = ({
     });
   };
 
-  const buildTriggerList = (config, availableTriggerTypes = null) => {
+  const buildTriggerList = (config, availableTriggerTypes = null, level = null) => {
     const container = document.getElementById('midiTriggerList');
     if (!container) return;
     container.innerHTML = '';
     const triggerConfig = config?.triggers || {};
-    const entries = Object.entries(TriggerTypes)
-      .filter(([name, value]) => Number.isFinite(value) && value > 0 && !EXCLUDED_TRIGGER_NAMES.has(name))
-      .sort((a, b) => a[1] - b[1]);
-    for (const [name, value] of entries) {
-      if (availableTriggerTypes && !availableTriggerTypes.has(value)) continue;
+    const entries = listTriggerEntries(config, availableTriggerTypes, level);
+    for (const { name, value } of entries) {
       const entry = triggerConfig[String(value)] || {};
       container.appendChild(buildMappingEditor({
         id: value,
@@ -1237,7 +1233,7 @@ export const createMidiUiController = ({
     }
   };
 
-  const buildAdsrTargetOptions = (select, config, availableSfxIds, availableTriggerTypes) => {
+  const buildAdsrTargetOptions = (select, config, availableSfxIds, availableTriggerTypes, level = null) => {
     if (!select) return;
     select.innerHTML = '';
     const globalOpt = document.createElement('option');
@@ -1259,12 +1255,8 @@ export const createMidiUiController = ({
       select.appendChild(opt);
     }
 
-    const entries = Object.entries(TriggerTypes)
-      .filter(([name, value]) => Number.isFinite(value) && value > 0 && !EXCLUDED_TRIGGER_NAMES.has(name))
-      .sort((a, b) => a[1] - b[1]);
-    for (const [, value] of entries) {
-      if (availableTriggerTypes && !availableTriggerTypes.has(value)) continue;
-      const name = TRIGGER_NAME_BY_VALUE.get(value) || `Trigger ${value}`;
+    const entries = listTriggerEntries(config, availableTriggerTypes, level);
+    for (const { name, value } of entries) {
       const opt = document.createElement('option');
       opt.value = `trigger:${value}`;
       opt.textContent = `${name} (#${value})`;
@@ -1446,9 +1438,9 @@ export const createMidiUiController = ({
     const sfxFilter = availableSfxIds && availableSfxIds.size ? availableSfxIds : null;
     const availableTriggerTypes = level ? collectTriggerTypes(level) : null;
     buildEventList(config, sfxFilter);
-    buildTriggerList(config, availableTriggerTypes);
+    buildTriggerList(config, availableTriggerTypes, level);
     if (envTarget) {
-      buildAdsrTargetOptions(envTarget, config, sfxFilter, availableTriggerTypes);
+      buildAdsrTargetOptions(envTarget, config, sfxFilter, availableTriggerTypes, level);
       const storedTarget = readStoredMidiId(storage, midiStorageKeys.adsrTarget);
       const options = Array.from(envTarget.options || envTarget.children || []);
       const matches = storedTarget &&

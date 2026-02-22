@@ -11,6 +11,7 @@ import {
   TRAP_SFX_IDS,
   EXCLUDED_SFX_IDS,
   SFX_NAME_BY_ID,
+  listTriggerEntries,
   collectTriggerTypes,
   resolveAvailableSfxIds,
   resolvePositionMappings
@@ -18,6 +19,7 @@ import {
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
+import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 describe('midiUiDomain', function() {
   it('exports static option lists and maps', function() {
@@ -47,7 +49,10 @@ describe('midiUiDomain', function() {
         { type: 'not-a-number' }
       ],
       arrowRanges: [{}],
-      steelRanges: [{}]
+      steelRanges: [{}],
+      midiFlags: [
+        { id: 2 }
+      ]
     };
     const types = collectTriggerTypes(level);
 
@@ -57,6 +62,20 @@ describe('midiUiDomain', function() {
     expect(types.has(TriggerTypes.ONEWAY_LEFT)).to.equal(true);
     expect(types.has(TriggerTypes.ONEWAY_RIGHT)).to.equal(true);
     expect(types.has(TriggerTypes.STEEL)).to.equal(true);
+    expect(types.has(toMidiFlagTriggerType(2))).to.equal(true);
+  });
+
+  it('lists trigger entries including dynamic midi flag trigger ids', function() {
+    const flagTrigger = toMidiFlagTriggerType(7);
+    const entries = listTriggerEntries(
+      { triggers: { [flagTrigger]: { note: 72 } } },
+      new Set([TriggerTypes.TRAP, flagTrigger]),
+      { midiFlags: [{ id: 7, triggerType: flagTrigger }] }
+    );
+    const trap = entries.find(entry => entry.value === TriggerTypes.TRAP);
+    const flag = entries.find(entry => entry.value === flagTrigger);
+    expect(trap?.name).to.equal('TRAP');
+    expect(flag?.name).to.equal('MIDI_FLAG_7');
   });
 
   it('resolveAvailableSfxIds returns all ids when level and skills missing', function() {

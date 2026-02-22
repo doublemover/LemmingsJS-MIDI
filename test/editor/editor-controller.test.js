@@ -185,6 +185,14 @@ describe('EditorController', () => {
     controller.handlePointerDown({ x: 18, y: 20 }, 0);
     expect(session.level.gadgets[2].props.PIECE).to.equal(1);
 
+    controller.setSelectedTrigger(3);
+    controller.setTool(EditorTools.MIDI_FLAG);
+    controller.handlePointerDown({ x: 22, y: 24 }, 0);
+    const midiFlagEntry = session.level.gadgets[3];
+    expect(midiFlagEntry.props.PIECE).to.equal(3);
+    expect(midiFlagEntry.props.MIDI_FLAG).to.equal(true);
+    expect(Number.isFinite(midiFlagEntry.props.MIDI_FLAG_ID)).to.equal(true);
+
     for (let i = 0; i < 4; i++) {
       session.level.gadgets.push(createGadgetEntry({ styleName: 'dirt', piece: 1, x: 1, y: 1 }));
     }

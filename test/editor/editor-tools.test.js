@@ -9,6 +9,7 @@ describe('EditorTools', () => {
       EditorTools.TERRAIN,
       EditorTools.GADGET,
       EditorTools.TRIGGER,
+      EditorTools.MIDI_FLAG,
       EditorTools.ENTRANCE,
       EditorTools.EXIT,
       EditorTools.STEEL,

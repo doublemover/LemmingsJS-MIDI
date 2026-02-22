@@ -465,6 +465,7 @@ class LemmingManager extends BaseLogger {
     const triggerType = this.triggerManager.trigger(lem.x, lem.y, lem, tickOverride);
     switch (triggerType) {
     case TriggerTypes.NO_TRIGGER:
+    case TriggerTypes.DISABLED:
       return LemmingStateType.NO_STATE_TYPE;
     case TriggerTypes.DROWN:
       lem.lastTriggerType = triggerType;

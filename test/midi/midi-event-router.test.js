@@ -3,6 +3,7 @@ import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
+import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 const defaultSpec = () => ({ note: 60, velocity: 64, durationTicks: 1 });
 
@@ -192,6 +193,27 @@ describe('MidiEventRouter', function() {
       }
       expect(sent.length, testCase.name).to.equal(0);
     }
+  });
+
+  it('requires explicit trigger mapping for midi flag trigger events', function() {
+    const triggerType = toMidiFlagTriggerType(3);
+    const { router, sent } = makeRouter({
+      enabled: true,
+      triggers: {}
+    }, {
+      mapEvent: (event, _context, _density, sfx) => {
+        if (!sfx || Object.keys(sfx).length === 0) return null;
+        return { note: 65, velocity: 80, durationTicks: 2 };
+      }
+    });
+
+    router._onEvent({ sfxId: 0, triggerType, tick: 1, x: 10, y: 10 });
+    expect(sent).to.have.length(0);
+
+    router.mapping.config.triggers[String(triggerType)] = { note: 67, velocity: 100, durationTicks: 2 };
+    router._onEvent({ sfxId: 0, triggerType, tick: 2, x: 12, y: 12 });
+    expect(sent).to.have.length(1);
+    expect(sent[0].note).to.equal(65);
   });
 
   it('schedules ahead when event time is behind', function() {
