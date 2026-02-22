@@ -4,7 +4,7 @@ import { MapObject } from '../js/level/MapObject.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { Animation } from '../js/render/Animation.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
-import '../js/render/Frame.js';
+import { Frame } from '../js/render/Frame.js';
 
 /** simple helper to create an object image stub */
 function makeObjectImage(loop = true, palette = null) {
@@ -107,6 +107,48 @@ describe('MapObject', function () {
     const c0 = ColorPalette.colorFromRGB(10, 20, 30) >>> 0;
     const c1 = ColorPalette.colorFromRGB(40, 50, 60) >>> 0;
     expect(Array.from(buf.slice(0, 2))).to.eql([c0, c1]);
+  });
+
+  it('reuses predecoded Frame sprites without reconversion', function() {
+    MapObject._frameCache = new WeakMap();
+    const rgba = new Frame(2, 1);
+    rgba.setPixel(0, 0, ColorPalette.colorFromRGB(9, 8, 7));
+    const img = {
+      width: 2,
+      height: 1,
+      frames: [rgba],
+      palette: null,
+      animationLoop: true,
+      firstFrameIndex: 0
+    };
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, new Animation());
+    expect(mo.animation.frames[0]).to.equal(rgba);
+  });
+
+  it('downscales predecoded Frame sprites using sourceScale factors', function() {
+    MapObject._frameCache = new WeakMap();
+    const rgba = new Frame(4, 2);
+    rgba.clear();
+    rgba.setPixel(0, 0, ColorPalette.colorFromRGB(1, 2, 3));
+    rgba.setPixel(2, 0, ColorPalette.colorFromRGB(4, 5, 6));
+    const img = {
+      width: 4,
+      height: 2,
+      frames: [rgba],
+      palette: null,
+      sourceScaleX: 2,
+      sourceScaleY: 2,
+      animationLoop: true,
+      firstFrameIndex: 0
+    };
+
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, new Animation());
+    const frame = mo.animation.frames[0];
+    expect(frame.width).to.equal(2);
+    expect(frame.height).to.equal(1);
+    const c0 = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
+    const c1 = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
+    expect(Array.from(frame.getBuffer().slice(0, 2))).to.eql([c0, c1]);
   });
 
   it('emits trap and fire sounds on trigger', function () {

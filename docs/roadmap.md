@@ -112,7 +112,8 @@ Notes:
 - [x] Full support for pack-specific glitches (pack mechanics now gate pause,
   nuke-doubleclick, and right-click glitch behavior).
 - [x] Support for other popular pack types (`.nxp` archive reads in tooling).
-- [ ] High resolution and 32-bit color sprite support.
+- [x] High resolution and 32-bit color sprite support (renderer/object paths now
+  accept RGBA frames and optional sourceScale downsampling for hi-res assets).
 - [ ] Procgen production hardening and long-run stability/perf at high entity
   counts.
 
