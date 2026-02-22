@@ -235,15 +235,14 @@ describe('midiUiDomain', function() {
     expect(mappings[0].axisOp).to.equal('add');
   });
 
-  it('resolvePositionMappings builds legacy mappings and uses ranges', function() {
+  it('resolvePositionMappings preserves explicit mapping ranges', function() {
     const config = {
-      velocityRange: { min: 5, max: 120 },
       position: {
-        xToNote: true,
-        xNoteRange: { min: -5, max: 5 },
-        yToVelocity: true,
-        yToTimbre: true,
-        timbreRange: { min: 10, max: 20 }
+        mappings: [
+          { axis: 'x', target: 'note', min: -5, max: 5, enabled: true },
+          { axis: 'y', target: 'velocity', min: 120, max: 5, enabled: true },
+          { axis: 'y', target: 'timbre', min: 20, max: 10, enabled: true }
+        ]
       }
     };
 
@@ -261,46 +260,11 @@ describe('midiUiDomain', function() {
     expect(mappings[2].max).to.equal(10);
   });
 
-  it('resolvePositionMappings uses default ranges for x mappings when missing', function() {
+  it('resolvePositionMappings returns empty when mappings are omitted', function() {
     const config = {
       position: {
-        xToNote: true
-      }
-    };
-
-    const mappings = resolvePositionMappings(config);
-
-    expect(mappings).to.have.length(1);
-    expect(mappings[0].target).to.equal('note');
-    expect(mappings[0].min).to.equal(0);
-    expect(mappings[0].max).to.equal(0);
-  });
-
-  it('resolvePositionMappings uses default ranges when missing', function() {
-    const config = {
-      position: {
-        yToVelocity: true,
-        yToTimbre: true
-      }
-    };
-
-    const mappings = resolvePositionMappings(config);
-
-    expect(mappings).to.have.length(2);
-    expect(mappings[0].target).to.equal('velocity');
-    expect(mappings[0].min).to.equal(127);
-    expect(mappings[0].max).to.equal(1);
-    expect(mappings[1].target).to.equal('timbre');
-    expect(mappings[1].min).to.equal(127);
-    expect(mappings[1].max).to.equal(0);
-  });
-
-  it('resolvePositionMappings returns empty when legacy flags disabled', function() {
-    const config = {
-      position: {
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false
+        xToNote: true,
+        yToVelocity: true
       }
     };
 

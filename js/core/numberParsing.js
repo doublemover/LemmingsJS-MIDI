@@ -11,6 +11,10 @@ const parseInt10 = (value, fallback = null) => {
 
 const clampNumber = (value, min = -Infinity, max = Infinity) => Math.min(Math.max(value, min), max);
 
+/**
+ * Parse numeric query/input values where bounds are defined in the unscaled
+ * domain and scaling happens only after validation passes.
+ */
 const parseBoundedNumber = (value, {
   fallback = null,
   min = -Infinity,

@@ -366,7 +366,7 @@ describe('midiUiController', function() {
 
     const config = {
       scale: { name: 'minor', root: 2 },
-      position: { xToNote: true, yToVelocity: false, yToTimbre: false },
+      position: { mappings: [{ axis: 'x', target: 'note', min: -12, max: 12, enabled: true }] },
       velocityRange: { default: 90 },
       density: { velocityBoost: 0.2 },
       repeat: { maxRepeats: 2, spacingTicks: 3 },
@@ -978,7 +978,7 @@ describe('midiUiController', function() {
     expect(overrides.position.mappings[overrides.position.mappings.length - 1].min).to.equal(1);
   });
 
-  it('builds axis defaults from legacy position flags', function() {
+  it('builds axis defaults from explicit position mappings', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const positionList = register(doc, 'div', 'midiPositionList');

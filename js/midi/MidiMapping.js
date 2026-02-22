@@ -66,11 +66,12 @@ const DEFAULT_CONFIG = Object.freeze({
     durationBoost: 0
   },
   position: {
-    xToNote: false,
     xNoteRange: { min: -12, max: 12 },
-    yToVelocity: true,
-    yToTimbre: true,
     timbreRange: { min: 20, max: 110 },
+    mappings: [
+      { axis: 'y', target: 'velocity', min: 110, max: 20, enabled: true },
+      { axis: 'y', target: 'timbre', min: 110, max: 20, enabled: true }
+    ],
     viewPan: false,
     panRange: { min: -127, max: 127 },
     panDeadZonePct: 0.02,
@@ -120,9 +121,6 @@ const DEFAULT_CONFIG = Object.freeze({
         target: 'scale.name',
         values: ['chromatic-minor', 'major', 'minor', 'dorian', 'mixolydian', 'pentatonic', 'chromatic']
       },
-      xToNote: { cc: 18, toggle: true, target: 'position.xToNote' },
-      yToVelocity: { cc: 19, toggle: true, target: 'position.yToVelocity' },
-      yToTimbre: { cc: 20, toggle: true, target: 'position.yToTimbre' },
       viewPan: { cc: 21, toggle: true, target: 'position.viewPan' },
       repeatCount: { cc: 22, min: 0, max: 32, round: true, target: 'repeat.maxRepeats' },
       repeatSpacing: { cc: 23, min: 1, max: 8, round: true, target: 'repeat.windowBeats' },
@@ -164,42 +162,13 @@ const mergeConfig = (base, override) => {
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const lerp = (a, b, t) => a + (b - a) * t;
 
-const resolvePositionMappings = (positionCfg, velocityRange) => {
+/**
+ * Hard-cutover behavior: only explicit `position.mappings` entries are used.
+ * Legacy position toggle flags are intentionally ignored.
+ */
+const resolvePositionMappings = (positionCfg) => {
   if (Array.isArray(positionCfg?.mappings)) return positionCfg.mappings;
-  const mappings = [];
-  if (positionCfg?.xToNote) {
-    const xRange = positionCfg.xNoteRange || {};
-    mappings.push({
-      axis: 'x',
-      target: 'note',
-      min: xRange.min ?? 0,
-      max: xRange.max ?? 0,
-      enabled: true
-    });
-  }
-  if (positionCfg?.yToVelocity) {
-    const velMin = velocityRange?.min ?? 1;
-    const velMax = velocityRange?.max ?? 127;
-    mappings.push({
-      axis: 'y',
-      target: 'velocity',
-      min: velMax,
-      max: velMin,
-      enabled: true
-    });
-  }
-  if (positionCfg?.yToTimbre) {
-    const tMin = positionCfg.timbreRange?.min ?? 0;
-    const tMax = positionCfg.timbreRange?.max ?? 127;
-    mappings.push({
-      axis: 'y',
-      target: 'timbre',
-      min: tMax,
-      max: tMin,
-      enabled: true
-    });
-  }
-  return mappings;
+  return [];
 };
 
 const resolveAxisValues = (event, context) => {
@@ -383,7 +352,7 @@ class MidiMapping {
     const positionCfg = cfg.position || DEFAULT_CONFIG.position;
     const scale = resolveScale(cfg.scale);
     const noteDefaults = cfg.noteDefaults || DEFAULT_CONFIG.noteDefaults;
-    const positionMappings = resolvePositionMappings(positionCfg, velocityRange);
+    const positionMappings = resolvePositionMappings(positionCfg);
     const axisValues = resolveAxisValues(event, context);
     const envelopeOverrides = {};
     let noteOffset = null;

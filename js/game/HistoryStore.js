@@ -144,20 +144,21 @@ const computeDeltaFlags = (delta) => {
   return flags;
 };
 
+/**
+ * Canonical delta-section bitmap normalizer.
+ * Deltas are expected to carry `flags`; this fills it once for any ad-hoc test
+ * or tooling input that omitted the bitmap.
+ */
+const ensureDeltaFlags = (delta) => {
+  if (!delta || typeof delta !== 'object') return 0;
+  if (Number.isFinite(delta.flags)) return delta.flags | 0;
+  const flags = computeDeltaFlags(delta);
+  delta.flags = flags;
+  return flags;
+};
+
 const isNoOpDelta = (delta) => {
-  if (!delta) return true;
-  if (Number.isFinite(delta.flags)) return (delta.flags | 0) === 0;
-  if (delta.lemChanges?.ids?.length) return false;
-  if (delta.lemAdded?.length || delta.lemRemoved?.length) return false;
-  if (delta.lemmingManagerChanges) return false;
-  if (delta.groundChanges?.indices?.length || delta.groundChanges?.spans) return false;
-  if (delta.entranceChanges?.indices?.length) return false;
-  if (delta.triggerCooldownChanges?.ids?.length) return false;
-  if (delta.triggerAdd?.length || delta.triggerRemove?.length) return false;
-  if (delta.objectAnimChanges?.ids?.length) return false;
-  if (delta.victoryChanges || delta.skillsChanges || delta.timerChanges || delta.gameChanges) return false;
-  if (delta.soundEvents?.length || delta.minimapDeaths?.length) return false;
-  return true;
+  return ensureDeltaFlags(delta) === 0;
 };
 
 const normalizeOptions = (options = {}) => {
@@ -1792,11 +1793,7 @@ class HistoryStore {
   }
 
   _getDeltaFlags(delta) {
-    if (!delta || typeof delta !== 'object') return 0;
-    if (Number.isFinite(delta.flags)) return delta.flags | 0;
-    const flags = computeDeltaFlags(delta);
-    delta.flags = flags;
-    return flags;
+    return ensureDeltaFlags(delta);
   }
 
   _applyLemmingAdds(manager, list) {

@@ -231,47 +231,8 @@ const resolvePositionMappings = (config) => {
   if (Array.isArray(position.mappings)) {
     return position.mappings.map(entry => normalizePositionMapping({ ...entry }));
   }
-  const velocityRange = config?.velocityRange || {};
-  const timbreRange = position.timbreRange || {};
-  const mappings = [];
-  if (position.xToNote) {
-    const xRange = position.xNoteRange || {};
-    mappings.push({
-      axis: 'x',
-      axisX: true,
-      axisY: false,
-      axisOp: 'add',
-      target: 'note',
-      min: xRange.min ?? 0,
-      max: xRange.max ?? 0,
-      enabled: true
-    });
-  }
-  if (position.yToVelocity) {
-    mappings.push({
-      axis: 'y',
-      axisX: false,
-      axisY: true,
-      axisOp: 'add',
-      target: 'velocity',
-      min: velocityRange.max ?? 127,
-      max: velocityRange.min ?? 1,
-      enabled: true
-    });
-  }
-  if (position.yToTimbre) {
-    mappings.push({
-      axis: 'y',
-      axisX: false,
-      axisY: true,
-      axisOp: 'add',
-      target: 'timbre',
-      min: timbreRange.max ?? 127,
-      max: timbreRange.min ?? 0,
-      enabled: true
-    });
-  }
-  return mappings;
+  // Hard-cutover behavior: only explicit mapping entries are surfaced to UI.
+  return [];
 };
 
 export {

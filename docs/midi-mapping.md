@@ -41,9 +41,6 @@ Default skill order:
 | 11 | accent | 0-1 | 0.4 |
 | 16 | scale.root | 0-11 | 0 |
 | 17 | scale.name | chromatic-minor, major, minor, dorian, mixolydian, pentatonic, chromatic | chromatic-minor |
-| 18 | position.xToNote | toggle | off |
-| 19 | position.yToVelocity | toggle | on |
-| 20 | position.yToTimbre | toggle | on |
 | 21 | position.viewPan | toggle | off |
 | 22 | repeat.maxRepeats | 0-32 | 0 |
 | 23 | repeat.windowBeats | 1-8 | 4 |
@@ -57,6 +54,10 @@ Default skill order:
 | 31 | durationTicks.default | 1-24 | 6 |
 | 80 | timing.timeSignature.beats | 1-12 | 4 |
 | 81 | timing.timeSignature.unit | 1, 2, 4, 8, 16 | 4 |
+
+Position routing now uses explicit entries in `position.mappings`; toggle-style
+`position.xToNote` / `position.yToVelocity` / `position.yToTimbre` flags are no
+longer supported.
 
 ## Target ranges
 

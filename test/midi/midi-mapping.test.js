@@ -2,9 +2,7 @@ import { expect } from 'chai';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
 
 const basePosition = {
-  xToNote: false,
-  yToVelocity: false,
-  yToTimbre: false,
+  mappings: [],
   viewPan: false
 };
 
@@ -56,10 +54,11 @@ describe('MidiMapping', function() {
         durationTicks: { default: 10, min: 2, max: 20 },
         density: { windowTicks: 24, velocityBoost: 0.4, durationScale: 0.5 },
         position: {
-          xToNote: true,
-          xNoteRange: { min: -12, max: 12 },
-          yToVelocity: true,
-          yToTimbre: true,
+          mappings: [
+            { axis: 'x', target: 'note', min: -12, max: 12, enabled: true },
+            { axis: 'y', target: 'velocity', min: 100, max: 20, enabled: true },
+            { axis: 'y', target: 'timbre', min: 100, max: 20, enabled: true }
+          ],
           timbreRange: { min: 20, max: 100 }
         }
       },
@@ -607,14 +606,14 @@ describe('MidiMapping', function() {
     expect(merged.noteRange).to.eql([1, 2, 3]);
   });
 
-  it('builds position mappings from toggle flags', function() {
+  it('applies explicit position mappings', function() {
     const mapping = makeMapping({
       position: {
-        xToNote: true,
-        yToVelocity: true,
-        yToTimbre: true,
-        xNoteRange: { min: -12, max: 12 },
-        timbreRange: { min: 0, max: 127 }
+        mappings: [
+          { axis: 'x', target: 'note', min: -12, max: 12, enabled: true },
+          { axis: 'y', target: 'velocity', min: 110, max: 10, enabled: true },
+          { axis: 'y', target: 'timbre', min: 127, max: 0, enabled: true }
+        ]
       },
       velocityRange: { min: 10, max: 110, default: 80 }
     });
@@ -696,10 +695,7 @@ describe('MidiMapping', function() {
           { axis: 'x', target: 'velocity', min: 10, max: 100, enabled: true },
           { axis: 'x', target: 'duration', min: 2, max: 6, enabled: true }
         ],
-        viewPan: false,
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false
+        viewPan: false
       },
       velocityRange: { min: 1, max: 127, default: 50 },
       durationTicks: { default: 4, min: 1, max: 10 }
@@ -788,9 +784,6 @@ describe('MidiMapping', function() {
           { axis: 'y', target: 'velocity', enabled: false }
         ],
         viewPan: false,
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false,
         timbreRange: { min: 0, max: 127 },
         panRange: { min: -50, max: 50 }
       }
@@ -822,10 +815,7 @@ describe('MidiMapping', function() {
           { axis: 'x', target: 'note', min: 0, max: 12, enabled: true },
           { axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true }
         ],
-        viewPan: false,
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false
+        viewPan: false
       },
       sfx: { '1': { notes: [60, 64] } }
     });
@@ -843,14 +833,12 @@ describe('MidiMapping', function() {
     const mapping = new MidiMapping({
       envelope: { attack: NaN, decay: NaN, sustain: NaN, release: NaN },
       position: {
+        mappings: [],
         viewPan: true,
         panDeadZonePct: 1,
         panOnscreenWeight: 1,
         panOffscreenWeight: 0,
-        panOffscreenRange: 1,
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false
+        panOffscreenRange: 1
       }
     });
     const spec = mapping.mapEvent(
@@ -893,10 +881,7 @@ describe('MidiMapping', function() {
     const mapping = new MidiMapping({
       position: {
         mappings: [{ axis: 'x', target: 'pitchBend', min: -1, max: 1, enabled: true }],
-        viewPan: false,
-        xToNote: false,
-        yToVelocity: false,
-        yToTimbre: false
+        viewPan: false
       }
     });
     const spec = mapping.mapEvent(

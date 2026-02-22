@@ -283,9 +283,13 @@ describe('Stage', function() {
     stage._rawScale = 1.5;
     let applied = null;
     let redraws = 0;
+    const redrawFlags = [];
     const originalApply = stage.applyViewport;
     stage.applyViewport = (...args) => { applied = args; };
-    stage.redraw = () => { redraws += 1; };
+    stage.redraw = (forceComposite = false) => {
+      redraws += 1;
+      redrawFlags.push(forceComposite);
+    };
     stage.setGameViewPointPosition(5, 6, { preserveScale: true });
     expect(applied[3]).to.equal(1.5);
     expect(redraws).to.equal(1);
@@ -313,6 +317,7 @@ describe('Stage', function() {
       expect(stage.gameImgProps.viewPoint.x).to.equal(7);
       expect(stage.gameImgProps.viewPoint.y).to.equal(8);
     });
+    expect(redrawFlags.every((flag) => flag === true)).to.equal(true);
 
     stage.clampViewPoint(null);
     stage.clampViewPoint({ display: null });

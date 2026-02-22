@@ -109,6 +109,8 @@ class TriggerManager {
     if (!this._triggers) return;
     const list = this._ownerTriggers.get(owner);
     if (list?.length) {
+      // #remove uses swap-pop on owner buckets; iterate over a stable snapshot
+      // so owners with multiple triggers cannot skip entries mid-removal.
       const owned = list.slice();
       for (let i = 0; i < owned.length; i += 1) {
         this.#remove(owned[i]);
@@ -261,6 +263,8 @@ class TriggerManager {
         }
 
         if (pos !== last) {
+          // Maintain O(1) removals by moving the tail trigger into the removed
+          // slot and updating its cached position metadata for this bucket.
           const swapped = cell[last];
           cell[pos] = swapped;
           const swappedBuckets = swapped?.__bucketIndices;

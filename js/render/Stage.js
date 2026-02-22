@@ -446,7 +446,7 @@ class Stage {
         : (this.gameImgProps.viewPoint.scale || 1);
       this._rawScale = rawScale;
       this.applyViewport(this.gameImgProps, x, targetY, rawScale);
-      this.redraw();
+      this.redraw(true);
       return;
     }
 
@@ -458,7 +458,7 @@ class Stage {
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
 
-      this.redraw();
+      this.redraw(true);
       return;
     }
 
@@ -470,7 +470,7 @@ class Stage {
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
 
-      this.redraw();
+      this.redraw(true);
       return;
     }
 
@@ -486,9 +486,14 @@ class Stage {
     );
     this.clampViewPoint(this.gameImgProps);
 
-    this.redraw();
+    this.redraw(true);
   }
 
+  /**
+   * Composite the stage canvas from game/gui layers.
+   * @param {boolean} forceComposite - When true, always repaint both layers
+   * (used by call-sites that clear stage regions before requesting redraw).
+   */
   redraw(forceComposite = false) {
     const start = perfNow();
     this._updateFadeState(start);

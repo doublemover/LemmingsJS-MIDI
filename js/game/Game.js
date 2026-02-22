@@ -123,7 +123,6 @@ class Game extends BaseLogger {
     const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
     await this._initLevel(level, { levelGroupIndex, levelIndex });
     endMeasure();
-    return this; // keeps legacy promise signature intact
   }
 
   async loadCustomLevel(level, options = {}) {

@@ -106,11 +106,11 @@ describe('Game', function() {
     Object.entries(originals).forEach(([k,v]) => { Lemmings[k] = v; });
   });
 
-  it('loadLevel initializes managers and returns itself', async function() {
+  it('loadLevel initializes managers', async function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     const ret = await game.loadLevel(0, 1);
-    expect(ret).to.equal(game);
+    expect(ret).to.equal(undefined);
     expect(game.gameTimer).to.be.instanceOf(Lemmings.GameTimer);
     expect(game.commandManager).to.be.instanceOf(Lemmings.CommandManager);
     expect(game.lemmingManager).to.be.instanceOf(Lemmings.LemmingManager);
