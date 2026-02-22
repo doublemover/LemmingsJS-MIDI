@@ -20,6 +20,8 @@ and no MIDI UI.
 - Ground height: `4`.
 - Initial ground width: `280`.
 - Camera follow smoothing: frame-time-based interpolation.
+- Seeded randomness: `?seed=<value>` controls deterministic style selection and
+  procgen AI/terrain decisions.
 
 ## Bootstrap flow
 - Build an `EditorLevel`, set procgen headers, and place one entrance gadget.
@@ -27,6 +29,9 @@ and no MIDI UI.
 - Set `view.endless = true` so release never stops.
 - Pick a style compatible with the active pack path and cache the last choice in
   `localStorage` when available.
+- Resolve a procgen seed from `?seed=...` (fallback: stored value or timestamp),
+  derive independent RNG streams for style and terrain/AI, and persist the
+  active seed for replayability.
 
 ## Terrain and AI behavior
 - Maintain `groundEndX`; extend terrain whenever lead progress nears the

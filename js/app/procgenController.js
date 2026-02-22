@@ -18,6 +18,8 @@ class ProcgenController {
     this.window = options.window || globalThis?.window;
     this.assets = assets || null;
     this.stamper = stamper || null;
+    this._rng = typeof options.rng === 'function' ? options.rng : Math.random;
+    this._rngSeed = Number.isFinite(options.rngSeed) ? (Math.trunc(options.rngSeed) >>> 0) : null;
     this._tickHandler = null;
     this._running = false;
     this._cameraX = 0;
@@ -528,7 +530,7 @@ class ProcgenController {
     if (scan.wall && scan.wall.height >= 6) {
       skillOrder.push({ skill: SkillTypes.BASHER, key: 'bash' });
       skillOrder.push({ skill: SkillTypes.DIGGER, key: 'dig' });
-      if (scan.wall.height >= this.aiWallHeight + 4 || Math.random() < 0.15) {
+      if (scan.wall.height >= this.aiWallHeight + 4 || this._rand() < 0.15) {
         skillOrder.push({ skill: SkillTypes.MINER, key: 'mine' });
       }
     }
@@ -572,7 +574,7 @@ class ProcgenController {
 
   _maybeTriggerBomber() {
     if (this._bombCheckElapsed < 30) return;
-    if (Math.random() < this._bombChance) {
+    if (this._rand() < this._bombChance) {
       const manager = this.game?.getLemmingManager?.();
       const lems = manager?.activeLemmings || manager?.lemmings || [];
       let best = null;
@@ -598,7 +600,7 @@ class ProcgenController {
 
   _maybeTriggerNuke() {
     if (this._nukeElapsed < 60) return;
-    if (Math.random() < 0.001) {
+    if (this._rand() < 0.001) {
       const manager = this.game?.getLemmingManager?.();
       manager?.doNukeAllLemmings?.();
     }
@@ -969,7 +971,7 @@ class ProcgenController {
         ? repeatPiece
         : this.assets.pickGroundPiece(remaining, minHeight, minWidth);
       if (!piece?.bounds?.width) break;
-      if (!repeatPiece || Math.random() < 0.25) {
+      if (!repeatPiece || this._rand() < 0.25) {
         repeatPiece = piece;
       }
       const stamped = structure?.type === 'pillar'
@@ -988,7 +990,7 @@ class ProcgenController {
       const destX = cursorX + stamped - piece.bounds.minX;
       const destY = this._clampSurfaceForEntrance(surfaceY, piece, cursorX + stamped) - piece.bounds.maxY;
       this.stamper.stamp(piece, destX, destY);
-      if (Math.random() < (this.decorChance + decorBias * 0.01)) {
+      if (this._rand() < (this.decorChance + decorBias * 0.01)) {
         this._placeDecoration(destX, destY, piece);
       }
       stamped += pieceWidth;
@@ -1018,7 +1020,7 @@ class ProcgenController {
   }
 
   _seedStructurePlan() {
-    const roll = Math.random();
+    const roll = this._rand();
     let type = 'flat';
     if (roll < 0.25) type = 'steps-up';
     else if (roll < 0.5) type = 'steps-down';
@@ -1033,7 +1035,7 @@ class ProcgenController {
       remaining: length,
       step: this._randInt(1, Math.max(2, this.maxStepUp)),
       surface: null,
-      direction: Math.random() < 0.5 ? -1 : 1,
+      direction: this._rand() < 0.5 ? -1 : 1,
       turnAt: Math.max(1, Math.floor(length / 2))
     };
   }
@@ -1200,13 +1202,13 @@ class ProcgenController {
   _pickSegmentWidth() {
     const min = Math.max(2, Math.floor(this.segmentMinWidth));
     const max = Math.max(min, Math.floor(this.segmentMaxWidth));
-    return min + Math.floor(Math.random() * (max - min + 1));
+    return min + Math.floor(this._rand() * (max - min + 1));
   }
 
   _pickGapWidth() {
     const min = Math.max(2, Math.floor(this.gapMinWidth));
     const max = Math.max(min, Math.floor(this.gapMaxWidth));
-    return min + Math.floor(Math.random() * (max - min + 1));
+    return min + Math.floor(this._rand() * (max - min + 1));
   }
 
   _shouldInsertGap() {
@@ -1214,7 +1216,7 @@ class ProcgenController {
       this._gapCooldown -= 1;
       return false;
     }
-    if (Math.random() > this.gapChance) return false;
+    if (this._rand() > this.gapChance) return false;
     return true;
   }
 
@@ -1267,13 +1269,13 @@ class ProcgenController {
       this._pendingDrop = true;
     } else if (prev === 'flat') {
       if (this._pendingDrop) {
-        const roll = Math.random();
+        const roll = this._rand();
         if (roll < 0.5) mode = 'drop-small';
         else if (roll < 0.85) mode = 'drop-medium';
         else mode = 'drop-big';
         this._pendingDrop = false;
       } else {
-        const roll = Math.random();
+        const roll = this._rand();
         if (roll < 0.5) mode = 'climb';
         else if (roll < 0.75) mode = 'drop-small';
         else if (roll < 0.92) mode = 'drop-medium';
@@ -1295,10 +1297,18 @@ class ProcgenController {
     };
   }
 
+  _rand() {
+    const value = this._rng?.();
+    if (!Number.isFinite(value)) return 0;
+    if (value <= 0) return 0;
+    if (value >= 1) return 0.9999999999999999;
+    return value;
+  }
+
   _randInt(min, max) {
     const lo = Math.min(min, max);
     const hi = Math.max(min, max);
-    return lo + Math.floor(Math.random() * (hi - lo + 1));
+    return lo + Math.floor(this._rand() * (hi - lo + 1));
   }
 
   _getNextColorIndex() {
@@ -1332,7 +1342,7 @@ class ProcgenController {
     let next = transition.from;
     if (transition.from !== transition.to) {
       const chance = Math.min(1, Math.max(0, progress));
-      next = Math.random() < chance ? transition.to : transition.from;
+      next = this._rand() < chance ? transition.to : transition.from;
     }
     if (transition.remaining <= 0) {
       next = transition.to;

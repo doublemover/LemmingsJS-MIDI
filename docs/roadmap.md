@@ -400,7 +400,7 @@ Notes:
   Touchpoints: `scripts/bench-hotpaths.js`, `js/render/*`, `js/game/GameGui.js`.
 
 ## Phase 25: Procgen production tier 3
-- [ ] Add deterministic seeded RNG for procgen generation/AI so scenarios can be
+- [x] Add deterministic seeded RNG for procgen generation/AI so scenarios can be
   replayed and benchmarked exactly.
   Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenController.js`,
   `docs/procgen.md`.

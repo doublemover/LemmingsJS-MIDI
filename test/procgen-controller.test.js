@@ -70,4 +70,23 @@ describe('ProcgenController', function () {
     expect(controller._gaps).to.have.length(1);
     expect(controller._gaps[0].x).to.equal(120);
   });
+
+  it('uses injected rng streams for deterministic procgen decisions', function () {
+    const sequence = [0.1, 0.9, 0.2, 0.75, 0.33];
+    let index = 0;
+    const controller = new ProcgenController({
+      level: { width: 200, height: 80 },
+      options: {
+        rng: () => sequence[(index++) % sequence.length]
+      }
+    });
+    index = 0;
+
+    expect(controller._randInt(1, 10)).to.equal(2);
+    const plan = controller._seedStructurePlan();
+    expect(plan.type).to.equal('staircase');
+    expect(plan.remaining).to.equal(5);
+    expect(plan.step).to.equal(3);
+    expect(plan.direction).to.equal(-1);
+  });
 });

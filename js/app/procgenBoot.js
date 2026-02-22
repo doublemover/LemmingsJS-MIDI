@@ -12,6 +12,11 @@ import { registerServiceWorker } from './registerServiceWorker.js';
 import { DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
 import { ProcgenStageAdapter } from './procgenStageAdapter.js';
+import {
+  normalizeSeed,
+  deriveSeed,
+  createSeededRandom
+} from '../core/seededRandom.js';
 
 const PROCGEN_GAME_TYPE = GameTypes.OHNO;
 const PROCGEN_LEVEL_WIDTH = 65535;
@@ -22,6 +27,8 @@ const PROCGEN_GROUND_HEIGHT = 4;
 const PROCGEN_ENTRANCE_OFFSET = 80;
 const PROCGEN_INITIAL_GROUND_WIDTH = 280;
 const PROCGEN_ENTRANCE_CLEARANCE = 28;
+const PROCGEN_SEED_PARAM = 'seed';
+const PROCGEN_SEED_STORAGE_KEY = 'procgen.seed';
 const PROCGEN_GROUND_SETS_BY_PATH = {
   lemmings: [0, 1, 2, 3, 4],
   lemmings_ohNo: [0, 1, 2, 3],
@@ -41,9 +48,9 @@ const PROCGEN_SKILLS = {
   DIGGER: 9999
 };
 
-const shuffle = (list) => {
+const shuffle = (list, rng = Math.random) => {
   for (let i = list.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = Math.floor(rng() * (i + 1));
     [list[i], list[j]] = [list[j], list[i]];
   }
   return list;
@@ -55,7 +62,7 @@ const getProcgenGroundSets = (config) => {
   return Array.isArray(sets) && sets.length ? sets : null;
 };
 
-const pickProcgenStyle = async (fileProvider, config) => {
+const pickProcgenStyle = async (fileProvider, config, rng = Math.random) => {
   const names = getStyleNames();
   if (!names.length) return 'fire';
   const allowedGroundSets = getProcgenGroundSets(config);
@@ -76,7 +83,7 @@ const pickProcgenStyle = async (fileProvider, config) => {
         && allowedGroundSets.includes(style.groundSet | 0);
     })
     : candidates.slice();
-  const shuffled = shuffle(filtered);
+  const shuffled = shuffle(filtered, rng);
   if (normalizedLast && !shuffled.some(name => name.toLowerCase() === normalizedLast)) {
     const lastStyle = getStyle(last);
     const lastGroundSet = Number.isFinite(lastStyle?.groundSet) ? lastStyle.groundSet | 0 : null;
@@ -105,7 +112,7 @@ const pickProcgenStyle = async (fileProvider, config) => {
       }
     }
   } else {
-    choice = list[Math.floor(Math.random() * list.length)] || names[0];
+    choice = list[Math.floor(rng() * list.length)] || names[0];
   }
   try {
     window.localStorage?.setItem('procgen.style', choice);
@@ -113,6 +120,23 @@ const pickProcgenStyle = async (fileProvider, config) => {
     // ignore storage failures
   }
   return choice;
+};
+
+const resolveProcgenSeed = (params) => {
+  const requestedSeed = params?.get?.(PROCGEN_SEED_PARAM);
+  if (requestedSeed != null && requestedSeed !== '') {
+    return normalizeSeed(requestedSeed);
+  }
+  let storedSeed = null;
+  try {
+    storedSeed = window.localStorage?.getItem(PROCGEN_SEED_STORAGE_KEY) || null;
+  } catch {
+    storedSeed = null;
+  }
+  if (storedSeed != null && storedSeed !== '') {
+    return normalizeSeed(storedSeed);
+  }
+  return normalizeSeed(Date.now());
 };
 
 const buildProcgenEditorLevel = (styleName) => {
@@ -141,6 +165,15 @@ const init = async () => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const params = new URLSearchParams(window.location.search);
+  const procgenSeed = resolveProcgenSeed(params);
+  const styleRng = createSeededRandom(deriveSeed(procgenSeed, 'style'));
+  const terrainRng = createSeededRandom(deriveSeed(procgenSeed, 'terrain'));
+  window.procgenSeed = procgenSeed;
+  try {
+    window.localStorage?.setItem(PROCGEN_SEED_STORAGE_KEY, String(procgenSeed));
+  } catch {
+    // ignore storage failures
+  }
   const aiDebugOverlay = params.has('aiDebug');
   const view = new GameView();
   view.gameType = PROCGEN_GAME_TYPE;
@@ -163,7 +196,8 @@ const init = async () => {
 
   const styleName = await pickProcgenStyle(
     view.gameFactory.fileProvider,
-    config
+    config,
+    styleRng
   );
   const { level: editorLevel, entranceX, entranceY } = buildProcgenEditorLevel(styleName);
   const level = await loadEditorLevel(
@@ -208,7 +242,9 @@ const init = async () => {
       entranceX,
       entranceY,
       entranceClearance: PROCGEN_ENTRANCE_CLEARANCE,
-      aiDebugOverlay
+      aiDebugOverlay,
+      rng: terrainRng,
+      rngSeed: procgenSeed
     }
   });
   controller.start();
