@@ -125,7 +125,7 @@ class TriggerManager {
   /**
    * Query at pixel (x,y).  Returns a value from TriggerTypes
    */
-  trigger (x, y, lemming = null) {
+  trigger (x, y, lemming = null, tickOverride = null) {
     const app = globalThis?.lemmings;
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
@@ -141,7 +141,9 @@ class TriggerManager {
         (x >> this._shift);
 
       const cell = this._grid[bucket];
-      const tick = this.gameTimer.getGameTicks();
+      const tick = Number.isFinite(tickOverride)
+        ? Math.trunc(tickOverride)
+        : this.gameTimer.getGameTicks();
 
       this._lastCheckTick[bucket] = tick;
 

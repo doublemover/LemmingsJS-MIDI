@@ -287,6 +287,7 @@ class LemmingManager extends BaseLogger {
       this.addNewLemmings();
       const lems = this.activeLemmings;
       const count = lems.length;
+      const tick = this.triggerManager?.gameTimer?.getGameTicks?.() ?? null;
       if (this.isNuking()) {
         this._nukeNextLemming();
       }
@@ -294,7 +295,7 @@ class LemmingManager extends BaseLogger {
         if (lem.removed && lem.action !== this.actions[LemmingStateType.EXPLODING]) continue;
         const newAction = lem.process(this.level);
         this.processNewAction(lem, newAction);
-        const triggerAction = this.runTrigger(lem);
+        const triggerAction = this.runTrigger(lem, tick);
         this.processNewAction(lem, triggerAction);
       }
       const sel = this.getSelectedLemming();
@@ -424,12 +425,12 @@ class LemmingManager extends BaseLogger {
     }
   }
 
-  runTrigger(lem) {
+  runTrigger(lem, tickOverride = null) {
     if (lem.isRemoved() || lem.isDisabled()) {
       // this.lemmings.splice(this.lemmings.indexOf(lem), 1);
       return LemmingStateType.NO_STATE_TYPE;
     }
-    const triggerType = this.triggerManager.trigger(lem.x, lem.y, lem);
+    const triggerType = this.triggerManager.trigger(lem.x, lem.y, lem, tickOverride);
     switch (triggerType) {
     case TriggerTypes.NO_TRIGGER:
       return LemmingStateType.NO_STATE_TYPE;
