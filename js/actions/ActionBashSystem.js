@@ -42,7 +42,7 @@ class ActionBashSystem extends ActionBaseSystem {
       lem.x += (lem.lookRight ? 1 : -1);
       const yDelta = this.findGapDelta(groundMask, lem.x, lem.y);
       lem.y += yDelta;
-      if (yDelta == 3) {
+      if (yDelta === 3) {
         return LemmingStateType.FALLING;
       }
     }
@@ -85,9 +85,9 @@ class ActionBashSystem extends ActionBaseSystem {
     }
 
     // check if end of solid
-    if (state == 5) {
+    if (state === 5) {
       if (this.findHorizontalSpace(groundMask, lem.x + (lem.lookRight ? 8 : -8),
-        lem.y - 6, lem.lookRight) == 4) {
+        lem.y - 6, lem.lookRight) === 4) {
         return LemmingStateType.WALKING;
       }
     }

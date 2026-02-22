@@ -69,7 +69,7 @@ class GameFactory {
     };
     try {
       const config = await this.configReader.getConfig(gameType);
-      if (config == null) {
+      if (config === null || config === undefined) {
         throw new Error('Game config not found');
       }
       const Resources = getDependency('GameResources', GameResources);

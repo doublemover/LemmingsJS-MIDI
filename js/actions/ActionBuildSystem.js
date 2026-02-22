@@ -9,7 +9,7 @@ class ActionBuildSystem extends ActionBaseSystem {
   }
   process(level, lem) {
     lem.frameIndex = (lem.frameIndex + 1) % 16;
-    if (lem.frameIndex == 9) {
+    if (lem.frameIndex === 9) {
       /// lay brick
       const startX = lem.x + (lem.lookRight ? 0 : -4);
       for (let i = 0; i < 6; i++) {
@@ -30,7 +30,7 @@ class ActionBuildSystem extends ActionBaseSystem {
       }
       return LemmingStateType.NO_STATE_TYPE;
     }
-    if (lem.frameIndex == 0) {
+    if (lem.frameIndex === 0) {
       lem.y--;
       for (let i = 0; i < 2; i++) {
         lem.x += (lem.lookRight ? 1 : -1);

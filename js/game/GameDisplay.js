@@ -92,7 +92,7 @@ class GameDisplay {
         tooltipText: 'render'
       },
       () => {
-        if (this.display == null)
+        if (this.display === null)
           return;
         this.level.render(this.display);
         this.objectManager.render(this.display);
@@ -118,7 +118,7 @@ class GameDisplay {
         tooltipText: 'renderDebug'
       },
       () => {
-        if (this.display == null)
+        if (this.display === null)
           return;
         this.level.renderDebug(this.display);
         this.lemmingManager.renderDebug(this.display);

@@ -26,7 +26,7 @@ class ActionFallSystem extends ActionBaseSystem {
       }
     }
     lem.y += i;
-    if (i == 3) {
+    if (i === 3) {
       lem.state += i;
       return LemmingStateType.NO_STATE_TYPE;
     } else {

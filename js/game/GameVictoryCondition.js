@@ -27,7 +27,7 @@ class GameVictoryCondition {
     }
     let oldReleaseRate = this.releaseRate;
     let newReleaseRate = this.boundToRange(this.minReleaseRate, this.releaseRate + count, GameVictoryCondition.maxReleaseRate);
-    if (newReleaseRate == oldReleaseRate) {
+    if (newReleaseRate === oldReleaseRate) {
       return false;
     }
     this.releaseRate = newReleaseRate;

@@ -182,7 +182,7 @@ class LemmingManager extends BaseLogger {
   }
 
   processNewAction(lem, newAction) {
-    if (newAction == LemmingStateType.NO_STATE_TYPE) return false;
+    if (newAction === LemmingStateType.NO_STATE_TYPE) return false;
     this.setLemmingState(lem, newAction);
     return true;
   }
@@ -295,7 +295,7 @@ class LemmingManager extends BaseLogger {
 
   addNewLemmings() {
     const endless = lemmings?.endless === true;
-    if (lemmings.bench == true || lemmings.bench2 == true || lemmings.benchReverse == true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
+    if (lemmings.bench === true || lemmings.bench2 === true || lemmings.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
             
     } else {
       if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
@@ -486,7 +486,7 @@ class LemmingManager extends BaseLogger {
             lem.countdownAction = null;
           }
         }
-        if (stateType == LemmingStateType.OUT_OF_LEVEL) {
+        if (stateType === LemmingStateType.OUT_OF_LEVEL) {
           withPerformance(
             'removeOne',
             {
@@ -542,7 +542,7 @@ class LemmingManager extends BaseLogger {
           [SkillTypes.BOMBER]: this.skillActions[SkillTypes.BOMBER],
           [SkillTypes.BUILDER]: this._actionTypes?.builder
         };
-        if (lem.action == this.actions[LemmingStateType.FALLING]) {
+        if (lem.action === this.actions[LemmingStateType.FALLING]) {
           if (!canApplyWhileFalling[skillType]) {
             return false;
           }

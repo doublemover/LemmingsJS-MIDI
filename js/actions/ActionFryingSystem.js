@@ -25,7 +25,7 @@ class ActionFryingSystem extends ActionBaseSystem {
       const miniMap = globalThis?.lemmings?.game?.lemmingManager?.miniMap;
       if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
-    if (lem.frameIndex == 14) {
+    if (lem.frameIndex === 14) {
       return LemmingStateType.OUT_OF_LEVEL;
     }
     if (!level.hasGroundAt(lem.x + (lem.lookRight ? 8 : -8), lem.y)) {

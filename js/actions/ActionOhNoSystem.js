@@ -20,7 +20,7 @@ class ActionOhNoSystem extends ActionBaseSystem {
   }
     
   process(level, lem) {
-    if (++lem.frameIndex == 16) {
+    if (++lem.frameIndex === 16) {
       return LemmingStateType.EXPLODING;
     }
         

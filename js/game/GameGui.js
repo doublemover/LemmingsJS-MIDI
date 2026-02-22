@@ -76,17 +76,17 @@ class GameGui {
       this._applyReleaseRateAuto();
       if (app?.nukeAfter > 0) {
         this._nukeAfterCountdown++;
-        if (this._nukeAfterCountdown == app.nukeAfter) {
+        if (this._nukeAfterCountdown === app.nukeAfter) {
           this.game.queueCommand(new CommandNuke());
           this.nukePrepared = false;
         }
       }
-      if ((Math.floor(this.gameTimer.getGameTime()) % 2) == 0) {
+      if ((Math.floor(this.gameTimer.getGameTime()) % 2) === 0) {
         this.backgroundChanged = true;
       }
       this.gameTimeChanged = true;
 
-      if (this._guiRafId == 0) {
+      if (this._guiRafId === 0) {
         this._guiRafId = window.requestAnimationFrame(this._guiBound);
       }
     };
@@ -183,7 +183,7 @@ class GameGui {
             syncSpeed();
             return;
           }
-          if (debugOrBench || speedFac == 1 || speedFac > 0.1 && speedFac < 1) {
+          if (debugOrBench || speedFac === 1 || speedFac > 0.1 && speedFac < 1) {
             this.gameTimer.speedFactor = Math.trunc((this.gameTimer.speedFactor-0.1)*100)/100;
             this.drawSpeedChange(false);
             syncSpeed();
@@ -504,12 +504,12 @@ class GameGui {
 
       d.drawRect(160, 32, 16, 10, 0, 0, 0, true); // draw bottom black rect on pause button
 
-      if (speedFac != 120) {
+      if (speedFac !== 120) {
         const greenS  = this._getGreenLetter('f');
         d.drawFrameResized(greenS, 173, 34, 3, 4);
       }
 
-      if (speedFac != 0.1) {
+      if (speedFac !== 0.1) {
         const greenP  = this._getGreenLetter('-');
         d.drawFrameResized(greenP, 161, 33, 3, 6);
       }
@@ -832,7 +832,7 @@ class SmoothScroller {
   }
 
   hasVelocity() {
-    if (this.velocity < this.minVelocity || this.velocity == 0) {
+    if (this.velocity < this.minVelocity || this.velocity === 0) {
       return false;
     }
     return true;
@@ -840,7 +840,7 @@ class SmoothScroller {
 
   // call this whenever a wheel event fires:
   addImpulse(delta) {
-    if (delta == 0) {
+    if (delta === 0) {
       console.log('error: trying to add 0 impulse');
       return;
     }
@@ -872,7 +872,7 @@ class SmoothScroller {
     // stop if below threshold:
     if (Math.abs(this.velocity) < this.minVelocity) {
       this.velocity = 0;
-      if (this._lastVelocity != 0) {
+      if (this._lastVelocity !== 0) {
         this._lastVelocity = 0;
         this.onHasVelocity.trigger(this.velocity);
       }

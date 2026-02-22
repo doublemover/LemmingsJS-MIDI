@@ -7,7 +7,7 @@ class ActionCountdownSystem extends ActionBaseSystem {
   static numberMasks = new Map();
   constructor(masks) {
     super({ actionName: 'countdown' });
-    if (ActionCountdownSystem.numberMasks.size == 0) {
+    if (ActionCountdownSystem.numberMasks.size === 0) {
       ActionCountdownSystem.numberMasks.set('numbers', masks.GetMask(MaskTypes.NUMBERS));
     }
   }
@@ -30,7 +30,7 @@ class ActionCountdownSystem extends ActionBaseSystem {
       return LemmingStateType.NO_STATE_TYPE;
     }
     lem.countdown--;
-    if (lem.countdown == 0) {
+    if (lem.countdown === 0) {
       lem.setCountDown(null);
       const soundBus = getSoundBus();
       soundBus?.emitSfx?.(

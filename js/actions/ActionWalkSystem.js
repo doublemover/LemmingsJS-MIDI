@@ -17,7 +17,7 @@ class ActionWalkSystem extends ActionBaseSystem {
 
     const groundMask = level.getGroundMaskLayer();
     const upDelta = groundMask.getColumnStepHeight(lem.x, lem.y - 7, 8);
-    if (upDelta == 8) {
+    if (upDelta === 8) {
       // collision with obstacle
       lem.x = prevX; // revert movement into wall
       if (lem.canClimb) {
@@ -40,7 +40,7 @@ class ActionWalkSystem extends ActionBaseSystem {
     } else {
       let downDelta = groundMask.getColumnGapDepth(lem.x, lem.y + 1, 3);
       lem.y += downDelta;
-      if (downDelta == 4) {
+      if (downDelta === 4) {
         return LemmingStateType.FALLING;
       } else {
         return LemmingStateType.NO_STATE_TYPE;

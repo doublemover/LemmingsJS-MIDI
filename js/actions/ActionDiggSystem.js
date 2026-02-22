@@ -27,7 +27,7 @@ class ActionDiggSystem extends ActionBaseSystem {
       );
       return LemmingStateType.SHRUG;
     }
-    if (lem.state == 0) {
+    if (lem.state === 0) {
       this.digRow(level, lem, lem.y - 2);
       this.digRow(level, lem, lem.y - 1);
       lem.state = 1;

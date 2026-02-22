@@ -56,7 +56,7 @@ class Lemming extends BaseLogger {
 
   render(gameDisplay) {
     if (!this.action) return;
-    if (this.countdownAction != null) {
+    if (this.countdownAction !== null && this.countdownAction !== undefined) {
       this.countdownAction.draw(gameDisplay, this);
     }
     this.action.draw(gameDisplay, this);
@@ -96,7 +96,7 @@ class Lemming extends BaseLogger {
     // run secondary action
     if (this.countdownAction) {
       let newAction = this.countdownAction.process(level, this);
-      if (newAction != LemmingStateType.NO_STATE_TYPE) {
+      if (newAction !== LemmingStateType.NO_STATE_TYPE) {
         return newAction;
       }
     }
@@ -122,7 +122,7 @@ class Lemming extends BaseLogger {
   }
 
   isDisabled() { return this.disabled; }
-  isRemoved() { return (this.action == null); }
+  isRemoved() { return this.action === null; }
 }
 
 Lemming.LEM_MIN_Y = -5;

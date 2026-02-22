@@ -47,7 +47,7 @@ class GameSkills {
     return this.selectedSkill;
   }
   setSelectedSkill(skill) {
-    if (this.selectedSkill == skill) {
+    if (this.selectedSkill === skill) {
       return false;
     }
     if (!SkillTypes[Object.keys(SkillTypes)[skill]]) {

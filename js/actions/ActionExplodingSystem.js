@@ -25,7 +25,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
   }
 
   draw(gameDisplay, lem) {
-    if (lem.frameIndex == 0) {
+    if (lem.frameIndex === 0) {
       const ani = this.sprites.get('both');
       const frame = ani.getFrame(lem.frameIndex);
       gameDisplay.drawFrame(frame, lem.x-10, lem.y-8);
@@ -45,7 +45,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
       );
     }
     lem.frameIndex++;
-    if (lem.frameIndex == 1) {
+    if (lem.frameIndex === 1) {
       this.triggerManager.removeByOwner(lem);
       const mask = this.masks.get('both').GetMask(0);
       const changed = level.clearGroundWithMask(mask, lem.x, lem.y);
@@ -60,7 +60,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
       }
       if (miniMap) miniMap.addDeath(lem.x, lem.y);
     }
-    if (lem.frameIndex == 52) {
+    if (lem.frameIndex === 52) {
       return LemmingStateType.OUT_OF_LEVEL;
     }
     return LemmingStateType.NO_STATE_TYPE;

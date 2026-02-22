@@ -20,7 +20,7 @@ class GameResources extends BaseLogger {
   }
   /** return the main.dat file container */
   getMainDat() {
-    if (this.mainDat != null) {
+    if (this.mainDat !== null) {
       return this.mainDat;
     }
     this.mainDat = this._loadMainDat();
