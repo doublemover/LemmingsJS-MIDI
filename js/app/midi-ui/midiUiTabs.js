@@ -2,6 +2,7 @@ const createMidiUiTabsController = ({
   document = globalThis.document,
   storage = null,
   readStoredMidiId,
+  readStoredSectionStates,
   storeMidiId,
   readStoredJson,
   storeJson,
@@ -13,6 +14,9 @@ const createMidiUiTabsController = ({
   };
 
   const readSectionStates = () => {
+    if (typeof readStoredSectionStates === 'function') {
+      return readStoredSectionStates(storage);
+    }
     const stored = readStoredJson?.(storage, midiStorageKeys?.sectionStates);
     if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
     return stored;

@@ -11,10 +11,28 @@ const mergeDeep = (target, source) => {
   return out;
 };
 
+const isPlainObject = (value) => {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+};
+
+const MAX_LEARN_TARGET_LENGTH = 128;
+
+const sanitizeLearnTarget = (value) => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  return trimmed.slice(0, MAX_LEARN_TARGET_LENGTH);
+};
+
+const sanitizeLearnCapture = (value) => {
+  if (!Number.isFinite(value)) return null;
+  return Math.max(0, Math.min(127, Math.trunc(value)));
+};
+
 const createMidiIntentState = ({ overrides = {}, learn = null } = {}) => ({
   revision: 0,
-  overrides: (overrides && typeof overrides === 'object' && !Array.isArray(overrides)) ? overrides : {},
-  learn: learn && typeof learn === 'object' ? { ...learn } : null,
+  overrides: isPlainObject(overrides) ? overrides : {},
+  learn: isPlainObject(learn) ? { ...learn } : null,
   lastIntentType: null
 });
 
@@ -24,42 +42,58 @@ const reduceMidiIntent = (state, intent) => {
   const type = String(action.type || '');
   switch (type) {
   case 'overrides.replace':
+    if (!isPlainObject(action.overrides)) return current;
     return {
       ...current,
       revision: current.revision + 1,
-      overrides: (action.overrides && typeof action.overrides === 'object' && !Array.isArray(action.overrides))
-        ? action.overrides
-        : {},
+      overrides: action.overrides,
       lastIntentType: type
     };
   case 'overrides.merge':
+    if (!isPlainObject(action.patch)) return current;
     return {
       ...current,
       revision: current.revision + 1,
-      overrides: mergeDeep(current.overrides || {}, action.patch || {}),
+      overrides: mergeDeep(current.overrides || {}, action.patch),
+      lastIntentType: type
+    };
+  case 'overrides.reset':
+    return {
+      ...current,
+      revision: current.revision + 1,
+      overrides: {},
       lastIntentType: type
     };
   case 'learn.arm':
+  {
+    const target = sanitizeLearnTarget(action.target);
+    if (!target) return current;
     return {
       ...current,
       revision: current.revision + 1,
       learn: {
-        target: action.target || null,
+        target,
         armedAt: Date.now()
       },
       lastIntentType: type
     };
+  }
   case 'learn.capture':
+  {
+    if (!current.learn) return current;
+    const value = sanitizeLearnCapture(action.value);
+    if (value === null) return current;
     return {
       ...current,
       revision: current.revision + 1,
-      learn: current.learn ? {
+      learn: {
         ...current.learn,
-        lastCapture: action.value ?? null,
+        lastCapture: value,
         capturedAt: Date.now()
-      } : null,
+      },
       lastIntentType: type
     };
+  }
   case 'learn.disarm':
     return {
       ...current,

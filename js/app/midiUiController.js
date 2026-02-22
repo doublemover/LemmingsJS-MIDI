@@ -10,6 +10,8 @@ import {
 import {
   midiStorageKeys,
   readStoredMidiId,
+  readStoredMidiOverrides,
+  readStoredSectionStates,
   readStoredJson,
   storeJson,
   storeMidiId
@@ -73,7 +75,7 @@ export const createMidiUiController = ({
   let midiUiBound = false;
   let midiViewPanEnabled = false;
   let midiInputController = null;
-  let midiOverrides = readStoredJson(storage, midiStorageKeys.overrides) || {};
+  let midiOverrides = readStoredMidiOverrides(storage);
   let midiIntentState = createMidiIntentState({ overrides: midiOverrides });
   let envControlsBound = false;
   let lastUiSignature = null;
@@ -365,6 +367,7 @@ export const createMidiUiController = ({
     readStoredMidiId,
     storeMidiId,
     readStoredJson,
+    readStoredSectionStates,
     storeJson,
     midiStorageKeys
   });

@@ -489,7 +489,7 @@ Notes:
 - [x] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
   single-control changes.
   Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiDomain.js`.
-- [ ] Add strict intent payload validation and migration guards for persisted
+- [x] Add strict intent payload validation and migration guards for persisted
   overrides/state.
   Touchpoints: `js/app/midi-ui/midiUiIntent.js`, `js/app/midi-ui/midiUiStorage.js`.
 - [ ] Add focused bench coverage for MIDI routing/scheduler throughput under high

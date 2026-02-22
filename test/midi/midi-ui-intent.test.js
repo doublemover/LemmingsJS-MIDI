@@ -19,4 +19,22 @@ describe('midiUiIntent', function () {
     state = reduceMidiIntent(state, { type: 'learn.disarm' });
     expect(state.learn).to.equal(null);
   });
+
+  it('rejects invalid intents and supports hard reset', function() {
+    let state = createMidiIntentState({ overrides: { repeat: { enabled: true } } });
+    const baselineRevision = state.revision;
+    state = reduceMidiIntent(state, { type: 'overrides.merge', patch: null });
+    expect(state.revision).to.equal(baselineRevision);
+    state = reduceMidiIntent(state, { type: 'overrides.replace', overrides: [] });
+    expect(state.revision).to.equal(baselineRevision);
+
+    state = reduceMidiIntent(state, { type: 'learn.arm', target: '' });
+    expect(state.learn).to.equal(null);
+    state = reduceMidiIntent(state, { type: 'learn.capture', value: 999 });
+    expect(state.learn).to.equal(null);
+
+    state = reduceMidiIntent(state, { type: 'overrides.reset' });
+    expect(state.overrides).to.eql({});
+    expect(state.revision).to.equal(baselineRevision + 1);
+  });
 });

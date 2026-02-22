@@ -1,6 +1,9 @@
 import { expect } from 'chai';
 import {
+  migrateMidiOverrides,
   midiStorageKeys,
+  readStoredMidiOverrides,
+  readStoredSectionStates,
   readStoredMidiId,
   storeMidiId,
   readStoredJson,
@@ -76,6 +79,15 @@ describe('midiUiStorage', function() {
     expect(readStoredJson(badStorage, 'key')).to.equal(null);
   });
 
+  it('supports guarded JSON reads for migration hooks', function() {
+    const storage = createStorage();
+    storage.getItem = () => '{"a":1}';
+    const value = readStoredJson(storage, 'key', {
+      guard: (payload) => ({ migrated: payload?.a === 1 })
+    });
+    expect(value).to.deep.equal({ migrated: true });
+  });
+
   it('stores JSON and removes entries when nullish', function() {
     const storage = createStorage();
     storeJson(storage, 'overrides', { a: 1 });
@@ -93,5 +105,34 @@ describe('midiUiStorage', function() {
 
     expect(() => storeJson(storage, 'overrides', { a: 2 })).to.not.throw();
     expect(() => storeJson(storage, 'overrides', null)).to.not.throw();
+  });
+
+  it('migrates stored MIDI overrides into a safe normalized object', function() {
+    const migrated = migrateMidiOverrides({
+      repeat: { spacingTicks: 4 },
+      input: { channel: ' 17 ' },
+      position: { mappings: [{ axis: 'x' }, null, 'bad'] }
+    });
+    expect(migrated.repeat.windowBeats).to.equal(4);
+    expect(migrated.input.channel).to.equal(16);
+    expect(migrated.position.mappings).to.deep.equal([{ axis: 'x' }]);
+  });
+
+  it('reads stored MIDI overrides and section states with guards', function() {
+    const storage = createStorage();
+    storage.getItem = (key) => {
+      if (key === midiStorageKeys.overrides) {
+        return '{"input":{"channel":"omni"},"repeat":{"spacingTicks":2}}';
+      }
+      if (key === midiStorageKeys.sectionStates) {
+        return '{"main":true,"bad":"x"}';
+      }
+      return null;
+    };
+    const overrides = readStoredMidiOverrides(storage);
+    const sections = readStoredSectionStates(storage);
+    expect(overrides.input.channel).to.equal('omni');
+    expect(overrides.repeat.windowBeats).to.equal(2);
+    expect(sections).to.deep.equal({ main: true });
   });
 });
