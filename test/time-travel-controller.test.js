@@ -38,6 +38,28 @@ describe('TimeTravelController', function() {
     expect(game.gameGui.gameTimeChanged).to.equal(true);
   });
 
+  it('configures bounded history retention on construction', function() {
+    let received = null;
+    const history = {
+      configureRetention(policy) {
+        received = policy;
+        return { ...policy, preserveFutureHistory: false };
+      }
+    };
+    const controller = new TimeTravelController({}, history);
+    expect(received).to.eql({
+      enableHistoryCap: true,
+      historyCapTicks: 20000,
+      historyWarnTicks: 15000
+    });
+    expect(controller.getHistoryRetention()).to.eql({
+      enableHistoryCap: true,
+      historyCapTicks: 20000,
+      historyWarnTicks: 15000,
+      preserveFutureHistory: false
+    });
+  });
+
   it('returns early when dependencies are missing', function() {
     const controller = new TimeTravelController(null, null);
     controller.stepBackward(1);

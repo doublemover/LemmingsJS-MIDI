@@ -1,3 +1,9 @@
+const DEFAULT_HISTORY_RETENTION = Object.freeze({
+  enableHistoryCap: true,
+  historyCapTicks: 20000,
+  historyWarnTicks: 15000
+});
+
 class TimeTravelController {
   constructor(game, history) {
     this.game = game;
@@ -12,9 +18,21 @@ class TimeTravelController {
     this.ignoreSpeedOnReverse = true;
     this._resumeForward = false;
     this._prevInputEnabled = null;
+    this._historyRetention = this._configureHistoryRetention();
   }
 
   get isReversing() { return this._reverseActive; }
+
+  getHistoryRetention() {
+    return { ...this._historyRetention };
+  }
+
+  _configureHistoryRetention() {
+    if (!this.history?.configureRetention) {
+      return { ...DEFAULT_HISTORY_RETENTION };
+    }
+    return this.history.configureRetention(DEFAULT_HISTORY_RETENTION);
+  }
 
   _resolveTimer() {
     const timer = this.game?.getGameTimer?.();

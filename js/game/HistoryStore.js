@@ -4,11 +4,35 @@ import { Trigger } from '../level/Trigger.js';
 const DEFAULT_OPTIONS = Object.freeze({
   keyframeInterval: 120,
   preserveFutureHistory: false,
-  enableHistoryCap: false,
-  historyCapTicks: 0,
-  historyWarnTicks: 0,
+  enableHistoryCap: true,
+  historyCapTicks: 20000,
+  historyWarnTicks: 15000,
   deltaPoolLimit: 64
 });
+
+const toNonNegativeInt = (value, fallback) => {
+  if (!Number.isFinite(value)) return fallback;
+  const next = Math.trunc(value);
+  return next >= 0 ? next : fallback;
+};
+
+const normalizeOptions = (options = {}) => {
+  const keyframeInterval = Math.max(1, toNonNegativeInt(options.keyframeInterval, DEFAULT_OPTIONS.keyframeInterval));
+  const deltaPoolLimit = toNonNegativeInt(options.deltaPoolLimit, DEFAULT_OPTIONS.deltaPoolLimit);
+  const historyCapTicks = toNonNegativeInt(options.historyCapTicks, DEFAULT_OPTIONS.historyCapTicks);
+  let historyWarnTicks = toNonNegativeInt(options.historyWarnTicks, DEFAULT_OPTIONS.historyWarnTicks);
+  if (historyCapTicks > 0 && historyWarnTicks > historyCapTicks) {
+    historyWarnTicks = historyCapTicks;
+  }
+  return {
+    keyframeInterval,
+    preserveFutureHistory: !!options.preserveFutureHistory,
+    enableHistoryCap: options.enableHistoryCap !== false,
+    historyCapTicks,
+    historyWarnTicks,
+    deltaPoolLimit
+  };
+};
 
 const createLemmingState = (size) => ({
   capacity: size,
@@ -141,7 +165,7 @@ const createDelta = (tick) => ({
 
 class HistoryStore {
   constructor(options = {}) {
-    this.options = { ...DEFAULT_OPTIONS, ...options };
+    this.options = normalizeOptions({ ...DEFAULT_OPTIONS, ...options });
     this.keyframes = [];
     this.keyframeTicks = [];
     this.deltas = [];
@@ -181,6 +205,21 @@ class HistoryStore {
     this.options.preserveFutureHistory = !!enabled;
   }
 
+  configureRetention(policy = {}) {
+    this.options = normalizeOptions({ ...this.options, ...policy });
+    this._historyWarned = false;
+    return this.getRetentionPolicy();
+  }
+
+  getRetentionPolicy() {
+    return {
+      preserveFutureHistory: !!this.options.preserveFutureHistory,
+      enableHistoryCap: !!this.options.enableHistoryCap,
+      historyCapTicks: this.options.historyCapTicks ?? 0,
+      historyWarnTicks: this.options.historyWarnTicks ?? 0
+    };
+  }
+
   getDelta(tickIndex) {
     if (!Number.isFinite(tickIndex)) return null;
     return this.deltas[Math.trunc(tickIndex)] || null;
@@ -200,7 +239,8 @@ class HistoryStore {
       maxTick: max,
       deltaCount: this.deltaCount,
       keyframeCount: this.keyframeCount,
-      spanTicks: span
+      spanTicks: span,
+      retention: this.getRetentionPolicy()
     };
   }
 

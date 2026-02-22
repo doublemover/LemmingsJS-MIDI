@@ -1647,6 +1647,36 @@ describe('HistoryStore', function() {
     expect(found.tickIndex).to.equal(2);
   });
 
+  it('uses bounded retention defaults and normalizes retention settings', function() {
+    const history = new HistoryStore();
+    expect(history.getRetentionPolicy()).to.eql({
+      preserveFutureHistory: false,
+      enableHistoryCap: true,
+      historyCapTicks: 20000,
+      historyWarnTicks: 15000
+    });
+
+    const normalized = new HistoryStore({
+      enableHistoryCap: true,
+      historyCapTicks: 10,
+      historyWarnTicks: 50
+    });
+    expect(normalized.getRetentionPolicy().historyWarnTicks).to.equal(10);
+
+    const configured = normalized.configureRetention({
+      enableHistoryCap: false,
+      historyCapTicks: 5,
+      historyWarnTicks: 3
+    });
+    expect(configured).to.eql({
+      preserveFutureHistory: false,
+      enableHistoryCap: false,
+      historyCapTicks: 5,
+      historyWarnTicks: 3
+    });
+    expect(normalized.getHistoryStats().retention).to.eql(configured);
+  });
+
   it('pauses and resumes recording with baseline updates', function() {
     const { history } = createHistoryFixture();
     history.beginTick(0);
