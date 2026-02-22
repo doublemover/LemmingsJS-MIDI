@@ -1,7 +1,6 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { getAppContext } from '../core/dependencies.js';
 import { EventHandler } from '../util/EventHandler.js';
-import { withPerformance } from '../util/LogHandler.js';
 
 const getApp = () => {
   const app = getAppContext();
@@ -10,6 +9,17 @@ const getApp = () => {
   if (typeof lemmings !== 'undefined') return lemmings;
   return null;
 };
+
+const TIMER_LOOP_DEVTOOLS = Object.freeze({
+  track: 'GameTimer',
+  trackGroup: 'Game Loop',
+  color: 'primary',
+  tooltipText: 'loop'
+});
+
+const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
+  typeof performance.now === 'function' &&
+  typeof performance.measure === 'function');
 
 class GameTimer {
   #speedFactor;
@@ -156,48 +166,55 @@ class GameTimer {
 
   #loop(now) {
     if (!this.isRunning()) return;
-    return withPerformance(
-      'GameTimer loop',
-      {
-        track: 'GameTimer',
-        trackGroup: 'Game Loop',
-        color: 'primary',
-        tooltipText: 'loop'
-      },
-      () => {
-        window.cancelAnimationFrame(this.#rafId);
-        this.#rafId = 0;
-        const app = getApp();
-        if (app) app.tps = this.tps;
-        const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
-        if (gameSeconds > this.#lastGameSecond) {
-          if (this.eachGameSecond) {
-            this.#lastGameSecond = gameSeconds;
-            this.eachGameSecond.trigger();
-          }
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+
+    try {
+      window.cancelAnimationFrame(this.#rafId);
+      this.#rafId = 0;
+      if (app) app.tps = this.tps;
+      const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
+      if (gameSeconds > this.#lastGameSecond) {
+        if (this.eachGameSecond) {
+          this.#lastGameSecond = gameSeconds;
+          this.eachGameSecond.trigger();
         }
-        const frameTime = this.#frameTime;
-        let delta = now - this.#lastTime;
-        if (delta >= frameTime) {
-          const steps = Math.floor(delta / frameTime);
-          if (app?.bench === true || app?.benchReverse === true || app?.benchSequence === true) {
-            this.#benchSpeedAdjust(steps);
-          }
-          if (app?.bench2 === true) {
-            if (steps > 1) this.#catchupSpeedAdjust(steps);
-            else this.#restoreSpeed();
-          }
-          delta -= steps * frameTime;
-          this.#lastTime = now - delta;
-          for (let i = 0; i < steps; ++i) {
-            if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
-            ++this.tickIndex;
-            if (this.onGameTick) this.onGameTick.trigger();
-          }
-        }
-        this.#rafId = window.requestAnimationFrame(this.#loopBound);
       }
-    ).call(this);
+      const frameTime = this.#frameTime;
+      let delta = now - this.#lastTime;
+      if (delta >= frameTime) {
+        const steps = Math.floor(delta / frameTime);
+        if (app?.bench === true || app?.benchReverse === true || app?.benchSequence === true) {
+          this.#benchSpeedAdjust(steps);
+        }
+        if (app?.bench2 === true) {
+          if (steps > 1) this.#catchupSpeedAdjust(steps);
+          else this.#restoreSpeed();
+        }
+        delta -= steps * frameTime;
+        this.#lastTime = now - delta;
+        for (let i = 0; i < steps; ++i) {
+          if (this.onBeforeGameTick) this.onBeforeGameTick.trigger(this.tickIndex);
+          ++this.tickIndex;
+          if (this.onGameTick) this.onGameTick.trigger();
+        }
+      }
+      this.#rafId = window.requestAnimationFrame(this.#loopBound);
+    } finally {
+      if (perfEnabled) {
+        try {
+          performance.measure('GameTimer loop', {
+            start: perfStart,
+            detail: { devtools: TIMER_LOOP_DEVTOOLS }
+          });
+        } catch {
+          /* ignored */
+        }
+      }
+    }
   }
 
   #benchSpeedAdjust(steps) {
@@ -272,11 +289,14 @@ class GameTimer {
 
   #catchupSpeedAdjust(steps) {
     const newFactor = Math.max(0.1, 1 / steps);
+    const app = getApp();
     if (!this.#catchupSlow) {
       this.#catchupBaseSpeed = this.#speedFactor;
     }
     if (newFactor < this.#speedFactor) {
-      console.log(`catchup: ${steps} steps, speed ${newFactor}`);
+      if (app?.logBenchCatchup === true) {
+        console.log(`catchup: ${steps} steps, speed ${newFactor}`);
+      }
       this.#speedFactor = newFactor;
       this.#updateFrameTime();
       this.#catchupSlow = true;

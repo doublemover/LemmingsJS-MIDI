@@ -3,6 +3,7 @@ import { withConsoleStub } from './helpers/console.js';
 import { setGlobalLemmings, withGlobalLemmings, withMissingGlobalLemmings } from './helpers/lemmings.js';
 import { GameTimer } from '../js/game/GameTimer.js';
 import { COUNTER_LIMIT } from '../js/core/constants.js';
+import { getAppContext, setAppContext } from '../js/core/dependencies.js';
 
 describe('GameTimer', function() {
   let originalWindow;
@@ -458,6 +459,8 @@ describe('GameTimer', function() {
   it('skips bench adjust when app vanishes mid-loop', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const prev = Object.getOwnPropertyDescriptor(globalThis, 'lemmings');
+    const prevApp = getAppContext();
+    setAppContext(null);
     let access = 0;
     Object.defineProperty(globalThis, 'lemmings', {
       configurable: true,
@@ -478,6 +481,7 @@ describe('GameTimer', function() {
       } else {
         delete globalThis.lemmings;
       }
+      setAppContext(prevApp);
       timer.suspend();
     }
   });
