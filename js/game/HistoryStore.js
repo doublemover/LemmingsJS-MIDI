@@ -996,21 +996,28 @@ class HistoryStore {
     }
 
     if (!this.keyframeTicks.length) return;
-    while (this.keyframeTicks.length && this.keyframeTicks[0] < start) {
-      const tick = this.keyframeTicks.shift();
+    const keyframeTicks = this.keyframeTicks;
+    let removeCount = 0;
+    const total = keyframeTicks.length;
+    while (removeCount < total && keyframeTicks[removeCount] < start) {
+      const tick = keyframeTicks[removeCount];
       if (this.keyframes[tick]) {
         this.keyframes[tick] = undefined;
         this.keyframeCount -= 1;
       }
+      removeCount += 1;
     }
-    if (!this.keyframeTicks.length) {
+    if (removeCount > 0) {
+      keyframeTicks.splice(0, removeCount);
+    }
+    if (!keyframeTicks.length) {
       this.minKeyframeTick = null;
       this.maxKeyframeTick = null;
       this._lastKeyframe = null;
       return;
     }
-    this.minKeyframeTick = this.keyframeTicks[0];
-    this.maxKeyframeTick = this.keyframeTicks[this.keyframeTicks.length - 1];
+    this.minKeyframeTick = keyframeTicks[0];
+    this.maxKeyframeTick = keyframeTicks[keyframeTicks.length - 1];
     this._lastKeyframe = this.keyframes[this.maxKeyframeTick] || null;
   }
 
