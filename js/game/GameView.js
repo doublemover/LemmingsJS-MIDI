@@ -17,6 +17,7 @@ import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { listSavedLevels, loadSavedLevel } from '../editor/EditorStorage.js';
 import { getDependency, setAppContext, clearAppContext } from '../core/dependencies.js';
+import { parseBoundedNumber, parseInt10 } from '../core/numberParsing.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
 const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
@@ -537,10 +538,13 @@ class GameView extends BaseLogger {
     for (const name of names) {
       const raw = query.get(name);
       if (raw !== null) {
-        const val = parseFloat(raw);
-        if (!isNaN(val) && val >= min && val <= max) {
-          return val * multiplier;
-        }
+        const parsed = parseBoundedNumber(raw, {
+          fallback: null,
+          min,
+          max,
+          multiplier
+        });
+        if (parsed != null) return parsed;
       }
     }
     return def;
@@ -678,8 +682,7 @@ class GameView extends BaseLogger {
 
   /** convert select values to integers */
   strToNum(str) {
-    const n = parseInt(str, 10);
-    return Number.isNaN(n) ? 0 : n;
+    return parseInt10(str, 0);
   }
   /** remove items of a <select> */
   clearHtmlList(htmlList) {

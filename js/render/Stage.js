@@ -4,6 +4,7 @@ import { StageImageProperties } from './StageImageProperties.js';
 import { UserInputManager } from '../input/UserInputManager.js';
 import { ViewPoint } from './ViewPoint.js';
 import { getDependency } from '../core/dependencies.js';
+import { toFiniteNumber } from '../core/numberParsing.js';
 
 const COLOR_FN_RE = /^rgba?\(/i;
 const COLOR_RE = /^rgba?\(\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:,\s*([-+]?\d*\.?\d+)\s*)?\)$/i;
@@ -27,10 +28,10 @@ function colorStringTo32(str) {
   if (!COLOR_FN_RE.test(str)) return 0xffffffff;
   const m = COLOR_RE.exec(str.trim());
   if (!m) return 0xffffffff;
-  const r = toChannel(Number(m[1]));
-  const g = toChannel(Number(m[2]));
-  const b = toChannel(Number(m[3]));
-  const a = toAlpha(m[4] === undefined ? 1 : Number(m[4]));
+  const r = toChannel(toFiniteNumber(m[1], NaN));
+  const g = toChannel(toFiniteNumber(m[2], NaN));
+  const b = toChannel(toFiniteNumber(m[3], NaN));
+  const a = toAlpha(toFiniteNumber(m[4], 1));
   return ((Math.round(a * 255) & 0xff) << 24) | ((b & 0xff) << 16) | ((g & 0xff) << 8) | (r & 0xff);
 }
 

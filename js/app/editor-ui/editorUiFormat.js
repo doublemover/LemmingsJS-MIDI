@@ -1,9 +1,10 @@
+import { toFiniteNumber } from '../../core/numberParsing.js';
+
 const normalizeText = (value) => String(value ?? '').trim();
 
 const parseNumber = (value) => {
   if (value == null || value === '') return null;
-  const num = Number(value);
-  return Number.isFinite(num) ? num : null;
+  return toFiniteNumber(value, null);
 };
 
 const normalizeRotation = (value) => {
