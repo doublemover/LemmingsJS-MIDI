@@ -217,6 +217,8 @@ describe('LemmingManager coverage', function() {
       [TriggerTypes.EXIT_LEVEL, LemmingStateType.EXITING],
       [TriggerTypes.KILL, LemmingStateType.SPLATTING],
       [TriggerTypes.FRYING, LemmingStateType.FRYING],
+      [TriggerTypes.UNKNOWN_2, LemmingStateType.SPLATTING],
+      [TriggerTypes.UNKNOWN_3, LemmingStateType.SPLATTING],
       [TriggerTypes.TRAP, LemmingStateType.SPLATTING]
     ];
     for (const [triggerType, expected] of cases) {

@@ -285,6 +285,16 @@ describe('LemmingManager triggers and nuking', function() {
     expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
     expect(lem.lastTriggerType).to.equal(TriggerTypes.TRAP);
 
+    manager.triggerManager.trigger = () => TriggerTypes.UNKNOWN_2;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.UNKNOWN_2);
+
+    manager.triggerManager.trigger = () => TriggerTypes.UNKNOWN_3;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.UNKNOWN_3);
+
     manager.triggerManager.trigger = () => TriggerTypes.EXIT_LEVEL;
     state = manager.runTrigger(lem);
     expect(state).to.equal(Lemmings.LemmingStateType.EXITING);

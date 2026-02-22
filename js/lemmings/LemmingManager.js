@@ -459,6 +459,8 @@ class LemmingManager extends BaseLogger {
     case TriggerTypes.FRYING:
       lem.lastTriggerType = triggerType;
       return LemmingStateType.FRYING;
+    case TriggerTypes.UNKNOWN_2:
+    case TriggerTypes.UNKNOWN_3:
     case TriggerTypes.TRAP:
       lem.lastTriggerType = triggerType;
       return LemmingStateType.SPLATTING;
