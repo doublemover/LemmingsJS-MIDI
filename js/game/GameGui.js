@@ -63,6 +63,7 @@ class GameGui {
     this.selectionAnimStep  = 1;   // pixels per animation step
     this._selectionOffset   = 0;
     this._selectionCounter  = 0;
+    this._lastAntSignature = '';
 
     /* hover state */
     this._hoverPanelIdx   = -1;
@@ -446,6 +447,7 @@ class GameGui {
 
     if (this.backgroundChanged) {
       this.backgroundChanged = false;
+      this._lastAntSignature = '';
       d.initSize(this._panelSprite.width, this._panelSprite.height);
       d.setBackground(this._panelSprite.getData());
 
@@ -568,12 +570,8 @@ class GameGui {
       this.skillSelectionChanged = false;
     }
 
-    if (!this.gameTimer.isRunning()) {
-      this.drawPaused(d);
-    }
     if (this.nukePrepared) {
       this.drawNukeConfirm(d);
-      this.drawNukeHover(d);
     }
 
     if (this._hoverPanelIdx >= 0) {
@@ -590,7 +588,19 @@ class GameGui {
       this._selectionOffset += this.selectionAnimStep;
     }
 
-    this.drawSelection(d, this.getPanelIndexBySkill(this.skills.getSelectedSkill()));
+    const paused = !this.gameTimer.isRunning();
+    const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
+    const antSignature = `${selectedPanel}|${paused ? 1 : 0}|${this.nukePrepared ? 1 : 0}|${this._hoverPanelIdx}|${this._selectionOffset}`;
+    if (this._lastAntSignature !== antSignature) {
+      if (paused) {
+        this.drawPaused(d);
+      }
+      if (this.nukePrepared) {
+        this.drawNukeHover(d);
+      }
+      this.drawSelection(d, selectedPanel);
+      this._lastAntSignature = antSignature;
+    }
     if (this.releaseRateChanged) {
       this.releaseRateChanged = false;
       this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
