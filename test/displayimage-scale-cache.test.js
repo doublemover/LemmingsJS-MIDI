@@ -53,4 +53,18 @@ describe('DisplayImage scale cache', function () {
     const evicted = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
     expect(evicted).to.not.equal(initial.get(2));
   });
+
+  it('reuses nearest-coordinate maps and evicts old cache entries', function () {
+    const first = displayImageTest.getNearestCoordinateMap(2, 4);
+    const second = displayImageTest.getNearestCoordinateMap(2, 4);
+    expect(first).to.equal(second);
+    expect(Array.from(first)).to.eql([0, 0, 1, 1]);
+
+    for (let i = 0; i < 300; i += 1) {
+      displayImageTest.getNearestCoordinateMap(3 + i, 6 + i);
+    }
+    const refreshed = displayImageTest.getNearestCoordinateMap(2, 4);
+    expect(refreshed).to.not.equal(null);
+    expect(displayImageTest._nearestCoordinateCache.size).to.be.at.most(256);
+  });
 });

@@ -29,10 +29,12 @@ const marchingAntPatternCache = new Map();
 const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
 const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const MAX_MARCHING_ANT_FAST_PERIMETER = 2048;
+const MAX_NEAREST_COORD_CACHE_ENTRIES = 256;
 const DIRTY_RECT_MERGE_PAD = 1;
 const DIRTY_RECT_FULL_LIMIT = 96;
 const DIRTY_TILE_FULL_LIMIT = 1024;
 const EMPTY_DIRTY_RECTS = Object.freeze([]);
+const nearestCoordinateCache = new Map();
 
 const toUint32Source = (source) => {
   if (source instanceof Uint32Array) return source;
@@ -175,6 +177,42 @@ function getScaledFrameVariant(frame, dstWidth, dstHeight, mode) {
   }
   variants.set(key, variant);
   return variant;
+}
+
+function getNearestCoordinateMap(srcLength, dstLength) {
+  if (!Number.isFinite(srcLength) || !Number.isFinite(dstLength)) return null;
+  const src = Math.trunc(srcLength);
+  const dst = Math.trunc(dstLength);
+  if (src < 1 || dst < 1) return null;
+  const key = `${src}:${dst}`;
+  const cached = nearestCoordinateCache.get(key);
+  if (cached) {
+    nearestCoordinateCache.delete(key);
+    nearestCoordinateCache.set(key, cached);
+    return cached;
+  }
+
+  const ratio = src / dst;
+  const map = new Int32Array(dst);
+  for (let i = 0; i < dst; i += 1) {
+    map[i] = Math.floor(i * ratio);
+  }
+
+  if (nearestCoordinateCache.size >= MAX_NEAREST_COORD_CACHE_ENTRIES) {
+    const oldestKey = nearestCoordinateCache.keys().next().value;
+    nearestCoordinateCache.delete(oldestKey);
+  }
+  nearestCoordinateCache.set(key, map);
+  return map;
+}
+
+function getClippedDestinationSpan(destW, destH, baseX, baseY, width, height) {
+  const x1 = Math.max(0, -baseX);
+  const y1 = Math.max(0, -baseY);
+  const x2 = Math.min(width, destW - baseX);
+  const y2 = Math.min(height, destH - baseY);
+  if (x2 <= x1 || y2 <= y1) return null;
+  return { x1, y1, x2, y2 };
 }
 
 class DisplayImage extends BaseLogger {
@@ -1033,27 +1071,22 @@ function scaleNearest(
   const { width: srcW, height: srcH } = frame;
   const srcBuf = frame.getBuffer();
   const srcMask = frame.getMask();
+  const xMap = getNearestCoordinateMap(srcW, dstWidth);
+  const yMap = getNearestCoordinateMap(srcH, dstHeight);
+  if (!xMap || !yMap) return;
+  const span = getClippedDestinationSpan(destW, destH, baseX, baseY, dstWidth, dstHeight);
+  if (!span) return;
 
-  const scaleX = srcW / dstWidth;
-  const scaleY = srcH / dstHeight;
-
-  for (let dy = 0; dy < dstHeight; dy++) {
-    let srcY = Math.floor(dy * scaleY);
-    if (upsideDown) srcY = srcH - 1 - srcY;
+  const { x1, y1, x2, y2 } = span;
+  for (let dy = y1; dy < y2; dy += 1) {
+    const mapY = upsideDown ? (dstHeight - 1 - dy) : dy;
+    const srcRowBase = yMap[mapY] * srcW;
     const outY = dy + baseY;
-    if (outY < 0 || outY >= destH) continue;
+    let destIdx = (outY * destW) + baseX + x1;
+    let outX = baseX + x1;
 
-    const srcYBase = srcY * srcW;
-    const destYBase = outY * destW;
-
-    for (let dx = 0; dx < dstWidth; dx++) {
-      const outX = dx + baseX;
-      if (outX < 0 || outX >= destW) continue;
-
-      const srcX = Math.floor(dx * scaleX);
-      const srcIdx = srcYBase + srcX;
-      const destIdx = destYBase + outX;
-
+    for (let dx = x1; dx < x2; dx += 1, destIdx += 1, outX += 1) {
+      const srcIdx = srcRowBase + xMap[dx];
       if (!srcMask[srcIdx]) {
         if (nullColor32 !== null) dest32[destIdx] = nullColor32;
         continue;
@@ -1105,21 +1138,18 @@ function scaleXbrz(
     return;
   }
   const { scaled, scaledMask } = variant;
-
-  for (let dy = 0; dy < dstHeight; dy++) {
-    const srcY = upsideDown ? dstHeight - 1 - dy : dy;
+  const span = getClippedDestinationSpan(destW, destH, baseX, baseY, dstWidth, dstHeight);
+  if (!span) return;
+  const { x1, y1, x2, y2 } = span;
+  for (let dy = y1; dy < y2; dy += 1) {
+    const srcY = upsideDown ? (dstHeight - 1 - dy) : dy;
+    let srcIdx = (srcY * dstWidth) + x1;
     const outY = dy + baseY;
-    if (outY < 0 || outY >= destH) continue;
-
-    let srcRow = srcY * dstWidth;
-    let destRow = outY * destW + baseX;
-
-    for (let dx = 0; dx < dstWidth; dx++, srcRow++, destRow++) {
-      const outX = dx + baseX;
-      if (outX < 0 || outX >= destW) continue;
-
-      if (!scaledMask[srcRow]) {
-        if (nullColor32 !== null) dest32[destRow] = nullColor32;
+    let destIdx = (outY * destW) + baseX + x1;
+    let outX = baseX + x1;
+    for (let dx = x1; dx < x2; dx += 1, srcIdx += 1, destIdx += 1, outX += 1) {
+      if (!scaledMask[srcIdx]) {
+        if (nullColor32 !== null) dest32[destIdx] = nullColor32;
         continue;
       }
 
@@ -1129,7 +1159,7 @@ function scaleXbrz(
         if (onlyOverwrite && !hasGround) continue;
       }
 
-      dest32[destRow] = scaled[srcRow];
+      dest32[destIdx] = scaled[srcIdx];
     }
   }
 }
@@ -1169,21 +1199,18 @@ function scaleHqx(
     return;
   }
   const { scaled, scaledMask } = variant;
-
-  for (let dy = 0; dy < dstHeight; dy++) {
-    const srcY = upsideDown ? dstHeight - 1 - dy : dy;
+  const span = getClippedDestinationSpan(destW, destH, baseX, baseY, dstWidth, dstHeight);
+  if (!span) return;
+  const { x1, y1, x2, y2 } = span;
+  for (let dy = y1; dy < y2; dy += 1) {
+    const srcY = upsideDown ? (dstHeight - 1 - dy) : dy;
+    let srcIdx = (srcY * dstWidth) + x1;
     const outY = dy + baseY;
-    if (outY < 0 || outY >= destH) continue;
-
-    let srcRow = srcY * dstWidth;
-    let destRow = outY * destW + baseX;
-
-    for (let dx = 0; dx < dstWidth; dx++, srcRow++, destRow++) {
-      const outX = dx + baseX;
-      if (outX < 0 || outX >= destW) continue;
-
-      if (!scaledMask[srcRow]) {
-        if (nullColor32 !== null) dest32[destRow] = nullColor32;
+    let destIdx = (outY * destW) + baseX + x1;
+    let outX = baseX + x1;
+    for (let dx = x1; dx < x2; dx += 1, srcIdx += 1, destIdx += 1, outX += 1) {
+      if (!scaledMask[srcIdx]) {
+        if (nullColor32 !== null) dest32[destIdx] = nullColor32;
         continue;
       }
 
@@ -1193,7 +1220,7 @@ function scaleHqx(
         if (onlyOverwrite && !hasGround) continue;
       }
 
-      dest32[destRow] = scaled[srcRow];
+      dest32[destIdx] = scaled[srcIdx];
     }
   }
 }
@@ -1347,7 +1374,9 @@ function drawDashedRect(
 const __test__ = {
   cyrb53,
   getScaledFrameVariant,
-  _scaledFrameCache: scaledFrameCache
+  getNearestCoordinateMap,
+  _scaledFrameCache: scaledFrameCache,
+  _nearestCoordinateCache: nearestCoordinateCache
 };
 
 export {
