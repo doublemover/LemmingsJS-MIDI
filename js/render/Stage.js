@@ -54,6 +54,10 @@ class Stage {
     this.overlayDashLen = 0;
     this.overlayDashColor = 0;
     this.overlayDashOffset = 0;
+    this._fadeClockMs = NaN;
+    this._fadeDashAccumulator = 0;
+    this._fadeOutActive = false;
+    this._overlayFadeActive = false;
     this.perfOverlayEnabled = false;
     this.perfOverlayProvider = null;
     this._perfTrackingFrame = false;
@@ -482,6 +486,7 @@ class Stage {
 
   redraw() {
     const start = perfNow();
+    this._updateFadeState(start);
     this._perfTrackingFrame = true;
     this._perfDrawMs = 0;
     this._perfClearMs = 0;
@@ -530,48 +535,88 @@ class Stage {
     this.fadeAlpha = 0;
     this.overlayAlpha = 0;
     this.overlayRect = null;
-    if (this.fadeTimer) clearInterval(this.fadeTimer);
-    if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.fadeTimer = this.overlayTimer = 0;
+    this._fadeOutActive = false;
+    this._overlayFadeActive = false;
+    this._fadeClockMs = NaN;
+    this._fadeDashAccumulator = 0;
   }
 
   startFadeOut() {
-    this.resetFade();
-    this.fadeTimer = setInterval(() => {
-      this.fadeAlpha = Math.min(this.fadeAlpha + 0.02, 1);
-      if (this.fadeAlpha >= 1) {
-        clearInterval(this.fadeTimer);
-        this.fadeTimer = 0;
-      }
-    }, 40);
+    this.fadeAlpha = 0;
+    this.fadeTimer = 1;
+    this._fadeOutActive = true;
+    this._fadeClockMs = perfNow();
   }
 
   startOverlayFade(color, rect = null, dashLen = 0) {
-    if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayColor = color;
     this.overlayRect = rect;
     this.overlayDashLen = dashLen;
     this.overlayDashColor = colorStringTo32(color);
     this.overlayDashOffset = 0;
     this.overlayAlpha = 1;
-    this.overlayTimer = setInterval(() => {
-      this.overlayAlpha = Math.max(this.overlayAlpha - 0.02, 0);
-      this.overlayDashOffset = (this.overlayDashOffset + 1) % ((this.overlayDashLen || 1) * 2);
-      if (this.overlayAlpha <= 0) {
-        clearInterval(this.overlayTimer);
-        this.overlayTimer = 0;
-        this.overlayRect = null;
-        this.overlayDashLen = 0;
-      }
-    }, 40);
+    this.overlayTimer = 1;
+    this._overlayFadeActive = true;
+    this._fadeDashAccumulator = 0;
+    if (!this._fadeClockMs) this._fadeClockMs = perfNow();
   }
 
   resetOverlayFade() {
     this.overlayAlpha = 0;
     this.overlayRect = null;
     this.overlayDashLen = 0;
-    if (this.overlayTimer) clearInterval(this.overlayTimer);
     this.overlayTimer = 0;
+    this._overlayFadeActive = false;
+    this._fadeDashAccumulator = 0;
+    if (!this._fadeOutActive) this._fadeClockMs = NaN;
+  }
+
+  _updateFadeState(nowMs) {
+    if (!this._fadeOutActive && !this._overlayFadeActive) return;
+    const now = Number.isFinite(nowMs) ? nowMs : perfNow();
+    if (!Number.isFinite(this._fadeClockMs)) {
+      this._fadeClockMs = now;
+      return;
+    }
+    const deltaMs = Math.max(0, now - this._fadeClockMs);
+    if (deltaMs <= 0) return;
+    this._fadeClockMs = now;
+
+    const alphaStep = deltaMs * (0.02 / 40);
+    if (this._fadeOutActive) {
+      this.fadeAlpha = Math.min(this.fadeAlpha + alphaStep, 1);
+      if (this.fadeAlpha >= 1) {
+        this._fadeOutActive = false;
+        this.fadeTimer = 0;
+      }
+    }
+
+    if (this._overlayFadeActive) {
+      this.overlayAlpha = Math.max(this.overlayAlpha - alphaStep, 0);
+      const dashLen = this.overlayDashLen || 0;
+      if (dashLen > 0) {
+        this._fadeDashAccumulator += deltaMs * (1 / 40);
+        const steps = Math.trunc(this._fadeDashAccumulator);
+        if (steps > 0) {
+          const pattern = Math.max(1, dashLen * 2);
+          this.overlayDashOffset = (this.overlayDashOffset + steps) % pattern;
+          this._fadeDashAccumulator -= steps;
+        }
+      }
+      if (this.overlayAlpha <= 0) {
+        this.overlayAlpha = 0;
+        this.overlayRect = null;
+        this.overlayDashLen = 0;
+        this.overlayTimer = 0;
+        this._overlayFadeActive = false;
+        this._fadeDashAccumulator = 0;
+      }
+    }
+
+    if (!this._fadeOutActive && !this._overlayFadeActive) {
+      this._fadeClockMs = NaN;
+    }
   }
 
   dispose() {

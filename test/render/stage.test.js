@@ -53,14 +53,13 @@ describe('Stage', function() {
   const originalWindow = globalThis.window;
   const originalDocument = globalThis.document;
   const originalImageData = globalThis.ImageData;
-  const originalSetInterval = globalThis.setInterval;
-  const originalClearInterval = globalThis.clearInterval;
+  const originalPerformance = globalThis.performance;
   useGlobalLemmings({});
 
-  let intervalCbs = [];
+  let now = 0;
 
   beforeEach(function() {
-    intervalCbs = [];
+    now = 0;
     globalThis.document = {
       createElement() {
         return makeCanvas(10, 10).canvas;
@@ -77,11 +76,12 @@ describe('Stage', function() {
         this.height = height;
       }
     };
-    globalThis.setInterval = (cb) => {
-      intervalCbs.push(cb);
-      return intervalCbs.length;
+    globalThis.performance = {
+      now: () => {
+        now += 1;
+        return now;
+      }
     };
-    globalThis.clearInterval = () => {};
   });
 
   afterEach(function() {
@@ -89,8 +89,7 @@ describe('Stage', function() {
     globalThis.window = originalWindow;
     globalThis.document = originalDocument;
     globalThis.ImageData = originalImageData;
-    globalThis.setInterval = originalSetInterval;
-    globalThis.clearInterval = originalClearInterval;
+    globalThis.performance = originalPerformance;
   });
 
   it('routes pointer events and handles zoom', function() {
@@ -210,7 +209,8 @@ describe('Stage', function() {
     expect(ctx.drawCalls.length).to.equal(drawCountAfter);
 
     stage.startFadeOut();
-    for (let i = 0; i < 60; i++) intervalCbs[0]();
+    now += 2400;
+    stage._updateFadeState(now);
     expect(stage.fadeAlpha).to.equal(1);
 
     let antsCalled = 0;
@@ -222,7 +222,8 @@ describe('Stage', function() {
 
     stage.overlayTimer = 1;
     stage.startOverlayFade('rgba(1,2,3,0.5)', { x: 0, y: 0, width: 4, height: 4 }, 2);
-    for (let i = 0; i < 60; i++) intervalCbs[1]();
+    now += 2400;
+    stage._updateFadeState(now);
     expect(stage.overlayAlpha).to.equal(0);
     expect(stage.overlayRect).to.equal(null);
 
