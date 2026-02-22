@@ -49,6 +49,12 @@ describe('MiniMap', function() {
 
     counter.value = 5;
     miniMap.invalidateRegion(0, 0, 2, 2);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
     expect(miniMap.terrain[0]).to.equal(5);
 
     miniMap.fog.fill(0);
@@ -164,6 +170,12 @@ describe('MiniMap', function() {
     const guiDisplay = makeGuiDisplay();
     const miniMap = new MiniMap({}, level, guiDisplay);
     miniMap.invalidateRegion(0, 0, 1, 1);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
     expect(miniMap.terrain[0]).to.equal(72);
 
     withGlobalLemmings(null, () => {

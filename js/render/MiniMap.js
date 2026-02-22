@@ -26,6 +26,11 @@ class MiniMap {
 
     this.terrain = new Uint8Array(this.size);
     this.terrainColors = new Uint32Array(this.size);
+    this._terrainDirtyFlags = new Uint8Array(this.size);
+    this._terrainDirtyIndices = new Uint16Array(this.size);
+    this._terrainDirtyCount = 0;
+    this._objectMarkerIndices = new Uint16Array(0);
+    this._objectMarkerColors = new Uint32Array(0);
 
     if (!MiniMap.palette) {
       MiniMap.palette = new Uint32Array(129);
@@ -34,6 +39,7 @@ class MiniMap {
       }
     }
     this.#buildTerrain();
+    this.#buildObjectMarkers();
 
     // dynamic state
     this.fog = new Uint8Array(this.size); // 0 = unseen
@@ -144,6 +150,90 @@ class MiniMap {
     this.terrainColors[idx] = MiniMap.palette[normalized] || 0xFF000000;
   }
 
+  #markTerrainCellDirty(idx) {
+    if ((idx >>> 0) >= this.size) return;
+    if (this._terrainDirtyFlags[idx]) return;
+    this._terrainDirtyFlags[idx] = 1;
+    this._terrainDirtyIndices[this._terrainDirtyCount] = idx;
+    this._terrainDirtyCount += 1;
+  }
+
+  #refreshTerrainCell(idx) {
+    const mX = idx % this.width;
+    const mY = (idx / this.width) | 0;
+    const lx1 = Math.floor(mX / this.scaleX);
+    const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
+    const ly1 = Math.floor(mY / this.scaleY);
+    const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
+    const gm = this.level.getGroundMaskLayer();
+    let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
+    if (count > 71) count = 72;
+    this.#setTerrainCount(idx, count);
+  }
+
+  #flushTerrainInvalidation() {
+    const dirtyCount = this._terrainDirtyCount;
+    if (!dirtyCount) return;
+    if (dirtyCount >= (this.size >> 1)) {
+      this.#buildTerrain();
+      this._terrainDirtyFlags.fill(0);
+      this._terrainDirtyCount = 0;
+      return;
+    }
+    const dirty = this._terrainDirtyIndices;
+    const flags = this._terrainDirtyFlags;
+    for (let i = 0; i < dirtyCount; i += 1) {
+      const idx = dirty[i];
+      flags[idx] = 0;
+      this.#refreshTerrainCell(idx);
+    }
+    this._terrainDirtyCount = 0;
+  }
+
+  #buildObjectMarkers() {
+    const markerMap = new Map();
+    const objects = this.level?.objects || [];
+    for (let i = 0; i < objects.length; i += 1) {
+      const obj = objects[i];
+      const rx = (obj.x * this.scaleX) | 0;
+      const ry = (obj.y * this.scaleY) | 0;
+      if ((obj.ob?.id === 1)) {
+        const idx = ((ry + 2) * this.width) + (rx + 2);
+        if ((idx >>> 0) < this.size) markerMap.set(idx, 0xFF00AA00);
+      }
+      if (obj.triggerType === TriggerTypes.EXIT_LEVEL) {
+        const idxA = ((ry + 2) * this.width) + (rx + 2);
+        const idxB = ((ry + 1) * this.width) + (rx + 2);
+        if ((idxA >>> 0) < this.size) markerMap.set(idxA, 0xFFFF00CC);
+        if ((idxB >>> 0) < this.size) markerMap.set(idxB, 0xFFFF00CC);
+      }
+    }
+    const count = markerMap.size;
+    if (!count) {
+      this._objectMarkerIndices = new Uint16Array(0);
+      this._objectMarkerColors = new Uint32Array(0);
+      return;
+    }
+    const indices = new Uint16Array(count);
+    const colors = new Uint32Array(count);
+    let index = 0;
+    for (const [markerIdx, markerColor] of markerMap) {
+      indices[index] = markerIdx;
+      colors[index] = markerColor;
+      index += 1;
+    }
+    this._objectMarkerIndices = indices;
+    this._objectMarkerColors = colors;
+  }
+
+  #paintObjectMarkers(frameData) {
+    const indices = this._objectMarkerIndices;
+    const colors = this._objectMarkerColors;
+    for (let i = 0; i < indices.length; i += 1) {
+      frameData[indices[i]] = colors[i];
+    }
+  }
+
   /* Fast per‑pixel update called by digging/mining/placing ground.
          Supply removed=true for clearing ground, false for placing. */
   onGroundChanged(px, py, removed = true) {
@@ -155,12 +245,12 @@ class MiniMap {
     if (removed) next -= 1;
     else next += 1;
     this.#setTerrainCount(idx, next);
+    this.#markTerrainCellDirty(idx);
   }
 
   /* Region‑based revalidation (e.g. after a large mask dig). */
   invalidateRegion(x, y, w, h) {
     if (w <= 0 || h <= 0) return;
-    const gm = this.level.getGroundMaskLayer();
     const xStart = Math.max(0, Math.floor(x));
     const yStart = Math.max(0, Math.floor(y));
     const xEnd = Math.min(this.level.width, Math.ceil(x + w));
@@ -174,14 +264,7 @@ class MiniMap {
 
     for (let mY = mY0; mY <= mY1; mY += 1) {
       for (let mX = mX0; mX <= mX1; mX += 1) {
-        const lx1 = Math.floor(mX / this.scaleX);
-        const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
-        const ly1 = Math.floor(mY / this.scaleY);
-        const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
-
-        let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
-        if (count > 71) count = 72;
-        this.#setTerrainCount((mY * this.width) + mX, count);
+        this.#markTerrainCellDirty((mY * this.width) + mX);
       }
     }
   }
@@ -235,6 +318,7 @@ class MiniMap {
   }
 
   render() {
+    this.#flushTerrainInvalidation();
     if (!this.guiDisplay) return;
     const app = getApp();
     const reversing = !!app?.game?.timeTravel?.isReversing;
@@ -256,6 +340,7 @@ class MiniMap {
     };
 
     frameData.set(this.terrainColors);
+    this.#paintObjectMarkers(frameData);
 
     const viewRect = app?.stage?.getGameViewRect?.();
     if (!viewRect) return;
@@ -278,17 +363,6 @@ class MiniMap {
       0xFF00FF00,
       0xFF005500
     );
-
-    /* Entrances / Exits */
-    for (const obj of this.level.objects) {
-      const rx = (obj.x * this.scaleX) | 0;
-      const ry = (obj.y * this.scaleY) | 0;
-      if (obj.ob?.id === 1) writePixel(rx + 2, ry + 2, 0xFF00AA00);
-      if (obj.triggerType === TriggerTypes.EXIT_LEVEL) {
-        writePixel(rx + 2, ry + 2, 0xFFFF00CC);
-        writePixel(rx + 2, ry + 1, 0xFFFF00CC);
-      }
-    }
 
     /* Live lemmings */
     for (let i = 0; i < this.liveDots.length; i += 2) {
