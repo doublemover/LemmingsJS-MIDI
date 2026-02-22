@@ -73,6 +73,11 @@ class Stage {
     this._lastGuiDrawSignature = '';
     this.panEnabled = true;
     this._resizeRaf = 0;
+    this._overlayFallbackCanvas = null;
+    this._overlayFallbackCtx = null;
+    this._overlayFallbackImageData = null;
+    this._overlayFallbackBuffer32 = null;
+    this._overlayFallbackDisplay = { buffer32: null, imgData: null };
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -586,6 +591,37 @@ class Stage {
     }
   }
 
+  _ensureOverlayFallbackSurface(width, height) {
+    const w = Math.max(1, Math.trunc(width));
+    const h = Math.max(1, Math.trunc(height));
+    if (!this._overlayFallbackCanvas) {
+      if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+        return null;
+      }
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { alpha: true, willReadFrequently: true });
+      if (!ctx) return null;
+      this._overlayFallbackCanvas = canvas;
+      this._overlayFallbackCtx = ctx;
+    }
+    if (
+      !this._overlayFallbackImageData ||
+      this._overlayFallbackImageData.width !== w ||
+      this._overlayFallbackImageData.height !== h
+    ) {
+      this._overlayFallbackCanvas.width = w;
+      this._overlayFallbackCanvas.height = h;
+      this._overlayFallbackImageData = this._overlayFallbackCtx.createImageData(w, h);
+      this._overlayFallbackBuffer32 = new Uint32Array(this._overlayFallbackImageData.data.buffer);
+    }
+    return {
+      canvas: this._overlayFallbackCanvas,
+      ctx: this._overlayFallbackCtx,
+      imageData: this._overlayFallbackImageData,
+      buffer32: this._overlayFallbackBuffer32
+    };
+  }
+
   resetFade() {
     this.fadeAlpha = 0;
     this.overlayAlpha = 0;
@@ -688,6 +724,11 @@ class Stage {
     this.guiImgProps  = null;
     this.stageCtx = null;
     this.stageCav     = null;
+    this._overlayFallbackCanvas = null;
+    this._overlayFallbackCtx = null;
+    this._overlayFallbackImageData = null;
+    this._overlayFallbackBuffer32 = null;
+    this._overlayFallbackDisplay = null;
   }
 
   draw(display, img) {
@@ -810,21 +851,43 @@ class Stage {
           octx.lineDashOffset = 0;
           this._setGlobalAlpha(1);
         } else {
-          const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
-          const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+          const fallbackSurface = this._ensureOverlayFallbackSurface(r.width + 1, r.height + 1);
           const drawAnts = getDependency('drawMarchingAntRect', drawMarchingAntRect);
-          drawAnts(
-            disp,
-            0,
-            0,
-            r.width,
-            r.height,
-            this.overlayDashLen,
-            this.overlayDashOffset,
-            this.overlayDashColor,
-            0x00000000
-          );
-          octx.putImageData(img, r.x, r.y);
+          if (fallbackSurface) {
+            fallbackSurface.buffer32.fill(0);
+            this._overlayFallbackDisplay.buffer32 = fallbackSurface.buffer32;
+            this._overlayFallbackDisplay.imgData = fallbackSurface.imageData;
+            drawAnts(
+              this._overlayFallbackDisplay,
+              0,
+              0,
+              r.width,
+              r.height,
+              this.overlayDashLen,
+              this.overlayDashOffset,
+              this.overlayDashColor,
+              0x00000000
+            );
+            fallbackSurface.ctx.putImageData(fallbackSurface.imageData, 0, 0);
+            this._setGlobalAlpha(this.overlayAlpha);
+            octx.drawImage(fallbackSurface.canvas, r.x, r.y);
+            this._setGlobalAlpha(1);
+          } else {
+            const img = octx.getImageData(r.x, r.y, r.width + 1, r.height + 1);
+            const disp = { buffer32: new Uint32Array(img.data.buffer), imgData: img };
+            drawAnts(
+              disp,
+              0,
+              0,
+              r.width,
+              r.height,
+              this.overlayDashLen,
+              this.overlayDashOffset,
+              this.overlayDashColor,
+              0x00000000
+            );
+            octx.putImageData(img, r.x, r.y);
+          }
         }
       }
     }

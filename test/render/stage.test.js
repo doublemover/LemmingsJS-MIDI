@@ -262,6 +262,34 @@ describe('Stage', function() {
     expect(stage.overlayDashColor >>> 0).to.equal(0xFFFFFFFF);
   });
 
+  it('reuses fallback overlay surfaces without getImageData churn', function() {
+    const { canvas, ctx } = makeCanvas(200, 100);
+    let getImageCalls = 0;
+    ctx.getImageData = (x, y, width, height) => {
+      getImageCalls += 1;
+      return { width, height, data: new Uint8ClampedArray(width * height * 4) };
+    };
+
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.guiImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+    stage.overlayAlpha = 1;
+    stage.overlayColor = 'rgba(10,20,30,0.5)';
+    stage.overlayDashColor = 0xFF030201;
+    stage.overlayDashLen = 2;
+    stage.overlayDashOffset = 1;
+    stage.overlayRect = { x: 4, y: 5, width: 10, height: 6 };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    const firstFallback = stage._overlayFallbackImageData;
+    stage.overlayDashOffset = 2;
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+
+    expect(getImageCalls).to.equal(0);
+    expect(stage._overlayFallbackImageData).to.equal(firstFallback);
+  });
+
   it('renders an opt-in perf overlay and reports stage perf snapshots', function() {
     const { canvas, ctx } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

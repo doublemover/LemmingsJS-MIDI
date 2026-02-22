@@ -389,7 +389,7 @@ Notes:
 - [x] Reduce marching-ants and dashed-outline cost via cached edge spans and
   throttled offset updates at low movement.
   Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`.
-- [ ] Optimize Stage overlay fallback path to avoid repeated
+- [x] Optimize Stage overlay fallback path to avoid repeated
   `getImageData/putImageData` churn on browsers without line-dash support.
   Touchpoints: `js/render/Stage.js`.
 - [ ] Skip redundant resize-triggered redraw work when canvas dimensions are
