@@ -96,9 +96,7 @@ class GameGui {
       }
       this.gameTimeChanged = true;
 
-      if (this._guiRafId === 0) {
-        this._guiRafId = window.requestAnimationFrame(this._guiBound);
-      }
+      this._requestGuiRender();
     };
     gameTimer.eachGameSecond.on(this._onEachGameSecond);
 
@@ -117,6 +115,14 @@ class GameGui {
   setMiniMap(miniMap) {
     this.miniMap = miniMap;
     this.game?.lemmingManager?.setMiniMap?.(miniMap);
+  }
+
+  _requestGuiRender() {
+    if (!this.display || this._guiRafId) return;
+    if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+      return;
+    }
+    this._guiRafId = window.requestAnimationFrame(this._guiBound);
   }
 
   _applyReleaseRateAuto() {
@@ -352,12 +358,30 @@ class GameGui {
     }
 
     this._displayListeners = [
-      ['onMouseDown', e => { this.deltaReleaseRate = 0; if (e.y > 15) this.handleSkillMouseDown(e); }],
-      ['onMouseUp', () => { this.deltaReleaseRate = 0; }],
-      ['onMouseRightDown', e => { if (e.y > 15) this.handleSkillMouseRightDown(e); }],
-      ['onMouseRightUp', () => { }],
-      ['onDoubleClick', e => { if (e.y > 15) this.handleSkillDoubleClick(e); }],
-      ['onMouseMove', e => { this.handleMouseMove(e); }],
+      ['onMouseDown', e => {
+        this.deltaReleaseRate = 0;
+        if (e.y > 15) this.handleSkillMouseDown(e);
+        this._requestGuiRender();
+      }],
+      ['onMouseUp', () => {
+        this.deltaReleaseRate = 0;
+        this._requestGuiRender();
+      }],
+      ['onMouseRightDown', e => {
+        if (e.y > 15) this.handleSkillMouseRightDown(e);
+        this._requestGuiRender();
+      }],
+      ['onMouseRightUp', () => {
+        this._requestGuiRender();
+      }],
+      ['onDoubleClick', e => {
+        if (e.y > 15) this.handleSkillDoubleClick(e);
+        this._requestGuiRender();
+      }],
+      ['onMouseMove', e => {
+        this.handleMouseMove(e);
+        this._requestGuiRender();
+      }],
     ];
     for (const [event, handler] of this._displayListeners) {
       display[event].on(handler);
@@ -369,22 +393,14 @@ class GameGui {
     display.stage.updateStageSize();
 
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
-    this._guiRafId = window.requestAnimationFrame(this._guiBound);
+    this._requestGuiRender();
   }
 
   _guiLoop(now) {
-    if (!this.display) {
-      return;
-    }
-    const ss = this.smoothScroller;
-    if (ss) {
-      ss.update();
-    }
-
-    window.cancelAnimationFrame(this._guiRafId);
+    this._guiRafId = 0;
+    if (!this.display) return;
     this.render();
     this.display.redraw();
-    this._guiRafId = window.requestAnimationFrame(this._guiBound);
   }
 
   dispose() {
@@ -752,6 +768,7 @@ class GameGui {
     }
 
     this.gameSpeedChanged = true;
+    this._requestGuiRender();
   }
 
   drawNukeConfirm(d) {
