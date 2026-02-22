@@ -79,6 +79,10 @@ class Level extends BaseLogger {
 
     /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
+    this._groundTileSize = 64;
+    this._groundTileColumns = Math.max(1, Math.ceil(this.width / this._groundTileSize));
+    this._groundTileRows = Math.max(1, Math.ceil(this.height / this._groundTileSize));
+    this._groundDirtyTiles = new Set();
     this._groundDirtyFull = true;
     this._groundDirtyRects = [];
   }
@@ -177,7 +181,51 @@ class Level extends BaseLogger {
 
   _markGroundDirtyAll() {
     this._groundDirtyFull = true;
+    this._groundDirtyTiles.clear();
     this._groundDirtyRects.length = 0;
+  }
+
+  _markGroundDirtyTilesForRect(x1, y1, x2, y2) {
+    if (this._groundDirtyFull) return;
+    const tileSize = this._groundTileSize;
+    const cols = this._groundTileColumns;
+    const rows = this._groundTileRows;
+    if (!tileSize || !cols || !rows) return;
+    const tx1 = Math.max(0, Math.floor(x1 / tileSize));
+    const ty1 = Math.max(0, Math.floor(y1 / tileSize));
+    const tx2 = Math.min(cols - 1, Math.floor((x2 - 1) / tileSize));
+    const ty2 = Math.min(rows - 1, Math.floor((y2 - 1) / tileSize));
+    for (let ty = ty1; ty <= ty2; ty += 1) {
+      const row = ty * cols;
+      for (let tx = tx1; tx <= tx2; tx += 1) {
+        this._groundDirtyTiles.add(row + tx);
+      }
+    }
+    const tileCount = cols * rows;
+    if (this._groundDirtyTiles.size >= tileCount || this._groundDirtyTiles.size > 1024) {
+      this._markGroundDirtyAll();
+    }
+  }
+
+  _consumeGroundDirtyTileRects() {
+    if (this._groundDirtyFull || !this._groundDirtyTiles.size) return [];
+    const rects = [];
+    const tileSize = this._groundTileSize;
+    const cols = this._groundTileColumns;
+    for (const index of this._groundDirtyTiles) {
+      const tx = index % cols;
+      const ty = Math.floor(index / cols);
+      const x = tx * tileSize;
+      const y = ty * tileSize;
+      rects.push({
+        x,
+        y,
+        width: Math.min(tileSize, this.width - x),
+        height: Math.min(tileSize, this.height - y)
+      });
+    }
+    this._groundDirtyTiles.clear();
+    return rects;
   }
 
   _markGroundDirtyRect(x, y, width, height) {
@@ -192,6 +240,7 @@ class Level extends BaseLogger {
     const x2 = Math.min(this.width, Math.ceil(x + width));
     const y2 = Math.min(this.height, Math.ceil(y + height));
     if (x2 <= x1 || y2 <= y1) return;
+    this._markGroundDirtyTilesForRect(x1, y1, x2, y2);
     this._groundDirtyRects.push({
       x: x1,
       y: y1,
@@ -543,6 +592,8 @@ class Level extends BaseLogger {
 
   setGroundImage(img) {
     this.groundImage = new Uint8ClampedArray(img);
+    this._groundTileColumns = Math.max(1, Math.ceil(this.width / this._groundTileSize));
+    this._groundTileRows = Math.max(1, Math.ceil(this.height / this._groundTileSize));
     this._markGroundDirtyAll();
   }
   setPalettes(colorPalette, groundPalette) {
@@ -554,16 +605,21 @@ class Level extends BaseLogger {
     gameDisplay.initSize(this.width, this.height);
     if (typeof gameDisplay.restoreBackground === 'function' &&
         typeof gameDisplay.syncBackground === 'function') {
+      gameDisplay.setDirtyTileSize?.(this._groundTileSize);
       gameDisplay.restoreBackground();
       if (this._groundDirtyFull || !gameDisplay.hasBackground?.()) {
-        gameDisplay.syncBackground(this.groundImage, this.groundMask, null);
+        gameDisplay.syncBackground(this.groundImage, this.groundMask, null, this._groundTileSize);
         this._groundDirtyFull = false;
+        this._groundDirtyTiles.clear();
         this._groundDirtyRects.length = 0;
         return;
       }
-      if (this._groundDirtyRects.length) {
-        const dirtyRects = this._groundDirtyRects.slice();
-        gameDisplay.syncBackground(this.groundImage, this.groundMask, dirtyRects);
+      if (this._groundDirtyTiles.size || this._groundDirtyRects.length) {
+        let dirtyRects = this._consumeGroundDirtyTileRects();
+        if (!dirtyRects.length && this._groundDirtyRects.length) {
+          dirtyRects = this._groundDirtyRects.slice();
+        }
+        gameDisplay.syncBackground(this.groundImage, this.groundMask, dirtyRects, this._groundTileSize);
         this._groundDirtyRects.length = 0;
         return;
       }

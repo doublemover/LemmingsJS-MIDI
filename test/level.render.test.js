@@ -44,8 +44,8 @@ describe('Level render', function() {
       initSize() {},
       restoreBackground() {},
       hasBackground() { return hasBackground; },
-      syncBackground(img, mask, dirtyRects) {
-        syncCalls.push([img, mask, dirtyRects]);
+      syncBackground(img, mask, dirtyRects, tileSize) {
+        syncCalls.push([img, mask, dirtyRects, tileSize]);
         hasBackground = true;
       }
     };
@@ -57,7 +57,12 @@ describe('Level render', function() {
 
     expect(syncCalls.length).to.equal(2);
     expect(syncCalls[0][2]).to.equal(null);
-    expect(Array.isArray(syncCalls[1][2])).to.equal(true);
-    expect(syncCalls[1][2].length).to.equal(1);
+    expect(syncCalls[0][3]).to.equal(64);
+    const deltaRects = syncCalls[1][2];
+    expect(deltaRects === null || Array.isArray(deltaRects)).to.equal(true);
+    if (Array.isArray(deltaRects)) {
+      expect(deltaRects.length).to.equal(1);
+    }
+    expect(syncCalls[1][3]).to.equal(64);
   });
 });

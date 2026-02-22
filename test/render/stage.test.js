@@ -249,6 +249,22 @@ describe('Stage', function() {
     expect(released).to.equal(consumed);
   });
 
+  it('recycles consumed dirty-tile buffers after drawing', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const consumedTiles = [{ x: 0, y: 0, width: 4, height: 4 }];
+    let releasedTiles = null;
+    stage.gameImgProps.display.consumeDirtyTiles = () => consumedTiles;
+    stage.gameImgProps.display.releaseConsumedDirtyTiles = (tiles) => { releasedTiles = tiles; };
+    stage.gameImgProps.display.consumeDirtyRects = () => [];
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(releasedTiles).to.equal(consumedTiles);
+  });
+
   it('parses overlay colors with and without alpha', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

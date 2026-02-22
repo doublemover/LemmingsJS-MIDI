@@ -31,6 +31,7 @@ const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const MAX_MARCHING_ANT_FAST_PERIMETER = 2048;
 const DIRTY_RECT_MERGE_PAD = 1;
 const DIRTY_RECT_FULL_LIMIT = 96;
+const DIRTY_TILE_FULL_LIMIT = 1024;
 const EMPTY_DIRTY_RECTS = Object.freeze([]);
 
 const toUint32Source = (source) => {
@@ -193,6 +194,12 @@ class DisplayImage extends BaseLogger {
     this._dirtyFull = true;
     this._dirtyRects = [];
     this._dirtyRectListPool = [];
+    this._dirtyTileSize = 0;
+    this._dirtyTileColumns = 0;
+    this._dirtyTileRows = 0;
+    this._dirtyTileFull = true;
+    this._dirtyTiles = new Set();
+    this._dirtyTileListPool = [];
     this._dynamicDirtyFull = false;
     this._dynamicDirtyRects = [];
     this._restoreFull = false;
@@ -227,6 +234,15 @@ class DisplayImage extends BaseLogger {
       this._restoreFull = false;
       this._restoreRects.length = 0;
       this._dirtyRectListPool.length = 0;
+      this._dirtyTileListPool.length = 0;
+      this._dirtyTiles.clear();
+      this._dirtyTileColumns = this._dirtyTileSize
+        ? Math.ceil(width / this._dirtyTileSize)
+        : 0;
+      this._dirtyTileRows = this._dirtyTileSize
+        ? Math.ceil(height / this._dirtyTileSize)
+        : 0;
+      this._dirtyTileFull = true;
       this._dynamicDirtyFull = false;
       this._dynamicDirtyRects.length = 0;
       this.clear();
@@ -248,7 +264,25 @@ class DisplayImage extends BaseLogger {
     return this._hasBackground === true;
   }
 
-  syncBackground(groundImage, groundMask = null, dirtyRects = null) {
+  setDirtyTileSize(tileSize) {
+    const next = Number.isFinite(tileSize) && tileSize > 0
+      ? Math.max(1, Math.trunc(tileSize))
+      : 0;
+    if (next === this._dirtyTileSize) return;
+    this._dirtyTileSize = next;
+    const width = this.getWidth();
+    const height = this.getHeight();
+    this._dirtyTileColumns = next ? Math.ceil(width / next) : 0;
+    this._dirtyTileRows = next ? Math.ceil(height / next) : 0;
+    this._dirtyTiles.clear();
+    this._dirtyTileListPool.length = 0;
+    this._dirtyTileFull = this._dirtyFull;
+  }
+
+  syncBackground(groundImage, groundMask = null, dirtyRects = null, tileSize = undefined) {
+    if (tileSize !== undefined) {
+      this.setDirtyTileSize(tileSize);
+    }
     const source32 = toUint32Source(groundImage);
     if (!source32) {
       this.log.log('error: setBackground fallback');
@@ -340,9 +374,42 @@ class DisplayImage extends BaseLogger {
     return [];
   }
 
+  _acquireTileList() {
+    if (this._dirtyTileListPool.length > 0) {
+      const tiles = this._dirtyTileListPool.pop();
+      tiles.length = 0;
+      return tiles;
+    }
+    return [];
+  }
+
+  _markTileDirtyRect(rect) {
+    if (!rect || !this._dirtyTileSize || this._dirtyTileFull) return;
+    const cols = this._dirtyTileColumns;
+    const rows = this._dirtyTileRows;
+    if (!cols || !rows) return;
+    const tileSize = this._dirtyTileSize;
+    const tx1 = Math.max(0, Math.floor(rect.x / tileSize));
+    const ty1 = Math.max(0, Math.floor(rect.y / tileSize));
+    const tx2 = Math.min(cols - 1, Math.floor((rect.x + rect.width - 1) / tileSize));
+    const ty2 = Math.min(rows - 1, Math.floor((rect.y + rect.height - 1) / tileSize));
+    for (let ty = ty1; ty <= ty2; ty += 1) {
+      const row = ty * cols;
+      for (let tx = tx1; tx <= tx2; tx += 1) {
+        this._dirtyTiles.add(row + tx);
+      }
+    }
+    if (this._dirtyTiles.size >= (cols * rows) || this._dirtyTiles.size > DIRTY_TILE_FULL_LIMIT) {
+      this._dirtyTiles.clear();
+      this._dirtyTileFull = true;
+    }
+  }
+
   markDirtyAll({ captureDynamic = true } = {}) {
     this._dirtyFull = true;
     this._dirtyRects.length = 0;
+    this._dirtyTileFull = true;
+    this._dirtyTiles.clear();
     if (captureDynamic) {
       this._dynamicDirtyFull = true;
       this._dynamicDirtyRects.length = 0;
@@ -432,6 +499,7 @@ class DisplayImage extends BaseLogger {
 
   markPresentDirtyRect(x, y, width, height) {
     const rect = this._normalizeRect(x, y, width, height);
+    this._markTileDirtyRect(rect);
     this._mergeDirtyRect(rect, '_dirtyFull', '_dirtyRects');
   }
 
@@ -443,8 +511,48 @@ class DisplayImage extends BaseLogger {
       }
       return;
     }
+    this._markTileDirtyRect(rect);
     this._mergeDirtyRect(rect, '_dirtyFull', '_dirtyRects');
     this._mergeDirtyRect(rect, '_dynamicDirtyFull', '_dynamicDirtyRects');
+  }
+
+  consumeDirtyTiles() {
+    if (!this._dirtyTileSize || !this.imgData) return undefined;
+    if (this._dirtyTileFull) {
+      this._dirtyTileFull = false;
+      this._dirtyTiles.clear();
+      return null;
+    }
+    if (!this._dirtyTiles.size) return EMPTY_DIRTY_RECTS;
+    const cols = this._dirtyTileColumns;
+    const tileSize = this._dirtyTileSize;
+    const width = this.getWidth();
+    const height = this.getHeight();
+    const tiles = this._acquireTileList();
+    for (const index of this._dirtyTiles) {
+      const tx = index % cols;
+      const ty = Math.floor(index / cols);
+      const x = tx * tileSize;
+      const y = ty * tileSize;
+      tiles.push({
+        x,
+        y,
+        width: Math.min(tileSize, width - x),
+        height: Math.min(tileSize, height - y)
+      });
+    }
+    this._dirtyTiles.clear();
+    return tiles;
+  }
+
+  releaseConsumedDirtyTiles(tiles) {
+    if (!Array.isArray(tiles) || tiles === EMPTY_DIRTY_RECTS || tiles === this._dirtyRects) {
+      return;
+    }
+    tiles.length = 0;
+    if (this._dirtyTileListPool.length < 4) {
+      this._dirtyTileListPool.push(tiles);
+    }
   }
 
   consumeDirtyRects() {

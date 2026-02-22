@@ -157,6 +157,25 @@ describe('DisplayImage coverage', function() {
     expect(__test__.cyrb53('abc', 1)).to.be.a('number');
   });
 
+  it('tracks and consumes dirty tiles when enabled', function() {
+    const stage = makeStage();
+    const display = new DisplayImage(stage);
+    display.initSize(8, 8);
+    display.setDirtyTileSize(4);
+
+    const background = new Uint32Array(8 * 8);
+    display.syncBackground(background, null, null, 4);
+    const fullTiles = display.consumeDirtyTiles();
+    expect(fullTiles).to.equal(null);
+
+    display.syncBackground(background, null, [{ x: 1, y: 1, width: 1, height: 1 }], 4);
+    const dirtyTiles = display.consumeDirtyTiles();
+    expect(Array.isArray(dirtyTiles)).to.equal(true);
+    expect(dirtyTiles).to.have.length(1);
+    expect(dirtyTiles[0]).to.eql({ x: 0, y: 0, width: 4, height: 4 });
+    display.releaseConsumedDirtyTiles(dirtyTiles);
+  });
+
   it('blits with span caches and per-pixel fallbacks', function() {
     const stage = makeStage();
     const display = new DisplayImage(stage);

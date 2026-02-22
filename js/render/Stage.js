@@ -747,18 +747,21 @@ class Stage {
     if (!display.ctx) return;
 
     const displayImage = display.display;
+    const dirtyTiles = displayImage?.consumeDirtyTiles?.();
     const dirtyRects = displayImage?.consumeDirtyRects?.();
+    const useTileUpdates = dirtyTiles !== undefined;
+    const dirtyRegions = useTileUpdates ? dirtyTiles : dirtyRects;
     try {
-      if (dirtyRects === null) {
+      if (dirtyRegions === null) {
         display.ctx.putImageData(img, 0, 0);
-      } else if (dirtyRects.length) {
+      } else if (dirtyRegions.length) {
         const fullArea = img.width * img.height;
         let dirtyArea = 0;
         const dirtyAreaThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
-        let useFullBlit = dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
+        let useFullBlit = dirtyRegions.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
         if (!useFullBlit) {
-          for (let i = 0; i < dirtyRects.length; i += 1) {
-            const rect = dirtyRects[i];
+          for (let i = 0; i < dirtyRegions.length; i += 1) {
+            const rect = dirtyRegions[i];
             dirtyArea += rect.width * rect.height;
             if (dirtyArea >= dirtyAreaThreshold) {
               useFullBlit = true;
@@ -769,8 +772,8 @@ class Stage {
         if (useFullBlit) {
           display.ctx.putImageData(img, 0, 0);
         } else {
-          for (let i = 0; i < dirtyRects.length; i += 1) {
-            const rect = dirtyRects[i];
+          for (let i = 0; i < dirtyRegions.length; i += 1) {
+            const rect = dirtyRegions[i];
             display.ctx.putImageData(
               img,
               0,
@@ -784,6 +787,9 @@ class Stage {
         }
       }
     } finally {
+      if (useTileUpdates) {
+        displayImage?.releaseConsumedDirtyTiles?.(dirtyTiles);
+      }
       displayImage?.releaseConsumedDirtyRects?.(dirtyRects);
     }
 

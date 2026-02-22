@@ -16,7 +16,11 @@ function getPaletteLookup(palette) {
 }
 
 class GroundRenderer {
-  constructor () {}
+  constructor () {
+    this.tileSize = 64;
+    this.tileColumns = 0;
+    this.tileRows = 0;
+  }
 
   /** VGA‑spec levels reuse the pre‑decoded frame */
   createVgaspecMap (levelReader, vgaRenderer) {
@@ -27,6 +31,8 @@ class GroundRenderer {
   createGroundMap (levelReader, terrainImages) {
     const { levelWidth, levelHeight, terrains } = levelReader;
     this.img = new Frame(levelWidth, levelHeight);
+    this.tileColumns = Math.max(1, Math.ceil(levelWidth / this.tileSize));
+    this.tileRows = Math.max(1, Math.ceil(levelHeight / this.tileSize));
 
     for (let i = 0, len = terrains.length; i < len; ++i) {
       const tObj = terrains[i];
