@@ -12,6 +12,7 @@ const calls = [];
 
 const builtinFunctions = new Set([
   'require',
+  'String',
   'setTimeout',
   'clearTimeout',
   'setInterval',
@@ -37,6 +38,7 @@ const builtinObjects = new Set([
 ]);
 
 const builtinMethods = new Set([
+  'apply',
   'log',
   'error',
   'warn',
@@ -52,6 +54,7 @@ const builtinMethods = new Set([
   'appendChild',
   'replace',
   'split',
+  'includes',
   'join',
   'indexOf',
   'slice',
@@ -61,9 +64,19 @@ const builtinMethods = new Set([
   'css',
   'addClass',
   'removeClass',
+  'preventDefault',
+  'getBoundingClientRect',
   'values',
   'catch',
   'then'
+]);
+
+const ignoredDirs = new Set([
+  '.git',
+  'node_modules',
+  'coverage',
+  'dist',
+  'test-results'
 ]);
 
 function walk(node, visitor) {
@@ -128,7 +141,7 @@ function processJSFile(file, withCalls = false) {
 
 function gatherFiles(dir, exts, results = []) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
+    if (ignoredDirs.has(entry.name)) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) {
       gatherFiles(full, exts, results);
