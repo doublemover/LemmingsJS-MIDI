@@ -6,6 +6,7 @@ import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
+import { optionalElement, requireElement } from './domResolver.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -86,8 +87,13 @@ function init() {
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
+  const shortcutOverlayRoot = requireElement(document, 'shortcutOverlay');
+  const gameTypeSelect = requireElement(document, 'gameTypeSelect');
+  const levelGroupSelect = requireElement(document, 'levelGroupSelect');
+  const levelIndexSelect = requireElement(document, 'levelIndexSelect');
+  const gameCanvas = requireElement(document, 'gameCanvas');
   lemmings.shortcutOverlay = new ShortcutOverlay({
-    root: document.getElementById('shortcutOverlay'),
+    root: shortcutOverlayRoot,
     title: 'Game Shortcuts',
     sections: GAME_SHORTCUT_SECTIONS,
     getBindings: action => lemmings.shortcuts?.getDisplayBindings?.(action) || []
@@ -102,10 +108,10 @@ function init() {
   globalThis.onEnabled = () => midiUi?.onEnabled?.();
   globalThis.onMidiError = (message) => midiUi?.showError?.(message);
 
-  lemmings.elementSelectGameType = document.getElementById('gameTypeSelect');
-  lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
-  lemmings.elementSelectLevel = document.getElementById('levelIndexSelect');
-  lemmings.gameCanvas = document.getElementById('gameCanvas');
+  lemmings.elementSelectGameType = gameTypeSelect;
+  lemmings.elementSelectLevelGroup = levelGroupSelect;
+  lemmings.elementSelectLevel = levelIndexSelect;
+  lemmings.gameCanvas = gameCanvas;
   bindCanvasFocusBlur(lemmings.gameCanvas);
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
@@ -122,11 +128,11 @@ function init() {
     lemmings.selectLevel(lemmings.strToNum(e.target.value));
   });
 
-  const savedSelect = document.getElementById('savedLevelSelect');
-  const savedSaveButton = document.getElementById('savedLevelSave');
-  const savedExportButton = document.getElementById('savedLevelExport');
-  const savedImportButton = document.getElementById('savedLevelImport');
-  const savedImportInput = document.getElementById('savedLevelImportInput');
+  const savedSelect = optionalElement(document, 'savedLevelSelect');
+  const savedSaveButton = optionalElement(document, 'savedLevelSave');
+  const savedExportButton = optionalElement(document, 'savedLevelExport');
+  const savedImportButton = optionalElement(document, 'savedLevelImport');
+  const savedImportInput = optionalElement(document, 'savedLevelImportInput');
 
   let currentSavedId = '';
 
@@ -264,7 +270,7 @@ function setSize() {
   gameContainer.width(containerWidth);
   gameContainer.height(containerHeight);
 
-  const canvas = document.getElementById('gameCanvas');
+  const canvas = lemmings?.gameCanvas || optionalElement(document, 'gameCanvas');
   if (canvas) {
     canvas.width = baseW;
     canvas.height = baseH;
