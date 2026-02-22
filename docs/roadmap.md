@@ -416,7 +416,7 @@ Notes:
 - [x] Add entity pooling/reuse path for long bench/procgen runs to reduce GC
   churn from repeated lemming object allocation.
   Touchpoints: `js/lemmings/LemmingManager.js`, `js/lemmings/Lemming.js`.
-- [ ] Add long-run headless soak benchmark for procgen (entity growth + memory
+- [x] Add long-run headless soak benchmark for procgen (entity growth + memory
   ceilings + frame-time summary) with strict cleanup.
   Touchpoints: `scripts/bench-procgen-soak.js`, `test/procgen*.test.js`.
 - [ ] Expand procgen coverage for bootstrap/style selection/stage adapter
