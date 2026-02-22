@@ -17,6 +17,21 @@ const DEFAULT_OPTIONS = Object.freeze({
 });
 
 const COLD_DELTA_SENTINEL = 1;
+const DELTA_FLAG_LEMMING_ADDS = 1 << 0;
+const DELTA_FLAG_LEMMING_CHANGES = 1 << 1;
+const DELTA_FLAG_LEMMING_REMOVALS = 1 << 2;
+const DELTA_FLAG_LEMMING_MANAGER = 1 << 3;
+const DELTA_FLAG_GROUND = 1 << 4;
+const DELTA_FLAG_ENTRANCE = 1 << 5;
+const DELTA_FLAG_TRIGGERS = 1 << 6;
+const DELTA_FLAG_OBJECTS = 1 << 7;
+const DELTA_FLAG_SCALARS = 1 << 8;
+const DELTA_FLAG_SOUND_EVENTS = 1 << 9;
+const DELTA_FLAG_MINIMAP_DEATHS = 1 << 10;
+const DELTA_FLAG_LEMMING_MUTATIONS =
+  DELTA_FLAG_LEMMING_ADDS |
+  DELTA_FLAG_LEMMING_CHANGES |
+  DELTA_FLAG_LEMMING_REMOVALS;
 
 const textEncoder = typeof TextEncoder !== 'undefined' ? new TextEncoder() : null;
 const textDecoder = typeof TextDecoder !== 'undefined' ? new TextDecoder() : null;
@@ -104,8 +119,34 @@ const rleDecodeBytes = (bytes) => {
   return Uint8Array.from(out);
 };
 
+const computeDeltaFlags = (delta) => {
+  if (!delta || typeof delta !== 'object') return 0;
+  let flags = 0;
+  if (delta.lemAdded?.length) flags |= DELTA_FLAG_LEMMING_ADDS;
+  if (delta.lemChanges?.ids?.length) flags |= DELTA_FLAG_LEMMING_CHANGES;
+  if (delta.lemRemoved?.length) flags |= DELTA_FLAG_LEMMING_REMOVALS;
+  if (delta.lemmingManagerChanges) flags |= DELTA_FLAG_LEMMING_MANAGER;
+  if (delta.groundChanges?.indices?.length || delta.groundChanges?.spans) flags |= DELTA_FLAG_GROUND;
+  if (delta.entranceChanges?.indices?.length) flags |= DELTA_FLAG_ENTRANCE;
+  if (
+    delta.triggerCooldownChanges?.ids?.length ||
+    delta.triggerAdd?.length ||
+    delta.triggerRemove?.length
+  ) {
+    flags |= DELTA_FLAG_TRIGGERS;
+  }
+  if (delta.objectAnimChanges?.ids?.length) flags |= DELTA_FLAG_OBJECTS;
+  if (delta.victoryChanges || delta.skillsChanges || delta.timerChanges || delta.gameChanges) {
+    flags |= DELTA_FLAG_SCALARS;
+  }
+  if (delta.soundEvents?.length) flags |= DELTA_FLAG_SOUND_EVENTS;
+  if (delta.minimapDeaths?.length) flags |= DELTA_FLAG_MINIMAP_DEATHS;
+  return flags;
+};
+
 const isNoOpDelta = (delta) => {
   if (!delta) return true;
+  if (Number.isFinite(delta.flags)) return (delta.flags | 0) === 0;
   if (delta.lemChanges?.ids?.length) return false;
   if (delta.lemAdded?.length || delta.lemRemoved?.length) return false;
   if (delta.lemmingManagerChanges) return false;
@@ -253,6 +294,7 @@ const applyLemmingSnapshot = (lem, snapshot, action, countdownAction) => {
 
 const createDelta = (tick) => ({
   tick,
+  flags: 0,
   lemChanges: { ids: [], fields: [], prev: [], next: [] },
   lemAdded: [],
   lemRemoved: [],
@@ -725,6 +767,7 @@ class HistoryStore {
 
   _resetDelta(delta, tickIndex) {
     delta.tick = Math.trunc(tickIndex);
+    delta.flags = 0;
     delta.lemChanges.ids.length = 0;
     delta.lemChanges.fields.length = 0;
     delta.lemChanges.prev.length = 0;
@@ -1091,6 +1134,7 @@ class HistoryStore {
     const tickIndex = this.timer?.tickIndex ?? (tick + 1);
     this._diffState(this.game, this._currentDelta);
     this._compressGroundChanges(this._currentDelta.groundChanges);
+    this._currentDelta.flags = computeDeltaFlags(this._currentDelta);
     this._setDelta(tick, this._currentDelta);
     if ((tickIndex % this.options.keyframeInterval) === 0) {
       this._setKeyframe(tickIndex, this._captureKeyframe(this.game, tickIndex));
@@ -1695,29 +1739,64 @@ class HistoryStore {
 
   _applyDelta(game, delta, useNext) {
     if (!game || !delta) return;
+    const flags = this._getDeltaFlags(delta);
     const manager = game.getLemmingManager?.();
     if (manager) {
       if (useNext) {
-        this._applyLemmingAdds(manager, delta.lemAdded);
+        if (flags & DELTA_FLAG_LEMMING_ADDS) {
+          this._applyLemmingAdds(manager, delta.lemAdded);
+        }
       } else {
-        this._applyLemmingAdds(manager, delta.lemRemoved);
+        if (flags & DELTA_FLAG_LEMMING_REMOVALS) {
+          this._applyLemmingAdds(manager, delta.lemRemoved);
+        }
       }
-      this._applyLemmingChanges(manager, delta.lemChanges, useNext);
+      if (flags & DELTA_FLAG_LEMMING_CHANGES) {
+        this._applyLemmingChanges(manager, delta.lemChanges, useNext);
+      }
       if (useNext) {
-        this._applyLemmingRemovals(manager, delta.lemRemoved);
+        if (flags & DELTA_FLAG_LEMMING_REMOVALS) {
+          this._applyLemmingRemovals(manager, delta.lemRemoved);
+        }
       } else {
-        this._applyLemmingRemovals(manager, delta.lemAdded);
+        if (flags & DELTA_FLAG_LEMMING_ADDS) {
+          this._applyLemmingRemovals(manager, delta.lemAdded);
+        }
       }
-      this._applyLemmingManagerState(manager, delta.lemmingManagerChanges, useNext);
-      this._rebuildActiveLemmings(manager);
-      this._applyMinimapDeaths(manager, delta.minimapDeaths, useNext);
+      if (flags & DELTA_FLAG_LEMMING_MANAGER) {
+        this._applyLemmingManagerState(manager, delta.lemmingManagerChanges, useNext);
+      }
+      if (flags & DELTA_FLAG_LEMMING_MUTATIONS) {
+        this._rebuildActiveLemmings(manager);
+      }
+      if (flags & DELTA_FLAG_MINIMAP_DEATHS) {
+        this._applyMinimapDeaths(manager, delta.minimapDeaths, useNext);
+      }
     }
 
-    this._applyEntranceChanges(game.level, delta.entranceChanges, useNext);
-    this._applyGroundChanges(game.level, delta.groundChanges, useNext);
-    this._applyTriggerChanges(game, delta, useNext);
-    this._applyObjectChanges(game.level, delta.objectAnimChanges, useNext);
-    this._applyScalarChanges(game, delta, useNext);
+    if (flags & DELTA_FLAG_ENTRANCE) {
+      this._applyEntranceChanges(game.level, delta.entranceChanges, useNext);
+    }
+    if (flags & DELTA_FLAG_GROUND) {
+      this._applyGroundChanges(game.level, delta.groundChanges, useNext);
+    }
+    if (flags & DELTA_FLAG_TRIGGERS) {
+      this._applyTriggerChanges(game, delta, useNext);
+    }
+    if (flags & DELTA_FLAG_OBJECTS) {
+      this._applyObjectChanges(game.level, delta.objectAnimChanges, useNext);
+    }
+    if (flags & DELTA_FLAG_SCALARS) {
+      this._applyScalarChanges(game, delta, useNext);
+    }
+  }
+
+  _getDeltaFlags(delta) {
+    if (!delta || typeof delta !== 'object') return 0;
+    if (Number.isFinite(delta.flags)) return delta.flags | 0;
+    const flags = computeDeltaFlags(delta);
+    delta.flags = flags;
+    return flags;
   }
 
   _applyLemmingAdds(manager, list) {
