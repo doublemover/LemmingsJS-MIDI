@@ -42,6 +42,7 @@ const BENCH_PROFILES = {
 const profile = BENCH_PROFILES[requestedProfile] || BENCH_PROFILES.default;
 const durationMs = Number(args.get('duration') || process.env.BENCH_DURATION_MS || profile.durationMs);
 const sampleMs = Number(args.get('sample') || process.env.BENCH_SAMPLE_MS || profile.sampleMs);
+const warmupMs = Number(args.get('warmup') || process.env.BENCH_WARMUP_MS || Math.max(5000, sampleMs * 4));
 const mode = (args.get('mode') || process.env.BENCH_MODE || profile.mode).toLowerCase();
 const entrances = Number(args.get('entrances') || process.env.BENCH_ENTRANCES || profile.entrances);
 
@@ -57,6 +58,15 @@ const buildUrl = (raw) => {
 };
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+const median = (values) => {
+  if (!values.length) return 0;
+  const copy = values.slice().sort((a, b) => a - b);
+  const mid = Math.floor(copy.length / 2);
+  if ((copy.length % 2) === 0) {
+    return (copy[mid - 1] + copy[mid]) / 2;
+  }
+  return copy[mid];
+};
 
 const summarize = (samples, key) => {
   const values = samples
@@ -107,11 +117,14 @@ const run = async () => {
   await page.evaluate(() => window.__E2E__.resume());
 
   const samples = [];
+  const warmupSamples = [];
   let maxTps = 0;
   let maxSpeed = 0;
   let maxFrameMs = 0;
   const start = Date.now();
-  while (Date.now() - start < durationMs) {
+  const totalWindowMs = warmupMs + durationMs;
+  while (Date.now() - start < totalWindowMs) {
+    const evalStart = Date.now();
     const bench = await page.evaluate(() => {
       const metrics = window.__E2E__.getBenchMetrics?.() || {};
       const state = window.__E2E__.getState?.() || {};
@@ -122,40 +135,80 @@ const run = async () => {
         frameMs: Number(timer.frameTime || 0)
       };
     });
+    const evalMs = Date.now() - evalStart;
     const tps = Number(bench?.tps || 0);
     const speed = Number(bench?.speedFactor || 0);
     const frameMs = Number(bench?.frameMs || 0);
     if (tps > maxTps) maxTps = tps;
     if (speed > maxSpeed) maxSpeed = speed;
     if (frameMs > maxFrameMs) maxFrameMs = frameMs;
-    samples.push({
-      elapsedMs: Date.now() - start,
+    const elapsedMs = Date.now() - start;
+    const sample = {
+      elapsedMs,
       tps,
       speedFactor: speed,
       frameMs,
+      evalMs,
       reverse: !!bench?.reverse,
       benchMaxSpeed: bench?.benchMaxSpeed ?? null
-    });
+    };
+    if (elapsedMs < warmupMs) {
+      warmupSamples.push(sample);
+    } else {
+      samples.push({
+        ...sample,
+        elapsedMs: elapsedMs - warmupMs
+      });
+    }
     await sleep(sampleMs);
   }
 
   await page.evaluate(() => window.__E2E__.pause());
   await browser.close();
+  const frameSeries = samples
+    .map(sample => Number(sample.frameMs || 0))
+    .filter(value => Number.isFinite(value) && value > 0);
+  const medianFrame = median(frameSeries);
+  const frameOutlierThreshold = Math.max(120, medianFrame * 3);
+  const evalOutlierThreshold = Math.max(1000, sampleMs * 2);
+  const flaggedSamples = samples.map(sample => {
+    const frameOutlier = sample.frameMs > frameOutlierThreshold;
+    const evalOutlier = sample.evalMs > evalOutlierThreshold;
+    return {
+      ...sample,
+      outlier: frameOutlier || evalOutlier,
+      outlierReason: frameOutlier
+        ? `frameMs>${frameOutlierThreshold.toFixed(1)}`
+        : evalOutlier ? `evalMs>${evalOutlierThreshold.toFixed(1)}` : null
+    };
+  });
+  const filteredSamples = flaggedSamples.filter(sample => !sample.outlier);
 
   const summary = {
     profile: requestedProfile,
     mode,
     durationMs,
+    warmupMs,
     sampleMs,
     entrances,
     url: buildUrl(baseUrl),
     maxTps,
     maxSpeed,
     maxFrameMs,
-    tpsStats: summarize(samples, 'tps'),
-    speedStats: summarize(samples, 'speedFactor'),
-    frameStats: summarize(samples, 'frameMs'),
-    samples
+    frameOutlierThreshold,
+    evalOutlierThreshold,
+    warmupSampleCount: warmupSamples.length,
+    sampleCount: flaggedSamples.length,
+    filteredSampleCount: filteredSamples.length,
+    outlierCount: flaggedSamples.length - filteredSamples.length,
+    tpsStats: summarize(flaggedSamples, 'tps'),
+    speedStats: summarize(flaggedSamples, 'speedFactor'),
+    frameStats: summarize(flaggedSamples, 'frameMs'),
+    evalStats: summarize(flaggedSamples, 'evalMs'),
+    filteredTpsStats: summarize(filteredSamples, 'tps'),
+    filteredSpeedStats: summarize(filteredSamples, 'speedFactor'),
+    filteredFrameStats: summarize(filteredSamples, 'frameMs'),
+    samples: flaggedSamples
   };
   console.log(JSON.stringify(summary, null, 2));
 };

@@ -226,12 +226,9 @@ class GameTimer {
 
     if (this.benchStartupFrames <= 0) {
       if (steps > 100) {
-        this.suspend();
         this.#stableTicks = 0;
-        this.#speedFactor = 0.1;
-        window.setTimeout(() => {
-          if (!this.isRunning()) this.continue();
-        }, 500);
+        const severeDrop = Math.min(this.#speedFactor * 0.5, this.#speedFactor - 1);
+        this.#speedFactor = Math.max(0.2, severeDrop);
       } else if (steps > slowThreshold) {
         this.#stableTicks = 0;
         const sf = this.#speedFactor;

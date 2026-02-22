@@ -189,7 +189,7 @@ describe('GameTimer', function() {
       globalThis.window._raf(now);
 
       expect(globalThis.lemmings.steps).to.equal(200);
-      expect(timer.speedFactor).to.equal(0.1);
+      expect(timer.speedFactor).to.equal(0.2);
       expect(overlayCalls.length).to.equal(1);
       expect(overlayCalls[0].color).to.match(/^rgba\(255,0,0/);
       expect(overlayCalls[0].rect).to.eql({ x: 160, y: 32, width: 16, height: 10 });
