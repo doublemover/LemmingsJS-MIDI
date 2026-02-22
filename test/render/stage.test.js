@@ -395,6 +395,30 @@ describe('Stage', function() {
     expect(stage.guiImgProps.height).to.equal(0);
   });
 
+  it('skips resize redraw work when dimensions are unchanged and displays are clean', function() {
+    const { canvas } = makeCanvas(320, 200);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(100, 50);
+    stage.guiImgProps.display.initSize(80, 20);
+    stage.updateStageSize();
+
+    let clears = 0;
+    let draws = 0;
+    stage.clear = () => { clears += 1; };
+    stage.draw = () => { draws += 1; };
+
+    globalThis.window.requestAnimationFrame = (cb) => { cb(); return 1; };
+    stage.scheduleUpdateStageSize();
+    expect(clears).to.equal(0);
+    expect(draws).to.equal(0);
+
+    stage._resizeRaf = 0;
+    stage.gameImgProps.display.markDirtyRect(0, 0, 1, 1);
+    stage.scheduleUpdateStageSize();
+    expect(clears).to.be.greaterThan(0);
+    expect(draws).to.be.greaterThan(0);
+  });
+
   it('normalizes invalid HUD scale and view offsets', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

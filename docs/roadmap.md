@@ -392,7 +392,7 @@ Notes:
 - [x] Optimize Stage overlay fallback path to avoid repeated
   `getImageData/putImageData` churn on browsers without line-dash support.
   Touchpoints: `js/render/Stage.js`.
-- [ ] Skip redundant resize-triggered redraw work when canvas dimensions are
+- [x] Skip redundant resize-triggered redraw work when canvas dimensions are
   unchanged and displays have no pending dirty state.
   Touchpoints: `js/render/Stage.js`.
 - [ ] Add CPU-only render hotpath benchmark (no browser launch) for dirty-rect,

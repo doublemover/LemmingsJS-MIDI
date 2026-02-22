@@ -73,6 +73,8 @@ class Stage {
     this._lastGuiDrawSignature = '';
     this.panEnabled = true;
     this._resizeRaf = 0;
+    this._lastStageWidth = NaN;
+    this._lastStageHeight = NaN;
     this._overlayFallbackCanvas = null;
     this._overlayFallbackCtx = null;
     this._overlayFallbackImageData = null;
@@ -342,13 +344,20 @@ class Stage {
     }
     this._resizeRaf = window.requestAnimationFrame(() => {
       this._resizeRaf = 0;
-      this.updateStageSize();
+      this.updateStageSize(true);
     });
   }
 
-  updateStageSize() {
+  updateStageSize(fromResize = false) {
     const stageH = this.stageCav.height;
     const stageW = this.stageCav.width;
+    if (fromResize && stageW === this._lastStageWidth && stageH === this._lastStageHeight) {
+      const gameDirty = this.gameImgProps.display?.hasPendingDirty?.() === true;
+      const guiDirty = this.guiEnabled && this.guiImgProps.display?.hasPendingDirty?.() === true;
+      if (!gameDirty && !guiDirty) return;
+    }
+    this._lastStageWidth = stageW;
+    this._lastStageHeight = stageH;
     const guiActive = this.guiEnabled && !!this.guiImgProps.display;
     // this margin is for the level <select> elements in the html
     const margin = guiActive ? this.hudMargin : 0;
