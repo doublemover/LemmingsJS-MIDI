@@ -456,7 +456,7 @@ Notes:
   still rely mostly on integration coverage.
   Touchpoints: `js/app/boot.js`, `js/input/UserInputManager.js`,
   `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.
-- [ ] Remove expected-error console noise in tests by scoped stubbing so real
+- [x] Remove expected-error console noise in tests by scoped stubbing so real
   regressions stay visible in output.
   Touchpoints: `test/midi/midi-ui-controller.test.js`, `test/helpers/*`.
 

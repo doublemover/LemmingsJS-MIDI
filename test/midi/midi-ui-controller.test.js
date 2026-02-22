@@ -3,6 +3,7 @@ import { createMidiUiController } from '../../js/app/midiUiController.js';
 import { SoundEffectIds } from '../../js/game/SoundEvents.js';
 import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
+import { withConsoleStub } from '../helpers/console.js';
 import { TestDocument, TestElement, createTestWindow } from '../helpers/test-dom.js';
 
 const register = (doc, tag, id, className = '') => {
@@ -906,76 +907,85 @@ describe('midiUiController', function() {
       window: win,
       getMidiConfig: () => config
     });
+    const errors = [];
+    const restoreConsole = withConsoleStub({
+      error: (...args) => errors.push(args)
+    });
 
-    controller.bindMidiUi();
-    controller.refreshMidiUiFromConfig();
-    controller.refreshMidiUiFromConfig();
-    expect(repeatSpacing.children.some(child => child.value === '0.3')).to.equal(true);
-    accent.input.value = '0.4';
-    accent.input.dispatchEvent({ type: 'change', target: accent.input });
-    intensity.input.value = '75';
-    intensity.input.dispatchEvent({ type: 'change', target: intensity.input });
-    keySelect.value = '5';
-    keySelect.dispatchEvent({ type: 'change', target: keySelect });
-    scaleSelect.value = 'major';
-    scaleSelect.dispatchEvent({ type: 'change', target: scaleSelect });
-    repeatTarget.value = 'duration';
-    repeatTarget.dispatchEvent({ type: 'change', target: repeatTarget });
-    repeatAmount.value = '0.5';
-    repeatAmount.dispatchEvent({ type: 'change', target: repeatAmount });
-    repeatCount.value = '2';
-    repeatCount.dispatchEvent({ type: 'change', target: repeatCount });
-    const firstMapping = positionList.children[0];
-    const axisX = findElement(firstMapping, el => (
-      el.tagName === 'LABEL' && el.children?.[1]?.textContent === 'X'
-    ))?.children?.[0];
-    const axisY = findElement(firstMapping, el => (
-      el.tagName === 'LABEL' && el.children?.[1]?.textContent === 'Y'
-    ))?.children?.[0];
-    const axisOp = findElement(firstMapping, el => (
-      el.tagName === 'SELECT' && el.children?.[0]?.textContent === '+'
-    ));
-    const targetSelect = findElement(firstMapping, el => (
-      el.tagName === 'SELECT' &&
-      Array.from(el.children || []).some(child => child.textContent === 'Note offset')
-    ));
-    const minInput = findElement(firstMapping, el => (
-      el.tagName === 'INPUT' && el.type === 'number'
-    ));
-    const maxInput = findElement(firstMapping, el => (
-      el.tagName === 'INPUT' && el.type === 'number' && el !== minInput
-    ));
-    const removeButton = findElement(firstMapping, el => (
-      el.tagName === 'BUTTON' && el.textContent === 'Remove'
-    ));
+    try {
+      controller.bindMidiUi();
+      controller.refreshMidiUiFromConfig();
+      controller.refreshMidiUiFromConfig();
+      expect(repeatSpacing.children.some(child => child.value === '0.3')).to.equal(true);
+      accent.input.value = '0.4';
+      accent.input.dispatchEvent({ type: 'change', target: accent.input });
+      intensity.input.value = '75';
+      intensity.input.dispatchEvent({ type: 'change', target: intensity.input });
+      keySelect.value = '5';
+      keySelect.dispatchEvent({ type: 'change', target: keySelect });
+      scaleSelect.value = 'major';
+      scaleSelect.dispatchEvent({ type: 'change', target: scaleSelect });
+      repeatTarget.value = 'duration';
+      repeatTarget.dispatchEvent({ type: 'change', target: repeatTarget });
+      repeatAmount.value = '0.5';
+      repeatAmount.dispatchEvent({ type: 'change', target: repeatAmount });
+      repeatCount.value = '2';
+      repeatCount.dispatchEvent({ type: 'change', target: repeatCount });
+      const firstMapping = positionList.children[0];
+      const axisX = findElement(firstMapping, el => (
+        el.tagName === 'LABEL' && el.children?.[1]?.textContent === 'X'
+      ))?.children?.[0];
+      const axisY = findElement(firstMapping, el => (
+        el.tagName === 'LABEL' && el.children?.[1]?.textContent === 'Y'
+      ))?.children?.[0];
+      const axisOp = findElement(firstMapping, el => (
+        el.tagName === 'SELECT' && el.children?.[0]?.textContent === '+'
+      ));
+      const targetSelect = findElement(firstMapping, el => (
+        el.tagName === 'SELECT' &&
+        Array.from(el.children || []).some(child => child.textContent === 'Note offset')
+      ));
+      const minInput = findElement(firstMapping, el => (
+        el.tagName === 'INPUT' && el.type === 'number'
+      ));
+      const maxInput = findElement(firstMapping, el => (
+        el.tagName === 'INPUT' && el.type === 'number' && el !== minInput
+      ));
+      const removeButton = findElement(firstMapping, el => (
+        el.tagName === 'BUTTON' && el.textContent === 'Remove'
+      ));
 
-    axisX.checked = false;
-    axisY.checked = false;
-    axisX.dispatchEvent({ type: 'change', target: axisX });
-    axisY.dispatchEvent({ type: 'change', target: axisY });
-    axisOp.value = 'sub';
-    axisOp.dispatchEvent({ type: 'change', target: axisOp });
-    targetSelect.value = 'pan';
-    targetSelect.dispatchEvent({ type: 'change', target: targetSelect });
-    minInput.value = '4';
-    maxInput.value = '8';
-    maxInput.dispatchEvent({ type: 'change', target: maxInput });
-    minInput.value = '';
-    maxInput.value = '';
-    minInput.dispatchEvent({ type: 'change', target: minInput });
-    throwRefresh = true;
-    removeButton.dispatchEvent({ type: 'click', target: removeButton });
-    throwRefresh = false;
+      axisX.checked = false;
+      axisY.checked = false;
+      axisX.dispatchEvent({ type: 'change', target: axisX });
+      axisY.dispatchEvent({ type: 'change', target: axisY });
+      axisOp.value = 'sub';
+      axisOp.dispatchEvent({ type: 'change', target: axisOp });
+      targetSelect.value = 'pan';
+      targetSelect.dispatchEvent({ type: 'change', target: targetSelect });
+      minInput.value = '4';
+      maxInput.value = '8';
+      maxInput.dispatchEvent({ type: 'change', target: maxInput });
+      minInput.value = '';
+      maxInput.value = '';
+      minInput.dispatchEvent({ type: 'change', target: minInput });
+      throwRefresh = true;
+      removeButton.dispatchEvent({ type: 'click', target: removeButton });
+      throwRefresh = false;
 
-    repeatEnabled.checked = true;
-    repeatEnabled.dispatchEvent({ type: 'click', stopPropagation() {} });
-    repeatEnabled.dispatchEvent({ type: 'change', target: repeatEnabled });
+      repeatEnabled.checked = true;
+      repeatEnabled.dispatchEvent({ type: 'click', stopPropagation() {} });
+      repeatEnabled.dispatchEvent({ type: 'change', target: repeatEnabled });
 
-    throwRefresh = true;
-    positionAdd.dispatchEvent({ type: 'click' });
-    throwRefresh = false;
-    const overrides = controller.getMidiOverrides();
-    expect(overrides.position.mappings[overrides.position.mappings.length - 1].min).to.equal(1);
+      throwRefresh = true;
+      positionAdd.dispatchEvent({ type: 'click' });
+      throwRefresh = false;
+      const overrides = controller.getMidiOverrides();
+      expect(overrides.position.mappings[overrides.position.mappings.length - 1].min).to.equal(1);
+      expect(errors.length).to.be.greaterThan(0);
+    } finally {
+      restoreConsole();
+    }
   });
 
   it('builds axis defaults from explicit position mappings', function() {
@@ -1178,10 +1188,19 @@ describe('midiUiController', function() {
       window: win,
       getMidiConfig: () => ({ timing: { bpmBase: 120 } })
     });
+    const errors = [];
+    const restoreConsole = withConsoleStub({
+      error: (...args) => errors.push(args)
+    });
 
-    controller.scheduleMidiUiRefresh();
-    while (timeouts.length) {
-      timeouts.shift()();
+    try {
+      controller.scheduleMidiUiRefresh();
+      while (timeouts.length) {
+        timeouts.shift()();
+      }
+      expect(errors.length).to.be.greaterThan(0);
+    } finally {
+      restoreConsole();
     }
   });
 
@@ -1204,8 +1223,16 @@ describe('midiUiController', function() {
       window: win,
       getMidiConfig: () => ({ timing: { bpmBase: 120 } })
     });
-
-    controller.bindMidiUi();
+    const errors = [];
+    const restoreConsole = withConsoleStub({
+      error: (...args) => errors.push(args)
+    });
+    try {
+      controller.bindMidiUi();
+      expect(errors.length).to.be.greaterThan(0);
+    } finally {
+      restoreConsole();
+    }
   });
 
   it('exposes deterministic intent automation hooks', function() {
