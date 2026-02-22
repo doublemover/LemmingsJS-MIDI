@@ -25,6 +25,7 @@ const scaledFrameCache = new WeakMap();
 const MAX_SCALED_VARIANTS_PER_FRAME = 8;
 const marchingAntPerimeterCache = new Map();
 const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
+const DIRTY_RECT_MERGE_PAD = 1;
 
 const getMarchingAntPerimeterOffsets = (stride, width, height) => {
   const key = `${stride}:${width}:${height}`;
@@ -197,7 +198,44 @@ class DisplayImage extends BaseLogger {
     const x2 = Math.min(w, Math.ceil(x + width));
     const y2 = Math.min(h, Math.ceil(y + height));
     if (x2 <= x1 || y2 <= y1) return;
-    this._dirtyRects.push({ x: x1, y: y1, width: x2 - x1, height: y2 - y1 });
+
+    let mergedX1 = x1;
+    let mergedY1 = y1;
+    let mergedX2 = x2;
+    let mergedY2 = y2;
+    for (let i = 0; i < this._dirtyRects.length;) {
+      const rect = this._dirtyRects[i];
+      const rectX1 = rect.x;
+      const rectY1 = rect.y;
+      const rectX2 = rect.x + rect.width;
+      const rectY2 = rect.y + rect.height;
+      const overlapsOrTouches =
+        mergedX1 <= (rectX2 + DIRTY_RECT_MERGE_PAD) &&
+        mergedX2 >= (rectX1 - DIRTY_RECT_MERGE_PAD) &&
+        mergedY1 <= (rectY2 + DIRTY_RECT_MERGE_PAD) &&
+        mergedY2 >= (rectY1 - DIRTY_RECT_MERGE_PAD);
+      if (!overlapsOrTouches) {
+        i += 1;
+        continue;
+      }
+      mergedX1 = Math.min(mergedX1, rectX1);
+      mergedY1 = Math.min(mergedY1, rectY1);
+      mergedX2 = Math.max(mergedX2, rectX2);
+      mergedY2 = Math.max(mergedY2, rectY2);
+      const last = this._dirtyRects.length - 1;
+      this._dirtyRects[i] = this._dirtyRects[last];
+      this._dirtyRects.length = last;
+    }
+    if (mergedX1 === 0 && mergedY1 === 0 && mergedX2 === w && mergedY2 === h) {
+      this.markDirtyAll();
+      return;
+    }
+    this._dirtyRects.push({
+      x: mergedX1,
+      y: mergedY1,
+      width: mergedX2 - mergedX1,
+      height: mergedY2 - mergedY1
+    });
     if (this._dirtyRects.length > 96) {
       this.markDirtyAll();
     }
