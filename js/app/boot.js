@@ -110,8 +110,11 @@ function init() {
     onConfigChange: patch => midiUi.setMidiOverrides(patch)
   });
   midiUi.setMidiInputController(midiInputController);
-  globalThis.onEnabled = () => midiUi?.onEnabled?.();
-  globalThis.onMidiError = (message) => midiUi?.showError?.(message);
+  const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();
+  lemmings.setMidiStatusHandlers?.({
+    onEnabled: midiStatusHandlers?.onEnabled,
+    onError: midiStatusHandlers?.onError
+  });
 
   lemmings.elementSelectGameType = gameTypeSelect;
   lemmings.elementSelectLevelGroup = levelGroupSelect;

@@ -1456,6 +1456,12 @@ export const createMidiUiController = ({
     scheduleMidiUiRefresh,
     onEnabled,
     showError,
+    getMidiStatusHandlers() {
+      return {
+        onEnabled,
+        onError: showError
+      };
+    },
     refreshMidiUiFromConfig,
     setMidiOverrides,
     dispatchMidiIntent(intent) {

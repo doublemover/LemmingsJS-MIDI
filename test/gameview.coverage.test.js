@@ -12,8 +12,6 @@ describe('GameView coverage', function() {
   const originalWindow = globalThis.window;
   const originalHistory = globalThis.history;
   const originalWebMidi = globalThis.WebMidi;
-  const originalOnMidiError = globalThis.onMidiError;
-  const originalOnEnabled = globalThis.onEnabled;
   const originalLocalStorage = globalThis.localStorage;
   const originalDocument = globalThis.document;
   useGlobalLemmings({});
@@ -28,8 +26,6 @@ describe('GameView coverage', function() {
     globalThis.window = originalWindow;
     globalThis.history = originalHistory;
     globalThis.WebMidi = originalWebMidi;
-    globalThis.onMidiError = originalOnMidiError;
-    globalThis.onEnabled = originalOnEnabled;
     globalThis.localStorage = originalLocalStorage;
     globalThis.document = originalDocument;
   });
@@ -143,20 +139,20 @@ describe('GameView coverage', function() {
       .to.equal('WebMIDI is not supported in this browser.');
 
     let errorMessage = null;
-    globalThis.onMidiError = msg => { errorMessage = msg; };
+    view.setMidiStatusHandlers({ onError: msg => { errorMessage = msg; } });
     const missing = await view._ensureWebMidiEnabled();
     expect(missing).to.equal(null);
     expect(errorMessage).to.include('not supported');
 
     let enabledCalled = false;
     let onEnabledCalled = false;
-    globalThis.onEnabled = () => { onEnabledCalled = true; };
     globalThis.WebMidi = {
       enabled: false,
       enable: async () => { enabledCalled = true; },
       outputs: []
     };
     const view2 = new GameView();
+    view2.setMidiStatusHandlers({ onEnabled: () => { onEnabledCalled = true; } });
     const enabled = await view2._ensureWebMidiEnabled();
     expect(enabled).to.equal(globalThis.WebMidi);
     expect(enabledCalled).to.equal(true);
@@ -940,12 +936,12 @@ describe('GameView coverage', function() {
   it('reports WebMidi enable failures', async function() {
     globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
     let errorMessage = null;
-    globalThis.onMidiError = msg => { errorMessage = msg; };
     globalThis.WebMidi = {
       enabled: false,
       enable: async () => { throw new Error('boom'); }
     };
     const view = new GameView();
+    view.setMidiStatusHandlers({ onError: msg => { errorMessage = msg; } });
     const result = await view._ensureWebMidiEnabled();
     expect(result).to.equal(null);
     expect(errorMessage).to.contain('WebMIDI enable failed');

@@ -99,6 +99,7 @@ class GameView extends BaseLogger {
     this._midiBaseConfig = null;
     this._midiOverrides = {};
     this._midiSchemaHash = null;
+    this._midiStatusHandlers = { onEnabled: null, onError: null };
     this.midiEnabled = false;
 
     this.includeSavedLevels = false;
@@ -302,6 +303,13 @@ class GameView extends BaseLogger {
     this.midiRouter?.setOutput?.(output);
   }
 
+  setMidiStatusHandlers({ onEnabled = null, onError = null } = {}) {
+    this._midiStatusHandlers = {
+      onEnabled: typeof onEnabled === 'function' ? onEnabled : null,
+      onError: typeof onError === 'function' ? onError : null
+    };
+  }
+
   _getWebMidi() {
     if (typeof globalThis !== 'undefined') return globalThis.WebMidi;
     return null;
@@ -333,23 +341,17 @@ class GameView extends BaseLogger {
   async _ensureWebMidiEnabled() {
     const webMidi = this._getWebMidi();
     if (!webMidi) {
-      if (typeof globalThis.onMidiError === 'function') {
-        globalThis.onMidiError('WebMIDI is not supported in this browser.');
-      }
+      this._midiStatusHandlers?.onError?.('WebMIDI is not supported in this browser.');
       return null;
     }
     if (webMidi.enabled) return webMidi;
     try {
       await webMidi.enable();
-      if (typeof globalThis.onEnabled === 'function') {
-        globalThis.onEnabled();
-      }
+      this._midiStatusHandlers?.onEnabled?.();
       return webMidi;
     } catch (e) {
       this.log.log('WebMidi enable failed', e);
-      if (typeof globalThis.onMidiError === 'function') {
-        globalThis.onMidiError(this._formatMidiEnableError(e));
-      }
+      this._midiStatusHandlers?.onError?.(this._formatMidiEnableError(e));
       return null;
     }
   }
