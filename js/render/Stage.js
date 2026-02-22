@@ -686,17 +686,23 @@ class Stage {
     } else if (dirtyRects.length) {
       const fullArea = img.width * img.height;
       let dirtyArea = 0;
-      for (let i = 0; i < dirtyRects.length; i += 1) {
-        const rect = dirtyRects[i];
-        dirtyArea += rect.width * rect.height;
+      const dirtyAreaThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
+      let useFullBlit = dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
+      if (!useFullBlit) {
+        for (let i = 0; i < dirtyRects.length; i += 1) {
+          const rect = dirtyRects[i];
+          dirtyArea += rect.width * rect.height;
+          if (dirtyArea >= dirtyAreaThreshold) {
+            useFullBlit = true;
+            break;
+          }
+        }
       }
-      const useFullBlit =
-        dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD ||
-        dirtyArea >= (fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO);
       if (useFullBlit) {
         display.ctx.putImageData(img, 0, 0);
       } else {
-        for (const rect of dirtyRects) {
+        for (let i = 0; i < dirtyRects.length; i += 1) {
+          const rect = dirtyRects[i];
           display.ctx.putImageData(
             img,
             0,
