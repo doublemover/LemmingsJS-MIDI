@@ -56,6 +56,7 @@ class LemmingManager extends BaseLogger {
         this._minimapDotBuffer = new Uint8Array(maxDots);
         this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
         this._mmVisited = new Uint8Array(65536);
+        this._selectedMiniMapDot = [0, 0];
         if (!LemmingManager.log) {
           LemmingManager.log = this.log;
         }
@@ -227,12 +228,16 @@ class LemmingManager extends BaseLogger {
           const scaleX = this.miniMap.scaleX;
           const scaleY = this.miniMap.scaleY;
           let idx = 0;
-          let selDot = null;
+          let hasSelectedDot = false;
           for (const lem of lems) {
             if (lem.removed || lem.disabled) continue;
             const x = (lem.x * scaleX) | 0;
             const y = (lem.y * scaleY) | 0;
-            if (lem.id === this.selectedIndex) selDot = [x, y];
+            if (lem.id === this.selectedIndex) {
+              this._selectedMiniMapDot[0] = x;
+              this._selectedMiniMapDot[1] = y;
+              hasSelectedDot = true;
+            }
             const key = (y << 8) | x;
             if (visited[key]) continue;
             visited[key] = 1;
@@ -241,7 +246,7 @@ class LemmingManager extends BaseLogger {
           }
           this.minimapDots = dots.subarray(0, idx);
           this.miniMap.setLiveDots(this.minimapDots);
-          this.miniMap.setSelectedDot(selDot);
+          this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
         }
         if (this._activeDirty) {
           this._compactActiveLemmings();
