@@ -32,6 +32,7 @@
     "test-mcp-smoke": "node scripts/mcp-smoke.js",
     "bench-performance": "node scripts/bench-performance.js",
     "bench-history": "node scripts/bench-history-stress.js",
+    "bench-hotpaths": "node scripts/bench-hotpaths.js",
     "coverage": "cross-env C8_FORK=1 c8 mocha --recursive",
     "coverage-editor": "cross-env C8_FORK=1 c8 --include=js/editor/** --check-coverage --lines 100 --statements 100 --functions 100 --branches 100 mocha \"test/editor/*.test.js\"",
     "coverage-report": "npx c8 report --reporter=html",
