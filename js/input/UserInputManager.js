@@ -2,6 +2,9 @@ import { EventHandler } from '../util/EventHandler.js';
 import { Position2D } from '../util/Position2D.js';
 import { getAppContext } from '../core/dependencies.js';
 
+const PASSIVE_LISTENER = Object.freeze({ passive: true });
+const ACTIVE_LISTENER = Object.freeze({ passive: false });
+
 class MouseMoveEventArguements extends Position2D {
   constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
     super(x, y);
@@ -26,7 +29,7 @@ class ZoomEventArgs extends Position2D {
 }
 
 class UserInputManager {
-  constructor(listenElement) {
+  constructor(listenElement, options = {}) {
     this.mouseDownX = 0;
     this.mouseDownY = 0;
     this.lastMouseX = 0;
@@ -42,6 +45,7 @@ class UserInputManager {
     this.onZoom = new EventHandler();
     this.listenElement = listenElement;
     this._listeners = [];
+    this._passiveMouseMove = options.passiveMouseMove !== false;
     this.twoTouch = false;
     this.lastTouchDistance = 0;
 
@@ -53,9 +57,6 @@ class UserInputManager {
     this._addListener('mousemove', (e) => {
       let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
       this.handleMouseMove(relativePos);
-      e.stopPropagation();
-      e.preventDefault();
-      return false;
     });
     this._addListener('touchmove', (e) => {
       if (e.touches.length > 2) {
@@ -178,6 +179,8 @@ class UserInputManager {
       }
       let relativePos = this.getRelativePosition(this.listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
       this.handleMouseUp(relativePos);
+      e.stopPropagation();
+      e.preventDefault();
       return false;
     });
     this._addListener('touchleave', (e) => {
@@ -213,11 +216,26 @@ class UserInputManager {
   }
 
   _addListener(type, handler, options = null) {
-    const useOptions = options || (type.startsWith('touch') || type === 'wheel'
-      ? { passive: false }
-      : undefined);
+    let useOptions = options;
+    if (useOptions == null) {
+      useOptions = this._defaultListenerOptions(type);
+    }
     this.listenElement.addEventListener(type, handler, useOptions);
     this._listeners.push([type, handler, useOptions]);
+  }
+
+  /**
+   * Listener options are explicit so the browser can keep high-frequency move
+   * handlers on the fast path while still allowing touch/wheel default-prevent.
+   */
+  _defaultListenerOptions(type) {
+    if (type === 'mousemove' || type === 'mouseleave') {
+      return this._passiveMouseMove ? PASSIVE_LISTENER : undefined;
+    }
+    if (type.startsWith('touch') || type === 'wheel') {
+      return ACTIVE_LISTENER;
+    }
+    return undefined;
   }
 
   dispose() {

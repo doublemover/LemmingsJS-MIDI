@@ -142,7 +142,8 @@ describe('UserInputManager', function() {
     expect(element._listenerOptions.get('touchmove')).to.deep.equal({ passive: false });
     expect(element._listenerOptions.get('touchstart')).to.deep.equal({ passive: false });
     expect(element._listenerOptions.get('wheel')).to.deep.equal({ passive: false });
-    expect(element._listenerOptions.get('mousemove')).to.equal(undefined);
+    expect(element._listenerOptions.get('mousemove')).to.deep.equal({ passive: true });
+    expect(element._listenerOptions.get('mouseleave')).to.deep.equal({ passive: true });
   });
 
   it('uses fallback zoom event path when stage omits getStageImageAt', function() {

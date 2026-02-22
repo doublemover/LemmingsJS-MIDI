@@ -502,7 +502,7 @@ Notes:
   and add explicit cache-busting for static assets/config changes.
   Touchpoints: `js/app/registerServiceWorker.js`, `js/app/boot.js`,
   `js/game/GameFactory.js`.
-- [ ] Audit pointer/touch listener passive flags and latency-sensitive handlers
+- [x] Audit pointer/touch listener passive flags and latency-sensitive handlers
   for mobile responsiveness.
   Touchpoints: `js/input/*`, `js/render/Stage.js`, `js/game/GameView.js`.
 - [ ] Add deterministic environment diagnostics endpoint for runtime profile,

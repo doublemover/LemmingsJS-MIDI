@@ -28,6 +28,7 @@ const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
 const STARTUP_PROFILES = new Set(['gameplay', 'editor', 'perf']);
 const MIDI_FLAG_REGISTRATION_KEY = Symbol('midi-flag-registration');
+const PASSIVE_RESIZE_LISTENER = Object.freeze({ passive: true });
 
 const cloneConfig = (config) => JSON.parse(JSON.stringify(config || {}));
 
@@ -115,16 +116,16 @@ class GameView extends BaseLogger {
 
   set gameCanvas(el) {
     if (this.stage && this.stage.dispose) {
-      window.removeEventListener('resize', this._stageResize);
-      window.removeEventListener('orientationchange', this._stageResize);
+      window.removeEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      window.removeEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
       this.stage.dispose();
     }
     const StageCtor = getDependency('Stage', Stage);
     this.stage = new StageCtor(el);
     this.stage.setPerfOverlay?.(this.perfOverlay, () => this.getPerfOverlayData());
     this._stageResize = () => this.stage.scheduleUpdateStageSize();
-    window.addEventListener('resize', this._stageResize);
-    window.addEventListener('orientationchange', this._stageResize);
+    window.addEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+    window.addEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
     this._stageResize();
   }
 
@@ -1583,8 +1584,8 @@ class GameView extends BaseLogger {
       this.midiRouter = null;
     }
     if (this.stage && this.stage.dispose) {
-      window.removeEventListener('resize', this._stageResize);
-      window.removeEventListener('orientationchange', this._stageResize);
+      window.removeEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      window.removeEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
       this.stage.dispose();
       this.stage = null;
     }

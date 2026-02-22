@@ -104,7 +104,9 @@ class Stage {
     this.getGameDisplay();
     this.getGuiDisplay();
 
-    this.controller = new UserInputManager(canvasForOutput);
+    this.controller = new UserInputManager(canvasForOutput, {
+      passiveMouseMove: true
+    });
     this.handleOnMouseUp();
     this.handleOnMouseDown();
     this.handleOnMouseRightUp();
