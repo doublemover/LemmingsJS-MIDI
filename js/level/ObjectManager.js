@@ -17,6 +17,7 @@ class ObjectManager {
     this.objects = [];
     this._bucketWidth = 128;
     this._xBuckets = new Map();
+    this._bucketScratch = [];
   }
 
   _bucketIndexForX(x) {
@@ -60,7 +61,8 @@ class ObjectManager {
         const bucketPad = this._bucketWidth;
         const startBucket = this._bucketIndexForX(minX - bucketPad);
         const endBucket = this._bucketIndexForX(maxX + bucketPad);
-        source = [];
+        source = this._bucketScratch;
+        source.length = 0;
         for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
           const list = this._xBuckets.get(bucket);
           if (!list?.length) continue;

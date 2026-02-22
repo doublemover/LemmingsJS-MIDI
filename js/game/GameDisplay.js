@@ -29,6 +29,8 @@ const RENDER_DEBUG_MEASURE_DETAIL = Object.freeze({
   })
 });
 
+const LEMMING_HIGHLIGHT_SIZE = Object.freeze({ width: 10, height: 13 });
+
 class GameDisplay {
   constructor(game, level, lemmingManager, objectManager, triggerManager) {
     this.game = game;
@@ -198,7 +200,7 @@ class GameDisplay {
     this.display.drawCornerRect(
       x,
       y,
-      { width: 10, height: 13 },
+      LEMMING_HIGHLIGHT_SIZE,
       color & 0xff,
       (color >> 8) & 0xff,
       (color >> 16) & 0xff,
@@ -211,7 +213,14 @@ class GameDisplay {
     const y = lem.y - 11; // sits a bit higher
     const color = 0x5e5e5e; // slightly lighter grey
 
-    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
+    this.display.drawCornerRect(
+      x,
+      y,
+      LEMMING_HIGHLIGHT_SIZE,
+      color & 0xff,
+      (color >> 8) & 0xff,
+      (color >> 16) & 0xff
+    );
   }
 
   static __test__ = {
