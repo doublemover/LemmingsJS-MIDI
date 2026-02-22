@@ -102,7 +102,7 @@ Notes:
 - [x] Traps: add missing squish, fix generic trap using splat death.
 - [x] Bombs: remove ground overlapping steel to reveal it.
 - [x] Super lemmings act twice per tick.
-- [ ] No palette-swapped frying animation (2-2-9, 1-4-30).
+- [x] No palette-swapped frying animation (2-2-9, 1-4-30).
 - [x] Building stairs off horizontal edge causes wraparound steps.
 - [ ] Pack navigation bugs: previous pack flashing/crash when navigating
   1 -> 2 then past 2-4-20; cannot go back to version 1 from version 2.

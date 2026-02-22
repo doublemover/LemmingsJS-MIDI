@@ -185,4 +185,33 @@ describe('Level extra coverage', function() {
       expect(level.hasGroundAt(2, 2)).to.equal(true);
     });
   });
+
+  it('rewrites fire-shooter trap ids to frying across known object ids', function() {
+    const palette = makePalette();
+    const triggerIds = [7, 8, 10];
+
+    for (const objectId of triggerIds) {
+      const level = new Level(4, 4);
+      level.setPalettes(palette, palette);
+      level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+      const objectImg = [];
+      objectImg[objectId] = {
+        width: 1,
+        height: 1,
+        frames: [Uint8Array.from([0])],
+        palette,
+        animationLoop: true,
+        firstFrameIndex: 0,
+        frameCount: 1,
+        trigger_effect_id: 6,
+        trigger_left: 0,
+        trigger_top: 0,
+        trigger_width: 1,
+        trigger_height: 1,
+        trap_sound_effect_id: 1
+      };
+      level.setMapObjects([{ id: objectId, x: 1, y: 1, drawProperties: {} }], objectImg);
+      expect(level.objects[0].triggerType).to.equal(12);
+    }
+  });
 });
