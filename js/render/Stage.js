@@ -694,40 +694,45 @@ class Stage {
     const start = this._perfTrackingFrame ? perfNow() : 0;
     if (!display.ctx) return;
 
-    const dirtyRects = display.display?.consumeDirtyRects?.();
-    if (dirtyRects === null) {
-      display.ctx.putImageData(img, 0, 0);
-    } else if (dirtyRects.length) {
-      const fullArea = img.width * img.height;
-      let dirtyArea = 0;
-      const dirtyAreaThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
-      let useFullBlit = dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
-      if (!useFullBlit) {
-        for (let i = 0; i < dirtyRects.length; i += 1) {
-          const rect = dirtyRects[i];
-          dirtyArea += rect.width * rect.height;
-          if (dirtyArea >= dirtyAreaThreshold) {
-            useFullBlit = true;
-            break;
+    const displayImage = display.display;
+    const dirtyRects = displayImage?.consumeDirtyRects?.();
+    try {
+      if (dirtyRects === null) {
+        display.ctx.putImageData(img, 0, 0);
+      } else if (dirtyRects.length) {
+        const fullArea = img.width * img.height;
+        let dirtyArea = 0;
+        const dirtyAreaThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
+        let useFullBlit = dirtyRects.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
+        if (!useFullBlit) {
+          for (let i = 0; i < dirtyRects.length; i += 1) {
+            const rect = dirtyRects[i];
+            dirtyArea += rect.width * rect.height;
+            if (dirtyArea >= dirtyAreaThreshold) {
+              useFullBlit = true;
+              break;
+            }
+          }
+        }
+        if (useFullBlit) {
+          display.ctx.putImageData(img, 0, 0);
+        } else {
+          for (let i = 0; i < dirtyRects.length; i += 1) {
+            const rect = dirtyRects[i];
+            display.ctx.putImageData(
+              img,
+              0,
+              0,
+              rect.x,
+              rect.y,
+              rect.width,
+              rect.height
+            );
           }
         }
       }
-      if (useFullBlit) {
-        display.ctx.putImageData(img, 0, 0);
-      } else {
-        for (let i = 0; i < dirtyRects.length; i += 1) {
-          const rect = dirtyRects[i];
-          display.ctx.putImageData(
-            img,
-            0,
-            0,
-            rect.x,
-            rect.y,
-            rect.width,
-            rect.height
-          );
-        }
-      }
+    } finally {
+      displayImage?.releaseConsumedDirtyRects?.(dirtyRects);
     }
 
     const ctx = this.stageCtx;

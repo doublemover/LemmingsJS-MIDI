@@ -380,7 +380,7 @@ Notes:
   chunks without per-pixel history/minimap callbacks.
   Touchpoints: `js/level/Level.js`, `js/app/procgenController.js`,
   `js/app/procgenTerrainStamper.js`.
-- [ ] Replace dirty-rect array copies with zero-copy handoff/reuse buffers to
+- [x] Replace dirty-rect array copies with zero-copy handoff/reuse buffers to
   reduce per-frame allocations.
   Touchpoints: `js/render/DisplayImage.js`, `js/render/Stage.js`.
 - [ ] Upgrade scaled-frame variant cache to true LRU semantics so hot scale

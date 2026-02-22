@@ -30,6 +30,7 @@ const MAX_MARCHING_ANT_CACHE_ENTRIES = 256;
 const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const DIRTY_RECT_MERGE_PAD = 1;
 const DIRTY_RECT_FULL_LIMIT = 96;
+const EMPTY_DIRTY_RECTS = Object.freeze([]);
 
 const toUint32Source = (source) => {
   if (source instanceof Uint32Array) return source;
@@ -186,6 +187,7 @@ class DisplayImage extends BaseLogger {
     this._hasBackground = false;
     this._dirtyFull = true;
     this._dirtyRects = [];
+    this._dirtyRectListPool = [];
     this._dynamicDirtyFull = false;
     this._dynamicDirtyRects = [];
     this._restoreFull = false;
@@ -219,6 +221,7 @@ class DisplayImage extends BaseLogger {
       this._hasBackground = false;
       this._restoreFull = false;
       this._restoreRects.length = 0;
+      this._dirtyRectListPool.length = 0;
       this._dynamicDirtyFull = false;
       this._dynamicDirtyRects.length = 0;
       this.clear();
@@ -312,10 +315,24 @@ class DisplayImage extends BaseLogger {
     if (this._restoreFull) {
       this._restoreRects.length = 0;
     } else {
-      this._restoreRects = this._dynamicDirtyRects.map(rect => ({ ...rect }));
+      const previousRestoreRects = this._restoreRects;
+      this._restoreRects = this._dynamicDirtyRects;
+      this._dynamicDirtyRects = previousRestoreRects;
+      this._dynamicDirtyRects.length = 0;
     }
     this._dynamicDirtyFull = false;
-    this._dynamicDirtyRects.length = 0;
+    if (this._restoreFull) {
+      this._dynamicDirtyRects.length = 0;
+    }
+  }
+
+  _acquireRectList() {
+    if (this._dirtyRectListPool.length > 0) {
+      const rects = this._dirtyRectListPool.pop();
+      rects.length = 0;
+      return rects;
+    }
+    return [];
   }
 
   markDirtyAll({ captureDynamic = true } = {}) {
@@ -431,10 +448,20 @@ class DisplayImage extends BaseLogger {
       this._dirtyRects.length = 0;
       return null;
     }
-    if (!this._dirtyRects.length) return [];
-    const rects = this._dirtyRects.slice();
-    this._dirtyRects.length = 0;
+    if (!this._dirtyRects.length) return EMPTY_DIRTY_RECTS;
+    const rects = this._dirtyRects;
+    this._dirtyRects = this._acquireRectList();
     return rects;
+  }
+
+  releaseConsumedDirtyRects(rects) {
+    if (!Array.isArray(rects) || rects === EMPTY_DIRTY_RECTS || rects === this._dirtyRects) {
+      return;
+    }
+    rects.length = 0;
+    if (this._dirtyRectListPool.length < 4) {
+      this._dirtyRectListPool.push(rects);
+    }
   }
 
   hasPendingDirty() {
@@ -862,6 +889,7 @@ class DisplayImage extends BaseLogger {
     this._hasBackground = false;
     this._restoreFull = false;
     this._restoreRects.length = 0;
+    this._dirtyRectListPool.length = 0;
     this._dynamicDirtyFull = false;
     this._dynamicDirtyRects.length = 0;
   }

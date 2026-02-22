@@ -234,6 +234,21 @@ describe('Stage', function() {
     expect(stage.overlayTimer).to.equal(0);
   });
 
+  it('recycles consumed dirty-rect buffers after drawing', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const consumed = [{ x: 1, y: 2, width: 3, height: 4 }];
+    let released = null;
+    stage.gameImgProps.display.consumeDirtyRects = () => consumed;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = (rects) => { released = rects; };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(released).to.equal(consumed);
+  });
+
   it('parses overlay colors with and without alpha', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
