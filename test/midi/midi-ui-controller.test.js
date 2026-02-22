@@ -1120,7 +1120,7 @@ describe('midiUiController', function() {
     expect(inputSelect.value).to.equal('in-1');
     expect(outputSelect.value).to.equal('out-2');
     expect(viewPan.checked).to.equal(true);
-    expect(globalThis.lemmingsMidiViewPan).to.equal(true);
+    expect(applied.some((patch) => patch?.position?.viewPan === true)).to.equal(true);
     expect(midiInputController.attached).to.equal(inputs[0]);
     expect(lemmings.midiOut).to.equal(outputs[1]);
     outputSelect.value = 'out-1';

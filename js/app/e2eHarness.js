@@ -405,6 +405,35 @@ const getStageState = (stage) => {
   };
 };
 
+const getCanvasMetrics = (view) => {
+  const canvas = document.getElementById('gameCanvas');
+  if (!canvas || typeof canvas.getBoundingClientRect !== 'function') return null;
+  const rect = canvas.getBoundingClientRect();
+  const stage = view?.stage || null;
+  const gameRect = stage?.gameImgProps?.canvasViewportSize
+    ? {
+      x: stage.gameImgProps.x,
+      y: stage.gameImgProps.y,
+      width: stage.gameImgProps.canvasViewportSize.width,
+      height: stage.gameImgProps.canvasViewportSize.height
+    }
+    : null;
+  const guiRect = stage?.guiImgProps?.canvasViewportSize
+    ? {
+      x: stage.guiImgProps.x,
+      y: stage.guiImgProps.y,
+      width: stage.guiImgProps.canvasViewportSize.width,
+      height: stage.guiImgProps.canvasViewportSize.height
+    }
+    : null;
+  return {
+    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+    size: { width: canvas.width, height: canvas.height },
+    gameRect,
+    guiRect
+  };
+};
+
 const getGameState = (view) => {
   const game = view?.game;
   if (!game) return null;
@@ -1600,6 +1629,20 @@ const selectLemmingById = (view, lemmingId) => {
   return true;
 };
 
+const centerViewOnLemming = (view, lemmingId) => {
+  const stage = view?.stage;
+  const manager = view?.game?.getLemmingManager?.();
+  const lem = manager?.getLemming?.(Number(lemmingId));
+  if (!stage || !lem) return false;
+  const rect = stage.getGameViewRect?.();
+  const point = stage.gameImgProps?.viewPoint;
+  if (!rect || !point) return false;
+  point.x = lem.x - rect.w / 2;
+  point.y = lem.y - rect.h / 2;
+  view?.render?.();
+  return true;
+};
+
 const startReverse = (view) => {
   const timeTravel = view?.game?.timeTravel;
   if (!timeTravel?.startReverse) return false;
@@ -1708,6 +1751,7 @@ const createE2EApi = (context) => ({
       }
     };
   },
+  getCanvasMetrics: () => getCanvasMetrics(context.view),
   getBuffer: (name) => getBuffer(context.view, name),
   getEditorHistoryEntry: (index) => getEditorHistoryEntry(context.editorUi?.history || null, index),
   editorApply: (ops, options) => applyEditorOps(context.view, context.editorUi, ops, options),
@@ -1725,6 +1769,7 @@ const createE2EApi = (context) => ({
   getDeltas: (fromTick, toTick, maxTicks = 0) =>
     getHistoryDeltas(context.view, fromTick, toTick, maxTicks),
   selectLemmingById: (id) => selectLemmingById(context.view, id),
+  centerViewOnLemming: (id) => centerViewOnLemming(context.view, id),
   getBenchMetrics: () => getBenchMetrics(context.view),
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),

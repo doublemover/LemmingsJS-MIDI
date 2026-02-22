@@ -92,6 +92,7 @@ class GameView extends BaseLogger {
     this._midiOut = null;
     this._midiMapping = null;
     this._midiBaseConfig = null;
+    this._midiOverrides = {};
     this._midiSchemaHash = null;
     this.midiEnabled = false;
 
@@ -373,14 +374,7 @@ class GameView extends BaseLogger {
     if (!this.midiRouter) {
       await this._ensureWebMidiEnabled();
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
-      if (typeof globalThis !== 'undefined' && globalThis.lemmingsMidiOverrides) {
-        this.applyMidiOverrides(globalThis.lemmingsMidiOverrides);
-      }
-      const viewPan = typeof globalThis !== 'undefined' ? globalThis.lemmingsMidiViewPan : null;
-      if (typeof viewPan === 'boolean') {
-        const position = this._midiMapping.config.position || {};
-        this._midiMapping.config.position = { ...position, viewPan };
-      }
+      this.applyMidiOverrides(this._midiOverrides);
       const Router = getDependency('MidiEventRouter', MidiEventRouter);
       this.midiRouter = new Router(this._midiMapping);
     }
@@ -414,6 +408,11 @@ class GameView extends BaseLogger {
       : { ...this._midiBaseConfig, ...(overrides || {}) };
     this._midiMapping = new MidiMapping(merged);
     if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
+  }
+
+  setMidiOverrides(overrides) {
+    this._midiOverrides = cloneConfig(overrides || {});
+    this.applyMidiOverrides(this._midiOverrides);
   }
 
   getMidiConfig() {
@@ -928,9 +927,7 @@ class GameView extends BaseLogger {
     this.applyQuery();
     if (!this._midiMapping) {
       this._midiMapping = await this._loadMidiMapping();
-      if (typeof globalThis !== 'undefined' && globalThis.lemmingsMidiOverrides) {
-        this.applyMidiOverrides(globalThis.lemmingsMidiOverrides);
-      }
+      this.applyMidiOverrides(this._midiOverrides);
     }
     this.configs = await this.gameFactory.configReader.configs;
     this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));

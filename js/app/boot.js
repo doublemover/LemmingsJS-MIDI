@@ -84,6 +84,7 @@ function init() {
   });
 
   lemmings = new GameView();
+  lemmings.setMidiOverrides?.(midiUi.getMidiOverrides?.() || {});
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
@@ -284,8 +285,8 @@ function setSize() {
     canvas.style.height = containerHeight + 'px';
   }
 
-  if (window.lemmings && window.lemmings.stage) {
-    window.lemmings.stage.scheduleUpdateStageSize();
+  if (lemmings?.stage) {
+    lemmings.stage.scheduleUpdateStageSize();
   }
 }
 

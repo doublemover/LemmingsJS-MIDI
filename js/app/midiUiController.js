@@ -71,7 +71,7 @@ const formatDebugOutput = (payload) => {
 export const createMidiUiController = ({
   window = globalThis.window,
   document = globalThis.document,
-  getLemmings = () => getAppContext() || globalThis.lemmings,
+  getLemmings = () => getAppContext(),
   getWebMidi = () => globalThis.WebMidi,
   getMidiConfig = null
 } = {}) => {
@@ -94,17 +94,13 @@ export const createMidiUiController = ({
     midiOverrides = {};
   }
   midiIntentState = createMidiIntentState({ overrides: midiOverrides });
-  if (typeof globalThis !== 'undefined') {
-    globalThis.lemmingsMidiOverrides = midiOverrides;
-  }
 
   const applyOverridesToRuntime = () => {
     storeJson(storage, midiStorageKeys.overrides, midiOverrides);
-    if (typeof globalThis !== 'undefined') {
-      globalThis.lemmingsMidiOverrides = midiOverrides;
-    }
     const lemmings = getLemmings();
-    if (lemmings?.applyMidiOverrides) {
+    if (lemmings?.setMidiOverrides) {
+      lemmings.setMidiOverrides(midiOverrides);
+    } else if (lemmings?.applyMidiOverrides) {
       lemmings.applyMidiOverrides(midiOverrides);
     }
   };
@@ -260,9 +256,6 @@ export const createMidiUiController = ({
 
   const applyViewPanSetting = (enabled) => {
     midiViewPanEnabled = !!enabled;
-    if (typeof globalThis !== 'undefined') {
-      globalThis.lemmingsMidiViewPan = midiViewPanEnabled;
-    }
     setMidiOverrides({ position: { viewPan: midiViewPanEnabled } });
   };
 

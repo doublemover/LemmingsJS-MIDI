@@ -874,34 +874,10 @@ const pressAction = async (session, action, repeat = 1) => {
   return { ok: true, action, repeat };
 };
 
-const resolveCanvasMetrics = async (page) => page.evaluate(() => {
-  const canvas = document.getElementById('gameCanvas');
-  if (!canvas) return null;
-  const rect = canvas.getBoundingClientRect();
-  const stage = globalThis.lemmings?.stage;
-  const gameRect = stage?.gameImgProps?.canvasViewportSize
-    ? {
-      x: stage.gameImgProps.x,
-      y: stage.gameImgProps.y,
-      width: stage.gameImgProps.canvasViewportSize.width,
-      height: stage.gameImgProps.canvasViewportSize.height
-    }
-    : null;
-  const guiRect = stage?.guiImgProps?.canvasViewportSize
-    ? {
-      x: stage.guiImgProps.x,
-      y: stage.guiImgProps.y,
-      width: stage.guiImgProps.canvasViewportSize.width,
-      height: stage.guiImgProps.canvasViewportSize.height
-    }
-    : null;
-  return {
-    rect: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
-    size: { width: canvas.width, height: canvas.height },
-    gameRect,
-    guiRect
-  };
-});
+const resolveCanvasMetrics = async (session) => {
+  const result = await callE2E(session, 'getCanvasMetrics');
+  return result.ok ? result.value : null;
+};
 
 const resolveCanvasClip = (metrics, target, rect) => {
   if (!metrics) return null;
@@ -965,7 +941,7 @@ const captureFrame = async (session, options) => {
     width = rect?.width ?? null;
     height = rect?.height ?? null;
   } else if (target === 'gameCanvas' || target === 'guiCanvas' || target === 'stageCanvas') {
-    const metrics = await resolveCanvasMetrics(session.page);
+    const metrics = await resolveCanvasMetrics(session);
     if (!metrics) return { ok: false, reason: 'canvas_missing' };
     const resolved = resolveCanvasClip(metrics, target, rect);
     clip = resolved?.clip || null;
@@ -1191,7 +1167,7 @@ const handleSpectatorInput = async (session, payload) => {
   }
   if (payload.type === 'click') {
     if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return;
-    const metrics = await resolveCanvasMetrics(session.page);
+    const metrics = await resolveCanvasMetrics(session);
     if (!metrics) return;
     const x = metrics.rect.x + metrics.rect.width * payload.x;
     const y = metrics.rect.y + metrics.rect.height * payload.y;
@@ -1884,19 +1860,10 @@ const getLemmingsSummaryTool = async (args) => {
   return attachEvents(session, summary);
 };
 
-const centerViewOnLemming = async (session, lemmingId) => session.page.evaluate((id) => {
-  const view = globalThis.lemmings;
-  const stage = view?.stage;
-  const manager = view?.game?.getLemmingManager?.();
-  const lem = manager?.getLemming?.(id);
-  if (!stage || !lem) return false;
-  const rect = stage.getGameViewRect?.();
-  if (!rect) return false;
-  stage.gameImgProps.viewPoint.x = lem.x - rect.w / 2;
-  stage.gameImgProps.viewPoint.y = lem.y - rect.h / 2;
-  view?.render?.();
-  return true;
-}, lemmingId);
+const centerViewOnLemming = async (session, lemmingId) => {
+  const result = await callE2E(session, 'centerViewOnLemming', lemmingId);
+  return !!(result.ok && result.value);
+};
 
 const selectLemmingTool = async (args) => {
   const { sessionId, lemmingId, alsoCenterView, confirm } = LemmingSelectSchema.parse(args || {});

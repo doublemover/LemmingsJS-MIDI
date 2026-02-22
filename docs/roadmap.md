@@ -360,16 +360,16 @@ Notes:
   reads and route through explicit runtime dependencies/context.
   Touchpoints: `js/actions/*`, `js/level/Level.js`, `js/level/Trigger*.js`,
   `js/render/MiniMap.js`, `js/game/GameDisplay.js`, `js/game/SoundEvents.js`.
-- [ ] Remove `globalThis` MIDI override bridge variables and replace with
+- [x] Remove `globalThis` MIDI override bridge variables and replace with
   explicit state handoff between boot, `GameView`, and MIDI UI controller.
   Touchpoints: `js/game/GameView.js`, `js/app/boot.js`,
   `js/app/midiUiController.js`.
 - [x] Remove magic world-width assumptions in zoom/input flow and derive zoom
   eligibility from stage/image metadata.
   Touchpoints: `js/input/UserInputManager.js`, `js/render/Stage.js`.
-- [ ] Add explicit app-context injection for MCP helpers currently reading the
+- [x] Add explicit app-context injection for MCP helpers currently reading the
   singleton directly.
-  Touchpoints: `mcp/server.js`, `js/core/dependencies.js`.
+  Touchpoints: `mcp/server.js`, `js/app/e2eHarness.js`.
 
 ## Phase 24: Canvas2D performance tier 3 (no WebGL/WebGPU)
 - [ ] Stop full background upload on every frame; only push ground updates when

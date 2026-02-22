@@ -365,8 +365,6 @@ describe('GameView coverage', function() {
 
   it('initializes MIDI routing with overrides', async function() {
     globalThis.window = { location: { search: '' } };
-    globalThis.lemmingsMidiOverrides = { position: { viewPan: false } };
-    globalThis.lemmingsMidiViewPan = true;
     globalThis.WebMidi = { enabled: true, outputs: [{ id: 'out' }] };
     setDependency('MidiEventRouter', class {
       constructor(mapping) { this.mapping = mapping; this.scheduler = { allNotesOff() {} }; }
@@ -376,6 +374,7 @@ describe('GameView coverage', function() {
       dispose() { this.disposed = true; }
     });
     const view = new GameView();
+    view.setMidiOverrides({ position: { viewPan: true } });
     view._ensureWebMidiEnabled = async () => ({ enabled: true, outputs: [{ id: 'out' }] });
     view._loadMidiMapping = async () => {
       view._midiBaseConfig = { position: {} };
@@ -532,7 +531,7 @@ describe('GameView coverage', function() {
     globalThis.window = { location: { search: '' } };
     const view = new GameView();
     view._loadMidiMapping = async () => new MidiMapping({ position: {} });
-    globalThis.lemmingsMidiOverrides = { position: { viewPan: true } };
+    view.setMidiOverrides({ position: { viewPan: true } });
     view.gameFactory = {
       configReader: { configs: [{ gametype: 1, name: 'Pack' }] },
       async getGameResources() {
