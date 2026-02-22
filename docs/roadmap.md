@@ -431,9 +431,10 @@ Notes:
 - [x] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
   idle sessions do less work.
   Touchpoints: `mcp/server.js`, `mcp/watchPolling.js`.
-- [ ] Add spectator backpressure controls (frame skip policy, configurable
+- [x] Add spectator backpressure controls (frame skip policy, configurable
   cadence/quality) for multi-client sessions.
-  Touchpoints: `mcp/server.js`, `mcp/spectator.html`.
+  Touchpoints: `mcp/server.js`, `mcp/spectator.html`,
+  `mcp/spectatorBroadcaster.js`.
 - [ ] Split `mcp/server.js` transport/session/resource/watch/event logic into
   dedicated modules while preserving tool contracts.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.

@@ -18,6 +18,7 @@ import { WebSocketServer } from 'ws';
 import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
 import { EventQueue } from './eventQueue.js';
 import { WatchPollingController } from './watchPolling.js';
+import { normalizeSpectatorStreamConfig, SpectatorBroadcaster } from './spectatorBroadcaster.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -249,7 +250,10 @@ const SessionCreateSchema = z.object({
   spectator: z.object({
     port: z.number().int().positive().optional(),
     allowHumanInput: z.boolean().optional(),
-    openBrowser: z.boolean().optional()
+    openBrowser: z.boolean().optional(),
+    frameIntervalMs: z.number().int().positive().optional(),
+    jpegQuality: z.number().int().min(1).max(100).optional(),
+    frameSkipPolicy: z.enum(['latest', 'none']).optional()
   }).optional(),
   resources: z.object({
     maxBytes: z.number().int().positive().optional(),
@@ -407,6 +411,7 @@ const VisionCaptureSchema = z.object({
   target: z.enum(['page', 'gameCanvas', 'guiCanvas', 'stageCanvas', 'rect']).optional(),
   rect: RectSchema.optional(),
   format: z.enum(['png', 'jpeg', 'webp']).optional(),
+  quality: z.number().int().min(1).max(100).optional(),
   delivery: z.enum(['resource', 'inline']).optional(),
   tag: z.string().optional()
 });
@@ -877,6 +882,9 @@ const captureFrame = async (session, options) => {
   const target = options.target || 'page';
   const rect = options.rect || null;
   const format = options.format || 'png';
+  const quality = Number.isFinite(options.quality)
+    ? Math.max(1, Math.min(100, Math.trunc(options.quality)))
+    : null;
   const delivery = options.delivery || 'resource';
   const tag = options.tag || null;
   const mimeType = formatToMime(format);
@@ -914,6 +922,9 @@ const captureFrame = async (session, options) => {
   const screenshotOptions = {
     type: format
   };
+  if (quality != null && (format === 'jpeg' || format === 'webp')) {
+    screenshotOptions.quality = quality;
+  }
   if (clip) {
     screenshotOptions.clip = clip;
   }
@@ -1013,7 +1024,10 @@ const startSpectatorServer = async (session, options = {}) => {
   const html = await fs.readFile(SPECTATOR_HTML_PATH, 'utf8');
   const port = Number.isFinite(options.port) ? options.port : 0;
   const allowHumanInput = options.allowHumanInput === true;
-  const frameIntervalMs = 500;
+  const streamConfig = normalizeSpectatorStreamConfig(options);
+  const broadcaster = new SpectatorBroadcaster({
+    frameSkipPolicy: streamConfig.frameSkipPolicy
+  });
 
   const server = http.createServer((req, res) => {
     if (req.url && req.url !== '/' && req.url !== '/index.html') {
@@ -1026,11 +1040,14 @@ const startSpectatorServer = async (session, options = {}) => {
   });
 
   const wss = new WebSocketServer({ server });
-  const clients = new Set();
 
   wss.on('connection', (ws) => {
-    clients.add(ws);
-    ws.send(JSON.stringify({ type: 'hello', allowHumanInput }));
+    broadcaster.attach(ws);
+    ws.send(JSON.stringify({
+      type: 'hello',
+      allowHumanInput,
+      streamConfig
+    }));
     if (session.spectator?.lastFrame) {
       ws.send(JSON.stringify(session.spectator.lastFrame));
     }
@@ -1045,7 +1062,10 @@ const startSpectatorServer = async (session, options = {}) => {
       await handleSpectatorInput(session, payload);
     });
     ws.on('close', () => {
-      clients.delete(ws);
+      broadcaster.detach(ws);
+    });
+    ws.on('error', () => {
+      broadcaster.detach(ws);
     });
   });
 
@@ -1057,8 +1077,9 @@ const startSpectatorServer = async (session, options = {}) => {
   session.spectator = {
     server,
     wss,
-    clients,
+    broadcaster,
     allowHumanInput,
+    streamConfig,
     url: baseUrl,
     lastFrame: null,
     frameTimer: null,
@@ -1067,21 +1088,25 @@ const startSpectatorServer = async (session, options = {}) => {
 
   session.spectator.frameTimer = setInterval(async () => {
     if (session.spectator.isCapturing) return;
+    if (session.spectator.broadcaster.getSnapshot().connectedClients <= 0) return;
     session.spectator.isCapturing = true;
     try {
-      const result = await captureFrame(session, { target: 'stageCanvas', format: 'jpeg', delivery: 'inline' });
+      const result = await captureFrame(session, {
+        target: 'stageCanvas',
+        format: 'jpeg',
+        quality: session.spectator.streamConfig.jpegQuality,
+        delivery: 'inline'
+      });
       if (result.ok && result.frame?.dataBase64) {
         const payload = {
           type: 'frame',
           mimeType: result.frame.mimeType,
-          dataBase64: result.frame.dataBase64
+          dataBase64: result.frame.dataBase64,
+          tickIndex: result.frame.tickIndex ?? null,
+          takenAt: result.frame.takenAt ?? null
         };
         session.spectator.lastFrame = payload;
-        for (const ws of clients) {
-          if (ws.readyState === 1) {
-            ws.send(JSON.stringify(payload));
-          }
-        }
+        session.spectator.broadcaster.broadcast(payload);
       }
     } catch (err) {
       session.events.add({
@@ -1093,7 +1118,7 @@ const startSpectatorServer = async (session, options = {}) => {
     } finally {
       session.spectator.isCapturing = false;
     }
-  }, frameIntervalMs);
+  }, streamConfig.frameIntervalMs);
 
   return baseUrl;
 };
@@ -1132,15 +1157,9 @@ const handleSpectatorInput = async (session, payload) => {
 
 const stopSpectatorServer = (session) => {
   if (!session.spectator) return;
-  const { server, wss, frameTimer, clients } = session.spectator;
+  const { server, wss, frameTimer, broadcaster } = session.spectator;
   if (frameTimer) clearInterval(frameTimer);
-  for (const ws of clients || []) {
-    try {
-      ws.close();
-    } catch (err) {
-      // ignore
-    }
-  }
+  broadcaster?.closeAll();
   try {
     wss?.close();
   } catch (err) {
@@ -1349,6 +1368,7 @@ const createSession = async (args) => {
     },
     gameUrl,
     spectatorUrl: session.spectator?.url || null,
+    spectatorStream: session.spectator?.streamConfig || null,
     keybindings: {
       version: keybindings?.version || 1,
       actions
