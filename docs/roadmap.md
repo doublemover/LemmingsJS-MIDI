@@ -483,7 +483,7 @@ Notes:
   deferred Phase 5 flag item.
   Touchpoints: `js/editor/EditorTools.js`, `js/editor/EditorController.js`,
   `js/app/midiUiController.js`, `js/game/GameView.js`, `test/midi/*.test.js`.
-- [ ] Split `midiUiController` into smaller feature modules (state, binding,
+- [x] Split `midiUiController` into smaller feature modules (state, binding,
   rendering sections, learn flow) behind a stable facade.
   Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
 - [ ] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
