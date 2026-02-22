@@ -404,7 +404,7 @@ Notes:
   replayed and benchmarked exactly.
   Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenController.js`,
   `docs/procgen.md`.
-- [ ] Replace full gap-array scans with cursored/partitioned processing so cost
+- [x] Replace full gap-array scans with cursored/partitioned processing so cost
   scales with nearby gaps instead of total historical gaps.
   Touchpoints: `js/app/procgenController.js`.
 - [ ] Ensure procgen stage adapter has full listener lifecycle cleanup so repeat

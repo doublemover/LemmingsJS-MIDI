@@ -48,6 +48,7 @@ class ProcgenController {
     this._terrainPlan = { mode: 'flat', remaining: 0 };
     this._pendingDrop = false;
     this._gaps = [];
+    this._gapScanStart = 0;
     this._gapCooldown = 0;
     this._structurePlan = null;
     this._aiLastDecisionTick = 0;
@@ -136,6 +137,7 @@ class ProcgenController {
     this._aiLemmingCooldown.clear();
     this._aiStallState.clear();
     this._gaps.length = 0;
+    this._gapScanStart = 0;
   }
 
   _bindTimer() {
@@ -735,9 +737,13 @@ class ProcgenController {
       const follow = this._getFollowLemming();
       const leadId = follow?.id ?? null;
       leadX = Number.isFinite(follow?.x) ? follow.x : null;
-      for (const gap of this._gaps) {
+      this._advanceGapScanCursor(leadX);
+      const maxTriggerX = Number.isFinite(leadX) ? leadX + this.gapTriggerDistance : Infinity;
+      for (let i = this._gapScanStart; i < this._gaps.length; i += 1) {
+        const gap = this._gaps[i];
         if (!gap || gap.assigned) continue;
         if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
+        if (gap.x > maxTriggerX) break;
         const triggerX = gap.x - this.gapTriggerDistance;
         if (Number.isFinite(leadX) && leadX < triggerX) continue;
         let best = null;
@@ -1125,22 +1131,32 @@ class ProcgenController {
     }
   }
 
-  _pruneGapQueue(referenceX = null) {
+  _advanceGapScanCursor(referenceX = null) {
     const anchorX = Number.isFinite(referenceX)
       ? referenceX
       : (Number.isFinite(this._cameraX) ? this._cameraX : this._getRightmostX());
-    const cutoff = Number.isFinite(anchorX) ? anchorX - 200 : null;
-    if (!Number.isFinite(cutoff)) return;
-    let write = 0;
-    for (let i = 0; i < this._gaps.length; i += 1) {
-      const gap = this._gaps[i];
-      if (!gap) continue;
-      if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
-      if ((gap.x + gap.width) <= cutoff) continue;
-      this._gaps[write] = gap;
-      write += 1;
+    if (!Number.isFinite(anchorX)) return;
+    const cutoff = anchorX - 200;
+    while (this._gapScanStart < this._gaps.length) {
+      const gap = this._gaps[this._gapScanStart];
+      if (!gap || !Number.isFinite(gap.x) || !Number.isFinite(gap.width)) {
+        this._gapScanStart += 1;
+        continue;
+      }
+      if ((gap.x + gap.width) <= cutoff) {
+        this._gapScanStart += 1;
+        continue;
+      }
+      break;
     }
-    this._gaps.length = write;
+  }
+
+  _pruneGapQueue(referenceX = null) {
+    this._advanceGapScanCursor(referenceX);
+    if (this._gapScanStart <= 0) return;
+    if (this._gapScanStart < 256 && this._gapScanStart < (this._gaps.length >> 1)) return;
+    this._gaps.splice(0, this._gapScanStart);
+    this._gapScanStart = 0;
   }
 
   _collectActiveLemmingIds() {

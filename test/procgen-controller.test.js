@@ -89,4 +89,19 @@ describe('ProcgenController', function () {
     expect(plan.step).to.equal(3);
     expect(plan.direction).to.equal(-1);
   });
+
+  it('advances and compacts gap scan cursor for large backlogs', function () {
+    const controller = new ProcgenController({ level: {} });
+    controller._gaps = Array.from({ length: 600 }, (_, i) => ({
+      x: i * 5,
+      width: 3,
+      assigned: false
+    }));
+
+    controller._pruneGapQueue(2200);
+
+    expect(controller._gapScanStart).to.equal(0);
+    expect(controller._gaps.length).to.be.lessThan(600);
+    expect(controller._gaps[0].x).to.be.at.least(2000);
+  });
 });
