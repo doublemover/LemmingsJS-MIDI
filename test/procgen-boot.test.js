@@ -141,4 +141,40 @@ describe('procgenBoot helpers', function () {
 
     expect(calls).to.deep.equal(['controller', 'stageAdapter', 'game', 'view']);
   });
+
+  it('resizes canvas and updates stage using explicit runtime handles', function () {
+    const canvas = {
+      width: 0,
+      height: 0,
+      style: {}
+    };
+    let adapterResizeCalls = 0;
+    globalThis.window = {
+      devicePixelRatio: 1.5,
+      innerWidth: 640,
+      innerHeight: 360
+    };
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'gameCanvas') return canvas;
+        return null;
+      }
+    };
+
+    procgenBoot.setActiveProcgenRuntimeForTest({
+      stageAdapter: {
+        updateStageSize() {
+          adapterResizeCalls += 1;
+        }
+      }
+    });
+
+    procgenBoot.resizeCanvas();
+
+    expect(canvas.width).to.equal(960);
+    expect(canvas.height).to.equal(540);
+    expect(canvas.style.width).to.equal('640px');
+    expect(canvas.style.height).to.equal('360px');
+    expect(adapterResizeCalls).to.equal(1);
+  });
 });

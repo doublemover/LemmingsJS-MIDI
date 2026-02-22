@@ -32,6 +32,12 @@ class ProcgenStageAdapter {
     this._installed = false;
   }
 
+  updateStageSize() {
+    if (!this.stage) return;
+    this._ensureGuiBuffer();
+    this.stage.updateStageSize?.();
+  }
+
   _bindZoom() {
     if (!this.canvas || this._wheelHandler) return;
     this._wheelHandler = event => {
@@ -58,7 +64,7 @@ class ProcgenStageAdapter {
   _bindResize() {
     if (this._resizeHandler) return;
     this._resizeHandler = () => {
-      this._ensureGuiBuffer();
+      this.updateStageSize();
     };
     window.addEventListener('resize', this._resizeHandler);
   }

@@ -60,12 +60,16 @@ const createAdapterFixture = () => {
     snapScale: originalSnapScale,
     applyViewportCalls: [],
     redrawCalls: 0,
+    updateStageSizeCalls: 0,
     applyViewport(props, x, y, scale) {
       this.applyViewportCalls.push({ props, x, y, scale });
       props.viewPoint.scale = scale;
     },
     redraw() {
       this.redrawCalls += 1;
+    },
+    updateStageSize() {
+      this.updateStageSizeCalls += 1;
     }
   };
   const view = {
@@ -144,5 +148,20 @@ describe('ProcgenStageAdapter', function () {
     expect(prevented).to.equal(true);
     expect(stage.applyViewportCalls).to.have.lengthOf(1);
     expect(stage.redrawCalls).to.equal(1);
+  });
+
+  it('updates stage size through explicit adapter handles', function () {
+    const canvas = createCanvasMock();
+    const { stage, view, controller } = createAdapterFixture();
+    const adapter = new ProcgenStageAdapter({ view, controller, canvas });
+
+    adapter.updateStageSize();
+    expect(stage.updateStageSizeCalls).to.equal(1);
+
+    adapter.install();
+    const onResize = globalThis.window.listeners.get('resize');
+    expect(typeof onResize).to.equal('function');
+    onResize();
+    expect(stage.updateStageSizeCalls).to.equal(2);
   });
 });

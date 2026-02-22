@@ -192,6 +192,7 @@ const init = async () => {
   };
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
+  activeProcgenRuntime = runtime;
   try {
     const params = new URLSearchParams(window.location.search);
     const procgenSeed = resolveProcgenSeed(params);
@@ -291,11 +292,14 @@ const init = async () => {
     });
     stageAdapter.install();
     runtime.stageAdapter = stageAdapter;
-    activeProcgenRuntime = runtime;
+    stageAdapter.updateStageSize();
 
     installE2EHarness({ view });
     registerServiceWorker({ profile: 'perf' });
   } catch (err) {
+    if (activeProcgenRuntime === runtime) {
+      activeProcgenRuntime = null;
+    }
     runtime?.controller?.stop?.();
     runtime?.stageAdapter?.dispose?.();
     runtime?.game?.stop?.();
@@ -304,7 +308,7 @@ const init = async () => {
   }
 };
 
-const resizeCanvas = () => {
+const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
   const dpr = window.devicePixelRatio || 1;
@@ -314,8 +318,10 @@ const resizeCanvas = () => {
   canvas.height = Math.floor(height * dpr);
   canvas.style.width = `${width}px`;
   canvas.style.height = `${height}px`;
-  if (window.lemmings?.stage) {
-    window.lemmings.stage.updateStageSize();
+  if (runtime?.stageAdapter?.updateStageSize) {
+    runtime.stageAdapter.updateStageSize();
+  } else {
+    runtime?.view?.stage?.updateStageSize?.();
   }
 };
 
