@@ -28,4 +28,29 @@ describe('DisplayImage scale cache', function () {
     const variant = displayImageTest.getScaledFrameVariant(frame, 5, 5, 'xbrz');
     expect(variant).to.equal(null);
   });
+
+  it('evicts by least-recently-used variant access', function () {
+    const frame = new Frame(2, 2);
+    const initial = new Map();
+
+    for (let version = 1; version <= 8; version += 1) {
+      frame._version = version;
+      initial.set(version, displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz'));
+    }
+
+    frame._version = 1;
+    const touched = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    expect(touched).to.equal(initial.get(1));
+
+    frame._version = 9;
+    displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+
+    frame._version = 1;
+    const stillCached = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    expect(stillCached).to.equal(initial.get(1));
+
+    frame._version = 2;
+    const evicted = displayImageTest.getScaledFrameVariant(frame, 4, 4, 'xbrz');
+    expect(evicted).to.not.equal(initial.get(2));
+  });
 });

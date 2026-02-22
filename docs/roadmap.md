@@ -383,7 +383,7 @@ Notes:
 - [x] Replace dirty-rect array copies with zero-copy handoff/reuse buffers to
   reduce per-frame allocations.
   Touchpoints: `js/render/DisplayImage.js`, `js/render/Stage.js`.
-- [ ] Upgrade scaled-frame variant cache to true LRU semantics so hot scale
+- [x] Upgrade scaled-frame variant cache to true LRU semantics so hot scale
   variants stay resident and expensive recalculation is avoided.
   Touchpoints: `js/render/DisplayImage.js`.
 - [ ] Reduce marching-ants and dashed-outline cost via cached edge spans and

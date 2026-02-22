@@ -132,7 +132,11 @@ function getScaledFrameVariant(frame, dstWidth, dstHeight, mode) {
     variants = new Map();
     scaledFrameCache.set(frame, variants);
   } else if (variants.has(key)) {
-    return variants.get(key);
+    const cached = variants.get(key);
+    // True LRU: reads promote the entry so hot scale variants stay resident.
+    variants.delete(key);
+    variants.set(key, cached);
+    return cached;
   }
 
   const srcBuf = frame.getBuffer();
