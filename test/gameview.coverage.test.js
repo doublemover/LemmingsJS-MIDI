@@ -100,6 +100,37 @@ describe('GameView coverage', function() {
     expect(outOfRange.nukeAfter).to.equal(0);
   });
 
+  it('reports runtime diagnostics with normalized feature flags and cache stats', function() {
+    globalThis.window = {
+      location: { search: '' }
+    };
+    const view = new GameView();
+    view.startupProfile = 'perf';
+    view.debug = true;
+    view.midiEnabled = true;
+    view.bench = true;
+    view._midiOverrides = { zeta: {}, alpha: {} };
+    view.gameFactory = {
+      fileProvider: {
+        getCacheStats() {
+          return { memoryEntries: 2, localStorageBytes: 10, indexedDbBytes: 11 };
+        }
+      }
+    };
+
+    const diagnostics = view.getRuntimeDiagnostics();
+    expect(diagnostics.profile).to.equal('perf');
+    expect(diagnostics.featureFlags.debug).to.equal(true);
+    expect(diagnostics.featureFlags.midiEnabled).to.equal(true);
+    expect(diagnostics.featureFlags.bench).to.equal(true);
+    expect(diagnostics.caches.fileProvider).to.deep.equal({
+      memoryEntries: 2,
+      localStorageBytes: 10,
+      indexedDbBytes: 11
+    });
+    expect(diagnostics.caches.midiOverrideKeys).to.deep.equal(['alpha', 'zeta']);
+  });
+
   it('formats MIDI errors and handles WebMidi enable', async function() {
     globalThis.window = { isSecureContext: false, location: { protocol: 'http:', hostname: 'example.com', search: '' } };
     const view = new GameView();

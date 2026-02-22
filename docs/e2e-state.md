@@ -5,6 +5,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 
 ## API
 - `window.__E2E__.getState()` returns a JSON-safe snapshot.
+- `window.__E2E__.getDiagnostics()` returns deterministic environment diagnostics
+  (runtime profile, feature flags, and active cache snapshots).
 - `window.__E2E__.getBuffer(name)` returns one heavy buffer at a time.
 - `window.__E2E__.step(count)` steps forward/backward (negative allowed).
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
@@ -35,6 +37,7 @@ Top-level fields:
 - `game`: game simulation state (null before load).
 - `editor`: editor state snapshot (see `docs/e2e-editor-state.md`).
 - `bench`: bench metrics snapshot (if available).
+- `diagnostics`: runtime profile + feature flags + cache snapshot summary.
 - `midi`: midi enable/router summary.
 
 ### view
@@ -48,6 +51,18 @@ Top-level fields:
 - `editorMode`, `editorPlaytest`.
 - `midiEnabled`.
 - `configName`, `configPath` from the active pack config.
+
+### diagnostics
+- `version`: schema version (currently `1`).
+- `profile`: runtime profile (`gameplay`, `editor`, `perf`, etc.).
+- `featureFlags`: normalized boolean flag snapshot from `GameView`.
+- `caches.fileProvider`: `memoryEntries`, `localStorageBytes`,
+  `indexedDbBytes` when available.
+- `caches.midiOverrideKeys`: sorted list of active MIDI override keys.
+- `caches.cacheStorageKeys`: sorted Cache Storage keys (`null` in
+  `getState()`, populated by `getDiagnostics()`).
+- `serviceWorker`: `supported`, `controlled`.
+- `location`: `protocol`, `hostname`, `pathname`.
 
 ### stage
 - `panEnabled`.

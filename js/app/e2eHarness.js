@@ -384,6 +384,91 @@ const getBenchMetrics = (view) => {
   };
 };
 
+const toSortedStringList = (values) => {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map(value => String(value))
+    .sort((a, b) => a.localeCompare(b));
+};
+
+const getRuntimeDiagnostics = (view) => {
+  const fallback = {
+    profile: view?.startupProfile || 'gameplay',
+    featureFlags: {
+      performanceAPI: !!view?.performanceAPI,
+      perfMetrics: !!view?.perfMetrics,
+      perfOverlay: !!view?.perfOverlay,
+      debug: !!view?.debug,
+      cheatEnabled: !!view?.cheatEnabled,
+      endless: !!view?.endless,
+      midiEnabled: !!view?.midiEnabled,
+      editorMode: !!view?.editorMode,
+      editorPlaytest: !!view?.editorPlaytest,
+      preserveHistory: !!view?.preserveHistory,
+      includeSavedLevels: !!view?.includeSavedLevels,
+      bench: !!view?.bench,
+      bench2: !!view?.bench2,
+      benchReverse: !!view?.benchReverse,
+      benchSequence: !!view?.benchSequence
+    },
+    caches: {
+      fileProvider: view?.gameFactory?.fileProvider?.getCacheStats?.() || null,
+      midiOverrideKeys: Object.keys(view?._midiOverrides || {}).sort()
+    }
+  };
+  const diagnostics = view?.getRuntimeDiagnostics?.() || fallback;
+  return {
+    profile: diagnostics.profile || fallback.profile,
+    featureFlags: {
+      ...fallback.featureFlags,
+      ...(diagnostics.featureFlags || {})
+    },
+    caches: {
+      fileProvider: diagnostics.caches?.fileProvider ?? fallback.caches.fileProvider,
+      midiOverrideKeys: toSortedStringList(
+        diagnostics.caches?.midiOverrideKeys ?? fallback.caches.midiOverrideKeys
+      )
+    }
+  };
+};
+
+const getCacheStorageKeys = async (cacheStorage = globalThis.caches) => {
+  if (!cacheStorage?.keys) return [];
+  try {
+    return toSortedStringList(await cacheStorage.keys());
+  } catch {
+    return [];
+  }
+};
+
+const getEnvironmentDiagnostics = (view, { cacheStorageKeys = null } = {}) => {
+  const runtime = getRuntimeDiagnostics(view);
+  const location = typeof window !== 'undefined' ? window.location : null;
+  const serviceWorker = typeof navigator !== 'undefined' ? navigator.serviceWorker : null;
+  return {
+    version: 1,
+    profile: runtime.profile,
+    featureFlags: runtime.featureFlags,
+    caches: {
+      ...runtime.caches,
+      cacheStorageKeys: Array.isArray(cacheStorageKeys)
+        ? toSortedStringList(cacheStorageKeys)
+        : null
+    },
+    serviceWorker: {
+      supported: !!serviceWorker,
+      controlled: !!serviceWorker?.controller
+    },
+    location: location
+      ? {
+        protocol: location.protocol || null,
+        hostname: location.hostname || null,
+        pathname: location.pathname || null
+      }
+      : null
+  };
+};
+
 const getStageState = (stage) => {
   if (!stage) return null;
   const viewRect = stage.getGameViewRect?.() || null;
@@ -1469,6 +1554,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
       game: getGameState(view),
       editor: getEditorState(view, editorUi),
       bench: getBenchMetrics(view),
+      diagnostics: getEnvironmentDiagnostics(view),
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
@@ -1742,6 +1828,7 @@ const createE2EApi = (context) => ({
       game: getGameState(view),
       editor: getEditorState(view, editorUi),
       bench: getBenchMetrics(view),
+      diagnostics: getEnvironmentDiagnostics(view),
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
@@ -1771,6 +1858,10 @@ const createE2EApi = (context) => ({
   selectLemmingById: (id) => selectLemmingById(context.view, id),
   centerViewOnLemming: (id) => centerViewOnLemming(context.view, id),
   getBenchMetrics: () => getBenchMetrics(context.view),
+  getDiagnostics: async () => getEnvironmentDiagnostics(
+    context.view,
+    { cacheStorageKeys: await getCacheStorageKeys() }
+  ),
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),
   stopBench: () => stopBench(context.view),

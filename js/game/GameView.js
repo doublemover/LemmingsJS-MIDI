@@ -684,6 +684,41 @@ class GameView extends BaseLogger {
     }
     return { lines };
   }
+
+  getRuntimeDiagnostics() {
+    const fileProviderStats = this.gameFactory?.fileProvider?.getCacheStats?.() || null;
+    const sanitizedFileProviderStats = fileProviderStats
+      ? {
+        memoryEntries: fileProviderStats.memoryEntries ?? 0,
+        localStorageBytes: fileProviderStats.localStorageBytes ?? 0,
+        indexedDbBytes: fileProviderStats.indexedDbBytes ?? 0
+      }
+      : null;
+    return {
+      profile: this.startupProfile || 'gameplay',
+      featureFlags: {
+        performanceAPI: !!this.performanceAPI,
+        perfMetrics: !!this.perfMetrics,
+        perfOverlay: !!this.perfOverlay,
+        debug: !!this.debug,
+        cheatEnabled: !!this.cheatEnabled,
+        endless: !!this.endless,
+        midiEnabled: !!this.midiEnabled,
+        editorMode: !!this.editorMode,
+        editorPlaytest: !!this.editorPlaytest,
+        preserveHistory: !!this.preserveHistory,
+        includeSavedLevels: !!this.includeSavedLevels,
+        bench: !!this.bench,
+        bench2: !!this.bench2,
+        benchReverse: !!this.benchReverse,
+        benchSequence: !!this.benchSequence
+      },
+      caches: {
+        fileProvider: sanitizedFileProviderStats,
+        midiOverrideKeys: Object.keys(this._midiOverrides || {}).sort()
+      }
+    };
+  }
   setHistoryState(params) {
     const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
     history.replaceState(null, null, '?' + query.toString());

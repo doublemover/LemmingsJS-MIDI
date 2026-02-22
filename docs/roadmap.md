@@ -505,6 +505,6 @@ Notes:
 - [x] Audit pointer/touch listener passive flags and latency-sensitive handlers
   for mobile responsiveness.
   Touchpoints: `js/input/*`, `js/render/Stage.js`, `js/game/GameView.js`.
-- [ ] Add deterministic environment diagnostics endpoint for runtime profile,
+- [x] Add deterministic environment diagnostics endpoint for runtime profile,
   feature flags, and active caches to simplify bug triage.
   Touchpoints: `js/app/e2eHarness.js`, `js/game/GameView.js`, `docs/e2e-state.md`.
