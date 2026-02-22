@@ -34,6 +34,13 @@ const createMidiUiSectionsController = ({
     }, 0);
   };
 
+  const bindEventHandlers = (eventName, elements, handler) => {
+    for (const element of elements) {
+      if (!element || typeof element.addEventListener !== 'function') continue;
+      element.addEventListener(eventName, handler);
+    }
+  };
+
   const buildScaleOptions = (select, current) => {
     if (!select) return;
     select.innerHTML = '';
@@ -308,18 +315,18 @@ const createMidiUiSectionsController = ({
         scheduleRefresh();
       };
 
-      [axisOpSelect, minInput, maxInput, enabledToggle]
-        .forEach(el => el.addEventListener('change', updateEntry));
+      bindEventHandlers('change', [axisOpSelect, minInput, maxInput, enabledToggle], updateEntry);
       const updateAxisAndEntry = () => {
         updateAxisUi();
         updateEntry();
       };
-      [axisXToggle, axisYToggle].forEach(el => el.addEventListener('change', updateAxisAndEntry));
-      targetSelect.addEventListener('change', () => {
+      bindEventHandlers('change', [axisXToggle, axisYToggle], updateAxisAndEntry);
+      const onTargetChange = () => {
         updateRangePlaceholders(targetSelect.value);
         updateEntry();
-      });
-      removeButton.addEventListener('click', removeEntry);
+      };
+      bindEventHandlers('change', [targetSelect], onTargetChange);
+      bindEventHandlers('click', [removeButton], removeEntry);
 
       const block = document.createElement('div');
       block.className = 'panel-section';

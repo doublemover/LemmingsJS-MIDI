@@ -1182,29 +1182,12 @@ export const createMidiUiController = ({
   const bindMidiUi = () => {
     if (midiUiBound) return;
     const enabledToggle = document.getElementById('midiEnabledToggle');
-    const inputSelect = document.getElementById('midiInSelect');
-    const outputSelect = document.getElementById('midiOutSelect');
-    const viewPanToggle = document.getElementById('midiViewPanToggle');
     const inputChannel = document.getElementById('midiInputChannel');
-    const resetButton = document.getElementById('midiResetButton');
-    const defaultsButton = document.getElementById('midiDefaultsButton');
-    const panelToggle = document.getElementById('midiPanelToggle');
     const leftPanel = document.getElementById('controlLeft');
-    const bpmBase = document.getElementById('midiBpmBase');
     const bpmCurrent = document.getElementById('midiBpmCurrent');
     const debugInput = document.getElementById('midiDebugInput');
     const debugOutput = document.getElementById('midiDebugOutput');
-    const keySelect = document.getElementById('midiKeySelect');
-    const scaleSelect = document.getElementById('midiScaleSelect');
-    const positionAdd = document.getElementById('midiPositionAdd');
-    const intensity = document.getElementById('midiIntensity');
-    const accent = document.getElementById('midiAccent');
-    const repeatEnabled = document.getElementById('midiRepeatEnabled');
     const repeatSection = document.getElementById('midiRepeatSection');
-    const repeatCount = document.getElementById('midiRepeatCount');
-    const repeatSpacing = document.getElementById('midiRepeatSpacing');
-    const repeatTarget = document.getElementById('midiRepeatTarget');
-    const repeatAmount = document.getElementById('midiRepeatAmount');
 
     ensureSchemaHash();
 
@@ -1230,8 +1213,17 @@ export const createMidiUiController = ({
       const collapsed = readStoredMidiId(storage, midiStorageKeys.panelCollapsed) === 'true';
       if (collapsed) leftPanel.classList.add('collapsed');
     }
-    if (panelToggle && leftPanel) {
-      panelToggle.addEventListener('click', () => {
+
+    let updateBpm = () => {};
+    const updateBpmBase = (event) => {
+      const bpm = Number(event.target.value) || 120;
+      setMidiOverrides({ timing: { bpmBase: bpm } });
+      updateBpm();
+    };
+
+    const clickHandlersById = {
+      midiPanelToggle: () => {
+        if (!leftPanel) return;
         leftPanel.classList.toggle('collapsed');
         const isCollapsed = leftPanel.classList.contains('collapsed');
         storeMidiId(storage, midiStorageKeys.panelCollapsed, isCollapsed ? 'true' : null);
@@ -1241,11 +1233,30 @@ export const createMidiUiController = ({
             window.dispatchEvent(evt);
           }
         }, 0);
-      });
-    }
+      },
+      midiResetButton: () => {
+        const lemmings = getLemmings();
+        lemmings?.midiRouter?.scheduler?.allNotesOff?.();
+        lemmings?.midiRouter?.scheduler?.clearQueue?.();
+      },
+      midiDefaultsButton: () => {
+        resetMidiDefaults(true);
+        resetUiState();
+        refreshMidiUiFromConfig();
+      },
+      midiPositionAdd: () => {
+        const config = getConfig();
+        if (!config) return;
+        const mappings = resolvePositionMappings(config);
+        mappings.push(buildDefaultPositionMapping(config));
+        setMidiOverrides({ position: { mappings } });
+        queueMidiUiRefresh();
+      },
+      midiRepeatEnabled: (event) => event.stopPropagation()
+    };
 
-    if (enabledToggle) {
-      enabledToggle.addEventListener('change', async (event) => {
+    const changeHandlersById = {
+      midiEnabledToggle: async (event) => {
         const enabled = !!event.target.checked;
         storeMidiId(storage, midiStorageKeys.enabled, enabled ? 'true' : 'false');
         toggleMidiUiEnabled(enabled);
@@ -1262,100 +1273,48 @@ export const createMidiUiController = ({
         } else if (getWebMidi()?.enabled) {
           onEnabled();
         }
-      });
-    }
-
-    if (inputSelect) {
-      inputSelect.addEventListener('change', (event) => {
+      },
+      midiInSelect: (event) => {
         const selectedId = event.target.value || null;
         storeMidiId(storage, midiStorageKeys.inputId, selectedId);
         setActiveMidiInput(selectedId);
         resetUiState();
-      });
-    }
-    if (outputSelect) {
-      outputSelect.addEventListener('change', (event) => {
+      },
+      midiOutSelect: (event) => {
         const selectedId = event.target.value || null;
         storeMidiId(storage, midiStorageKeys.outputId, selectedId);
         setActiveMidiOutput(selectedId);
         resetUiState();
-      });
-    }
-    if (viewPanToggle) {
-      viewPanToggle.addEventListener('change', (event) => {
+      },
+      midiViewPanToggle: (event) => {
         const enabled = !!event.target.checked;
         storeMidiId(storage, midiStorageKeys.viewPan, enabled ? 'true' : null);
         applyViewPanSetting(enabled);
-      });
-    }
-    if (inputChannel) {
-      inputChannel.addEventListener('change', (event) => {
+      },
+      midiInputChannel: (event) => {
         const raw = event.target.value;
         const storedValue = raw && raw !== 'omni' ? raw : null;
         storeMidiId(storage, midiStorageKeys.inputChannel, storedValue);
         setMidiOverrides({ input: { channel: storedValue ? Number(storedValue) : 'omni' } });
-      });
-    }
-    if (resetButton) {
-      resetButton.addEventListener('click', () => {
-        const lemmings = getLemmings();
-        lemmings?.midiRouter?.scheduler?.allNotesOff?.();
-        lemmings?.midiRouter?.scheduler?.clearQueue?.();
-      });
-    }
-    if (defaultsButton) {
-      defaultsButton.addEventListener('click', () => {
-        resetMidiDefaults(true);
-        resetUiState();
-        refreshMidiUiFromConfig();
-      });
-    }
-    if (bpmBase) {
-      const updateBpmBase = (event) => {
-        const bpm = Number(event.target.value) || 120;
-        setMidiOverrides({ timing: { bpmBase: bpm } });
-        updateBpm();
-      };
-      bpmBase.addEventListener('change', updateBpmBase);
-      bpmBase.addEventListener('input', updateBpmBase);
-    }
-    if (keySelect) {
-      keySelect.addEventListener('change', (event) => {
+      },
+      midiBpmBase: updateBpmBase,
+      midiKeySelect: (event) => {
         const value = Number(event.target.value);
         setMidiOverrides({ scale: { root: value } });
-      });
-    }
-    if (scaleSelect) {
-      scaleSelect.addEventListener('change', (event) => {
+      },
+      midiScaleSelect: (event) => {
         const value = event.target.value;
         setMidiOverrides({ scale: { name: value } });
-      });
-    }
-    if (positionAdd) {
-      positionAdd.addEventListener('click', () => {
-        const config = getConfig();
-        if (!config) return;
-        const mappings = resolvePositionMappings(config);
-        mappings.push(buildDefaultPositionMapping(config));
-        setMidiOverrides({ position: { mappings } });
-        queueMidiUiRefresh();
-      });
-    }
-    if (intensity) {
-      intensity.addEventListener('change', (event) => {
+      },
+      midiIntensity: (event) => {
         const value = Number(event.target.value) || 0;
         setMidiOverrides({ velocityRange: { default: value } });
-      });
-    }
-    if (accent) {
-      accent.addEventListener('change', (event) => {
+      },
+      midiAccent: (event) => {
         const value = Number(event.target.value) || 0;
         setMidiOverrides({ density: { velocityBoost: value } });
-      });
-    }
-    if (repeatEnabled) {
-      repeatEnabled.addEventListener('click', (event) => event.stopPropagation());
-      repeatEnabled.addEventListener('change', (event) => {
+      },
+      midiRepeatEnabled: (event) => {
         const enabled = !!event.target.checked;
         setMidiOverrides({ repeat: { enabled } });
         if (enabled && repeatSection && !repeatSection.open) {
@@ -1365,38 +1324,47 @@ export const createMidiUiController = ({
           states[key] = true;
           tabUi.storeSectionStates(states);
         }
-      });
-    }
-    if (repeatCount) {
-      repeatCount.addEventListener('change', (event) => {
+      },
+      midiRepeatCount: (event) => {
         const value = Number(event.target.value) || 0;
         setMidiOverrides({ repeat: { maxRepeats: value } });
-      });
-    }
-    if (repeatSpacing) {
-      repeatSpacing.addEventListener('change', (event) => {
+      },
+      midiRepeatSpacing: (event) => {
         const value = Number(event.target.value) || 1;
         setMidiOverrides({ repeat: { windowBeats: value } });
-      });
-    }
-    if (repeatTarget) {
-      repeatTarget.addEventListener('change', (event) => {
+      },
+      midiRepeatTarget: (event) => {
         const value = event.target.value || 'velocity';
         setMidiOverrides({ repeat: { target: value } });
-      });
-    }
-    if (repeatAmount) {
-      repeatAmount.addEventListener('change', (event) => {
+      },
+      midiRepeatAmount: (event) => {
         const value = Number(event.target.value) || 0;
         setMidiOverrides({ repeat: { amount: value } });
-      });
-    }
+      }
+    };
+
+    const inputHandlersById = {
+      midiBpmBase: updateBpmBase
+    };
+
+    const bindHandlersById = (eventName, handlersById) => {
+      for (const [id, handler] of Object.entries(handlersById)) {
+        const element = document.getElementById(id);
+        if (!element || typeof handler !== 'function') continue;
+        element.addEventListener(eventName, handler);
+      }
+    };
+
+    bindHandlersById('click', clickHandlersById);
+    bindHandlersById('change', changeHandlersById);
+    bindHandlersById('input', inputHandlersById);
+
     bindEnvelopeControls();
 
     tabUi.bindTabs();
     tabUi.bindSectionPersistence();
 
-    const updateBpm = () => {
+    updateBpm = () => {
       if (!bpmCurrent) return;
       const config = getEffectiveConfig() || {};
       const timing = config.timing || {};
