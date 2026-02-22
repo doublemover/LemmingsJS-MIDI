@@ -452,7 +452,7 @@ Notes:
   suites for explicit/nightly runs.
   Touchpoints: `scripts/bench-performance.js`, `scripts/bench-history-stress.js`,
   `scripts/bench-hotpaths.js`.
-- [ ] Add branch-coverage tests for large remaining bootstrap/input modules that
+- [x] Add branch-coverage tests for large remaining bootstrap/input modules that
   still rely mostly on integration coverage.
   Touchpoints: `js/app/boot.js`, `js/input/UserInputManager.js`,
   `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.

@@ -75,6 +75,10 @@ let midiUi = null;
 let midiInputController = null;
 let lemmings;
 
+const setLemmingsForTest = (value) => {
+  lemmings = value;
+};
+
 function init() {
   midiUi = createMidiUiController({
     window: globalThis.window,
@@ -310,8 +314,17 @@ function start() {
   bindResize();
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', start);
-} else {
-  start();
+if (globalThis.__LEMMINGS_BOOT_NO_AUTO_START__ !== true) {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start);
+  } else {
+    start();
+  }
 }
+
+export {
+  bindResize,
+  setLemmingsForTest,
+  setSize,
+  start
+};

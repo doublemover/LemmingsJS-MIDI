@@ -5,22 +5,28 @@ import { Position2D } from '../../js/util/Position2D.js';
 
 const makeElement = () => {
   const listeners = new Map();
+  const optionsByType = new Map();
   return {
     width: 100,
     height: 100,
     style: {},
-    addEventListener(type, handler) {
+    addEventListener(type, handler, options) {
       listeners.set(type, handler);
+      optionsByType.set(type, options);
     },
-    removeEventListener(type, handler) {
+    removeEventListener(type, handler, options) {
       if (listeners.get(type) === handler) {
         listeners.delete(type);
+      }
+      if (optionsByType.get(type) === options) {
+        optionsByType.delete(type);
       }
     },
     getBoundingClientRect() {
       return { left: 0, top: 0, width: 100, height: 100 };
     },
-    _listeners: listeners
+    _listeners: listeners,
+    _listenerOptions: optionsByType
   };
 };
 
@@ -128,6 +134,39 @@ describe('UserInputManager', function() {
 
     manager.handleWheel(new Position2D(5, 5), 1);
     expect(zoomEvents.length).to.equal(3);
+  });
+
+  it('configures passive listener options for touch and wheel events', function() {
+    const element = makeElement();
+    new UserInputManager(element);
+    expect(element._listenerOptions.get('touchmove')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('touchstart')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('wheel')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('mousemove')).to.equal(undefined);
+  });
+
+  it('uses fallback zoom event path when stage omits getStageImageAt', function() {
+    const element = makeElement();
+    const manager = new UserInputManager(element);
+    const zoomEvents = [];
+    manager.onZoom.on((evt) => zoomEvents.push(evt));
+    withGlobalLemmings({ stage: {} }, () => {
+      manager.handleWheel(new Position2D(4, 6), -2);
+    });
+    expect(zoomEvents).to.have.lengthOf(1);
+    expect(zoomEvents[0].deltaZoom).to.equal(-2);
+  });
+
+  it('scales relative positions from canvas space', function() {
+    const element = makeElement();
+    element.width = 200;
+    element.height = 300;
+    element.getBoundingClientRect = () => ({ left: 10, top: 20, width: 100, height: 150 });
+    const manager = new UserInputManager(element);
+
+    const point = manager.getRelativePosition(element, 60, 95);
+    expect(point.x).to.equal(100);
+    expect(point.y).to.equal(150);
   });
 
   it('disposes listeners safely', function() {
