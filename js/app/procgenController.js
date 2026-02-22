@@ -64,6 +64,9 @@ class ProcgenController {
     this._hazardTriggerSource = null;
     this._hazardTriggerSourceSize = -1;
     this._hazardIndexLastRefreshTick = -Infinity;
+    this._scanCacheTick = -Infinity;
+    this._scanCacheGround = null;
+    this._scanCache = null;
     this._trackerPruneElapsed = 0;
     this._leftFallCounter = 0;
     this._splatStreak = 0;
@@ -138,6 +141,9 @@ class ProcgenController {
     this._aiStallState.clear();
     this._gaps.length = 0;
     this._gapScanStart = 0;
+    this._scanCache = null;
+    this._scanCacheGround = null;
+    this._scanCacheTick = -Infinity;
   }
 
   _bindTimer() {
@@ -312,6 +318,7 @@ class ProcgenController {
     if (!Number.isFinite(tick)) return;
     if (tick - this._aiLastDecisionTick < this._aiDecisionInterval) return;
     this._aiLastDecisionTick = tick;
+    this._beginScanCacheWindow(tick);
 
     this._applyEdgeBlockers(tick);
     this._applyBunchingAssist(tick);
@@ -327,6 +334,24 @@ class ProcgenController {
       this._aiLastDecision = { tick, action: null, scan };
     }
     this._updateDebugOverlay();
+  }
+
+  _beginScanCacheWindow(tick) {
+    const ground = this.level?.groundMask || null;
+    if (this._scanCache &&
+        this._scanCacheTick === tick &&
+        this._scanCacheGround === ground) {
+      return this._scanCache;
+    }
+    this._scanCacheTick = Number.isFinite(tick) ? tick : -Infinity;
+    this._scanCacheGround = ground;
+    this._scanCache = {
+      drop: new Map(),
+      wall: new Map(),
+      gap: new Map(),
+      hazard: new Map()
+    };
+    return this._scanCache;
   }
 
   _applyEdgeBlockers(tick) {
@@ -447,16 +472,30 @@ class ProcgenController {
   }
 
   _getDropAt(ground, x, y, maxDrop) {
+    const cache = this._scanCacheGround === ground ? this._scanCache?.drop : null;
+    const cacheKey = cache ? `${x}|${y}|${maxDrop}` : null;
+    if (cache && cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
     const height = this.level?.height ?? 0;
     const top = y + 1;
-    if (top < 0 || top >= height) return 0;
+    if (top < 0 || top >= height) {
+      if (cache) cache.set(cacheKey, 0);
+      return 0;
+    }
     const available = Math.max(1, Math.min(maxDrop + 2, height - top));
     const depth = ground.getColumnGapDepth(x, top, available);
-    if (depth <= 1) return 0;
-    return depth - 1;
+    const drop = depth <= 1 ? 0 : depth - 1;
+    if (cache) cache.set(cacheKey, drop);
+    return drop;
   }
 
   _measureGapWidth(ground, startX, y, scanAhead, dir) {
+    const cache = this._scanCacheGround === ground ? this._scanCache?.gap : null;
+    const cacheKey = cache ? `${startX}|${y}|${scanAhead}|${dir}|${this.maxDrop}` : null;
+    if (cache && cache.has(cacheKey)) {
+      return cache.get(cacheKey);
+    }
     let width = 0;
     for (let dx = 0; dx <= scanAhead; dx++) {
       const drop = this._getDropAt(ground, startX + dx * dir, y, this.maxDrop);
@@ -464,15 +503,27 @@ class ProcgenController {
       width += 1;
       if (width >= scanAhead) break;
     }
+    if (cache) cache.set(cacheKey, width);
     return width;
   }
 
   _getWallHeight(ground, x, y, maxHeight, dir) {
     const height = Math.max(1, Math.floor(maxHeight));
-    let wall = 0;
-    for (let dy = 1; dy <= height; dy++) {
-      if (ground.hasGroundAt(x, y - dy)) wall = dy;
+    const cache = this._scanCacheGround === ground ? this._scanCache?.wall : null;
+    const cacheKey = cache ? `${x}|${y}|${height}` : null;
+    if (cache && cache.has(cacheKey)) {
+      return cache.get(cacheKey);
     }
+    const wall = typeof ground.getColumnWallHeight === 'function'
+      ? ground.getColumnWallHeight(x, y, height)
+      : (() => {
+        let result = 0;
+        for (let dy = 1; dy <= height; dy++) {
+          if (ground.hasGroundAt(x, y - dy)) result = dy;
+        }
+        return result;
+      })();
+    if (cache) cache.set(cacheKey, wall);
     return wall;
   }
 
@@ -489,6 +540,13 @@ class ProcgenController {
     }
     const hazards = this._hazardTriggers;
     if (!hazards.length) return null;
+    const hazardCache = this._scanCache?.hazard || null;
+    const hazardCacheKey = hazardCache
+      ? `${x}|${y}|${scanAhead}|${dir}|${this._hazardIndexLastRefreshTick}`
+      : null;
+    if (hazardCache && hazardCache.has(hazardCacheKey)) {
+      return hazardCache.get(hazardCacheKey);
+    }
     const maxDx = Math.max(1, Math.floor(scanAhead));
     const minX = dir >= 0 ? x + 1 : x - maxDx;
     const maxX = dir >= 0 ? x + maxDx : x - 1;
@@ -506,6 +564,9 @@ class ProcgenController {
         best = { dx, type: trigger.type };
         if (dx === 1) break;
       }
+    }
+    if (hazardCache) {
+      hazardCache.set(hazardCacheKey, best);
     }
     return best;
   }

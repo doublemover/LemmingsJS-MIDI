@@ -112,6 +112,29 @@ class SolidLayer extends BaseLogger {
   }
 
   /**
+     * Return contiguous wall height directly above yBottom.
+     * This is tuned for repeated AI wall checks in procgen.
+     * @param {number} x
+     * @param {number} yBottom
+     * @param {number} height
+     * @returns {number} 0..height
+     */
+  getColumnWallHeight(x, yBottom, height) {
+    const w = this.width;
+    const h = this.height;
+    const limit = Math.max(1, Math.floor(height));
+    if (x < 0 || x >= w || limit <= 0) return 0;
+    const mask = this.mask;
+    let wall = 0;
+    for (let dy = 1; dy <= limit; dy++) {
+      const y = yBottom - dy;
+      if (y < 0 || y >= h) continue;
+      if (mask[y * w + x] !== 0) wall = dy;
+    }
+    return wall;
+  }
+
+  /**
      * Count solid pixels in a rectangle without allocating a sublayer.
      * Out-of-bounds areas are treated as empty.
      * @param {number} x

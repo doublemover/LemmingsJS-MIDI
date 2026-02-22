@@ -104,4 +104,41 @@ describe('ProcgenController', function () {
     expect(controller._gaps.length).to.be.lessThan(600);
     expect(controller._gaps[0].x).to.be.at.least(2000);
   });
+
+  it('reuses scan-cache results inside a single AI decision window', function () {
+    let gapDepthCalls = 0;
+    let wallHeightCalls = 0;
+    const ground = {
+      getColumnGapDepth() {
+        gapDepthCalls += 1;
+        return 1;
+      },
+      getColumnWallHeight() {
+        wallHeightCalls += 1;
+        return 0;
+      }
+    };
+    const controller = new ProcgenController({
+      level: {
+        height: 80,
+        groundMask: ground,
+        triggers: []
+      }
+    });
+    const lemming = { x: 40, y: 50, lookRight: true };
+
+    controller._beginScanCacheWindow(100);
+    controller._scanAhead(lemming);
+    const firstGapCalls = gapDepthCalls;
+    const firstWallCalls = wallHeightCalls;
+
+    controller._scanAhead(lemming);
+    expect(gapDepthCalls).to.equal(firstGapCalls);
+    expect(wallHeightCalls).to.equal(firstWallCalls);
+
+    controller._beginScanCacheWindow(101);
+    controller._scanAhead(lemming);
+    expect(gapDepthCalls).to.be.greaterThan(firstGapCalls);
+    expect(wallHeightCalls).to.be.greaterThan(firstWallCalls);
+  });
 });
