@@ -284,47 +284,37 @@ class LemmingManager extends BaseLogger {
   }
 
   addLemming(x, y) {
-    withPerformance(
-      'addLemming',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Game State',
-        color: 'primary-light',
-        tooltipText: `addLemming ${x},${y}`
-      },
-      () => {
-        const startingLemLength = this.lemmings.length;
-        const LemmingCtor = this._lemmingCtor || Lemming;
-        const lem = new LemmingCtor(x, y, startingLemLength);
-        if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
-          lem.lookRight = Math.random() < 0.5;
-        }
-        this.setLemmingState(lem, LemmingStateType.FALLING);
-        this.lemmings.push(lem);
-        this._addActiveLemming(lem);
-        this.spawnTotal += 1;
+    const startingLemLength = this.lemmings.length;
+    const LemmingCtor = this._lemmingCtor || Lemming;
+    const lem = new LemmingCtor(x, y, startingLemLength);
+    if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
+      lem.lookRight = Math.random() < 0.5;
+    }
+    this.setLemmingState(lem, LemmingStateType.FALLING);
+    this.lemmings.push(lem);
+    this._addActiveLemming(lem);
+    this.spawnTotal += 1;
 
-        const extraCount = lemmings.extraLemmings | 0;
-        if (extraCount > 0) {
-          const action = this.actions[LemmingStateType.FALLING];
-          const extras = new Array(extraCount);
-          for (let i = 0; i < extraCount; i++) {
-            const extra = new LemmingCtor(
-              x,
-              y,
-              startingLemLength + 1 + i
-            );
-            if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
-              extra.lookRight = Math.random() < 0.5;
-            }
-            extra.setAction(action);
-            extras[i] = extra;
-            this._addActiveLemming(extra);
-          }
-          Array.prototype.push.apply(this.lemmings, extras);
-          this.spawnTotal += extraCount;
+    const extraCount = lemmings.extraLemmings | 0;
+    if (extraCount > 0) {
+      const action = this.actions[LemmingStateType.FALLING];
+      const extras = new Array(extraCount);
+      for (let i = 0; i < extraCount; i++) {
+        const extra = new LemmingCtor(
+          x,
+          y,
+          startingLemLength + 1 + i
+        );
+        if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
+          extra.lookRight = Math.random() < 0.5;
         }
-      })();
+        extra.setAction(action);
+        extras[i] = extra;
+        this._addActiveLemming(extra);
+      }
+      Array.prototype.push.apply(this.lemmings, extras);
+      this.spawnTotal += extraCount;
+    }
   }
 
   addNewLemmings() {
@@ -509,113 +499,81 @@ class LemmingManager extends BaseLogger {
   }
 
   setLemmingState(lem, stateType) {
-    withPerformance(
-      'setLemmingState',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Game State',
-        color: 'secondary-light',
-        tooltipText: `setLemmingState ${lem.id}`
-      },
-      () => {
-        if (lem.countdown > 0) {
-          const lethal =
-                stateType === LemmingStateType.DROWNING   ||
-                stateType === LemmingStateType.SPLATTING  ||
-                stateType === LemmingStateType.FRYING;
-          if (lethal) {
-            lem.countdown = 0;
-            lem.countdownAction = null;
-          }
-        }
-        if (stateType === LemmingStateType.OUT_OF_LEVEL) {
-          withPerformance(
-            'removeOne',
-            {
-              track: 'LemmingManager',
-              trackGroup: 'Game State',
-              color: 'secondary-dark',
-              tooltipText: `removeOne ${lem.id}`
-            },
-            () => {
-              this.removeOne(lem);
-            }
-          )();
-          return;
-        }
-        const actionSystem = this.actions[stateType];
-        if (!actionSystem) {
-          this.removeOne(lem);
-          this.logging.log(lem.id + ' Action: Error not an action: ' + LemmingStateType[stateType]);
-          return;
-        } else {
-          if (this.activeLemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
-            this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
-          }
-        }
-        if (stateType === LemmingStateType.EXPLODING) {
-          lem.hasExploded = true;
-        }
-        lem.setAction(actionSystem);
-      })();
+    if (lem.countdown > 0) {
+      const lethal =
+            stateType === LemmingStateType.DROWNING   ||
+            stateType === LemmingStateType.SPLATTING  ||
+            stateType === LemmingStateType.FRYING;
+      if (lethal) {
+        lem.countdown = 0;
+        lem.countdownAction = null;
+      }
+    }
+    if (stateType === LemmingStateType.OUT_OF_LEVEL) {
+      this.removeOne(lem);
+      return;
+    }
+    const actionSystem = this.actions[stateType];
+    if (!actionSystem) {
+      this.removeOne(lem);
+      this.logging.log(lem.id + ' Action: Error not an action: ' + LemmingStateType[stateType]);
+      return;
+    } else {
+      if (this.activeLemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
+        this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
+      }
+    }
+    if (stateType === LemmingStateType.EXPLODING) {
+      lem.hasExploded = true;
+    }
+    lem.setAction(actionSystem);
   }
 
   doLemmingAction(lem, skillType) {
-    return withPerformance(
-      'doLemmingAction',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Game State',
-        color: 'secondary-dark',
-        tooltipText: `doLemmingAction ${skillType}`
-      },
-      () => {
-        if (!lem) {
-          return false;
-        }
-        const actionSystem = this.skillActions[skillType];
-        if (!actionSystem) {
-          this.logging.log(lem.id + ' Unknown Action: ' + skillType);
-          return false;
-        }
-        const canApplyWhileFalling = {
-          [SkillTypes.FLOATER]: this._actionTypes?.floater,
-          [SkillTypes.CLIMBER]: this._actionTypes?.climber,
-          [SkillTypes.BOMBER]: this.skillActions[SkillTypes.BOMBER],
-          [SkillTypes.BUILDER]: this._actionTypes?.builder
-        };
-        if (lem.action === this.actions[LemmingStateType.FALLING]) {
-          if (!canApplyWhileFalling[skillType]) {
-            return false;
-          }
-        }
-        const redundant = {
-          [SkillTypes.BASHER]: this._actionTypes?.basher,
-          [SkillTypes.BLOCKER]: this._actionTypes?.blocker,
-          [SkillTypes.DIGGER]: this._actionTypes?.digger,
-          [SkillTypes.MINER]: this._actionTypes?.miner
-        };
-        const alreadyDoingIt =
-            redundant[skillType] && (lem.action instanceof redundant[skillType]);
-        if (alreadyDoingIt) {
-          return false;
-        }
-        const wasBlocking = this._actionTypes?.blocker
-          ? (lem.action instanceof this._actionTypes.blocker)
-          : false;
-        const ok = actionSystem.triggerLemAction(lem);
-        if (ok && wasBlocking) {
-          const keepWall =
-                skillType === SkillTypes.BOMBER ||
-                skillType === SkillTypes.CLIMBER ||
-                skillType === SkillTypes.FLOATER;
-          if (!keepWall) {
-            this.triggerManager.removeByOwner(lem);
-          }
-        }
-        const result = ok;
-        return result;
-      }).call(this);
+    if (!lem) {
+      return false;
+    }
+    const actionSystem = this.skillActions[skillType];
+    if (!actionSystem) {
+      this.logging.log(lem.id + ' Unknown Action: ' + skillType);
+      return false;
+    }
+    const canApplyWhileFalling = {
+      [SkillTypes.FLOATER]: this._actionTypes?.floater,
+      [SkillTypes.CLIMBER]: this._actionTypes?.climber,
+      [SkillTypes.BOMBER]: this.skillActions[SkillTypes.BOMBER],
+      [SkillTypes.BUILDER]: this._actionTypes?.builder
+    };
+    if (lem.action === this.actions[LemmingStateType.FALLING]) {
+      if (!canApplyWhileFalling[skillType]) {
+        return false;
+      }
+    }
+    const redundant = {
+      [SkillTypes.BASHER]: this._actionTypes?.basher,
+      [SkillTypes.BLOCKER]: this._actionTypes?.blocker,
+      [SkillTypes.DIGGER]: this._actionTypes?.digger,
+      [SkillTypes.MINER]: this._actionTypes?.miner
+    };
+    const alreadyDoingIt =
+        redundant[skillType] && (lem.action instanceof redundant[skillType]);
+    if (alreadyDoingIt) {
+      return false;
+    }
+    const wasBlocking = this._actionTypes?.blocker
+      ? (lem.action instanceof this._actionTypes.blocker)
+      : false;
+    const ok = actionSystem.triggerLemAction(lem);
+    if (ok && wasBlocking) {
+      const keepWall =
+            skillType === SkillTypes.BOMBER ||
+            skillType === SkillTypes.CLIMBER ||
+            skillType === SkillTypes.FLOATER;
+      if (!keepWall) {
+        this.triggerManager.removeByOwner(lem);
+      }
+    }
+    return ok;
   }
 
   isNuking() { return this.nextNukingLemmingsIndex >= 0; }

@@ -1,4 +1,4 @@
-import { BaseLogger, withPerformance } from '../util/LogHandler.js';
+import { BaseLogger } from '../util/LogHandler.js';
 
 class SolidLayer extends BaseLogger {
   /**
@@ -153,35 +153,25 @@ class SolidLayer extends BaseLogger {
      */
   clearGroundWithMask(mask, x, y, skipTest = null) {
     let changed = false;
-    withPerformance(
-      'clearGroundWithMask',
-      {
-        track: 'SolidLayer',
-        trackGroup: 'Game State',
-        color: 'primary-dark',
-        tooltipText: `clearGroundWithMask ${x},${y}`
-      },
-      () => {
-        const mx = mask.offsetX || 0, my = mask.offsetY || 0;
-        for (let dy = 0; dy < mask.height; ++dy) {
-          const mapY = y + my + dy;
-          if (mapY < 0 || mapY >= this.height) continue;
-          for (let dx = 0; dx < mask.width; ++dx) {
-            const mapX = x + mx + dx;
-            if (mapX < 0 || mapX >= this.width) continue;
-            // Only clear where mask pixel is **not** solid
-            if (!mask.at(dx, dy)) {
-              if (!skipTest || !skipTest(mapX, mapY)) {
-                const idx = mapX + mapY * this.width;
-                if (this.mask[idx]) {
-                  this.mask[idx] = 0;
-                  changed = true;
-                }
-              }
+    const mx = mask.offsetX || 0, my = mask.offsetY || 0;
+    for (let dy = 0; dy < mask.height; ++dy) {
+      const mapY = y + my + dy;
+      if (mapY < 0 || mapY >= this.height) continue;
+      for (let dx = 0; dx < mask.width; ++dx) {
+        const mapX = x + mx + dx;
+        if (mapX < 0 || mapX >= this.width) continue;
+        // Only clear where mask pixel is **not** solid
+        if (!mask.at(dx, dy)) {
+          if (!skipTest || !skipTest(mapX, mapY)) {
+            const idx = mapX + mapY * this.width;
+            if (this.mask[idx]) {
+              this.mask[idx] = 0;
+              changed = true;
             }
           }
         }
-      })();
+      }
+    }
     return changed;
   }
 
@@ -192,22 +182,12 @@ class SolidLayer extends BaseLogger {
      * @param {Function|null} skipTest - Optional (x, y) => true if pixel should not be cleared (e.g. steel check)
      */
   clearGroundWithMasks(masks, positions, skipTest = null) {
-    withPerformance(
-      'clearGroundWithMasks',
-      {
-        track: 'SolidLayer',
-        trackGroup: 'Game State',
-        color: 'primary-light',
-        tooltipText: `clearGroundWithMasks ${masks.length}`
-      },
-      () => {
-        if (!Array.isArray(masks) || masks.length === 0) return;
-        for (let i = 0; i < masks.length; ++i) {
-          const mask = masks[i], pos = positions[i];
-          if (!mask || !pos) continue;
-          this.clearGroundWithMask(mask, pos[0], pos[1], skipTest);
-        }
-      })();
+    if (!Array.isArray(masks) || masks.length === 0) return;
+    for (let i = 0; i < masks.length; ++i) {
+      const mask = masks[i], pos = positions[i];
+      if (!mask || !pos) continue;
+      this.clearGroundWithMask(mask, pos[0], pos[1], skipTest);
+    }
   }
 }
 
