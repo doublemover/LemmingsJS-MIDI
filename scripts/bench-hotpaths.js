@@ -3,6 +3,10 @@ import { Stage } from '../js/render/Stage.js';
 import { GameGui } from '../js/game/GameGui.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
 import { EventHandler } from '../js/util/EventHandler.js';
+import { MidiEventRouter } from '../js/midi/MidiEventRouter.js';
+import { MidiScheduler } from '../js/midi/MidiScheduler.js';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
 
 const parseArgs = (argv) => {
   const out = new Map();
@@ -279,28 +283,153 @@ const runGuiOverlayBench = ({ iterations, repeats }) => withGlobalStubs(() => {
   return summarizeSamples(measured.samplesMs.slice(1), iterations);
 });
 
-const args = parseArgs(process.argv.slice(2));
-const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
-const repeats = toPositiveInt(args.get('repeats'), smokeRequested ? 4 : 6);
-const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), smokeRequested ? 1500 : 3000);
-const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), smokeRequested ? 6 : 8);
-const antsIterations = toPositiveInt(args.get('ants-iterations'), smokeRequested ? 3000 : 6000);
-const guiIterations = toPositiveInt(args.get('gui-iterations'), smokeRequested ? 1000 : 2000);
-
-const summary = {
-  dirtyRectUpload: runDirtyRectBench({
-    iterations: dirtyIterations,
-    rectsPerIter: dirtyRectsPerIter,
-    repeats
-  }),
-  marchingAnts: runMarchingAntBench({
-    iterations: antsIterations,
-    repeats
-  }),
-  guiOverlay: runGuiOverlayBench({
-    iterations: guiIterations,
-    repeats
-  })
+const makeMidiOutput = (channelCount = 16) => {
+  const channels = {};
+  for (let i = 1; i <= channelCount; i += 1) {
+    channels[i] = {
+      sendNoteOn() {},
+      sendNoteOff() {},
+      sendPitchBend() {},
+      sendPitchBendRange() {},
+      sendControlChange() {},
+      sendAllNotesOff() {}
+    };
+  }
+  return { channels };
 };
 
-console.log(JSON.stringify(summary, null, 2));
+const runMidiRouterBench = ({ iterations, eventsPerIter, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+  const router = new MidiEventRouter({
+    enabled: true,
+    noteRange: { min: 36, max: 96 },
+    durationTicks: { min: 0, max: 0, default: 0 },
+    timing: { bpmBase: 120, scheduleAheadMs: 0 },
+    repeat: { enabled: false },
+    limits: {
+      maxPerTick: 128,
+      maxPerSecond: 1000,
+      maxBytesPerSecond: 100000000
+    }
+  });
+  router.context = {
+    game: {
+      getGameTimer() {
+        return { tps: 60, speedFactor: 1 };
+      }
+    }
+  };
+  router.setOutput(makeMidiOutput(16));
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      const tick = i + 1;
+      for (let eventIndex = 0; eventIndex < eventsPerIter; eventIndex += 1) {
+        router._onEvent({
+          tick,
+          sfxId: 1,
+          x: (eventIndex * 7) % 320,
+          y: (eventIndex * 11) % 200
+        });
+      }
+    }
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  router.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, eventsPerIter));
+});
+
+const runMidiSchedulerBench = ({ iterations, notesPerIter, repeats }) => withGlobalStubs(() => {
+  setupRenderEnvironment();
+  const scheduler = new MidiScheduler({
+    defaultChannel: 1,
+    limits: {
+      maxActiveNotes: 32,
+      maxEventsPerSecond: 1000,
+      maxBytesPerSecond: 100000000
+    },
+    mpe: { enabled: false }
+  });
+  scheduler.setTickMs(1000 / 60);
+  scheduler.setOutput(makeMidiOutput(16));
+
+  const runOnce = () => {
+    for (let i = 0; i < iterations; i += 1) {
+      for (let noteIndex = 0; noteIndex < notesPerIter; noteIndex += 1) {
+        scheduler.sendNote({
+          note: 48 + ((i + noteIndex) % 24),
+          velocity: 96,
+          durationTicks: 0,
+          channel: 1
+        }, {
+          sfxId: 1,
+          priority: 1
+        });
+      }
+    }
+  };
+
+  const measured = measureN(repeats + 1, runOnce);
+  scheduler.dispose();
+  return summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, notesPerIter));
+});
+
+const buildHotpathSummary = (argv = process.argv.slice(2)) => {
+  const args = parseArgs(argv);
+  const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+  const repeats = toPositiveInt(args.get('repeats'), smokeRequested ? 4 : 6);
+  const dirtyIterations = toPositiveInt(args.get('dirty-iterations'), smokeRequested ? 1500 : 3000);
+  const dirtyRectsPerIter = toPositiveInt(args.get('dirty-rects'), smokeRequested ? 6 : 8);
+  const antsIterations = toPositiveInt(args.get('ants-iterations'), smokeRequested ? 3000 : 6000);
+  const guiIterations = toPositiveInt(args.get('gui-iterations'), smokeRequested ? 1000 : 2000);
+  const midiRouterIterations = toPositiveInt(args.get('midi-router-iterations'), smokeRequested ? 700 : 1600);
+  const midiRouterEvents = toPositiveInt(args.get('midi-router-events'), smokeRequested ? 12 : 24);
+  const midiSchedulerIterations = toPositiveInt(args.get('midi-scheduler-iterations'), smokeRequested ? 700 : 1600);
+  const midiSchedulerNotes = toPositiveInt(args.get('midi-scheduler-notes'), smokeRequested ? 12 : 24);
+
+  return {
+    dirtyRectUpload: runDirtyRectBench({
+      iterations: dirtyIterations,
+      rectsPerIter: dirtyRectsPerIter,
+      repeats
+    }),
+    marchingAnts: runMarchingAntBench({
+      iterations: antsIterations,
+      repeats
+    }),
+    guiOverlay: runGuiOverlayBench({
+      iterations: guiIterations,
+      repeats
+    }),
+    midiRouter: runMidiRouterBench({
+      iterations: midiRouterIterations,
+      eventsPerIter: midiRouterEvents,
+      repeats
+    }),
+    midiScheduler: runMidiSchedulerBench({
+      iterations: midiSchedulerIterations,
+      notesPerIter: midiSchedulerNotes,
+      repeats
+    })
+  };
+};
+
+const main = (argv = process.argv.slice(2)) => {
+  const summary = buildHotpathSummary(argv);
+  console.log(JSON.stringify(summary, null, 2));
+};
+
+const isMain = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMain) {
+  main();
+}
+
+export { buildHotpathSummary };

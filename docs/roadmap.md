@@ -492,7 +492,7 @@ Notes:
 - [x] Add strict intent payload validation and migration guards for persisted
   overrides/state.
   Touchpoints: `js/app/midi-ui/midiUiIntent.js`, `js/app/midi-ui/midiUiStorage.js`.
-- [ ] Add focused bench coverage for MIDI routing/scheduler throughput under high
+- [x] Add focused bench coverage for MIDI routing/scheduler throughput under high
   event density.
   Touchpoints: `js/midi/MidiEventRouter.js`, `js/midi/MidiScheduler.js`,
   `scripts/bench-hotpaths.js`.
