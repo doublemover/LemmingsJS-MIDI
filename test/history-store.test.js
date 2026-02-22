@@ -51,6 +51,11 @@ const createHistoryFixture = () => {
     nextNukingLemmingsIndex: -1,
     _nukeTargets: null,
     miniMap: null,
+    _lemmingCtor: function ReplayCtor(x, y, id) {
+      this.x = x;
+      this.y = y;
+      this.id = id;
+    },
     getLemming: (id) => manager.lemmings[id] ?? null
   };
   const skills = { selectedSkill: 0, cheatMode: false, skills: [1] };
@@ -258,7 +263,16 @@ describe('HistoryStore', function() {
   it('applies keyframes with lemming list resizing and speed ignores', function() {
     const history = new HistoryStore();
     const timer = { speedFactor: 2, tickIndex: 0 };
-    const manager = { lemmings: [], skillActions: [], actions: [] };
+    const manager = {
+      lemmings: [],
+      skillActions: [],
+      actions: [],
+      _lemmingCtor: function ReplayCtor(x, y, id) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
+      }
+    };
     const game = {
       getLemmingManager: () => manager,
       getGameTimer: () => timer,
@@ -785,6 +799,11 @@ describe('HistoryStore', function() {
       _activeDirty: false,
       actions: [walkAction],
       skillActions: [],
+      _lemmingCtor: function ReplayCtor(x, y, id) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
+      },
       actionTypeByAction: new Map([[walkAction, 0]]),
       selectedIndex: -1,
       spawnTotal: 2,
@@ -2514,7 +2533,12 @@ describe('HistoryStore', function() {
 
     const manager = {
       lemmings: null,
-      actions: [walkAction]
+      actions: [walkAction],
+      _lemmingCtor: function ReplayCtor(x, y, id) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
+      }
     };
 
     const addList = [{
@@ -3003,7 +3027,15 @@ describe('HistoryStore', function() {
 
   it('initializes missing lemming arrays during keyframe apply', function() {
     const history = new HistoryStore();
-    const manager = { actions: [], skillActions: [] };
+    const manager = {
+      actions: [],
+      skillActions: [],
+      _lemmingCtor: function ReplayCtor(x, y, id) {
+        this.x = x;
+        this.y = y;
+        this.id = id;
+      }
+    };
     const game = {
       level: { entrances: [] },
       finalGameState: 0,
@@ -3074,8 +3106,9 @@ describe('HistoryStore', function() {
     manager.lemmings = [];
     lemmingState.x[0] = 7;
     lemmingState.y[0] = 8;
-    history.applyKeyframe(game, { lemmingState });
-    expect(manager.lemmings[0]).to.be.ok;
+    expect(() => history.applyKeyframe(game, { lemmingState })).to.throw(
+      /manager\._acquireLemming\(\) or manager\._lemmingCtor/
+    );
   });
 
   it('compacts cold delta blocks and resolves sentinel-backed deltas', function() {

@@ -285,7 +285,10 @@ class LemmingManager extends BaseLogger {
       lem.reset(x, y, id);
       return lem;
     }
-    const LemmingCtor = this._lemmingCtor || Lemming;
+    const LemmingCtor = this._lemmingCtor;
+    if (typeof LemmingCtor !== 'function') {
+      throw new Error('LemmingManager requires an explicit lemming constructor.');
+    }
     return new LemmingCtor(x, y, id);
   }
 

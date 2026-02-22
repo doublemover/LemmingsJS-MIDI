@@ -2203,8 +2203,7 @@ class HistoryStore {
         }
         let lem = manager.lemmings[i];
         if (!lem) {
-          const ctor = manager._lemmingCtor || null;
-          lem = ctor ? new ctor(state.x[i], state.y[i], i) : { id: i };
+          lem = this._createReplayLemming(manager, state.x[i], state.y[i], i);
           manager.lemmings[i] = lem;
         }
         const action = state.actionType[i] >= 0 ? manager.actions?.[state.actionType[i]] : null;
@@ -2375,6 +2374,17 @@ class HistoryStore {
     return ensureDeltaFlags(delta);
   }
 
+  _createReplayLemming(manager, x, y, id) {
+    if (!manager) return null;
+    if (typeof manager._acquireLemming === 'function') {
+      const lem = manager._acquireLemming(x, y, id);
+      if (lem && typeof lem === 'object') return lem;
+    } else if (typeof manager._lemmingCtor === 'function') {
+      return new manager._lemmingCtor(x, y, id);
+    }
+    throw new Error('HistoryStore replay apply requires manager._acquireLemming() or manager._lemmingCtor.');
+  }
+
   _applyLemmingAdds(manager, list) {
     if (!manager || !Array.isArray(list) || !list.length) return;
     const countdownAction = manager.skillActions?.[SkillTypes.BOMBER] ?? null;
@@ -2383,8 +2393,7 @@ class HistoryStore {
       if (snap == null || !Number.isFinite(snap.id)) continue;
       let lem = manager.lemmings[snap.id];
       if (!lem) {
-        const ctor = manager._lemmingCtor || null;
-        lem = ctor ? new ctor(snap.x, snap.y, snap.id) : { id: snap.id };
+        lem = this._createReplayLemming(manager, snap.x, snap.y, snap.id);
         manager.lemmings[snap.id] = lem;
       }
       const action = snap.actionType >= 0 ? manager.actions?.[snap.actionType] : null;

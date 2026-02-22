@@ -242,11 +242,10 @@ describe('LemmingManager coverage', function() {
     expect(manager.lemmings[0].custom).to.equal(true);
   });
 
-  it('uses the default lemming constructor by default', function() {
+  it('requires an explicit lemming constructor', function() {
     const { manager } = makeManager();
     manager._lemmingCtor = null;
-    manager.addLemming(1, 1);
-    expect(manager.lemmings[0]).to.be.instanceOf(Lemming);
+    expect(() => manager.addLemming(1, 1)).to.throw(/explicit lemming constructor/);
   });
 
   it('ticks with minimap updates and compacts active list', function() {
