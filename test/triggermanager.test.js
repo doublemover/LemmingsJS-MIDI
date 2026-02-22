@@ -19,9 +19,9 @@ describe('TriggerManager', function () {
     const c = new Trigger(TriggerTypes.DROWN, 20, 20, 22, 22, 0, -1, { id: 'c' });
     tm.addRange([a, b, c]);
 
-    expect(tm._grid[0].has(a)).to.be.true;
-    expect(tm._grid[1].has(b)).to.be.true;
-    expect(tm._grid[3].has(c)).to.be.true;
+    expect(tm._grid[0].includes(a)).to.be.true;
+    expect(tm._grid[1].includes(b)).to.be.true;
+    expect(tm._grid[3].includes(c)).to.be.true;
 
     expect(tm.trigger(2, 2)).to.equal(TriggerTypes.TRAP);
     expect(tm.trigger(21, 2)).to.equal(TriggerTypes.FRYING);
@@ -29,7 +29,7 @@ describe('TriggerManager', function () {
     expect(tm.trigger(2, 21)).to.equal(TriggerTypes.NO_TRIGGER);
 
     tm.removeByOwner(a.owner);
-    expect(tm._grid[0].has(a)).to.be.false;
+    expect(tm._grid[0].includes(a)).to.be.false;
     expect(tm.trigger(2, 2)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 

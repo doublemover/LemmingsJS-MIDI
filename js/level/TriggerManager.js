@@ -49,9 +49,10 @@ class TriggerManager {
     this._rows   = (levelH  >> this._shift) + 1;   // e.g.  160 → 11
     const slots  = this._cols * this._rows;
 
-    this._grid   = Array.from({length: slots}, () => new Set());
+    this._grid   = Array.from({length: slots}, () => []);
 
     this._triggers = new Set();
+    this._ownerTriggers = new Map();
 
     /* debug bookkeeping */
     this._lastCheckTick = new Uint32Array(slots);
@@ -71,6 +72,15 @@ class TriggerManager {
   add (trigger) {
     if (this._triggers.has(trigger)) return;
     this._triggers.add(trigger);
+    const owner = trigger.owner ?? null;
+    if (owner) {
+      let list = this._ownerTriggers.get(owner);
+      if (!list) {
+        list = [];
+        this._ownerTriggers.set(owner, list);
+      }
+      list.push(trigger);
+    }
     this.#insert(trigger);
     this._debugFrame = null;
     const history = globalThis?.lemmings?.game?.history ?? null;
@@ -97,8 +107,17 @@ class TriggerManager {
   /** Remove every trigger that belongs to `owner` */
   removeByOwner (owner) {
     if (!this._triggers) return;
+    const list = this._ownerTriggers.get(owner);
+    if (list?.length) {
+      for (let i = 0; i < list.length; i += 1) {
+        this.#remove(list[i]);
+      }
+      return;
+    }
     for (const tr of this._triggers) {
-      if (tr.owner === owner) this.#remove(tr);
+      if (tr.owner === owner) {
+        this.#remove(tr);
+      }
     }
     this._debugFrame = null;
   }
@@ -126,7 +145,8 @@ class TriggerManager {
 
       this._lastCheckTick[bucket] = tick;
 
-      for (const trig of cell) {
+      for (let i = 0; i < cell.length; i += 1) {
+        const trig = cell[i];
         const val = trig.trigger(x, y, tick, lemming);
         if (val !== TriggerTypes.NO_TRIGGER) {
           this._lastHitTick[bucket] = tick;
@@ -160,7 +180,7 @@ class TriggerManager {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 255, 0, 0);
         } else if (this._lastCheckTick[idx] === tick) {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 255, 255, 255);
-        } else if (this._grid[idx].size === 0) {
+        } else if (this._grid[idx].length === 0) {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 128, 128, 128);
         } else {
           g.drawRect(c * cs, r * cs, cs - 1, cs - 1, 0, 0, 255);
@@ -202,7 +222,7 @@ class TriggerManager {
       const base = r * this._cols;
       for (let c = c0; c <= c1; ++c) {
         const idx = base + c;
-        this._grid[idx].add(trigger);
+        this._grid[idx].push(trigger);
         buckets[bucketIndex++] = idx;
       }
     }
@@ -215,7 +235,32 @@ class TriggerManager {
     if (buckets) {
       for (let i = 0; i < buckets.length; i += 1) {
         const idx = buckets[i];
-        this._grid[idx].delete(trigger);
+        const cell = this._grid[idx];
+        if (!cell?.length) continue;
+        for (let j = cell.length - 1; j >= 0; j -= 1) {
+          if (cell[j] === trigger) {
+            const last = cell.length - 1;
+            if (j !== last) cell[j] = cell[last];
+            cell.length = last;
+            break;
+          }
+        }
+      }
+    }
+    const owner = trigger.owner ?? null;
+    if (owner) {
+      const ownerList = this._ownerTriggers.get(owner);
+      if (ownerList?.length) {
+        for (let i = ownerList.length - 1; i >= 0; i -= 1) {
+          if (ownerList[i] !== trigger) continue;
+          const last = ownerList.length - 1;
+          if (i !== last) ownerList[i] = ownerList[last];
+          ownerList.length = last;
+          break;
+        }
+        if (ownerList.length === 0) {
+          this._ownerTriggers.delete(owner);
+        }
       }
     }
     const history = globalThis?.lemmings?.game?.history ?? null;
@@ -239,6 +284,7 @@ class TriggerManager {
     this.gameTimer = null;
     this._grid   = null;
     this._triggers = null;
+    this._ownerTriggers = null;
     this._debugFrame = null;
   }
 }
