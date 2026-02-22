@@ -20,26 +20,37 @@ const preserveGlobals = (names) => {
 };
 
 describe('app boot helpers', function () {
-  it('applies responsive canvas sizing and jQuery resize binding', async function () {
-    const restore = preserveGlobals(['window', 'document', '$', 'jQuery', '__LEMMINGS_BOOT_NO_AUTO_START__']);
+  it('applies responsive canvas sizing and native resize binding', async function () {
+    const restore = preserveGlobals(['window', 'document', '__LEMMINGS_BOOT_NO_AUTO_START__']);
     const classSet = new Set();
+    const containerClasses = new Set();
     const container = {
-      styles: {},
-      classes: new Set(),
-      css(name, value) { this.styles[name] = value; return this; },
-      addClass(name) { this.classes.add(name); return this; },
-      removeClass(name) { this.classes.delete(name); return this; },
-      width(value) { this._width = value; return this; },
-      height(value) { this._height = value; return this; }
+      style: {},
+      classList: {
+        add(name) {
+          containerClasses.add(name);
+        },
+        remove(name) {
+          containerClasses.delete(name);
+        }
+      }
     };
-    const windowBindings = [];
+    const listeners = [];
 
     try {
       const windowStub = {
-        visualViewport: { width: 1600, height: 800 },
+        visualViewport: {
+          width: 1600,
+          height: 800,
+          addEventListener(type, handler) {
+            listeners.push({ type, handler });
+          }
+        },
         innerWidth: 1600,
         innerHeight: 800,
-        addEventListener() {},
+        addEventListener(type, handler) {
+          listeners.push({ type, handler });
+        },
         removeEventListener() {}
       };
       const documentStub = {
@@ -55,26 +66,17 @@ describe('app boot helpers', function () {
           clientWidth: 1600,
           clientHeight: 800
         },
+        querySelector(selector) {
+          if (selector === '.game_container') return container;
+          return null;
+        },
         getElementById() {
           return null;
         }
       };
-      const jqueryStub = (target) => {
-        if (target === '.game_container') return container;
-        if (target === windowStub) {
-          return {
-            on: (events, handler) => {
-              windowBindings.push({ events, handler });
-            }
-          };
-        }
-        return null;
-      };
 
       globalThis.window = windowStub;
       globalThis.document = documentStub;
-      globalThis.$ = jqueryStub;
-      globalThis.jQuery = jqueryStub;
       globalThis.__LEMMINGS_BOOT_NO_AUTO_START__ = true;
 
       const boot = await import(`../js/app/boot.js?boot_test=${Date.now()}`);
@@ -92,24 +94,31 @@ describe('app boot helpers', function () {
       boot.setSize();
       boot.bindResize();
 
-      expect(container.classes.has('small')).to.equal(false);
+      expect(containerClasses.has('small')).to.equal(false);
+      expect(container.style.width).to.equal('1333.3333333333335px');
+      expect(container.style.height).to.equal('800px');
       expect(canvas.style.width).to.equal('1333.3333333333335px');
       expect(canvas.style.height).to.equal('800px');
       expect(stageResizeCalls).to.equal(1);
       expect(classSet.has('portrait-small')).to.equal(false);
-      expect(windowBindings).to.have.lengthOf(1);
-      expect(windowBindings[0].events).to.equal('resize orientationchange');
+      expect(listeners.map((entry) => entry.type)).to.deep.equal(['resize', 'orientationchange', 'resize']);
     } finally {
       restore();
     }
   });
 
-  it('falls back to native resize listeners when jQuery is unavailable', async function () {
-    const restore = preserveGlobals(['window', 'document', '$', 'jQuery', '__LEMMINGS_BOOT_NO_AUTO_START__']);
+  it('registers resize listeners only once', async function () {
+    const restore = preserveGlobals(['window', 'document', '__LEMMINGS_BOOT_NO_AUTO_START__']);
     try {
       const listeners = [];
       globalThis.window = {
-        visualViewport: { width: 500, height: 700 },
+        visualViewport: {
+          width: 500,
+          height: 700,
+          addEventListener(type, handler) {
+            listeners.push({ type, handler });
+          }
+        },
         innerWidth: 500,
         innerHeight: 700,
         addEventListener(type, handler) {
@@ -120,17 +129,19 @@ describe('app boot helpers', function () {
       globalThis.document = {
         body: { classList: { toggle() {} } },
         documentElement: { clientWidth: 500, clientHeight: 700 },
+        querySelector() {
+          return null;
+        },
         getElementById() {
           return null;
         }
       };
-      delete globalThis.$;
-      delete globalThis.jQuery;
       globalThis.__LEMMINGS_BOOT_NO_AUTO_START__ = true;
 
       const boot = await import(`../js/app/boot.js?boot_test_nojq=${Date.now()}`);
       boot.bindResize();
-      expect(listeners.map((entry) => entry.type)).to.deep.equal(['resize', 'orientationchange']);
+      boot.bindResize();
+      expect(listeners.map((entry) => entry.type)).to.deep.equal(['resize', 'orientationchange', 'resize']);
     } finally {
       restore();
     }

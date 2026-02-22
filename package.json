@@ -67,7 +67,6 @@
       "test/**",
       "js/xbrz/**",
       "js/vendor/**",
-      "js/vendor/jquery.js",
       "js/vendor/webmidi.js"
     ]
   },

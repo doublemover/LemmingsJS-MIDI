@@ -13,9 +13,6 @@ import {
   saveLevel
 } from '../editor/EditorStorage.js';
 
-const $ = globalThis.$ || globalThis.jQuery;
-const jQuery = globalThis.jQuery || $;
-
 const GAME_SHORTCUT_SECTIONS = [
   {
     title: 'General',
@@ -74,6 +71,7 @@ const GAME_SHORTCUT_SECTIONS = [
 let midiUi = null;
 let midiInputController = null;
 let lemmings;
+let resizeBound = false;
 
 const setLemmingsForTest = (value) => {
   lemmings = value;
@@ -254,7 +252,7 @@ function setSize() {
   const baseW = 800;
   const baseH = 480;
   const ratio = baseW / baseH;
-  const gameContainer = jQuery('.game_container');
+  const gameContainer = document.querySelector('.game_container');
   const docEl = document.documentElement;
   const viewport = window.visualViewport;
   const width = Math.max(1, viewport?.width || docEl.clientWidth || window.innerWidth);
@@ -267,22 +265,28 @@ function setSize() {
   if (width >= height * ratio) {
     containerWidth = height * ratio;
     containerHeight = height;
-    gameContainer.css('margin-top', '');
-    gameContainer.css('margin-left', (width - containerWidth) / 2);
-    gameContainer.removeClass('small');
+    if (gameContainer) {
+      gameContainer.style.marginTop = '';
+      gameContainer.style.marginLeft = `${(width - containerWidth) / 2}px`;
+      gameContainer.classList.remove('small');
+    }
   } else {
     containerWidth = width;
     containerHeight = width / ratio;
-    gameContainer.css('margin-top', (height - containerHeight) / 2);
-    gameContainer.css('margin-left', '');
-    gameContainer.addClass('small');
+    if (gameContainer) {
+      gameContainer.style.marginTop = `${(height - containerHeight) / 2}px`;
+      gameContainer.style.marginLeft = '';
+      gameContainer.classList.add('small');
+    }
   }
 
   if (containerWidth > width) containerWidth = width;
   if (containerHeight > height) containerHeight = height;
 
-  gameContainer.width(containerWidth);
-  gameContainer.height(containerHeight);
+  if (gameContainer) {
+    gameContainer.style.width = `${containerWidth}px`;
+    gameContainer.style.height = `${containerHeight}px`;
+  }
 
   const canvas = lemmings?.gameCanvas || optionalElement(document, 'gameCanvas');
   if (canvas) {
@@ -298,14 +302,11 @@ function setSize() {
 }
 
 function bindResize() {
-  if (typeof $ === 'function' && $(window)?.on) {
-    $(window).on('resize orientationchange', function() {
-      setSize();
-    });
-  } else {
-    window.addEventListener('resize', setSize);
-    window.addEventListener('orientationchange', setSize);
-  }
+  if (resizeBound) return;
+  resizeBound = true;
+  window.addEventListener('resize', setSize);
+  window.addEventListener('orientationchange', setSize);
+  window.visualViewport?.addEventListener?.('resize', setSize);
 }
 
 function start() {
