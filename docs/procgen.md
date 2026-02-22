@@ -1,49 +1,51 @@
 # Procgen (Endless) Specification
 
-This page describes the standalone `procgen.html` experience: an endless,
-full-viewport Lemmings run with no HUD/minimap/cursor and a procedural ground
-generator that keeps the lemmings moving to the right.
+This page describes the standalone `procgen.html` runtime: an endless,
+full-viewport Lemmings run with procedural terrain streaming, no HUD/minimap,
+and no MIDI UI.
 
 ## Scope
-- Use the second pack (Oh No) assets and the second classic style (fire).
-- Full-viewport canvas, no MIDI UI, no HUD/minimap, no cursor.
-- Endless spawning: the level never ends and lemmings keep releasing.
-- Procedural ground extends to the right so lemmings continue traveling.
-- Camera stays centered on the rightmost lemming, with smooth follow.
+- Use `OHNO` resources with classic styles loaded through the normal pack
+  pipeline.
+- Run full-viewport canvas mode with hidden GUI/cursor and endless spawning.
+- Stream terrain/decor/hazards to the right while keeping camera follow smooth.
+- Keep long-run memory bounded for tracking structures used by procgen AI.
 
-## Fixed constants
-- Game type: `OHNO` (second pack).
-- Style: `fire` (groundSet 1).
-- Level width: 8192 (long runway without reallocating buffers).
-- Level height: `DEFAULT_LEVEL_HEIGHT` (classic height).
-- Release rate: 50, release count: 50, save requirement: 0.
-- Time limit: `INFINITE` (endless mode handles time).
-- Ground height: 8 px.
-- Initial ground width: 240 px.
-- Ground segment width: 160 px.
-- Ground extension threshold: 80 px.
-- Lookahead distance: 240 px.
-- Camera follow lerp: 0.12.
+## Runtime constants
+- Game type: `OHNO`.
+- Level width: `65535`.
+- Level height: `DEFAULT_LEVEL_HEIGHT`.
+- Release rate: `50`, release count: `50`, save requirement: `0`.
+- Time limit: `INFINITE`.
+- Ground height: `4`.
+- Initial ground width: `280`.
+- Camera follow smoothing: frame-time-based interpolation.
 
-## Level bootstrap
-- Create an empty editor level and convert it via `loadEditorLevel`.
-- Add a single entrance gadget (`PIECE: 1`) near the left edge.
-- Place initial ground beneath the entrance so the first lemmings land safely.
-- Set `endless = true` on the view so spawning never stops.
+## Bootstrap flow
+- Build an `EditorLevel`, set procgen headers, and place one entrance gadget.
+- Convert via `loadEditorLevel`, then load into `Game` through `GameFactory`.
+- Set `view.endless = true` so release never stops.
+- Pick a style compatible with the active pack path and cache the last choice in
+  `localStorage` when available.
 
-## Procedural ground rules
-- Track the rightmost lemming X.
-- If `rightmostX + lookahead >= groundEndX - threshold`, append a new ground
-  segment starting at `groundEndX`.
-- Clamp ground placement within level bounds.
-- Ground uses a single palette index for now (no terrain sprites yet).
+## Terrain and AI behavior
+- Maintain `groundEndX`; extend terrain whenever lead progress nears the
+  extension threshold.
+- Prefer terrain piece stamping (`ProcgenTerrainStamper`) over per-pixel writes.
+- Use environment scans (gap/wall/hazard) plus budgeted AI assist skills.
+- Track unassigned gaps and assign builders as lemmings approach.
+- Periodically prune stale per-lemming tracking/cooldown state for long runs.
 
-## Camera follow
-- Each tick, compute target X so the rightmost lemming is centered.
-- Smoothly lerp the camera toward the target (no snapping).
-- Use Stage clamping to keep the view within bounds.
+## Production hardening notes
+- Hazard scans use a rebuilt hazard index instead of per-scan trigger-set
+  allocation.
+- Gap backlog pruning runs even with no active lemmings to avoid stale growth.
+- Terrain stamping reuses cached destination typed-array views per level buffer.
+- Asset-piece selection avoids temporary filtered arrays in hot paths.
 
-## E2E smoke checks
-- Page loads and `__E2E__.getState().ready` is true.
-- Lemmings spawn over time (count increases after steps).
-- View X increases as the rightmost lemming advances.
+## Validation
+- `e2e/procgen.spec.js` verifies readiness, endless spawn progression, and
+  camera advance.
+- Unit tests in `test/procgen-controller.test.js`,
+  `test/procgen-terrain-stamper.test.js`, and
+  `test/procgen-asset-manager.test.js` cover stability/perf-sensitive behavior.

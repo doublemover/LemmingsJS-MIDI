@@ -3,6 +3,13 @@ import { SkillTypes } from '../game/SkillTypes.js';
 import { SoundEventTypes } from '../game/SoundEvents.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 
+const HAZARD_TRIGGER_TYPES = new Set([
+  TriggerTypes.TRAP,
+  TriggerTypes.DROWN,
+  TriggerTypes.KILL,
+  TriggerTypes.FRYING
+]);
+
 class ProcgenController {
   constructor({ view, game, level, assets, stamper, options = {} }) {
     this.view = view || null;
@@ -28,7 +35,7 @@ class ProcgenController {
     this._sustainBaseY = 0;
     this._sustainRemaining = 0;
     this._builderCursorId = 0;
-    this._seenFalls = new Set();
+    this._seenFalls = new Map();
     this._soundHandler = null;
     this._builderBurst = null;
     this._cameraTargetX = null;
@@ -50,6 +57,11 @@ class ProcgenController {
     this._aiDebug = null;
     this._aiLemmingCooldown = new Map();
     this._aiStallState = new Map();
+    this._hazardTriggers = [];
+    this._hazardTriggerSource = null;
+    this._hazardTriggerSourceSize = -1;
+    this._hazardIndexLastRefreshTick = -Infinity;
+    this._trackerPruneElapsed = 0;
     this._leftFallCounter = 0;
     this._splatStreak = 0;
     this._splatTarget = this._randInt(3, 10);
@@ -78,6 +90,15 @@ class ProcgenController {
     this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
     this.aiDebugOverlay = options.aiDebugOverlay === true;
     this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 5;
+    this.aiHazardIndexRefreshTicks = Number.isFinite(options.aiHazardIndexRefreshTicks)
+      ? Math.max(1, Math.floor(options.aiHazardIndexRefreshTicks))
+      : 64;
+    this.aiTrackerPruneIntervalSeconds = Number.isFinite(options.aiTrackerPruneIntervalSeconds)
+      ? Math.max(1, Math.floor(options.aiTrackerPruneIntervalSeconds))
+      : 10;
+    this.fallEventMemoryTicks = Number.isFinite(options.fallEventMemoryTicks)
+      ? Math.max(30, Math.floor(options.fallEventMemoryTicks))
+      : 360;
     this.entranceX = Number.isFinite(options.entranceX) ? options.entranceX : null;
     this.entranceY = Number.isFinite(options.entranceY) ? options.entranceY : null;
     this.entranceClearance = Number.isFinite(options.entranceClearance) ? options.entranceClearance : 24;
@@ -89,6 +110,7 @@ class ProcgenController {
     this._running = true;
     this._initGround();
     this._initAiDirector();
+    this._rebuildHazardIndex(0);
     if (this.aiDebugOverlay) {
       this._initDebugOverlay();
     }
@@ -105,6 +127,13 @@ class ProcgenController {
     this._running = false;
     this._unbindTimer();
     this._unbindSoundEvents();
+    this._destroyDebugOverlay();
+    this._builderBurst = null;
+    this._pendingMidairBuilder = null;
+    this._seenFalls.clear();
+    this._aiLemmingCooldown.clear();
+    this._aiStallState.clear();
+    this._gaps.length = 0;
   }
 
   _bindTimer() {
@@ -131,8 +160,15 @@ class ProcgenController {
         return;
       }
       const lemmingId = event?.lemmingId;
-      if (this._seenFalls.has(lemmingId)) return;
-      this._seenFalls.add(lemmingId);
+      const timer = this.game?.getGameTimer?.();
+      const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+      if (Number.isFinite(lemmingId)) {
+        const seenAtTick = this._seenFalls.get(lemmingId);
+        if (Number.isFinite(seenAtTick) && tick - seenAtTick <= this.fallEventMemoryTicks) {
+          return;
+        }
+        this._seenFalls.set(lemmingId, tick);
+      }
       if (event?.type === SoundEventTypes.LEMMING_SPLAT) {
         this._splatStreak += 1;
         if (this._splatStreak >= this._splatTarget && !this._pendingMidairBuilder) {
@@ -219,9 +255,14 @@ class ProcgenController {
     this._lastSecond = seconds;
     this._bombCheckElapsed += delta;
     this._nukeElapsed += delta;
+    this._trackerPruneElapsed += delta;
     this._updateAiBudget(delta);
     this._maybeTriggerBomber();
     this._maybeTriggerNuke();
+    if (this._trackerPruneElapsed >= this.aiTrackerPruneIntervalSeconds) {
+      this._trackerPruneElapsed = 0;
+      this._pruneTrackingState(tick);
+    }
   }
 
   _initAiDirector() {
@@ -432,25 +473,37 @@ class ProcgenController {
   }
 
   _findHazardAhead(x, y, scanAhead, dir) {
-    const triggers = this.level?.triggers;
-    if (!Array.isArray(triggers) || triggers.length === 0) return null;
-    const hazardSet = new Set([
-      TriggerTypes.TRAP,
-      TriggerTypes.DROWN,
-      TriggerTypes.KILL,
-      TriggerTypes.FRYING
-    ]);
+    const triggerList = this.level?.triggers;
+    const sourceSize = triggerList?.length ?? 0;
+    const timer = this.game?.getGameTimer?.();
+    const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    const dueRefresh = tick - this._hazardIndexLastRefreshTick >= this.aiHazardIndexRefreshTicks;
+    if (triggerList !== this._hazardTriggerSource ||
+        sourceSize !== this._hazardTriggerSourceSize ||
+        dueRefresh) {
+      this._rebuildHazardIndex(tick);
+    }
+    const hazards = this._hazardTriggers;
+    if (!hazards.length) return null;
     const maxDx = Math.max(1, Math.floor(scanAhead));
-    for (let dx = 1; dx <= maxDx; dx++) {
-      const px = x + dx * dir;
-      for (const trigger of triggers) {
-        if (!trigger || !hazardSet.has(trigger.type)) continue;
-        if (px >= trigger.x1 && px <= trigger.x2 && y >= trigger.y1 && y <= trigger.y2) {
-          return { dx, type: trigger.type };
-        }
+    const minX = dir >= 0 ? x + 1 : x - maxDx;
+    const maxX = dir >= 0 ? x + maxDx : x - 1;
+    let best = null;
+    for (let i = 0; i < hazards.length; i += 1) {
+      const trigger = hazards[i];
+      if (trigger.x1 > maxX) break;
+      if (trigger.x2 < minX) continue;
+      if (y < trigger.y1 || y > trigger.y2) continue;
+      const dx = dir >= 0
+        ? (trigger.x1 <= x + 1 ? 1 : trigger.x1 - x)
+        : (trigger.x2 >= x - 1 ? 1 : x - trigger.x2);
+      if (dx < 1 || dx > maxDx) continue;
+      if (!best || dx < best.dx) {
+        best = { dx, type: trigger.type };
+        if (dx === 1) break;
       }
     }
-    return null;
+    return best;
   }
 
   _decideAssist(lemming, scan, tick) {
@@ -675,45 +728,41 @@ class ProcgenController {
     if (!this._gaps.length) return;
     const manager = this.game?.getLemmingManager?.();
     const lems = manager?.lemmings || [];
-    if (!lems.length) return;
-    const follow = this._getFollowLemming();
-    const leadId = follow?.id ?? null;
-    const leadX = Number.isFinite(follow?.x) ? follow.x : null;
-    for (const gap of this._gaps) {
-      if (!gap || gap.assigned) continue;
-      if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
-      const triggerX = gap.x - this.gapTriggerDistance;
-      if (Number.isFinite(leadX) && leadX < triggerX) continue;
-      let best = null;
-      let bestDist = Infinity;
-      for (const lem of lems) {
-        if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-        const actionName = lem.action?.getActionName?.() || '';
-        if (actionName && actionName !== 'walking') continue;
-        const dist = Math.abs((lem.x ?? 0) - gap.x);
-        if (dist < bestDist) {
-          bestDist = dist;
-          best = lem;
+    let leadX = null;
+    if (lems.length) {
+      const follow = this._getFollowLemming();
+      const leadId = follow?.id ?? null;
+      leadX = Number.isFinite(follow?.x) ? follow.x : null;
+      for (const gap of this._gaps) {
+        if (!gap || gap.assigned) continue;
+        if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
+        const triggerX = gap.x - this.gapTriggerDistance;
+        if (Number.isFinite(leadX) && leadX < triggerX) continue;
+        let best = null;
+        let bestDist = Infinity;
+        for (const lem of lems) {
+          if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
+          const actionName = lem.action?.getActionName?.() || '';
+          if (actionName && actionName !== 'walking') continue;
+          const dist = Math.abs((lem.x ?? 0) - gap.x);
+          if (dist < bestDist) {
+            bestDist = dist;
+            best = lem;
+          }
+        }
+        if (!best) continue;
+        if (leadId != null && best.id !== leadId && Number.isFinite(leadX)) {
+          if (best.x < leadX - 8) continue;
+        }
+        if (manager.doLemmingAction(best, SkillTypes.BUILDER)) {
+          const timer = this.game?.getGameTimer?.();
+          const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+          this._noteAiAction(best, tick, 48);
+          gap.assigned = true;
         }
       }
-      if (!best) continue;
-      if (leadId != null && best.id !== leadId && Number.isFinite(leadX)) {
-        if (best.x < leadX - 8) continue;
-      }
-      if (manager.doLemmingAction(best, SkillTypes.BUILDER)) {
-        const timer = this.game?.getGameTimer?.();
-        const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
-        this._noteAiAction(best, tick, 48);
-        gap.assigned = true;
-      }
     }
-    const cutoff = Number.isFinite(this._cameraX) ? this._cameraX - 200 : null;
-    this._gaps = this._gaps.filter(gap => {
-      if (!gap) return false;
-      if (!gap.assigned) return true;
-      if (cutoff == null) return false;
-      return gap.x + gap.width > cutoff;
-    });
+    this._pruneGapQueue(leadX);
   }
 
   _processMidairBuilder() {
@@ -1067,6 +1116,80 @@ class ProcgenController {
     }
   }
 
+  _pruneGapQueue(referenceX = null) {
+    const anchorX = Number.isFinite(referenceX)
+      ? referenceX
+      : (Number.isFinite(this._cameraX) ? this._cameraX : this._getRightmostX());
+    const cutoff = Number.isFinite(anchorX) ? anchorX - 200 : null;
+    if (!Number.isFinite(cutoff)) return;
+    let write = 0;
+    for (let i = 0; i < this._gaps.length; i += 1) {
+      const gap = this._gaps[i];
+      if (!gap) continue;
+      if (!Number.isFinite(gap.x) || !Number.isFinite(gap.width)) continue;
+      if ((gap.x + gap.width) <= cutoff) continue;
+      this._gaps[write] = gap;
+      write += 1;
+    }
+    this._gaps.length = write;
+  }
+
+  _collectActiveLemmingIds() {
+    const manager = this.game?.getLemmingManager?.();
+    const lems = manager?.lemmings || [];
+    const ids = new Set();
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (!lem || lem.removed || lem.disabled) continue;
+      if (!Number.isFinite(lem.id)) continue;
+      ids.add(lem.id);
+    }
+    return ids;
+  }
+
+  _pruneTrackingState(tick) {
+    const activeIds = this._collectActiveLemmingIds();
+    for (const [id, untilTick] of this._aiLemmingCooldown) {
+      if (activeIds.has(id) && (!Number.isFinite(tick) || untilTick >= tick - 120)) continue;
+      this._aiLemmingCooldown.delete(id);
+    }
+    for (const id of this._aiStallState.keys()) {
+      if (activeIds.has(id)) continue;
+      this._aiStallState.delete(id);
+    }
+    const minSeenTick = Number.isFinite(tick) ? tick - this.fallEventMemoryTicks : -Infinity;
+    for (const [id, seenTick] of this._seenFalls) {
+      if (activeIds.has(id)) continue;
+      if (Number.isFinite(seenTick) && seenTick >= minSeenTick) continue;
+      this._seenFalls.delete(id);
+    }
+    this._pruneGapQueue();
+  }
+
+  _rebuildHazardIndex(tick = null) {
+    const triggers = this.level?.triggers;
+    this._hazardTriggerSource = triggers || null;
+    this._hazardTriggers = [];
+    this._hazardTriggerSourceSize = Array.isArray(triggers) ? triggers.length : 0;
+    this._hazardIndexLastRefreshTick = Number.isFinite(tick) ? tick : 0;
+    if (!Array.isArray(triggers) || triggers.length === 0) return;
+    for (const trigger of triggers) {
+      if (!trigger || !HAZARD_TRIGGER_TYPES.has(trigger.type)) continue;
+      const x1 = Math.min(trigger.x1, trigger.x2);
+      const x2 = Math.max(trigger.x1, trigger.x2);
+      const y1 = Math.min(trigger.y1, trigger.y2);
+      const y2 = Math.max(trigger.y1, trigger.y2);
+      this._hazardTriggers.push({
+        x1,
+        x2,
+        y1,
+        y2,
+        type: trigger.type
+      });
+    }
+    this._hazardTriggers.sort((a, b) => a.x1 - b.x1);
+  }
+
   _pickSegmentWidth() {
     const min = Math.max(2, Math.floor(this.segmentMinWidth));
     const max = Math.max(min, Math.floor(this.segmentMaxWidth));
@@ -1249,6 +1372,12 @@ class ProcgenController {
     panel.textContent = 'AI: ready';
     doc.body.appendChild(panel);
     this._aiDebug = panel;
+  }
+
+  _destroyDebugOverlay() {
+    if (!this._aiDebug) return;
+    this._aiDebug.remove();
+    this._aiDebug = null;
   }
 
   _updateDebugOverlay() {

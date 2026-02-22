@@ -62,6 +62,7 @@ class ProcgenAssetManager {
     this.decorPieces = [];
     this.gadgetDecor = [];
     this.gadgetHazards = [];
+    this._pickCache = new WeakMap();
   }
 
   async load() {
@@ -109,6 +110,7 @@ class ProcgenAssetManager {
       if (piece.isSteel) return false;
       return piece.solidRatio > 0 && piece.solidRatio < 0.2;
     });
+    this._pickCache = new WeakMap();
   }
 
   _buildGadgetCatalog(assets) {
@@ -127,21 +129,33 @@ class ProcgenAssetManager {
 
   _pickFromList(list, maxWidth, minHeight = 1, minWidth = 1) {
     if (!Array.isArray(list) || list.length === 0) return null;
-    let candidates = list;
-    if (Number.isFinite(maxWidth)) {
-      candidates = candidates.filter(piece => piece.bounds.width <= maxWidth);
+    let listCache = this._pickCache.get(list);
+    if (!listCache) {
+      listCache = new Map();
+      this._pickCache.set(list, listCache);
     }
-    if (Number.isFinite(minHeight)) {
-      candidates = candidates.filter(piece => piece.bounds.height >= minHeight);
+    const key = `${Number.isFinite(maxWidth) ? maxWidth : 'inf'}:${Number.isFinite(minHeight) ? minHeight : 'inf'}:${Number.isFinite(minWidth) ? minWidth : 'inf'}`;
+    let candidates = listCache.get(key);
+    if (!candidates) {
+      candidates = [];
+      for (let i = 0; i < list.length; i += 1) {
+        const piece = list[i];
+        const bounds = piece?.bounds;
+        if (!bounds) continue;
+        if (Number.isFinite(maxWidth) && bounds.width > maxWidth) continue;
+        if (Number.isFinite(minHeight) && bounds.height < minHeight) continue;
+        if (Number.isFinite(minWidth) && bounds.width < minWidth) continue;
+        candidates.push(piece);
+      }
+      if (listCache.size > 128) listCache.clear();
+      listCache.set(key, candidates);
     }
-    if (Number.isFinite(minWidth)) {
-      candidates = candidates.filter(piece => piece.bounds.width >= minWidth);
+    if (candidates.length) {
+      const idx = Math.floor(this.random() * candidates.length);
+      return candidates[idx];
     }
-    if (candidates.length === 0) {
-      candidates = list;
-    }
-    const idx = Math.floor(this.random() * candidates.length);
-    return candidates[idx];
+    const idx = Math.floor(this.random() * list.length);
+    return list[idx];
   }
 
   pickGroundPiece(maxWidth, minHeight, minWidth) {

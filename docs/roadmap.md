@@ -114,8 +114,9 @@ Notes:
 - [x] Support for other popular pack types (`.nxp` archive reads in tooling).
 - [x] High resolution and 32-bit color sprite support (renderer/object paths now
   accept RGBA frames and optional sourceScale downsampling for hi-res assets).
-- [ ] Procgen production hardening and long-run stability/perf at high entity
-  counts.
+- [x] Procgen production hardening and long-run stability/perf at high entity
+  counts (bounded tracking-state pruning, indexed hazard scans, and lower-allocation
+  terrain/asset hot paths).
 
 ## Phase 9: Gamepad support (deferred)
 - [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
