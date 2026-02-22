@@ -1,5 +1,11 @@
 import { expect } from 'chai';
-import { WatchPollingController } from '../mcp/watchPolling.js';
+import {
+  WatchPollingController,
+  parseJsonPointer,
+  readPointerValue,
+  createPointerWatchState,
+  updatePointerWatchState
+} from '../mcp/watchPolling.js';
 
 const createFakeClock = () => {
   let now = 0;
@@ -162,5 +168,58 @@ describe('WatchPollingController', function () {
     expect(clock.nextDueIn()).to.equal(100);
     controller.stop();
     expect(clock.nextDueIn()).to.equal(null);
+  });
+});
+
+describe('watch pointer helpers', function () {
+  it('parses and resolves JSON pointers with escaped segments', function () {
+    const state = {
+      game: {
+        skills: {
+          '~foo/bar': 7
+        }
+      }
+    };
+    const path = parseJsonPointer('/game/skills/~0foo~1bar');
+    expect(path).to.deep.equal(['game', 'skills', '~foo/bar']);
+    expect(readPointerValue(state, path)).to.equal(7);
+    expect(readPointerValue(state, '/game/skills/~0foo~1bar')).to.equal(7);
+    expect(readPointerValue(state, '')).to.equal(state);
+  });
+
+  it('tracks primitive pointer changes without stringify comparisons', function () {
+    const tracker = createPointerWatchState('/game/timer/tickIndex', {
+      game: { timer: { tickIndex: 10 } }
+    });
+    expect(updatePointerWatchState(tracker, { game: { timer: { tickIndex: 10 } } })).to.equal(false);
+    expect(updatePointerWatchState(tracker, { game: { timer: { tickIndex: 11 } } })).to.equal(true);
+    expect(updatePointerWatchState(tracker, { game: { timer: { tickIndex: 11 } } })).to.equal(false);
+  });
+
+  it('detects structural object changes while ignoring referential churn', function () {
+    const tracker = createPointerWatchState('/game/skills', {
+      game: {
+        skills: {
+          selected: 1,
+          counts: [5, 4, 3]
+        }
+      }
+    });
+    expect(updatePointerWatchState(tracker, {
+      game: {
+        skills: {
+          selected: 1,
+          counts: [5, 4, 3]
+        }
+      }
+    })).to.equal(false);
+    expect(updatePointerWatchState(tracker, {
+      game: {
+        skills: {
+          selected: 2,
+          counts: [5, 4, 3]
+        }
+      }
+    })).to.equal(true);
   });
 });

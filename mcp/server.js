@@ -15,7 +15,12 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
 import { EventQueue } from './eventQueue.js';
-import { WatchPollingController } from './watchPolling.js';
+import {
+  WatchPollingController,
+  readPointerValue,
+  createPointerWatchState,
+  updatePointerWatchState
+} from './watchPolling.js';
 import { ResourceStore } from './resourceStore.js';
 import { getSession, sessions } from './sessionStore.js';
 import { attachEvents } from './eventEnvelope.js';
@@ -621,20 +626,6 @@ const buildLemmingSummaryCompact = (state, policy, options = {}) => {
   };
 };
 
-const readPointer = (obj, pointer) => {
-  if (!pointer || pointer === '/') return obj;
-  const parts = String(pointer)
-    .split('/')
-    .slice(1)
-    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'));
-  let current = obj;
-  for (const part of parts) {
-    if (current == null) return undefined;
-    current = current[part];
-  }
-  return current;
-};
-
 const ensureGameFocus = async (session) => {
   await ensureBlurred(session);
 };
@@ -921,12 +912,9 @@ const pollWatches = async (session) => {
         triggered = true;
       }
     } else if (watch.type === 'onChange') {
-      const value = readPointer(state, watch.jsonPointer);
-      const serialized = JSON.stringify(value);
-      if (serialized !== watch.lastValue) {
-        watch.lastValue = serialized;
-        triggered = true;
-      }
+      const pointerState = watch.pointerState || createPointerWatchState(watch.jsonPointer, state);
+      watch.pointerState = pointerState;
+      triggered = updatePointerWatchState(pointerState, state);
     }
 
     if (!triggered) continue;
@@ -950,7 +938,7 @@ const pollWatches = async (session) => {
         if (Array.isArray(action.include?.statePointers)) {
           data.statePointers = {};
           for (const pointer of action.include.statePointers) {
-            data.statePointers[pointer] = readPointer(state, pointer);
+            data.statePointers[pointer] = readPointerValue(state, pointer);
           }
         }
         session.events.add({
@@ -1446,6 +1434,9 @@ const watchCreateTool = async (args) => {
   const watchId = makeId();
   const state = await getState(session);
   const tickIndex = state?.game?.timer?.tickIndex ?? 0;
+  const pointerState = watch.type === 'onChange'
+    ? createPointerWatchState(watch.jsonPointer, state)
+    : null;
 
   const entry = {
     id: watchId,
@@ -1455,7 +1446,7 @@ const watchCreateTool = async (args) => {
     enabled: enabled !== false,
     actions: actions || [],
     lastTick: Number.isFinite(tickIndex) ? tickIndex : 0,
-    lastValue: watch.type === 'onChange' ? JSON.stringify(readPointer(state, watch.jsonPointer)) : null,
+    pointerState,
     lastCaptureTick: -Infinity
   };
 

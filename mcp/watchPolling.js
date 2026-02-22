@@ -7,6 +7,167 @@ const DEFAULT_WATCH_POLLING_CONFIG = Object.freeze({
   onDemandMinMs: 100
 });
 
+const HASH_OFFSET_BASIS = 2166136261;
+const HASH_PRIME = 16777619;
+const NUMBER_HASH_VIEW = new DataView(new ArrayBuffer(8));
+const POINTER_EMPTY_PATH = Object.freeze([]);
+
+const parseJsonPointer = (pointer) => {
+  if (!pointer || pointer === '/') return POINTER_EMPTY_PATH;
+  const source = String(pointer);
+  if (!source.startsWith('/')) return POINTER_EMPTY_PATH;
+  return source
+    .slice(1)
+    .split('/')
+    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'));
+};
+
+const readPointerValue = (obj, pointerOrPath) => {
+  const path = Array.isArray(pointerOrPath) ? pointerOrPath : parseJsonPointer(pointerOrPath);
+  let current = obj;
+  for (const part of path) {
+    if (current == null) return undefined;
+    current = current[part];
+  }
+  return current;
+};
+
+const hashByte = (hash, byte) => Math.imul((hash ^ (byte & 0xff)) >>> 0, HASH_PRIME) >>> 0;
+
+const hashUint32 = (hash, value) => {
+  let next = hashByte(hash, value);
+  next = hashByte(next, value >>> 8);
+  next = hashByte(next, value >>> 16);
+  next = hashByte(next, value >>> 24);
+  return next >>> 0;
+};
+
+const hashString = (hash, value) => {
+  let next = hash;
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    next = hashByte(next, code);
+    next = hashByte(next, code >>> 8);
+  }
+  return next >>> 0;
+};
+
+const hashNumber = (hash, value) => {
+  NUMBER_HASH_VIEW.setFloat64(0, value, true);
+  let next = hash;
+  for (let i = 0; i < 8; i += 1) {
+    next = hashByte(next, NUMBER_HASH_VIEW.getUint8(i));
+  }
+  return next >>> 0;
+};
+
+const hashValue = (value, seen = new WeakSet()) => {
+  const type = typeof value;
+  if (value === null) return hashByte(HASH_OFFSET_BASIS, 1);
+  if (type === 'undefined') return hashByte(HASH_OFFSET_BASIS, 2);
+  if (type === 'boolean') return hashByte(hashByte(HASH_OFFSET_BASIS, 3), value ? 1 : 0);
+  if (type === 'number') return hashNumber(hashByte(HASH_OFFSET_BASIS, 4), value);
+  if (type === 'string') return hashString(hashByte(HASH_OFFSET_BASIS, 5), value);
+  if (type === 'bigint') return hashString(hashByte(HASH_OFFSET_BASIS, 6), value.toString());
+  if (type === 'symbol') return hashString(hashByte(HASH_OFFSET_BASIS, 7), String(value.description ?? ''));
+  if (type === 'function') return hashString(hashByte(HASH_OFFSET_BASIS, 8), value.name || '');
+  if (seen.has(value)) return hashByte(HASH_OFFSET_BASIS, 250);
+  seen.add(value);
+
+  let hash = HASH_OFFSET_BASIS;
+  if (Array.isArray(value)) {
+    hash = hashByte(hash, 9);
+    hash = hashUint32(hash, value.length);
+    for (let i = 0; i < value.length; i += 1) {
+      hash = hashUint32(hash, hashValue(value[i], seen));
+    }
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    hash = hashByte(hash, 10);
+    hash = hashUint32(hash, value.byteLength || 0);
+    if (value instanceof DataView) {
+      for (let i = 0; i < value.byteLength; i += 1) {
+        hash = hashByte(hash, value.getUint8(i));
+      }
+    } else {
+      for (const item of value) {
+        hash = hashNumber(hash, Number(item));
+      }
+    }
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
+  if (value instanceof Date) {
+    hash = hashByte(hash, 11);
+    hash = hashNumber(hash, value.getTime());
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
+  hash = hashByte(hash, 12);
+  const keys = Object.keys(value);
+  hash = hashUint32(hash, keys.length);
+  for (const key of keys) {
+    hash = hashString(hash, key);
+    hash = hashUint32(hash, hashValue(value[key], seen));
+  }
+  seen.delete(value);
+  return hash >>> 0;
+};
+
+const buildPointerFingerprint = (value) => {
+  if (value === null) return { kind: 'null' };
+  const type = typeof value;
+  if (type === 'undefined') return { kind: 'undefined' };
+  if (type === 'boolean') return { kind: 'boolean', value };
+  if (type === 'number') return { kind: 'number', value };
+  if (type === 'string') return { kind: 'string', value };
+  if (type === 'bigint') return { kind: 'bigint', value: value.toString() };
+  if (type === 'symbol') return { kind: 'symbol', value: String(value.description ?? '') };
+  if (type === 'function') return { kind: 'function', value: value.name || '' };
+
+  const size = Array.isArray(value)
+    ? value.length
+    : (ArrayBuffer.isView(value) ? (value.byteLength || 0) : Object.keys(value).length);
+  return {
+    kind: Array.isArray(value) ? 'array' : 'object',
+    size,
+    hash: hashValue(value)
+  };
+};
+
+const areFingerprintsEqual = (left, right) => {
+  if (!left || !right) return false;
+  if (left.kind !== right.kind) return false;
+  if (left.kind === 'number') return Object.is(left.value, right.value);
+  if (left.kind === 'boolean' || left.kind === 'string' || left.kind === 'bigint' || left.kind === 'symbol' || left.kind === 'function') {
+    return left.value === right.value;
+  }
+  if (left.kind === 'null' || left.kind === 'undefined') return true;
+  return left.size === right.size && left.hash === right.hash;
+};
+
+const createPointerWatchState = (pointer, source) => {
+  const path = parseJsonPointer(pointer);
+  return {
+    path,
+    fingerprint: buildPointerFingerprint(readPointerValue(source, path))
+  };
+};
+
+const updatePointerWatchState = (state, source) => {
+  const next = buildPointerFingerprint(readPointerValue(source, state.path));
+  if (areFingerprintsEqual(state.fingerprint, next)) {
+    return false;
+  }
+  state.fingerprint = next;
+  return true;
+};
+
 const toFiniteNumber = (value, fallback) => {
   const number = Number(value);
   return Number.isFinite(number) ? number : fallback;
@@ -212,4 +373,11 @@ class WatchPollingController {
   }
 }
 
-export { DEFAULT_WATCH_POLLING_CONFIG, WatchPollingController };
+export {
+  DEFAULT_WATCH_POLLING_CONFIG,
+  WatchPollingController,
+  parseJsonPointer,
+  readPointerValue,
+  createPointerWatchState,
+  updatePointerWatchState
+};
