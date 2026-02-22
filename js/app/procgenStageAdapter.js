@@ -6,23 +6,35 @@ class ProcgenStageAdapter {
     this.controller = controller || null;
     this.canvas = canvas || null;
     this.stage = view?.stage || null;
+    this._wheelHandler = null;
     this._resizeHandler = null;
     this._snapOverridden = false;
+    this._snapScaleOriginal = null;
+    this._installed = false;
     this.maxScale = 6;
     this.zoomStep = 1.1;
   }
 
   install() {
-    if (!this.stage) return;
+    if (this._installed || !this.stage) return;
     this._ensureGuiBuffer();
     this._overrideScaleClamp();
     this._bindZoom();
     this._bindResize();
+    this._installed = true;
+  }
+
+  /** Release all bound listeners and restore stage behavior. */
+  dispose() {
+    this._unbindZoom();
+    this._unbindResize();
+    this._restoreScaleClamp();
+    this._installed = false;
   }
 
   _bindZoom() {
-    if (!this.canvas) return;
-    this.canvas.addEventListener('wheel', event => {
+    if (!this.canvas || this._wheelHandler) return;
+    this._wheelHandler = event => {
       event.preventDefault();
       const stage = this.stage;
       const stageImage = stage?.gameImgProps;
@@ -33,14 +45,28 @@ class ProcgenStageAdapter {
       if (next === current) return;
       stage.applyViewport(stageImage, stageImage.viewPoint.x || 0, stageImage.viewPoint.y || 0, next);
       stage.redraw();
-    }, { passive: false });
+    };
+    this.canvas.addEventListener('wheel', this._wheelHandler, { passive: false });
+  }
+
+  _unbindZoom() {
+    if (!this.canvas || !this._wheelHandler) return;
+    this.canvas.removeEventListener('wheel', this._wheelHandler);
+    this._wheelHandler = null;
   }
 
   _bindResize() {
+    if (this._resizeHandler) return;
     this._resizeHandler = () => {
       this._ensureGuiBuffer();
     };
     window.addEventListener('resize', this._resizeHandler);
+  }
+
+  _unbindResize() {
+    if (!this._resizeHandler) return;
+    window.removeEventListener('resize', this._resizeHandler);
+    this._resizeHandler = null;
   }
 
   _clampScale(scale) {
@@ -66,6 +92,7 @@ class ProcgenStageAdapter {
   _overrideScaleClamp() {
     if (this._snapOverridden || !this.stage) return;
     this._snapOverridden = true;
+    this._snapScaleOriginal = this.stage.snapScale;
     this.stage.snapScale = (rawScale) => {
       const display = this.stage?.gameImgProps?.display;
       const { width: dispW, height: dispH } = display?.worldDataSize || {};
@@ -79,6 +106,13 @@ class ProcgenStageAdapter {
       if (clamped > this.maxScale) clamped = this.maxScale;
       return Math.round(clamped / step) * step;
     };
+  }
+
+  _restoreScaleClamp() {
+    if (!this._snapOverridden || !this.stage) return;
+    this.stage.snapScale = this._snapScaleOriginal;
+    this._snapScaleOriginal = null;
+    this._snapOverridden = false;
   }
 
   _getWorldWidth() {

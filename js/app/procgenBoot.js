@@ -48,6 +48,23 @@ const PROCGEN_SKILLS = {
   DIGGER: 9999
 };
 
+let activeProcgenRuntime = null;
+
+/**
+ * Ensure repeat procgen init/start cycles do not leak timers/listeners.
+ * Cleanup order matters: controller first (detaches timer/event hooks), then
+ * stage adapter/view/game teardown.
+ */
+const disposeProcgenRuntime = () => {
+  const runtime = activeProcgenRuntime;
+  if (!runtime) return;
+  activeProcgenRuntime = null;
+  runtime.controller?.stop?.();
+  runtime.stageAdapter?.dispose?.();
+  runtime.game?.stop?.();
+  runtime.view?.dispose?.();
+};
+
 const shuffle = (list, rng = Math.random) => {
   for (let i = list.length - 1; i > 0; i--) {
     const j = Math.floor(rng() * (i + 1));
@@ -162,102 +179,125 @@ const buildProcgenEditorLevel = (styleName) => {
 };
 
 const init = async () => {
+  disposeProcgenRuntime();
+  const runtime = {
+    view: null,
+    game: null,
+    controller: null,
+    stageAdapter: null
+  };
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
-  const params = new URLSearchParams(window.location.search);
-  const procgenSeed = resolveProcgenSeed(params);
-  const styleRng = createSeededRandom(deriveSeed(procgenSeed, 'style'));
-  const terrainRng = createSeededRandom(deriveSeed(procgenSeed, 'terrain'));
-  window.procgenSeed = procgenSeed;
   try {
-    window.localStorage?.setItem(PROCGEN_SEED_STORAGE_KEY, String(procgenSeed));
-  } catch {
-    // ignore storage failures
-  }
-  const aiDebugOverlay = params.has('aiDebug');
-  const view = new GameView();
-  view.gameType = PROCGEN_GAME_TYPE;
-  view.levelGroupIndex = 0;
-  view.levelIndex = 0;
-  view.midiEnabled = false;
-  view.includeSavedLevels = false;
-  view.endless = true;
-  view.gameCanvas = canvas;
-  view.gameSpeedFactor = 3;
-  if (view.stage) {
-    view.stage.setGuiEnabled(false);
-    view.stage.setCursorSprite(null);
-    view.stage.hudMargin = 0;
-  }
+    const params = new URLSearchParams(window.location.search);
+    const procgenSeed = resolveProcgenSeed(params);
+    const styleRng = createSeededRandom(deriveSeed(procgenSeed, 'style'));
+    const terrainRng = createSeededRandom(deriveSeed(procgenSeed, 'terrain'));
+    window.procgenSeed = procgenSeed;
+    try {
+      window.localStorage?.setItem(PROCGEN_SEED_STORAGE_KEY, String(procgenSeed));
+    } catch {
+      // ignore storage failures
+    }
+    const aiDebugOverlay = params.has('aiDebug');
+    const view = new GameView();
+    runtime.view = view;
+    view.gameType = PROCGEN_GAME_TYPE;
+    view.levelGroupIndex = 0;
+    view.levelIndex = 0;
+    view.midiEnabled = false;
+    view.includeSavedLevels = false;
+    view.endless = true;
+    view.gameCanvas = canvas;
+    view.gameSpeedFactor = 3;
+    if (view.stage) {
+      view.stage.setGuiEnabled(false);
+      view.stage.setCursorSprite(null);
+      view.stage.hudMargin = 0;
+    }
 
-  const config = await view.gameFactory.getConfig(PROCGEN_GAME_TYPE);
-  const resources = await view.gameFactory.getGameResources(PROCGEN_GAME_TYPE);
-  view.gameResources = resources;
+    const config = await view.gameFactory.getConfig(PROCGEN_GAME_TYPE);
+    const resources = await view.gameFactory.getGameResources(PROCGEN_GAME_TYPE);
+    view.gameResources = resources;
 
-  const styleName = await pickProcgenStyle(
-    view.gameFactory.fileProvider,
-    config,
-    styleRng
-  );
-  const { level: editorLevel, entranceX, entranceY } = buildProcgenEditorLevel(styleName);
-  const level = await loadEditorLevel(
-    editorLevel,
-    config,
-    view.gameFactory.fileProvider,
-    {
+    const styleName = await pickProcgenStyle(
+      view.gameFactory.fileProvider,
+      config,
+      styleRng
+    );
+    const { level: editorLevel, entranceX, entranceY } = buildProcgenEditorLevel(styleName);
+    const level = await loadEditorLevel(
+      editorLevel,
+      config,
+      view.gameFactory.fileProvider,
+      {
+        styleName,
+        levelGroupIndex: 0,
+        levelIndex: 0
+      }
+    );
+    if (!level) {
+      runtime.view?.dispose?.();
+      return;
+    }
+
+    const game = await view.gameFactory.getGame(PROCGEN_GAME_TYPE, resources);
+    runtime.game = game;
+    await game.loadCustomLevel(level, { levelGroupIndex: 0, levelIndex: 0 });
+    game.setGameDisplay(view.stage.getGameDisplay());
+    view.game = game;
+    view.applyLevelViewport(level);
+    view.stage.updateStageSize();
+    game.start();
+    game.getGameTimer().speedFactor = view.gameSpeedFactor;
+    bindCanvasFocusBlur(canvas);
+
+    const assetManager = new ProcgenAssetManager({
       styleName,
-      levelGroupIndex: 0,
-      levelIndex: 0
-    }
-  );
-  if (!level) return;
+      config,
+      fileProvider: view.gameFactory.fileProvider
+    });
+    await assetManager.load();
+    const stamper = new ProcgenTerrainStamper(level);
 
-  const game = await view.gameFactory.getGame(PROCGEN_GAME_TYPE, resources);
-  await game.loadCustomLevel(level, { levelGroupIndex: 0, levelIndex: 0 });
-  game.setGameDisplay(view.stage.getGameDisplay());
-  view.game = game;
-  view.applyLevelViewport(level);
-  view.stage.updateStageSize();
-  game.start();
-  game.getGameTimer().speedFactor = view.gameSpeedFactor;
-  bindCanvasFocusBlur(canvas);
+    const controller = new ProcgenController({
+      view,
+      game,
+      level,
+      assets: assetManager,
+      stamper,
+      options: {
+        groundHeight: PROCGEN_GROUND_HEIGHT,
+        initialGroundWidth: PROCGEN_INITIAL_GROUND_WIDTH,
+        entranceX,
+        entranceY,
+        entranceClearance: PROCGEN_ENTRANCE_CLEARANCE,
+        aiDebugOverlay,
+        rng: terrainRng,
+        rngSeed: procgenSeed
+      }
+    });
+    controller.start();
+    runtime.controller = controller;
 
-  const assetManager = new ProcgenAssetManager({
-    styleName,
-    config,
-    fileProvider: view.gameFactory.fileProvider
-  });
-  await assetManager.load();
-  const stamper = new ProcgenTerrainStamper(level);
+    const stageAdapter = new ProcgenStageAdapter({
+      view,
+      controller,
+      canvas
+    });
+    stageAdapter.install();
+    runtime.stageAdapter = stageAdapter;
+    activeProcgenRuntime = runtime;
 
-  const controller = new ProcgenController({
-    view,
-    game,
-    level,
-    assets: assetManager,
-    stamper,
-    options: {
-      groundHeight: PROCGEN_GROUND_HEIGHT,
-      initialGroundWidth: PROCGEN_INITIAL_GROUND_WIDTH,
-      entranceX,
-      entranceY,
-      entranceClearance: PROCGEN_ENTRANCE_CLEARANCE,
-      aiDebugOverlay,
-      rng: terrainRng,
-      rngSeed: procgenSeed
-    }
-  });
-  controller.start();
-
-  const stageAdapter = new ProcgenStageAdapter({
-    view,
-    controller,
-    canvas
-  });
-  stageAdapter.install();
-
-  installE2EHarness({ view });
-  registerServiceWorker();
+    installE2EHarness({ view });
+    registerServiceWorker();
+  } catch (err) {
+    runtime?.controller?.stop?.();
+    runtime?.stageAdapter?.dispose?.();
+    runtime?.game?.stop?.();
+    runtime?.view?.dispose?.();
+    throw err;
+  }
 };
 
 const resizeCanvas = () => {
@@ -276,6 +316,7 @@ const resizeCanvas = () => {
 };
 
 window.addEventListener('resize', resizeCanvas);
+window.addEventListener('beforeunload', disposeProcgenRuntime);
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {

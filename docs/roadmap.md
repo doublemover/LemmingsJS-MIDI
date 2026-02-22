@@ -407,7 +407,7 @@ Notes:
 - [x] Replace full gap-array scans with cursored/partitioned processing so cost
   scales with nearby gaps instead of total historical gaps.
   Touchpoints: `js/app/procgenController.js`.
-- [ ] Ensure procgen stage adapter has full listener lifecycle cleanup so repeat
+- [x] Ensure procgen stage adapter has full listener lifecycle cleanup so repeat
   start/stop cycles do not leak wheel/resize handlers.
   Touchpoints: `js/app/procgenStageAdapter.js`, `js/app/procgenBoot.js`.
 - [ ] Add scan-cache strategy for repeated environment queries
