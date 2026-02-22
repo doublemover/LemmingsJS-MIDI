@@ -1911,13 +1911,16 @@ class HistoryStore {
   _findTriggerById(triggerManager, id) {
     if (!triggerManager || !id) return null;
     if (this._triggerById.has(id)) return this._triggerById.get(id);
+    let found = null;
     for (const trig of triggerManager._triggers || []) {
-      if (trig?.__historyId === id) {
-        this._triggerById.set(id, trig);
-        return trig;
+      const trigId = trig?.__historyId;
+      if (!trigId) continue;
+      this._triggerById.set(trigId, trig);
+      if (trigId === id) {
+        found = trig;
       }
     }
-    return null;
+    return found;
   }
 
   _applyObjectChanges(level, changes, useNext) {
