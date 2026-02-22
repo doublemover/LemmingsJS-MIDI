@@ -46,6 +46,7 @@
     "list-sprites": "node tools/listSprites.js",
     "patch-sprites": "node tools/patchSprites.js",
     "pack-levels": "node tools/packLevels.js",
+    "pack-pipeline": "node tools/packPipeline.js",
     "format": "eslint . --fix",
     "lint": "eslint .",
     "depcheck": "depcheck"

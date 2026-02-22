@@ -108,7 +108,7 @@ Notes:
   1 -> 2 then past 2-4-20; cannot go back to version 1 from version 2.
 - [x] Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers,
   palettes).
-- [ ] Pack decompression/patch/compression pipeline.
+- [x] Pack decompression/patch/compression pipeline.
 - [ ] Full support for pack-specific glitches.
 - [ ] Support for other popular pack types.
 - [ ] High resolution and 32-bit color sprite support.

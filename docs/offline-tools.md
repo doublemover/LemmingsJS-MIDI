@@ -91,6 +91,21 @@ Implementation note:
 - Packed bytes are streamed to disk as each level is processed to keep memory
   usage stable on large level directories.
 
+## packPipeline.js
+
+```
+node tools/packPipeline.js unpack <input DAT> <out dir>
+node tools/packPipeline.js pack <meta.json> <out DAT>
+node tools/packPipeline.js patch <input DAT> <out DAT> --part <index> --offset <byte> --file <patch bin>
+```
+
+Provides a generic DAT workflow:
+- `unpack` writes each decompressed part to `part-###.bin` plus a `meta.json`
+  manifest.
+- `pack` rebuilds a DAT archive from the manifest and part files.
+- `patch` applies a binary patch to one decompressed part and writes a rebuilt
+  DAT in one step.
+
 ## archiveDir.js
 
 ```
