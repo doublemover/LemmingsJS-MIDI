@@ -15,6 +15,23 @@ class ObjectManager {
   constructor(gameTimer) {
     this.gameTimer = gameTimer;
     this.objects = [];
+    this._bucketWidth = 128;
+    this._xBuckets = new Map();
+  }
+
+  _bucketIndexForX(x) {
+    return Math.floor(x / this._bucketWidth);
+  }
+
+  _addObjectToBucket(obj) {
+    if (!Number.isFinite(obj?.x)) return;
+    const bucket = this._bucketIndexForX(obj.x);
+    let list = this._xBuckets.get(bucket);
+    if (!list) {
+      list = [];
+      this._xBuckets.set(bucket, list);
+    }
+    list.push(obj);
   }
   /** render all Objects to the GameDisplay */
   render(gameDisplay) {
@@ -38,8 +55,22 @@ class ObjectManager {
         maxX = view.x + view.w + pad;
         maxY = view.y + view.h + pad;
       }
-      for (let i = 0; i < objs.length; i++) {
-        const obj = objs[i];
+      let source = objs;
+      if (view) {
+        const bucketPad = this._bucketWidth;
+        const startBucket = this._bucketIndexForX(minX - bucketPad);
+        const endBucket = this._bucketIndexForX(maxX + bucketPad);
+        source = [];
+        for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
+          const list = this._xBuckets.get(bucket);
+          if (!list?.length) continue;
+          for (let i = 0; i < list.length; i += 1) {
+            source.push(list[i]);
+          }
+        }
+      }
+      for (let i = 0; i < source.length; i++) {
+        const obj = source[i];
         const animation = obj?.animation;
         if (!animation?.getFrame) continue;
         let fw = Number.isFinite(obj._frameWidth) ? obj._frameWidth : NaN;
@@ -80,7 +111,9 @@ class ObjectManager {
   /** add map objects to manager */
   addRange(mapObjects) {
     for (let i = 0; i < mapObjects.length; i++) {
-      this.objects.push(mapObjects[i]);
+      const obj = mapObjects[i];
+      this.objects.push(obj);
+      this._addObjectToBucket(obj);
     }
   }
 }
