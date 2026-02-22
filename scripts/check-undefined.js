@@ -79,6 +79,12 @@ const ignoredDirs = new Set([
   'test-results'
 ]);
 
+const defaultHtmlFiles = Object.freeze([
+  'index.html',
+  'editor.html',
+  'procgen.html'
+]);
+
 function walk(node, visitor) {
   if (!node || typeof node.type !== 'string') return;
   visitor(node);
@@ -165,7 +171,7 @@ if (extra.length) {
   }
 } else {
   jsFiles = gatherFiles('js', ['.js']);
-  htmlFiles = gatherFiles('.', ['.html']);
+  htmlFiles = defaultHtmlFiles.filter(file => fs.existsSync(file));
 }
 
 
