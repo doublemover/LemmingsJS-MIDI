@@ -21,7 +21,7 @@ import { ActionSplatterSystem } from '../actions/ActionSplatterSystem.js';
 import { ActionWalkSystem } from '../actions/ActionWalkSystem.js';
 import { Lemming } from './Lemming.js';
 import { LemmingStateType } from './LemmingStateType.js';
-import { BaseLogger, LogHandler, withPerformance } from '../util/LogHandler.js';
+import { BaseLogger, LogHandler } from '../util/LogHandler.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getDependency } from '../core/dependencies.js';
@@ -53,134 +53,134 @@ class LemmingManager extends BaseLogger {
   #releaseTickIndex = 0;
   constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
     super();
-    withPerformance(
-      'LemmingManager constructor',
-      {
-        track: 'LemmingManager',
-        trackGroup: 'Game State',
-        color: 'primary',
-        tooltipText: 'LemmingManager constructor'
-      },
-      () => {
-        if (!lemmings.bench && !lemmings.bench2 && !lemmings.benchReverse && (lemmings.extraLemmings | 0) === 0) {
-          this.lemmings = new Array(gameVictoryCondition.getReleaseCount());
-          this.lemmings.length = 0;
-        } else {
-          this.lemmings = [];
-        }
-        this.activeLemmings = [];
-        this._activeDirty = false;
-        this.minimapDots = new Uint8Array(0);
-        this.spawnTotal = 0;
-        this.selectedIndex = -1;
-        const maxDots = (gameVictoryCondition.getReleaseCount() +
+    const endMeasure = this.startMeasure('LemmingManager constructor', {
+      track: 'LemmingManager',
+      trackGroup: 'Game State',
+      color: 'primary',
+      tooltipText: 'LemmingManager constructor'
+    });
+    try {
+      if (!lemmings.bench && !lemmings.bench2 && !lemmings.benchReverse && (lemmings.extraLemmings | 0) === 0) {
+        this.lemmings = new Array(gameVictoryCondition.getReleaseCount());
+        this.lemmings.length = 0;
+      } else {
+        this.lemmings = [];
+      }
+      this.activeLemmings = [];
+      this._activeDirty = false;
+      this.minimapDots = new Uint8Array(0);
+      this.spawnTotal = 0;
+      this.selectedIndex = -1;
+      const maxDots = (gameVictoryCondition.getReleaseCount() +
           (lemmings.extraLemmings | 0)) * 2;
-        this._minimapDotBuffer = new Uint8Array(maxDots);
-        this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
-        this._mmVisited = new Uint16Array(65536);
-        this._mmVisitStamp = 1;
-        this._selectedMiniMapDot = [0, 0];
-        if (!LemmingManager.log) {
-          LemmingManager.log = this.log;
-        }
-        this.level = level;
-        this.triggerManager = triggerManager;
-        this.gameVictoryCondition = gameVictoryCondition;
-        this.actions = [];
-        this.skillActions = [];
-        this.logging = LemmingManager.log;
-        this.miniMap = null;
-        this.nextNukingLemmingsIndex = -1;
-        this._nukeTargets = null;
-        this._nukeScratch = [];
-        this._nearestCellShift = 4;
-        this._nearestGrid = new Map();
-        this._nearestGridPool = [];
-        this._nearestGridDirty = true;
+      this._minimapDotBuffer = new Uint8Array(maxDots);
+      this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
+      this._mmVisited = new Uint16Array(65536);
+      this._mmVisitStamp = 1;
+      this._selectedMiniMapDot = [0, 0];
+      if (!LemmingManager.log) {
+        LemmingManager.log = this.log;
+      }
+      this.level = level;
+      this.triggerManager = triggerManager;
+      this.gameVictoryCondition = gameVictoryCondition;
+      this.actions = [];
+      this.skillActions = [];
+      this.logging = LemmingManager.log;
+      this.miniMap = null;
+      this.nextNukingLemmingsIndex = -1;
+      this._nukeTargets = null;
+      this._nukeScratch = [];
+      this._nearestCellShift = 4;
+      this._nearestGrid = new Map();
+      this._nearestGridPool = [];
+      this._nearestGridDirty = true;
 
-        const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
-        const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
-        const JumpSystem = getDependency('ActionJumpSystem', ActionJumpSystem);
-        const DiggSystem = getDependency('ActionDiggSystem', ActionDiggSystem);
-        const ExitSystem = getDependency('ActionExitingSystem', ActionExitingSystem);
-        const FloatSystem = getDependency('ActionFloatingSystem', ActionFloatingSystem);
-        const BlockSystem = getDependency('ActionBlockerSystem', ActionBlockerSystem);
-        const MineSystem = getDependency('ActionMineSystem', ActionMineSystem);
-        const ClimbSystem = getDependency('ActionClimbSystem', ActionClimbSystem);
-        const HoistSystem = getDependency('ActionHoistSystem', ActionHoistSystem);
-        const BashSystem = getDependency('ActionBashSystem', ActionBashSystem);
-        const BuildSystem = getDependency('ActionBuildSystem', ActionBuildSystem);
-        const ShrugSystem = getDependency('ActionShrugSystem', ActionShrugSystem);
-        const ExplodeSystem = getDependency('ActionExplodingSystem', ActionExplodingSystem);
-        const OhNoSystem = getDependency('ActionOhNoSystem', ActionOhNoSystem);
-        const SplatterSystem = getDependency('ActionSplatterSystem', ActionSplatterSystem);
-        const DrownSystem = getDependency('ActionDrowningSystem', ActionDrowningSystem);
-        const FrySystem = getDependency('ActionFryingSystem', ActionFryingSystem);
-        const CountdownSystem = getDependency('ActionCountdownSystem', ActionCountdownSystem);
+      const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
+      const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
+      const JumpSystem = getDependency('ActionJumpSystem', ActionJumpSystem);
+      const DiggSystem = getDependency('ActionDiggSystem', ActionDiggSystem);
+      const ExitSystem = getDependency('ActionExitingSystem', ActionExitingSystem);
+      const FloatSystem = getDependency('ActionFloatingSystem', ActionFloatingSystem);
+      const BlockSystem = getDependency('ActionBlockerSystem', ActionBlockerSystem);
+      const MineSystem = getDependency('ActionMineSystem', ActionMineSystem);
+      const ClimbSystem = getDependency('ActionClimbSystem', ActionClimbSystem);
+      const HoistSystem = getDependency('ActionHoistSystem', ActionHoistSystem);
+      const BashSystem = getDependency('ActionBashSystem', ActionBashSystem);
+      const BuildSystem = getDependency('ActionBuildSystem', ActionBuildSystem);
+      const ShrugSystem = getDependency('ActionShrugSystem', ActionShrugSystem);
+      const ExplodeSystem = getDependency('ActionExplodingSystem', ActionExplodingSystem);
+      const OhNoSystem = getDependency('ActionOhNoSystem', ActionOhNoSystem);
+      const SplatterSystem = getDependency('ActionSplatterSystem', ActionSplatterSystem);
+      const DrownSystem = getDependency('ActionDrowningSystem', ActionDrowningSystem);
+      const FrySystem = getDependency('ActionFryingSystem', ActionFryingSystem);
+      const CountdownSystem = getDependency('ActionCountdownSystem', ActionCountdownSystem);
 
-        this.actions[LemmingStateType.WALKING]    = new WalkSystem(lemmingsSprite);
-        this.actions[LemmingStateType.FALLING]    = new FallSystem(lemmingsSprite);
-        this.actions[LemmingStateType.JUMPING]    = new JumpSystem(lemmingsSprite);
-        this.actions[LemmingStateType.DIGGING]    = new DiggSystem(lemmingsSprite);
-        this.actions[LemmingStateType.EXITING]    = new ExitSystem(lemmingsSprite, gameVictoryCondition);
-        this.actions[LemmingStateType.FLOATING]   = new FloatSystem(lemmingsSprite);
-        this.actions[LemmingStateType.BLOCKING]   = new BlockSystem(lemmingsSprite, triggerManager);
-        this.actions[LemmingStateType.MINING]     = new MineSystem(lemmingsSprite, masks);
-        this.actions[LemmingStateType.CLIMBING]   = new ClimbSystem(lemmingsSprite);
-        this.actions[LemmingStateType.HOISTING]   = new HoistSystem(lemmingsSprite);
-        this.actions[LemmingStateType.BASHING]    = new BashSystem(lemmingsSprite, masks);
-        this.actions[LemmingStateType.BUILDING]   = new BuildSystem(lemmingsSprite);
-        this.actions[LemmingStateType.SHRUG]      = new ShrugSystem(lemmingsSprite);
-        this.actions[LemmingStateType.EXPLODING]  = new ExplodeSystem(lemmingsSprite, masks, triggerManager, particleTable);
-        this.actions[LemmingStateType.OHNO]       = new OhNoSystem(lemmingsSprite);
-        this.actions[LemmingStateType.SPLATTING]  = new SplatterSystem(lemmingsSprite);
-        this.actions[LemmingStateType.DROWNING]   = new DrownSystem(lemmingsSprite);
-        this.actions[LemmingStateType.FRYING]     = new FrySystem(lemmingsSprite);
+      this.actions[LemmingStateType.WALKING]    = new WalkSystem(lemmingsSprite);
+      this.actions[LemmingStateType.FALLING]    = new FallSystem(lemmingsSprite);
+      this.actions[LemmingStateType.JUMPING]    = new JumpSystem(lemmingsSprite);
+      this.actions[LemmingStateType.DIGGING]    = new DiggSystem(lemmingsSprite);
+      this.actions[LemmingStateType.EXITING]    = new ExitSystem(lemmingsSprite, gameVictoryCondition);
+      this.actions[LemmingStateType.FLOATING]   = new FloatSystem(lemmingsSprite);
+      this.actions[LemmingStateType.BLOCKING]   = new BlockSystem(lemmingsSprite, triggerManager);
+      this.actions[LemmingStateType.MINING]     = new MineSystem(lemmingsSprite, masks);
+      this.actions[LemmingStateType.CLIMBING]   = new ClimbSystem(lemmingsSprite);
+      this.actions[LemmingStateType.HOISTING]   = new HoistSystem(lemmingsSprite);
+      this.actions[LemmingStateType.BASHING]    = new BashSystem(lemmingsSprite, masks);
+      this.actions[LemmingStateType.BUILDING]   = new BuildSystem(lemmingsSprite);
+      this.actions[LemmingStateType.SHRUG]      = new ShrugSystem(lemmingsSprite);
+      this.actions[LemmingStateType.EXPLODING]  = new ExplodeSystem(lemmingsSprite, masks, triggerManager, particleTable);
+      this.actions[LemmingStateType.OHNO]       = new OhNoSystem(lemmingsSprite);
+      this.actions[LemmingStateType.SPLATTING]  = new SplatterSystem(lemmingsSprite);
+      this.actions[LemmingStateType.DROWNING]   = new DrownSystem(lemmingsSprite);
+      this.actions[LemmingStateType.FRYING]     = new FrySystem(lemmingsSprite);
 
-        this.skillActions[SkillTypes.DIGGER]  = this.actions[LemmingStateType.DIGGING];
-        this.skillActions[SkillTypes.FLOATER] = this.actions[LemmingStateType.FLOATING];
-        this.skillActions[SkillTypes.BLOCKER] = this.actions[LemmingStateType.BLOCKING];
-        this.skillActions[SkillTypes.MINER]   = this.actions[LemmingStateType.MINING];
-        this.skillActions[SkillTypes.CLIMBER] = this.actions[LemmingStateType.CLIMBING];
-        this.skillActions[SkillTypes.BASHER]  = this.actions[LemmingStateType.BASHING];
-        this.skillActions[SkillTypes.BUILDER] = this.actions[LemmingStateType.BUILDING];
-        this.skillActions[SkillTypes.BOMBER]  = new CountdownSystem(masks);
-        this.countdownAction = this.skillActions[SkillTypes.BOMBER];
+      this.skillActions[SkillTypes.DIGGER]  = this.actions[LemmingStateType.DIGGING];
+      this.skillActions[SkillTypes.FLOATER] = this.actions[LemmingStateType.FLOATING];
+      this.skillActions[SkillTypes.BLOCKER] = this.actions[LemmingStateType.BLOCKING];
+      this.skillActions[SkillTypes.MINER]   = this.actions[LemmingStateType.MINING];
+      this.skillActions[SkillTypes.CLIMBER] = this.actions[LemmingStateType.CLIMBING];
+      this.skillActions[SkillTypes.BASHER]  = this.actions[LemmingStateType.BASHING];
+      this.skillActions[SkillTypes.BUILDER] = this.actions[LemmingStateType.BUILDING];
+      this.skillActions[SkillTypes.BOMBER]  = new CountdownSystem(masks);
+      this.countdownAction = this.skillActions[SkillTypes.BOMBER];
 
-        this.actionTypeByAction = new Map();
-        for (let i = 0; i < this.actions.length; i++) {
-          const action = this.actions[i];
-          if (action) this.actionTypeByAction.set(action, i);
-        }
+      this.actionTypeByAction = new Map();
+      for (let i = 0; i < this.actions.length; i++) {
+        const action = this.actions[i];
+        if (action) this.actionTypeByAction.set(action, i);
+      }
 
-        this._actionTypes = {
-          blocker: BlockSystem,
-          basher: BashSystem,
-          builder: BuildSystem,
-          climber: ClimbSystem,
-          digger: DiggSystem,
-          floater: FloatSystem,
-          miner: MineSystem
-        };
-        const maxSkillType = SkillTypes.DIGGER;
-        this._canApplyWhileFalling = new Uint8Array(maxSkillType + 1);
-        this._canApplyWhileFalling[SkillTypes.FLOATER] = 1;
-        this._canApplyWhileFalling[SkillTypes.CLIMBER] = 1;
-        this._canApplyWhileFalling[SkillTypes.BOMBER] = 1;
-        this._canApplyWhileFalling[SkillTypes.BUILDER] = 1;
-        this._redundantActionBySkill = new Array(maxSkillType + 1);
-        this._redundantActionBySkill[SkillTypes.BASHER] = this._actionTypes.basher;
-        this._redundantActionBySkill[SkillTypes.BLOCKER] = this._actionTypes.blocker;
-        this._redundantActionBySkill[SkillTypes.DIGGER] = this._actionTypes.digger;
-        this._redundantActionBySkill[SkillTypes.MINER] = this._actionTypes.miner;
-        this._keepBlockerWallBySkill = new Uint8Array(maxSkillType + 1);
-        this._keepBlockerWallBySkill[SkillTypes.BOMBER] = 1;
-        this._keepBlockerWallBySkill[SkillTypes.CLIMBER] = 1;
-        this._keepBlockerWallBySkill[SkillTypes.FLOATER] = 1;
-        this._lemmingCtor = getDependency('Lemming', Lemming);
+      this._actionTypes = {
+        blocker: BlockSystem,
+        basher: BashSystem,
+        builder: BuildSystem,
+        climber: ClimbSystem,
+        digger: DiggSystem,
+        floater: FloatSystem,
+        miner: MineSystem
+      };
+      const maxSkillType = SkillTypes.DIGGER;
+      this._canApplyWhileFalling = new Uint8Array(maxSkillType + 1);
+      this._canApplyWhileFalling[SkillTypes.FLOATER] = 1;
+      this._canApplyWhileFalling[SkillTypes.CLIMBER] = 1;
+      this._canApplyWhileFalling[SkillTypes.BOMBER] = 1;
+      this._canApplyWhileFalling[SkillTypes.BUILDER] = 1;
+      this._redundantActionBySkill = new Array(maxSkillType + 1);
+      this._redundantActionBySkill[SkillTypes.BASHER] = this._actionTypes.basher;
+      this._redundantActionBySkill[SkillTypes.BLOCKER] = this._actionTypes.blocker;
+      this._redundantActionBySkill[SkillTypes.DIGGER] = this._actionTypes.digger;
+      this._redundantActionBySkill[SkillTypes.MINER] = this._actionTypes.miner;
+      this._keepBlockerWallBySkill = new Uint8Array(maxSkillType + 1);
+      this._keepBlockerWallBySkill[SkillTypes.BOMBER] = 1;
+      this._keepBlockerWallBySkill[SkillTypes.CLIMBER] = 1;
+      this._keepBlockerWallBySkill[SkillTypes.FLOATER] = 1;
+      this._lemmingCtor = getDependency('Lemming', Lemming);
 
-        this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
-      })();
+      this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
+    } finally {
+      endMeasure();
+    }
   }
 
   get mmTickCounter() { return this.#mmTickCounter; }
