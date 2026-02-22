@@ -95,9 +95,9 @@ Notes:
 - [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
 
 ## Phase 7: Gameplay parity, packs, and assets
-- [ ] Build reproducible parity repro cases and fix behavior directly in runtime
+- [x] Build reproducible parity repro cases and fix behavior directly in runtime
   logic (no research/documentation gate before implementation).
-- [ ] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
+- [x] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
   consider built-stairs handling.
 - [x] Traps: add missing squish, fix generic trap using splat death.
 - [x] Bombs: remove ground overlapping steel to reveal it.

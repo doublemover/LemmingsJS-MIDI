@@ -76,6 +76,7 @@ class StubLevel {
     this.stepHeight = null;
     this.gapDepth = null;
     this.steelGround = () => false;
+    this.arrowAt = () => false;
   }
   key(x, y) { return `${x},${y}`; }
   hasGroundAt(x, y) { return this.ground.has(this.key(x, y)); }
@@ -116,6 +117,7 @@ class StubLevel {
   }
   hasSteelUnderMask() { return this.steelUnder; }
   hasArrowUnderMask() { return this.arrowUnder; }
+  isArrowAt(x, y, direction) { return this.arrowAt(x, y, direction); }
   clearGroundAt(x, y) { this.clearedPoints.push(this.key(x, y)); this.ground.delete(this.key(x, y)); }
   setGroundAt(x, y) { this.setGroundCalls.push(this.key(x, y)); this.ground.add(this.key(x, y)); }
   isSteelGround(x, y) { return this.steelGround(this.key(x, y)); }
@@ -730,6 +732,22 @@ describe('Action Systems process()', function() {
     expect(result).to.equal(Lemmings.LemmingStateType.WALKING);
     expect(lem.lookRight).to.equal(false);
     expect(lem.x).to.equal(1);
+  });
+
+  it('ActionBuildSystem bounces off opposing one-way walls and keeps building', function() {
+    const level = new StubLevel();
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming(10, 12);
+    lem.frameIndex = 15; // ->0 movement step
+    level.arrowAt = (x, y, direction) => direction === true && x === 11 && y === 10;
+
+    const result = sys.process(level, lem);
+
+    expect(result).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
+    expect(lem.lookRight).to.equal(false);
+    expect(lem.x).to.equal(10);
+    expect(lem.y).to.equal(11);
+    expect(lem.state).to.equal(0);
   });
 
   it('ActionClimbSystem continues with ceiling present', function() {

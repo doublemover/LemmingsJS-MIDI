@@ -12,6 +12,10 @@ class ActionBuildSystem extends ActionBaseSystem {
     const levelHeight = Number.isFinite(level?.height) ? level.height : null;
     const inHorizontalBounds = (x) => levelWidth == null || (x >= 0 && x < levelWidth);
     const inVerticalBounds = (y) => levelHeight == null || (y >= 0 && y < levelHeight);
+    const hitsOpposingArrow = (x, y) => (
+      typeof level?.isArrowAt === 'function' &&
+      level.isArrowAt(x, y, lem.lookRight)
+    );
 
     lem.frameIndex = (lem.frameIndex + 1) % 16;
     if (lem.frameIndex === 9) {
@@ -46,6 +50,11 @@ class ActionBuildSystem extends ActionBaseSystem {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.WALKING;
         }
+        if (hitsOpposingArrow(nextX, lem.y - 1)) {
+          // One-way walls should reflect builders without dropping them to walk.
+          lem.lookRight = !lem.lookRight;
+          return LemmingStateType.NO_STATE_TYPE;
+        }
         lem.x = nextX;
         if (level.hasGroundAt(lem.x, lem.y - 1)) {
           lem.lookRight = !lem.lookRight;
@@ -57,6 +66,10 @@ class ActionBuildSystem extends ActionBaseSystem {
       if (!inHorizontalBounds(nextHeadX)) {
         lem.lookRight = !lem.lookRight;
         return LemmingStateType.WALKING;
+      }
+      if (hitsOpposingArrow(nextHeadX, lem.y - 9)) {
+        lem.lookRight = !lem.lookRight;
+        return LemmingStateType.NO_STATE_TYPE;
       }
       if (level.hasGroundAt(nextHeadX, lem.y - 9)) {
         lem.lookRight = !lem.lookRight;
