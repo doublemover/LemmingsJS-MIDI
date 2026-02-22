@@ -29,6 +29,8 @@ class MiniMap {
     this._terrainDirtyFlags = new Uint8Array(this.size);
     this._terrainDirtyIndices = new Uint16Array(this.size);
     this._terrainDirtyCount = 0;
+    this._terrainDirtyRead = 0;
+    this._terrainDirtyWrite = 0;
     this.terrainRevalidateBudget = Math.max(64, this.size >> 2);
     this._objectMarkerIndices = new Uint16Array(0);
     this._objectMarkerColors = new Uint32Array(0);
@@ -155,7 +157,11 @@ class MiniMap {
     if ((idx >>> 0) >= this.size) return;
     if (this._terrainDirtyFlags[idx]) return;
     this._terrainDirtyFlags[idx] = 1;
-    this._terrainDirtyIndices[this._terrainDirtyCount] = idx;
+    this._terrainDirtyIndices[this._terrainDirtyWrite] = idx;
+    this._terrainDirtyWrite += 1;
+    if (this._terrainDirtyWrite === this.size) {
+      this._terrainDirtyWrite = 0;
+    }
     this._terrainDirtyCount += 1;
   }
 
@@ -179,26 +185,28 @@ class MiniMap {
       this.#buildTerrain();
       this._terrainDirtyFlags.fill(0);
       this._terrainDirtyCount = 0;
+      this._terrainDirtyRead = 0;
+      this._terrainDirtyWrite = 0;
       return;
     }
     let budget = this.terrainRevalidateBudget | 0;
     if (budget <= 0 || budget > dirtyCount) budget = dirtyCount;
     const dirty = this._terrainDirtyIndices;
     const flags = this._terrainDirtyFlags;
+    let read = this._terrainDirtyRead;
     for (let i = 0; i < budget; i += 1) {
-      const idx = dirty[i];
+      const idx = dirty[read];
+      read += 1;
+      if (read === this.size) read = 0;
       flags[idx] = 0;
       this.#refreshTerrainCell(idx);
     }
-    if (budget === dirtyCount) {
-      this._terrainDirtyCount = 0;
-      return;
+    this._terrainDirtyRead = read;
+    this._terrainDirtyCount = dirtyCount - budget;
+    if (!this._terrainDirtyCount) {
+      this._terrainDirtyRead = 0;
+      this._terrainDirtyWrite = 0;
     }
-    let write = 0;
-    for (let i = budget; i < dirtyCount; i += 1) {
-      dirty[write++] = dirty[i];
-    }
-    this._terrainDirtyCount = write;
   }
 
   #buildObjectMarkers() {
