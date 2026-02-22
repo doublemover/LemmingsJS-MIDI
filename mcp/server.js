@@ -25,6 +25,7 @@ import { ResourceStore } from './resourceStore.js';
 import { getSession, sessions } from './sessionStore.js';
 import { attachEvents } from './eventEnvelope.js';
 import { disposeAllSessionRuntimes, disposeSessionRuntime } from './sessionLifecycle.js';
+import { buildLemmingSummary } from './lemmingSummary.js';
 import { createStateToolHandlers } from './stateTools.js';
 import { createSpectatorTools } from './spectatorTools.js';
 
@@ -459,98 +460,6 @@ const filterStateSnapshot = (snapshot, include) => {
   if (config.midi) output.midi = snapshot.midi;
 
   return output;
-};
-
-const withinRect = (lem, rect) => {
-  if (!rect) return true;
-  const width = Number.isFinite(rect.w) ? rect.w : rect.width;
-  const height = Number.isFinite(rect.h) ? rect.h : rect.height;
-  if (!Number.isFinite(width) || !Number.isFinite(height)) return true;
-  return (
-    lem.x >= rect.x &&
-    lem.x <= rect.x + width &&
-    lem.y >= rect.y &&
-    lem.y <= rect.y + height
-  );
-};
-
-const buildLemmingSummary = (state, options = {}) => {
-  const manager = state?.game?.lemmingManager || null;
-  const tickIndex = state?.game?.timer?.tickIndex ?? null;
-  const lemmings = Array.isArray(state?.game?.lemmings) ? state.game.lemmings : [];
-
-  const includeSelected = options.includeSelected !== false;
-  const activeOnly = options.activeOnly !== false;
-  const viewRect = options.inViewOnly ? state?.stage?.viewRect : null;
-  const rect = options.rectWorld || viewRect || null;
-
-  const inRect = rect ? lemmings.filter((lem) => lem && withinRect(lem, rect)) : lemmings.filter(Boolean);
-  const activeInRect = inRect.filter((lem) => !(lem.removed || lem.disabled));
-  const removedCount = inRect.reduce((acc, lem) => acc + (lem.removed ? 1 : 0), 0);
-  const disabledCount = inRect.reduce((acc, lem) => acc + (lem.disabled ? 1 : 0), 0);
-  const filtered = activeOnly ? activeInRect : inRect;
-
-  const histAction = {};
-  const histState = {};
-  let climbers = 0;
-  let floaters = 0;
-  let countingDown = 0;
-  let exploded = 0;
-  for (const lem of filtered) {
-    if (!lem) continue;
-    const action = lem.actionType ?? null;
-    const stateCode = lem.state ?? null;
-    if (action != null) {
-      histAction[action] = (histAction[action] || 0) + 1;
-    }
-    if (stateCode != null) {
-      histState[stateCode] = (histState[stateCode] || 0) + 1;
-    }
-    if (lem.canClimb) climbers += 1;
-    if (lem.hasParachute) floaters += 1;
-    if (lem.countdownActive) countingDown += 1;
-    if (lem.hasExploded) exploded += 1;
-  }
-
-  const selectedIndex = manager?.selectedIndex;
-  const selected = includeSelected && Number.isFinite(selectedIndex) && selectedIndex >= 0
-    ? (lemmings[selectedIndex] || null)
-    : null;
-
-  const topK = Number.isFinite(options.topK) ? Math.max(0, Math.trunc(options.topK)) : 10;
-  const candidates = filtered.slice();
-  if (candidates.length > 1) {
-    candidates.sort((a, b) => {
-      const aCountdown = a?.countdownActive ? 1 : 0;
-      const bCountdown = b?.countdownActive ? 1 : 0;
-      if (aCountdown !== bCountdown) return bCountdown - aCountdown;
-      const ax = Number.isFinite(a?.x) ? a.x : -Infinity;
-      const bx = Number.isFinite(b?.x) ? b.x : -Infinity;
-      return bx - ax;
-    });
-  }
-  const top = candidates.slice(0, topK);
-  if (selected && !top.some((lem) => lem?.id === selected.id)) {
-    top.unshift(selected);
-    if (top.length > topK) top.pop();
-  }
-
-  return {
-    tickIndex,
-    selectedLemmingId: selected ? selected.id : null,
-    totalCount: inRect.length,
-    activeCount: activeInRect.length,
-    removedCount,
-    disabledCount,
-    byActionType: histAction,
-    byState: histState,
-    climbers,
-    floaters,
-    countingDown,
-    exploded,
-    selected,
-    top
-  };
 };
 
 const buildSkillInfo = (skills) => {
