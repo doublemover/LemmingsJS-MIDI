@@ -1,6 +1,12 @@
 import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger } from '../util/LogHandler.js';
 import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { getAppContext } from '../core/dependencies.js';
+
+const addMiniMapDeath = (x, y) => {
+  const miniMap = getAppContext()?.game?.lemmingManager?.miniMap;
+  miniMap?.addDeath(x, y);
+};
 
 class Lemming extends BaseLogger {
   constructor(x = 0, y = 0, id) {
@@ -91,16 +97,12 @@ class Lemming extends BaseLogger {
         SoundEffectIds.FELL_OFF,
         { lemmingId: this.id, x: lemX, y: newY }
       );
-      if (lemmings?.game?.lemmingManager?.miniMap) {
-        lemmings.game.lemmingManager.miniMap.addDeath(lemX, newY);
-      }
+      addMiniMapDeath(lemX, newY);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run main action
     if (!this.action) {
-      if (lemmings?.game?.lemmingManager?.miniMap) {
-        lemmings.game.lemmingManager.miniMap.addDeath(lemX, this.y);
-      }
+      addMiniMapDeath(lemX, this.y);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run secondary action

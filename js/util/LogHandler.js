@@ -1,4 +1,4 @@
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getAppContext } from '../core/dependencies.js';
 
 const NOOP = () => {};
 
@@ -8,10 +8,10 @@ class Logger {
   }
 
   _enabled() {
-    return typeof lemmings !== 'undefined' &&
-            lemmings &&
-            lemmings.game &&
-            lemmings.game.showDebug === true;
+    const app = getAppContext();
+    return !!app &&
+            !!app.game &&
+            app.game.showDebug === true;
   }
 
   /** log an info message */
@@ -68,7 +68,7 @@ class BaseLogger {
      * @returns {Function}
      */
   startMeasure(name, devtools = {}) {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getAppContext();
     const perfEnabled = !!app &&
             (app.performanceAPI === true || app.perfMetrics === true);
     if (!perfEnabled ||
@@ -93,7 +93,7 @@ class BaseLogger {
 
 function withPerformance(name, devtools = {}, fn) {
   return function(...args) {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getAppContext();
     const perfEnabled = !!app &&
             (app.performanceAPI === true || app.perfMetrics === true);
     if (!perfEnabled ||

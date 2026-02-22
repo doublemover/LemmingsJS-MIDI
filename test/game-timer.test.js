@@ -456,7 +456,7 @@ describe('GameTimer', function() {
     });
   });
 
-  it('skips bench adjust when app vanishes mid-loop', function() {
+  it('skips bench adjust when app context is missing mid-loop', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const prev = Object.getOwnPropertyDescriptor(globalThis, 'lemmings');
     const prevApp = getAppContext();
@@ -474,7 +474,7 @@ describe('GameTimer', function() {
       timer.continue();
       now = 120;
       globalThis.window._raf(now);
-      expect(access).to.be.greaterThan(1);
+      expect(access).to.equal(0);
     } finally {
       if (prev) {
         Object.defineProperty(globalThis, 'lemmings', prev);

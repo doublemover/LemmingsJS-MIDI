@@ -1,3 +1,5 @@
+import { getAppContext } from '../core/dependencies.js';
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const MIDI_BITS_PER_SECOND = 31250;
 const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 8;
@@ -249,8 +251,9 @@ class MidiScheduler {
   }
 
   sendNote(spec, meta = {}) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = this.config?.runtime?.app || getAppContext();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
       typeof performance.measure === 'function' &&
       typeof performance.now === 'function';

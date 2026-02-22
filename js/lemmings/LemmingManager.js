@@ -24,7 +24,7 @@ import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger, LogHandler } from '../util/LogHandler.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
-import { getDependency } from '../core/dependencies.js';
+import { getAppContext, getDependency } from '../core/dependencies.js';
 
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
   typeof performance.now === 'function' &&
@@ -48,6 +48,9 @@ const RENDER_MEASURE_DETAIL = Object.freeze({
   })
 });
 
+const getApp = () => getAppContext();
+const isBenchMode = (app) => app?.bench || app?.bench2 || app?.benchReverse;
+
 class LemmingManager extends BaseLogger {
   #mmTickCounter = 0;
   #releaseTickIndex = 0;
@@ -59,8 +62,9 @@ class LemmingManager extends BaseLogger {
       color: 'primary',
       tooltipText: 'LemmingManager constructor'
     });
+    const app = getApp();
     try {
-      if (!lemmings.bench && !lemmings.bench2 && !lemmings.benchReverse && (lemmings.extraLemmings | 0) === 0) {
+      if (!isBenchMode(app) && (app?.extraLemmings | 0) === 0) {
         this.lemmings = new Array(gameVictoryCondition.getReleaseCount());
         this.lemmings.length = 0;
       } else {
@@ -72,7 +76,7 @@ class LemmingManager extends BaseLogger {
       this.spawnTotal = 0;
       this.selectedIndex = -1;
       const maxDots = (gameVictoryCondition.getReleaseCount() +
-          (lemmings.extraLemmings | 0)) * 2;
+          (app?.extraLemmings | 0)) * 2;
       this._minimapDotBuffer = new Uint8Array(maxDots);
       this.minimapDots = this._minimapDotBuffer.subarray(0, 0);
       this._mmVisited = new Uint16Array(65536);
@@ -309,9 +313,9 @@ class LemmingManager extends BaseLogger {
   }
 
   tick() {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      lemmings &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
@@ -332,8 +336,8 @@ class LemmingManager extends BaseLogger {
       }
       const sel = this.getSelectedLemming();
       if (!sel || sel.removed || sel.disabled) this.selectedIndex = -1;
-      if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
-        lemmings.laggedOut = count;
+      if (isBenchMode(app)) {
+        app.laggedOut = count;
       }
       if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
         const lemsCount = lems.length;
@@ -391,9 +395,10 @@ class LemmingManager extends BaseLogger {
   }
 
   addLemming(x, y) {
+    const app = getApp();
     const startingLemLength = this.lemmings.length;
     const lem = this._acquireLemming(x, y, startingLemLength);
-    if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
+    if (isBenchMode(app)) {
       lem.lookRight = Math.random() < 0.5;
     }
     this.setLemmingState(lem, LemmingStateType.FALLING);
@@ -401,7 +406,7 @@ class LemmingManager extends BaseLogger {
     this._addActiveLemming(lem);
     this.spawnTotal += 1;
 
-    const extraCount = lemmings.extraLemmings | 0;
+    const extraCount = app?.extraLemmings | 0;
     if (extraCount > 0) {
       const action = this.actions[LemmingStateType.FALLING];
       const extras = new Array(extraCount);
@@ -411,7 +416,7 @@ class LemmingManager extends BaseLogger {
           y,
           startingLemLength + 1 + i
         );
-        if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
+        if (isBenchMode(app)) {
           extra.lookRight = Math.random() < 0.5;
         }
         extra.setAction(action);
@@ -425,8 +430,9 @@ class LemmingManager extends BaseLogger {
   }
 
   addNewLemmings() {
-    const endless = lemmings?.endless === true;
-    if (lemmings.bench === true || lemmings.bench2 === true || lemmings.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
+    const app = getApp();
+    const endless = app?.endless === true;
+    if (app?.bench === true || app?.bench2 === true || app?.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
             
     } else {
       if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
@@ -497,9 +503,9 @@ class LemmingManager extends BaseLogger {
   }
 
   render(gameDisplay) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      lemmings &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
@@ -651,7 +657,8 @@ class LemmingManager extends BaseLogger {
       this.logging.log(lem.id + ' Action: Error not an action: ' + LemmingStateType[stateType]);
       return;
     } else {
-      if (this.activeLemmings.length <= 50 && (lemmings?.gameSpeedFactor ?? 1) <= 1) {
+      const app = getApp();
+      if (this.activeLemmings.length <= 50 && (app?.gameSpeedFactor ?? 1) <= 1) {
         this.logging.debug(lem.id + ' Action: ' + actionSystem.getActionName());
       }
     }
@@ -801,8 +808,8 @@ class LemmingManager extends BaseLogger {
     this._lemmingPool = null;
     this._maxLemmingPoolSize = null;
     this.selectedIndex = null;
-    if (typeof lemmings !== 'undefined' &&
-            (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = getApp();
+    if ((app?.performanceAPI === true || app?.perfMetrics === true) &&
             typeof performance !== 'undefined' &&
             typeof performance.measure === 'function') {
       performance.measure('LemmingManager Dispose', {

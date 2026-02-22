@@ -15,7 +15,7 @@ import { ObjectManager } from '../level/ObjectManager.js';
 import { ParticleTable } from '../render/ParticleTable.js';
 import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
 import { TriggerManager } from '../level/TriggerManager.js';
-import { getDependency } from '../core/dependencies.js';
+import { getAppContext, getDependency } from '../core/dependencies.js';
 
 const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
   typeof performance.now === 'function' &&
@@ -41,6 +41,8 @@ const RENDER_MEASURE_DETAIL = Object.freeze({
   color: 'primary-dark',
   tooltipText: 'render'
 });
+
+const getApp = () => getAppContext();
 
 class Game extends BaseLogger {
   constructor (gameResources) {
@@ -255,7 +257,7 @@ class Game extends BaseLogger {
   }
 
   runGameLogic () {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -281,10 +283,11 @@ class Game extends BaseLogger {
   }
 
   getGameState () {
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
+    const app = getApp();
+    if (app?.bench || app?.bench2 || app?.benchReverse) {
       return GameStateTypes.RUNNING;
     }
-    if (typeof lemmings !== 'undefined' && lemmings.endless) {
+    if (app?.endless) {
       return GameStateTypes.RUNNING;
     }
     if (this.finalGameState !== GameStateTypes.UNKNOWN) {
@@ -301,7 +304,7 @@ class Game extends BaseLogger {
       return won ? GameStateTypes.SUCCEEDED
         : GameStateTypes.FAILED_LESS_LEMMINGS;
     }
-    if (!lemmings?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
+    if (!app?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
       return won ? GameStateTypes.SUCCEEDED
         : GameStateTypes.FAILED_OUT_OF_TIME;
     }
@@ -309,13 +312,13 @@ class Game extends BaseLogger {
   }
 
   checkForGameOver () {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
-      if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
+      if (app?.bench || app?.bench2 || app?.benchReverse) {
         return;
       }
       if (this.finalGameState !== GameStateTypes.UNKNOWN) {
@@ -345,7 +348,7 @@ class Game extends BaseLogger {
   }
 
   render () {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();

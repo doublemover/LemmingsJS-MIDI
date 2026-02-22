@@ -1,6 +1,7 @@
 import { MidiMapping } from './MidiMapping.js';
 import { MidiScheduler } from './MidiScheduler.js';
 import { isMidiFlagTriggerType } from './MidiFlagTriggers.js';
+import { getAppContext } from '../core/dependencies.js';
 
 const MAX_EVENTS_PER_TICK = 32;
 const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
@@ -358,8 +359,9 @@ class MidiEventRouter {
   }
 
   _onEvent(event) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
+    const app = this.context?.app || getAppContext();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
       typeof performance !== 'undefined' &&
       typeof performance.measure === 'function' &&
       typeof performance.now === 'function';
