@@ -19,6 +19,17 @@ node scripts/build-mcpb-bundle.js
 
 This creates `dist/mcpb/` with the files and templates needed for `mcpb`.
 
+Surface bundles are also available:
+
+```
+node scripts/build-mcpb-bundle.js --surface game
+node scripts/build-mcpb-bundle.js --surface editor
+node scripts/build-mcpb-bundle.js --surface interact
+```
+
+These output to `dist/mcpb-game/`, `dist/mcpb-editor/`, and
+`dist/mcpb-interact/` using `mcpb/manifest.<surface>.json`.
+
 ## Dependencies
 
 The MCP server depends on `@modelcontextprotocol/sdk`, `@playwright/test`, `ws`,

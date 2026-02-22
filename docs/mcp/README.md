@@ -17,6 +17,8 @@ Files:
 - Override defaults with environment variables:
   - `LEMMINGS_MCP_BASE_URL` (default `https://localhost:8080`)
   - `LEMMINGS_MCP_PATH` (default `/?e2e=1`)
+  - `LEMMINGS_MCP_SURFACES` (optional CSV of enabled tool surfaces:
+    `game,editor,interact`; default enables all)
 
 ## Host notes
 - Codex CLI: configure a stdio MCP server that runs `node mcp/server.js`.
@@ -38,6 +40,12 @@ Files:
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
 - Short tool names are primary; legacy aliases remain for compatibility.
+
+## Tool surfaces
+- `game`: `session.*`, `time.*`, `state.*`, `lemming.*`, `skill.*`
+- `editor`: `editor.*`
+- `interact`: `input.*`, `vision.*`, `watch.*`, `events.*`
+- Surface gating is controlled via `LEMMINGS_MCP_SURFACES`.
 
 ## Defaults (protocol v2)
 - `state.get` defaults to the compact preset.

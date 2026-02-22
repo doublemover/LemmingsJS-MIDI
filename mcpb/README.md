@@ -11,6 +11,14 @@ From the repo root:
 node scripts/build-mcpb-bundle.js
 ```
 
+To build a surface-only bundle:
+
+```
+node scripts/build-mcpb-bundle.js --surface game
+node scripts/build-mcpb-bundle.js --surface editor
+node scripts/build-mcpb-bundle.js --surface interact
+```
+
 This creates `dist/mcpb/` with:
 
 - `manifest.json`
@@ -19,6 +27,10 @@ This creates `dist/mcpb/` with:
 - `package.json`
 - `mcp/server.js`, `mcp/spectator.html`
 - `keybindings.json`
+
+Surface builds create `dist/mcpb-game/`, `dist/mcpb-editor/`, or
+`dist/mcpb-interact/` and use `mcpb/manifest.<surface>.json` plus
+`mcpb/package.<surface>.json`.
 
 ## Install dependencies (no bundled browsers)
 

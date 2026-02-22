@@ -3,6 +3,14 @@
 These examples use the short tool names (dots replaced with underscores) and the
 compact `state.get` preset defaults.
 
+Available tool sets by surface:
+- `game`: `session_create`, `session_close`, `time_pause`, `time_resume`,
+  `time_step`, `state_get`, `state_delta`, `lemming_summary`,
+  `lemming_select`, `skill_apply`
+- `editor`: `editor_apply`
+- `interact`: `input_action`, `input_keys`, `vision_capture`,
+  `vision_captureSequence`, `watch_create`, `watch_cancel`, `events_poll`
+
 ## Create a session with minimal events
 
 ```json

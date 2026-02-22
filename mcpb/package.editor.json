@@ -1,0 +1,12 @@
+{
+  "name": "lemmings-mcp-editor",
+  "version": "0.0.4",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@playwright/test": "^1.49.1",
+    "ws": "^8.18.1",
+    "zod": "^3.25.76"
+  }
+}
