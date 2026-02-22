@@ -461,7 +461,7 @@ describe('Stage', function() {
     }
   });
 
-  it('recenters scale changes and redraws both layers', function() {
+  it('recenters scale changes and skips no-op redraw unless forced', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
     stage.gameImgProps.display.initSize(100, 50);
@@ -483,6 +483,11 @@ describe('Stage', function() {
     clears = 0;
     cursors = 0;
     stage.redraw();
+    expect(draws).to.equal(0);
+    expect(clears).to.equal(0);
+    expect(cursors).to.equal(0);
+
+    stage.redraw(true);
     expect(draws).to.equal(2);
     expect(clears).to.equal(1);
     expect(cursors).to.equal(1);

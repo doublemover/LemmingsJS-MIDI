@@ -489,7 +489,7 @@ class Stage {
     this.redraw();
   }
 
-  redraw() {
+  redraw(forceComposite = false) {
     const start = perfNow();
     this._updateFadeState(start);
     this._perfTrackingFrame = true;
@@ -503,15 +503,24 @@ class Stage {
       (gameDisplay.hasPendingDirty?.() || gameSig !== this._lastGameDrawSignature);
     const guiDirty = !!guiDisplay &&
       (guiDisplay.hasPendingDirty?.() || guiSig !== this._lastGuiDrawSignature);
-    let requiresFullComposite =
+    const requiresFullComposite =
+      forceComposite ||
       this.fadeAlpha !== 0 ||
       this.overlayAlpha > 0 ||
       this.perfOverlayEnabled ||
       !!this.cursorCanvas;
+
     if (!requiresFullComposite && !gameDirty && !guiDirty) {
-      // Explicit redraw with no pending dirty work should preserve legacy full
-      // compositing semantics for callers/tests that expect it.
-      requiresFullComposite = true;
+      this._perfTrackingFrame = false;
+      this._perfFrameCount += 1;
+      this._perfFrameMs = perfNow() - start;
+      if (this._perfFrameMs > this._perfFramePeakMs) {
+        this._perfFramePeakMs = this._perfFrameMs;
+      }
+      if (this.perfOverlayEnabled) {
+        this.drawPerfOverlay();
+      }
+      return;
     }
 
     if (requiresFullComposite) {
