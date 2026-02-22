@@ -1207,4 +1207,27 @@ describe('midiUiController', function() {
 
     controller.bindMidiUi();
   });
+
+  it('exposes deterministic intent automation hooks', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    register(doc, 'div', 'midiEventList');
+    register(doc, 'div', 'midiTriggerList');
+    register(doc, 'select', 'midiEnvTarget');
+    register(doc, 'div', 'errorDisplay');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => ({ timing: { bpmBase: 120 } })
+    });
+
+    controller.bindMidiUi();
+    const state0 = controller.getMidiIntentState();
+    expect(state0).to.have.property('revision');
+    controller.dispatchMidiIntent({ type: 'overrides.merge', patch: { repeat: { enabled: true } } });
+    expect(controller.getMidiOverrides().repeat.enabled).to.equal(true);
+    expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
+    expect(win.__LEMMINGS_MIDI_UI__.getIntentState().overrides.repeat.enabled).to.equal(true);
+  });
 });

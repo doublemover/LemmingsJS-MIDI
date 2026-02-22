@@ -1685,6 +1685,7 @@ const createE2EApi = (context) => ({
   _setContext: (next) => {
     context.view = next?.view || context.view;
     context.editorUi = next?.editorUi || context.editorUi;
+    context.midiUi = next?.midiUi || context.midiUi;
   },
   getState: () => {
     const view = context.view;
@@ -1701,7 +1702,9 @@ const createE2EApi = (context) => ({
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
-        outputName: view?.midiOut?.name || null
+        outputName: view?.midiOut?.name || null,
+        intentRevision: context.midiUi?.getMidiIntentState?.()?.revision ?? null,
+        learnTarget: context.midiUi?.getMidiIntentState?.()?.learn?.target ?? null
       }
     };
   },
@@ -1725,17 +1728,21 @@ const createE2EApi = (context) => ({
   getBenchMetrics: () => getBenchMetrics(context.view),
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),
-  stopBench: () => stopBench(context.view)
+  stopBench: () => stopBench(context.view),
+  midiGetIntentState: () => context.midiUi?.getMidiIntentState?.() || null,
+  midiDispatchIntent: (intent) => context.midiUi?.dispatchMidiIntent?.(intent) || null,
+  midiSetOverrides: (patch) => context.midiUi?.setMidiOverrides?.(patch) || false,
+  midiCaptureLearnNote: (note) => context.midiUi?.captureLearnNote?.(note) || false
 });
 
-const installE2EHarness = ({ view, editorUi } = {}) => {
+const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {
   if (!isE2EEnabled()) return null;
   const root = typeof globalThis !== 'undefined' ? globalThis : window;
   if (root.__E2E__ && typeof root.__E2E__._setContext === 'function') {
-    root.__E2E__._setContext({ view, editorUi });
+    root.__E2E__._setContext({ view, editorUi, midiUi });
     return root.__E2E__;
   }
-  const context = { view: view || null, editorUi: editorUi || null };
+  const context = { view: view || null, editorUi: editorUi || null, midiUi: midiUi || null };
   const api = createE2EApi(context);
   root.__E2E__ = api;
   return api;

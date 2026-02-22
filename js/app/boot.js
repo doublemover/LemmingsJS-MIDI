@@ -98,7 +98,7 @@ function init() {
     sections: GAME_SHORTCUT_SECTIONS,
     getBindings: action => lemmings.shortcuts?.getDisplayBindings?.(action) || []
   });
-  installE2EHarness({ view: lemmings });
+  installE2EHarness({ view: lemmings, midiUi });
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),

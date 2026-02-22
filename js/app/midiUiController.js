@@ -24,6 +24,7 @@ import {
   storeJson,
   storeMidiId
 } from './midi-ui/midiUiStorage.js';
+import { createMidiIntentState, reduceMidiIntent } from './midi-ui/midiUiIntent.js';
 
 const mergeDeep = (target, source) => {
   if (!source || typeof source !== 'object') return target;
@@ -80,9 +81,11 @@ export const createMidiUiController = ({
   let midiViewPanEnabled = false;
   let midiInputController = null;
   let midiOverrides = readStoredJson(storage, midiStorageKeys.overrides) || {};
+  let midiIntentState = createMidiIntentState({ overrides: midiOverrides });
   let envControlsBound = false;
   let lastUiSignature = null;
   let noteCapture = null;
+  const learnHandlers = new Map();
   let lastEnableError = null;
   let deviceRefreshTimer = null;
   let deviceListenersBound = false;
@@ -90,9 +93,34 @@ export const createMidiUiController = ({
   if (!isPlainObject(midiOverrides)) {
     midiOverrides = {};
   }
+  midiIntentState = createMidiIntentState({ overrides: midiOverrides });
   if (typeof globalThis !== 'undefined') {
     globalThis.lemmingsMidiOverrides = midiOverrides;
   }
+
+  const applyOverridesToRuntime = () => {
+    storeJson(storage, midiStorageKeys.overrides, midiOverrides);
+    if (typeof globalThis !== 'undefined') {
+      globalThis.lemmingsMidiOverrides = midiOverrides;
+    }
+    const lemmings = getLemmings();
+    if (lemmings?.applyMidiOverrides) {
+      lemmings.applyMidiOverrides(midiOverrides);
+    }
+  };
+
+  const runMidiIntent = (intent) => {
+    const prevOverrides = midiIntentState.overrides;
+    midiIntentState = reduceMidiIntent(midiIntentState, intent);
+    if (!isPlainObject(midiIntentState.overrides)) {
+      midiIntentState = reduceMidiIntent(midiIntentState, { type: 'overrides.replace', overrides: {} });
+    }
+    midiOverrides = midiIntentState.overrides;
+    if (midiOverrides !== prevOverrides) {
+      applyOverridesToRuntime();
+    }
+    return midiIntentState;
+  };
 
   const resolveMidiId = (devices, ...preferredIds) => {
     if (!devices || !devices.length) return null;
@@ -185,15 +213,7 @@ export const createMidiUiController = ({
   };
 
   const setMidiOverrides = (patch) => {
-    midiOverrides = mergeDeep(midiOverrides || {}, patch);
-    storeJson(storage, midiStorageKeys.overrides, midiOverrides);
-    if (typeof globalThis !== 'undefined') {
-      globalThis.lemmingsMidiOverrides = midiOverrides;
-    }
-    const lemmings = getLemmings();
-    if (lemmings?.applyMidiOverrides) {
-      lemmings.applyMidiOverrides(midiOverrides);
-    }
+    runMidiIntent({ type: 'overrides.merge', patch });
   };
 
   const setNoteCapture = (handler) => {
@@ -203,8 +223,39 @@ export const createMidiUiController = ({
     }
   };
 
-  const clearNoteCapture = () => {
+  const armMidiLearn = (target, onCapture) => {
+    if (!target || typeof onCapture !== 'function') return false;
+    learnHandlers.clear();
+    learnHandlers.set(String(target), onCapture);
+    runMidiIntent({ type: 'learn.arm', target: String(target) });
+    setNoteCapture((captured) => {
+      const active = midiIntentState.learn?.target;
+      const handler = active ? learnHandlers.get(active) : null;
+      if (typeof handler !== 'function') return false;
+      const consumed = handler(captured);
+      if (consumed !== false) {
+        runMidiIntent({ type: 'learn.capture', value: captured });
+        learnHandlers.delete(active);
+        runMidiIntent({ type: 'learn.disarm', target: active });
+        setNoteCapture(null);
+        return true;
+      }
+      return false;
+    });
+    return true;
+  };
+
+  const disarmMidiLearn = (target = null) => {
+    const active = midiIntentState.learn?.target || null;
+    if (target && active && String(target) !== active) return false;
+    learnHandlers.clear();
+    runMidiIntent({ type: 'learn.disarm', target: target ? String(target) : null });
     setNoteCapture(null);
+    return true;
+  };
+
+  const clearNoteCapture = () => {
+    disarmMidiLearn();
   };
 
   const applyViewPanSetting = (enabled) => {
@@ -245,18 +296,13 @@ export const createMidiUiController = ({
   const resetMidiDefaults = (persistHash = true) => {
     const expectedHash = getSchemaHash();
     clearMidiStorage();
-    midiOverrides = {};
-    if (typeof globalThis !== 'undefined') {
-      globalThis.lemmingsMidiOverrides = midiOverrides;
-    }
+    runMidiIntent({ type: 'overrides.replace', overrides: {} });
+    storeJson(storage, midiStorageKeys.overrides, null);
+    disarmMidiLearn();
     if (expectedHash && persistHash) {
       storeMidiId(storage, midiStorageKeys.schemaHash, expectedHash);
     } else if (!persistHash) {
       storeMidiId(storage, midiStorageKeys.schemaHash, null);
-    }
-    const lemmings = getLemmings();
-    if (lemmings?.applyMidiOverrides) {
-      lemmings.applyMidiOverrides({});
     }
   };
 
@@ -512,6 +558,42 @@ export const createMidiUiController = ({
     input.dataset.rangeBound = 'true';
   };
 
+  const createChoiceButtons = (choices, initialValue, onChange) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'midi-choice-buttons';
+    let value = initialValue;
+    const sync = () => {
+      Array.from(wrap.children).forEach((btn) => {
+        const selected = btn.dataset.value === String(value);
+        btn.classList.toggle('active', selected);
+      });
+    };
+    for (const choice of choices) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'button-compact';
+      btn.dataset.value = String(choice.value);
+      btn.textContent = choice.label;
+      btn.addEventListener('click', () => {
+        value = choice.value;
+        sync();
+        onChange?.(choice.value);
+      });
+      wrap.appendChild(btn);
+    }
+    sync();
+    return {
+      element: wrap,
+      setValue(nextValue) {
+        value = nextValue;
+        sync();
+      },
+      getValue() {
+        return value;
+      }
+    };
+  };
+
   const buildMappingEditor = ({ id, name, entry, targetKey, allowIndependentArp = false }) => {
     const details = document.createElement('details');
     details.className = 'panel-section';
@@ -556,6 +638,10 @@ export const createMidiUiController = ({
       opt.textContent = name;
       noteKeySelect.appendChild(opt);
     });
+    const noteInput = document.createElement('input');
+    noteInput.type = 'number';
+    noteInput.min = '0';
+    noteInput.max = '127';
 
     const noteOctaveInput = document.createElement('input');
     noteOctaveInput.type = 'number';
@@ -579,6 +665,14 @@ export const createMidiUiController = ({
       opt.textContent = chord;
       chordSelect.appendChild(opt);
     });
+    const chordQuick = createChoiceButtons(
+      CHORD_OPTIONS.map((chord) => ({ value: chord, label: chord })),
+      entry?.chord?.type || 'triad',
+      (value) => {
+        chordSelect.value = value;
+        updateEntry();
+      }
+    );
 
     const arpToggle = document.createElement('input');
     arpToggle.type = 'checkbox';
@@ -589,6 +683,14 @@ export const createMidiUiController = ({
       opt.textContent = mode;
       arpMode.appendChild(opt);
     });
+    const arpQuick = createChoiceButtons(
+      ['up', 'down', 'updown'].map((mode) => ({ value: mode, label: mode })),
+      entry?.arp?.mode || 'up',
+      (value) => {
+        arpMode.value = value;
+        updateEntry();
+      }
+    );
     const arpLength = document.createElement('input');
     arpLength.type = 'number';
     arpLength.min = '1';
@@ -608,17 +710,21 @@ export const createMidiUiController = ({
     modeSelect.value = initialMode;
     const noteValue = Number.isFinite(entry?.note) ? entry.note : null;
     if (noteValue != null) {
+      noteInput.value = String(noteValue);
       noteKeySelect.value = String(noteValue % 12);
       noteOctaveInput.value = String(Math.floor(noteValue / 12));
     } else {
+      noteInput.value = '';
       noteKeySelect.value = '';
       noteOctaveInput.value = '';
     }
     degreeInput.value = entry?.degree ?? '';
     octaveInput.value = entry?.octave ?? '';
     chordSelect.value = entry?.chord?.type || 'triad';
+    chordQuick.setValue(chordSelect.value);
     arpToggle.checked = !!entry?.arp?.enabled;
     arpMode.value = entry?.arp?.mode || 'up';
+    arpQuick.setValue(arpMode.value);
     arpLength.value = entry?.arp?.length ?? 3;
     arpIndependentToggle.checked = !!entry?.arp?.independent;
     priorityInput.value = entry?.priority ?? '';
@@ -628,11 +734,14 @@ export const createMidiUiController = ({
       const mode = modeSelect.value;
       const noteEnabled = mode === 'note';
       const degreeEnabled = mode === 'degree' || mode === 'chord';
+      noteInput.disabled = !noteEnabled;
       noteKeySelect.disabled = !noteEnabled;
       noteOctaveInput.disabled = !noteEnabled;
       degreeInput.disabled = !degreeEnabled;
       octaveInput.disabled = !degreeEnabled;
       chordSelect.disabled = mode !== 'chord';
+      chordQuick.element.hidden = mode !== 'chord';
+      arpQuick.element.hidden = !arpToggle.checked;
     };
     updateModeAvailability();
 
@@ -647,11 +756,16 @@ export const createMidiUiController = ({
       next.priority = null;
       next.disabled = false;
       const mode = modeSelect.value;
-      if (mode === 'note' && noteKeySelect.value !== '' && noteOctaveInput.value !== '') {
-        const key = Number(noteKeySelect.value);
-        const octave = Number(noteOctaveInput.value);
-        if (Number.isFinite(key) && Number.isFinite(octave)) {
-          next.note = Math.max(0, Math.min(127, key + octave * 12));
+      if (mode === 'note') {
+        const directNote = Number(noteInput.value);
+        if (noteInput.value !== '' && Number.isFinite(directNote)) {
+          next.note = Math.max(0, Math.min(127, Math.trunc(directNote)));
+        } else if (noteKeySelect.value !== '' && noteOctaveInput.value !== '') {
+          const key = Number(noteKeySelect.value);
+          const octave = Number(noteOctaveInput.value);
+          if (Number.isFinite(key) && Number.isFinite(octave)) {
+            next.note = Math.max(0, Math.min(127, key + octave * 12));
+          }
         }
       }
       if (mode === 'degree' || mode === 'chord') {
@@ -669,8 +783,33 @@ export const createMidiUiController = ({
       }
       if (priorityInput.value !== '') next.priority = Number(priorityInput.value);
       if (!enabledToggle.checked) next.disabled = true;
+      chordQuick.setValue(chordSelect.value || 'triad');
+      arpQuick.setValue(arpMode.value || 'up');
       const patch = { [targetKey]: { [String(id)]: next } };
       setMidiOverrides(patch);
+    };
+
+    const syncDirectNoteFromKeyOctave = () => {
+      const key = Number(noteKeySelect.value);
+      const octave = Number(noteOctaveInput.value);
+      if (noteKeySelect.value === '' || noteOctaveInput.value === '' || !Number.isFinite(key) || !Number.isFinite(octave)) {
+        noteInput.value = '';
+        return;
+      }
+      noteInput.value = String(Math.max(0, Math.min(127, key + octave * 12)));
+    };
+
+    const syncKeyOctaveFromDirectNote = () => {
+      const note = Number(noteInput.value);
+      if (noteInput.value === '' || !Number.isFinite(note)) {
+        noteKeySelect.value = '';
+        noteOctaveInput.value = '';
+        return;
+      }
+      const clamped = Math.max(0, Math.min(127, Math.trunc(note)));
+      noteInput.value = String(clamped);
+      noteKeySelect.value = String(clamped % 12);
+      noteOctaveInput.value = String(Math.floor(clamped / 12));
     };
 
     const resolveScaleForNote = () => {
@@ -707,8 +846,9 @@ export const createMidiUiController = ({
     const applyLearnedNote = (note) => {
       if (!Number.isFinite(note)) return;
       if (modeSelect.value === 'note') {
-        noteKeySelect.value = String(note % 12);
-        noteOctaveInput.value = String(Math.floor(note / 12));
+        const clamped = Math.max(0, Math.min(127, Math.trunc(note)));
+        noteInput.value = String(clamped);
+        syncKeyOctaveFromDirectNote();
       } else {
         const resolved = noteToScaleDegree(note);
         degreeInput.value = String(resolved.degree);
@@ -719,11 +859,11 @@ export const createMidiUiController = ({
 
     const bindNoteCapture = (row, input) => {
       if (!row || !input) return;
+      const learnTarget = `${targetKey}:${id}:${row.children?.[0]?.textContent || 'field'}`;
       const arm = () => {
         if (input.disabled) return;
-        setNoteCapture((captureNote) => {
+        armMidiLearn(learnTarget, (captureNote) => {
           applyLearnedNote(captureNote);
-          clearNoteCapture();
           return true;
         });
       };
@@ -739,29 +879,59 @@ export const createMidiUiController = ({
         });
       }
       input.addEventListener('focus', arm);
-      input.addEventListener('blur', clearNoteCapture);
+      input.addEventListener('blur', () => disarmMidiLearn(learnTarget));
     };
 
     modeSelect.addEventListener('change', () => {
       updateModeAvailability();
       updateEntry();
     });
-    [noteKeySelect, noteOctaveInput, degreeInput, octaveInput, chordSelect, arpToggle, arpMode, arpLength, arpIndependentToggle, priorityInput, enabledToggle]
+    noteInput.addEventListener('input', () => {
+      syncKeyOctaveFromDirectNote();
+      updateEntry();
+    });
+    noteInput.addEventListener('change', () => {
+      syncKeyOctaveFromDirectNote();
+      updateEntry();
+    });
+    [noteKeySelect, noteOctaveInput].forEach((el) => {
+      el.addEventListener('change', () => {
+        syncDirectNoteFromKeyOctave();
+        updateEntry();
+      });
+    });
+    [degreeInput, octaveInput, chordSelect, arpLength, arpIndependentToggle, priorityInput, enabledToggle]
       .forEach(el => el.addEventListener('change', updateEntry));
+    arpToggle.addEventListener('change', () => {
+      updateModeAvailability();
+      updateEntry();
+    });
+    arpMode.addEventListener('change', () => {
+      arpQuick.setValue(arpMode.value || 'up');
+      updateEntry();
+    });
+    chordSelect.addEventListener('change', () => {
+      chordQuick.setValue(chordSelect.value || 'triad');
+      updateEntry();
+    });
 
     const modeRow = createRow('Mode', modeSelect);
+    const noteRow = createRow('Note', noteInput);
     const keyRow = createRow('Key', noteKeySelect);
     const octaveRow = createRow('Octave', noteOctaveInput);
     const degreeRow = createRow('Degree', degreeInput);
     const scaleOctaveRow = createRow('Scale octave', octaveInput);
     details.appendChild(modeRow);
+    details.appendChild(noteRow);
     details.appendChild(keyRow);
     details.appendChild(octaveRow);
     details.appendChild(degreeRow);
     details.appendChild(scaleOctaveRow);
     details.appendChild(createRow('Chord', chordSelect));
+    details.appendChild(createRow('Chord quick', chordQuick.element));
     details.appendChild(createRow('Arp', arpToggle));
     details.appendChild(createRow('Arp mode', arpMode));
+    details.appendChild(createRow('Arp quick', arpQuick.element));
     details.appendChild(createRow('Arp length', arpLength));
     if (allowIndependentArp) {
       details.appendChild(createRow('Independent arp', arpIndependentToggle));
@@ -769,6 +939,7 @@ export const createMidiUiController = ({
     details.appendChild(createRow('Priority', priorityInput));
     enabledLabel.addEventListener('click', (event) => event.stopPropagation());
     enabledToggle.addEventListener('click', (event) => event.stopPropagation());
+    bindNoteCapture(noteRow, noteInput);
     bindNoteCapture(keyRow, noteKeySelect);
     bindNoteCapture(octaveRow, noteOctaveInput);
     bindNoteCapture(degreeRow, degreeInput);
@@ -1703,6 +1874,16 @@ export const createMidiUiController = ({
     updateDebug();
     window?.setInterval?.(updateDebug, 250);
 
+    if (window) {
+      window.__LEMMINGS_MIDI_UI__ = {
+        dispatchIntent: (intent) => runMidiIntent(intent),
+        getIntentState: () => ({ ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) }),
+        setOverrides: (patch) => setMidiOverrides(patch),
+        refresh: () => refreshMidiUiFromConfig(),
+        captureNote: (note) => (typeof noteCapture === 'function' ? !!noteCapture(note) : false)
+      };
+    }
+
     midiUiBound = true;
   };
 
@@ -1713,6 +1894,15 @@ export const createMidiUiController = ({
     showError,
     refreshMidiUiFromConfig,
     setMidiOverrides,
+    dispatchMidiIntent(intent) {
+      return runMidiIntent(intent);
+    },
+    getMidiIntentState() {
+      return { ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) };
+    },
+    captureLearnNote(note) {
+      return typeof noteCapture === 'function' ? !!noteCapture(note) : false;
+    },
     setMidiInputController(controller) {
       midiInputController = controller;
       if (midiInputController?.setNoteCapture) {
@@ -1736,7 +1926,10 @@ export const createMidiUiController = ({
     __test__: {
       applySectionStates,
       buildPositionMappingList,
-      resetMidiDefaults
+      resetMidiDefaults,
+      runMidiIntent,
+      armMidiLearn,
+      disarmMidiLearn
     },
     setActiveMidiInput,
     setActiveMidiOutput
