@@ -29,6 +29,7 @@ class MiniMap {
     this._terrainDirtyFlags = new Uint8Array(this.size);
     this._terrainDirtyIndices = new Uint16Array(this.size);
     this._terrainDirtyCount = 0;
+    this.terrainRevalidateBudget = Math.max(64, this.size >> 2);
     this._objectMarkerIndices = new Uint16Array(0);
     this._objectMarkerColors = new Uint32Array(0);
 
@@ -180,14 +181,24 @@ class MiniMap {
       this._terrainDirtyCount = 0;
       return;
     }
+    let budget = this.terrainRevalidateBudget | 0;
+    if (budget <= 0 || budget > dirtyCount) budget = dirtyCount;
     const dirty = this._terrainDirtyIndices;
     const flags = this._terrainDirtyFlags;
-    for (let i = 0; i < dirtyCount; i += 1) {
+    for (let i = 0; i < budget; i += 1) {
       const idx = dirty[i];
       flags[idx] = 0;
       this.#refreshTerrainCell(idx);
     }
-    this._terrainDirtyCount = 0;
+    if (budget === dirtyCount) {
+      this._terrainDirtyCount = 0;
+      return;
+    }
+    let write = 0;
+    for (let i = budget; i < dirtyCount; i += 1) {
+      dirty[write++] = dirty[i];
+    }
+    this._terrainDirtyCount = write;
   }
 
   #buildObjectMarkers() {
