@@ -156,6 +156,21 @@ class LemmingManager extends BaseLogger {
           floater: FloatSystem,
           miner: MineSystem
         };
+        const maxSkillType = SkillTypes.DIGGER;
+        this._canApplyWhileFalling = new Uint8Array(maxSkillType + 1);
+        this._canApplyWhileFalling[SkillTypes.FLOATER] = 1;
+        this._canApplyWhileFalling[SkillTypes.CLIMBER] = 1;
+        this._canApplyWhileFalling[SkillTypes.BOMBER] = 1;
+        this._canApplyWhileFalling[SkillTypes.BUILDER] = 1;
+        this._redundantActionBySkill = new Array(maxSkillType + 1);
+        this._redundantActionBySkill[SkillTypes.BASHER] = this._actionTypes.basher;
+        this._redundantActionBySkill[SkillTypes.BLOCKER] = this._actionTypes.blocker;
+        this._redundantActionBySkill[SkillTypes.DIGGER] = this._actionTypes.digger;
+        this._redundantActionBySkill[SkillTypes.MINER] = this._actionTypes.miner;
+        this._keepBlockerWallBySkill = new Uint8Array(maxSkillType + 1);
+        this._keepBlockerWallBySkill[SkillTypes.BOMBER] = 1;
+        this._keepBlockerWallBySkill[SkillTypes.CLIMBER] = 1;
+        this._keepBlockerWallBySkill[SkillTypes.FLOATER] = 1;
         this._lemmingCtor = getDependency('Lemming', Lemming);
 
         this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
@@ -538,25 +553,14 @@ class LemmingManager extends BaseLogger {
       this.logging.log(lem.id + ' Unknown Action: ' + skillType);
       return false;
     }
-    const canApplyWhileFalling = {
-      [SkillTypes.FLOATER]: this._actionTypes?.floater,
-      [SkillTypes.CLIMBER]: this._actionTypes?.climber,
-      [SkillTypes.BOMBER]: this.skillActions[SkillTypes.BOMBER],
-      [SkillTypes.BUILDER]: this._actionTypes?.builder
-    };
     if (lem.action === this.actions[LemmingStateType.FALLING]) {
-      if (!canApplyWhileFalling[skillType]) {
+      if (!this._canApplyWhileFalling?.[skillType]) {
         return false;
       }
     }
-    const redundant = {
-      [SkillTypes.BASHER]: this._actionTypes?.basher,
-      [SkillTypes.BLOCKER]: this._actionTypes?.blocker,
-      [SkillTypes.DIGGER]: this._actionTypes?.digger,
-      [SkillTypes.MINER]: this._actionTypes?.miner
-    };
+    const redundant = this._redundantActionBySkill?.[skillType] ?? null;
     const alreadyDoingIt =
-        redundant[skillType] && (lem.action instanceof redundant[skillType]);
+        redundant && (lem.action instanceof redundant);
     if (alreadyDoingIt) {
       return false;
     }
@@ -565,11 +569,7 @@ class LemmingManager extends BaseLogger {
       : false;
     const ok = actionSystem.triggerLemAction(lem);
     if (ok && wasBlocking) {
-      const keepWall =
-            skillType === SkillTypes.BOMBER ||
-            skillType === SkillTypes.CLIMBER ||
-            skillType === SkillTypes.FLOATER;
-      if (!keepWall) {
+      if (!this._keepBlockerWallBySkill?.[skillType]) {
         this.triggerManager.removeByOwner(lem);
       }
     }
