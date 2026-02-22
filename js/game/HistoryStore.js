@@ -382,28 +382,37 @@ class HistoryStore {
     const start = Number.isFinite(fromTick) ? Math.max(this.minDeltaTick, Math.trunc(fromTick)) : this.minDeltaTick;
     const end = Number.isFinite(toTick) ? Math.min(this.maxDeltaTick, Math.trunc(toTick)) : this.maxDeltaTick;
     if (start > end) return null;
-    const parts = [];
+    let hash = 2166136261;
+    const pushByte = (value) => {
+      hash ^= value & 0xff;
+      hash = Math.imul(hash, 16777619);
+    };
+    const pushAscii = (value) => {
+      const text = String(value);
+      for (let i = 0; i < text.length; i += 1) {
+        pushByte(text.charCodeAt(i));
+      }
+      pushByte(124); // '|'
+    };
     for (let tick = start; tick <= end; tick += 1) {
       const delta = this.getDelta(tick);
       if (!delta) continue;
-      parts.push({
-        t: tick,
-        n: isNoOpDelta(delta) ? 1 : 0,
-        lc: delta.lemChanges?.ids?.length || 0,
-        la: delta.lemAdded?.length || 0,
-        lr: delta.lemRemoved?.length || 0,
-        gc: delta.groundChanges?.indices?.length || 0,
-        ec: delta.entranceChanges?.indices?.length || 0,
-        tc: delta.triggerCooldownChanges?.ids?.length || 0,
-        ta: delta.triggerAdd?.length || 0,
-        tr: delta.triggerRemove?.length || 0,
-        oc: delta.objectAnimChanges?.ids?.length || 0,
-        sc: delta.soundEvents?.length || 0,
-        mc: delta.minimapDeaths?.length || 0
-      });
+      pushAscii(tick);
+      pushAscii(isNoOpDelta(delta) ? 1 : 0);
+      pushAscii(delta.lemChanges?.ids?.length || 0);
+      pushAscii(delta.lemAdded?.length || 0);
+      pushAscii(delta.lemRemoved?.length || 0);
+      pushAscii(delta.groundChanges?.indices?.length || 0);
+      pushAscii(delta.entranceChanges?.indices?.length || 0);
+      pushAscii(delta.triggerCooldownChanges?.ids?.length || 0);
+      pushAscii(delta.triggerAdd?.length || 0);
+      pushAscii(delta.triggerRemove?.length || 0);
+      pushAscii(delta.objectAnimChanges?.ids?.length || 0);
+      pushAscii(delta.soundEvents?.length || 0);
+      pushAscii(delta.minimapDeaths?.length || 0);
+      pushByte(10); // '\n'
     }
-    const bytes = encodeUtf8(stableStringify(parts));
-    return fnv1aHashBytes(bytes);
+    return (hash >>> 0).toString(16).padStart(8, '0');
   }
 
   _deltaBlockStart(tickIndex) {
@@ -1337,9 +1346,14 @@ class HistoryStore {
 
   _readLemmingManager(manager) {
     if (!manager) return null;
-    const targets = Array.isArray(manager._nukeTargets)
-      ? manager._nukeTargets.map(lem => (lem?.id ?? null))
-      : null;
+    const sourceTargets = manager._nukeTargets;
+    let targets = null;
+    if (Array.isArray(sourceTargets)) {
+      targets = new Array(sourceTargets.length);
+      for (let i = 0; i < sourceTargets.length; i += 1) {
+        targets[i] = sourceTargets[i]?.id ?? null;
+      }
+    }
     return {
       selectedIndex: manager.selectedIndex,
       spawnTotal: manager.spawnTotal,
@@ -1575,11 +1589,7 @@ class HistoryStore {
         };
         applyLemmingSnapshot(lem, snap, action, countdownAction);
       }
-      manager.activeLemmings = manager.lemmings.filter(lem => lem && !lem.removed);
-      for (let i = 0; i < manager.activeLemmings.length; i++) {
-        manager.activeLemmings[i]._activeIndex = i;
-      }
-      manager._activeDirty = false;
+      this._rebuildActiveLemmings(manager);
     }
 
     if (manager && keyframe.lemmingManagerState) {
@@ -1589,13 +1599,7 @@ class HistoryStore {
       manager.releaseTickIndex = state.releaseTickIndex ?? 0;
       manager.mmTickCounter = state.mmTickCounter ?? 0;
       manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
-      if (Array.isArray(state.nukeTargets)) {
-        manager._nukeTargets = state.nukeTargets
-          .map(id => (Number.isFinite(id) ? manager.lemmings[id] : null))
-          .filter(Boolean);
-      } else {
-        manager._nukeTargets = null;
-      }
+      manager._nukeTargets = this._resolveNukeTargets(manager, state.nukeTargets);
     }
 
     if (game.level && keyframe.entranceOpened) {
@@ -1765,21 +1769,34 @@ class HistoryStore {
     manager.releaseTickIndex = state.releaseTickIndex ?? 0;
     manager.mmTickCounter = state.mmTickCounter ?? 0;
     manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
-    if (Array.isArray(state.nukeTargets)) {
-      manager._nukeTargets = state.nukeTargets
-        .map(id => (Number.isFinite(id) ? manager.lemmings[id] : null))
-        .filter(Boolean);
-    } else {
-      manager._nukeTargets = null;
+    manager._nukeTargets = this._resolveNukeTargets(manager, state.nukeTargets);
+  }
+
+  _resolveNukeTargets(manager, ids) {
+    if (!manager || !Array.isArray(ids)) return null;
+    const lems = manager.lemmings || [];
+    const resolved = [];
+    for (let i = 0; i < ids.length; i += 1) {
+      const id = ids[i];
+      if (!Number.isFinite(id)) continue;
+      const lem = lems[id];
+      if (lem) resolved.push(lem);
     }
+    return resolved;
   }
 
   _rebuildActiveLemmings(manager) {
     if (!manager) return;
-    manager.activeLemmings = manager.lemmings.filter(lem => lem && !lem.removed);
-    for (let i = 0; i < manager.activeLemmings.length; i++) {
-      manager.activeLemmings[i]._activeIndex = i;
+    const lems = manager.lemmings || [];
+    const active = Array.isArray(manager.activeLemmings) ? manager.activeLemmings : [];
+    active.length = 0;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (!lem || lem.removed) continue;
+      lem._activeIndex = active.length;
+      active.push(lem);
     }
+    manager.activeLemmings = active;
     manager._activeDirty = false;
   }
 
