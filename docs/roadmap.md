@@ -464,7 +464,7 @@ Notes:
 - [x] Add indexed lookup tables for selected entries/UIDs in editor hot paths to
   avoid repeated linear scans on large maps.
   Touchpoints: `js/editor/EditorController.js`, `js/editor/EditorEntryFactory.js`.
-- [ ] Add parser/writer fuzz/property tests for NXLV comment/unknown-section
+- [x] Add parser/writer fuzz/property tests for NXLV comment/unknown-section
   round trips and malformed payload recovery.
   Touchpoints: `js/editor/NxlvParser.js`, `js/editor/NxlvWriter.js`,
   `test/editor/*.test.js`.
