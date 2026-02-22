@@ -82,6 +82,10 @@ export const createMidiUiController = ({
   let deviceRefreshTimer = null;
   let deviceListenersBound = false;
   let deviceListener = null;
+  let queuedRefreshTimer = null;
+  let queuedRefreshAll = false;
+  let queuedRefreshForce = false;
+  const queuedRefreshSections = new Set();
   if (!isPlainObject(midiOverrides)) {
     midiOverrides = {};
   }
@@ -108,6 +112,86 @@ export const createMidiUiController = ({
       applyOverridesToRuntime();
     }
     return midiIntentState;
+  };
+
+  const deriveRefreshSectionsFromPatch = (patch) => {
+    if (!isPlainObject(patch)) return null;
+    const sections = new Set();
+    if (Object.prototype.hasOwnProperty.call(patch, 'timing')) {
+      sections.add('bpm');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'scale')) {
+      sections.add('scale');
+    }
+    if (
+      Object.prototype.hasOwnProperty.call(patch, 'velocityRange') ||
+      Object.prototype.hasOwnProperty.call(patch, 'density')
+    ) {
+      sections.add('velocity');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'repeat')) {
+      sections.add('repeat');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'input')) {
+      sections.add('view');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'envelope')) {
+      sections.add('envelope');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'position')) {
+      sections.add('position');
+      sections.add('view');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'sfx')) {
+      sections.add('events');
+      sections.add('envTargets');
+      sections.add('envelope');
+    }
+    if (Object.prototype.hasOwnProperty.call(patch, 'triggers')) {
+      sections.add('triggers');
+      sections.add('envTargets');
+      sections.add('envelope');
+    }
+    return sections.size ? sections : null;
+  };
+
+  const queueMidiUiRefresh = ({ sections = null, force = false } = {}) => {
+    if (force) queuedRefreshForce = true;
+    if (sections === null) {
+      queuedRefreshAll = true;
+      queuedRefreshSections.clear();
+    } else if (!queuedRefreshAll) {
+      for (const section of sections) {
+        queuedRefreshSections.add(section);
+      }
+    }
+    if (queuedRefreshTimer != null) return;
+    const flushQueuedRefresh = () => {
+      const forceRefresh = queuedRefreshForce;
+      const requestAll = queuedRefreshAll;
+      const requestSections = requestAll ? null : new Set(queuedRefreshSections);
+      queuedRefreshForce = false;
+      queuedRefreshAll = false;
+      queuedRefreshSections.clear();
+      try {
+        refreshMidiUiFromConfig({ sections: requestSections, force: forceRefresh });
+      } catch (e) {
+        console.error('MIDI UI refresh failed', e);
+      }
+    };
+    if (typeof window?.setTimeout === 'function') {
+      let fired = false;
+      const timerId = window.setTimeout(() => {
+        fired = true;
+        queuedRefreshTimer = null;
+        flushQueuedRefresh();
+      }, 0);
+      if (!fired) {
+        queuedRefreshTimer = timerId;
+      }
+    } else {
+      flushQueuedRefresh();
+    }
   };
 
   const resolveMidiId = (devices, ...preferredIds) => {
@@ -202,6 +286,9 @@ export const createMidiUiController = ({
 
   const setMidiOverrides = (patch) => {
     runMidiIntent({ type: 'overrides.merge', patch });
+    if (midiUiBound) {
+      queueMidiUiRefresh({ sections: deriveRefreshSectionsFromPatch(patch) });
+    }
   };
 
   const setNoteCapture = (handler) => {
@@ -743,7 +830,7 @@ export const createMidiUiController = ({
     getConfig,
     createRow,
     buildMappingEditor,
-    refreshMidiUiFromConfig: () => refreshMidiUiFromConfig()
+    refreshMidiUiFromConfig: () => queueMidiUiRefresh()
   });
   const {
     buildScaleOptions,
@@ -809,9 +896,12 @@ export const createMidiUiController = ({
     envControlsBound = true;
   };
 
-  const refreshMidiUiFromConfig = () => {
+  const refreshMidiUiFromConfig = (options = {}) => {
     const config = getEffectiveConfig();
     if (!config) return false;
+    const requestedSections = options.sections instanceof Set ? options.sections : null;
+    const refreshAll = options.force === true || requestedSections === null;
+    const shouldRefreshSection = (name) => refreshAll || requestedSections.has(name);
     bindEnvelopeControls();
     const keySelect = document.getElementById('midiKeySelect');
     const scaleSelect = document.getElementById('midiScaleSelect');
@@ -833,13 +923,17 @@ export const createMidiUiController = ({
     const inputChannel = document.getElementById('midiInputChannel');
     const bpmBase = document.getElementById('midiBpmBase');
     const bpmValue = Number.isFinite(config.timing?.bpmBase) ? config.timing.bpmBase : 120;
-    if (bpmBase) bpmBase.value = String(bpmValue);
-    if (scaleSelect) buildScaleOptions(scaleSelect, config.scale?.name || 'chromatic-minor');
-    if (keySelect) {
+    if (bpmBase && shouldRefreshSection('bpm')) {
+      bpmBase.value = String(bpmValue);
+    }
+    if (scaleSelect && shouldRefreshSection('scale')) {
+      buildScaleOptions(scaleSelect, config.scale?.name || 'chromatic-minor');
+    }
+    if (keySelect && shouldRefreshSection('scale')) {
       const root = Number.isFinite(config.scale?.root) ? config.scale.root : 0;
       buildKeyOptions(keySelect, root);
     }
-    if (intensity) {
+    if (intensity && shouldRefreshSection('velocity')) {
       const defaultVelocity = Number.isFinite(config.velocityRange?.default)
         ? config.velocityRange.default
         : 80;
@@ -852,7 +946,7 @@ export const createMidiUiController = ({
       intensity.value = String(defaultVelocity);
       bindRangeInput(intensity);
     }
-    if (accent) {
+    if (accent && shouldRefreshSection('velocity')) {
       const defaultAccent = Number.isFinite(config.density?.velocityBoost)
         ? config.density.velocityBoost
         : 0.4;
@@ -860,37 +954,37 @@ export const createMidiUiController = ({
       bindRangeInput(accent);
     }
     const repeatCfg = config.repeat || {};
-    if (repeatEnabled) {
+    if (repeatEnabled && shouldRefreshSection('repeat')) {
       repeatEnabled.checked = repeatCfg.enabled === true;
     }
-    if (repeatCount) {
+    if (repeatCount && shouldRefreshSection('repeat')) {
       const maxRepeats = Number.isFinite(repeatCfg.maxRepeats) ? repeatCfg.maxRepeats : 0;
       repeatCount.value = String(maxRepeats);
     }
-    if (repeatSpacing) {
+    if (repeatSpacing && shouldRefreshSection('repeat')) {
       const windowBeats = Number.isFinite(repeatCfg.windowBeats)
         ? repeatCfg.windowBeats
         : (Number.isFinite(repeatCfg.spacingTicks) ? repeatCfg.spacingTicks : 1);
       buildRepeatWindowOptions(repeatSpacing, windowBeats);
     }
-    if (repeatTarget) {
+    if (repeatTarget && shouldRefreshSection('repeat')) {
       const target = repeatCfg.target
         || (repeatCfg.durationBoost ? 'duration' : 'velocity');
       buildRepeatTargetOptions(repeatTarget, target);
     }
-    if (repeatAmount) {
+    if (repeatAmount && shouldRefreshSection('repeat')) {
       const amount = Number.isFinite(repeatCfg.amount)
         ? repeatCfg.amount
         : (repeatCfg.durationBoost ?? repeatCfg.velocityBoost ?? 0);
       repeatAmount.value = String(amount);
       bindRangeInput(repeatAmount);
     }
-    if (positionList) {
+    if (positionList && shouldRefreshSection('position')) {
       const mappings = resolvePositionMappings(config);
       buildPositionMappingList(positionList, mappings, config);
     }
     const storedViewPan = readStoredMidiId(storage, midiStorageKeys.viewPan);
-    if (viewPanToggle) {
+    if (viewPanToggle && shouldRefreshSection('view')) {
       if (storedViewPan != null) {
         viewPanToggle.checked = storedViewPan === 'true';
       } else if (typeof config.position?.viewPan === 'boolean') {
@@ -898,41 +992,52 @@ export const createMidiUiController = ({
       }
     }
     const storedChannel = readStoredMidiId(storage, midiStorageKeys.inputChannel);
-    if (inputChannel) {
+    if (inputChannel && shouldRefreshSection('view')) {
       const channel = storedChannel ?? config.input?.channel ?? 'omni';
       const value = channel === 'omni' ? null : channel;
       buildChannelOptions(inputChannel, value);
     }
-    const { level, skills } = (() => {
-      const lemmings = getLemmings();
-      const game = lemmings?.game ?? null;
-      return {
-        level: game?.level ?? lemmings?.level ?? null,
-        skills: game?.getGameSkills?.() ?? null
-      };
-    })();
-    const availableSfxIds = resolveAvailableSfxIds(config, level, skills);
-    const sfxFilter = availableSfxIds && availableSfxIds.size ? availableSfxIds : null;
-    const availableTriggerTypes = level ? collectTriggerTypes(level) : null;
-    buildEventList(config, sfxFilter);
-    buildTriggerList(config, availableTriggerTypes, level);
-    if (envTarget) {
-      buildAdsrTargetOptions(envTarget, config, sfxFilter, availableTriggerTypes, level);
-      const storedTarget = readStoredMidiId(storage, midiStorageKeys.adsrTarget);
-      const options = Array.from(envTarget.options || envTarget.children || []);
-      const matches = storedTarget &&
-        options.some(opt => opt.value === storedTarget);
-      envTarget.value = matches ? storedTarget : 'global';
+    const shouldBuildEvents = shouldRefreshSection('events');
+    const shouldBuildTriggers = shouldRefreshSection('triggers');
+    const shouldBuildEnvTargets = shouldRefreshSection('envTargets');
+    if (shouldBuildEvents || shouldBuildTriggers || shouldBuildEnvTargets) {
+      const { level, skills } = (() => {
+        const lemmings = getLemmings();
+        const game = lemmings?.game ?? null;
+        return {
+          level: game?.level ?? lemmings?.level ?? null,
+          skills: game?.getGameSkills?.() ?? null
+        };
+      })();
+      const availableSfxIds = resolveAvailableSfxIds(config, level, skills);
+      const sfxFilter = availableSfxIds && availableSfxIds.size ? availableSfxIds : null;
+      const availableTriggerTypes = level ? collectTriggerTypes(level) : null;
+      if (shouldBuildEvents) {
+        buildEventList(config, sfxFilter);
+      }
+      if (shouldBuildTriggers) {
+        buildTriggerList(config, availableTriggerTypes, level);
+      }
+      if (envTarget && shouldBuildEnvTargets) {
+        buildAdsrTargetOptions(envTarget, config, sfxFilter, availableTriggerTypes, level);
+        const storedTarget = readStoredMidiId(storage, midiStorageKeys.adsrTarget);
+        const targetOptions = Array.from(envTarget.options || envTarget.children || []);
+        const matches = storedTarget &&
+          targetOptions.some(opt => opt.value === storedTarget);
+        envTarget.value = matches ? storedTarget : 'global';
+      }
     }
-    const env = resolveEnvelopeConfig(config, envTarget?.value || 'global');
-    if (envAttack) envAttack.value = String(Number.isFinite(env.attack) ? env.attack : 1);
-    if (envDecay) envDecay.value = String(Number.isFinite(env.decay) ? env.decay : 0);
-    if (envSustain) envSustain.value = String(Number.isFinite(env.sustain) ? env.sustain : 1);
-    if (envRelease) envRelease.value = String(Number.isFinite(env.release) ? env.release : 1);
-    bindRangeInput(envAttack);
-    bindRangeInput(envDecay);
-    bindRangeInput(envSustain);
-    bindRangeInput(envRelease);
+    if (shouldRefreshSection('envelope') || shouldBuildEnvTargets) {
+      const env = resolveEnvelopeConfig(config, envTarget?.value || 'global');
+      if (envAttack) envAttack.value = String(Number.isFinite(env.attack) ? env.attack : 1);
+      if (envDecay) envDecay.value = String(Number.isFinite(env.decay) ? env.decay : 0);
+      if (envSustain) envSustain.value = String(Number.isFinite(env.sustain) ? env.sustain : 1);
+      if (envRelease) envRelease.value = String(Number.isFinite(env.release) ? env.release : 1);
+      bindRangeInput(envAttack);
+      bindRangeInput(envDecay);
+      bindRangeInput(envSustain);
+      bindRangeInput(envRelease);
+    }
     return true;
   };
 
@@ -1230,13 +1335,7 @@ export const createMidiUiController = ({
         const mappings = resolvePositionMappings(config);
         mappings.push(buildDefaultPositionMapping(config));
         setMidiOverrides({ position: { mappings } });
-        window?.setTimeout?.(() => {
-          try {
-            refreshMidiUiFromConfig();
-          } catch (e) {
-            console.error('MIDI UI refresh failed', e);
-          }
-        }, 0);
+        queueMidiUiRefresh();
       });
     }
     if (intensity) {

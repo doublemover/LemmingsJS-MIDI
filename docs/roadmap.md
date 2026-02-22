@@ -486,7 +486,7 @@ Notes:
 - [x] Split `midiUiController` into smaller feature modules (state, binding,
   rendering sections, learn flow) behind a stable facade.
   Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
-- [ ] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
+- [x] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
   single-control changes.
   Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiDomain.js`.
 - [ ] Add strict intent payload validation and migration guards for persisted
