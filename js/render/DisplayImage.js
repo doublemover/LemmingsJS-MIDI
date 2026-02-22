@@ -31,7 +31,7 @@ const MAX_MARCHING_ANT_PATTERN_CACHE_ENTRIES = 1024;
 const DIRTY_RECT_MERGE_PAD = 1;
 
 const getMarchingAntPerimeterOffsets = (stride, width, height) => {
-  const key = `${stride}:${width}:${height}`;
+  const key = (stride * 8192) + (width * 128) + height;
   const cached = marchingAntPerimeterCache.get(key);
   if (cached) return cached;
 
@@ -62,7 +62,7 @@ const getMarchingAntPerimeterOffsets = (stride, width, height) => {
 const getMarchingAntPaintPattern = (perimeterLen, dashLen, offset) => {
   const pattern = dashLen * 2;
   const phase = ((offset % pattern) + pattern) % pattern;
-  const key = `${perimeterLen}:${dashLen}:${phase}`;
+  const key = (perimeterLen * 131072) + (dashLen * 512) + phase;
   const cached = marchingAntPatternCache.get(key);
   if (cached) return cached;
 
