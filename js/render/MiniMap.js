@@ -25,6 +25,14 @@ class MiniMap {
     this.scaleY = this.height / level.height;
 
     this.terrain = new Uint8Array(this.size);
+    this.terrainColors = new Uint32Array(this.size);
+
+    if (!MiniMap.palette) {
+      MiniMap.palette = new Uint32Array(129);
+      for (let i = 1; i <= 128; ++i) {
+        MiniMap.palette[i] = 0xFF000000 | ((i*2) << 8);
+      }
+    }
     this.#buildTerrain();
 
     // dynamic state
@@ -40,14 +48,8 @@ class MiniMap {
 
     // render target (drawn into the GUI canvas once per frame)
     this.frame = new Frame(this.width, this.height);
+    this.frame.mask.fill(1);
     //this.renderFrame = new Frame(this.renderWidth, this.renderHeight);
-
-    if (!MiniMap.palette) {
-      MiniMap.palette = new Uint32Array(129);
-      for (let i = 1; i <= 128; ++i) {
-        MiniMap.palette[i] = 0xFF000000 | ((i*2) << 8);
-      }
-    }
 
     this._displayListeners = null;
     this._mouseDown = false;
@@ -122,7 +124,6 @@ class MiniMap {
 
   /* Build complete terrain snapshot (expensive – call at load/reset only). */
   #buildTerrain() {
-    this.terrain.fill(0);
     const gm = this.level.getGroundMaskLayer();
     for (let mY = 0; mY < this.height; ++mY) {
       const ly1 = Math.floor(mY / this.scaleY);
@@ -132,9 +133,15 @@ class MiniMap {
         const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
         let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
         if (count > 71) count = 72;
-        this.terrain[mY * this.width + mX] = count;
+        this.#setTerrainCount(mY * this.width + mX, count);
       }
     }
+  }
+
+  #setTerrainCount(idx, count) {
+    const normalized = Math.max(0, Math.min(128, count | 0));
+    this.terrain[idx] = normalized;
+    this.terrainColors[idx] = MiniMap.palette[normalized] || 0xFF000000;
   }
 
   /* Fast per‑pixel update called by digging/mining/placing ground.
@@ -142,40 +149,31 @@ class MiniMap {
   onGroundChanged(px, py, removed = true) {
     const mX = (px * this.scaleX) | 0;
     const mY = (py * this.scaleY) | 0;
+    if (mX < 0 || mX >= this.width || mY < 0 || mY >= this.height) return;
     const idx = mY * this.width + mX;
-    if (removed) {
-      if (this.terrain[idx] > 0) --this.terrain[idx];
-    } else {
-      if (this.terrain[idx] < 128) ++this.terrain[idx];
-    }
+    let next = this.terrain[idx];
+    if (removed) next -= 1;
+    else next += 1;
+    this.#setTerrainCount(idx, next);
   }
 
   /* Region‑based revalidation (e.g. after a large mask dig). */
   invalidateRegion(x, y, w, h) {
+    if (w <= 0 || h <= 0) return;
     const gm = this.level.getGroundMaskLayer();
-    const xEnd = Math.min(this.level.width, x + w);
-    const yEnd = Math.min(this.level.height, y + h);
+    const xStart = Math.max(0, Math.floor(x));
+    const yStart = Math.max(0, Math.floor(y));
+    const xEnd = Math.min(this.level.width, Math.ceil(x + w));
+    const yEnd = Math.min(this.level.height, Math.ceil(y + h));
+    if (xEnd <= xStart || yEnd <= yStart) return;
 
-    // For minimal work, track which minimap rows/cols need recompute
-    const touched = new Int8Array(this.width * this.height);
+    const mX0 = Math.max(0, Math.floor(xStart * this.scaleX));
+    const mY0 = Math.max(0, Math.floor(yStart * this.scaleY));
+    const mX1 = Math.min(this.width - 1, Math.floor((xEnd - 1) * this.scaleX));
+    const mY1 = Math.min(this.height - 1, Math.floor((yEnd - 1) * this.scaleY));
 
-    for (let py = y; py < yEnd; ++py) {
-      const mY = (py * this.scaleY) | 0;
-      const rowBase = mY * this.width;
-      for (let px = x; px < xEnd; ++px) {
-        const mX = (px * this.scaleX) | 0;
-        touched[rowBase + mX] = 1;
-      }
-    }
-
-    // For every touched cell recalc its counter from scratch.
-    for (let mY = 0; mY < this.height; ++mY) {
-      const rowBase = mY * this.width;
-      for (let mX = 0; mX < this.width; ++mX) {
-        const idx = rowBase + mX;
-        if (!touched[idx]) continue;
-
-        // Back‑map to level bounds for this cell.
+    for (let mY = mY0; mY <= mY1; mY += 1) {
+      for (let mX = mX0; mX <= mX1; mX += 1) {
         const lx1 = Math.floor(mX / this.scaleX);
         const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
         const ly1 = Math.floor(mY / this.scaleY);
@@ -183,7 +181,7 @@ class MiniMap {
 
         let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
         if (count > 71) count = 72;
-        this.terrain[idx] = count;
+        this.#setTerrainCount((mY * this.width) + mX, count);
       }
     }
   }
@@ -238,7 +236,8 @@ class MiniMap {
 
   render() {
     if (!this.guiDisplay) return;
-    const reversing = !!getApp()?.game?.timeTravel?.isReversing;
+    const app = getApp();
+    const reversing = !!app?.game?.timeTravel?.isReversing;
 
     if (++this._viewportCounter >= this.viewportDashDelay) {
       this._viewportCounter = 0;
@@ -249,21 +248,11 @@ class MiniMap {
       width: W,
       height: H,
       frame,
-      terrain,
-      fog,
     } = this;
 
-    /* Terrain + fog background */
-    for (let idx = 0; idx < terrain.length; ++idx) {
-      let color = 0xFF000000;
-      if (MiniMap.palette[terrain[idx]]) {
-        color = MiniMap.palette[terrain[idx]];
-      }
-      frame.data[idx] = color;
-      frame.mask[idx] = 1;
-    }
+    frame.data.set(this.terrainColors);
 
-    const viewRect = getApp()?.stage?.getGameViewRect?.();
+    const viewRect = app?.stage?.getGameViewRect?.();
     if (!viewRect) return;
     const vpX = (viewRect.x * this.scaleX) | 0;
     let vpW = (viewRect.w * this.scaleX) | 0;
