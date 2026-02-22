@@ -40,6 +40,15 @@ class TimeTravelController {
     return this.timer;
   }
 
+  _getDeltaAt(tickIndex) {
+    if (!this.history) return null;
+    if (typeof this.history.getDelta === 'function') {
+      const delta = this.history.getDelta(tickIndex);
+      if (delta !== undefined && delta !== null) return delta;
+    }
+    return this.history.deltas?.[tickIndex] ?? null;
+  }
+
   stepBackward(count = 1) {
     const timer = this._resolveTimer();
     if (!timer || !this.history || !this.game) return;
@@ -51,8 +60,7 @@ class TimeTravelController {
         break;
       }
       const targetTick = timer.tickIndex - 1;
-      const delta = this.history.getDelta?.(targetTick)
-        ?? this.history.deltas?.[targetTick];
+      const delta = this._getDeltaAt(targetTick);
       if (!delta) {
         this.seekToTick(targetTick);
         break;
@@ -78,8 +86,7 @@ class TimeTravelController {
     timer.tickIndex = keyframe.tickIndex ?? target;
     let cursor = timer.tickIndex;
     while (cursor < target) {
-      const delta = this.history.getDelta?.(cursor)
-        ?? this.history.deltas?.[cursor];
+      const delta = this._getDeltaAt(cursor);
       if (!delta) break;
       this.history.applyDeltaForward(this.game, delta);
       cursor += 1;
