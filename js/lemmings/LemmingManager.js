@@ -95,6 +95,9 @@ class LemmingManager extends BaseLogger {
       this._nearestGrid = new Map();
       this._nearestGridPool = [];
       this._nearestGridDirty = true;
+      this._lemmingPool = [];
+      const releaseCount = Math.max(1, gameVictoryCondition.getReleaseCount() || 0);
+      this._maxLemmingPoolSize = Math.max(64, releaseCount * 4);
 
       const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
       const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
@@ -271,6 +274,23 @@ class LemmingManager extends BaseLogger {
     return { best, bestDist };
   }
 
+  _acquireLemming(x, y, id) {
+    const pool = this._lemmingPool;
+    const lem = pool.length ? pool.pop() : null;
+    if (lem && typeof lem.reset === 'function') {
+      lem.reset(x, y, id);
+      return lem;
+    }
+    const LemmingCtor = this._lemmingCtor || Lemming;
+    return new LemmingCtor(x, y, id);
+  }
+
+  _releaseLemming(lem) {
+    if (!lem || !this._lemmingPool) return;
+    if (this._lemmingPool.length >= this._maxLemmingPoolSize) return;
+    this._lemmingPool.push(lem);
+  }
+
   processNewAction(lem, newAction) {
     if (newAction === LemmingStateType.NO_STATE_TYPE) return false;
     this.setLemmingState(lem, newAction);
@@ -372,8 +392,7 @@ class LemmingManager extends BaseLogger {
 
   addLemming(x, y) {
     const startingLemLength = this.lemmings.length;
-    const LemmingCtor = this._lemmingCtor || Lemming;
-    const lem = new LemmingCtor(x, y, startingLemLength);
+    const lem = this._acquireLemming(x, y, startingLemLength);
     if (lemmings.bench || lemmings.bench2 || lemmings.benchReverse) {
       lem.lookRight = Math.random() < 0.5;
     }
@@ -387,7 +406,7 @@ class LemmingManager extends BaseLogger {
       const action = this.actions[LemmingStateType.FALLING];
       const extras = new Array(extraCount);
       for (let i = 0; i < extraCount; i++) {
-        const extra = new LemmingCtor(
+        const extra = this._acquireLemming(
           x,
           y,
           startingLemLength + 1 + i
@@ -723,12 +742,14 @@ class LemmingManager extends BaseLogger {
   }
 
   removeOne(lem) {
+    if (!lem || lem.removed) return;
     if (this.miniMap &&
             lem.action !== this.actions[LemmingStateType.EXITING]) {
       this.miniMap.addDeath(lem.x, lem.y);
     }
     const lemId = lem.id;
     lem.remove();
+    this._releaseLemming(lem);
     if (lemId !== null && lemId !== undefined) this.lemmings[lemId] = null;
     this._activeDirty = true;
     this._nearestGridDirty = true;
@@ -775,6 +796,9 @@ class LemmingManager extends BaseLogger {
     this._nukeScratch = null;
     this._nearestGrid = null;
     this._nearestGridPool = null;
+    if (this._lemmingPool) this._lemmingPool.length = 0;
+    this._lemmingPool = null;
+    this._maxLemmingPoolSize = null;
     this.selectedIndex = null;
     if (typeof lemmings !== 'undefined' &&
             (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&

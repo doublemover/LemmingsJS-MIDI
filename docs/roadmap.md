@@ -413,7 +413,7 @@ Notes:
 - [x] Add scan-cache strategy for repeated environment queries
   (gap/wall/drop/hazard) during the same AI decision window.
   Touchpoints: `js/app/procgenController.js`, `js/render/SolidLayer.js`.
-- [ ] Add entity pooling/reuse path for long bench/procgen runs to reduce GC
+- [x] Add entity pooling/reuse path for long bench/procgen runs to reduce GC
   churn from repeated lemming object allocation.
   Touchpoints: `js/lemmings/LemmingManager.js`, `js/lemmings/Lemming.js`.
 - [ ] Add long-run headless soak benchmark for procgen (entity growth + memory

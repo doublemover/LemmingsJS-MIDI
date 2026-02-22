@@ -5,6 +5,13 @@ import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvent
 class Lemming extends BaseLogger {
   constructor(x = 0, y = 0, id) {
     super();
+    this.reset(x, y, id);
+  }
+
+  /**
+   * Reinitialize this instance so managers can reuse pooled objects.
+   */
+  reset(x = 0, y = 0, id) {
     this.lookRight = true;
     this.frameIndex = 0;
     this.canClimb = false;
@@ -15,6 +22,9 @@ class Lemming extends BaseLogger {
     this.state = 0;
     this.hasExploded = false;
     this.disabled = false;
+    this.lastTriggerType = null;
+    this.countdownAction = null;
+    this._activeIndex = -1;
     this.x = x;
     this.y = y;
     this.id = id;

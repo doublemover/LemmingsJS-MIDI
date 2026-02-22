@@ -196,6 +196,34 @@ describe('LemmingManager core behavior', function() {
     expect(nearest).to.equal(lem3);
   });
 
+  it('reuses pooled lemming instances with reset state', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    manager.addLemming(6, 6);
+    const first = manager.lemmings[0];
+    first.disable();
+    first.hasParachute = true;
+    first.canClimb = true;
+    first.countdown = 9;
+    first.lastTriggerType = TriggerTypes.KILL;
+    first.lookRight = false;
+
+    manager.removeOne(first);
+    manager.addLemming(12, 14);
+    const reused = manager.lemmings[1];
+
+    expect(reused).to.equal(first);
+    expect(reused.id).to.equal(1);
+    expect(reused.x).to.equal(12);
+    expect(reused.y).to.equal(14);
+    expect(reused.removed).to.equal(false);
+    expect(reused.disabled).to.equal(false);
+    expect(reused.countdown).to.equal(0);
+    expect(reused.canClimb).to.equal(false);
+    expect(reused.hasParachute).to.equal(false);
+    expect(reused.lastTriggerType).to.equal(null);
+    expect(reused.lookRight).to.equal(true);
+  });
+
   it('cycleSelection skips removed and disabled lemmings', function() {
     const { manager } = makeManager({ width: 20, height: 20 });
 
