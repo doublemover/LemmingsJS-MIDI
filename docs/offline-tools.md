@@ -74,6 +74,10 @@ Replaces sprites in an existing DAT archive with PNG data. Multiple frames can
 be supplied as a sprite sheet when `--sheet-orientation` matches the sheet
 layout.
 
+Implementation note:
+- Output serialization is streamed with backpressure handling, so patching large
+  DAT archives does not require a single full-size output allocation.
+
 ## packLevels.js
 
 ```
@@ -82,6 +86,10 @@ node tools/packLevels.js <level dir> <out DAT>
 
 Compresses a directory of 2048 byte `.lvl` files into a single DAT file. Useful
 for building custom level packs.
+
+Implementation note:
+- Packed bytes are streamed to disk as each level is processed to keep memory
+  usage stable on large level directories.
 
 ## archiveDir.js
 
