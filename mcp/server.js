@@ -15,6 +15,7 @@ import http from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -24,6 +25,7 @@ const SPECTATOR_HTML_PATH = path.join(__dirname, 'spectator.html');
 const DEFAULT_BASE_URL = process.env.LEMMINGS_MCP_BASE_URL || 'https://localhost:8080';
 const DEFAULT_PATH = process.env.LEMMINGS_MCP_PATH || '/?e2e=1';
 const DEFAULT_VIEWPORT = { width: 1280, height: 720, deviceScaleFactor: 1 };
+const ENABLED_TOOL_SURFACES = parseEnabledSurfaces(process.env.LEMMINGS_MCP_SURFACES);
 
 const SKILL_ACTIONS = {
   climber: 'selectSkillClimber',
@@ -523,99 +525,6 @@ const EventsPollSchema = z.object({
   after: z.string().optional()
 });
 
-const TOOL_SPECS = [
-  {
-    name: 'session.create',
-    description: 'Launch a Playwright session and load the game with the E2E harness.',
-    schema: SessionCreateSchema
-  },
-  {
-    name: 'session.close',
-    description: 'Close a Playwright session and clear resources/events.',
-    schema: SessionCloseSchema
-  },
-  {
-    name: 'time.pause',
-    description: 'Pause the game timer via the E2E harness.',
-    schema: TimeSchema
-  },
-  {
-    name: 'time.resume',
-    description: 'Resume the game timer via the E2E harness.',
-    schema: TimeSchema
-  },
-  {
-    name: 'time.step',
-    description: 'Step the game timer forward or backward by a number of ticks.',
-    schema: TimeStepSchema
-  },
-  {
-    name: 'state.get',
-    description: 'Fetch a structured state snapshot from the E2E harness.',
-    schema: StateGetSchema
-  },
-  {
-    name: 'state.delta',
-    description: 'Return filtered history deltas between ticks (defaults to changes since the last state.get).',
-    schema: StateDeltaSchema
-  },
-  {
-    name: 'editor.apply',
-    description: 'Apply editor mutations through the E2E harness.',
-    schema: EditorApplySchema
-  },
-  {
-    name: 'lemming.summary',
-    description: 'Return aggregated lemming summary data.',
-    schema: LemmingsSummarySchema
-  },
-  {
-    name: 'lemming.select',
-    description: 'Select a lemming by ID via the E2E harness.',
-    schema: LemmingSelectSchema
-  },
-  {
-    name: 'skill.apply',
-    description: 'Apply a skill to a selected lemming using keybindings.',
-    schema: SkillApplySchema
-  },
-  {
-    name: 'input.action',
-    description: 'Execute a named action from keybindings.json.',
-    schema: InputActionSchema
-  },
-  {
-    name: 'input.keys',
-    description: 'Inject low-level key events.',
-    schema: InputKeysSchema
-  },
-  {
-    name: 'vision.capture',
-    description: 'Capture a screenshot of the page or canvas.',
-    schema: VisionCaptureSchema
-  },
-  {
-    name: 'vision.captureSequence',
-    description: 'Capture multiple frames across time.',
-    schema: VisionSequenceSchema
-  },
-  {
-    name: 'watch.create',
-    description: 'Create a watch that emits events based on ticks or state changes.',
-    schema: WatchCreateSchema
-  },
-  {
-    name: 'watch.cancel',
-    description: 'Cancel a watch.',
-    schema: WatchCancelSchema
-  },
-  {
-    name: 'events.poll',
-    description: 'Poll events since a cursor.',
-    schema: EventsPollSchema
-  }
-];
-
 const TOOL_NAME_ALIASES = new Map();
 
 const toToolName = (name) => String(name).replace(/\./g, '_');
@@ -640,22 +549,6 @@ const LEGACY_TOOL_ALIASES = new Map([
   ['lemmings.watch.cancel', 'watch.cancel'],
   ['lemmings.events.poll', 'events.poll']
 ]);
-
-const TOOL_DEFS = TOOL_SPECS.map((spec) => {
-  const externalName = toToolName(spec.name);
-  TOOL_NAME_ALIASES.set(externalName, spec.name);
-  TOOL_NAME_ALIASES.set(spec.name, spec.name);
-  return {
-    name: externalName,
-    description: spec.description,
-    inputSchema: toJsonSchemaCompat(spec.schema)
-  };
-});
-
-for (const [legacyName, currentName] of LEGACY_TOOL_ALIASES.entries()) {
-  TOOL_NAME_ALIASES.set(legacyName, currentName);
-  TOOL_NAME_ALIASES.set(toToolName(legacyName), currentName);
-}
 
 const buildToolResponse = (payload) => ({
   content: [{ type: 'text', text: JSON.stringify(payload) }],
@@ -2262,26 +2155,87 @@ const eventsPollTool = async (args) => {
   return envelope || { cursor, events: [] };
 };
 
-const TOOL_HANDLERS = new Map([
-  ['session.create', createSession],
-  ['session.close', closeSession],
-  ['time.pause', pauseTime],
-  ['time.resume', resumeTime],
-  ['time.step', stepTime],
-  ['state.get', getStateTool],
-  ['state.delta', getStateDeltaTool],
-  ['editor.apply', editorApplyTool],
-  ['lemming.summary', getLemmingsSummaryTool],
-  ['lemming.select', selectLemmingTool],
-  ['skill.apply', applySkillTool],
-  ['input.action', inputActionTool],
-  ['input.keys', inputKeysTool],
-  ['vision.capture', visionCaptureTool],
-  ['vision.captureSequence', visionSequenceTool],
-  ['watch.create', watchCreateTool],
-  ['watch.cancel', watchCancelTool],
-  ['events.poll', eventsPollTool]
-]);
+const TOOL_SCHEMA_REGISTRY = {
+  SessionCreateSchema,
+  SessionCloseSchema,
+  TimeSchema,
+  TimeStepSchema,
+  StateGetSchema,
+  StateDeltaSchema,
+  EditorApplySchema,
+  LemmingsSummarySchema,
+  LemmingSelectSchema,
+  SkillApplySchema,
+  InputActionSchema,
+  InputKeysSchema,
+  VisionCaptureSchema,
+  VisionSequenceSchema,
+  WatchCreateSchema,
+  WatchCancelSchema,
+  EventsPollSchema
+};
+
+const TOOL_HANDLER_REGISTRY = {
+  createSession,
+  closeSession,
+  pauseTime,
+  resumeTime,
+  stepTime,
+  getStateTool,
+  getStateDeltaTool,
+  editorApplyTool,
+  getLemmingsSummaryTool,
+  selectLemmingTool,
+  applySkillTool,
+  inputActionTool,
+  inputKeysTool,
+  visionCaptureTool,
+  visionSequenceTool,
+  watchCreateTool,
+  watchCancelTool,
+  eventsPollTool
+};
+
+const surfaceRegistry = buildSurfaceRegistry(
+  TOOL_SCHEMA_REGISTRY,
+  TOOL_HANDLER_REGISTRY,
+  ENABLED_TOOL_SURFACES
+);
+const TOOL_HANDLERS_BY_SURFACE = surfaceRegistry.handlersBySurface;
+const TOOL_SURFACE_BY_NAME = surfaceRegistry.toolSurfaceByName;
+
+const TOOL_DEFS = surfaceRegistry.specs.map((spec) => {
+  const externalName = toToolName(spec.name);
+  TOOL_NAME_ALIASES.set(externalName, spec.name);
+  TOOL_NAME_ALIASES.set(spec.name, spec.name);
+  return {
+    name: externalName,
+    description: spec.description,
+    inputSchema: toJsonSchemaCompat(spec.schema)
+  };
+});
+
+for (const [legacyName, currentName] of LEGACY_TOOL_ALIASES.entries()) {
+  if (!TOOL_SURFACE_BY_NAME.has(currentName)) continue;
+  TOOL_NAME_ALIASES.set(legacyName, currentName);
+  TOOL_NAME_ALIASES.set(toToolName(legacyName), currentName);
+}
+
+const resolveTool = (rawName) => {
+  const toolName = TOOL_NAME_ALIASES.get(rawName) || rawName;
+  const surface = TOOL_SURFACE_BY_NAME.get(toolName);
+  if (!surface) {
+    throw new Error(`Unknown tool: ${rawName}`);
+  }
+  if (!ENABLED_TOOL_SURFACES.has(surface)) {
+    throw new Error(`Tool disabled by surface policy: ${rawName}`);
+  }
+  const handler = TOOL_HANDLERS_BY_SURFACE.get(surface)?.get(toolName) || null;
+  if (!handler) {
+    throw new Error(`No handler registered for tool: ${rawName}`);
+  }
+  return { toolName, surface, handler };
+};
 
 const server = new Server(
   {
@@ -2300,11 +2254,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => ({ tools: TOOL_DEFS
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const rawName = request.params.name;
-  const toolName = TOOL_NAME_ALIASES.get(rawName) || rawName;
-  const handler = TOOL_HANDLERS.get(toolName);
-  if (!handler) {
-    throw new Error(`Unknown tool: ${rawName}`);
-  }
+  const { handler } = resolveTool(rawName);
   const args = request.params.arguments || {};
   const payload = await handler(args);
   return buildToolResponse(payload);
