@@ -177,6 +177,15 @@ function withoutLemmingManager() {
 }
 
 function ensureMiniMap() {
+  if (!globalThis.lemmings || typeof globalThis.lemmings !== 'object') {
+    globalThis.lemmings = {};
+  }
+  if (!globalThis.lemmings.game || typeof globalThis.lemmings.game !== 'object') {
+    globalThis.lemmings.game = {};
+  }
+  if (!globalThis.lemmings.game.lemmingManager || typeof globalThis.lemmings.game.lemmingManager !== 'object') {
+    globalThis.lemmings.game.lemmingManager = { miniMap: makeMiniMap() };
+  }
   return globalThis.lemmings.game.lemmingManager;
 }
 

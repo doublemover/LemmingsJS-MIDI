@@ -122,10 +122,28 @@ const withShowDebug = (value, fn) => {
 };
 
 const useGlobalLemmings = (value) => {
+  const cloneValue = (input) => {
+    if (Array.isArray(input)) {
+      return input.map(cloneValue);
+    }
+    if (input && typeof input === 'object') {
+      const proto = Object.getPrototypeOf(input);
+      if (proto === Object.prototype || proto === null) {
+        const copy = {};
+        for (const [key, val] of Object.entries(input)) {
+          copy[key] = cloneValue(val);
+        }
+        return copy;
+      }
+    }
+    return input;
+  };
+
   let restore;
   beforeEach(() => {
     const resolved = typeof value === 'function' ? value() : value;
-    restore = setGlobalLemmings(resolved);
+    const isolated = cloneValue(resolved);
+    restore = setGlobalLemmings(isolated);
   });
   afterEach(() => {
     restore();

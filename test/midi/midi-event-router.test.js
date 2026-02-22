@@ -26,10 +26,24 @@ const makeSchedulerStub = (sent) => {
   return {
     output: {},
     tickMs: 60,
+    config: {},
     setTickMs(ms) { this.tickMs = ms; },
     estimateMessages(spec) {
-      const off = spec.durationTicks > 0 ? 1 : 0;
-      return { messages: 1 + off, bytes: 3 * (1 + off) };
+      if (!spec || !Number.isFinite(spec.note)) return { messages: 0, bytes: 0 };
+      const mpeEnabled = !!this.config?.mpe?.enabled;
+      let messages = 1;
+      if (mpeEnabled) {
+        messages += 1;
+      } else if (spec.pitchBend != null && Number.isFinite(spec.pitchBend) && spec.pitchBend !== 0) {
+        messages += 1;
+      }
+      if (spec.timbre != null && Number.isFinite(spec.timbre)) messages += 1;
+      if (spec.pan != null && Number.isFinite(spec.pan)) messages += 1;
+      if (spec.durationTicks && spec.durationTicks > 0) {
+        messages += 1;
+        if (mpeEnabled) messages += 1;
+      }
+      return { messages, bytes: 3 * messages };
     },
     getRateSnapshot(now = 0) {
       return {
@@ -68,7 +82,7 @@ const makeSchedulerStub = (sent) => {
         planned.push({ timeMs: timeMs + durationMs, count: 1, bytes: 3, sfxId: meta.sfxId, priority: meta.priority });
       }
     },
-    setConfig() {},
+    setConfig(config) { this.config = config || {}; },
     setOutput() {},
     dispose() {}
   };
@@ -101,6 +115,7 @@ const makeRouter = (config = {}, options = {}) => {
   const mapping = config instanceof MidiMapping ? config : new MidiMapping(config);
   const router = new MidiEventRouter(mapping);
   router.scheduler = options.scheduler ?? makeSchedulerStub(sent);
+  router.scheduler.setConfig?.(mapping.config);
   if (options.output === false) router.scheduler.output = null;
   if (options.mapEvent) {
     router.mapping.mapEvent = options.mapEvent;
@@ -127,8 +142,8 @@ describe('MidiEventRouter', function() {
     const densities = [];
     const { router, sent } = makeRouter({ density: { windowTicks: 10 } }, {
       mapEvent: (event, context, density) => {
-      densities.push(density);
-      return defaultSpec();
+        densities.push(density);
+        return defaultSpec();
       }
     });
 
@@ -194,6 +209,7 @@ describe('MidiEventRouter', function() {
 
   it('enforces per-tick and per-second limits', function() {
     const { router, sent } = makeRouter({
+      mpe: { enabled: false },
       limits: { maxEventsPerTick: 1, maxEventsPerSecond: 2 }
     }, { defaultMapEvent: true });
 

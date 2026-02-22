@@ -170,11 +170,13 @@ describe('FileProvider', function () {
   };
   const setupIndexedDb = ({
     loadFromIndexedDb = async () => null,
-    loadFromLocalStorage = () => null
+    loadFromLocalStorage
   } = {}) => {
     provider._canUseIndexedDb = () => true;
     provider._loadFromIndexedDb = loadFromIndexedDb;
-    provider._loadFromLocalStorage = loadFromLocalStorage;
+    if (typeof loadFromLocalStorage === 'function') {
+      provider._loadFromLocalStorage = loadFromLocalStorage;
+    }
   };
   const makeFetchCounter = (impl) => {
     let calls = 0;
