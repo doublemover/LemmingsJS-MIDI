@@ -709,6 +709,29 @@ describe('Action Systems process()', function() {
     expect(lem.lookRight).to.equal(true);
   });
 
+  it('ActionBuildSystem clips brick placement to level bounds', function() {
+    const level = new StubLevel();
+    level.width = 12;
+    level.height = 20;
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming(10, 5);
+    lem.frameIndex = 8; // ->9 brick
+    sys.process(level, lem);
+    expect(level.setGroundCalls).to.eql(['10,4', '11,4']);
+  });
+
+  it('ActionBuildSystem turns around at horizontal level edges', function() {
+    const level = new StubLevel();
+    level.width = 2;
+    const sys = new ActionBuildSystem(stubSprites);
+    const lem = new StubLemming(1, 0);
+    lem.frameIndex = 15; // ->0 step
+    const result = sys.process(level, lem);
+    expect(result).to.equal(Lemmings.LemmingStateType.WALKING);
+    expect(lem.lookRight).to.equal(false);
+    expect(lem.x).to.equal(1);
+  });
+
   it('ActionClimbSystem continues with ceiling present', function() {
     const level = new StubLevel();
     const sys = new ActionClimbSystem(stubSprites);

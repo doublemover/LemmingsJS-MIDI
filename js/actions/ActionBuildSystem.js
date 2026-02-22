@@ -8,12 +8,20 @@ class ActionBuildSystem extends ActionBaseSystem {
     super({ sprites, spriteType: SpriteTypes.BUILDING, actionName: 'building' });
   }
   process(level, lem) {
+    const levelWidth = Number.isFinite(level?.width) ? level.width : null;
+    const levelHeight = Number.isFinite(level?.height) ? level.height : null;
+    const inHorizontalBounds = (x) => levelWidth == null || (x >= 0 && x < levelWidth);
+    const inVerticalBounds = (y) => levelHeight == null || (y >= 0 && y < levelHeight);
+
     lem.frameIndex = (lem.frameIndex + 1) % 16;
     if (lem.frameIndex === 9) {
       /// lay brick
       const startX = lem.x + (lem.lookRight ? 0 : -4);
+      const brickY = lem.y - 1;
       for (let i = 0; i < 6; i++) {
-        level.setGroundAt(startX + i, lem.y - 1, 7);
+        const brickX = startX + i;
+        if (!inHorizontalBounds(brickX) || !inVerticalBounds(brickY)) continue;
+        level.setGroundAt(brickX, brickY, 7);
       }
       const soundBus = getSoundBus();
       soundBus?.emitSfx?.(
@@ -33,14 +41,24 @@ class ActionBuildSystem extends ActionBaseSystem {
     if (lem.frameIndex === 0) {
       lem.y--;
       for (let i = 0; i < 2; i++) {
-        lem.x += (lem.lookRight ? 1 : -1);
+        const nextX = lem.x + (lem.lookRight ? 1 : -1);
+        if (!inHorizontalBounds(nextX)) {
+          lem.lookRight = !lem.lookRight;
+          return LemmingStateType.WALKING;
+        }
+        lem.x = nextX;
         if (level.hasGroundAt(lem.x, lem.y - 1)) {
           lem.lookRight = !lem.lookRight;
           return LemmingStateType.WALKING;
         }
       }
       if (++lem.state >= 12) return LemmingStateType.SHRUG;
-      if (level.hasGroundAt(lem.x + (lem.lookRight ? 2 : -2), lem.y - 9)) {
+      const nextHeadX = lem.x + (lem.lookRight ? 2 : -2);
+      if (!inHorizontalBounds(nextHeadX)) {
+        lem.lookRight = !lem.lookRight;
+        return LemmingStateType.WALKING;
+      }
+      if (level.hasGroundAt(nextHeadX, lem.y - 9)) {
         lem.lookRight = !lem.lookRight;
         return LemmingStateType.WALKING;
       }
