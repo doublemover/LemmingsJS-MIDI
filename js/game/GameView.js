@@ -45,7 +45,6 @@ const hashString = (input) => {
 class GameView extends BaseLogger {
   constructor() {
     super();
-    globalThis.lemmings = this;
     setAppContext(this);
     this.gameType = null;
     this.levelIndex = 0;
@@ -1191,7 +1190,6 @@ class GameView extends BaseLogger {
             this._benchIndex = 0;
             if (this._benchExtraList && ++this._benchExtraIndex < this._benchExtraList.length) {
               this.extraLemmings = this._benchExtraList[this._benchExtraIndex];
-              lemmings.extraLemmings = this.extraLemmings;
             } else if (this._benchExtraList) {
               return;
             }
@@ -1227,7 +1225,6 @@ class GameView extends BaseLogger {
           spawned -= 1;
           extras += 1;
           this.extraLemmings = extras;
-          lemmings.extraLemmings = extras;
         }
         if (timer.speedFactor < 1 || timer.getGameTime() >= 120) {
           timer.eachGameSecond.off(monitor);
@@ -1250,7 +1247,6 @@ class GameView extends BaseLogger {
     this._benchBaseEntrances = null;
     this._benchEntrancePool = null;
     this.extraLemmings = this._benchExtraList[0];
-    lemmings.extraLemmings = this.extraLemmings;
     await this.benchStart(this._benchCounts[0]);
   }
 

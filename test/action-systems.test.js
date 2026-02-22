@@ -1,6 +1,6 @@
 import { expect } from 'chai';
-import { Lemmings, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
-import { setAppContext } from '../js/core/dependencies.js';
+import { Lemmings, setTestAppContext, useGlobalLemmings } from './helpers/lemmings.js';
+import { getAppContext, setAppContext } from '../js/core/dependencies.js';
 import { ActionBashSystem } from '../js/actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../js/actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../js/actions/ActionBuildSystem.js';
@@ -143,8 +143,8 @@ function stubMasks() {
 }
 
 function useSoundBus(calls) {
-  const base = globalThis.lemmings ?? {};
-  return setGlobalLemmings({
+  const base = getAppContext() ?? {};
+  return setTestAppContext({
     ...base,
     game: {
       ...(base.game ?? {}),
@@ -158,8 +158,8 @@ function useSoundBus(calls) {
 }
 
 function withoutSoundBus() {
-  const base = globalThis.lemmings ?? {};
-  return setGlobalLemmings({
+  const base = getAppContext() ?? {};
+  return setTestAppContext({
     ...base,
     game: {
       ...(base.game ?? {}),
@@ -169,8 +169,8 @@ function withoutSoundBus() {
 }
 
 function withoutLemmingManager() {
-  const base = globalThis.lemmings ?? {};
-  return setGlobalLemmings({
+  const base = getAppContext() ?? {};
+  return setTestAppContext({
     ...base,
     game: {
       ...(base.game ?? {}),
@@ -180,17 +180,17 @@ function withoutLemmingManager() {
 }
 
 function ensureMiniMap() {
-  if (!globalThis.lemmings || typeof globalThis.lemmings !== 'object') {
-    globalThis.lemmings = {};
+  const app = getAppContext() && typeof getAppContext() === 'object'
+    ? getAppContext()
+    : {};
+  if (!app.game || typeof app.game !== 'object') {
+    app.game = {};
   }
-  if (!globalThis.lemmings.game || typeof globalThis.lemmings.game !== 'object') {
-    globalThis.lemmings.game = {};
+  if (!app.game.lemmingManager || typeof app.game.lemmingManager !== 'object') {
+    app.game.lemmingManager = { miniMap: makeMiniMap() };
   }
-  if (!globalThis.lemmings.game.lemmingManager || typeof globalThis.lemmings.game.lemmingManager !== 'object') {
-    globalThis.lemmings.game.lemmingManager = { miniMap: makeMiniMap() };
-  }
-  setAppContext(globalThis.lemmings);
-  return globalThis.lemmings.game.lemmingManager;
+  setAppContext(app);
+  return app.game.lemmingManager;
 }
 
 // helpers for controlled Action systems

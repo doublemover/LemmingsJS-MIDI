@@ -40,18 +40,25 @@ const Lemmings = new Proxy(defaults, {
 
 export { Lemmings, setDependency, clearDependency, resetDependencies };
 
+const setTestAppContext = (value) => {
+  const prevApp = getAppContext();
+  setAppContext(value || null);
+  return () => {
+    setAppContext(prevApp);
+  };
+};
+
 const setGlobalLemmings = (value) => {
   const prev = globalThis.lemmings;
-  const prevApp = getAppContext();
   globalThis.lemmings = value;
-  setAppContext(value || null);
+  const restoreApp = setTestAppContext(value);
   return () => {
     if (prev === undefined) {
       delete globalThis.lemmings;
     } else {
       globalThis.lemmings = prev;
     }
-    setAppContext(prevApp);
+    restoreApp();
   };
 };
 
@@ -102,9 +109,9 @@ const withMissingGlobalLemmings = (fn) => {
 };
 
 const withShowDebug = (value, fn) => {
-  const game = globalThis.lemmings?.game;
+  const game = getAppContext()?.game;
   if (!game) {
-    throw new Error('globalThis.lemmings.game is required for withShowDebug');
+    throw new Error('app context with .game is required for withShowDebug');
   }
   const hadProp = Object.prototype.hasOwnProperty.call(game, 'showDebug');
   const prev = game.showDebug;
@@ -159,6 +166,7 @@ const useGlobalLemmings = (value) => {
 };
 
 export {
+  setTestAppContext,
   setGlobalLemmings,
   withGlobalLemmings,
   withLemmingsGame,

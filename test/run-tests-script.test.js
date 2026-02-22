@@ -1,10 +1,12 @@
 import { expect } from 'chai';
 import {
+  RUNTIME_GUARD_TARGETS,
   buildMochaArgsForCategories,
   collectChangedFiles,
   inferCategoriesFromChangedFiles,
   main,
-  parseCliArgs
+  parseCliArgs,
+  runRuntimeGlobalGuard
 } from '../scripts/runTests.js';
 
 const createRunGitStub = (responsesByCommand) => (args) => {
@@ -73,8 +75,69 @@ describe('scripts/runTests', function () {
       exit: (code) => exits.push(code)
     });
     expect(logs.warn[0]).to.contain('falling back to full suite');
-    expect(spawned[0].args).to.include('--recursive');
+    expect(spawned[0].args).to.include('--max-warnings=0');
+    expect(spawned[0].args).to.include(RUNTIME_GUARD_TARGETS[0]);
+    expect(spawned[1].args).to.include('--recursive');
     expect(exits).to.deep.equal([0]);
+  });
+
+  it('runs runtime global guard before mocha', function () {
+    const spawned = [];
+    const exits = [];
+    main([], {
+      spawn: (cmd, args) => {
+        spawned.push({ cmd, args });
+        return { status: 0 };
+      },
+      log: {
+        warn: () => {},
+        error: () => {},
+        log: () => {}
+      },
+      exit: (code) => exits.push(code)
+    });
+    expect(spawned[0].args).to.include('--max-warnings=0');
+    expect(spawned[0].args).to.include(RUNTIME_GUARD_TARGETS[0]);
+    expect(spawned[1].args).to.include('--recursive');
+    expect(exits).to.deep.equal([0]);
+  });
+
+  it('aborts test run when runtime global guard fails', function () {
+    const spawned = [];
+    const exits = [];
+    main([], {
+      spawn: (cmd, args) => {
+        spawned.push({ cmd, args });
+        if (spawned.length === 1) return { status: 1 };
+        return { status: 0 };
+      },
+      log: {
+        warn: () => {},
+        error: () => {},
+        log: () => {}
+      },
+      exit: (code) => exits.push(code)
+    });
+    expect(spawned).to.have.lengthOf(1);
+    expect(spawned[0].args).to.include('--max-warnings=0');
+    expect(exits).to.deep.equal([1]);
+  });
+
+  it('runRuntimeGlobalGuard reports success and failure statuses', function () {
+    const exits = [];
+    const success = runRuntimeGlobalGuard({
+      spawn: () => ({ status: 0 }),
+      log: { error: () => {} },
+      exit: (code) => exits.push(code)
+    });
+    const failure = runRuntimeGlobalGuard({
+      spawn: () => ({ status: 2 }),
+      log: { error: () => {} },
+      exit: (code) => exits.push(code)
+    });
+    expect(success).to.equal(true);
+    expect(failure).to.equal(false);
+    expect(exits).to.deep.equal([2]);
   });
 
   it('rejects unknown categories without running mocha', function () {

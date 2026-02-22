@@ -6,6 +6,18 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const mochaBin = require.resolve('mocha/bin/mocha.js');
+const eslintBin = path.join(
+  path.dirname(require.resolve('eslint/package.json')),
+  'bin',
+  'eslint.js'
+);
+
+const RUNTIME_GUARD_TARGETS = Object.freeze([
+  'js/game/**/*.js',
+  'js/lemmings/**/*.js',
+  'js/midi/**/*.js',
+  'js/util/**/*.js'
+]);
 
 const CATEGORY_PATTERNS = Object.freeze({
   core: ['--recursive'],
@@ -220,6 +232,32 @@ const runMocha = (
   exit(res.status);
 };
 
+const runRuntimeGlobalGuard = (
+  {
+    spawn = spawnSync,
+    log = console,
+    exit = process.exit
+  } = {}
+) => {
+  const args = ['--max-warnings=0', ...RUNTIME_GUARD_TARGETS];
+  const res = spawn(process.execPath, [eslintBin, ...args], { stdio: 'inherit' });
+  if (res.error) {
+    log.error(`Failed to run runtime global guard: ${res.error.message}`);
+    exit(1);
+    return false;
+  }
+  if (typeof res.status !== 'number') {
+    log.error('Runtime global guard exited without a status code.');
+    exit(1);
+    return false;
+  }
+  if (res.status !== 0) {
+    exit(res.status);
+    return false;
+  }
+  return true;
+};
+
 const main = (
   argv = process.argv.slice(2),
   {
@@ -270,6 +308,9 @@ const main = (
     return;
   }
 
+  if (!runRuntimeGlobalGuard({ spawn, log, exit })) {
+    return;
+  }
   runMocha(mochaArgs, { spawn, log, exit });
 };
 
@@ -287,9 +328,11 @@ if (isMain) {
 
 export {
   CATEGORY_PATTERNS,
+  RUNTIME_GUARD_TARGETS,
   buildMochaArgsForCategories,
   collectChangedFiles,
   inferCategoriesFromChangedFiles,
   main,
-  parseCliArgs
+  parseCliArgs,
+  runRuntimeGlobalGuard
 };
