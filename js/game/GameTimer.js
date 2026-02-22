@@ -306,7 +306,10 @@ class GameTimer {
   #restoreSpeed() {
     if (this.#catchupSlow) {
       this.#catchupSlow = false;
-      this.speedFactor = this.#catchupBaseSpeed;
+      if (this.#speedFactor !== this.#catchupBaseSpeed) {
+        this.#speedFactor = this.#catchupBaseSpeed;
+        this.#updateFrameTime();
+      }
     }
   }
 
