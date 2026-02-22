@@ -249,8 +249,13 @@ class MiniMap {
       height: H,
       frame,
     } = this;
+    const frameData = frame.data;
+    const writePixel = (x, y, color) => {
+      if ((x >>> 0) >= W || (y >>> 0) >= H) return;
+      frameData[(y * W) + x] = color;
+    };
 
-    frame.data.set(this.terrainColors);
+    frameData.set(this.terrainColors);
 
     const viewRect = app?.stage?.getGameViewRect?.();
     if (!viewRect) return;
@@ -278,10 +283,10 @@ class MiniMap {
     for (const obj of this.level.objects) {
       const rx = (obj.x * this.scaleX) | 0;
       const ry = (obj.y * this.scaleY) | 0;
-      if (obj.ob?.id === 1) frame.setPixel(rx + 2, ry + 2, 0xFF00AA00);
+      if (obj.ob?.id === 1) writePixel(rx + 2, ry + 2, 0xFF00AA00);
       if (obj.triggerType === TriggerTypes.EXIT_LEVEL) {
-        frame.setPixel(rx + 2, ry + 2, 0xFFFF00CC);
-        frame.setPixel(rx + 2, ry + 1, 0xFFFF00CC);
+        writePixel(rx + 2, ry + 2, 0xFFFF00CC);
+        writePixel(rx + 2, ry + 1, 0xFFFF00CC);
       }
     }
 
@@ -289,10 +294,10 @@ class MiniMap {
     for (let i = 0; i < this.liveDots.length; i += 2) {
       const x = this.liveDots[i];
       const y = this.liveDots[i + 1];
-      frame.setPixel(x, y, 0xFF00FFFF);
+      writePixel(x, y, 0xFF00FFFF);
     }
     if (this.selectedDot) {
-      frame.setPixel(this.selectedDot[0], this.selectedDot[1], 0xFFFFFFFF);
+      writePixel(this.selectedDot[0], this.selectedDot[1], 0xFFFFFFFF);
     }
 
     /* Death flashes */
@@ -304,7 +309,7 @@ class MiniMap {
         if (ttl & 4) {
           const x = this.deadDots[i * 2];
           const y = this.deadDots[i * 2 + 1];
-          frame.setPixel(x, y, 0xFF0000FF);
+          writePixel(x, y, 0xFF0000FF);
         }
       }
     } else {
@@ -319,7 +324,7 @@ class MiniMap {
         this.deadDots[write * 2] = x;
         this.deadDots[write * 2 + 1] = y;
         if (ttl & 4) {
-          frame.setPixel(x, y, 0xFF0000FF);
+          writePixel(x, y, 0xFF0000FF);
         }
         write++;
       }
