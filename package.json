@@ -16,7 +16,7 @@
     "check-undefined": "node scripts/check-undefined.js",
     "test": "node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
-    "test-bench": "mocha \"test/bench*.test.js\"",
+    "test-bench": "mocha \"test/*bench*.test.js\"",
     "test-workflow": "mocha \"test/*workflow*.test.js\"",
     "test-tools": "mocha \"test/tools/*.test.js\"",
     "test-offline-tools": "node scripts/runTests.js offline-tools",
