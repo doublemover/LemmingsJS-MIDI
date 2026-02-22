@@ -385,30 +385,7 @@ const EventsPollSchema = z.object({
   after: z.string().optional()
 });
 
-const TOOL_NAME_ALIASES = new Map();
-
 const toToolName = (name) => String(name).replace(/\./g, '_');
-
-const LEGACY_TOOL_ALIASES = new Map([
-  ['lemmings.session.create', 'session.create'],
-  ['lemmings.session.close', 'session.close'],
-  ['lemmings.time.pause', 'time.pause'],
-  ['lemmings.time.resume', 'time.resume'],
-  ['lemmings.time.step', 'time.step'],
-  ['lemmings.state.get', 'state.get'],
-  ['lemmings.state.delta', 'state.delta'],
-  ['lemmings.editor.apply', 'editor.apply'],
-  ['lemmings.lemmings.summary', 'lemming.summary'],
-  ['lemmings.lemming.select', 'lemming.select'],
-  ['lemmings.skill.apply', 'skill.apply'],
-  ['lemmings.input.action', 'input.action'],
-  ['lemmings.input.keys', 'input.keys'],
-  ['lemmings.vision.capture', 'vision.capture'],
-  ['lemmings.vision.captureSequence', 'vision.captureSequence'],
-  ['lemmings.watch.create', 'watch.create'],
-  ['lemmings.watch.cancel', 'watch.cancel'],
-  ['lemmings.events.poll', 'events.poll']
-]);
 
 const buildToolResponse = (payload) => ({
   content: [{ type: 'text', text: JSON.stringify(payload) }],
@@ -2029,37 +2006,35 @@ const surfaceRegistry = buildSurfaceRegistry(
 const TOOL_HANDLERS_BY_SURFACE = surfaceRegistry.handlersBySurface;
 const TOOL_SURFACE_BY_NAME = surfaceRegistry.toolSurfaceByName;
 
-const TOOL_DEFS = surfaceRegistry.specs.map((spec) => {
-  const externalName = toToolName(spec.name);
-  TOOL_NAME_ALIASES.set(externalName, spec.name);
-  TOOL_NAME_ALIASES.set(spec.name, spec.name);
-  return {
-    name: externalName,
+const TOOL_DEFS = [];
+const TOOL_ROUTES = new Map();
+for (const spec of surfaceRegistry.specs) {
+  const toolName = toToolName(spec.name);
+  const surface = TOOL_SURFACE_BY_NAME.get(spec.name);
+  const handler = TOOL_HANDLERS_BY_SURFACE.get(surface)?.get(spec.name) || null;
+  if (!surface || !handler) continue;
+  TOOL_DEFS.push({
+    name: toolName,
     description: spec.description,
     inputSchema: toJsonSchemaCompat(spec.schema)
-  };
-});
-
-for (const [legacyName, currentName] of LEGACY_TOOL_ALIASES.entries()) {
-  if (!TOOL_SURFACE_BY_NAME.has(currentName)) continue;
-  TOOL_NAME_ALIASES.set(legacyName, currentName);
-  TOOL_NAME_ALIASES.set(toToolName(legacyName), currentName);
+  });
+  TOOL_ROUTES.set(toolName, {
+    toolName,
+    canonicalName: spec.name,
+    surface,
+    handler
+  });
 }
 
 const resolveTool = (rawName) => {
-  const toolName = TOOL_NAME_ALIASES.get(rawName) || rawName;
-  const surface = TOOL_SURFACE_BY_NAME.get(toolName);
-  if (!surface) {
+  const route = TOOL_ROUTES.get(String(rawName || ''));
+  if (!route) {
     throw new Error(`Unknown tool: ${rawName}`);
   }
-  if (!ENABLED_TOOL_SURFACES.has(surface)) {
+  if (!ENABLED_TOOL_SURFACES.has(route.surface)) {
     throw new Error(`Tool disabled by surface policy: ${rawName}`);
   }
-  const handler = TOOL_HANDLERS_BY_SURFACE.get(surface)?.get(toolName) || null;
-  if (!handler) {
-    throw new Error(`No handler registered for tool: ${rawName}`);
-  }
-  return { toolName, surface, handler };
+  return route;
 };
 
 const server = new Server(

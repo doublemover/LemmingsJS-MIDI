@@ -10,8 +10,8 @@ implementation notes in this folder.
 - `state.get` defaults to the compact preset.
 - Events are minimal by default (`events.mode=minimal`), and tool
   responses include only non-agent events with trimmed fields.
-- Tool names are short and primary (dots mapped to underscores by hosts), with
-  legacy aliases retained for backward compatibility.
+- Tool names are short (dots mapped to underscores by hosts), and only the
+  short underscore forms are accepted.
 
 ## Protocol mappings
 

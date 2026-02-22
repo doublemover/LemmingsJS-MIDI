@@ -39,7 +39,7 @@ Files:
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
-- Short tool names are primary; legacy aliases remain for compatibility.
+- Short underscore tool names are the only supported call names.
 
 ## Tool surfaces
 - `game`: `session.*`, `time.*`, `state.*`, `lemming.*`, `skill.*`
