@@ -68,6 +68,23 @@ const createDeferredWindow = () => {
   return win;
 };
 
+const createCancellableWindow = () => {
+  const win = createTestWindow();
+  const timers = new Map();
+  let nextTimerId = 1;
+  win.setTimeout = (cb) => {
+    const id = nextTimerId;
+    nextTimerId += 1;
+    timers.set(id, cb);
+    return id;
+  };
+  win.clearTimeout = (id) => {
+    timers.delete(id);
+  };
+  win.__timerCount = () => timers.size;
+  return win;
+};
+
 describe('midiUiController', function() {
   it('batches queued MIDI UI refreshes into a single timer flush', function() {
     const doc = new TestDocument();
@@ -366,6 +383,41 @@ describe('midiUiController', function() {
     expect(inputChannel.disabled).to.equal(true);
     expect(resetButton.disabled).to.equal(true);
     expect(viewPan.disabled).to.equal(true);
+  });
+
+  it('clears pending refresh timers when MIDI is disabled', async function() {
+    const doc = new TestDocument();
+    const win = createCancellableWindow();
+    const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'select', 'midiInputChannel');
+    registerElement(doc, 'button', 'midiResetButton');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+    const webMidi = createWebMidiStub(
+      [{ id: 'in-1', name: 'Input 1' }],
+      [{ id: 'out-1', name: 'Output 1' }]
+    );
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({ setMidiEnabled: async () => {} })
+    });
+
+    controller.bindMidiUi();
+    controller.setMidiOverrides({ timing: { bpmBase: 128 } });
+    controller.onEnabled();
+    webMidi.emit('connected');
+    expect(win.__timerCount()).to.be.greaterThan(0);
+
+    enabledToggle.checked = false;
+    enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
+    await Promise.resolve();
+
+    expect(win.__timerCount()).to.equal(0);
   });
 
   it('stores the input channel and updates overrides', function() {

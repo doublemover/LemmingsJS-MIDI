@@ -112,6 +112,8 @@ export const createMidiUiController = ({
   let deviceListenersBound = false;
   let deviceListener = null;
   let queuedRefreshTimer = null;
+  let scheduledRefreshTimer = null;
+  let scheduledRefreshNonce = 0;
   let queuedRefreshAll = false;
   let queuedRefreshForce = false;
   let midiUiFeatureFlags = { ...MIDI_UI_FEATURE_FLAG_DEFAULTS };
@@ -230,6 +232,27 @@ export const createMidiUiController = ({
     } else {
       flushQueuedRefresh();
     }
+  };
+
+  const clearPendingRefreshTimers = () => {
+    if (queuedRefreshTimer != null && typeof window?.clearTimeout === 'function') {
+      window.clearTimeout(queuedRefreshTimer);
+    }
+    queuedRefreshTimer = null;
+    queuedRefreshAll = false;
+    queuedRefreshForce = false;
+    queuedRefreshSections.clear();
+
+    if (deviceRefreshTimer != null && typeof window?.clearTimeout === 'function') {
+      window.clearTimeout(deviceRefreshTimer);
+    }
+    deviceRefreshTimer = null;
+
+    if (scheduledRefreshTimer != null && typeof window?.clearTimeout === 'function') {
+      window.clearTimeout(scheduledRefreshTimer);
+    }
+    scheduledRefreshTimer = null;
+    scheduledRefreshNonce += 1;
   };
 
   const toDeviceList = (devices) => {
@@ -1547,7 +1570,26 @@ export const createMidiUiController = ({
   };
 
   const scheduleMidiUiRefresh = () => {
+    if (scheduledRefreshTimer != null && typeof window?.clearTimeout === 'function') {
+      window.clearTimeout(scheduledRefreshTimer);
+      scheduledRefreshTimer = null;
+    }
+    const scheduleToken = scheduledRefreshNonce + 1;
+    scheduledRefreshNonce = scheduleToken;
     let attempts = 0;
+    const scheduleAttempt = (delayMs) => {
+      if (typeof window?.setTimeout !== 'function') return;
+      const timerId = window.setTimeout(() => {
+        if (scheduledRefreshTimer === timerId) {
+          scheduledRefreshTimer = null;
+        }
+        if (scheduledRefreshNonce !== scheduleToken) {
+          return;
+        }
+        attempt();
+      }, delayMs);
+      scheduledRefreshTimer = timerId;
+    };
     const attempt = () => {
       let refreshed = false;
       try {
@@ -1559,11 +1601,11 @@ export const createMidiUiController = ({
       if (!refreshed) {
         attempts += 1;
         if (attempts < 120) {
-          window?.setTimeout?.(attempt, 250);
+          scheduleAttempt(250);
         }
       }
     };
-    window?.setTimeout?.(attempt, 0);
+    scheduleAttempt(0);
   };
 
   const refreshDeviceLists = ({ preserveSelection = true } = {}) => {
@@ -1820,6 +1862,7 @@ export const createMidiUiController = ({
         }
         if (!enabled) {
           clearUiIntervals();
+          clearPendingRefreshTimers();
           clearMidiUiHook();
           unbindDeviceListeners();
           lastEnableError = null;
@@ -1968,6 +2011,7 @@ export const createMidiUiController = ({
       ensureUiIntervals();
     } else {
       clearUiIntervals();
+      clearPendingRefreshTimers();
       clearMidiUiHook();
     }
 
