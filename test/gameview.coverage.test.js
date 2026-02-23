@@ -573,6 +573,40 @@ describe('GameView coverage', function() {
     expect(focus).to.equal(9);
   });
 
+  it('falls back to entrance focus when applying viewport without saved screen position', function() {
+    const view = new GameView();
+    let appliedX = null;
+    let redraws = 0;
+    view.stage = {
+      gameImgProps: {
+        viewPoint: { scale: 2 },
+        canvasViewportSize: { width: 100, height: 50 }
+      },
+      applyViewport(_stageImage, x) {
+        appliedX = x;
+      },
+      redraw() {
+        redraws += 1;
+      }
+    };
+
+    view.applyLevelViewport({
+      screenPositionX: Number.NaN,
+      entrances: [{ x: 10, y: 0 }]
+    });
+
+    expect(appliedX).to.equal(9);
+    expect(redraws).to.equal(1);
+
+    view.applyLevelViewport({
+      screenPositionX: 42,
+      entrances: [{ x: 10, y: 0 }]
+    });
+
+    expect(appliedX).to.equal(42);
+    expect(redraws).to.equal(2);
+  });
+
   it('populates level selections for saved and missing levels', async function() {
     stubDocument();
     const view = new GameView();

@@ -78,6 +78,44 @@ describe('GameDisplay', function() {
     expect(gd.hoverLemming).to.equal(lem);
   });
 
+  it('rebinds mouse listeners when the gui display changes', function() {
+    const lem = makeLemming(4);
+    let queueCount = 0;
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      game: { queueCommand() { queueCount += 1; } },
+      lemmingManager: { getNearestLemming() { return lem; } }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    const firstDisplay = makeDisplay();
+    const secondDisplay = makeDisplay();
+
+    gd.setGuiDisplay(firstDisplay);
+    gd.setGuiDisplay(secondDisplay);
+
+    expect(firstDisplay.onMouseDown.handlers.size).to.equal(0);
+    expect(firstDisplay.onMouseMove.handlers.size).to.equal(0);
+    expect(secondDisplay.onMouseDown.handlers.size).to.equal(1);
+    expect(secondDisplay.onMouseMove.handlers.size).to.equal(1);
+
+    firstDisplay.onMouseDown.trigger({ x: 1, y: 2 });
+    expect(queueCount).to.equal(0);
+    secondDisplay.onMouseDown.trigger({ x: 1, y: 2 });
+    expect(queueCount).to.equal(1);
+  });
+
+  it('detaches listeners when gui display is cleared', function() {
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    const display = makeDisplay();
+
+    gd.setGuiDisplay(display);
+    gd.setGuiDisplay(null);
+
+    expect(display.onMouseDown.handlers.size).to.equal(0);
+    expect(display.onMouseMove.handlers.size).to.equal(0);
+    expect(gd.display).to.equal(null);
+  });
+
   it('updates hover and flags gui changes', function() {
     const prev = makeLemming(1);
     prev.removed = true;

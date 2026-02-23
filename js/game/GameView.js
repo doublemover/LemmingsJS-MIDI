@@ -1009,8 +1009,10 @@ class GameView extends BaseLogger {
   applyLevelViewport(level) {
     if (!this.stage || !level) return;
     const stageImage = this.stage.gameImgProps;
-    const rawX = Number.isFinite(level.screenPositionX) ? level.screenPositionX : 0;
-    const targetX = Number.isFinite(rawX) ? rawX : this.getEntranceFocusX(level, stageImage);
+    const hasSavedX = Number.isFinite(level.screenPositionX);
+    const targetX = hasSavedX
+      ? level.screenPositionX
+      : this.getEntranceFocusX(level, stageImage);
     this.stage.applyViewport(
       stageImage,
       targetX,

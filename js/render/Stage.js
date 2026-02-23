@@ -464,9 +464,12 @@ class Stage {
       targetY += argY / targetScale;
     }
     const imgData = stageImage.display.getImageData();
-    const guiDisplay = this.guiEnabled ? this.guiImgProps.display : null;
-    const guiImgData = guiDisplay?.getImageData?.() || null;
-    const shouldRedrawGui = !!(guiDisplay && guiImgData && stageImage === this.guiImgProps);
+    const shouldRedrawGui = !!(
+      this.guiEnabled &&
+      stageImage === this.guiImgProps &&
+      this.guiImgProps.display?.getImageData
+    );
+    const guiImgData = shouldRedrawGui ? this.guiImgProps.display.getImageData() : null;
     this.applyViewport(stageImage, targetX, targetY, targetScale);
     this.clear(stageImage);
     if (shouldRedrawGui) {
@@ -1088,7 +1091,9 @@ class Stage {
   dispose() {
     this.resetFade();
     if (this._resizeRaf) {
-      window.cancelAnimationFrame(this._resizeRaf);
+      if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(this._resizeRaf);
+      }
       this._resizeRaf = 0;
     }
     if (this.gameImgProps.display?.dispose) this.gameImgProps.display.dispose();

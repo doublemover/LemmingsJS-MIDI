@@ -894,11 +894,17 @@ describe('Stage', function() {
     stage.draw = (image) => {
       drawn.push(image === stage.guiImgProps ? 'gui' : 'game');
     };
+    let guiReads = 0;
+    stage.guiImgProps.display.getImageData = () => {
+      guiReads += 1;
+      return null;
+    };
 
     stage.updateViewPoint(stage.gameImgProps, 12, -8, 0);
 
     expect(cleared).to.deep.equal(['game']);
     expect(drawn).to.deep.equal(['game']);
+    expect(guiReads).to.equal(0);
   });
 
   it('updates view point when GUI display lacks getImageData', function() {
@@ -1066,5 +1072,19 @@ describe('Stage', function() {
     expect(stage.gameImgProps).to.equal(null);
     expect(stage.guiImgProps).to.equal(null);
     expect(stage.stageCav).to.equal(null);
+  });
+
+  it('disposes safely when window is unavailable', function() {
+    const { canvas } = makeCanvas(120, 90);
+    const stage = new Stage(canvas);
+    stage._resizeRaf = 123;
+    const originalWindow = globalThis.window;
+    globalThis.window = undefined;
+    try {
+      expect(() => stage.dispose()).to.not.throw();
+      expect(stage.stageCav).to.equal(null);
+    } finally {
+      globalThis.window = originalWindow;
+    }
   });
 });

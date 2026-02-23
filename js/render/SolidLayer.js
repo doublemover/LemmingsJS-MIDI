@@ -122,8 +122,8 @@ class SolidLayer extends BaseLogger {
   getColumnWallHeight(x, yBottom, height) {
     const w = this.width;
     const h = this.height;
-    const limit = Math.max(1, Math.floor(height));
-    if (x < 0 || x >= w || limit <= 0) return 0;
+    const limit = Math.floor(height);
+    if (x < 0 || x >= w || !Number.isFinite(limit) || limit <= 0) return 0;
     const mask = this.mask;
     let wall = 0;
     for (let dy = 1; dy <= limit; dy++) {

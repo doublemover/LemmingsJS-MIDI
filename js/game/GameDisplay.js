@@ -57,6 +57,16 @@ class GameDisplay {
       [SkillTypes.MINER]: getDependency('ActionMineSystem', ActionMineSystem)
     };
   }
+  _detachGuiListeners() {
+    if (this.display && this._mouseHandler) {
+      this.display.onMouseDown?.off?.(this._mouseHandler);
+      this._mouseHandler = null;
+    }
+    if (this.display && this._mouseMoveHandler) {
+      this.display.onMouseMove?.off?.(this._mouseMoveHandler);
+      this._mouseMoveHandler = null;
+    }
+  }
   _scheduleHoverUpdate() {
     if (this._hoverRafId) return;
     const raf = (typeof window !== 'undefined' && window.requestAnimationFrame)
@@ -96,7 +106,12 @@ class GameDisplay {
     }
   }
   setGuiDisplay(display) {
-    this.display = display;
+    if (display === this.display && this._mouseHandler && this._mouseMoveHandler) return;
+    this._detachGuiListeners();
+    this.display = display || null;
+    if (!this.display?.onMouseDown?.on || !this.display?.onMouseMove?.on) {
+      return;
+    }
     this._mouseHandler = (e) => {
       if (this.game?.inputEnabled === false) return;
       const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
@@ -263,14 +278,7 @@ class GameDisplay {
   }
 
   dispose() {
-    if (this.display && this._mouseHandler) {
-      this.display.onMouseDown.off(this._mouseHandler);
-      this._mouseHandler = null;
-    }
-    if (this.display && this._mouseMoveHandler) {
-      this.display.onMouseMove.off(this._mouseMoveHandler);
-      this._mouseMoveHandler = null;
-    }
+    this._detachGuiListeners();
     if (this._hoverRafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
       window.cancelAnimationFrame(this._hoverRafId);
       this._hoverRafId = 0;
