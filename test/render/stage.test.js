@@ -249,6 +249,29 @@ describe('Stage', function() {
     expect(released).to.equal(consumed);
   });
 
+  it('keeps dirty-rect descriptors stable during draw blits', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const consumed = [
+      { x: 1, y: 2, width: 3, height: 4 },
+      { x: 8, y: 6, width: 5, height: 2 }
+    ];
+    const references = consumed.slice();
+    const before = consumed.map((rect) => ({ ...rect }));
+    stage.gameImgProps.display.consumeDirtyTiles = () => undefined;
+    stage.gameImgProps.display.consumeDirtyRects = () => consumed;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = () => {};
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+
+    expect(consumed).to.deep.equal(before);
+    expect(consumed[0]).to.equal(references[0]);
+    expect(consumed[1]).to.equal(references[1]);
+  });
+
   it('recycles consumed dirty-tile buffers after drawing', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

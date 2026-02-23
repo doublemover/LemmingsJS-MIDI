@@ -131,6 +131,40 @@ describe('HistoryStore', function() {
     expect(manager.selectedIndex).to.equal(0);
   });
 
+  it('keeps replay state equivalent across backward/forward delta cycles', function() {
+    const { history, game, timer, manager, triggerManager } = createHistoryFixture();
+    const owner = manager.lemmings[0];
+    const trigger = new Trigger(TriggerTypes.TRAP, 1, 1, 2, 2, 0, 0, owner);
+    triggerManager.add(trigger);
+
+    scenario(history, timer)
+      .tick(0, {
+        ops: [['recordTriggerCooldown', trigger, 0, 5]],
+        mutate() {
+          owner.x = 12;
+          owner.y = 9;
+          owner.lookRight = false;
+          manager.selectedIndex = owner.id;
+        }
+      })
+      .tick(1, {
+        mutate() {
+          owner.x = 14;
+          owner.y = 11;
+          manager.mmTickCounter = 7;
+        }
+      });
+
+    const delta = history.getDelta(1);
+    const baseline = history._captureKeyframe(game);
+
+    history.applyDeltaBackward(game, delta);
+    history.applyDeltaForward(game, delta);
+
+    const replayed = history._captureKeyframe(game);
+    expect(replayed).to.deep.equal(baseline);
+  });
+
   it('truncates future history unless preservation is enabled', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });

@@ -52,6 +52,35 @@ describe('TriggerManager', function () {
     expect(tm._triggers.size).to.equal(0);
   });
 
+  it('cleans up owner triggers without touching other owners or leaving stale grid refs', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 63, 31, 16);
+    const ownerA = { id: 'owner-a' };
+    const ownerB = { id: 'owner-b' };
+    const a1 = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, -1, ownerA);
+    const a2 = new Trigger(TriggerTypes.FRYING, 18, 1, 25, 5, 0, -1, ownerA);
+    const b1 = new Trigger(TriggerTypes.DROWN, 34, 1, 40, 5, 0, -1, ownerB);
+    tm.addRange([a1, a2, b1]);
+
+    tm.removeByOwner(ownerA);
+
+    expect(tm._ownerTriggers.has(ownerA)).to.equal(false);
+    expect(tm._ownerTriggers.has(ownerB)).to.equal(true);
+    expect(tm.trigger(2, 2)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(20, 2)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(36, 2)).to.equal(TriggerTypes.DROWN);
+
+    for (const bucket of tm._grid) {
+      for (const trigger of bucket) {
+        expect(trigger.owner).to.not.equal(ownerA);
+      }
+    }
+
+    tm.removeByOwner(ownerA);
+    expect(tm.trigger(36, 2)).to.equal(TriggerTypes.DROWN);
+    expect(tm._triggers.size).to.equal(1);
+  });
+
   it('reuses debug frame', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
     const tm = new TriggerManager(timer, 31, 31, 16);
