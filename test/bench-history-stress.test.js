@@ -17,6 +17,7 @@ describe('bench-history-stress helpers', function () {
     expect(args.get('smoke')).to.equal('true');
     expect(toPositiveNumber('30', 5)).to.equal(30);
     expect(toPositiveNumber('-1', 5)).to.equal(5);
+    expect(toPositiveNumber(Symbol('duration'), 5)).to.equal(5);
     expect(toBoolean('off', true)).to.equal(false);
     expect(toBoolean('unknown', true)).to.equal(true);
   });

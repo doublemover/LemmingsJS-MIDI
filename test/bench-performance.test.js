@@ -20,6 +20,7 @@ describe('bench-performance helpers', function () {
     expect(toBoolean('off', true)).to.equal(false);
     expect(toBoolean('on', false)).to.equal(true);
     expect(toBoolean('invalid', false)).to.equal(false);
+    expect(toPositiveNumber(Symbol('duration'), 7)).to.equal(7);
   });
 
   it('builds config with smoke defaults, mode fallback, and boolean parsing', function () {

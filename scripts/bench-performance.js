@@ -53,6 +53,14 @@ const BENCH_PROFILES = {
   }
 };
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -73,7 +81,7 @@ const parseArgs = (argv) => {
  * @returns {number}
  */
 const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
@@ -217,7 +225,7 @@ const median = (values) => {
  */
 const summarize = (samples, key) => {
   const values = samples
-    .map(sample => Number(sample?.[key]))
+    .map(sample => toNumberOrNaN(sample?.[key]))
     .filter(value => Number.isFinite(value))
     .sort((a, b) => a - b);
   if (!values.length) return { min: 0, max: 0, p50: 0, p95: 0, avg: 0 };

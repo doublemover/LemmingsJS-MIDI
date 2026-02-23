@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -24,7 +32,7 @@ const parseArgs = (argv) => {
  * @returns {number}
  */
 const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
@@ -47,7 +55,7 @@ const toBoolean = (value, fallback) => {
  */
 const parseSpeedList = (raw) => String(raw || '')
   .split(',')
-  .map(value => Number(value.trim()))
+  .map(value => toNumberOrNaN(value.trim()))
   .filter(value => Number.isFinite(value) && value > 0);
 
 const withTimeout = async (promise, timeoutMs, label) => {
@@ -223,7 +231,7 @@ const percentile = (sorted, p) => {
  */
 const summarizeTimings = (timingsMs) => {
   const clean = (Array.isArray(timingsMs) ? timingsMs : [])
-    .map(value => Number(value))
+    .map(value => toNumberOrNaN(value))
     .filter(value => Number.isFinite(value) && value >= 0)
     .sort((a, b) => a - b);
   const max = clean.length ? clean[clean.length - 1] : 0;
