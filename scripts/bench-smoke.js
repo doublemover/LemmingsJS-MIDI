@@ -115,7 +115,11 @@ const evaluateSmokeResults = ({ performance, history, hotpaths }, thresholds) =>
 
 const main = (argv = process.argv.slice(2)) => {
   const args = parseArgs(argv);
-  const timeoutMs = toPositiveNumber(args.get('timeoutMs') || process.env.BENCH_SMOKE_TIMEOUT_MS, 110000);
+  const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
+  const timeoutMs = toPositiveNumber(
+    args.get('timeoutMs') || process.env.BENCH_SMOKE_TIMEOUT_MS,
+    soakRequested ? 300000 : 70000
+  );
   const perfP95FrameMsMax = toPositiveNumber(args.get('perfP95FrameMsMax') || process.env.BENCH_SMOKE_PERF_P95_MAX, 250);
   const perfP50TpsMin = toPositiveNumber(args.get('perfP50TpsMin') || process.env.BENCH_SMOKE_PERF_TPS_MIN, 15);
   const historySpanRatioMin = toPositiveNumber(args.get('historySpanRatioMin') || process.env.BENCH_SMOKE_HISTORY_RATIO_MIN, 0.5);
@@ -137,22 +141,19 @@ const main = (argv = process.argv.slice(2)) => {
   const hotpathsScript = path.join(root, 'scripts', 'bench-hotpaths.js');
 
   const started = Date.now();
+  const perfArgs = soakRequested
+    ? ['--soak', '--profile=soak', '--maxRuntime=300000']
+    : ['--smoke', '--profile=smoke', '--duration=6000', '--warmup=1500', '--sample=500', '--maxRuntime=25000'];
+  const historyArgs = soakRequested
+    ? ['--soak', '--profile=soak', '--maxRuntime=300000']
+    : ['--smoke', '--profile=smoke', '--duration=6000', '--sample=500', '--speeds=30,60', '--target=12000', '--maxRuntime=25000'];
   const performance = runNodeScript(perfScript, [
-    '--smoke',
-    '--duration=12000',
-    '--warmup=3000',
-    '--sample=500',
-    '--maxRuntime=45000',
+    ...perfArgs,
     ...commonArgs
   ], timeoutMs, 'bench-performance');
 
   const history = runNodeScript(historyScript, [
-    '--smoke',
-    '--duration=10000',
-    '--sample=500',
-    '--speeds=30,60',
-    '--target=30000',
-    '--maxRuntime=45000',
+    ...historyArgs,
     ...commonArgs
   ], timeoutMs, 'bench-history-stress');
 
@@ -177,6 +178,7 @@ const main = (argv = process.argv.slice(2)) => {
 
   const summary = {
     ok: gate.ok,
+    profile: soakRequested ? 'soak' : 'smoke',
     totalDurationMs: Date.now() - started,
     thresholds,
     durationsMs: {

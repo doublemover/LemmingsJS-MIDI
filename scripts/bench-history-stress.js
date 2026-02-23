@@ -49,19 +49,57 @@ const closeQuietly = async (target, label) => {
 const args = parseArgs(process.argv.slice(2));
 const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
 const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
+const requestedProfile = (
+  args.get('profile') ||
+  process.env.HISTORY_PROFILE ||
+  (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
+).toLowerCase();
+
+const HISTORY_PROFILES = {
+  smoke: {
+    durationMs: 6000,
+    sampleMs: 500,
+    targetSpanTicks: 12000,
+    speeds: '30,60',
+    seekSamples: 4,
+    seekP95MsMax: 200,
+    maxRuntimeMs: 70000
+  },
+  default: {
+    durationMs: 60000,
+    sampleMs: 1000,
+    targetSpanTicks: 60000,
+    speeds: '30,60,120',
+    seekSamples: 12,
+    seekP95MsMax: 400,
+    maxRuntimeMs: 300000
+  },
+  soak: {
+    durationMs: 180000,
+    sampleMs: 1000,
+    targetSpanTicks: 60000,
+    speeds: '30,60,120',
+    seekSamples: 12,
+    seekP95MsMax: 400,
+    maxRuntimeMs: 300000
+  }
+};
+
+const profile = HISTORY_PROFILES[requestedProfile] || HISTORY_PROFILES.smoke;
 const durationMs = toPositiveNumber(
   args.get('duration') || process.env.HISTORY_DURATION_MS,
-  smokeRequested ? 10000 : 60000
+  profile.durationMs
 );
 const sampleMs = toPositiveNumber(
   args.get('sample') || process.env.HISTORY_SAMPLE_MS,
-  smokeRequested ? 500 : 1000
+  profile.sampleMs
 );
 const targetSpan = toPositiveNumber(
   args.get('target') || process.env.HISTORY_TARGET_TICKS,
-  smokeRequested ? 30000 : 60000
+  profile.targetSpanTicks
 );
-const speeds = (args.get('speeds') || process.env.HISTORY_SPEEDS || (smokeRequested ? '30,60' : '30,60,120'))
+const speeds = (args.get('speeds') || process.env.HISTORY_SPEEDS || profile.speeds)
   .split(',')
   .map(value => Number(value.trim()))
   .filter(value => Number.isFinite(value) && value > 0);
@@ -69,15 +107,15 @@ const headless = (args.get('headless') || process.env.HISTORY_HEADLESS || 'true'
 const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.HISTORY_OP_TIMEOUT_MS, 30000);
 const maxRuntimeMs = toPositiveNumber(
   args.get('maxRuntime') || process.env.HISTORY_MAX_RUNTIME_MS,
-  (durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20)
+  profile.maxRuntimeMs ?? ((durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20))
 );
 const seekSamples = Math.max(1, Math.trunc(toPositiveNumber(
   args.get('seekSamples') || process.env.HISTORY_SEEK_SAMPLES,
-  smokeRequested ? 6 : 12
+  profile.seekSamples
 )));
 const seekP95MsMax = toPositiveNumber(
   args.get('seekP95MsMax') || process.env.HISTORY_SEEK_P95_MS_MAX,
-  smokeRequested ? 200 : 400
+  profile.seekP95MsMax
 );
 const requireReplayParity = toBoolean(
   args.get('requireReplayParity') || process.env.HISTORY_REQUIRE_REPLAY_PARITY,
@@ -289,6 +327,7 @@ const run = async () => {
     }
 
     console.log(JSON.stringify({
+      profile: requestedProfile,
       targetSpanTicks: targetSpan,
       sampleMs,
       seekGate: {

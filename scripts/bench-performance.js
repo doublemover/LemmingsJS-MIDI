@@ -41,10 +41,11 @@ const closeQuietly = async (target, label) => {
 const args = parseArgs(process.argv.slice(2));
 const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
 const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
+const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
 const requestedProfile = (
   args.get('profile') ||
   process.env.BENCH_PROFILE ||
-  (smokeRequested ? 'smoke' : 'default')
+  (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
 ).toLowerCase();
 const headless = (args.get('headless') || process.env.BENCH_HEADLESS || 'true') !== 'false';
 
@@ -54,6 +55,8 @@ const BENCH_PROFILES = {
     durationMs: 60000,
     sampleMs: 1000,
     entrances: 50,
+    warmupMs: 5000,
+    maxRuntimeMs: 150000,
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true' }
   },
   stress: {
@@ -61,6 +64,8 @@ const BENCH_PROFILES = {
     durationMs: 90000,
     sampleMs: 500,
     entrances: 180,
+    warmupMs: 10000,
+    maxRuntimeMs: 220000,
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true', bench2: 'true' }
   },
   reverse: {
@@ -68,14 +73,27 @@ const BENCH_PROFILES = {
     durationMs: 90000,
     sampleMs: 500,
     entrances: 160,
+    warmupMs: 10000,
+    maxRuntimeMs: 220000,
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true', benchReverse: 'true' }
   },
   smoke: {
     mode: 'sequence',
-    durationMs: 12000,
+    durationMs: 6000,
     sampleMs: 500,
     entrances: 30,
+    warmupMs: 1500,
+    maxRuntimeMs: 25000,
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'false' }
+  },
+  soak: {
+    mode: 'bench',
+    durationMs: 180000,
+    sampleMs: 500,
+    entrances: 220,
+    warmupMs: 10000,
+    maxRuntimeMs: 300000,
+    query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true', bench2: 'true' }
   }
 };
 
@@ -84,14 +102,14 @@ const durationMs = toPositiveNumber(args.get('duration') || process.env.BENCH_DU
 const sampleMs = toPositiveNumber(args.get('sample') || process.env.BENCH_SAMPLE_MS, profile.sampleMs);
 const warmupMs = toPositiveNumber(
   args.get('warmup') || process.env.BENCH_WARMUP_MS,
-  Math.max(5000, sampleMs * 4)
+  profile.warmupMs ?? Math.max(5000, sampleMs * 4)
 );
 const mode = (args.get('mode') || process.env.BENCH_MODE || profile.mode).toLowerCase();
 const entrances = toPositiveNumber(args.get('entrances') || process.env.BENCH_ENTRANCES, profile.entrances);
 const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.BENCH_OP_TIMEOUT_MS, 30000);
 const maxRuntimeMs = toPositiveNumber(
   args.get('maxRuntime') || process.env.BENCH_MAX_RUNTIME_MS,
-  warmupMs + durationMs + Math.max(60000, sampleMs * 20)
+  profile.maxRuntimeMs ?? (warmupMs + durationMs + Math.max(60000, sampleMs * 20))
 );
 
 const buildUrl = (raw) => {

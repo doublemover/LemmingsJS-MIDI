@@ -7,8 +7,11 @@ common subsets of the suite:
 npm test                # runs all tests
 npm run test-core       # core game logic
 npm run test-bench      # performance benchmarks
-npm run bench-performance # standalone bench (Playwright + E2E harness)
-npm run bench-history   # history stress test (Playwright + E2E harness)
+npm run bench-smoke     # fast benchmark smoke gate (short dev-loop default)
+npm run bench-performance # standalone perf bench (smoke profile by default)
+npm run bench-history   # history stress bench (smoke profile by default)
+npm run bench-performance-soak # long perf soak run (explicit opt-in)
+npm run bench-history-soak # long history soak run (explicit opt-in)
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
@@ -25,6 +28,17 @@ integration.
 The tests require no special environment variables. A minimal `lemmings` object
 is created and temporary files are written under your operating system's temp
 directory.
+
+## Benchmark profiles
+
+Benchmark scripts default to short smoke settings so local perf checks stay
+within a quick dev-loop budget. Use explicit soak mode for long runs:
+
+```bash
+npm run bench-performance -- --soak
+npm run bench-history -- --soak
+npm run bench-smoke -- --soak
+```
 
 ## npm test workflow
 
