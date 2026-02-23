@@ -126,6 +126,7 @@ class EditorUiController {
       trigger: []
     };
     this._palettePreviewQueue = [];
+    this._palettePreviewIndex = 0;
     this._palettePreviewTimer = null;
     this._palettePreviewToken = 0;
     this._paletteFilterTimer = null;
@@ -824,6 +825,7 @@ class EditorUiController {
       if (!container) return;
       container.addEventListener('wheel', (event) => {
         if (!event.ctrlKey || this._paletteViewMode !== 'grid') return;
+        if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
         event.preventDefault();
         const direction = event.deltaY > 0 ? 1 : -1;
         this._setPaletteGridColumns(this._paletteGridColumns + direction);
@@ -879,6 +881,7 @@ class EditorUiController {
   _cancelPalettePreviewHydration() {
     this._palettePreviewToken += 1;
     this._palettePreviewQueue = [];
+    this._palettePreviewIndex = 0;
     if (this._palettePreviewTimer) {
       clearTimeout(this._palettePreviewTimer);
       this._palettePreviewTimer = null;
@@ -904,15 +907,20 @@ class EditorUiController {
     this._palettePreviewToken += 1;
     const token = this._palettePreviewToken;
     this._palettePreviewQueue = queue;
+    this._palettePreviewIndex = 0;
     if (this._palettePreviewTimer) {
       clearTimeout(this._palettePreviewTimer);
       this._palettePreviewTimer = null;
     }
+    if (!this._palettePreviewQueue.length) {
+      return;
+    }
     const pump = () => {
       if (token !== this._palettePreviewToken) return;
       let remaining = PALETTE_PREVIEW_BATCH_SIZE;
-      while (remaining > 0 && this._palettePreviewQueue.length > 0) {
-        const record = this._palettePreviewQueue.shift();
+      while (remaining > 0 && this._palettePreviewIndex < this._palettePreviewQueue.length) {
+        const record = this._palettePreviewQueue[this._palettePreviewIndex];
+        this._palettePreviewIndex += 1;
         if (!record || record.button.hidden || record.previewLoaded) {
           continue;
         }
@@ -927,9 +935,11 @@ class EditorUiController {
         record.previewWrap.classList.remove('pending');
         remaining -= 1;
       }
-      if (this._palettePreviewQueue.length > 0) {
+      if (this._palettePreviewIndex < this._palettePreviewQueue.length) {
         this._palettePreviewTimer = setTimeout(pump, 0);
       } else {
+        this._palettePreviewQueue = [];
+        this._palettePreviewIndex = 0;
         this._palettePreviewTimer = null;
       }
     };
@@ -1071,13 +1081,19 @@ class EditorUiController {
   async _refreshStyleOptions() {
     const select = this.el.headerStyle;
     if (!select) return;
+    const toStyleKey = value => normalizeText(value).toLowerCase();
     const current = normalizeText(this.session?.level?.getHeader?.('STYLE'));
+    const currentKey = toStyleKey(current);
     const styles = await this._resolveAvailableStyles();
-    const normalized = styles.map(name => normalizeText(name));
-    const hasCurrent = current && normalized.includes(current);
-    const options = current && !hasCurrent
-      ? styles.concat([current])
-      : styles.slice();
+    const options = styles.slice();
+    const optionKeyToName = new Map();
+    for (const name of options) {
+      optionKeyToName.set(toStyleKey(name), name);
+    }
+    if (current && !optionKeyToName.has(currentKey)) {
+      options.push(current);
+      optionKeyToName.set(currentKey, current);
+    }
     select.innerHTML = '';
     for (const name of options) {
       const opt = this.document.createElement('option');
@@ -1086,7 +1102,7 @@ class EditorUiController {
       select.appendChild(opt);
     }
     if (current) {
-      select.value = current;
+      select.value = optionKeyToName.get(currentKey) || current;
     }
   }
 

@@ -109,4 +109,130 @@ describe('EditorUiController palette throughput helpers', () => {
     expect(hidden.previewLoaded).to.equal(false);
     expect(loaded.previewLoaded).to.equal(true);
   });
+
+  it('cancels stale preview hydration batches when the token changes', () => {
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    const ui = Object.create(EditorUiController.prototype);
+    const first = createRecord('a', false, false);
+    ui._activeTab = 'terrain';
+    ui._palettePreviewQueue = [];
+    ui._palettePreviewIndex = 0;
+    ui._palettePreviewToken = 0;
+    ui._palettePreviewTimer = null;
+    ui._paletteEntries = {
+      terrain: [first],
+      gadget: [],
+      trigger: []
+    };
+    let previewCalls = 0;
+    ui._getPreviewUrl = () => {
+      previewCalls += 1;
+      return 'data:image/png;base64,terrain';
+    };
+
+    ui._schedulePalettePreviewHydration();
+    ui._palettePreviewToken += 1;
+    clock.tick(0);
+    clock.uninstall();
+
+    expect(previewCalls).to.equal(0);
+    expect(first.previewLoaded).to.equal(false);
+  });
+
+  it('skips hydration timers when no pending previews exist', () => {
+    const ui = Object.create(EditorUiController.prototype);
+    ui._activeTab = 'terrain';
+    ui._palettePreviewQueue = [];
+    ui._palettePreviewIndex = 0;
+    ui._palettePreviewToken = 0;
+    ui._palettePreviewTimer = null;
+    ui._paletteEntries = {
+      terrain: [createRecord('a', true, false), createRecord('b', false, true)],
+      gadget: [],
+      trigger: []
+    };
+
+    ui._schedulePalettePreviewHydration();
+
+    expect(ui._palettePreviewTimer).to.equal(null);
+    expect(ui._palettePreviewQueue).to.deep.equal([]);
+    expect(ui._palettePreviewIndex).to.equal(0);
+  });
+
+  it('ignores ctrl-wheel zoom updates when wheel delta is zero', () => {
+    const ui = Object.create(EditorUiController.prototype);
+    const terrainContainer = {
+      handler: null,
+      addEventListener(type, handler) {
+        if (type === 'wheel') {
+          this.handler = handler;
+        }
+      }
+    };
+    ui.el = {
+      paletteTerrain: terrainContainer,
+      paletteGadgets: null,
+      paletteTriggers: null
+    };
+    ui._paletteViewMode = 'grid';
+    ui._paletteGridColumns = 4;
+    const updates = [];
+    ui._setPaletteGridColumns = (value) => {
+      updates.push(value);
+    };
+
+    ui._bindPaletteGridZoom();
+    expect(typeof terrainContainer.handler).to.equal('function');
+
+    let prevented = false;
+    terrainContainer.handler({
+      ctrlKey: true,
+      deltaY: 0,
+      preventDefault() {
+        prevented = true;
+      }
+    });
+
+    expect(prevented).to.equal(false);
+    expect(updates).to.deep.equal([]);
+
+    terrainContainer.handler({
+      ctrlKey: true,
+      deltaY: -1,
+      preventDefault() {}
+    });
+    expect(updates).to.deep.equal([3]);
+  });
+
+  it('refreshes style options using canonical names for case-insensitive current styles', async () => {
+    const ui = Object.create(EditorUiController.prototype);
+    const appended = [];
+    ui.el = {
+      headerStyle: {
+        innerHTML: '',
+        value: '',
+        appendChild(option) {
+          appended.push(option);
+        }
+      }
+    };
+    ui.document = {
+      createElement() {
+        return { value: '', textContent: '' };
+      }
+    };
+    ui.session = {
+      level: {
+        getHeader() {
+          return 'canyon';
+        }
+      }
+    };
+    ui._resolveAvailableStyles = async () => ['Canyon', 'Fire'];
+
+    await ui._refreshStyleOptions();
+
+    expect(appended.map(option => option.value)).to.deep.equal(['Canyon', 'Fire']);
+    expect(ui.el.headerStyle.value).to.equal('Canyon');
+  });
 });
