@@ -614,3 +614,14 @@ Notes:
   targeted invariant tests.
   Touchpoints: `test/render/stage.test.js`, `test/history-store.test.js`,
   `test/level/trigger-manager.test.js`.
+
+## Phase 38: Runtime lifecycle and static safety hardening
+- [x] Replace hard `process.exit` signal shutdown behavior in MCP server with an
+  idempotent graceful shutdown controller that disposes runtime sessions and
+  closes server transports in a deterministic order.
+  Touchpoints: `mcp/server.js`, `mcp/shutdownController.js`,
+  `test/mcp-shutdown-controller.test.js`.
+- [x] Enforce radix-safe integer parsing in lint and clear remaining non-vendor
+  `parseInt` hotpath usage without explicit base to prevent coercion edge
+  cases.
+  Touchpoints: `eslint.config.js`, `js/xbrz/xbrz.js`.

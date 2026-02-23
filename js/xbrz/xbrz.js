@@ -63,8 +63,8 @@ class OutputMatrix {
   }
 
   ref (i, j) {
-    i = parseInt(i);
-    j = parseInt(j);
+    i = Number.parseInt(i, 10);
+    j = Number.parseInt(j, 10);
     const rot = matrixRotation[this.nr + i * maxScale + j];
     this.out.position(this.outi + rot.J + rot.I * this.outWidth);
     return this.out;
@@ -506,7 +506,6 @@ export function scaleImage (scaleSize, src, trg, srcWidth, srcHeight, yFirst, yL
     }
   }
 }
-
 
 
 

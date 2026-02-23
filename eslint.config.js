@@ -3,6 +3,7 @@ export default [
     files: ['**/*.js'],
     ignores: [
       'node_modules/**',
+      'js/vendor/**',
       'holiday93/**',
       'holiday94/**',
       'lemmings/**',
@@ -19,7 +20,8 @@ export default [
     rules: {
       indent: ['error', 2],
       quotes: ['error', 'single'],
-      semi: ['error', 'always']
+      semi: ['error', 'always'],
+      radix: ['error', 'always']
     }
   },
   {

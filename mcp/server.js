@@ -28,6 +28,7 @@ import { disposeAllSessionRuntimes, disposeSessionRuntime } from './sessionLifec
 import { buildLemmingSummary } from './lemmingSummary.js';
 import { createStateToolHandlers } from './stateTools.js';
 import { createSpectatorTools } from './spectatorTools.js';
+import { createShutdownController } from './shutdownController.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -1536,15 +1537,22 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 const transport = new StdioServerTransport();
 await server.connect(transport);
 
-const shutdown = async () => {
-  await disposeAllSessionRuntimes(sessions.values(), {
-    stopSpectatorServer,
-    stopWatchLoop
-  });
-  sessions.clear();
-};
+const shutdownController = createShutdownController({
+  disposeSessions: async () => {
+    await disposeAllSessionRuntimes(sessions.values(), {
+      stopSpectatorServer,
+      stopWatchLoop
+    });
+    sessions.clear();
+  },
+  closeServer: () => server.close(),
+  closeTransport: () => transport.close()
+});
 
 process.on('SIGINT', async () => {
-  await shutdown();
-  process.exit(0);
+  shutdownController.handleSignal('SIGINT');
+});
+
+process.on('SIGTERM', async () => {
+  shutdownController.handleSignal('SIGTERM');
 });
