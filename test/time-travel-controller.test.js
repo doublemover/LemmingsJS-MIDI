@@ -154,6 +154,36 @@ describe('TimeTravelController', function() {
     expect(controller.isReversing).to.equal(false);
   });
 
+  it('does not enter reverse mode when RAF APIs are unavailable', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    let suspended = 0;
+    let paused = 0;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = undefined;
+    try {
+      const timer = {
+        frameTime: 60,
+        TIME_PER_FRAME_MS: 60,
+        isRunning: () => true,
+        suspend() { suspended += 1; }
+      };
+      const history = { pause() { paused += 1; } };
+      const game = { getGameTimer: () => timer, inputEnabled: true };
+      const controller = new TimeTravelController(game, history);
+
+      controller.startReverse();
+
+      expect(controller.isReversing).to.equal(false);
+      expect(suspended).to.equal(0);
+      expect(paused).to.equal(0);
+      expect(game.inputEnabled).to.equal(true);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
   it('suspends the timer when stepping backward while running', function() {
     let suspended = 0;
     const timer = {
@@ -461,6 +491,24 @@ describe('TimeTravelController', function() {
     controller._emitReverseEvents({ soundEvents: [{ sfxId: 1 }] });
   });
 
+  it('stops reverse safely when RAF APIs disappear', function() {
+    const originalWindow = globalThis.window;
+    const timer = { tickIndex: 0, isRunning: () => false };
+    const game = { getGameTimer: () => timer, inputEnabled: true };
+    const controller = new TimeTravelController(game, { resume() {} });
+    controller._reverseActive = true;
+    controller._reverseRaf = 123;
+    controller._resumeForward = false;
+    globalThis.window = undefined;
+    try {
+      expect(() => controller.stopReverse()).to.not.throw();
+      expect(controller.isReversing).to.equal(false);
+      expect(controller._reverseRaf).to.equal(0);
+    } finally {
+      globalThis.window = originalWindow;
+    }
+  });
+
   it('stops reverse without resuming when already paused', function() {
     const originalWindow = globalThis.window;
     const originalPerformance = globalThis.performance;
@@ -579,5 +627,32 @@ describe('TimeTravelController', function() {
       globalThis.window = originalWindow;
       globalThis.performance = originalPerformance;
     }
+  });
+
+  it('falls back to seek when backward delta applier is missing', function() {
+    const timer = { tickIndex: 4, isRunning: () => false, suspend() {} };
+    const history = {
+      getDelta() { return { tick: 3 }; }
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+    const seeks = [];
+    controller.seekToTick = (tick) => seeks.push(tick);
+
+    controller.stepBackward(1);
+
+    expect(seeks).to.eql([3]);
+  });
+
+  it('skips seek application when applyKeyframe is missing', function() {
+    const timer = { tickIndex: 2, isRunning: () => false, suspend() {} };
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 0 }; }
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+
+    expect(() => controller.seekToTick(1)).to.not.throw();
+    expect(timer.tickIndex).to.equal(2);
   });
 });

@@ -263,6 +263,24 @@ describe('MidiInputController', function() {
     expect(setCalls).to.equal(1);
   });
 
+  it('avoids redundant config normalization for equivalent wrapper objects', function() {
+    const sharedCc = { speed: { cc: 1, min: 0.1, max: 2 } };
+    const controller = new MidiInputController({}, {
+      getConfig: () => ({ input: { channel: 'omni', cc: sharedCc } })
+    });
+    let setCalls = 0;
+    const originalSetConfig = controller.setConfig.bind(controller);
+    controller.setConfig = (...args) => {
+      setCalls += 1;
+      return originalSetConfig(...args);
+    };
+
+    controller._onMessage({ data: [0xF8] });
+    controller._onMessage({ data: [0xF8] });
+
+    expect(setCalls).to.equal(1);
+  });
+
   it('rebuilds CC mapping index when config CC bindings change', function() {
     const speeds = [];
     const patches = [];
@@ -292,6 +310,33 @@ describe('MidiInputController', function() {
 
     controller._onMessage({ data: [0xB0, 1, 127] });
     expect(speeds.length).to.equal(1);
+  });
+
+  it('refreshes stale CC cache entries when mappings mutate in place', function() {
+    const speeds = [];
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: {
+          speed: { cc: 1, min: 0.1, max: 2 }
+        }
+      }
+    };
+    const controller = new MidiInputController({
+      selectSpeedFactor(value) { speeds.push(value); }
+    }, {
+      getConfig: () => config
+    });
+
+    controller._onMessage({ data: [0xB0, 1, 127] });
+    expect(speeds.length).to.equal(1);
+
+    config.input.cc.speed.cc = 2;
+    controller._onMessage({ data: [0xB0, 1, 127] });
+    expect(speeds.length).to.equal(1);
+
+    controller._onMessage({ data: [0xB0, 2, 127] });
+    expect(speeds.length).to.equal(2);
   });
 
   it('defaults missing velocity and CC values to zero', function() {

@@ -451,7 +451,10 @@ class MidiMapping {
     if (Number.isFinite(sfx.frequencyHz) && sfx.frequencyHz > 0) {
       const floatNote = noteFromFrequency(sfx.frequencyHz);
       const baseNote = Math.round(floatNote);
-      const bendRange = cfg.mpe?.pitchBendRange?.semitones ?? 2;
+      const configuredBendRange = cfg.mpe?.pitchBendRange?.semitones;
+      const bendRange = Number.isFinite(configuredBendRange) && configuredBendRange > 0
+        ? configuredBendRange
+        : 2;
       const offset = floatNote - baseNote;
       pitchBend = clamp(offset / bendRange, -1, 1);
       note = baseNote;

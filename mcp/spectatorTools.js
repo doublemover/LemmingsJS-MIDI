@@ -3,6 +3,21 @@ import http from 'node:http';
 import { WebSocketServer } from 'ws';
 import { normalizeSpectatorStreamConfig, SpectatorBroadcaster } from './spectatorBroadcaster.js';
 
+/**
+ * Build spectator lifecycle helpers bound to the MCP runtime dependencies.
+ *
+ * @param {{
+ *   spectatorHtmlPath: string,
+ *   captureFrame: (session: any, options: object) => Promise<any>,
+ *   resolveCanvasMetrics: (session: any) => Promise<any>,
+ *   normalizeKeyToken: (token: string) => string,
+ *   ensureGameFocus: (session: any) => Promise<void>
+ * }} deps
+ * @returns {{
+ *   startSpectatorServer: (session: any, options?: object) => Promise<string>,
+ *   stopSpectatorServer: (session: any) => void
+ * }}
+ */
 const createSpectatorTools = ({
   spectatorHtmlPath,
   captureFrame,
@@ -13,12 +28,15 @@ const createSpectatorTools = ({
   const handleSpectatorInput = async (session, payload) => {
     if (!payload || !session.spectator?.allowHumanInput) return;
     if (payload.type === 'key') {
+      if (!['down', 'up', 'press'].includes(payload.action)) return;
       const key = normalizeKeyToken(payload.key);
       await ensureGameFocus(session);
       if (payload.action === 'down') {
         await session.page.keyboard.down(key);
       } else if (payload.action === 'up') {
         await session.page.keyboard.up(key);
+      } else {
+        await session.page.keyboard.press(key);
       }
       session.events.add({
         source: 'human',
@@ -29,6 +47,7 @@ const createSpectatorTools = ({
     }
     if (payload.type === 'click') {
       if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return;
+      if (payload.x < 0 || payload.x > 1 || payload.y < 0 || payload.y > 1) return;
       const metrics = await resolveCanvasMetrics(session);
       if (!metrics) return;
       const x = metrics.rect.x + metrics.rect.width * payload.x;
@@ -81,7 +100,16 @@ const createSpectatorTools = ({
         } catch {
           return;
         }
-        await handleSpectatorInput(session, payload);
+        try {
+          await handleSpectatorInput(session, payload);
+        } catch (error) {
+          session.events.add({
+            source: 'system',
+            type: 'error',
+            summary: 'spectator input failed',
+            data: { message: error?.message || String(error) }
+          });
+        }
       });
       ws.on('close', () => {
         broadcaster.detach(ws);
@@ -91,7 +119,19 @@ const createSpectatorTools = ({
       });
     });
 
-    await new Promise((resolve) => server.listen(port, '127.0.0.1', resolve));
+    await new Promise((resolve, reject) => {
+      const onError = (error) => {
+        server.off('listening', onListening);
+        reject(error);
+      };
+      const onListening = () => {
+        server.off('error', onError);
+        resolve();
+      };
+      server.once('error', onError);
+      server.once('listening', onListening);
+      server.listen(port, '127.0.0.1');
+    });
     const address = server.address();
     const actualPort = typeof address === 'object' && address ? address.port : port;
     const baseUrl = `http://127.0.0.1:${actualPort}`;

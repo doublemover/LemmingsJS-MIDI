@@ -57,4 +57,27 @@ describe('mcp shutdown controller', function () {
     expect(String(loggerCalls[0][0])).to.include('SIGINT');
     process.exitCode = originalExitCode;
   });
+
+  it('still sets exit code when logger.error throws', async function () {
+    const originalExitCode = process.exitCode;
+    process.exitCode = 0;
+    const controller = createShutdownController({
+      disposeSessions: async () => {
+        throw new Error('boom');
+      },
+      logger: {
+        error: () => {
+          throw new Error('logger boom');
+        }
+      }
+    });
+
+    controller.handleSignal('SIGTERM');
+    await new Promise((resolve) => {
+      setTimeout(resolve, 0);
+    });
+
+    expect(process.exitCode).to.equal(1);
+    process.exitCode = originalExitCode;
+  });
 });

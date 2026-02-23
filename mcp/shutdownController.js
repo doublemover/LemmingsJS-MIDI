@@ -3,6 +3,20 @@ const resolveMaybePromise = async (fn) => {
   return fn();
 };
 
+/**
+ * Build an idempotent shutdown controller for MCP runtime teardown.
+ *
+ * @param {{
+ *   disposeSessions?: (() => (void|Promise<void>)),
+ *   closeServer?: (() => (void|Promise<void>)),
+ *   closeTransport?: (() => (void|Promise<void>)),
+ *   logger?: { error?: (...args: unknown[]) => void }
+ * }} [options]
+ * @returns {{
+ *   shutdown: (reason?: string) => Promise<void>,
+ *   handleSignal: (signal: string) => void
+ * }}
+ */
 const createShutdownController = ({
   disposeSessions,
   closeServer,
@@ -42,10 +56,14 @@ const createShutdownController = ({
 
   const handleSignal = (signal) => {
     void shutdown(signal).catch((error) => {
-      if (logger && typeof logger.error === 'function') {
-        logger.error(`[mcp] graceful shutdown failed on ${signal}`, error);
-      }
       process.exitCode = 1;
+      if (logger && typeof logger.error === 'function') {
+        try {
+          logger.error(`[mcp] graceful shutdown failed on ${signal}`, error);
+        } catch {
+          // Logger failures should not mask shutdown errors.
+        }
+      }
     });
   };
 

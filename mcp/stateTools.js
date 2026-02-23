@@ -18,6 +18,11 @@ const createStateToolHandlers = ({
     pruneLemming
   } = helpers;
 
+  const toTickInteger = (value, fallback = 0) => {
+    if (!Number.isFinite(value)) return fallback;
+    return Math.trunc(value);
+  };
+
   const getStateTool = async (args) => {
     const { sessionId, preset, include, lemmings, format } = schemas.StateGetSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -189,16 +194,18 @@ const createStateToolHandlers = ({
     }
 
     const effectiveAfter = Number.isFinite(afterTick)
-      ? afterTick
-      : (Number.isFinite(session.lastStateTick) ? session.lastStateTick : (currentTick - 1));
-    const effectiveTo = Number.isFinite(toTick) ? toTick : currentTick;
+      ? toTickInteger(afterTick, currentTick - 1)
+      : toTickInteger(session.lastStateTick, currentTick - 1);
+    const requestedTo = Number.isFinite(toTick) ? toTickInteger(toTick, currentTick) : currentTick;
+    const effectiveTo = Math.min(currentTick, requestedTo);
 
-    let startTick = Math.trunc(effectiveAfter + 1);
-    let endTick = Math.trunc(effectiveTo);
+    let startTick = Math.max(0, toTickInteger(effectiveAfter + 1, 0));
+    let endTick = Math.max(0, toTickInteger(effectiveTo, 0));
     if (startTick > endTick) {
+      const cursor = Math.max(endTick, toTickInteger(effectiveAfter, endTick));
       return attachEvents(session, {
         ok: true,
-        cursor: endTick,
+        cursor,
         afterTick: effectiveAfter,
         toTick: endTick,
         deltas: []

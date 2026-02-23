@@ -60,6 +60,17 @@ describe('mcp tool routing helpers', function () {
     expect(resolved.candidates).to.deep.equal(['editor.objects.list']);
   });
 
+  it('keeps explicit non-null falsy tool names during candidate resolution', function () {
+    const resolved = resolveToolCandidates(0, {
+      legacyToolAliases: {},
+      dottedFallbackEnabled: true,
+      toToolName: (name) => name
+    });
+
+    expect(resolved.requestedName).to.equal('0');
+    expect(resolved.candidates).to.deep.equal(['0']);
+  });
+
   it('builds route catalog for all tools while filtering list definitions by active surfaces', function () {
     const gameHandler = () => ({ ok: true });
     const editorHandler = () => ({ ok: true });
@@ -98,6 +109,30 @@ describe('mcp tool routing helpers', function () {
     expect(toolRoutes.get('game_state_get')?.handler).to.equal(gameHandler);
     expect(toolRoutes.get('editor_apply')?.handler).to.equal(editorHandler);
     expect(toolRoutes.get('editor_apply')?.surface).to.equal('editor');
+  });
+
+  it('throws when two canonical tool names collide after normalization', function () {
+    const handler = () => ({ ok: true });
+    const registry = {
+      specs: [
+        { name: 'alpha.beta', description: 'first', schema: {} },
+        { name: 'alpha_beta', description: 'second', schema: {} }
+      ],
+      handlersBySurface: new Map([
+        ['game', new Map([
+          ['alpha.beta', handler],
+          ['alpha_beta', handler]
+        ])]
+      ]),
+      toolSurfaceByName: new Map([
+        ['alpha.beta', 'game'],
+        ['alpha_beta', 'game']
+      ])
+    };
+
+    expect(() => buildToolCatalog(registry, {
+      toToolName: (name) => name.replace(/\./g, '_')
+    })).to.throw('Tool name collision');
   });
 
   it('deduplicates alias and dotted fallback candidates when both resolve to the same tool', function () {

@@ -3,6 +3,8 @@ import {
   buildEditorToolHandlers,
   buildEditorToolSpecs
 } from '../mcp/tools/editor.js';
+import { buildGameToolHandlers } from '../mcp/tools/game.js';
+import { buildInteractToolHandlers } from '../mcp/tools/interact.js';
 import {
   ALL_TOOL_SURFACES,
   buildSurfaceRegistry,
@@ -78,6 +80,14 @@ describe('mcp tool surfaces', function () {
     expect(editorHandlers.get('objects.place')).to.equal(handlers.placeObjectsTool);
     expect(editorHandlers.get('objects.update')).to.equal(handlers.updateObjectsTool);
     expect(editorHandlers.get('objects.delete')).to.equal(handlers.deleteObjectsTool);
+  });
+
+  it('throws when required game handlers are missing', function () {
+    expect(() => buildGameToolHandlers({})).to.throw('Missing game tool handler');
+  });
+
+  it('throws when required interact handlers are missing', function () {
+    expect(() => buildInteractToolHandlers({})).to.throw('Missing interact tool handler');
   });
 
   it('routes typed editor object verbs to the editor surface', function () {

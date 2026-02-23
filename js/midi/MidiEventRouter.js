@@ -5,6 +5,7 @@ import { getAppContext } from '../core/dependencies.js';
 
 const MAX_EVENTS_PER_TICK = 32;
 const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
+const MAX_ARP_STATE_ENTRIES = 256;
 
 class MidiEventRouter {
   constructor(mapping = null) {
@@ -50,10 +51,13 @@ class MidiEventRouter {
   }
 
   _tickMsFromEvent(event) {
-    if (event?.tps) return 1000 / event.tps;
-    if (event?.frameMs) return event.frameMs;
+    if (Number.isFinite(event?.tps) && event.tps > 0) return 1000 / event.tps;
+    if (Number.isFinite(event?.frameMs) && event.frameMs > 0) return event.frameMs;
     const timer = this.context?.game?.getGameTimer?.();
-    return timer?.frameTime ?? 60;
+    if (Number.isFinite(timer?.frameTime) && timer.frameTime > 0) {
+      return timer.frameTime;
+    }
+    return 60;
   }
 
   _densityForEvent(event) {
@@ -123,6 +127,25 @@ class MidiEventRouter {
       return `trigger:${event.triggerType}:${event.sfxId}:${x}:${y}`;
     }
     return `sfx:${event?.sfxId ?? 'unknown'}`;
+  }
+
+  /**
+   * Cache arpeggiator state with a bounded map to avoid unbounded growth when
+   * independent trigger keys fan out over long sessions.
+   * @param {string} key
+   * @param {object} state
+   */
+  _storeArpState(key, state) {
+    if (!key) return;
+    if (this._arpStateBySfx.has(key)) {
+      this._arpStateBySfx.delete(key);
+    }
+    this._arpStateBySfx.set(key, state);
+    while (this._arpStateBySfx.size > MAX_ARP_STATE_ENTRIES) {
+      const oldestKey = this._arpStateBySfx.keys().next().value;
+      if (oldestKey == null) break;
+      this._arpStateBySfx.delete(oldestKey);
+    }
   }
 
   _getRepeatFactor(key, timeMs, repeatCfg, bpm) {
@@ -495,7 +518,7 @@ class MidiEventRouter {
           activeNotes = [seq[idx]];
           state.index = idx + 1;
         }
-        this._arpStateBySfx.set(arpKey, state);
+        this._storeArpState(arpKey, state);
       }
 
       const repeatCfg = { ...(this.mapping.config?.repeat || {}), ...(sfx.repeat || {}) };

@@ -20,6 +20,16 @@ const normalizeFrameSkipPolicy = (policy) => {
   return SPECTATOR_SKIP_POLICIES.LATEST;
 };
 
+/**
+ * Normalize spectator streaming knobs to bounded safe values.
+ *
+ * @param {{
+ *   frameIntervalMs?: number,
+ *   jpegQuality?: number,
+ *   frameSkipPolicy?: string
+ * }} [config]
+ * @returns {{frameIntervalMs:number,jpegQuality:number,frameSkipPolicy:string}}
+ */
 const normalizeSpectatorStreamConfig = (config = {}) => ({
   frameIntervalMs: clampInt(config.frameIntervalMs, DEFAULT_SPECTATOR_STREAM_CONFIG.frameIntervalMs, 50, 5000),
   jpegQuality: clampInt(config.jpegQuality, DEFAULT_SPECTATOR_STREAM_CONFIG.jpegQuality, 1, 100),
@@ -34,6 +44,11 @@ class SpectatorBroadcaster {
 
   attach(ws) {
     if (!ws) return null;
+    for (const existingClient of this.clients) {
+      if (existingClient.ws === ws) {
+        return existingClient;
+      }
+    }
     const client = {
       ws,
       sending: false,
@@ -46,17 +61,24 @@ class SpectatorBroadcaster {
   }
 
   detach(ws) {
+    let removed = false;
     for (const client of this.clients) {
       if (client.ws === ws) {
         this.clients.delete(client);
-        return;
+        removed = true;
       }
     }
+    return removed;
   }
 
   broadcast(payload) {
     if (!payload) return;
-    const serialized = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    let serialized;
+    try {
+      serialized = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    } catch {
+      return;
+    }
     for (const client of this.clients) {
       this._sendFrame(client, serialized);
     }

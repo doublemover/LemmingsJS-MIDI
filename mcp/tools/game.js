@@ -1,6 +1,25 @@
 const GAME_SURFACE = 'game';
 const GAME_NAMESPACES = Object.freeze(['session', 'time', 'state', 'lemming', 'skill']);
 
+const GAME_HANDLER_MAP = Object.freeze([
+  ['session.create', 'createSession'],
+  ['session.close', 'closeSession'],
+  ['time.pause', 'pauseTime'],
+  ['time.resume', 'resumeTime'],
+  ['time.step', 'stepTime'],
+  ['state.get', 'getStateTool'],
+  ['state.delta', 'getStateDeltaTool'],
+  ['lemming.summary', 'getLemmingsSummaryTool'],
+  ['lemming.select', 'selectLemmingTool'],
+  ['skill.apply', 'applySkillTool']
+]);
+
+/**
+ * Build typed MCP tool specs for the game surface.
+ *
+ * @param {Record<string, any>} schemas
+ * @returns {Array<{name:string,description:string,schema:any}>}
+ */
 const buildGameToolSpecs = (schemas) => [
   {
     name: 'session.create',
@@ -54,18 +73,24 @@ const buildGameToolSpecs = (schemas) => [
   }
 ];
 
-const buildGameToolHandlers = (handlers) => new Map([
-  ['session.create', handlers.createSession],
-  ['session.close', handlers.closeSession],
-  ['time.pause', handlers.pauseTime],
-  ['time.resume', handlers.resumeTime],
-  ['time.step', handlers.stepTime],
-  ['state.get', handlers.getStateTool],
-  ['state.delta', handlers.getStateDeltaTool],
-  ['lemming.summary', handlers.getLemmingsSummaryTool],
-  ['lemming.select', handlers.selectLemmingTool],
-  ['skill.apply', handlers.applySkillTool]
-]);
+/**
+ * Build dispatch handlers for game tools.
+ *
+ * @param {Record<string, any>} handlers
+ * @throws {Error} When a required handler is missing.
+ * @returns {Map<string, (...args: any[]) => any>}
+ */
+const buildGameToolHandlers = (handlers = {}) => {
+  const routes = [];
+  for (const [toolName, handlerKey] of GAME_HANDLER_MAP) {
+    const handler = handlers[handlerKey];
+    if (typeof handler !== 'function') {
+      throw new Error(`Missing game tool handler: ${handlerKey}`);
+    }
+    routes.push([toolName, handler]);
+  }
+  return new Map(routes);
+};
 
 export {
   GAME_NAMESPACES,

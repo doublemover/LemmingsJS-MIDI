@@ -54,7 +54,7 @@ const resolveToolCandidates = (
     toToolName = (name) => name
   } = {}
 ) => {
-  const requestedName = String(rawName || '');
+  const requestedName = rawName == null ? '' : String(rawName);
   const candidates = [];
   const pushCandidate = (name) => {
     const canonical = legacyToolAliases[name] || name;
@@ -90,6 +90,7 @@ const resolveToolCandidates = (
  *   toToolName?: (name: string) => string,
  *   toJsonSchemaCompat?: (schema: unknown) => unknown
  * }} [options]
+ * @throws {Error} When two canonical tool names normalize to the same exposed tool name.
  * @returns {{
  *   toolDefs: Array<{name: string, description: string, inputSchema: unknown}>,
  *   toolRoutes: Map<string, {
@@ -119,6 +120,12 @@ const buildToolCatalog = (
     const canonicalName = String(spec?.name || '');
     if (!canonicalName) continue;
     const toolName = toToolName(canonicalName);
+    const existing = toolRoutes.get(toolName);
+    if (existing && existing.canonicalName !== canonicalName) {
+      throw new Error(
+        `Tool name collision: \"${existing.canonicalName}\" and \"${canonicalName}\" both map to \"${toolName}\"`
+      );
+    }
     const surface = toolSurfaceByName?.get(canonicalName);
     const handler = handlersBySurface?.get(surface)?.get(canonicalName) || null;
     if (!surface || !handler) continue;

@@ -77,6 +77,28 @@ describe('SpectatorBroadcaster', function () {
     expect(socket.sent).to.have.lengthOf(3);
   });
 
+  it('deduplicates repeat attachment of the same socket', function () {
+    const broadcaster = new SpectatorBroadcaster({
+      frameSkipPolicy: SPECTATOR_SKIP_POLICIES.NONE
+    });
+    const socket = new FakeSocket();
+    broadcaster.attach(socket);
+    broadcaster.attach(socket);
+
+    broadcaster.broadcast({ frame: 1 });
+    expect(socket.sent).to.have.lengthOf(1);
+    expect(broadcaster.getSnapshot().connectedClients).to.equal(1);
+  });
+
+  it('skips payloads that cannot be serialized to JSON', function () {
+    const broadcaster = new SpectatorBroadcaster();
+    const socket = new FakeSocket();
+    broadcaster.attach(socket);
+
+    expect(() => broadcaster.broadcast({ value: BigInt(1) })).to.not.throw();
+    expect(socket.sent).to.have.lengthOf(0);
+  });
+
   it('normalizes spectator stream settings to safe bounds', function () {
     const normalized = normalizeSpectatorStreamConfig({
       frameIntervalMs: 10,

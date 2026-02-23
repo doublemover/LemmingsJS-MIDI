@@ -32,7 +32,6 @@ class MidiInputController {
     this.input = null;
     this.channel = 'omni';
     this._noteCapture = null;
-    this._lastConfigRef = null;
     this._lastInputChannel = undefined;
     this._lastCcConfigRef = undefined;
     this._ccMappings = new Map();
@@ -40,7 +39,6 @@ class MidiInputController {
   }
 
   setConfig(config) {
-    this._lastConfigRef = config || null;
     this._lastInputChannel = config?.input?.channel;
     this._lastCcConfigRef = config?.input?.cc;
     this.channel = normalizeInputChannel(this._lastInputChannel);
@@ -63,12 +61,53 @@ class MidiInputController {
     }
   }
 
+  /**
+   * Resolve cached CC mappings and self-heal stale entries when config objects
+   * are mutated in place.
+   * @param {number} ccNumber
+   * @param {object|null|undefined} ccConfig
+   * @returns {Array<{key:string,mapping:object}>}
+   */
+  _resolveCcEntries(ccNumber, ccConfig) {
+    if (!ccConfig || typeof ccConfig !== 'object') return [];
+    let entries = this._ccMappings.get(ccNumber) || [];
+    let hasStale = false;
+    let validEntries = [];
+    if (entries.length) {
+      validEntries = entries.filter(({ key, mapping }) => {
+        const currentMapping = ccConfig[key];
+        const sameReference = currentMapping === mapping;
+        const sameControllerNumber = Number.isFinite(currentMapping?.cc) &&
+          Math.trunc(currentMapping.cc) === ccNumber;
+        const valid = sameReference && sameControllerNumber;
+        if (!valid) hasStale = true;
+        return valid;
+      });
+    }
+    if (hasStale) {
+      this._buildCcMappingIndex(ccConfig);
+      validEntries = this._ccMappings.get(ccNumber) || [];
+    }
+    if (validEntries.length) return validEntries;
+    const scanned = [];
+    for (const [key, mapping] of Object.entries(ccConfig)) {
+      if (!Number.isFinite(mapping?.cc) || Math.trunc(mapping.cc) !== ccNumber) continue;
+      scanned.push({ key, mapping });
+    }
+    if (scanned.length) {
+      this._ccMappings.set(ccNumber, scanned);
+    }
+    return scanned;
+  }
+
+  /**
+   * Track only config fields that affect input dispatch hot paths.
+   * @param {object|null|undefined} config
+   */
   _syncConfig(config) {
-    const nextRef = config || null;
     const nextInputChannel = config?.input?.channel;
     const nextCcConfig = config?.input?.cc;
     if (
-      nextRef === this._lastConfigRef &&
       nextInputChannel === this._lastInputChannel &&
       nextCcConfig === this._lastCcConfigRef
     ) {
@@ -207,14 +246,7 @@ class MidiInputController {
       this._lastCcConfigRef = nextCcConfig;
       this._buildCcMappingIndex(nextCcConfig);
     }
-    let entries = this._ccMappings.get(ccNumber);
-    if ((!entries || !entries.length) && nextCcConfig && typeof nextCcConfig === 'object') {
-      entries = [];
-      for (const [key, mapping] of Object.entries(nextCcConfig)) {
-        if ((mapping?.cc ?? -1) !== ccNumber) continue;
-        entries.push({ key, mapping });
-      }
-    }
+    const entries = this._resolveCcEntries(ccNumber, nextCcConfig);
     if (!entries || !entries.length) return;
     for (const { key, mapping } of entries) {
       if (key === 'speed') {

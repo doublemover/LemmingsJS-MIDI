@@ -44,6 +44,18 @@ describe('MidiMapping', function() {
     expect(spec.frequencyHz).to.equal(freq);
   });
 
+  it('falls back to a safe pitch-bend range when semitones are invalid', function() {
+    const mapping = makeMapping({
+      mpe: { pitchBendRange: { semitones: 0, cents: 0 } },
+      sfx: { '1': { frequencyHz: 440 } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+
+    expect(Number.isFinite(spec.pitchBend)).to.equal(true);
+    expect(spec.pitchBend).to.equal(0);
+  });
+
   const mappingCases = [
     {
       name: 'applies position and density adjustments',

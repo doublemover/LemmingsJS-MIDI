@@ -326,6 +326,29 @@ describe('MidiEventRouter', function() {
     expect(sent[2].note).to.equal(67);
   });
 
+  it('bounds independent arp cache growth', function() {
+    const { router } = makeRouter(
+      { limits: { maxEventsPerSecond: 1000 }, triggers: { '5': { arp: { independent: true } } } },
+      {
+        mapEvent: () => ({
+          notes: [60, 64],
+          note: 60,
+          velocity: 64,
+          durationTicks: 1,
+          arp: { enabled: true, mode: 'up', length: 2 }
+        })
+      }
+    );
+
+    for (let i = 0; i < 300; i += 1) {
+      router._onEvent({ sfxId: 1, tick: i + 1, tps: 50, triggerType: 5, objectId: i });
+    }
+
+    expect(router._arpStateBySfx.size).to.be.at.most(256);
+    expect(router._arpStateBySfx.has('trigger:5:1:object:0')).to.equal(false);
+    expect(router._arpStateBySfx.has('trigger:5:1:object:299')).to.equal(true);
+  });
+
   it('reverses direction for updown arps at bounds', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'updown', length: 3 });
 
@@ -1036,6 +1059,14 @@ describe('MidiEventRouter', function() {
     const { router } = makeRouter();
     router.context = {};
     expect(router._tickMsFromEvent({})).to.equal(60);
+  });
+
+  it('tickMsFromEvent ignores invalid timing payloads', function() {
+    const { router } = makeRouter();
+    router.context = { game: { getGameTimer() { return { frameTime: 33 }; } } };
+    expect(router._tickMsFromEvent({ tps: 0, frameMs: -10 })).to.equal(33);
+    router.context = { game: { getGameTimer() { return { frameTime: 0 }; } } };
+    expect(router._tickMsFromEvent({ tps: -20, frameMs: Number.NaN })).to.equal(60);
   });
 
   it('nowMs uses performance when available', function() {

@@ -29,11 +29,14 @@ const toMidiFlagTriggerType = (flagId) => {
 const fromMidiFlagTriggerType = (triggerType) => {
   if (!Number.isFinite(triggerType)) return null;
   const value = Math.trunc(triggerType);
-  if (value <= MIDI_FLAG_TRIGGER_BASE) return null;
-  const id = value - MIDI_FLAG_TRIGGER_BASE;
-  return clampMidiFlagId(id);
+  const maxTriggerType = MIDI_FLAG_TRIGGER_BASE + MIDI_FLAG_TRIGGER_MAX;
+  if (value <= MIDI_FLAG_TRIGGER_BASE || value > maxTriggerType) return null;
+  return value - MIDI_FLAG_TRIGGER_BASE;
 };
 
+/**
+ * Check whether a trigger type belongs to the MIDI flag trigger namespace.
+ */
 const isMidiFlagTriggerType = (triggerType) => fromMidiFlagTriggerType(triggerType) !== null;
 
 export {

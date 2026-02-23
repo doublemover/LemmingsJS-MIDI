@@ -21,11 +21,13 @@ describe('MidiFlagTriggers', () => {
     expect(toMidiFlagTriggerType(0)).to.equal(null);
     expect(fromMidiFlagTriggerType(MIDI_FLAG_TRIGGER_BASE + 7)).to.equal(7);
     expect(fromMidiFlagTriggerType(MIDI_FLAG_TRIGGER_BASE)).to.equal(null);
+    expect(fromMidiFlagTriggerType(MIDI_FLAG_TRIGGER_BASE + MIDI_FLAG_TRIGGER_MAX + 1)).to.equal(null);
   });
 
   it('detects midi flag trigger types', () => {
     const triggerType = toMidiFlagTriggerType(9);
     expect(isMidiFlagTriggerType(triggerType)).to.equal(true);
     expect(isMidiFlagTriggerType(3)).to.equal(false);
+    expect(isMidiFlagTriggerType(MIDI_FLAG_TRIGGER_BASE + MIDI_FLAG_TRIGGER_MAX + 100)).to.equal(false);
   });
 });
