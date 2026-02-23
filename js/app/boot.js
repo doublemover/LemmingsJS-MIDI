@@ -17,6 +17,7 @@ import {
   setRuntimeContext
 } from '../core/dependencies.js';
 import { DEFAULT_RUNTIME_PROFILE } from '../core/runtimeProfiles.js';
+import { resolveRuntimeRolloutFlags } from '../core/rolloutFlags.js';
 import {
   listSavedLevels,
   loadSavedLevel,
@@ -93,16 +94,22 @@ const getRuntimeWebMidi = () => getRuntimeDependency('webMidi', null);
 const hydrateRuntimeContext = () => {
   const windowRef = getRuntimeWindow();
   const documentRef = getRuntimeDocument();
+  const locationRef = getRuntimeDependency('location', windowRef?.location || null);
+  const runtimeRolloutFlags = resolveRuntimeRolloutFlags({
+    search: locationRef?.search || '',
+    runtimeFlags: getRuntimeDependency('rolloutFlags', null)
+  });
   setRuntimeContext({
     window: windowRef,
     document: documentRef,
     navigator: getRuntimeDependency('navigator', windowRef?.navigator || null),
-    location: getRuntimeDependency('location', windowRef?.location || null),
+    location: locationRef,
     history: getRuntimeDependency('history', windowRef?.history || null),
     localStorage: getRuntimeDependency('localStorage', windowRef?.localStorage || null),
     caches: getRuntimeDependency('caches', null),
     performance: getRuntimeDependency('performance', (typeof performance !== 'undefined' ? performance : null)),
     webMidi: getRuntimeWebMidi(),
+    rolloutFlags: runtimeRolloutFlags,
     bootNoAutoStart: getRuntimeDependency('bootNoAutoStart', false)
   });
   return { windowRef, documentRef };

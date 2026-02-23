@@ -6,6 +6,10 @@ import { UserInputManager } from '../input/UserInputManager.js';
 import { ViewPoint } from './ViewPoint.js';
 import { getDependency } from '../core/dependencies.js';
 import { toFiniteNumber } from '../core/numberParsing.js';
+import {
+  detectRuntimeCapabilities,
+  resolveRenderExperimentState
+} from '../core/capabilityMatrix.js';
 
 const COLOR_FN_RE = /^rgba?\(/i;
 const COLOR_RE = /^rgba?\(\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*,\s*([-+]?\d*\.?\d+)\s*(?:,\s*([-+]?\d*\.?\d+)\s*)?\)$/i;
@@ -189,26 +193,8 @@ class Stage {
   }
 
   setRenderExperimentFlags(flags = {}) {
-    const requestedOffscreen = !!flags.offscreenPresent;
-    const requestedWorker = !!flags.workerOffscreen;
-    const canUseCanvasOffscreen = typeof document !== 'undefined'
-      && typeof document.createElement === 'function';
-    const workerSupported = typeof Worker !== 'undefined';
-
-    this._renderExperiments.offscreenPresentRequested = requestedOffscreen;
-    this._renderExperiments.offscreenPresentActive = requestedOffscreen && canUseCanvasOffscreen;
-    this._renderExperiments.workerOffscreenRequested = requestedWorker;
-    this._renderExperiments.workerOffscreenActive = requestedWorker
-      && this._renderExperiments.offscreenPresentActive
-      && workerSupported;
-    this._renderExperiments.rollbackReason = null;
-    if (requestedOffscreen && !this._renderExperiments.offscreenPresentActive) {
-      this._renderExperiments.rollbackReason = 'offscreen_present_unsupported';
-    } else if (requestedWorker && !this._renderExperiments.workerOffscreenActive) {
-      this._renderExperiments.rollbackReason = workerSupported
-        ? 'worker_offscreen_present_unavailable'
-        : 'worker_unsupported';
-    }
+    const capabilities = detectRuntimeCapabilities();
+    this._renderExperiments = resolveRenderExperimentState(flags, capabilities);
   }
 
   getRenderExperimentStatus() {

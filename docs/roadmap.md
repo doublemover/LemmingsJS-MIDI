@@ -766,15 +766,15 @@ Notes:
   Touchpoints: `js/app/*`, `docs/*`.
 
 ## Phase 47: Cross-cutting risk retirement (complex/tricky)
-- [ ] Add browser capability matrix coverage for WebMIDI, OffscreenCanvas,
+- [x] Add browser capability matrix coverage for WebMIDI, OffscreenCanvas,
   ImageBitmap paths, and deterministic fallbacks.
   Touchpoints: `js/app/*`, `js/render/*`, `test/*`, `e2e/*`.
-- [ ] Introduce staged rollout flags and rollback toggles for high-risk changes
+- [x] Introduce staged rollout flags and rollback toggles for high-risk changes
   in phases 40-43 (MCP/API split, history codec, render present paths, MIDI UI).
   Touchpoints: `js/app/boot.js`, `js/game/GameFactory.js`, `docs/TESTING.md`.
-- [ ] Add long-session soak tests (memory, GC churn, replay integrity, event
+- [x] Add long-session soak tests (memory, GC churn, replay integrity, event
   queue growth) and enforce regression thresholds in CI.
   Touchpoints: `scripts/bench-*.js`, `scripts/runTests.js`, `test/*`.
-- [ ] Add release-readiness checklist gates covering compatibility, migration,
+- [x] Add release-readiness checklist gates covering compatibility, migration,
   performance, accessibility, and rollback rehearsals before enabling defaults.
   Touchpoints: `docs/*`, `scripts/*`.

@@ -17,7 +17,8 @@ const RUNTIME_GLOBAL_KEY_ALIASES = Object.freeze({
   analyticsHardDisabled: '__LEMMINGS_ANALYTICS_HARD_DISABLED__',
   analyticsBeaconEnabled: '__LEMMINGS_ANALYTICS_BEACON_ENABLED__',
   analyticsBeaconEndpoint: '__LEMMINGS_ANALYTICS_BEACON_ENDPOINT__',
-  analyticsSampleRate: '__LEMMINGS_ANALYTICS_SAMPLE_RATE__'
+  analyticsSampleRate: '__LEMMINGS_ANALYTICS_SAMPLE_RATE__',
+  rolloutFlags: '__LEMMINGS_ROLLOUT_FLAGS__'
 });
 
 const readGlobalValue = (key) => {

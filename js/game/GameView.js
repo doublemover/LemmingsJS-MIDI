@@ -34,6 +34,11 @@ import {
   getSpecialHistoryRetention,
   normalizeRuntimeProfile
 } from '../core/runtimeProfiles.js';
+import { detectRuntimeCapabilities } from '../core/capabilityMatrix.js';
+import {
+  DEFAULT_RUNTIME_ROLLOUT_FLAGS,
+  resolveRuntimeRolloutFlags
+} from '../core/rolloutFlags.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
 const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
@@ -84,6 +89,8 @@ class GameView extends BaseLogger {
     this.offscreenPresentExperiment = false;
     this.workerOffscreenExperiment = false;
     this.startupProfile = DEFAULT_RUNTIME_PROFILE;
+    this.rolloutFlags = { ...DEFAULT_RUNTIME_ROLLOUT_FLAGS };
+    this.runtimeCapabilities = detectRuntimeCapabilities();
     this.steps = 0;
     this._benchMonitor = null;
     this._benchSpeedTrack = null;
@@ -620,6 +627,15 @@ class GameView extends BaseLogger {
     const query = windowRef?.location?.search
       ? new URLSearchParams(windowRef.location.search)
       : new URLSearchParams('');
+    this.rolloutFlags = resolveRuntimeRolloutFlags({
+      query,
+      runtimeFlags: getRuntimeDependency('rolloutFlags', null)
+    });
+    this.runtimeCapabilities = detectRuntimeCapabilities({
+      windowRef,
+      navigatorRef: getRuntimeDependency('navigator', windowRef?.navigator || null),
+      webMidi: getRuntimeDependency('webMidi', windowRef?.WebMidi || null)
+    });
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 6) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 100) - 1;
@@ -671,12 +687,13 @@ class GameView extends BaseLogger {
       ['perfOverlay', 'po'],
       instrumentation.perfOverlay === true
     );
-    this.offscreenPresentExperiment = this.parseProfileBool(
+    const renderRolloutEnabled = this.rolloutFlags?.renderPresentPath !== false;
+    this.offscreenPresentExperiment = renderRolloutEnabled && this.parseProfileBool(
       query,
       ['offscreenPresent', 'osp'],
       rendering.offscreenPresentExperiment === true
     );
-    this.workerOffscreenExperiment = this.parseProfileBool(
+    this.workerOffscreenExperiment = renderRolloutEnabled && this.parseProfileBool(
       query,
       ['workerOffscreen', 'osw'],
       rendering.workerOffscreenExperiment === true
@@ -760,6 +777,14 @@ class GameView extends BaseLogger {
     if (this.bench || this.bench2 || this.benchReverse || this.benchSequence) {
       profilePolicy = getSpecialHistoryRetention('bench') || profilePolicy;
     }
+    if (this.rolloutFlags?.historyCodec === false) {
+      profilePolicy = {
+        ...profilePolicy,
+        coldBlockAgeTicks: 0,
+        enableColdBlockCompression: false,
+        enableColdBlockDedupe: false
+      };
+    }
     return { ...profilePolicy };
   }
 
@@ -796,6 +821,13 @@ class GameView extends BaseLogger {
   }
 
   getRuntimeDiagnostics() {
+    const windowRef = getRuntimeDependency('window', null);
+    const capabilities = detectRuntimeCapabilities({
+      windowRef,
+      navigatorRef: getRuntimeDependency('navigator', windowRef?.navigator || null),
+      webMidi: getRuntimeDependency('webMidi', windowRef?.WebMidi || null)
+    });
+    this.runtimeCapabilities = capabilities;
     const fileProviderStats = this.gameFactory?.fileProvider?.getCacheStats?.() || null;
     const sanitizedFileProviderStats = fileProviderStats
       ? {
@@ -806,6 +838,11 @@ class GameView extends BaseLogger {
       : null;
     return {
       profile: this.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      rolloutFlags: {
+        ...DEFAULT_RUNTIME_ROLLOUT_FLAGS,
+        ...(this.rolloutFlags || {})
+      },
+      capabilities,
       history: {
         retention: this._historyRetentionPolicy
           ? { ...this._historyRetentionPolicy }

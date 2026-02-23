@@ -24,7 +24,9 @@ jobs:
       - run: git diff --exit-code
       - run: npm run check-undefined
       - run: npm run lint
+      - run: npm run release-readiness
       - run: npm run depcheck
+      - run: npm run test-bench-unit
       - run: npm test
       - run: npm run coverage
       - uses: actions/upload-artifact@v4

@@ -29,6 +29,7 @@ const RUNTIME_GUARD_TARGETS = Object.freeze([
 const CATEGORY_PATTERNS = Object.freeze({
   core: ['--recursive'],
   bench: ['test/*bench*.test.js'],
+  release: ['test/release-readiness.test.js'],
   workflow: ['test/*workflow*.test.js'],
   tools: ['test/tools/*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
@@ -41,6 +42,7 @@ const CATEGORY_ORDER = Object.freeze([
   'tools',
   'offline-tools',
   'bench',
+  'release',
   'workflow'
 ]);
 
@@ -99,6 +101,15 @@ const inferCategoriesFromChangedFiles = (files) => {
   for (const file of files) {
     const normalized = normalizeFilePath(file);
     if (!normalized) continue;
+
+    if (
+      normalized === 'docs/release-readiness.md' ||
+      normalized.startsWith('scripts/check-release-readiness') ||
+      normalized === 'test/release-readiness.test.js'
+    ) {
+      categories.add('release');
+      continue;
+    }
 
     if (
       normalized.startsWith('docs/') ||

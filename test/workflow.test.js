@@ -17,6 +17,8 @@ describe('GitHub test workflow', function () {
       'npm ci',
       'npm run check-undefined',
       'npm run lint',
+      'npm run release-readiness',
+      'npm run test-bench-unit',
       'npm test'
     ]);
 

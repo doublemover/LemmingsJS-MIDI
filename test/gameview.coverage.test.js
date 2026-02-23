@@ -91,6 +91,23 @@ describe('GameView coverage', function() {
     expect(outOfRange.nukeAfter).to.equal(0);
   });
 
+  it('applies rollout rollback toggles for render and history codec paths', function() {
+    globalThis.window = {
+      location: {
+        search: '?profile=perf&offscreenPresent=true&workerOffscreen=true&rollbackRenderPresent=1&rollbackHistoryCodec=1'
+      }
+    };
+    const view = new GameView();
+    expect(view.rolloutFlags.renderPresentPath).to.equal(false);
+    expect(view.rolloutFlags.historyCodec).to.equal(false);
+    expect(view.offscreenPresentExperiment).to.equal(false);
+    expect(view.workerOffscreenExperiment).to.equal(false);
+    const policy = view.resolveHistoryRetentionPolicy();
+    expect(policy.coldBlockAgeTicks).to.equal(0);
+    expect(policy.enableColdBlockCompression).to.equal(false);
+    expect(policy.enableColdBlockDedupe).to.equal(false);
+  });
+
   it('reports runtime diagnostics with normalized feature flags and cache stats', function() {
     globalThis.window = {
       location: { search: '' }
@@ -111,6 +128,8 @@ describe('GameView coverage', function() {
 
     const diagnostics = view.getRuntimeDiagnostics();
     expect(diagnostics.profile).to.equal('perf');
+    expect(diagnostics.rolloutFlags).to.be.an('object');
+    expect(diagnostics.capabilities).to.be.an('object');
     expect(diagnostics.featureFlags.debug).to.equal(true);
     expect(diagnostics.featureFlags.midiEnabled).to.equal(true);
     expect(diagnostics.featureFlags.bench).to.equal(true);

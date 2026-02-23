@@ -40,16 +40,23 @@ describe('scripts/runTests', function () {
     const categories = inferCategoriesFromChangedFiles([
       'js/editor/EditorController.js',
       'tools/offline/export.js',
-      '.github/workflows/tests.yml'
+      '.github/workflows/tests.yml',
+      'docs/release-readiness.md'
     ]);
     expect(categories).to.include('editor');
     expect(categories).to.include('offline-tools');
     expect(categories).to.include('workflow');
+    expect(categories).to.include('release');
   });
 
   it('falls back to full suite args whenever core is included', function () {
     const args = buildMochaArgsForCategories(['editor', 'core']);
     expect(args).to.deep.equal(['--recursive']);
+  });
+
+  it('builds focused args for release category', function () {
+    const args = buildMochaArgsForCategories(['release']);
+    expect(args).to.deep.equal(['test/release-readiness.test.js']);
   });
 
   it('collects changed files from git outputs and untracked files', function () {

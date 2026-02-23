@@ -69,6 +69,14 @@ describe('e2e harness diagnostics', function () {
         getRuntimeDiagnostics() {
           return {
             profile: 'perf',
+            rolloutFlags: {
+              historyCodec: false,
+              renderPresentPath: true
+            },
+            capabilities: {
+              webMidi: { supported: false, enabled: false, fallbackPath: 'audio_only' },
+              renderPaths: { offscreenPresentSupported: false, workerOffscreenSupported: false, deterministicFallback: 'canvas2d_main_thread' }
+            },
             featureFlags: {
               debug: true,
               midiEnabled: true
@@ -89,6 +97,8 @@ describe('e2e harness diagnostics', function () {
       const state = api.getState();
       expect(state.diagnostics).to.not.equal(null);
       expect(state.diagnostics.profile).to.equal('perf');
+      expect(state.diagnostics.rolloutFlags.historyCodec).to.equal(false);
+      expect(state.diagnostics.capabilities.webMidi.supported).to.equal(false);
       expect(state.diagnostics.caches.midiOverrideKeys).to.deep.equal(['alpha', 'beta']);
       expect(state.diagnostics.caches.cacheStorageKeys).to.equal(null);
       expect(state.diagnostics.serviceWorker.controlled).to.equal(true);
@@ -97,6 +107,8 @@ describe('e2e harness diagnostics', function () {
       expect(diagnostics.caches.cacheStorageKeys).to.deep.equal(['a-cache', 'z-cache']);
       expect(diagnostics.location.hostname).to.equal('example.com');
       expect(diagnostics.featureFlags.debug).to.equal(true);
+      expect(diagnostics.rolloutFlags.renderPresentPath).to.equal(true);
+      expect(diagnostics.capabilities.renderPaths.deterministicFallback).to.equal('canvas2d_main_thread');
     } finally {
       restoreE2E();
       restoreCaches();

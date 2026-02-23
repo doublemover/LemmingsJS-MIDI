@@ -6,7 +6,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 ## API
 - `window.__E2E__.getState()` returns a JSON-safe snapshot.
 - `window.__E2E__.getDiagnostics()` returns deterministic environment diagnostics
-  (runtime profile, feature flags, and active cache snapshots).
+  (runtime profile, rollout/capability snapshots, feature flags, and active
+  cache snapshots).
 - `window.__E2E__.getBuffer(name)` returns one heavy buffer at a time.
 - `window.__E2E__.step(count)` steps forward/backward (negative allowed).
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
@@ -61,6 +62,9 @@ Top-level fields:
 ### diagnostics
 - `version`: schema version (currently `1`).
 - `profile`: runtime profile (`gameplay`, `editor`, `perf`, etc.).
+- `rolloutFlags`: active staged-rollout/rollback flags.
+- `capabilities`: runtime/browser capability matrix for WebMIDI and render
+  paths.
 - `featureFlags`: normalized boolean flag snapshot from `GameView`.
 - `caches.fileProvider`: `memoryEntries`, `localStorageBytes`,
   `indexedDbBytes` when available.

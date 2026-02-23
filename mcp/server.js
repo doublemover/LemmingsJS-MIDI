@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
+import { ALL_TOOL_SURFACES, buildSurfaceRegistry, parseEnabledSurfaces } from './tools/surfaces.js';
 import { EventQueue } from './eventQueue.js';
 import {
   WatchPollingController,
@@ -39,6 +39,27 @@ const DEFAULT_BASE_URL = process.env.LEMMINGS_MCP_BASE_URL || 'https://localhost
 const DEFAULT_PATH = process.env.LEMMINGS_MCP_PATH || '/?e2e=1';
 const DEFAULT_VIEWPORT = { width: 1280, height: 720, deviceScaleFactor: 1 };
 const ENABLED_TOOL_SURFACES = parseEnabledSurfaces(process.env.LEMMINGS_MCP_SURFACES);
+
+const parseBooleanEnv = (value, fallback = false) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
+  return fallback;
+};
+
+const MCP_SURFACE_SPLIT_ROLLOUT = parseBooleanEnv(
+  process.env.LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT,
+  true
+);
+const MCP_LEGACY_TOOL_ALIASES_ENABLED = parseBooleanEnv(
+  process.env.LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES,
+  true
+);
+const MCP_DOTTED_TOOL_FALLBACK_ENABLED = parseBooleanEnv(
+  process.env.LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK,
+  true
+);
 
 const SKILL_ACTIONS = {
   climber: 'selectSkillClimber',
@@ -1856,23 +1877,29 @@ const TOOL_HANDLER_REGISTRY = {
   eventsPollTool
 };
 
+const ACTIVE_TOOL_SURFACES = MCP_SURFACE_SPLIT_ROLLOUT
+  ? ENABLED_TOOL_SURFACES
+  : new Set(ALL_TOOL_SURFACES);
+
 const surfaceRegistry = buildSurfaceRegistry(
   TOOL_SCHEMA_REGISTRY,
   TOOL_HANDLER_REGISTRY,
-  ENABLED_TOOL_SURFACES
+  ACTIVE_TOOL_SURFACES
 );
 const TOOL_HANDLERS_BY_SURFACE = surfaceRegistry.handlersBySurface;
 const TOOL_SURFACE_BY_NAME = surfaceRegistry.toolSurfaceByName;
 
 const TOOL_DEFS = [];
 const TOOL_ROUTES = new Map();
-const LEGACY_TOOL_ALIASES = Object.freeze({
-  editor_mutate: 'editor_apply',
-  editor_objects_list: 'objects_list',
-  editor_objects_place: 'objects_place',
-  editor_objects_update: 'objects_update',
-  editor_objects_delete: 'objects_delete'
-});
+const LEGACY_TOOL_ALIASES = MCP_LEGACY_TOOL_ALIASES_ENABLED
+  ? Object.freeze({
+    editor_mutate: 'editor_apply',
+    editor_objects_list: 'objects_list',
+    editor_objects_place: 'objects_place',
+    editor_objects_update: 'objects_update',
+    editor_objects_delete: 'objects_delete'
+  })
+  : Object.freeze({});
 for (const spec of surfaceRegistry.specs) {
   const toolName = toToolName(spec.name);
   const surface = TOOL_SURFACE_BY_NAME.get(spec.name);
@@ -1895,13 +1922,13 @@ const resolveTool = (rawName) => {
   const requestedName = String(rawName || '');
   const canonicalRequest = LEGACY_TOOL_ALIASES[requestedName] || requestedName;
   let route = TOOL_ROUTES.get(canonicalRequest);
-  if (!route && requestedName.includes('.')) {
+  if (!route && MCP_DOTTED_TOOL_FALLBACK_ENABLED && requestedName.includes('.')) {
     route = TOOL_ROUTES.get(toToolName(requestedName));
   }
   if (!route) {
     throw new Error(`Unknown tool: ${rawName}`);
   }
-  if (!ENABLED_TOOL_SURFACES.has(route.surface)) {
+  if (MCP_SURFACE_SPLIT_ROLLOUT && !ENABLED_TOOL_SURFACES.has(route.surface)) {
     throw new Error(`Tool disabled by surface policy: ${rawName}`);
   }
   return route;

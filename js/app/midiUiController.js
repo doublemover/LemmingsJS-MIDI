@@ -353,6 +353,7 @@ export const createMidiUiController = ({
     const configFlags = config?.ui?.featureFlags?.midiUi
       || config?.featureFlags?.midiUi
       || {};
+    const rolloutFlags = getRuntimeDependency('rolloutFlags', null);
     const query = typeof URLSearchParams === 'function'
       ? new URLSearchParams(window?.location?.search || '')
       : null;
@@ -403,6 +404,10 @@ export const createMidiUiController = ({
     };
     if (flags.legacyControls) {
       flags.expressiveControls = false;
+    }
+    if (rolloutFlags?.midiExpressiveUi === false) {
+      flags.expressiveControls = false;
+      flags.legacyControls = true;
     }
     if (!flags.expressiveControls) {
       flags.legacyControls = true;

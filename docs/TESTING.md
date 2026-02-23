@@ -13,8 +13,11 @@ npm run bench-performance # standalone perf bench (smoke profile by default)
 npm run bench-performance-smoke # explicit perf smoke profile
 npm run bench-history   # history stress bench (smoke profile by default)
 npm run bench-history-smoke # explicit history smoke profile
+npm run bench-long-session # long-session benchmark gate (smoke profile by default)
+npm run bench-long-session-smoke # explicit long-session smoke profile
 npm run bench-performance-soak # long perf soak run (explicit opt-in)
 npm run bench-history-soak # long history soak run (explicit opt-in)
+npm run bench-long-session-soak # long replay/memory/event-queue soak run
 npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
@@ -22,6 +25,7 @@ npm run test-editor     # editor-related tests
 npm run coverage-editor # 100% coverage for editor modules
 npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
+npm run release-readiness # release checklist gate (strict by default)
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
 
@@ -71,6 +75,40 @@ ready:
   experiment when supported.
 - `workerOffscreen=true` (`osw=true`): requests worker/offscreen path; runtime
   falls back automatically when unsupported.
+
+Runtime diagnostics now expose capability matrix and rollout-flag snapshots
+through `window.__E2E__.getDiagnostics()` / `window.__E2E__.getState()`:
+
+- `capabilities.webMidi`, `capabilities.offscreenCanvas`,
+  `capabilities.imageBitmap`, `capabilities.worker`.
+- `capabilities.renderPaths` for deterministic fallback selection.
+- `rolloutFlags` for staged rollout / emergency rollback state.
+
+Rollout and rollback query toggles:
+
+- `rollbackAll=1` (`rba=1`): disables all high-risk rollout flags.
+- `rollbackRenderPresent=1` (`rbrp=1`): disables offscreen/worker present-path
+  experiments.
+- `rollbackHistoryCodec=1` (`rbhc=1`): disables cold history compression/dedupe.
+- `rollbackMidiUi=1` (`rbmu=1`): forces legacy MIDI controls.
+
+MCP rollout environment toggles:
+
+- `LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT`
+- `LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES`
+- `LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK`
+
+`bench-long-session` enforces thresholds for:
+
+- replay-hash integrity
+- heap growth and heap churn proxies
+- sound-event queue ratio and queue-growth bounds
+- history span growth and trigger-count drift
+
+Release gates are defined in [`release-readiness.md`](release-readiness.md) and
+validated by `npm run release-readiness`. Override strictness via
+`LEMMINGS_RELEASE_READINESS_STRICT=false` when validating checklist structure
+without requiring all items checked.
 
 ## Runtime profiles
 

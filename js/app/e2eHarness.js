@@ -395,6 +395,8 @@ const toSortedStringList = (values) => {
 const getRuntimeDiagnostics = (view) => {
   const fallback = {
     profile: view?.startupProfile || 'gameplay',
+    rolloutFlags: view?.rolloutFlags ? { ...view.rolloutFlags } : null,
+    capabilities: view?.runtimeCapabilities ? { ...view.runtimeCapabilities } : null,
     featureFlags: {
       performanceAPI: !!view?.performanceAPI,
       perfMetrics: !!view?.perfMetrics,
@@ -420,6 +422,12 @@ const getRuntimeDiagnostics = (view) => {
   const diagnostics = view?.getRuntimeDiagnostics?.() || fallback;
   return {
     profile: diagnostics.profile || fallback.profile,
+    rolloutFlags: diagnostics.rolloutFlags
+      ? { ...diagnostics.rolloutFlags }
+      : (fallback.rolloutFlags ? { ...fallback.rolloutFlags } : null),
+    capabilities: diagnostics.capabilities
+      ? { ...diagnostics.capabilities }
+      : (fallback.capabilities ? { ...fallback.capabilities } : null),
     featureFlags: {
       ...fallback.featureFlags,
       ...(diagnostics.featureFlags || {})
@@ -449,6 +457,8 @@ const getEnvironmentDiagnostics = (view, { cacheStorageKeys = null } = {}) => {
   return {
     version: 1,
     profile: runtime.profile,
+    rolloutFlags: runtime.rolloutFlags,
+    capabilities: runtime.capabilities,
     featureFlags: runtime.featureFlags,
     caches: {
       ...runtime.caches,
