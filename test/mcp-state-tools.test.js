@@ -153,6 +153,63 @@ describe('state tools', function () {
     expect(fixture.getCaptured()[0].endTick).to.equal(11);
   });
 
+  it('caps state.get ids mode payload size for large id lists', async function () {
+    const total = 6005;
+    const fixture = createFixture({
+      currentTick: 12,
+      state: {
+        version: 1,
+        mode: 'play',
+        ready: true,
+        game: {
+          timer: { tickIndex: 12, running: true, speedFactor: 1 },
+          lemmingManager: { selectedIndex: 0, activeCount: total, totalCount: total },
+          lemmings: Array.from({ length: total }, (_, id) => ({ id, x: id, y: 0 }))
+        }
+      }
+    });
+
+    const result = await fixture.handlers.getStateTool({
+      sessionId: 's1',
+      lemmings: {
+        mode: 'ids',
+        ids: Array.from({ length: total }, (_, id) => id)
+      }
+    });
+
+    expect(result.ok).to.equal(true);
+    expect(result.snapshot.game.lemmingsIds).to.have.lengthOf(5000);
+    expect(result.snapshot.game.lemmings).to.have.lengthOf(5000);
+  });
+
+  it('caps state.get all mode max to protect snapshot size', async function () {
+    const total = 6005;
+    const fixture = createFixture({
+      currentTick: 12,
+      state: {
+        version: 1,
+        mode: 'play',
+        ready: true,
+        game: {
+          timer: { tickIndex: 12, running: true, speedFactor: 1 },
+          lemmingManager: { selectedIndex: 0, activeCount: total, totalCount: total },
+          lemmings: Array.from({ length: total }, (_, id) => ({ id, x: id, y: 0 }))
+        }
+      }
+    });
+
+    const result = await fixture.handlers.getStateTool({
+      sessionId: 's1',
+      lemmings: {
+        mode: 'all',
+        max: 999999
+      }
+    });
+
+    expect(result.ok).to.equal(true);
+    expect(result.snapshot.game.lemmings).to.have.lengthOf(5000);
+  });
+
   it('caps maxTicks to avoid oversized delta fetches', async function () {
     const fixture = createFixture({ currentTick: 10000, deltas: [] });
 

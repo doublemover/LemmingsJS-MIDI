@@ -48,6 +48,7 @@ const createStateToolHandlers = ({
     buildLemmingSummaryCompact,
     pruneLemming
   } = helpers;
+  const MAX_STATE_GET_LEMMINGS = 5000;
   const MAX_DELTA_TICKS = 2000;
   const MAX_DELTA_LEM_CHANGES = 5000;
 
@@ -192,14 +193,19 @@ const createStateToolHandlers = ({
           ? selected
           : pruneLemming(selected, lemmingPolicy);
       } else if (mode === 'ids') {
-        const ids = Array.isArray(lemmingOpts.ids) ? lemmingOpts.ids : [];
+        const ids = Array.isArray(lemmingOpts.ids)
+          ? lemmingOpts.ids.slice(0, MAX_STATE_GET_LEMMINGS)
+          : [];
         snapshot.game.lemmingsIds = ids;
         snapshot.game.lemmings = ids.map((id) => {
           const lem = raw.game?.lemmings?.[id] || null;
           return effectivePreset === 'debug' ? lem : pruneLemming(lem, lemmingPolicy);
         });
       } else {
-        const max = lemmingOpts.max || raw.game?.lemmings?.length || 0;
+        const requestedMax = Number.isFinite(lemmingOpts.max)
+          ? Math.max(1, Math.trunc(lemmingOpts.max))
+          : (raw.game?.lemmings?.length || 0);
+        const max = Math.min(MAX_STATE_GET_LEMMINGS, requestedMax);
         const slice = raw.game?.lemmings?.slice(0, max) || [];
         snapshot.game.lemmings = effectivePreset === 'debug'
           ? slice
