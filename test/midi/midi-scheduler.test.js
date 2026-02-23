@@ -179,6 +179,27 @@ describe('MidiScheduler', function() {
     expect(noteOn.id).to.equal(4);
   });
 
+  it('normalizes invalid limit values and channel configuration', function() {
+    const scheduler = new MidiScheduler({
+      limits: {
+        maxActiveNotes: 'bad',
+        maxEventsPerSecond: Number.NaN,
+        maxBytesPerSecond: -1
+      },
+      defaultChannel: 0,
+      mpe: {
+        enabled: true,
+        masterChannel: 20,
+        memberChannels: [2, 2, 0, 17, 'x']
+      }
+    });
+
+    expect(scheduler._maxActiveNotes).to.equal(32);
+    expect(scheduler._maxMessagesPerSecond).to.equal(1000);
+    expect(scheduler._maxBytesPerSecond).to.equal(3906.25);
+    expect(scheduler._allocateChannel()).to.equal(2);
+  });
+
   it('stops active channels and clears scheduled note offs', function() {
     const calls = [];
     const output = makeOutput([1, 2], calls);
@@ -402,10 +423,14 @@ describe('MidiScheduler', function() {
       scheduler.setOutput(output);
       scheduler.setTickMs(10);
       scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 1, timeMs: 500 });
+      scheduler._activeByChannel.set(1, { note: 60, token: 'token', mpe: false });
+      scheduler._activeNotes.set('token', { note: 60, channel: 1, mpe: false });
       const snapshot = scheduler.getRateSnapshot(0);
       expect(snapshot.next.count).to.be.greaterThan(0);
       scheduler.clearQueue();
       expect(scheduler._ratePlanned.length).to.equal(0);
+      expect(scheduler._activeByChannel.size).to.equal(0);
+      expect(scheduler._activeNotes.size).to.equal(0);
     }, { performanceValue: (clock) => ({ now: () => clock.now, measure: () => {} }) });
   });
 
@@ -421,6 +446,26 @@ describe('MidiScheduler', function() {
     scheduler._checkByteRate(0);
     restoreConsole();
     expect(logs.length).to.equal(1);
+  });
+
+  it('logs when message rate limits are exceeded', function() {
+    const scheduler = new MidiScheduler({
+      limits: {
+        maxEventsPerSecond: 1,
+        maxBytesPerSecond: 999999
+      }
+    });
+    const logs = [];
+    const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
+    scheduler.getRateSnapshot = () => ({
+      past: { count: 2, bytes: 0 },
+      next: { count: 0, bytes: 0 }
+    });
+    scheduler._lastRateErrorMs = -2000;
+    scheduler._checkByteRate(0);
+    restoreConsole();
+    expect(logs.length).to.equal(1);
+    expect(logs[0]).to.match(/messages\/sec/i);
   });
 
   it('swallows performance measurement errors', function() {

@@ -90,9 +90,10 @@ class GameGui {
       this._applyReleaseRateAuto();
       if (app?.nukeAfter > 0) {
         this._nukeAfterCountdown++;
-        if (this._nukeAfterCountdown === app.nukeAfter) {
+        if (this._nukeAfterCountdown >= app.nukeAfter) {
           this.game.queueCommand(new CommandNuke());
           this.nukePrepared = false;
+          this._nukeAfterCountdown = 0;
         }
       }
       if ((Math.floor(this.gameTimer.getGameTime()) % 2) === 0) {
@@ -461,7 +462,9 @@ class GameGui {
 
   dispose() {
     if (this._guiRafId) {
-      window.cancelAnimationFrame(this._guiRafId);
+      if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(this._guiRafId);
+      }
       this._guiRafId = 0;
     }
     if (this.gameTimer?.eachGameSecond && this._onEachGameSecond) {
@@ -559,11 +562,14 @@ class GameGui {
         const timeText = app?.endless ? '4-20' : this.gameTimer.getGameLeftTimeString();
         this.drawGreenString(d, 'Time ' + timeText + '-00', 248, 0);
         const totalCount = this.game?.getLemmingManager?.()?.spawnTotal ??
-          this.gameVictoryCondition.getReleaseCount();
+          this.gameVictoryCondition.getReleaseCount?.();
         if (totalCount >= 0) {
           this.drawGreenString(d, 'Out ' + totalCount + '  ', 112, 0);
         }
-        this.drawGreenString(d, 'In'  + this._pad(this.gameVictoryCondition.getSurvivorPercentage(), 3) + '%', 186, 0);
+        const survivorPct = this.gameVictoryCondition.getSurvivorPercentage?.();
+        if (Number.isFinite(survivorPct)) {
+          this.drawGreenString(d, 'In' + this._pad(survivorPct, 3) + '%', 186, 0);
+        }
       } else {
         const activeCount = this.game.getLemmingManager?.()?.getLemmings?.()?.length ?? 0;
         const stats = [
@@ -857,6 +863,10 @@ class GameGui {
    * @param {boolean} [reset=false] true to clear both flash bars.
    */
   drawSpeedChange(upDown, reset = false) {
+    if (!this.display) {
+      this.gameSpeedChanged = true;
+      return;
+    }
     if (!reset) {
       if (upDown) {
         this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);

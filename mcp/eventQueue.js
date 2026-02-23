@@ -22,6 +22,9 @@ const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .replace(/\//g, '_')
   .replace(/=+$/g, '');
 
+/**
+ * Clone event payloads so queue entries stay immutable from caller mutations.
+ */
 const cloneEventValue = (value) => {
   if (value == null || typeof value !== 'object') return value;
   if (typeof structuredClone === 'function') {
@@ -113,19 +116,22 @@ class EventQueue {
     }
     this.events[index] = entry;
 
+    const summaryCap = Math.min(
+      MAX_HUMAN_SUMMARY_PARTS,
+      normalizeCapacity(
+        this.maxHumanSummaryParts,
+        DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+        MIN_HUMAN_SUMMARY_PARTS
+      )
+    );
+    this.maxHumanSummaryParts = summaryCap;
+    if (summaryCap <= 0 && this.humanSummaryParts.length) {
+      this.humanSummaryParts.length = 0;
+      this.humanSummaryStart = 0;
+    }
+
     if (source === 'human' && summary) {
-      const summaryCap = Math.min(
-        MAX_HUMAN_SUMMARY_PARTS,
-        normalizeCapacity(
-          this.maxHumanSummaryParts,
-          DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
-          MIN_HUMAN_SUMMARY_PARTS
-        )
-      );
-      this.maxHumanSummaryParts = summaryCap;
       if (summaryCap <= 0) {
-        this.humanSummaryParts.length = 0;
-        this.humanSummaryStart = 0;
         return entry;
       }
       if (this.humanSummaryParts.length > summaryCap) {
@@ -203,8 +209,10 @@ class EventQueue {
         }
         payload.humanSummary = ordered.join('; ');
       }
-      this.humanSummaryParts.length = 0;
-      this.humanSummaryStart = 0;
+      if (updateCursor) {
+        this.humanSummaryParts.length = 0;
+        this.humanSummaryStart = 0;
+      }
     }
     return payload;
   }

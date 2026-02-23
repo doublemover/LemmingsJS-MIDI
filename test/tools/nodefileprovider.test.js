@@ -99,6 +99,21 @@ describe('NodeFileProvider', function() {
     expect(nxpLower.length).to.equal(buffer.length);
   });
 
+  it('loads archive entries when archive paths include trailing separators', async function() {
+    const provider = makeProvider();
+    const zipReader = await provider.loadBinary('pack.zip/', 'data/LEVEL000.DAT');
+    expect(zipReader.length).to.equal(fs.readFileSync(packFile).length);
+
+    const tarReader = await provider.loadBinary('pack.tar/', 'data/LEVEL000.DAT');
+    expect(tarReader.length).to.equal(fs.readFileSync(packFile).length);
+  });
+
+  it('defaults binary directory paths to provider root when omitted', async function() {
+    const provider = makeProvider();
+    const reader = await provider.loadBinary(undefined, 'LEVEL000.DAT');
+    expect(reader.length).to.equal(fs.readFileSync(packFile).length);
+  });
+
   it('loads archive strings and validates entries', async function() {
     const provider = makeProvider();
 
@@ -169,6 +184,14 @@ describe('NodeFileProvider', function() {
     fs.writeFileSync(textPath, 'hello');
     const text = await provider.loadString('note.txt');
     expect(text).to.equal('hello');
+  });
+
+  it('rejects non-string loadString inputs', async function() {
+    const provider = makeProvider();
+    await expectReject(
+      provider.loadString(null),
+      /invalid file path/i
+    );
   });
 
   it('reads plain strings from absolute paths', async function() {
@@ -348,6 +371,21 @@ describe('NodeFileProvider', function() {
     expect(entry).to.be.ok;
     const lowerEntry = provider._findZipEntry(zip, 'data/level000.dat');
     expect(lowerEntry).to.be.ok;
+  });
+
+  it('skips traversal-looking archive entries during fallback lookups', function() {
+    const provider = makeProvider();
+    const map = new Map([['../secret.txt', Buffer.from('secret')]]);
+    expect(provider._findEntry(map, 'secret.txt')).to.equal(null);
+
+    const fakeZip = {
+      getEntry() { return null; },
+      getEntries() {
+        return [{ entryName: '../secret.txt' }];
+      }
+    };
+    const found = provider._findZipEntry(fakeZip, 'secret.txt');
+    expect(found).to.equal(undefined);
   });
 
   it('loads rar entries using a stubbed extractor', async function() {

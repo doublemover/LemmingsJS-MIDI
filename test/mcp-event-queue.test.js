@@ -61,6 +61,27 @@ describe('EventQueue', function () {
     expect(queue.lastDelivered).to.equal(2);
   });
 
+  it('preserves human summary on peek drains', function () {
+    const queue = createQueue(4);
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'agent', type: 'state', summary: 'sync' });
+
+    const peek = queue.drain(undefined, {
+      updateCursor: false,
+      includeHumanSummary: true
+    });
+    expect(peek.humanSummary).to.equal('first');
+    expect(queue.lastDelivered).to.equal(0);
+    expect(queue.humanSummaryParts.length).to.equal(1);
+
+    const committed = queue.drain(undefined, {
+      updateCursor: true,
+      includeHumanSummary: true
+    });
+    expect(committed.humanSummary).to.equal('first');
+    expect(queue.humanSummaryParts.length).to.equal(0);
+  });
+
   it('emits and clears human summary only when requested', function () {
     const queue = createQueue(8);
     queue.add({ source: 'human', type: 'input', summary: 'click' });
@@ -208,6 +229,21 @@ describe('EventQueue', function () {
 
     queue.maxHumanSummaryParts = 0;
     queue.add({ source: 'human', type: 'input', summary: 'third' });
+
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.humanSummary).to.equal(undefined);
+    expect(queue.humanSummaryParts.length).to.equal(0);
+  });
+
+  it('clears buffered human summaries when retention is disabled before non-human events', function () {
+    const queue = createQueue(8);
+    queue.maxHumanSummaryParts = 4;
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'human', type: 'input', summary: 'second' });
+    expect(queue.humanSummaryParts.length).to.equal(2);
+
+    queue.maxHumanSummaryParts = 0;
+    queue.add({ source: 'agent', type: 'state', summary: 'refresh' });
 
     const envelope = queue.drain('0', { includeHumanSummary: true });
     expect(envelope.humanSummary).to.equal(undefined);

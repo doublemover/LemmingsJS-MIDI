@@ -12,9 +12,15 @@ const HASH_PRIME = 16777619;
 const NUMBER_HASH_VIEW = new DataView(new ArrayBuffer(8));
 const POINTER_EMPTY_PATH = Object.freeze([]);
 
+/**
+ * Parse an RFC6901 JSON pointer into path segments.
+ * @param {string|null|undefined} pointer
+ * @returns {string[]}
+ */
 const parseJsonPointer = (pointer) => {
-  if (!pointer || pointer === '/') return POINTER_EMPTY_PATH;
+  if (pointer == null || pointer === '') return POINTER_EMPTY_PATH;
   const source = String(pointer);
+  if (source === '/') return [''];
   if (!source.startsWith('/')) return POINTER_EMPTY_PATH;
   return source
     .slice(1)
@@ -22,6 +28,12 @@ const parseJsonPointer = (pointer) => {
     .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'));
 };
 
+/**
+ * Resolve a value from an object using pointer segments or a pointer string.
+ * @param {object} obj
+ * @param {string|string[]} pointerOrPath
+ * @returns {*}
+ */
 const readPointerValue = (obj, pointerOrPath) => {
   const path = Array.isArray(pointerOrPath) ? pointerOrPath : parseJsonPointer(pointerOrPath);
   let current = obj;
@@ -85,6 +97,17 @@ const hashValue = (value, seen = new WeakSet()) => {
     return hash >>> 0;
   }
 
+  if (value instanceof ArrayBuffer) {
+    hash = hashByte(hash, 13);
+    const bytes = new Uint8Array(value);
+    hash = hashUint32(hash, bytes.byteLength);
+    for (const byte of bytes) {
+      hash = hashByte(hash, byte);
+    }
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
   if (ArrayBuffer.isView(value)) {
     hash = hashByte(hash, 10);
     hash = hashUint32(hash, value.byteLength || 0);
@@ -109,7 +132,7 @@ const hashValue = (value, seen = new WeakSet()) => {
   }
 
   hash = hashByte(hash, 12);
-  const keys = Object.keys(value);
+  const keys = Object.keys(value).sort();
   hash = hashUint32(hash, keys.length);
   for (const key of keys) {
     hash = hashString(hash, key);
@@ -151,6 +174,12 @@ const areFingerprintsEqual = (left, right) => {
   return left.size === right.size && left.hash === right.hash;
 };
 
+/**
+ * Create watch state for a JSON pointer against an initial source object.
+ * @param {string} pointer
+ * @param {object} source
+ * @returns {{path:string[],fingerprint:object}}
+ */
 const createPointerWatchState = (pointer, source) => {
   const path = parseJsonPointer(pointer);
   return {
@@ -159,6 +188,12 @@ const createPointerWatchState = (pointer, source) => {
   };
 };
 
+/**
+ * Update a watch state in place and report whether the pointer value changed.
+ * @param {{path:string[],fingerprint:object}} state
+ * @param {object} source
+ * @returns {boolean}
+ */
 const updatePointerWatchState = (state, source) => {
   const next = buildPointerFingerprint(readPointerValue(source, state.path));
   if (areFingerprintsEqual(state.fingerprint, next)) {

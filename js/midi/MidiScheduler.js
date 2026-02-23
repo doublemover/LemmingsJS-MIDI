@@ -4,6 +4,18 @@ const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const MIDI_BITS_PER_SECOND = 31250;
 const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 8;
 const MIDI_MESSAGE_BYTES = 3;
+const toFiniteNumber = (value, fallback) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+const toPositiveInt = (value, fallback) => {
+  const numeric = Math.trunc(toFiniteNumber(value, fallback));
+  return numeric > 0 ? numeric : fallback;
+};
+const normalizeChannelNumber = (value, fallback = 1) => {
+  const numeric = Math.trunc(toFiniteNumber(value, fallback));
+  return clamp(numeric, 1, 16);
+};
 
 /**
  * Schedule MIDI note on/off traffic with channel allocation, MPE, and rate limits.
@@ -34,13 +46,16 @@ class MidiScheduler {
    */
   setConfig(config) {
     this.config = config || {};
-    const maxActive = this.config.limits?.maxActiveNotes ?? 32;
+    const maxActive = toPositiveInt(this.config.limits?.maxActiveNotes, 32);
     this._maxActiveNotes = clamp(maxActive, 1, 32);
-    const maxMessages = this.config.limits?.maxEventsPerSecond ?? 1000;
-    const maxBytes = this.config.limits?.maxBytesPerSecond ?? MIDI_BYTES_PER_SECOND;
+    const maxMessages = toPositiveInt(this.config.limits?.maxEventsPerSecond, 1000);
+    const maxBytes = toPositiveInt(this.config.limits?.maxBytesPerSecond, MIDI_BYTES_PER_SECOND);
     this._maxMessagesPerSecond = clamp(maxMessages, 1, 1000);
-    this._maxBytesPerSecond = Math.max(1, maxBytes);
-    this._memberChannels = this.config.mpe?.memberChannels?.slice() || [];
+    this._maxBytesPerSecond = maxBytes;
+    const members = Array.isArray(this.config.mpe?.memberChannels) ? this.config.mpe.memberChannels : [];
+    this._memberChannels = members
+      .map((channel) => normalizeChannelNumber(channel))
+      .filter((channel, index, list) => list.indexOf(channel) === index);
     if (this.output) this._initMpe();
   }
 
@@ -64,16 +79,20 @@ class MidiScheduler {
     const mpe = this.config.mpe;
     if (!mpe?.enabled) return;
     const bend = mpe.pitchBendRange || { semitones: 2, cents: 0 };
-    const master = mpe.masterChannel || 1;
-    const members = mpe.memberChannels || [];
-    const channels = [master, ...members];
+    const master = normalizeChannelNumber(mpe.masterChannel, 1);
+    const members = Array.isArray(mpe.memberChannels)
+      ? mpe.memberChannels.map((channel) => normalizeChannelNumber(channel))
+      : [];
+    const uniqueMembers = members
+      .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index);
+    const channels = [master, ...uniqueMembers];
     for (const ch of channels) {
       const channel = this.output.channels?.[ch];
       if (!channel) continue;
       channel.sendPitchBendRange(bend.semitones, bend.cents);
       channel.sendPitchBend(0);
     }
-    this._memberChannels = members.slice();
+    this._memberChannels = uniqueMembers.slice();
   }
 
   _stopActiveChannel(channelNumber) {
@@ -129,7 +148,7 @@ class MidiScheduler {
   _allocateChannel() {
     const mpe = this.config.mpe;
     if (!mpe?.enabled) {
-      return this.config.defaultChannel || 1;
+      return normalizeChannelNumber(this.config.defaultChannel, 1);
     }
     for (const ch of this._memberChannels) {
       if (!this._activeByChannel.has(ch)) {
@@ -148,7 +167,7 @@ class MidiScheduler {
       this._stopActiveChannel(oldest);
       return oldest;
     }
-    return mpe.masterChannel || 1;
+    return normalizeChannelNumber(mpe.masterChannel, 1);
   }
 
   _pruneRateEntries(now) {
@@ -238,25 +257,46 @@ class MidiScheduler {
   }
 
   _recordPlanned(entry) {
+    if (!entry || !Number.isFinite(entry.timeMs)) return;
+    const count = Math.trunc(toFiniteNumber(entry.count, 0));
+    if (count <= 0) return;
+    const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
+    if (bytes <= 0) return;
+    const normalized = { ...entry, count, bytes };
     const now = this._nowMs();
     this._pruneRateEntries(now);
-    if (entry.timeMs <= now) {
-      this._rateSent.push(entry);
+    if (normalized.timeMs <= now) {
+      this._rateSent.push(normalized);
     } else {
-      this._ratePlanned.push(entry);
+      this._ratePlanned.push(normalized);
     }
   }
 
   _checkByteRate(now = this._nowMs()) {
     const snapshot = this.getRateSnapshot(now);
-    if (snapshot.past.bytes > this._maxBytesPerSecond || snapshot.next.bytes > this._maxBytesPerSecond) {
+    const pastCount = toFiniteNumber(snapshot.past?.count, 0);
+    const nextCount = toFiniteNumber(snapshot.next?.count, 0);
+    const pastBytes = toFiniteNumber(snapshot.past?.bytes, 0);
+    const nextBytes = toFiniteNumber(snapshot.next?.bytes, 0);
+    const overMessageRate = pastCount > this._maxMessagesPerSecond || nextCount > this._maxMessagesPerSecond;
+    const overByteRate = pastBytes > this._maxBytesPerSecond || nextBytes > this._maxBytesPerSecond;
+    if (overMessageRate || overByteRate) {
       if (now - this._lastRateErrorMs > 1000) {
         this._lastRateErrorMs = now;
-        console.error(`MIDI throughput exceeded ${this._maxBytesPerSecond.toFixed(0)} bytes/sec`);
+        const limits = [];
+        if (overMessageRate) limits.push(`${this._maxMessagesPerSecond.toFixed(0)} messages/sec`);
+        if (overByteRate) limits.push(`${this._maxBytesPerSecond.toFixed(0)} bytes/sec`);
+        console.error(`MIDI throughput exceeded ${limits.join(' and ')}`);
       }
     }
   }
 
+  /**
+   * Queue and transmit a note with optional expressive controls.
+   * @param {object} spec
+   * @param {object} [meta]
+   * @returns {boolean} True when a note-on message was scheduled on an output channel.
+   */
   sendNote(spec, meta = {}) {
     const app = this.config?.runtime?.app || getAppContext();
     const perfEnabled = !!app &&
@@ -269,7 +309,7 @@ class MidiScheduler {
       if (!this.output || !spec || !Number.isFinite(spec.note)) return false;
       const channelNumber = this.config.mpe?.enabled
         ? this._allocateChannel()
-        : (spec.channel ?? this.config.defaultChannel ?? 1);
+        : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
       const channel = this.output.channels?.[channelNumber];
       if (!channel) return false;
 
@@ -351,15 +391,17 @@ class MidiScheduler {
       }
       const { messages, bytes } = this.estimateMessages(spec);
       if (messages > 0) {
+        const offMessages = durationMs > 0 ? (1 + (this.config.mpe?.enabled ? 1 : 0)) : 0;
+        const immediateMessages = messages - offMessages;
+        const immediateBytes = bytes - (offMessages * MIDI_MESSAGE_BYTES);
         this._recordPlanned({
           timeMs: sendTimeMs,
-          count: messages - (durationMs > 0 ? 1 + (this.config.mpe?.enabled ? 1 : 0) : 0),
-          bytes: (messages - (durationMs > 0 ? 1 + (this.config.mpe?.enabled ? 1 : 0) : 0)) * MIDI_MESSAGE_BYTES,
+          count: immediateMessages,
+          bytes: immediateBytes,
           sfxId: meta.sfxId ?? null,
           priority: meta.priority ?? 1
         });
         if (durationMs > 0) {
-          const offMessages = 1 + (this.config.mpe?.enabled ? 1 : 0);
           this._recordPlanned({
             timeMs: offTimeMs,
             count: offMessages,
@@ -431,9 +473,16 @@ class MidiScheduler {
   allNotesOff() {
     if (!this.output) return;
     const mpe = this.config.mpe;
-    const channels = mpe?.enabled
-      ? [mpe.masterChannel || 1, ...(mpe.memberChannels || [])]
-      : [this.config.defaultChannel || 1];
+    let channels;
+    if (mpe?.enabled) {
+      const master = normalizeChannelNumber(mpe.masterChannel, 1);
+      const members = (Array.isArray(mpe.memberChannels) ? mpe.memberChannels : [])
+        .map((channel) => normalizeChannelNumber(channel))
+        .filter((channel, index, list) => channel !== master && list.indexOf(channel) === index);
+      channels = [master, ...members];
+    } else {
+      channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
+    }
     for (const ch of channels) {
       const channel = this.output.channels?.[ch];
       if (!channel) continue;
@@ -452,12 +501,18 @@ class MidiScheduler {
     this._ratePlanned.length = 0;
   }
 
+  /**
+   * Drop pending note-off queue state without sending any MIDI output.
+   * Active-note tracking is reset so subsequent scheduling starts cleanly.
+   */
   clearQueue() {
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {
       clearTimeout(this._noteOffTimerId);
       this._noteOffTimerId = 0;
     }
+    this._activeByChannel.clear();
+    this._activeNotes.clear();
     this._ratePlanned.length = 0;
   }
 

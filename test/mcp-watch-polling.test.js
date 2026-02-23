@@ -169,6 +169,42 @@ describe('WatchPollingController', function () {
     controller.stop();
     expect(clock.nextDueIn()).to.equal(null);
   });
+
+  it('backs off when pollFn throws and recovers after a triggered poll', async function () {
+    const clock = createFakeClock();
+    let attempts = 0;
+    const controller = new WatchPollingController({
+      hasWatchesFn: () => true,
+      pollFn: async () => {
+        attempts += 1;
+        if (attempts === 1) {
+          throw new Error('boom');
+        }
+        return { triggeredCount: 1 };
+      },
+      setTimerFn: clock.setTimerFn,
+      clearTimerFn: clock.clearTimerFn,
+      nowFn: clock.nowFn,
+      config: {
+        minMs: 0,
+        activeMs: 100,
+        maxMs: 400,
+        backoffFactor: 2,
+        idleThreshold: 1,
+        onDemandMinMs: 0
+      }
+    });
+
+    controller.start();
+    await clock.flush();
+    expect(controller.getSnapshot().delayMs).to.equal(200);
+    expect(controller.getSnapshot().idlePolls).to.equal(1);
+
+    await clock.advance(200);
+    expect(controller.getSnapshot().delayMs).to.equal(100);
+    expect(controller.getSnapshot().idlePolls).to.equal(0);
+    controller.stop();
+  });
 });
 
 describe('watch pointer helpers', function () {
@@ -181,9 +217,12 @@ describe('watch pointer helpers', function () {
       }
     };
     const path = parseJsonPointer('/game/skills/~0foo~1bar');
+    const slashPath = parseJsonPointer('/');
     expect(path).to.deep.equal(['game', 'skills', '~foo/bar']);
+    expect(slashPath).to.deep.equal(['']);
     expect(readPointerValue(state, path)).to.equal(7);
     expect(readPointerValue(state, '/game/skills/~0foo~1bar')).to.equal(7);
+    expect(readPointerValue({ '': 42 }, '/')).to.equal(42);
     expect(readPointerValue(state, '')).to.equal(state);
   });
 
@@ -221,5 +260,23 @@ describe('watch pointer helpers', function () {
         }
       }
     })).to.equal(true);
+  });
+
+  it('treats object key insertion order as stable for pointer fingerprints', function () {
+    const tracker = createPointerWatchState('/payload', {
+      payload: { a: 1, b: 2 }
+    });
+    expect(updatePointerWatchState(tracker, {
+      payload: { b: 2, a: 1 }
+    })).to.equal(false);
+  });
+
+  it('detects ArrayBuffer payload changes by content', function () {
+    const initial = new Uint8Array([1, 2, 3]).buffer;
+    const tracker = createPointerWatchState('/payload', { payload: initial });
+    const same = new Uint8Array([1, 2, 3]).buffer;
+    const changed = new Uint8Array([1, 2, 4]).buffer;
+    expect(updatePointerWatchState(tracker, { payload: same })).to.equal(false);
+    expect(updatePointerWatchState(tracker, { payload: changed })).to.equal(true);
   });
 });

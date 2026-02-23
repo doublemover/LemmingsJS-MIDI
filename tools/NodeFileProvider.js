@@ -43,10 +43,35 @@ class NodeFileProvider {
   }
 
   _normalizeArchivePath(archivePath) {
-    if (path.isAbsolute(archivePath)) {
-      return archivePath;
+    if (archivePath == null || archivePath === '') {
+      return '.';
     }
-    return this._validateEntry(archivePath);
+    const normalizedPath = String(archivePath);
+    if (path.isAbsolute(normalizedPath)) {
+      return normalizedPath;
+    }
+    return this._validateEntry(normalizedPath);
+  }
+
+  /**
+   * Normalize source paths like `pack.zip/` to `pack.zip` so archive detection
+   * still works when callers append trailing separators.
+   * @param {string} filePath
+   * @returns {string}
+   */
+  _trimTrailingSeparators(filePath) {
+    const trimmed = String(filePath).replace(/[\\/]+$/, '');
+    return trimmed || filePath;
+  }
+
+  /**
+   * Detect explicit `..` path traversal segments in a normalized archive key.
+   * @param {string} filePath
+   * @returns {boolean}
+   */
+  _containsTraversalSegment(filePath) {
+    const normalized = String(filePath).replace(/\\/g, '/');
+    return normalized.split('/').some(segment => segment === '..');
   }
 
   /**
@@ -184,6 +209,7 @@ class NodeFileProvider {
     if (map.has(entryName)) return map.get(entryName);
     if (map.has(lower)) return map.get(lower);
     for (const [k, v] of map.entries()) {
+      if (this._containsTraversalSegment(k)) continue;
       const l = k.toLowerCase();
       if (l === lower || l.endsWith('/' + lower)) return v;
     }
@@ -195,6 +221,7 @@ class NodeFileProvider {
     let entry = zip.getEntry(entryName) || zip.getEntry(lower);
     if (!entry) {
       entry = zip.getEntries().find(e => {
+        if (this._containsTraversalSegment(e.entryName)) return false;
         const eName = e.entryName.toLowerCase();
         return eName === lower || eName.endsWith('/' + lower);
       });
@@ -202,29 +229,35 @@ class NodeFileProvider {
     return entry;
   }
 
-  async loadBinary(dir, filename) {
+  /**
+   * Load a binary file either from a directory or from a supported archive.
+   * @param {string} [dir='.'] Directory or archive path.
+   * @param {string} filename Archive entry or file name.
+   * @returns {Promise<Lemmings.BinaryReader>}
+   */
+  async loadBinary(dir = '.', filename) {
     filename = this._validateEntry(filename);
-    const sourcePath = this._normalizeArchivePath(dir);
-    if (/\.zip$/i.test(dir)) {
+    const sourcePath = this._trimTrailingSeparators(this._normalizeArchivePath(dir));
+    if (/\.zip$/i.test(sourcePath)) {
       const zip = this._getZip(sourcePath);
       const entry = this._findZipEntry(zip, filename);
       if (!entry) throw new Error(`File ${filename} not found in ${sourcePath}`);
       const buffer = entry.getData();
       const arr = new Uint8Array(buffer);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(dir)) {
+    } else if (/(\.tar\.gz|\.tgz|\.tar)$/i.test(sourcePath)) {
       const map = await this._getTar(sourcePath);
       const buf = this._findEntry(map, filename);
       if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
       const arr = new Uint8Array(buf);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/\.rar$/i.test(dir)) {
+    } else if (/\.rar$/i.test(sourcePath)) {
       const map = await this._getRar(sourcePath);
       const buf = this._findEntry(map, filename);
       if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
       const arr = new Uint8Array(buf);
       return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
-    } else if (/\.nxp$/i.test(dir)) {
+    } else if (/\.nxp$/i.test(sourcePath)) {
       const map = this._getNxp(sourcePath);
       const buf = this._findEntry(map, filename);
       if (!buf) throw new Error(`File ${filename} not found in ${sourcePath}`);
@@ -239,7 +272,15 @@ class NodeFileProvider {
     return new Lemmings.BinaryReader(arr, 0, arr.length, filename, sourcePath);
   }
 
+  /**
+   * Load UTF-8 text from either the filesystem or an archive URL-like path.
+   * @param {string} file
+   * @returns {Promise<string>}
+   */
   async loadString(file) {
+    if (typeof file !== 'string') {
+      throw new Error(`Invalid file path ${file}`);
+    }
     file = file.replace(/\\/g, '/');
     const m = file.match(/^(.*\.(?:zip|tar(?:\.gz)?|tgz|rar|nxp))\/(.+)$/i);
     if (m) {

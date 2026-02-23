@@ -182,8 +182,14 @@ describe('GameGui coverage', function() {
       gui.nukePrepared = true;
 
       gui._onEachGameSecond();
-      const nukeCmd = game.commands.find(cmd => cmd instanceof CommandNuke);
-      expect(nukeCmd).to.not.equal(undefined);
+      const nukeCommands = game.commands.filter(cmd => cmd instanceof CommandNuke);
+      expect(nukeCommands.length).to.equal(1);
+      expect(gui.nukePrepared).to.equal(false);
+
+      gui.nukePrepared = true;
+      gui._onEachGameSecond();
+      const repeatedNukes = game.commands.filter(cmd => cmd instanceof CommandNuke);
+      expect(repeatedNukes.length).to.equal(2);
       expect(gui.nukePrepared).to.equal(false);
 
       gui.backgroundChanged = false;
@@ -192,6 +198,19 @@ describe('GameGui coverage', function() {
       skills.onSelectionChanged.trigger();
       expect(gui.backgroundChanged).to.equal(true);
       expect(gui._selectionOffset).to.equal(0);
+    });
+  });
+
+  it('fires nuke countdown when threshold drops below accumulated seconds', function() {
+    const { gui, game } = makeGui({ running: true });
+    const app = { nukeAfter: 5 };
+    withGlobalLemmings(app, () => {
+      gui._nukeAfterCountdown = 4;
+      app.nukeAfter = 3;
+      gui._onEachGameSecond();
+      const nukeCommands = game.commands.filter(cmd => cmd instanceof CommandNuke);
+      expect(nukeCommands.length).to.equal(1);
+      expect(gui._nukeAfterCountdown).to.equal(0);
     });
   });
 
@@ -662,6 +681,60 @@ describe('GameGui coverage', function() {
 
     const hasLeftDigit = display.resized.some((args) => args?.[0]?.id === 'L1');
     expect(hasLeftDigit).to.equal(true);
+  });
+
+  it('renders status text safely when victory helpers are missing', function() {
+    const display = makeDisplay();
+    const { gui, game } = makeGui({ running: true });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.gameTimeChanged = true;
+    gui.backgroundChanged = false;
+    game.gameDisplay = { hoverLemming: null };
+    gui.gameVictoryCondition = {
+      getCurrentReleaseRate() { return 10; },
+      getMinReleaseRate() { return 0; },
+      getMaxReleaseRate() { return 99; }
+    };
+
+    expect(() => gui.render()).to.not.throw();
+  });
+
+  it('skips survivor HUD text when survivor percentage is not finite', function() {
+    const display = makeDisplay();
+    const { gui } = makeGui({ running: true });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.backgroundChanged = false;
+    gui.gameTimeChanged = true;
+    const drawnText = [];
+    gui.drawGreenString = (_display, text) => {
+      drawnText.push(text);
+    };
+    gui.gameVictoryCondition = {
+      getCurrentReleaseRate() { return 10; },
+      getMinReleaseRate() { return 0; },
+      getMaxReleaseRate() { return 99; },
+      getReleaseCount() { return 5; },
+      getSurvivorPercentage() { return Number.NaN; }
+    };
+
+    gui.render();
+    expect(drawnText.some((text) => text.startsWith('In'))).to.equal(false);
+  });
+
+  it('handles speed flash and dispose safely when no display/window is available', function() {
+    const { gui } = makeGui({ running: true });
+    gui.display = null;
+    expect(() => gui.drawSpeedChange(true)).to.not.throw();
+    expect(gui.gameSpeedChanged).to.equal(true);
+
+    const previousWindow = globalThis.window;
+    globalThis.window = undefined;
+    gui._guiRafId = 7;
+    expect(() => gui.dispose()).to.not.throw();
+    expect(gui._guiRafId).to.equal(0);
+    globalThis.window = previousWindow;
   });
 
   it('formats status text and panel names', function() {
