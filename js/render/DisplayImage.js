@@ -314,7 +314,7 @@ class DisplayImage extends BaseLogger {
     this._dirtyTileRows = next ? Math.ceil(height / next) : 0;
     this._dirtyTiles.clear();
     this._dirtyTileListPool.length = 0;
-    this._dirtyTileFull = this._dirtyFull;
+    this._dirtyTileFull = this._dirtyFull || this._dirtyRects.length > 0;
   }
 
   syncBackground(groundImage, groundMask = null, dirtyRects = null, tileSize = undefined) {
@@ -816,10 +816,12 @@ class DisplayImage extends BaseLogger {
   /** Write sprite mask (white) */
   drawMask(mask, posX, posY) {
     if (!this.buffer32) return;
+    const maskOffsetX = Number.isFinite(mask?.offsetX) ? mask.offsetX : 0;
+    const maskOffsetY = Number.isFinite(mask?.offsetY) ? mask.offsetY : 0;
     const srcW = mask.width, srcH = mask.height,
       srcMask = mask.getMask(),
       destW = this.imgData.width, destH = this.imgData.height,
-      baseX = posX + mask.offsetX, baseY = posY + mask.offsetY,
+      baseX = posX + maskOffsetX, baseY = posY + maskOffsetY,
       WHITE = 0xFFFFFFFF;
     for (let srcY = 0; srcY < srcH; srcY++) {
       const outY = srcY + baseY;
@@ -841,11 +843,13 @@ class DisplayImage extends BaseLogger {
      * Scaling uses nearest‑neighbour for speed.
      */
   _blit(frame, posX, posY, opts) {
+    const frameOffsetX = Number.isFinite(frame?.offsetX) ? frame.offsetX : 0;
+    const frameOffsetY = Number.isFinite(frame?.offsetY) ? frame.offsetY : 0;
     const { width: srcW, height: srcH } = frame,
       srcBuf  = frame.getBuffer(),
       srcMask = frame.getMask(),
       destW   = this.imgData.width, destH = this.imgData.height,
-      baseX   = posX + frame.offsetX, baseY = posY + frame.offsetY,
+      baseX   = posX + frameOffsetX, baseY = posY + frameOffsetY,
       dest32  = this.buffer32;
 
     const {

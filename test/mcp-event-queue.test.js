@@ -81,4 +81,18 @@ describe('EventQueue', function () {
     const cleared = queue.drain(withSummary.cursor, { includeHumanSummary: true });
     expect(cleared.humanSummary).to.equal(undefined);
   });
+
+  it('captures event payload snapshots instead of live object references', function () {
+    const queue = createQueue(4);
+    const data = { nested: { count: 1 } };
+    const resourceUris = ['res://one'];
+
+    queue.add({ source: 'system', type: 'watch-trigger', data, resourceUris });
+    data.nested.count = 99;
+    resourceUris.push('res://two');
+
+    const envelope = queue.drain(undefined);
+    expect(envelope.events[0].data).to.deep.equal({ nested: { count: 1 } });
+    expect(envelope.events[0].resourceUris).to.deep.equal(['res://one']);
+  });
 });

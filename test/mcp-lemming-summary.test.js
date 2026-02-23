@@ -80,4 +80,24 @@ describe('buildLemmingSummary', function () {
     const sorted = buildLemmingSummary(state, { topK: 8, sortAllCandidates: true });
     expect(bounded.top.map((lem) => lem.id)).to.deep.equal(sorted.top.map((lem) => lem.id));
   });
+
+  it('returns snapshot copies for selected and top entries', function () {
+    const selected = { id: 1, x: 4, y: 2, countdownActive: true };
+    const other = { id: 2, x: 3, y: 1 };
+    const state = {
+      game: {
+        timer: { tickIndex: 3 },
+        lemmingManager: { selectedIndex: 0 },
+        lemmings: [selected, other]
+      }
+    };
+
+    const summary = buildLemmingSummary(state, { topK: 2 });
+    expect(summary.selected).to.not.equal(selected);
+    expect(summary.top[0]).to.not.equal(selected);
+
+    summary.selected.x = 999;
+    summary.top[0].x = 777;
+    expect(selected.x).to.equal(4);
+  });
 });

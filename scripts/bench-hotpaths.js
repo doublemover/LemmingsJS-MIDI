@@ -363,6 +363,8 @@ const makeScaleFrame = (size = 16) => {
   return {
     width,
     height,
+    offsetX: 0,
+    offsetY: 0,
     getBuffer() { return pixels; },
     getMask() { return mask; },
     _version: 1

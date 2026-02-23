@@ -36,6 +36,11 @@ const insertBoundedTopCandidate = (top, candidate, topK) => {
   }
 };
 
+const cloneLemmingSummaryEntry = (lem) => {
+  if (!lem || typeof lem !== 'object') return lem || null;
+  return { ...lem };
+};
+
 const buildLemmingSummary = (state, options = {}) => {
   const manager = state?.game?.lemmingManager || null;
   const tickIndex = state?.game?.timer?.tickIndex ?? null;
@@ -113,6 +118,9 @@ const buildLemmingSummary = (state, options = {}) => {
     if (resolvedTop.length > topK) resolvedTop.pop();
   }
 
+  const selectedSnapshot = cloneLemmingSummaryEntry(selected);
+  const topSnapshot = resolvedTop.map((lem) => cloneLemmingSummaryEntry(lem));
+
   return {
     tickIndex,
     selectedLemmingId: selected ? selected.id : null,
@@ -126,8 +134,8 @@ const buildLemmingSummary = (state, options = {}) => {
     floaters,
     countingDown,
     exploded,
-    selected,
-    top: resolvedTop
+    selected: selectedSnapshot,
+    top: topSnapshot
   };
 };
 

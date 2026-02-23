@@ -142,9 +142,15 @@ describe('DisplayImage coverage', function() {
       offsetX: -1,
       offsetY: 0
     });
+    const maskNoOffsets = makeFrame(2, 2, {
+      mask: Uint8Array.from([1, 1, 1, 1])
+    });
+    delete maskNoOffsets.offsetX;
+    delete maskNoOffsets.offsetY;
     display.drawMask(mask, 1, 1);
     display.drawMask(mask, -10, 1);
     display.drawMask(mask, 1, -10);
+    display.drawMask(maskNoOffsets, 0, 0);
 
     const coldMaskDisplay = new DisplayImage(stage);
     coldMaskDisplay.drawMask(mask, 1, 1);
@@ -196,9 +202,13 @@ describe('DisplayImage coverage', function() {
       offsetX: -1,
       spans
     });
+    const frameNoOffsets = makeFrame(2, 2);
+    delete frameNoOffsets.offsetX;
+    delete frameNoOffsets.offsetY;
 
     display._blit(frame, 0, 0, { checkGround: false });
     display._blit(frameNoBounds, 0, 0, { checkGround: false });
+    display._blit(frameNoOffsets, 1, 1, { checkGround: false });
     display._blit(frame, 0, 0, { checkGround: false, upsideDown: true });
     display._blit(frame, 0, -10, { checkGround: false });
 

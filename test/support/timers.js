@@ -10,13 +10,30 @@ const installFakeClock = (options = {}) => (
   FakeTimers.install({ ...DEFAULT_CLOCK_OPTIONS, ...options })
 );
 
+const isPromiseLike = (value) => (
+  !!value && typeof value.then === 'function'
+);
+
+const runWithCleanup = (fn, cleanup) => {
+  let result;
+  try {
+    result = fn();
+  } catch (error) {
+    cleanup();
+    throw error;
+  }
+  if (isPromiseLike(result)) {
+    return result.finally(cleanup);
+  }
+  cleanup();
+  return result;
+};
+
 const withFakeClock = (fn, options = {}) => {
   const clock = installFakeClock(options);
-  try {
-    return fn(clock);
-  } finally {
+  return runWithCleanup(() => fn(clock), () => {
     clock.uninstall();
-  }
+  });
 };
 
 const withFakeClockAndPerformance = (fn, options = {}) => {
@@ -26,12 +43,10 @@ const withFakeClockAndPerformance = (fn, options = {}) => {
     ? performanceValue(clock)
     : (performanceValue || { now: () => clock.now });
   const restore = patchGlobalValues({ performance: perf });
-  try {
-    return fn(clock);
-  } finally {
+  return runWithCleanup(() => fn(clock), () => {
     restore();
     clock.uninstall();
-  }
+  });
 };
 
 export { installFakeClock, withFakeClock, withFakeClockAndPerformance };

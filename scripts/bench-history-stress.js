@@ -55,6 +55,10 @@ const requestedProfile = (
   process.env.HISTORY_PROFILE ||
   (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
 ).toLowerCase();
+const profileExplicit = args.has('profile')
+  || !!process.env.HISTORY_PROFILE
+  || smokeRequested
+  || soakRequested;
 
 const HISTORY_PROFILES = {
   smoke: {
@@ -87,6 +91,9 @@ const HISTORY_PROFILES = {
 };
 
 const profile = HISTORY_PROFILES[requestedProfile] || HISTORY_PROFILES.smoke;
+if (!profileExplicit) {
+  console.warn('[bench-history-stress] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
+}
 const durationMs = toPositiveNumber(
   args.get('duration') || process.env.HISTORY_DURATION_MS,
   profile.durationMs

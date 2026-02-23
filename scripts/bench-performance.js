@@ -47,6 +47,10 @@ const requestedProfile = (
   process.env.BENCH_PROFILE ||
   (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
 ).toLowerCase();
+const profileExplicit = args.has('profile')
+  || !!process.env.BENCH_PROFILE
+  || smokeRequested
+  || soakRequested;
 const headless = (args.get('headless') || process.env.BENCH_HEADLESS || 'true') !== 'false';
 
 const BENCH_PROFILES = {
@@ -98,6 +102,9 @@ const BENCH_PROFILES = {
 };
 
 const profile = BENCH_PROFILES[requestedProfile] || BENCH_PROFILES.default;
+if (!profileExplicit) {
+  console.warn('[bench-performance] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
+}
 const durationMs = toPositiveNumber(args.get('duration') || process.env.BENCH_DURATION_MS, profile.durationMs);
 const sampleMs = toPositiveNumber(args.get('sample') || process.env.BENCH_SAMPLE_MS, profile.sampleMs);
 const warmupMs = toPositiveNumber(

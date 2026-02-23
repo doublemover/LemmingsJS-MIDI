@@ -165,4 +165,40 @@ describe('scripts/check-undefined.js', function () {
       expect(result.stderr || result.stdout).to.match(/missing|alsoMissing/);
     });
   });
+
+  it('reports undefined methods called on this', function () {
+    withTempDir((dir) => {
+      const file = path.join(dir, 'missing-this-method.js');
+      fs.writeFileSync(file, [
+        'class Demo {',
+        '  ok() {}',
+        '  run() { this.missing(); }',
+        '}',
+        'new Demo().run();'
+      ].join('\n'));
+
+      const result = runCheck(file, { cwd: dir });
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr || result.stdout).to.match(/missing is not defined/);
+    });
+  });
+
+  it('does not report assigned this members invoked as methods', function () {
+    withTempDir((dir) => {
+      const file = path.join(dir, 'assigned-this-member.js');
+      fs.writeFileSync(file, [
+        'class Demo {',
+        '  constructor(cb) {',
+        '    this._handler = cb;',
+        '  }',
+        '  run() { this._handler(); }',
+        '}',
+        'new Demo(() => {}).run();'
+      ].join('\n'));
+
+      const result = runCheck(file, { cwd: dir });
+      expect(result.status).to.equal(0);
+      expect(result.stdout).to.match(/No undefined calls/);
+    });
+  });
 });

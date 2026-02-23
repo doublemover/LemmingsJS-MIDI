@@ -288,6 +288,51 @@ describe('Stage', function() {
     expect(releasedTiles).to.equal(consumedTiles);
   });
 
+  it('falls back to dirty-rect blits when tile updates are empty', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const consumedRects = [{ x: 2, y: 3, width: 4, height: 5 }];
+    stage.gameImgProps.display.consumeDirtyTiles = () => [];
+    stage.gameImgProps.display.consumeDirtyRects = () => consumedRects;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = () => {};
+
+    const displayCtx = stage.gameImgProps.ctx;
+    let putCount = 0;
+    const originalPut = displayCtx.putImageData.bind(displayCtx);
+    displayCtx.putImageData = (...args) => {
+      putCount += 1;
+      return originalPut(...args);
+    };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(putCount).to.equal(1);
+  });
+
+  it('keeps updates visible when tile tracking is enabled after pending rect dirties', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const display = stage.gameImgProps.display;
+    display.markDirtyRect(1, 1, 4, 4);
+    display.setDirtyTileSize(8);
+
+    const displayCtx = stage.gameImgProps.ctx;
+    let putCount = 0;
+    const originalPut = displayCtx.putImageData.bind(displayCtx);
+    displayCtx.putImageData = (...args) => {
+      putCount += 1;
+      return originalPut(...args);
+    };
+
+    stage.draw(stage.gameImgProps, display.getImageData());
+    expect(putCount).to.be.greaterThan(0);
+  });
+
   it('composites dedicated overlay planes without mutating base display dirty state', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

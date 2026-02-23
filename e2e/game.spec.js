@@ -13,10 +13,10 @@ test.beforeEach(async ({ page }) => {
 
 test('Game loads the first level on startup', async ({ page }) => {
   await page.waitForFunction(() => {
-    return Boolean(window.lemmings?.game?.level);
+    return window.__E2E__?.getState?.()?.ready === true;
   });
-  const hasLevel = await page.evaluate(() => Boolean(window.lemmings?.game?.level));
-  expect(hasLevel).toBe(true);
+  const ready = await page.evaluate(() => window.__E2E__?.getState?.()?.ready === true);
+  expect(ready).toBe(true);
 });
 
 test('Arrow navigation updates the selected level', async ({ page }) => {

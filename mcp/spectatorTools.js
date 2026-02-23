@@ -109,16 +109,19 @@ const createSpectatorTools = ({
     };
 
     session.spectator.frameTimer = setInterval(async () => {
-      if (session.spectator.isCapturing) return;
-      if (session.spectator.broadcaster.getSnapshot().connectedClients <= 0) return;
-      session.spectator.isCapturing = true;
+      const spectator = session.spectator;
+      if (!spectator) return;
+      if (spectator.isCapturing) return;
+      if (spectator.broadcaster.getSnapshot().connectedClients <= 0) return;
+      spectator.isCapturing = true;
       try {
         const result = await captureFrame(session, {
           target: 'stageCanvas',
           format: 'jpeg',
-          quality: session.spectator.streamConfig.jpegQuality,
+          quality: spectator.streamConfig.jpegQuality,
           delivery: 'inline'
         });
+        if (session.spectator !== spectator) return;
         if (result.ok && result.frame?.dataBase64) {
           const payload = {
             type: 'frame',
@@ -127,8 +130,8 @@ const createSpectatorTools = ({
             tickIndex: result.frame.tickIndex ?? null,
             takenAt: result.frame.takenAt ?? null
           };
-          session.spectator.lastFrame = payload;
-          session.spectator.broadcaster.broadcast(payload);
+          spectator.lastFrame = payload;
+          spectator.broadcaster.broadcast(payload);
         }
       } catch (err) {
         session.events.add({
@@ -138,7 +141,9 @@ const createSpectatorTools = ({
           data: { message: err ? String(err) : 'unknown' }
         });
       } finally {
-        session.spectator.isCapturing = false;
+        if (session.spectator === spectator) {
+          spectator.isCapturing = false;
+        }
       }
     }, streamConfig.frameIntervalMs);
 

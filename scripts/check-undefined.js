@@ -268,7 +268,7 @@ const collectGlobalFunctions = (ast, globalFunctions) => {
   });
 };
 
-const collectKnownMethods = (ast, knownMethods) => {
+const collectKnownMethods = (ast, knownMethods, knownThisMembers) => {
   walkAst(ast, (node) => {
     if ((node.type === 'MethodDefinition' || node.type === 'PropertyDefinition') && node.key?.type === 'Identifier') {
       knownMethods.add(node.key.name);
@@ -288,6 +288,14 @@ const collectKnownMethods = (ast, knownMethods) => {
       (node.right.type === 'FunctionExpression' || node.right.type === 'ArrowFunctionExpression')
     ) {
       knownMethods.add(node.left.property.name);
+    } else if (
+      node.type === 'AssignmentExpression' &&
+      node.left?.type === 'MemberExpression' &&
+      !node.left.computed &&
+      node.left.object?.type === 'ThisExpression' &&
+      node.left.property?.type === 'Identifier'
+    ) {
+      knownThisMembers.add(node.left.property.name);
     }
   });
 };
@@ -522,13 +530,32 @@ const analyzeAst = (ast, file, state, errors) => {
           if (!literalMethods.has(methodName) && !builtinMethods.has(methodName)) {
             pushError(methodName, node);
           }
-        } else if (callee.object?.type === 'Identifier') {
-          const knownObjectMethods = scope.getObjectMethods(callee.object.name);
+        } else if (
+          callee.object?.type === 'Identifier' ||
+          callee.object?.type === 'ThisExpression' ||
+          callee.object?.type === 'Super'
+        ) {
+          const knownObjectMethods = callee.object.type === 'Identifier'
+            ? scope.getObjectMethods(callee.object.name)
+            : null;
           if (
             knownObjectMethods &&
               !knownObjectMethods.has(methodName) &&
               !builtinMethods.has(methodName) &&
               !state.knownMethods.has(methodName)
+          ) {
+            pushError(methodName, node);
+          } else if (
+            callee.object.type === 'ThisExpression' &&
+            !builtinMethods.has(methodName) &&
+            !state.knownMethods.has(methodName) &&
+            !state.knownThisMembers.has(methodName)
+          ) {
+            pushError(methodName, node);
+          } else if (
+            callee.object.type === 'Super' &&
+            !builtinMethods.has(methodName) &&
+            !state.knownMethods.has(methodName)
           ) {
             pushError(methodName, node);
           }
@@ -660,7 +687,8 @@ const main = (argv = process.argv.slice(2)) => {
   const snippetAsts = [];
   const state = {
     globalFunctions: new Set(),
-    knownMethods: new Set()
+    knownMethods: new Set(),
+    knownThisMembers: new Set()
   };
 
   for (const file of jsFiles) {
@@ -669,7 +697,7 @@ const main = (argv = process.argv.slice(2)) => {
     if (!ast) continue;
     astBySource.set(file, ast);
     collectGlobalFunctions(ast, state.globalFunctions);
-    collectKnownMethods(ast, state.knownMethods);
+    collectKnownMethods(ast, state.knownMethods, state.knownThisMembers);
   }
 
   for (const snippet of snippetSources) {
@@ -677,7 +705,7 @@ const main = (argv = process.argv.slice(2)) => {
     if (!ast) continue;
     snippetAsts.push({ file: snippet.file, ast });
     collectGlobalFunctions(ast, state.globalFunctions);
-    collectKnownMethods(ast, state.knownMethods);
+    collectKnownMethods(ast, state.knownMethods, state.knownThisMembers);
   }
 
   const errors = [];

@@ -1463,7 +1463,11 @@ for (const spec of surfaceRegistry.specs) {
 }
 
 const resolveTool = (rawName) => {
-  const route = TOOL_ROUTES.get(String(rawName || ''));
+  const requestedName = String(rawName || '');
+  let route = TOOL_ROUTES.get(requestedName);
+  if (!route && requestedName.includes('.')) {
+    route = TOOL_ROUTES.get(toToolName(requestedName));
+  }
   if (!route) {
     throw new Error(`Unknown tool: ${rawName}`);
   }

@@ -72,6 +72,8 @@ let midiUi = null;
 let midiInputController = null;
 let lemmings;
 let resizeBound = false;
+let cachedGameContainer = null;
+let cachedCanvas = null;
 
 const setLemmingsForTest = (value) => {
   lemmings = value;
@@ -118,6 +120,8 @@ function init() {
   lemmings.elementSelectLevelGroup = levelGroupSelect;
   lemmings.elementSelectLevel = levelIndexSelect;
   lemmings.gameCanvas = gameCanvas;
+  cachedCanvas = gameCanvas;
+  cachedGameContainer = document.querySelector('.game_container');
   bindCanvasFocusBlur(lemmings.gameCanvas);
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
@@ -139,6 +143,18 @@ function init() {
   lemmings.elementSelectLevel.addEventListener('change', (e) => {
     lemmings.selectLevel(lemmings.strToNum(e.target.value));
   });
+  const levelPrevButton = optionalElement(document, 'levelPrevButton');
+  const levelNextButton = optionalElement(document, 'levelNextButton');
+  if (levelPrevButton) {
+    levelPrevButton.addEventListener('click', () => {
+      lemmings.moveToLevel(-1);
+    });
+  }
+  if (levelNextButton) {
+    levelNextButton.addEventListener('click', () => {
+      lemmings.moveToLevel(1);
+    });
+  }
 
   const savedSelect = optionalElement(document, 'savedLevelSelect');
   const savedSaveButton = optionalElement(document, 'savedLevelSave');
@@ -252,7 +268,10 @@ function setSize() {
   const baseW = 800;
   const baseH = 480;
   const ratio = baseW / baseH;
-  const gameContainer = document.querySelector('.game_container');
+  const gameContainer = cachedGameContainer || document.querySelector('.game_container');
+  if (!cachedGameContainer) {
+    cachedGameContainer = gameContainer;
+  }
   const docEl = document.documentElement;
   const viewport = window.visualViewport;
   const width = Math.max(1, viewport?.width || docEl.clientWidth || window.innerWidth);
@@ -288,10 +307,17 @@ function setSize() {
     gameContainer.style.height = `${containerHeight}px`;
   }
 
-  const canvas = lemmings?.gameCanvas || optionalElement(document, 'gameCanvas');
+  const canvas = lemmings?.gameCanvas || cachedCanvas || optionalElement(document, 'gameCanvas');
+  if (!cachedCanvas && canvas) {
+    cachedCanvas = canvas;
+  }
   if (canvas) {
-    canvas.width = baseW;
-    canvas.height = baseH;
+    if (canvas.width !== baseW) {
+      canvas.width = baseW;
+    }
+    if (canvas.height !== baseH) {
+      canvas.height = baseH;
+    }
     canvas.style.width = containerWidth + 'px';
     canvas.style.height = containerHeight + 'px';
   }

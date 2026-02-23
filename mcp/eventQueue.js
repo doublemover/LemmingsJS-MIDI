@@ -8,6 +8,22 @@ const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .replace(/\//g, '_')
   .replace(/=+$/g, '');
 
+const cloneEventValue = (value) => {
+  if (value == null || typeof value !== 'object') return value;
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // fall through
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return value;
+  }
+};
+
 class EventQueue {
   constructor({ maxEvents = 1000, idFactory = makeId, timeFactory = nowIso } = {}) {
     this.maxEvents = Math.max(1, Math.trunc(maxEvents) || 1);
@@ -22,6 +38,8 @@ class EventQueue {
   }
 
   add({ source, type, summary, data, resourceUris, tickIndex } = {}) {
+    const eventData = cloneEventValue(data);
+    const eventResourceUris = Array.isArray(resourceUris) ? resourceUris.slice() : resourceUris;
     const entry = {
       id: this.idFactory(),
       source,
@@ -29,8 +47,8 @@ class EventQueue {
       tickIndex: Number.isFinite(tickIndex) ? tickIndex : null,
       time: this.timeFactory(),
       summary: summary || '',
-      data,
-      resourceUris
+      data: eventData,
+      resourceUris: eventResourceUris
     };
     this.seq += 1;
     entry.seq = this.seq;

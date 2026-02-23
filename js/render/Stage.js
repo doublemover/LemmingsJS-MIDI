@@ -828,7 +828,13 @@ class Stage {
     const displayImage = display.display;
     const dirtyTiles = displayImage?.consumeDirtyTiles?.();
     const dirtyRects = displayImage?.consumeDirtyRects?.();
-    const useTileUpdates = dirtyTiles !== undefined;
+    const hasTileSupport = dirtyTiles !== undefined;
+    const hasRectUpdates = dirtyRects === null || (Array.isArray(dirtyRects) && dirtyRects.length > 0);
+    const useTileUpdates = hasTileSupport && (
+      dirtyTiles === null ||
+      (Array.isArray(dirtyTiles) && dirtyTiles.length > 0) ||
+      !hasRectUpdates
+    );
     const dirtyRegions = useTileUpdates ? dirtyTiles : dirtyRects;
     try {
       if (dirtyRegions === null) {
