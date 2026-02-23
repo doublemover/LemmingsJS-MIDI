@@ -56,6 +56,19 @@ describe('session lifecycle disposal', function () {
     expect(calls).to.deep.equal(['clear:s2', 'context.close', 'browser.close']);
   });
 
+  it('continues cleanup when spectator/watch hooks throw', async function () {
+    const { session, calls } = createSession('s3');
+    await disposeSessionRuntime(session, {
+      stopSpectatorServer() {
+        throw new Error('spectator fail');
+      },
+      stopWatchLoop() {
+        throw new Error('watch fail');
+      }
+    });
+    expect(calls).to.deep.equal(['clear:s3', 'context.close', 'browser.close']);
+  });
+
   it('disposes all sessions from an iterable', async function () {
     const first = createSession('a');
     const second = createSession('b');

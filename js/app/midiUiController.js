@@ -319,7 +319,7 @@ export const createMidiUiController = ({
     const input = webMidi.getInputById(inputId);
     if (!input) {
       if (activeMidiInput) {
-        midiInputController.detach?.();
+        midiInputController?.detach?.();
       }
       activeMidiInput = null;
       return;
@@ -1591,7 +1591,9 @@ export const createMidiUiController = ({
 
     if (resolvedInputId && inputSelect) {
       inputSelect.value = resolvedInputId;
-      storeMidiId(storage, midiStorageKeys.inputId, resolvedInputId);
+      if (storedInputId !== resolvedInputId) {
+        storeMidiId(storage, midiStorageKeys.inputId, resolvedInputId);
+      }
       setActiveMidiInput(resolvedInputId);
     } else {
       setActiveMidiInput(null);
@@ -1599,7 +1601,9 @@ export const createMidiUiController = ({
 
     if (resolvedOutputId && outputSelect) {
       outputSelect.value = resolvedOutputId;
-      storeMidiId(storage, midiStorageKeys.outputId, resolvedOutputId);
+      if (storedOutputId !== resolvedOutputId) {
+        storeMidiId(storage, midiStorageKeys.outputId, resolvedOutputId);
+      }
       setActiveMidiOutput(resolvedOutputId);
     } else {
       setActiveMidiOutput(null);
@@ -1987,7 +1991,14 @@ export const createMidiUiController = ({
       return auditionMappingEntry({ targetKey, id, entry });
     },
     dispatchMidiIntent(intent) {
-      return runMidiIntent(intent);
+      const state = runMidiIntent(intent);
+      if (midiUiBound) {
+        const sections = intent?.type === 'overrides.merge'
+          ? deriveRefreshSectionsFromPatch(intent.patch)
+          : null;
+        queueMidiUiRefresh({ sections });
+      }
+      return state;
     },
     getMidiIntentState() {
       return { ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) };

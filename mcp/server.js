@@ -980,14 +980,21 @@ const pollWatches = async (session) => {
         }
         const captureOptions = action.capture || { target: 'page', delivery: 'resource' };
         const result = await captureFrame(session, captureOptions);
-        if (result.ok && result.frame?.resourceUri) {
+        if (result.ok && result.frame) {
           watch.lastCaptureTick = Number.isFinite(tickIndex) ? tickIndex : watch.lastCaptureTick;
-          session.events.add({
+          const event = {
             source: 'system',
             type: 'capture',
             summary: `watch:${watch.id} capture`,
-            tickIndex,
-            resourceUris: [result.frame.resourceUri]
+            tickIndex
+          };
+          if (result.frame.resourceUri) {
+            event.resourceUris = [result.frame.resourceUri];
+          } else {
+            event.data = { frame: result.frame };
+          }
+          session.events.add({
+            ...event
           });
         }
       }
@@ -1782,7 +1789,7 @@ const watchCreateTool = async (args) => {
   const { sessionId, watch, actions, enabled } = WatchCreateSchema.parse(args || {});
   const session = getSession(sessionId);
   const watchId = makeId();
-  const state = await getState(session);
+  const state = watch.type === 'onChange' ? await getState(session) : null;
   const tickIndex = state?.game?.timer?.tickIndex ?? 0;
   const pointerState = watch.type === 'onChange'
     ? createPointerWatchState(watch.jsonPointer, state)
@@ -1823,11 +1830,13 @@ const watchCancelTool = async (args) => {
 const eventsPollTool = async (args) => {
   const { sessionId, after } = EventsPollSchema.parse(args || {});
   const session = getSession(sessionId);
+  const parsedAfter = Number(after);
+  const normalizedAfter = Number.isFinite(parsedAfter) ? Math.trunc(parsedAfter) : undefined;
   if (session.watches.size) {
     await session.watchController?.tickNow();
   }
-  const envelope = session.events.drain(after, { updateCursor: true });
-  const cursor = String(Number.isFinite(Number(after)) ? Number(after) : session.events.lastDelivered);
+  const envelope = session.events.drain(normalizedAfter, { updateCursor: true });
+  const cursor = String(Number.isFinite(normalizedAfter) ? normalizedAfter : session.events.lastDelivered);
   if (!envelope && session.watches.size) {
     requestWatchPoll(session, { immediate: true });
   }

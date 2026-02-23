@@ -9,6 +9,15 @@ const closeSafely = async (target, methodName) => {
   }
 };
 
+const invokeHookSafely = async (hook, session) => {
+  if (typeof hook !== 'function') return;
+  try {
+    await hook(session);
+  } catch (error) {
+    // Ignore hook failures during teardown.
+  }
+};
+
 const disposeSessionRuntime = async (
   session,
   {
@@ -17,8 +26,8 @@ const disposeSessionRuntime = async (
   } = {}
 ) => {
   if (!session) return;
-  stopSpectatorServer(session);
-  stopWatchLoop(session);
+  await invokeHookSafely(stopSpectatorServer, session);
+  await invokeHookSafely(stopWatchLoop, session);
   session.resources?.clearSession?.(session.id);
   await closeSafely(session.context, 'close');
   await closeSafely(session.browser, 'close');
