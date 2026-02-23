@@ -625,3 +625,9 @@ Notes:
   `parseInt` hotpath usage without explicit base to prevent coercion edge
   cases.
   Touchpoints: `eslint.config.js`, `js/xbrz/xbrz.js`.
+
+## Phase 39: Test suite overlap reduction
+- [x] Consolidate overlapping SoundEvent bus suites into a single canonical test
+  file and remove redundant duplicate coverage to reduce maintenance churn while
+  preserving assertions.
+  Touchpoints: `test/sound-events.test.js`, `test/soundevents.test.js`.
