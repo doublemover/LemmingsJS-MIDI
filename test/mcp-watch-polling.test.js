@@ -226,6 +226,20 @@ describe('watch pointer helpers', function () {
     expect(readPointerValue(state, '')).to.equal(state);
   });
 
+  it('treats invalid JSON pointers as undefined lookups', function () {
+    const invalidPath = parseJsonPointer('game/timer/tickIndex');
+    expect(invalidPath).to.equal(null);
+    expect(readPointerValue({ game: { timer: { tickIndex: 7 } } }, invalidPath)).to.equal(undefined);
+
+    const tracker = createPointerWatchState('game/timer/tickIndex', {
+      game: { timer: { tickIndex: 7 } }
+    });
+    expect(tracker.path).to.equal(null);
+    expect(updatePointerWatchState(tracker, {
+      game: { timer: { tickIndex: 8 } }
+    })).to.equal(false);
+  });
+
   it('tracks primitive pointer changes without stringify comparisons', function () {
     const tracker = createPointerWatchState('/game/timer/tickIndex', {
       game: { timer: { tickIndex: 10 } }

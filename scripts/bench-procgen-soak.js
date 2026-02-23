@@ -1,4 +1,7 @@
 import { chromium } from '@playwright/test';
+import { pathToFileURL } from 'node:url';
+
+const DEFAULT_BASE_URL = 'https://localhost:8080/procgen.html?e2e=1';
 
 /**
  * @param {string[]} argv
@@ -22,6 +25,19 @@ const parseArgs = (argv) => {
 const toPositiveNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+/**
+ * @param {unknown} value
+ * @param {boolean} fallback
+ * @returns {boolean}
+ */
+const toBoolean = (value, fallback) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
+  return fallback;
 };
 
 const withTimeout = async (promise, timeoutMs, label) => {
@@ -67,36 +83,95 @@ const summarize = (values) => {
   };
 };
 
-const args = parseArgs(process.argv.slice(2));
-const baseUrl = args.get('url') || process.env.LEMMINGS_PROCGEN_URL || 'https://localhost:8080/procgen.html?e2e=1';
-const durationMs = toPositiveNumber(args.get('duration') || process.env.PROCGEN_SOAK_DURATION_MS, 60000);
-const warmupMs = toPositiveNumber(args.get('warmup') || process.env.PROCGEN_SOAK_WARMUP_MS, 5000);
-const sampleMs = toPositiveNumber(args.get('sample') || process.env.PROCGEN_SOAK_SAMPLE_MS, 1000);
-const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.PROCGEN_SOAK_OP_TIMEOUT_MS, 30000);
-const maxRuntimeMs = toPositiveNumber(
-  args.get('maxRuntime') || process.env.PROCGEN_SOAK_MAX_RUNTIME_MS,
-  warmupMs + durationMs + Math.max(60000, sampleMs * 20)
-);
-const heapLimitMb = toPositiveNumber(args.get('heapLimitMb') || process.env.PROCGEN_SOAK_HEAP_LIMIT_MB, 0);
-const headless = (args.get('headless') || process.env.PROCGEN_SOAK_HEADLESS || 'true') !== 'false';
+/**
+ * @param {string} raw
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+const buildUrl = (raw, fallback = DEFAULT_BASE_URL) => {
+  let candidate = null;
+  try {
+    candidate = new URL(raw || fallback);
+  } catch {
+    candidate = new URL(fallback);
+  }
+  candidate.searchParams.set('e2e', '1');
+  return candidate.toString();
+};
 
-const buildUrl = (raw) => {
-  const url = new URL(raw);
-  url.searchParams.set('e2e', '1');
-  return url.toString();
+/**
+ * @param {{argv?: string[], env?: NodeJS.ProcessEnv}} [options]
+ * @returns {{
+ *   baseUrl: string,
+ *   durationMs: number,
+ *   warmupMs: number,
+ *   sampleMs: number,
+ *   opTimeoutMs: number,
+ *   maxRuntimeMs: number,
+ *   heapLimitMb: number,
+ *   headless: boolean
+ * }}
+ */
+const createProcgenSoakConfig = ({
+  argv = process.argv.slice(2),
+  env = process.env
+} = {}) => {
+  const args = parseArgs(argv);
+  const baseUrl = args.get('url') || env.LEMMINGS_PROCGEN_URL || DEFAULT_BASE_URL;
+  const durationMs = toPositiveNumber(args.get('duration') || env.PROCGEN_SOAK_DURATION_MS, 60000);
+  const warmupMs = toPositiveNumber(args.get('warmup') || env.PROCGEN_SOAK_WARMUP_MS, 5000);
+  const sampleMs = toPositiveNumber(args.get('sample') || env.PROCGEN_SOAK_SAMPLE_MS, 1000);
+  const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || env.PROCGEN_SOAK_OP_TIMEOUT_MS, 30000);
+  const maxRuntimeMs = toPositiveNumber(
+    args.get('maxRuntime') || env.PROCGEN_SOAK_MAX_RUNTIME_MS,
+    warmupMs + durationMs + Math.max(60000, sampleMs * 20)
+  );
+  const heapLimitMb = toPositiveNumber(args.get('heapLimitMb') || env.PROCGEN_SOAK_HEAP_LIMIT_MB, 0);
+  const headless = toBoolean(args.get('headless') || env.PROCGEN_SOAK_HEADLESS, true);
+
+  return {
+    baseUrl,
+    durationMs,
+    warmupMs,
+    sampleMs,
+    opTimeoutMs,
+    maxRuntimeMs,
+    heapLimitMb,
+    headless
+  };
 };
 
 /**
  * Runs the procgen soak benchmark in a Playwright browser context.
  *
+ * @param {{
+ *   baseUrl: string,
+ *   durationMs: number,
+ *   warmupMs: number,
+ *   sampleMs: number,
+ *   opTimeoutMs: number,
+ *   maxRuntimeMs: number,
+ *   heapLimitMb: number,
+ *   headless: boolean
+ * }} [config]
  * @returns {Promise<void>}
  */
-const run = async () => {
+const run = async (config = createProcgenSoakConfig()) => {
   let browser = null;
   let context = null;
   let page = null;
   const runStart = Date.now();
   const samples = [];
+  const {
+    baseUrl,
+    durationMs,
+    warmupMs,
+    sampleMs,
+    opTimeoutMs,
+    maxRuntimeMs,
+    heapLimitMb,
+    headless
+  } = config;
 
   const assertRuntimeBudget = (phase) => {
     const elapsed = Date.now() - runStart;
@@ -213,7 +288,29 @@ const run = async () => {
   }
 };
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const isDirectExecution = () => {
+  const entry = process.argv?.[1];
+  if (!entry) return false;
+  try {
+    return import.meta.url === pathToFileURL(entry).href;
+  } catch {
+    return false;
+  }
+};
+
+if (isDirectExecution()) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+export {
+  buildUrl,
+  createProcgenSoakConfig,
+  parseArgs,
+  run,
+  summarize,
+  toBoolean,
+  toPositiveNumber
+};

@@ -1,3 +1,4 @@
+/** Live MCP session registry keyed by normalized session id. */
 const sessions = new Map();
 
 /**
@@ -8,7 +9,7 @@ const sessions = new Map();
  * @throws {Error} When the id is missing or the session does not exist.
  */
 const getSession = (sessionId) => {
-  const normalizedSessionId = sessionId == null ? '' : String(sessionId);
+  const normalizedSessionId = sessionId == null ? '' : String(sessionId).trim();
   if (!normalizedSessionId) {
     throw new Error('Session id is required');
   }

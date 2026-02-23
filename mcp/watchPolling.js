@@ -11,17 +11,18 @@ const HASH_OFFSET_BASIS = 2166136261;
 const HASH_PRIME = 16777619;
 const NUMBER_HASH_VIEW = new DataView(new ArrayBuffer(8));
 const POINTER_EMPTY_PATH = Object.freeze([]);
+const POINTER_INVALID_PATH = null;
 
 /**
  * Parse an RFC6901 JSON pointer into path segments.
  * @param {string|null|undefined} pointer
- * @returns {string[]}
+ * @returns {string[]|null}
  */
 const parseJsonPointer = (pointer) => {
   if (pointer == null || pointer === '') return POINTER_EMPTY_PATH;
   const source = String(pointer);
   if (source === '/') return [''];
-  if (!source.startsWith('/')) return POINTER_EMPTY_PATH;
+  if (!source.startsWith('/')) return POINTER_INVALID_PATH;
   return source
     .slice(1)
     .split('/')
@@ -31,11 +32,13 @@ const parseJsonPointer = (pointer) => {
 /**
  * Resolve a value from an object using pointer segments or a pointer string.
  * @param {object} obj
- * @param {string|string[]} pointerOrPath
+ * @param {string|string[]|null} pointerOrPath
  * @returns {*}
  */
 const readPointerValue = (obj, pointerOrPath) => {
+  if (pointerOrPath === POINTER_INVALID_PATH) return undefined;
   const path = Array.isArray(pointerOrPath) ? pointerOrPath : parseJsonPointer(pointerOrPath);
+  if (path === POINTER_INVALID_PATH) return undefined;
   let current = obj;
   for (const part of path) {
     if (current == null) return undefined;
@@ -226,7 +229,7 @@ const areFingerprintsEqual = (left, right) => {
  * Create watch state for a JSON pointer against an initial source object.
  * @param {string} pointer
  * @param {object} source
- * @returns {{path:string[],fingerprint:object}}
+ * @returns {{path:string[]|null,fingerprint:object}}
  */
 const createPointerWatchState = (pointer, source) => {
   const path = parseJsonPointer(pointer);
@@ -238,7 +241,7 @@ const createPointerWatchState = (pointer, source) => {
 
 /**
  * Update a watch state in place and report whether the pointer value changed.
- * @param {{path:string[],fingerprint:object}} state
+ * @param {{path:string[]|null,fingerprint:object}} state
  * @param {object} source
  * @returns {boolean}
  */
