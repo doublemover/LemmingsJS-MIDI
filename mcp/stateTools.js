@@ -1,3 +1,34 @@
+/**
+ * Build MCP state-tool handlers using injected schema/runtime dependencies.
+ *
+ * @param {{
+ *   schemas: {
+ *     StateGetSchema: { parse: (args?: object) => any },
+ *     StateDeltaSchema: { parse: (args?: object) => any },
+ *     LemmingsSummarySchema: { parse: (args?: object) => any }
+ *   },
+ *   attachEvents: (session: any, payload: any) => any,
+ *   getSession: (sessionId: string) => any,
+ *   callE2E: (session: any, method: string, ...args: any[]) => Promise<{ok:boolean,value?:any,error?:any}>,
+ *   getState: (session: any) => Promise<any>,
+ *   getTickIndex: (session: any) => Promise<number|null>,
+ *   nudgeWatchPolling: (session: any) => void,
+ *   helpers: {
+ *     filterStateSnapshot: (state: any, include: object) => any,
+ *     buildSkillInfo: (skills: any) => any,
+ *     buildLemmingPrunePolicy: (state: any, skillInfo: any) => any,
+ *     buildLemmingSummary: (state: any, options: object) => any,
+ *     buildLemmingSummaryCompact: (state: any, policy: any, options: object) => any,
+ *     pruneLemming: (lem: any, policy: any) => any
+ *   },
+ *   defaultLemDeltaFields: number[]
+ * }} options
+ * @returns {{
+ *   getStateTool: (args?: object) => Promise<any>,
+ *   getStateDeltaTool: (args?: object) => Promise<any>,
+ *   getLemmingsSummaryTool: (args?: object) => Promise<any>
+ * }}
+ */
 const createStateToolHandlers = ({
   schemas,
   attachEvents,
@@ -156,12 +187,15 @@ const createStateToolHandlers = ({
     const delivery = format?.delivery || 'inline';
     if (delivery === 'resource') {
       const json = JSON.stringify(snapshot, null, format?.pretty ? 2 : 0);
-      const stored = session.resources.put({
+      const stored = session.resources?.put?.({
         sessionId: session.id,
         bytes: Buffer.from(json),
         mimeType: 'application/json',
         meta: { kind: 'state' }
       });
+      if (!stored?.uri) {
+        return attachEvents(session, { ok: false, reason: 'resource_store_failed' });
+      }
       return attachEvents(session, {
         ok: true,
         tickIndex,
@@ -336,12 +370,15 @@ const createStateToolHandlers = ({
     const delivery = format?.delivery || 'inline';
     if (delivery === 'resource') {
       const json = JSON.stringify(response, null, format?.pretty ? 2 : 0);
-      const stored = session.resources.put({
+      const stored = session.resources?.put?.({
         sessionId: session.id,
         bytes: Buffer.from(json),
         mimeType: 'application/json',
         meta: { kind: 'state-delta' }
       });
+      if (!stored?.uri) {
+        return attachEvents(session, { ok: false, reason: 'resource_store_failed' });
+      }
       return attachEvents(session, {
         ok: true,
         cursor: endTick,

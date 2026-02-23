@@ -807,6 +807,9 @@ const captureFrame = async (session, options) => {
     mimeType,
     meta: { kind: 'capture', target, tag }
   });
+  if (!stored?.uri) {
+    return { ok: false, reason: 'resource_store_failed' };
+  }
   frame.resourceUri = stored?.uri;
   frame.sizeBytes = sizeBytes;
   if (stored?.expiresAt) {
@@ -817,6 +820,7 @@ const captureFrame = async (session, options) => {
 
 const captureSequence = async (session, args) => {
   const frames = [];
+  const sequenceId = makeId();
   const mode = args.mode;
   const stepBy = Number.isFinite(args.stepBy) ? args.stepBy : 1;
   const everyMs = Number.isFinite(args.everyMs) ? args.everyMs : 250;
@@ -830,7 +834,16 @@ const captureSequence = async (session, args) => {
 
   for (let i = 0; i < total; i += 1) {
     const result = await captureFrame(session, capture);
-    if (result?.frame) frames.push(result.frame);
+    if (!result?.ok || !result?.frame) {
+      return {
+        ok: false,
+        sequenceId,
+        reason: result?.reason || 'capture_failed',
+        failedAtFrame: i,
+        frames
+      };
+    }
+    frames.push(result.frame);
     if (i === total - 1) break;
     if (mode === 'step') {
       await callE2E(session, 'step', stepBy);
@@ -839,7 +852,6 @@ const captureSequence = async (session, args) => {
     }
   }
 
-  const sequenceId = makeId();
   let manifestResourceUri = null;
   if (args.returnManifest !== false) {
     const manifest = {
@@ -853,6 +865,15 @@ const captureSequence = async (session, args) => {
       mimeType: 'application/json',
       meta: { kind: 'capture-manifest' }
     });
+    if (!stored?.uri) {
+      return {
+        ok: false,
+        sequenceId,
+        reason: 'resource_store_failed',
+        failedAtFrame: total,
+        frames
+      };
+    }
     manifestResourceUri = stored?.uri || null;
   }
 
@@ -864,6 +885,7 @@ const captureSequence = async (session, args) => {
   });
 
   return {
+    ok: true,
     sequenceId,
     frames,
     manifestResourceUri
@@ -996,6 +1018,14 @@ const pollWatches = async (session) => {
           session.events.add({
             ...event
           });
+        } else {
+          session.events.add({
+            source: 'system',
+            type: 'error',
+            summary: `watch:${watch.id} capture failed`,
+            tickIndex,
+            data: { reason: result?.reason || 'capture_failed' }
+          });
         }
       }
     }
@@ -1010,74 +1040,76 @@ const createSession = async (args) => {
   const gameUrl = new URL(pathName, baseUrl).toString();
   const headless = options.headless !== false;
   const viewport = options.viewport || DEFAULT_VIEWPORT;
-
-  const browser = await chromium.launch({
-    headless,
-    args: ['--allow-insecure-localhost']
-  });
-
-  const context = await browser.newContext({
-    viewport: {
-      width: viewport.width,
-      height: viewport.height
-    },
-    deviceScaleFactor: Number.isFinite(viewport.deviceScaleFactor) ? viewport.deviceScaleFactor : 1,
-    ignoreHTTPSErrors: true
-  });
-
-  const page = await context.newPage();
   const sessionId = makeId();
 
-  const keybindings = await loadKeybindings();
-  const resources = new ResourceStore(options.resources || {});
-  const events = new EventQueue(options.events || {});
-
-  const session = {
-    id: sessionId,
-    browser,
-    context,
-    page,
-    baseUrl,
-    gameUrl,
-    keybindings,
-    resources,
-    events,
-    eventsMode: options.events?.mode || 'minimal',
-    lastStateTick: null,
-    editorObjectListCache: new Map(),
-    watches: new Map(),
-    watchController: null,
-    spectator: null
-  };
-
-  session.watchController = new WatchPollingController({
-    hasWatchesFn: () => session.watches.size > 0,
-    pollFn: () => pollWatches(session)
-  });
-
-  sessions.set(sessionId, session);
-
-  page.on('pageerror', (error) => {
-    session.events.add({
-      source: 'system',
-      type: 'error',
-      summary: 'pageerror',
-      data: { message: error?.message || String(error) }
+  let browser = null;
+  let context = null;
+  let page = null;
+  let session = null;
+  let keybindings = null;
+  try {
+    browser = await chromium.launch({
+      headless,
+      args: ['--allow-insecure-localhost']
     });
-  });
 
-  page.on('console', (msg) => {
-    if (msg.type() === 'error') {
+    context = await browser.newContext({
+      viewport: {
+        width: viewport.width,
+        height: viewport.height
+      },
+      deviceScaleFactor: Number.isFinite(viewport.deviceScaleFactor) ? viewport.deviceScaleFactor : 1,
+      ignoreHTTPSErrors: true
+    });
+
+    page = await context.newPage();
+    keybindings = await loadKeybindings();
+
+    session = {
+      id: sessionId,
+      browser,
+      context,
+      page,
+      baseUrl,
+      gameUrl,
+      keybindings,
+      resources: new ResourceStore(options.resources || {}),
+      events: new EventQueue(options.events || {}),
+      eventsMode: options.events?.mode || 'minimal',
+      lastStateTick: null,
+      editorObjectListCache: new Map(),
+      watches: new Map(),
+      watchController: null,
+      spectator: null
+    };
+
+    session.watchController = new WatchPollingController({
+      hasWatchesFn: () => session.watches.size > 0,
+      pollFn: () => pollWatches(session)
+    });
+
+    sessions.set(sessionId, session);
+
+    page.on('pageerror', (error) => {
       session.events.add({
         source: 'system',
         type: 'error',
-        summary: 'console error',
-        data: { message: msg.text() }
+        summary: 'pageerror',
+        data: { message: error?.message || String(error) }
       });
-    }
-  });
+    });
 
-  try {
+    page.on('console', (msg) => {
+      if (msg.type() === 'error') {
+        session.events.add({
+          source: 'system',
+          type: 'error',
+          summary: 'console error',
+          data: { message: msg.text() }
+        });
+      }
+    });
+
     await page.goto(gameUrl, { waitUntil: 'domcontentloaded' });
     await page.waitForFunction(
       () => window.__E2E__?.getState?.().ready === true,
@@ -1090,8 +1122,17 @@ const createSession = async (args) => {
     }
   } catch (err) {
     sessions.delete(sessionId);
-    await context.close();
-    await browser.close();
+    if (session) {
+      await disposeSessionRuntime(session, {
+        stopSpectatorServer,
+        stopWatchLoop
+      });
+    } else {
+      await Promise.allSettled([
+        context?.close?.(),
+        browser?.close?.()
+      ]);
+    }
     throw err;
   }
 

@@ -8,6 +8,22 @@ const normalizeInteger = (value, fallback, min = 0) => {
   return integer >= min ? integer : fallback;
 };
 
+const cloneMeta = (value) => {
+  if (value == null || typeof value !== 'object') return {};
+  if (typeof structuredClone === 'function') {
+    try {
+      return structuredClone(value);
+    } catch {
+      // fall through
+    }
+  }
+  try {
+    return JSON.parse(JSON.stringify(value));
+  } catch {
+    return {};
+  }
+};
+
 const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .toString('base64')
   .replace(/\+/g, '-')
@@ -54,7 +70,7 @@ class ResourceStore {
       uri,
       sessionId,
       mimeType: normalizedMimeType,
-      meta,
+      meta: cloneMeta(meta),
       bytes: buffer,
       sizeBytes,
       createdAt: this.timeFactory(),
@@ -84,7 +100,11 @@ class ResourceStore {
     }
     this.items.delete(id);
     this.items.set(id, item);
-    return item;
+    return {
+      ...item,
+      meta: cloneMeta(item.meta),
+      bytes: Buffer.from(item.bytes)
+    };
   }
 
   list({ limit = 200 } = {}) {

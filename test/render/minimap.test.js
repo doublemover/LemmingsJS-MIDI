@@ -157,6 +157,18 @@ describe('MiniMap', function() {
     expect(Number.isFinite(miniMap.scaleY)).to.equal(true);
     expect(miniMap.scaleX).to.be.greaterThan(0);
     expect(miniMap.scaleY).to.be.greaterThan(0);
+
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
+    miniMap.invalidateRegion(0, 0, 4, 4);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      expect(() => miniMap.render()).to.not.throw();
+      guiDisplay.onMouseDown.trigger({ x: destX + 20, y: destY + 5 });
+    });
+    expect(Number.isFinite(level.screenPositionX)).to.equal(true);
   });
 
   it('renders viewport, dots, and death flashes', function() {

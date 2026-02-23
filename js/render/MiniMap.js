@@ -18,6 +18,8 @@ class MiniMap {
     this.size = this.width * this.height;
     const levelWidth = Number.isFinite(level?.width) && level.width > 0 ? level.width : this.width;
     const levelHeight = Number.isFinite(level?.height) && level.height > 0 ? level.height : this.height;
+    this.levelWidth = levelWidth;
+    this.levelHeight = levelHeight;
     this.scaleX = this.width / levelWidth;
     this.scaleY = this.height / levelHeight;
 
@@ -115,8 +117,7 @@ class MiniMap {
     const viewportWorldWidth = Number.isFinite(stageViewWidth) && stageViewWidth > 0
       ? stageViewWidth
       : gd.worldDataSize.width;
-    const levelWidth = Number.isFinite(this.level.width) ? this.level.width : 0;
-    const maxOffset = Math.max(0, levelWidth - viewportWorldWidth);
+    const maxOffset = Math.max(0, this.levelWidth - viewportWorldWidth);
     const newX = clamp(Math.trunc(pct * maxOffset), 0, maxOffset);
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0, { preserveScale: true });
@@ -143,12 +144,14 @@ class MiniMap {
   /* Build complete terrain snapshot (expensive – call at load/reset only). */
   #buildTerrain() {
     const gm = this.level.getGroundMaskLayer();
+    const levelWidth = this.levelWidth;
+    const levelHeight = this.levelHeight;
     for (let mY = 0; mY < this.height; ++mY) {
       const ly1 = Math.floor(mY / this.scaleY);
-      const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
+      const ly2 = Math.min(levelHeight, Math.ceil((mY + 1) / this.scaleY));
       for (let mX = 0; mX < this.width; ++mX) {
         const lx1 = Math.floor(mX / this.scaleX);
-        const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
+        const lx2 = Math.min(levelWidth, Math.ceil((mX + 1) / this.scaleX));
         let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
         if (count > 71) count = 72;
         this.#setTerrainCount(mY * this.width + mX, count);
@@ -190,9 +193,9 @@ class MiniMap {
     const mX = idx % this.width;
     const mY = (idx / this.width) | 0;
     const lx1 = Math.floor(mX / this.scaleX);
-    const lx2 = Math.min(this.level.width, Math.ceil((mX + 1) / this.scaleX));
+    const lx2 = Math.min(this.levelWidth, Math.ceil((mX + 1) / this.scaleX));
     const ly1 = Math.floor(mY / this.scaleY);
-    const ly2 = Math.min(this.level.height, Math.ceil((mY + 1) / this.scaleY));
+    const ly2 = Math.min(this.levelHeight, Math.ceil((mY + 1) / this.scaleY));
     const gm = groundMaskLayer || this.level.getGroundMaskLayer();
     let count = gm.countMaskInRect(lx1, ly1, lx2 - lx1, ly2 - ly1, 72);
     if (count > 71) count = 72;
@@ -299,8 +302,8 @@ class MiniMap {
     if (w <= 0 || h <= 0) return;
     const xStart = Math.max(0, Math.floor(x));
     const yStart = Math.max(0, Math.floor(y));
-    const xEnd = Math.min(this.level.width, Math.ceil(x + w));
-    const yEnd = Math.min(this.level.height, Math.ceil(y + h));
+    const xEnd = Math.min(this.levelWidth, Math.ceil(x + w));
+    const yEnd = Math.min(this.levelHeight, Math.ceil(y + h));
     if (xEnd <= xStart || yEnd <= yStart) return;
 
     const mX0 = Math.max(0, Math.floor(xStart * this.scaleX));

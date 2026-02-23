@@ -1,10 +1,15 @@
 import { expect } from 'chai';
 import { createStateToolHandlers } from '../mcp/stateTools.js';
 
-const createFixture = ({ currentTick = 0, deltas = [] } = {}) => {
+const createFixture = ({
+  currentTick = 0,
+  deltas = [],
+  state = null,
+  resourcePut = () => null
+} = {}) => {
   const session = {
     id: 's1',
-    resources: { put() { return null; } },
+    resources: { put: (...args) => resourcePut(...args) },
     lastStateTick: null
   };
   const captured = [];
@@ -37,7 +42,7 @@ const createFixture = ({ currentTick = 0, deltas = [] } = {}) => {
       return { ok: true, value: deltas };
     },
     async getState() {
-      return null;
+      return state;
     },
     async getTickIndex() {
       return currentTick;
@@ -146,5 +151,51 @@ describe('state tools', function () {
     expect(fixture.getCaptured()).to.have.lengthOf(1);
     expect(fixture.getCaptured()[0].startTick).to.equal(6);
     expect(fixture.getCaptured()[0].endTick).to.equal(11);
+  });
+
+  it('returns resource_store_failed when getState resource delivery cannot persist', async function () {
+    const fixture = createFixture({
+      currentTick: 11,
+      state: {
+        version: 1,
+        mode: 'play',
+        ready: true,
+        game: {
+          timer: { tickIndex: 11, running: true, speedFactor: 1 },
+          lemmingManager: { selectedIndex: 0, activeCount: 0, totalCount: 0 },
+          lemmings: []
+        }
+      },
+      resourcePut: () => null
+    });
+
+    const result = await fixture.handlers.getStateTool({
+      sessionId: 's1',
+      format: { delivery: 'resource' }
+    });
+
+    expect(result).to.deep.equal({
+      ok: false,
+      reason: 'resource_store_failed'
+    });
+  });
+
+  it('returns resource_store_failed when getStateDelta resource delivery cannot persist', async function () {
+    const fixture = createFixture({
+      currentTick: 12,
+      deltas: [],
+      resourcePut: () => null
+    });
+
+    const result = await fixture.handlers.getStateDeltaTool({
+      sessionId: 's1',
+      afterTick: 10,
+      format: { delivery: 'resource' }
+    });
+
+    expect(result).to.deep.equal({
+      ok: false,
+      reason: 'resource_store_failed'
+    });
   });
 });

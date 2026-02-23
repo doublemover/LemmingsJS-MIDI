@@ -234,6 +234,20 @@ describe('Stage', function() {
     expect(stage.overlayTimer).to.equal(0);
   });
 
+  it('handles missing cursor canvas APIs safely', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    const originalDocument = globalThis.document;
+    globalThis.document = undefined;
+    expect(() => stage.setCursorSprite({
+      width: 4,
+      height: 4,
+      getData() { return new Uint8ClampedArray(4 * 4 * 4); }
+    })).to.not.throw();
+    expect(stage.cursorCanvas).to.equal(null);
+    globalThis.document = originalDocument;
+  });
+
   it('keeps cursor rendered when static and redraws when it moves', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
@@ -715,6 +729,12 @@ describe('Stage', function() {
     stage.gameImgProps.viewPoint.scale = 0;
     stage.setGameViewPointPosition(4, Number.NaN, { preserveScale: true });
     expect(stage._rawScale).to.equal(1);
+    expect(Number.isFinite(stage.gameImgProps.viewPoint.x)).to.equal(true);
+    expect(stage.gameImgProps.viewPoint.y).to.equal(0);
+
+    stage.setGameViewPointPosition(Number.NaN, Number.NaN, { preserveScale: true });
+    expect(Number.isFinite(stage.gameImgProps.viewPoint.x)).to.equal(true);
+    expect(Number.isFinite(stage.gameImgProps.viewPoint.y)).to.equal(true);
 
     withGlobalLemmings({ scale: 0 }, () => {
       stage.gameImgProps.display.worldDataSize = { width: 200, height: 100 };
@@ -813,6 +833,20 @@ describe('Stage', function() {
     const drawCount = ctx.drawCalls.length;
     stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
     expect(ctx.drawCalls.length).to.equal(drawCount + 1);
+  });
+
+  it('returns early when draw image payload is invalid', function() {
+    const { canvas, ctx } = makeCanvas(100, 80);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(20, 10);
+    stage.gameImgProps.canvasViewportSize = { width: 10, height: 10 };
+    stage.gameImgProps.width = 10;
+    stage.gameImgProps.height = 10;
+
+    const drawCount = ctx.drawCalls.length;
+    expect(() => stage.draw(stage.gameImgProps, null)).to.not.throw();
+    expect(() => stage.draw(stage.gameImgProps, { width: 0, height: 10 })).to.not.throw();
+    expect(ctx.drawCalls.length).to.equal(drawCount);
   });
 
   it('updates the view point for pan and zoom', function() {

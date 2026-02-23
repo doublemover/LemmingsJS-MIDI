@@ -18,6 +18,18 @@ const invokeHookSafely = async (hook, session) => {
   }
 };
 
+/**
+ * Dispose runtime resources associated with a single MCP session.
+ * Hook failures and close failures are intentionally ignored so teardown can
+ * progress and preserve the original caller error context.
+ *
+ * @param {any} session
+ * @param {{
+ *   stopSpectatorServer?: (session: any) => (void|Promise<void>),
+ *   stopWatchLoop?: (session: any) => (void|Promise<void>)
+ * }} [hooks]
+ * @returns {Promise<void>}
+ */
 const disposeSessionRuntime = async (
   session,
   {
@@ -33,6 +45,16 @@ const disposeSessionRuntime = async (
   await closeSafely(session.browser, 'close');
 };
 
+/**
+ * Dispose runtime resources for all provided sessions.
+ *
+ * @param {Iterable<any>} sessions
+ * @param {{
+ *   stopSpectatorServer?: (session: any) => (void|Promise<void>),
+ *   stopWatchLoop?: (session: any) => (void|Promise<void>)
+ * }} [hooks]
+ * @returns {Promise<void>}
+ */
 const disposeAllSessionRuntimes = async (
   sessions,
   {

@@ -273,6 +273,22 @@ describe('TimeTravelController', function() {
     expect(timer.tickIndex).to.equal(5);
   });
 
+  it('clamps keyframe tickIndex when keyframe is ahead of target', function() {
+    const timer = { tickIndex: 0, isRunning: () => false, suspend() {} };
+    const history = {
+      getKeyframeAtOrBefore() { return { tickIndex: 99 }; },
+      applyKeyframe() {},
+      getDelta() { return null; },
+      applyDeltaForward() {}
+    };
+    const game = { getGameTimer: () => timer, render() {} };
+    const controller = new TimeTravelController(game, history);
+
+    controller.seekToTick(5);
+
+    expect(timer.tickIndex).to.equal(5);
+  });
+
   it('breaks seek loops when deltas are missing', function() {
     const timer = { tickIndex: 0, isRunning: () => false, suspend() {} };
     const history = {
@@ -361,6 +377,49 @@ describe('TimeTravelController', function() {
       expect(truncated).to.equal(1);
       expect(continued).to.equal(1);
       expect(game.inputEnabled).to.equal(true);
+    } finally {
+      globalThis.window = originalWindow;
+      globalThis.performance = originalPerformance;
+    }
+  });
+
+  it('uses a sane reverse frame time when timer frame time is invalid', function() {
+    const originalWindow = globalThis.window;
+    const originalPerformance = globalThis.performance;
+    let rafCallback = null;
+    globalThis.performance = { now: () => 0 };
+    globalThis.window = {
+      requestAnimationFrame(cb) {
+        rafCallback = cb;
+        return 1;
+      },
+      cancelAnimationFrame() {}
+    };
+    try {
+      const timer = {
+        frameTime: 0,
+        TIME_PER_FRAME_MS: 0,
+        isRunning: () => false,
+        suspend() {},
+        tickIndex: 100
+      };
+      const game = { getGameTimer: () => timer, inputEnabled: true };
+      const history = { pause() {}, resume() {} };
+      const controller = new TimeTravelController(game, history);
+      let steps = 0;
+      controller.stepBackward = (count) => { steps += count; };
+
+      controller.startReverse();
+      expect(controller.isReversing).to.equal(true);
+      expect(typeof rafCallback).to.equal('function');
+
+      rafCallback(30);
+      expect(steps).to.equal(0);
+      rafCallback(61);
+      expect(steps).to.equal(1);
+
+      controller.stopReverse();
+      expect(controller.isReversing).to.equal(false);
     } finally {
       globalThis.window = originalWindow;
       globalThis.performance = originalPerformance;

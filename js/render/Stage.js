@@ -300,10 +300,20 @@ class Stage {
       this._cursorStateVersion += 1;
       return;
     }
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      this.cursorCanvas = null;
+      this._cursorStateVersion += 1;
+      return;
+    }
     const c = document.createElement('canvas');
     c.width = frame.width;
     c.height = frame.height;
     const ictx = c.getContext('2d', { alpha: true, willReadFrequently: true});
+    if (!ictx) {
+      this.cursorCanvas = null;
+      this._cursorStateVersion += 1;
+      return;
+    }
     ictx.putImageData(
       new ImageData(frame.getData(), frame.width, frame.height),
       0,
@@ -656,6 +666,7 @@ class Stage {
   }
 
   setGameViewPointPosition(x, y, options = {}) {
+    const targetX = isFinite(x) ? x : 0;
     const targetY = isFinite(y) ? y : 0;
     const preserveScale = options.preserveScale === true;
     if (preserveScale) {
@@ -663,7 +674,7 @@ class Stage {
         ? this._rawScale
         : (this.gameImgProps.viewPoint.scale || 1);
       this._rawScale = rawScale;
-      this.applyViewport(this.gameImgProps, x, targetY, rawScale);
+      this.applyViewport(this.gameImgProps, targetX, targetY, rawScale);
       this.redraw(true);
       return;
     }
@@ -672,7 +683,7 @@ class Stage {
     if (app?.scale > 0) {
       this._rawScale = app.scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
-      this.gameImgProps.viewPoint.setX(x);
+      this.gameImgProps.viewPoint.setX(targetX);
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
 
@@ -684,7 +695,7 @@ class Stage {
     if (scale === 2) {
       this._rawScale = scale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
-      this.gameImgProps.viewPoint.setX(x);
+      this.gameImgProps.viewPoint.setX(targetX);
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
 
@@ -692,15 +703,15 @@ class Stage {
       return;
     }
 
-    const sceneX = this.gameImgProps.viewPoint.getSceneX(x - this.gameImgProps.x);
-    const sceneY = this.gameImgProps.viewPoint.getSceneY(y - this.gameImgProps.y);
+    const sceneX = this.gameImgProps.viewPoint.getSceneX(targetX - this.gameImgProps.x);
+    const sceneY = this.gameImgProps.viewPoint.getSceneY(targetY - this.gameImgProps.y);
     this._rawScale = 2;
     this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
     this.gameImgProps.viewPoint.setX(
-      sceneX - (x - this.gameImgProps.x) / this.gameImgProps.viewPoint.scale
+      sceneX - (targetX - this.gameImgProps.x) / this.gameImgProps.viewPoint.scale
     );
     this.gameImgProps.viewPoint.setY(
-      sceneY - (y - this.gameImgProps.y) / this.gameImgProps.viewPoint.scale
+      sceneY - (targetY - this.gameImgProps.y) / this.gameImgProps.viewPoint.scale
     );
     this.clampViewPoint(this.gameImgProps);
 
@@ -1118,6 +1129,9 @@ class Stage {
     const applyStageEffects = options.applyStageEffects !== false;
     const start = this._perfTrackingFrame ? perfNow() : 0;
     if (!display.ctx) return;
+    if (!img || !Number.isFinite(img.width) || !Number.isFinite(img.height) || img.width < 1 || img.height < 1) {
+      return;
+    }
 
     const displayImage = display.display;
     const dirtyTiles = displayImage?.consumeDirtyTiles?.();

@@ -113,7 +113,10 @@ class TimeTravelController {
     if (!keyframe) return;
     if (typeof this.history.applyKeyframe !== 'function') return;
     this.history.applyKeyframe(this.game, keyframe);
-    timer.tickIndex = keyframe.tickIndex ?? target;
+    const keyframeTick = Number.isFinite(keyframe.tickIndex)
+      ? Math.max(0, Math.trunc(keyframe.tickIndex))
+      : target;
+    timer.tickIndex = Math.min(target, keyframeTick);
     let cursor = timer.tickIndex;
     while (cursor < target) {
       const delta = this._getDeltaAt(cursor);
@@ -150,7 +153,10 @@ class TimeTravelController {
     this._reverseCarryMs = 0;
     const loop = (now) => {
       if (!this._reverseActive) return;
-      const frameTime = timer.frameTime || timer.TIME_PER_FRAME_MS || 60;
+      const frameTimeCandidate = timer.frameTime || timer.TIME_PER_FRAME_MS || 60;
+      const frameTime = Number.isFinite(frameTimeCandidate) && frameTimeCandidate > 0
+        ? frameTimeCandidate
+        : 60;
       let delta = (now - this._lastTime) + this._reverseCarryMs;
       if (delta >= frameTime) {
         const rawSteps = Math.floor(delta / frameTime);

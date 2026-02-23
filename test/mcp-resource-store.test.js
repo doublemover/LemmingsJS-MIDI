@@ -134,6 +134,29 @@ describe('ResourceStore', function () {
     expect(invalid).to.equal(null);
   });
 
+  it('returns defensive copies for stored bytes and meta payloads', function () {
+    const store = createStore();
+    const meta = { tag: 'snapshot', nested: { n: 1 } };
+    const saved = store.put({
+      sessionId: 's1',
+      bytes: Buffer.from('alpha'),
+      mimeType: 'text/plain',
+      meta
+    });
+    meta.tag = 'mutated';
+    meta.nested.n = 99;
+
+    const first = store.get(saved.uri);
+    expect(first.meta.tag).to.equal('snapshot');
+    expect(first.meta.nested.n).to.equal(1);
+    first.bytes[0] = 'z'.charCodeAt(0);
+    first.meta.tag = 'local-change';
+
+    const second = store.get(saved.uri);
+    expect(second.bytes.toString('utf8')).to.equal('alpha');
+    expect(second.meta.tag).to.equal('snapshot');
+  });
+
   it('defaults mime type when omitted', function () {
     const store = createStore();
     const saved = store.put({
