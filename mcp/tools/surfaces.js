@@ -59,6 +59,9 @@ const parseEnabledSurfaces = (raw) => {
 };
 
 const buildSurfaceRegistry = (schemas, handlers, enabledSurfaces) => {
+  const activeSurfaces = enabledSurfaces instanceof Set
+    ? enabledSurfaces
+    : new Set(DEFAULT_ENABLED_SURFACES);
   const specsBySurface = new Map();
   const handlersBySurface = new Map();
   const toolSurfaceByName = new Map();
@@ -78,7 +81,7 @@ const buildSurfaceRegistry = (schemas, handlers, enabledSurfaces) => {
 
   const specs = [];
   for (const [surface, list] of specsBySurface.entries()) {
-    if (!enabledSurfaces.has(surface)) continue;
+    if (!activeSurfaces.has(surface)) continue;
     for (const spec of list) {
       specs.push(spec);
     }

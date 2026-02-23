@@ -122,4 +122,12 @@ describe('mcp tool surfaces', function () {
     expect(interactToolNames).to.include('input.action');
     expect(interactToolNames).to.not.include('objects.place');
   });
+
+  it('defaults to all known surfaces when enabledSurfaces is omitted', function () {
+    const registry = buildSurfaceRegistry(makeSchemas(), makeHandlers());
+    const names = registry.specs.map((spec) => spec.name);
+    expect(names).to.include('state.get');
+    expect(names).to.include('objects.list');
+    expect(names).to.include('input.action');
+  });
 });
