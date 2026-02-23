@@ -631,3 +631,105 @@ Notes:
   file and remove redundant duplicate coverage to reduce maintenance churn while
   preserving assertions.
   Touchpoints: `test/sound-events.test.js`, `test/soundevents.test.js`.
+
+## Phase 40: MCP server surface split and semantic-first workflows
+- [ ] Split MCP surface into dedicated game/editor/interact tool registrations
+  and manifests, keeping raw input tools isolated from semantic workflows.
+  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/*`.
+- [ ] Replace catch-all editor mutation flows with typed verbs (`objects.list`,
+  `objects.place`, `objects.update`, `objects.delete`) that support paging,
+  bbox filtering, compact field profiles, and revision-aware deltas.
+  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `test/mcp*.test.js`.
+- [ ] Add conformance tests that enforce semantic-first usage (game/editor
+  servers reject raw input tools; interact server remains explicit fallback).
+  Touchpoints: `test/mcp*.test.js`, `docs/mcp/protocol-v2.md`.
+- [ ] Publish an MCP usage playbook for agents covering snapshot-first loops,
+  batching, paging, and when to use Interact MCP as last resort.
+  Touchpoints: `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
+
+## Phase 41: History/rewind compression tier 3
+- [ ] Add no-op delta tokens plus run-length encoding for consecutive unchanged
+  ticks to reduce idle-history memory growth.
+  Touchpoints: `js/game/HistoryStore.js`, `test/history-store.test.js`.
+- [ ] Encode history deltas into fixed-size blocks with canonical typed-array
+  layouts to reduce object churn and improve decode locality.
+  Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
+- [ ] Add optional cold-block compression and dictionary dedupe for repeated
+  blocks with collision-safe verification.
+  Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
+- [ ] Make bounded history defaults explicit in runtime profiles and add replay
+  invariants that random-seek/rewind/replay against stable hashes.
+  Touchpoints: `js/game/HistoryStore.js`, `js/game/TimeTravelController.js`,
+  `test/history-store.test.js`, `test/time-travel-controller.test.js`.
+
+## Phase 42: Render throughput tier 5 (Canvas2D-first)
+- [ ] Reduce hot-path `putImageData` usage via offscreen composition and
+  `drawImage`-based present paths where correctness permits.
+  Touchpoints: `js/render/Stage.js`, `js/render/DisplayImage.js`.
+- [ ] Unify damage tracking into one authoritative aggregator for terrain,
+  sprites, and overlays with predictable full-redraw fallback thresholds.
+  Touchpoints: `js/render/Stage.js`, `js/render/GroundRenderer.js`,
+  `js/game/GameView.js`.
+- [ ] Extend perf instrumentation with allocation-aware frame diagnostics and
+  baseline capture workflow for p50/p99/worst-case scenes.
+  Touchpoints: `js/render/Stage.js`, `scripts/bench-hotpaths.js`,
+  `docs/TESTING.md`.
+- [ ] Audit minimap/particle redraw cadence and batching to reduce unnecessary
+  per-frame work during stable scenes.
+  Touchpoints: `js/game/MiniMap.js`, `js/game/ParticleTable.js`,
+  `test/minimap.test.js`.
+
+## Phase 43: MIDI UI expressive controls and intent model
+- [ ] Extract a stable `MidiIntent` model used by UI, persistence, and router
+  layers so control widgets are decoupled from mapping internals.
+  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
+- [ ] Replace key/octave dropdown flows with direct-manipulation controls
+  (keyboard-style picker + octave shift) and deterministic test hooks.
+  Touchpoints: `js/app/midiUiController.js`, `css/*`, `test/midi/*.test.js`.
+- [ ] Replace arpeggiator mode dropdown with a compact step-pattern editor plus
+  presets and explicit serialization semantics.
+  Touchpoints: `js/app/midi-ui/*`, `test/midi/*.test.js`.
+- [ ] Add preview/audition and MIDI-learn affordances that remain fully
+  automatable in E2E harness flows.
+  Touchpoints: `js/app/midiUiController.js`, `e2e/midi-ui.spec.js`.
+
+## Phase 44: Runtime correctness and profile hardening
+- [ ] Migrate gameplay/runtime logic to strict equality (`===`/`!==`) with
+  intentional `== null` exceptions only where dual-null semantics are required.
+  Touchpoints: `js/actions/*`, `js/game/*`, `js/lemmings/*`, `eslint.config.js`.
+- [ ] Complete DOM resolution hardening in boot paths via explicit
+  required/optional element helpers and clearer embed-mode failure behavior.
+  Touchpoints: `js/app/boot.js`, `js/app/domResolver.js`, `test/app-boot.test.js`.
+- [ ] Introduce runtime profile presets (`classic`, `midi`, `editor`, `e2e`,
+  `perf`) to centralize history, logging, and rendering defaults.
+  Touchpoints: `js/app/boot.js`, `js/game/GameFactory.js`, `docs/TESTING.md`.
+- [ ] Add targeted `tsc --checkJs` coverage for critical modules to catch
+  undefined-shape regressions before runtime.
+  Touchpoints: `js/game/HistoryStore.js`, `js/render/Stage.js`,
+  `js/level/Trigger.js`, `package.json`.
+
+## Phase 45: Test suite condensation tier 3
+- [ ] Expand shared test support (`dom`, `canvas`, `deps`, fixtures) and migrate
+  largest suites to remove duplicated scaffolding.
+  Touchpoints: `test/support/*`, `test/helpers/*`, `test/*coverage*.test.js`.
+- [ ] Merge remaining near-duplicate coverage suites and standardize naming
+  conventions to avoid case/collision drift.
+  Touchpoints: `test/*`.
+- [ ] Refactor top-volume suites into table-driven scenario runners with shared
+  harnesses while preserving branch coverage guarantees.
+  Touchpoints: `test/history-store.test.js`, `test/action-systems.test.js`,
+  `test/midi/*.test.js`, `test/gameview.coverage.test.js`.
+- [ ] Add E2E page-object fixtures and semantic selector helpers to reduce
+  repeated harness setup boilerplate.
+  Touchpoints: `e2e/*.spec.js`, `e2e/helpers/*`.
+
+## Phase 46: Privacy-first analytics (optional)
+- [ ] Add local-only analytics ring buffer with explicit export/import so
+  development telemetry works with zero hosted backend.
+  Touchpoints: `js/app/*`, `docs/*`.
+- [ ] Add optional managed `sendBeacon` endpoint integration path (off by
+  default) with strict, versioned, low-cardinality event schema.
+  Touchpoints: `js/app/*`, `docs/*`.
+- [ ] Document consent defaults and data-minimization constraints for visitor
+  stats and gameplay/editor events.
+  Touchpoints: `docs/*`.
