@@ -1,13 +1,16 @@
 const withinRect = (lem, rect) => {
   if (!rect) return true;
+  const x = Number(rect.x);
+  const y = Number(rect.y);
   const width = Number.isFinite(rect.w) ? rect.w : rect.width;
   const height = Number.isFinite(rect.h) ? rect.h : rect.height;
+  if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
   if (!Number.isFinite(width) || !Number.isFinite(height)) return true;
   return (
-    lem.x >= rect.x &&
-    lem.x <= rect.x + width &&
-    lem.y >= rect.y &&
-    lem.y <= rect.y + height
+    lem.x >= x &&
+    lem.x <= x + width &&
+    lem.y >= y &&
+    lem.y <= y + height
   );
 };
 

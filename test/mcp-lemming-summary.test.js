@@ -100,4 +100,22 @@ describe('buildLemmingSummary', function () {
     summary.top[0].x = 777;
     expect(selected.x).to.equal(4);
   });
+
+  it('ignores malformed rect origins instead of filtering all lemmings', function () {
+    const state = {
+      game: {
+        lemmingManager: { selectedIndex: -1 },
+        lemmings: [
+          { id: 0, x: 1, y: 1 },
+          { id: 1, x: 5, y: 4 }
+        ]
+      }
+    };
+
+    const summary = buildLemmingSummary(state, {
+      rectWorld: { x: 'bad', y: 0, width: 10, height: 10 }
+    });
+    expect(summary.totalCount).to.equal(2);
+    expect(summary.activeCount).to.equal(2);
+  });
 });

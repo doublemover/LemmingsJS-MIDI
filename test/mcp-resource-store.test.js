@@ -157,6 +157,50 @@ describe('ResourceStore', function () {
     expect(second.meta.tag).to.equal('snapshot');
   });
 
+  it('falls back to cycle-safe meta cloning when structuredClone is unavailable', function () {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'structuredClone');
+    if (descriptor && descriptor.configurable !== true && descriptor.writable !== true) {
+      this.skip();
+      return;
+    }
+
+    const store = createStore();
+    const meta = { tag: 'snapshot', nested: { n: 1 } };
+    meta.self = meta;
+
+    const restoreStructuredClone = () => {
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'structuredClone', descriptor);
+      } else {
+        delete globalThis.structuredClone;
+      }
+    };
+
+    let saved = null;
+    try {
+      Object.defineProperty(globalThis, 'structuredClone', {
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      saved = store.put({
+        sessionId: 's1',
+        bytes: Buffer.from('alpha'),
+        mimeType: 'text/plain',
+        meta
+      });
+    } finally {
+      restoreStructuredClone();
+    }
+
+    meta.nested.n = 99;
+    const resource = store.get(saved.uri);
+    expect(resource.meta).to.not.equal(meta);
+    expect(resource.meta.tag).to.equal('snapshot');
+    expect(resource.meta.nested.n).to.equal(1);
+    expect(resource.meta.self).to.equal(resource.meta);
+  });
+
   it('defaults mime type when omitted', function () {
     const store = createStore();
     const saved = store.put({

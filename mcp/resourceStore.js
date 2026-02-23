@@ -8,6 +8,77 @@ const normalizeInteger = (value, fallback, min = 0) => {
   return integer >= min ? integer : fallback;
 };
 
+const cloneMetaFallback = (value, seen = new WeakMap()) => {
+  if (value == null || typeof value !== 'object') return value;
+  if (seen.has(value)) return seen.get(value);
+
+  if (Buffer.isBuffer(value)) {
+    const copy = Buffer.from(value);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof Date) {
+    const copy = new Date(value.getTime());
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof RegExp) {
+    const copy = new RegExp(value.source, value.flags);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof ArrayBuffer) {
+    const copy = value.slice(0);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof DataView) {
+    const buffer = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+    const copy = new DataView(buffer);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (ArrayBuffer.isView(value)) {
+    const copy = new value.constructor(value);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof Map) {
+    const copy = new Map();
+    seen.set(value, copy);
+    for (const [entryKey, entryValue] of value.entries()) {
+      copy.set(
+        cloneMetaFallback(entryKey, seen),
+        cloneMetaFallback(entryValue, seen)
+      );
+    }
+    return copy;
+  }
+  if (value instanceof Set) {
+    const copy = new Set();
+    seen.set(value, copy);
+    for (const entry of value.values()) {
+      copy.add(cloneMetaFallback(entry, seen));
+    }
+    return copy;
+  }
+  if (Array.isArray(value)) {
+    const copy = new Array(value.length);
+    seen.set(value, copy);
+    for (let i = 0; i < value.length; i += 1) {
+      copy[i] = cloneMetaFallback(value[i], seen);
+    }
+    return copy;
+  }
+
+  const copy = {};
+  seen.set(value, copy);
+  for (const key of Object.keys(value)) {
+    copy[key] = cloneMetaFallback(value[key], seen);
+  }
+  return copy;
+};
+
 const cloneMeta = (value) => {
   if (value == null || typeof value !== 'object') return {};
   if (typeof structuredClone === 'function') {
@@ -20,7 +91,11 @@ const cloneMeta = (value) => {
   try {
     return JSON.parse(JSON.stringify(value));
   } catch {
-    return {};
+    try {
+      return cloneMetaFallback(value);
+    } catch {
+      return {};
+    }
   }
 };
 
