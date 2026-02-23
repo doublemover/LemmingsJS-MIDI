@@ -541,6 +541,8 @@ describe('MidiInputController coverage: config and mapping', function() {
     const controller = new MidiInputController({});
     controller.setConfig(makeConfig(3));
     expect(controller.channel).to.equal(3);
+    controller.setConfig(makeConfig('3'));
+    expect(controller.channel).to.equal(3);
     controller.setConfig(makeConfig('OmNi'));
     expect(controller.channel).to.equal('omni');
   });

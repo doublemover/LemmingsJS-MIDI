@@ -3,6 +3,19 @@ import { SkillTypes } from '../../game/SkillTypes.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const normalizeInputChannel = (channel) => {
+  if (typeof channel === 'number' && Number.isFinite(channel)) {
+    return clamp(channel | 0, 1, 16);
+  }
+  const normalized = String(channel ?? 'omni').trim().toLowerCase();
+  if (!normalized || normalized === 'omni') return 'omni';
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return clamp(Math.trunc(numeric), 1, 16);
+  }
+  return normalized;
+};
+
 const scaleValue = (value, min, max) => {
   const t = clamp(value / 127, 0, 1);
   return min + (max - min) * t;
@@ -20,12 +33,7 @@ class MidiInputController {
   }
 
   setConfig(config) {
-    const channel = config?.input?.channel ?? 'omni';
-    if (typeof channel === 'number') {
-      this.channel = clamp(channel | 0, 1, 16);
-    } else {
-      this.channel = String(channel || 'omni').toLowerCase();
-    }
+    this.channel = normalizeInputChannel(config?.input?.channel);
   }
 
   attach(input) {

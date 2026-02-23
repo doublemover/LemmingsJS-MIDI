@@ -418,6 +418,111 @@ describe('Stage', function() {
     expect(putCount).to.equal(1);
   });
 
+  it('forces full blits when cumulative frame damage crosses the region threshold', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    const consumedRects = [
+      { x: 1, y: 1, width: 2, height: 2 },
+      { x: 5, y: 5, width: 2, height: 2 }
+    ];
+    stage.gameImgProps.display.consumeDirtyTiles = () => undefined;
+    stage.gameImgProps.display.consumeDirtyRects = () => consumedRects;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = () => {};
+    stage._frameDamageStats = {
+      regionCount: 47,
+      dirtyArea: 0,
+      fullArea: 40 * 20,
+      uploadCalls: 0,
+      fullBlitCount: 0,
+      tileUpdateCount: 0
+    };
+
+    const putArgs = [];
+    stage.gameImgProps.ctx.putImageData = (...args) => {
+      putArgs.push(args);
+    };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(putArgs).to.have.length(1);
+    expect(putArgs[0]).to.have.length(3);
+    expect(stage._frameDamageStats.fullBlitCount).to.equal(1);
+  });
+
+  it('uses a single union blit when offscreen-present mode is active', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+    stage._renderExperiments.offscreenPresentActive = true;
+
+    const consumedRects = [
+      { x: 0, y: 0, width: 10, height: 10 },
+      { x: 5, y: 5, width: 10, height: 10 }
+    ];
+    stage.gameImgProps.display.consumeDirtyTiles = () => undefined;
+    stage.gameImgProps.display.consumeDirtyRects = () => consumedRects;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = () => {};
+    stage._frameDamageStats = {
+      regionCount: 0,
+      dirtyArea: 0,
+      fullArea: 40 * 20,
+      uploadCalls: 0,
+      fullBlitCount: 0,
+      tileUpdateCount: 0
+    };
+
+    const putArgs = [];
+    stage.gameImgProps.ctx.putImageData = (...args) => {
+      putArgs.push(args);
+    };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(putArgs).to.have.length(1);
+    expect(putArgs[0]).to.have.length(7);
+    expect(stage._frameDamageStats.uploadCalls).to.equal(1);
+  });
+
+  it('rolls back offscreen-present mode when union blits fail at runtime', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+    stage._renderExperiments.offscreenPresentActive = true;
+
+    const consumedRects = [
+      { x: 0, y: 0, width: 10, height: 10 },
+      { x: 5, y: 5, width: 10, height: 10 }
+    ];
+    stage.gameImgProps.display.consumeDirtyTiles = () => undefined;
+    stage.gameImgProps.display.consumeDirtyRects = () => consumedRects;
+    stage.gameImgProps.display.releaseConsumedDirtyRects = () => {};
+    stage._frameDamageStats = {
+      regionCount: 0,
+      dirtyArea: 0,
+      fullArea: 40 * 20,
+      uploadCalls: 0,
+      fullBlitCount: 0,
+      tileUpdateCount: 0
+    };
+
+    let calls = 0;
+    stage.gameImgProps.ctx.putImageData = () => {
+      calls += 1;
+      if (calls === 1) {
+        throw new Error('present failed');
+      }
+    };
+
+    stage.draw(stage.gameImgProps, stage.gameImgProps.display.getImageData());
+    expect(calls).to.equal(consumedRects.length + 1);
+    expect(stage._renderExperiments.offscreenPresentActive).to.equal(false);
+    expect(stage._renderExperiments.rollbackReason).to.equal('offscreen_present_runtime_error');
+    expect(stage._frameDamageStats.uploadCalls).to.equal(consumedRects.length);
+  });
+
   it('keeps updates visible when tile tracking is enabled after pending rect dirties', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

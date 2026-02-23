@@ -241,6 +241,13 @@ class MidiEventRouter {
     );
     const snapshot = this.scheduler.getRateSnapshot(now);
     const maxBytes = limits.maxBytesPerSecond ?? snapshot.maxBytesPerSecond;
+    let shareReport = null;
+    const getShareReport = () => {
+      if (!shareReport) {
+        shareReport = this.scheduler.getUsageShare('next', now);
+      }
+      return shareReport;
+    };
     const windowEnd = now + 1000;
     let nextCount = snapshot.next.count;
     let nextBytes = snapshot.next.bytes;
@@ -259,7 +266,7 @@ class MidiEventRouter {
       this._lastRateReport = {
         timeMs: now,
         reason: 'byte-limit',
-        snapshot: this.scheduler.getUsageShare('next', now)
+        snapshot: getShareReport()
       };
       return false;
     }
@@ -267,7 +274,7 @@ class MidiEventRouter {
       this._lastRateReport = {
         timeMs: now,
         reason: 'count-limit',
-        snapshot: this.scheduler.getUsageShare('next', now)
+        snapshot: getShareReport()
       };
       return false;
     }
@@ -297,7 +304,7 @@ class MidiEventRouter {
       this._lastRateReport = {
         timeMs: now,
         reason: 'priority-saturated',
-        snapshot: this.scheduler.getUsageShare('next', now)
+        snapshot: getShareReport()
       };
       return false;
     }
@@ -305,12 +312,12 @@ class MidiEventRouter {
       this._lastRateReport = {
         timeMs: now,
         reason: 'byte-limit',
-        snapshot: this.scheduler.getUsageShare('next', now)
+        snapshot: getShareReport()
       };
       return false;
     }
 
-    const shareReport = this.scheduler.getUsageShare('next', now);
+    shareReport = getShareReport();
     const sameGroup = shareReport.filter(entry => entry.priority === priority);
     const current = sameGroup.find(entry => entry.sfxId === meta.sfxId);
     const groupSize = sameGroup.length + (current ? 0 : 1);

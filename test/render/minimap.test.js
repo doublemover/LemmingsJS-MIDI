@@ -69,7 +69,7 @@ describe('MiniMap', function() {
     const miniMap = new MiniMap({}, level, guiDisplay);
 
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
-    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
 
     guiDisplay.onMouseDown.trigger({ x: destX + 10, y: destY + 5 });
     const expectedX = Math.max(
@@ -90,8 +90,11 @@ describe('MiniMap', function() {
     guiDisplay.onMouseMove.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
     expect(level.screenPositionX).to.equal(0);
 
+    guiDisplay.onMouseDown.trigger({ x: destX + 1, y: destY + miniMap.height - 1 });
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
+
     guiDisplay.onMouseDown.trigger({ x: 1, y: 1 });
-    expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
 
     const records = [];
     withGlobalLemmings({
@@ -217,7 +220,7 @@ describe('MiniMap', function() {
     const guiDisplay = makeGuiDisplay();
     const miniMap = new MiniMap({}, level, guiDisplay);
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
-    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
 
     miniMap.guiDisplay = null;
     guiDisplay.onMouseDown.trigger({ x: destX + 1, y: destY + 1 });
@@ -289,7 +292,7 @@ describe('MiniMap', function() {
     guiDisplay.worldDataSize.width = 200;
     const miniMap = new MiniMap({}, level, guiDisplay);
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
-    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
 
     guiDisplay.onMouseDown.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
     expect(level.screenPositionX).to.equal(0);

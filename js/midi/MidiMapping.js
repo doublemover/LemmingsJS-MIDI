@@ -339,6 +339,26 @@ class MidiMapping {
     return this.config.sfx?.[String(sfxId)] ?? null;
   }
 
+  /**
+   * Resolve a gameplay event into a MIDI-ready note payload.
+   * @param {object} event - Source event (position, sfx id, trigger metadata).
+   * @param {object} [context={}] - Runtime context (view rect, level dimensions, etc.).
+   * @param {number} [density=0] - Normalized density scalar used by density mappings.
+   * @param {object|null} [overrideSfx=null] - Optional per-event SFX mapping override.
+   * @returns {{
+   *   note:number,
+   *   notes:number[]|null,
+   *   velocity:number,
+   *   durationTicks:number,
+   *   releaseVelocity:number|null,
+   *   timbre:number|null,
+   *   pan:number|null,
+   *   pitchBend:number,
+   *   frequencyHz:number,
+   *   channel:number|null,
+   *   arp:object|null
+   * }|null}
+   */
   mapEvent(event, context = {}, density = 0, overrideSfx = null) {
     const cfg = this.config;
     if (!cfg.enabled || !event) return null;

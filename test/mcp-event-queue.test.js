@@ -181,4 +181,19 @@ describe('EventQueue', function () {
     const envelope = queue.drain('0');
     expect(envelope.humanSummary).to.equal('e; f');
   });
+
+  it('clears buffered human summaries when summary retention is disabled at runtime', function () {
+    const queue = createQueue(8);
+    queue.maxHumanSummaryParts = 4;
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'human', type: 'input', summary: 'second' });
+    expect(queue.humanSummaryParts.length).to.equal(2);
+
+    queue.maxHumanSummaryParts = 0;
+    queue.add({ source: 'human', type: 'input', summary: 'third' });
+
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.humanSummary).to.equal(undefined);
+    expect(queue.humanSummaryParts.length).to.equal(0);
+  });
 });

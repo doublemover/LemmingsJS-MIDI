@@ -173,6 +173,20 @@ describe('UserInputManager', function() {
     expect(point.y).to.equal(150);
   });
 
+  it('keeps relative position finite when canvas or rect dimensions are zero', function() {
+    const element = makeElement();
+    element.width = 0;
+    element.height = 0;
+    element.getBoundingClientRect = () => ({ left: 10, top: 20, width: 0, height: 0 });
+    const manager = new UserInputManager(element);
+
+    const point = manager.getRelativePosition(element, 60, 95);
+    expect(Number.isFinite(point.x)).to.equal(true);
+    expect(Number.isFinite(point.y)).to.equal(true);
+    expect(point.x).to.equal(50);
+    expect(point.y).to.equal(75);
+  });
+
   it('disposes listeners safely', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);

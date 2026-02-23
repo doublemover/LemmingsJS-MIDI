@@ -181,6 +181,33 @@ describe('GameDisplay', function() {
     expect(stage.visible).to.equal(true);
   });
 
+  it('keeps overlay display lazy until needed and still clears stale overlay state', function() {
+    const overlayDisplay = { clearCalls: 0, clear() { this.clearCalls += 1; } };
+    const stage = {
+      visible: null,
+      getCalls: 0,
+      getGameOverlayDisplay() {
+        this.getCalls += 1;
+        return overlayDisplay;
+      },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({ stage });
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+
+    gd.render();
+    gd.renderDebug();
+    expect(stage.getCalls).to.equal(0);
+
+    gd._overlayHadContent = true;
+    gd.render();
+    expect(stage.getCalls).to.equal(1);
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(stage.visible).to.equal(false);
+  });
+
   it('exposes drawCorner test hook', function() {
     const display = makeDisplay({ drawRect(...args) { this.args = args; } });
     const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();

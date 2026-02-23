@@ -101,7 +101,7 @@ class MiniMap {
     if (!this.guiDisplay || !this.level) return;
     const gd = this.guiDisplay;
     const destX = gd.worldDataSize.width - this.width;
-    const destY = gd.worldDataSize.height - this.height - 1;
+    const destY = gd.worldDataSize.height - this.height;
 
     const mx = event.x - destX;
     const my = event.y - destY;

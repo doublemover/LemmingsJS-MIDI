@@ -112,7 +112,11 @@ class EventQueue {
         MIN_HUMAN_SUMMARY_PARTS
       );
       this.maxHumanSummaryParts = summaryCap;
-      if (summaryCap <= 0) return entry;
+      if (summaryCap <= 0) {
+        this.humanSummaryParts.length = 0;
+        this.humanSummaryStart = 0;
+        return entry;
+      }
       if (this.humanSummaryParts.length > summaryCap) {
         if (this.humanSummaryStart === 0) {
           this.humanSummaryParts = this.humanSummaryParts.slice(-summaryCap);

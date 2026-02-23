@@ -127,27 +127,27 @@ class GameDisplay {
       this.level.render(this.display);
       this.objectManager.render(this.display);
       this.lemmingManager.render(this.display);
-      const overlayDisplay = this._getGameOverlayDisplay();
-      const targetDisplay = overlayDisplay || this.display;
       let hasOverlay = false;
+      let selected = null;
+      let hover = null;
       if (!this.game.showDebug) {
-        const sel = this.lemmingManager.getSelectedLemming();
-        if (sel && !sel.removed) {
-          hasOverlay = true;
-        }
-        if (this.hoverLemming && !this.hoverLemming.removed) {
-          hasOverlay = true;
-        }
-        if (overlayDisplay && (hasOverlay || this._overlayHadContent)) {
-          overlayDisplay.clear(0x00000000);
-        }
-        if (sel && !sel.removed) this.#drawSelection(sel, targetDisplay);
-
-        if (this.hoverLemming && !this.hoverLemming.removed) {
-          this.#drawHover(this.hoverLemming, targetDisplay);
-        }
-      } else if (overlayDisplay && this._overlayHadContent) {
+        selected = this.lemmingManager.getSelectedLemming();
+        hover = this.hoverLemming;
+        hasOverlay = !!((selected && !selected.removed) || (hover && !hover.removed));
+      }
+      const needsOverlayLayer = hasOverlay || this._overlayHadContent;
+      const overlayDisplay = needsOverlayLayer ? this._getGameOverlayDisplay() : null;
+      const targetDisplay = overlayDisplay || this.display;
+      if (overlayDisplay && needsOverlayLayer) {
         overlayDisplay.clear(0x00000000);
+      }
+      if (!this.game.showDebug) {
+        if (selected && !selected.removed) {
+          this.#drawSelection(selected, targetDisplay);
+        }
+        if (hover && !hover.removed) {
+          this.#drawHover(hover, targetDisplay);
+        }
       }
       if (overlayDisplay) {
         this._overlayHadContent = hasOverlay;
@@ -178,10 +178,11 @@ class GameDisplay {
       this.level.renderDebug(this.display);
       this.lemmingManager.renderDebug(this.display);
       this.triggerManager.renderDebug(this.display);
-      const overlayDisplay = this._getGameOverlayDisplay();
-      const targetDisplay = overlayDisplay || this.display;
       const hasOverlay = !!this.hoverLemming;
-      if (overlayDisplay && (hasOverlay || this._overlayHadContent)) {
+      const needsOverlayLayer = hasOverlay || this._overlayHadContent;
+      const overlayDisplay = needsOverlayLayer ? this._getGameOverlayDisplay() : null;
+      const targetDisplay = overlayDisplay || this.display;
+      if (overlayDisplay && needsOverlayLayer) {
         overlayDisplay.clear(0x00000000);
       }
       if (this.hoverLemming) {
@@ -207,7 +208,6 @@ class GameDisplay {
       }
     }
   }
-
   #drawCorner(x, y, r, g, b) {
     this.display.drawRect(x, y, 2, 2, r, g, b, true);
   }

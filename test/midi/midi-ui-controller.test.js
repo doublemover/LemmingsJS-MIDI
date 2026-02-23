@@ -50,7 +50,81 @@ const createWebMidiStub = (inputs, outputs) => {
   };
 };
 
+const createDeferredWindow = () => {
+  const win = createTestWindow();
+  const queue = [];
+  const scheduledDelays = [];
+  win.setTimeout = (cb, delay = 0) => {
+    queue.push(cb);
+    scheduledDelays.push(delay);
+    return queue.length;
+  };
+  win.__runNextTimer = () => {
+    const cb = queue.shift();
+    if (typeof cb === 'function') cb();
+  };
+  win.__timerCount = () => queue.length;
+  win.__scheduledDelays = scheduledDelays;
+  return win;
+};
+
 describe('midiUiController', function() {
+  it('batches queued MIDI UI refreshes into a single timer flush', function() {
+    const doc = new TestDocument();
+    const win = createDeferredWindow();
+    registerElement(doc, 'input', 'midiEnabledToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({})
+    });
+    controller.bindMidiUi();
+
+    controller.setMidiOverrides({ timing: { bpmBase: 110 } });
+    controller.setMidiOverrides({ scale: { name: 'major' } });
+    controller.setMidiOverrides({ velocityRange: { default: 95 } });
+    expect(win.__timerCount()).to.equal(1);
+
+    win.__runNextTimer();
+    expect(win.__timerCount()).to.equal(0);
+
+    controller.setMidiOverrides({ repeat: { enabled: true } });
+    expect(win.__timerCount()).to.equal(1);
+  });
+
+  it('debounces device refresh scheduling while a refresh timer is pending', function() {
+    const doc = new TestDocument();
+    const win = createDeferredWindow();
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+    const webMidi = createWebMidiStub(
+      [{ id: 'in-1', name: 'Input 1' }],
+      [{ id: 'out-1', name: 'Output 1' }]
+    );
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({})
+    });
+
+    controller.onEnabled();
+    webMidi.emit('connected');
+    webMidi.emit('portschanged');
+    expect(win.__timerCount()).to.equal(1);
+    expect(win.__scheduledDelays.at(-1)).to.equal(100);
+
+    win.__runNextTimer();
+    webMidi.emit('disconnected');
+    expect(win.__timerCount()).to.equal(1);
+    expect(win.__scheduledDelays.filter(delay => delay === 100).length).to.equal(2);
+  });
+
   it('persists the enabled toggle and disables controls', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
