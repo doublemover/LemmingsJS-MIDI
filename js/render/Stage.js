@@ -656,7 +656,6 @@ class Stage {
   }
 
   setGameViewPointPosition(x, y, options = {}) {
-    this.clear(this.gameImgProps);
     const targetY = isFinite(y) ? y : 0;
     const preserveScale = options.preserveScale === true;
     if (preserveScale) {

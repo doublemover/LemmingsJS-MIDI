@@ -32,10 +32,19 @@ class ResourceStore {
   }
 
   put({ sessionId, bytes, mimeType, meta = {}, ttlMs } = {}) {
-    if (!sessionId || !bytes) return null;
-    const buffer = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
+    if (!sessionId || bytes == null) return null;
+    let buffer;
+    try {
+      // Always clone to avoid storing mutable caller-owned buffers by reference.
+      buffer = Buffer.from(bytes);
+    } catch {
+      return null;
+    }
     const sizeBytes = buffer.length;
     if (sizeBytes > this.maxBytes) return null;
+    const normalizedMimeType = typeof mimeType === 'string' && mimeType.trim()
+      ? mimeType.trim()
+      : 'application/octet-stream';
     const id = this.idFactory();
     const uri = `lemmings://sessions/${sessionId}/resources/${id}`;
     const ttl = normalizeInteger(ttlMs, this.defaultTtlMs, 0);
@@ -44,7 +53,7 @@ class ResourceStore {
       id,
       uri,
       sessionId,
-      mimeType,
+      mimeType: normalizedMimeType,
       meta,
       bytes: buffer,
       sizeBytes,

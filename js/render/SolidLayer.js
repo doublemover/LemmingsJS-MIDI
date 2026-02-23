@@ -126,10 +126,19 @@ class SolidLayer extends BaseLogger {
     if (x < 0 || x >= w || !Number.isFinite(limit) || limit <= 0) return 0;
     const mask = this.mask;
     let wall = 0;
+    let started = false;
     for (let dy = 1; dy <= limit; dy++) {
       const y = yBottom - dy;
-      if (y < 0 || y >= h) continue;
-      if (mask[y * w + x] !== 0) wall = dy;
+      if (y < 0 || y >= h) {
+        if (started) break;
+        continue;
+      }
+      started = true;
+      if (mask[y * w + x] !== 0) {
+        wall += 1;
+      } else {
+        break;
+      }
     }
     return wall;
   }

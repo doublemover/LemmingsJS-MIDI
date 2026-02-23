@@ -61,6 +61,17 @@ describe('EventQueue', function () {
     expect(queue.lastDelivered).to.equal(2);
   });
 
+  it('normalizes fractional cursors before draining', function () {
+    const queue = createQueue(4);
+    queue.add({ source: 'agent', type: 'a' });
+    queue.add({ source: 'agent', type: 'b' });
+    queue.add({ source: 'agent', type: 'c' });
+
+    const envelope = queue.drain('1.9');
+    expect(envelope.events.map((event) => event.type)).to.deep.equal(['b', 'c']);
+    expect(envelope.cursor).to.equal('3');
+  });
+
   it('preserves human summary on peek drains', function () {
     const queue = createQueue(4);
     queue.add({ source: 'human', type: 'input', summary: 'first' });
@@ -185,6 +196,22 @@ describe('EventQueue', function () {
     queue.add({ source: 'agent', type: 'state' });
     const envelope = queue.drain('0');
     expect(envelope.events).to.have.lengthOf(1);
+  });
+
+  it('normalizes bigint capacity inputs without throwing', function () {
+    const queue = new EventQueue({
+      maxEvents: 4n,
+      maxHumanSummaryParts: 2n,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+    expect(queue.maxEvents).to.equal(4);
+    expect(queue.maxHumanSummaryParts).to.equal(2);
+    queue.add({ source: 'human', type: 'input', summary: 'a' });
+    queue.add({ source: 'human', type: 'input', summary: 'b' });
+    queue.add({ source: 'human', type: 'input', summary: 'c' });
+    const envelope = queue.drain('0');
+    expect(envelope.humanSummary).to.equal('b; c');
   });
 
   it('caps extremely large maxEvents values to a safe upper bound', function () {

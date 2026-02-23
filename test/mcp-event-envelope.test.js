@@ -44,4 +44,15 @@ describe('attachEvents', function () {
     expect(result).to.equal(payload);
     expect(result.events).to.equal(undefined);
   });
+
+  it('returns non-object payloads unchanged', function () {
+    const session = {
+      eventsMode: 'minimal',
+      events: createQueue()
+    };
+    session.events.add({ source: 'human', type: 'input', summary: 'click' });
+    const payload = 'ok';
+    const result = attachEvents(session, payload);
+    expect(result).to.equal(payload);
+  });
 });

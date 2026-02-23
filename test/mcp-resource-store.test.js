@@ -114,4 +114,33 @@ describe('ResourceStore', function () {
     expect(store.list({ limit: 0 })).to.deep.equal([]);
     expect(store.list({ limit: Number.NaN })).to.have.lengthOf(1);
   });
+
+  it('clones caller buffers and rejects invalid byte payloads', function () {
+    const store = createStore();
+    const source = Buffer.from('alpha');
+    const saved = store.put({
+      sessionId: 's1',
+      bytes: source,
+      mimeType: 'text/plain'
+    });
+    source[0] = 'z'.charCodeAt(0);
+    expect(store.get(saved.uri).bytes.toString('utf8')).to.equal('alpha');
+
+    const invalid = store.put({
+      sessionId: 's1',
+      bytes: { nope: true },
+      mimeType: 'text/plain'
+    });
+    expect(invalid).to.equal(null);
+  });
+
+  it('defaults mime type when omitted', function () {
+    const store = createStore();
+    const saved = store.put({
+      sessionId: 's1',
+      bytes: Buffer.from('x')
+    });
+    const item = store.get(saved.uri);
+    expect(item.mimeType).to.equal('application/octet-stream');
+  });
 });

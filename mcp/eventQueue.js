@@ -11,7 +11,8 @@ const MAX_HUMAN_SUMMARY_PARTS = 2048;
  * Normalize capacity-like inputs to stable integer bounds.
  */
 const normalizeCapacity = (value, fallback, min = 0) => {
-  const candidate = Number.isFinite(Number(value)) ? Math.trunc(value) : NaN;
+  const numeric = Number(value);
+  const candidate = Number.isFinite(numeric) ? Math.trunc(numeric) : NaN;
   if (!Number.isFinite(candidate) || candidate < min) return fallback;
   return candidate;
 };
@@ -168,7 +169,8 @@ class EventQueue {
    */
   drain(after, { updateCursor = true, includeHumanSummary = true } = {}) {
     if (this.size <= 0) return null;
-    const afterSeq = Number.isFinite(Number(after)) ? Number(after) : this.lastDelivered;
+    const parsedAfter = Number(after);
+    const afterSeq = Number.isFinite(parsedAfter) ? Math.trunc(parsedAfter) : this.lastDelivered;
     const oldest = this.events[this.head];
     const newest = this.events[(this.head + this.size - 1) % this.maxEvents];
     if (!oldest || !newest) return null;

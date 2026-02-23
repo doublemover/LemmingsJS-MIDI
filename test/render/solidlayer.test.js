@@ -33,6 +33,10 @@ describe('SolidLayer', function() {
     expect(layer.getColumnWallHeight(-1, 3, 3)).to.equal(0);
     expect(layer.getColumnWallHeight(2, 3, 0)).to.equal(0);
     expect(layer.getColumnWallHeight(2, 3, -4)).to.equal(0);
+    const gapLayer = new SolidLayer(3, 4);
+    gapLayer.setMaskAt(1, 2);
+    gapLayer.setMaskAt(1, 0);
+    expect(gapLayer.getColumnWallHeight(1, 3, 3)).to.equal(1);
 
     expect(layer.countMaskInRect(1, 1, 3, 3, 2)).to.equal(2);
     expect(layer.countMaskInRect(0, 0, 4, 4)).to.equal(4);

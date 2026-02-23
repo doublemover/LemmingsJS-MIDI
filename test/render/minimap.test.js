@@ -60,6 +60,10 @@ describe('MiniMap', function() {
     miniMap.fog.fill(0);
     miniMap.reveal(0, 10);
     expect(miniMap.fog[0]).to.equal(1);
+    miniMap.fog.fill(0);
+    miniMap.reveal(-10, 5);
+    expect(Object.prototype.hasOwnProperty.call(miniMap.fog, '-1')).to.equal(false);
+    expect(miniMap.fog[0]).to.equal(0);
   });
 
   it('handles pointer events and death tracking', function() {
@@ -95,6 +99,8 @@ describe('MiniMap', function() {
 
     guiDisplay.onMouseDown.trigger({ x: 1, y: 1 });
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
+    guiDisplay.onMouseDown.trigger({ x: Number.NaN, y: destY + 1 });
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
 
     const records = [];
     withGlobalLemmings({
@@ -107,6 +113,50 @@ describe('MiniMap', function() {
       expect(records.length).to.equal(1);
       expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
     });
+  });
+
+  it('uses stage viewport width for pointer mapping when available', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 500;
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
+    const stageWidth = 120;
+
+    withGlobalLemmings({
+      stage: {
+        getGameViewRect() {
+          return { x: 0, y: 0, w: stageWidth, h: 25 };
+        }
+      }
+    }, () => {
+      guiDisplay.onMouseDown.trigger({ x: destX + 10, y: destY + 5 });
+    });
+
+    const expectedX = Math.max(
+      0,
+      Math.min(
+        level.width - stageWidth,
+        ((level.width - stageWidth) * (10 / (miniMap.width - 1))) | 0
+      )
+    );
+    expect(level.screenPositionX).to.equal(expectedX);
+  });
+
+  it('normalizes invalid level dimensions to finite minimap scales', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 0;
+    level.height = Number.NaN;
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    expect(Number.isFinite(miniMap.scaleX)).to.equal(true);
+    expect(Number.isFinite(miniMap.scaleY)).to.equal(true);
+    expect(miniMap.scaleX).to.be.greaterThan(0);
+    expect(miniMap.scaleY).to.be.greaterThan(0);
   });
 
   it('renders viewport, dots, and death flashes', function() {

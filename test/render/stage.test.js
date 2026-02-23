@@ -996,6 +996,21 @@ describe('Stage', function() {
     expect(cursors).to.equal(0);
   });
 
+  it('avoids redundant pre-clear when setting game view point', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(100, 50);
+    stage.guiImgProps.display.initSize(80, 20);
+    stage.updateStageSize();
+    let clears = 0;
+    stage.clear = () => { clears += 1; };
+    stage.redraw = () => {};
+
+    stage.setGameViewPointPosition(10, 10);
+
+    expect(clears).to.equal(0);
+  });
+
   it('returns gui image hits and null misses', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

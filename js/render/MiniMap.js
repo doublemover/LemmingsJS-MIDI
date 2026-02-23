@@ -16,8 +16,10 @@ class MiniMap {
     this.width = 127;
     this.height = 24;
     this.size = this.width * this.height;
-    this.scaleX = this.width / level.width;
-    this.scaleY = this.height / level.height;
+    const levelWidth = Number.isFinite(level?.width) && level.width > 0 ? level.width : this.width;
+    const levelHeight = Number.isFinite(level?.height) && level.height > 0 ? level.height : this.height;
+    this.scaleX = this.width / levelWidth;
+    this.scaleY = this.height / levelHeight;
 
     this.terrain = new Uint8Array(this.size);
     this.terrainColors = new Uint32Array(this.size);
@@ -99,6 +101,7 @@ class MiniMap {
    */
   #updateViewportFromPointer(event) {
     if (!this.guiDisplay || !this.level) return;
+    if (!Number.isFinite(event?.x) || !Number.isFinite(event?.y)) return;
     const gd = this.guiDisplay;
     const destX = gd.worldDataSize.width - this.width;
     const destY = gd.worldDataSize.height - this.height;
@@ -108,7 +111,12 @@ class MiniMap {
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
 
     const pct = this.width <= 1 ? 0 : (mx / (this.width - 1));
-    const maxOffset = Math.max(0, this.level.width - gd.worldDataSize.width);
+    const stageViewWidth = getApp()?.stage?.getGameViewRect?.()?.w;
+    const viewportWorldWidth = Number.isFinite(stageViewWidth) && stageViewWidth > 0
+      ? stageViewWidth
+      : gd.worldDataSize.width;
+    const levelWidth = Number.isFinite(this.level.width) ? this.level.width : 0;
+    const maxOffset = Math.max(0, levelWidth - viewportWorldWidth);
     const newX = clamp(Math.trunc(pct * maxOffset), 0, maxOffset);
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0, { preserveScale: true });
@@ -310,8 +318,9 @@ class MiniMap {
 
   /** reveal terrain that is currently on screen */
   reveal(viewX, viewW) {
-    const sx1 = Math.floor(viewX * this.scaleX);
+    const sx1 = Math.max(0, Math.floor(viewX * this.scaleX));
     const sx2 = Math.min(this.width, Math.ceil((viewX + viewW) * this.scaleX));
+    if (sx2 <= sx1) return;
     for (let y = 0; y < this.height; ++y) {
       const row = y * this.width;
       for (let x = sx1; x < sx2; ++x) this.fog[row + x] = 1;

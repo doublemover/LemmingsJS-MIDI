@@ -1,5 +1,6 @@
 const attachEvents = (session, payload) => {
   if (!session) return payload;
+  if (!payload || typeof payload !== 'object') return payload;
   const mode = session.eventsMode || 'minimal';
   if (mode === 'none') return payload;
 
