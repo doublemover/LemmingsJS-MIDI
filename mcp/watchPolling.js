@@ -97,6 +97,39 @@ const hashValue = (value, seen = new WeakSet()) => {
     return hash >>> 0;
   }
 
+  if (value instanceof Map) {
+    hash = hashByte(hash, 14);
+    const entryHashes = [];
+    for (const [entryKey, entryValue] of value.entries()) {
+      let entryHash = HASH_OFFSET_BASIS;
+      entryHash = hashUint32(entryHash, hashValue(entryKey, seen));
+      entryHash = hashUint32(entryHash, hashValue(entryValue, seen));
+      entryHashes.push(entryHash >>> 0);
+    }
+    entryHashes.sort((left, right) => left - right);
+    hash = hashUint32(hash, entryHashes.length);
+    for (const entryHash of entryHashes) {
+      hash = hashUint32(hash, entryHash);
+    }
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
+  if (value instanceof Set) {
+    hash = hashByte(hash, 15);
+    const itemHashes = [];
+    for (const item of value.values()) {
+      itemHashes.push(hashValue(item, seen));
+    }
+    itemHashes.sort((left, right) => left - right);
+    hash = hashUint32(hash, itemHashes.length);
+    for (const itemHash of itemHashes) {
+      hash = hashUint32(hash, itemHash);
+    }
+    seen.delete(value);
+    return hash >>> 0;
+  }
+
   if (value instanceof ArrayBuffer) {
     hash = hashByte(hash, 13);
     const bytes = new Uint8Array(value);
@@ -152,6 +185,21 @@ const buildPointerFingerprint = (value) => {
   if (type === 'bigint') return { kind: 'bigint', value: value.toString() };
   if (type === 'symbol') return { kind: 'symbol', value: String(value.description ?? '') };
   if (type === 'function') return { kind: 'function', value: value.name || '' };
+
+  if (value instanceof Map) {
+    return {
+      kind: 'map',
+      size: value.size,
+      hash: hashValue(value)
+    };
+  }
+  if (value instanceof Set) {
+    return {
+      kind: 'set',
+      size: value.size,
+      hash: hashValue(value)
+    };
+  }
 
   const size = Array.isArray(value)
     ? value.length

@@ -279,4 +279,28 @@ describe('watch pointer helpers', function () {
     expect(updatePointerWatchState(tracker, { payload: same })).to.equal(false);
     expect(updatePointerWatchState(tracker, { payload: changed })).to.equal(true);
   });
+
+  it('tracks Set payload changes while ignoring insertion order', function () {
+    const tracker = createPointerWatchState('/payload', {
+      payload: new Set([1, 2, 3])
+    });
+    expect(updatePointerWatchState(tracker, {
+      payload: new Set([3, 2, 1])
+    })).to.equal(false);
+    expect(updatePointerWatchState(tracker, {
+      payload: new Set([1, 2, 4])
+    })).to.equal(true);
+  });
+
+  it('tracks Map payload changes while ignoring insertion order', function () {
+    const tracker = createPointerWatchState('/payload', {
+      payload: new Map([['a', 1], ['b', 2]])
+    });
+    expect(updatePointerWatchState(tracker, {
+      payload: new Map([['b', 2], ['a', 1]])
+    })).to.equal(false);
+    expect(updatePointerWatchState(tracker, {
+      payload: new Map([['a', 1], ['b', 3]])
+    })).to.equal(true);
+  });
 });
