@@ -607,6 +607,46 @@ describe('Stage', function() {
     expect(last.y).to.equal(-3);
   });
 
+  it('updates view point safely when GUI display is disabled', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(100, 50);
+    stage.guiImgProps.display.initSize(80, 20);
+    stage.updateStageSize();
+    const cleared = [];
+    const drawn = [];
+    stage.clear = (image) => {
+      cleared.push(image === stage.guiImgProps ? 'gui' : 'game');
+    };
+    stage.draw = (image) => {
+      drawn.push(image === stage.guiImgProps ? 'gui' : 'game');
+    };
+    let guiReads = 0;
+    stage.guiImgProps.display.getImageData = () => {
+      guiReads += 1;
+      return null;
+    };
+    stage.setGuiEnabled(false);
+
+    expect(() => stage.updateViewPoint(stage.gameImgProps, 10, 10, 50)).to.not.throw();
+    expect(guiReads).to.equal(0);
+    expect(cleared.length).to.be.at.least(1);
+    expect(cleared.every((name) => name === 'game')).to.equal(true);
+    expect(drawn.length).to.be.at.least(1);
+    expect(drawn.every((name) => name === 'game')).to.equal(true);
+  });
+
+  it('updates view point when GUI display lacks getImageData', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(100, 50);
+    stage.guiImgProps.display = {};
+    stage.clear = () => {};
+    stage.draw = () => {};
+
+    expect(() => stage.updateViewPoint(stage.gameImgProps, 12, 8, 0)).to.not.throw();
+  });
+
   it('covers updateViewPoint defaults and snapScale clamps', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

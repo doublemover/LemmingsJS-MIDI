@@ -111,29 +111,32 @@ describe('UserInputManager', function() {
     expect(zoomEvents.length).to.be.greaterThan(0);
   });
 
-  it('handles wheel zoom with and without stage targets', function() {
+  it('handles wheel zoom via onZoom without directly mutating stage view', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);
     const zoomEvents = [];
     manager.onZoom.on((evt) => zoomEvents.push(evt));
 
     const stageImage = { display: { worldDataSize: { width: 3000 } } };
+    let updateCalls = 0;
     const stage = {
       gameImgProps: stageImage,
       getStageImageAt() { return stageImage; },
-      updateViewPoint() { stage.updated = true; }
+      updateViewPoint() { updateCalls += 1; }
     };
     withGlobalLemmings({ stage }, () => {
       manager.handleWheel(new Position2D(5, 5), 1);
-      expect(stage.updated).to.equal(true);
+      expect(updateCalls).to.equal(0);
 
       stage.getStageImageAt = () => null;
       manager.handleWheel(new Position2D(5, 5), 1);
       expect(zoomEvents.length).to.equal(2);
+      expect(updateCalls).to.equal(0);
     });
 
     manager.handleWheel(new Position2D(5, 5), 1);
     expect(zoomEvents.length).to.equal(3);
+    expect(updateCalls).to.equal(0);
   });
 
   it('configures passive listener options for touch and wheel events', function() {

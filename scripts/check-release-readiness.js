@@ -13,6 +13,10 @@ const REQUIRED_SECTIONS = Object.freeze([
   'Rollback Rehearsal'
 ]);
 
+/**
+ * @param {string[]} [argv]
+ * @returns {Map<string, string>}
+ */
 const parseArgs = (argv = []) => {
   const out = new Map();
   for (const arg of argv) {
@@ -23,6 +27,11 @@ const parseArgs = (argv = []) => {
   return out;
 };
 
+/**
+ * @param {string | null | undefined} value
+ * @param {boolean} [fallback]
+ * @returns {boolean}
+ */
 const parseBoolean = (value, fallback = false) => {
   if (value == null) return fallback;
   const normalized = String(value).trim().toLowerCase();
@@ -33,12 +42,16 @@ const parseBoolean = (value, fallback = false) => {
 
 const normalizeSectionName = (value) => String(value || '').trim().toLowerCase();
 
+/**
+ * @param {string} markdownText
+ * @returns {Map<string, Array<{checked: boolean, text: string}>>}
+ */
 const parseChecklistBySection = (markdownText) => {
   const sectionMap = new Map();
   const lines = String(markdownText || '').split(/\r?\n/);
   let currentSection = null;
   for (const line of lines) {
-    const headingMatch = line.match(/^##\s+(.+?)\s*$/);
+    const headingMatch = line.match(/^\s*##\s+(.+?)\s*(?:#+\s*)?$/);
     if (headingMatch) {
       currentSection = headingMatch[1].trim();
       if (!sectionMap.has(currentSection)) {
@@ -56,6 +69,21 @@ const parseChecklistBySection = (markdownText) => {
   return sectionMap;
 };
 
+/**
+ * @param {string} markdownText
+ * @param {{
+ *   requiredSections?: string[],
+ *   requireAllChecked?: boolean
+ * }} [options]
+ * @returns {{
+ *   ok: boolean,
+ *   requiredSections: string[],
+ *   counts: {sectionCount: number, itemCount: number, checkedCount: number, uncheckedCount: number},
+ *   missingSections: string[],
+ *   emptySections: string[],
+ *   uncheckedItems: Array<{section: string, text: string}>
+ * }}
+ */
 const evaluateReleaseReadiness = (
   markdownText,
   {
@@ -111,6 +139,15 @@ const evaluateReleaseReadiness = (
   };
 };
 
+/**
+ * @param {string[]} [argv]
+ * @param {{
+ *   cwd?: string,
+ *   fsImpl?: Pick<typeof fs, 'readFileSync'>,
+ *   log?: Pick<typeof console, 'log' | 'error'>,
+ *   exit?: (code: number) => void
+ * }} [options]
+ */
 const run = (
   argv = process.argv.slice(2),
   {
@@ -147,6 +184,7 @@ const run = (
 
   if (!summary.ok) {
     exit(1);
+    return;
   }
 };
 

@@ -298,6 +298,12 @@ Apply editor mutations through the E2E harness (batch ops + optional validation)
 **Outputs**
 - `{ ok, results[], state?, resources?, events }`
 
+**Failure modes**
+- `ok=false` with `reason="validation_failed" | "invalid_ops" | "editor_unavailable"`
+- When `atomic=true`, partial mutation failures must be rolled back.
+  If rollback itself fails, return `ok=false` and
+  `reason="rollback_failed"` with enough detail for operator triage.
+
 ---
 
 ### 7.8 `lemming.summary`

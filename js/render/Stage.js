@@ -455,12 +455,17 @@ class Stage {
       targetY += argY / targetScale;
     }
     const imgData = stageImage.display.getImageData();
-    const guiImgData = this.guiImgProps.display.getImageData();
+    const guiDisplay = this.guiEnabled ? this.guiImgProps.display : null;
+    const guiImgData = guiDisplay?.getImageData?.() || null;
     this.applyViewport(stageImage, targetX, targetY, targetScale);
     this.clear(stageImage);
-    this.clear(this.guiImgProps);
+    if (guiDisplay && guiImgData) {
+      this.clear(this.guiImgProps);
+    }
     this.draw(stageImage, imgData);
-    this.draw(this.guiImgProps, guiImgData);
+    if (guiDisplay && guiImgData) {
+      this.draw(this.guiImgProps, guiImgData);
+    }
   }
 
   /**

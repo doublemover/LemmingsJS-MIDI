@@ -49,6 +49,15 @@ describe('scripts/runTests', function () {
     expect(categories).to.include('release');
   });
 
+  it('maps tools and bench paths to their dedicated categories', function () {
+    const categories = inferCategoriesFromChangedFiles([
+      'tools/packPipeline.js',
+      'scripts/bench-performance.js'
+    ]);
+    expect(categories).to.include('tools');
+    expect(categories).to.include('bench');
+  });
+
   it('falls back to full suite args whenever core is included', function () {
     const args = buildMochaArgsForCategories(['editor', 'core']);
     expect(args).to.deep.equal(['--recursive']);
@@ -57,6 +66,11 @@ describe('scripts/runTests', function () {
   it('builds focused args for release category', function () {
     const args = buildMochaArgsForCategories(['release']);
     expect(args).to.deep.equal(['test/release-readiness.test.js']);
+  });
+
+  it('builds focused args for bench category', function () {
+    const args = buildMochaArgsForCategories(['bench']);
+    expect(args).to.deep.equal(['test/*bench*.test.js']);
   });
 
   it('collects changed files from git outputs and untracked files', function () {

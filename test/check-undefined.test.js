@@ -155,6 +155,38 @@ describe('scripts/check-undefined.js', function () {
     });
   });
 
+  it('discovers additional root html entrypoints in default mode', function () {
+    withTempDir((dir) => {
+      fs.writeFileSync(
+        path.join(dir, 'custom.html'),
+        '<html><body><script>missingCustomEntry();</script></body></html>'
+      );
+
+      const result = runCheck([], { cwd: dir });
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr || result.stdout).to.match(/missingCustomEntry is not defined/);
+    });
+  });
+
+  it('treats common Mocha hook globals as built-ins', function () {
+    withTempDir((dir) => {
+      const file = path.join(dir, 'mocha-hooks.js');
+      fs.writeFileSync(file, [
+        'describe("suite", function () {',
+        '  beforeEach(function () {});',
+        '  afterEach(function () {});',
+        '  context("nested", function () {',
+        '    test("ok", function () {});',
+        '  });',
+        '});'
+      ].join('\n'));
+
+      const result = runCheck(file, { cwd: dir });
+      expect(result.status).to.equal(0);
+      expect(result.stdout).to.match(/No undefined calls/);
+    });
+  });
+
   it('reports undefined methods on non-builtin objects', function () {
     withTempDir((dir) => {
       const file = path.join(dir, 'missing-method.js');

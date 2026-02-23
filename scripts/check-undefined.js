@@ -39,8 +39,13 @@ const builtinFunctions = new Set([
   'Symbol',
   'describe',
   'it',
+  'test',
+  'suite',
+  'context',
   'before',
+  'beforeEach',
   'after',
+  'afterEach',
   'expect',
   '$',
   'jQuery'
@@ -132,6 +137,21 @@ const defaultHtmlFiles = Object.freeze([
   'editor.html',
   'procgen.html'
 ]);
+
+const discoverRootHtmlFiles = () => {
+  const discovered = new Set();
+  for (const fileName of defaultHtmlFiles) {
+    const resolved = path.resolve(fileName);
+    if (fs.existsSync(resolved)) discovered.add(resolved);
+  }
+  const rootEntries = fs.readdirSync(process.cwd(), { withFileTypes: true });
+  for (const entry of rootEntries) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.toLowerCase().endsWith('.html')) continue;
+    discovered.add(path.resolve(entry.name));
+  }
+  return Array.from(discovered);
+};
 
 class Scope {
   constructor(parent = null) {
@@ -651,9 +671,7 @@ const main = (argv = process.argv.slice(2)) => {
 
   let htmlFiles = cli.htmlFiles;
   if (!explicit) {
-    htmlFiles = defaultHtmlFiles
-      .map((file) => path.resolve(file))
-      .filter((file) => fs.existsSync(file));
+    htmlFiles = discoverRootHtmlFiles();
   }
 
   const snippetSources = [];

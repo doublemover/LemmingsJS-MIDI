@@ -4,11 +4,31 @@ import { load } from 'cheerio';
 import { pathToFileURL } from 'url';
 
 /**
- * Parse an HTML file and return JavaScript snippets found in
- * <script> tags or inline event handler attributes.
- * Each snippet includes the code and start/end indices when available.
+ * Parse an HTML file and extract JavaScript snippets from inline `<script>`
+ * tags and inline event-handler attributes (`onclick`, `onchange`, ...).
+ *
+ * Behavior flags:
+ * - `rewritePaths`: rewrites relative `src`/`href` values to `file://` URLs.
+ * - `inline`: inlines relative script/style assets into the HTML output.
+ * - `includeExternalScripts`: adds discovered relative script entrypoints to
+ *   `entryScripts` for follow-up scanning by callers.
+ *
+ * Return shape:
+ * - default: `snippets[]`
+ * - with `includeExternalScripts`: `{ snippets, entryScripts }`
+ * - with `rewritePaths` or `inline`: `{ snippets, html, entryScripts }`
+ *
  * @param {string} filePath
- * @returns {Array<{code:string,loc?:{start?:number,end?:number},type:string,attr?:string}>}
+ * @param {{
+ *   rewritePaths?: boolean,
+ *   inline?: boolean,
+ *   includeExternalScripts?: boolean
+ * }} [options]
+ * @returns {Array<{code:string,loc?:{start?:number,end?:number},type:string,attr?:string}> | {
+ *   snippets: Array<{code:string,loc?:{start?:number,end?:number},type:string,attr?:string}>,
+ *   html?: string,
+ *   entryScripts: string[]
+ * }}
  */
 export function processHtmlFile(filePath, options = {}) {
   const html = fs.readFileSync(filePath, 'utf8');
@@ -17,18 +37,43 @@ export function processHtmlFile(filePath, options = {}) {
   const $ = load(html, { sourceCodeLocationInfo: true });
   const snippets = [];
   const entryScripts = [];
+  const entryScriptSet = new Set();
+  const URI_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
+
+  function splitAssetReference(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return { pathPart: '', suffix: '' };
+    const markerIndex = raw.search(/[?#]/);
+    if (markerIndex < 0) {
+      return { pathPart: raw, suffix: '' };
+    }
+    return {
+      pathPart: raw.slice(0, markerIndex),
+      suffix: raw.slice(markerIndex)
+    };
+  }
 
   function isRelative(p) {
-    return typeof p === 'string' && !/^(?:[a-z]+:)?\/\//i.test(p);
+    if (typeof p !== 'string') return false;
+    const { pathPart } = splitAssetReference(p);
+    if (!pathPart) return false;
+    if (pathPart.startsWith('//')) return false;
+    if (URI_SCHEME_RE.test(pathPart)) return false;
+    if (path.isAbsolute(pathPart)) return false;
+    return true;
   }
 
   $('script').each((i, elem) => {
     const src = $(elem).attr('src');
     if (src) {
       if (includeExternalScripts && isRelative(src)) {
-        const sanitized = src.split('?')[0].split('#')[0];
-        if (sanitized) {
-          entryScripts.push(path.resolve(dir, sanitized));
+        const { pathPart } = splitAssetReference(src);
+        if (pathPart) {
+          const resolved = path.resolve(dir, pathPart);
+          if (!entryScriptSet.has(resolved)) {
+            entryScriptSet.add(resolved);
+            entryScripts.push(resolved);
+          }
         }
       }
       return;
@@ -64,7 +109,9 @@ export function processHtmlFile(filePath, options = {}) {
       const attr = elem.attribs.src ? 'src' : 'href';
       const val = $(elem).attr(attr);
       if (!isRelative(val)) return;
-      const abs = path.resolve(dir, val);
+      const { pathPart, suffix } = splitAssetReference(val);
+      if (!pathPart) return;
+      const abs = path.resolve(dir, pathPart);
       if (inline && elem.name === 'script') {
         const code = fs.readFileSync(abs, 'utf8');
         $(elem).removeAttr('src');
@@ -73,7 +120,7 @@ export function processHtmlFile(filePath, options = {}) {
         const css = fs.readFileSync(abs, 'utf8');
         $(elem).replaceWith(`<style>${css}</style>`);
       } else {
-        $(elem).attr(attr, pathToFileURL(abs).href);
+        $(elem).attr(attr, `${pathToFileURL(abs).href}${suffix}`);
       }
     });
   }

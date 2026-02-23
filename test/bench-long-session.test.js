@@ -1,5 +1,11 @@
 import { expect } from 'chai';
-import { evaluateLongSessionGates, PROFILE_PRESETS } from '../scripts/bench-long-session.js';
+import {
+  evaluateLongSessionGates,
+  normalizeLongSessionSample,
+  PROFILE_PRESETS,
+  toNonNegativeNumber,
+  toPositiveNumber
+} from '../scripts/bench-long-session.js';
 
 describe('bench long-session gates', function () {
   it('passes when replay and runtime metrics stay within thresholds', function () {
@@ -102,5 +108,76 @@ describe('bench long-session gates', function () {
       'trigger_count_drift_detected',
       'replay_hash_mismatch'
     ]);
+  });
+
+  it('normalizes sample payloads to finite numeric defaults', function () {
+    const sample = normalizeLongSessionSample({
+      elapsedMs: '10',
+      tickIndex: '42',
+      historySpanTicks: null,
+      coldBlockCount: undefined,
+      soundQueued: '3',
+      soundQueueLimit: '12',
+      triggerCount: Number.NaN,
+      heapUsedBytes: '2048'
+    });
+    expect(sample).to.deep.equal({
+      elapsedMs: 10,
+      tickIndex: 42,
+      historySpanTicks: 0,
+      coldBlockCount: 0,
+      soundQueued: 3,
+      soundQueueLimit: 12,
+      triggerCount: 0,
+      heapUsedBytes: 2048
+    });
+  });
+
+  it('clamps invalid normalized sample values to safe numeric defaults', function () {
+    const sample = normalizeLongSessionSample({
+      elapsedMs: Infinity,
+      tickIndex: Infinity,
+      historySpanTicks: -3,
+      coldBlockCount: Number.NaN,
+      soundQueued: -1,
+      soundQueueLimit: -1,
+      triggerCount: -10,
+      heapUsedBytes: Infinity
+    });
+    expect(sample).to.deep.equal({
+      elapsedMs: 0,
+      tickIndex: 0,
+      historySpanTicks: 0,
+      coldBlockCount: 0,
+      soundQueued: 0,
+      soundQueueLimit: 0,
+      triggerCount: 0,
+      heapUsedBytes: 0
+    });
+  });
+
+  it('parses positive and non-negative threshold helpers safely', function () {
+    expect(toPositiveNumber(undefined, 7)).to.equal(7);
+    expect(toPositiveNumber('-5', 7)).to.equal(7);
+    expect(toPositiveNumber('abc', 7)).to.equal(7);
+    expect(toPositiveNumber('4', 7)).to.equal(4);
+
+    expect(toNonNegativeNumber(undefined, 3)).to.equal(3);
+    expect(toNonNegativeNumber(-1, 3)).to.equal(3);
+    expect(toNonNegativeNumber('NaN', 3)).to.equal(3);
+    expect(toNonNegativeNumber(0, 3)).to.equal(0);
+    expect(toNonNegativeNumber('5', 3)).to.equal(5);
+  });
+
+  it('handles empty and partial replay samples without throwing', function () {
+    const result = evaluateLongSessionGates({
+      samples: [],
+      replayChecks: [{ checked: true }, { checked: true, hashMatch: false }],
+      thresholds: PROFILE_PRESETS.smoke
+    });
+    expect(result.metrics.sampleCount).to.equal(0);
+    expect(result.metrics.replayMismatchCount).to.equal(1);
+    expect(result.failures).to.include('tick_progress_stalled');
+    expect(result.failures).to.include('replay_hash_mismatch');
   });
 });

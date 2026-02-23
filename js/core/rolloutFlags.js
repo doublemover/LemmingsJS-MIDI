@@ -1,3 +1,12 @@
+/**
+ * @typedef {object} RuntimeRolloutFlags
+ * @property {boolean} mcpSurfaceSplit
+ * @property {boolean} historyCodec
+ * @property {boolean} renderPresentPath
+ * @property {boolean} midiExpressiveUi
+ */
+
+/** @type {Readonly<RuntimeRolloutFlags>} */
 const DEFAULT_RUNTIME_ROLLOUT_FLAGS = Object.freeze({
   mcpSurfaceSplit: true,
   historyCodec: true,
@@ -27,6 +36,10 @@ const ROLLOUT_QUERY_KEYS = Object.freeze({
 const BOOL_TRUE = new Set(['', '1', 'true', 'yes', 'on', 'enabled', 'enable']);
 const BOOL_FALSE = new Set(['0', 'false', 'no', 'off', 'disabled', 'disable']);
 
+/**
+ * @param {unknown} value
+ * @returns {boolean | null}
+ */
 const parseBoolish = (value) => {
   if (value == null) return null;
   const normalized = String(value).trim().toLowerCase();
@@ -35,6 +48,11 @@ const parseBoolish = (value) => {
   return null;
 };
 
+/**
+ * @param {URLSearchParams | null} query
+ * @param {string[]} [names]
+ * @returns {string | null}
+ */
 const readQueryValue = (query, names = []) => {
   if (!query) return null;
   for (const name of names) {
@@ -56,6 +74,18 @@ const coerceRolloutFlag = (value, fallback) => {
   return parsed == null ? fallback : parsed;
 };
 
+/**
+ * Resolves rollout flags from defaults, runtime overrides, and query toggles.
+ * Query rollback values always take precedence over rollout values.
+ *
+ * @param {{
+ *   query?: URLSearchParams | null,
+ *   search?: string,
+ *   runtimeFlags?: Partial<RuntimeRolloutFlags> | null,
+ *   defaults?: Partial<RuntimeRolloutFlags> | null
+ * }} [options]
+ * @returns {RuntimeRolloutFlags}
+ */
 const resolveRuntimeRolloutFlags = ({
   query = null,
   search = '',

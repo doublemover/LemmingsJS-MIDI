@@ -29,6 +29,12 @@ import { buildLemmingSummary } from './lemmingSummary.js';
 import { createStateToolHandlers } from './stateTools.js';
 import { createSpectatorTools } from './spectatorTools.js';
 import { createShutdownController } from './shutdownController.js';
+import {
+  buildToolCatalog,
+  createLegacyToolAliases,
+  parseBooleanEnv,
+  resolveToolCandidates
+} from './toolRouting.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
@@ -39,14 +45,6 @@ const DEFAULT_BASE_URL = process.env.LEMMINGS_MCP_BASE_URL || 'https://localhost
 const DEFAULT_PATH = process.env.LEMMINGS_MCP_PATH || '/?e2e=1';
 const DEFAULT_VIEWPORT = { width: 1280, height: 720, deviceScaleFactor: 1 };
 const ENABLED_TOOL_SURFACES = parseEnabledSurfaces(process.env.LEMMINGS_MCP_SURFACES);
-
-const parseBooleanEnv = (value, fallback = false) => {
-  if (value == null) return fallback;
-  const normalized = String(value).trim().toLowerCase();
-  if (['1', 'true', 'yes', 'on', 'enabled'].includes(normalized)) return true;
-  if (['0', 'false', 'no', 'off', 'disabled'].includes(normalized)) return false;
-  return fallback;
-};
 
 const MCP_SURFACE_SPLIT_ROLLOUT = parseBooleanEnv(
   process.env.LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT,
@@ -1884,46 +1882,28 @@ const ACTIVE_TOOL_SURFACES = MCP_SURFACE_SPLIT_ROLLOUT
 const surfaceRegistry = buildSurfaceRegistry(
   TOOL_SCHEMA_REGISTRY,
   TOOL_HANDLER_REGISTRY,
-  ACTIVE_TOOL_SURFACES
+  new Set(ALL_TOOL_SURFACES)
 );
-const TOOL_HANDLERS_BY_SURFACE = surfaceRegistry.handlersBySurface;
-const TOOL_SURFACE_BY_NAME = surfaceRegistry.toolSurfaceByName;
-
-const TOOL_DEFS = [];
-const TOOL_ROUTES = new Map();
-const LEGACY_TOOL_ALIASES = MCP_LEGACY_TOOL_ALIASES_ENABLED
-  ? Object.freeze({
-    editor_mutate: 'editor_apply',
-    editor_objects_list: 'objects_list',
-    editor_objects_place: 'objects_place',
-    editor_objects_update: 'objects_update',
-    editor_objects_delete: 'objects_delete'
-  })
-  : Object.freeze({});
-for (const spec of surfaceRegistry.specs) {
-  const toolName = toToolName(spec.name);
-  const surface = TOOL_SURFACE_BY_NAME.get(spec.name);
-  const handler = TOOL_HANDLERS_BY_SURFACE.get(surface)?.get(spec.name) || null;
-  if (!surface || !handler) continue;
-  TOOL_DEFS.push({
-    name: toolName,
-    description: spec.description,
-    inputSchema: toJsonSchemaCompat(spec.schema)
-  });
-  TOOL_ROUTES.set(toolName, {
-    toolName,
-    canonicalName: spec.name,
-    surface,
-    handler
-  });
-}
+const { toolDefs: TOOL_DEFS, toolRoutes: TOOL_ROUTES } = buildToolCatalog(
+  surfaceRegistry,
+  {
+    activeSurfaces: ACTIVE_TOOL_SURFACES,
+    toToolName,
+    toJsonSchemaCompat
+  }
+);
+const LEGACY_TOOL_ALIASES = createLegacyToolAliases(MCP_LEGACY_TOOL_ALIASES_ENABLED);
 
 const resolveTool = (rawName) => {
-  const requestedName = String(rawName || '');
-  const canonicalRequest = LEGACY_TOOL_ALIASES[requestedName] || requestedName;
-  let route = TOOL_ROUTES.get(canonicalRequest);
-  if (!route && MCP_DOTTED_TOOL_FALLBACK_ENABLED && requestedName.includes('.')) {
-    route = TOOL_ROUTES.get(toToolName(requestedName));
+  const { candidates } = resolveToolCandidates(rawName, {
+    legacyToolAliases: LEGACY_TOOL_ALIASES,
+    dottedFallbackEnabled: MCP_DOTTED_TOOL_FALLBACK_ENABLED,
+    toToolName
+  });
+  let route = null;
+  for (const candidate of candidates) {
+    route = TOOL_ROUTES.get(candidate);
+    if (route) break;
   }
   if (!route) {
     throw new Error(`Unknown tool: ${rawName}`);

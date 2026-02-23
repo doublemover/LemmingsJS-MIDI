@@ -323,24 +323,8 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
-
-    const stage = getAppContext()?.stage;
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
-
-    if (stage && stage.getStageImageAt) {
-      this.onZoom.trigger(evt);
-
-      const stageImage = stage.getStageImageAt(position.x, position.y);
-      if (
-        stageImage === stage.gameImgProps &&
-        stageImage?.display
-      ) {
-        stage.updateViewPoint(stageImage, position.x, position.y, deltaY);
-        return;
-      }
-    } else {
-      this.onZoom.trigger(evt);
-    }
+    this.onZoom.trigger(evt);
   }
 }
 

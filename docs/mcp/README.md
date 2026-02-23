@@ -19,6 +19,12 @@ Files:
   - `LEMMINGS_MCP_PATH` (default `/?e2e=1`)
   - `LEMMINGS_MCP_SURFACES` (optional CSV of enabled tool surfaces:
     `game,editor,interact`; default enables all)
+  - `LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT` (default `true`):
+    when `false`, bypasses surface split restrictions and exposes all surfaces.
+  - `LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES` (default `true`):
+    enables legacy alias names such as `editor_mutate` / `editor.mutate`.
+  - `LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK` (default `true`):
+    allows dotted-name fallback to underscore tool names.
 
 ## Host notes
 - Codex CLI: configure a stdio MCP server that runs `node mcp/server.js`.
@@ -48,6 +54,7 @@ Files:
   `objects.update`, `objects.delete`
 - `interact`: `input.*`, `vision.*`, `watch.*`, `events.*`
 - Surface gating is controlled via `LEMMINGS_MCP_SURFACES`.
+- Emergency rollback can be staged via `LEMMINGS_ROLLOUT_MCP_*` environment flags.
 
 ## Defaults (protocol v2)
 - `state.get` defaults to the compact preset.

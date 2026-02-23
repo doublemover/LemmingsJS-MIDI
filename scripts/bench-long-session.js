@@ -2,6 +2,10 @@ import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * @param {string[]} argv
+ * @returns {Map<string, string>}
+ */
 const parseArgs = (argv) => {
   const out = new Map();
   for (const arg of argv) {
@@ -12,14 +16,34 @@ const parseArgs = (argv) => {
   return out;
 };
 
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
 const toPositiveNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
 const toNonNegativeNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+const toFiniteNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const withTimeout = async (promise, timeoutMs, label) => {
@@ -84,6 +108,75 @@ const PROFILE_PRESETS = Object.freeze({
   })
 });
 
+/**
+ * @param {Partial<{
+ *   elapsedMs: number,
+ *   tickIndex: number,
+ *   historySpanTicks: number,
+ *   coldBlockCount: number,
+ *   soundQueued: number,
+ *   soundQueueLimit: number,
+ *   triggerCount: number,
+ *   heapUsedBytes: number
+ * }>} sample
+ * @returns {{
+ *   elapsedMs: number,
+ *   tickIndex: number,
+ *   historySpanTicks: number,
+ *   coldBlockCount: number,
+ *   soundQueued: number,
+ *   soundQueueLimit: number,
+ *   triggerCount: number,
+ *   heapUsedBytes: number
+ * }}
+ */
+const normalizeLongSessionSample = (sample) => ({
+  elapsedMs: toNonNegativeNumber(sample?.elapsedMs, 0),
+  tickIndex: toFiniteNumber(sample?.tickIndex, 0),
+  historySpanTicks: toNonNegativeNumber(sample?.historySpanTicks, 0),
+  coldBlockCount: toNonNegativeNumber(sample?.coldBlockCount, 0),
+  soundQueued: toNonNegativeNumber(sample?.soundQueued, 0),
+  soundQueueLimit: toNonNegativeNumber(sample?.soundQueueLimit, 0),
+  triggerCount: toNonNegativeNumber(sample?.triggerCount, 0),
+  heapUsedBytes: toNonNegativeNumber(sample?.heapUsedBytes, 0)
+});
+
+/**
+ * @param {{
+ *   samples?: Array<{
+ *     tickIndex?: number,
+ *     heapUsedBytes?: number,
+ *     soundQueued?: number,
+ *     soundQueueLimit?: number,
+ *     historySpanTicks?: number,
+ *     triggerCount?: number
+ *   }>,
+ *   replayChecks?: Array<{hashMatch?: boolean}>,
+ *   thresholds?: {
+ *     maxHeapGrowthBytes?: number,
+ *     maxHeapChurnBytes?: number,
+ *     maxSoundQueueRatio?: number,
+ *     maxSoundQueueGrowth?: number,
+ *     minHistorySpanTicks?: number,
+ *     maxTriggerDrift?: number
+ *   }
+ * }} [options]
+ * @returns {{
+ *   metrics: {
+ *     sampleCount: number,
+ *     replayCheckCount: number,
+ *     tickProgress: number,
+ *     heapGrowthBytes: number,
+ *     heapChurnBytes: number,
+ *     maxSoundQueueRatio: number,
+ *     soundQueueGrowth: number,
+ *     historySpanEnd: number,
+ *     triggerDrift: number,
+ *     replayMismatchCount: number
+ *   },
+ *   failures: string[]
+ * }}
+ */
 const evaluateLongSessionGates = ({
   samples = [],
   replayChecks = [],
@@ -262,7 +355,7 @@ const run = async () => {
     while (Date.now() - start < durationMs) {
       assertRuntimeBudget('sampling');
       const elapsedMs = Date.now() - start;
-      const sample = await withTimeout(page.evaluate(() => {
+      const rawSample = await withTimeout(page.evaluate((elapsed) => {
         const state = window.__E2E__?.getState?.() || {};
         const game = state.game || {};
         const history = game.history || {};
@@ -270,7 +363,7 @@ const run = async () => {
         const triggers = game.triggers || {};
         const memory = typeof performance !== 'undefined' ? performance.memory : null;
         return {
-          elapsedMs,
+          elapsedMs: Number(elapsed || 0),
           tickIndex: Number(game.timer?.tickIndex || 0),
           historySpanTicks: Number(history.spanTicks || 0),
           coldBlockCount: Number(history.coldBlockCount || 0),
@@ -279,7 +372,8 @@ const run = async () => {
           triggerCount: Number(triggers.totalCount || 0),
           heapUsedBytes: Number(memory?.usedJSHeapSize || 0)
         };
-      }), opTimeoutMs, 'sampleState');
+      }, elapsedMs), opTimeoutMs, 'sampleState');
+      const sample = normalizeLongSessionSample(rawSample);
       samples.push(sample);
 
       if (elapsedMs - lastReplayAtMs >= replayEveryMs) {
@@ -351,7 +445,7 @@ const run = async () => {
         args.get('maxHeapChurnBytes') || process.env.LONG_SESSION_MAX_HEAP_CHURN_BYTES,
         preset.maxHeapChurnBytes
       ),
-      maxSoundQueueRatio: toPositiveNumber(
+      maxSoundQueueRatio: toNonNegativeNumber(
         args.get('maxSoundQueueRatio') || process.env.LONG_SESSION_MAX_SOUND_QUEUE_RATIO,
         preset.maxSoundQueueRatio
       ),
@@ -404,5 +498,8 @@ if (isMainModule) {
 
 export {
   PROFILE_PRESETS,
-  evaluateLongSessionGates
+  evaluateLongSessionGates,
+  normalizeLongSessionSample,
+  toNonNegativeNumber,
+  toPositiveNumber
 };
