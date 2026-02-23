@@ -40,16 +40,19 @@ Files:
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
 - Short underscore tool names are the only supported call names.
+- Dotted tool names are accepted as compatibility input aliases.
 
 ## Tool surfaces
 - `game`: `session.*`, `time.*`, `state.*`, `lemming.*`, `skill.*`
-- `editor`: `editor.*`
+- `editor`: `editor.apply`, `objects.list`, `objects.place`,
+  `objects.update`, `objects.delete`
 - `interact`: `input.*`, `vision.*`, `watch.*`, `events.*`
 - Surface gating is controlled via `LEMMINGS_MCP_SURFACES`.
 
 ## Defaults (protocol v2)
 - `state.get` defaults to the compact preset.
 - Events default to `minimal` (only non-agent, trimmed fields).
+- `session.create.protocol` includes versioning and compatibility metadata.
 
 ## Smoke test checklist
 - `session.create` returns a session id and `ready=true`.

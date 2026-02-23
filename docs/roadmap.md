@@ -633,24 +633,24 @@ Notes:
   Touchpoints: `test/sound-events.test.js`, `test/soundevents.test.js`.
 
 ## Phase 40: MCP server surface split and semantic-first workflows
-- [ ] Freeze versioned semantic schemas in the current MCP surface first
+- [x] Freeze versioned semantic schemas in the current MCP surface first
   (`game.*`, `editor.*`) with explicit deprecation aliases and compatibility
   windows for existing clients.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/protocol-v2.md`.
-- [ ] Replace catch-all editor mutation flows with typed verbs (`objects.list`,
+- [x] Replace catch-all editor mutation flows with typed verbs (`objects.list`,
   `objects.place`, `objects.update`, `objects.delete`) that support paging,
   bbox filtering, compact field profiles, and revision-aware deltas.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `test/mcp*.test.js`.
-- [ ] Add migration adapters and protocol compatibility smoke tests so legacy
+- [x] Add migration adapters and protocol compatibility smoke tests so legacy
   clients can upgrade without hard cutovers.
   Touchpoints: `mcp/server.js`, `test/mcp*.test.js`, `docs/mcp/*`.
-- [ ] Split MCP into dedicated game/editor/interact registrations/manifests
+- [x] Split MCP into dedicated game/editor/interact registrations/manifests
   only after semantic APIs and adapters are stable.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/*`.
-- [ ] Add conformance tests that enforce semantic-first usage (game/editor
+- [x] Add conformance tests that enforce semantic-first usage (game/editor
   servers reject raw input tools; interact server remains explicit fallback).
   Touchpoints: `test/mcp*.test.js`, `docs/mcp/protocol-v2.md`.
-- [ ] Publish MCP agent playbooks only after schema freeze, including
+- [x] Publish MCP agent playbooks only after schema freeze, including
   snapshot-first loops, batching, paging, and explicit Interact fallback rules.
   Touchpoints: `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
 

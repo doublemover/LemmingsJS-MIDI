@@ -12,6 +12,17 @@ implementation notes in this folder.
   responses include only non-agent events with trimmed fields.
 - Tool names are short (dots mapped to underscores by hosts), and only the
   short underscore forms are accepted.
+- `session.create.protocol` returns protocol version/freeze metadata and
+  compatibility alias mappings.
+
+## Semantic editor object tools
+
+- `objects.list` provides typed listing with paging, bbox filters, and
+  revision-aware deltas.
+- `objects.place` inserts terrain/gadget/steel entries using typed payloads.
+- `objects.update` applies typed entry updates by index/uid references.
+- `objects.delete` removes entries by typed references.
+- `editor.apply` remains available as a compatibility/migration path.
 
 ## Protocol mappings
 
