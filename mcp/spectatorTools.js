@@ -68,8 +68,10 @@ const createSpectatorTools = ({
       }
       const normX = Math.min(1, Math.max(0, payload.x));
       const normY = Math.min(1, Math.max(0, payload.y));
-      const x = rectX + Math.min(rectWidth - 1, normX * rectWidth);
-      const y = rectY + Math.min(rectHeight - 1, normY * rectHeight);
+      const maxOffsetX = Math.max(0, rectWidth - 1);
+      const maxOffsetY = Math.max(0, rectHeight - 1);
+      const x = rectX + Math.min(maxOffsetX, normX * rectWidth);
+      const y = rectY + Math.min(maxOffsetY, normY * rectHeight);
       await session.page.mouse.click(x, y);
       session.events.add({
         source: 'human',

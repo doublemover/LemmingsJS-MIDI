@@ -168,4 +168,46 @@ describe('mcp spectator tools', function () {
     await new Promise((resolve) => ws.once('close', resolve));
     stopSpectatorServer(session);
   });
+
+  it('clamps click offsets for tiny fractional canvas metrics', async function () {
+    const mouseClicks = [];
+    const { startSpectatorServer, stopSpectatorServer } = createSpectatorTools({
+      spectatorHtmlPath,
+      captureFrame: async () => ({ ok: false, reason: 'capture_disabled' }),
+      resolveCanvasMetrics: async () => ({ rect: { x: 10, y: 20, width: 0.25, height: 0.5 } }),
+      normalizeKeyToken: (token) => token,
+      ensureGameFocus: async () => {}
+    });
+
+    const session = {
+      page: {
+        keyboard: {
+          down: async () => {},
+          up: async () => {},
+          press: async () => {}
+        },
+        mouse: {
+          click: async (x, y) => { mouseClicks.push([x, y]); }
+        }
+      },
+      events: { add() {} },
+      spectator: null
+    };
+
+    const baseUrl = await startSpectatorServer(session, {
+      port: 0,
+      allowHumanInput: true,
+      frameIntervalMs: 50
+    });
+    const ws = await connectSocket(baseUrl.replace('http://', 'ws://'));
+    ws.send(JSON.stringify({ type: 'click', x: 1, y: 1 }));
+    await waitFor(() => mouseClicks.length === 1);
+
+    expect(mouseClicks[0][0]).to.equal(10);
+    expect(mouseClicks[0][1]).to.equal(20);
+
+    ws.close();
+    await new Promise((resolve) => ws.once('close', resolve));
+    stopSpectatorServer(session);
+  });
 });
