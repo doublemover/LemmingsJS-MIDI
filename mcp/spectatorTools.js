@@ -29,7 +29,9 @@ const createSpectatorTools = ({
     if (!payload || !session.spectator?.allowHumanInput) return;
     if (payload.type === 'key') {
       if (!['down', 'up', 'press'].includes(payload.action)) return;
-      const key = normalizeKeyToken(payload.key);
+      const normalizedKey = normalizeKeyToken(payload.key);
+      const key = String(normalizedKey ?? '').trim();
+      if (!key) return;
       await ensureGameFocus(session);
       if (payload.action === 'down') {
         await session.page.keyboard.down(key);

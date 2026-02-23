@@ -105,6 +105,7 @@ describe('mcp spectator tools', function () {
     expect(captureCalls).to.be.greaterThan(0);
 
     ws.send(JSON.stringify({ type: 'key', action: 'press', key: 'A' }));
+    ws.send(JSON.stringify({ type: 'key', action: 'press', key: '   ' }));
     ws.send(JSON.stringify({ type: 'click', x: 0.5, y: 0.5 }));
     ws.send(JSON.stringify({ type: 'click', x: 1, y: 1 }));
     await waitFor(() => keyCalls.length === 1 && mouseClicks.length === 2);
