@@ -6,6 +6,7 @@ import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
+import { ANALYTICS_EVENT_TYPES, createAnalyticsService } from './analytics.js';
 import {
   detectEmbedMode,
   optionalElement,
@@ -128,9 +129,29 @@ let lemmings;
 let resizeBound = false;
 let cachedGameContainer = null;
 let cachedCanvas = null;
+let analytics = null;
 
 const setLemmingsForTest = (value) => {
   lemmings = value;
+};
+
+const createBootAnalytics = ({ windowRef, documentRef } = {}) => {
+  analytics = createAnalyticsService({
+    window: windowRef,
+    document: documentRef,
+    navigator: windowRef?.navigator || null,
+    location: windowRef?.location || null,
+    localStorage: getRuntimeDependency('localStorage', windowRef?.localStorage || null),
+    profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+    surface: 'game',
+    runtimeDisabled: getRuntimeDependency('analyticsDisabled', false) === true,
+    hardDisabled: getRuntimeDependency('analyticsHardDisabled', false) === true,
+    enableManagedBeacon: getRuntimeDependency('analyticsBeaconEnabled', false) === true,
+    managedBeaconEndpoint: getRuntimeDependency('analyticsBeaconEndpoint', null),
+    sampleRate: getRuntimeDependency('analyticsSampleRate', 1)
+  });
+  analytics.installWindowApi(windowRef);
+  return analytics;
 };
 
 function init({ windowRef, documentRef, embedMode }) {
@@ -150,6 +171,10 @@ function init({ windowRef, documentRef, embedMode }) {
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
+  analytics?.setContext?.({
+    surface: 'game',
+    profile: lemmings.startupProfile || DEFAULT_RUNTIME_PROFILE
+  });
   const bootNodes = resolveRequiredElements(documentRef, REQUIRED_BOOT_IDS, {
     context: 'boot',
     embedMode: embedMode === true
@@ -174,8 +199,19 @@ function init({ windowRef, documentRef, embedMode }) {
   midiUi.setMidiInputController(midiInputController);
   const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();
   lemmings.setMidiStatusHandlers?.({
-    onEnabled: midiStatusHandlers?.onEnabled,
-    onError: midiStatusHandlers?.onError
+    onEnabled: () => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_MIDI_TOGGLE, { enabled: true });
+      midiStatusHandlers?.onEnabled?.();
+    },
+    onError: (message) => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
+        code: 'midi_error',
+        surface: 'game',
+        profile: lemmings.startupProfile || DEFAULT_RUNTIME_PROFILE,
+        embedMode: embedMode === true
+      });
+      midiStatusHandlers?.onError?.(message);
+    }
   });
 
   lemmings.elementSelectGameType = gameTypeSelect;
@@ -197,14 +233,37 @@ function init({ windowRef, documentRef, embedMode }) {
   }
   // use GameView.strToNum to parse dropdown values
   lemmings.elementSelectGameType.addEventListener('change', (e) => {
-    lemmings.selectGameType(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectGameType(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'gameType',
+      value
+    });
   });
   lemmings.elementSelectLevelGroup.addEventListener('change', (e) => {
-    lemmings.selectLevelGroup(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectLevelGroup(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'levelGroup',
+      value
+    });
   });
   lemmings.elementSelectLevel.addEventListener('change', (e) => {
-    lemmings.selectLevel(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectLevel(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'levelIndex',
+      value
+    });
   });
+  const midiEnabledToggle = optionalElement(documentRef, 'midiEnabledToggle');
+  if (midiEnabledToggle) {
+    midiEnabledToggle.addEventListener('change', (e) => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_MIDI_TOGGLE, {
+        enabled: !!e.target.checked
+      });
+    });
+  }
   const levelPrevButton = optionalElement(documentRef, 'levelPrevButton');
   const levelNextButton = optionalElement(documentRef, 'levelNextButton');
   if (levelPrevButton) {
@@ -266,6 +325,9 @@ function init({ windowRef, documentRef, embedMode }) {
       if (!text) return;
       lemmings.loadEditorLevelFromText(text);
       currentSavedId = id;
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+        action: 'load'
+      });
     });
   }
 
@@ -282,6 +344,9 @@ function init({ windowRef, documentRef, embedMode }) {
       if (id) {
         currentSavedId = id;
         refreshSavedList(id);
+        analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+          action: 'save'
+        });
       }
     });
   }
@@ -301,6 +366,9 @@ function init({ windowRef, documentRef, embedMode }) {
       link.click();
       documentRef.body.removeChild(link);
       URL.revokeObjectURL(url);
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+        action: 'export'
+      });
     });
   }
 
@@ -319,6 +387,9 @@ function init({ windowRef, documentRef, embedMode }) {
         lemmings.loadEditorLevelFromText(text);
         currentSavedId = '';
         refreshSavedList('');
+        analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+          action: 'import'
+        });
       };
       reader.readAsText(file);
       e.target.value = '';
@@ -405,8 +476,14 @@ function bindResize() {
 function start() {
   const { windowRef, documentRef } = hydrateRuntimeContext();
   const embedMode = detectEmbedMode({ windowRef, documentRef });
+  createBootAnalytics({ windowRef, documentRef });
   try {
     init({ windowRef, documentRef, embedMode });
+    analytics?.trackPageView?.({
+      surface: 'game',
+      profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      embedMode: embedMode === true
+    });
     midiUi?.bindMidiUi();
     midiUi?.scheduleMidiUiRefresh();
     registerServiceWorker({
@@ -418,6 +495,12 @@ function start() {
     setSize();
     bindResize();
   } catch (error) {
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
+      code: 'boot_error',
+      surface: 'game',
+      profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      embedMode: embedMode === true
+    });
     appendBootFailureMessage(documentRef, error, embedMode);
     if (!embedMode) {
       throw error;

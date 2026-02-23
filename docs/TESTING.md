@@ -84,6 +84,13 @@ Runtime boot/query presets use these profile IDs:
 
 Legacy `profile=gameplay` links are normalized to `classic`.
 
+## Analytics controls
+
+Privacy-first analytics is opt-in and local-only by default. See
+[`analytics.md`](analytics.md) for consent defaults, event schema constraints,
+local buffer export/import, optional managed beacon settings, and hard/runtime
+kill switches.
+
 ## npm test workflow
 
 Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.

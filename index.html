@@ -3,6 +3,8 @@
 <head>
   <title>Lemmings - Lemmings / Oh no! More Lemmings</title>
   <meta charset="UTF-8" />
+  <meta name="lemmings-analytics" content="runtime" />
+  <meta name="lemmings-analytics-endpoint" content="" />
   <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0.0, viewport-fit=cover"/>
   <meta name="description" content="Classic Lemmings reimplementation with WebMIDI controls, editor, and E2E harness." />
   <meta property="og:title" content="LemmingsJS-MIDI" />
@@ -254,14 +256,5 @@
       <div class="shortcut-overlay__content"></div>
     </div>
   </div>
-  <script>
-    if (!navigator.webdriver) {
-      const statsPixel = document.createElement('img');
-      statsPixel.src = 'https://sneakyness.com/stats/lemmings-MIDI';
-      statsPixel.alt = '';
-      statsPixel.style.display = 'none';
-      document.body.appendChild(statsPixel);
-    }
-  </script>
 </body>
 </html>

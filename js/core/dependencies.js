@@ -12,7 +12,12 @@ const RUNTIME_GLOBAL_KEY_ALIASES = Object.freeze({
   navigator: 'navigator',
   location: 'location',
   caches: 'caches',
-  performance: 'performance'
+  performance: 'performance',
+  analyticsDisabled: '__LEMMINGS_ANALYTICS_DISABLED__',
+  analyticsHardDisabled: '__LEMMINGS_ANALYTICS_HARD_DISABLED__',
+  analyticsBeaconEnabled: '__LEMMINGS_ANALYTICS_BEACON_ENABLED__',
+  analyticsBeaconEndpoint: '__LEMMINGS_ANALYTICS_BEACON_ENDPOINT__',
+  analyticsSampleRate: '__LEMMINGS_ANALYTICS_SAMPLE_RATE__'
 });
 
 const readGlobalValue = (key) => {

@@ -12,6 +12,7 @@ import { registerServiceWorker } from './registerServiceWorker.js';
 import { DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
 import { ProcgenStageAdapter } from './procgenStageAdapter.js';
+import { ANALYTICS_EVENT_TYPES, createAnalyticsService } from './analytics.js';
 import {
   normalizeSeed,
   deriveSeed,
@@ -49,6 +50,7 @@ const PROCGEN_SKILLS = {
 };
 
 let activeProcgenRuntime = null;
+let analytics = null;
 
 /**
  * Ensure repeat procgen init/start cycles do not leak timers/listeners.
@@ -184,6 +186,21 @@ const buildProcgenEditorLevel = (styleName) => {
 
 const init = async () => {
   disposeProcgenRuntime();
+  analytics = createAnalyticsService({
+    window,
+    document,
+    navigator: window?.navigator || null,
+    location: window?.location || null,
+    localStorage: window?.localStorage || null,
+    profile: 'perf',
+    surface: 'procgen'
+  });
+  analytics.installWindowApi(window);
+  analytics.trackPageView({
+    surface: 'procgen',
+    profile: 'perf',
+    embedMode: false
+  });
   const runtime = {
     view: null,
     game: null,
@@ -297,6 +314,12 @@ const init = async () => {
     installE2EHarness({ view });
     registerServiceWorker({ profile: 'perf' });
   } catch (err) {
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
+      code: 'resource_error',
+      surface: 'procgen',
+      profile: 'perf',
+      embedMode: false
+    });
     if (activeProcgenRuntime === runtime) {
       activeProcgenRuntime = null;
     }

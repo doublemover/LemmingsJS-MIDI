@@ -752,16 +752,16 @@ Notes:
   Touchpoints: `scripts/runTests.js`, `docs/TESTING.md`, `package.json`.
 
 ## Phase 46: Privacy-first analytics (optional)
-- [ ] Document consent defaults and data-minimization constraints for visitor
+- [x] Document consent defaults and data-minimization constraints for visitor
   stats and gameplay/editor events.
   Touchpoints: `docs/*`.
-- [ ] Add local-only analytics ring buffer with explicit export/import so
+- [x] Add local-only analytics ring buffer with explicit export/import so
   development telemetry works with zero hosted backend.
   Touchpoints: `js/app/*`, `docs/*`.
-- [ ] Add optional managed `sendBeacon` endpoint integration path (off by
+- [x] Add optional managed `sendBeacon` endpoint integration path (off by
   default) with strict, versioned, low-cardinality event schema and sampling.
   Touchpoints: `js/app/*`, `docs/*`.
-- [ ] Add explicit build/runtime kill switches so analytics remains disabled by
+- [x] Add explicit build/runtime kill switches so analytics remains disabled by
   default in development and can be hard-disabled per deployment.
   Touchpoints: `js/app/*`, `docs/*`.
 
