@@ -201,14 +201,14 @@ const collectChangedFiles = ({ baseRef = null, runGitCommand = defaultRunGitComm
   const files = new Set();
   const baseSpec = baseRef ? `${baseRef}...HEAD` : 'HEAD';
 
-  const compared = readGitFileList(['diff', '--name-only', '--diff-filter=ACMR', baseSpec], runGitCommand);
+  const compared = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD', baseSpec], runGitCommand);
   if (!compared) return null;
   for (const file of compared) files.add(file);
 
-  const staged = readGitFileList(['diff', '--name-only', '--cached', '--diff-filter=ACMR'], runGitCommand) || [];
+  const staged = readGitFileList(['diff', '--name-only', '--cached', '--diff-filter=ACMRD'], runGitCommand) || [];
   for (const file of staged) files.add(file);
 
-  const unstaged = readGitFileList(['diff', '--name-only', '--diff-filter=ACMR'], runGitCommand) || [];
+  const unstaged = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD'], runGitCommand) || [];
   for (const file of unstaged) files.add(file);
 
   const untracked = readGitFileList(['ls-files', '--others', '--exclude-standard'], runGitCommand) || [];

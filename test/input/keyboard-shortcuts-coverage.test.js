@@ -410,6 +410,42 @@ describe('KeyboardShortcuts coverage', function() {
     shortcuts.dispose();
   });
 
+  it('supports speed adjustments when gameGui is unavailable', function() {
+    const { view, timer } = createFixture();
+    view.game.gameGui = null;
+    const shortcuts = new KeyboardShortcuts(view);
+    timer.speedFactor = 1;
+    shortcuts._isGameplayBlocked = () => false;
+    const actions = shortcuts._actions;
+
+    actions.speedUp.down();
+    expect(timer.speedFactor).to.equal(2);
+
+    actions.speedUpFast.down();
+    expect(timer.speedFactor).to.equal(7);
+
+    actions.speedDown.down();
+    expect(timer.speedFactor).to.equal(6);
+
+    actions.speedDownFast.down();
+    expect(timer.speedFactor).to.equal(1);
+    shortcuts.dispose();
+  });
+
+  it('ignores speed changes when game timer is unavailable', function() {
+    const { view } = createFixture();
+    view.game.getGameTimer = () => null;
+    const shortcuts = new KeyboardShortcuts(view);
+    shortcuts._isGameplayBlocked = () => false;
+    const actions = shortcuts._actions;
+
+    const before = view.gameSpeedFactor;
+    expect(() => actions.speedUp.down()).to.not.throw();
+    expect(() => actions.speedDown.down()).to.not.throw();
+    expect(view.gameSpeedFactor).to.equal(before);
+    shortcuts.dispose();
+  });
+
   it('loads keybindings when available', async function() {
     const { view } = createFixture();
     const requested = [];

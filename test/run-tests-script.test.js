@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { readFileSync } from 'node:fs';
 import {
   RUNTIME_GUARD_TARGETS,
   buildMochaArgsForCategories,
@@ -75,9 +76,9 @@ describe('scripts/runTests', function () {
 
   it('collects changed files from git outputs and untracked files', function () {
     const runGitCommand = createRunGitStub({
-      'diff --name-only --diff-filter=ACMR HEAD': { status: 0, stdout: 'js/app/boot.js\n' },
-      'diff --name-only --cached --diff-filter=ACMR': { status: 0, stdout: 'js/app/boot.js\n' },
-      'diff --name-only --diff-filter=ACMR': { status: 0, stdout: 'js/editor/EditorController.js\n' },
+      'diff --name-only --diff-filter=ACMRD HEAD': { status: 0, stdout: 'js/app/boot.js\n' },
+      'diff --name-only --cached --diff-filter=ACMRD': { status: 0, stdout: 'js/app/boot.js\n' },
+      'diff --name-only --diff-filter=ACMRD': { status: 0, stdout: 'js/editor/EditorController.js\n' },
       'ls-files --others --exclude-standard': { status: 0, stdout: 'test/new.test.js\n' }
     });
     const files = collectChangedFiles({ runGitCommand });
@@ -86,6 +87,25 @@ describe('scripts/runTests', function () {
       'js/editor/EditorController.js',
       'test/new.test.js'
     ]);
+  });
+
+  it('includes deleted files when collecting changed paths', function () {
+    const runGitCommand = createRunGitStub({
+      'diff --name-only --diff-filter=ACMRD HEAD': { status: 0, stdout: 'mcp/old-tool.js\n' },
+      'diff --name-only --cached --diff-filter=ACMRD': { status: 0, stdout: '' },
+      'diff --name-only --diff-filter=ACMRD': { status: 0, stdout: '' },
+      'ls-files --others --exclude-standard': { status: 0, stdout: '' }
+    });
+    const files = collectChangedFiles({ runGitCommand });
+    expect(files).to.deep.equal(['mcp/old-tool.js']);
+  });
+
+  it('keeps critical checkJs typecheck enabled in tsconfig.checkjs.json', function () {
+    const config = JSON.parse(readFileSync(new URL('../tsconfig.checkjs.json', import.meta.url), 'utf8'));
+    expect(config.compilerOptions?.allowJs).to.equal(true);
+    expect(config.compilerOptions?.checkJs).to.equal(true);
+    expect(Array.isArray(config.include)).to.equal(true);
+    expect(config.include.length).to.be.greaterThan(0);
   });
 
   it('falls back to full suite when changed-file detection fails', function () {

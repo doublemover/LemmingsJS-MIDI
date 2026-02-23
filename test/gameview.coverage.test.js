@@ -975,6 +975,36 @@ describe('GameView coverage', function() {
     expect(view.moved).to.equal(0);
   });
 
+  it('uses global timer fallback when handling game end without window timers', function() {
+    globalThis.window = { location: { search: '' } };
+    const originalSetTimeout = globalThis.setTimeout;
+    try {
+      let timeoutCb = null;
+      globalThis.setTimeout = (cb) => {
+        timeoutCb = cb;
+        return 33;
+      };
+      setDependency('GameStateTypes', {
+        UNKNOWN: 0,
+        SUCCEEDED: 1,
+        toString() { return 'SUCCEEDED'; }
+      });
+      const view = new GameView();
+      view.stage = { startFadeOut() {} };
+      view.elementGameState = { innerText: '' };
+      view.moveToLevel = delta => { view.moved = delta; };
+
+      globalThis.window = undefined;
+      view.onGameEnd({ state: 1 });
+      expect(view.autoMoveTimer).to.equal(33);
+      timeoutCb();
+      expect(view.moved).to.equal(1);
+      expect(view.autoMoveTimer).to.equal(null);
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+    }
+  });
+
   it('formats MIDI errors for security and empty messages', function() {
     globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
     const view = new GameView();
@@ -1174,6 +1204,37 @@ describe('GameView coverage', function() {
     timeoutCb();
     expect(view.continued).to.equal(true);
     expect(view.resumeTimer).to.equal(null);
+  });
+
+  it('uses global timer fallbacks in suspendWithColor when window is unavailable', function() {
+    globalThis.window = { location: { search: '' } };
+    const originalSetTimeout = globalThis.setTimeout;
+    const originalClearTimeout = globalThis.clearTimeout;
+    const cleared = [];
+    try {
+      globalThis.setTimeout = () => 19;
+      globalThis.clearTimeout = (id) => { cleared.push(id); };
+
+      const view = new GameView();
+      const timer = {
+        suspend() {},
+        continue() {}
+      };
+      view.game = { getGameTimer() { return timer; } };
+      view.stage = {
+        guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+        startOverlayFade() {}
+      };
+      view.resumeTimer = 7;
+      globalThis.window = undefined;
+
+      expect(() => view.suspendWithColor('red')).to.not.throw();
+      expect(cleared).to.deep.equal([7]);
+      expect(view.resumeTimer).to.equal(19);
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    }
   });
 
   it('covers MIDI mapping fallback and disabled routing', async function() {
@@ -1523,9 +1584,11 @@ describe('GameView coverage', function() {
 
   it('disposes shortcuts, midi, and stage handlers', function() {
     const removed = [];
+    const clearedTimeouts = [];
     globalThis.window = {
       location: { search: '' },
-      removeEventListener(type) { removed.push(type); }
+      removeEventListener(type) { removed.push(type); },
+      clearTimeout(id) { clearedTimeouts.push(id); }
     };
     const view = new GameView();
     let shortcutsDisposed = false;
@@ -1533,6 +1596,8 @@ describe('GameView coverage', function() {
     let stageDisposed = false;
     view.shortcuts = { dispose() { shortcutsDisposed = true; } };
     view.midiRouter = { dispose() { midiDisposed = true; } };
+    view.autoMoveTimer = 41;
+    view.resumeTimer = 42;
     view._stageResize = () => {};
     view.stage = { dispose() { stageDisposed = true; } };
 
@@ -1541,7 +1606,28 @@ describe('GameView coverage', function() {
     expect(shortcutsDisposed).to.equal(true);
     expect(midiDisposed).to.equal(true);
     expect(stageDisposed).to.equal(true);
+    expect(clearedTimeouts).to.include.members([41, 42]);
     expect(removed).to.include('resize');
     expect(removed).to.include('orientationchange');
+  });
+
+  it('uses global clearTimeout fallback when window is unavailable during dispose', function() {
+    const clearedTimeouts = [];
+    globalThis.window = { location: { search: '' } };
+    const originalClearTimeout = globalThis.clearTimeout;
+    globalThis.clearTimeout = (id) => { clearedTimeouts.push(id); };
+    try {
+      const view = new GameView();
+      view.autoMoveTimer = 51;
+      view.resumeTimer = 52;
+      view.stage = null;
+      globalThis.window = undefined;
+
+      view.dispose();
+
+      expect(clearedTimeouts).to.include.members([51, 52]);
+    } finally {
+      globalThis.clearTimeout = originalClearTimeout;
+    }
   });
 });

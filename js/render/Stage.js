@@ -148,6 +148,11 @@ class Stage {
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
+    this._lastCursorX = Number.NaN;
+    this._lastCursorY = Number.NaN;
+    this._lastCursorHasSprite = false;
+    this._cursorStateVersion = 0;
+    this._lastCursorStateVersion = 0;
     this.guiEnabled = true;
     this.hudMargin = 20;
 
@@ -291,6 +296,8 @@ class Stage {
   setCursorSprite(frame) {
     if (!frame) {
       this.cursorCanvas = null;
+      // Force redraw even if cursor position is unchanged.
+      this._cursorStateVersion += 1;
       return;
     }
     const c = document.createElement('canvas');
@@ -303,6 +310,8 @@ class Stage {
       0
     );
     this.cursorCanvas = c;
+    // Sprite updates must invalidate the cursor plane for the next redraw.
+    this._cursorStateVersion += 1;
   }
 
   setGuiEnabled(enabled) {
@@ -735,16 +744,25 @@ class Stage {
       (guiOverlayDisplay.hasPendingDirty?.() || guiOverlaySig !== this._lastGuiOverlayDrawSignature);
     const overlayDirty = gameOverlayDirty || guiOverlayDirty;
     const overlayVisible = this._gameOverlayVisible || (this.guiEnabled && this._guiOverlayVisible);
+    const cursorVisibleChanged = this._lastCursorHasSprite !== !!this.cursorCanvas;
+    const cursorStateChanged = this._cursorStateVersion !== this._lastCursorStateVersion || cursorVisibleChanged;
+    const cursorMoved = !!this.cursorCanvas &&
+      (this._lastCursorX !== this.cursorX || this._lastCursorY !== this.cursorY);
     const requiresFullComposite =
       forceComposite ||
       this.fadeAlpha !== 0 ||
       this.overlayAlpha > 0 ||
       this.perfOverlayEnabled ||
-      !!this.cursorCanvas ||
+      cursorStateChanged ||
+      cursorMoved ||
       overlayDirty ||
       (overlayVisible && (gameDirty || guiDirty));
 
     if (!requiresFullComposite && !gameDirty && !guiDirty && !overlayDirty) {
+      this._lastCursorX = this.cursorX;
+      this._lastCursorY = this.cursorY;
+      this._lastCursorHasSprite = !!this.cursorCanvas;
+      this._lastCursorStateVersion = this._cursorStateVersion;
       this._perfTrackingFrame = false;
       this._perfFrameCount += 1;
       this._perfFrameMs = perfNow() - start;
@@ -773,6 +791,10 @@ class Stage {
       if (this.perfOverlayEnabled) {
         this.drawPerfOverlay();
       }
+      this._lastCursorX = this.cursorX;
+      this._lastCursorY = this.cursorY;
+      this._lastCursorHasSprite = !!this.cursorCanvas;
+      this._lastCursorStateVersion = this._cursorStateVersion;
       return;
     }
 
@@ -796,7 +818,6 @@ class Stage {
         const overlayImg = guiOverlayDisplay.getImageData();
         this.draw(this.guiOverlayImgProps, overlayImg, { applyStageEffects: false });
       }
-      this.drawCursor();
     } else {
       if (gameDisplay && gameDirty) {
         const gameImg = gameDisplay.getImageData();
@@ -810,6 +831,9 @@ class Stage {
         this.draw(this.guiImgProps, guiImg);
         this._lastGuiDrawSignature = guiSig;
       }
+    }
+    if (this.cursorCanvas) {
+      this.drawCursor();
     }
     this._lastGameOverlayDrawSignature = gameOverlaySig;
     this._lastGuiOverlayDrawSignature = guiOverlaySig;
@@ -845,6 +869,10 @@ class Stage {
     if (this.perfOverlayEnabled) {
       this.drawPerfOverlay();
     }
+    this._lastCursorX = this.cursorX;
+    this._lastCursorY = this.cursorY;
+    this._lastCursorHasSprite = !!this.cursorCanvas;
+    this._lastCursorStateVersion = this._cursorStateVersion;
   }
 
   createImage(displayOwner, width, height) {

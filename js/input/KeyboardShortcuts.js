@@ -170,26 +170,28 @@ class KeyboardShortcuts {
   _changeSpeed(dir, isShift) {
     const game = this.view.game;
     if (!game) return;
-    const timer = game.getGameTimer();
+    const timer = game.getGameTimer?.();
     const gui = game.gameGui;
+    // Some lightweight test and embed flows do not wire a timer/gui yet.
+    if (!timer) return;
     // Shift should noticeably speed things up
     const steps = isShift ? 5 : 1;
     for (let i=0;i<steps;i++) {
       if (dir > 0) {
         if (timer.speedFactor < 1) {
           timer.speedFactor = Math.round((timer.speedFactor + 0.1) * 100) / 100;
-          gui.drawSpeedChange(true);
+          gui?.drawSpeedChange?.(true);
         } else if (timer.speedFactor < 120) {
           timer.speedFactor += 1;
-          gui.drawSpeedChange(true);
+          gui?.drawSpeedChange?.(true);
         }
       } else {
         if (timer.speedFactor > 1) {
           timer.speedFactor -= 1;
-          gui.drawSpeedChange(false);
+          gui?.drawSpeedChange?.(false);
         } else if (timer.speedFactor > 0.1) {
           timer.speedFactor = Math.round((timer.speedFactor - 0.1) * 100) / 100;
-          gui.drawSpeedChange(false);
+          gui?.drawSpeedChange?.(false);
         }
       }
     }

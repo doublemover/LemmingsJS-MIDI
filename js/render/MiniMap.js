@@ -3,6 +3,7 @@ import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
 
 const getApp = () => getAppContext();
+const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 class MiniMap {
   static palette = null;
@@ -60,10 +61,16 @@ class MiniMap {
     this._viewportCounter = 0;
     this.viewportDashDelay = 100;
     this._frameNeedsCompose = true;
-    this._lastViewRectKey = '';
+    this._lastViewRectX = Number.NaN;
+    this._lastViewRectY = Number.NaN;
+    this._lastViewRectW = Number.NaN;
+    this._lastViewRectH = Number.NaN;
+    this._lastViewDashOffset = Number.NaN;
     this._lastLiveDotsRef = this.liveDots;
     this._lastLiveDotsLength = 0;
-    this._lastSelectedDotKey = '';
+    this._lastSelectedDotVisible = false;
+    this._lastSelectedDotX = Number.NaN;
+    this._lastSelectedDotY = Number.NaN;
     this._lastReversing = false;
     this._lastTerrainRevalidated = 0;
     this._renderStats = {
@@ -87,56 +94,42 @@ class MiniMap {
     }
   }
 
-  #handleMouseDown(event){
-    if (!this.guiDisplay) return;
-    this._mouseDown = true;
+  /**
+   * Translate minimap pointer coordinates into a clamped world viewport X.
+   */
+  #updateViewportFromPointer(event) {
+    if (!this.guiDisplay || !this.level) return;
     const gd = this.guiDisplay;
-    const destX = gd.worldDataSize.width  - this.width;
+    const destX = gd.worldDataSize.width - this.width;
     const destY = gd.worldDataSize.height - this.height - 1;
 
     const mx = event.x - destX;
     const my = event.y - destY;
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-        
-    const pct = mx / this.width;
-    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
+
+    const pct = this.width <= 1 ? 0 : (mx / (this.width - 1));
+    const maxOffset = Math.max(0, this.level.width - gd.worldDataSize.width);
+    const newX = clamp(Math.trunc(pct * maxOffset), 0, maxOffset);
     this.level.screenPositionX = newX;
     gd.setScreenPosition?.(newX, 0, { preserveScale: true });
+  }
+
+  #handleMouseDown(event){
+    if (!this.guiDisplay) return;
+    this._mouseDown = true;
+    this.#updateViewportFromPointer(event);
   }
 
   #handleMouseUp(event){
     if (!this.guiDisplay) return;
     this._mouseDown = false;
-    const gd = this.guiDisplay;
-    const destX = gd.worldDataSize.width  - this.width;
-    const destY = gd.worldDataSize.height - this.height - 1;
-
-    const mx = event.x - destX;
-    const my = event.y - destY;
-    if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-    const pct = mx / this.width;
-    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
-    this.level.screenPositionX = newX;
-    gd.setScreenPosition?.(newX, 0, { preserveScale: true });
+    this.#updateViewportFromPointer(event);
   }
 
   #handleMouseMove(event){
     if (!this.guiDisplay) return;
     if (!this._mouseDown) return;
-    const gd = this.guiDisplay;
-    const { width: gdW, height: gdH } = gd.worldDataSize;
-
-    const destX = gd.worldDataSize.width  - this.width;
-    const destY = gd.worldDataSize.height - this.height - 1;
-
-    const mx = event.x - destX;
-    const my = event.y - destY;
-    if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-
-    const pct = mx / this.width;
-    const newX = ((this.level.width - gd.worldDataSize.width) * pct) | 0;
-    this.level.screenPositionX = newX;
-    gd.setScreenPosition?.(newX, 0, { preserveScale: true });
+    this.#updateViewportFromPointer(event);
   }
 
   /* Build complete terrain snapshot (expensive – call at load/reset only). */
@@ -161,16 +154,28 @@ class MiniMap {
     this.terrainColors[idx] = MiniMap.palette[normalized] || 0xFF000000;
   }
 
+  /**
+   * Track dirty cells in a bounded ring so invalidation stays O(1) and capped.
+   */
   #markTerrainCellDirty(idx) {
     if ((idx >>> 0) >= this.size) return;
     if (this._terrainDirtyFlags[idx]) return;
+    if (this._terrainDirtyCount >= this.size) {
+      const overwriteIdx = this._terrainDirtyIndices[this._terrainDirtyWrite];
+      if ((overwriteIdx >>> 0) < this.size) {
+        this._terrainDirtyFlags[overwriteIdx] = 0;
+      }
+      if (this._terrainDirtyRead === this._terrainDirtyWrite) {
+        this._terrainDirtyRead = (this._terrainDirtyRead + 1) % this.size;
+      }
+    }
     this._terrainDirtyFlags[idx] = 1;
     this._terrainDirtyIndices[this._terrainDirtyWrite] = idx;
     this._terrainDirtyWrite += 1;
     if (this._terrainDirtyWrite === this.size) {
       this._terrainDirtyWrite = 0;
     }
-    this._terrainDirtyCount += 1;
+    this._terrainDirtyCount = Math.min(this.size, this._terrainDirtyCount + 1);
   }
 
   #refreshTerrainCell(idx, groundMaskLayer = null) {
@@ -418,10 +423,19 @@ class MiniMap {
     let vpW = (viewRect.w * this.scaleX) | 0;
     const vpY = (viewRect.y * this.scaleY) | 0;
     const vpH = (viewRect.h * this.scaleY) | 0;
-    const viewKey = `${vpX}:${vpY}:${vpW}:${vpH}:${this.viewportDashOffset}`;
-    if (viewKey !== this._lastViewRectKey || dashChanged) {
+    const viewChanged =
+      this._lastViewRectX !== vpX ||
+      this._lastViewRectY !== vpY ||
+      this._lastViewRectW !== vpW ||
+      this._lastViewRectH !== vpH ||
+      this._lastViewDashOffset !== this.viewportDashOffset;
+    if (viewChanged || dashChanged) {
       this._frameNeedsCompose = true;
-      this._lastViewRectKey = viewKey;
+      this._lastViewRectX = vpX;
+      this._lastViewRectY = vpY;
+      this._lastViewRectW = vpW;
+      this._lastViewRectH = vpH;
+      this._lastViewDashOffset = this.viewportDashOffset;
     }
 
     if (this.liveDots !== this._lastLiveDotsRef || this.liveDots.length !== this._lastLiveDotsLength) {
@@ -429,10 +443,20 @@ class MiniMap {
       this._lastLiveDotsRef = this.liveDots;
       this._lastLiveDotsLength = this.liveDots.length;
     }
-    const selectedKey = this.selectedDot ? `${this.selectedDot[0]}:${this.selectedDot[1]}` : '';
-    if (selectedKey !== this._lastSelectedDotKey) {
+    const selectedVisible = !!this.selectedDot;
+    const selectedX = selectedVisible ? this.selectedDot[0] : Number.NaN;
+    const selectedY = selectedVisible ? this.selectedDot[1] : Number.NaN;
+    const selectedChanged =
+      this._lastSelectedDotVisible !== selectedVisible ||
+      (selectedVisible && (
+        this._lastSelectedDotX !== selectedX ||
+        this._lastSelectedDotY !== selectedY
+      ));
+    if (selectedChanged) {
       this._frameNeedsCompose = true;
-      this._lastSelectedDotKey = selectedKey;
+      this._lastSelectedDotVisible = selectedVisible;
+      this._lastSelectedDotX = selectedX;
+      this._lastSelectedDotY = selectedY;
     }
     if (reversing !== this._lastReversing) {
       this._frameNeedsCompose = true;

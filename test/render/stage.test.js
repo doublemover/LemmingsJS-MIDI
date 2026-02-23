@@ -234,6 +234,113 @@ describe('Stage', function() {
     expect(stage.overlayTimer).to.equal(0);
   });
 
+  it('keeps cursor rendered when static and redraws when it moves', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    let clearCalls = 0;
+    let drawCalls = 0;
+    let cursorCalls = 0;
+    const originalClear = stage.clear;
+    const originalDraw = stage.draw;
+    const originalDrawCursor = stage.drawCursor;
+    stage.clear = (...args) => {
+      clearCalls += 1;
+      return originalClear.call(stage, ...args);
+    };
+    stage.draw = (...args) => {
+      drawCalls += 1;
+      return originalDraw.call(stage, ...args);
+    };
+    stage.drawCursor = () => {
+      cursorCalls += 1;
+      return originalDrawCursor.call(stage);
+    };
+
+    stage.setCursorSprite({
+      width: 4,
+      height: 4,
+      getData() { return new Uint8ClampedArray(4 * 4 * 4); }
+    });
+    stage.cursorX = 5;
+    stage.cursorY = 5;
+    stage.redraw();
+    expect(clearCalls).to.be.greaterThan(0);
+    expect(cursorCalls).to.equal(1);
+
+    const fullClearCalls = clearCalls;
+    stage.redraw();
+    expect(cursorCalls).to.equal(1);
+    expect(clearCalls).to.equal(fullClearCalls);
+
+    stage.cursorX = 8;
+    stage.cursorY = 8;
+    stage.redraw();
+    expect(cursorCalls).to.equal(2);
+    expect(clearCalls).to.be.greaterThan(fullClearCalls);
+    expect(drawCalls).to.be.at.least(0);
+  });
+
+  it('forces redraw when cursor sprite changes at a fixed position', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    let clearCalls = 0;
+    const originalClear = stage.clear;
+    stage.clear = (...args) => {
+      clearCalls += 1;
+      return originalClear.call(stage, ...args);
+    };
+
+    stage.cursorX = 5;
+    stage.cursorY = 5;
+    stage.setCursorSprite({
+      width: 4,
+      height: 4,
+      getData() { return new Uint8ClampedArray(4 * 4 * 4); }
+    });
+    stage.redraw();
+    const baselineClearCalls = clearCalls;
+
+    stage.setCursorSprite({
+      width: 4,
+      height: 4,
+      getData() { return new Uint8ClampedArray(4 * 4 * 4); }
+    });
+    stage.redraw();
+    expect(clearCalls).to.be.greaterThan(baselineClearCalls);
+  });
+
+  it('forces a redraw when cursor visibility toggles without setter', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    let clearCalls = 0;
+    const originalClear = stage.clear;
+    stage.clear = (...args) => {
+      clearCalls += 1;
+      return originalClear.call(stage, ...args);
+    };
+
+    stage.setCursorSprite({
+      width: 4,
+      height: 4,
+      getData() { return new Uint8ClampedArray(4 * 4 * 4); }
+    });
+    stage.redraw();
+    const baselineClearCalls = clearCalls;
+
+    stage.cursorCanvas = null;
+    stage.redraw();
+    expect(clearCalls).to.be.greaterThan(baselineClearCalls);
+  });
+
   it('recycles consumed dirty-rect buffers after drawing', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);
@@ -722,7 +829,7 @@ describe('Stage', function() {
     stage.redraw(true);
     expect(draws).to.equal(2);
     expect(clears).to.equal(1);
-    expect(cursors).to.equal(1);
+    expect(cursors).to.equal(0);
   });
 
   it('returns gui image hits and null misses', function() {

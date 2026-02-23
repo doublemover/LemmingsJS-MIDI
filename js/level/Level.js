@@ -315,7 +315,10 @@ class Level extends BaseLogger {
       }
     }
     if (changed && maxX >= minX && maxY >= minY) {
-      this._markGroundDirtyRect(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1);
+      const width = (maxX - minX) + 1;
+      const height = (maxY - minY) + 1;
+      this._markGroundDirtyRect(minX, minY, width, height);
+      getRuntimeMiniMap()?.invalidateRegion?.(minX, minY, width, height);
     }
     return { changed, removed };
   }

@@ -95,4 +95,90 @@ describe('EventQueue', function () {
     expect(envelope.events[0].data).to.deep.equal({ nested: { count: 1 } });
     expect(envelope.events[0].resourceUris).to.deep.equal(['res://one']);
   });
+
+  it('bounds human summary history to avoid unbounded growth', function () {
+    const queue = createQueue(6);
+    queue.maxHumanSummaryParts = 3;
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'human', type: 'input', summary: 'second' });
+    queue.add({ source: 'human', type: 'input', summary: 'third' });
+    queue.add({ source: 'human', type: 'input', summary: 'fourth' });
+    queue.add({ source: 'human', type: 'input', summary: 'fifth' });
+
+    const envelope = queue.drain('0');
+    expect(envelope.humanSummary).to.equal('third; fourth; fifth');
+    expect(queue.humanSummaryParts.length).to.equal(0);
+  });
+
+  it('normalizes constructor human summary limit and supports explicit option', function () {
+    const queue = new EventQueue({
+      maxEvents: 4,
+      maxHumanSummaryParts: 1,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+
+    expect(queue.maxHumanSummaryParts).to.equal(1);
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'human', type: 'input', summary: 'second' });
+
+    const envelope = queue.drain('0');
+    expect(envelope.events).to.have.lengthOf(2);
+    expect(envelope.humanSummary).to.equal('second');
+    expect(queue.maxHumanSummaryParts).to.equal(1);
+  });
+
+  it('treats non-positive human summary max as disabled', function () {
+    const queue = new EventQueue({
+      maxEvents: 8,
+      maxHumanSummaryParts: 0,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+
+    expect(queue.maxHumanSummaryParts).to.equal(0);
+    queue.add({ source: 'human', type: 'input', summary: 'first' });
+    queue.add({ source: 'human', type: 'input', summary: 'second' });
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.humanSummary).to.equal(undefined);
+  });
+
+  it('defaults summary limit when configured value is invalid', function () {
+    const queue = new EventQueue({
+      maxEvents: 4,
+      maxHumanSummaryParts: -10,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+    expect(queue.maxHumanSummaryParts).to.equal(24);
+  });
+
+  it('normalizes invalid maxEvents inputs to a usable default capacity', function () {
+    const queue = new EventQueue({
+      maxEvents: Number.NaN,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+    expect(queue.maxEvents).to.equal(1000);
+
+    queue.add({ source: 'agent', type: 'state' });
+    const envelope = queue.drain('0');
+    expect(envelope.events).to.have.lengthOf(1);
+  });
+
+  it('rebalances buffered human summaries when maxHumanSummaryParts shrinks at runtime', function () {
+    const queue = createQueue(8);
+    queue.maxHumanSummaryParts = 5;
+    queue.add({ source: 'human', type: 'input', summary: 'a' });
+    queue.add({ source: 'human', type: 'input', summary: 'b' });
+    queue.add({ source: 'human', type: 'input', summary: 'c' });
+    queue.add({ source: 'human', type: 'input', summary: 'd' });
+    queue.add({ source: 'human', type: 'input', summary: 'e' });
+
+    queue.maxHumanSummaryParts = 2;
+    queue.add({ source: 'human', type: 'input', summary: 'f' });
+
+    const envelope = queue.drain('0');
+    expect(envelope.humanSummary).to.equal('e; f');
+  });
 });

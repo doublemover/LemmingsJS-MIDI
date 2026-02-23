@@ -204,7 +204,12 @@ class GameView extends BaseLogger {
     this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameResult.state));
     this.stage.startFadeOut();
     console.dir(gameResult);
-    this.autoMoveTimer = window.setTimeout(() => {
+    const appWindow = globalThis.window;
+    const setTimeoutFn = appWindow?.setTimeout || globalThis.setTimeout;
+    if (typeof setTimeoutFn !== 'function') {
+      return;
+    }
+    this.autoMoveTimer = setTimeoutFn(() => {
       const gameStateTypes = getGameStateTypes();
       if (gameResult.state === gameStateTypes.SUCCEEDED) {
         /// move to next level
@@ -239,6 +244,9 @@ class GameView extends BaseLogger {
     if (this.game == null) {
       return;
     }
+    const appWindow = globalThis.window;
+    const clearTimeoutFn = appWindow?.clearTimeout || globalThis.clearTimeout;
+    const setTimeoutFn = appWindow?.setTimeout || globalThis.setTimeout;
     this.game.getGameTimer().suspend();
     if (this.stage?.startOverlayFade) {
       let rect = null;
@@ -255,10 +263,15 @@ class GameView extends BaseLogger {
       this.stage.startOverlayFade(color, rect);
     }
     if (this.resumeTimer) {
-      window.clearTimeout(this.resumeTimer);
+      if (typeof clearTimeoutFn === 'function') {
+        clearTimeoutFn(this.resumeTimer);
+      }
       this.resumeTimer = null;
     }
-    this.resumeTimer = window.setTimeout(() => {
+    if (typeof setTimeoutFn !== 'function') {
+      return;
+    }
+    this.resumeTimer = setTimeoutFn(() => {
       if (this.game) this.game.getGameTimer().continue();
       this.resumeTimer = null;
     }, 2000);
@@ -1762,6 +1775,16 @@ class GameView extends BaseLogger {
 
   /** cleanup keyboard and stage handlers */
   dispose() {
+    const appWindow = globalThis.window;
+    // Fall back to the global timer helpers so disposal works in headless tests.
+    if (this.autoMoveTimer != null) {
+      (appWindow?.clearTimeout || globalThis.clearTimeout)?.(this.autoMoveTimer);
+      this.autoMoveTimer = null;
+    }
+    if (this.resumeTimer != null) {
+      (appWindow?.clearTimeout || globalThis.clearTimeout)?.(this.resumeTimer);
+      this.resumeTimer = null;
+    }
     clearAppContext(this);
     if (this.shortcuts) {
       this.shortcuts.dispose();
@@ -1772,8 +1795,8 @@ class GameView extends BaseLogger {
       this.midiRouter = null;
     }
     if (this.stage && this.stage.dispose) {
-      window.removeEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
-      window.removeEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      appWindow?.removeEventListener?.('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      appWindow?.removeEventListener?.('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
       this.stage.dispose();
       this.stage = null;
     }

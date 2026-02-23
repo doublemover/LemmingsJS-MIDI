@@ -1,6 +1,18 @@
 import crypto from 'node:crypto';
 
 const nowIso = () => new Date().toISOString();
+const DEFAULT_MAX_EVENTS = 1000;
+const DEFAULT_MAX_HUMAN_SUMMARY_PARTS = 24;
+const MIN_HUMAN_SUMMARY_PARTS = 0;
+
+/**
+ * Normalize capacity-like inputs to stable integer bounds.
+ */
+const normalizeCapacity = (value, fallback, min = 0) => {
+  const candidate = Number.isFinite(Number(value)) ? Math.trunc(value) : NaN;
+  if (!Number.isFinite(candidate) || candidate < min) return fallback;
+  return candidate;
+};
 
 const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .toString('base64')
@@ -25,8 +37,20 @@ const cloneEventValue = (value) => {
 };
 
 class EventQueue {
-  constructor({ maxEvents = 1000, idFactory = makeId, timeFactory = nowIso } = {}) {
-    this.maxEvents = Math.max(1, Math.trunc(maxEvents) || 1);
+  /**
+   * @param {Object} options
+   * @param {number} [options.maxEvents=1000] - Maximum number of events retained in the queue.
+   * @param {number} [options.maxHumanSummaryParts=24] - Max human summary segments retained.
+   * @param {() => string} [options.idFactory=makeId] - Unique id factory for event entries.
+   * @param {() => string} [options.timeFactory=nowIso] - Timestamp factory for event entries.
+   */
+  constructor({
+    maxEvents = DEFAULT_MAX_EVENTS,
+    maxHumanSummaryParts = DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+    idFactory = makeId,
+    timeFactory = nowIso
+  } = {}) {
+    this.maxEvents = Math.max(1, normalizeCapacity(maxEvents, DEFAULT_MAX_EVENTS, 1));
     this.idFactory = typeof idFactory === 'function' ? idFactory : makeId;
     this.timeFactory = typeof timeFactory === 'function' ? timeFactory : nowIso;
     this.events = new Array(this.maxEvents);
@@ -34,9 +58,27 @@ class EventQueue {
     this.size = 0;
     this.seq = 0;
     this.lastDelivered = 0;
+    // Ring-buffer over summary segments to avoid O(n) shift churn under chatty input.
     this.humanSummaryParts = [];
+    this.humanSummaryStart = 0;
+    this.maxHumanSummaryParts = normalizeCapacity(
+      maxHumanSummaryParts,
+      DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+      MIN_HUMAN_SUMMARY_PARTS
+    );
   }
 
+  /**
+   * Add a new event to the queue and keep snapshots of mutable payloads.
+   * @param {object} entry
+   * @param {string} entry.source
+   * @param {string} entry.type
+   * @param {string} [entry.summary]
+   * @param {*} [entry.data]
+   * @param {string[]} [entry.resourceUris]
+   * @param {number} [entry.tickIndex]
+   * @returns {object}
+   */
   add({ source, type, summary, data, resourceUris, tickIndex } = {}) {
     const eventData = cloneEventValue(data);
     const eventResourceUris = Array.isArray(resourceUris) ? resourceUris.slice() : resourceUris;
@@ -64,11 +106,45 @@ class EventQueue {
     this.events[index] = entry;
 
     if (source === 'human' && summary) {
-      this.humanSummaryParts.push(summary);
+      const summaryCap = normalizeCapacity(
+        this.maxHumanSummaryParts,
+        DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+        MIN_HUMAN_SUMMARY_PARTS
+      );
+      this.maxHumanSummaryParts = summaryCap;
+      if (summaryCap <= 0) return entry;
+      if (this.humanSummaryParts.length > summaryCap) {
+        if (this.humanSummaryStart === 0) {
+          this.humanSummaryParts = this.humanSummaryParts.slice(-summaryCap);
+        } else {
+          const ordered = new Array(this.humanSummaryParts.length);
+          for (let i = 0; i < this.humanSummaryParts.length; i += 1) {
+            ordered[i] = this.humanSummaryParts[
+              (this.humanSummaryStart + i) % this.humanSummaryParts.length
+            ];
+          }
+          this.humanSummaryParts = ordered.slice(-summaryCap);
+        }
+        this.humanSummaryStart = 0;
+      }
+      if (this.humanSummaryParts.length < summaryCap) {
+        this.humanSummaryParts.push(summary);
+      } else {
+        this.humanSummaryParts[this.humanSummaryStart] = summary;
+        this.humanSummaryStart = (this.humanSummaryStart + 1) % summaryCap;
+      }
     }
     return entry;
   }
 
+  /**
+   * Drain queued events newer than `after` into a transport envelope.
+   * @param {string|number|undefined} after
+   * @param {object} [options]
+   * @param {boolean} [options.updateCursor=true] - Whether to advance last delivered cursor.
+   * @param {boolean} [options.includeHumanSummary=true] - Whether to include human summary.
+   * @returns {{cursor:string,events:object[],humanSummary?:string}|null}
+   */
   drain(after, { updateCursor = true, includeHumanSummary = true } = {}) {
     if (this.size <= 0) return null;
     const afterSeq = Number.isFinite(Number(after)) ? Number(after) : this.lastDelivered;
@@ -81,24 +157,39 @@ class EventQueue {
     const startOffset = Math.max(0, startSeq - oldest.seq);
     if (startOffset >= this.size) return null;
 
-    const selected = [];
+    const events = [];
+    let cursorSeq = afterSeq;
     for (let offset = startOffset; offset < this.size; offset += 1) {
       const event = this.events[(this.head + offset) % this.maxEvents];
-      if (event) selected.push(event);
+      if (!event) continue;
+      cursorSeq = event.seq;
+      const { seq, ...rest } = event;
+      events.push(rest);
     }
-    if (!selected.length) return null;
+    if (!events.length) return null;
 
-    const cursor = String(selected[selected.length - 1].seq);
+    const cursor = String(cursorSeq);
     if (updateCursor) {
       this.lastDelivered = Number(cursor);
     }
     const payload = {
       cursor,
-      events: selected.map(({ seq, ...rest }) => rest)
+      events
     };
     if (includeHumanSummary && this.humanSummaryParts.length) {
-      payload.humanSummary = this.humanSummaryParts.join('; ');
-      this.humanSummaryParts = [];
+      if (this.humanSummaryStart === 0) {
+        payload.humanSummary = this.humanSummaryParts.join('; ');
+      } else {
+        const ordered = new Array(this.humanSummaryParts.length);
+        for (let i = 0; i < this.humanSummaryParts.length; i += 1) {
+          ordered[i] = this.humanSummaryParts[
+            (this.humanSummaryStart + i) % this.humanSummaryParts.length
+          ];
+        }
+        payload.humanSummary = ordered.join('; ');
+      }
+      this.humanSummaryParts.length = 0;
+      this.humanSummaryStart = 0;
     }
     return payload;
   }

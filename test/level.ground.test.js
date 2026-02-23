@@ -56,6 +56,32 @@ describe('Level ground operations', function() {
     expect(result.removed).to.be.greaterThan(0);
   });
 
+  it('invalidates minimap bounds when masked clears modify terrain', function() {
+    const invalidateCalls = [];
+    globalThis.lemmings.game.lemmingManager.miniMap = {
+      onGroundChanged() {},
+      invalidateRegion(...args) { invalidateCalls.push(args); }
+    };
+
+    const level = new Level(3, 3);
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(3 * 3 * 4));
+    level.setPalettes(palette, palette);
+    level.setGroundAt(1, 1, 1);
+
+    const mask = {
+      offsetX: 0,
+      offsetY: 0,
+      width: 1,
+      height: 1,
+      at() { return false; }
+    };
+    level.clearGroundWithMask(mask, 1, 1);
+
+    expect(invalidateCalls).to.eql([[1, 1, 1, 1]]);
+  });
+
   it('reveals steel terrain on demand without clearing the steel mask', function() {
     const level = new Level(2, 2);
     const palette = new Lemmings.ColorPalette();

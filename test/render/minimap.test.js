@@ -72,8 +72,13 @@ describe('MiniMap', function() {
     const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
 
     guiDisplay.onMouseDown.trigger({ x: destX + 10, y: destY + 5 });
-    const expectedX = ((level.width - guiDisplay.worldDataSize.width)
-      * ((10) / miniMap.width)) | 0;
+    const expectedX = Math.max(
+      0,
+      Math.min(
+        level.width - guiDisplay.worldDataSize.width,
+        ((level.width - guiDisplay.worldDataSize.width) * (10 / (miniMap.width - 1))) | 0
+      )
+    );
     expect(level.screenPositionX).to.equal(expectedX);
 
     guiDisplay.onMouseMove.trigger({ x: destX + 15, y: destY + 5 });
@@ -81,6 +86,9 @@ describe('MiniMap', function() {
 
     guiDisplay.onMouseUp.trigger({ x: destX + 20, y: destY + 5 });
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
+
+    guiDisplay.onMouseMove.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
+    expect(level.screenPositionX).to.equal(0);
 
     guiDisplay.onMouseDown.trigger({ x: 1, y: 1 });
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
@@ -241,5 +249,76 @@ describe('MiniMap', function() {
     const diagnostics = miniMap.getRenderDiagnostics();
     expect(diagnostics.composes).to.be.greaterThan(0);
     expect(diagnostics.reuses).to.be.greaterThan(0);
+  });
+
+  it('bounds terrain revalidation queue growth under heavy updates', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    const updates = miniMap.width * miniMap.height + 10;
+    for (let i = 0; i < updates; i += 1) {
+      const miniMapX = i % miniMap.width;
+      const miniMapY = 0;
+      miniMap.invalidateRegion(
+        Math.floor(miniMapX / miniMap.scaleX),
+        Math.floor(miniMapY / miniMap.scaleY),
+        1 / miniMap.scaleX,
+        1 / miniMap.scaleY
+      );
+    }
+
+    expect(miniMap.getRenderDiagnostics().terrainDirtyCount).to.be.at.most(miniMap.size);
+
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
+
+    expect(miniMap.getRenderDiagnostics().terrainDirtyCount).to.be.at.least(0);
+  });
+
+  it('keeps viewport pinned when map width does not exceed visible width', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 120;
+    const guiDisplay = makeGuiDisplay();
+    guiDisplay.worldDataSize.width = 200;
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+
+    guiDisplay.onMouseDown.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
+    expect(level.screenPositionX).to.equal(0);
+    expect(guiDisplay.setScreenPositionCalls.at(-1).x).to.equal(0);
+  });
+
+  it('evicts overwritten dirty indices when queue is saturated', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    const overwritten = 17;
+    miniMap._terrainDirtyCount = miniMap.size;
+    miniMap._terrainDirtyRead = 0;
+    miniMap._terrainDirtyWrite = 0;
+    miniMap._terrainDirtyFlags.fill(0);
+    miniMap._terrainDirtyIndices[0] = overwritten;
+    miniMap._terrainDirtyFlags[overwritten] = 1;
+
+    const miniMapX = 22;
+    miniMap.invalidateRegion(
+      Math.floor(miniMapX / miniMap.scaleX),
+      0,
+      1 / miniMap.scaleX,
+      1 / miniMap.scaleY
+    );
+
+    expect(miniMap._terrainDirtyFlags[overwritten]).to.equal(0);
+    expect(miniMap._terrainDirtyCount).to.equal(miniMap.size);
   });
 });
