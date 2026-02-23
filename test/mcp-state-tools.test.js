@@ -182,6 +182,38 @@ describe('state tools', function () {
     expect(result.snapshot.game.lemmings).to.have.lengthOf(5000);
   });
 
+  it('filters duplicate and out-of-range ids in state.get ids mode', async function () {
+    const fixture = createFixture({
+      currentTick: 12,
+      state: {
+        version: 1,
+        mode: 'play',
+        ready: true,
+        game: {
+          timer: { tickIndex: 12, running: true, speedFactor: 1 },
+          lemmingManager: { selectedIndex: 0, activeCount: 3, totalCount: 3 },
+          lemmings: [
+            { id: 0, x: 0, y: 0 },
+            { id: 1, x: 1, y: 1 },
+            { id: 2, x: 2, y: 2 }
+          ]
+        }
+      }
+    });
+
+    const result = await fixture.handlers.getStateTool({
+      sessionId: 's1',
+      lemmings: {
+        mode: 'ids',
+        ids: [2, 2, -1, 999, 0]
+      }
+    });
+
+    expect(result.ok).to.equal(true);
+    expect(result.snapshot.game.lemmingsIds).to.deep.equal([2, 0]);
+    expect(result.snapshot.game.lemmings.map((lem) => lem.id)).to.deep.equal([2, 0]);
+  });
+
   it('caps state.get all mode max to protect snapshot size', async function () {
     const total = 6005;
     const fixture = createFixture({

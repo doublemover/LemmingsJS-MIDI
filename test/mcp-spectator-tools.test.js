@@ -193,13 +193,28 @@ describe('mcp spectator tools', function () {
       spectator: null
     };
 
-    const baseUrl = await startSpectatorServer(session, {
+    const firstUrl = await startSpectatorServer(session, {
       port: -123.8,
       allowHumanInput: false,
       frameIntervalMs: 50
     });
+    expect(firstUrl).to.match(/^http:\/\/127\.0\.0\.1:\d+$/);
+    stopSpectatorServer(session);
 
-    expect(baseUrl).to.match(/^http:\/\/127\.0\.0\.1:\d+$/);
+    const secondUrl = await startSpectatorServer(session, {
+      port: 70000,
+      allowHumanInput: false,
+      frameIntervalMs: 50
+    });
+    expect(secondUrl).to.match(/^http:\/\/127\.0\.0\.1:\d+$/);
+    stopSpectatorServer(session);
+
+    const thirdUrl = await startSpectatorServer(session, {
+      port: Symbol('port'),
+      allowHumanInput: false,
+      frameIntervalMs: 50
+    });
+    expect(thirdUrl).to.match(/^http:\/\/127\.0\.0\.1:\d+$/);
     stopSpectatorServer(session);
   });
 

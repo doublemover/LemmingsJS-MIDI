@@ -193,9 +193,20 @@ const createStateToolHandlers = ({
           ? selected
           : pruneLemming(selected, lemmingPolicy);
       } else if (mode === 'ids') {
-        const ids = Array.isArray(lemmingOpts.ids)
-          ? lemmingOpts.ids.slice(0, MAX_STATE_GET_LEMMINGS)
-          : [];
+        const ids = [];
+        if (Array.isArray(lemmingOpts.ids)) {
+          const maxIndex = Array.isArray(raw.game?.lemmings) ? raw.game.lemmings.length - 1 : -1;
+          const seenIds = new Set();
+          for (const candidateId of lemmingOpts.ids) {
+            if (!Number.isFinite(candidateId)) continue;
+            const normalizedId = Math.trunc(candidateId);
+            if (normalizedId < 0 || normalizedId > maxIndex) continue;
+            if (seenIds.has(normalizedId)) continue;
+            seenIds.add(normalizedId);
+            ids.push(normalizedId);
+            if (ids.length >= MAX_STATE_GET_LEMMINGS) break;
+          }
+        }
         snapshot.game.lemmingsIds = ids;
         snapshot.game.lemmings = ids.map((id) => {
           const lem = raw.game?.lemmings?.[id] || null;

@@ -25,10 +25,20 @@ const createSpectatorTools = ({
   normalizeKeyToken,
   ensureGameFocus
 }) => {
+  const toNumberOrNaN = (value) => {
+    try {
+      return Number(value);
+    } catch {
+      return Number.NaN;
+    }
+  };
+
   const normalizeSpectatorPort = (value) => {
-    const parsed = Number(value);
+    const parsed = toNumberOrNaN(value);
     if (!Number.isFinite(parsed)) return 0;
-    return Math.max(0, Math.trunc(parsed));
+    const normalized = Math.trunc(parsed);
+    if (normalized < 0 || normalized > 65535) return 0;
+    return normalized;
   };
 
   const handleSpectatorInput = async (session, payload) => {
