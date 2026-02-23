@@ -41,6 +41,12 @@ const SURFACE_MODULES = Object.freeze([
   }
 ]);
 
+/**
+ * Parse enabled MCP surfaces from an environment-style CSV string.
+ *
+ * @param {unknown} raw
+ * @returns {Set<string>}
+ */
 const parseEnabledSurfaces = (raw) => {
   if (!raw || !String(raw).trim()) return new Set(DEFAULT_ENABLED_SURFACES);
   const parts = String(raw)
@@ -58,6 +64,18 @@ const parseEnabledSurfaces = (raw) => {
   return enabled;
 };
 
+/**
+ * Build tool-spec and handler registries grouped by semantic MCP surface.
+ *
+ * @param {object} schemas
+ * @param {object} handlers
+ * @param {Set<string>} [enabledSurfaces]
+ * @returns {{
+ *   specs: Array<{name: string}>,
+ *   handlersBySurface: Map<string, Map<string, Function>>,
+ *   toolSurfaceByName: Map<string, string>
+ * }}
+ */
 const buildSurfaceRegistry = (schemas, handlers, enabledSurfaces) => {
   const activeSurfaces = enabledSurfaces instanceof Set
     ? enabledSurfaces
