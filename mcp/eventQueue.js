@@ -26,6 +26,81 @@ const makeId = (bytes = 9) => crypto.randomBytes(bytes)
 /**
  * Clone event payloads so queue entries stay immutable from caller mutations.
  */
+const cloneEventValueFallback = (value, seen = new WeakMap()) => {
+  if (value == null || typeof value !== 'object') return value;
+  if (typeof value === 'function') return value;
+  if (seen.has(value)) return seen.get(value);
+
+  if (Buffer.isBuffer(value)) {
+    const copy = Buffer.from(value);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof Date) {
+    const copy = new Date(value.getTime());
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof RegExp) {
+    const copy = new RegExp(value.source, value.flags);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof ArrayBuffer) {
+    const copy = value.slice(0);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof DataView) {
+    const buffer = value.buffer.slice(value.byteOffset, value.byteOffset + value.byteLength);
+    const copy = new DataView(buffer);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (ArrayBuffer.isView(value)) {
+    const copy = new value.constructor(value);
+    seen.set(value, copy);
+    return copy;
+  }
+  if (value instanceof Map) {
+    const copy = new Map();
+    seen.set(value, copy);
+    for (const [entryKey, entryValue] of value.entries()) {
+      copy.set(
+        cloneEventValueFallback(entryKey, seen),
+        cloneEventValueFallback(entryValue, seen)
+      );
+    }
+    return copy;
+  }
+  if (value instanceof Set) {
+    const copy = new Set();
+    seen.set(value, copy);
+    for (const entry of value.values()) {
+      copy.add(cloneEventValueFallback(entry, seen));
+    }
+    return copy;
+  }
+  if (Array.isArray(value)) {
+    const copy = new Array(value.length);
+    seen.set(value, copy);
+    for (let i = 0; i < value.length; i += 1) {
+      copy[i] = cloneEventValueFallback(value[i], seen);
+    }
+    return copy;
+  }
+
+  const copy = {};
+  seen.set(value, copy);
+  for (const key of Object.keys(value)) {
+    copy[key] = cloneEventValueFallback(value[key], seen);
+  }
+  return copy;
+};
+
+/**
+ * Clone event payloads so queue entries stay immutable from caller mutations.
+ */
 const cloneEventValue = (value) => {
   if (value == null || typeof value !== 'object') return value;
   if (typeof structuredClone === 'function') {
@@ -38,7 +113,11 @@ const cloneEventValue = (value) => {
   try {
     return JSON.parse(JSON.stringify(value));
   } catch {
-    return value;
+    try {
+      return cloneEventValueFallback(value);
+    } catch {
+      return null;
+    }
   }
 };
 

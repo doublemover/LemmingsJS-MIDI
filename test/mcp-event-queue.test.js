@@ -128,6 +128,43 @@ describe('EventQueue', function () {
     expect(envelope.events[0].resourceUris).to.deep.equal(['res://one']);
   });
 
+  it('falls back to cycle-safe cloning when structuredClone is unavailable', function () {
+    const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'structuredClone');
+    if (descriptor && descriptor.configurable !== true && descriptor.writable !== true) {
+      this.skip();
+      return;
+    }
+
+    const queue = createQueue(4);
+    const data = { nested: { count: 1 } };
+    data.self = data;
+
+    const restoreStructuredClone = () => {
+      if (descriptor) {
+        Object.defineProperty(globalThis, 'structuredClone', descriptor);
+      } else {
+        delete globalThis.structuredClone;
+      }
+    };
+
+    try {
+      Object.defineProperty(globalThis, 'structuredClone', {
+        configurable: true,
+        writable: true,
+        value: undefined
+      });
+      queue.add({ source: 'system', type: 'watch', data });
+    } finally {
+      restoreStructuredClone();
+    }
+
+    data.nested.count = 99;
+    const envelope = queue.drain(undefined);
+    expect(envelope.events[0].data).to.not.equal(data);
+    expect(envelope.events[0].data.nested.count).to.equal(1);
+    expect(envelope.events[0].data.self).to.equal(envelope.events[0].data);
+  });
+
   it('bounds human summary history to avoid unbounded growth', function () {
     const queue = createQueue(6);
     queue.maxHumanSummaryParts = 3;
