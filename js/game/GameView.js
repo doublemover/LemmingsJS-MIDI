@@ -139,9 +139,10 @@ class GameView extends BaseLogger {
   }
 
   set gameCanvas(el) {
+    const appWindow = globalThis.window;
     if (this.stage && this.stage.dispose) {
-      window.removeEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
-      window.removeEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      appWindow?.removeEventListener?.('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+      appWindow?.removeEventListener?.('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
       this.stage.dispose();
     }
     const StageCtor = getDependency('Stage', Stage);
@@ -152,8 +153,8 @@ class GameView extends BaseLogger {
       workerOffscreen: this.workerOffscreenExperiment
     });
     this._stageResize = () => this.stage.scheduleUpdateStageSize();
-    window.addEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
-    window.addEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
+    appWindow?.addEventListener?.('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
+    appWindow?.addEventListener?.('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
     this._stageResize();
   }
 

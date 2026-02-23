@@ -752,6 +752,21 @@ describe('GameView coverage', function() {
     expect(view.game.debugOn).to.equal(true);
   });
 
+  it('sets game canvas safely when window listeners are unavailable', function() {
+    globalThis.window = { location: { search: '' } };
+    setDependency('Stage', class {
+      scheduleUpdateStageSize() {}
+      dispose() {}
+    });
+    const view = new GameView();
+    globalThis.window = undefined;
+
+    expect(() => {
+      view.gameCanvas = {};
+      view.gameCanvas = {};
+    }).to.not.throw();
+  });
+
   it('handles game end and replay flow', async function() {
     globalThis.window = {
       location: { search: '' },
