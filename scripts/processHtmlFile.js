@@ -13,13 +13,26 @@ import { pathToFileURL } from 'url';
 export function processHtmlFile(filePath, options = {}) {
   const html = fs.readFileSync(filePath, 'utf8');
   const dir = path.dirname(filePath);
-  const { rewritePaths = false, inline = false } = options;
+  const { rewritePaths = false, inline = false, includeExternalScripts = false } = options;
   const $ = load(html, { sourceCodeLocationInfo: true });
   const snippets = [];
+  const entryScripts = [];
+
+  function isRelative(p) {
+    return typeof p === 'string' && !/^(?:[a-z]+:)?\/\//i.test(p);
+  }
 
   $('script').each((i, elem) => {
     const src = $(elem).attr('src');
-    if (src) return; // ignore external scripts for snippet extraction
+    if (src) {
+      if (includeExternalScripts && isRelative(src)) {
+        const sanitized = src.split('?')[0].split('#')[0];
+        if (sanitized) {
+          entryScripts.push(path.resolve(dir, sanitized));
+        }
+      }
+      return;
+    }
 
     const code = $(elem).html() || '';
     const loc = {};
@@ -47,10 +60,6 @@ export function processHtmlFile(filePath, options = {}) {
   });
 
   if (rewritePaths || inline) {
-    function isRelative(p) {
-      return typeof p === 'string' && !/^(?:[a-z]+:)?\/\//i.test(p);
-    }
-
     $('*[src], link[href]').each((i, elem) => {
       const attr = elem.attribs.src ? 'src' : 'href';
       const val = $(elem).attr(attr);
@@ -70,6 +79,7 @@ export function processHtmlFile(filePath, options = {}) {
   }
 
   const output = $.html();
-  if (rewritePaths || inline) return { snippets, html: output };
+  if (rewritePaths || inline) return { snippets, html: output, entryScripts };
+  if (includeExternalScripts) return { snippets, entryScripts };
   return snippets;
 }

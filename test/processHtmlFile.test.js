@@ -97,4 +97,20 @@ describe('processHtmlFile options', function () {
       assert.ok(typeof handler.loc.end === 'number');
     });
   });
+
+  it('collects relative entry scripts when requested', function () {
+    withTempDir((dir) => {
+      const file = path.join(dir, 'index.html');
+      fs.writeFileSync(
+        file,
+        '<html><body><script src="./app.js?x=1"></script><script src="https://example.com/ext.js"></script></body></html>'
+      );
+      fs.writeFileSync(path.join(dir, 'app.js'), 'console.log("ok");');
+
+      const result = processHtmlFile(file, { includeExternalScripts: true });
+      assert.ok(Array.isArray(result.entryScripts));
+      assert.strictEqual(result.entryScripts.length, 1);
+      assert.strictEqual(result.entryScripts[0], path.resolve(dir, 'app.js'));
+    });
+  });
 });

@@ -73,6 +73,20 @@ describe('scripts/check-undefined.js', function () {
     });
   });
 
+  it('follows relative entrypoint scripts from HTML inputs', function () {
+    withTempDir((dir) => {
+      fs.writeFileSync(path.join(dir, 'entry.js'), 'missingFromEntry();');
+      fs.writeFileSync(
+        path.join(dir, 'page.html'),
+        '<html><body><script src="./entry.js"></script></body></html>'
+      );
+
+      const result = runCheck(['page.html'], { cwd: dir });
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr || result.stdout).to.match(/missingFromEntry is not defined/);
+    });
+  });
+
   it('handles built-in methods and code fragments', function () {
     withTempDir((dir) => {
       const file = path.join(dir, 'frag.js');
