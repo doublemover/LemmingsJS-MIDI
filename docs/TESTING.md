@@ -6,10 +6,13 @@ common subsets of the suite:
 ```bash
 npm test                # runs all tests
 npm run test-core       # core game logic
-npm run test-bench      # performance benchmarks
+npm run test-bench      # bench-related unit/integration tests (Mocha only)
+npm run test-bench-smoke # browser benchmark smoke gate (Playwright + E2E harness)
 npm run bench-smoke     # fast benchmark smoke gate (short dev-loop default)
 npm run bench-performance # standalone perf bench (smoke profile by default)
+npm run bench-performance-smoke # explicit perf smoke profile
 npm run bench-history   # history stress bench (smoke profile by default)
+npm run bench-history-smoke # explicit history smoke profile
 npm run bench-performance-soak # long perf soak run (explicit opt-in)
 npm run bench-history-soak # long history soak run (explicit opt-in)
 npm run test-workflow   # GitHub workflow helpers
@@ -39,6 +42,12 @@ npm run bench-performance -- --soak
 npm run bench-history -- --soak
 npm run bench-smoke -- --soak
 ```
+
+`test-bench` and `bench-*` intentionally have different semantics:
+
+- `test-bench`: runs deterministic Mocha tests under `test/*bench*.test.js`.
+- `bench-*`: runs live browser benchmarks (requires local HTTPS server and
+  browser automation support).
 
 ## npm test workflow
 
