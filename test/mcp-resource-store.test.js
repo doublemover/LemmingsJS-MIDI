@@ -297,4 +297,31 @@ describe('ResourceStore', function () {
     expect(saved.uri).to.match(/^lemmings:\/\/sessions\/s1\/resources\/badidvalue$/);
     expect(store.get(saved.uri).bytes.toString('utf8')).to.equal('x');
   });
+
+  it('normalizes session ids and rejects blank values', function () {
+    const store = createStore();
+    const saved = store.put({
+      sessionId: '  s1  ',
+      bytes: Buffer.from('x'),
+      mimeType: 'text/plain'
+    });
+    expect(saved.uri).to.match(/^lemmings:\/\/sessions\/s1\/resources\//);
+    expect(store.get(saved.uri)).to.not.equal(null);
+
+    const rejected = store.put({
+      sessionId: '   ',
+      bytes: Buffer.from('y'),
+      mimeType: 'text/plain'
+    });
+    expect(rejected).to.equal(null);
+
+    store.put({
+      sessionId: 's2',
+      bytes: Buffer.from('z'),
+      mimeType: 'text/plain'
+    });
+    store.clearSession('  s1  ');
+    expect(store.get(saved.uri)).to.equal(null);
+    expect(store.list()).to.have.lengthOf(1);
+  });
 });

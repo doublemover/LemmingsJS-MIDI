@@ -7,6 +7,7 @@ const normalizeInteger = (value, fallback, min = 0) => {
   const integer = Math.trunc(numeric);
   return integer >= min ? integer : fallback;
 };
+const normalizeSessionId = (value) => String(value ?? '').trim();
 
 const cloneMetaFallback = (value, seen = new WeakMap()) => {
   if (value == null || typeof value !== 'object') return value;
@@ -127,7 +128,8 @@ class ResourceStore {
   }
 
   put({ sessionId, bytes, mimeType, meta = {}, ttlMs } = {}) {
-    if (!sessionId || bytes == null) return null;
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    if (!normalizedSessionId || bytes == null) return null;
     let buffer;
     try {
       // Always clone to avoid storing mutable caller-owned buffers by reference.
@@ -141,13 +143,13 @@ class ResourceStore {
       ? mimeType.trim()
       : 'application/octet-stream';
     const id = this._createResourceId();
-    const uri = `lemmings://sessions/${sessionId}/resources/${id}`;
+    const uri = `lemmings://sessions/${normalizedSessionId}/resources/${id}`;
     const ttl = normalizeInteger(ttlMs, this.defaultTtlMs, 0);
     const expiresAt = ttl > 0 ? Date.now() + ttl : null;
     const item = {
       id,
       uri,
-      sessionId,
+      sessionId: normalizedSessionId,
       mimeType: normalizedMimeType,
       meta: cloneMeta(meta),
       bytes: buffer,
@@ -209,9 +211,10 @@ class ResourceStore {
   }
 
   clearSession(sessionId) {
-    if (!sessionId) return;
+    const normalizedSessionId = normalizeSessionId(sessionId);
+    if (!normalizedSessionId) return;
     for (const [id, item] of this.items.entries()) {
-      if (item.sessionId === sessionId) {
+      if (item.sessionId === normalizedSessionId) {
         this._remove(id);
       }
     }
