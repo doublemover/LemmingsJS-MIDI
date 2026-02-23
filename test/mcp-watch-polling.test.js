@@ -373,6 +373,19 @@ describe('watch pointer helpers', function () {
     })).to.equal(true);
   });
 
+  it('detects bigint typed-array value changes without losing precision', function () {
+    const base = 2n ** 60n;
+    const tracker = createPointerWatchState('/payload', {
+      payload: new BigInt64Array([base])
+    });
+    expect(updatePointerWatchState(tracker, {
+      payload: new BigInt64Array([base])
+    })).to.equal(false);
+    expect(updatePointerWatchState(tracker, {
+      payload: new BigInt64Array([base + 1n])
+    })).to.equal(true);
+  });
+
   it('tracks Set payload changes while ignoring insertion order', function () {
     const tracker = createPointerWatchState('/payload', {
       payload: new Set([1, 2, 3])

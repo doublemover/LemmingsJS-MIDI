@@ -128,6 +128,16 @@ describe('EventQueue', function () {
     expect(envelope.events[0].resourceUris).to.deep.equal(['res://one']);
   });
 
+  it('normalizes non-string summaries so falsy values are preserved', function () {
+    const queue = createQueue(4);
+    queue.add({ source: 'human', type: 'input', summary: 0 });
+    queue.add({ source: 'human', type: 'input', summary: false });
+
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.events.map((event) => event.summary)).to.deep.equal(['0', 'false']);
+    expect(envelope.humanSummary).to.equal('0; false');
+  });
+
   it('falls back to cycle-safe cloning when structuredClone is unavailable', function () {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'structuredClone');
     if (descriptor && descriptor.configurable !== true && descriptor.writable !== true) {

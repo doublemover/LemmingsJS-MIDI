@@ -157,7 +157,13 @@ const hashValue = (value, seen = new WeakSet()) => {
       }
     } else {
       for (const item of value) {
-        hash = hashNumber(hash, Number(item));
+        if (typeof item === 'bigint') {
+          hash = hashByte(hash, 16);
+          hash = hashString(hash, item.toString());
+        } else {
+          hash = hashByte(hash, 17);
+          hash = hashNumber(hash, Number(item));
+        }
       }
     }
     seen.delete(value);

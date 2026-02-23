@@ -18,6 +18,15 @@ const invokeHookSafely = async (hook, session) => {
   }
 };
 
+const clearSessionResourcesSafely = async (session) => {
+  if (!session?.resources || typeof session.resources.clearSession !== 'function') return;
+  try {
+    await session.resources.clearSession(session.id);
+  } catch (error) {
+    // Ignore resource clear failures during teardown.
+  }
+};
+
 /**
  * Dispose runtime resources associated with a single MCP session.
  * Hook failures and close failures are intentionally ignored so teardown can
@@ -41,7 +50,7 @@ const disposeSessionRuntime = async (
   await invokeHookSafely(stopSpectatorServer, session);
   await invokeHookSafely(stopWatchLoop, session);
   await closeSafely(session.watchController, 'stopAndWait');
-  session.resources?.clearSession?.(session.id);
+  await clearSessionResourcesSafely(session);
   await closeSafely(session.context, 'close');
   await closeSafely(session.browser, 'close');
 };

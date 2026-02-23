@@ -56,6 +56,17 @@ describe('session lifecycle disposal', function () {
     expect(calls).to.deep.equal(['clear:s2', 'context.close', 'browser.close']);
   });
 
+  it('continues cleanup when resource clearing throws', async function () {
+    const { session, calls } = createSession('s2b');
+    session.resources.clearSession = () => {
+      calls.push('clear:s2b');
+      throw new Error('clear fail');
+    };
+
+    await disposeSessionRuntime(session);
+    expect(calls).to.deep.equal(['clear:s2b', 'context.close', 'browser.close']);
+  });
+
   it('continues cleanup when spectator/watch hooks throw', async function () {
     const { session, calls } = createSession('s3');
     await disposeSessionRuntime(session, {

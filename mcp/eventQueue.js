@@ -181,13 +181,14 @@ class EventQueue {
   add({ source, type, summary, data, resourceUris, tickIndex } = {}) {
     const eventData = cloneEventValue(data);
     const eventResourceUris = Array.isArray(resourceUris) ? resourceUris.slice() : resourceUris;
+    const normalizedSummary = summary == null ? '' : String(summary);
     const entry = {
       id: this.idFactory(),
       source,
       type,
       tickIndex: Number.isFinite(tickIndex) ? tickIndex : null,
       time: this.timeFactory(),
-      summary: summary || '',
+      summary: normalizedSummary,
       data: eventData,
       resourceUris: eventResourceUris
     };
@@ -232,14 +233,14 @@ class EventQueue {
       this.humanSummaryStart = 0;
     }
 
-    if (source === 'human' && summary) {
+    if (source === 'human' && normalizedSummary) {
       if (summaryCap <= 0) {
         return entry;
       }
       if (this.humanSummaryParts.length < summaryCap) {
-        this.humanSummaryParts.push(summary);
+        this.humanSummaryParts.push(normalizedSummary);
       } else {
-        this.humanSummaryParts[this.humanSummaryStart] = summary;
+        this.humanSummaryParts[this.humanSummaryStart] = normalizedSummary;
         this.humanSummaryStart = (this.humanSummaryStart + 1) % summaryCap;
       }
     }

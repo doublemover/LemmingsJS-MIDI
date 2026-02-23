@@ -90,6 +90,10 @@ describe('mcp tool surfaces', function () {
     expect(() => buildInteractToolHandlers({})).to.throw('Missing interact tool handler');
   });
 
+  it('throws when required editor handlers are missing', function () {
+    expect(() => buildEditorToolHandlers({})).to.throw('Missing editor tool handler');
+  });
+
   it('routes typed editor object verbs to the editor surface', function () {
     const registry = buildSurfaceRegistry(makeSchemas(), makeHandlers(), new Set(ALL_TOOL_SURFACES));
     expect(registry.toolSurfaceByName.get('objects.list')).to.equal('editor');

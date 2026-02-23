@@ -1,5 +1,12 @@
 const EDITOR_SURFACE = 'editor';
 const EDITOR_NAMESPACES = Object.freeze(['editor', 'objects']);
+const EDITOR_HANDLER_MAP = Object.freeze([
+  ['editor.apply', 'editorApplyTool'],
+  ['objects.list', 'listObjectsTool'],
+  ['objects.place', 'placeObjectsTool'],
+  ['objects.update', 'updateObjectsTool'],
+  ['objects.delete', 'deleteObjectsTool']
+]);
 
 const buildEditorToolSpecs = (schemas) => [
   {
@@ -29,13 +36,24 @@ const buildEditorToolSpecs = (schemas) => [
   }
 ];
 
-const buildEditorToolHandlers = (handlers) => new Map([
-  ['editor.apply', handlers.editorApplyTool],
-  ['objects.list', handlers.listObjectsTool],
-  ['objects.place', handlers.placeObjectsTool],
-  ['objects.update', handlers.updateObjectsTool],
-  ['objects.delete', handlers.deleteObjectsTool]
-]);
+/**
+ * Build dispatch handlers for editor tools.
+ *
+ * @param {Record<string, any>} handlers
+ * @throws {Error} When a required handler is missing.
+ * @returns {Map<string, (...args: any[]) => any>}
+ */
+const buildEditorToolHandlers = (handlers = {}) => {
+  const routes = [];
+  for (const [toolName, handlerKey] of EDITOR_HANDLER_MAP) {
+    const handler = handlers[handlerKey];
+    if (typeof handler !== 'function') {
+      throw new Error(`Missing editor tool handler: ${handlerKey}`);
+    }
+    routes.push([toolName, handler]);
+  }
+  return new Map(routes);
+};
 
 export {
   EDITOR_NAMESPACES,
