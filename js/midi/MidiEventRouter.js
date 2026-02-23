@@ -420,27 +420,60 @@ class MidiEventRouter {
         const length = Math.max(1, Math.min(arp.length ?? sorted.length, sorted.length));
         const seq = sorted.slice(0, length);
         const seqKey = seq.join(',');
+        const patternSteps = Array.isArray(arp?.pattern?.steps)
+          ? arp.pattern.steps
+            .map(step => String(step || '').trim().toLowerCase())
+            .filter(step => step === 'up' || step === 'down' || step === 'hold')
+          : null;
+        const useCustomPattern = arp?.pattern?.preset === 'custom' && Array.isArray(patternSteps) && patternSteps.length > 0;
+        const patternKey = useCustomPattern ? patternSteps.join(',') : '';
         const arpKey = this._resolveArpKey(event, sfx);
         const state = this._arpStateBySfx.get(arpKey) || {
           index: 0,
           dir: 1,
           mode: arp.mode,
           length,
-          seqKey
+          seqKey,
+          patternKey,
+          patternIndex: 0
         };
-        if (state.mode !== arp.mode || state.length !== length || state.seqKey !== seqKey) {
+        if (
+          state.mode !== arp.mode ||
+          state.length !== length ||
+          state.seqKey !== seqKey ||
+          state.patternKey !== patternKey
+        ) {
           state.index = 0;
           state.dir = 1;
+          state.patternIndex = 0;
         }
         state.mode = arp.mode;
         state.length = length;
         state.seqKey = seqKey;
+        state.patternKey = patternKey;
         let idx = state.index;
         if (idx >= seq.length || idx < 0) idx = 0;
         if (seq.length <= 1) {
           activeNotes = [seq[0]];
           state.index = 0;
           state.dir = 1;
+          state.patternIndex = 0;
+        } else if (useCustomPattern) {
+          activeNotes = [seq[idx]];
+          const step = patternSteps[state.patternIndex % patternSteps.length] || 'hold';
+          let nextIdx = idx;
+          if (step === 'up') {
+            nextIdx = idx + 1;
+          } else if (step === 'down') {
+            nextIdx = idx - 1;
+          }
+          if (nextIdx >= seq.length) {
+            nextIdx = 0;
+          } else if (nextIdx < 0) {
+            nextIdx = seq.length - 1;
+          }
+          state.index = nextIdx;
+          state.patternIndex = (state.patternIndex + 1) % patternSteps.length;
         } else if (arp.mode === 'down') {
           const reversed = seq.slice().reverse();
           activeNotes = [reversed[idx]];

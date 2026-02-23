@@ -19,10 +19,24 @@ editing mappings; the toggle state persists in localStorage.
 ## Right pane
 
 - Events: configure each SFX event with note/degree/chord modes.
+  - Expressive mode (default): keyboard-style note picker with octave shift,
+    arp presets + step pattern editor, and per-entry Preview audition button.
+  - Legacy mode (`?mlc=true`): restores key/octave + arp mode dropdown rows for
+    rollout fallback/parity comparisons.
 - Triggers: map trigger events with optional arpeggiators.
 - ADSR: per-target envelope overrides for attack/decay/sustain/release.
+
+## Feature flags
+
+- `?mec=true|false` (`midiExpressiveControls`): enable/disable expressive MIDI
+  mapping controls.
+- `?mlc=true|false` (`midiLegacyControls`): force legacy mapping controls.
+- `?mau=true|false` (`midiAudition`): enable/disable preview audition controls.
 
 ## Persistence
 
 UI state is stored in localStorage. Defaults come from `midi-mapping.json` and
 apply only when no stored value exists or after Reset all.
+
+- `lemmings.midi.intent` stores versioned `MidiIntent` state.
+- `lemmings.midi.overrides` is still written for backward compatibility.

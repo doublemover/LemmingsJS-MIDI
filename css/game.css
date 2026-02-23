@@ -429,6 +429,103 @@ details.panel-section > summary.panel-title {
     gap: 6px;
 }
 
+.midi-choice-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    width: 100%;
+}
+
+.midi-choice-button {
+    flex: 1 1 auto;
+    min-width: 52px;
+    margin-top: 0;
+}
+
+.midi-choice-button.active {
+    background: rgba(70, 120, 180, 0.85);
+    border-color: rgba(150, 210, 255, 0.9);
+    color: #fff;
+}
+
+.midi-note-picker {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
+    outline: none;
+}
+
+.midi-note-picker:focus-visible {
+    box-shadow: 0 0 0 2px rgba(159, 214, 255, 0.65);
+    border-radius: 4px;
+}
+
+.midi-note-picker-keys {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
+}
+
+.midi-note-key {
+    margin-top: 0;
+    min-width: 0;
+    padding: 3px 4px;
+}
+
+.midi-note-key.active {
+    background: rgba(70, 120, 180, 0.85);
+    border-color: rgba(150, 210, 255, 0.9);
+}
+
+.midi-octave-shift {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+}
+
+.midi-octave-step {
+    width: auto;
+    min-width: 30px;
+    margin-top: 0;
+    padding: 2px 6px;
+}
+
+.midi-octave-value {
+    min-width: 54px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.midi-arp-pattern-editor {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 4px;
+    width: 100%;
+}
+
+.midi-arp-step {
+    margin-top: 0;
+    min-width: 0;
+    padding: 3px 2px;
+}
+
+.midi-preview-button {
+    margin-top: 0;
+}
+
+.control-panel .midi-choice-button,
+.control-panel .midi-note-key,
+.control-panel .midi-octave-step,
+.control-panel .midi-arp-step,
+.control-panel .midi-preview-button {
+    min-width: 0;
+    width: auto;
+}
+
 .input-compact {
     width: 56px;
     min-width: 56px;
@@ -541,6 +638,12 @@ details.panel-section > summary.panel-title {
     .control-panel {
         width: 200px;
         font-size: 11px;
+    }
+    .midi-note-picker-keys {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+    .midi-arp-pattern-editor {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 

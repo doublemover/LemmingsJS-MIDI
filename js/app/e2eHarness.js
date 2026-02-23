@@ -1834,7 +1834,8 @@ const createE2EApi = (context) => ({
         hasRouter: !!view?.midiRouter,
         outputName: view?.midiOut?.name || null,
         intentRevision: context.midiUi?.getMidiIntentState?.()?.revision ?? null,
-        learnTarget: context.midiUi?.getMidiIntentState?.()?.learn?.target ?? null
+        learnTarget: context.midiUi?.getMidiIntentState?.()?.learn?.target ?? null,
+        featureFlags: context.midiUi?.getFeatureFlags?.() || null
       }
     };
   },
@@ -1868,7 +1869,8 @@ const createE2EApi = (context) => ({
   midiGetIntentState: () => context.midiUi?.getMidiIntentState?.() || null,
   midiDispatchIntent: (intent) => context.midiUi?.dispatchMidiIntent?.(intent) || null,
   midiSetOverrides: (patch) => context.midiUi?.setMidiOverrides?.(patch) || false,
-  midiCaptureLearnNote: (note) => context.midiUi?.captureLearnNote?.(note) || false
+  midiCaptureLearnNote: (note) => context.midiUi?.captureLearnNote?.(note) || false,
+  midiAuditionMapping: (targetKey, id, entry) => context.midiUi?.auditionMapping?.(targetKey, id, entry) || false
 });
 
 const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {

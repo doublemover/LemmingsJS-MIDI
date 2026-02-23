@@ -24,6 +24,12 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
   entry with full text.
 - `window.__E2E__.selectLemmingById(id)` selects a lemming by ID (returns
   `true` on success).
+- `window.__E2E__.midiGetIntentState()` returns the current MIDI intent state.
+- `window.__E2E__.midiDispatchIntent(intent)` dispatches a MIDI intent action.
+- `window.__E2E__.midiSetOverrides(patch)` applies MIDI override patches.
+- `window.__E2E__.midiCaptureLearnNote(note)` injects a MIDI-learn capture note.
+- `window.__E2E__.midiAuditionMapping(targetKey, id, entry?)` triggers mapping
+  preview/audition through the live MIDI router.
 
 ## getState() structure
 
@@ -63,6 +69,15 @@ Top-level fields:
   `getState()`, populated by `getDiagnostics()`).
 - `serviceWorker`: `supported`, `controlled`.
 - `location`: `protocol`, `hostname`, `pathname`.
+
+### midi
+- `enabled`: current MIDI enabled state.
+- `hasRouter`: whether the runtime MIDI router is attached.
+- `outputName`: selected MIDI output device name (or `null`).
+- `intentRevision`: current `MidiIntent` revision.
+- `learnTarget`: active MIDI-learn target (or `null`).
+- `featureFlags`: MIDI UI feature flags (`expressiveControls`,
+  `legacyControls`, `audition`).
 
 ### stage
 - `panEnabled`.

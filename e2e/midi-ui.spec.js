@@ -150,3 +150,121 @@ test('Canvas interaction clears focused MIDI inputs', async ({ page }) => {
   await canvas.click({ position: { x: 20, y: 20 }, force: true });
   await expect(bpmInput).not.toBeFocused();
 });
+
+test('Expressive MIDI controls expose keyboard editing, arp patterns, and preview hooks', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  await page.waitForSelector('#midiEventList details');
+  await page.locator('#midiEventList details summary').first().click();
+  const result = await page.evaluate(() => {
+    const api = window.__LEMMINGS_MIDI_UI__;
+    const details = document.querySelector('#midiEventList details');
+    if (!api || !details) {
+      return { ok: false, reason: 'missing-api-or-details' };
+    }
+    details.open = true;
+    const summaryText = details.querySelector('summary')?.textContent || '';
+    const match = summaryText.match(/#(\d+)/);
+    const id = match ? match[1] : null;
+    if (!id) {
+      return { ok: false, reason: 'missing-id' };
+    }
+    const rows = Array.from(details.querySelectorAll('label'));
+    const rowByLabel = (label) => rows.find(row => row.querySelector('span')?.textContent?.trim() === label) || null;
+    const modeSelect = rowByLabel('Mode')?.querySelector('select');
+    if (modeSelect) {
+      modeSelect.value = 'note';
+      modeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    const keyboardRow = rowByLabel('Keyboard');
+    const keyButtons = Array.from(keyboardRow?.querySelectorAll('.midi-note-key') || []);
+    if (keyButtons[7]) {
+      keyButtons[7].click();
+    }
+    const arpPresetRow = rowByLabel('Arp preset');
+    const downPresetButton = Array.from(arpPresetRow?.querySelectorAll('button') || [])
+      .find(button => button.dataset?.value === 'down');
+    const arpToggle = rowByLabel('Arp')?.querySelector('input[type="checkbox"]');
+    if (arpToggle) {
+      arpToggle.checked = true;
+      arpToggle.dispatchEvent(new Event('change', { bubbles: true }));
+    }
+    downPresetButton?.click();
+    const previewButton = rowByLabel('Preview')?.querySelector('button');
+    previewButton?.click();
+    const overrides = api.getIntentState?.()?.overrides || {};
+    const mappedEntry = overrides?.sfx?.[id] || null;
+    const previewResult = api.auditionMapping?.({ targetKey: 'sfx', id }) ?? null;
+    return {
+      ok: true,
+      keyButtonCount: keyButtons.length,
+      keyButtonsHaveLabels: keyButtons.every(button => !!button.getAttribute('aria-label')),
+      mappedNote: mappedEntry?.note ?? null,
+      arpPreset: mappedEntry?.arp?.pattern?.preset ?? null,
+      previewResultType: typeof previewResult
+    };
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.keyButtonCount).toBe(12);
+  expect(result.keyButtonsHaveLabels).toBe(true);
+  expect((result.mappedNote ?? 0) % 12).toBe(7);
+  expect(result.arpPreset).toBe('down');
+  expect(result.previewResultType).toBe('boolean');
+});
+
+test('Legacy MIDI controls remain available behind feature flag', async ({ page }) => {
+  await page.goto('/?mlc=true');
+  await page.locator('#midiEnabledToggle').check();
+  await page.waitForSelector('#midiEventList details');
+  await page.locator('#midiEventList details summary').first().click();
+  const result = await page.evaluate(() => {
+    const api = window.__LEMMINGS_MIDI_UI__;
+    const details = document.querySelector('#midiEventList details');
+    if (!details || !api) {
+      return { ok: false };
+    }
+    details.open = true;
+    const rows = Array.from(details.querySelectorAll('label'));
+    const hasRow = (label, selector) => {
+      const row = rows.find(item => item.querySelector('span')?.textContent?.trim() === label);
+      return !!row?.querySelector(selector);
+    };
+    return {
+      ok: true,
+      featureFlags: api.getFeatureFlags?.() || {},
+      keyRowSelect: hasRow('Key', 'select'),
+      arpModeSelect: hasRow('Arp mode', 'select'),
+      keyboardRow: hasRow('Keyboard', '.midi-note-picker')
+    };
+  });
+
+  expect(result.ok).toBe(true);
+  expect(result.featureFlags.legacyControls).toBe(true);
+  expect(result.keyRowSelect).toBe(true);
+  expect(result.arpModeSelect).toBe(true);
+  expect(result.keyboardRow).toBe(false);
+});
+
+test('Expressive controls keep mobile layout parity', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('/');
+  await page.locator('#midiEnabledToggle').check();
+  await page.waitForSelector('#midiEventList details');
+  await page.locator('#midiEventList details summary').first().click();
+  const metrics = await page.evaluate(() => {
+    const right = document.getElementById('controlRight');
+    const details = document.querySelector('#midiEventList details');
+    details?.setAttribute?.('open', '');
+    details.open = true;
+    const keyboardRow = Array.from(details?.querySelectorAll('label') || [])
+      .find(row => row.querySelector('span')?.textContent?.trim() === 'Keyboard');
+    return {
+      keyboardVisible: !!keyboardRow,
+      panelScrollWidth: right?.scrollWidth ?? 0,
+      panelClientWidth: right?.clientWidth ?? 0
+    };
+  });
+  expect(metrics.keyboardVisible).toBe(true);
+  expect(metrics.panelScrollWidth).toBeLessThanOrEqual(metrics.panelClientWidth + 80);
+});

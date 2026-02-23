@@ -692,25 +692,25 @@ Notes:
   Touchpoints: `js/render/Stage.js`, `docs/TESTING.md`.
 
 ## Phase 43: MIDI UI expressive controls and intent model
-- [ ] Extract a stable `MidiIntent` model used by UI, persistence, and router
+- [x] Extract a stable `MidiIntent` model used by UI, persistence, and router
   layers so control widgets are decoupled from mapping internals.
   Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
-- [ ] Add settings migration and backward-compatible persistence mapping for
+- [x] Add settings migration and backward-compatible persistence mapping for
   `MidiIntent` before replacing legacy widget contracts.
   Touchpoints: `js/app/midi-ui/*`, `test/midi/*.test.js`.
-- [ ] Introduce feature flags for new controls and require accessibility parity
+- [x] Introduce feature flags for new controls and require accessibility parity
   (keyboard navigation + labels + focus behavior) before defaulting on.
   Touchpoints: `js/app/midiUiController.js`, `css/*`, `e2e/midi-ui.spec.js`.
-- [ ] Replace key/octave dropdown flows with direct-manipulation controls
+- [x] Replace key/octave dropdown flows with direct-manipulation controls
   (keyboard-style picker + octave shift) and deterministic test hooks.
   Touchpoints: `js/app/midiUiController.js`, `css/*`, `test/midi/*.test.js`.
-- [ ] Replace arpeggiator mode dropdown with a compact step-pattern editor plus
+- [x] Replace arpeggiator mode dropdown with a compact step-pattern editor plus
   presets and explicit serialization semantics.
   Touchpoints: `js/app/midi-ui/*`, `test/midi/*.test.js`.
-- [ ] Add preview/audition and MIDI-learn affordances that remain fully
+- [x] Add preview/audition and MIDI-learn affordances that remain fully
   automatable in E2E harness flows.
   Touchpoints: `js/app/midiUiController.js`, `e2e/midi-ui.spec.js`.
-- [ ] Remove legacy controls only after feature-flag soak coverage and parity
+- [x] Remove legacy controls only after feature-flag soak coverage and parity
   checks pass across desktop/mobile layouts.
   Touchpoints: `js/app/midiUiController.js`, `test/midi/*.test.js`.
 

@@ -2,6 +2,14 @@ import { expect } from 'chai';
 import {
   NOTE_NAMES,
   CHORD_OPTIONS,
+  ARP_PATTERN_VERSION,
+  ARP_PATTERN_STEP_OPTIONS,
+  ARP_PATTERN_PRESETS,
+  ARP_PATTERN_DEFAULT_STEPS,
+  createArpPatternFromPreset,
+  sanitizeArpPattern,
+  deriveArpModeFromPattern,
+  migrateArpConfig,
   POSITION_AXIS_OPERATORS,
   POSITION_TARGETS,
   REPEAT_TARGETS,
@@ -25,6 +33,10 @@ describe('midiUiDomain', function() {
   it('exports static option lists and maps', function() {
     expect(NOTE_NAMES).to.have.length(12);
     expect(CHORD_OPTIONS).to.include('triad');
+    expect(ARP_PATTERN_VERSION).to.equal(1);
+    expect(ARP_PATTERN_STEP_OPTIONS.map(option => option.value)).to.include('up');
+    expect(ARP_PATTERN_PRESETS.map(option => option.value)).to.include('custom');
+    expect(ARP_PATTERN_DEFAULT_STEPS).to.equal(8);
     expect(POSITION_AXIS_OPERATORS.map(op => op.value)).to.include('add');
     expect(POSITION_TARGETS.map(target => target.value)).to.include('note');
     expect(REPEAT_TARGETS.map(target => target.value)).to.include('velocity');
@@ -34,6 +46,29 @@ describe('midiUiDomain', function() {
     expect(TRAP_SFX_IDS.has(SoundEffectIds.TRAP_ZAP)).to.equal(true);
     expect(EXCLUDED_SFX_IDS.has(SoundEffectIds.UNKNOWN_0B)).to.equal(true);
     expect(SFX_NAME_BY_ID.get(SoundEffectIds.BUILDER_STEP)).to.equal('builder-step');
+  });
+
+  it('creates and sanitizes arp pattern presets deterministically', function() {
+    const down = createArpPatternFromPreset('down', 4);
+    expect(down.steps).to.eql(['down', 'down', 'down', 'down']);
+    const custom = sanitizeArpPattern({
+      preset: 'custom',
+      steps: ['up', 'noop', 'down', 'hold']
+    }, 'up');
+    expect(custom.preset).to.equal('custom');
+    expect(custom.steps).to.eql(['up', 'hold', 'down', 'hold']);
+  });
+
+  it('derives arp mode and migrates arp configs from legacy payloads', function() {
+    const mode = deriveArpModeFromPattern({
+      preset: 'custom',
+      steps: ['down', 'down', 'down']
+    }, 'up');
+    expect(mode).to.equal('down');
+    const migrated = migrateArpConfig({ enabled: true, mode: 'updown', length: 5 });
+    expect(migrated.pattern.preset).to.equal('updown');
+    expect(migrated.mode).to.equal('updown');
+    expect(migrated.length).to.equal(5);
   });
 
   it('collectTriggerTypes returns empty for missing level', function() {

@@ -337,6 +337,50 @@ describe('MidiEventRouter', function() {
     expect(sent.map(entry => entry.note)).to.eql([60, 64, 67, 64]);
   });
 
+  it('applies custom arp step patterns when preset is custom', function() {
+    const { router, sent } = makeArpRouter({
+      enabled: true,
+      mode: 'up',
+      length: 3,
+      pattern: { preset: 'custom', steps: ['up', 'hold', 'down'] }
+    });
+
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+    router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
+    router._onEvent({ sfxId: 1, tick: 3, tps: 50 });
+    router._onEvent({ sfxId: 1, tick: 4, tps: 50 });
+    router._onEvent({ sfxId: 1, tick: 5, tps: 50 });
+
+    expect(sent.map(entry => entry.note)).to.eql([60, 64, 64, 60, 64]);
+  });
+
+  it('resets custom arp step state when the pattern changes', function() {
+    const { router, sent } = makeArpRouter({
+      enabled: true,
+      mode: 'up',
+      length: 3,
+      pattern: { preset: 'custom', steps: ['up'] }
+    });
+
+    router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
+    router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
+    router.mapping.mapEvent = () => ({
+      notes: [60, 64, 67],
+      note: 60,
+      velocity: 64,
+      durationTicks: 1,
+      arp: {
+        enabled: true,
+        mode: 'up',
+        length: 3,
+        pattern: { preset: 'custom', steps: ['down'] }
+      }
+    });
+    router._onEvent({ sfxId: 1, tick: 3, tps: 50 });
+
+    expect(sent.map(entry => entry.note)).to.eql([60, 64, 60]);
+  });
+
   it('resets arpeggio state when the mode changes', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
 

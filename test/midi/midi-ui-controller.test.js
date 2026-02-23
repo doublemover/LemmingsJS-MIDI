@@ -387,18 +387,13 @@ describe('midiUiController', function() {
     expect(eventList.children.length).to.equal(1);
     expect(triggerList.children.length).to.be.greaterThan(0);
 
-    const keySelect = findElement(eventList.children[0], el => {
-      if (el.tagName !== 'SELECT') return false;
-      return (el.children || []).some(child => child.textContent === 'C');
-    });
-    const noteOctave = findElement(eventList.children[0], el => (
-      el.tagName === 'INPUT' && el.type === 'number' && el.max === '9' && !el.disabled
+    const notePicker = findRowInputByLabel(eventList.children[0], 'Keyboard');
+    const keyButton = findElement(notePicker, el => (
+      el.tagName === 'BUTTON' && el.dataset?.noteValue === '5'
     ));
-    expect(keySelect).to.be.ok;
-    expect(noteOctave).to.be.ok;
-    keySelect.value = '5';
-    noteOctave.value = '5';
-    noteOctave.dispatchEvent({ type: 'change', target: noteOctave });
+    expect(notePicker).to.be.ok;
+    expect(keyButton).to.be.ok;
+    keyButton.dispatchEvent({ type: 'click', target: keyButton });
     expect(controller.getMidiOverrides().sfx['1'].note).to.equal(65);
 
     const triggerIndependent = findElement(triggerList, el => (
@@ -409,6 +404,55 @@ describe('midiUiController', function() {
     ));
     expect(triggerIndependent).to.be.ok;
     expect(eventIndependent).to.equal(null);
+  });
+
+  it('uses expressive mapping controls by default and exposes feature flags', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const eventList = register(doc, 'div', 'midiEventList');
+    register(doc, 'div', 'midiTriggerList');
+    register(doc, 'select', 'midiEnvTarget');
+    register(doc, 'div', 'errorDisplay');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => ({
+        sfx: { '1': { note: 60 } },
+        timing: { bpmBase: 120 }
+      })
+    });
+
+    controller.refreshMidiUiFromConfig();
+    const mapping = eventList.children[0];
+    expect(findRowInputByLabel(mapping, 'Keyboard')).to.be.ok;
+    expect(findRowInputByLabel(mapping, 'Key')).to.equal(null);
+    expect(controller.getFeatureFlags().expressiveControls).to.equal(true);
+  });
+
+  it('falls back to legacy mapping controls when query flag is set', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    win.location = { search: '?mlc=true' };
+    const eventList = register(doc, 'div', 'midiEventList');
+    register(doc, 'div', 'midiTriggerList');
+    register(doc, 'select', 'midiEnvTarget');
+    register(doc, 'div', 'errorDisplay');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getMidiConfig: () => ({
+        sfx: { '1': { note: 60 } },
+        timing: { bpmBase: 120 }
+      })
+    });
+
+    controller.refreshMidiUiFromConfig();
+    const mapping = eventList.children[0];
+    expect(findRowInputByLabel(mapping, 'Keyboard')).to.equal(null);
+    expect(findRowInputByLabel(mapping, 'Key')).to.be.ok;
+    expect(controller.getFeatureFlags().legacyControls).to.equal(true);
   });
 
   it('updates disabled toggles when re-enabled', function() {
@@ -786,24 +830,31 @@ describe('midiUiController', function() {
     enabledToggle.dispatchEvent({ type: 'click', stopPropagation() {} });
 
     const modeSelect = findRowInputByLabel(mapping, 'Mode');
-    const keySelect = findRowInputByLabel(mapping, 'Key');
-    const noteOctave = findRowInputByLabel(mapping, 'Octave');
+    const keyboardPicker = findRowInputByLabel(mapping, 'Keyboard');
+    const keyButton = findElement(keyboardPicker, el => (
+      el.tagName === 'BUTTON' && el.dataset?.noteValue === '0'
+    ));
     const degreeInput = findRowInputByLabel(mapping, 'Degree');
     const scaleOctave = findRowInputByLabel(mapping, 'Scale octave');
     const chordSelect = findRowInputByLabel(mapping, 'Chord');
     const arpToggle = findRowInputByLabel(mapping, 'Arp');
-    const arpMode = findRowInputByLabel(mapping, 'Arp mode');
+    const arpPreset = findRowInputByLabel(mapping, 'Arp preset');
+    const arpDownPreset = findElement(arpPreset, el => (
+      el.tagName === 'BUTTON' && el.dataset?.value === 'down'
+    ));
     const arpLength = findRowInputByLabel(mapping, 'Arp length');
     const arpIndependent = findRowInputByLabel(mapping, 'Independent arp');
     const priorityInput = findRowInputByLabel(mapping, 'Priority');
+    expect(keyboardPicker).to.be.ok;
+    expect(keyButton).to.be.ok;
+    expect(arpDownPreset).to.be.ok;
 
-    noteOctave.focus = () => noteOctave.dispatchEvent({ type: 'focus', target: noteOctave });
+    keyButton.focus = () => keyButton.dispatchEvent({ type: 'focus', target: keyButton });
     degreeInput.focus = () => degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
-    keySelect.focus = () => keySelect.dispatchEvent({ type: 'focus', target: keySelect });
-    const keyRow = findElement(mapping, el => (
-      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Key'
+    const keyboardRow = findElement(mapping, el => (
+      el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Keyboard'
     ));
-    keyRow?.children?.[0]?.dispatchEvent({
+    keyboardRow?.children?.[0]?.dispatchEvent({
       type: 'click',
       preventDefault() {},
       stopPropagation() {}
@@ -817,7 +868,7 @@ describe('midiUiController', function() {
 
     modeSelect.value = 'note';
     modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
-    keySelect.dispatchEvent({ type: 'focus', target: keySelect });
+    keyButton.dispatchEvent({ type: 'focus', target: keyButton });
     expect(noteCaptureHandler).to.be.a('function');
     noteCaptureHandler(60);
     degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
@@ -836,12 +887,12 @@ describe('midiUiController', function() {
     chordSelect.dispatchEvent({ type: 'change', target: chordSelect });
 
     arpToggle.checked = true;
-    arpMode.value = 'down';
+    arpDownPreset.dispatchEvent({ type: 'click', target: arpDownPreset });
     arpLength.value = '4';
     arpIndependent.checked = true;
     priorityInput.value = '3';
     enabledToggle.checked = false;
-    [arpToggle, arpMode, arpLength, arpIndependent, priorityInput, enabledToggle]
+    [arpToggle, arpLength, arpIndependent, priorityInput, enabledToggle]
       .forEach(el => el.dispatchEvent({ type: 'change', target: el }));
 
     expect(controller.getMidiOverrides().sfx[trapId].priority).to.equal(3);
@@ -1256,5 +1307,9 @@ describe('midiUiController', function() {
     expect(controller.getMidiOverrides().repeat.enabled).to.equal(true);
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
     expect(win.__LEMMINGS_MIDI_UI__.getIntentState().overrides.repeat.enabled).to.equal(true);
+    expect(controller.getFeatureFlags()).to.have.property('expressiveControls');
+    expect(win.__LEMMINGS_MIDI_UI__.getFeatureFlags()).to.have.property('legacyControls');
+    const previewResult = win.__LEMMINGS_MIDI_UI__.auditionMapping({ targetKey: 'sfx', id: 1 });
+    expect(previewResult).to.equal(false);
   });
 });

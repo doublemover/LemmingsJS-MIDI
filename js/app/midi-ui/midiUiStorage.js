@@ -1,3 +1,5 @@
+import { migrateArpConfig } from './midiUiDomain.js';
+
 const midiStorageKeys = {
   storageVersion: 'lemmings.midi.storageVersion',
   inputId: 'lemmings.midi.inputId',
@@ -7,14 +9,16 @@ const midiStorageKeys = {
   inputChannel: 'lemmings.midi.inputChannel',
   adsrTarget: 'lemmings.midi.adsrTarget',
   overrides: 'lemmings.midi.overrides',
+  midiIntent: 'lemmings.midi.intent',
   schemaHash: 'lemmings.midi.schemaHash',
   panelCollapsed: 'lemmings.midi.panelCollapsed',
   tabLeft: 'lemmings.midi.tabLeft',
   tabRight: 'lemmings.midi.tabRight',
   sectionStates: 'lemmings.midi.sectionStates'
 };
-const MIDI_STORAGE_VERSION = 2;
+const MIDI_STORAGE_VERSION = 3;
 const migratedMidiStorages = new WeakSet();
+const MAX_LEARN_TARGET_LENGTH = 128;
 
 const isPlainObject = (value) => {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -92,7 +96,60 @@ const migrateMidiOverrides = (value) => {
     overrides.position = position;
   }
 
+  const migrateMappingEntries = (group) => {
+    if (!isPlainObject(group)) return group;
+    const out = {};
+    for (const [key, entry] of Object.entries(group)) {
+      if (!isPlainObject(entry)) continue;
+      const next = { ...entry };
+      if (next.arp != null) {
+        const migratedArp = migrateArpConfig(next.arp);
+        if (migratedArp) {
+          next.arp = migratedArp;
+        } else {
+          delete next.arp;
+        }
+      }
+      out[key] = next;
+    }
+    return out;
+  };
+  if (isPlainObject(overrides.sfx)) {
+    overrides.sfx = migrateMappingEntries(overrides.sfx);
+  }
+  if (isPlainObject(overrides.triggers)) {
+    overrides.triggers = migrateMappingEntries(overrides.triggers);
+  }
+
   return overrides;
+};
+
+const normalizeMidiIntentPayload = (value) => {
+  const source = isPlainObject(value) ? value : {};
+  const learnSource = isPlainObject(source.learn) ? source.learn : null;
+  const learnTarget = typeof learnSource?.target === 'string'
+    ? learnSource.target.trim().slice(0, MAX_LEARN_TARGET_LENGTH)
+    : '';
+  const learn = learnTarget
+    ? {
+      target: learnTarget,
+      lastCapture: Number.isFinite(learnSource?.lastCapture) ? Math.max(0, Math.min(127, Math.trunc(learnSource.lastCapture))) : undefined,
+      armedAt: Number.isFinite(learnSource?.armedAt) ? Math.trunc(learnSource.armedAt) : undefined,
+      capturedAt: Number.isFinite(learnSource?.capturedAt) ? Math.trunc(learnSource.capturedAt) : undefined
+    }
+    : null;
+  if (learn && learn.lastCapture === undefined) delete learn.lastCapture;
+  if (learn && learn.armedAt === undefined) delete learn.armedAt;
+  if (learn && learn.capturedAt === undefined) delete learn.capturedAt;
+  const lastIntentType = typeof source.lastIntentType === 'string'
+    ? source.lastIntentType.slice(0, 64)
+    : null;
+  return {
+    revision: Number.isFinite(source.revision) ? Math.max(0, Math.trunc(source.revision)) : 0,
+    overrides: migrateMidiOverrides(source.overrides),
+    learn,
+    lastIntentType
+  };
 };
 
 const normalizeSectionStatesPayload = (value) => {
@@ -117,6 +174,17 @@ const readStoredMidiOverrides = (storage) => {
   ensureMidiStorageMigrated(storage);
   const raw = readStoredJson(storage, midiStorageKeys.overrides);
   return migrateMidiOverrides(raw);
+};
+
+const readStoredMidiIntentState = (storage) => {
+  ensureMidiStorageMigrated(storage);
+  const rawIntent = readStoredJson(storage, midiStorageKeys.midiIntent);
+  if (rawIntent != null) {
+    return normalizeMidiIntentPayload(rawIntent);
+  }
+  return normalizeMidiIntentPayload({
+    overrides: readStoredJson(storage, midiStorageKeys.overrides)
+  });
 };
 
 const readStoredMidiId = (storage, key) => {
@@ -164,6 +232,12 @@ const storeJson = (storage, key, value) => {
   }
 };
 
+const storeMidiIntentState = (storage, value) => {
+  const normalized = normalizeMidiIntentPayload(value);
+  storeJson(storage, midiStorageKeys.midiIntent, normalized);
+  storeJson(storage, midiStorageKeys.overrides, normalized.overrides);
+};
+
 function ensureMidiStorageMigrated(storage) {
   if (!storage || typeof storage !== 'object') return;
   if (migratedMidiStorages.has(storage)) return;
@@ -176,11 +250,16 @@ function ensureMidiStorageMigrated(storage) {
   }
 
   const overridesRaw = readStoredJson(storage, midiStorageKeys.overrides);
+  const intentRaw = readStoredJson(storage, midiStorageKeys.midiIntent);
   const sectionStatesRaw = readStoredJson(storage, midiStorageKeys.sectionStates);
   const migratedOverrides = migrateMidiOverrides(overridesRaw);
+  const migratedIntent = normalizeMidiIntentPayload(
+    intentRaw != null ? intentRaw : { overrides: migratedOverrides }
+  );
   const migratedSectionStates = normalizeSectionStatesPayload(sectionStatesRaw);
 
-  storeJson(storage, midiStorageKeys.overrides, migratedOverrides);
+  storeJson(storage, midiStorageKeys.overrides, migratedIntent.overrides);
+  storeJson(storage, midiStorageKeys.midiIntent, migratedIntent);
   storeJson(storage, midiStorageKeys.sectionStates, migratedSectionStates);
   storeMidiId(storage, midiStorageKeys.storageVersion, String(MIDI_STORAGE_VERSION));
 }
@@ -188,10 +267,13 @@ function ensureMidiStorageMigrated(storage) {
 export {
   midiStorageKeys,
   migrateMidiOverrides,
+  normalizeMidiIntentPayload,
   readStoredMidiOverrides,
+  readStoredMidiIntentState,
   readStoredSectionStates,
   readStoredMidiId,
   storeMidiId,
   readStoredJson,
-  storeJson
+  storeJson,
+  storeMidiIntentState
 };

@@ -2,12 +2,15 @@ import { expect } from 'chai';
 import {
   migrateMidiOverrides,
   midiStorageKeys,
+  normalizeMidiIntentPayload,
   readStoredMidiOverrides,
+  readStoredMidiIntentState,
   readStoredSectionStates,
   readStoredMidiId,
   storeMidiId,
   readStoredJson,
-  storeJson
+  storeJson,
+  storeMidiIntentState
 } from '../../js/app/midi-ui/midiUiStorage.js';
 
 const createStorage = () => {
@@ -112,11 +115,13 @@ describe('midiUiStorage', function() {
     const migrated = migrateMidiOverrides({
       repeat: { spacingTicks: 4 },
       input: { channel: ' 17 ' },
-      position: { mappings: [{ axis: 'x' }, null, 'bad'] }
+      position: { mappings: [{ axis: 'x' }, null, 'bad'] },
+      sfx: { '1': { arp: { enabled: true, mode: 'down', length: 4 } } }
     });
     expect(migrated.repeat.windowBeats).to.equal(4);
     expect(migrated.input.channel).to.equal(16);
     expect(migrated.position.mappings).to.deep.equal([{ axis: 'x' }]);
+    expect(migrated.sfx['1'].arp.pattern.preset).to.equal('down');
   });
 
   it('reads stored MIDI overrides and section states with guards', function() {
@@ -162,8 +167,58 @@ describe('midiUiStorage', function() {
     expect(sections).to.deep.equal({ io: true });
 
     const storedVersion = backing.get(midiStorageKeys.storageVersion);
-    expect(storedVersion).to.equal('2');
+    expect(storedVersion).to.equal('3');
     const versionWrites = writes.filter(([key]) => key === midiStorageKeys.storageVersion);
     expect(versionWrites).to.have.lengthOf(1);
+  });
+
+  it('normalizes and stores MidiIntent payloads with override compatibility', function() {
+    const storage = createStorage();
+    storeMidiIntentState(storage, {
+      revision: 3,
+      overrides: { repeat: { enabled: true } },
+      learn: { target: 'sfx:1:Note', lastCapture: 60 },
+      lastIntentType: 'overrides.merge'
+    });
+    const intentWrite = storage.calls.set.find(([key]) => key === midiStorageKeys.midiIntent);
+    const overridesWrite = storage.calls.set.find(([key]) => key === midiStorageKeys.overrides);
+    expect(intentWrite).to.not.equal(undefined);
+    expect(overridesWrite).to.not.equal(undefined);
+  });
+
+  it('reads migrated MidiIntent payloads from storage', function() {
+    const backing = new Map();
+    backing.set(midiStorageKeys.midiIntent, JSON.stringify({
+      revision: 2,
+      overrides: { sfx: { '1': { arp: { enabled: true, mode: 'updown' } } } },
+      learn: { target: 'sfx:1:Note' },
+      lastIntentType: 'learn.arm'
+    }));
+    const storage = {
+      getItem(key) {
+        return backing.has(key) ? backing.get(key) : null;
+      },
+      setItem(key, value) {
+        backing.set(key, value);
+      },
+      removeItem(key) {
+        backing.delete(key);
+      }
+    };
+    const state = readStoredMidiIntentState(storage);
+    expect(state.revision).to.equal(2);
+    expect(state.overrides.sfx['1'].arp.pattern.preset).to.equal('updown');
+    expect(state.learn.target).to.equal('sfx:1:Note');
+  });
+
+  it('normalizes raw MidiIntent payloads safely', function() {
+    const normalized = normalizeMidiIntentPayload({
+      revision: 4.7,
+      overrides: { triggers: { '5': { arp: { enabled: true, mode: 'down' } } } },
+      learn: { target: '  trigger:5:Degree  ', lastCapture: 999 }
+    });
+    expect(normalized.revision).to.equal(4);
+    expect(normalized.overrides.triggers['5'].arp.pattern.preset).to.equal('down');
+    expect(normalized.learn.lastCapture).to.equal(127);
   });
 });
