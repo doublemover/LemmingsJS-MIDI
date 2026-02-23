@@ -1,10 +1,11 @@
 import { DisplayImage } from '../render/DisplayImage.js';
 
 class ProcgenStageAdapter {
-  constructor({ view, controller, canvas }) {
+  constructor({ view, controller, canvas, windowRef }) {
     this.view = view || null;
     this.controller = controller || null;
     this.canvas = canvas || null;
+    this.window = windowRef || controller?.window || globalThis?.window || null;
     this.stage = view?.stage || null;
     this._wheelHandler = null;
     this._resizeHandler = null;
@@ -42,6 +43,9 @@ class ProcgenStageAdapter {
     if (!this.canvas || this._wheelHandler) return;
     this._wheelHandler = event => {
       event.preventDefault();
+      if (!Number.isFinite(event?.deltaY) || event.deltaY === 0) {
+        return;
+      }
       const stage = this.stage;
       const stageImage = stage?.gameImgProps;
       if (!stage || !stageImage) return;
@@ -62,16 +66,16 @@ class ProcgenStageAdapter {
   }
 
   _bindResize() {
-    if (this._resizeHandler) return;
+    if (this._resizeHandler || !this.window?.addEventListener) return;
     this._resizeHandler = () => {
       this.updateStageSize();
     };
-    window.addEventListener('resize', this._resizeHandler);
+    this.window.addEventListener('resize', this._resizeHandler);
   }
 
   _unbindResize() {
-    if (!this._resizeHandler) return;
-    window.removeEventListener('resize', this._resizeHandler);
+    if (!this._resizeHandler || !this.window?.removeEventListener) return;
+    this.window.removeEventListener('resize', this._resizeHandler);
     this._resizeHandler = null;
   }
 

@@ -1119,9 +1119,10 @@ class EditorController {
     if (this._previewTimer) return;
     const callback = this._callbacks.onPreviewRequest;
     if (!callback) return;
+    const nextLabel = label || 'Update';
     this._previewTimer = setTimeout(() => {
       this._previewTimer = null;
-      callback(label || 'Update');
+      this._callbacks.onPreviewRequest?.(nextLabel);
     }, this._previewDelay);
   }
 

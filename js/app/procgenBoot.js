@@ -52,6 +52,16 @@ const PROCGEN_SKILLS = {
 let activeProcgenRuntime = null;
 let analytics = null;
 
+const runFocusBlurCleanup = (runtime) => {
+  const cleanup = runtime?.focusBlurCleanup;
+  if (typeof cleanup === 'function') {
+    cleanup();
+  }
+  if (runtime) {
+    runtime.focusBlurCleanup = null;
+  }
+};
+
 /**
  * Ensure repeat procgen init/start cycles do not leak timers/listeners.
  * Cleanup order matters: controller first (detaches timer/event hooks), then
@@ -61,6 +71,7 @@ const disposeProcgenRuntime = () => {
   const runtime = activeProcgenRuntime;
   if (!runtime) return;
   activeProcgenRuntime = null;
+  runFocusBlurCleanup(runtime);
   runtime.controller?.stop?.();
   runtime.stageAdapter?.dispose?.();
   runtime.game?.stop?.();
@@ -205,7 +216,8 @@ const init = async () => {
     view: null,
     game: null,
     controller: null,
-    stageAdapter: null
+    stageAdapter: null,
+    focusBlurCleanup: null
   };
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
@@ -272,7 +284,7 @@ const init = async () => {
     view.stage.updateStageSize();
     game.start();
     game.getGameTimer().speedFactor = view.gameSpeedFactor;
-    bindCanvasFocusBlur(canvas);
+    runtime.focusBlurCleanup = bindCanvasFocusBlur(canvas);
 
     const assetManager = new ProcgenAssetManager({
       styleName,
@@ -327,6 +339,7 @@ const init = async () => {
     runtime?.stageAdapter?.dispose?.();
     runtime?.game?.stop?.();
     runtime?.view?.dispose?.();
+    runFocusBlurCleanup(runtime);
     throw err;
   }
 };

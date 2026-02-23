@@ -134,9 +134,14 @@ class MidiScheduler {
     const info = this._activeNotes.get(oldestToken);
     if (!info) return;
     const channel = this.output.channels?.[info.channel];
+    let sentMessages = 0;
     if (channel) {
       channel.sendNoteOff(info.note);
-      if (info.mpe) channel.sendPitchBend(0);
+      sentMessages += 1;
+      if (info.mpe) {
+        channel.sendPitchBend(0);
+        sentMessages += 1;
+      }
     }
     this._activeNotes.delete(oldestToken);
     if (info.mpe) {
@@ -144,6 +149,15 @@ class MidiScheduler {
     }
     this._removeScheduledNoteOff(oldestToken);
     this._removePlannedRateEntries(oldestToken, 'off');
+    if (sentMessages > 0) {
+      this._recordPlanned({
+        timeMs: this._nowMs(),
+        count: sentMessages,
+        bytes: sentMessages * MIDI_MESSAGE_BYTES,
+        token: oldestToken,
+        phase: 'off'
+      });
+    }
   }
 
   _allocateChannel() {

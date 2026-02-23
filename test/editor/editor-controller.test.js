@@ -112,6 +112,30 @@ describe('EditorController', () => {
     expect(history.snapshots[0].label).to.equal('Init');
   });
 
+  it('dispatches pending preview requests to the latest callback', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history, previewDelay: 5 });
+    controller.setAssets(buildAssets());
+
+    const firstPreviewEvents = [];
+    const secondPreviewEvents = [];
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+    controller.setCallbacks({
+      onPreviewRequest: label => firstPreviewEvents.push(label)
+    });
+    controller.updateHeader('TITLE', 'Queued');
+    controller.setCallbacks({
+      onPreviewRequest: label => secondPreviewEvents.push(label)
+    });
+
+    clock.tick(5);
+    expect(firstPreviewEvents).to.deep.equal([]);
+    expect(secondPreviewEvents).to.deep.equal(['Header']);
+    clock.uninstall();
+  });
+
   it('selects, drags, and clears selections', () => {
     const session = buildSession();
     const history = new FakeHistory();

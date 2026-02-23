@@ -122,11 +122,12 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     const calls = [];
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler.setOutput(makeOutput([1], calls));
+    scheduler._nowMs = () => 0;
     scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: false, startedAt: 0 });
     scheduler._ratePlanned = [
       { timeMs: 10, count: 1, bytes: 3, token: 1, phase: 'off' },
-      { timeMs: 0, count: 1, bytes: 3, token: 1, phase: 'on' },
-      { timeMs: 10, count: 1, bytes: 3, token: 2, phase: 'off' }
+      { timeMs: 20, count: 1, bytes: 3, token: 1, phase: 'on' },
+      { timeMs: 30, count: 1, bytes: 3, token: 2, phase: 'off' }
     ];
 
     scheduler._stealOldestNote();
@@ -134,6 +135,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'off')).to.equal(false);
     expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'on')).to.equal(true);
     expect(scheduler._ratePlanned.some((entry) => entry.token === 2 && entry.phase === 'off')).to.equal(true);
+    expect(scheduler._rateSent.some((entry) => entry.token === 1 && entry.phase === 'off' && entry.count === 1)).to.equal(true);
   });
 
   it('covers perfEnabled permutations and pan handling', function() {
@@ -350,11 +352,13 @@ describe('MidiScheduler coverage: core behavior', function() {
     const output = makeOutput([2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, memberChannels: [2] } });
     scheduler.setOutput(output);
+    scheduler._nowMs = () => 0;
     scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true, startedAt: 0 });
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     scheduler._stealOldestNote();
     expect(scheduler._activeByChannel.size).to.equal(0);
     expect(calls.some(call => call.type === 'pitchBend')).to.equal(true);
+    expect(scheduler._rateSent.some((entry) => entry.token === 1 && entry.phase === 'off' && entry.count === 2)).to.equal(true);
   });
 
   it('aggregates unknown sfx ids in rate snapshots', function() {

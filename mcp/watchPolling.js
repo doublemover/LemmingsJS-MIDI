@@ -481,7 +481,7 @@ class WatchPollingController {
         timeoutId: null
       };
       if (Number.isFinite(timeoutMs) && timeoutMs >= 0) {
-        waiter.timeoutId = setTimeout(() => {
+        waiter.timeoutId = this.setTimerFn(() => {
           this._idleWaiters.delete(waiter);
           resolve();
         }, timeoutMs);
@@ -494,7 +494,7 @@ class WatchPollingController {
     if (this.polling || !this._idleWaiters.size) return;
     for (const waiter of this._idleWaiters) {
       if (waiter.timeoutId != null) {
-        clearTimeout(waiter.timeoutId);
+        this.clearTimerFn(waiter.timeoutId);
       }
       waiter.resolve();
     }

@@ -130,6 +130,7 @@ describe('procgenBoot helpers', function () {
   it('disposes active procgen runtime once and clears references', function () {
     const calls = [];
     procgenBoot.setActiveProcgenRuntimeForTest({
+      focusBlurCleanup() { calls.push('focusBlur'); },
       controller: { stop() { calls.push('controller'); } },
       stageAdapter: { dispose() { calls.push('stageAdapter'); } },
       game: { stop() { calls.push('game'); } },
@@ -139,7 +140,7 @@ describe('procgenBoot helpers', function () {
     procgenBoot.disposeProcgenRuntime();
     procgenBoot.disposeProcgenRuntime();
 
-    expect(calls).to.deep.equal(['controller', 'stageAdapter', 'game', 'view']);
+    expect(calls).to.deep.equal(['focusBlur', 'controller', 'stageAdapter', 'game', 'view']);
   });
 
   it('resizes canvas and updates stage using explicit runtime handles', function () {

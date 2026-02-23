@@ -150,6 +150,36 @@ describe('ProcgenStageAdapter', function () {
     expect(stage.redrawCalls).to.equal(1);
   });
 
+  it('ignores wheel events with zero delta to avoid accidental zoom', function () {
+    const canvas = createCanvasMock();
+    const { stage, view, controller } = createAdapterFixture();
+    const adapter = new ProcgenStageAdapter({ view, controller, canvas });
+    adapter.install();
+
+    const wheel = canvas.listeners.get('wheel');
+    wheel({
+      deltaY: 0,
+      preventDefault() {}
+    });
+
+    expect(stage.applyViewportCalls).to.have.lengthOf(0);
+    expect(stage.redrawCalls).to.equal(0);
+  });
+
+  it('binds and unbinds resize listeners against provided window references', function () {
+    const canvas = createCanvasMock();
+    const win = createWindowMock();
+    const { view, controller } = createAdapterFixture();
+    const adapter = new ProcgenStageAdapter({ view, controller, canvas, windowRef: win });
+
+    adapter.install();
+    expect(win.listeners.has('resize')).to.equal(true);
+    expect(globalThis.window.listeners.has('resize')).to.equal(false);
+
+    adapter.dispose();
+    expect(win.listeners.has('resize')).to.equal(false);
+  });
+
   it('updates stage size through explicit adapter handles', function () {
     const canvas = createCanvasMock();
     const { stage, view, controller } = createAdapterFixture();

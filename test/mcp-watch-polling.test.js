@@ -199,6 +199,45 @@ describe('WatchPollingController', function () {
     expect(controller.getSnapshot().running).to.equal(false);
   });
 
+  it('stopAndWait timeout uses configured timer hooks', async function () {
+    const clock = createFakeClock();
+    let resolvePoll;
+    const controller = new WatchPollingController({
+      hasWatchesFn: () => true,
+      pollFn: () => new Promise((resolve) => {
+        resolvePoll = resolve;
+      }),
+      setTimerFn: clock.setTimerFn,
+      clearTimerFn: clock.clearTimerFn,
+      nowFn: clock.nowFn,
+      config: {
+        minMs: 0,
+        activeMs: 10,
+        maxMs: 10
+      }
+    });
+
+    controller.start();
+    await clock.flush();
+    expect(controller.getSnapshot().polling).to.equal(true);
+
+    let settled = false;
+    const waiting = controller.stopAndWait(50).then(() => {
+      settled = true;
+    });
+
+    await Promise.resolve();
+    expect(settled).to.equal(false);
+    await clock.advance(49);
+    expect(settled).to.equal(false);
+    await clock.advance(1);
+    await waiting;
+    expect(settled).to.equal(true);
+
+    resolvePoll({ triggeredCount: 0 });
+    await Promise.resolve();
+  });
+
   it('backs off when pollFn throws and recovers after a triggered poll', async function () {
     const clock = createFakeClock();
     let attempts = 0;
