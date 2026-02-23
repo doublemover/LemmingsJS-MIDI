@@ -71,6 +71,17 @@ describe('mcp tool routing helpers', function () {
     expect(resolved.candidates).to.deep.equal(['0']);
   });
 
+  it('trims surrounding whitespace before resolving aliases and fallback candidates', function () {
+    const resolved = resolveToolCandidates('  editor.mutate  ', {
+      legacyToolAliases: createLegacyToolAliases(true),
+      dottedFallbackEnabled: true,
+      toToolName: (name) => name.replace(/\./g, '_')
+    });
+
+    expect(resolved.requestedName).to.equal('editor.mutate');
+    expect(resolved.candidates).to.deep.equal(['editor_apply']);
+  });
+
   it('builds route catalog for all tools while filtering list definitions by active surfaces', function () {
     const gameHandler = () => ({ ok: true });
     const editorHandler = () => ({ ok: true });

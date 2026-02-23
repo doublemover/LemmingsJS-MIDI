@@ -54,7 +54,7 @@ const resolveToolCandidates = (
     toToolName = (name) => name
   } = {}
 ) => {
-  const requestedName = rawName == null ? '' : String(rawName);
+  const requestedName = rawName == null ? '' : String(rawName).trim();
   const candidates = [];
   const pushCandidate = (name) => {
     const canonical = legacyToolAliases[name] || name;
