@@ -256,4 +256,32 @@ describe('state tools', function () {
       reason: 'delta_serialize_failed'
     });
   });
+
+  it('omits prev arrays when includePrev is requested but source deltas do not provide prev values', async function () {
+    const fixture = createFixture({
+      currentTick: 12,
+      deltas: [{
+        tick: 12,
+        lemChanges: {
+          ids: [1],
+          fields: [4],
+          next: [9]
+        }
+      }]
+    });
+
+    const result = await fixture.handlers.getStateDeltaTool({
+      sessionId: 's1',
+      afterTick: 11,
+      lemmings: { includePrev: true, fields: [4] }
+    });
+
+    expect(result.ok).to.equal(true);
+    expect(result.deltas).to.have.lengthOf(1);
+    expect(result.deltas[0].lemChanges).to.deep.equal({
+      ids: [1],
+      fields: [4],
+      next: [9]
+    });
+  });
 });

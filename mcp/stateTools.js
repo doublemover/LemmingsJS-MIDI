@@ -316,6 +316,7 @@ const createStateToolHandlers = ({
           const fields = [];
           const next = [];
           const prev = [];
+          const includePrevValues = lemOpts.includePrev && Array.isArray(lemChanges.prev);
 
           for (let i = 0; i < lemChanges.ids.length; i += 1) {
             if (ids.length >= lemOpts.maxChanges) break;
@@ -329,7 +330,7 @@ const createStateToolHandlers = ({
             ids.push(id);
             fields.push(field);
             next.push(lemChanges.next[i]);
-            if (lemOpts.includePrev && Array.isArray(lemChanges.prev)) {
+            if (includePrevValues) {
               prev.push(lemChanges.prev[i]);
             }
           }
@@ -338,7 +339,7 @@ const createStateToolHandlers = ({
             out.lemChanges = {
               ids,
               fields,
-              ...(lemOpts.includePrev ? { prev } : {}),
+              ...(includePrevValues ? { prev } : {}),
               next
             };
           }
