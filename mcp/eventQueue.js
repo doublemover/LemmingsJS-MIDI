@@ -217,24 +217,24 @@ class EventQueue {
       this.humanSummaryParts.length = 0;
       this.humanSummaryStart = 0;
     }
+    if (summaryCap > 0 && this.humanSummaryParts.length > summaryCap) {
+      if (this.humanSummaryStart === 0) {
+        this.humanSummaryParts = this.humanSummaryParts.slice(-summaryCap);
+      } else {
+        const ordered = new Array(this.humanSummaryParts.length);
+        for (let i = 0; i < this.humanSummaryParts.length; i += 1) {
+          ordered[i] = this.humanSummaryParts[
+            (this.humanSummaryStart + i) % this.humanSummaryParts.length
+          ];
+        }
+        this.humanSummaryParts = ordered.slice(-summaryCap);
+      }
+      this.humanSummaryStart = 0;
+    }
 
     if (source === 'human' && summary) {
       if (summaryCap <= 0) {
         return entry;
-      }
-      if (this.humanSummaryParts.length > summaryCap) {
-        if (this.humanSummaryStart === 0) {
-          this.humanSummaryParts = this.humanSummaryParts.slice(-summaryCap);
-        } else {
-          const ordered = new Array(this.humanSummaryParts.length);
-          for (let i = 0; i < this.humanSummaryParts.length; i += 1) {
-            ordered[i] = this.humanSummaryParts[
-              (this.humanSummaryStart + i) % this.humanSummaryParts.length
-            ];
-          }
-          this.humanSummaryParts = ordered.slice(-summaryCap);
-        }
-        this.humanSummaryStart = 0;
       }
       if (this.humanSummaryParts.length < summaryCap) {
         this.humanSummaryParts.push(summary);

@@ -314,6 +314,22 @@ describe('EventQueue', function () {
     expect(queue.humanSummaryParts.length).to.equal(0);
   });
 
+  it('rebalances buffered summaries when retention shrinks before non-human events', function () {
+    const queue = createQueue(8);
+    queue.maxHumanSummaryParts = 5;
+    queue.add({ source: 'human', type: 'input', summary: 'a' });
+    queue.add({ source: 'human', type: 'input', summary: 'b' });
+    queue.add({ source: 'human', type: 'input', summary: 'c' });
+    queue.add({ source: 'human', type: 'input', summary: 'd' });
+    queue.add({ source: 'human', type: 'input', summary: 'e' });
+
+    queue.maxHumanSummaryParts = 2;
+    queue.add({ source: 'agent', type: 'state', summary: 'refresh' });
+
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.humanSummary).to.equal('d; e');
+  });
+
   it('reorders wrapped summaries correctly when shrinking the runtime summary cap', function () {
     const queue = createQueue(16);
     queue.maxHumanSummaryParts = 5;
