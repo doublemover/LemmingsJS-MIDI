@@ -88,6 +88,13 @@ Legacy `profile=gameplay` links are normalized to `classic`.
 
 Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.
 
+`npm test` now reports total runtime and supports optional guardrails for local
+suite budgets:
+
+- `LEMMINGS_TEST_ENFORCE_BUDGET=true`: fail when runtime budget is exceeded.
+- `LEMMINGS_TEST_BUDGET_MS=<ms>`: override the default 180000ms budget.
+- `npm run test:budget`: convenience wrapper with enforcement enabled.
+
 To mirror the CI environment locally:
 
 ```bash

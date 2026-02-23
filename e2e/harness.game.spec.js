@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { decodeE2EBuffer } from './helpers/e2eState.js';
-import { clearLocalStorage, waitForHarnessReady } from './helpers/harness.js';
+import { HarnessGamePage } from './helpers/pageObjects.js';
 
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
-  await clearLocalStorage(page);
-  await page.goto('/?e2e=1');
-  await waitForHarnessReady(page);
+  const harness = new HarnessGamePage(page);
+  await harness.goto();
 });
 
 const snapshotInvariantState = (state) => {

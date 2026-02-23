@@ -8,6 +8,7 @@ import { toMidiFlagTriggerType } from '../js/midi/MidiFlagTriggers.js';
 import { EventHandler } from '../js/util/EventHandler.js';
 import { setDependency, resetDependencies, useGlobalLemmings } from './helpers/lemmings.js';
 import { useGlobalValueRestore } from './support/globals.js';
+import { runScenarioTable } from './support/scenario-table.js';
 
 describe('GameView coverage', function() {
   useGlobalValueRestore(['window', 'history', 'WebMidi', 'localStorage', 'document']);
@@ -121,16 +122,34 @@ describe('GameView coverage', function() {
     expect(diagnostics.caches.midiOverrideKeys).to.deep.equal(['alpha', 'zeta']);
   });
 
-  it('formats MIDI errors and handles WebMidi enable', async function() {
-    globalThis.window = { isSecureContext: false, location: { protocol: 'http:', hostname: 'example.com', search: '' } };
+  runScenarioTable([
+    {
+      name: 'formats MIDI errors for insecure contexts',
+      windowRef: { isSecureContext: false, location: { protocol: 'http:', hostname: 'example.com', search: '' } },
+      input: {},
+      expected: 'WebMIDI requires HTTPS or localhost.'
+    },
+    {
+      name: 'formats MIDI errors for permission denials',
+      windowRef: { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } },
+      input: { name: 'NotAllowedError', message: 'permission' },
+      expected: 'WebMIDI permission denied. Check browser permissions.'
+    },
+    {
+      name: 'formats MIDI errors for unsupported browser APIs',
+      windowRef: { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } },
+      input: { name: 'NotSupportedError' },
+      expected: 'WebMIDI is not supported in this browser.'
+    }
+  ], ({ windowRef, input, expected }) => {
+    globalThis.window = windowRef;
     const view = new GameView();
-    expect(view._formatMidiEnableError({})).to.equal('WebMIDI requires HTTPS or localhost.');
-    globalThis.window.isSecureContext = true;
-    globalThis.window.location.protocol = 'https:';
-    expect(view._formatMidiEnableError({ name: 'NotAllowedError', message: 'permission' }))
-      .to.equal('WebMIDI permission denied. Check browser permissions.');
-    expect(view._formatMidiEnableError({ name: 'NotSupportedError' }))
-      .to.equal('WebMIDI is not supported in this browser.');
+    expect(view._formatMidiEnableError(input)).to.equal(expected);
+  });
+
+  it('handles WebMidi enable lifecycle', async function() {
+    globalThis.window = { isSecureContext: true, location: { protocol: 'https:', hostname: 'example.com', search: '' } };
+    const view = new GameView();
 
     let errorMessage = null;
     view.setMidiStatusHandlers({ onError: msg => { errorMessage = msg; } });

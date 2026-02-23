@@ -19,6 +19,7 @@
     "check-undefined": "node scripts/check-undefined.js",
     "typecheck:critical": "tsc -p tsconfig.checkjs.json --pretty false",
     "test": "node scripts/runTests.js",
+    "test:budget": "cross-env LEMMINGS_TEST_ENFORCE_BUDGET=true LEMMINGS_TEST_BUDGET_MS=180000 node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
     "test-bench": "npm run test-bench-unit",
     "test-bench-unit": "mocha \"test/*bench*.test.js\"",

@@ -5,7 +5,9 @@ import {
   collectChangedFiles,
   inferCategoriesFromChangedFiles,
   main,
+  parseBoolEnv,
   parseCliArgs,
+  resolveRuntimeBudgetMs,
   runRuntimeGlobalGuard
 } from '../scripts/runTests.js';
 
@@ -24,6 +26,14 @@ describe('scripts/runTests', function () {
     expect(parsed.changed).to.equal(true);
     expect(parsed.baseRef).to.equal('origin/main');
     expect(parsed.categories).to.deep.equal(['editor']);
+  });
+
+  it('parses budget guard environment helpers', function () {
+    expect(parseBoolEnv('true')).to.equal(true);
+    expect(parseBoolEnv('1')).to.equal(true);
+    expect(parseBoolEnv('off')).to.equal(false);
+    expect(resolveRuntimeBudgetMs('60000')).to.equal(60000);
+    expect(resolveRuntimeBudgetMs('bogus')).to.equal(180000);
   });
 
   it('maps changed files to stable category selection', function () {
@@ -161,6 +171,43 @@ describe('scripts/runTests', function () {
     });
 
     expect(spawned).to.have.lengthOf(0);
+    expect(exits).to.deep.equal([1]);
+  });
+
+  it('fails when budget enforcement is enabled and runtime exceeds threshold', function () {
+    const exits = [];
+    const spawned = [];
+    const originalEnforce = process.env.LEMMINGS_TEST_ENFORCE_BUDGET;
+    const originalBudget = process.env.LEMMINGS_TEST_BUDGET_MS;
+    const originalNow = Date.now;
+    let nowTick = 0;
+    Date.now = () => {
+      nowTick += 10;
+      return nowTick;
+    };
+    process.env.LEMMINGS_TEST_ENFORCE_BUDGET = 'true';
+    process.env.LEMMINGS_TEST_BUDGET_MS = '1';
+    try {
+      main([], {
+        spawn: () => {
+          spawned.push(true);
+          return { status: 0 };
+        },
+        log: {
+          warn: () => {},
+          error: () => {},
+          log: () => {}
+        },
+        exit: (code) => exits.push(code)
+      });
+    } finally {
+      Date.now = originalNow;
+      if (originalEnforce == null) delete process.env.LEMMINGS_TEST_ENFORCE_BUDGET;
+      else process.env.LEMMINGS_TEST_ENFORCE_BUDGET = originalEnforce;
+      if (originalBudget == null) delete process.env.LEMMINGS_TEST_BUDGET_MS;
+      else process.env.LEMMINGS_TEST_BUDGET_MS = originalBudget;
+    }
+    expect(spawned).to.have.lengthOf(3);
     expect(exits).to.deep.equal([1]);
   });
 });

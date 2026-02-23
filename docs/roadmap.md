@@ -734,20 +734,20 @@ Notes:
   Touchpoints: `js/app/*`, `js/game/*`, `js/midi/*`, `js/core/dependencies.js`.
 
 ## Phase 45: Test suite condensation tier 3
-- [ ] Expand shared test support (`dom`, `canvas`, `deps`, fixtures) and migrate
+- [x] Expand shared test support (`dom`, `canvas`, `deps`, fixtures) and migrate
   largest suites to remove duplicated scaffolding.
   Touchpoints: `test/support/*`, `test/helpers/*`, `test/*coverage*.test.js`.
-- [ ] Merge remaining near-duplicate coverage suites and standardize naming
+- [x] Merge remaining near-duplicate coverage suites and standardize naming
   conventions to avoid case/collision drift.
   Touchpoints: `test/*`.
-- [ ] Refactor top-volume suites into table-driven scenario runners with shared
+- [x] Refactor top-volume suites into table-driven scenario runners with shared
   harnesses while preserving branch coverage guarantees.
   Touchpoints: `test/history-store.test.js`, `test/action-systems.test.js`,
   `test/midi/*.test.js`, `test/gameview.coverage.test.js`.
-- [ ] Add E2E page-object fixtures and semantic selector helpers to reduce
+- [x] Add E2E page-object fixtures and semantic selector helpers to reduce
   repeated harness setup boilerplate.
   Touchpoints: `e2e/*.spec.js`, `e2e/helpers/*`.
-- [ ] Add test-runtime budgets and suite-duration guardrails so condensation
+- [x] Add test-runtime budgets and suite-duration guardrails so condensation
   work measurably improves local dev-loop speed.
   Touchpoints: `scripts/runTests.js`, `docs/TESTING.md`, `package.json`.
 

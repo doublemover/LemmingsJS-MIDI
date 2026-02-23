@@ -27,6 +27,7 @@ import '../js/lemmings/LemmingStateType.js';
 import '../js/lemmings/SpriteTypes.js';
 import '../js/render/MaskTypes.js';
 import '../js/lemmings/Lemming.js';
+import { runScenarioTable } from './support/scenario-table.js';
 
 const makeMiniMap = () => ({
   addDeath() {},
@@ -563,19 +564,22 @@ describe('Action Systems process()', function() {
     expect(sys.process(level4, lem4)).to.equal(Lemmings.LemmingStateType.FALLING);
   });
 
-  it('ActionBashSystem stops on arrow under mask', function() {
+  runScenarioTable([
+    {
+      name: 'ActionBashSystem stops on arrow under mask',
+      apply(level) {
+        level.arrowUnder = true;
+      }
+    },
+    {
+      name: 'ActionBashSystem stops on steel under mask',
+      apply(level) {
+        level.steelUnder = true;
+      }
+    }
+  ], ({ apply }) => {
     const level = new StubLevel();
-    level.arrowUnder = true;
-    const sys = new TestBashSystem(0, 0);
-    const lem = new StubLemming();
-    lem.frameIndex = 2; // ->3
-    expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.SHRUG);
-    expect(level.clearedMasks).to.have.length(0);
-  });
-
-  it('ActionBashSystem stops on steel under mask', function() {
-    const level = new StubLevel();
-    level.steelUnder = true;
+    apply(level);
     const sys = new TestBashSystem(0, 0);
     const lem = new StubLemming();
     lem.frameIndex = 2; // ->3

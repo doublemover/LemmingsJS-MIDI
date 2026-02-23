@@ -5,6 +5,7 @@ import { SkillTypes } from '../js/game/SkillTypes.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { EventHandler } from '../js/util/EventHandler.js';
+import { runScenarioTable } from './support/scenario-table.js';
 import {
   createStubTimer,
   recordTick,
@@ -209,25 +210,36 @@ describe('HistoryStore', function() {
     history.resume();
   });
 
-  it('truncates all deltas when cutting after the last tick', function() {
+  runScenarioTable([
+    {
+      name: 'truncates all deltas when cutting after the last tick',
+      seed(history) {
+        history.deltas[1] = history._allocDelta(1);
+        history.minDeltaTick = 1;
+        history.maxDeltaTick = 1;
+        history.deltaCount = 1;
+      },
+      execute(history) {
+        history._truncateDeltasAfter(0);
+      }
+    },
+    {
+      name: 'truncates deltas before a cutoff and clears ranges',
+      seed(history) {
+        history.deltas[0] = history._allocDelta(0);
+        history.deltas[1] = history._allocDelta(1);
+        history.minDeltaTick = 0;
+        history.maxDeltaTick = 1;
+        history.deltaCount = 2;
+      },
+      execute(history) {
+        history._truncateBefore(2);
+      }
+    }
+  ], ({ seed, execute }) => {
     const history = new HistoryStore();
-    history.deltas[1] = history._allocDelta(1);
-    history.minDeltaTick = 1;
-    history.maxDeltaTick = 1;
-    history.deltaCount = 1;
-    history._truncateDeltasAfter(0);
-    expect(history.minDeltaTick).to.equal(null);
-    expect(history.maxDeltaTick).to.equal(null);
-  });
-
-  it('truncates deltas before a cutoff and clears ranges', function() {
-    const history = new HistoryStore();
-    history.deltas[0] = history._allocDelta(0);
-    history.deltas[1] = history._allocDelta(1);
-    history.minDeltaTick = 0;
-    history.maxDeltaTick = 1;
-    history.deltaCount = 2;
-    history._truncateBefore(2);
+    seed(history);
+    execute(history);
     expect(history.minDeltaTick).to.equal(null);
     expect(history.maxDeltaTick).to.equal(null);
   });

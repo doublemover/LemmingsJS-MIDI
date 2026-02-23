@@ -17,6 +17,7 @@ const tscBin = path.join(
   'tsc'
 );
 const CHECK_JS_CONFIG = 'tsconfig.checkjs.json';
+const DEFAULT_TEST_RUNTIME_BUDGET_MS = 180000;
 
 const RUNTIME_GUARD_TARGETS = Object.freeze([
   'js/game/**/*.js',
@@ -42,6 +43,18 @@ const CATEGORY_ORDER = Object.freeze([
   'bench',
   'workflow'
 ]);
+
+const parseBoolEnv = (value) => {
+  if (value == null) return false;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
+};
+
+const resolveRuntimeBudgetMs = (value) => {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_TEST_RUNTIME_BUDGET_MS;
+  return Math.trunc(parsed);
+};
 
 const parseCliArgs = (argv = []) => {
   const result = {
@@ -221,10 +234,16 @@ const runMocha = (
   {
     spawn = spawnSync,
     log = console,
-    exit = process.exit
+    exit = process.exit,
+    enforceBudget = false,
+    budgetMs = DEFAULT_TEST_RUNTIME_BUDGET_MS,
+    preRunElapsedMs = 0
   } = {}
 ) => {
+  const mochaStart = Date.now();
   const res = spawn(process.execPath, [mochaBin, ...args], { stdio: 'inherit' });
+  const mochaElapsedMs = Math.max(0, Date.now() - mochaStart);
+  const totalElapsedMs = preRunElapsedMs + mochaElapsedMs;
   if (res.error) {
     log.error(`Failed to run mocha: ${res.error.message}`);
     exit(1);
@@ -234,6 +253,14 @@ const runMocha = (
     log.error('Mocha exited without a status code.');
     exit(1);
     return;
+  }
+  if (res.status === 0) {
+    log.log(`Test runtime: ${(totalElapsedMs / 1000).toFixed(2)}s (budget ${(budgetMs / 1000).toFixed(2)}s)`);
+    if (enforceBudget && totalElapsedMs > budgetMs) {
+      log.error(`Test runtime budget exceeded: ${totalElapsedMs}ms > ${budgetMs}ms`);
+      exit(1);
+      return;
+    }
   }
   exit(res.status);
 };
@@ -299,6 +326,9 @@ const main = (
     exit = process.exit
   } = {}
 ) => {
+  const runStartMs = Date.now();
+  const enforceRuntimeBudget = parseBoolEnv(process.env.LEMMINGS_TEST_ENFORCE_BUDGET);
+  const runtimeBudgetMs = resolveRuntimeBudgetMs(process.env.LEMMINGS_TEST_BUDGET_MS);
   let parsed;
   try {
     parsed = parseCliArgs(argv);
@@ -346,7 +376,15 @@ const main = (
   if (!runCriticalTypecheckGuard({ spawn, log, exit })) {
     return;
   }
-  runMocha(mochaArgs, { spawn, log, exit });
+  const preMochaElapsedMs = Math.max(0, Date.now() - runStartMs);
+  runMocha(mochaArgs, {
+    spawn,
+    log,
+    exit,
+    enforceBudget: enforceRuntimeBudget,
+    budgetMs: runtimeBudgetMs,
+    preRunElapsedMs: preMochaElapsedMs
+  });
 };
 
 const isMain = (() => {
@@ -369,6 +407,8 @@ export {
   inferCategoriesFromChangedFiles,
   main,
   parseCliArgs,
+  parseBoolEnv,
   runCriticalTypecheckGuard,
+  resolveRuntimeBudgetMs,
   runRuntimeGlobalGuard
 };

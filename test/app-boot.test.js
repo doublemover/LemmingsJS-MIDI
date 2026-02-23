@@ -1,4 +1,5 @@
 import { expect } from 'chai';
+import { createCanvasStub } from './support/canvas.js';
 
 const preserveGlobals = (names) => {
   const snapshot = new Map();
@@ -80,7 +81,7 @@ describe('app boot helpers', function () {
       globalThis.__LEMMINGS_BOOT_NO_AUTO_START__ = true;
 
       const boot = await import(`../js/app/boot.js?boot_test=${Date.now()}`);
-      const canvas = { style: {}, width: 0, height: 0 };
+      const canvas = createCanvasStub({ width: 0, height: 0 });
       let stageResizeCalls = 0;
       boot.setLemmingsForTest({
         gameCanvas: canvas,

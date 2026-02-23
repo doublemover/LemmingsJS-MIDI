@@ -1,24 +1,29 @@
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
+import { MidiUiPage } from './helpers/pageObjects.js';
 
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
 });
 
+const openMidiUi = async (page, path = '/') => {
+  const midi = new MidiUiPage(page);
+  await midi.goto(path);
+  return midi;
+};
+
 test('MIDI UI starts disabled and hides panels', async ({ page }) => {
-  await page.goto('/');
-  await page.waitForSelector('#midiEnabledToggle');
+  const midi = await openMidiUi(page);
   await expect(page.locator('body')).toHaveClass(/midi-disabled/);
-  await expect(page.locator('#midiEnabledToggle')).not.toBeChecked();
-  await expect(page.locator('#controlRight')).toBeHidden();
+  await expect(midi.enabledToggle()).not.toBeChecked();
+  await expect(midi.controlRight()).toBeHidden();
 });
 
 test('Enabling MIDI reveals panels and inputs', async ({ page }) => {
-  await page.goto('/');
-  const toggle = page.locator('#midiEnabledToggle');
-  await toggle.check();
+  const midi = await openMidiUi(page);
+  await midi.enable();
   await expect(page.locator('body')).not.toHaveClass(/midi-disabled/);
-  await expect(page.locator('#controlRight')).toBeVisible();
+  await expect(midi.controlRight()).toBeVisible();
   const inputState = await page.evaluate(() => {
     const input = document.getElementById('midiInSelect');
     const output = document.getElementById('midiOutSelect');
@@ -46,11 +51,11 @@ test('Enabling MIDI reveals panels and inputs', async ({ page }) => {
 });
 
 test('MIDI panels render expected layout and tab content', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
+  const midi = await openMidiUi(page);
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
   const leftPanel = page.locator('#controlLeft');
-  const rightPanel = page.locator('#controlRight');
+  const rightPanel = midi.controlRight();
   await expect(leftPanel).toBeVisible();
   await expect(rightPanel).toBeVisible();
 
@@ -69,31 +74,31 @@ test('MIDI panels render expected layout and tab content', async ({ page }) => {
   const eventDetailsCount = await page.locator('#midiEventList details').count();
   expect(eventDetailsCount).toBeGreaterThan(0);
   await expect(page.locator('#midiEventList summary .panel-title-text').first()).toContainText('#');
-  await page.locator('[data-tab-target="midiTabTriggers"]').click();
+  await midi.tabButton('midiTabTriggers').click();
   await expect(page.locator('#midiTabTriggers')).toHaveClass(/active/);
   const triggerDetailsCount = await page.locator('#midiTriggerList details').count();
   expect(triggerDetailsCount).toBeGreaterThan(0);
-  await page.locator('[data-tab-target="midiTabAdsr"]').click();
+  await midi.tabButton('midiTabAdsr').click();
   await expect(page.locator('#midiTabAdsr')).toHaveClass(/active/);
   await expect(page.locator('#midiEnvAttack')).toBeVisible();
   await expect(page.locator('#midiEnvRelease')).toBeVisible();
-  await page.locator('[data-tab-target="midiTabGlobalFx"]').click();
+  await midi.tabButton('midiTabGlobalFx').click();
   await expect(page.locator('#midiTabGlobalFx')).toHaveClass(/active/);
   await expect(page.locator('#midiIntensity')).toBeVisible();
   await expect(page.locator('#midiAccent')).toBeVisible();
 });
 
 test('MIDI event and trigger titles render with width', async ({ page }) => {   
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
-  await expect(page.locator('#controlRight')).toBeVisible();
+  const midi = await openMidiUi(page);
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
+  await expect(midi.controlRight()).toBeVisible();
   await page.waitForSelector('#midiTabEvents #midiEventList summary .panel-title-text', { state: 'visible' });
   const eventTitle = page.locator('#midiTabEvents #midiEventList summary .panel-title-text').first();
   await expect(eventTitle).toContainText('#');
   const eventWidth = await eventTitle.evaluate(el => el.getBoundingClientRect().width);
   expect(eventWidth).toBeGreaterThan(1);
-  await page.locator('[data-tab-target="midiTabTriggers"]').click();
+  await midi.tabButton('midiTabTriggers').click();
   await page.waitForSelector('#midiTabTriggers #midiTriggerList summary .panel-title-text', { state: 'visible' });
   const triggerTitle = page.locator('#midiTabTriggers #midiTriggerList summary .panel-title-text').first();
   await expect(triggerTitle).toContainText('#');
@@ -102,15 +107,15 @@ test('MIDI event and trigger titles render with width', async ({ page }) => {
 });
 
 test('MIDI event list excludes unknown-0B', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
+  const midi = await openMidiUi(page);
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
   await expect(page.locator('#midiEventList')).not.toContainText('unknown-0B');
 });
 
 test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) => {
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
+  const midi = await openMidiUi(page);
+  await midi.enable();
   const selectors = ['#controlLeft', '#controlRight'];
   for (const selector of selectors) {
     const metrics = await page.evaluate((sel) => {
@@ -141,8 +146,8 @@ test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) =
 });
 
 test('Canvas interaction clears focused MIDI inputs', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
+  const midi = await openMidiUi(page);
+  await midi.enable();
   const bpmInput = page.locator('#midiBpmBase');
   await bpmInput.focus();
   await expect(bpmInput).toBeFocused();
@@ -152,10 +157,10 @@ test('Canvas interaction clears focused MIDI inputs', async ({ page }) => {
 });
 
 test('Expressive MIDI controls expose keyboard editing, arp patterns, and preview hooks', async ({ page }) => {
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
-  await page.locator('#midiEventList details summary').first().click();
+  const midi = await openMidiUi(page);
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
+  await midi.openFirstEventDetails();
   const result = await page.evaluate(() => {
     const api = window.__LEMMINGS_MIDI_UI__;
     const details = document.querySelector('#midiEventList details');
@@ -214,10 +219,10 @@ test('Expressive MIDI controls expose keyboard editing, arp patterns, and previe
 });
 
 test('Legacy MIDI controls remain available behind feature flag', async ({ page }) => {
-  await page.goto('/?mlc=true');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
-  await page.locator('#midiEventList details summary').first().click();
+  const midi = await openMidiUi(page, '/?mlc=true');
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
+  await midi.openFirstEventDetails();
   const result = await page.evaluate(() => {
     const api = window.__LEMMINGS_MIDI_UI__;
     const details = document.querySelector('#midiEventList details');
@@ -248,10 +253,10 @@ test('Legacy MIDI controls remain available behind feature flag', async ({ page 
 
 test('Expressive controls keep mobile layout parity', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/');
-  await page.locator('#midiEnabledToggle').check();
-  await page.waitForSelector('#midiEventList details');
-  await page.locator('#midiEventList details summary').first().click();
+  const midi = await openMidiUi(page);
+  await midi.enable();
+  await midi.eventDetails().first().waitFor();
+  await midi.openFirstEventDetails();
   const metrics = await page.evaluate(() => {
     const right = document.getElementById('controlRight');
     const details = document.querySelector('#midiEventList details');

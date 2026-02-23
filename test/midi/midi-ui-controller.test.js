@@ -5,13 +5,14 @@ import { SkillTypes } from '../../js/game/SkillTypes.js';
 import { TriggerTypes } from '../../js/level/TriggerTypes.js';
 import { withConsoleStub } from '../helpers/console.js';
 import { TestDocument, TestElement, createTestWindow } from '../helpers/test-dom.js';
-
-const register = (doc, tag, id, className = '') => {
-  const el = doc.createElement(tag);
-  if (className) el.className = className;
-  doc.registerElement(id, el);
-  return el;
-};
+import {
+  findElement,
+  findRowInputByLabel,
+  installRichSelectors,
+  registerElement,
+  registerRangeInput
+} from '../support/dom-fixtures.js';
+import { runScenarioTable } from '../support/scenario-table.js';
 
 if (!TestElement.prototype.contains) {
   TestElement.prototype.contains = function(target) {
@@ -23,59 +24,6 @@ if (!TestElement.prototype.contains) {
   };
 }
 
-const findElement = (root, predicate) => {
-  if (predicate(root)) return root;
-  for (const child of root.children || []) {
-    const found = findElement(child, predicate);
-    if (found) return found;
-  }
-  return null;
-};
-
-const findRowInputByLabel = (root, labelText) => {
-  const row = findElement(root, el => (
-    el.tagName === 'LABEL' && el.children?.[0]?.textContent === labelText
-  ));
-  return row?.children?.[1] || null;
-};
-
-const setupRichSelectors = (doc) => {
-  doc.querySelectorAll = (selector) => {
-    const all = doc._all || [];
-    if (selector === 'details[data-section-key]') {
-      return all.filter(el => el.tagName === 'DETAILS' && el.dataset?.sectionKey);
-    }
-    const tabMatch = selector.match(/^\.(tab-button|tab-panel)\[data-tab-group(?:="([^"]*)")?\]$/);
-    if (tabMatch) {
-      const className = tabMatch[1];
-      const group = tabMatch[2];
-      return all.filter(el => (
-        el.classList?.contains(className) &&
-        el.dataset?.tabGroup &&
-        (!group || el.dataset.tabGroup === group)
-      ));
-    }
-    if (selector.startsWith('.')) {
-      const className = selector.slice(1);
-      return all.filter(el => el.classList?.contains(className));
-    }
-    return [];
-  };
-};
-
-const registerRangeInput = (doc, id) => {
-  const wrapper = doc.createElement('div');
-  const minLabel = doc.createElement('span');
-  minLabel.className = 'range-label';
-  const input = doc.createElement('input');
-  const maxLabel = doc.createElement('span');
-  maxLabel.className = 'range-label';
-  wrapper.appendChild(minLabel);
-  wrapper.appendChild(input);
-  wrapper.appendChild(maxLabel);
-  doc.registerElement(id, input);
-  return { wrapper, input, minLabel, maxLabel };
-};
 
 const createWebMidiStub = (inputs, outputs) => {
   const listeners = new Map();
@@ -106,13 +54,13 @@ describe('midiUiController', function() {
   it('persists the enabled toggle and disables controls', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const enabledToggle = register(doc, 'input', 'midiEnabledToggle');
-    const inputSelect = register(doc, 'select', 'midiInSelect');
-    const outputSelect = register(doc, 'select', 'midiOutSelect');
-    const inputChannel = register(doc, 'select', 'midiInputChannel');
-    const resetButton = register(doc, 'button', 'midiResetButton');
-    const viewPan = register(doc, 'input', 'midiViewPanToggle');
-    register(doc, 'div', 'errorDisplay');
+    const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
+    const inputSelect = registerElement(doc, 'select', 'midiInSelect');
+    const outputSelect = registerElement(doc, 'select', 'midiOutSelect');
+    const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
+    const resetButton = registerElement(doc, 'button', 'midiResetButton');
+    const viewPan = registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const calls = [];
     const lemmings = { setMidiEnabled(value) { calls.push(value); } };
@@ -138,9 +86,9 @@ describe('midiUiController', function() {
   it('stores the input channel and updates overrides', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    register(doc, 'input', 'midiEnabledToggle');
-    const inputChannel = register(doc, 'select', 'midiInputChannel');
-    register(doc, 'div', 'errorDisplay');
+    registerElement(doc, 'input', 'midiEnabledToggle');
+    const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const controller = createMidiUiController({
       document: doc,
@@ -182,8 +130,8 @@ describe('midiUiController', function() {
   it('collapses the left panel when the MIDI title is clicked', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const panel = register(doc, 'div', 'controlLeft');
-    const toggle = register(doc, 'div', 'midiPanelToggle');
+    const panel = registerElement(doc, 'div', 'controlLeft');
+    const toggle = registerElement(doc, 'div', 'midiPanelToggle');
 
     const controller = createMidiUiController({
       document: doc,
@@ -200,8 +148,8 @@ describe('midiUiController', function() {
   it('uses config defaults when storage is empty', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const viewPan = register(doc, 'input', 'midiViewPanToggle');
-    const inputChannel = register(doc, 'select', 'midiInputChannel');
+    const viewPan = registerElement(doc, 'input', 'midiViewPanToggle');
+    const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
 
     const config = {
       position: { viewPan: true },
@@ -224,27 +172,38 @@ describe('midiUiController', function() {
     expect(win.localStorage.getItem('lemmings.midi.inputChannel')).to.equal(null);
   });
 
-  it('shows omni when input channel defaults to omni', function() {
+  runScenarioTable([
+    {
+      name: 'shows omni when input channel defaults to omni',
+      channel: 'omni',
+      expected: 'omni'
+    },
+    {
+      name: 'shows explicit numeric channel when provided',
+      channel: 5,
+      expected: '5'
+    }
+  ], ({ channel, expected }) => {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const inputChannel = register(doc, 'select', 'midiInputChannel');
+    const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
 
     const controller = createMidiUiController({
       document: doc,
       window: win,
-      getMidiConfig: () => ({ input: { channel: 'omni' }, timing: { bpmBase: 120 } })
+      getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
 
     controller.refreshMidiUiFromConfig();
-    expect(inputChannel.value).to.equal('omni');
+    expect(inputChannel.value).to.equal(expected);
   });
 
   it('populates key, scale, and event lists with default data', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const keySelect = register(doc, 'select', 'midiKeySelect');
-    const scaleSelect = register(doc, 'select', 'midiScaleSelect');
-    const eventList = register(doc, 'div', 'midiEventList');
+    const keySelect = registerElement(doc, 'select', 'midiKeySelect');
+    const scaleSelect = registerElement(doc, 'select', 'midiScaleSelect');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
 
     const controller = createMidiUiController({
       document: doc,
@@ -262,10 +221,10 @@ describe('midiUiController', function() {
   it('updates current bpm when base bpm changes', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const bpmBase = register(doc, 'input', 'midiBpmBase');
-    const bpmCurrent = register(doc, 'span', 'midiBpmCurrent');
-    register(doc, 'input', 'midiEnabledToggle');
-    register(doc, 'div', 'errorDisplay');
+    const bpmBase = registerElement(doc, 'input', 'midiBpmBase');
+    const bpmCurrent = registerElement(doc, 'span', 'midiBpmCurrent');
+    registerElement(doc, 'input', 'midiEnabledToggle');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const controller = createMidiUiController({
       document: doc,
@@ -284,7 +243,7 @@ describe('midiUiController', function() {
   it('populates position mapping defaults when ranges are missing', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const positionList = register(doc, 'div', 'midiPositionList');
+    const positionList = registerElement(doc, 'div', 'midiPositionList');
 
     const controller = createMidiUiController({
       document: doc,
@@ -317,11 +276,11 @@ describe('midiUiController', function() {
   it('populates MIDI device selects and attaches inputs', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const inputSelect = register(doc, 'select', 'midiInSelect');
-    const outputSelect = register(doc, 'select', 'midiOutSelect');
-    register(doc, 'input', 'midiViewPanToggle');
-    register(doc, 'select', 'midiInputChannel');
-    register(doc, 'div', 'errorDisplay');
+    const inputSelect = registerElement(doc, 'select', 'midiInSelect');
+    const outputSelect = registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'select', 'midiInputChannel');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const inputDevice = { id: 'in-1', name: 'Input 1' };
     const outputDevice = { id: 'out-1', name: 'Output 1' };
@@ -356,14 +315,14 @@ describe('midiUiController', function() {
   it('builds event lists and wires updates into overrides', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    register(doc, 'select', 'midiKeySelect');
-    register(doc, 'select', 'midiScaleSelect');
-    const eventList = register(doc, 'div', 'midiEventList');
-    const triggerList = register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'select', 'midiRepeatTarget');
-    register(doc, 'input', 'midiRepeatAmount');
-    register(doc, 'div', 'errorDisplay');
+    registerElement(doc, 'select', 'midiKeySelect');
+    registerElement(doc, 'select', 'midiScaleSelect');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    const triggerList = registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'select', 'midiRepeatTarget');
+    registerElement(doc, 'input', 'midiRepeatAmount');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const config = {
       scale: { name: 'minor', root: 2 },
@@ -409,10 +368,10 @@ describe('midiUiController', function() {
   it('uses expressive mapping controls by default and exposes feature flags', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const eventList = register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const controller = createMidiUiController({
       document: doc,
@@ -434,10 +393,10 @@ describe('midiUiController', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     win.location = { search: '?mlc=true' };
-    const eventList = register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const controller = createMidiUiController({
       document: doc,
@@ -458,9 +417,9 @@ describe('midiUiController', function() {
   it('updates disabled toggles when re-enabled', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const eventList = register(doc, 'div', 'midiEventList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const config = {
       sfx: { '1': { note: 60, disabled: true } },
@@ -487,10 +446,10 @@ describe('midiUiController', function() {
   it('updates repeat target and amount overrides', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const repeatTarget = register(doc, 'select', 'midiRepeatTarget');
-    const repeatAmount = register(doc, 'input', 'midiRepeatAmount');
-    const repeatSpacing = register(doc, 'select', 'midiRepeatSpacing');
-    const repeatCount = register(doc, 'input', 'midiRepeatCount');
+    const repeatTarget = registerElement(doc, 'select', 'midiRepeatTarget');
+    const repeatAmount = registerElement(doc, 'input', 'midiRepeatAmount');
+    const repeatSpacing = registerElement(doc, 'select', 'midiRepeatSpacing');
+    const repeatCount = registerElement(doc, 'input', 'midiRepeatCount');
 
     const config = {
       repeat: { maxRepeats: 2, windowBeats: 0.5, target: 'note', amount: 0.25 },
@@ -526,13 +485,13 @@ describe('midiUiController', function() {
   it('updates ADSR overrides for selected targets', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const envTarget = register(doc, 'select', 'midiEnvTarget');
-    const envAttack = register(doc, 'input', 'midiEnvAttack');
-    const envDecay = register(doc, 'input', 'midiEnvDecay');
-    const envSustain = register(doc, 'input', 'midiEnvSustain');
-    const envRelease = register(doc, 'input', 'midiEnvRelease');
-    register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
+    const envTarget = registerElement(doc, 'select', 'midiEnvTarget');
+    const envAttack = registerElement(doc, 'input', 'midiEnvAttack');
+    const envDecay = registerElement(doc, 'input', 'midiEnvDecay');
+    const envSustain = registerElement(doc, 'input', 'midiEnvSustain');
+    const envRelease = registerElement(doc, 'input', 'midiEnvRelease');
+    registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
 
     const config = {
       envelope: { attack: 0.5, decay: 0.2, sustain: 1, release: 0.8 },
@@ -582,10 +541,10 @@ describe('midiUiController', function() {
   it('filters events and triggers based on level context', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const eventList = register(doc, 'div', 'midiEventList');
-    const triggerList = register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    const triggerList = registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const skills = {
       cheatMode: false,
@@ -676,7 +635,7 @@ describe('midiUiController', function() {
   it('applies stored section states via test hook', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    setupRichSelectors(doc);
+    installRichSelectors(doc);
     const section = doc.createElement('details');
     section.dataset.sectionKey = 'alpha';
     section.setAttribute = (name, value) => section.attributes.set(name, value);
@@ -713,18 +672,18 @@ describe('midiUiController', function() {
 
   it('persists tab and section state and resets on input change', function() {
     const doc = new TestDocument();
-    setupRichSelectors(doc);
+    installRichSelectors(doc);
     doc.body = doc.createElement('body');
     const win = createTestWindow();
-    register(doc, 'input', 'midiEnabledToggle');
-    const inputSelect = register(doc, 'select', 'midiInSelect');
-    register(doc, 'select', 'midiInputChannel');
-    register(doc, 'div', 'controlLeft');
-    register(doc, 'div', 'midiPanelToggle');
-    register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    registerElement(doc, 'input', 'midiEnabledToggle');
+    const inputSelect = registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiInputChannel');
+    registerElement(doc, 'div', 'controlLeft');
+    registerElement(doc, 'div', 'midiPanelToggle');
+    registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const sectionA = doc.createElement('details');
     sectionA.dataset.sectionKey = 'a';
@@ -739,15 +698,15 @@ describe('midiUiController', function() {
     sectionB.setAttribute = (name, value) => sectionB.attributes.set(name, value);
     sectionB.hasAttribute = (name) => sectionB.attributes.has(name);
 
-    const buttonA = register(doc, 'button', 'tabA', 'tab-button');
+    const buttonA = registerElement(doc, 'button', 'tabA', 'tab-button');
     buttonA.dataset.tabGroup = 'midi-left';
     buttonA.dataset.tabTarget = 'panelA';
-    const buttonB = register(doc, 'button', 'tabB', 'tab-button');
+    const buttonB = registerElement(doc, 'button', 'tabB', 'tab-button');
     buttonB.dataset.tabGroup = 'midi-left';
     buttonB.dataset.tabTarget = 'panelB';
-    const panelA = register(doc, 'div', 'panelA', 'tab-panel');
+    const panelA = registerElement(doc, 'div', 'panelA', 'tab-panel');
     panelA.dataset.tabGroup = 'midi-left';
-    const panelB = register(doc, 'div', 'panelB', 'tab-panel');
+    const panelB = registerElement(doc, 'div', 'panelB', 'tab-panel');
     panelB.dataset.tabGroup = 'midi-left';
 
     win.localStorage.setItem('lemmings.midi.tabLeft', 'panelB');
@@ -781,10 +740,10 @@ describe('midiUiController', function() {
   it('captures notes and updates mapping entries', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const eventList = register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const eventList = registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const trapId = SoundEffectIds.TRAP_ZAP;
     const config = {
@@ -903,23 +862,23 @@ describe('midiUiController', function() {
   it('updates position mappings and defaults', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const positionList = register(doc, 'div', 'midiPositionList');
-    const positionAdd = register(doc, 'button', 'midiPositionAdd');
+    const positionList = registerElement(doc, 'div', 'midiPositionList');
+    const positionAdd = registerElement(doc, 'button', 'midiPositionAdd');
     const intensity = registerRangeInput(doc, 'midiIntensity');
     const accent = registerRangeInput(doc, 'midiAccent');
-    const repeatEnabled = register(doc, 'input', 'midiRepeatEnabled');
-    const repeatSection = register(doc, 'details', 'midiRepeatSection');
+    const repeatEnabled = registerElement(doc, 'input', 'midiRepeatEnabled');
+    const repeatSection = registerElement(doc, 'details', 'midiRepeatSection');
     repeatSection.dataset.sectionKey = 'repeat';
-    const repeatCount = register(doc, 'input', 'midiRepeatCount');
-    const repeatSpacing = register(doc, 'select', 'midiRepeatSpacing');
-    const repeatTarget = register(doc, 'select', 'midiRepeatTarget');
-    const repeatAmount = register(doc, 'input', 'midiRepeatAmount');
-    const keySelect = register(doc, 'select', 'midiKeySelect');
-    const scaleSelect = register(doc, 'select', 'midiScaleSelect');
-    register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const repeatCount = registerElement(doc, 'input', 'midiRepeatCount');
+    const repeatSpacing = registerElement(doc, 'select', 'midiRepeatSpacing');
+    const repeatTarget = registerElement(doc, 'select', 'midiRepeatTarget');
+    const repeatAmount = registerElement(doc, 'input', 'midiRepeatAmount');
+    const keySelect = registerElement(doc, 'select', 'midiKeySelect');
+    const scaleSelect = registerElement(doc, 'select', 'midiScaleSelect');
+    registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const config = {
       position: {
@@ -1042,13 +1001,13 @@ describe('midiUiController', function() {
   it('builds axis defaults from explicit position mappings', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    const positionList = register(doc, 'div', 'midiPositionList');
-    register(doc, 'select', 'midiKeySelect');
-    register(doc, 'select', 'midiScaleSelect');
-    register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    const positionList = registerElement(doc, 'div', 'midiPositionList');
+    registerElement(doc, 'select', 'midiKeySelect');
+    registerElement(doc, 'select', 'midiScaleSelect');
+    registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const config = { timing: { bpmBase: 120 } };
 
@@ -1068,7 +1027,7 @@ describe('midiUiController', function() {
 
   it('refreshes devices and debug output and schedules device updates', function() {
     const doc = new TestDocument();
-    setupRichSelectors(doc);
+    installRichSelectors(doc);
     doc.body = doc.createElement('body');
     const win = createTestWindow();
     const intervals = [];
@@ -1084,20 +1043,20 @@ describe('midiUiController', function() {
     };
     win.dispatchEvent = (event) => dispatched.push(event.type);
 
-    const enabledToggle = register(doc, 'input', 'midiEnabledToggle');
-    const inputSelect = register(doc, 'select', 'midiInSelect');
-    const outputSelect = register(doc, 'select', 'midiOutSelect');
-    const inputChannel = register(doc, 'select', 'midiInputChannel');
-    const viewPan = register(doc, 'input', 'midiViewPanToggle');
-    const resetButton = register(doc, 'button', 'midiResetButton');
-    const defaultsButton = register(doc, 'button', 'midiDefaultsButton');
-    const panelToggle = register(doc, 'div', 'midiPanelToggle');
-    const leftPanel = register(doc, 'div', 'controlLeft');
-    const bpmBase = register(doc, 'input', 'midiBpmBase');
-    const bpmCurrent = register(doc, 'span', 'midiBpmCurrent');
-    const debugInput = register(doc, 'span', 'midiDebugInput');
-    const debugOutput = register(doc, 'span', 'midiDebugOutput');
-    register(doc, 'div', 'errorDisplay');
+    const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
+    const inputSelect = registerElement(doc, 'select', 'midiInSelect');
+    const outputSelect = registerElement(doc, 'select', 'midiOutSelect');
+    const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
+    const viewPan = registerElement(doc, 'input', 'midiViewPanToggle');
+    const resetButton = registerElement(doc, 'button', 'midiResetButton');
+    const defaultsButton = registerElement(doc, 'button', 'midiDefaultsButton');
+    const panelToggle = registerElement(doc, 'div', 'midiPanelToggle');
+    const leftPanel = registerElement(doc, 'div', 'controlLeft');
+    const bpmBase = registerElement(doc, 'input', 'midiBpmBase');
+    const bpmCurrent = registerElement(doc, 'span', 'midiBpmCurrent');
+    const debugInput = registerElement(doc, 'span', 'midiDebugInput');
+    const debugOutput = registerElement(doc, 'span', 'midiDebugOutput');
+    registerElement(doc, 'div', 'errorDisplay');
 
     win.localStorage.setItem('lemmings.midi.viewPan', 'true');
     win.localStorage.setItem('lemmings.midi.inputId', 'missing');
@@ -1258,7 +1217,7 @@ describe('midiUiController', function() {
   it('logs refresh errors during bpm updates', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    register(doc, 'span', 'midiBpmCurrent');
+    registerElement(doc, 'span', 'midiBpmCurrent');
     let throwOnce = true;
     const originalGet = doc.getElementById.bind(doc);
     doc.getElementById = (id) => {
@@ -1289,10 +1248,10 @@ describe('midiUiController', function() {
   it('exposes deterministic intent automation hooks', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
-    register(doc, 'div', 'midiEventList');
-    register(doc, 'div', 'midiTriggerList');
-    register(doc, 'select', 'midiEnvTarget');
-    register(doc, 'div', 'errorDisplay');
+    registerElement(doc, 'div', 'midiEventList');
+    registerElement(doc, 'div', 'midiTriggerList');
+    registerElement(doc, 'select', 'midiEnvTarget');
+    registerElement(doc, 'div', 'errorDisplay');
 
     const controller = createMidiUiController({
       document: doc,
@@ -1313,3 +1272,4 @@ describe('midiUiController', function() {
     expect(previewResult).to.equal(false);
   });
 });
+

@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
+import { applyDependencyOverrides } from './support/deps.js';
 
 useGlobalLemmings({ game: { showDebug: false } });
 
@@ -15,19 +16,6 @@ const makeConfigReaderStub = (getConfig) => class ConfigReaderStub {
     this.calls.push(gt);
     return Promise.resolve(getConfig(gt));
   }
-};
-
-const applyDeps = (overrides) => {
-  const originals = {};
-  for (const [key, value] of Object.entries(overrides)) {
-    originals[key] = Lemmings[key];
-    setDependency(key, value);
-  }
-  return () => {
-    for (const [key, value] of Object.entries(originals)) {
-      setDependency(key, value);
-    }
-  };
 };
 
 const withPerfStub = async (perf, lemmings, fn) => {
@@ -57,7 +45,7 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -93,7 +81,7 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -114,7 +102,7 @@ describe('GameFactory resource helpers', function () {
 
   it('rejects when config is missing', async function () {
     const ConfigReaderStub = makeConfigReaderStub(() => null);
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub
     });
@@ -138,7 +126,7 @@ describe('GameFactory resource helpers', function () {
     const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -163,7 +151,7 @@ describe('GameFactory resource helpers', function () {
     const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -191,7 +179,7 @@ describe('GameFactory resource helpers', function () {
         return Promise.resolve('[]');
       }
     }
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: CapturingFileProvider,
       ConfigReader: makeConfigReaderStub(() => ({ path: 'data', level: {} }))
     });
