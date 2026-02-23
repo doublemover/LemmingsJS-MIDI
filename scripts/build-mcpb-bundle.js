@@ -17,11 +17,19 @@ const parseArgs = (argv) => {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg.startsWith('--surface=')) {
-      out.surface = arg.slice('--surface='.length).trim().toLowerCase();
+      const value = arg.slice('--surface='.length).trim();
+      if (!value) {
+        throw new Error('Missing value for --surface');
+      }
+      out.surface = value.toLowerCase();
       continue;
     }
     if (arg === '--surface') {
-      out.surface = String(argv[i + 1] || '').trim().toLowerCase();
+      const value = String(argv[i + 1] || '').trim();
+      if (!value) {
+        throw new Error('Missing value for --surface');
+      }
+      out.surface = value.toLowerCase();
       i += 1;
     }
   }
