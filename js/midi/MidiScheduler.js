@@ -143,6 +143,7 @@ class MidiScheduler {
       this._activeByChannel.delete(info.channel);
     }
     this._removeScheduledNoteOff(oldestToken);
+    this._removePlannedRateEntries(oldestToken, 'off');
   }
 
   _allocateChannel() {
@@ -272,6 +273,15 @@ class MidiScheduler {
     }
   }
 
+  _removePlannedRateEntries(token, phase = null) {
+    if (token == null || !this._ratePlanned.length) return;
+    this._ratePlanned = this._ratePlanned.filter((entry) => {
+      if (entry?.token !== token) return true;
+      if (phase == null) return false;
+      return entry.phase !== phase;
+    });
+  }
+
   _checkByteRate(now = this._nowMs()) {
     const snapshot = this.getRateSnapshot(now);
     const pastCount = toFiniteNumber(snapshot.past?.count, 0);
@@ -398,6 +408,8 @@ class MidiScheduler {
           timeMs: sendTimeMs,
           count: immediateMessages,
           bytes: immediateBytes,
+          token,
+          phase: 'on',
           sfxId: meta.sfxId ?? null,
           priority: meta.priority ?? 1
         });
@@ -406,6 +418,8 @@ class MidiScheduler {
             timeMs: offTimeMs,
             count: offMessages,
             bytes: offMessages * MIDI_MESSAGE_BYTES,
+            token,
+            phase: 'off',
             sfxId: meta.sfxId ?? null,
             priority: meta.priority ?? 1
           });
@@ -513,6 +527,7 @@ class MidiScheduler {
     }
     this._activeByChannel.clear();
     this._activeNotes.clear();
+    this._rateSent.length = 0;
     this._ratePlanned.length = 0;
   }
 

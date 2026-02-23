@@ -1,8 +1,11 @@
 import { expect } from 'chai';
 import {
+  buildBenchUrl,
+  DEFAULT_BASE_URL,
   evaluateLongSessionGates,
   normalizeLongSessionSample,
   PROFILE_PRESETS,
+  toBoolean,
   toNonNegativeNumber,
   toPositiveNumber
 } from '../scripts/bench-long-session.js';
@@ -167,6 +170,9 @@ describe('bench long-session gates', function () {
     expect(toNonNegativeNumber('NaN', 3)).to.equal(3);
     expect(toNonNegativeNumber(0, 3)).to.equal(0);
     expect(toNonNegativeNumber('5', 3)).to.equal(5);
+    expect(toBoolean('false', true)).to.equal(false);
+    expect(toBoolean('1', false)).to.equal(true);
+    expect(toBoolean('unknown', false)).to.equal(false);
   });
 
   it('handles empty and partial replay samples without throwing', function () {
@@ -179,5 +185,16 @@ describe('bench long-session gates', function () {
     expect(result.metrics.replayMismatchCount).to.equal(1);
     expect(result.failures).to.include('tick_progress_stalled');
     expect(result.failures).to.include('replay_hash_mismatch');
+  });
+
+  it('normalizes malformed bench URLs and injects perf profile', function () {
+    const malformed = buildBenchUrl('bad-url');
+    expect(malformed.startsWith(DEFAULT_BASE_URL)).to.equal(true);
+    const parsed = new URL(malformed);
+    expect(parsed.searchParams.get('e2e')).to.equal('1');
+    expect(parsed.searchParams.get('profile')).to.equal('perf');
+
+    const explicit = new URL(buildBenchUrl('https://localhost:8080/?profile=custom'));
+    expect(explicit.searchParams.get('profile')).to.equal('custom');
   });
 });

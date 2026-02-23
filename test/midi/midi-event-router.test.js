@@ -349,6 +349,34 @@ describe('MidiEventRouter', function() {
     expect(router._arpStateBySfx.has('trigger:5:1:object:299')).to.equal(true);
   });
 
+  it('bounds repeat-history key growth for independent triggers', function() {
+    const { router } = makeRouter(
+      {
+        repeat: { maxRepeats: 2, windowBeats: 8 },
+        limits: { maxEventsPerSecond: 1000 },
+        triggers: { '5': { repeat: { maxRepeats: 2, windowBeats: 8 } } }
+      },
+      { defaultMapEvent: true }
+    );
+    router._nowMs = () => 1000;
+
+    for (let i = 0; i < 700; i += 1) {
+      router._onEvent({ sfxId: 1, tick: i + 1, tps: 60, triggerType: 5, timeMs: i * 10 + 1 + i });
+      router._onEvent({ sfxId: 1, tick: i + 1, tps: 60, triggerType: 5 + i, timeMs: i * 10 + 2 + i });
+    }
+
+    expect(router._repeatHistoryByKey.size).to.be.at.most(512);
+  });
+
+  it('caps repeat-history entry count per key to maxRepeats + 1', function() {
+    const { router } = makeRouter();
+    const cfg = { maxRepeats: 2, windowBeats: 10 };
+    for (let i = 0; i < 20; i += 1) {
+      router._getRepeatFactor('sfx:42', i * 10, cfg, 120);
+    }
+    expect(router._repeatHistoryByKey.get('sfx:42')).to.have.length(3);
+  });
+
   it('reverses direction for updown arps at bounds', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'updown', length: 3 });
 

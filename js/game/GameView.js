@@ -618,7 +618,12 @@ class GameView extends BaseLogger {
   parseBool(query, names, def = false) {
     for (const name of names) {
       if (query.has(name)) {
-        return query.get(name) === 'true';
+        const raw = query.get(name);
+        if (raw == null || raw === '') return true;
+        const normalized = String(raw).trim().toLowerCase();
+        if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+        if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+        return def;
       }
     }
     return def;
@@ -1175,7 +1180,10 @@ class GameView extends BaseLogger {
   /** load a level and render it to the display */
   async loadLevel() {
     if (this.autoMoveTimer !== null) {
-      window.clearTimeout(this.autoMoveTimer);
+      const clearTimeoutFn = globalThis.window?.clearTimeout || globalThis.clearTimeout;
+      if (typeof clearTimeoutFn === 'function') {
+        clearTimeoutFn(this.autoMoveTimer);
+      }
       this.autoMoveTimer = null;
     }
     if (!this.gameResources) return;
@@ -1562,7 +1570,10 @@ class GameView extends BaseLogger {
 
   async loadEditorPreviewLevel(options = {}) {
     if (this.autoMoveTimer !== null) {
-      window.clearTimeout(this.autoMoveTimer);
+      const clearTimeoutFn = globalThis.window?.clearTimeout || globalThis.clearTimeout;
+      if (typeof clearTimeoutFn === 'function') {
+        clearTimeoutFn(this.autoMoveTimer);
+      }
       this.autoMoveTimer = null;
     }
     if (!this.editorSession?.level || !this.gameFactory) return null;

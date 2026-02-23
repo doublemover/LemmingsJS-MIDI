@@ -2,6 +2,8 @@ import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -44,6 +46,19 @@ const toNonNegativeNumber = (value, fallback) => {
 const toFiniteNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+/**
+ * @param {unknown} value
+ * @param {boolean} fallback
+ * @returns {boolean}
+ */
+const toBoolean = (value, fallback) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
 };
 
 const withTimeout = async (promise, timeoutMs, label) => {
@@ -275,6 +290,25 @@ const evaluateLongSessionGates = ({
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * @param {string} raw
+ * @returns {string}
+ */
+const buildBenchUrl = (raw) => {
+  /** @type {URL} */
+  let url;
+  try {
+    url = new URL(raw || DEFAULT_BASE_URL);
+  } catch {
+    url = new URL(DEFAULT_BASE_URL);
+  }
+  url.searchParams.set('e2e', '1');
+  if (!url.searchParams.has('profile')) {
+    url.searchParams.set('profile', 'perf');
+  }
+  return url.toString();
+};
+
 const isMainModule = (() => {
   try {
     return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
@@ -285,7 +319,7 @@ const isMainModule = (() => {
 
 const run = async () => {
   const args = parseArgs(process.argv.slice(2));
-  const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
+  const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || DEFAULT_BASE_URL;
   const requestedProfile = (
     args.get('profile')
     || process.env.LONG_SESSION_PROFILE
@@ -300,7 +334,7 @@ const run = async () => {
   )));
   const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.LONG_SESSION_OP_TIMEOUT_MS, 30000);
   const maxRuntimeMs = toPositiveNumber(args.get('maxRuntime') || process.env.LONG_SESSION_MAX_RUNTIME_MS, preset.maxRuntimeMs);
-  const headless = (args.get('headless') || process.env.LONG_SESSION_HEADLESS || 'true') !== 'false';
+  const headless = toBoolean(args.get('headless') || process.env.LONG_SESSION_HEADLESS, true);
 
   const runStart = Date.now();
   const assertRuntimeBudget = (phase) => {
@@ -308,15 +342,6 @@ const run = async () => {
     if (elapsed > maxRuntimeMs) {
       throw new Error(`Long-session bench exceeded max runtime (${maxRuntimeMs}ms) during ${phase}.`);
     }
-  };
-
-  const toBenchUrl = (raw) => {
-    const url = new URL(raw);
-    url.searchParams.set('e2e', '1');
-    if (!url.searchParams.has('profile')) {
-      url.searchParams.set('profile', 'perf');
-    }
-    return url.toString();
   };
 
   let browser = null;
@@ -335,7 +360,7 @@ const run = async () => {
     page = await withTimeout(context.newPage(), opTimeoutMs, 'context.newPage');
     page.setDefaultTimeout(opTimeoutMs);
     await withTimeout(
-      page.goto(toBenchUrl(baseUrl), { waitUntil: 'domcontentloaded' }),
+      page.goto(buildBenchUrl(baseUrl), { waitUntil: 'domcontentloaded' }),
       opTimeoutMs,
       'page.goto'
     );
@@ -469,7 +494,7 @@ const run = async () => {
     });
     const summary = {
       profile: requestedProfile,
-      url: toBenchUrl(baseUrl),
+      url: buildBenchUrl(baseUrl),
       durationMs,
       sampleMs,
       thresholds,
@@ -497,9 +522,12 @@ if (isMainModule) {
 }
 
 export {
+  buildBenchUrl,
+  DEFAULT_BASE_URL,
   PROFILE_PRESETS,
   evaluateLongSessionGates,
   normalizeLongSessionSample,
+  toBoolean,
   toNonNegativeNumber,
   toPositiveNumber
 };

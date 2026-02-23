@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import {
+  buildUrl,
   createHistoryBenchConfig,
+  DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
   summarizeTimings,
@@ -27,7 +29,7 @@ describe('bench-history-stress helpers', function () {
   it('falls back to profile speeds when provided speed list is invalid', function () {
     const warnings = [];
     const config = createHistoryBenchConfig({
-      argv: ['--speeds=,,'],
+      argv: ['--speeds=,,', '--headless=no'],
       env: {},
       log: {
         warn(message) {
@@ -37,7 +39,17 @@ describe('bench-history-stress helpers', function () {
     });
 
     expect(config.speeds).to.deep.equal([30, 60]);
+    expect(config.headless).to.equal(false);
     expect(warnings.some((message) => String(message).includes('Invalid speed list'))).to.equal(true);
+  });
+
+  it('normalizes malformed URLs to the default bench URL', function () {
+    const malformed = buildUrl('not-a-valid-url');
+    expect(malformed.startsWith(DEFAULT_BASE_URL)).to.equal(true);
+    const parsed = new URL(malformed);
+    expect(parsed.searchParams.get('e2e')).to.equal('1');
+    expect(parsed.searchParams.get('ph')).to.equal('true');
+    expect(parsed.searchParams.get('endless')).to.equal('true');
   });
 
   it('builds stable timing summaries for empty and populated lists', function () {
@@ -53,5 +65,27 @@ describe('bench-history-stress helpers', function () {
     expect(summary.samplesMs).to.deep.equal([10, 20, 30]);
     expect(summary.p50Ms).to.equal(20);
     expect(summary.p95Ms).to.equal(30);
+  });
+
+  it('applies environment overrides for profile, speeds, and boolean gates', function () {
+    const config = createHistoryBenchConfig({
+      argv: [],
+      env: {
+        HISTORY_PROFILE: 'default',
+        HISTORY_SPEEDS: '45,90',
+        HISTORY_HEADLESS: 'off',
+        HISTORY_REQUIRE_REPLAY_PARITY: '0',
+        HISTORY_REQUIRE_BOUNDED_RETENTION: 'no',
+        HISTORY_REQUIRE_COLD_COMPACTION: 'yes'
+      },
+      log: { warn() {} }
+    });
+
+    expect(config.requestedProfile).to.equal('default');
+    expect(config.speeds).to.deep.equal([45, 90]);
+    expect(config.headless).to.equal(false);
+    expect(config.requireReplayParity).to.equal(false);
+    expect(config.requireBoundedRetention).to.equal(false);
+    expect(config.requireColdCompaction).to.equal(true);
   });
 });

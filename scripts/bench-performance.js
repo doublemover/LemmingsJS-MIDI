@@ -1,57 +1,9 @@
 import { chromium } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const parseArgs = (argv) => {
-  const out = new Map();
-  for (const arg of argv) {
-    if (!arg.startsWith('--')) continue;
-    const [key, value] = arg.slice(2).split('=', 2);
-    out.set(key, value ?? 'true');
-  }
-  return out;
-};
-
-const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
-};
-
-const withTimeout = async (promise, timeoutMs, label) => {
-  let timeoutId = null;
-  const timeoutPromise = new Promise((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
-    }, timeoutMs);
-  });
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId != null) clearTimeout(timeoutId);
-  }
-};
-
-const closeQuietly = async (target, label) => {
-  if (!target || typeof target.close !== 'function') return;
-  try {
-    await withTimeout(target.close(), 5000, label);
-  } catch {
-    // best-effort shutdown
-  }
-};
-
-const args = parseArgs(process.argv.slice(2));
-const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
-const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
-const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
-const requestedProfile = (
-  args.get('profile') ||
-  process.env.BENCH_PROFILE ||
-  (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
-).toLowerCase();
-const profileExplicit = args.has('profile')
-  || !!process.env.BENCH_PROFILE
-  || smokeRequested
-  || soakRequested;
-const headless = (args.get('headless') || process.env.BENCH_HEADLESS || 'true') !== 'false';
+const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
+const VALID_MODES = new Set(['sequence', 'bench', 'reverse']);
 
 const BENCH_PROFILES = {
   default: {
@@ -101,28 +53,82 @@ const BENCH_PROFILES = {
   }
 };
 
-const profile = BENCH_PROFILES[requestedProfile] || BENCH_PROFILES.default;
-if (!profileExplicit) {
-  console.warn('[bench-performance] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
-}
-const durationMs = toPositiveNumber(args.get('duration') || process.env.BENCH_DURATION_MS, profile.durationMs);
-const sampleMs = toPositiveNumber(args.get('sample') || process.env.BENCH_SAMPLE_MS, profile.sampleMs);
-const warmupMs = toPositiveNumber(
-  args.get('warmup') || process.env.BENCH_WARMUP_MS,
-  profile.warmupMs ?? Math.max(5000, sampleMs * 4)
-);
-const mode = (args.get('mode') || process.env.BENCH_MODE || profile.mode).toLowerCase();
-const entrances = toPositiveNumber(args.get('entrances') || process.env.BENCH_ENTRANCES, profile.entrances);
-const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.BENCH_OP_TIMEOUT_MS, 30000);
-const maxRuntimeMs = toPositiveNumber(
-  args.get('maxRuntime') || process.env.BENCH_MAX_RUNTIME_MS,
-  profile.maxRuntimeMs ?? (warmupMs + durationMs + Math.max(60000, sampleMs * 20))
-);
+/**
+ * @param {string[]} argv
+ * @returns {Map<string, string>}
+ */
+const parseArgs = (argv) => {
+  const out = new Map();
+  for (const arg of argv) {
+    if (!arg.startsWith('--')) continue;
+    const [key, value] = arg.slice(2).split('=', 2);
+    out.set(key, value ?? 'true');
+  }
+  return out;
+};
 
-const buildUrl = (raw) => {
-  const url = new URL(raw);
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
+const toPositiveNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+};
+
+/**
+ * @param {unknown} value
+ * @param {boolean} fallback
+ * @returns {boolean}
+ */
+const toBoolean = (value, fallback) => {
+  if (value == null) return fallback;
+  const normalized = String(value).trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) return true;
+  if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
+  return fallback;
+};
+
+const withTimeout = async (promise, timeoutMs, label) => {
+  let timeoutId = null;
+  const timeoutPromise = new Promise((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId != null) clearTimeout(timeoutId);
+  }
+};
+
+const closeQuietly = async (target, label) => {
+  if (!target || typeof target.close !== 'function') return;
+  try {
+    await withTimeout(target.close(), 5000, label);
+  } catch {
+    // best-effort shutdown
+  }
+};
+
+/**
+ * @param {string} raw
+ * @param {Record<string, string>} [query]
+ * @param {string} [fallback]
+ * @returns {string}
+ */
+const buildUrl = (raw, query = {}, fallback = DEFAULT_BASE_URL) => {
+  /** @type {URL} */
+  let url;
+  try {
+    url = new URL(raw || fallback);
+  } catch {
+    url = new URL(fallback);
+  }
   url.searchParams.set('e2e', '1');
-  for (const [key, value] of Object.entries(profile.query || {})) {
+  for (const [key, value] of Object.entries(query || {})) {
     if (!url.searchParams.has(key)) {
       url.searchParams.set(key, value);
     }
@@ -130,7 +136,71 @@ const buildUrl = (raw) => {
   return url.toString();
 };
 
+/**
+ * @param {{
+ *   argv?: string[],
+ *   env?: Record<string, string | undefined>,
+ *   warn?: (message: string) => void
+ * }} [options]
+ */
+const createPerformanceBenchConfig = (
+  {
+    argv = process.argv.slice(2),
+    env = process.env,
+    warn = console.warn
+  } = {}
+) => {
+  const args = parseArgs(argv);
+  const baseUrl = args.get('url') || env.LEMMINGS_BENCH_URL || DEFAULT_BASE_URL;
+  const smokeRequested = args.has('smoke') || env.BENCH_SMOKE === '1';
+  const soakRequested = args.has('soak') || env.BENCH_SOAK === '1';
+  const requestedProfile = (
+    args.get('profile') ||
+    env.BENCH_PROFILE ||
+    (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
+  ).toLowerCase();
+  const profileExplicit = args.has('profile')
+    || !!env.BENCH_PROFILE
+    || smokeRequested
+    || soakRequested;
+  const profile = BENCH_PROFILES[requestedProfile] || BENCH_PROFILES.smoke;
+  if (!profileExplicit) {
+    warn?.('[bench-performance] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
+  } else if (!BENCH_PROFILES[requestedProfile]) {
+    warn?.(`[bench-performance] Unknown profile "${requestedProfile}", falling back to smoke.`);
+  }
+  const durationMs = toPositiveNumber(args.get('duration') || env.BENCH_DURATION_MS, profile.durationMs);
+  const sampleMs = toPositiveNumber(args.get('sample') || env.BENCH_SAMPLE_MS, profile.sampleMs);
+  const warmupMs = toPositiveNumber(
+    args.get('warmup') || env.BENCH_WARMUP_MS,
+    profile.warmupMs ?? Math.max(5000, sampleMs * 4)
+  );
+  const modeInput = (args.get('mode') || env.BENCH_MODE || profile.mode).toLowerCase();
+  const mode = VALID_MODES.has(modeInput) ? modeInput : profile.mode;
+  if (mode !== modeInput) {
+    warn?.(`[bench-performance] Unsupported mode "${modeInput}", falling back to profile mode "${profile.mode}".`);
+  }
+
+  return {
+    baseUrl,
+    requestedProfile,
+    durationMs,
+    sampleMs,
+    warmupMs,
+    mode,
+    entrances: toPositiveNumber(args.get('entrances') || env.BENCH_ENTRANCES, profile.entrances),
+    opTimeoutMs: toPositiveNumber(args.get('opTimeout') || env.BENCH_OP_TIMEOUT_MS, 30000),
+    maxRuntimeMs: toPositiveNumber(
+      args.get('maxRuntime') || env.BENCH_MAX_RUNTIME_MS,
+      profile.maxRuntimeMs ?? (warmupMs + durationMs + Math.max(60000, sampleMs * 20))
+    ),
+    headless: toBoolean(args.get('headless') || env.BENCH_HEADLESS, true),
+    profileQuery: profile.query || {}
+  };
+};
+
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const median = (values) => {
   if (!values.length) return 0;
   const copy = values.slice().sort((a, b) => a - b);
@@ -141,9 +211,13 @@ const median = (values) => {
   return copy[mid];
 };
 
+/**
+ * @param {unknown[]} samples
+ * @param {string} key
+ */
 const summarize = (samples, key) => {
   const values = samples
-    .map(sample => Number(sample?.[key] || 0))
+    .map(sample => Number(sample?.[key]))
     .filter(value => Number.isFinite(value))
     .sort((a, b) => a - b);
   if (!values.length) return { min: 0, max: 0, p50: 0, p95: 0, avg: 0 };
@@ -158,7 +232,36 @@ const summarize = (samples, key) => {
   };
 };
 
-const run = async () => {
+/**
+ * @param {{
+ *   baseUrl: string,
+ *   requestedProfile: string,
+ *   durationMs: number,
+ *   sampleMs: number,
+ *   warmupMs: number,
+ *   mode: string,
+ *   entrances: number,
+ *   opTimeoutMs: number,
+ *   maxRuntimeMs: number,
+ *   headless: boolean,
+ *   profileQuery: Record<string, string>
+ * }} [config]
+ */
+const run = async (config = createPerformanceBenchConfig()) => {
+  const {
+    baseUrl,
+    requestedProfile,
+    durationMs,
+    sampleMs,
+    warmupMs,
+    mode,
+    entrances,
+    opTimeoutMs,
+    maxRuntimeMs,
+    headless,
+    profileQuery
+  } = config;
+
   let browser = null;
   let context = null;
   let page = null;
@@ -185,8 +288,9 @@ const run = async () => {
     page = await withTimeout(context.newPage(), opTimeoutMs, 'context.newPage');
     page.setDefaultTimeout(opTimeoutMs);
 
+    const benchUrl = buildUrl(baseUrl, profileQuery);
     await withTimeout(
-      page.goto(buildUrl(baseUrl), { waitUntil: 'domcontentloaded' }),
+      page.goto(benchUrl, { waitUntil: 'domcontentloaded' }),
       opTimeoutMs,
       'page.goto'
     );
@@ -203,8 +307,19 @@ const run = async () => {
       startReverse: typeof window.__E2E__?.startReverse === 'function'
     })), opTimeoutMs, 'readCapabilities');
 
-    if (mode === 'sequence' && capabilities.startBenchSequence) {
-      await withTimeout(page.evaluate(() => window.__E2E__.startBenchSequence()), opTimeoutMs, 'startBenchSequence');
+    let started = false;
+    if (mode === 'sequence') {
+      if (capabilities.startBenchSequence) {
+        await withTimeout(page.evaluate(() => window.__E2E__.startBenchSequence()), opTimeoutMs, 'startBenchSequence');
+        started = true;
+      } else if (capabilities.startBench) {
+        await withTimeout(
+          page.evaluate((count) => window.__E2E__.startBench(count), entrances),
+          opTimeoutMs,
+          'startBench'
+        );
+        started = true;
+      }
     } else if (mode === 'reverse') {
       if (capabilities.startBench) {
         await withTimeout(
@@ -212,9 +327,11 @@ const run = async () => {
           opTimeoutMs,
           'startBench'
         );
+        started = true;
       }
       if (capabilities.startReverse) {
         await withTimeout(page.evaluate(() => window.__E2E__.startReverse()), opTimeoutMs, 'startReverse');
+        started = true;
       }
     } else if (capabilities.startBench) {
       await withTimeout(
@@ -222,6 +339,13 @@ const run = async () => {
         opTimeoutMs,
         'startBench'
       );
+      started = true;
+    } else if (capabilities.startBenchSequence) {
+      await withTimeout(page.evaluate(() => window.__E2E__.startBenchSequence()), opTimeoutMs, 'startBenchSequence');
+      started = true;
+    }
+    if (!started) {
+      throw new Error(`Requested bench mode "${mode}" is unsupported by current E2E capabilities.`);
     }
     await withTimeout(page.evaluate(() => window.__E2E__.resume()), opTimeoutMs, 'e2e.resume');
 
@@ -308,7 +432,7 @@ const run = async () => {
       warmupMs,
       sampleMs,
       entrances,
-      url: buildUrl(baseUrl),
+      url: benchUrl,
       maxTps,
       maxSpeed,
       maxFrameMs,
@@ -335,7 +459,30 @@ const run = async () => {
   }
 };
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const isMainModule = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+export {
+  BENCH_PROFILES,
+  DEFAULT_BASE_URL,
+  buildUrl,
+  createPerformanceBenchConfig,
+  parseArgs,
+  run,
+  median,
+  summarize,
+  toBoolean,
+  toPositiveNumber
+};

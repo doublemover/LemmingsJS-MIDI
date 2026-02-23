@@ -40,6 +40,7 @@ const disposeSessionRuntime = async (
   if (!session) return;
   await invokeHookSafely(stopSpectatorServer, session);
   await invokeHookSafely(stopWatchLoop, session);
+  await closeSafely(session.watchController, 'stopAndWait');
   session.resources?.clearSession?.(session.id);
   await closeSafely(session.context, 'close');
   await closeSafely(session.browser, 'close');

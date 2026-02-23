@@ -118,6 +118,24 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     expect(calls.length).to.equal(0);
   });
 
+  it('removes planned note-off rate entries when stealing active notes', function() {
+    const calls = [];
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.setOutput(makeOutput([1], calls));
+    scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: false, startedAt: 0 });
+    scheduler._ratePlanned = [
+      { timeMs: 10, count: 1, bytes: 3, token: 1, phase: 'off' },
+      { timeMs: 0, count: 1, bytes: 3, token: 1, phase: 'on' },
+      { timeMs: 10, count: 1, bytes: 3, token: 2, phase: 'off' }
+    ];
+
+    scheduler._stealOldestNote();
+
+    expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'off')).to.equal(false);
+    expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'on')).to.equal(true);
+    expect(scheduler._ratePlanned.some((entry) => entry.token === 2 && entry.phase === 'off')).to.equal(true);
+  });
+
   it('covers perfEnabled permutations and pan handling', function() {
     const calls = [];
     const scheduler = new MidiScheduler({
@@ -576,6 +594,15 @@ describe('MidiScheduler coverage: core behavior', function() {
     scheduler._stopActiveChannel = () => { stopped = true; };
     scheduler.dispose();
     expect(stopped).to.equal(true);
+  });
+
+  it('clearQueue resets both planned and sent rate windows', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler._rateSent = [{ timeMs: 0, count: 1, bytes: 3 }];
+    scheduler._ratePlanned = [{ timeMs: 1, count: 1, bytes: 3 }];
+    scheduler.clearQueue();
+    expect(scheduler._rateSent).to.have.length(0);
+    expect(scheduler._ratePlanned).to.have.length(0);
   });
 
   it('setConfig skips init when no output is present', function() {

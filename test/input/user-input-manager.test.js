@@ -81,6 +81,19 @@ describe('UserInputManager', function() {
     element._listeners.get('wheel')(makeEvent({ clientX: 2, clientY: 3, deltaY: 5 }));
   });
 
+  it('prevents native context menu events on the canvas surface', function () {
+    const element = makeElement();
+    new UserInputManager(element);
+    let prevented = false;
+    let stopped = false;
+    element._listeners.get('contextmenu')({
+      preventDefault() { prevented = true; },
+      stopPropagation() { stopped = true; }
+    });
+    expect(prevented).to.equal(true);
+    expect(stopped).to.equal(true);
+  });
+
   it('handles touch gestures and cleanup', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);

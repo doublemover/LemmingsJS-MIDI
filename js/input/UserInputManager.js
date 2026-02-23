@@ -152,6 +152,11 @@ class UserInputManager {
       this.handleMouseUp(relativePos);
       return false;
     });
+    this._addListener('contextmenu', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
     this._addListener('mouseleave', (e) => {
       e.stopPropagation();
       e.preventDefault();

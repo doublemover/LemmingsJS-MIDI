@@ -339,6 +339,32 @@ describe('MidiInputController', function() {
     expect(speeds.length).to.equal(2);
   });
 
+  it('resolveCcEntries rebuilds stale cache entries and rescans mappings', function() {
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: {
+          speed: { cc: 1, min: 0.1, max: 2 },
+          accent: { cc: 2, min: 0, max: 1 }
+        }
+      }
+    };
+    const controller = new MidiInputController({}, { getConfig: () => config });
+    controller.setConfig(config);
+
+    const initial = controller._resolveCcEntries(1, config.input.cc);
+    expect(initial).to.have.length(1);
+    expect(initial[0].key).to.equal('speed');
+
+    config.input.cc.speed = { cc: 3, min: 0.1, max: 2 };
+    const stale = controller._resolveCcEntries(1, config.input.cc);
+    expect(stale).to.have.length(0);
+
+    const remapped = controller._resolveCcEntries(3, config.input.cc);
+    expect(remapped).to.have.length(1);
+    expect(remapped[0].key).to.equal('speed');
+  });
+
   it('defaults missing velocity and CC values to zero', function() {
     const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
     const noteCalls = [];

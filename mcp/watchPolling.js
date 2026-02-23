@@ -23,10 +23,14 @@ const parseJsonPointer = (pointer) => {
   const source = String(pointer);
   if (source === '/') return [''];
   if (!source.startsWith('/')) return POINTER_INVALID_PATH;
-  return source
-    .slice(1)
-    .split('/')
-    .map((part) => part.replace(/~1/g, '/').replace(/~0/g, '~'));
+  const decoded = [];
+  for (const part of source.slice(1).split('/')) {
+    if (/~(?:$|[^01])/.test(part)) {
+      return POINTER_INVALID_PATH;
+    }
+    decoded.push(part.replace(/~1/g, '/').replace(/~0/g, '~'));
+  }
+  return decoded;
 };
 
 /**
@@ -310,6 +314,7 @@ class WatchPollingController {
     this.lastPollAtMs = null;
     this.timerHandle = null;
     this.nextRunAtMs = 0;
+    this._idleWaiters = new Set();
   }
 
   start() {
@@ -325,6 +330,13 @@ class WatchPollingController {
     this.running = false;
     this.pendingImmediate = false;
     this._clearTimer();
+    this._resolveIdleWaiters();
+  }
+
+  async stopAndWait(timeoutMs = 5000) {
+    this.stop();
+    if (!this.polling) return;
+    await this._waitForIdle(timeoutMs);
   }
 
   request({ immediate = false } = {}) {
@@ -390,6 +402,7 @@ class WatchPollingController {
     } finally {
       this.polling = false;
       this.lastPollAtMs = this.nowFn();
+      this._resolveIdleWaiters();
     }
 
     this._applyOutcome(outcome, failed);
@@ -456,6 +469,36 @@ class WatchPollingController {
     }
     this.timerHandle = null;
     this.nextRunAtMs = 0;
+  }
+
+  _waitForIdle(timeoutMs) {
+    if (!this.polling) {
+      return Promise.resolve();
+    }
+    return new Promise((resolve) => {
+      const waiter = {
+        resolve,
+        timeoutId: null
+      };
+      if (Number.isFinite(timeoutMs) && timeoutMs >= 0) {
+        waiter.timeoutId = setTimeout(() => {
+          this._idleWaiters.delete(waiter);
+          resolve();
+        }, timeoutMs);
+      }
+      this._idleWaiters.add(waiter);
+    });
+  }
+
+  _resolveIdleWaiters() {
+    if (this.polling || !this._idleWaiters.size) return;
+    for (const waiter of this._idleWaiters) {
+      if (waiter.timeoutId != null) {
+        clearTimeout(waiter.timeoutId);
+      }
+      waiter.resolve();
+    }
+    this._idleWaiters.clear();
   }
 }
 

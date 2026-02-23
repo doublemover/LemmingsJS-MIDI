@@ -166,4 +166,37 @@ describe('ResourceStore', function () {
     const item = store.get(saved.uri);
     expect(item.mimeType).to.equal('application/octet-stream');
   });
+
+  it('expires resources by ttl and updates byte accounting', function () {
+    const store = new ResourceStore({
+      maxItems: 10,
+      maxBytes: 1024,
+      ttlMs: 5,
+      idFactory() {
+        return 'exp-1';
+      },
+      timeFactory() {
+        return 't-exp';
+      }
+    });
+    const originalDateNow = Date.now;
+    try {
+      Date.now = () => 1000;
+      const saved = store.put({
+        sessionId: 's1',
+        bytes: Buffer.from('abc'),
+        mimeType: 'text/plain'
+      });
+      expect(store.totalBytes).to.equal(3);
+      expect(store.get(saved.uri)).to.not.equal(null);
+      expect(store.list()).to.have.lengthOf(1);
+
+      Date.now = () => 1006;
+      expect(store.get(saved.uri)).to.equal(null);
+      expect(store.list()).to.have.lengthOf(0);
+      expect(store.totalBytes).to.equal(0);
+    } finally {
+      Date.now = originalDateNow;
+    }
+  });
 });

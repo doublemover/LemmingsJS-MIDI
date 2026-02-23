@@ -2,6 +2,8 @@ import { chromium } from '@playwright/test';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -116,7 +118,7 @@ const createHistoryBenchConfig = (
   } = {}
 ) => {
   const args = parseArgs(argv);
-  const baseUrl = args.get('url') || env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
+  const baseUrl = args.get('url') || env.LEMMINGS_BENCH_URL || DEFAULT_BASE_URL;
   const smokeRequested = args.has('smoke') || env.BENCH_SMOKE === '1';
   const soakRequested = args.has('soak') || env.BENCH_SOAK === '1';
   const requestedProfile = (
@@ -159,7 +161,7 @@ const createHistoryBenchConfig = (
       profile.targetSpanTicks
     ),
     speeds,
-    headless: (args.get('headless') || env.HISTORY_HEADLESS || 'true') !== 'false',
+    headless: toBoolean(args.get('headless') || env.HISTORY_HEADLESS, true),
     opTimeoutMs: toPositiveNumber(args.get('opTimeout') || env.HISTORY_OP_TIMEOUT_MS, 30000),
     maxRuntimeMs: toPositiveNumber(
       args.get('maxRuntime') || env.HISTORY_MAX_RUNTIME_MS,
@@ -188,8 +190,18 @@ const createHistoryBenchConfig = (
   };
 };
 
+/**
+ * @param {string} raw
+ * @returns {string}
+ */
 const buildUrl = (raw) => {
-  const url = new URL(raw);
+  /** @type {URL} */
+  let url;
+  try {
+    url = new URL(raw || DEFAULT_BASE_URL);
+  } catch {
+    url = new URL(DEFAULT_BASE_URL);
+  }
   url.searchParams.set('e2e', '1');
   url.searchParams.set('ph', 'true');
   url.searchParams.set('endless', 'true');
@@ -314,6 +326,12 @@ const run = async (config = createHistoryBenchConfig()) => {
         if (spanTicks > maxSpan) maxSpan = spanTicks;
         if (spanTicks >= targetSpan) break;
         await sleep(sampleMs);
+      }
+
+      if (maxSpan < targetSpan) {
+        failures.push(
+          `speed=${speed} history span ${maxSpan} did not reach target ${targetSpan} within ${durationMs}ms`
+        );
       }
 
       await withTimeout(page.evaluate(() => window.__E2E__.pause()), opTimeoutMs, 'e2e.pause');
@@ -498,7 +516,9 @@ if (isMainModule) {
 }
 
 export {
+  buildUrl,
   createHistoryBenchConfig,
+  DEFAULT_BASE_URL,
   parseArgs,
   parseSpeedList,
   run,

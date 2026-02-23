@@ -170,6 +170,35 @@ describe('WatchPollingController', function () {
     expect(clock.nextDueIn()).to.equal(null);
   });
 
+  it('stopAndWait waits for in-flight polls to settle', async function () {
+    const clock = createFakeClock();
+    let resolvePoll;
+    const controller = new WatchPollingController({
+      hasWatchesFn: () => true,
+      pollFn: () => new Promise((resolve) => {
+        resolvePoll = resolve;
+      }),
+      setTimerFn: clock.setTimerFn,
+      clearTimerFn: clock.clearTimerFn,
+      nowFn: clock.nowFn,
+      config: {
+        minMs: 0,
+        activeMs: 10,
+        maxMs: 10
+      }
+    });
+
+    controller.start();
+    await clock.flush();
+    expect(controller.getSnapshot().polling).to.equal(true);
+
+    const waiting = controller.stopAndWait(1000);
+    resolvePoll({ triggeredCount: 0 });
+    await waiting;
+    expect(controller.getSnapshot().polling).to.equal(false);
+    expect(controller.getSnapshot().running).to.equal(false);
+  });
+
   it('backs off when pollFn throws and recovers after a triggered poll', async function () {
     const clock = createFakeClock();
     let attempts = 0;
@@ -230,6 +259,8 @@ describe('watch pointer helpers', function () {
     const invalidPath = parseJsonPointer('game/timer/tickIndex');
     expect(invalidPath).to.equal(null);
     expect(readPointerValue({ game: { timer: { tickIndex: 7 } } }, invalidPath)).to.equal(undefined);
+    expect(parseJsonPointer('/game/~2bad')).to.equal(null);
+    expect(readPointerValue({ game: { '~2bad': 5 } }, '/game/~2bad')).to.equal(undefined);
 
     const tracker = createPointerWatchState('game/timer/tickIndex', {
       game: { timer: { tickIndex: 7 } }

@@ -76,6 +76,18 @@ describe('GameView coverage', function() {
     expect(replaced).to.equal('?a=1');
   });
 
+  it('parses shorthand and numeric boolean query flags', function() {
+    globalThis.window = {
+      location: { search: '?bench&debug=1&cheat=yes&bench2=0&endless=off' }
+    };
+    const view = new GameView();
+    expect(view.bench).to.equal(true);
+    expect(view.debug).to.equal(true);
+    expect(view.cheatEnabled).to.equal(true);
+    expect(view.bench2).to.equal(false);
+    expect(view.endless).to.equal(false);
+  });
+
   it('applies query bounds before multipliers for scaled values', function() {
     globalThis.window = {
       location: { search: '?nukeAfter=20&extra=0' }
@@ -1255,6 +1267,50 @@ describe('GameView coverage', function() {
     expect(view.resumeTimer).to.equal(null);
   });
 
+  it('replaces pending resume timers when suspendWithColor is called repeatedly', function() {
+    const callbacks = new Map();
+    let nextTimerId = 10;
+    const cleared = [];
+    globalThis.window = {
+      location: { search: '' },
+      clearTimeout(id) { cleared.push(id); callbacks.delete(id); },
+      setTimeout(cb) {
+        const id = nextTimerId++;
+        callbacks.set(id, cb);
+        return id;
+      }
+    };
+    const view = new GameView();
+    const timer = {
+      suspendCalls: 0,
+      continueCalls: 0,
+      suspend() { this.suspendCalls += 1; },
+      continue() { this.continueCalls += 1; }
+    };
+    view.game = { getGameTimer() { return timer; } };
+    view.stage = {
+      guiImgProps: { x: 0, y: 0, viewPoint: { scale: 1 } },
+      startOverlayFade() {}
+    };
+
+    view.suspendWithColor('red');
+    const firstTimer = view.resumeTimer;
+    view.suspendWithColor('blue');
+    const secondTimer = view.resumeTimer;
+
+    expect(firstTimer).to.equal(10);
+    expect(secondTimer).to.equal(11);
+    expect(cleared).to.deep.equal([10]);
+    expect(timer.suspendCalls).to.equal(2);
+
+    callbacks.get(firstTimer)?.();
+    expect(timer.continueCalls).to.equal(0);
+
+    callbacks.get(secondTimer)?.();
+    expect(timer.continueCalls).to.equal(1);
+    expect(view.resumeTimer).to.equal(null);
+  });
+
   it('uses global timer fallbacks in suspendWithColor when window is unavailable', function() {
     globalThis.window = { location: { search: '' } };
     const originalSetTimeout = globalThis.setTimeout;
@@ -1282,6 +1338,27 @@ describe('GameView coverage', function() {
       expect(view.resumeTimer).to.equal(19);
     } finally {
       globalThis.setTimeout = originalSetTimeout;
+      globalThis.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  it('uses global clearTimeout fallbacks in load paths when window is unavailable', async function() {
+    globalThis.window = { location: { search: '' } };
+    const originalClearTimeout = globalThis.clearTimeout;
+    const cleared = [];
+    try {
+      globalThis.clearTimeout = (id) => { cleared.push(id); };
+      const view = new GameView();
+      view.autoMoveTimer = 41;
+      globalThis.window = undefined;
+      await view.loadLevel();
+      expect(view.autoMoveTimer).to.equal(null);
+
+      view.autoMoveTimer = 42;
+      await view.loadEditorPreviewLevel();
+      expect(view.autoMoveTimer).to.equal(null);
+      expect(cleared).to.deep.equal([41, 42]);
+    } finally {
       globalThis.clearTimeout = originalClearTimeout;
     }
   });

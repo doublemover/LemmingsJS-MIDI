@@ -6,6 +6,7 @@ import { getAppContext } from '../core/dependencies.js';
 const MAX_EVENTS_PER_TICK = 32;
 const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
 const MAX_ARP_STATE_ENTRIES = 256;
+const MAX_REPEAT_HISTORY_KEYS = 512;
 
 class MidiEventRouter {
   constructor(mapping = null) {
@@ -148,6 +149,25 @@ class MidiEventRouter {
     }
   }
 
+  /**
+   * Cache repeat history with bounded key cardinality to prevent long-session
+   * growth when many trigger identities are observed.
+   * @param {string} key
+   * @param {number[]} history
+   */
+  _storeRepeatHistory(key, history) {
+    if (!key) return;
+    if (this._repeatHistoryByKey.has(key)) {
+      this._repeatHistoryByKey.delete(key);
+    }
+    this._repeatHistoryByKey.set(key, history);
+    while (this._repeatHistoryByKey.size > MAX_REPEAT_HISTORY_KEYS) {
+      const oldestKey = this._repeatHistoryByKey.keys().next().value;
+      if (oldestKey == null) break;
+      this._repeatHistoryByKey.delete(oldestKey);
+    }
+  }
+
   _getRepeatFactor(key, timeMs, repeatCfg, bpm) {
     if (repeatCfg?.enabled === false) return 0;
     const maxRepeats = Math.max(0, repeatCfg.maxRepeats ?? 0);
@@ -160,7 +180,11 @@ class MidiEventRouter {
     const cutoff = timeMs - windowMs;
     const nextHistory = history.filter(entry => entry >= cutoff);
     nextHistory.push(timeMs);
-    this._repeatHistoryByKey.set(key, nextHistory);
+    const maxEntries = Math.max(1, maxRepeats + 1);
+    if (nextHistory.length > maxEntries) {
+      nextHistory.splice(0, nextHistory.length - maxEntries);
+    }
+    this._storeRepeatHistory(key, nextHistory);
     const repeatCount = Math.max(0, nextHistory.length - 1);
     return Math.min(repeatCount / maxRepeats, 1);
   }

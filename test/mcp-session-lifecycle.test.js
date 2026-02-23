@@ -77,4 +77,32 @@ describe('session lifecycle disposal', function () {
     expect(first.calls).to.include.members(['clear:a', 'context.close', 'browser.close']);
     expect(second.calls).to.include.members(['clear:b', 'context.close', 'browser.close']);
   });
+
+  it('waits for watch controller shutdown before clearing resources', async function () {
+    const { session } = createSession('w1');
+    const order = [];
+    session.watchController = {
+      async stopAndWait() {
+        order.push('watch:stop-start');
+        await Promise.resolve();
+        order.push('watch:stop-end');
+      }
+    };
+    session.resources.clearSession = () => {
+      order.push('clear');
+    };
+
+    await disposeSessionRuntime(session, {
+      stopWatchLoop() {
+        order.push('hook:watch');
+      }
+    });
+
+    expect(order).to.deep.equal([
+      'hook:watch',
+      'watch:stop-start',
+      'watch:stop-end',
+      'clear'
+    ]);
+  });
 });
