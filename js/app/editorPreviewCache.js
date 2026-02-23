@@ -1,3 +1,5 @@
+import { getRuntimeDependency } from '../core/dependencies.js';
+
 const CACHE_PREFIX = 'lemmings.editor.preview';
 const CACHE_VERSION = 1;
 const DEFAULT_MAX_MEMORY_ENTRIES = 512;
@@ -86,8 +88,8 @@ const getEntryIdFromKey = (key) => {
 
 class EditorPreviewCache {
   constructor(options = {}) {
-    this.document = options.document || globalThis.document || null;
-    this.storage = options.storage || globalThis.localStorage || null;
+    this.document = options.document || getRuntimeDependency('document', null);
+    this.storage = options.storage || getRuntimeDependency('localStorage', null);
     this.version = Number.isFinite(options.version) ? options.version : CACHE_VERSION;
     this.maxMemoryEntries = Number.isFinite(options.maxMemoryEntries) && options.maxMemoryEntries > 0
       ? Math.floor(options.maxMemoryEntries)

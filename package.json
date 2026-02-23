@@ -17,6 +17,7 @@
     "mcpb:build:interact": "node scripts/build-mcpb-bundle.js --surface interact",
     "mcpb:validate": "npm run mcpb:build && npx @anthropic-ai/mcpb validate dist/mcpb",
     "check-undefined": "node scripts/check-undefined.js",
+    "typecheck:critical": "tsc -p tsconfig.checkjs.json --pretty false",
     "test": "node scripts/runTests.js",
     "test-core": "mocha \"test/*game*.test.js\"",
     "test-bench": "npm run test-bench-unit",
@@ -103,6 +104,7 @@
     "node-unrar-js": "^2.0.2",
     "pngjs": "^7.0.0",
     "tar": "^7.4.3",
+    "typescript": "^5.9.3",
     "ws": "^8.18.1",
     "zod": "^3.25.76"
   },

@@ -13,6 +13,7 @@ import { getStyle, getStyleNames } from '../editor/StyleRegistry.js';
 import { EditorPreviewCache } from './editorPreviewCache.js';
 import { EditorKeybindings } from '../input/EditorKeybindings.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 import {
   formatRotation,
   formatValue,
@@ -94,8 +95,8 @@ const EDITOR_SHORTCUT_SECTIONS = [
 class EditorUiController {
   constructor(options = {}) {
     this.view = options.view || null;
-    this.document = options.document || globalThis.document;
-    this.window = options.window || globalThis.window;
+    this.document = options.document || getRuntimeDependency('document', null);
+    this.window = options.window || getRuntimeDependency('window', null);
     this.session = options.session || this.view?.ensureEditorSession?.() || null;
     this.history = options.history || new EditorHistory({ maxEntries: MAX_HISTORY });
     this.controller = options.controller || new EditorController({

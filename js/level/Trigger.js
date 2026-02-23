@@ -1,13 +1,26 @@
+// @ts-check
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { TriggerTypes } from './TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
 
 class Trigger {
   #disabledUntilTick;
+  /**
+   * @param {number} [type]
+   * @param {number} [x1]
+   * @param {number} [y1]
+   * @param {number} [x2]
+   * @param {number} [y2]
+   * @param {number} [disableTicksCount]
+   * @param {number} [soundIndex]
+   * @param {any} [owner]
+   */
   constructor(type = TriggerTypes.NO_TRIGGER, x1 = 0, y1 = 0, x2 = 0, y2 = 0, disableTicksCount = 0, soundIndex = -1, owner = null) {
     this.#disabledUntilTick = 0;
+    /** @type {number|undefined} */
+    this.__historyId = undefined;
     this.owner = owner;
-    this.type = type;
+    this.type = Number(type);
     this.soundIndex = soundIndex;
     this.x1 = Math.min(x1, x2);
     this.y1 = Math.min(y1, y2);
@@ -46,8 +59,7 @@ class Trigger {
     return TriggerTypes.NO_TRIGGER;
   }
   draw(gameDisplay) {
-
-    if (this.type == 7 || this.type == 8) {
+    if (this.type === TriggerTypes.ONEWAY_LEFT || this.type === TriggerTypes.ONEWAY_RIGHT) {
       return; // don't render arrow triggers to debug display, that is handled in level
     }
     gameDisplay.drawRect(this.x1, this.y1, this.x2 - this.x1, this.y2 - this.y1, 255, 0, 0);

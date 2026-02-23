@@ -1,6 +1,8 @@
 import { appendRevisionParam, resolveRuntimeRevision } from '../core/cacheBust.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
+import { DEFAULT_RUNTIME_PROFILE, normalizeRuntimeProfile } from '../core/runtimeProfiles.js';
 
-const DISABLED_PROFILES = new Set(['dev', 'editor', 'perf']);
+const DISABLED_PROFILES = new Set(['dev', 'editor', 'perf', 'e2e']);
 const DISABLED_CACHE_PREFIXES = Object.freeze(['lemmings-core-', 'lemmings-runtime-']);
 
 const isTruthyQueryValue = (value) => {
@@ -24,14 +26,15 @@ const isDevLocation = (location) => {
 };
 
 const shouldBypassServiceWorker = ({
-  profile = 'gameplay',
+  profile = DEFAULT_RUNTIME_PROFILE,
   e2e = false,
   dev = false,
   disableServiceWorker = false,
-  location = globalThis.location
+  location = getRuntimeDependency('location', null)
 } = {}) => {
-  const normalizedProfile = String(profile || '').trim().toLowerCase();
-  if (DISABLED_PROFILES.has(normalizedProfile)) return true;
+  const rawProfile = String(profile || '').trim().toLowerCase();
+  const normalizedProfile = normalizeRuntimeProfile(rawProfile);
+  if (DISABLED_PROFILES.has(rawProfile) || DISABLED_PROFILES.has(normalizedProfile)) return true;
   if (e2e === true || hasTruthyQueryKey(location, 'e2e')) return true;
   if (disableServiceWorker === true || hasTruthyQueryKey(location, 'noSw')) return true;
   if (dev === true || hasTruthyQueryKey(location, 'dev')) return true;
@@ -40,7 +43,7 @@ const shouldBypassServiceWorker = ({
 
 const disableActiveServiceWorker = async (
   serviceWorker = null,
-  cacheStorage = globalThis.caches
+  cacheStorage = getRuntimeDependency('caches', null)
 ) => {
   if (serviceWorker) {
     const registrations = [];
@@ -88,16 +91,19 @@ const disableActiveServiceWorker = async (
 };
 
 const registerServiceWorker = (options = {}) => {
-  const nav = options.navigator ?? globalThis.navigator;
+  const nav = options.navigator ?? getRuntimeDependency('navigator', null);
   if (!nav || !('serviceWorker' in nav)) return;
   const serviceWorker = nav.serviceWorker;
-  const windowRef = options.window ?? globalThis.window;
-  const documentRef = options.document ?? globalThis.document;
-  const location = options.location ?? windowRef?.location ?? globalThis.location;
+  const windowRef = options.window ?? getRuntimeDependency('window', null);
+  const documentRef = options.document ?? getRuntimeDependency('document', null);
+  const location = options.location ?? windowRef?.location ?? getRuntimeDependency('location', null);
 
   const onLoad = async () => {
     if (shouldBypassServiceWorker({ ...options, location })) {
-      await disableActiveServiceWorker(serviceWorker, options.cacheStorage ?? globalThis.caches);
+      await disableActiveServiceWorker(
+        serviceWorker,
+        options.cacheStorage ?? getRuntimeDependency('caches', null)
+      );
       return;
     }
 

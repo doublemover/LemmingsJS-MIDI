@@ -1,3 +1,4 @@
+// @ts-check
 import { SkillTypes } from './SkillTypes.js';
 import { Trigger } from '../level/Trigger.js';
 

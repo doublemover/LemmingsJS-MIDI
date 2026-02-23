@@ -11,6 +11,12 @@ const eslintBin = path.join(
   'bin',
   'eslint.js'
 );
+const tscBin = path.join(
+  path.dirname(require.resolve('typescript/package.json')),
+  'bin',
+  'tsc'
+);
+const CHECK_JS_CONFIG = 'tsconfig.checkjs.json';
 
 const RUNTIME_GUARD_TARGETS = Object.freeze([
   'js/game/**/*.js',
@@ -258,6 +264,32 @@ const runRuntimeGlobalGuard = (
   return true;
 };
 
+const runCriticalTypecheckGuard = (
+  {
+    spawn = spawnSync,
+    log = console,
+    exit = process.exit
+  } = {}
+) => {
+  const args = ['-p', CHECK_JS_CONFIG, '--pretty', 'false'];
+  const res = spawn(process.execPath, [tscBin, ...args], { stdio: 'inherit' });
+  if (res.error) {
+    log.error(`Failed to run critical typecheck guard: ${res.error.message}`);
+    exit(1);
+    return false;
+  }
+  if (typeof res.status !== 'number') {
+    log.error('Critical typecheck guard exited without a status code.');
+    exit(1);
+    return false;
+  }
+  if (res.status !== 0) {
+    exit(res.status);
+    return false;
+  }
+  return true;
+};
+
 const main = (
   argv = process.argv.slice(2),
   {
@@ -311,6 +343,9 @@ const main = (
   if (!runRuntimeGlobalGuard({ spawn, log, exit })) {
     return;
   }
+  if (!runCriticalTypecheckGuard({ spawn, log, exit })) {
+    return;
+  }
   runMocha(mochaArgs, { spawn, log, exit });
 };
 
@@ -334,5 +369,6 @@ export {
   inferCategoriesFromChangedFiles,
   main,
   parseCliArgs,
+  runCriticalTypecheckGuard,
   runRuntimeGlobalGuard
 };

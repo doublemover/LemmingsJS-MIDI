@@ -1,3 +1,4 @@
+// @ts-check
 import { DisplayImage, drawMarchingAntRect } from './DisplayImage.js';
 import { Position2D } from '../util/Position2D.js';
 import { StageImageProperties } from './StageImageProperties.js';

@@ -77,7 +77,9 @@ describe('scripts/runTests', function () {
     expect(logs.warn[0]).to.contain('falling back to full suite');
     expect(spawned[0].args).to.include('--max-warnings=0');
     expect(spawned[0].args).to.include(RUNTIME_GUARD_TARGETS[0]);
-    expect(spawned[1].args).to.include('--recursive');
+    expect(spawned[1].args).to.include('-p');
+    expect(spawned[1].args).to.include('tsconfig.checkjs.json');
+    expect(spawned[2].args).to.include('--recursive');
     expect(exits).to.deep.equal([0]);
   });
 
@@ -98,7 +100,9 @@ describe('scripts/runTests', function () {
     });
     expect(spawned[0].args).to.include('--max-warnings=0');
     expect(spawned[0].args).to.include(RUNTIME_GUARD_TARGETS[0]);
-    expect(spawned[1].args).to.include('--recursive');
+    expect(spawned[1].args).to.include('-p');
+    expect(spawned[1].args).to.include('tsconfig.checkjs.json');
+    expect(spawned[2].args).to.include('--recursive');
     expect(exits).to.deep.equal([0]);
   });
 

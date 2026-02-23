@@ -146,4 +146,48 @@ describe('app boot helpers', function () {
       restore();
     }
   });
+
+  it('surfaces embed-mode boot failures without throwing', async function () {
+    const restore = preserveGlobals(['window', 'document', '__LEMMINGS_BOOT_NO_AUTO_START__']);
+    try {
+      const appended = [];
+      globalThis.window = {
+        location: { search: '?embed=1' },
+        visualViewport: null,
+        innerWidth: 800,
+        innerHeight: 480,
+        addEventListener() {},
+        removeEventListener() {}
+      };
+      globalThis.document = {
+        readyState: 'complete',
+        body: {
+          appendChild(node) {
+            appended.push(node);
+          },
+          classList: { toggle() {} }
+        },
+        documentElement: {
+          setAttribute() {}
+        },
+        querySelector() {
+          return this.body;
+        },
+        createElement() {
+          return { id: '', textContent: '', className: '' };
+        },
+        getElementById() {
+          return null;
+        }
+      };
+      globalThis.__LEMMINGS_BOOT_NO_AUTO_START__ = true;
+
+      const boot = await import(`../js/app/boot.js?boot_embed=${Date.now()}`);
+      expect(() => boot.start()).to.not.throw();
+      expect(appended).to.have.lengthOf(1);
+      expect(appended[0].id).to.equal('bootFailureNotice');
+    } finally {
+      restore();
+    }
+  });
 });

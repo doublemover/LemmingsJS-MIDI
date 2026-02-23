@@ -21,6 +21,7 @@ npm run test-offline-tools # offline asset tooling
 npm run test-editor     # editor-related tests
 npm run coverage-editor # 100% coverage for editor modules
 npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
+npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
 
@@ -70,6 +71,18 @@ ready:
   experiment when supported.
 - `workerOffscreen=true` (`osw=true`): requests worker/offscreen path; runtime
   falls back automatically when unsupported.
+
+## Runtime profiles
+
+Runtime boot/query presets use these profile IDs:
+
+- `classic`
+- `midi`
+- `editor`
+- `e2e`
+- `perf`
+
+Legacy `profile=gameplay` links are normalized to `classic`.
 
 ## npm test workflow
 

@@ -715,21 +715,21 @@ Notes:
   Touchpoints: `js/app/midiUiController.js`, `test/midi/*.test.js`.
 
 ## Phase 44: Runtime correctness and profile hardening
-- [ ] Introduce runtime profile presets (`classic`, `midi`, `editor`, `e2e`,
+- [x] Introduce runtime profile presets (`classic`, `midi`, `editor`, `e2e`,
   `perf`) to centralize history, logging, and rendering defaults.
   Touchpoints: `js/app/boot.js`, `js/game/GameFactory.js`, `docs/TESTING.md`.
-- [ ] Complete DOM resolution hardening in boot paths via explicit
+- [x] Complete DOM resolution hardening in boot paths via explicit
   required/optional element helpers and clearer embed-mode failure behavior.
   Touchpoints: `js/app/boot.js`, `js/app/domResolver.js`, `test/app-boot.test.js`.
-- [ ] Add targeted `tsc --checkJs` coverage for critical modules to catch
+- [x] Add targeted `tsc --checkJs` coverage for critical modules to catch
   undefined-shape regressions before runtime.
   Touchpoints: `js/game/HistoryStore.js`, `js/render/Stage.js`,
   `js/level/Trigger.js`, `package.json`.
-- [ ] Roll out strict-equality guardrails via lint + codemods in scoped slices,
+- [x] Roll out strict-equality guardrails via lint + codemods in scoped slices,
   allowing intentional `== null` usage only where dual-null semantics are
   documented.
   Touchpoints: `eslint.config.js`, `js/actions/*`, `js/game/*`, `js/lemmings/*`.
-- [ ] Remove remaining runtime reads of `globalThis.*` singletons in app/game
+- [x] Remove remaining runtime reads of `globalThis.*` singletons in app/game
   paths and route through explicit dependency/context boundaries.
   Touchpoints: `js/app/*`, `js/game/*`, `js/midi/*`, `js/core/dependencies.js`.
 

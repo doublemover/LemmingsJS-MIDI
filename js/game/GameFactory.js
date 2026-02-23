@@ -2,13 +2,34 @@ import { ConfigReader } from '../data/ConfigReader.js';
 import { FileProvider } from '../data/FileProvider.js';
 import { Game } from './Game.js';
 import { GameResources } from './GameResources.js';
-import { getDependency, getAppContext } from '../core/dependencies.js';
+import { getDependency, getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import { resolveRuntimeRevision } from '../core/cacheBust.js';
+import { getRuntimeProfilePreset } from '../core/runtimeProfiles.js';
 
 const getApp = () => {
   const app = getAppContext();
   if (app) return app;
   return null;
+};
+
+const getPerformanceApi = () => getRuntimeDependency(
+  'performance',
+  (typeof performance !== 'undefined' ? performance : null)
+);
+
+const resolvePerfInstrumentation = (app) => {
+  const preset = getRuntimeProfilePreset(app?.startupProfile);
+  const instrumentation = preset.instrumentation || {};
+  const usePerformanceApi = (app?.performanceAPI ?? instrumentation.performanceAPI) === true;
+  const usePerfMetrics = (app?.perfMetrics ?? instrumentation.perfMetrics) === true;
+  const perfApi = getPerformanceApi();
+  const enabled = (usePerformanceApi || usePerfMetrics) &&
+    typeof perfApi?.measure === 'function' &&
+    typeof perfApi?.now === 'function';
+  return {
+    enabled: !!enabled,
+    perfApi
+  };
 };
 
 class GameFactory {
@@ -26,16 +47,13 @@ class GameFactory {
   /** return a game object to control/run the game */
   async getGame(gameType, gameResources = null) {
     const app = getApp();
-    const perfEnabled = !!app &&
-      (app.performanceAPI === true || app.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
-    const perfStart = perfEnabled ? performance.now() : 0;
+    const perfInstrumentation = resolvePerfInstrumentation(app);
+    const perfEnabled = perfInstrumentation.enabled;
+    const perfStart = perfEnabled ? perfInstrumentation.perfApi.now() : 0;
     const finish = () => {
       if (!perfEnabled) return;
       try {
-        performance.measure('GameFactory getGame', {
+        perfInstrumentation.perfApi.measure('GameFactory getGame', {
           start: perfStart,
           detail: { devtools: { track: 'GameFactory', trackGroup: 'Load', color: 'primary', tooltipText: 'getGame' } }
         });
@@ -62,16 +80,13 @@ class GameFactory {
   /** return a Game Resources that gives access to images, maps, sounds  */
   async getGameResources(gameType) {
     const app = getApp();
-    const perfEnabled = !!app &&
-      (app.performanceAPI === true || app.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
-    const perfStart = perfEnabled ? performance.now() : 0;
+    const perfInstrumentation = resolvePerfInstrumentation(app);
+    const perfEnabled = perfInstrumentation.enabled;
+    const perfStart = perfEnabled ? perfInstrumentation.perfApi.now() : 0;
     const finish = () => {
       if (!perfEnabled) return;
       try {
-        performance.measure('GameFactory getGameResources', {
+        perfInstrumentation.perfApi.measure('GameFactory getGameResources', {
           start: perfStart,
           detail: { devtools: { track: 'GameFactory', trackGroup: 'Load', color: 'secondary', tooltipText: 'getGameResources' } }
         });

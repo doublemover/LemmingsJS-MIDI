@@ -1,5 +1,28 @@
 const overrides = new Map();
 let appContext = null;
+let runtimeContext = null;
+
+const RUNTIME_GLOBAL_KEY_ALIASES = Object.freeze({
+  bootNoAutoStart: '__LEMMINGS_BOOT_NO_AUTO_START__',
+  webMidi: 'WebMidi',
+  localStorage: 'localStorage',
+  history: 'history',
+  window: 'window',
+  document: 'document',
+  navigator: 'navigator',
+  location: 'location',
+  caches: 'caches',
+  performance: 'performance'
+});
+
+const readGlobalValue = (key) => {
+  if (!key || typeof globalThis === 'undefined') return undefined;
+  const globalKey = RUNTIME_GLOBAL_KEY_ALIASES[key] || key;
+  if (!Object.prototype.hasOwnProperty.call(globalThis, globalKey)) {
+    return undefined;
+  }
+  return globalThis[globalKey];
+};
 
 function setDependency(key, value) {
   if (!key) return;
@@ -34,6 +57,36 @@ function clearAppContext(expectedApp = null) {
   }
 }
 
+function setRuntimeContext(context = {}) {
+  const next = context && typeof context === 'object' ? context : {};
+  runtimeContext = {
+    ...(runtimeContext || {}),
+    ...next
+  };
+  return { ...runtimeContext };
+}
+
+function clearRuntimeContext() {
+  runtimeContext = null;
+}
+
+function getRuntimeContext() {
+  return runtimeContext ? { ...runtimeContext } : null;
+}
+
+function getRuntimeDependency(key, fallback = null) {
+  if (!key) return fallback;
+  const globalValue = readGlobalValue(key);
+  if (globalValue !== undefined) {
+    return globalValue;
+  }
+  if (runtimeContext && Object.prototype.hasOwnProperty.call(runtimeContext, key)) {
+    const value = runtimeContext[key];
+    return value === undefined ? fallback : value;
+  }
+  return fallback;
+}
+
 export {
   setDependency,
   getDependency,
@@ -41,5 +94,9 @@ export {
   resetDependencies,
   setAppContext,
   getAppContext,
-  clearAppContext
+  clearAppContext,
+  setRuntimeContext,
+  clearRuntimeContext,
+  getRuntimeContext,
+  getRuntimeDependency
 };

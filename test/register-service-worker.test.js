@@ -17,16 +17,17 @@ describe('registerServiceWorker', function () {
       search: ''
     };
     expect(shouldBypassServiceWorker({ profile: 'perf', location: baseLocation })).to.equal(true);
-    expect(shouldBypassServiceWorker({ profile: 'gameplay', e2e: true, location: baseLocation })).to.equal(true);
+    expect(shouldBypassServiceWorker({ profile: 'classic', e2e: true, location: baseLocation })).to.equal(true);
     expect(shouldBypassServiceWorker({
-      profile: 'gameplay',
+      profile: 'classic',
       location: { ...baseLocation, search: '?e2e=1' }
     })).to.equal(true);
     expect(shouldBypassServiceWorker({
-      profile: 'gameplay',
+      profile: 'classic',
       location: { protocol: 'https:', hostname: 'localhost', search: '' }
     })).to.equal(true);
-    expect(shouldBypassServiceWorker({ profile: 'gameplay', location: baseLocation })).to.equal(false);
+    expect(shouldBypassServiceWorker({ profile: 'classic', location: baseLocation })).to.equal(false);
+    expect(shouldBypassServiceWorker({ profile: 'e2e', location: baseLocation })).to.equal(true);
   });
 
   it('registers service worker with runtime revision when enabled', async function () {
@@ -62,7 +63,7 @@ describe('registerServiceWorker', function () {
     };
 
     registerServiceWorker({
-      profile: 'gameplay',
+      profile: 'classic',
       revision: 'phase30b',
       window: windowRef,
       document: documentRef,

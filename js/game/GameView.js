@@ -18,42 +18,28 @@ import { EditorSession } from '../editor/EditorSession.js';
 import { createEditorLevelFromClassic } from '../editor/ClassicLevelConverter.js';
 import { loadEditorLevel } from '../editor/EditorLevelLoader.js';
 import { listSavedLevels, loadSavedLevel } from '../editor/EditorStorage.js';
-import { getDependency, setAppContext, clearAppContext } from '../core/dependencies.js';
+import {
+  getDependency,
+  setAppContext,
+  clearAppContext,
+  getRuntimeDependency
+} from '../core/dependencies.js';
 import { clampMidiFlagId, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import { parseBoundedNumber, parseInt10 } from '../core/numberParsing.js';
+import {
+  DEFAULT_RUNTIME_PROFILE,
+  getProfileHistoryRetention,
+  getRuntimeProfileIds,
+  getRuntimeProfilePreset,
+  getSpecialHistoryRetention,
+  normalizeRuntimeProfile
+} from '../core/runtimeProfiles.js';
 
 const getGameTypes = () => getDependency('GameTypes', GameTypes);
 const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
 const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
-const STARTUP_PROFILES = new Set(['gameplay', 'editor', 'perf']);
-const HISTORY_RETENTION_POLICIES = Object.freeze({
-  gameplay: Object.freeze({
-    enableHistoryCap: true,
-    historyCapTicks: 20000,
-    historyWarnTicks: 15000
-  }),
-  editor: Object.freeze({
-    enableHistoryCap: true,
-    historyCapTicks: 16000,
-    historyWarnTicks: 12000
-  }),
-  perf: Object.freeze({
-    enableHistoryCap: true,
-    historyCapTicks: 12000,
-    historyWarnTicks: 9000
-  }),
-  endless: Object.freeze({
-    enableHistoryCap: true,
-    historyCapTicks: 24000,
-    historyWarnTicks: 18000
-  }),
-  bench: Object.freeze({
-    enableHistoryCap: true,
-    historyCapTicks: 12000,
-    historyWarnTicks: 9000
-  })
-});
+const STARTUP_PROFILES = new Set(getRuntimeProfileIds());
 const MIDI_FLAG_REGISTRATION_KEY = Symbol('midi-flag-registration');
 const PASSIVE_RESIZE_LISTENER = Object.freeze({ passive: true });
 
@@ -97,7 +83,7 @@ class GameView extends BaseLogger {
     this.perfOverlay = false;
     this.offscreenPresentExperiment = false;
     this.workerOffscreenExperiment = false;
-    this.startupProfile = 'gameplay';
+    this.startupProfile = DEFAULT_RUNTIME_PROFILE;
     this.steps = 0;
     this._benchMonitor = null;
     this._benchSpeedTrack = null;
@@ -213,7 +199,7 @@ class GameView extends BaseLogger {
     console.dir(gameResult);
     this.autoMoveTimer = window.setTimeout(() => {
       const gameStateTypes = getGameStateTypes();
-      if (gameResult.state == gameStateTypes.SUCCEEDED) {
+      if (gameResult.state === gameStateTypes.SUCCEEDED) {
         /// move to next level
         this.moveToLevel(1);
       } else {
@@ -346,14 +332,14 @@ class GameView extends BaseLogger {
   }
 
   _getWebMidi() {
-    if (typeof globalThis !== 'undefined') return globalThis.WebMidi;
-    return null;
+    return getRuntimeDependency('webMidi', null);
   }
 
   _formatMidiEnableError(err) {
     const rawMessage = err?.message ? String(err.message) : String(err || '');
-    const isSecure = typeof window !== 'undefined'
-      ? (window.isSecureContext || window.location?.protocol === 'https:' || window.location?.hostname === 'localhost')
+    const runtimeWindow = getRuntimeDependency('window', null);
+    const isSecure = runtimeWindow
+      ? (runtimeWindow.isSecureContext || runtimeWindow.location?.protocol === 'https:' || runtimeWindow.location?.hostname === 'localhost')
       : true;
     if (!isSecure) {
       return 'WebMIDI requires HTTPS or localhost.';
@@ -617,13 +603,23 @@ class GameView extends BaseLogger {
     return def;
   }
 
+  parseProfileBool(query, names, fallback = false) {
+    for (const name of names) {
+      if (query.has(name)) {
+        return this.parseBool(query, names, fallback);
+      }
+    }
+    return fallback;
+  }
+
   /** convert a string to a number or return 0 if NaN */
   /** read parameters from the current URL */
   applyQuery() {
     this.gameType = 1;
-    const query = typeof window === 'undefined'
-      ? new URLSearchParams('')
-      : new URLSearchParams(window.location.search);
+    const windowRef = getRuntimeDependency('window', null);
+    const query = windowRef?.location?.search
+      ? new URLSearchParams(windowRef.location.search)
+      : new URLSearchParams('');
     this.gameType = this.parseNumber(query, ['version', 'v'], 1, 1, 6);
     this.levelGroupIndex = this.parseNumber(query, ['difficulty', 'd'], 1, 1, 6) - 1;
     this.levelIndex = this.parseNumber(query, ['level', 'l'], 1, 1, 100) - 1;
@@ -647,32 +643,54 @@ class GameView extends BaseLogger {
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
     this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 8);
     this.laggedOut = 0;
-        
+
     this.shortcut = false;
     if (query.get('shortcut') || query.get('_')) {
       this.shortcut = (query.get('shortcut') || query.get('_')) === 'true';
     }
-    this.performanceAPI = this.parseBool(query, ['performanceAPI', 'pa']);
-    this.perfMetrics = this.performanceAPI;
-    this.perfOverlay = this.parseBool(query, ['perfOverlay', 'po']);
-    this.offscreenPresentExperiment = this.parseBool(query, ['offscreenPresent', 'osp']);
-    this.workerOffscreenExperiment = this.parseBool(query, ['workerOffscreen', 'osw']);
-    const profileRaw = (query.get('profile') || query.get('pr') || 'gameplay').toLowerCase();
-    this.startupProfile = STARTUP_PROFILES.has(profileRaw) ? profileRaw : 'gameplay';
-    if (this.startupProfile === 'perf') {
-      this.performanceAPI = true;
-      this.perfMetrics = true;
-      this.perfOverlay = true;
+    const profileRaw = query.get('profile') || query.get('pr') || DEFAULT_RUNTIME_PROFILE;
+    this.startupProfile = normalizeRuntimeProfile(profileRaw);
+    if (!STARTUP_PROFILES.has(this.startupProfile)) {
+      this.startupProfile = DEFAULT_RUNTIME_PROFILE;
     }
+    const profilePreset = getRuntimeProfilePreset(this.startupProfile);
+    const instrumentation = profilePreset.instrumentation || {};
+    const rendering = profilePreset.rendering || {};
+    this.performanceAPI = this.parseProfileBool(
+      query,
+      ['performanceAPI', 'pa'],
+      instrumentation.performanceAPI === true
+    );
+    this.perfMetrics = this.parseProfileBool(
+      query,
+      ['perfMetrics', 'pm'],
+      instrumentation.perfMetrics === true || this.performanceAPI
+    );
+    this.perfOverlay = this.parseProfileBool(
+      query,
+      ['perfOverlay', 'po'],
+      instrumentation.perfOverlay === true
+    );
+    this.offscreenPresentExperiment = this.parseProfileBool(
+      query,
+      ['offscreenPresent', 'osp'],
+      rendering.offscreenPresentExperiment === true
+    );
+    this.workerOffscreenExperiment = this.parseProfileBool(
+      query,
+      ['workerOffscreen', 'osw'],
+      rendering.workerOffscreenExperiment === true
+    );
     this.stage?.setRenderExperimentFlags?.({
       offscreenPresent: this.offscreenPresentExperiment,
       workerOffscreen: this.workerOffscreenExperiment
     });
   }
   updateQuery() {
-    const params = typeof window === 'undefined'
-      ? new URLSearchParams('')
-      : new URLSearchParams(window.location.search);
+    const windowRef = getRuntimeDependency('window', null);
+    const params = windowRef?.location?.search
+      ? new URLSearchParams(windowRef.location.search)
+      : new URLSearchParams('');
     const setParam = (longName, shortName, value, def, always) => {
       params.delete(longName);
       params.delete(shortName);
@@ -700,10 +718,11 @@ class GameView extends BaseLogger {
     setParam('extra', 'ex', this.extraLemmings, 0);
     setParam('scale', 'sc', this.scale, 0);
     setParam('performanceAPI', 'pa', this.performanceAPI, false);
+    setParam('perfMetrics', 'pm', this.perfMetrics, this.performanceAPI);
     setParam('perfOverlay', 'po', this.perfOverlay, false);
     setParam('offscreenPresent', 'osp', this.offscreenPresentExperiment, false);
     setParam('workerOffscreen', 'osw', this.workerOffscreenExperiment, false);
-    setParam('profile', 'pr', this.startupProfile, 'gameplay');
+    setParam('profile', 'pr', this.startupProfile, DEFAULT_RUNTIME_PROFILE);
 
     if (this.shortcut) {
       params.set('_', true);
@@ -734,13 +753,12 @@ class GameView extends BaseLogger {
     if (this._historyRetentionOverride) {
       return { ...this._historyRetentionOverride };
     }
-    let profilePolicy = HISTORY_RETENTION_POLICIES[this.startupProfile]
-      || HISTORY_RETENTION_POLICIES.gameplay;
+    let profilePolicy = getProfileHistoryRetention(this.startupProfile);
     if (this.endless) {
-      profilePolicy = HISTORY_RETENTION_POLICIES.endless;
+      profilePolicy = getSpecialHistoryRetention('endless') || profilePolicy;
     }
     if (this.bench || this.bench2 || this.benchReverse || this.benchSequence) {
-      profilePolicy = HISTORY_RETENTION_POLICIES.bench;
+      profilePolicy = getSpecialHistoryRetention('bench') || profilePolicy;
     }
     return { ...profilePolicy };
   }
@@ -787,7 +805,7 @@ class GameView extends BaseLogger {
       }
       : null;
     return {
-      profile: this.startupProfile || 'gameplay',
+      profile: this.startupProfile || DEFAULT_RUNTIME_PROFILE,
       history: {
         retention: this._historyRetentionPolicy
           ? { ...this._historyRetentionPolicy }
@@ -821,7 +839,8 @@ class GameView extends BaseLogger {
   }
   setHistoryState(params) {
     const query = params instanceof URLSearchParams ? params : new URLSearchParams(params);
-    history.replaceState(null, null, '?' + query.toString());
+    const historyRef = getRuntimeDependency('history', null);
+    historyRef?.replaceState?.(null, null, '?' + query.toString());
   }
   /** change the the text of a html element */
   changeHtmlText(htmlElement, value) {

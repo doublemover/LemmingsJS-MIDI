@@ -16,6 +16,7 @@ import { BinaryReader } from '../data/BinaryReader.js';
 import { LevelReader } from '../level/LevelReader.js';
 import { LevelWriter } from '../level/LevelWriter.js';
 import { validateLevel } from '../editor/EditorValidator.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 
 const E2E_QUERY_KEY = 'e2e';
 const BASE64_CHUNK = 0x8000;
@@ -432,7 +433,7 @@ const getRuntimeDiagnostics = (view) => {
   };
 };
 
-const getCacheStorageKeys = async (cacheStorage = globalThis.caches) => {
+const getCacheStorageKeys = async (cacheStorage = getRuntimeDependency('caches', null)) => {
   if (!cacheStorage?.keys) return [];
   try {
     return toSortedStringList(await cacheStorage.keys());
@@ -1875,7 +1876,7 @@ const createE2EApi = (context) => ({
 
 const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {
   if (!isE2EEnabled()) return null;
-  const root = typeof globalThis !== 'undefined' ? globalThis : window;
+  const root = getRuntimeDependency('window', null) || {};
   if (root.__E2E__ && typeof root.__E2E__._setContext === 'function') {
     root.__E2E__._setContext({ view, editorUi, midiUi });
     return root.__E2E__;

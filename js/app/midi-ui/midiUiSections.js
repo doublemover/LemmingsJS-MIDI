@@ -10,13 +10,14 @@ import {
   TRAP_SFX_IDS,
   listTriggerEntries
 } from './midiUiDomain.js';
+import { getRuntimeDependency } from '../../core/dependencies.js';
 
 /**
  * Section-level MIDI UI builders extracted from the main controller.
  */
 const createMidiUiSectionsController = ({
-  document = globalThis.document,
-  window = globalThis.window,
+  document = getRuntimeDependency('document', null),
+  window = getRuntimeDependency('window', null),
   formatNumber = () => '--',
   setMidiOverrides,
   getConfig,

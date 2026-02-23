@@ -1,5 +1,7 @@
+import { getRuntimeDependency } from '../../core/dependencies.js';
+
 const createMidiUiTabsController = ({
-  document = globalThis.document,
+  document = getRuntimeDependency('document', null),
   storage = null,
   readStoredMidiId,
   readStoredSectionStates,

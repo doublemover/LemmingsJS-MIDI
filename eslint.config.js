@@ -46,5 +46,11 @@ export default [
         }
       ]
     }
+  },
+  {
+    files: ['js/actions/**/*.js', 'js/game/**/*.js', 'js/lemmings/**/*.js'],
+    rules: {
+      eqeqeq: ['error', 'always', { null: 'ignore' }]
+    }
   }
 ];

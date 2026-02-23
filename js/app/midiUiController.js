@@ -1,5 +1,5 @@
 import { MidiMapping, ScaleLibrary } from '../midi/MidiMapping.js';
-import { getAppContext } from '../core/dependencies.js';
+import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import {
   CHORD_OPTIONS,
   NOTE_NAMES,
@@ -86,10 +86,10 @@ const parseFlagValue = (value, fallback) => {
 
 
 export const createMidiUiController = ({
-  window = globalThis.window,
-  document = globalThis.document,
+  window = getRuntimeDependency('window', null),
+  document = getRuntimeDependency('document', null),
   getLemmings = () => getAppContext(),
-  getWebMidi = () => globalThis.WebMidi,
+  getWebMidi = () => getRuntimeDependency('webMidi', null),
   getMidiConfig = null
 } = {}) => {
   const storage = window?.localStorage;
