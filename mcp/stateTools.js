@@ -54,6 +54,20 @@ const createStateToolHandlers = ({
     return Math.trunc(value);
   };
 
+  const serializePayload = (payload, pretty = false) => {
+    try {
+      return {
+        ok: true,
+        json: JSON.stringify(payload, null, pretty ? 2 : 0)
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        error
+      };
+    }
+  };
+
   const getStateTool = async (args) => {
     const { sessionId, preset, include, lemmings, format } = schemas.StateGetSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -186,10 +200,13 @@ const createStateToolHandlers = ({
 
     const delivery = format?.delivery || 'inline';
     if (delivery === 'resource') {
-      const json = JSON.stringify(snapshot, null, format?.pretty ? 2 : 0);
+      const serialized = serializePayload(snapshot, format?.pretty);
+      if (!serialized.ok) {
+        return attachEvents(session, { ok: false, reason: 'snapshot_serialize_failed' });
+      }
       const stored = session.resources?.put?.({
         sessionId: session.id,
-        bytes: Buffer.from(json),
+        bytes: Buffer.from(serialized.json),
         mimeType: 'application/json',
         meta: { kind: 'state' }
       });
@@ -213,7 +230,10 @@ const createStateToolHandlers = ({
     };
 
     if (format?.includeSizeEstimate) {
-      response.sizeBytesEstimate = Buffer.byteLength(JSON.stringify(snapshot));
+      const serialized = serializePayload(snapshot, false);
+      if (serialized.ok) {
+        response.sizeBytesEstimate = Buffer.byteLength(serialized.json);
+      }
     }
 
     return attachEvents(session, response);
@@ -369,10 +389,13 @@ const createStateToolHandlers = ({
 
     const delivery = format?.delivery || 'inline';
     if (delivery === 'resource') {
-      const json = JSON.stringify(response, null, format?.pretty ? 2 : 0);
+      const serialized = serializePayload(response, format?.pretty);
+      if (!serialized.ok) {
+        return attachEvents(session, { ok: false, reason: 'delta_serialize_failed' });
+      }
       const stored = session.resources?.put?.({
         sessionId: session.id,
-        bytes: Buffer.from(json),
+        bytes: Buffer.from(serialized.json),
         mimeType: 'application/json',
         meta: { kind: 'state-delta' }
       });

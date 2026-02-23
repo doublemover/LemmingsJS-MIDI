@@ -198,4 +198,62 @@ describe('state tools', function () {
       reason: 'resource_store_failed'
     });
   });
+
+  it('returns snapshot_serialize_failed when state snapshots cannot be serialized', async function () {
+    const fixture = createFixture({
+      currentTick: 12,
+      state: {
+        version: 1n,
+        mode: 'play',
+        ready: true,
+        game: {
+          timer: { tickIndex: 12, running: true, speedFactor: 1 },
+          lemmingManager: { selectedIndex: 0, activeCount: 0, totalCount: 0 },
+          lemmings: []
+        }
+      },
+      resourcePut: () => {
+        throw new Error('resourcePut should not be reached for unserializable payloads');
+      }
+    });
+
+    const result = await fixture.handlers.getStateTool({
+      sessionId: 's1',
+      format: { delivery: 'resource' }
+    });
+
+    expect(result).to.deep.equal({
+      ok: false,
+      reason: 'snapshot_serialize_failed'
+    });
+  });
+
+  it('returns delta_serialize_failed when delta payloads cannot be serialized', async function () {
+    const fixture = createFixture({
+      currentTick: 12,
+      deltas: [{
+        tick: 12,
+        lemChanges: {
+          ids: [1],
+          fields: [4],
+          next: [1n]
+        }
+      }],
+      resourcePut: () => {
+        throw new Error('resourcePut should not be reached for unserializable payloads');
+      }
+    });
+
+    const result = await fixture.handlers.getStateDeltaTool({
+      sessionId: 's1',
+      afterTick: 11,
+      lemmings: { fields: [4] },
+      format: { delivery: 'resource' }
+    });
+
+    expect(result).to.deep.equal({
+      ok: false,
+      reason: 'delta_serialize_failed'
+    });
+  });
 });

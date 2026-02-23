@@ -31,6 +31,10 @@ const parseArgs = (argv) => {
       }
       out.surface = value.toLowerCase();
       i += 1;
+      continue;
+    }
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`);
     }
   }
   if (out.surface && !VALID_SURFACES.has(out.surface)) {

@@ -24,6 +24,7 @@ describe('build-mcpb-bundle helpers', function () {
     expect(parseArgs(['--surface', 'game'])).to.deep.equal({ surface: 'game' });
     expect(() => parseArgs(['--surface'])).to.throw(/Missing value for --surface/);
     expect(() => parseArgs(['--surface='])).to.throw(/Missing value for --surface/);
+    expect(() => parseArgs(['--unknown=1'])).to.throw(/Unknown option/);
     expect(() => parseArgs(['--surface=bad'])).to.throw(/Invalid surface/);
   });
 
