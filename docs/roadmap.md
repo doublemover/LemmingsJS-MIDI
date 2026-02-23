@@ -508,3 +508,109 @@ Notes:
 - [x] Add deterministic environment diagnostics endpoint for runtime profile,
   feature flags, and active caches to simplify bug triage.
   Touchpoints: `js/app/e2eHarness.js`, `js/game/GameView.js`, `docs/e2e-state.md`.
+
+## Phase 31: Runtime hard cutover (no global singleton fallback)
+- [x] Remove remaining runtime reads of implicit `lemmings` globals in gameplay,
+  render, MIDI, and logging paths; route all runtime flags/state through
+  explicit context objects.
+  Touchpoints: `js/game/Game.js`, `js/game/GameTimer.js`,
+  `js/lemmings/LemmingManager.js`, `js/midi/MidiScheduler.js`,
+  `js/midi/MidiEventRouter.js`, `js/util/LogHandler.js`, `js/lemmings/Lemming.js`.
+- [x] Replace `globalThis.onEnabled` / `globalThis.onMidiError` callback bridge
+  with explicit event wiring between boot, `GameView`, and MIDI UI controller.
+  Touchpoints: `js/app/boot.js`, `js/game/GameView.js`,
+  `js/app/midiUiController.js`.
+- [x] Remove compatibility fallbacks to `globalThis.lemmings` / bare `lemmings`
+  in remaining runtime helpers and factories.
+  Touchpoints: `js/game/GameFactory.js`, `js/game/GameGui.js`,
+  `js/game/GameVictoryCondition.js`, `js/game/HistoryStore.js`.
+- [x] Enforce hard-cutover guardrails in lint/tests so new global fallback usage
+  cannot regress.
+  Touchpoints: `eslint.config.js`, `test/*`, `scripts/runTests.js`.
+
+## Phase 32: Replay data layout tier 2 (binary-first cold path)
+- [x] Replace JSON clone/serialize cold-block paths with binary codecs to avoid
+  `JSON.parse(JSON.stringify(...))` in history compaction.
+  Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
+- [x] Store cold-block lemming mutation streams in typed-array sections
+  (field-packed) instead of object arrays to reduce memory and decode cost.
+  Touchpoints: `js/game/HistoryStore.js`.
+- [x] Remove `Lemming` constructor global fallbacks during keyframe/delta apply
+  and require explicit ctor wiring from manager/runtime context.
+  Touchpoints: `js/game/HistoryStore.js`, `js/lemmings/LemmingManager.js`.
+- [x] Add seek/replay perf gates and long-session parity checks for the new
+  binary layout.
+  Touchpoints: `scripts/bench-history-stress.js`, `test/history-store.test.js`,
+  `test/time-travel-controller.test.js`.
+
+## Phase 33: Canvas2D render composition tier 4
+- [x] Move terrain presentation to a tile/chunk compositing model so stage draws
+  update dirty tiles rather than repeatedly uploading large regions.
+  Touchpoints: `js/render/GroundRenderer.js`, `js/level/Level.js`,
+  `js/render/DisplayImage.js`, `js/render/Stage.js`.
+- [x] Add a dedicated overlay plane for marching ants/selection/hover so
+  high-frequency HUD outlines avoid unnecessary main-layer invalidation.
+  Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`,
+  `js/game/GameDisplay.js`, `js/render/Stage.js`.
+- [x] Optimize scaled blit paths with precomputed source-coordinate maps and
+  branch-reduced inner loops.
+  Touchpoints: `js/render/DisplayImage.js`.
+- [x] Extend CPU hotpath benchmarks to isolate tile-composition, overlay, and
+  scaled-blit regressions.
+  Touchpoints: `scripts/bench-hotpaths.js`, `scripts/bench-smoke.js`,
+  `test/bench-hotpaths.test.js`.
+
+## Phase 34: MCP throughput tier 2 + API cutover
+- [x] Remove legacy MCP tool aliases and dotted-name compatibility shims; keep
+  short canonical tool names only.
+  Touchpoints: `mcp/server.js`, `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
+- [x] Split remaining heavy state/delta/spectator logic from `mcp/server.js`
+  into dedicated modules to reduce hot-path branching and improve testability.
+  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `mcp/sessionLifecycle.js`.
+- [x] Replace watch `onChange` JSON-stringify comparisons with pointer-aware
+  comparators/hashes to reduce poll overhead.
+  Touchpoints: `mcp/server.js`, `mcp/watchPolling.js`.
+- [x] Rework lemming summary extraction to single-pass accumulation with bounded
+  top-K selection (no full candidate sort unless requested).
+  Touchpoints: `mcp/server.js`, `test/mcp*.test.js`.
+
+## Phase 35: Frontend/UI runtime dependency cleanup
+- [x] Remove jQuery runtime dependency from boot/resize flow and switch to
+  native DOM/event APIs end-to-end.
+  Touchpoints: `js/app/boot.js`, `index.html`, `editor.html`, `package.json`.
+- [x] Eliminate `window.lemmings` coupling in procgen/bootstrap paths and route
+  stage updates through explicit runtime handles.
+  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.
+- [x] Reduce MIDI UI listener churn by consolidating repetitive per-control
+  binding into delegated/section-level handlers where feasible.
+  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiSections.js`.
+- [x] Add versioned storage migration for editor/MIDI settings to keep persisted
+  state deterministic across UI schema changes.
+  Touchpoints: `js/app/midi-ui/midiUiStorage.js`, `js/editor/EditorStorage.js`.
+
+## Phase 36: Test suite throughput tier 2
+- [x] Extract shared test support harnesses (globals/dom/canvas/timers/deps) and
+  refactor largest suites to remove duplicated scaffolding.
+  Touchpoints: `test/helpers/*`, `test/support/*`, `test/midi/*.test.js`,
+  `test/gameview.coverage.test.js`, `test/history-store.test.js`.
+- [x] Split oversized coverage-heavy suites into focused behavior suites while
+  preserving branch coverage guarantees.
+  Touchpoints: `test/*coverage*.test.js`, `test/action-systems.test.js`.
+- [x] Tighten fast benchmark smoke defaults so perf checks stay under a short
+  dev-loop budget by default, with explicit opt-in soak runs.
+  Touchpoints: `scripts/bench-smoke.js`, `scripts/bench-performance.js`,
+  `scripts/bench-history-stress.js`, `docs/TESTING.md`.
+- [x] Clarify and align test script semantics/docs (`test-bench` vs bench
+  scripts) to avoid misuse and false expectations.
+  Touchpoints: `package.json`, `docs/TESTING.md`.
+
+## Phase 37: Static analysis and correctness guardrails
+- [x] Replace ad-hoc undefined-call scanning with scope-aware analysis and
+  controlled HTML entrypoint scanning to reduce false positives/negatives.
+  Touchpoints: `scripts/check-undefined.js`, `scripts/processHtmlFile.js`,
+  `test/check-undefined.test.js`.
+- [x] Add guardrails for tricky perf/correctness invariants (dirty-rect
+  integrity, history replay equivalence, trigger ownership cleanup) with
+  targeted invariant tests.
+  Touchpoints: `test/render/stage.test.js`, `test/history-store.test.js`,
+  `test/level/trigger-manager.test.js`.
