@@ -2,6 +2,16 @@
 const sessions = new Map();
 
 /**
+ * Normalize incoming session ids for stable map lookups.
+ *
+ * @param {unknown} sessionId
+ * @returns {string}
+ */
+const normalizeSessionId = (sessionId) => (
+  sessionId == null ? '' : String(sessionId).trim()
+);
+
+/**
  * Resolve a live MCP session by id.
  *
  * @param {string} sessionId
@@ -9,7 +19,7 @@ const sessions = new Map();
  * @throws {Error} When the id is missing or the session does not exist.
  */
 const getSession = (sessionId) => {
-  const normalizedSessionId = sessionId == null ? '' : String(sessionId).trim();
+  const normalizedSessionId = normalizeSessionId(sessionId);
   if (!normalizedSessionId) {
     throw new Error('Session id is required');
   }
@@ -20,4 +30,4 @@ const getSession = (sessionId) => {
   return session;
 };
 
-export { getSession, sessions };
+export { getSession, normalizeSessionId, sessions };

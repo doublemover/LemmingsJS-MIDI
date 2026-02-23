@@ -22,7 +22,7 @@ import {
   updatePointerWatchState
 } from './watchPolling.js';
 import { ResourceStore } from './resourceStore.js';
-import { getSession, sessions } from './sessionStore.js';
+import { getSession, normalizeSessionId, sessions } from './sessionStore.js';
 import { attachEvents } from './eventEnvelope.js';
 import { disposeAllSessionRuntimes, disposeSessionRuntime } from './sessionLifecycle.js';
 import { buildLemmingSummary } from './lemmingSummary.js';
@@ -1172,7 +1172,7 @@ const closeSession = async (args) => {
     stopSpectatorServer,
     stopWatchLoop
   });
-  sessions.delete(sessionId);
+  sessions.delete(normalizeSessionId(sessionId));
   return { ok: true };
 };
 

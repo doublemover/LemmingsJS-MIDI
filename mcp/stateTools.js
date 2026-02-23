@@ -48,10 +48,19 @@ const createStateToolHandlers = ({
     buildLemmingSummaryCompact,
     pruneLemming
   } = helpers;
+  const MAX_DELTA_TICKS = 2000;
+  const MAX_DELTA_LEM_CHANGES = 5000;
 
   const toTickInteger = (value, fallback = 0) => {
     if (!Number.isFinite(value)) return fallback;
     return Math.trunc(value);
+  };
+
+  const normalizePositiveInt = (value, fallback, max) => {
+    if (!Number.isFinite(value)) return fallback;
+    const normalized = Math.trunc(value);
+    if (normalized < 1) return fallback;
+    return Math.min(max, normalized);
   };
 
   const serializePayload = (payload, pretty = false) => {
@@ -266,7 +275,7 @@ const createStateToolHandlers = ({
       });
     }
 
-    const limit = Number.isFinite(maxTicks) ? Math.max(1, Math.trunc(maxTicks)) : 10;
+    const limit = normalizePositiveInt(maxTicks, 10, MAX_DELTA_TICKS);
     if ((endTick - startTick + 1) > limit) {
       startTick = endTick - limit + 1;
     }
@@ -292,7 +301,7 @@ const createStateToolHandlers = ({
       includePrev: lemmings?.includePrev === true,
       includeXY: lemmings?.includeXY || 'none',
       trackedIds: Array.isArray(lemmings?.trackedIds) ? lemmings.trackedIds : [],
-      maxChanges: Number.isFinite(lemmings?.maxChanges) ? Math.max(1, Math.trunc(lemmings.maxChanges)) : 250
+      maxChanges: normalizePositiveInt(lemmings?.maxChanges, 250, MAX_DELTA_LEM_CHANGES)
     };
 
     const fieldSet = new Set(lemOpts.fields);

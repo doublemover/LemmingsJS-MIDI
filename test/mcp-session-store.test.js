@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { getSession, sessions } from '../mcp/sessionStore.js';
+import { getSession, normalizeSessionId, sessions } from '../mcp/sessionStore.js';
 
 describe('mcp session store', function () {
   beforeEach(function () {
@@ -32,5 +32,11 @@ describe('mcp session store', function () {
     expect(() => getSession('')).to.throw('Session id is required');
     expect(() => getSession(null)).to.throw('Session id is required');
     expect(() => getSession('missing')).to.throw('Session not found: missing');
+  });
+
+  it('normalizes ids with trimming and null handling', function () {
+    expect(normalizeSessionId('  abc  ')).to.equal('abc');
+    expect(normalizeSessionId(7)).to.equal('7');
+    expect(normalizeSessionId(null)).to.equal('');
   });
 });

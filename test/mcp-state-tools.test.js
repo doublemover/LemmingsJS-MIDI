@@ -153,6 +153,55 @@ describe('state tools', function () {
     expect(fixture.getCaptured()[0].endTick).to.equal(11);
   });
 
+  it('caps maxTicks to avoid oversized delta fetches', async function () {
+    const fixture = createFixture({ currentTick: 10000, deltas: [] });
+
+    await fixture.handlers.getStateDeltaTool({
+      sessionId: 's1',
+      afterTick: 0,
+      toTick: 10000,
+      maxTicks: 999999
+    });
+
+    expect(fixture.getCaptured()).to.have.lengthOf(1);
+    expect(fixture.getCaptured()[0]).to.include({
+      method: 'getDeltas',
+      startTick: 8001,
+      endTick: 10000,
+      limit: 2000
+    });
+  });
+
+  it('caps maxChanges and truncates oversized lemming delta arrays', async function () {
+    const totalChanges = 6005;
+    const fixture = createFixture({
+      currentTick: 12,
+      deltas: [{
+        tick: 12,
+        lemChanges: {
+          ids: Array.from({ length: totalChanges }, (_, index) => index),
+          fields: Array.from({ length: totalChanges }, () => 4),
+          next: Array.from({ length: totalChanges }, (_, index) => index)
+        }
+      }]
+    });
+
+    const result = await fixture.handlers.getStateDeltaTool({
+      sessionId: 's1',
+      afterTick: 11,
+      lemmings: {
+        fields: [4],
+        maxChanges: 999999
+      }
+    });
+
+    expect(result.ok).to.equal(true);
+    expect(result.deltas).to.have.lengthOf(1);
+    expect(result.deltas[0].lemChanges.ids).to.have.lengthOf(5000);
+    expect(result.deltas[0].lemChanges.fields).to.have.lengthOf(5000);
+    expect(result.deltas[0].lemChanges.next).to.have.lengthOf(5000);
+  });
+
   it('returns resource_store_failed when getState resource delivery cannot persist', async function () {
     const fixture = createFixture({
       currentTick: 11,
