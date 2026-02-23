@@ -1,5 +1,9 @@
 import { chromium } from '@playwright/test';
 
+/**
+ * @param {string[]} argv
+ * @returns {Map<string, string>}
+ */
 const parseArgs = (argv) => {
   const out = new Map();
   for (const arg of argv) {
@@ -10,6 +14,11 @@ const parseArgs = (argv) => {
   return out;
 };
 
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
 const toPositiveNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -40,6 +49,10 @@ const closeQuietly = async (target, label) => {
 
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+/**
+ * @param {number[]} values
+ * @returns {{min: number, max: number, p50: number, p95: number, avg: number}}
+ */
 const summarize = (values) => {
   const nums = values.filter(value => Number.isFinite(value)).sort((a, b) => a - b);
   if (!nums.length) return { min: 0, max: 0, p50: 0, p95: 0, avg: 0 };
@@ -73,6 +86,11 @@ const buildUrl = (raw) => {
   return url.toString();
 };
 
+/**
+ * Runs the procgen soak benchmark in a Playwright browser context.
+ *
+ * @returns {Promise<void>}
+ */
 const run = async () => {
   let browser = null;
   let context = null;

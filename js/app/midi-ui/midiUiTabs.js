@@ -1,5 +1,32 @@
 import { getRuntimeDependency } from '../../core/dependencies.js';
 
+/**
+ * @param {{
+ *   document?: {
+ *     querySelectorAll?: (selector: string) => any[]
+ *   } | null,
+ *   storage?: unknown,
+ *   readStoredMidiId?: (storage: unknown, key: string) => string | null,
+ *   readStoredSectionStates?: (storage: unknown) => Record<string, boolean>,
+ *   storeMidiId?: (storage: unknown, key: string, value: string) => void,
+ *   readStoredJson?: (storage: unknown, key: string) => unknown,
+ *   storeJson?: (storage: unknown, key: string, value: unknown) => void,
+ *   midiStorageKeys?: {
+ *     tabLeft?: string,
+ *     tabRight?: string,
+ *     sectionStates?: string
+ *   }
+ * }} [options]
+ * @returns {{
+ *   readSectionStates: () => Record<string, boolean>,
+ *   storeSectionStates: (state: Record<string, boolean>) => void,
+ *   applySectionStates: (options?: {useStored?: boolean}) => void,
+ *   bindSectionPersistence: () => void,
+ *   setActiveTab: (group: string, targetId: string | null, options?: {persist?: boolean}) => void,
+ *   applyTabState: (options?: {useStored?: boolean}) => void,
+ *   bindTabs: () => void
+ * }}
+ */
 const createMidiUiTabsController = ({
   document = getRuntimeDependency('document', null),
   storage = null,
@@ -15,13 +42,18 @@ const createMidiUiTabsController = ({
     'midi-right': midiStorageKeys?.tabRight
   };
 
+  const normalizeSectionStateMap = (value) => (
+    value && typeof value === 'object' && !Array.isArray(value)
+      ? value
+      : {}
+  );
+
   const readSectionStates = () => {
     if (typeof readStoredSectionStates === 'function') {
-      return readStoredSectionStates(storage);
+      return normalizeSectionStateMap(readStoredSectionStates(storage));
     }
     const stored = readStoredJson?.(storage, midiStorageKeys?.sectionStates);
-    if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return {};
-    return stored;
+    return normalizeSectionStateMap(stored);
   };
 
   const storeSectionStates = (state) => {
@@ -59,7 +91,7 @@ const createMidiUiTabsController = ({
         section.open = states[key];
       }
       section.addEventListener('toggle', () => {
-        const next = readSectionStates();
+        const next = { ...readSectionStates() };
         next[key] = section.open;
         storeSectionStates(next);
       });

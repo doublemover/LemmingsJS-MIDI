@@ -64,5 +64,6 @@ describe('Level render', function() {
       expect(deltaRects.length).to.equal(1);
     }
     expect(syncCalls[1][3]).to.equal(64);
+    expect(gd.groundMask).to.equal(level.groundMask);
   });
 });

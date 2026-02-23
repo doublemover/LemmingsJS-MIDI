@@ -515,10 +515,14 @@ class Level extends BaseLogger {
           newRange.y = tObj.y;
           newRange.width = terImg.steelWidth;
           newRange.height = terImg.steelHeight;
+          let hasSteelPixels = false;
           for (let dy = tObj.y; dy < tObj.y+terImg.height; dy++) {
             for (let dx = tObj.x; dx < tObj.x+terImg.width; dx++) {
               if (this.isSteelAt(dx,dy, true)) {
-                newSteelRanges.push(newRange);
+                if (!hasSteelPixels) {
+                  newSteelRanges.push(newRange);
+                  hasSteelPixels = true;
+                }
                 this.steelMask.setMaskAt(dx, dy);
               }
             }
@@ -609,6 +613,7 @@ class Level extends BaseLogger {
       gameDisplay.restoreBackground();
       if (this._groundDirtyFull || !gameDisplay.hasBackground?.()) {
         gameDisplay.syncBackground(this.groundImage, this.groundMask, null, this._groundTileSize);
+        gameDisplay.groundMask = this.groundMask;
         this._groundDirtyFull = false;
         this._groundDirtyTiles.clear();
         this._groundDirtyRects.length = 0;
@@ -620,6 +625,7 @@ class Level extends BaseLogger {
           dirtyRects = this._groundDirtyRects.slice();
         }
         gameDisplay.syncBackground(this.groundImage, this.groundMask, dirtyRects, this._groundTileSize);
+        gameDisplay.groundMask = this.groundMask;
         this._groundDirtyRects.length = 0;
         return;
       }

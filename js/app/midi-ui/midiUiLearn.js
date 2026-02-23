@@ -1,3 +1,15 @@
+/**
+ * @param {{
+ *   runMidiIntent?: (intent: {type: string, target?: string, value?: unknown}) => void,
+ *   setNoteCapture?: (handler: ((captured: unknown) => boolean) | null) => void,
+ *   getIntentState?: () => {learn?: {target?: string|null}} | null
+ * }} [options]
+ * @returns {{
+ *   armMidiLearn: (target: string, onCapture: (captured: unknown) => boolean | void) => boolean,
+ *   disarmMidiLearn: (target?: string | null) => boolean,
+ *   clearNoteCapture: () => void
+ * }}
+ */
 const createMidiLearnController = ({
   runMidiIntent,
   setNoteCapture,

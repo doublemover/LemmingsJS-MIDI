@@ -3,6 +3,31 @@ import { formatBindingSpec } from './KeybindingFormatter.js';
 import { GamepadInputController } from './GamepadInputController.js';
 import { EditorTools } from '../editor/EditorTools.js';
 
+/**
+ * Keyboard and gamepad shortcut bridge for editor actions.
+ *
+ * @param {object} controller
+ * @param {{
+ *   fileProvider?: {loadString?: (path: string) => Promise<string>} | null,
+ *   onToolChange?: (tool: number) => void,
+ *   onCopy?: () => void,
+ *   onPaste?: () => void,
+ *   onDuplicate?: () => void,
+ *   onNudge?: (dx: number, dy: number, distance: number) => void,
+ *   onSnap?: () => void,
+ *   onUndo?: () => void,
+ *   onRedo?: () => void,
+ *   onDelete?: () => void,
+ *   onBringToFront?: () => void,
+ *   onSendToBack?: () => void,
+ *   onMoveForward?: () => void,
+ *   onMoveBackward?: () => void,
+ *   onPlaytestToggle?: () => void,
+ *   onToggleShortcutOverlay?: () => void,
+ *   onPreview?: () => void,
+ *   onBindingsLoaded?: () => void
+ * }} [options]
+ */
 class EditorKeybindings {
   constructor(controller, options = {}) {
     this.controller = controller;

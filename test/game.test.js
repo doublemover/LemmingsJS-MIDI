@@ -110,7 +110,7 @@ describe('Game', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     const ret = await game.loadLevel(0, 1);
-    expect(ret).to.equal(undefined);
+    expect(ret).to.equal(game);
     expect(game.gameTimer).to.be.instanceOf(Lemmings.GameTimer);
     expect(game.commandManager).to.be.instanceOf(Lemmings.CommandManager);
     expect(game.lemmingManager).to.be.instanceOf(Lemmings.LemmingManager);
@@ -124,6 +124,27 @@ describe('Game', function() {
     const game = new Game(res);
     const ret = await game.loadCustomLevel(null);
     expect(ret).to.equal(null);
+  });
+
+  it('loadLevel closes performance measures when loading fails', async function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    let endMeasureCalls = 0;
+    game.startMeasure = () => () => {
+      endMeasureCalls += 1;
+    };
+    res.getLevel = async () => {
+      throw new Error('load failed');
+    };
+    let thrown = null;
+    try {
+      await game.loadLevel(0, 0);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(Error);
+    expect(endMeasureCalls).to.equal(1);
   });
 
   it('loadCustomLevel initializes managers and returns itself', async function() {

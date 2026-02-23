@@ -122,9 +122,13 @@ class Game extends BaseLogger {
       color: 'primary',
       tooltipText: `loadLevel ${levelGroupIndex}:${levelIndex}`
     });
-    const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
-    await this._initLevel(level, { levelGroupIndex, levelIndex });
-    endMeasure();
+    try {
+      const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
+      await this._initLevel(level, { levelGroupIndex, levelIndex });
+      return this;
+    } finally {
+      endMeasure();
+    }
   }
 
   async loadCustomLevel(level, options = {}) {

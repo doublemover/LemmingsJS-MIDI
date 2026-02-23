@@ -6,6 +6,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, '..');
 const VALID_SURFACES = new Set(['game', 'editor', 'interact']);
 
+/**
+ * @param {string[]} argv
+ * @returns {{surface: string | null}}
+ */
 const parseArgs = (argv) => {
   const out = {
     surface: null
@@ -13,11 +17,11 @@ const parseArgs = (argv) => {
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
     if (arg.startsWith('--surface=')) {
-      out.surface = arg.slice('--surface='.length).trim();
+      out.surface = arg.slice('--surface='.length).trim().toLowerCase();
       continue;
     }
     if (arg === '--surface') {
-      out.surface = String(argv[i + 1] || '').trim();
+      out.surface = String(argv[i + 1] || '').trim().toLowerCase();
       i += 1;
     }
   }
@@ -27,57 +31,78 @@ const parseArgs = (argv) => {
   return out;
 };
 
-const options = parseArgs(process.argv.slice(2));
-const DIST_DIR = options.surface
-  ? path.join(ROOT_DIR, 'dist', `mcpb-${options.surface}`)
-  : path.join(ROOT_DIR, 'dist', 'mcpb');
-
-const resolveSurfaceFile = (kind, fallbackPath) => {
-  if (!options.surface) return fallbackPath;
-  const candidate = `mcpb/${kind}.${options.surface}.json`;
-  return { candidate, fallbackPath };
+/**
+ * @param {string|null} surface
+ * @param {string} kind
+ * @param {string} fallbackPath
+ * @returns {{candidate: string|null, fallbackPath: string}}
+ */
+const resolveSurfaceFile = (surface, kind, fallbackPath) => {
+  if (!surface) return { candidate: null, fallbackPath };
+  return {
+    candidate: `mcpb/${kind}.${surface}.json`,
+    fallbackPath
+  };
 };
 
-const manifestPath = resolveSurfaceFile('manifest', 'mcpb/manifest.json');
-const packagePath = resolveSurfaceFile('package', 'mcpb/package.json');
+/**
+ * @param {string|null} surface
+ * @returns {Array<{from: string, to: string, candidate: string|null, optional?: boolean}>}
+ */
+const createCopyList = (surface) => {
+  const manifestPath = resolveSurfaceFile(surface, 'manifest', 'mcpb/manifest.json');
+  const packagePath = resolveSurfaceFile(surface, 'package', 'mcpb/package.json');
+  return [
+    {
+      from: manifestPath.fallbackPath,
+      to: 'manifest.json',
+      candidate: manifestPath.candidate
+    },
+    { from: 'mcpb/server.json', to: 'server.json', candidate: null },
+    { from: 'mcpb/.mcpbignore', to: '.mcpbignore', candidate: null },
+    {
+      from: packagePath.fallbackPath,
+      to: 'package.json',
+      candidate: packagePath.candidate
+    },
+    { from: 'keybindings.json', to: 'keybindings.json', candidate: null },
+    { from: 'mcp/server.js', to: 'mcp/server.js', candidate: null },
+    { from: 'mcp/spectator.html', to: 'mcp/spectator.html', candidate: null, optional: true }
+  ];
+};
 
-const COPY_LIST = [
-  {
-    from: manifestPath.fallbackPath || manifestPath,
-    to: 'manifest.json',
-    candidate: manifestPath.candidate || null
-  },
-  { from: 'mcpb/server.json', to: 'server.json' },
-  { from: 'mcpb/.mcpbignore', to: '.mcpbignore' },
-  {
-    from: packagePath.fallbackPath || packagePath,
-    to: 'package.json',
-    candidate: packagePath.candidate || null
-  },
-  { from: 'keybindings.json', to: 'keybindings.json' },
-  { from: 'mcp/server.js', to: 'mcp/server.js' },
-  { from: 'mcp/spectator.html', to: 'mcp/spectator.html', optional: true }
-];
-
-const ensureDir = async (filePath) => {
+/**
+ * @param {string} filePath
+ * @param {{mkdir: typeof fs.mkdir}} [fsImpl]
+ */
+const ensureDir = async (filePath, fsImpl = fs) => {
   const dir = path.dirname(filePath);
-  await fs.mkdir(dir, { recursive: true });
+  await fsImpl.mkdir(dir, { recursive: true });
 };
 
-const copyFile = async (entry) => {
+/**
+ * @param {{from: string, to: string, candidate: string|null, optional?: boolean}} entry
+ * @param {{
+ *   distDir: string,
+ *   rootDir?: string,
+ *   fsImpl?: Pick<typeof fs, 'copyFile' | 'mkdir'>
+ * }} context
+ * @returns {Promise<boolean>}
+ */
+const copyFile = async (entry, { distDir, rootDir = ROOT_DIR, fsImpl = fs }) => {
   const sourcePath = entry.candidate
-    ? path.join(ROOT_DIR, entry.candidate)
-    : path.join(ROOT_DIR, entry.from);
-  const fallbackPath = path.join(ROOT_DIR, entry.from);
-  const destination = path.join(DIST_DIR, entry.to);
+    ? path.join(rootDir, entry.candidate)
+    : path.join(rootDir, entry.from);
+  const fallbackPath = path.join(rootDir, entry.from);
+  const destination = path.join(distDir, entry.to);
   try {
-    await ensureDir(destination);
-    await fs.copyFile(sourcePath, destination);
+    await ensureDir(destination, fsImpl);
+    await fsImpl.copyFile(sourcePath, destination);
     return true;
   } catch (err) {
     if (entry.candidate && err && err.code === 'ENOENT') {
-      await ensureDir(destination);
-      await fs.copyFile(fallbackPath, destination);
+      await ensureDir(destination, fsImpl);
+      await fsImpl.copyFile(fallbackPath, destination);
       return true;
     }
     if (entry.optional && err && err.code === 'ENOENT') {
@@ -87,17 +112,57 @@ const copyFile = async (entry) => {
   }
 };
 
-const buildBundle = async () => {
-  await fs.rm(DIST_DIR, { recursive: true, force: true });
-  await fs.mkdir(DIST_DIR, { recursive: true });
+/**
+ * @param {{
+ *   argv?: string[],
+ *   rootDir?: string,
+ *   fsImpl?: Pick<typeof fs, 'copyFile' | 'mkdir' | 'rm'>,
+ *   log?: Pick<typeof console, 'log'>
+ * }} [options]
+ * @returns {Promise<{distDir: string, surface: string | null}>}
+ */
+const buildBundle = async (
+  {
+    argv = process.argv.slice(2),
+    rootDir = ROOT_DIR,
+    fsImpl = fs,
+    log = console
+  } = {}
+) => {
+  const options = parseArgs(argv);
+  const distDir = options.surface
+    ? path.join(rootDir, 'dist', `mcpb-${options.surface}`)
+    : path.join(rootDir, 'dist', 'mcpb');
+  const copyList = createCopyList(options.surface);
 
-  for (const entry of COPY_LIST) {
-    await copyFile(entry);
+  await fsImpl.rm(distDir, { recursive: true, force: true });
+  await fsImpl.mkdir(distDir, { recursive: true });
+  for (const entry of copyList) {
+    await copyFile(entry, { distDir, rootDir, fsImpl });
   }
 
-  const relative = path.relative(ROOT_DIR, DIST_DIR);
+  const relative = path.relative(rootDir, distDir);
   const suffix = options.surface ? ` (surface: ${options.surface})` : '';
-  console.log(`MCPB bundle staged at ${relative}${suffix}`);
+  log.log(`MCPB bundle staged at ${relative}${suffix}`);
+  return { distDir, surface: options.surface };
 };
 
-await buildBundle();
+const isMainModule = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  await buildBundle();
+}
+
+export {
+  VALID_SURFACES,
+  buildBundle,
+  createCopyList,
+  parseArgs,
+  resolveSurfaceFile
+};

@@ -120,6 +120,10 @@ const SPECIAL_HISTORY_RETENTION_POLICIES = Object.freeze({
   })
 });
 
+/**
+ * @param {unknown} profile
+ * @returns {string}
+ */
 const normalizeRuntimeProfile = (profile) => {
   const raw = String(profile || '').trim().toLowerCase();
   const normalized = RUNTIME_PROFILE_ALIASES[raw] || raw;
@@ -127,18 +131,50 @@ const normalizeRuntimeProfile = (profile) => {
   return DEFAULT_RUNTIME_PROFILE;
 };
 
+/**
+ * @param {unknown} profile
+ * @returns {Readonly<{
+ *   id: string,
+ *   historyRetention: {
+ *     enableHistoryCap: boolean,
+ *     historyCapTicks: number,
+ *     historyWarnTicks: number
+ *   },
+ *   instrumentation: {
+ *     performanceAPI: boolean,
+ *     perfMetrics: boolean,
+ *     perfOverlay: boolean
+ *   },
+ *   rendering: {
+ *     offscreenPresentExperiment: boolean,
+ *     workerOffscreenExperiment: boolean
+ *   },
+ *   logging: {
+ *     debug: boolean
+ *   }
+ * }>}
+ */
 const getRuntimeProfilePreset = (profile) => {
   const normalized = normalizeRuntimeProfile(profile);
   return RUNTIME_PROFILE_PRESETS[normalized] || RUNTIME_PROFILE_PRESETS[DEFAULT_RUNTIME_PROFILE];
 };
 
+/** @returns {string[]} */
 const getRuntimeProfileIds = () => Object.keys(RUNTIME_PROFILE_PRESETS);
 
+/**
+ * @param {unknown} profile
+ * @returns {{enableHistoryCap?: boolean, historyCapTicks?: number, historyWarnTicks?: number}}
+ */
 const getProfileHistoryRetention = (profile) => {
   const preset = getRuntimeProfilePreset(profile);
   return { ...(preset.historyRetention || {}) };
 };
 
+/**
+ * @param {string} name
+ * @returns {{enableHistoryCap: boolean, historyCapTicks: number, historyWarnTicks: number} | null}
+ */
 const getSpecialHistoryRetention = (name) => {
   const policy = SPECIAL_HISTORY_RETENTION_POLICIES[name];
   if (!policy) return null;

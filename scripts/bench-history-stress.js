@@ -1,5 +1,11 @@
 import { chromium } from '@playwright/test';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+/**
+ * @param {string[]} argv
+ * @returns {Map<string, string>}
+ */
 const parseArgs = (argv) => {
   const out = new Map();
   for (const arg of argv) {
@@ -10,11 +16,21 @@ const parseArgs = (argv) => {
   return out;
 };
 
+/**
+ * @param {unknown} value
+ * @param {number} fallback
+ * @returns {number}
+ */
 const toPositiveNumber = (value, fallback) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
+/**
+ * @param {unknown} value
+ * @param {boolean} fallback
+ * @returns {boolean}
+ */
 const toBoolean = (value, fallback) => {
   if (value == null) return fallback;
   const normalized = String(value).trim().toLowerCase();
@@ -22,6 +38,15 @@ const toBoolean = (value, fallback) => {
   if (['0', 'false', 'no', 'off'].includes(normalized)) return false;
   return fallback;
 };
+
+/**
+ * @param {unknown} raw
+ * @returns {number[]}
+ */
+const parseSpeedList = (raw) => String(raw || '')
+  .split(',')
+  .map(value => Number(value.trim()))
+  .filter(value => Number.isFinite(value) && value > 0);
 
 const withTimeout = async (promise, timeoutMs, label) => {
   let timeoutId = null;
@@ -45,20 +70,6 @@ const closeQuietly = async (target, label) => {
     // best-effort shutdown
   }
 };
-
-const args = parseArgs(process.argv.slice(2));
-const baseUrl = args.get('url') || process.env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
-const smokeRequested = args.has('smoke') || process.env.BENCH_SMOKE === '1';
-const soakRequested = args.has('soak') || process.env.BENCH_SOAK === '1';
-const requestedProfile = (
-  args.get('profile') ||
-  process.env.HISTORY_PROFILE ||
-  (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
-).toLowerCase();
-const profileExplicit = args.has('profile')
-  || !!process.env.HISTORY_PROFILE
-  || smokeRequested
-  || soakRequested;
 
 const HISTORY_PROFILES = {
   smoke: {
@@ -90,52 +101,92 @@ const HISTORY_PROFILES = {
   }
 };
 
-const profile = HISTORY_PROFILES[requestedProfile] || HISTORY_PROFILES.smoke;
-if (!profileExplicit) {
-  console.warn('[bench-history-stress] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
-}
-const durationMs = toPositiveNumber(
-  args.get('duration') || process.env.HISTORY_DURATION_MS,
-  profile.durationMs
-);
-const sampleMs = toPositiveNumber(
-  args.get('sample') || process.env.HISTORY_SAMPLE_MS,
-  profile.sampleMs
-);
-const targetSpan = toPositiveNumber(
-  args.get('target') || process.env.HISTORY_TARGET_TICKS,
-  profile.targetSpanTicks
-);
-const speeds = (args.get('speeds') || process.env.HISTORY_SPEEDS || profile.speeds)
-  .split(',')
-  .map(value => Number(value.trim()))
-  .filter(value => Number.isFinite(value) && value > 0);
-const headless = (args.get('headless') || process.env.HISTORY_HEADLESS || 'true') !== 'false';
-const opTimeoutMs = toPositiveNumber(args.get('opTimeout') || process.env.HISTORY_OP_TIMEOUT_MS, 30000);
-const maxRuntimeMs = toPositiveNumber(
-  args.get('maxRuntime') || process.env.HISTORY_MAX_RUNTIME_MS,
-  profile.maxRuntimeMs ?? ((durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20))
-);
-const seekSamples = Math.max(1, Math.trunc(toPositiveNumber(
-  args.get('seekSamples') || process.env.HISTORY_SEEK_SAMPLES,
-  profile.seekSamples
-)));
-const seekP95MsMax = toPositiveNumber(
-  args.get('seekP95MsMax') || process.env.HISTORY_SEEK_P95_MS_MAX,
-  profile.seekP95MsMax
-);
-const requireReplayParity = toBoolean(
-  args.get('requireReplayParity') || process.env.HISTORY_REQUIRE_REPLAY_PARITY,
-  true
-);
-const requireBoundedRetention = toBoolean(
-  args.get('requireBoundedRetention') || process.env.HISTORY_REQUIRE_BOUNDED_RETENTION,
-  true
-);
-const requireColdCompaction = toBoolean(
-  args.get('requireColdCompaction') || process.env.HISTORY_REQUIRE_COLD_COMPACTION,
-  requestedProfile !== 'smoke'
-);
+/**
+ * @param {{
+ *   argv?: string[],
+ *   env?: Record<string, string | undefined>,
+ *   log?: Pick<typeof console, 'warn'>
+ * }} [options]
+ */
+const createHistoryBenchConfig = (
+  {
+    argv = process.argv.slice(2),
+    env = process.env,
+    log = console
+  } = {}
+) => {
+  const args = parseArgs(argv);
+  const baseUrl = args.get('url') || env.LEMMINGS_BENCH_URL || 'https://localhost:8080/?e2e=1';
+  const smokeRequested = args.has('smoke') || env.BENCH_SMOKE === '1';
+  const soakRequested = args.has('soak') || env.BENCH_SOAK === '1';
+  const requestedProfile = (
+    args.get('profile') ||
+    env.HISTORY_PROFILE ||
+    (soakRequested ? 'soak' : smokeRequested ? 'smoke' : 'smoke')
+  ).toLowerCase();
+  const profileExplicit = args.has('profile')
+    || !!env.HISTORY_PROFILE
+    || smokeRequested
+    || soakRequested;
+  const profile = HISTORY_PROFILES[requestedProfile] || HISTORY_PROFILES.smoke;
+  if (!profileExplicit) {
+    log.warn?.('[bench-history-stress] No explicit profile selected; defaulting to smoke. Use --profile=default for longer runs.');
+  }
+
+  const speedInput = args.get('speeds') || env.HISTORY_SPEEDS || profile.speeds;
+  const parsedSpeeds = parseSpeedList(speedInput);
+  const speeds = parsedSpeeds.length ? parsedSpeeds : parseSpeedList(profile.speeds);
+  if (!parsedSpeeds.length) {
+    log.warn?.(`[bench-history-stress] Invalid speed list "${String(speedInput)}"; falling back to profile defaults (${profile.speeds}).`);
+  }
+
+  const durationMs = toPositiveNumber(
+    args.get('duration') || env.HISTORY_DURATION_MS,
+    profile.durationMs
+  );
+  const sampleMs = toPositiveNumber(
+    args.get('sample') || env.HISTORY_SAMPLE_MS,
+    profile.sampleMs
+  );
+
+  return {
+    baseUrl,
+    requestedProfile,
+    durationMs,
+    sampleMs,
+    targetSpan: toPositiveNumber(
+      args.get('target') || env.HISTORY_TARGET_TICKS,
+      profile.targetSpanTicks
+    ),
+    speeds,
+    headless: (args.get('headless') || env.HISTORY_HEADLESS || 'true') !== 'false',
+    opTimeoutMs: toPositiveNumber(args.get('opTimeout') || env.HISTORY_OP_TIMEOUT_MS, 30000),
+    maxRuntimeMs: toPositiveNumber(
+      args.get('maxRuntime') || env.HISTORY_MAX_RUNTIME_MS,
+      profile.maxRuntimeMs ?? ((durationMs * Math.max(speeds.length, 1)) + Math.max(60000, sampleMs * 20))
+    ),
+    seekSamples: Math.max(1, Math.trunc(toPositiveNumber(
+      args.get('seekSamples') || env.HISTORY_SEEK_SAMPLES,
+      profile.seekSamples
+    ))),
+    seekP95MsMax: toPositiveNumber(
+      args.get('seekP95MsMax') || env.HISTORY_SEEK_P95_MS_MAX,
+      profile.seekP95MsMax
+    ),
+    requireReplayParity: toBoolean(
+      args.get('requireReplayParity') || env.HISTORY_REQUIRE_REPLAY_PARITY,
+      true
+    ),
+    requireBoundedRetention: toBoolean(
+      args.get('requireBoundedRetention') || env.HISTORY_REQUIRE_BOUNDED_RETENTION,
+      true
+    ),
+    requireColdCompaction: toBoolean(
+      args.get('requireColdCompaction') || env.HISTORY_REQUIRE_COLD_COMPACTION,
+      requestedProfile !== 'smoke'
+    )
+  };
+};
 
 const buildUrl = (raw) => {
   const url = new URL(raw);
@@ -154,6 +205,10 @@ const percentile = (sorted, p) => {
   return sorted[index];
 };
 
+/**
+ * @param {unknown[]} timingsMs
+ * @returns {{count: number, p50Ms: number, p95Ms: number, maxMs: number, samplesMs: number[]}}
+ */
 const summarizeTimings = (timingsMs) => {
   const clean = (Array.isArray(timingsMs) ? timingsMs : [])
     .map(value => Number(value))
@@ -169,7 +224,41 @@ const summarizeTimings = (timingsMs) => {
   };
 };
 
-const run = async () => {
+/**
+ * @param {{
+ *   baseUrl: string,
+ *   requestedProfile: string,
+ *   durationMs: number,
+ *   sampleMs: number,
+ *   targetSpan: number,
+ *   speeds: number[],
+ *   headless: boolean,
+ *   opTimeoutMs: number,
+ *   maxRuntimeMs: number,
+ *   seekSamples: number,
+ *   seekP95MsMax: number,
+ *   requireReplayParity: boolean,
+ *   requireBoundedRetention: boolean,
+ *   requireColdCompaction: boolean
+ * }} [config]
+ */
+const run = async (config = createHistoryBenchConfig()) => {
+  const {
+    baseUrl,
+    requestedProfile,
+    durationMs,
+    sampleMs,
+    targetSpan,
+    speeds,
+    headless,
+    opTimeoutMs,
+    maxRuntimeMs,
+    seekSamples,
+    seekP95MsMax,
+    requireReplayParity,
+    requireBoundedRetention,
+    requireColdCompaction
+  } = config;
   let browser = null;
   let context = null;
   let page = null;
@@ -216,7 +305,7 @@ const run = async () => {
       while (Date.now() - start < durationMs) {
         assertRuntimeBudget(`speed=${speed} sampling`);
         const history = await withTimeout(
-          page.evaluate(() => window.__E2E__.getState().game.history),
+          page.evaluate(() => window.__E2E__?.getState?.()?.game?.history || null),
           opTimeoutMs,
           'readHistoryState'
         );
@@ -231,6 +320,7 @@ const run = async () => {
       const seekProbe = await withTimeout(
         page.evaluate(({ samples }) => {
           const api = window.__E2E__;
+          if (!api?.seek || !api?.getState) return null;
           const gameState = api?.getState?.()?.game;
           const historyState = gameState?.history || null;
           const minTick = Number.isFinite(historyState?.minTick) ? Math.trunc(historyState.minTick) : 0;
@@ -281,6 +371,7 @@ const run = async () => {
           };
 
           const hashBefore = computeReplayHash();
+          const deltaAvailable = hashBefore != null;
           for (let i = 0; i < count; i += 1) {
             const ratio = (i + 1) / (count + 1);
             const target = Math.max(minTick, startTick - Math.trunc(span * ratio));
@@ -297,6 +388,7 @@ const run = async () => {
             maxTick,
             startTick,
             seekMs,
+            deltaAvailable,
             hashBefore,
             hashAfter,
             hashMatch: hashBefore === hashAfter
@@ -311,7 +403,7 @@ const run = async () => {
           `speed=${speed} seek p95 ${seekStats.p95Ms.toFixed(2)}ms > ${seekP95MsMax.toFixed(2)}ms`
         );
       }
-      if (requireReplayParity && seekProbe?.hashMatch === false) {
+      if (requireReplayParity && seekProbe?.deltaAvailable !== false && seekProbe?.hashMatch === false) {
         failures.push(
           `speed=${speed} replay parity mismatch after seeks (${seekProbe.hashBefore} != ${seekProbe.hashAfter})`
         );
@@ -344,6 +436,7 @@ const run = async () => {
           minTick: seekProbe?.minTick ?? 0,
           maxTick: seekProbe?.maxTick ?? 0,
           startTick: seekProbe?.startTick ?? 0,
+          deltaAvailable: seekProbe?.deltaAvailable !== false,
           hashBefore: seekProbe?.hashBefore ?? null,
           hashAfter: seekProbe?.hashAfter ?? null,
           hashMatch: !!seekProbe?.hashMatch,
@@ -389,7 +482,27 @@ const run = async () => {
   }
 };
 
-run().catch((error) => {
-  console.error(error);
-  process.exitCode = 1;
-});
+const isMainModule = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  run().catch((error) => {
+    console.error(error);
+    process.exitCode = 1;
+  });
+}
+
+export {
+  createHistoryBenchConfig,
+  parseArgs,
+  parseSpeedList,
+  run,
+  summarizeTimings,
+  toBoolean,
+  toPositiveNumber
+};
