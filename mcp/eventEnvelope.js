@@ -1,3 +1,11 @@
+/**
+ * Attach queued event envelope data to an MCP tool payload.
+ * Minimal mode strips agent-originated events to reduce chatter.
+ *
+ * @param {any} session
+ * @param {any} payload
+ * @returns {any}
+ */
 const attachEvents = (session, payload) => {
   if (!session) return payload;
   if (!payload || typeof payload !== 'object') return payload;

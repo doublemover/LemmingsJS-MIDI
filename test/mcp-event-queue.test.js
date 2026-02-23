@@ -138,6 +138,14 @@ describe('EventQueue', function () {
     expect(envelope.humanSummary).to.equal('0; false');
   });
 
+  it('drops malformed non-array resource uri payloads', function () {
+    const queue = createQueue(4);
+    queue.add({ source: 'system', type: 'watch-trigger', resourceUris: 'res://one' });
+
+    const envelope = queue.drain('0');
+    expect(envelope.events[0].resourceUris).to.equal(undefined);
+  });
+
   it('falls back to cycle-safe cloning when structuredClone is unavailable', function () {
     const descriptor = Object.getOwnPropertyDescriptor(globalThis, 'structuredClone');
     if (descriptor && descriptor.configurable !== true && descriptor.writable !== true) {

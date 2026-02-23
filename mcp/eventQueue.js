@@ -180,7 +180,7 @@ class EventQueue {
    */
   add({ source, type, summary, data, resourceUris, tickIndex } = {}) {
     const eventData = cloneEventValue(data);
-    const eventResourceUris = Array.isArray(resourceUris) ? resourceUris.slice() : resourceUris;
+    const eventResourceUris = Array.isArray(resourceUris) ? resourceUris.slice() : undefined;
     const normalizedSummary = summary == null ? '' : String(summary);
     const entry = {
       id: this.idFactory(),
