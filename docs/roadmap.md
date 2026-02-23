@@ -672,22 +672,22 @@ Notes:
   Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
 
 ## Phase 42: Render throughput tier 5 (Canvas2D-first)
-- [ ] Extend perf instrumentation first with p50/p95/p99/worst-case capture and
+- [x] Extend perf instrumentation first with p50/p95/p99/worst-case capture and
   allocation-aware diagnostics so optimization claims are evidence-based.
   Touchpoints: `js/render/Stage.js`, `scripts/bench-hotpaths.js`,
   `docs/TESTING.md`.
-- [ ] Unify damage tracking into one authoritative aggregator for terrain,
+- [x] Unify damage tracking into one authoritative aggregator for terrain,
   sprites, and overlays with deterministic full-redraw fallback thresholds.
   Touchpoints: `js/render/Stage.js`, `js/render/GroundRenderer.js`,
   `js/game/GameView.js`.
-- [ ] Audit minimap/particle redraw cadence and batching for quick wins before
+- [x] Audit minimap/particle redraw cadence and batching for quick wins before
   deeper compositor changes.
   Touchpoints: `js/game/MiniMap.js`, `js/game/ParticleTable.js`,
   `test/minimap.test.js`.
-- [ ] Reduce hot-path `putImageData` with capability-gated offscreen composition
+- [x] Reduce hot-path `putImageData` with capability-gated offscreen composition
   and `drawImage` present paths while keeping correctness fallbacks.
   Touchpoints: `js/render/Stage.js`, `js/render/DisplayImage.js`.
-- [ ] Run a feature-gated worker/offscreen experiment path (non-default) with
+- [x] Run a feature-gated worker/offscreen experiment path (non-default) with
   rollback flags for unsupported browser/device profiles.
   Touchpoints: `js/render/Stage.js`, `docs/TESTING.md`.
 

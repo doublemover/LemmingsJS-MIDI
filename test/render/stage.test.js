@@ -406,8 +406,25 @@ describe('Stage', function() {
     const perf = stage.getPerfSnapshot();
     expect(perf.frameCount).to.be.greaterThan(0);
     expect(perf.frameMs).to.be.greaterThan(0);
+    expect(perf.frame.p95).to.be.greaterThan(0);
+    expect(perf.lastDamage.uploadCalls).to.be.at.least(0);
+    expect(perf.lastAllocations.rectListCreated).to.be.at.least(0);
     expect(ctx.textCalls.some(call => call.text.includes('frame'))).to.equal(true);
     expect(ctx.textCalls.some(call => call.text.includes('custom metric'))).to.equal(true);
+  });
+
+  it('tracks render experiment flags and rollback status', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.setRenderExperimentFlags({
+      offscreenPresent: true,
+      workerOffscreen: true
+    });
+    const status = stage.getRenderExperimentStatus();
+    expect(status.offscreenPresentRequested).to.equal(true);
+    expect(status.workerOffscreenRequested).to.equal(true);
+    expect(typeof status.offscreenPresentActive).to.equal('boolean');
+    expect(typeof status.workerOffscreenActive).to.equal('boolean');
   });
 
   it('clamps viewports and snaps scales', function() {

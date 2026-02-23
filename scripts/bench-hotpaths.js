@@ -27,6 +27,13 @@ const toPositiveInt = (value, fallback) => {
 
 const nsToMs = (value) => Number(value) / 1e6;
 
+const percentile = (sorted, p) => {
+  if (!sorted.length) return 0;
+  const clamped = Math.min(1, Math.max(0, p));
+  const index = Math.max(0, Math.min(sorted.length - 1, Math.ceil((sorted.length - 1) * clamped)));
+  return sorted[index];
+};
+
 const withGlobalStubs = (fn) => {
   const prevWindow = globalThis.window;
   const prevDocument = globalThis.document;
@@ -49,23 +56,46 @@ const withGlobalStubs = (fn) => {
 
 const measureN = (iterations, fn) => {
   const samples = [];
+  const allocationSamples = [];
   for (let i = 0; i < iterations; i += 1) {
+    const beforeHeap = typeof process?.memoryUsage === 'function'
+      ? process.memoryUsage().heapUsed
+      : NaN;
     const start = process.hrtime.bigint();
     fn();
     samples.push(nsToMs(process.hrtime.bigint() - start));
+    const afterHeap = typeof process?.memoryUsage === 'function'
+      ? process.memoryUsage().heapUsed
+      : NaN;
+    if (Number.isFinite(beforeHeap) && Number.isFinite(afterHeap)) {
+      allocationSamples.push(Math.max(0, afterHeap - beforeHeap));
+    }
   }
   const total = samples.reduce((acc, value) => acc + value, 0);
   return {
     samplesMs: samples,
-    avgMs: total / samples.length
+    avgMs: total / samples.length,
+    allocationSamples
   };
 };
 
 const summarizeSamples = (samplesMs, iterations) => {
-  const avg = samplesMs.reduce((acc, value) => acc + value, 0) / Math.max(1, samplesMs.length);
+  const clean = samplesMs
+    .map((value) => Number(value))
+    .filter((value) => Number.isFinite(value) && value >= 0)
+    .sort((a, b) => a - b);
+  const avg = clean.reduce((acc, value) => acc + value, 0) / Math.max(1, clean.length);
+  const p50 = percentile(clean, 0.5);
+  const p95 = percentile(clean, 0.95);
+  const p99 = percentile(clean, 0.99);
+  const worst = percentile(clean, 1);
   return {
-    samplesMs: samplesMs.map((value) => Number(value.toFixed(2))),
+    samplesMs: clean.map((value) => Number(value.toFixed(2))),
     avgMs: Number(avg.toFixed(2)),
+    p50Ms: Number(p50.toFixed(2)),
+    p95Ms: Number(p95.toFixed(2)),
+    p99Ms: Number(p99.toFixed(2)),
+    worstMs: Number(worst.toFixed(2)),
     usPerIteration: Number(((avg * 1000) / Math.max(1, iterations)).toFixed(4))
   };
 };
@@ -157,7 +187,12 @@ const runDirtyRectBench = ({ iterations, rectsPerIter, repeats }) => withGlobalS
 
   const measured = measureN(repeats + 1, runOnce);
   stage.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const runTileCompositionBench = ({ iterations, tilesPerIter, repeats }) => withGlobalStubs(() => {
@@ -188,7 +223,12 @@ const runTileCompositionBench = ({ iterations, tilesPerIter, repeats }) => withG
 
   const measured = measureN(repeats + 1, runOnce);
   stage.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const runMarchingAntBench = ({ iterations, repeats }) => {
@@ -213,7 +253,12 @@ const runMarchingAntBench = ({ iterations, repeats }) => {
   };
 
   const measured = measureN(repeats + 1, runOnce);
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 };
 
 const makeGuiDisplay = () => ({
@@ -311,7 +356,12 @@ const runGuiOverlayBench = ({ iterations, repeats }) => withGlobalStubs(() => {
 
   const measured = measureN(repeats + 1, runOnce);
   gui.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const runOverlayPlaneBench = ({ iterations, repeats }) => withGlobalStubs(() => {
@@ -341,7 +391,12 @@ const runOverlayPlaneBench = ({ iterations, repeats }) => withGlobalStubs(() => 
 
   const measured = measureN(repeats + 1, runOnce);
   stage.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const makeScaleFrame = (size = 16) => {
@@ -398,7 +453,12 @@ const runScaledBlitBench = ({ iterations, repeats }) => {
   };
 
   const measured = measureN(repeats + 1, runOnce);
-  return summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations);
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations);
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 };
 
 const makeMidiOutput = (channelCount = 16) => {
@@ -455,7 +515,12 @@ const runMidiRouterBench = ({ iterations, eventsPerIter, repeats }) => withGloba
 
   const measured = measureN(repeats + 1, runOnce);
   router.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, eventsPerIter));
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, eventsPerIter));
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations * Math.max(1, eventsPerIter));
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const runMidiSchedulerBench = ({ iterations, notesPerIter, repeats }) => withGlobalStubs(() => {
@@ -490,7 +555,12 @@ const runMidiSchedulerBench = ({ iterations, notesPerIter, repeats }) => withGlo
 
   const measured = measureN(repeats + 1, runOnce);
   scheduler.dispose();
-  return summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, notesPerIter));
+  const summary = summarizeSamples(measured.samplesMs.slice(1), iterations * Math.max(1, notesPerIter));
+  const allocation = summarizeSamples(measured.allocationSamples.slice(1), iterations * Math.max(1, notesPerIter));
+  summary.allocBytesAvg = Math.round(allocation.avgMs);
+  summary.allocBytesP95 = Math.round(allocation.p95Ms);
+  summary.allocBytesWorst = Math.round(allocation.worstMs);
+  return summary;
 });
 
 const buildHotpathSummary = (argv = process.argv.slice(2)) => {

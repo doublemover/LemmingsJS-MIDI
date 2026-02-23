@@ -44,7 +44,7 @@ describe('GameView coverage', function() {
 
   it('parses query params and updates history state', function() {
     globalThis.window = {
-      location: { search: '?version=2&difficulty=2&level=3&speed=2.2&cheat=true&debug=true&bench=true&scale=0.5&shortcut=true&profile=perf' }
+      location: { search: '?version=2&difficulty=2&level=3&speed=2.2&cheat=true&debug=true&bench=true&scale=0.5&shortcut=true&profile=perf&offscreenPresent=true&workerOffscreen=true' }
     };
     let replaced = null;
     globalThis.history = {
@@ -61,6 +61,8 @@ describe('GameView coverage', function() {
     expect(view.startupProfile).to.equal('perf');
     expect(view.performanceAPI).to.equal(true);
     expect(view.perfOverlay).to.equal(true);
+    expect(view.offscreenPresentExperiment).to.equal(true);
+    expect(view.workerOffscreenExperiment).to.equal(true);
 
     view.updateQuery();
     expect(replaced).to.include('?');

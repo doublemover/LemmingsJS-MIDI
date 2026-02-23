@@ -58,6 +58,19 @@ npm run bench-smoke -- --soak
 - Non-smoke profiles also require cold compaction activity
   (`HISTORY_REQUIRE_COLD_COMPACTION`, defaults to `true` for `default`/`soak`).
 
+`bench-hotpaths` now reports percentile and allocation diagnostics per section:
+
+- `avgMs`, `p50Ms`, `p95Ms`, `p99Ms`, `worstMs`
+- `allocBytesAvg`, `allocBytesP95`, `allocBytesWorst`
+
+For render experiments, use query flags in non-default runs and keep rollback
+ready:
+
+- `offscreenPresent=true` (`osp=true`): enables offscreen present-path
+  experiment when supported.
+- `workerOffscreen=true` (`osw=true`): requests worker/offscreen path; runtime
+  falls back automatically when unsupported.
+
 ## npm test workflow
 
 Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.

@@ -59,6 +59,20 @@ class MiniMap {
     this.viewportDashOffset = 0;
     this._viewportCounter = 0;
     this.viewportDashDelay = 100;
+    this._frameNeedsCompose = true;
+    this._lastViewRectKey = '';
+    this._lastLiveDotsRef = this.liveDots;
+    this._lastLiveDotsLength = 0;
+    this._lastSelectedDotKey = '';
+    this._lastReversing = false;
+    this._lastTerrainRevalidated = 0;
+    this._renderStats = {
+      draws: 0,
+      composes: 0,
+      reuses: 0,
+      lastTerrainCells: 0,
+      lastDeadCount: 0
+    };
     if (this.guiDisplay) this.#hookPointer();
   }
 
@@ -174,14 +188,16 @@ class MiniMap {
 
   #flushTerrainInvalidation() {
     const dirtyCount = this._terrainDirtyCount;
-    if (!dirtyCount) return;
+    this._lastTerrainRevalidated = 0;
+    if (!dirtyCount) return false;
     if (dirtyCount >= (this.size >> 1)) {
       this.#buildTerrain();
       this._terrainDirtyFlags.fill(0);
       this._terrainDirtyCount = 0;
       this._terrainDirtyRead = 0;
       this._terrainDirtyWrite = 0;
-      return;
+      this._lastTerrainRevalidated = this.size;
+      return true;
     }
     let budget = this.terrainRevalidateBudget | 0;
     if (budget <= 0 || budget > dirtyCount) budget = dirtyCount;
@@ -202,6 +218,8 @@ class MiniMap {
       this._terrainDirtyRead = 0;
       this._terrainDirtyWrite = 0;
     }
+    this._lastTerrainRevalidated = budget;
+    return budget > 0;
   }
 
   #buildObjectMarkers() {
@@ -260,6 +278,7 @@ class MiniMap {
     else next += 1;
     this.#setTerrainCount(idx, next);
     this.#markTerrainCellDirty(idx);
+    this._frameNeedsCompose = true;
   }
 
   /* Region‑based revalidation (e.g. after a large mask dig). */
@@ -281,6 +300,7 @@ class MiniMap {
         this.#markTerrainCellDirty((mY * this.width) + mX);
       }
     }
+    this._frameNeedsCompose = true;
   }
 
   /** reveal terrain that is currently on screen */
@@ -291,15 +311,18 @@ class MiniMap {
       const row = y * this.width;
       for (let x = sx1; x < sx2; ++x) this.fog[row + x] = 1;
     }
+    this._frameNeedsCompose = true;
   }
 
   setLiveDots(arr) {
     // arr is a Uint8Array of scaled [x1,y1,x2,y2,...]
     this.liveDots = arr;
+    this._frameNeedsCompose = true;
   }
 
   setSelectedDot(dot) {
     this.selectedDot = dot;
+    this._frameNeedsCompose = true;
   }
 
   addDeath(x, y) {
@@ -329,17 +352,57 @@ class MiniMap {
     this.deadDots[idx * 2] = sx;
     this.deadDots[idx * 2 + 1] = sy;
     this.deadTTLs[idx] = MiniMap.DEATH_DOT_TTL;
+    this._frameNeedsCompose = true;
+  }
+
+  #decayDeathDots() {
+    if (this.deadCount < 1) return false;
+    let write = 0;
+    const total = this.deadCount;
+    let changed = false;
+    for (let i = 0; i < total; ++i) {
+      const ttl = this.deadTTLs[i] - 1;
+      if (ttl <= 0) {
+        changed = true;
+        continue;
+      }
+      if (ttl !== this.deadTTLs[i] || write !== i) {
+        changed = true;
+      }
+      this.deadTTLs[write] = ttl;
+      const x = this.deadDots[i * 2];
+      const y = this.deadDots[i * 2 + 1];
+      this.deadDots[write * 2] = x;
+      this.deadDots[write * 2 + 1] = y;
+      write += 1;
+    }
+    this.deadCount = write;
+    return changed;
+  }
+
+  getRenderDiagnostics() {
+    return {
+      ...this._renderStats,
+      deadCount: this.deadCount,
+      terrainDirtyCount: this._terrainDirtyCount
+    };
   }
 
   render() {
-    this.#flushTerrainInvalidation();
+    const terrainChanged = this.#flushTerrainInvalidation();
+    if (terrainChanged) {
+      this._frameNeedsCompose = true;
+    }
     if (!this.guiDisplay) return;
     const app = getApp();
     const reversing = !!app?.game?.timeTravel?.isReversing;
+    this._renderStats.draws += 1;
 
+    let dashChanged = false;
     if (++this._viewportCounter >= this.viewportDashDelay) {
       this._viewportCounter = 0;
       this.viewportDashOffset += 1;
+      dashChanged = true;
     }
 
     const {
@@ -349,49 +412,73 @@ class MiniMap {
     } = this;
     const frameData = frame.data;
 
-    frameData.set(this.terrainColors);
-    this.#paintObjectMarkers(frameData);
-
     const viewRect = app?.stage?.getGameViewRect?.();
     if (!viewRect) return;
     const vpX = (viewRect.x * this.scaleX) | 0;
     let vpW = (viewRect.w * this.scaleX) | 0;
     const vpY = (viewRect.y * this.scaleY) | 0;
     const vpH = (viewRect.h * this.scaleY) | 0;
-    let vpXW = vpX + vpW;
-    // dumb fix to keep right edge of viewport rect visible
-    if (vpXW === this.width) {
-      vpW -= 1;
-    }
-    frame.drawMarchingAntRect(
-      vpX,
-      vpY,
-      vpW,
-      vpH,
-      2,
-      this.viewportDashOffset,
-      0xFF00FF00,
-      0xFF005500
-    );
-
-    /* Live lemmings */
-    for (let i = 0; i < this.liveDots.length; i += 2) {
-      const x = this.liveDots[i];
-      const y = this.liveDots[i + 1];
-      if ((x >>> 0) < W && (y >>> 0) < H) {
-        frameData[(y * W) + x] = 0xFF00FFFF;
-      }
-    }
-    if (this.selectedDot) {
-      const x = this.selectedDot[0];
-      const y = this.selectedDot[1];
-      if ((x >>> 0) < W && (y >>> 0) < H) {
-        frameData[(y * W) + x] = 0xFFFFFFFF;
-      }
+    const viewKey = `${vpX}:${vpY}:${vpW}:${vpH}:${this.viewportDashOffset}`;
+    if (viewKey !== this._lastViewRectKey || dashChanged) {
+      this._frameNeedsCompose = true;
+      this._lastViewRectKey = viewKey;
     }
 
-    /* Death flashes */
-    if (reversing) {
+    if (this.liveDots !== this._lastLiveDotsRef || this.liveDots.length !== this._lastLiveDotsLength) {
+      this._frameNeedsCompose = true;
+      this._lastLiveDotsRef = this.liveDots;
+      this._lastLiveDotsLength = this.liveDots.length;
+    }
+    const selectedKey = this.selectedDot ? `${this.selectedDot[0]}:${this.selectedDot[1]}` : '';
+    if (selectedKey !== this._lastSelectedDotKey) {
+      this._frameNeedsCompose = true;
+      this._lastSelectedDotKey = selectedKey;
+    }
+    if (reversing !== this._lastReversing) {
+      this._frameNeedsCompose = true;
+      this._lastReversing = reversing;
+    }
+    if (!reversing && this.#decayDeathDots()) {
+      this._frameNeedsCompose = true;
+    }
+
+    if (this._frameNeedsCompose) {
+      frameData.set(this.terrainColors);
+      this.#paintObjectMarkers(frameData);
+
+      let vpXW = vpX + vpW;
+      // dumb fix to keep right edge of viewport rect visible
+      if (vpXW === this.width) {
+        vpW -= 1;
+      }
+      frame.drawMarchingAntRect(
+        vpX,
+        vpY,
+        vpW,
+        vpH,
+        2,
+        this.viewportDashOffset,
+        0xFF00FF00,
+        0xFF005500
+      );
+
+      /* Live lemmings */
+      for (let i = 0; i < this.liveDots.length; i += 2) {
+        const x = this.liveDots[i];
+        const y = this.liveDots[i + 1];
+        if ((x >>> 0) < W && (y >>> 0) < H) {
+          frameData[(y * W) + x] = 0xFF00FFFF;
+        }
+      }
+      if (this.selectedDot) {
+        const x = this.selectedDot[0];
+        const y = this.selectedDot[1];
+        if ((x >>> 0) < W && (y >>> 0) < H) {
+          frameData[(y * W) + x] = 0xFFFFFFFF;
+        }
+      }
+
+      /* Death flashes */
       const total = this.deadCount;
       for (let i = 0; i < total; ++i) {
         const ttl = this.deadTTLs[i];
@@ -404,26 +491,14 @@ class MiniMap {
           }
         }
       }
+      this._renderStats.composes += 1;
+      this._frameNeedsCompose = false;
     } else {
-      let write = 0;
-      const total = this.deadCount;
-      for (let i = 0; i < total; ++i) {
-        const ttl = this.deadTTLs[i] - 1;
-        if (ttl <= 0) continue;
-        this.deadTTLs[write] = ttl;
-        const x = this.deadDots[i * 2];
-        const y = this.deadDots[i * 2 + 1];
-        this.deadDots[write * 2] = x;
-        this.deadDots[write * 2 + 1] = y;
-        if (ttl & 4) {
-          if ((x >>> 0) < W && (y >>> 0) < H) {
-            frameData[(y * W) + x] = 0xFF0000FF;
-          }
-        }
-        write++;
-      }
-      this.deadCount = write;
+      this._renderStats.reuses += 1;
     }
+
+    this._renderStats.lastTerrainCells = this._lastTerrainRevalidated;
+    this._renderStats.lastDeadCount = this.deadCount;
 
     /* Blit */
     const destX = this.guiDisplay.worldDataSize.width  - W;

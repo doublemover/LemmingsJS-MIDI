@@ -238,6 +238,12 @@ class DisplayImage extends BaseLogger {
     this._dirtyTileFull = true;
     this._dirtyTiles = new Set();
     this._dirtyTileListPool = [];
+    this._allocationStats = {
+      rectListCreated: 0,
+      rectListReused: 0,
+      tileListCreated: 0,
+      tileListReused: 0
+    };
     this._dynamicDirtyFull = false;
     this._dynamicDirtyRects = [];
     this._restoreFull = false;
@@ -407,8 +413,10 @@ class DisplayImage extends BaseLogger {
     if (this._dirtyRectListPool.length > 0) {
       const rects = this._dirtyRectListPool.pop();
       rects.length = 0;
+      this._allocationStats.rectListReused += 1;
       return rects;
     }
+    this._allocationStats.rectListCreated += 1;
     return [];
   }
 
@@ -416,8 +424,10 @@ class DisplayImage extends BaseLogger {
     if (this._dirtyTileListPool.length > 0) {
       const tiles = this._dirtyTileListPool.pop();
       tiles.length = 0;
+      this._allocationStats.tileListReused += 1;
       return tiles;
     }
+    this._allocationStats.tileListCreated += 1;
     return [];
   }
 
@@ -618,6 +628,17 @@ class DisplayImage extends BaseLogger {
   hasPendingDirty() {
     if (!this.imgData) return false;
     return this._dirtyFull || this._dirtyRects.length > 0;
+  }
+
+  consumeAllocationStats(reset = false) {
+    const stats = { ...this._allocationStats };
+    if (reset) {
+      this._allocationStats.rectListCreated = 0;
+      this._allocationStats.rectListReused = 0;
+      this._allocationStats.tileListCreated = 0;
+      this._allocationStats.tileListReused = 0;
+    }
+    return stats;
   }
     
   /* ---------- primitive drawing ---------- */

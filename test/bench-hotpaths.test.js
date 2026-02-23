@@ -43,8 +43,12 @@ describe('bench-hotpaths script', () => {
     expect(summary).to.have.property('midiRouter');
     expect(summary).to.have.property('midiScheduler');
     expect(summary.tileComposition.avgMs).to.be.a('number');
+    expect(summary.tileComposition.p95Ms).to.be.a('number');
+    expect(summary.tileComposition.worstMs).to.be.a('number');
     expect(summary.overlayPlane.avgMs).to.be.a('number');
+    expect(summary.overlayPlane.p99Ms).to.be.a('number');
     expect(summary.scaledBlit.avgMs).to.be.a('number');
+    expect(summary.scaledBlit.allocBytesAvg).to.be.a('number');
     expect(summary.midiRouter.avgMs).to.be.a('number');
     expect(summary.midiScheduler.avgMs).to.be.a('number');
   });

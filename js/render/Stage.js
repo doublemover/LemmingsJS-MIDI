@@ -44,6 +44,33 @@ const perfNow = () => {
 
 const DIRTY_RECT_FULL_BLIT_THRESHOLD = 24;
 const DIRTY_RECT_FULL_BLIT_AREA_RATIO = 0.4;
+const DAMAGE_FULL_REDRAW_REGION_THRESHOLD = 48;
+const DAMAGE_FULL_REDRAW_AREA_RATIO = 0.55;
+const DIRTY_UNION_BLIT_RATIO = 1.25;
+const PERF_SAMPLE_WINDOW = 240;
+
+const percentile = (samples, p) => {
+  if (!Array.isArray(samples) || samples.length < 1) return 0;
+  const sorted = samples.slice().sort((a, b) => a - b);
+  const clamped = Math.min(1, Math.max(0, p));
+  const index = Math.max(0, Math.min(sorted.length - 1, Math.ceil((sorted.length - 1) * clamped)));
+  return sorted[index] || 0;
+};
+
+const summarizeSamples = (samples) => {
+  const clean = Array.isArray(samples)
+    ? samples.filter((value) => Number.isFinite(value) && value >= 0)
+    : [];
+  if (!clean.length) {
+    return { p50: 0, p95: 0, p99: 0, worst: 0 };
+  }
+  return {
+    p50: percentile(clean, 0.5),
+    p95: percentile(clean, 0.95),
+    p99: percentile(clean, 0.99),
+    worst: percentile(clean, 1)
+  };
+};
 
 class Stage {
   constructor(canvasForOutput) {
@@ -69,6 +96,34 @@ class Stage {
     this._perfClearMs = 0;
     this._perfFramePeakMs = 0;
     this._perfFrameCount = 0;
+    this._perfFrameSamples = [];
+    this._perfDrawSamples = [];
+    this._perfClearSamples = [];
+    this._perfDirtyRegionsSamples = [];
+    this._perfDirtyAreaRatioSamples = [];
+    this._perfUploadCallsSamples = [];
+    this._perfAllocationsSamples = [];
+    this._perfLastDamage = {
+      regionCount: 0,
+      dirtyAreaRatio: 0,
+      uploadCalls: 0,
+      fullBlitCount: 0,
+      tileUpdateCount: 0
+    };
+    this._perfLastAllocations = {
+      rectListCreated: 0,
+      rectListReused: 0,
+      tileListCreated: 0,
+      tileListReused: 0
+    };
+    this._frameDamageStats = null;
+    this._renderExperiments = {
+      offscreenPresentRequested: false,
+      offscreenPresentActive: false,
+      workerOffscreenRequested: false,
+      workerOffscreenActive: false,
+      rollbackReason: null
+    };
     this._lastGameDrawSignature = '';
     this._lastGuiDrawSignature = '';
     this._lastGameOverlayDrawSignature = '';
@@ -132,13 +187,117 @@ class Stage {
     this.perfOverlayProvider = typeof provider === 'function' ? provider : null;
   }
 
+  setRenderExperimentFlags(flags = {}) {
+    const requestedOffscreen = !!flags.offscreenPresent;
+    const requestedWorker = !!flags.workerOffscreen;
+    const canUseCanvasOffscreen = typeof document !== 'undefined'
+      && typeof document.createElement === 'function';
+    const workerSupported = typeof Worker !== 'undefined';
+
+    this._renderExperiments.offscreenPresentRequested = requestedOffscreen;
+    this._renderExperiments.offscreenPresentActive = requestedOffscreen && canUseCanvasOffscreen;
+    this._renderExperiments.workerOffscreenRequested = requestedWorker;
+    this._renderExperiments.workerOffscreenActive = requestedWorker
+      && this._renderExperiments.offscreenPresentActive
+      && workerSupported;
+    this._renderExperiments.rollbackReason = null;
+    if (requestedOffscreen && !this._renderExperiments.offscreenPresentActive) {
+      this._renderExperiments.rollbackReason = 'offscreen_present_unsupported';
+    } else if (requestedWorker && !this._renderExperiments.workerOffscreenActive) {
+      this._renderExperiments.rollbackReason = workerSupported
+        ? 'worker_offscreen_present_unavailable'
+        : 'worker_unsupported';
+    }
+  }
+
+  getRenderExperimentStatus() {
+    return { ...this._renderExperiments };
+  }
+
   getPerfSnapshot() {
+    const frameQuantiles = summarizeSamples(this._perfFrameSamples);
+    const drawQuantiles = summarizeSamples(this._perfDrawSamples);
+    const clearQuantiles = summarizeSamples(this._perfClearSamples);
+    const regionQuantiles = summarizeSamples(this._perfDirtyRegionsSamples);
+    const areaQuantiles = summarizeSamples(this._perfDirtyAreaRatioSamples);
+    const uploadQuantiles = summarizeSamples(this._perfUploadCallsSamples);
+    const allocationQuantiles = summarizeSamples(this._perfAllocationsSamples);
     return {
       frameMs: this._perfFrameMs,
       drawMs: this._perfDrawMs,
       clearMs: this._perfClearMs,
       peakFrameMs: this._perfFramePeakMs,
-      frameCount: this._perfFrameCount
+      frameCount: this._perfFrameCount,
+      frame: frameQuantiles,
+      draw: drawQuantiles,
+      clear: clearQuantiles,
+      dirtyRegions: regionQuantiles,
+      dirtyAreaRatio: areaQuantiles,
+      uploadCalls: uploadQuantiles,
+      allocations: allocationQuantiles,
+      lastDamage: { ...this._perfLastDamage },
+      lastAllocations: { ...this._perfLastAllocations },
+      experiments: this.getRenderExperimentStatus()
+    };
+  }
+
+  _pushPerfSample(samples, value) {
+    if (!Number.isFinite(value) || value < 0) return;
+    samples.push(value);
+    if (samples.length > PERF_SAMPLE_WINDOW) {
+      samples.splice(0, samples.length - PERF_SAMPLE_WINDOW);
+    }
+  }
+
+  _collectDisplayAllocationStats(display) {
+    const image = display?.display;
+    if (!image?.consumeAllocationStats) {
+      return {
+        rectListCreated: 0,
+        rectListReused: 0,
+        tileListCreated: 0,
+        tileListReused: 0
+      };
+    }
+    return image.consumeAllocationStats(true);
+  }
+
+  _recordFramePerf(frameMs, drawMs, clearMs) {
+    this._pushPerfSample(this._perfFrameSamples, frameMs);
+    this._pushPerfSample(this._perfDrawSamples, drawMs);
+    this._pushPerfSample(this._perfClearSamples, clearMs);
+  }
+
+  _recordDamagePerf(stats) {
+    const regionCount = stats?.regionCount || 0;
+    const dirtyAreaRatio = stats?.dirtyAreaRatio || 0;
+    const uploadCalls = stats?.uploadCalls || 0;
+    this._pushPerfSample(this._perfDirtyRegionsSamples, regionCount);
+    this._pushPerfSample(this._perfDirtyAreaRatioSamples, dirtyAreaRatio);
+    this._pushPerfSample(this._perfUploadCallsSamples, uploadCalls);
+    this._perfLastDamage = {
+      regionCount,
+      dirtyAreaRatio,
+      uploadCalls,
+      fullBlitCount: stats?.fullBlitCount || 0,
+      tileUpdateCount: stats?.tileUpdateCount || 0
+    };
+  }
+
+  _recordAllocationPerf(stats) {
+    const rectCreated = stats?.rectListCreated || 0;
+    const rectReused = stats?.rectListReused || 0;
+    const tileCreated = stats?.tileListCreated || 0;
+    const tileReused = stats?.tileListReused || 0;
+    this._pushPerfSample(
+      this._perfAllocationsSamples,
+      rectCreated + rectReused + tileCreated + tileReused
+    );
+    this._perfLastAllocations = {
+      rectListCreated: rectCreated,
+      rectListReused: rectReused,
+      tileListCreated: tileCreated,
+      tileListReused: tileReused
     };
   }
 
@@ -555,6 +714,14 @@ class Stage {
     this._perfTrackingFrame = true;
     this._perfDrawMs = 0;
     this._perfClearMs = 0;
+    this._frameDamageStats = {
+      regionCount: 0,
+      dirtyArea: 0,
+      fullArea: 0,
+      uploadCalls: 0,
+      fullBlitCount: 0,
+      tileUpdateCount: 0
+    };
     this._syncOverlayLayout();
     this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
     this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
@@ -592,6 +759,25 @@ class Stage {
       if (this._perfFrameMs > this._perfFramePeakMs) {
         this._perfFramePeakMs = this._perfFrameMs;
       }
+      const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
+      const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
+      const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
+      const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
+      const allocations = {
+        rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
+        rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
+        tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
+        tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
+      };
+      this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
+      this._recordDamagePerf({
+        regionCount: 0,
+        dirtyAreaRatio: 0,
+        uploadCalls: 0,
+        fullBlitCount: 0,
+        tileUpdateCount: 0
+      });
+      this._recordAllocationPerf(allocations);
       if (this.perfOverlayEnabled) {
         this.drawPerfOverlay();
       }
@@ -641,6 +827,29 @@ class Stage {
     if (this._perfFrameMs > this._perfFramePeakMs) {
       this._perfFramePeakMs = this._perfFrameMs;
     }
+    const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
+    const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
+    const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
+    const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
+    const allocations = {
+      rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
+      rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
+      tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
+      tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
+    };
+    const fullArea = this._frameDamageStats.fullArea || 0;
+    const dirtyAreaRatio = fullArea > 0
+      ? Math.min(1, (this._frameDamageStats.dirtyArea || 0) / fullArea)
+      : 0;
+    this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
+    this._recordDamagePerf({
+      regionCount: this._frameDamageStats.regionCount || 0,
+      dirtyAreaRatio,
+      uploadCalls: this._frameDamageStats.uploadCalls || 0,
+      fullBlitCount: this._frameDamageStats.fullBlitCount || 0,
+      tileUpdateCount: this._frameDamageStats.tileUpdateCount || 0
+    });
+    this._recordAllocationPerf(allocations);
     if (this.perfOverlayEnabled) {
       this.drawPerfOverlay();
     }
@@ -674,6 +883,64 @@ class Stage {
     if (this._perfTrackingFrame) {
       this._perfClearMs += perfNow() - start;
     }
+  }
+
+  _computeDirtyUnion(dirtyRegions) {
+    if (!Array.isArray(dirtyRegions) || dirtyRegions.length < 2) return null;
+    let x1 = Infinity;
+    let y1 = Infinity;
+    let x2 = -Infinity;
+    let y2 = -Infinity;
+    for (let i = 0; i < dirtyRegions.length; i += 1) {
+      const rect = dirtyRegions[i];
+      if (!rect) continue;
+      x1 = Math.min(x1, rect.x);
+      y1 = Math.min(y1, rect.y);
+      x2 = Math.max(x2, rect.x + rect.width);
+      y2 = Math.max(y2, rect.y + rect.height);
+    }
+    if (!Number.isFinite(x1) || !Number.isFinite(y1) || !Number.isFinite(x2) || !Number.isFinite(y2)) {
+      return null;
+    }
+    if (x2 <= x1 || y2 <= y1) return null;
+    return {
+      x: x1,
+      y: y1,
+      width: x2 - x1,
+      height: y2 - y1
+    };
+  }
+
+  _shouldUseFullBlit(dirtyRegions, fullArea, cumulative = null) {
+    let dirtyArea = 0;
+    for (let i = 0; i < dirtyRegions.length; i += 1) {
+      const rect = dirtyRegions[i];
+      dirtyArea += rect.width * rect.height;
+    }
+    const localThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
+    let useFull = dirtyRegions.length > DIRTY_RECT_FULL_BLIT_THRESHOLD || dirtyArea >= localThreshold;
+    if (!useFull && cumulative) {
+      const totalRegions = (cumulative.regionCount || 0) + dirtyRegions.length;
+      const totalArea = (cumulative.dirtyArea || 0) + dirtyArea;
+      const totalFullArea = (cumulative.fullArea || 0) + fullArea;
+      if (
+        totalRegions >= DAMAGE_FULL_REDRAW_REGION_THRESHOLD ||
+        totalArea >= (totalFullArea * DAMAGE_FULL_REDRAW_AREA_RATIO)
+      ) {
+        useFull = true;
+      }
+    }
+    return { useFull, dirtyArea };
+  }
+
+  _accumulateFrameDamage(stats) {
+    if (!this._frameDamageStats || !stats) return;
+    this._frameDamageStats.regionCount += stats.regionCount || 0;
+    this._frameDamageStats.dirtyArea += stats.dirtyArea || 0;
+    this._frameDamageStats.fullArea += stats.fullArea || 0;
+    this._frameDamageStats.uploadCalls += stats.uploadCalls || 0;
+    this._frameDamageStats.fullBlitCount += stats.fullBlit ? 1 : 0;
+    this._frameDamageStats.tileUpdateCount += stats.usedTiles ? 1 : 0;
   }
 
   _ensureOverlayFallbackSurface(width, height) {
@@ -836,38 +1103,86 @@ class Stage {
       !hasRectUpdates
     );
     const dirtyRegions = useTileUpdates ? dirtyTiles : dirtyRects;
+    const damageStats = {
+      regionCount: 0,
+      dirtyArea: 0,
+      fullArea: img.width * img.height,
+      uploadCalls: 0,
+      fullBlit: false,
+      usedTiles: useTileUpdates
+    };
     try {
       if (dirtyRegions === null) {
         display.ctx.putImageData(img, 0, 0);
+        damageStats.regionCount = 1;
+        damageStats.dirtyArea = damageStats.fullArea;
+        damageStats.uploadCalls = 1;
+        damageStats.fullBlit = true;
       } else if (dirtyRegions.length) {
-        const fullArea = img.width * img.height;
-        let dirtyArea = 0;
-        const dirtyAreaThreshold = fullArea * DIRTY_RECT_FULL_BLIT_AREA_RATIO;
-        let useFullBlit = dirtyRegions.length > DIRTY_RECT_FULL_BLIT_THRESHOLD;
-        if (!useFullBlit) {
-          for (let i = 0; i < dirtyRegions.length; i += 1) {
-            const rect = dirtyRegions[i];
-            dirtyArea += rect.width * rect.height;
-            if (dirtyArea >= dirtyAreaThreshold) {
-              useFullBlit = true;
-              break;
-            }
-          }
-        }
+        damageStats.regionCount = dirtyRegions.length;
+        const decision = this._shouldUseFullBlit(
+          dirtyRegions,
+          damageStats.fullArea,
+          this._frameDamageStats
+        );
+        let useFullBlit = decision.useFull;
+        damageStats.dirtyArea = decision.dirtyArea;
         if (useFullBlit) {
           display.ctx.putImageData(img, 0, 0);
+          damageStats.uploadCalls = 1;
+          damageStats.fullBlit = true;
+          damageStats.dirtyArea = damageStats.fullArea;
         } else {
-          for (let i = 0; i < dirtyRegions.length; i += 1) {
-            const rect = dirtyRegions[i];
-            display.ctx.putImageData(
-              img,
-              0,
-              0,
-              rect.x,
-              rect.y,
-              rect.width,
-              rect.height
-            );
+          const union = this._renderExperiments.offscreenPresentActive
+            ? this._computeDirtyUnion(dirtyRegions)
+            : null;
+          const unionArea = union ? (union.width * union.height) : 0;
+          const useUnion = !!union && unionArea <= (damageStats.dirtyArea * DIRTY_UNION_BLIT_RATIO);
+          if (useUnion) {
+            try {
+              display.ctx.putImageData(
+                img,
+                0,
+                0,
+                union.x,
+                union.y,
+                union.width,
+                union.height
+              );
+              damageStats.uploadCalls = 1;
+              damageStats.regionCount = 1;
+              damageStats.dirtyArea = unionArea;
+            } catch {
+              this._renderExperiments.offscreenPresentActive = false;
+              this._renderExperiments.rollbackReason = 'offscreen_present_runtime_error';
+              for (let i = 0; i < dirtyRegions.length; i += 1) {
+                const rect = dirtyRegions[i];
+                display.ctx.putImageData(
+                  img,
+                  0,
+                  0,
+                  rect.x,
+                  rect.y,
+                  rect.width,
+                  rect.height
+                );
+              }
+              damageStats.uploadCalls = dirtyRegions.length;
+            }
+          } else {
+            for (let i = 0; i < dirtyRegions.length; i += 1) {
+              const rect = dirtyRegions[i];
+              display.ctx.putImageData(
+                img,
+                0,
+                0,
+                rect.x,
+                rect.y,
+                rect.width,
+                rect.height
+              );
+            }
+            damageStats.uploadCalls = dirtyRegions.length;
           }
         }
       }
@@ -876,6 +1191,7 @@ class Stage {
         displayImage?.releaseConsumedDirtyTiles?.(dirtyTiles);
       }
       displayImage?.releaseConsumedDirtyRects?.(dirtyRects);
+      this._accumulateFrameDamage(damageStats);
     }
 
     const ctx = this.stageCtx;
@@ -1000,10 +1316,14 @@ class Stage {
 
   drawPerfOverlay() {
     const ctx = this.stageCtx;
+    const snap = this.getPerfSnapshot();
     const lines = [
       `frame ${this._perfFrameMs.toFixed(2)}ms`,
       `draw ${this._perfDrawMs.toFixed(2)}ms clear ${this._perfClearMs.toFixed(2)}ms`,
-      `peak ${this._perfFramePeakMs.toFixed(2)}ms`
+      `peak ${this._perfFramePeakMs.toFixed(2)}ms`,
+      `p95 ${snap.frame.p95.toFixed(2)} p99 ${snap.frame.p99.toFixed(2)} worst ${snap.frame.worst.toFixed(2)}`,
+      `damage r${snap.lastDamage.regionCount} a${(snap.lastDamage.dirtyAreaRatio * 100).toFixed(1)}% u${snap.lastDamage.uploadCalls}`,
+      `alloc rc${snap.lastAllocations.rectListCreated} tc${snap.lastAllocations.tileListCreated}`
     ];
     if (this.perfOverlayProvider) {
       const data = this.perfOverlayProvider() || {};

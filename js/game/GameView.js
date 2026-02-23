@@ -95,6 +95,8 @@ class GameView extends BaseLogger {
     this.perfMetrics = false;
     this.performanceAPI = false;
     this.perfOverlay = false;
+    this.offscreenPresentExperiment = false;
+    this.workerOffscreenExperiment = false;
     this.startupProfile = 'gameplay';
     this.steps = 0;
     this._benchMonitor = null;
@@ -152,6 +154,10 @@ class GameView extends BaseLogger {
     const StageCtor = getDependency('Stage', Stage);
     this.stage = new StageCtor(el);
     this.stage.setPerfOverlay?.(this.perfOverlay, () => this.getPerfOverlayData());
+    this.stage.setRenderExperimentFlags?.({
+      offscreenPresent: this.offscreenPresentExperiment,
+      workerOffscreen: this.workerOffscreenExperiment
+    });
     this._stageResize = () => this.stage.scheduleUpdateStageSize();
     window.addEventListener('resize', this._stageResize, PASSIVE_RESIZE_LISTENER);
     window.addEventListener('orientationchange', this._stageResize, PASSIVE_RESIZE_LISTENER);
@@ -649,6 +655,8 @@ class GameView extends BaseLogger {
     this.performanceAPI = this.parseBool(query, ['performanceAPI', 'pa']);
     this.perfMetrics = this.performanceAPI;
     this.perfOverlay = this.parseBool(query, ['perfOverlay', 'po']);
+    this.offscreenPresentExperiment = this.parseBool(query, ['offscreenPresent', 'osp']);
+    this.workerOffscreenExperiment = this.parseBool(query, ['workerOffscreen', 'osw']);
     const profileRaw = (query.get('profile') || query.get('pr') || 'gameplay').toLowerCase();
     this.startupProfile = STARTUP_PROFILES.has(profileRaw) ? profileRaw : 'gameplay';
     if (this.startupProfile === 'perf') {
@@ -656,6 +664,10 @@ class GameView extends BaseLogger {
       this.perfMetrics = true;
       this.perfOverlay = true;
     }
+    this.stage?.setRenderExperimentFlags?.({
+      offscreenPresent: this.offscreenPresentExperiment,
+      workerOffscreen: this.workerOffscreenExperiment
+    });
   }
   updateQuery() {
     const params = typeof window === 'undefined'
@@ -689,6 +701,8 @@ class GameView extends BaseLogger {
     setParam('scale', 'sc', this.scale, 0);
     setParam('performanceAPI', 'pa', this.performanceAPI, false);
     setParam('perfOverlay', 'po', this.perfOverlay, false);
+    setParam('offscreenPresent', 'osp', this.offscreenPresentExperiment, false);
+    setParam('workerOffscreen', 'osw', this.workerOffscreenExperiment, false);
     setParam('profile', 'pr', this.startupProfile, 'gameplay');
 
     if (this.shortcut) {
@@ -783,6 +797,8 @@ class GameView extends BaseLogger {
         performanceAPI: !!this.performanceAPI,
         perfMetrics: !!this.perfMetrics,
         perfOverlay: !!this.perfOverlay,
+        offscreenPresentExperiment: !!this.offscreenPresentExperiment,
+        workerOffscreenExperiment: !!this.workerOffscreenExperiment,
         debug: !!this.debug,
         cheatEnabled: !!this.cheatEnabled,
         endless: !!this.endless,
@@ -799,7 +815,8 @@ class GameView extends BaseLogger {
       caches: {
         fileProvider: sanitizedFileProviderStats,
         midiOverrideKeys: Object.keys(this._midiOverrides || {}).sort()
-      }
+      },
+      renderExperiments: this.stage?.getRenderExperimentStatus?.() || null
     };
   }
   setHistoryState(params) {

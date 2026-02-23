@@ -225,4 +225,21 @@ describe('MiniMap', function() {
     miniMap._mouseDown = true;
     guiDisplay.onMouseMove.trigger({ x: 1, y: 1 });
   });
+
+  it('reuses cached minimap frame composition when inputs are unchanged', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+      miniMap.render();
+    });
+    const diagnostics = miniMap.getRenderDiagnostics();
+    expect(diagnostics.composes).to.be.greaterThan(0);
+    expect(diagnostics.reuses).to.be.greaterThan(0);
+  });
 });
