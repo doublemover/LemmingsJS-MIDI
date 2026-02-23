@@ -28,10 +28,20 @@ class TimeTravelController {
   }
 
   _configureHistoryRetention() {
+    return this.setHistoryRetention(DEFAULT_HISTORY_RETENTION);
+  }
+
+  setHistoryRetention(policy = null) {
+    const requested = {
+      ...DEFAULT_HISTORY_RETENTION,
+      ...(policy && typeof policy === 'object' ? policy : {})
+    };
     if (!this.history?.configureRetention) {
-      return { ...DEFAULT_HISTORY_RETENTION };
+      this._historyRetention = { ...requested };
+      return this.getHistoryRetention();
     }
-    return this.history.configureRetention(DEFAULT_HISTORY_RETENTION);
+    this._historyRetention = this.history.configureRetention(requested);
+    return this.getHistoryRetention();
   }
 
   _resolveTimer() {

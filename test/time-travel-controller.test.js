@@ -60,6 +60,31 @@ describe('TimeTravelController', function() {
     });
   });
 
+  it('applies explicit history retention overrides', function() {
+    const calls = [];
+    const history = {
+      configureRetention(policy) {
+        calls.push(policy);
+        return { ...policy };
+      }
+    };
+    const controller = new TimeTravelController({}, history);
+    const applied = controller.setHistoryRetention({
+      historyCapTicks: 9000,
+      historyWarnTicks: 7000,
+      preserveFutureHistory: true
+    });
+    expect(calls).to.have.length(2);
+    expect(calls[1]).to.eql({
+      enableHistoryCap: true,
+      historyCapTicks: 9000,
+      historyWarnTicks: 7000,
+      preserveFutureHistory: true
+    });
+    expect(applied).to.eql(calls[1]);
+    expect(controller.getHistoryRetention()).to.eql(calls[1]);
+  });
+
   it('preserves replay hash through seek and reverse playback operations', function() {
     const timer = { tickIndex: 2, isRunning: () => false, suspend() {} };
     const timeline = [{ tick: 0, x: 1 }, { tick: 1, x: 2 }];

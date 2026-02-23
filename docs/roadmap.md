@@ -655,19 +655,19 @@ Notes:
   Touchpoints: `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
 
 ## Phase 41: History/rewind compression tier 3
-- [ ] Ship bounded-history defaults and profile-driven retention first so long
+- [x] Ship bounded-history defaults and profile-driven retention first so long
   sessions are safe before deeper codec changes.
   Touchpoints: `js/game/HistoryStore.js`, `js/app/boot.js`, `docs/TESTING.md`.
-- [ ] Add replay invariant harnesses (random seek/rewind/replay + stable hashes)
+- [x] Add replay invariant harnesses (random seek/rewind/replay + stable hashes)
   and make them mandatory guards before enabling new compression layers.
   Touchpoints: `test/history-store.test.js`, `test/time-travel-controller.test.js`.
-- [ ] Add no-op delta tokens plus run-length encoding for unchanged tick spans
+- [x] Add no-op delta tokens plus run-length encoding for unchanged tick spans
   to reduce idle-history memory growth.
   Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
-- [ ] Encode deltas into fixed-size canonical typed-array blocks to improve
+- [x] Encode deltas into fixed-size canonical typed-array blocks to improve
   locality and reduce per-tick object churn.
   Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
-- [ ] Add optional cold-block compression and dictionary dedupe behind feature
+- [x] Add optional cold-block compression and dictionary dedupe behind feature
   flags with benchmark gates and collision-safe verification fallback.
   Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
 

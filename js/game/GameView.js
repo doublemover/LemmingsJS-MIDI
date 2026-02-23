@@ -27,6 +27,33 @@ const getGameStateTypes = () => getDependency('GameStateTypes', GameStateTypes);
 const getTriggerTypes = () => getDependency('TriggerTypes', TriggerTypes);
 const getLemmingCtor = () => getDependency('Lemming', Lemming);
 const STARTUP_PROFILES = new Set(['gameplay', 'editor', 'perf']);
+const HISTORY_RETENTION_POLICIES = Object.freeze({
+  gameplay: Object.freeze({
+    enableHistoryCap: true,
+    historyCapTicks: 20000,
+    historyWarnTicks: 15000
+  }),
+  editor: Object.freeze({
+    enableHistoryCap: true,
+    historyCapTicks: 16000,
+    historyWarnTicks: 12000
+  }),
+  perf: Object.freeze({
+    enableHistoryCap: true,
+    historyCapTicks: 12000,
+    historyWarnTicks: 9000
+  }),
+  endless: Object.freeze({
+    enableHistoryCap: true,
+    historyCapTicks: 24000,
+    historyWarnTicks: 18000
+  }),
+  bench: Object.freeze({
+    enableHistoryCap: true,
+    historyCapTicks: 12000,
+    historyWarnTicks: 9000
+  })
+});
 const MIDI_FLAG_REGISTRATION_KEY = Symbol('midi-flag-registration');
 const PASSIVE_RESIZE_LISTENER = Object.freeze({ passive: true });
 
@@ -80,6 +107,8 @@ class GameView extends BaseLogger {
     this._benchStartTime = 0;
     this._benchBaseEntrances = null;
     this._benchEntrancePool = null;
+    this._historyRetentionOverride = null;
+    this._historyRetentionPolicy = null;
     this.preserveHistory = false;
     this.cheatEnabled = false;
     this.applyQuery();
@@ -148,6 +177,7 @@ class GameView extends BaseLogger {
         this.applyLevelViewport(game.level);
       }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
+      this._applyHistoryRetentionPolicy(game, replayString);
       if (this.preserveHistory || replayString != null) {
         game.history?.setPreserveFutureHistory?.(true);
       }
@@ -686,6 +716,53 @@ class GameView extends BaseLogger {
     return { lines };
   }
 
+  resolveHistoryRetentionPolicy() {
+    if (this._historyRetentionOverride) {
+      return { ...this._historyRetentionOverride };
+    }
+    let profilePolicy = HISTORY_RETENTION_POLICIES[this.startupProfile]
+      || HISTORY_RETENTION_POLICIES.gameplay;
+    if (this.endless) {
+      profilePolicy = HISTORY_RETENTION_POLICIES.endless;
+    }
+    if (this.bench || this.bench2 || this.benchReverse || this.benchSequence) {
+      profilePolicy = HISTORY_RETENTION_POLICIES.bench;
+    }
+    return { ...profilePolicy };
+  }
+
+  setHistoryRetentionPolicy(policy) {
+    if (!policy || typeof policy !== 'object') {
+      this._historyRetentionOverride = null;
+      return null;
+    }
+    this._historyRetentionOverride = { ...policy };
+    return { ...this._historyRetentionOverride };
+  }
+
+  applyProfileHistoryRetentionPolicy() {
+    const policy = this.resolveHistoryRetentionPolicy();
+    this._historyRetentionPolicy = { ...policy };
+    return { ...policy };
+  }
+
+  _applyHistoryRetentionPolicy(game, replayString = null) {
+    const basePolicy = this.resolveHistoryRetentionPolicy();
+    const preserveFutureHistory = !!(this.preserveHistory || replayString != null);
+    const requested = {
+      ...basePolicy,
+      preserveFutureHistory
+    };
+    let applied = requested;
+    if (game?.timeTravel?.setHistoryRetention) {
+      applied = game.timeTravel.setHistoryRetention(requested) || requested;
+    } else if (game?.history?.configureRetention) {
+      applied = game.history.configureRetention(requested) || requested;
+    }
+    this._historyRetentionPolicy = { ...applied };
+    return { ...this._historyRetentionPolicy };
+  }
+
   getRuntimeDiagnostics() {
     const fileProviderStats = this.gameFactory?.fileProvider?.getCacheStats?.() || null;
     const sanitizedFileProviderStats = fileProviderStats
@@ -697,6 +774,11 @@ class GameView extends BaseLogger {
       : null;
     return {
       profile: this.startupProfile || 'gameplay',
+      history: {
+        retention: this._historyRetentionPolicy
+          ? { ...this._historyRetentionPolicy }
+          : this.resolveHistoryRetentionPolicy()
+      },
       featureFlags: {
         performanceAPI: !!this.performanceAPI,
         perfMetrics: !!this.perfMetrics,

@@ -88,6 +88,7 @@ function init() {
   });
 
   lemmings = new GameView();
+  lemmings.applyProfileHistoryRetentionPolicy?.();
   lemmings.setMidiOverrides?.(midiUi.getMidiOverrides?.() || {});
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;

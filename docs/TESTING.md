@@ -49,6 +49,15 @@ npm run bench-smoke -- --soak
 - `bench-*`: runs live browser benchmarks (requires local HTTPS server and
   browser automation support).
 
+`bench-history` is the replay-invariant guardrail for compression/rewind work:
+
+- It runs random seek/replay probes and fails on replay-hash divergence
+  (`HISTORY_REQUIRE_REPLAY_PARITY`, defaults to `true`).
+- It fails when bounded history retention is not enabled
+  (`HISTORY_REQUIRE_BOUNDED_RETENTION`, defaults to `true`).
+- Non-smoke profiles also require cold compaction activity
+  (`HISTORY_REQUIRE_COLD_COMPACTION`, defaults to `true` for `default`/`soak`).
+
 ## npm test workflow
 
 Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.

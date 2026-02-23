@@ -3202,6 +3202,20 @@ describe('HistoryStore', function() {
     expect(hasSharedRef).to.equal(true);
   });
 
+  it('keeps distinct bytes when hash buckets collide during dedupe', function() {
+    const history = new HistoryStore({ enableColdBlockDedupe: true });
+    const storeKey = 'raw:deadbeef:4';
+    const a = Uint8Array.from([1, 2, 3, 4]);
+    const b = Uint8Array.from([4, 3, 2, 1]);
+    const retainedA = history._retainColdBytes(storeKey, a);
+    const retainedB = history._retainColdBytes(storeKey, b);
+    expect(retainedA).to.equal(a);
+    expect(retainedB).to.equal(b);
+    expect(retainedA).to.not.equal(retainedB);
+    expect(history._coldBlockStore.get(storeKey)).to.have.length(2);
+    expect(history._coldBlockBytes).to.equal(a.length + b.length);
+  });
+
   it('preserves replay hash across cold-block thaw and decode', function() {
     const { history, timer, manager } = createHistoryFixture();
     history.configureRetention({
@@ -3267,5 +3281,63 @@ describe('HistoryStore', function() {
     history._maybeCompactDeltaBlocks();
     const afterThaw = history.computeReplayHash();
     expect(afterThaw).to.equal(baseline);
+  });
+
+  it('preserves replay hash during randomized cold block seek/decode cycles', function() {
+    const { history, timer, manager, skills, victory, game } = createHistoryFixture();
+    history.configureRetention({
+      deltaBlockSizeTicks: 6,
+      coldBlockAgeTicks: 1,
+      coldCompactionIntervalTicks: 1,
+      coldCompactionMaxBlocksPerSweep: 64,
+      enableColdBlockCompression: true,
+      enableColdBlockDedupe: true
+    });
+
+    for (let tick = 0; tick < 300; tick += 1) {
+      recordTick(history, timer, tick, () => {
+        if ((tick % 4) === 0) {
+          manager.lemmings[0].x = 16 + (tick % 19);
+          manager.lemmings[0].y = 22 + (tick % 11);
+          manager.lemmings[0].frameIndex = tick % 6;
+          manager.lemmings[0].lookRight = (tick % 2) === 0;
+          skills.selectedSkill = tick % 2;
+          skills.skills[0] = 1 + (tick % 4);
+          victory.leftCount = Math.max(0, 240 - tick);
+          game.finalGameState = tick % 5;
+        }
+      }, tick + 1);
+    }
+
+    const baseline = history.computeReplayHash();
+    expect(baseline).to.be.a('string');
+    let seed = 0x1234abcd;
+    const next = () => {
+      seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+      return seed;
+    };
+    const minTick = history.minDeltaTick;
+    const maxTick = history.maxDeltaTick;
+    for (let i = 0; i < 480; i += 1) {
+      const range = (maxTick - minTick + 1);
+      const tick = minTick + (next() % range);
+      history.getDelta(tick);
+      if ((i % 7) === 0) {
+        history._maybeCompactDeltaBlocks();
+      }
+      if ((i % 11) === 0) {
+        const starts = Array.from(history._deltaBlocks.keys());
+        if (starts.length) {
+          const pick = starts[next() % starts.length];
+          history._thawDeltaBlock(pick);
+        }
+      }
+      if ((i % 40) === 0) {
+        expect(history.computeReplayHash()).to.equal(baseline);
+      }
+    }
+
+    const after = history.computeReplayHash();
+    expect(after).to.equal(baseline);
   });
 });

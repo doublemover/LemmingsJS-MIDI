@@ -128,6 +128,14 @@ const requireReplayParity = toBoolean(
   args.get('requireReplayParity') || process.env.HISTORY_REQUIRE_REPLAY_PARITY,
   true
 );
+const requireBoundedRetention = toBoolean(
+  args.get('requireBoundedRetention') || process.env.HISTORY_REQUIRE_BOUNDED_RETENTION,
+  true
+);
+const requireColdCompaction = toBoolean(
+  args.get('requireColdCompaction') || process.env.HISTORY_REQUIRE_COLD_COMPACTION,
+  requestedProfile !== 'smoke'
+);
 
 const buildUrl = (raw) => {
   const url = new URL(raw);
@@ -204,6 +212,7 @@ const run = async () => {
       const start = Date.now();
       let spanTicks = 0;
       let maxSpan = 0;
+      let lastHistory = null;
       while (Date.now() - start < durationMs) {
         assertRuntimeBudget(`speed=${speed} sampling`);
         const history = await withTimeout(
@@ -211,6 +220,7 @@ const run = async () => {
           opTimeoutMs,
           'readHistoryState'
         );
+        lastHistory = history || null;
         spanTicks = history?.spanTicks || 0;
         if (spanTicks > maxSpan) maxSpan = spanTicks;
         if (spanTicks >= targetSpan) break;
@@ -306,6 +316,16 @@ const run = async () => {
           `speed=${speed} replay parity mismatch after seeks (${seekProbe.hashBefore} != ${seekProbe.hashAfter})`
         );
       }
+      const retention = lastHistory?.retention || null;
+      if (requireBoundedRetention) {
+        const bounded = !!retention?.enableHistoryCap && Number(retention?.historyCapTicks || 0) > 0;
+        if (!bounded) {
+          failures.push(`speed=${speed} expected bounded history retention to be enabled.`);
+        }
+      }
+      if (requireColdCompaction && Number(lastHistory?.coldBlockCount || 0) <= 0) {
+        failures.push(`speed=${speed} expected cold compaction blocks to be produced.`);
+      }
       const memory = await withTimeout(page.evaluate(() => {
         if (typeof performance === 'undefined' || !performance.memory) return null;
         return {
@@ -329,6 +349,18 @@ const run = async () => {
           hashMatch: !!seekProbe?.hashMatch,
           ...seekStats
         },
+        history: {
+          spanTicks: Number(lastHistory?.spanTicks || 0),
+          coldBlockCount: Number(lastHistory?.coldBlockCount || 0),
+          coldBlockBytes: Number(lastHistory?.coldBlockBytes || 0),
+          retention: retention
+            ? {
+              enableHistoryCap: !!retention.enableHistoryCap,
+              historyCapTicks: Number(retention.historyCapTicks || 0),
+              historyWarnTicks: Number(retention.historyWarnTicks || 0)
+            }
+            : null
+        },
         memory
       });
     }
@@ -340,7 +372,9 @@ const run = async () => {
       seekGate: {
         seekSamples,
         seekP95MsMax,
-        requireReplayParity
+        requireReplayParity,
+        requireBoundedRetention,
+        requireColdCompaction
       },
       results,
       failures

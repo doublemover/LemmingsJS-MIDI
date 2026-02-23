@@ -299,6 +299,19 @@ typed-array style sections (contiguous per field) for:
 
 Non-lemming sections use canonical tagged-value encoding with sorted object keys
 to keep payload bytes deterministic for hashing/deduping.
+
+### 10.3 Cold-Block Dedupe Dictionary
+
+Cold blocks can be feature-gated with:
+
+* `enableColdBlockCompression` (RLE envelope compression)
+* `enableColdBlockDedupe` (dictionary-style byte sharing by encoded payload)
+
+The dedupe key includes encoding, FNV-1a payload hash, and encoded length.
+Hash collisions are handled safely by a byte-for-byte equality check before
+reusing a dictionary entry, so mismatched payloads stay isolated even when
+bucket keys collide.
+
 * **NeoLemmix DAT Manager (C#)** — [https://www.neolemmix.com/old/lemtools.html](https://www.neolemmix.com/old/lemtools.html)
 * **Lemmix Pascal source** — [https://github.com/arjanadriaanse/lemmix](https://github.com/arjanadriaanse/lemmix)
 * **Community edge‑case thread** — [https://www.lemmingsforums.net/index.php?topic=6902.0](https://www.lemmingsforums.net/index.php?topic=6902.0)

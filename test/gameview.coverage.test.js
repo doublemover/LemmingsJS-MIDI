@@ -344,10 +344,22 @@ describe('GameView coverage', function() {
       constructor() {}
       async getGame() {
         const timer = { speedFactor: 0 };
-        const history = { setPreserveFutureHistory(val) { this.enabled = val; } };
+        const history = {
+          setPreserveFutureHistory(val) { this.enabled = val; },
+          configureRetention(policy) {
+            this.retention = { ...policy };
+            return this.retention;
+          }
+        };
         const game = {
           level: { name: 'Level', entrances: [{ x: 0, y: 0 }] },
           history,
+          timeTravel: {
+            setHistoryRetention(policy) {
+              this.retention = { ...policy };
+              return this.retention;
+            }
+          },
           onGameEnd: new EventHandler(),
           setGameDisplay(display) { this.gameDisplay = display; },
           setGuiDisplay(display) { this.guiGuiDisplay = display; },
@@ -382,6 +394,13 @@ describe('GameView coverage', function() {
     await view.start();
     expect(view.game.started).to.equal(true);
     expect(view.game.history.enabled).to.equal(true);
+    expect(view.game.timeTravel.retention).to.deep.include({
+      enableHistoryCap: true,
+      historyCapTicks: 12000,
+      historyWarnTicks: 9000,
+      preserveFutureHistory: true
+    });
+    expect(view.getRuntimeDiagnostics().history.retention.historyCapTicks).to.equal(12000);
     expect(view.viewportApplied).to.equal(true);
     expect(view.game.cheated).to.equal(true);
     expect(view.game.showDebug).to.equal(true);
