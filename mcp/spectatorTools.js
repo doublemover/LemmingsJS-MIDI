@@ -25,6 +25,12 @@ const createSpectatorTools = ({
   normalizeKeyToken,
   ensureGameFocus
 }) => {
+  const normalizeSpectatorPort = (value) => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return 0;
+    return Math.max(0, Math.trunc(parsed));
+  };
+
   const handleSpectatorInput = async (session, payload) => {
     if (!payload || !session.spectator?.allowHumanInput) return;
     if (payload.type === 'key') {
@@ -83,7 +89,7 @@ const createSpectatorTools = ({
 
   const startSpectatorServer = async (session, options = {}) => {
     const html = await fs.readFile(spectatorHtmlPath, 'utf8');
-    const port = Number.isFinite(options.port) ? options.port : 0;
+    const port = normalizeSpectatorPort(options.port);
     const allowHumanInput = options.allowHumanInput === true;
     const streamConfig = normalizeSpectatorStreamConfig(options);
     const broadcaster = new SpectatorBroadcaster({

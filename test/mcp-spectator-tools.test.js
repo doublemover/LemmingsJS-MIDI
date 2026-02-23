@@ -169,6 +169,40 @@ describe('mcp spectator tools', function () {
     stopSpectatorServer(session);
   });
 
+  it('normalizes invalid spectator ports to ephemeral listeners', async function () {
+    const { startSpectatorServer, stopSpectatorServer } = createSpectatorTools({
+      spectatorHtmlPath,
+      captureFrame: async () => ({ ok: false, reason: 'capture_disabled' }),
+      resolveCanvasMetrics: async () => ({ rect: { x: 0, y: 0, width: 100, height: 100 } }),
+      normalizeKeyToken: (token) => token,
+      ensureGameFocus: async () => {}
+    });
+
+    const session = {
+      page: {
+        keyboard: {
+          down: async () => {},
+          up: async () => {},
+          press: async () => {}
+        },
+        mouse: {
+          click: async () => {}
+        }
+      },
+      events: { add() {} },
+      spectator: null
+    };
+
+    const baseUrl = await startSpectatorServer(session, {
+      port: -123.8,
+      allowHumanInput: false,
+      frameIntervalMs: 50
+    });
+
+    expect(baseUrl).to.match(/^http:\/\/127\.0\.0\.1:\d+$/);
+    stopSpectatorServer(session);
+  });
+
   it('clamps click offsets for tiny fractional canvas metrics', async function () {
     const mouseClicks = [];
     const { startSpectatorServer, stopSpectatorServer } = createSpectatorTools({
