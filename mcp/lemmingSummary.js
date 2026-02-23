@@ -6,6 +6,7 @@ const withinRect = (lem, rect) => {
   const height = Number.isFinite(rect.h) ? rect.h : rect.height;
   if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
   if (!Number.isFinite(width) || !Number.isFinite(height)) return true;
+  if (width <= 0 || height <= 0) return true;
   return (
     lem.x >= x &&
     lem.x <= x + width &&

@@ -118,4 +118,22 @@ describe('buildLemmingSummary', function () {
     expect(summary.totalCount).to.equal(2);
     expect(summary.activeCount).to.equal(2);
   });
+
+  it('ignores non-positive rect dimensions instead of filtering all lemmings', function () {
+    const state = {
+      game: {
+        lemmingManager: { selectedIndex: -1 },
+        lemmings: [
+          { id: 0, x: 1, y: 1 },
+          { id: 1, x: 5, y: 4 }
+        ]
+      }
+    };
+
+    const summary = buildLemmingSummary(state, {
+      rectWorld: { x: 0, y: 0, width: 0, height: 10 }
+    });
+    expect(summary.totalCount).to.equal(2);
+    expect(summary.activeCount).to.equal(2);
+  });
 });
