@@ -115,6 +115,19 @@ describe('ResourceStore', function () {
     expect(store.list({ limit: Number.NaN })).to.have.lengthOf(1);
   });
 
+  it('falls back to default capacities when constructor numeric values are non-coercible', function () {
+    const store = new ResourceStore({
+      maxBytes: Symbol('bytes'),
+      maxItems: Symbol('items'),
+      ttlMs: Symbol('ttl'),
+      idFactory() { return 'res'; },
+      timeFactory() { return 't-0'; }
+    });
+    expect(store.maxBytes).to.equal(256 * 1024 * 1024);
+    expect(store.maxItems).to.equal(5000);
+    expect(store.defaultTtlMs).to.equal(10 * 60 * 1000);
+  });
+
   it('clones caller buffers and rejects invalid byte payloads', function () {
     const store = createStore();
     const source = Buffer.from('alpha');

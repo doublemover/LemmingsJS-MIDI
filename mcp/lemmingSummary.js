@@ -1,9 +1,25 @@
+/**
+ * Convert arbitrary numeric-like values to finite numbers.
+ * Returns null for invalid or non-coercible values.
+ *
+ * @param {unknown} value
+ * @returns {number|null}
+ */
+const toFiniteNumber = (value) => {
+  try {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : null;
+  } catch {
+    return null;
+  }
+};
+
 const withinRect = (lem, rect) => {
   if (!rect) return true;
-  const x = Number(rect.x);
-  const y = Number(rect.y);
-  const width = Number.isFinite(rect.w) ? rect.w : rect.width;
-  const height = Number.isFinite(rect.h) ? rect.h : rect.height;
+  const x = toFiniteNumber(rect.x);
+  const y = toFiniteNumber(rect.y);
+  const width = toFiniteNumber(rect.w ?? rect.width);
+  const height = toFiniteNumber(rect.h ?? rect.height);
   if (!Number.isFinite(x) || !Number.isFinite(y)) return true;
   if (!Number.isFinite(width) || !Number.isFinite(height)) return true;
   if (width <= 0 || height <= 0) return true;

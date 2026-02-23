@@ -1,8 +1,15 @@
 import crypto from 'node:crypto';
 
 const nowIso = () => new Date().toISOString();
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
 const normalizeInteger = (value, fallback, min = 0) => {
-  const numeric = Number(value);
+  const numeric = toNumberOrNaN(value);
   if (!Number.isFinite(numeric)) return fallback;
   const integer = Math.trunc(numeric);
   return integer >= min ? integer : fallback;

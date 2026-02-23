@@ -11,7 +11,12 @@ const MAX_HUMAN_SUMMARY_PARTS = 2048;
  * Normalize capacity-like inputs to stable integer bounds.
  */
 const normalizeCapacity = (value, fallback, min = 0) => {
-  const numeric = Number(value);
+  let numeric;
+  try {
+    numeric = Number(value);
+  } catch {
+    numeric = Number.NaN;
+  }
   const candidate = Number.isFinite(numeric) ? Math.trunc(numeric) : NaN;
   if (!Number.isFinite(candidate) || candidate < min) return fallback;
   return candidate;

@@ -10,13 +10,19 @@ const DEFAULT_SPECTATOR_STREAM_CONFIG = Object.freeze({
 });
 
 const clampInt = (value, fallback, min, max) => {
-  const number = Number(value);
+  let number;
+  try {
+    number = Number(value);
+  } catch {
+    number = Number.NaN;
+  }
   if (!Number.isFinite(number)) return fallback;
   return Math.min(max, Math.max(min, Math.trunc(number)));
 };
 
 const normalizeFrameSkipPolicy = (policy) => {
-  if (policy === SPECTATOR_SKIP_POLICIES.NONE) return SPECTATOR_SKIP_POLICIES.NONE;
+  const normalized = String(policy ?? '').trim().toLowerCase();
+  if (normalized === SPECTATOR_SKIP_POLICIES.NONE) return SPECTATOR_SKIP_POLICIES.NONE;
   return SPECTATOR_SKIP_POLICIES.LATEST;
 };
 

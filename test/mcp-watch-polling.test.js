@@ -53,6 +53,30 @@ const createFakeClock = () => {
 };
 
 describe('WatchPollingController', function () {
+  it('falls back to defaults when config contains non-coercible numeric values', function () {
+    const controller = new WatchPollingController({
+      hasWatchesFn: () => false,
+      pollFn: async () => ({ triggeredCount: 0 }),
+      config: {
+        minMs: Symbol('min'),
+        activeMs: Symbol('active'),
+        maxMs: Symbol('max'),
+        backoffFactor: Symbol('backoff'),
+        idleThreshold: Symbol('idle'),
+        onDemandMinMs: Symbol('demand')
+      }
+    });
+
+    expect(controller.config).to.deep.equal({
+      minMs: 0,
+      activeMs: 250,
+      maxMs: 2000,
+      backoffFactor: 1.6,
+      idleThreshold: 3,
+      onDemandMinMs: 100
+    });
+  });
+
   it('backs off when idle and resets to active cadence after a trigger', async function () {
     const clock = createFakeClock();
     const outcomes = [0, 0, 0, 2];

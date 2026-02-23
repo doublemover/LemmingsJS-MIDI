@@ -45,4 +45,13 @@ describe('numberParsing', function () {
     assert.strictEqual(toFiniteNumber('abc', null), null);
     assert.strictEqual(clampNumber(5, 0, 3), 3);
   });
+
+  it('returns fallback for non-coercible numeric values', function () {
+    const symbolValue = Symbol('value');
+    assert.strictEqual(toFiniteNumber(symbolValue, 7), 7);
+    assert.strictEqual(
+      parseBoundedNumber(symbolValue, { min: 0, max: 10, fallback: -1 }),
+      -1
+    );
+  });
 });

@@ -126,6 +126,17 @@ describe('SpectatorBroadcaster', function () {
     expect(normalized.frameSkipPolicy).to.equal(SPECTATOR_SKIP_POLICIES.LATEST);
   });
 
+  it('accepts case-insensitive skip policy and non-coercible numeric config values', function () {
+    const normalized = normalizeSpectatorStreamConfig({
+      frameIntervalMs: Symbol('interval'),
+      jpegQuality: Symbol('quality'),
+      frameSkipPolicy: ' NONE '
+    });
+    expect(normalized.frameIntervalMs).to.equal(500);
+    expect(normalized.jpegQuality).to.equal(60);
+    expect(normalized.frameSkipPolicy).to.equal(SPECTATOR_SKIP_POLICIES.NONE);
+  });
+
   it('closes and removes all tracked sockets during cleanup', function () {
     const broadcaster = new SpectatorBroadcaster();
     const first = new FakeSocket();

@@ -293,7 +293,12 @@ const updatePointerWatchState = (state, source) => {
 };
 
 const toFiniteNumber = (value, fallback) => {
-  const number = Number(value);
+  let number;
+  try {
+    number = Number(value);
+  } catch {
+    number = Number.NaN;
+  }
   return Number.isFinite(number) ? number : fallback;
 };
 

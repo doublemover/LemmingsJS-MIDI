@@ -1,5 +1,25 @@
+/**
+ * Safely coerce unknown values to numbers without throwing for Symbols.
+ *
+ * @param {unknown} value
+ * @returns {number}
+ */
+const coerceNumber = (value) => {
+  if (typeof value === 'number') return value;
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
+/**
+ * @param {unknown} value
+ * @param {number|null} [fallback]
+ * @returns {number|null}
+ */
 const toFiniteNumber = (value, fallback = null) => {
-  const num = typeof value === 'number' ? value : Number(value);
+  const num = coerceNumber(value);
   return Number.isFinite(num) ? num : fallback;
 };
 

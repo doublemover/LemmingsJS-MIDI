@@ -269,6 +269,17 @@ describe('EventQueue', function () {
     expect(envelope.humanSummary).to.equal('b; c');
   });
 
+  it('normalizes non-coercible capacity inputs without throwing', function () {
+    const queue = new EventQueue({
+      maxEvents: Symbol('events'),
+      maxHumanSummaryParts: Symbol('summary'),
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+    expect(queue.maxEvents).to.equal(1000);
+    expect(queue.maxHumanSummaryParts).to.equal(24);
+  });
+
   it('caps extremely large maxEvents values to a safe upper bound', function () {
     const queue = new EventQueue({
       maxEvents: 1e9,

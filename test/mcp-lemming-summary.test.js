@@ -136,4 +136,22 @@ describe('buildLemmingSummary', function () {
     expect(summary.totalCount).to.equal(2);
     expect(summary.activeCount).to.equal(2);
   });
+
+  it('accepts numeric-like rect dimensions and coordinates from string inputs', function () {
+    const state = {
+      game: {
+        lemmingManager: { selectedIndex: -1 },
+        lemmings: [
+          { id: 0, x: 1, y: 1 },
+          { id: 1, x: 50, y: 50 }
+        ]
+      }
+    };
+
+    const summary = buildLemmingSummary(state, {
+      rectWorld: { x: '0', y: '0', width: '10', height: '10' }
+    });
+    expect(summary.totalCount).to.equal(1);
+    expect(summary.top.map((lem) => lem.id)).to.deep.equal([0]);
+  });
 });
