@@ -34,19 +34,44 @@ class MidiInputController {
     this._noteCapture = null;
     this._lastConfigRef = null;
     this._lastInputChannel = undefined;
+    this._lastCcConfigRef = undefined;
+    this._ccMappings = new Map();
     this._handler = this._onMessage.bind(this);
   }
 
   setConfig(config) {
     this._lastConfigRef = config || null;
     this._lastInputChannel = config?.input?.channel;
+    this._lastCcConfigRef = config?.input?.cc;
     this.channel = normalizeInputChannel(this._lastInputChannel);
+    this._buildCcMappingIndex(this._lastCcConfigRef);
+  }
+
+  /**
+   * Index configured CC mappings by controller number to avoid per-message scans.
+   * @param {object|null|undefined} ccConfig
+   */
+  _buildCcMappingIndex(ccConfig) {
+    this._ccMappings.clear();
+    if (!ccConfig || typeof ccConfig !== 'object') return;
+    for (const [key, mapping] of Object.entries(ccConfig)) {
+      const cc = Number.isFinite(mapping?.cc) ? Math.trunc(mapping.cc) : null;
+      if (cc == null) continue;
+      const list = this._ccMappings.get(cc) || [];
+      list.push({ key, mapping });
+      this._ccMappings.set(cc, list);
+    }
   }
 
   _syncConfig(config) {
     const nextRef = config || null;
     const nextInputChannel = config?.input?.channel;
-    if (nextRef === this._lastConfigRef && nextInputChannel === this._lastInputChannel) {
+    const nextCcConfig = config?.input?.cc;
+    if (
+      nextRef === this._lastConfigRef &&
+      nextInputChannel === this._lastInputChannel &&
+      nextCcConfig === this._lastCcConfigRef
+    ) {
       return;
     }
     this.setConfig(config);
@@ -176,10 +201,22 @@ class MidiInputController {
   }
 
   _handleControlChange(cc, value, config) {
-    const ccCfg = config?.input?.cc || {};
-    const entries = Object.entries(ccCfg);
-    for (const [key, mapping] of entries) {
-      if ((mapping?.cc ?? -1) !== cc) continue;
+    const ccNumber = Math.trunc(cc);
+    const nextCcConfig = config?.input?.cc;
+    if (nextCcConfig && nextCcConfig !== this._lastCcConfigRef) {
+      this._lastCcConfigRef = nextCcConfig;
+      this._buildCcMappingIndex(nextCcConfig);
+    }
+    let entries = this._ccMappings.get(ccNumber);
+    if ((!entries || !entries.length) && nextCcConfig && typeof nextCcConfig === 'object') {
+      entries = [];
+      for (const [key, mapping] of Object.entries(nextCcConfig)) {
+        if ((mapping?.cc ?? -1) !== ccNumber) continue;
+        entries.push({ key, mapping });
+      }
+    }
+    if (!entries || !entries.length) return;
+    for (const { key, mapping } of entries) {
       if (key === 'speed') {
         const min = mapping.min ?? 0.1;
         const max = mapping.max ?? 8;

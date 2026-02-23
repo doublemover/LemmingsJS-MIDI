@@ -55,6 +55,7 @@ describe('NodeFileProvider', function() {
     tmpDir = fs.mkdtempSync(path.join(process.cwd(), 'test', 'tmp-nodefileprovider-'));
     fs.mkdirSync(path.join(tmpDir, 'data'), { recursive: true });
     fs.copyFileSync(packFile, path.join(tmpDir, 'LEVEL000.DAT'));
+    fs.copyFileSync(packFile, path.join(tmpDir, 'LEVEL..000.DAT'));
     fs.copyFileSync(packFile, path.join(tmpDir, 'data', 'LEVEL000.DAT'));
     const zip = new AdmZip();
     zip.addFile('data/LEVEL000.DAT', fs.readFileSync(packFile));
@@ -153,6 +154,13 @@ describe('NodeFileProvider', function() {
   it('normalizes validated entry paths', function() {
     const provider = makeProvider();
     expect(provider._validateEntry('data\\LEVEL000.DAT')).to.equal('data/LEVEL000.DAT');
+    expect(provider._validateEntry('data/LEVEL..000.DAT')).to.equal('data/LEVEL..000.DAT');
+  });
+
+  it('allows non-traversal file names with repeated dots', async function() {
+    const provider = makeProvider();
+    const reader = await provider.loadBinary('.', 'LEVEL..000.DAT');
+    expect(reader.length).to.equal(fs.readFileSync(packFile).length);
   });
 
   it('reads plain strings from disk', async function() {
@@ -175,6 +183,22 @@ describe('NodeFileProvider', function() {
     const provider = makeProvider();
     await expectReject(
       provider.loadString('../outside.txt'),
+      /invalid file path/i
+    );
+  });
+
+  it('rejects parent traversal in binary directory paths', async function() {
+    const provider = makeProvider();
+    await expectReject(
+      provider.loadBinary('../outside', 'LEVEL000.DAT'),
+      /invalid file path/i
+    );
+  });
+
+  it('rejects parent traversal in archive string paths', async function() {
+    const provider = makeProvider();
+    await expectReject(
+      provider.loadString('../pack.zip/data/LEVEL000.DAT'),
       /invalid file path/i
     );
   });
@@ -203,10 +227,32 @@ describe('NodeFileProvider', function() {
     const tar1 = await provider._getTar('pack.tar');
     const tar2 = await provider._getTar('pack.tar');
     expect(tar1).to.equal(tar2);
+    await tar.c({ file: path.join(tmpDir, 'pack.tar'), cwd: tmpDir }, ['LEVEL000.DAT']);
+    const tarPath = path.join(tmpDir, 'pack.tar');
+    const tarShifted = new Date(Date.now() + 2500);
+    fs.utimesSync(tarPath, tarShifted, tarShifted);
+    const tar3 = await provider._getTar('pack.tar');
+    expect(tar3).to.not.equal(tar1);
 
     const nxp1 = provider._getNxp('pack.nxp');
     const nxp2 = provider._getNxp('pack.nxp');
     expect(nxp1).to.equal(nxp2);
+    const nxpPath = path.join(tmpDir, 'pack.nxp');
+    const originalNxpStat = fs.statSync(nxpPath);
+    writeNxp(path.join(tmpDir, 'pack.nxp'), [
+      { name: 'data/LEVEL000.DAT', data: Buffer.from([7, 8, 9]) }
+    ]);
+    const nxpShifted = new Date(Date.now() + 3500);
+    fs.utimesSync(nxpPath, nxpShifted, nxpShifted);
+    const nxp3 = provider._getNxp('pack.nxp');
+    expect(nxp3).to.not.equal(nxp1);
+
+    writeNxp(path.join(tmpDir, 'pack.nxp'), [
+      { name: 'data/LEVEL000.DAT', data: Buffer.from([1, 2, 3]) }
+    ]);
+    fs.utimesSync(nxpPath, originalNxpStat.atime, originalNxpStat.mtime);
+    const nxp4 = provider._getNxp('pack.nxp');
+    expect(nxp4).to.not.equal(nxp3);
   });
 
   it('skips non-file tar entries', async function() {
@@ -247,6 +293,13 @@ describe('NodeFileProvider', function() {
 
     await provider.loadBinary('pack.rar', 'LEVEL000.DAT');
     expect(calls).to.equal(1);
+
+    const rarPath = path.join(tmpDir, 'pack.rar');
+    fs.writeFileSync(rarPath, Buffer.from([1]));
+    const shifted = new Date(Date.now() + 2500);
+    fs.utimesSync(rarPath, shifted, shifted);
+    await provider.loadBinary('pack.rar', 'LEVEL000.DAT');
+    expect(calls).to.equal(2);
   });
 
   it('skips rar directory entries and finds lower-case keys', async function() {

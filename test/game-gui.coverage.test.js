@@ -291,6 +291,16 @@ describe('GameGui coverage', function() {
     expect(gui._hoverSpeedUp || gui._hoverSpeedDown).to.equal(true);
   });
 
+  it('clears release-rate delta on right mouse up', function() {
+    const display = makeDisplay();
+    const { gui } = makeGui({ running: true });
+    gui.setGuiDisplay(display);
+    gui.deltaReleaseRate = 9;
+
+    display.onMouseRightUp.trigger({});
+    expect(gui.deltaReleaseRate).to.equal(0);
+  });
+
   it('disables glitch actions when mechanics flags are off', function() {
     const { gui, game, timer, victory } = makeGui({
       running: false,
@@ -333,18 +343,26 @@ describe('GameGui coverage', function() {
   });
 
   it('covers clamping, fallbacks, and helper branches', function() {
-    const { gui, victory } = makeGui({ running: true });
+    const { gui, victory, game } = makeGui({ running: true });
     victory.getMinReleaseRate = () => 10;
     victory.getMaxReleaseRate = () => 20;
     victory.releaseRate = 10;
     gui.deltaReleaseRate = -5;
     gui._applyReleaseRateAuto();
     expect(victory.releaseRate).to.equal(10);
+    expect(game.commands.length).to.equal(0);
 
     victory.releaseRate = 20;
     gui.deltaReleaseRate = 5;
     gui._applyReleaseRateAuto();
     expect(victory.releaseRate).to.equal(20);
+    expect(game.commands.length).to.equal(0);
+
+    victory.releaseRate = 15;
+    gui.deltaReleaseRate = -5;
+    gui._applyReleaseRateAuto();
+    expect(victory.releaseRate).to.equal(10);
+    expect(game.commands.length).to.equal(1);
 
     gui.handleSkillMouseDown({ x: 500, y: 20 });
     gui.handleMouseMove({ x: 0, y: 0 });
@@ -630,6 +648,20 @@ describe('GameGui coverage', function() {
     const rectCount = display.rects.length;
     gui.drawSkillHover(display, -1);
     expect(display.rects.length).to.equal(rectCount);
+  });
+
+  it('renders the tens place with left-digit sprites in speed HUD', function() {
+    const display = makeDisplay();
+    const { gui, timer } = makeGui({ speedFactor: 12, running: true });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    timer.speedFactor = 12;
+    gui.gameSpeedChanged = true;
+
+    gui.render();
+
+    const hasLeftDigit = display.resized.some((args) => args?.[0]?.id === 'L1');
+    expect(hasLeftDigit).to.equal(true);
   });
 
   it('formats status text and panel names', function() {

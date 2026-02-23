@@ -821,7 +821,8 @@ const captureSequence = async (session, args) => {
   const stepBy = Number.isFinite(args.stepBy) ? args.stepBy : 1;
   const everyMs = Number.isFinite(args.everyMs) ? args.everyMs : 250;
   const capture = args.capture || {};
-  const total = Math.min(MCP_MAX_CAPTURE_SEQUENCE_FRAMES, Math.max(1, args.frames));
+  const requestedFrames = Number.isFinite(args.frames) ? Math.trunc(args.frames) : 1;
+  const total = Math.min(MCP_MAX_CAPTURE_SEQUENCE_FRAMES, Math.max(1, requestedFrames));
 
   if (mode === 'step') {
     await callE2E(session, 'pause');

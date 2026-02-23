@@ -160,7 +160,11 @@ class GameGui {
     return baseDelay * idleMultiplier;
   }
 
-  _applyReleaseRateAuto() {
+  /**
+   * Apply held release-rate delta and optionally emit boundary glitch commands.
+   * @param {{queueWhenClamped?: boolean}} [options]
+   */
+  _applyReleaseRateAuto({ queueWhenClamped = false } = {}) {
     if (!this.deltaReleaseRate) return;
     const isRunning = this.gameTimer.isRunning();
     if (isRunning) {
@@ -170,9 +174,13 @@ class GameGui {
       let   neu = cur + this.deltaReleaseRate;
       if (neu < min) neu = min;
       if (neu > max) neu = max;
-      this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
-                (this.gameVictoryCondition.releaseRate = neu);
-      this.releaseRateChanged = true;
+      if (neu === cur) {
+        if (!queueWhenClamped) return;
+      } else {
+        this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
+                  (this.gameVictoryCondition.releaseRate = neu);
+        this.releaseRateChanged = true;
+      }
     }
     if (!isRunning && !this._isMechanicEnabled('pauseGlitch', true)) {
       return;
@@ -313,7 +321,7 @@ class GameGui {
         (this.gameVictoryCondition.releaseRate = min);
       this.deltaReleaseRate = -min;
       this.releaseRateChanged = true;
-      this._applyReleaseRateAuto();
+      this._applyReleaseRateAuto({ queueWhenClamped: true });
       return;
     }
 
@@ -323,7 +331,7 @@ class GameGui {
         (this.gameVictoryCondition.releaseRate = max);
       this.deltaReleaseRate = max;
       this.releaseRateChanged = true;
-      this._applyReleaseRateAuto();
+      this._applyReleaseRateAuto({ queueWhenClamped: true });
       return;
     }
 
@@ -419,6 +427,7 @@ class GameGui {
         this._requestGuiRender();
       }],
       ['onMouseRightUp', () => {
+        this.deltaReleaseRate = 0;
         this._requestGuiRender();
       }],
       ['onDoubleClick', e => {
@@ -590,7 +599,7 @@ class GameGui {
 
       const tens  = Math.floor(speedFac / 10);
       const ones  = speedFac % 10;
-      const left  = this._getRightDigit(tens);
+      const left  = this._getLeftDigit(tens);
       const right = this._getRightDigit(ones);
       let rightX = 164;
       if (left && tens > 0) {

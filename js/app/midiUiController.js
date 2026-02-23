@@ -101,7 +101,6 @@ export const createMidiUiController = ({
   const storedIntentState = readStoredMidiIntentState(storage);
   let activeMidiInput = null;
   let midiUiBound = false;
-  let midiViewPanEnabled = false;
   let midiInputController = null;
   let midiIntentState = createMidiIntentState(storedIntentState);
   let midiOverrides = midiIntentState.overrides;
@@ -309,21 +308,45 @@ export const createMidiUiController = ({
   };
 
   const setActiveMidiInput = (inputId) => {
-    activeMidiInput = null;
-    if (!inputId || !getWebMidi()?.enabled || !midiInputController) {
-      midiInputController?.detach?.();
+    const webMidi = getWebMidi();
+    if (!inputId || !webMidi?.enabled) {
+      if (activeMidiInput) {
+        midiInputController?.detach?.();
+      }
+      activeMidiInput = null;
       return;
     }
-    const input = getWebMidi().getInputById(inputId);
-    if (!input) return;
-    midiInputController.attach(input);
+    const input = webMidi.getInputById(inputId);
+    if (!input) {
+      if (activeMidiInput) {
+        midiInputController.detach?.();
+      }
+      activeMidiInput = null;
+      return;
+    }
+    if (!midiInputController) {
+      activeMidiInput = input;
+      return;
+    }
+    if (activeMidiInput === input) {
+      return;
+    }
+    if (activeMidiInput) {
+      midiInputController.detach?.();
+    }
+    midiInputController.attach?.(input);
     activeMidiInput = input;
   };
 
   const setActiveMidiOutput = (outputId) => {
-    if (!getWebMidi()?.enabled) return;
-    const output = outputId ? getWebMidi().getOutputById(outputId) : null;
+    const webMidi = getWebMidi();
+    if (!webMidi?.enabled) return;
+    const output = outputId ? webMidi.getOutputById(outputId) : null;
     const lemmings = getLemmings();
+    const currentOutput = lemmings?.midiOut ?? null;
+    if (currentOutput === (output || null)) {
+      return;
+    }
     if (lemmings?.midiRouter?.scheduler?.allNotesOff) {
       lemmings.midiRouter.scheduler.allNotesOff();
       lemmings.midiRouter.scheduler.clearQueue?.();
@@ -355,8 +378,11 @@ export const createMidiUiController = ({
   const { armMidiLearn, disarmMidiLearn, clearNoteCapture } = midiLearn;
 
   const applyViewPanSetting = (enabled) => {
-    midiViewPanEnabled = !!enabled;
-    setMidiOverrides({ position: { viewPan: midiViewPanEnabled } });
+    const resolved = !!enabled;
+    if (midiOverrides?.position?.viewPan === resolved) {
+      return;
+    }
+    setMidiOverrides({ position: { viewPan: resolved } });
   };
 
   const getConfig = () => {
@@ -1560,8 +1586,8 @@ export const createMidiUiController = ({
       : null;
     const resolvedInputId = resolveMidiId(inputs, currentInputId, storedInputId);
     const resolvedOutputId = resolveMidiId(outputs, currentOutputId, storedOutputId);
-    const shouldResetUi = (storedInputId && resolvedInputId && storedInputId !== resolvedInputId) ||
-      (storedOutputId && resolvedOutputId && storedOutputId !== resolvedOutputId);
+    const shouldResetUi = (currentInputId && resolvedInputId && currentInputId !== resolvedInputId) ||
+      (currentOutputId && resolvedOutputId && currentOutputId !== resolvedOutputId);
 
     if (resolvedInputId && inputSelect) {
       inputSelect.value = resolvedInputId;
@@ -1970,9 +1996,16 @@ export const createMidiUiController = ({
       return typeof noteCapture === 'function' ? !!noteCapture(note) : false;
     },
     setMidiInputController(controller) {
+      const previousController = midiInputController;
+      if (previousController && previousController !== controller) {
+        previousController.detach?.();
+      }
       midiInputController = controller;
       if (midiInputController?.setNoteCapture) {
         midiInputController.setNoteCapture(noteCapture);
+      }
+      if (activeMidiInput) {
+        midiInputController?.attach?.(activeMidiInput);
       }
     },
     getMidiOverrides() {

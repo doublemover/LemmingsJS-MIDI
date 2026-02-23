@@ -263,6 +263,37 @@ describe('MidiInputController', function() {
     expect(setCalls).to.equal(1);
   });
 
+  it('rebuilds CC mapping index when config CC bindings change', function() {
+    const speeds = [];
+    const patches = [];
+    const config = {
+      input: {
+        channel: 'omni',
+        cc: {
+          speed: { cc: 1, min: 0.1, max: 2 }
+        }
+      }
+    };
+    const controller = new MidiInputController({
+      selectSpeedFactor(value) { speeds.push(value); }
+    }, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
+
+    controller._onMessage({ data: [0xB0, 1, 127] });
+    expect(speeds.length).to.equal(1);
+
+    config.input.cc = {
+      bpmBase: { cc: 2, min: 100, max: 200 }
+    };
+    controller._onMessage({ data: [0xB0, 2, 0] });
+    expect(patches.some(patch => patch.timing?.bpmBase === 100)).to.equal(true);
+
+    controller._onMessage({ data: [0xB0, 1, 127] });
+    expect(speeds.length).to.equal(1);
+  });
+
   it('defaults missing velocity and CC values to zero', function() {
     const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
     const noteCalls = [];

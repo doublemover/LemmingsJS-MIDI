@@ -125,6 +125,140 @@ describe('midiUiController', function() {
     expect(win.__scheduledDelays.filter(delay => delay === 100).length).to.equal(2);
   });
 
+  it('avoids reattaching unchanged devices during scheduled refreshes', function() {
+    const doc = new TestDocument();
+    const win = createDeferredWindow();
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+
+    const inputDevice = { id: 'in-1', name: 'Input 1' };
+    const outputDevice = { id: 'out-1', name: 'Output 1' };
+    const webMidi = createWebMidiStub([inputDevice], [outputDevice]);
+    const schedulerCalls = [];
+    const lemmings = {
+      midiRouter: {
+        scheduler: {
+          allNotesOff() { schedulerCalls.push('off'); },
+          clearQueue() { schedulerCalls.push('clear'); }
+        }
+      }
+    };
+    const midiInputController = {
+      attachCount: 0,
+      detachCount: 0,
+      attach() { this.attachCount += 1; },
+      detach() { this.detachCount += 1; }
+    };
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => lemmings
+    });
+    controller.setMidiInputController(midiInputController);
+    controller.onEnabled();
+    expect(midiInputController.attachCount).to.equal(1);
+    expect(schedulerCalls.filter(call => call === 'off').length).to.equal(1);
+
+    webMidi.emit('connected');
+    win.__runNextTimer();
+
+    expect(midiInputController.attachCount).to.equal(1);
+    expect(midiInputController.detachCount).to.equal(0);
+    expect(schedulerCalls.filter(call => call === 'off').length).to.equal(1);
+  });
+
+  it('keeps tab state when stale stored ids resolve before any active selection exists', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+
+    win.localStorage.setItem('lemmings.midi.tabLeft', 'panelB');
+    win.localStorage.setItem('lemmings.midi.sectionStates', JSON.stringify({ alpha: false }));
+    win.localStorage.setItem('lemmings.midi.inputId', 'missing-input');
+    win.localStorage.setItem('lemmings.midi.outputId', 'out-1');
+
+    const webMidi = createWebMidiStub(
+      [{ id: 'in-1', name: 'Input 1' }],
+      [{ id: 'out-1', name: 'Output 1' }]
+    );
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({})
+    });
+
+    controller.onEnabled();
+
+    expect(win.localStorage.getItem('lemmings.midi.tabLeft')).to.equal('panelB');
+    expect(win.localStorage.getItem('lemmings.midi.sectionStates')).to.equal('{"alpha":false}');
+  });
+
+  it('attaches the active input when controller is set after enable', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+
+    const inputDevice = { id: 'in-1', name: 'Input 1' };
+    const webMidi = createWebMidiStub([inputDevice], [{ id: 'out-1', name: 'Output 1' }]);
+    const attached = [];
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({})
+    });
+
+    controller.onEnabled();
+    controller.setMidiInputController({
+      attach(device) { attached.push(device); },
+      detach() {}
+    });
+
+    expect(attached).to.eql([inputDevice]);
+  });
+
+  it('does not reapply stored view-pan overrides during unchanged device refreshes', function() {
+    const doc = new TestDocument();
+    const win = createDeferredWindow();
+    registerElement(doc, 'select', 'midiInSelect');
+    registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+    win.localStorage.setItem('lemmings.midi.viewPan', 'true');
+
+    const applied = [];
+    const webMidi = createWebMidiStub(
+      [{ id: 'in-1', name: 'Input 1' }],
+      [{ id: 'out-1', name: 'Output 1' }]
+    );
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({
+        applyMidiOverrides(patch) { applied.push(patch); }
+      })
+    });
+
+    controller.onEnabled();
+    expect(applied.filter(patch => patch?.position?.viewPan === true).length).to.equal(1);
+
+    webMidi.emit('connected');
+    win.__runNextTimer();
+    expect(applied.filter(patch => patch?.position?.viewPan === true).length).to.equal(1);
+  });
+
   it('persists the enabled toggle and disables controls', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
