@@ -35,6 +35,7 @@ describe('scripts/runTests', function () {
     expect(parseBoolEnv('off')).to.equal(false);
     expect(resolveRuntimeBudgetMs('60000')).to.equal(60000);
     expect(resolveRuntimeBudgetMs('bogus')).to.equal(180000);
+    expect(resolveRuntimeBudgetMs(Symbol('budget'))).to.equal(180000);
   });
 
   it('maps changed files to stable category selection', function () {

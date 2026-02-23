@@ -18,14 +18,22 @@ const parseArgs = (argv) => {
   return out;
 };
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 const toPositiveInt = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   if (!Number.isFinite(parsed)) return fallback;
   const rounded = Math.trunc(parsed);
   return rounded > 0 ? rounded : fallback;
 };
 
-const nsToMs = (value) => Number(value) / 1e6;
+const nsToMs = (value) => toNumberOrNaN(value) / 1e6;
 
 const percentile = (sorted, p) => {
   if (!sorted.length) return 0;
@@ -81,7 +89,7 @@ const measureN = (iterations, fn) => {
 
 const summarizeSamples = (samplesMs, iterations) => {
   const clean = samplesMs
-    .map((value) => Number(value))
+    .map((value) => toNumberOrNaN(value))
     .filter((value) => Number.isFinite(value) && value >= 0)
     .sort((a, b) => a - b);
   const avg = clean.reduce((acc, value) => acc + value, 0) / Math.max(1, clean.length);

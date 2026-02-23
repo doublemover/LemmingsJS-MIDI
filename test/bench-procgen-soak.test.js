@@ -17,6 +17,7 @@ describe('bench-procgen-soak helpers', function () {
 
     expect(toPositiveNumber('10', 5)).to.equal(10);
     expect(toPositiveNumber('-1', 5)).to.equal(5);
+    expect(toPositiveNumber(Symbol('duration'), 5)).to.equal(5);
     expect(toBoolean('off', true)).to.equal(false);
     expect(toBoolean('enabled', false)).to.equal(true);
   });

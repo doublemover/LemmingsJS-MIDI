@@ -3,6 +3,14 @@ import { pathToFileURL } from 'node:url';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/procgen.html?e2e=1';
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -23,7 +31,7 @@ const parseArgs = (argv) => {
  * @returns {number}
  */
 const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 

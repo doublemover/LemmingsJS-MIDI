@@ -52,8 +52,16 @@ const parseBoolEnv = (value) => {
   return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 };
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 const resolveRuntimeBudgetMs = (value) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_TEST_RUNTIME_BUDGET_MS;
   return Math.trunc(parsed);
 };

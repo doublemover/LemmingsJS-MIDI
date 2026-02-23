@@ -13,8 +13,16 @@ const parseArgs = (argv) => {
   return out;
 };
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 

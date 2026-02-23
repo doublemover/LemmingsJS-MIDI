@@ -4,6 +4,14 @@ import { fileURLToPath } from 'node:url';
 
 const DEFAULT_BASE_URL = 'https://localhost:8080/?e2e=1';
 
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
+  }
+};
+
 /**
  * @param {string[]} argv
  * @returns {Map<string, string>}
@@ -24,7 +32,7 @@ const parseArgs = (argv) => {
  * @returns {number}
  */
 const toPositiveNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 };
 
@@ -34,7 +42,7 @@ const toPositiveNumber = (value, fallback) => {
  * @returns {number}
  */
 const toNonNegativeNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
 };
 
@@ -44,7 +52,7 @@ const toNonNegativeNumber = (value, fallback) => {
  * @returns {number}
  */
 const toFiniteNumber = (value, fallback) => {
-  const parsed = Number(value);
+  const parsed = toNumberOrNaN(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
@@ -201,13 +209,13 @@ const evaluateLongSessionGates = ({
   const replay = Array.isArray(replayChecks) ? replayChecks.filter(Boolean) : [];
   const first = clean[0] || null;
   const last = clean[clean.length - 1] || null;
-  const heapStart = Number(first?.heapUsedBytes || 0);
-  const heapEnd = Number(last?.heapUsedBytes || 0);
+  const heapStart = toNumberOrNaN(first?.heapUsedBytes || 0);
+  const heapEnd = toNumberOrNaN(last?.heapUsedBytes || 0);
   const heapGrowthBytes = (Number.isFinite(heapStart) && Number.isFinite(heapEnd))
     ? Math.max(0, heapEnd - heapStart)
     : 0;
   const heapSeries = clean
-    .map((sample) => Number(sample.heapUsedBytes || 0))
+    .map((sample) => toNumberOrNaN(sample.heapUsedBytes || 0))
     .filter((value) => Number.isFinite(value) && value >= 0);
   let heapChurnBytes = 0;
   for (let i = 1; i < heapSeries.length; i += 1) {
@@ -216,55 +224,55 @@ const evaluateLongSessionGates = ({
 
   const queueRatios = clean
     .map((sample) => {
-      const limit = Number(sample.soundQueueLimit || 0);
-      const queued = Number(sample.soundQueued || 0);
+      const limit = toNumberOrNaN(sample.soundQueueLimit || 0);
+      const queued = toNumberOrNaN(sample.soundQueued || 0);
       if (!Number.isFinite(limit) || limit <= 0) return 0;
       return queued / limit;
     })
     .filter((value) => Number.isFinite(value) && value >= 0);
   const maxSoundQueueRatio = queueRatios.length ? Math.max(...queueRatios) : 0;
-  const queueStart = Number(first?.soundQueued || 0);
-  const queueEnd = Number(last?.soundQueued || 0);
+  const queueStart = toNumberOrNaN(first?.soundQueued || 0);
+  const queueEnd = toNumberOrNaN(last?.soundQueued || 0);
   const soundQueueGrowth = Number.isFinite(queueStart) && Number.isFinite(queueEnd)
     ? Math.max(0, queueEnd - queueStart)
     : 0;
 
   const tickSeries = clean
-    .map((sample) => Number(sample.tickIndex || 0))
+    .map((sample) => toNumberOrNaN(sample.tickIndex || 0))
     .filter((value) => Number.isFinite(value));
   const tickProgress = tickSeries.length > 1
     ? tickSeries[tickSeries.length - 1] - tickSeries[0]
     : 0;
 
-  const triggerStart = Number(first?.triggerCount || 0);
-  const triggerEnd = Number(last?.triggerCount || 0);
+  const triggerStart = toNumberOrNaN(first?.triggerCount || 0);
+  const triggerEnd = toNumberOrNaN(last?.triggerCount || 0);
   const triggerDrift = Number.isFinite(triggerStart) && Number.isFinite(triggerEnd)
     ? Math.abs(triggerEnd - triggerStart)
     : 0;
 
-  const historySpanEnd = Number(last?.historySpanTicks || 0);
+  const historySpanEnd = toNumberOrNaN(last?.historySpanTicks || 0);
   const replayMismatchCount = replay.filter(check => check.hashMatch === false).length;
 
   const failures = [];
   if (tickProgress <= 0) {
     failures.push('tick_progress_stalled');
   }
-  if (heapGrowthBytes > Number(thresholds.maxHeapGrowthBytes || 0)) {
+  if (heapGrowthBytes > toNumberOrNaN(thresholds.maxHeapGrowthBytes || 0)) {
     failures.push('heap_growth_exceeded');
   }
-  if (heapChurnBytes > Number(thresholds.maxHeapChurnBytes || 0)) {
+  if (heapChurnBytes > toNumberOrNaN(thresholds.maxHeapChurnBytes || 0)) {
     failures.push('heap_churn_exceeded');
   }
-  if (maxSoundQueueRatio > Number(thresholds.maxSoundQueueRatio || 1)) {
+  if (maxSoundQueueRatio > toNumberOrNaN(thresholds.maxSoundQueueRatio || 1)) {
     failures.push('sound_queue_ratio_exceeded');
   }
-  if (soundQueueGrowth > Number(thresholds.maxSoundQueueGrowth || 0)) {
+  if (soundQueueGrowth > toNumberOrNaN(thresholds.maxSoundQueueGrowth || 0)) {
     failures.push('sound_queue_growth_exceeded');
   }
-  if (historySpanEnd < Number(thresholds.minHistorySpanTicks || 0)) {
+  if (historySpanEnd < toNumberOrNaN(thresholds.minHistorySpanTicks || 0)) {
     failures.push('history_span_below_minimum');
   }
-  if (triggerDrift > Number(thresholds.maxTriggerDrift || 0)) {
+  if (triggerDrift > toNumberOrNaN(thresholds.maxTriggerDrift || 0)) {
     failures.push('trigger_count_drift_detected');
   }
   if (replayMismatchCount > 0) {

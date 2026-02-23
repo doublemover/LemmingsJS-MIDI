@@ -134,6 +134,27 @@ describe('bench long-session gates', function () {
       triggerCount: 0,
       heapUsedBytes: 2048
     });
+
+    const symbolSample = normalizeLongSessionSample({
+      elapsedMs: Symbol('elapsed'),
+      tickIndex: Symbol('tick'),
+      historySpanTicks: Symbol('history'),
+      coldBlockCount: Symbol('cold'),
+      soundQueued: Symbol('queued'),
+      soundQueueLimit: Symbol('limit'),
+      triggerCount: Symbol('trigger'),
+      heapUsedBytes: Symbol('heap')
+    });
+    expect(symbolSample).to.deep.equal({
+      elapsedMs: 0,
+      tickIndex: 0,
+      historySpanTicks: 0,
+      coldBlockCount: 0,
+      soundQueued: 0,
+      soundQueueLimit: 0,
+      triggerCount: 0,
+      heapUsedBytes: 0
+    });
   });
 
   it('clamps invalid normalized sample values to safe numeric defaults', function () {
@@ -164,12 +185,14 @@ describe('bench long-session gates', function () {
     expect(toPositiveNumber('-5', 7)).to.equal(7);
     expect(toPositiveNumber('abc', 7)).to.equal(7);
     expect(toPositiveNumber('4', 7)).to.equal(4);
+    expect(toPositiveNumber(Symbol('positive'), 7)).to.equal(7);
 
     expect(toNonNegativeNumber(undefined, 3)).to.equal(3);
     expect(toNonNegativeNumber(-1, 3)).to.equal(3);
     expect(toNonNegativeNumber('NaN', 3)).to.equal(3);
     expect(toNonNegativeNumber(0, 3)).to.equal(0);
     expect(toNonNegativeNumber('5', 3)).to.equal(5);
+    expect(toNonNegativeNumber(Symbol('non-negative'), 3)).to.equal(3);
     expect(toBoolean('false', true)).to.equal(false);
     expect(toBoolean('1', false)).to.equal(true);
     expect(toBoolean('unknown', false)).to.equal(false);
