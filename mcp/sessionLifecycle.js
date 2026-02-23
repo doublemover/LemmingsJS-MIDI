@@ -73,12 +73,12 @@ const disposeAllSessionRuntimes = async (
   } = {}
 ) => {
   const list = Array.from(sessions || []);
-  for (const session of list) {
-    await disposeSessionRuntime(session, {
-      stopSpectatorServer,
-      stopWatchLoop
-    });
-  }
+  const pending = list.map((session) => disposeSessionRuntime(session, {
+    stopSpectatorServer,
+    stopWatchLoop
+  }));
+  if (!pending.length) return;
+  await Promise.allSettled(pending);
 };
 
 export { disposeAllSessionRuntimes, disposeSessionRuntime };

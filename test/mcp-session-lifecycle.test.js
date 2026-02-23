@@ -89,6 +89,43 @@ describe('session lifecycle disposal', function () {
     expect(second.calls).to.include.members(['clear:b', 'context.close', 'browser.close']);
   });
 
+  it('disposes multiple sessions concurrently', async function () {
+    const first = createSession('p1');
+    const second = createSession('p2');
+    const starts = [];
+    let resolveFirst;
+    let resolveSecond;
+
+    first.session.watchController = {
+      stopAndWait() {
+        starts.push('p1');
+        return new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+      }
+    };
+    second.session.watchController = {
+      stopAndWait() {
+        starts.push('p2');
+        return new Promise((resolve) => {
+          resolveSecond = resolve;
+        });
+      }
+    };
+
+    const disposing = disposeAllSessionRuntimes([first.session, second.session]);
+    for (let i = 0; i < 8 && starts.length < 2; i += 1) {
+      await Promise.resolve();
+    }
+    expect(starts).to.have.members(['p1', 'p2']);
+
+    resolveFirst();
+    resolveSecond();
+    await disposing;
+    expect(first.calls).to.include('clear:p1');
+    expect(second.calls).to.include('clear:p2');
+  });
+
   it('waits for watch controller shutdown before clearing resources', async function () {
     const { session } = createSession('w1');
     const order = [];
