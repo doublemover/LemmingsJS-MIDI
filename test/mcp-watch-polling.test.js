@@ -364,6 +364,15 @@ describe('watch pointer helpers', function () {
     expect(updatePointerWatchState(tracker, { payload: changed })).to.equal(true);
   });
 
+  it('detects typed-array view-type changes even when values and sizes match', function () {
+    const tracker = createPointerWatchState('/payload', {
+      payload: new Uint8Array([1, 2])
+    });
+    expect(updatePointerWatchState(tracker, {
+      payload: new Int8Array([1, 2])
+    })).to.equal(true);
+  });
+
   it('tracks Set payload changes while ignoring insertion order', function () {
     const tracker = createPointerWatchState('/payload', {
       payload: new Set([1, 2, 3])

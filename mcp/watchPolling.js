@@ -193,6 +193,30 @@ const buildPointerFingerprint = (value) => {
   if (type === 'symbol') return { kind: 'symbol', value: String(value.description ?? '') };
   if (type === 'function') return { kind: 'function', value: value.name || '' };
 
+  if (value instanceof Date) {
+    return {
+      kind: 'date',
+      value: value.getTime()
+    };
+  }
+
+  if (value instanceof ArrayBuffer) {
+    return {
+      kind: 'arraybuffer',
+      size: value.byteLength,
+      hash: hashValue(value)
+    };
+  }
+
+  if (ArrayBuffer.isView(value)) {
+    return {
+      kind: 'arraybuffer-view',
+      viewType: value.constructor?.name || 'view',
+      size: value.byteLength || 0,
+      hash: hashValue(value)
+    };
+  }
+
   if (value instanceof Map) {
     return {
       kind: 'map',
@@ -210,7 +234,7 @@ const buildPointerFingerprint = (value) => {
 
   const size = Array.isArray(value)
     ? value.length
-    : (ArrayBuffer.isView(value) ? (value.byteLength || 0) : Object.keys(value).length);
+    : Object.keys(value).length;
   return {
     kind: Array.isArray(value) ? 'array' : 'object',
     size,
@@ -225,7 +249,11 @@ const areFingerprintsEqual = (left, right) => {
   if (left.kind === 'boolean' || left.kind === 'string' || left.kind === 'bigint' || left.kind === 'symbol' || left.kind === 'function') {
     return left.value === right.value;
   }
+  if (left.kind === 'date') return left.value === right.value;
   if (left.kind === 'null' || left.kind === 'undefined') return true;
+  if (left.kind === 'arraybuffer-view') {
+    return left.viewType === right.viewType && left.size === right.size && left.hash === right.hash;
+  }
   return left.size === right.size && left.hash === right.hash;
 };
 
