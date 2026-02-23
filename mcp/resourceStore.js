@@ -7,8 +7,22 @@ const normalizeInteger = (value, fallback, min = 0) => {
   const integer = Math.trunc(numeric);
   return integer >= min ? integer : fallback;
 };
+/**
+ * Normalize session ids used in resource URIs and map keys.
+ *
+ * @param {unknown} value
+ * @returns {string}
+ */
 const normalizeSessionId = (value) => String(value ?? '').trim();
 
+/**
+ * Fallback deep clone used when structuredClone/JSON cloning is unavailable.
+ * Supports circular references via a WeakMap memo table.
+ *
+ * @param {any} value
+ * @param {WeakMap<object, any>} [seen]
+ * @returns {any}
+ */
 const cloneMetaFallback = (value, seen = new WeakMap()) => {
   if (value == null || typeof value !== 'object') return value;
   if (seen.has(value)) return seen.get(value);
@@ -80,6 +94,12 @@ const cloneMetaFallback = (value, seen = new WeakMap()) => {
   return copy;
 };
 
+/**
+ * Clone metadata payloads defensively for storage and retrieval operations.
+ *
+ * @param {unknown} value
+ * @returns {object}
+ */
 const cloneMeta = (value) => {
   if (value == null || typeof value !== 'object') return {};
   if (typeof structuredClone === 'function') {

@@ -24,7 +24,12 @@ const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .replace(/=+$/g, '');
 
 /**
- * Clone event payloads so queue entries stay immutable from caller mutations.
+ * Fallback deep clone used when structuredClone/JSON cloning is unavailable.
+ * Supports circular references via a WeakMap memo table.
+ *
+ * @param {any} value
+ * @param {WeakMap<object, any>} [seen]
+ * @returns {any}
  */
 const cloneEventValueFallback = (value, seen = new WeakMap()) => {
   if (value == null || typeof value !== 'object') return value;
@@ -100,6 +105,9 @@ const cloneEventValueFallback = (value, seen = new WeakMap()) => {
 
 /**
  * Clone event payloads so queue entries stay immutable from caller mutations.
+ *
+ * @param {any} value
+ * @returns {any}
  */
 const cloneEventValue = (value) => {
   if (value == null || typeof value !== 'object') return value;
