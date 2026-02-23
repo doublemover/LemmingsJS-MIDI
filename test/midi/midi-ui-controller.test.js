@@ -386,6 +386,39 @@ describe('midiUiController', function() {
     expect(attached).to.equal(inputDevice);
   });
 
+  it('supports map-based WebMIDI device collections', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const inputSelect = registerElement(doc, 'select', 'midiInSelect');
+    const outputSelect = registerElement(doc, 'select', 'midiOutSelect');
+    registerElement(doc, 'input', 'midiViewPanToggle');
+    registerElement(doc, 'select', 'midiInputChannel');
+    registerElement(doc, 'div', 'errorDisplay');
+
+    const inputDevice = { id: 'in-1', name: 'Input 1' };
+    const outputDevice = { id: 'out-1', name: 'Output 1' };
+    const webMidi = {
+      enabled: true,
+      inputs: new Map([[inputDevice.id, inputDevice]]),
+      outputs: new Map([[outputDevice.id, outputDevice]]),
+      getInputById(id) { return this.inputs.get(id) || null; },
+      getOutputById(id) { return this.outputs.get(id) || null; }
+    };
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({}),
+      getWebMidi: () => webMidi
+    });
+    controller.onEnabled();
+
+    expect(inputSelect.disabled).to.equal(false);
+    expect(outputSelect.disabled).to.equal(false);
+    expect(inputSelect.value).to.equal('in-1');
+    expect(outputSelect.value).to.equal('out-1');
+  });
+
   it('builds event lists and wires updates into overrides', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
@@ -1105,11 +1138,15 @@ describe('midiUiController', function() {
     doc.body = doc.createElement('body');
     const win = createTestWindow();
     const intervals = [];
+    const clearedIntervals = [];
     const timeouts = [];
     const dispatched = [];
     win.setInterval = (cb) => {
       intervals.push(cb);
       return intervals.length;
+    };
+    win.clearInterval = (id) => {
+      clearedIntervals.push(id);
     };
     win.setTimeout = (cb) => {
       timeouts.push(cb);
@@ -1136,6 +1173,7 @@ describe('midiUiController', function() {
     win.localStorage.setItem('lemmings.midi.inputId', 'missing');
     win.localStorage.setItem('lemmings.midi.outputId', 'out-2');
     win.localStorage.setItem('lemmings.midi.inputChannel', '2');
+    win.localStorage.setItem('lemmings.midi.enabled', 'true');
 
     const inputs = [{ id: 'in-1', name: 'Input A' }];
     const outputs = [
@@ -1168,6 +1206,7 @@ describe('midiUiController', function() {
 
     controller.bindMidiUi();
     controller.bindMidiUi();
+    expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
     win.lastMidiInputMessage = [144, 60, 127];
     win.lastMidiOutputMessage = { note: 61, velocity: 100, channel: 2 };
     intervals.forEach(cb => cb());
@@ -1230,6 +1269,8 @@ describe('midiUiController', function() {
     enabledToggle.checked = false;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(midiInputController.detached).to.equal(true);
+    expect(clearedIntervals.length).to.be.at.least(2);
+    expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
 
     while (timeouts.length) {
       timeouts.shift()();
@@ -1247,6 +1288,30 @@ describe('midiUiController', function() {
     const errorText = doc.getElementById('errorDisplay').innerHTML;
     expect(errorText).to.contain('nope');
     controller.showError(null);
+  });
+
+  it('removes and restores MIDI UI hook when enabled state changes', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+    win.localStorage.setItem('lemmings.midi.enabled', 'true');
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getLemmings: () => ({})
+    });
+    controller.bindMidiUi();
+    expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
+
+    enabledToggle.checked = false;
+    enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
+    expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
+
+    enabledToggle.checked = true;
+    enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
+    expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
   });
 
   it('retries scheduled refresh after errors', function() {
@@ -1322,6 +1387,7 @@ describe('midiUiController', function() {
   it('exposes deterministic intent automation hooks', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
+    win.localStorage.setItem('lemmings.midi.enabled', 'true');
     registerElement(doc, 'div', 'midiEventList');
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');

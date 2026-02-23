@@ -5,6 +5,9 @@ const MIDI_BITS_PER_SECOND = 31250;
 const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 8;
 const MIDI_MESSAGE_BYTES = 3;
 
+/**
+ * Schedule MIDI note on/off traffic with channel allocation, MPE, and rate limits.
+ */
 class MidiScheduler {
   constructor(config = {}) {
     this.output = null;
@@ -25,6 +28,10 @@ class MidiScheduler {
     this.setConfig(config);
   }
 
+  /**
+   * Apply runtime scheduler configuration.
+   * @param {object} config
+   */
   setConfig(config) {
     this.config = config || {};
     const maxActive = this.config.limits?.maxActiveNotes ?? 32;

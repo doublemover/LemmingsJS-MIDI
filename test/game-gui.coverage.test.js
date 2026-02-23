@@ -202,12 +202,16 @@ describe('GameGui coverage', function() {
       gui.drawSpeedChange = () => {};
 
       victory.releaseRate = 20;
+      gui.releaseRateChanged = false;
       gui.handleSkillMouseDown({ x: 0, y: 20 });
       expect(victory.releaseRate).to.equal(14);
+      expect(gui.releaseRateChanged).to.equal(true);
 
       victory.releaseRate = 20;
+      gui.releaseRateChanged = false;
       gui.handleSkillMouseDown({ x: 16, y: 20 });
       expect(victory.releaseRate).to.equal(26);
+      expect(gui.releaseRateChanged).to.equal(true);
 
       timer.speedFactor = 11;
       gui.handleSkillMouseDown({ x: 160, y: 32 });
@@ -237,6 +241,29 @@ describe('GameGui coverage', function() {
       const doubleNuke = gui.game.commands.find(cmd => cmd instanceof CommandNuke);
       expect(doubleNuke).to.not.equal(undefined);
     });
+  });
+
+  it('does not redraw zero-skill stipples when counts are unchanged', function() {
+    const display = makeDisplay();
+    const { gui } = makeGui({ running: true });
+    gui.setGuiDisplay(display);
+    gui.display = display;
+    gui.backgroundChanged = true;
+    gui.skillsCountChanged = true;
+    gui.gameTimeChanged = false;
+    gui.releaseRateChanged = false;
+    gui.gameSpeedChanged = false;
+    gui.render();
+
+    const stipplesAfterFirstRender = display.stipples;
+    gui.backgroundChanged = false;
+    gui.skillsCountChanged = false;
+    gui.gameTimeChanged = false;
+    gui.releaseRateChanged = false;
+    gui.gameSpeedChanged = false;
+    gui.render();
+
+    expect(display.stipples).to.equal(stipplesAfterFirstRender);
   });
 
   it('handles right-click actions and hover state', function() {

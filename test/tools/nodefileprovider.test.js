@@ -171,6 +171,14 @@ describe('NodeFileProvider', function() {
     expect(text).to.equal('abs');
   });
 
+  it('rejects parent traversal in plain string paths', async function() {
+    const provider = makeProvider();
+    await expectReject(
+      provider.loadString('../outside.txt'),
+      /invalid file path/i
+    );
+  });
+
   it('reads binary data from an absolute directory', async function() {
     const provider = makeProvider();
     const reader = await provider.loadBinary(tmpDir, 'LEVEL000.DAT');
@@ -182,6 +190,15 @@ describe('NodeFileProvider', function() {
     const zip1 = provider._getZip('pack.zip');
     const zip2 = provider._getZip('pack.zip');
     expect(zip1).to.equal(zip2);
+
+    const zipUpdated = new AdmZip();
+    zipUpdated.addFile('data/LEVEL000.DAT', Buffer.from([1, 2, 3, 4]));
+    const zipPath = path.join(tmpDir, 'pack.zip');
+    zipUpdated.writeZip(zipPath);
+    const shifted = new Date(Date.now() + 2500);
+    fs.utimesSync(zipPath, shifted, shifted);
+    const zip3 = provider._getZip('pack.zip');
+    expect(zip3).to.not.equal(zip1);
 
     const tar1 = await provider._getTar('pack.tar');
     const tar2 = await provider._getTar('pack.tar');

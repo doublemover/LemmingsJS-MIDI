@@ -112,6 +112,8 @@ const LEMMING_DELTA_FIELDS = Object.freeze([
 const DEFAULT_LEM_DELTA_FIELDS = Object.freeze([4, 5, 6, 7, 8, 9, 10, 11, 12, 13]);
 const MCP_PROTOCOL_VERSION = '2.1.0';
 const MCP_PROTOCOL_SCHEMA_FROZEN_AT = '2026-02-23';
+const MCP_MAX_EVENT_QUEUE_EVENTS = 10000;
+const MCP_MAX_CAPTURE_SEQUENCE_FRAMES = 240;
 
 const KEY_ALIASES = new Map([
   ['Ctrl', 'Control'],
@@ -131,6 +133,7 @@ const KEY_ALIASES = new Map([
 const RESOURCE_URI_RE = /^lemmings:\/\/sessions\/([^/]+)\/resources\/([^/]+)$/;
 
 let cachedKeybindings = null;
+let cachedKeybindingsMtimeMs = NaN;
 
 const nowIso = () => new Date().toISOString();
 
@@ -193,7 +196,7 @@ const SessionCreateSchema = z.object({
     maxItems: z.number().int().positive().optional()
   }).optional(),
   events: z.object({
-    maxEvents: z.number().int().positive().optional(),
+    maxEvents: z.number().int().positive().max(MCP_MAX_EVENT_QUEUE_EVENTS).optional(),
     mode: z.enum(['none', 'minimal', 'full']).optional()
   }).optional()
 });
@@ -351,7 +354,7 @@ const VisionCaptureSchema = z.object({
 const VisionSequenceSchema = z.object({
   sessionId: z.string().min(1),
   mode: z.enum(['step', 'sample']),
-  frames: z.number().int().positive(),
+  frames: z.number().int().positive().max(MCP_MAX_CAPTURE_SEQUENCE_FRAMES),
   stepBy: z.number().int().optional(),
   everyMs: z.number().int().positive().optional(),
   capture: VisionCaptureSchema.omit({ sessionId: true }),
@@ -506,9 +509,13 @@ const buildToolResponse = (payload) => ({
 });
 
 const loadKeybindings = async () => {
-  if (cachedKeybindings) return cachedKeybindings;
+  const stat = await fs.stat(KEYBINDINGS_PATH);
+  if (cachedKeybindings && cachedKeybindingsMtimeMs === stat.mtimeMs) {
+    return cachedKeybindings;
+  }
   const raw = await fs.readFile(KEYBINDINGS_PATH, 'utf8');
   cachedKeybindings = JSON.parse(raw);
+  cachedKeybindingsMtimeMs = stat.mtimeMs;
   return cachedKeybindings;
 };
 
@@ -814,7 +821,7 @@ const captureSequence = async (session, args) => {
   const stepBy = Number.isFinite(args.stepBy) ? args.stepBy : 1;
   const everyMs = Number.isFinite(args.everyMs) ? args.everyMs : 250;
   const capture = args.capture || {};
-  const total = Math.max(1, args.frames);
+  const total = Math.min(MCP_MAX_CAPTURE_SEQUENCE_FRAMES, Math.max(1, args.frames));
 
   if (mode === 'step') {
     await callE2E(session, 'pause');

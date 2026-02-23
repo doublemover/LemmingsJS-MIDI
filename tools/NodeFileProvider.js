@@ -34,19 +34,22 @@ class NodeFileProvider {
 
   _getZip(zipPath) {
     const abs = path.resolve(this.rootPath, zipPath);
-    let zip = this.zipCache.get(abs);
-    if (!zip) {
-      zip = new AdmZip(abs);
-      this.zipCache.set(abs, zip);
+    const mtimeMs = fs.statSync(abs).mtimeMs;
+    const cached = this.zipCache.get(abs);
+    if (!cached || cached.mtimeMs !== mtimeMs) {
+      const zip = new AdmZip(abs);
+      this.zipCache.set(abs, { mtimeMs, zip });
+      return zip;
     }
-    return zip;
+    return cached.zip;
   }
 
   async _getTar(tarPath) {
     const abs = path.resolve(this.rootPath, tarPath);
-    let map = this.tarCache.get(abs);
-    if (!map) {
-      map = new Map();
+    const mtimeMs = fs.statSync(abs).mtimeMs;
+    const cached = this.tarCache.get(abs);
+    if (!cached || cached.mtimeMs !== mtimeMs) {
+      const map = new Map();
       await tar.t({
         file: abs,
         gzip: /(\.tar\.gz|\.tgz)$/i.test(tarPath),
@@ -59,16 +62,18 @@ class NodeFileProvider {
           });
         },
       });
-      this.tarCache.set(abs, map);
+      this.tarCache.set(abs, { mtimeMs, map });
+      return map;
     }
-    return map;
+    return cached.map;
   }
 
   async _getRar(rarPath) {
     const abs = path.resolve(this.rootPath, rarPath);
-    let map = this.rarCache.get(abs);
-    if (!map) {
-      map = new Map();
+    const mtimeMs = fs.statSync(abs).mtimeMs;
+    const cached = this.rarCache.get(abs);
+    if (!cached || cached.mtimeMs !== mtimeMs) {
+      const map = new Map();
       const data = fs.readFileSync(abs);
       const extractor = await this._rar.createExtractorFromData({ data });
       const list = extractor.getFileList();
@@ -81,9 +86,10 @@ class NodeFileProvider {
           map.set(h.name.replace(/\\/g, '/'), Buffer.from(f.extraction));
         }
       }
-      this.rarCache.set(abs, map);
+      this.rarCache.set(abs, { mtimeMs, map });
+      return map;
     }
-    return map;
+    return cached.map;
   }
 
   /**
@@ -94,8 +100,9 @@ class NodeFileProvider {
    */
   _getNxp(nxpPath) {
     const abs = path.resolve(this.rootPath, nxpPath);
-    let map = this.nxpCache.get(abs);
-    if (map) return map;
+    const mtimeMs = fs.statSync(abs).mtimeMs;
+    const cached = this.nxpCache.get(abs);
+    if (cached && cached.mtimeMs === mtimeMs) return cached.map;
 
     const data = fs.readFileSync(abs);
     if (data.length < 4) {
@@ -108,7 +115,7 @@ class NodeFileProvider {
       throw new Error(`Invalid NXP table size in ${nxpPath}`);
     }
 
-    map = new Map();
+    const map = new Map();
     for (let i = 0; i < entryCount; i += 1) {
       const base = 4 + (i * TABLE_ENTRY_SIZE);
       const nameRaw = data.subarray(base, base + 28);
@@ -124,7 +131,7 @@ class NodeFileProvider {
       }
       map.set(name, data.subarray(offset, offset + size));
     }
-    this.nxpCache.set(abs, map);
+    this.nxpCache.set(abs, { mtimeMs, map });
     return map;
   }
 
@@ -217,7 +224,7 @@ class NodeFileProvider {
     }
     const fullPath = path.isAbsolute(file)
       ? file
-      : path.join(this.rootPath, file);
+      : path.join(this.rootPath, this._validateEntry(file));
     return fs.readFileSync(fullPath, 'utf8');
   }
 }

@@ -116,6 +116,10 @@ class GameGui {
     skills.onSelectionChanged.on(this._onSkillSelectionChanged);
   }
 
+  /**
+   * Attach the minimap renderer to the HUD and lemming manager.
+   * @param {MiniMap|null} miniMap
+   */
   setMiniMap(miniMap) {
     this.miniMap = miniMap;
     this.game?.lemmingManager?.setMiniMap?.(miniMap);
@@ -205,6 +209,7 @@ class GameGui {
         this.lastGameSpeed = neu;
         this.gameVictoryCondition.setCurrentReleaseRate?.(neu) ??
                     (this.gameVictoryCondition.releaseRate = neu);
+        this.releaseRateChanged = true;
       }
       this.deltaReleaseRate = step;
       this._applyReleaseRateAuto();
@@ -307,6 +312,7 @@ class GameGui {
       this.gameVictoryCondition.setCurrentReleaseRate?.(min) ??
         (this.gameVictoryCondition.releaseRate = min);
       this.deltaReleaseRate = -min;
+      this.releaseRateChanged = true;
       this._applyReleaseRateAuto();
       return;
     }
@@ -316,6 +322,7 @@ class GameGui {
       this.gameVictoryCondition.setCurrentReleaseRate?.(max) ??
         (this.gameVictoryCondition.releaseRate = max);
       this.deltaReleaseRate = max;
+      this.releaseRateChanged = true;
       this._applyReleaseRateAuto();
       return;
     }
@@ -618,11 +625,11 @@ class GameGui {
         const count = this.skills.getSkill(s);
         this.drawPanelNumber(d, count, panel);
       }
-    }
-    for (let s = 1; s < SKILL_COUNT; ++s) {
-      if (this.skills.getSkill(s) <= 0) {
-        const panel = this.getPanelIndexBySkill(s);
-        d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+      for (let s = 1; s < SKILL_COUNT; ++s) {
+        if (this.skills.getSkill(s) <= 0) {
+          const panel = this.getPanelIndexBySkill(s);
+          d.drawStippleRect(panel * 16, 16, 16, 23, 160, 160, 160);
+        }
       }
     }
     if (this.skillSelectionChanged) {
@@ -835,6 +842,11 @@ class GameGui {
     d.drawStippleRect(x + w, y, 0, h, 160, 160, 160);    // right
   }
 
+  /**
+   * Flash the pause-speed controls to reflect a recent speed change.
+   * @param {boolean} upDown true to flash the increase side, false for decrease.
+   * @param {boolean} [reset=false] true to clear both flash bars.
+   */
   drawSpeedChange(upDown, reset = false) {
     if (!reset) {
       if (upDown) {

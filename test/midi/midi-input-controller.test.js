@@ -249,6 +249,20 @@ describe('MidiInputController', function() {
     expect(setCalled).to.equal(true);
   });
 
+  it('avoids redundant config normalization for unchanged config references', function() {
+    const config = { input: { channel: 'omni' } };
+    const controller = new MidiInputController({}, { getConfig: () => config });
+    let setCalls = 0;
+    const originalSetConfig = controller.setConfig.bind(controller);
+    controller.setConfig = (...args) => {
+      setCalls += 1;
+      return originalSetConfig(...args);
+    };
+    controller._onMessage({ data: [0xF8] });
+    controller._onMessage({ data: [0xF8] });
+    expect(setCalls).to.equal(1);
+  });
+
   it('defaults missing velocity and CC values to zero', function() {
     const controller = new MidiInputController({}, { getConfig: () => ({ input: { channel: 'omni' } }) });
     const noteCalls = [];

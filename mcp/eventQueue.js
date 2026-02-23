@@ -2,8 +2,10 @@ import crypto from 'node:crypto';
 
 const nowIso = () => new Date().toISOString();
 const DEFAULT_MAX_EVENTS = 1000;
+const MAX_MAX_EVENTS = 10000;
 const DEFAULT_MAX_HUMAN_SUMMARY_PARTS = 24;
 const MIN_HUMAN_SUMMARY_PARTS = 0;
+const MAX_HUMAN_SUMMARY_PARTS = 2048;
 
 /**
  * Normalize capacity-like inputs to stable integer bounds.
@@ -50,7 +52,10 @@ class EventQueue {
     idFactory = makeId,
     timeFactory = nowIso
   } = {}) {
-    this.maxEvents = Math.max(1, normalizeCapacity(maxEvents, DEFAULT_MAX_EVENTS, 1));
+    this.maxEvents = Math.min(
+      MAX_MAX_EVENTS,
+      Math.max(1, normalizeCapacity(maxEvents, DEFAULT_MAX_EVENTS, 1))
+    );
     this.idFactory = typeof idFactory === 'function' ? idFactory : makeId;
     this.timeFactory = typeof timeFactory === 'function' ? timeFactory : nowIso;
     this.events = new Array(this.maxEvents);
@@ -61,10 +66,13 @@ class EventQueue {
     // Ring-buffer over summary segments to avoid O(n) shift churn under chatty input.
     this.humanSummaryParts = [];
     this.humanSummaryStart = 0;
-    this.maxHumanSummaryParts = normalizeCapacity(
-      maxHumanSummaryParts,
-      DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
-      MIN_HUMAN_SUMMARY_PARTS
+    this.maxHumanSummaryParts = Math.min(
+      MAX_HUMAN_SUMMARY_PARTS,
+      normalizeCapacity(
+        maxHumanSummaryParts,
+        DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+        MIN_HUMAN_SUMMARY_PARTS
+      )
     );
   }
 
@@ -106,10 +114,13 @@ class EventQueue {
     this.events[index] = entry;
 
     if (source === 'human' && summary) {
-      const summaryCap = normalizeCapacity(
-        this.maxHumanSummaryParts,
-        DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
-        MIN_HUMAN_SUMMARY_PARTS
+      const summaryCap = Math.min(
+        MAX_HUMAN_SUMMARY_PARTS,
+        normalizeCapacity(
+          this.maxHumanSummaryParts,
+          DEFAULT_MAX_HUMAN_SUMMARY_PARTS,
+          MIN_HUMAN_SUMMARY_PARTS
+        )
       );
       this.maxHumanSummaryParts = summaryCap;
       if (summaryCap <= 0) {

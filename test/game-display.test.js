@@ -235,6 +235,34 @@ describe('GameDisplay', function() {
     expect(gd._dashOffset).to.equal(1);
   });
 
+  it('renders debug hover overlays through the stage overlay plane when available', function() {
+    const overlayDisplay = {
+      clearCalls: 0,
+      clear() { this.clearCalls += 1; },
+      drawDashedRect(...args) { this.args = args; }
+    };
+    const stage = {
+      visible: null,
+      getGameOverlayDisplay() { return overlayDisplay; },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({ stage });
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: { renderDebug() {} },
+      level: { renderDebug() {} },
+      triggerManager: { renderDebug() {} }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+    gd.hoverLemming = makeLemming(3);
+
+    gd.renderDebug();
+
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(overlayDisplay.args).to.have.length(6);
+    expect(stage.visible).to.equal(true);
+  });
+
   it('skips input when disabled and uses fallback hover scheduling', function() {
     const display = makeDisplay();
     let queued = 0;

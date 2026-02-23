@@ -639,6 +639,38 @@ describe('Stage', function() {
     expect(typeof status.workerOffscreenActive).to.equal('boolean');
   });
 
+  it('skips overlay layout sync when overlay planes are unused', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.guiImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    let layoutSyncCalls = 0;
+    let sizeSyncCalls = 0;
+    const originalLayoutSync = stage._syncOverlayLayout.bind(stage);
+    const originalSizeSync = stage._syncOverlayDisplaySize.bind(stage);
+    stage._syncOverlayLayout = () => {
+      layoutSyncCalls += 1;
+      return originalLayoutSync();
+    };
+    stage._syncOverlayDisplaySize = (...args) => {
+      sizeSyncCalls += 1;
+      return originalSizeSync(...args);
+    };
+
+    stage.redraw();
+    expect(layoutSyncCalls).to.equal(0);
+    expect(sizeSyncCalls).to.equal(0);
+
+    stage.getGameOverlayDisplay();
+    layoutSyncCalls = 0;
+    sizeSyncCalls = 0;
+    stage.redraw();
+    expect(layoutSyncCalls).to.be.greaterThan(0);
+    expect(sizeSyncCalls).to.be.greaterThan(0);
+  });
+
   it('clamps viewports and snaps scales', function() {
     const { canvas } = makeCanvas(320, 200);
     const stage = new Stage(canvas);
@@ -846,6 +878,27 @@ describe('Stage', function() {
     expect(cleared.every((name) => name === 'game')).to.equal(true);
     expect(drawn.length).to.be.at.least(1);
     expect(drawn.every((name) => name === 'game')).to.equal(true);
+  });
+
+  it('keeps GUI display clean when panning the game viewport', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(100, 50);
+    stage.guiImgProps.display.initSize(80, 20);
+    stage.updateStageSize();
+    const cleared = [];
+    const drawn = [];
+    stage.clear = (image) => {
+      cleared.push(image === stage.guiImgProps ? 'gui' : 'game');
+    };
+    stage.draw = (image) => {
+      drawn.push(image === stage.guiImgProps ? 'gui' : 'game');
+    };
+
+    stage.updateViewPoint(stage.gameImgProps, 12, -8, 0);
+
+    expect(cleared).to.deep.equal(['game']);
+    expect(drawn).to.deep.equal(['game']);
   });
 
   it('updates view point when GUI display lacks getImageData', function() {

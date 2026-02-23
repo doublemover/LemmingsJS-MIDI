@@ -187,6 +187,13 @@ describe('UserInputManager', function() {
     expect(point.y).to.equal(75);
   });
 
+  it('uses safe defaults when the element does not expose bounding rect APIs', function() {
+    const manager = new UserInputManager(makeElement());
+    const point = manager.getRelativePosition({}, 12, 34);
+    expect(point.x).to.equal(12);
+    expect(point.y).to.equal(34);
+  });
+
   it('disposes listeners safely', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);

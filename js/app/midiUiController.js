@@ -85,6 +85,11 @@ const parseFlagValue = (value, fallback) => {
 };
 
 
+/**
+ * Create the browser MIDI UI controller and bind it to runtime dependencies.
+ * @param {object} [options]
+ * @returns {object}
+ */
 export const createMidiUiController = ({
   window = getRuntimeDependency('window', null),
   document = getRuntimeDependency('document', null),
@@ -111,6 +116,8 @@ export const createMidiUiController = ({
   let queuedRefreshAll = false;
   let queuedRefreshForce = false;
   let midiUiFeatureFlags = { ...MIDI_UI_FEATURE_FLAG_DEFAULTS };
+  let bpmIntervalId = null;
+  let debugIntervalId = null;
   const queuedRefreshSections = new Set();
   if (!isPlainObject(midiOverrides)) {
     midiOverrides = {};
@@ -226,20 +233,30 @@ export const createMidiUiController = ({
     }
   };
 
+  const toDeviceList = (devices) => {
+    if (!devices) return [];
+    if (Array.isArray(devices)) return devices;
+    if (typeof devices.values === 'function') return Array.from(devices.values());
+    if (typeof devices[Symbol.iterator] === 'function') return Array.from(devices);
+    return [];
+  };
+
   const resolveMidiId = (devices, ...preferredIds) => {
-    if (!devices || !devices.length) return null;
+    const list = toDeviceList(devices);
+    if (!list.length) return null;
     for (const preferredId of preferredIds) {
-      if (preferredId && devices.some(device => device.id === preferredId)) {
+      if (preferredId && list.some(device => device.id === preferredId)) {
         return preferredId;
       }
     }
-    return devices[0].id;
+    return list[0]?.id || null;
   };
 
   const populateMidiSelect = (select, devices, emptyLabel) => {
+    const list = toDeviceList(devices);
     if (!select) return;
     select.innerHTML = '';
-    if (!devices || !devices.length) {
+    if (!list.length) {
       const opt = document.createElement('option');
       opt.textContent = emptyLabel;
       opt.value = '';
@@ -248,7 +265,7 @@ export const createMidiUiController = ({
       return;
     }
     select.disabled = false;
-    for (const device of devices.values()) {
+    for (const device of list) {
       const opt = document.createElement('option');
       opt.textContent = device.name;
       opt.value = device.id;
@@ -1528,8 +1545,8 @@ export const createMidiUiController = ({
     const outputSelect = document.getElementById('midiOutSelect');
     const viewPanToggle = document.getElementById('midiViewPanToggle');
     const webMidi = getWebMidi();
-    const inputs = webMidi?.inputs || [];
-    const outputs = webMidi?.outputs || [];
+    const inputs = toDeviceList(webMidi?.inputs);
+    const outputs = toDeviceList(webMidi?.outputs);
     renderErrorDisplay({ inputs, outputs });
     populateMidiSelect(inputSelect, inputs, 'No input devices');
 
@@ -1638,6 +1655,39 @@ export const createMidiUiController = ({
     if (root?.classList) root.classList.toggle('midi-disabled', !enabled);
   };
 
+  const clearUiIntervals = () => {
+    if (bpmIntervalId != null && typeof window?.clearInterval === 'function') {
+      window.clearInterval(bpmIntervalId);
+    }
+    if (debugIntervalId != null && typeof window?.clearInterval === 'function') {
+      window.clearInterval(debugIntervalId);
+    }
+    bpmIntervalId = null;
+    debugIntervalId = null;
+  };
+
+  const clearMidiUiHook = () => {
+    if (!window || !Object.prototype.hasOwnProperty.call(window, '__LEMMINGS_MIDI_UI__')) return;
+    try {
+      delete window.__LEMMINGS_MIDI_UI__;
+    } catch {
+      window.__LEMMINGS_MIDI_UI__ = undefined;
+    }
+  };
+
+  const setMidiUiHook = () => {
+    if (!window) return;
+    window.__LEMMINGS_MIDI_UI__ = {
+      dispatchIntent: (intent) => runMidiIntent(intent),
+      getIntentState: () => ({ ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) }),
+      getFeatureFlags: () => ({ ...midiUiFeatureFlags }),
+      setOverrides: (patch) => setMidiOverrides(patch),
+      refresh: () => refreshMidiUiFromConfig(),
+      captureNote: (note) => (typeof noteCapture === 'function' ? !!noteCapture(note) : false),
+      auditionMapping: ({ targetKey = 'sfx', id, entry = null } = {}) => auditionMappingEntry({ targetKey, id, entry })
+    };
+  };
+
   const bindMidiUi = () => {
     if (midiUiBound) return;
     const enabledToggle = document.getElementById('midiEnabledToggle');
@@ -1679,6 +1729,16 @@ export const createMidiUiController = ({
     }
 
     let updateBpm = () => {};
+    let updateDebug = () => {};
+    const ensureUiIntervals = () => {
+      if (typeof window?.setInterval !== 'function') return;
+      if (bpmIntervalId == null) {
+        bpmIntervalId = window.setInterval(updateBpm, 500);
+      }
+      if (debugIntervalId == null) {
+        debugIntervalId = window.setInterval(updateDebug, 250);
+      }
+    };
     const updateBpmBase = (event) => {
       const bpm = Number(event.target.value) || 120;
       setMidiOverrides({ timing: { bpmBase: bpm } });
@@ -1729,13 +1789,19 @@ export const createMidiUiController = ({
           await lemmings.setMidiEnabled(enabled);
         }
         if (!enabled) {
+          clearUiIntervals();
+          clearMidiUiHook();
           unbindDeviceListeners();
           lastEnableError = null;
           clearErrorDisplay();
           setActiveMidiInput(null);
           setActiveMidiOutput(null);
-        } else if (getWebMidi()?.enabled) {
-          onEnabled();
+        } else {
+          setMidiUiHook();
+          ensureUiIntervals();
+          if (getWebMidi()?.enabled) {
+            onEnabled();
+          }
         }
       },
       midiInSelect: (event) => {
@@ -1857,9 +1923,8 @@ export const createMidiUiController = ({
       }
     };
     updateBpm();
-    window?.setInterval?.(updateBpm, 500);
 
-    const updateDebug = () => {
+    updateDebug = () => {
       if (debugInput) {
         debugInput.textContent = `Input: ${formatDebugBytes(window?.lastMidiInputMessage)}`;
       }
@@ -1868,18 +1933,12 @@ export const createMidiUiController = ({
       }
     };
     updateDebug();
-    window?.setInterval?.(updateDebug, 250);
-
-    if (window) {
-      window.__LEMMINGS_MIDI_UI__ = {
-        dispatchIntent: (intent) => runMidiIntent(intent),
-        getIntentState: () => ({ ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) }),
-        getFeatureFlags: () => ({ ...midiUiFeatureFlags }),
-        setOverrides: (patch) => setMidiOverrides(patch),
-        refresh: () => refreshMidiUiFromConfig(),
-        captureNote: (note) => (typeof noteCapture === 'function' ? !!noteCapture(note) : false),
-        auditionMapping: ({ targetKey = 'sfx', id, entry = null } = {}) => auditionMappingEntry({ targetKey, id, entry })
-      };
+    if (midiEnabled) {
+      setMidiUiHook();
+      ensureUiIntervals();
+    } else {
+      clearUiIntervals();
+      clearMidiUiHook();
     }
 
     midiUiBound = true;

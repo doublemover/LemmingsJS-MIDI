@@ -466,13 +466,14 @@ class Stage {
     const imgData = stageImage.display.getImageData();
     const guiDisplay = this.guiEnabled ? this.guiImgProps.display : null;
     const guiImgData = guiDisplay?.getImageData?.() || null;
+    const shouldRedrawGui = !!(guiDisplay && guiImgData && stageImage === this.guiImgProps);
     this.applyViewport(stageImage, targetX, targetY, targetScale);
     this.clear(stageImage);
-    if (guiDisplay && guiImgData) {
+    if (shouldRedrawGui) {
       this.clear(this.guiImgProps);
     }
     this.draw(stageImage, imgData);
-    if (guiDisplay && guiImgData) {
+    if (shouldRedrawGui) {
       this.draw(this.guiImgProps, guiImgData);
     }
   }
@@ -723,9 +724,12 @@ class Stage {
       fullBlitCount: 0,
       tileUpdateCount: 0
     };
-    this._syncOverlayLayout();
-    this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
-    this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
+    const overlayVisible = this._gameOverlayVisible || (this.guiEnabled && this._guiOverlayVisible);
+    if (this.gameOverlayImgProps.display || this.guiOverlayImgProps.display || overlayVisible) {
+      this._syncOverlayLayout();
+      this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
+      this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
+    }
     const gameDisplay = this.gameImgProps.display;
     const guiDisplay = this.guiImgProps.display;
     const gameOverlayDisplay = this.gameOverlayImgProps.display;
@@ -743,7 +747,6 @@ class Stage {
     const guiOverlayDirty = !!guiOverlayDisplay &&
       (guiOverlayDisplay.hasPendingDirty?.() || guiOverlaySig !== this._lastGuiOverlayDrawSignature);
     const overlayDirty = gameOverlayDirty || guiOverlayDirty;
-    const overlayVisible = this._gameOverlayVisible || (this.guiEnabled && this._guiOverlayVisible);
     const cursorVisibleChanged = this._lastCursorHasSprite !== !!this.cursorCanvas;
     const cursorStateChanged = this._cursorStateVersion !== this._lastCursorStateVersion || cursorVisibleChanged;
     const cursorMoved = !!this.cursorCanvas &&

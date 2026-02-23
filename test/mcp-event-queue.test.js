@@ -166,6 +166,23 @@ describe('EventQueue', function () {
     expect(envelope.events).to.have.lengthOf(1);
   });
 
+  it('caps extremely large maxEvents values to a safe upper bound', function () {
+    const queue = new EventQueue({
+      maxEvents: 1e9,
+      idFactory() { return 'evt'; },
+      timeFactory() { return 'fixed-time'; }
+    });
+    expect(queue.maxEvents).to.equal(10000);
+    expect(queue.events.length).to.equal(10000);
+  });
+
+  it('caps oversized human summary limits at runtime', function () {
+    const queue = createQueue(8);
+    queue.maxHumanSummaryParts = 1e9;
+    queue.add({ source: 'human', type: 'input', summary: 'a' });
+    expect(queue.maxHumanSummaryParts).to.equal(2048);
+  });
+
   it('rebalances buffered human summaries when maxHumanSummaryParts shrinks at runtime', function () {
     const queue = createQueue(8);
     queue.maxHumanSummaryParts = 5;
@@ -195,5 +212,23 @@ describe('EventQueue', function () {
     const envelope = queue.drain('0', { includeHumanSummary: true });
     expect(envelope.humanSummary).to.equal(undefined);
     expect(queue.humanSummaryParts.length).to.equal(0);
+  });
+
+  it('reorders wrapped summaries correctly when shrinking the runtime summary cap', function () {
+    const queue = createQueue(16);
+    queue.maxHumanSummaryParts = 5;
+    queue.add({ source: 'human', type: 'input', summary: 'a' });
+    queue.add({ source: 'human', type: 'input', summary: 'b' });
+    queue.add({ source: 'human', type: 'input', summary: 'c' });
+    queue.add({ source: 'human', type: 'input', summary: 'd' });
+    queue.add({ source: 'human', type: 'input', summary: 'e' });
+    queue.add({ source: 'human', type: 'input', summary: 'f' });
+    expect(queue.humanSummaryStart).to.equal(1);
+
+    queue.maxHumanSummaryParts = 2;
+    queue.add({ source: 'human', type: 'input', summary: 'g' });
+
+    const envelope = queue.drain('0', { includeHumanSummary: true });
+    expect(envelope.humanSummary).to.equal('f; g');
   });
 });

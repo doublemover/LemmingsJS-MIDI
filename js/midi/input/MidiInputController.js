@@ -21,6 +21,9 @@ const scaleValue = (value, min, max) => {
   return min + (max - min) * t;
 };
 
+/**
+ * Translate live MIDI input events into gameplay and MIDI-config intents.
+ */
 class MidiInputController {
   constructor(view, { getConfig, onConfigChange } = {}) {
     this.view = view;
@@ -29,11 +32,24 @@ class MidiInputController {
     this.input = null;
     this.channel = 'omni';
     this._noteCapture = null;
+    this._lastConfigRef = null;
+    this._lastInputChannel = undefined;
     this._handler = this._onMessage.bind(this);
   }
 
   setConfig(config) {
-    this.channel = normalizeInputChannel(config?.input?.channel);
+    this._lastConfigRef = config || null;
+    this._lastInputChannel = config?.input?.channel;
+    this.channel = normalizeInputChannel(this._lastInputChannel);
+  }
+
+  _syncConfig(config) {
+    const nextRef = config || null;
+    const nextInputChannel = config?.input?.channel;
+    if (nextRef === this._lastConfigRef && nextInputChannel === this._lastInputChannel) {
+      return;
+    }
+    this.setConfig(config);
   }
 
   attach(input) {
@@ -205,7 +221,7 @@ class MidiInputController {
 
   _onMessage(event) {
     const config = this.getConfig?.() || {};
-    this.setConfig(config);
+    this._syncConfig(config);
     const data = event?.data;
     if (!data || data.length === 0) return;
     if (typeof window !== 'undefined') {
