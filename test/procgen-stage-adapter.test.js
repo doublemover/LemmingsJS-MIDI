@@ -194,4 +194,15 @@ describe('ProcgenStageAdapter', function () {
     onResize();
     expect(stage.updateStageSizeCalls).to.equal(2);
   });
+
+  it('handles missing gui image properties without throwing', function () {
+    const canvas = createCanvasMock();
+    const { stage, view, controller } = createAdapterFixture();
+    stage.guiImgProps = null;
+    const adapter = new ProcgenStageAdapter({ view, controller, canvas });
+
+    expect(() => adapter.install()).to.not.throw();
+    adapter.updateStageSize();
+    expect(stage.updateStageSizeCalls).to.equal(1);
+  });
 });

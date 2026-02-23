@@ -50,8 +50,24 @@ const createSpectatorTools = ({
       if (payload.x < 0 || payload.x > 1 || payload.y < 0 || payload.y > 1) return;
       const metrics = await resolveCanvasMetrics(session);
       if (!metrics) return;
-      const x = metrics.rect.x + metrics.rect.width * payload.x;
-      const y = metrics.rect.y + metrics.rect.height * payload.y;
+      const rectX = Number(metrics?.rect?.x);
+      const rectY = Number(metrics?.rect?.y);
+      const rectWidth = Number(metrics?.rect?.width);
+      const rectHeight = Number(metrics?.rect?.height);
+      if (
+        !Number.isFinite(rectX) ||
+        !Number.isFinite(rectY) ||
+        !Number.isFinite(rectWidth) ||
+        !Number.isFinite(rectHeight) ||
+        rectWidth <= 0 ||
+        rectHeight <= 0
+      ) {
+        return;
+      }
+      const normX = Math.min(1, Math.max(0, payload.x));
+      const normY = Math.min(1, Math.max(0, payload.y));
+      const x = rectX + Math.min(rectWidth - 1, normX * rectWidth);
+      const y = rectY + Math.min(rectHeight - 1, normY * rectHeight);
       await session.page.mouse.click(x, y);
       session.events.add({
         source: 'human',

@@ -352,6 +352,17 @@ function scalePixel (scaler, rotDeg, ker3x3, trg, trgi, trgWidth, blendInfo) {
   }
 }
 
+/**
+ * Scale source pixels into the target buffer for a bounded row range.
+ * @param {2|3|4} scaleSize
+ * @param {number[]} src
+ * @param {number[]} trg
+ * @param {number} srcWidth
+ * @param {number} srcHeight
+ * @param {number} yFirst
+ * @param {number} yLast
+ * @returns {void}
+ */
 export function scaleImage (scaleSize, src, trg, srcWidth, srcHeight, yFirst, yLast) {
   yFirst = Math.max(yFirst, 0);
   yLast = Math.min(yLast, srcHeight);
@@ -506,7 +517,6 @@ export function scaleImage (scaleSize, src, trg, srcWidth, srcHeight, yFirst, yL
     }
   }
 }
-
 
 
 

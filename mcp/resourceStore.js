@@ -30,6 +30,10 @@ const makeId = (bytes = 9) => crypto.randomBytes(bytes)
   .replace(/\//g, '_')
   .replace(/=+$/g, '');
 
+const normalizeResourceId = (value) => String(value ?? '')
+  .trim()
+  .replace(/[^A-Za-z0-9_-]/g, '');
+
 class ResourceStore {
   constructor({
     maxBytes = 256 * 1024 * 1024,
@@ -61,7 +65,7 @@ class ResourceStore {
     const normalizedMimeType = typeof mimeType === 'string' && mimeType.trim()
       ? mimeType.trim()
       : 'application/octet-stream';
-    const id = this.idFactory();
+    const id = this._createResourceId();
     const uri = `lemmings://sessions/${sessionId}/resources/${id}`;
     const ttl = normalizeInteger(ttlMs, this.defaultTtlMs, 0);
     const expiresAt = ttl > 0 ? Date.now() + ttl : null;
@@ -151,6 +155,18 @@ class ResourceStore {
       if (!firstKey) break;
       this._remove(firstKey);
     }
+  }
+
+  _createResourceId() {
+    const base = normalizeResourceId(this.idFactory());
+    const seed = base || makeId();
+    let candidate = seed;
+    let suffix = 0;
+    while (this.items.has(candidate)) {
+      suffix += 1;
+      candidate = `${seed}-${suffix}`;
+    }
+    return candidate;
   }
 }
 

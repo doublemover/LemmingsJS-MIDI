@@ -347,9 +347,18 @@ const init = async () => {
 const resizeCanvas = (runtime = activeProcgenRuntime) => {
   const canvas = document.getElementById('gameCanvas');
   if (!canvas) return;
-  const dpr = window.devicePixelRatio || 1;
-  const width = Math.max(1, window.innerWidth);
-  const height = Math.max(1, window.innerHeight);
+  const dprValue = Number(window?.devicePixelRatio);
+  const dpr = Number.isFinite(dprValue) && dprValue > 0 ? dprValue : 1;
+  const widthValue = Number(window?.innerWidth);
+  const heightValue = Number(window?.innerHeight);
+  const fallbackWidth = Number(canvas?.clientWidth);
+  const fallbackHeight = Number(canvas?.clientHeight);
+  const width = Number.isFinite(widthValue) && widthValue > 0
+    ? widthValue
+    : (Number.isFinite(fallbackWidth) && fallbackWidth > 0 ? fallbackWidth : 1);
+  const height = Number.isFinite(heightValue) && heightValue > 0
+    ? heightValue
+    : (Number.isFinite(fallbackHeight) && fallbackHeight > 0 ? fallbackHeight : 1);
   canvas.width = Math.floor(width * dpr);
   canvas.height = Math.floor(height * dpr);
   canvas.style.width = `${width}px`;

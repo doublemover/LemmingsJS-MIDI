@@ -28,7 +28,7 @@ const blurActiveInput = (documentRef, windowRef) => {
  * not trapped by focused controls. Returns a cleanup function for teardown.
  */
 const bindCanvasFocusBlur = (canvas, { documentRef = globalThis.document, windowRef = globalThis.window } = {}) => {
-  if (!canvas) return;
+  if (!canvas) return () => {};
   const existingCleanup = boundCanvasHandlers.get(canvas);
   if (existingCleanup) {
     return existingCleanup;

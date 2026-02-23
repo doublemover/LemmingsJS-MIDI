@@ -178,4 +178,32 @@ describe('procgenBoot helpers', function () {
     expect(canvas.style.height).to.equal('360px');
     expect(adapterResizeCalls).to.equal(1);
   });
+
+  it('falls back to finite canvas dimensions when viewport metrics are invalid', function () {
+    const canvas = {
+      width: 0,
+      height: 0,
+      clientWidth: 320,
+      clientHeight: 200,
+      style: {}
+    };
+    globalThis.window = {
+      devicePixelRatio: Number.NaN,
+      innerWidth: undefined,
+      innerHeight: Number.NaN
+    };
+    globalThis.document = {
+      getElementById(id) {
+        if (id === 'gameCanvas') return canvas;
+        return null;
+      }
+    };
+
+    procgenBoot.resizeCanvas();
+
+    expect(canvas.width).to.equal(320);
+    expect(canvas.height).to.equal(200);
+    expect(canvas.style.width).to.equal('320px');
+    expect(canvas.style.height).to.equal('200px');
+  });
 });

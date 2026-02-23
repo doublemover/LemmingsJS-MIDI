@@ -77,6 +77,22 @@ describe('SpectatorBroadcaster', function () {
     expect(socket.sent).to.have.lengthOf(3);
   });
 
+  it('queues and delivers empty-string payloads in latest mode', function () {
+    const broadcaster = new SpectatorBroadcaster({
+      frameSkipPolicy: SPECTATOR_SKIP_POLICIES.LATEST
+    });
+    const socket = new FakeSocket();
+    socket.deferCallbacks = true;
+    broadcaster.attach(socket);
+
+    broadcaster.broadcast('first');
+    broadcaster.broadcast('');
+
+    expect(socket.sent).to.deep.equal(['first']);
+    socket.flush();
+    expect(socket.sent).to.deep.equal(['first', '']);
+  });
+
   it('deduplicates repeat attachment of the same socket', function () {
     const broadcaster = new SpectatorBroadcaster({
       frameSkipPolicy: SPECTATOR_SKIP_POLICIES.NONE

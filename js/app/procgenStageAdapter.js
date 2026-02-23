@@ -135,7 +135,11 @@ class ProcgenStageAdapter {
   _ensureGuiBuffer() {
     if (!this.stage) return;
     const guiProps = this.stage.guiImgProps;
+    if (!guiProps || typeof guiProps !== 'object') return;
     if (guiProps?.display) return;
+    if (typeof guiProps?.viewPoint?.setX !== 'function' || typeof guiProps?.viewPoint?.setY !== 'function') {
+      return;
+    }
     const display = new DisplayImage(this.stage);
     display.initSize(1, 1);
     guiProps.display = display;

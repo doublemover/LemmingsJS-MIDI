@@ -199,4 +199,58 @@ describe('ResourceStore', function () {
       Date.now = originalDateNow;
     }
   });
+
+  it('generates unique ids when idFactory collisions occur', function () {
+    let callCount = 0;
+    const store = new ResourceStore({
+      maxItems: 10,
+      maxBytes: 1024,
+      idFactory() {
+        callCount += 1;
+        return 'dup-id';
+      },
+      timeFactory() {
+        return `t-${callCount}`;
+      }
+    });
+
+    const first = store.put({
+      sessionId: 's1',
+      bytes: Buffer.from('abc'),
+      mimeType: 'text/plain'
+    });
+    const second = store.put({
+      sessionId: 's1',
+      bytes: Buffer.from('z'),
+      mimeType: 'text/plain'
+    });
+
+    expect(first.uri).to.not.equal(second.uri);
+    expect(store.list()).to.have.lengthOf(2);
+    expect(store.totalBytes).to.equal(4);
+    expect(store.get(first.uri).bytes.toString('utf8')).to.equal('abc');
+    expect(store.get(second.uri).bytes.toString('utf8')).to.equal('z');
+  });
+
+  it('normalizes unsafe idFactory output before building resource URIs', function () {
+    const store = new ResourceStore({
+      maxItems: 10,
+      maxBytes: 1024,
+      idFactory() {
+        return 'bad/id ?value';
+      },
+      timeFactory() {
+        return 't-1';
+      }
+    });
+
+    const saved = store.put({
+      sessionId: 's1',
+      bytes: Buffer.from('x'),
+      mimeType: 'text/plain'
+    });
+
+    expect(saved.uri).to.match(/^lemmings:\/\/sessions\/s1\/resources\/badidvalue$/);
+    expect(store.get(saved.uri).bytes.toString('utf8')).to.equal('x');
+  });
 });

@@ -72,7 +72,7 @@ class SpectatorBroadcaster {
   }
 
   broadcast(payload) {
-    if (!payload) return;
+    if (payload == null) return;
     let serialized;
     try {
       serialized = typeof payload === 'string' ? payload : JSON.stringify(payload);
@@ -122,7 +122,7 @@ class SpectatorBroadcaster {
     }
 
     if (this.frameSkipPolicy === SPECTATOR_SKIP_POLICIES.LATEST && client.sending) {
-      if (client.queuedFrame) {
+      if (client.queuedFrame !== null) {
         client.droppedCount += 1;
       }
       client.queuedFrame = serialized;
@@ -138,7 +138,7 @@ class SpectatorBroadcaster {
           return;
         }
         client.sentCount += 1;
-        if (this.frameSkipPolicy === SPECTATOR_SKIP_POLICIES.LATEST && client.queuedFrame) {
+        if (this.frameSkipPolicy === SPECTATOR_SKIP_POLICIES.LATEST && client.queuedFrame !== null) {
           const queued = client.queuedFrame;
           client.queuedFrame = null;
           this._sendFrame(client, queued);

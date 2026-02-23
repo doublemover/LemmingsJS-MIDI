@@ -106,12 +106,15 @@ describe('mcp spectator tools', function () {
 
     ws.send(JSON.stringify({ type: 'key', action: 'press', key: 'A' }));
     ws.send(JSON.stringify({ type: 'click', x: 0.5, y: 0.5 }));
-    await waitFor(() => keyCalls.length === 1 && mouseClicks.length === 1);
+    ws.send(JSON.stringify({ type: 'click', x: 1, y: 1 }));
+    await waitFor(() => keyCalls.length === 1 && mouseClicks.length === 2);
 
     expect(focusCalls).to.equal(1);
     expect(keyCalls).to.deep.equal([['press', 'A']]);
     expect(mouseClicks[0][0]).to.equal(110);
     expect(mouseClicks[0][1]).to.equal(70);
+    expect(mouseClicks[1][0]).to.equal(209);
+    expect(mouseClicks[1][1]).to.equal(119);
     expect(capturedEvents.some((event) => event.summary === 'key:press:A')).to.equal(true);
     expect(capturedEvents.some((event) => event.summary?.startsWith('click:'))).to.equal(true);
 

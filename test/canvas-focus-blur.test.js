@@ -22,6 +22,12 @@ const createListenerHost = () => ({
 const countHandlers = (host, type) => (host.listeners.get(type) || []).length;
 
 describe('canvasFocusBlur', function () {
+  it('returns a no-op cleanup when canvas is missing', function () {
+    const cleanup = bindCanvasFocusBlur(null);
+    expect(cleanup).to.be.a('function');
+    expect(() => cleanup()).to.not.throw();
+  });
+
   it('deduplicates repeated binds and supports teardown/rebind', function () {
     const documentRef = {
       ...createListenerHost(),

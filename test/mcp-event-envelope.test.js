@@ -55,4 +55,15 @@ describe('attachEvents', function () {
     const result = attachEvents(session, payload);
     expect(result).to.equal(payload);
   });
+
+  it('returns payload unchanged when session has no drainable event queue', function () {
+    const session = {
+      eventsMode: 'minimal',
+      events: null
+    };
+    const payload = { ok: true };
+    const result = attachEvents(session, payload);
+    expect(result).to.equal(payload);
+    expect(result.events).to.equal(undefined);
+  });
 });
