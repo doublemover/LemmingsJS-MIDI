@@ -18,6 +18,18 @@ const tscBin = path.join(
 );
 const CHECK_JS_CONFIG = 'tsconfig.checkjs.json';
 const DEFAULT_TEST_RUNTIME_BUDGET_MS = 180000;
+const DEFAULT_BASE_REF_CANDIDATES = Object.freeze([
+  'origin/main',
+  'origin/master',
+  'main',
+  'master'
+]);
+const OFFLINE_TOOL_SOURCE_FILES = Object.freeze(new Set([
+  'tools/archiveDir.js',
+  'tools/cleanExports.js',
+  'tools/packLevels.js',
+  'tools/packPipeline.js'
+]));
 
 const RUNTIME_GUARD_TARGETS = Object.freeze([
   'js/game/**/*.js',
@@ -33,7 +45,11 @@ const CATEGORY_PATTERNS = Object.freeze({
   workflow: ['test/*workflow*.test.js'],
   tools: ['test/tools/*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
-  editor: ['test/editor/*.test.js']
+  editor: [
+    'test/editor/*.test.js',
+    'test/editor-*.test.js',
+    'test/input/editor-*.test.js'
+  ]
 });
 
 const CATEGORY_ORDER = Object.freeze([
@@ -44,6 +60,74 @@ const CATEGORY_ORDER = Object.freeze([
   'bench',
   'release',
   'workflow'
+]);
+const CHANGED_FILE_CATEGORY_RULES = Object.freeze([
+  {
+    category: 'release',
+    matches: normalized => (
+      normalized === 'docs/release-readiness.md' ||
+      normalized.startsWith('scripts/check-release-readiness') ||
+      normalized === 'test/release-readiness.test.js'
+    )
+  },
+  {
+    category: 'editor',
+    matches: normalized => (
+      normalized.startsWith('js/editor/') ||
+      normalized.startsWith('js/app/editor') ||
+      normalized.startsWith('js/input/Editor') ||
+      normalized.startsWith('css/editor') ||
+      normalized.startsWith('test/editor/') ||
+      /^test\/editor-.*\.test\.js$/.test(normalized) ||
+      /^test\/input\/editor-.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'offline-tools',
+    matches: normalized => (
+      normalized.startsWith('tools/offline/') ||
+      normalized.startsWith('test/offline-tools/') ||
+      OFFLINE_TOOL_SOURCE_FILES.has(normalized)
+    )
+  },
+  {
+    category: 'tools',
+    matches: normalized => (
+      normalized.startsWith('tools/') ||
+      normalized.startsWith('test/tools/') ||
+      normalized.startsWith('scripts/check-undefined') ||
+      normalized.startsWith('scripts/check-mcp-client-compat')
+    )
+  },
+  {
+    category: 'bench',
+    matches: normalized => (
+      normalized.startsWith('scripts/bench-') ||
+      /^test\/bench.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'workflow',
+    matches: normalized => (
+      normalized.startsWith('.github/workflows/') ||
+      /^test\/.*workflow.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'core',
+    matches: normalized => (
+      normalized.startsWith('docs/') ||
+      normalized.endsWith('.md') ||
+      normalized === 'README' ||
+      normalized === 'README.md' ||
+      normalized.startsWith('js/') ||
+      normalized.startsWith('test/') ||
+      normalized.startsWith('mcp/') ||
+      normalized.startsWith('scripts/') ||
+      normalized.startsWith('css/') ||
+      normalized === 'package.json'
+    )
+  }
 ]);
 
 const parseBoolEnv = (value) => {
@@ -70,6 +154,7 @@ const parseCliArgs = (argv = []) => {
   const result = {
     changed: false,
     baseRef: null,
+    printSelection: false,
     categories: []
   };
 
@@ -86,6 +171,10 @@ const parseCliArgs = (argv = []) => {
         throw new Error('Missing value for --base');
       }
       result.baseRef = value;
+      continue;
+    }
+    if (arg === '--print-selection' || arg === '--dry-run') {
+      result.printSelection = true;
       continue;
     }
     if (arg.startsWith('--')) {
@@ -109,86 +198,17 @@ const inferCategoriesFromChangedFiles = (files) => {
   for (const file of files) {
     const normalized = normalizeFilePath(file);
     if (!normalized) continue;
-
-    if (
-      normalized === 'docs/release-readiness.md' ||
-      normalized.startsWith('scripts/check-release-readiness') ||
-      normalized === 'test/release-readiness.test.js'
-    ) {
-      categories.add('release');
-      continue;
+    for (const rule of CHANGED_FILE_CATEGORY_RULES) {
+      if (!rule.matches(normalized)) continue;
+      categories.add(rule.category);
+      break;
     }
-
-    if (
-      normalized.startsWith('docs/') ||
-      normalized.endsWith('.md') ||
-      normalized === 'README' ||
-      normalized === 'README.md'
-    ) {
-      categories.add('core');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('js/editor/') ||
-      normalized.startsWith('js/app/editor') ||
-      normalized.startsWith('css/editor') ||
-      normalized.startsWith('test/editor/')
-    ) {
-      categories.add('editor');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('tools/offline/') ||
-      normalized.startsWith('test/offline-tools/')
-    ) {
-      categories.add('offline-tools');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('tools/') ||
-      normalized.startsWith('test/tools/') ||
-      normalized.startsWith('scripts/check-undefined') ||
-      normalized.startsWith('scripts/check-mcp-client-compat')
-    ) {
-      categories.add('tools');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('scripts/bench-') ||
-      /^test\/bench.*\.test\.js$/.test(normalized)
-    ) {
-      categories.add('bench');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('.github/workflows/') ||
-      /^test\/.*workflow.*\.test\.js$/.test(normalized)
-    ) {
-      categories.add('workflow');
-      continue;
-    }
-
-    if (
-      normalized.startsWith('js/') ||
-      normalized.startsWith('test/') ||
-      normalized.startsWith('mcp/') ||
-      normalized.startsWith('scripts/') ||
-      normalized.startsWith('css/') ||
-      normalized === 'package.json'
-    ) {
-      categories.add('core');
-      continue;
-    }
-
-    categories.add('core');
   }
 
-  return Array.from(categories);
+  if (categories.size === 0) {
+    categories.add('core');
+  }
+  return Array.from(categories).sort((a, b) => a.localeCompare(b));
 };
 
 const defaultRunGitCommand = (args) => spawnSync('git', args, { encoding: 'utf8' });
@@ -205,9 +225,65 @@ const readGitFileList = (args, runGitCommand = defaultRunGitCommand) => {
     .filter(Boolean);
 };
 
-const collectChangedFiles = ({ baseRef = null, runGitCommand = defaultRunGitCommand } = {}) => {
+const readGitScalar = (args, runGitCommand = defaultRunGitCommand) => {
+  const result = runGitCommand(args);
+  if (!result || result.error || result.status !== 0) {
+    return null;
+  }
+  const stdout = String(result.stdout || '').trim();
+  return stdout || null;
+};
+
+const gitRefExists = (ref, runGitCommand = defaultRunGitCommand) => {
+  if (!ref) return false;
+  return readGitScalar(['rev-parse', '--verify', '--quiet', ref], runGitCommand) != null;
+};
+
+const resolveBaseRef = ({ baseRef = null, runGitCommand = defaultRunGitCommand } = {}) => {
+  if (baseRef) {
+    return {
+      ref: baseRef,
+      source: 'explicit'
+    };
+  }
+
+  const upstream = readGitScalar(
+    ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    runGitCommand
+  );
+  if (upstream) {
+    return {
+      ref: upstream,
+      source: 'upstream'
+    };
+  }
+
+  const remoteHead = readGitScalar(
+    ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'],
+    runGitCommand
+  );
+  if (remoteHead) {
+    return {
+      ref: remoteHead,
+      source: 'origin-head'
+    };
+  }
+
+  for (const candidate of DEFAULT_BASE_REF_CANDIDATES) {
+    if (!gitRefExists(candidate, runGitCommand)) continue;
+    return {
+      ref: candidate,
+      source: 'fallback'
+    };
+  }
+
+  return null;
+};
+
+const collectChangedFiles = ({ baseRef, runGitCommand = defaultRunGitCommand } = {}) => {
+  if (!baseRef) return null;
   const files = new Set();
-  const baseSpec = baseRef ? `${baseRef}...HEAD` : 'HEAD';
+  const baseSpec = `${baseRef}...HEAD`;
 
   const compared = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD', baseSpec], runGitCommand);
   if (!compared) return null;
@@ -218,11 +294,32 @@ const collectChangedFiles = ({ baseRef = null, runGitCommand = defaultRunGitComm
 
   const unstaged = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD'], runGitCommand) || [];
   for (const file of unstaged) files.add(file);
-
   const untracked = readGitFileList(['ls-files', '--others', '--exclude-standard'], runGitCommand) || [];
   for (const file of untracked) files.add(file);
 
   return Array.from(files).sort((a, b) => a.localeCompare(b));
+};
+
+const formatSelectionLines = ({
+  resolvedBase = null,
+  changedFiles = null,
+  categories = [],
+  mochaArgs = []
+} = {}) => {
+  const lines = [];
+  if (resolvedBase) {
+    lines.push(`Resolved base ref: ${resolvedBase.ref} (${resolvedBase.source})`);
+  } else {
+    lines.push('Resolved base ref: none');
+  }
+  if (Array.isArray(changedFiles)) {
+    lines.push(`Changed files (${changedFiles.length}): ${changedFiles.join(', ') || '(none)'}`);
+  } else {
+    lines.push('Changed files: unavailable');
+  }
+  lines.push(`Selected categories: ${categories.join(', ') || '(none)'}`);
+  lines.push(`Mocha args: ${mochaArgs.join(' ') || '(none)'}`);
+  return lines;
 };
 
 const validateCategories = (categories) => {
@@ -358,21 +455,35 @@ const main = (
   }
 
   const categories = new Set(parsed.categories);
+  let resolvedBase = null;
+  let changedFiles = null;
 
   if (parsed.changed) {
-    const changedFiles = collectChangedFiles({
+    resolvedBase = resolveBaseRef({
       baseRef: parsed.baseRef,
       runGitCommand
     });
-    if (!changedFiles) {
-      log.warn('Unable to resolve changed files from git; falling back to full suite.');
+    if (!resolvedBase) {
+      log.warn('Unable to resolve a safe base ref from git; falling back to full suite.');
       categories.add('core');
+    } else {
+      changedFiles = collectChangedFiles({
+        baseRef: resolvedBase.ref,
+        runGitCommand
+      });
+    }
+    if (!changedFiles) {
+      if (resolvedBase) {
+        log.warn(`Unable to resolve changed files from git for base ${resolvedBase.ref}; falling back to full suite.`);
+        categories.add('core');
+      }
     } else {
       const inferred = inferCategoriesFromChangedFiles(changedFiles);
       for (const category of inferred) {
         categories.add(category);
       }
       log.log(`Changed-file test selection: ${Array.from(categories).sort().join(', ')}`);
+      log.log(`Changed-file base ref: ${resolvedBase.ref} (${resolvedBase.source})`);
     }
   }
 
@@ -386,6 +497,20 @@ const main = (
   } catch (error) {
     log.error(error.message);
     exit(1);
+    return;
+  }
+
+  if (parsed.printSelection) {
+    const selectionLines = formatSelectionLines({
+      resolvedBase,
+      changedFiles,
+      categories: Array.from(categories).sort((a, b) => a.localeCompare(b)),
+      mochaArgs
+    });
+    for (const line of selectionLines) {
+      log.log(line);
+    }
+    exit(0);
     return;
   }
 
@@ -423,10 +548,12 @@ export {
   RUNTIME_GUARD_TARGETS,
   buildMochaArgsForCategories,
   collectChangedFiles,
+  formatSelectionLines,
   inferCategoriesFromChangedFiles,
   main,
   parseCliArgs,
   parseBoolEnv,
+  resolveBaseRef,
   runCriticalTypecheckGuard,
   resolveRuntimeBudgetMs,
   runRuntimeGlobalGuard

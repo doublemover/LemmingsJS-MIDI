@@ -4,29 +4,40 @@ import {
   RUNTIME_GUARD_TARGETS,
   buildMochaArgsForCategories,
   collectChangedFiles,
+  formatSelectionLines,
   inferCategoriesFromChangedFiles,
   main,
   parseBoolEnv,
   parseCliArgs,
+  resolveBaseRef,
   resolveRuntimeBudgetMs,
   runRuntimeGlobalGuard
 } from '../scripts/runTests.js';
 
-const createRunGitStub = (responsesByCommand) => (args) => {
+const createRunGitStub = (
+  responsesByCommand,
+  { defaultResponse = { status: 1, stdout: '' } } = {}
+) => (args) => {
   const key = args.join(' ');
   const response = responsesByCommand[key];
   if (!response) {
-    return { status: 0, stdout: '' };
+    return defaultResponse;
   }
   return response;
 };
 
 describe('scripts/runTests', function () {
-  it('parses changed/base options and categories', function () {
-    const parsed = parseCliArgs(['--changed', '--base=origin/main', 'editor']);
+  it('parses changed/base/selection options and categories', function () {
+    const parsed = parseCliArgs(['--changed', '--base=origin/main', '--print-selection', 'editor']);
     expect(parsed.changed).to.equal(true);
     expect(parsed.baseRef).to.equal('origin/main');
+    expect(parsed.printSelection).to.equal(true);
     expect(parsed.categories).to.deep.equal(['editor']);
+  });
+
+  it('treats --dry-run as a selection-print alias', function () {
+    const parsed = parseCliArgs(['--dry-run']);
+    expect(parsed.printSelection).to.equal(true);
   });
 
   it('parses budget guard environment helpers', function () {
@@ -40,7 +51,8 @@ describe('scripts/runTests', function () {
 
   it('maps changed files to stable category selection', function () {
     const categories = inferCategoriesFromChangedFiles([
-      'js/editor/EditorController.js',
+      'test/editor-ui-format.test.js',
+      'test/input/editor-keybindings.test.js',
       'tools/offline/export.js',
       '.github/workflows/tests.yml',
       'docs/release-readiness.md'
@@ -51,11 +63,13 @@ describe('scripts/runTests', function () {
     expect(categories).to.include('release');
   });
 
-  it('maps tools and bench paths to their dedicated categories', function () {
+  it('maps generic tools, offline tool sources, and bench paths to their dedicated categories', function () {
     const categories = inferCategoriesFromChangedFiles([
       'tools/packPipeline.js',
+      'tools/scanGreenPanel.js',
       'scripts/bench-performance.js'
     ]);
+    expect(categories).to.include('offline-tools');
     expect(categories).to.include('tools');
     expect(categories).to.include('bench');
   });
@@ -75,14 +89,71 @@ describe('scripts/runTests', function () {
     expect(args).to.deep.equal(['test/*bench*.test.js']);
   });
 
+  it('uses an explicit base ref without consulting git', function () {
+    const runGitCommand = createRunGitStub({});
+    const resolved = resolveBaseRef({ baseRef: 'origin/release', runGitCommand });
+    expect(resolved).to.deep.equal({
+      ref: 'origin/release',
+      source: 'explicit'
+    });
+  });
+
+  it('prefers the current branch upstream when resolving the default base ref', function () {
+    const runGitCommand = createRunGitStub({
+      'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': {
+        status: 0,
+        stdout: 'origin/feature-branch\n'
+      }
+    });
+    const resolved = resolveBaseRef({ runGitCommand });
+    expect(resolved).to.deep.equal({
+      ref: 'origin/feature-branch',
+      source: 'upstream'
+    });
+  });
+
+  it('falls back to origin HEAD when no upstream is configured', function () {
+    const runGitCommand = createRunGitStub({
+      'symbolic-ref --quiet --short refs/remotes/origin/HEAD': {
+        status: 0,
+        stdout: 'origin/master\n'
+      }
+    });
+    const resolved = resolveBaseRef({ runGitCommand });
+    expect(resolved).to.deep.equal({
+      ref: 'origin/master',
+      source: 'origin-head'
+    });
+  });
+
+  it('falls back through known branch candidates when upstream and origin HEAD are unavailable', function () {
+    const runGitCommand = createRunGitStub({
+      'rev-parse --verify --quiet origin/master': {
+        status: 0,
+        stdout: 'abc123\n'
+      }
+    });
+    const resolved = resolveBaseRef({ runGitCommand });
+    expect(resolved).to.deep.equal({
+      ref: 'origin/master',
+      source: 'fallback'
+    });
+  });
+
+  it('returns null when no safe default base ref can be resolved', function () {
+    const runGitCommand = createRunGitStub({});
+    const resolved = resolveBaseRef({ runGitCommand });
+    expect(resolved).to.equal(null);
+  });
+
   it('collects changed files from git outputs and untracked files', function () {
     const runGitCommand = createRunGitStub({
-      'diff --name-only --diff-filter=ACMRD HEAD': { status: 0, stdout: 'js/app/boot.js\n' },
+      'diff --name-only --diff-filter=ACMRD origin/main...HEAD': { status: 0, stdout: 'js/app/boot.js\n' },
       'diff --name-only --cached --diff-filter=ACMRD': { status: 0, stdout: 'js/app/boot.js\n' },
       'diff --name-only --diff-filter=ACMRD': { status: 0, stdout: 'js/editor/EditorController.js\n' },
       'ls-files --others --exclude-standard': { status: 0, stdout: 'test/new.test.js\n' }
     });
-    const files = collectChangedFiles({ runGitCommand });
+    const files = collectChangedFiles({ baseRef: 'origin/main', runGitCommand });
     expect(files).to.deep.equal([
       'js/app/boot.js',
       'js/editor/EditorController.js',
@@ -92,13 +163,28 @@ describe('scripts/runTests', function () {
 
   it('includes deleted files when collecting changed paths', function () {
     const runGitCommand = createRunGitStub({
-      'diff --name-only --diff-filter=ACMRD HEAD': { status: 0, stdout: 'mcp/old-tool.js\n' },
+      'diff --name-only --diff-filter=ACMRD origin/main...HEAD': { status: 0, stdout: 'mcp/old-tool.js\n' },
       'diff --name-only --cached --diff-filter=ACMRD': { status: 0, stdout: '' },
       'diff --name-only --diff-filter=ACMRD': { status: 0, stdout: '' },
       'ls-files --others --exclude-standard': { status: 0, stdout: '' }
     });
-    const files = collectChangedFiles({ runGitCommand });
+    const files = collectChangedFiles({ baseRef: 'origin/main', runGitCommand });
     expect(files).to.deep.equal(['mcp/old-tool.js']);
+  });
+
+  it('formats selection diagnostics with base, files, categories, and mocha args', function () {
+    const lines = formatSelectionLines({
+      resolvedBase: { ref: 'origin/main', source: 'origin-head' },
+      changedFiles: ['tools/packPipeline.js', 'test/offline-tools/packPipeline.test.js'],
+      categories: ['offline-tools'],
+      mochaArgs: ['test/offline-tools/*.test.js']
+    });
+    expect(lines).to.deep.equal([
+      'Resolved base ref: origin/main (origin-head)',
+      'Changed files (2): tools/packPipeline.js, test/offline-tools/packPipeline.test.js',
+      'Selected categories: offline-tools',
+      'Mocha args: test/offline-tools/*.test.js'
+    ]);
   });
 
   it('keeps critical checkJs typecheck enabled in tsconfig.checkjs.json', function () {
@@ -109,7 +195,7 @@ describe('scripts/runTests', function () {
     expect(config.include.length).to.be.greaterThan(0);
   });
 
-  it('falls back to full suite when changed-file detection fails', function () {
+  it('falls back to full suite when no safe base ref can be resolved', function () {
     const logs = { warn: [], error: [], log: [] };
     const spawned = [];
     const exits = [];
@@ -126,12 +212,83 @@ describe('scripts/runTests', function () {
       },
       exit: (code) => exits.push(code)
     });
-    expect(logs.warn[0]).to.contain('falling back to full suite');
+    expect(logs.warn[0]).to.contain('safe base ref');
     expect(spawned[0].args).to.include('--max-warnings=0');
     expect(spawned[0].args).to.include(RUNTIME_GUARD_TARGETS[0]);
     expect(spawned[1].args).to.include('-p');
     expect(spawned[1].args).to.include('tsconfig.checkjs.json');
     expect(spawned[2].args).to.include('--recursive');
+    expect(exits).to.deep.equal([0]);
+  });
+
+  it('falls back to full suite when changed-file collection fails for a resolved base', function () {
+    const logs = { warn: [], error: [], log: [] };
+    const spawned = [];
+    const exits = [];
+    const runGitCommand = createRunGitStub({
+      'rev-parse --abbrev-ref --symbolic-full-name @{upstream}': {
+        status: 0,
+        stdout: 'origin/feature-branch\n'
+      },
+      'diff --name-only --diff-filter=ACMRD origin/feature-branch...HEAD': {
+        status: 1,
+        stdout: ''
+      }
+    });
+    main(['--changed'], {
+      spawn: (cmd, args) => {
+        spawned.push({ cmd, args });
+        return { status: 0 };
+      },
+      runGitCommand,
+      log: {
+        warn: (msg) => logs.warn.push(msg),
+        error: (msg) => logs.error.push(msg),
+        log: (msg) => logs.log.push(msg)
+      },
+      exit: (code) => exits.push(code)
+    });
+    expect(logs.warn[0]).to.contain('origin/feature-branch');
+    expect(spawned[2].args).to.include('--recursive');
+    expect(exits).to.deep.equal([0]);
+  });
+
+  it('prints changed-file selection details without running guards or mocha', function () {
+    const logs = { warn: [], error: [], log: [] };
+    const spawned = [];
+    const exits = [];
+    const runGitCommand = createRunGitStub({
+      'diff --name-only --diff-filter=ACMRD origin/main...HEAD': {
+        status: 0,
+        stdout: 'tools/packPipeline.js\n'
+      },
+      'diff --name-only --cached --diff-filter=ACMRD': { status: 0, stdout: '' },
+      'diff --name-only --diff-filter=ACMRD': { status: 0, stdout: '' },
+      'ls-files --others --exclude-standard': { status: 0, stdout: '' }
+    });
+    main(['--changed', '--base=origin/main', '--print-selection'], {
+      spawn: (cmd, args) => {
+        spawned.push({ cmd, args });
+        return { status: 0 };
+      },
+      runGitCommand,
+      log: {
+        warn: (msg) => logs.warn.push(msg),
+        error: (msg) => logs.error.push(msg),
+        log: (msg) => logs.log.push(msg)
+      },
+      exit: (code) => exits.push(code)
+    });
+    expect(spawned).to.have.lengthOf(0);
+    expect(logs.warn).to.deep.equal([]);
+    expect(logs.log).to.deep.equal([
+      'Changed-file test selection: offline-tools',
+      'Changed-file base ref: origin/main (explicit)',
+      'Resolved base ref: origin/main (explicit)',
+      'Changed files (1): tools/packPipeline.js',
+      'Selected categories: offline-tools',
+      'Mocha args: test/offline-tools/*.test.js'
+    ]);
     expect(exits).to.deep.equal([0]);
   });
 

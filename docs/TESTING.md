@@ -22,12 +22,18 @@ npm run test-workflow   # GitHub workflow helpers
 npm run test-tools      # command line tools
 npm run test-offline-tools # offline asset tooling
 npm run test-editor     # editor-related tests
+npm run test:changed    # infer the smallest safe Mocha subset from git changes
 npm run coverage-editor # 100% coverage for editor modules
 npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
 npm run release-readiness # release checklist gate (strict by default)
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
+`npm run test:changed` resolves its comparison base in this order: explicit
+`--base=<ref>`, current branch upstream, `origin/HEAD`, then known default
+branch names. Add `--print-selection` (or `--dry-run`) to print the resolved
+base ref, changed files, inferred categories, and Mocha args without running
+guards or tests.
 
 Tests that require significant manual setup or large downloads are documented in
 [`excluded-tests.md`](excluded-tests.md). They are skipped in continuous
