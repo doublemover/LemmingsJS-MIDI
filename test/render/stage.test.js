@@ -355,6 +355,33 @@ describe('Stage', function() {
     expect(clearCalls).to.be.greaterThan(baselineClearCalls);
   });
 
+  it('forces a redraw when overlay visibility toggles without dirtying overlay planes', function() {
+    const { canvas } = makeCanvas(200, 100);
+    const stage = new Stage(canvas);
+    stage.gameImgProps.display.initSize(40, 20);
+    stage.updateStageSize();
+
+    let clearCalls = 0;
+    const originalClear = stage.clear;
+    stage.clear = (...args) => {
+      clearCalls += 1;
+      return originalClear.call(stage, ...args);
+    };
+
+    const overlayDisplay = stage.getGameOverlayDisplay();
+    overlayDisplay.clear(0x00000000);
+    overlayDisplay.drawMarchingAntRect(1, 1, 6, 6, 2, 0);
+    stage.setGameOverlayVisible(true);
+    stage.redraw();
+    const baselineClearCalls = clearCalls;
+
+    stage.setGameOverlayVisible(false);
+    stage.redraw();
+
+    expect(stage.gameOverlayImgProps.display).to.equal(overlayDisplay);
+    expect(clearCalls).to.be.greaterThan(baselineClearCalls);
+  });
+
   it('recycles consumed dirty-rect buffers after drawing', function() {
     const { canvas } = makeCanvas(200, 100);
     const stage = new Stage(canvas);

@@ -135,6 +135,8 @@ class Stage {
     this._lastGuiOverlayDrawSignature = '';
     this._gameOverlayVisible = false;
     this._guiOverlayVisible = false;
+    this._overlayVisibilityVersion = 0;
+    this._lastOverlayVisibilityVersion = 0;
     this.panEnabled = true;
     this._resizeRaf = 0;
     this._lastStageWidth = NaN;
@@ -658,11 +660,17 @@ class Stage {
   }
 
   setGameOverlayVisible(visible) {
-    this._gameOverlayVisible = !!visible;
+    const nextVisible = !!visible;
+    if (this._gameOverlayVisible === nextVisible) return;
+    this._gameOverlayVisible = nextVisible;
+    this._overlayVisibilityVersion += 1;
   }
 
   setGuiOverlayVisible(visible) {
-    this._guiOverlayVisible = !!visible;
+    const nextVisible = !!visible;
+    if (this._guiOverlayVisible === nextVisible) return;
+    this._guiOverlayVisible = nextVisible;
+    this._overlayVisibilityVersion += 1;
   }
 
   setGameViewPointPosition(x, y, options = {}) {
@@ -760,6 +768,7 @@ class Stage {
     const guiOverlayDirty = !!guiOverlayDisplay &&
       (guiOverlayDisplay.hasPendingDirty?.() || guiOverlaySig !== this._lastGuiOverlayDrawSignature);
     const overlayDirty = gameOverlayDirty || guiOverlayDirty;
+    const overlayVisibilityChanged = this._overlayVisibilityVersion !== this._lastOverlayVisibilityVersion;
     const cursorVisibleChanged = this._lastCursorHasSprite !== !!this.cursorCanvas;
     const cursorStateChanged = this._cursorStateVersion !== this._lastCursorStateVersion || cursorVisibleChanged;
     const cursorMoved = !!this.cursorCanvas &&
@@ -771,6 +780,7 @@ class Stage {
       this.perfOverlayEnabled ||
       cursorStateChanged ||
       cursorMoved ||
+      overlayVisibilityChanged ||
       overlayDirty ||
       (overlayVisible && (gameDirty || guiDirty));
 
@@ -779,6 +789,7 @@ class Stage {
       this._lastCursorY = this.cursorY;
       this._lastCursorHasSprite = !!this.cursorCanvas;
       this._lastCursorStateVersion = this._cursorStateVersion;
+      this._lastOverlayVisibilityVersion = this._overlayVisibilityVersion;
       this._perfTrackingFrame = false;
       this._perfFrameCount += 1;
       this._perfFrameMs = perfNow() - start;
@@ -889,6 +900,7 @@ class Stage {
     this._lastCursorY = this.cursorY;
     this._lastCursorHasSprite = !!this.cursorCanvas;
     this._lastCursorStateVersion = this._cursorStateVersion;
+    this._lastOverlayVisibilityVersion = this._overlayVisibilityVersion;
   }
 
   createImage(displayOwner, width, height) {
