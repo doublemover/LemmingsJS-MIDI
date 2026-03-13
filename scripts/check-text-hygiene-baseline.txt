@@ -169,7 +169,6 @@ js/level/LevelReader.js:141:52 trailing whitespace
 js/level/LevelReader.js:155:26 trailing whitespace
 js/render/DisplayImage.js:20:1 trailing whitespace
 js/render/DisplayImage.js:643:1 trailing whitespace
-js/render/Stage.js:414:1 trailing whitespace
 js/xbrz/xbrz.js:532:1 extra blank line at end of file
 keybindings.json:36:76 trailing whitespace
 mcp_editor_apply_spec.md:48:48 trailing whitespace

@@ -413,7 +413,7 @@ class Stage {
         stageImage.display.onMouseMove.trigger(
           new Position2D(worldX, worldY)
         );
-        
+
       }
     });
   }
