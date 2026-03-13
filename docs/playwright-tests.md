@@ -7,11 +7,14 @@ run as part of `npm test`.
 - `npm run test-e2e:install`
 - `npm run test-e2e`
 - `npm run test-e2e:ui`
+- `LEMMINGS_E2E_BASE_URL=https://10.0.0.126:8080 npm run test-e2e`
 
 ## HTTPS dev server
-Playwright runs against `https://localhost:8080` and starts the server via
-`npm run start-https`, which uses the self-signed cert in `certs/`. If you need
-a trusted local cert, replace the files in `certs/` with your own.
+Playwright defaults to `https://localhost:8080` and starts the server via
+`npm run start-https`, which uses the self-signed cert in `certs/`. Set
+`LEMMINGS_E2E_BASE_URL` to a reachable origin when the browser must use a LAN
+or VM/container host instead of loopback. If you need a trusted local cert,
+replace the files in `certs/` with your own.
 
 ## E2E harness
 Add `?e2e=1` to enable the test harness and `window.__E2E__` API. The current

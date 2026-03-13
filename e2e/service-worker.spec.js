@@ -43,12 +43,19 @@ test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
 });
 
+function expectRootServiceWorkerScope(scope, pageUrl) {
+  const scopeUrl = new URL(scope);
+  const originUrl = new URL(pageUrl);
+  expect(scopeUrl.origin).toBe(originUrl.origin);
+  expect(scopeUrl.pathname).toBe('/');
+}
+
 test('Service worker controls the game page and checks for updates', async ({ page }, testInfo) => {
   await page.goto('/');
   const result = await ensureServiceWorkerControls(page);
   expect(result).not.toBeNull();
   expect(result?.state).toBeTruthy();
-  expect(result?.scope).toContain('localhost');
+  expectRootServiceWorkerScope(result?.scope || '', page.url());
   expect(result?.hasRegistrationAfterReload).toBe(true);
   if (!result?.registeredByApp) {
     testInfo.annotations.push({
@@ -58,17 +65,19 @@ test('Service worker controls the game page and checks for updates', async ({ pa
   }
 });
 
-test('Service worker controls the editor page and checks for updates', async ({ page }, testInfo) => {
+test('Editor page bypasses active service workers', async ({ page }) => {
+  await page.goto('/');
+  const gameResult = await ensureServiceWorkerControls(page);
+  expect(gameResult).not.toBeNull();
+  expect(gameResult?.state).toBeTruthy();
+  expectRootServiceWorkerScope(gameResult?.scope || '', page.url());
+  expect(gameResult?.hasRegistrationAfterReload).toBe(true);
+
   await page.goto('/editor.html');
-  const result = await ensureServiceWorkerControls(page);
-  expect(result).not.toBeNull();
-  expect(result?.state).toBeTruthy();
-  expect(result?.scope).toContain('localhost');
-  expect(result?.hasRegistrationAfterReload).toBe(true);
-  if (!result?.registeredByApp) {
-    testInfo.annotations.push({
-      type: 'warning',
-      description: 'Service worker was registered manually during the smoke test.'
+  await expect.poll(async () => {
+    return await page.evaluate(async () => {
+      const registration = await navigator.serviceWorker.getRegistration();
+      return !!registration;
     });
-  }
+  }).toBe(false);
 });
