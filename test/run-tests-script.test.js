@@ -89,6 +89,11 @@ describe('scripts/runTests', function () {
     expect(args).to.deep.equal(['test/*bench*.test.js']);
   });
 
+  it('builds focused args for game category', function () {
+    const args = buildMochaArgsForCategories(['game']);
+    expect(args).to.deep.equal(['test/*game*.test.js']);
+  });
+
   it('uses an explicit base ref without consulting git', function () {
     const runGitCommand = createRunGitStub({});
     const resolved = resolveBaseRef({ baseRef: 'origin/release', runGitCommand });
@@ -193,6 +198,16 @@ describe('scripts/runTests', function () {
     expect(config.compilerOptions?.checkJs).to.equal(true);
     expect(Array.isArray(config.include)).to.equal(true);
     expect(config.include.length).to.be.greaterThan(0);
+  });
+
+  it('keeps maintained npm test subset scripts routed through scripts/runTests.js', function () {
+    const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+    expect(pkg.scripts['test-core']).to.equal('node scripts/runTests.js game');
+    expect(pkg.scripts['test-bench-unit']).to.equal('node scripts/runTests.js bench');
+    expect(pkg.scripts['test-workflow']).to.equal('node scripts/runTests.js workflow');
+    expect(pkg.scripts['test-tools']).to.equal('node scripts/runTests.js tools');
+    expect(pkg.scripts['test-offline-tools']).to.equal('node scripts/runTests.js offline-tools');
+    expect(pkg.scripts['test-editor']).to.equal('node scripts/runTests.js editor');
   });
 
   it('falls back to full suite when no safe base ref can be resolved', function () {

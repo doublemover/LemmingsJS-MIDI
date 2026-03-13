@@ -40,6 +40,7 @@ const RUNTIME_GUARD_TARGETS = Object.freeze([
 
 const CATEGORY_PATTERNS = Object.freeze({
   core: ['--recursive'],
+  game: ['test/*game*.test.js'],
   bench: ['test/*bench*.test.js'],
   release: ['test/release-readiness.test.js'],
   workflow: ['test/*workflow*.test.js'],
@@ -54,6 +55,7 @@ const CATEGORY_PATTERNS = Object.freeze({
 
 const CATEGORY_ORDER = Object.freeze([
   'core',
+  'game',
   'editor',
   'tools',
   'offline-tools',

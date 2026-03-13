@@ -34,6 +34,10 @@ Categories map to the glob patterns defined in `scripts/runTests.js`.
 branch names. Add `--print-selection` (or `--dry-run`) to print the resolved
 base ref, changed files, inferred categories, and Mocha args without running
 guards or tests.
+The maintained subset scripts (`test-core`, `test-bench-unit`,
+`test-workflow`, `test-tools`, `test-offline-tools`, and `test-editor`) all go
+through `scripts/runTests.js`, so they share the same runtime-global guard,
+critical typecheck guard, and runtime budget reporting as `npm test`.
 
 Tests that require significant manual setup or large downloads are documented in
 [`excluded-tests.md`](excluded-tests.md). They are skipped in continuous
