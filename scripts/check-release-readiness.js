@@ -13,6 +13,47 @@ const REQUIRED_SECTIONS = Object.freeze([
   'Rollback Rehearsal'
 ]);
 
+const normalizePathSeparators = (value) => String(value || '').replace(/\\/g, '/');
+
+const usesWindowsPathSemantics = (...values) => (
+  values.some((value) => path.win32.isAbsolute(String(value || '')))
+);
+
+const resolveDocPath = (cwd, docPath) => {
+  const normalizedCwd = String(cwd || '');
+  const normalizedDocPath = String(docPath || '');
+  if (usesWindowsPathSemantics(normalizedCwd, normalizedDocPath)) {
+    return path.win32.isAbsolute(normalizedDocPath)
+      ? path.win32.normalize(normalizedDocPath)
+      : path.win32.resolve(normalizedCwd, normalizedDocPath);
+  }
+  return path.resolve(normalizedCwd, normalizedDocPath);
+};
+
+const formatDocPathForSummary = (cwd, resolvedDocPath) => {
+  const normalizedCwd = String(cwd || '');
+  const normalizedDocPath = String(resolvedDocPath || '');
+
+  if (usesWindowsPathSemantics(normalizedCwd, normalizedDocPath)) {
+    if (path.win32.isAbsolute(normalizedCwd) && path.win32.isAbsolute(normalizedDocPath)) {
+      const relative = normalizePathSeparators(path.win32.relative(normalizedCwd, normalizedDocPath));
+      if (relative && !relative.startsWith('../') && !path.win32.isAbsolute(relative)) {
+        return relative;
+      }
+    }
+    return normalizePathSeparators(path.win32.normalize(normalizedDocPath));
+  }
+
+  if (path.isAbsolute(normalizedCwd) && path.isAbsolute(normalizedDocPath)) {
+    const relative = normalizePathSeparators(path.relative(normalizedCwd, normalizedDocPath));
+    if (relative && !relative.startsWith('../') && !path.isAbsolute(relative)) {
+      return relative;
+    }
+  }
+
+  return normalizePathSeparators(normalizedDocPath);
+};
+
 /**
  * @param {string[]} [argv]
  * @returns {Map<string, string>}
@@ -163,7 +204,7 @@ const run = (
     args.get('strict') || process.env.LEMMINGS_RELEASE_READINESS_STRICT,
     true
   );
-  const resolvedDocPath = path.resolve(cwd, docPath);
+  const resolvedDocPath = resolveDocPath(cwd, docPath);
 
   let text;
   try {
@@ -177,7 +218,7 @@ const run = (
 
   const summary = evaluateReleaseReadiness(text, { requireAllChecked });
   log.log(JSON.stringify({
-    docPath: path.relative(cwd, resolvedDocPath).replace(/\\/g, '/'),
+    docPath: formatDocPathForSummary(cwd, resolvedDocPath),
     strict: requireAllChecked,
     ...summary
   }, null, 2));
@@ -204,6 +245,8 @@ export {
   DEFAULT_DOC_PATH,
   REQUIRED_SECTIONS,
   evaluateReleaseReadiness,
+  formatDocPathForSummary,
   parseChecklistBySection,
+  resolveDocPath,
   run
 };
