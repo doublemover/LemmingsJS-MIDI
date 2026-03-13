@@ -21,6 +21,7 @@ jobs:
           cache-dependency-path: package-lock.json
       - run: npm ci
       - run: npm run format
+      - run: npm run check-text-hygiene
       - run: git diff --exit-code
       - run: npm run check-undefined
       - run: npm run lint

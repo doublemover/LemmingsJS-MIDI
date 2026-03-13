@@ -16,6 +16,7 @@ describe('GitHub test workflow', function () {
     expect(runSteps).to.include.members([
       'npm ci',
       'npm run check-undefined',
+      'npm run check-text-hygiene',
       'npm run lint',
       'npm run release-readiness',
       'npm run test-bench-unit',

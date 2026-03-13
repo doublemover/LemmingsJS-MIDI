@@ -26,6 +26,7 @@ npm run test:changed    # infer the smallest safe Mocha subset from git changes
 npm run coverage-editor # 100% coverage for editor modules
 npm run test-mcp-smoke  # MCP stdio smoke test (requires start-https)
 npm run typecheck:critical # targeted checkJs guard for runtime-critical modules
+npm run check-text-hygiene # trailing-whitespace / EOF blank-line guard
 npm run release-readiness # release checklist gate (strict by default)
 ```
 Categories map to the glob patterns defined in `scripts/runTests.js`.
@@ -141,7 +142,10 @@ kill switches.
 
 ## npm test workflow
 
-Run `npm run check-undefined` manually before `npm test` to verify no uninitialized references remain in the build. GitHub Actions performs the same checks on **Node 20** during the CI job after running `npm run lint`.
+Run `npm run check-text-hygiene` and `npm run check-undefined` before
+`npm test` to catch low-cost text/JS hygiene regressions early. GitHub Actions
+performs the same checks on **Node 20** during the CI job after running
+`npm run format`.
 
 `npm test` now reports total runtime and supports optional guardrails for local
 suite budgets:
@@ -150,9 +154,11 @@ suite budgets:
 - `LEMMINGS_TEST_BUDGET_MS=<ms>`: override the default 180000ms budget.
 - `npm run test:budget`: convenience wrapper with enforcement enabled.
 
-To mirror the CI environment locally:
+To cover the main CI static/test gates locally:
 
 ```bash
 npm run lint
+npm run check-text-hygiene
+npm run check-undefined
 npm test
 ```
