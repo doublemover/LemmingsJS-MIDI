@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import {
   REQUIRED_SECTIONS,
   evaluateReleaseReadiness,
+  looksLikeWindowsAbsolutePath,
   parseChecklistBySection,
   run
 } from '../scripts/check-release-readiness.js';
@@ -94,6 +95,14 @@ describe('release readiness checklist', function () {
     const parsed = JSON.parse(logs[0]);
     expect(parsed.ok).to.equal(true);
     expect(parsed.strict).to.equal(true);
+  });
+
+  it('distinguishes Windows-style absolute paths from POSIX roots', function () {
+    expect(looksLikeWindowsAbsolutePath('/workspace/docs/release-readiness.md')).to.equal(false);
+    expect(looksLikeWindowsAbsolutePath('docs/release-readiness.md')).to.equal(false);
+    expect(looksLikeWindowsAbsolutePath('C:/workspace/docs/release-readiness.md')).to.equal(true);
+    expect(looksLikeWindowsAbsolutePath('C:\\workspace\\docs\\release-readiness.md')).to.equal(true);
+    expect(looksLikeWindowsAbsolutePath('\\\\server\\share\\release-readiness.md')).to.equal(true);
   });
 
   it('run exits non-zero when checklist file cannot be loaded', function () {

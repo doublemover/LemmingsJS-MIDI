@@ -15,8 +15,13 @@ const REQUIRED_SECTIONS = Object.freeze([
 
 const normalizePathSeparators = (value) => String(value || '').replace(/\\/g, '/');
 
+const looksLikeWindowsAbsolutePath = (value) => {
+  const normalized = String(value || '');
+  return /^[A-Za-z]:[\\/]/.test(normalized) || /^\\\\[^\\]/.test(normalized);
+};
+
 const usesWindowsPathSemantics = (...values) => (
-  values.some((value) => path.win32.isAbsolute(String(value || '')))
+  values.some((value) => looksLikeWindowsAbsolutePath(value))
 );
 
 const resolveDocPath = (cwd, docPath) => {
@@ -246,6 +251,7 @@ export {
   REQUIRED_SECTIONS,
   evaluateReleaseReadiness,
   formatDocPathForSummary,
+  looksLikeWindowsAbsolutePath,
   parseChecklistBySection,
   resolveDocPath,
   run
