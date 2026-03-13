@@ -79,4 +79,3 @@ currently carry most runtime complexity: renderer, time travel/history, and MCP.
 Runtime profiles (`gameplay`, `editor`, `perf`) exist to avoid paying for
 subsystems that are not needed in a given mode. Keep new mode-sensitive
 features profile-aware in `js/app/boot.js` and `js/game/GameView.js`.
-

@@ -535,7 +535,6 @@ describe('MidiInputController coverage: branches and fallbacks', function() {
     controller._handleControlChange(1, 64, { input: { cc: { speed: {} } } });
   });
 });
-
 describe('MidiInputController coverage: config and mapping', function() {
   it('setConfig handles numeric and string channels', function() {
     const controller = new MidiInputController({});

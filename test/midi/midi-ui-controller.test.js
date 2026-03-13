@@ -1675,4 +1675,3 @@ describe('midiUiController', function() {
     expect(previewResult).to.equal(false);
   });
 });
-

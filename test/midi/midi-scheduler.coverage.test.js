@@ -77,11 +77,11 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     expect(allNotes).to.eql([1]);
   });
 
-  it('dispose stops active channels before clearing state', function() {        
+  it('dispose stops active channels before clearing state', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: true } });
     let stopped = 0;
     scheduler._stopActiveChannel = () => { stopped += 1; };
-    scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });    
+    scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     scheduler.dispose();
     expect(stopped).to.equal(1);
   });
@@ -260,7 +260,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     });
   });
 
-  it('clears mpe channels and timers when outputs are missing', function() {    
+  it('clears mpe channels and timers when outputs are missing', function() {
     const calls = [];
     const scheduler = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler.setOutput(makeOutput([1], calls));
@@ -268,7 +268,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     scheduler._noteOffs.push({ timeMs: 1, token: 1 });
     scheduler.allNotesOff();
     expect(scheduler._noteOffTimerId).to.equal(0);
-    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);     
+    expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
   });
 
   it('covers allocation fallbacks and rate helpers', function() {
@@ -315,7 +315,6 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     scheduler.dispose();
   });
 });
-
 describe('MidiScheduler coverage: core behavior', function() {
   it('initializes MPE when output is already set', function() {
     const calls = [];
