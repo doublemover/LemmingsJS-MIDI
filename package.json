@@ -116,5 +116,9 @@
   },
   "dependencies": {
     "js-yaml": "^4.1.0"
+  },
+  "overrides": {
+    "diff": "8.0.3",
+    "serialize-javascript": "7.0.5"
   }
 }
