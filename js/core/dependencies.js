@@ -82,13 +82,13 @@ function getRuntimeContext() {
 
 function getRuntimeDependency(key, fallback = null) {
   if (!key) return fallback;
-  const globalValue = readGlobalValue(key);
-  if (globalValue !== undefined) {
-    return globalValue;
-  }
   if (runtimeContext && Object.prototype.hasOwnProperty.call(runtimeContext, key)) {
     const value = runtimeContext[key];
     return value === undefined ? fallback : value;
+  }
+  const globalValue = readGlobalValue(key);
+  if (globalValue !== undefined) {
+    return globalValue;
   }
   return fallback;
 }

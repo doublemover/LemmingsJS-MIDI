@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { useGlobalLemmings } from './helpers/lemmings.js';
-import { DisplayImage } from '../js/render/DisplayImage.js';
+import { DisplayImage, __test__ } from '../js/render/DisplayImage.js';
 
 class SimpleImageData {
   constructor(width, height) {
@@ -81,5 +81,24 @@ describe('DisplayImage dashed/marching rectangles', function () {
     expect(Object.prototype.hasOwnProperty.call(display.buffer32, '-1')).to.equal(false);
     const changed = Array.from(display.buffer32).some(value => value !== 0);
     expect(changed).to.equal(true);
+  });
+
+  it('keeps marching-ant caches collision-proof for large dimensions', function () {
+    __test__._marchingAntPerimeterCache.clear();
+    __test__._marchingAntPatternCache.clear();
+
+    const perimeterA = __test__.getMarchingAntPerimeterOffsets(2, 0, 1);
+    const perimeterB = __test__.getMarchingAntPerimeterOffsets(1, 256, 1);
+    expect(perimeterA).to.not.equal(perimeterB);
+    expect(perimeterA.length).to.equal(2);
+    expect(perimeterB.length).to.equal(514);
+    expect(__test__._marchingAntPerimeterCache.size).to.equal(2);
+
+    const patternA = __test__.getMarchingAntPaintPattern(2, 1, 0);
+    const patternB = __test__.getMarchingAntPaintPattern(1, 257, 0);
+    expect(patternA).to.not.equal(patternB);
+    expect(patternA.first.length + patternA.second.length).to.equal(2);
+    expect(patternB.first.length + patternB.second.length).to.equal(1);
+    expect(__test__._marchingAntPatternCache.size).to.equal(2);
   });
 });

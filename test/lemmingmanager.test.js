@@ -12,7 +12,7 @@ import '../js/LemmingsBootstrap.js';
 const makeMiniMap = (overrides = {}) => ({
   scaleX: 1,
   scaleY: 1,
-  setLiveDots(arr) { this.dots = arr; },
+  setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
   setSelectedDot() {},
   ...overrides
 });

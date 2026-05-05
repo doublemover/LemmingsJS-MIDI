@@ -37,4 +37,19 @@ describe('midiUiIntent', function () {
     expect(state.overrides).to.eql({});
     expect(state.revision).to.equal(baselineRevision + 1);
   });
+
+  it('drops unsafe override keys during replace and merge', function() {
+    const unsafe = JSON.parse('{"timing":{"bpmBase":100},"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}}}');
+    let state = createMidiIntentState({ overrides: unsafe });
+    expect(state.overrides.timing.bpmBase).to.equal(100);
+    expect(Object.prototype.hasOwnProperty.call(state.overrides, '__proto__')).to.equal(false);
+
+    state = reduceMidiIntent(state, {
+      type: 'overrides.merge',
+      patch: JSON.parse('{"repeat":{"enabled":true},"prototype":{"polluted":true}}')
+    });
+    expect(state.overrides.repeat.enabled).to.equal(true);
+    expect(Object.prototype.hasOwnProperty.call(state.overrides, 'prototype')).to.equal(false);
+    expect({}.polluted).to.equal(undefined);
+  });
 });

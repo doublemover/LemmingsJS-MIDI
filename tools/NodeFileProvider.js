@@ -90,9 +90,16 @@ class NodeFileProvider {
         this._archiveCacheBytes[kind] - (previous.cacheBytes || 0)
       );
     }
+    const normalizedCacheBytes = Math.max(0, Number.isFinite(cacheBytes) ? cacheBytes : 0);
+    if (normalizedCacheBytes > this._archiveCacheLimits.maxBytes) {
+      return {
+        ...entry,
+        cacheBytes: normalizedCacheBytes
+      };
+    }
     const next = {
       ...entry,
-      cacheBytes: Math.max(0, Number.isFinite(cacheBytes) ? cacheBytes : 0)
+      cacheBytes: normalizedCacheBytes
     };
     cache.set(key, next);
     this._archiveCacheBytes[kind] += next.cacheBytes;

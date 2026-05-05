@@ -7,6 +7,50 @@ import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 const defaultSpec = () => ({ note: 60, velocity: 64, durationTicks: 1 });
 
+const sumPlanEntries = (plan, now = 0, windowMs = 1000) => {
+  const entries = Array.isArray(plan?.entries)
+    ? plan.entries
+    : [plan?.on, plan?.off].filter(Boolean);
+  let count = 0;
+  let bytes = 0;
+  for (const entry of entries) {
+    if (!Number.isFinite(entry?.timeMs)) continue;
+    if (entry.timeMs < now - windowMs || entry.timeMs >= now + windowMs) continue;
+    const entryCount = Math.max(0, Math.trunc(entry.count || 0));
+    const entryBytes = Math.max(0, Math.trunc(entry.bytes || entryCount * 3));
+    count += entryCount;
+    bytes += entryBytes;
+  }
+  return { count, bytes };
+};
+
+const planBudgetFromSnapshot = (snapshot, plan, now = 0) => {
+  const proposed = sumPlanEntries(plan, now);
+  return {
+    snapshot,
+    proposed,
+    combined: {
+      count: (snapshot?.past?.count || 0) + (snapshot?.next?.count || 0) + proposed.count,
+      bytes: (snapshot?.past?.bytes || 0) + (snapshot?.next?.bytes || 0) + proposed.bytes
+    }
+  };
+};
+
+const canScheduleFromSnapshot = (snapshot, plan, now = 0, options = {}) => {
+  const maxMessagesPerSecond = Math.max(1, options.maxMessagesPerSecond ?? snapshot?.maxMessagesPerSecond ?? 1000);
+  const maxBytesPerSecond = Math.max(1, options.maxBytesPerSecond ?? snapshot?.maxBytesPerSecond ?? 3906);
+  const budget = planBudgetFromSnapshot(snapshot, plan, now);
+  const overMessages = budget.combined.count > maxMessagesPerSecond;
+  const overBytes = budget.combined.bytes > maxBytesPerSecond;
+  return {
+    ok: !overMessages && !overBytes,
+    reason: overBytes ? 'byte-limit' : (overMessages ? 'count-limit' : null),
+    maxMessagesPerSecond,
+    maxBytesPerSecond,
+    ...budget
+  };
+};
+
 const makeSchedulerStub = (sent) => {
   const planned = [];
   const sumWindow = (entries, start, end) => {
@@ -51,8 +95,38 @@ const makeSchedulerStub = (sent) => {
         now,
         past: sumWindow(planned, now - 1000, now),
         next: sumWindow(planned, now, now + 1000),
+        maxMessagesPerSecond: 1000,
         maxBytesPerSecond: 3906
       };
+    },
+    getPlanBudget(plan, now = 0) {
+      return planBudgetFromSnapshot(this.getRateSnapshot(now), plan, now);
+    },
+    canSchedule(plan, now = 0, options = {}) {
+      return canScheduleFromSnapshot(this.getRateSnapshot(now), plan, now, options);
+    },
+    reserve(plan, meta = {}, now = 0, options = {}) {
+      const check = this.canSchedule(plan, now, options);
+      if (!check.ok) return check;
+      const reservationId = planned.length + 1;
+      const entries = Array.isArray(plan?.entries)
+        ? plan.entries
+        : [
+          plan?.on ? { ...plan.on, phase: 'on' } : null,
+          plan?.off ? { ...plan.off, phase: 'off' } : null
+        ].filter(Boolean);
+      for (const entry of entries) {
+        planned.push({
+          timeMs: entry.timeMs,
+          count: Math.max(0, Math.trunc(entry.count || 0)),
+          bytes: Math.max(0, Math.trunc(entry.bytes || 0)),
+          sfxId: meta.sfxId,
+          priority: meta.priority,
+          reservationId,
+          phase: entry.phase ?? null
+        });
+      }
+      return { ...check, ok: true, reservationId };
     },
     getUsageShare(window = 'past', now = 0) {
       const data = window === 'next'
@@ -76,6 +150,7 @@ const makeSchedulerStub = (sent) => {
     },
     sendNote(spec, meta = {}) {
       sent.push(spec);
+      if (meta.rateReserved === true) return;
       const timeMs = spec.timeMs ?? 0;
       const durationMs = (spec.durationTicks ?? 0) * this.tickMs;
       planned.push({ timeMs, count: 1, bytes: 3, sfxId: meta.sfxId, priority: meta.priority });
@@ -98,6 +173,16 @@ const makeRateSnapshot = (next = {}, past = {}, maxBytesPerSecond = 1000) => ({
 const makeRateScheduler = (snapshot, usageShare = []) => ({
   getRateSnapshot(now = 0) {
     return typeof snapshot === 'function' ? snapshot(now) : snapshot;
+  },
+  getPlanBudget(plan, now = 0) {
+    return planBudgetFromSnapshot(this.getRateSnapshot(now), plan, now);
+  },
+  canSchedule(plan, now = 0, options = {}) {
+    return canScheduleFromSnapshot(this.getRateSnapshot(now), plan, now, options);
+  },
+  reserve(plan, meta = {}, now = 0, options = {}) {
+    const check = this.canSchedule(plan, now, options);
+    return check.ok ? { ...check, reservationId: 1 } : check;
   },
   getUsageShare() { return usageShare; }
 });
@@ -245,7 +330,7 @@ describe('MidiEventRouter', function() {
     router._onEvent({ sfxId: 1, tick: 2 });
     expect(sent.length).to.equal(1);
 
-    now = 1000;
+    now = 1100;
     router._onEvent({ sfxId: 1, tick: 3 });
     expect(sent.length).to.equal(2);
   });
@@ -268,7 +353,7 @@ describe('MidiEventRouter', function() {
 
   it('allows events when spacing and budgets are available', function() {
     const snapshot = makeRateSnapshot(
-      { count: 10, bytes: 100 },
+      { count: 9, bytes: 100 },
       { count: 0, bytes: 0 },
       1000
     );
@@ -278,6 +363,20 @@ describe('MidiEventRouter', function() {
     const plan = makePlan({ on: { count: 1, bytes: 3 } });
     const ok = router._shouldSend({ sfxId: 1, priority: 1 }, { timeMs: 0 }, plan, 0);
     expect(ok).to.equal(true);
+  });
+
+  it('rejects events when past plus next plus proposed traffic exceeds the reservation budget', function() {
+    const snapshot = makeRateSnapshot(
+      { count: 1, bytes: 3, bySfx: new Map([[2, { count: 1, bytes: 3, priority: 1 }]]) },
+      { count: 1, bytes: 3, bySfx: new Map([[1, { count: 1, bytes: 3, priority: 1 }]]) }
+    );
+    const { router } = makeRateRouter({
+      limits: { maxEventsPerSecond: 3, hardMaxEventsPerSecond: 3 }
+    }, snapshot);
+    const plan = makePlan({ timeMs: 0, on: { count: 2, bytes: 6 } });
+    const ok = router._shouldSend({ sfxId: 3, priority: 1 }, { timeMs: 0 }, plan, 0);
+    expect(ok).to.equal(false);
+    expect(router.getRateReport().reason).to.equal('count-limit');
   });
 
   it('exposes the scheduler rate snapshot', function() {

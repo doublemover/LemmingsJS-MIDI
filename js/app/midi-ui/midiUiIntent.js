@@ -1,19 +1,6 @@
-const mergeDeep = (target, source) => {
-  if (!source || typeof source !== 'object') return target;
-  const out = { ...(target || {}) };
-  for (const [key, value] of Object.entries(source)) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      out[key] = mergeDeep(out[key], value);
-    } else {
-      out[key] = value;
-    }
-  }
-  return out;
-};
+import { cloneSafeObject, isPlainObject, mergeDeepSafe } from '../../util/safeObject.js';
 
-const isPlainObject = (value) => {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-};
+const sanitizeOverrides = (value) => isPlainObject(value) ? cloneSafeObject(value) : {};
 
 const MAX_LEARN_TARGET_LENGTH = 128;
 
@@ -31,8 +18,8 @@ const sanitizeLearnCapture = (value) => {
 
 const createMidiIntentState = ({ overrides = {}, learn = null } = {}) => ({
   revision: 0,
-  overrides: isPlainObject(overrides) ? overrides : {},
-  learn: isPlainObject(learn) ? { ...learn } : null,
+  overrides: sanitizeOverrides(overrides),
+  learn: isPlainObject(learn) ? cloneSafeObject(learn) : null,
   lastIntentType: null
 });
 
@@ -46,7 +33,7 @@ const reduceMidiIntent = (state, intent) => {
     return {
       ...current,
       revision: current.revision + 1,
-      overrides: action.overrides,
+      overrides: sanitizeOverrides(action.overrides),
       lastIntentType: type
     };
   case 'overrides.merge':
@@ -54,7 +41,7 @@ const reduceMidiIntent = (state, intent) => {
     return {
       ...current,
       revision: current.revision + 1,
-      overrides: mergeDeep(current.overrides || {}, action.patch),
+      overrides: mergeDeepSafe(current.overrides || {}, action.patch),
       lastIntentType: type
     };
   case 'overrides.reset':

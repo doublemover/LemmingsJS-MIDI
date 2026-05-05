@@ -25,6 +25,8 @@ class Frame {
     this._spanRows = null;
     this._spanBounds = null;
     this._version = 0;
+    this._spanBatchDepth = 0;
+    this._spanInvalidationPending = false;
 
     this.clear();
   }
@@ -95,15 +97,20 @@ class Frame {
 
   // misc helpers -------------------------------------------------------------
   drawRect (x, y, w, h, color, noOverwrite = false, onlyOverwrite = false) {
-    const x2 = x + w;
-    const y2 = y + h;
-    for (let xx = x; xx <= x2; ++xx) {
-      this.setPixel(xx, y,  color, noOverwrite, onlyOverwrite);
-      this.setPixel(xx, y2, color, noOverwrite, onlyOverwrite);
-    }
-    for (let yy = y + 1; yy < y2; ++yy) {
-      this.setPixel(x,  yy, color, noOverwrite, onlyOverwrite);
-      this.setPixel(x2, yy, color, noOverwrite, onlyOverwrite);
+    this.#beginSpanBatch();
+    try {
+      const x2 = x + w;
+      const y2 = y + h;
+      for (let xx = x; xx <= x2; ++xx) {
+        this.setPixel(xx, y,  color, noOverwrite, onlyOverwrite);
+        this.setPixel(xx, y2, color, noOverwrite, onlyOverwrite);
+      }
+      for (let yy = y + 1; yy < y2; ++yy) {
+        this.setPixel(x,  yy, color, noOverwrite, onlyOverwrite);
+        this.setPixel(x2, yy, color, noOverwrite, onlyOverwrite);
+      }
+    } finally {
+      this.#endSpanBatch();
     }
   }
 
@@ -128,20 +135,30 @@ class Frame {
       pos = (pos + 1) % pattern;
     };
 
-    for (let dx = 0; dx <= width; dx++) set(x + dx, y);
-    for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
-    for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
-    for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+    this.#beginSpanBatch();
+    try {
+      for (let dx = 0; dx <= width; dx++) set(x + dx, y);
+      for (let dy = 1; dy <= height; dy++) set(x + width, y + dy);
+      for (let dx = 1; dx <= width; dx++) set(x + width - dx, y + height);
+      for (let dy = 1; dy < height; dy++) set(x, y + height - dy);
+    } finally {
+      this.#endSpanBatch();
+    }
   }
 
   /** Draw a stippled rectangle fill (simple checkerboard pattern). */
   drawStippleRect(x, y, width, height, r = 128, g = 128, b = 128) {
     const color32 = ColorPalette.colorFromRGB(r, g, b);
-    for (let dy = 0; dy <= height; dy++) {
-      for (let dx = 0; dx <= width; dx++) {
-        if (((dx + dy) & 1) !== 0) continue;
-        this.setPixel(x + dx, y + dy, color32);
+    this.#beginSpanBatch();
+    try {
+      for (let dy = 0; dy <= height; dy++) {
+        for (let dx = 0; dx <= width; dx++) {
+          if (((dx + dy) & 1) !== 0) continue;
+          this.setPixel(x + dx, y + dy, color32);
+        }
       }
+    } finally {
+      this.#endSpanBatch();
     }
   }
 
@@ -151,7 +168,7 @@ class Frame {
     if ((noOverwrite && this.mask[idx]) || (onlyOverwrite && !this.mask[idx])) return;
     this.data[idx] = color;
     this.mask[idx] = 1;
-    this.#invalidateSpanCache();
+    this.#markSpanCacheDirty();
   }
 
   clearPixel (x, y) {
@@ -159,6 +176,26 @@ class Frame {
     const idx = (y * this.width + x) >>> 0;
     this.data[idx] = ColorPalette.black;
     this.mask[idx] = 0;
+    this.#markSpanCacheDirty();
+  }
+
+  #beginSpanBatch () {
+    this._spanBatchDepth += 1;
+  }
+
+  #endSpanBatch () {
+    if (this._spanBatchDepth > 0) this._spanBatchDepth -= 1;
+    if (this._spanBatchDepth === 0 && this._spanInvalidationPending) {
+      this._spanInvalidationPending = false;
+      this.#invalidateSpanCache();
+    }
+  }
+
+  #markSpanCacheDirty () {
+    if (this._spanBatchDepth > 0) {
+      this._spanInvalidationPending = true;
+      return;
+    }
     this.#invalidateSpanCache();
   }
 

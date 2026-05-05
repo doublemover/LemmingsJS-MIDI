@@ -1720,7 +1720,7 @@ class GameView extends BaseLogger {
           });
         }
       };
-      game.triggerManager.add(new Trigger(
+      const trigger = new Trigger(
         TriggerTypes.NO_TRIGGER,
         x1,
         y1,
@@ -1729,7 +1729,12 @@ class GameView extends BaseLogger {
         cooldownTicks,
         -1,
         owner
-      ));
+      );
+      if (typeof game.triggerManager.addObserver === 'function') {
+        game.triggerManager.addObserver(trigger);
+      } else {
+        game.triggerManager.add(trigger);
+      }
     }
   }
 

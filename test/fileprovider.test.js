@@ -631,6 +631,16 @@ describe('FileProvider', function () {
     global.crypto = orig;
   });
 
+  it('_tryHashBuffer returns null when web crypto is missing', async function () {
+    provider = new FileProvider(rootPath);
+    const buf = Uint8Array.from([1, 2, 3]).buffer;
+    const orig = global.crypto;
+    delete global.crypto;
+    const hash = await provider._tryHashBuffer(buf);
+    global.crypto = orig;
+    assert.strictEqual(hash, null);
+  });
+
   it('_hashBuffer uses web crypto when available', async function () {
     const orig = global.crypto;
     global.crypto = {
@@ -663,7 +673,7 @@ describe('FileProvider', function () {
   });
 
   it('_fetchText stores data and headers in localStorage', async function () {
-    provider._hashString = async () => 'h';
+    provider._tryHashString = async () => 'h';
     const url = makeUrl('text.txt');
     const promise = provider._fetchText(url);
     requests[0].respond(200, 'hi');
@@ -673,6 +683,15 @@ describe('FileProvider', function () {
     assert.strictEqual(entry.type, 'text');
     assert.strictEqual(entry.data, 'hi');
     assert.strictEqual(entry.hash, 'h');
+  });
+
+  it('_fetchText resolves when hashing and persistent cache writes fail', async function () {
+    provider._tryHashString = async () => { throw new Error('hash failed'); };
+    provider._storeInCache = async () => { throw new Error('cache failed'); };
+    const url = makeUrl('text-no-cache.txt');
+    const promise = provider._fetchText(url);
+    requests[0].respond(200, 'hi');
+    assert.strictEqual(await promise, 'hi');
   });
 
   it('_fetchText logs and rejects on failure', async function () {
@@ -1034,6 +1053,83 @@ describe('FileProvider', function () {
     provider._openIndexedDb = async () => ({ transaction() { throw new Error('fail'); } });
     const stored = await provider._storeInIndexedDb('url', { type: 'text', data: 'x' });
     assert.strictEqual(stored, false);
+  });
+
+  it('falls back to localStorage when an indexedDB transaction aborts', async function () {
+    const request = (result) => {
+      const req = {};
+      setTimeout(() => {
+        req.result = result;
+        req.onsuccess?.();
+      }, 0);
+      return req;
+    };
+    provider._openIndexedDb = async () => ({
+      transaction() {
+        const tx = {
+          error: new Error('abort'),
+          oncomplete: null,
+          onabort: null,
+          onerror: null,
+          objectStore() {
+            return {
+              get() { return request(null); },
+              put() {}
+            };
+          }
+        };
+        setTimeout(() => tx.onabort?.(), 5);
+        return tx;
+      }
+    });
+
+    const url = makeUrl('idb-abort.txt');
+    await provider._storeInCache(url, { type: 'text', data: 'ok' });
+    const entry = JSON.parse(global.localStorage.getItem(cacheKey(url)));
+    assert.strictEqual(entry.data, 'ok');
+  });
+
+  it('reports indexedDB write success only after transaction commit', async function () {
+    const request = (result) => {
+      const req = {};
+      setTimeout(() => {
+        req.result = result;
+        req.onsuccess?.();
+      }, 0);
+      return req;
+    };
+    let completeTransaction = null;
+    provider._openIndexedDb = async () => ({
+      transaction() {
+        const tx = {
+          oncomplete: null,
+          onabort: null,
+          onerror: null,
+          objectStore() {
+            return {
+              get() { return request(null); },
+              put() {}
+            };
+          }
+        };
+        completeTransaction = () => tx.oncomplete?.();
+        return tx;
+      }
+    });
+
+    let settled = false;
+    const promise = provider
+      ._storeInIndexedDb('commit-url', { type: 'text', data: 'ok' })
+      .then((value) => {
+        settled = true;
+        return value;
+      });
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.strictEqual(settled, false);
+
+    completeTransaction();
+    assert.strictEqual(await promise, true);
+    assert.ok(provider.getCacheStats().indexedDbBytes > 0);
   });
 
   it('triggers indexedDB pruning after oversized writes', async function () {

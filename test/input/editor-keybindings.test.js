@@ -60,6 +60,34 @@ describe('EditorKeybindings', function () {
     expect(keybindings.gamepad).to.equal(null);
   });
 
+  it('uses injected runtime references for listener binding', function () {
+    const listeners = new Map();
+    const windowRef = {
+      addEventListener(type, handler) {
+        listeners.set(type, handler);
+      },
+      removeEventListener(type, handler) {
+        if (listeners.get(type) === handler) listeners.delete(type);
+      }
+    };
+    const keybindings = new EditorKeybindings(
+      { setTool() {} },
+      {
+        window: windowRef,
+        performance: { now: () => 0 },
+        requestAnimationFrame() { return 1; },
+        cancelAnimationFrame() {},
+        navigator: { getGamepads: () => [] },
+        storage: null
+      }
+    );
+
+    keybindings.bind();
+    expect(listeners.has('keydown')).to.equal(true);
+    keybindings.dispose();
+    expect(listeners.size).to.equal(0);
+  });
+
   it('ignores key events from editable targets', function () {
     const keybindings = new EditorKeybindings({ setTool() {} });
     expect(keybindings._shouldIgnoreKey({ target: { isContentEditable: true } })).to.equal(true);

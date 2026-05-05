@@ -115,7 +115,6 @@
     "zod": "^3.25.76"
   },
   "dependencies": {
-    "joypad.js": "^2.3.5",
     "js-yaml": "^4.1.0"
   }
 }

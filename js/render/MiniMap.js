@@ -1,17 +1,23 @@
 import { Frame } from './Frame.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
+import {
+  getRuntimeHistory,
+  getRuntimePerformanceContext,
+  isRuntimeReplayApplying
+} from '../game/GameRuntime.js';
 
-const getApp = () => getAppContext();
+const getApp = (runtime = null) => getRuntimePerformanceContext(runtime) || getAppContext();
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 
 class MiniMap {
   static palette = null;
   static DEATH_DOT_TTL = 30;
-  constructor(gameDisplay, level, guiDisplay) {
+  constructor(gameDisplay, level, guiDisplay, runtime = null) {
     this.gameDisplay = gameDisplay;
     this.level = level;
     this.guiDisplay = guiDisplay;
+    this.runtime = runtime;
 
     this.width = 127;
     this.height = 24;
@@ -48,6 +54,7 @@ class MiniMap {
     this.fog.fill(1); // disabled
     // typed array storing [x1,y1,x2,y2,...] scaled to minimap
     this.liveDots = new Uint8Array(0);
+    this.liveDotsLength = 0;
     this.selectedDot = null;
     // typed arrays storing [x1,y1,x2,y2,...] and TTL per dot
     this.deadDots = new Uint8Array(64);
@@ -113,7 +120,7 @@ class MiniMap {
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
 
     const pct = this.width <= 1 ? 0 : (mx / (this.width - 1));
-    const stageViewWidth = getApp()?.stage?.getGameViewRect?.()?.w;
+    const stageViewWidth = getApp(this.runtime)?.stage?.getGameViewRect?.()?.w;
     const viewportWorldWidth = Number.isFinite(stageViewWidth) && stageViewWidth > 0
       ? stageViewWidth
       : gd.worldDataSize.width;
@@ -331,9 +338,15 @@ class MiniMap {
     this._frameNeedsCompose = true;
   }
 
-  setLiveDots(arr) {
+  setLiveDots(arr, activeLength) {
     // arr is a Uint8Array of scaled [x1,y1,x2,y2,...]
     this.liveDots = arr;
+    const length = activeLength == null ? arr?.length : activeLength;
+    this.liveDotsLength = Math.max(0, Math.min(arr?.length ?? 0, Math.trunc(length ?? 0)));
+    this._frameNeedsCompose = true;
+  }
+
+  invalidateFrame() {
     this._frameNeedsCompose = true;
   }
 
@@ -345,7 +358,7 @@ class MiniMap {
   addDeath(x, y) {
     const sx = Math.max(0, Math.min(this.width - 1, (x * this.scaleX) | 0));
     const sy = Math.max(0, Math.min(this.height - 1, (y * this.scaleY) | 0));
-    const history = getApp()?.game?.history ?? null;
+    const history = getRuntimeHistory(this.runtime);
     if (history?.recordMinimapDeath) {
       history.recordMinimapDeath({
         x: sx,
@@ -410,9 +423,9 @@ class MiniMap {
     if (terrainChanged) {
       this._frameNeedsCompose = true;
     }
-    if (!this.guiDisplay) return;
-    const app = getApp();
-    const reversing = !!app?.game?.timeTravel?.isReversing;
+    if (!this.guiDisplay) return false;
+    const app = getApp(this.runtime);
+    const reversing = isRuntimeReplayApplying(this.runtime);
     this._renderStats.draws += 1;
 
     let dashChanged = false;
@@ -430,7 +443,7 @@ class MiniMap {
     const frameData = frame.data;
 
     const viewRect = app?.stage?.getGameViewRect?.();
-    if (!viewRect) return;
+    if (!viewRect) return false;
     const vpX = (viewRect.x * this.scaleX) | 0;
     let vpW = (viewRect.w * this.scaleX) | 0;
     const vpY = (viewRect.y * this.scaleY) | 0;
@@ -450,10 +463,10 @@ class MiniMap {
       this._lastViewDashOffset = this.viewportDashOffset;
     }
 
-    if (this.liveDots !== this._lastLiveDotsRef || this.liveDots.length !== this._lastLiveDotsLength) {
+    if (this.liveDots !== this._lastLiveDotsRef || this.liveDotsLength !== this._lastLiveDotsLength) {
       this._frameNeedsCompose = true;
       this._lastLiveDotsRef = this.liveDots;
-      this._lastLiveDotsLength = this.liveDots.length;
+      this._lastLiveDotsLength = this.liveDotsLength;
     }
     const selectedVisible = !!this.selectedDot;
     const selectedX = selectedVisible ? this.selectedDot[0] : Number.NaN;
@@ -499,7 +512,7 @@ class MiniMap {
       );
 
       /* Live lemmings */
-      for (let i = 0; i < this.liveDots.length; i += 2) {
+      for (let i = 0; i < this.liveDotsLength; i += 2) {
         const x = this.liveDots[i];
         const y = this.liveDots[i + 1];
         if ((x >>> 0) < W && (y >>> 0) < H) {
@@ -531,6 +544,9 @@ class MiniMap {
       this._frameNeedsCompose = false;
     } else {
       this._renderStats.reuses += 1;
+      this._renderStats.lastTerrainCells = this._lastTerrainRevalidated;
+      this._renderStats.lastDeadCount = this.deadCount;
+      return false;
     }
 
     this._renderStats.lastTerrainCells = this._lastTerrainRevalidated;
@@ -540,6 +556,7 @@ class MiniMap {
     const destX = this.guiDisplay.worldDataSize.width  - W;
     const destY = this.guiDisplay.worldDataSize.height - H;
     this.guiDisplay.drawFrame(frame, destX, destY);
+    return true;
   }
 
   dispose() {
@@ -555,11 +572,13 @@ class MiniMap {
     this.terrain = null;
     this.fog = null;
     this.liveDots = null;
+    this.liveDotsLength = 0;
     this.selectedDot = null;
     this.deadDots = null;
     this.deadTTLs = null;
     this.deadCount = 0;
     this.frame = null;
+    this.runtime = null;
   }
 }
 

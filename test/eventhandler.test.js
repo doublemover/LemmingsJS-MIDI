@@ -46,4 +46,30 @@ describe('EventHandler', function() {
     ev.trigger();
     expect(calls).to.eql(['first', 'second', 'late']);
   });
+
+  it('reuses the listener snapshot until subscriptions change', function() {
+    const ev = new EventHandler();
+    let calls = 0;
+    let snapshots = 0;
+    const originalFrom = Array.from;
+    ev.on(() => { calls += 1; });
+
+    try {
+      Array.from = function(...args) {
+        snapshots += 1;
+        return originalFrom.apply(this, args);
+      };
+      ev.trigger();
+      ev.trigger();
+      expect(calls).to.equal(2);
+      expect(snapshots).to.equal(1);
+
+      ev.on(() => { calls += 1; });
+      ev.trigger();
+      expect(calls).to.equal(4);
+      expect(snapshots).to.equal(2);
+    } finally {
+      Array.from = originalFrom;
+    }
+  });
 });

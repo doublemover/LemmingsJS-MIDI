@@ -124,6 +124,18 @@ describe('midiUiStorage', function() {
     expect(migrated.sfx['1'].arp.pattern.preset).to.equal('down');
   });
 
+  it('filters unsafe MIDI override keys without prototype pollution', function() {
+    const migrated = migrateMidiOverrides(JSON.parse(
+      '{"repeat":{"spacingTicks":4},"__proto__":{"polluted":true},"sfx":{"1":{"__proto__":{"polluted":true},"arp":{"enabled":true,"mode":"down"}}}}'
+    ));
+
+    expect(migrated.repeat.windowBeats).to.equal(4);
+    expect(migrated.sfx['1'].arp.pattern.preset).to.equal('down');
+    expect(Object.prototype.hasOwnProperty.call(migrated, '__proto__')).to.equal(false);
+    expect(Object.prototype.hasOwnProperty.call(migrated.sfx['1'], '__proto__')).to.equal(false);
+    expect({}.polluted).to.equal(undefined);
+  });
+
   it('reads stored MIDI overrides and section states with guards', function() {
     const storage = createStorage();
     storage.getItem = (key) => {

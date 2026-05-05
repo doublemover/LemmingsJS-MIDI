@@ -2,6 +2,7 @@ import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.
 import { formatBindingSpec } from './KeybindingFormatter.js';
 import { GamepadInputController } from './GamepadInputController.js';
 import { EditorTools } from '../editor/EditorTools.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 
 /**
  * Keyboard and gamepad shortcut bridge for editor actions.
@@ -48,12 +49,23 @@ class EditorKeybindings {
     this._onToggleShortcutOverlay = options.onToggleShortcutOverlay || null;
     this._onPreview = options.onPreview || null;
     this._onBindingsLoaded = options.onBindingsLoaded || null;
+    this.window = options.window || getRuntimeDependency('window', null);
+    this.performance = options.performance || getRuntimeDependency('performance', null);
+    this.requestAnimationFrame = options.requestAnimationFrame ||
+      this.window?.requestAnimationFrame?.bind?.(this.window) ||
+      null;
+    this.cancelAnimationFrame = options.cancelAnimationFrame ||
+      this.window?.cancelAnimationFrame?.bind?.(this.window) ||
+      null;
     this._down = this._onKeyDown.bind(this);
     this.keybindings = new KeybindingRegistry();
     this._actions = this._createActionHandlers();
     this.gamepad = new GamepadInputController({
       mode: 'editor',
       fileProvider: options.fileProvider || null,
+      window: this.window,
+      navigator: options.navigator ?? this.window?.navigator ?? getRuntimeDependency('navigator', null),
+      storage: options.storage ?? this.window?.localStorage ?? getRuntimeDependency('localStorage', null),
       onAction: (action, type) => {
         this._handleAction(action, type);
       }
@@ -62,11 +74,11 @@ class EditorKeybindings {
   }
 
   bind() {
-    window.addEventListener('keydown', this._down);
+    this.window?.addEventListener?.('keydown', this._down);
   }
 
   dispose() {
-    window.removeEventListener('keydown', this._down);
+    this.window?.removeEventListener?.('keydown', this._down);
     this.gamepad?.dispose?.();
     this.gamepad = null;
   }

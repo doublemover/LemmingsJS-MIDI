@@ -47,7 +47,7 @@ class GameTimer {
     this.#performanceRef = runtime.performance ?? (typeof performance !== 'undefined' ? performance : null);
     this.#speedFactor = 1;
     this.#frameTime = this.TIME_PER_FRAME_MS;
-    this.#rafId = 0;
+    this.#rafId = null;
     this.#running = false;
     this.#lastTime = 0;
     this.#lastGameSecond = 0;
@@ -160,16 +160,31 @@ class GameTimer {
   }
 
   continue() {
-    if (this.isRunning()) return;
+    if (this.isRunning()) return true;
     this.#lastTime = this.#now();
     this.#running = true;
-    this.#rafId = this.#windowRef?.requestAnimationFrame?.(this.#loopBound) ?? 0;
+    if (!this.#scheduleFrame()) {
+      this.#running = false;
+      this.#rafId = null;
+      return false;
+    }
+    return true;
+  }
+
+  #scheduleFrame() {
+    if (typeof this.#windowRef?.requestAnimationFrame !== 'function') {
+      return false;
+    }
+    const rafId = this.#windowRef.requestAnimationFrame(this.#loopBound);
+    if (rafId == null) return false;
+    this.#rafId = rafId;
+    return true;
   }
 
   suspend() {
-    if (this.#rafId) {
+    if (this.#rafId != null) {
       this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
-      this.#rafId = 0;
+      this.#rafId = null;
     }
     this.#running = false;
   }
@@ -219,8 +234,10 @@ class GameTimer {
     const perfStart = perfEnabled ? this.#now() : 0;
 
     try {
-      this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
-      this.#rafId = 0;
+      if (this.#rafId != null) {
+        this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
+      }
+      this.#rafId = null;
       const frameTime = this.#frameTime;
       if (app) app.tps = 1000 / frameTime;
       let delta = now - this.#lastTime;
@@ -244,7 +261,10 @@ class GameTimer {
           if (onTick) onTick.trigger();
         }
       }
-      this.#rafId = this.#windowRef?.requestAnimationFrame?.(this.#loopBound) ?? 0;
+      if (!this.#scheduleFrame()) {
+        this.#running = false;
+        this.#rafId = null;
+      }
     } finally {
       if (perfEnabled) {
         recordPerformanceMeasure('GameTimer loop', {

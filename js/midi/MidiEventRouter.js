@@ -293,27 +293,91 @@ class MidiEventRouter {
       Math.max(limits.hardMaxEventsPerSecond ?? maxPerSecond, 1),
       MAX_MIDI_MESSAGES_PER_SECOND
     );
-    const snapshot = this.scheduler.getRateSnapshot(now);
-    const maxBytes = limits.maxBytesPerSecond ?? snapshot.maxBytesPerSecond;
+    const snapshotForMax = typeof this.scheduler.evaluateAndReserve === 'function'
+      ? null
+      : this.scheduler.getRateSnapshot(now);
+    const maxBytes = limits.maxBytesPerSecond ??
+      this.scheduler._maxBytesPerSecond ??
+      snapshotForMax?.maxBytesPerSecond ??
+      3906;
+    const evaluation = typeof this.scheduler.evaluateAndReserve === 'function'
+      ? this.scheduler.evaluateAndReserve(plan, meta, now, {
+        softMaxMessagesPerSecond: maxPerSecond,
+        maxMessagesPerSecond: hardMaxPerSecond,
+        maxBytesPerSecond: maxBytes,
+        reserve: false
+      })
+      : (() => {
+        const budget = this.scheduler.getPlanBudget(plan, now);
+        const check = this.scheduler.canSchedule(plan, now, {
+          maxMessagesPerSecond: hardMaxPerSecond,
+          maxBytesPerSecond: maxBytes
+        });
+        return {
+          ...check,
+          softOk: budget.combined.count <= maxPerSecond && budget.combined.bytes <= maxBytes,
+          snapshot: budget.snapshot,
+          proposed: budget.proposed,
+          combined: budget.combined
+        };
+      })();
+    const reservePlan = () => typeof this.scheduler.reserveEvaluation === 'function'
+      ? this.scheduler.reserveEvaluation(evaluation, plan, meta, now)
+      : this.scheduler.reserve(plan, meta, now, {
+        maxMessagesPerSecond: hardMaxPerSecond,
+        maxBytesPerSecond: maxBytes
+      });
+    const snapshot = evaluation.snapshot;
     let shareReport = null;
+    const combinedBySfx = () => {
+      const bySfx = new Map();
+      const addEntries = (entries) => {
+        for (const [sfxId, entry] of entries.entries()) {
+          const curr = bySfx.get(sfxId) || { count: 0, bytes: 0, priority: entry.priority ?? 1 };
+          curr.count += entry.count;
+          curr.bytes += entry.bytes;
+          if (entry.priority != null) curr.priority = entry.priority;
+          bySfx.set(sfxId, curr);
+        }
+      };
+      addEntries(snapshot.past.bySfx);
+      addEntries(snapshot.next.bySfx);
+      return bySfx;
+    };
     const getShareReport = () => {
       if (!shareReport) {
-        shareReport = this.scheduler.getUsageShare('next', now);
+        const bySfx = combinedBySfx();
+        const total = snapshot.past.count + snapshot.next.count;
+        const totalBytes = snapshot.past.bytes + snapshot.next.bytes;
+        shareReport = [];
+        for (const [sfxId, entry] of bySfx.entries()) {
+          shareReport.push({
+            sfxId,
+            count: entry.count,
+            bytes: entry.bytes,
+            priority: entry.priority ?? 1,
+            percentCount: total ? entry.count / total : 0,
+            percentBytes: totalBytes ? entry.bytes / totalBytes : 0
+          });
+        }
+        shareReport.sort((a, b) => b.count - a.count);
       }
       return shareReport;
     };
-    const windowEnd = now + 1000;
-    let nextCount = snapshot.next.count;
-    let nextBytes = snapshot.next.bytes;
-    if (plan.on.timeMs >= now && plan.on.timeMs < windowEnd) {
-      nextCount += plan.on.count;
-      nextBytes += plan.on.bytes;
-    }
-    if (plan.off.timeMs >= now && plan.off.timeMs < windowEnd) {
-      nextCount += plan.off.count;
-      nextBytes += plan.off.bytes;
-    }
-    if (nextCount <= maxPerSecond && nextBytes <= maxBytes) {
+    const nextCount = evaluation.combined.count;
+    const nextBytes = evaluation.combined.bytes;
+    if (evaluation.softOk) {
+      const reservation = reservePlan();
+      if (!reservation.ok) {
+        this._lastRateReport = {
+          timeMs: now,
+          reason: reservation.reason,
+          snapshot: getShareReport()
+        };
+        return false;
+      }
+      meta.rateReserved = true;
+      meta.reservationId = reservation.reservationId;
       return true;
     }
     if (nextBytes > maxBytes) {
@@ -324,18 +388,18 @@ class MidiEventRouter {
       };
       return false;
     }
-    if (nextCount > hardMaxPerSecond) {
+    if (!evaluation.ok || nextCount > hardMaxPerSecond) {
       this._lastRateReport = {
         timeMs: now,
-        reason: 'count-limit',
+        reason: evaluation.reason || 'count-limit',
         snapshot: getShareReport()
       };
       return false;
     }
-    const plannedCount = nextCount - snapshot.next.count;
-    const plannedBytes = nextBytes - snapshot.next.bytes;
+    const plannedCount = evaluation.proposed.count;
+    const plannedBytes = evaluation.proposed.bytes;
     const priority = meta.priority ?? 1;
-    const bySfx = snapshot.next.bySfx;
+    const bySfx = combinedBySfx();
     let higherCount = 0;
     let higherBytes = 0;
     let sameGroupCount = 0;
@@ -404,6 +468,17 @@ class MidiEventRouter {
       snapshot: shareReport
     };
     if (!okSpacing || overBudget) return false;
+    const reservation = reservePlan();
+    if (!reservation.ok) {
+      this._lastRateReport = {
+        timeMs: now,
+        reason: reservation.reason,
+        snapshot: getShareReport()
+      };
+      return false;
+    }
+    meta.rateReserved = true;
+    meta.reservationId = reservation.reservationId;
     return true;
   }
 
@@ -599,8 +674,8 @@ class MidiEventRouter {
         return;
       }
       for (const note of activeNotes) {
-        const adjusted = { ...specWithTime, note };
-        this.scheduler.sendNote(adjusted, meta);
+        specWithTime.note = note;
+        this.scheduler.sendNote(specWithTime, meta);
       }
       this._lastAcceptedBySfx.set(event.sfxId, sendTimeMs);
     } finally {

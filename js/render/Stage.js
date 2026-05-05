@@ -271,6 +271,10 @@ class Stage {
     return image.consumeAllocationStats(true);
   }
 
+  _shouldCollectPerfSamples() {
+    return this.perfOverlayEnabled === true;
+  }
+
   _recordFramePerf(frameMs, drawMs, clearMs) {
     this._pushPerfSample(this._perfFrameSamples, frameMs);
     this._pushPerfSample(this._perfDrawSamples, drawMs);
@@ -749,6 +753,7 @@ class Stage {
   redraw(forceComposite = false) {
     const start = perfNow();
     this._updateFadeState(start);
+    const collectPerfSamples = this._shouldCollectPerfSamples();
     this._perfTrackingFrame = true;
     this._perfDrawMs = 0;
     this._perfClearMs = 0;
@@ -811,25 +816,27 @@ class Stage {
       if (this._perfFrameMs > this._perfFramePeakMs) {
         this._perfFramePeakMs = this._perfFrameMs;
       }
-      const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
-      const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
-      const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
-      const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
-      const allocations = {
-        rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
-        rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
-        tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
-        tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
-      };
-      this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
-      this._recordDamagePerf({
-        regionCount: 0,
-        dirtyAreaRatio: 0,
-        uploadCalls: 0,
-        fullBlitCount: 0,
-        tileUpdateCount: 0
-      });
-      this._recordAllocationPerf(allocations);
+      if (collectPerfSamples) {
+        const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
+        const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
+        const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
+        const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
+        const allocations = {
+          rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
+          rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
+          tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
+          tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
+        };
+        this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
+        this._recordDamagePerf({
+          regionCount: 0,
+          dirtyAreaRatio: 0,
+          uploadCalls: 0,
+          fullBlitCount: 0,
+          tileUpdateCount: 0
+        });
+        this._recordAllocationPerf(allocations);
+      }
       if (this.perfOverlayEnabled) {
         this.drawPerfOverlay();
       }
@@ -885,29 +892,31 @@ class Stage {
     if (this._perfFrameMs > this._perfFramePeakMs) {
       this._perfFramePeakMs = this._perfFrameMs;
     }
-    const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
-    const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
-    const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
-    const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
-    const allocations = {
-      rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
-      rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
-      tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
-      tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
-    };
     const fullArea = this._frameDamageStats.fullArea || 0;
     const dirtyAreaRatio = fullArea > 0
       ? Math.min(1, (this._frameDamageStats.dirtyArea || 0) / fullArea)
       : 0;
-    this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
-    this._recordDamagePerf({
-      regionCount: this._frameDamageStats.regionCount || 0,
-      dirtyAreaRatio,
-      uploadCalls: this._frameDamageStats.uploadCalls || 0,
-      fullBlitCount: this._frameDamageStats.fullBlitCount || 0,
-      tileUpdateCount: this._frameDamageStats.tileUpdateCount || 0
-    });
-    this._recordAllocationPerf(allocations);
+    if (collectPerfSamples) {
+      const allocGame = this._collectDisplayAllocationStats(this.gameImgProps);
+      const allocGui = this._collectDisplayAllocationStats(this.guiImgProps);
+      const allocGameOverlay = this._collectDisplayAllocationStats(this.gameOverlayImgProps);
+      const allocGuiOverlay = this._collectDisplayAllocationStats(this.guiOverlayImgProps);
+      const allocations = {
+        rectListCreated: allocGame.rectListCreated + allocGui.rectListCreated + allocGameOverlay.rectListCreated + allocGuiOverlay.rectListCreated,
+        rectListReused: allocGame.rectListReused + allocGui.rectListReused + allocGameOverlay.rectListReused + allocGuiOverlay.rectListReused,
+        tileListCreated: allocGame.tileListCreated + allocGui.tileListCreated + allocGameOverlay.tileListCreated + allocGuiOverlay.tileListCreated,
+        tileListReused: allocGame.tileListReused + allocGui.tileListReused + allocGameOverlay.tileListReused + allocGuiOverlay.tileListReused
+      };
+      this._recordFramePerf(this._perfFrameMs, this._perfDrawMs, this._perfClearMs);
+      this._recordDamagePerf({
+        regionCount: this._frameDamageStats.regionCount || 0,
+        dirtyAreaRatio,
+        uploadCalls: this._frameDamageStats.uploadCalls || 0,
+        fullBlitCount: this._frameDamageStats.fullBlitCount || 0,
+        tileUpdateCount: this._frameDamageStats.tileUpdateCount || 0
+      });
+      this._recordAllocationPerf(allocations);
+    }
     if (this.perfOverlayEnabled) {
       this.drawPerfOverlay();
     }

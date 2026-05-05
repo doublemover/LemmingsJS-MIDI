@@ -72,11 +72,13 @@ describe('ActionDrowningSystem behavior', function() {
   });
 
   it('draw records death once frame >= 15', function() {
+    const miniMap = { deaths: 0, addDeath() { this.deaths++; } };
     const sys = new ActionDrowningSystem(stubSprites);
+    sys.setRuntime({ miniMap });
     const lem = new StubLemming();
     lem.frameIndex = 15;
     sys.draw({ drawFrame() {} }, lem);
-    expect(globalThis.lemmings.game.lemmingManager.miniMap.deaths).to.equal(1);
+    expect(miniMap.deaths).to.equal(1);
   });
 });
 

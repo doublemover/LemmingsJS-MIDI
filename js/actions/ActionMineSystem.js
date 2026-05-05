@@ -1,8 +1,9 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { MaskTypes } from '../render/MaskTypes.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const countClearable = (mask) => {
@@ -41,7 +42,7 @@ class ActionMineSystem extends ActionBaseSystem {
       let maskIndex = lem.frameIndex - 1;
       let subMask   = mask.GetMask(maskIndex);
       if (level.hasSteelUnderMask(subMask, lem.x, lem.y)) {
-        const soundBus = getSoundBus();
+        const soundBus = getRuntimeSoundEvents(this.runtime);
         soundBus?.emitSfx?.(
           SoundEventTypes.STEEL_HIT,
           SoundEffectIds.STEEL_HIT,
@@ -57,7 +58,7 @@ class ActionMineSystem extends ActionBaseSystem {
         : (level.clearGroundWithMask(subMask, lem.x, lem.y), 0);
       const intensity = scaleIntensity(removed, countClearable(subMask));
       if (removed > 0) {
-        const soundBus = getSoundBus();
+        const soundBus = getRuntimeSoundEvents(this.runtime);
         soundBus?.emitSfx?.(
           SoundEventTypes.LEMMING_MINE,
           SoundEffectIds.MINE,

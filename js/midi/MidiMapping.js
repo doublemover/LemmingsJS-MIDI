@@ -1,3 +1,5 @@
+import { cloneSafeObject, createNullObject, isPlainObject, safeObjectEntries } from '../util/safeObject.js';
+
 const DEFAULT_SCALES = Object.freeze({
   major: [0, 2, 4, 5, 7, 9, 11],
   minor: [0, 2, 3, 5, 7, 8, 10],
@@ -144,16 +146,18 @@ const DEFAULT_CONFIG = Object.freeze({
   sfx: {}
 });
 
-const isPlainObject = (val) => val && typeof val === 'object' && !Array.isArray(val);
-
 const mergeConfig = (base, override) => {
-  if (!override) return { ...base };
-  const out = { ...base };
-  for (const [key, val] of Object.entries(override)) {
+  const out = createNullObject();
+  for (const [key, val] of safeObjectEntries(base)) {
+    out[key] = val;
+  }
+  if (!override) return out;
+  for (const [key, val] of safeObjectEntries(override)) {
     if (isPlainObject(val) && isPlainObject(base[key])) {
       out[key] = mergeConfig(base[key], val);
     } else {
-      out[key] = val;
+      const cloned = cloneSafeObject(val);
+      if (cloned !== undefined) out[key] = cloned;
     }
   }
   return out;

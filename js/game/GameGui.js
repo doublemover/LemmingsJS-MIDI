@@ -414,7 +414,7 @@ class GameGui {
     this._overlayHadContent = false;
     if (!this.miniMap) {
       const MiniMapCtor = getDependency('MiniMap', MiniMap);
-      this.setMiniMap(new MiniMapCtor(this.game.gameDisplay, this.game.level, display));
+      this.setMiniMap(new MiniMapCtor(this.game.gameDisplay, this.game.level, display, this.game.runtime));
     }
 
     this._displayListeners = [
@@ -514,7 +514,7 @@ class GameGui {
           detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
         });
       }
-      return;
+      return false;
     }
     const d = this.display;
     const overlayDisplay = d.stage?.getGuiOverlayDisplay?.() || null;
@@ -526,6 +526,7 @@ class GameGui {
       this._invalidateAntState();
       d.initSize(this._panelSprite.width, this._panelSprite.height);
       d.setBackground(this._panelSprite.getData());
+      this.miniMap?.invalidateFrame?.();
 
       this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
     }
@@ -761,6 +762,10 @@ class GameGui {
         detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
       });
     }
+    return !!(
+      d.hasPendingDirty?.() ||
+      overlayDisplay?.hasPendingDirty?.()
+    );
   }
 
   _formatTickIndicator() {

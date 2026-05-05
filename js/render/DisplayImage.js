@@ -45,7 +45,7 @@ const toUint32Source = (source) => {
 };
 
 const getMarchingAntPerimeterOffsets = (stride, width, height) => {
-  const key = (stride * 8192) + (width * 128) + height;
+  const key = `${stride}:${width}:${height}`;
   const cached = marchingAntPerimeterCache.get(key);
   if (cached) return cached;
 
@@ -76,7 +76,7 @@ const getMarchingAntPerimeterOffsets = (stride, width, height) => {
 const getMarchingAntPaintPattern = (perimeterLen, dashLen, offset) => {
   const pattern = dashLen * 2;
   const phase = ((offset % pattern) + pattern) % pattern;
-  const key = (perimeterLen * 131072) + (dashLen * 512) + phase;
+  const key = `${perimeterLen}:${dashLen}:${phase}`;
   const cached = marchingAntPatternCache.get(key);
   if (cached) return cached;
 
@@ -1401,7 +1401,11 @@ const __test__ = {
   getScaledFrameVariant,
   getNearestCoordinateMap,
   _scaledFrameCache: scaledFrameCache,
-  _nearestCoordinateCache: nearestCoordinateCache
+  _nearestCoordinateCache: nearestCoordinateCache,
+  _marchingAntPerimeterCache: marchingAntPerimeterCache,
+  _marchingAntPatternCache: marchingAntPatternCache,
+  getMarchingAntPerimeterOffsets,
+  getMarchingAntPaintPattern
 };
 
 export {

@@ -1,9 +1,9 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { MaskTypes } from '../render/MaskTypes.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
-import { getAppContext } from '../core/dependencies.js';
+import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionExplodingSystem extends ActionBaseSystem {
 
@@ -38,7 +38,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
   process(level, lem) {
     lem.disable();
     if (lem.frameIndex === 0) {
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_EXPLODE,
         SoundEffectIds.EXPLOSION,
@@ -50,7 +50,7 @@ class ActionExplodingSystem extends ActionBaseSystem {
       this.triggerManager.removeByOwner(lem);
       const mask = this.masks.get('both').GetMask(0);
       const changed = level.clearGroundWithMask(mask, lem.x, lem.y, { revealSteel: true });
-      const miniMap = getAppContext()?.game?.lemmingManager?.miniMap;
+      const miniMap = getRuntimeMiniMap(this.runtime);
       if (changed && miniMap) {
         miniMap.invalidateRegion(
           lem.x + mask.offsetX,

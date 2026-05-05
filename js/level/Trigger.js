@@ -1,7 +1,7 @@
 // @ts-check
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { TriggerTypes } from './TriggerTypes.js';
-import { getAppContext } from '../core/dependencies.js';
+import { getRuntimeHistory } from '../game/GameRuntime.js';
 
 class Trigger {
   #disabledUntilTick;
@@ -22,6 +22,7 @@ class Trigger {
     this.owner = owner;
     this.type = Number(type);
     this.soundIndex = soundIndex;
+    this.runtime = null;
     this.x1 = Math.min(x1, x2);
     this.y1 = Math.min(y1, y2);
     this.x2 = Math.max(x1, x2);
@@ -44,7 +45,7 @@ class Trigger {
         const prev = this.disabledUntilTick;
         const next = tick + this.disableTicksCount;
         if (prev !== next) {
-          const history = getAppContext()?.game?.history ?? null;
+          const history = getRuntimeHistory(this.runtime);
           history?.recordTriggerCooldown?.(this, prev, next);
         }
         this.disabledUntilTick = next;

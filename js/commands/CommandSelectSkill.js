@@ -1,5 +1,5 @@
 import { BaseLogger } from '../util/LogHandler.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 
 class CommandSelectSkill extends BaseLogger {
@@ -15,7 +15,7 @@ class CommandSelectSkill extends BaseLogger {
     const lemmingManager = game.getLemmingManager?.();
     const changed = gameSkills.setSelectedSkill(this.skill);
     if (changed) {
-      const soundBus = getSoundBus();
+      const soundBus = game.soundEvents ?? game.runtime?.soundEvents ?? null;
       soundBus?.emitSfx?.(
         SoundEventTypes.SKILL_SELECT,
         SoundEffectIds.SKILL_SELECT,
@@ -27,7 +27,7 @@ class CommandSelectSkill extends BaseLogger {
       if (lem && gameSkills.canReuseSkill(this.skill) &&
           lemmingManager.doLemmingAction?.(lem, this.skill)) {
         if (gameSkills.reuseSkill(this.skill)) {
-          const soundBus = getSoundBus();
+          const soundBus = game.soundEvents ?? game.runtime?.soundEvents ?? null;
           soundBus?.emitSfx?.(
             SoundEventTypes.SKILL_ASSIGN,
             SoundEffectIds.SKILL_ASSIGN,

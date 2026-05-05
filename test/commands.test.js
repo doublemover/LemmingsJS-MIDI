@@ -15,7 +15,7 @@ const withSoundEvents = (soundEvents, fn) => {
   const prev = game.soundEvents;
   game.soundEvents = soundEvents;
   try {
-    return fn();
+    return fn(soundEvents);
   } finally {
     if (hadProp) {
       game.soundEvents = prev;
@@ -172,8 +172,9 @@ describe('Commands', function() {
     let called = null;
     withSoundEvents({
       emitSfx(type, id, payload) { called = { type, id, payload }; }
-    }, () => {
+    }, (soundEvents) => {
       const game = {
+        soundEvents,
         getLemmingManager() {
           return {
             getLemming() { return { id: 7, x: 1, y: 2 }; },
@@ -198,7 +199,7 @@ describe('Commands', function() {
     const calls = [];
     withSoundEvents({
       emitSfx(type, id, payload) { calls.push({ type, id, payload }); }
-    }, () => {
+    }, (soundEvents) => {
       const lem = { id: 1, x: 2, y: 3 };
       const skills = {
         setSelectedSkill() { return true; },
@@ -210,6 +211,7 @@ describe('Commands', function() {
         doLemmingAction() { return true; }
       };
       const game = {
+        soundEvents,
         getGameSkills() { return skills; },
         getLemmingManager() { return lemMgr; }
       };

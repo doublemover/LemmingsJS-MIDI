@@ -92,7 +92,7 @@ describe('Game', function() {
     setDependency('GameGui', class {
       constructor() { this.renderCalled = 0; this.setDisplay = null; this.disposed = false; }
       setGuiDisplay(d) { this.setDisplay = d; }
-      render() { this.renderCalled++; }
+      render() { this.renderCalled++; return true; }
       dispose() { this.disposed = true; }
     });
 

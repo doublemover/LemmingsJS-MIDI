@@ -225,6 +225,17 @@ class FileProvider extends BaseLogger {
     });
   }
 
+  _idbTransactionDone(tx) {
+    if (!tx || !('oncomplete' in tx || 'onabort' in tx || 'onerror' in tx)) {
+      return Promise.resolve(true);
+    }
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve(true);
+      tx.onabort = () => reject(tx.error || new Error('indexedDB transaction aborted'));
+      tx.onerror = () => reject(tx.error || new Error('indexedDB transaction failed'));
+    });
+  }
+
   _openIndexedDb() {
     if (!this._canUseIndexedDb()) return Promise.resolve(null);
     if (this._idb) return Promise.resolve(this._idb);
@@ -294,8 +305,10 @@ class FileProvider extends BaseLogger {
     if (!db) return;
     try {
       const tx = db.transaction(IDB_STORE_ENTRIES, 'readwrite');
+      const done = this._idbTransactionDone(tx).catch(() => false);
       const store = tx.objectStore(IDB_STORE_ENTRIES);
       store.put({ ...entry, lastAccess: Date.now() });
+      await done;
     } catch (e) {
       // ignore
     }
@@ -315,6 +328,11 @@ class FileProvider extends BaseLogger {
       const now = Date.now();
       const size = this._estimateEntrySize(entry);
       const tx = db.transaction([IDB_STORE_ENTRIES, IDB_STORE_PAYLOADS, IDB_STORE_META], 'readwrite');
+      let transactionError = null;
+      const done = this._idbTransactionDone(tx).catch((err) => {
+        transactionError = err;
+        return false;
+      });
       const entries = tx.objectStore(IDB_STORE_ENTRIES);
       const payloads = tx.objectStore(IDB_STORE_PAYLOADS);
       const metaStore = tx.objectStore(IDB_STORE_META);
@@ -333,12 +351,14 @@ class FileProvider extends BaseLogger {
       const meta = await this._idbRequest(metaStore.get('totalBytes'));
       const total = Math.max(0, (meta?.value || 0) - prevSize + size);
       metaStore.put({ key: 'totalBytes', value: total });
+      const committed = await done;
+      if (!committed) {
+        throw transactionError || new Error('indexedDB transaction failed');
+      }
       this._cacheStats.indexedDbBytes = total;
-      tx.oncomplete = () => {
-        if (total > IDB_MAX_BYTES) {
-          this._pruneIndexedDb(total);
-        }
-      };
+      if (total > IDB_MAX_BYTES) {
+        this._pruneIndexedDb(total);
+      }
       return true;
     } catch (e) {
       return false;
@@ -589,8 +609,14 @@ class FileProvider extends BaseLogger {
     const buf = response.buffer;
     const Reader = getDependency('BinaryReader', BinaryReader);
     const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
-    const hash = await this._hashBuffer(buf);
-    await this._storeInCache(url, { type: 'binary', data: buf, hash, ...response.headers });
+    let hash = null;
+    try {
+      hash = await this._tryHashBuffer(buf);
+    } catch (e) {
+      hash = null;
+    }
+    await this._storeInCache(url, { type: 'binary', data: buf, hash, ...response.headers })
+      .catch(() => {});
     return reader;
   }
 
@@ -621,8 +647,14 @@ class FileProvider extends BaseLogger {
     });
 
     const text = response.text;
-    const hash = await this._hashString(text);
-    await this._storeInCache(url, { type: 'text', data: text, hash, ...response.headers });
+    let hash = null;
+    try {
+      hash = await this._tryHashString(text);
+    } catch (e) {
+      hash = null;
+    }
+    await this._storeInCache(url, { type: 'text', data: text, hash, ...response.headers })
+      .catch(() => {});
     return text;
   }
 
@@ -663,20 +695,41 @@ class FileProvider extends BaseLogger {
     }
   }
 
-  async _hashBuffer(buffer) {
+  async _tryHashBuffer(buffer) {
     const cryptoRef = this._crypto || (typeof globalThis !== 'undefined' ? globalThis.crypto : null);
     if (cryptoRef?.subtle) {
-      const hashBuf = await cryptoRef.subtle.digest('SHA-256', buffer);
-      return Array.from(new Uint8Array(hashBuf))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      try {
+        const hashBuf = await cryptoRef.subtle.digest('SHA-256', buffer);
+        return Array.from(new Uint8Array(hashBuf))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  async _tryHashString(str) {
+    if (typeof TextEncoder === 'undefined') return null;
+    const enc = new TextEncoder();
+    return this._tryHashBuffer(enc.encode(str));
+  }
+
+  async _hashBuffer(buffer) {
+    const hash = await this._tryHashBuffer(buffer);
+    if (hash != null) {
+      return hash;
     }
     throw new Error('crypto API not available');
   }
 
   async _hashString(str) {
-    const enc = new TextEncoder();
-    return this._hashBuffer(enc.encode(str));
+    if (typeof TextEncoder !== 'undefined') {
+      const enc = new TextEncoder();
+      return this._hashBuffer(enc.encode(str));
+    }
+    throw new Error('crypto API not available');
   }
 
   _arrayBufferToBase64(buffer) {

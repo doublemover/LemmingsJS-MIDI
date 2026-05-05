@@ -22,6 +22,19 @@ describe('MidiMapping helpers', function() {
     expect(arrayOverride.noteRange).to.eql([1, 2, 3]);
   });
 
+  it('filters unsafe config merge keys without touching prototypes', function() {
+    const merged = __test__.mergeConfig(
+      { noteRange: { min: 40, max: 60 } },
+      JSON.parse('{"noteRange":{"max":72},"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}}}')
+    );
+
+    expect(merged.noteRange.max).to.equal(72);
+    expect(Object.prototype.hasOwnProperty.call(merged, '__proto__')).to.equal(false);
+    expect(Object.prototype.hasOwnProperty.call(merged, 'constructor')).to.equal(false);
+    expect(Object.getPrototypeOf(merged)).to.equal(null);
+    expect({}.polluted).to.equal(undefined);
+  });
+
   it('builds position mappings and axis values', function() {
     const mappings = __test__.resolvePositionMappings({ mappings: [{ axis: 'x' }] }, { min: 1, max: 2 });
     expect(mappings).to.have.length(1);

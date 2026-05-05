@@ -70,7 +70,10 @@ describe('MiniMap', function() {
     const counter = { value: 1 };
     const level = makeLevel(counter);
     const guiDisplay = makeGuiDisplay();
-    const miniMap = new MiniMap({}, level, guiDisplay);
+    const records = [];
+    const miniMap = new MiniMap({}, level, guiDisplay, {
+      history: { recordMinimapDeath: (entry) => records.push(entry) }
+    });
 
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
     const destY = guiDisplay.worldDataSize.height - miniMap.height;
@@ -102,17 +105,10 @@ describe('MiniMap', function() {
     guiDisplay.onMouseDown.trigger({ x: Number.NaN, y: destY + 1 });
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
 
-    const records = [];
-    withGlobalLemmings({
-      game: {
-        history: { recordMinimapDeath: (entry) => records.push(entry) }
-      }
-    }, () => {
-      miniMap.deadCount = miniMap.deadTTLs.length;
-      miniMap.addDeath(5, 5);
-      expect(records.length).to.equal(1);
-      expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
-    });
+    miniMap.deadCount = miniMap.deadTTLs.length;
+    miniMap.addDeath(5, 5);
+    expect(records.length).to.equal(1);
+    expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
   });
 
   it('uses stage viewport width for pointer mapping when available', function() {

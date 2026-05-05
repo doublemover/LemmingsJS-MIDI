@@ -1,7 +1,8 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionExitingSystem extends ActionBaseSystem {
   constructor(sprites, gameVictoryCondition) {
@@ -18,7 +19,7 @@ class ActionExitingSystem extends ActionBaseSystem {
     lem.disable();
     if (lem.frameIndex === 0) {
       const triggerType = lem.lastTriggerType ?? null;
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_EXIT,
         SoundEffectIds.EXIT,

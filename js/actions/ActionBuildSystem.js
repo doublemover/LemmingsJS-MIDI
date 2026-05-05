@@ -1,7 +1,8 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionBuildSystem extends ActionBaseSystem {
   constructor(sprites) {
@@ -27,7 +28,7 @@ class ActionBuildSystem extends ActionBaseSystem {
         if (!inHorizontalBounds(brickX) || !inVerticalBounds(brickY)) continue;
         level.setGroundAt(brickX, brickY, 7);
       }
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.BUILDER_STEP,
         SoundEffectIds.BUILDER_STEP,

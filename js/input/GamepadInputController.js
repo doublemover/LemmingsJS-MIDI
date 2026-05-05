@@ -46,6 +46,7 @@ const DEFAULT_GAMEPAD_BINDINGS = Object.freeze({
 const DEFAULT_STORAGE_KEY = 'lem-gamepad-bindings-v1';
 const DEFAULT_BUTTON_THRESHOLD = 0.5;
 const DEFAULT_AXIS_DEAD_ZONE = 0.35;
+const NO_GAMEPAD_POLL_INTERVAL_MS = 1000;
 
 const GAMEPAD_BUTTON_LABELS = Object.freeze({
   0: 'A / Cross',
@@ -311,15 +312,25 @@ class GamepadInputController {
     this._raf = 0;
     this._running = false;
     this._tick = this._tick.bind(this);
-    this._loadJoypadRuntime();
+    this._lastNoGamepadPollMs = -Infinity;
+    this._hasConnectedGamepad = false;
+    this._onGamepadConnected = () => {
+      this._hasConnectedGamepad = true;
+      this._lastNoGamepadPollMs = -Infinity;
+    };
+    this._onGamepadDisconnected = () => {
+      this._hasConnectedGamepad = this._detectConnectedGamepad() !== null;
+      if (!this._hasConnectedGamepad) {
+        this._releaseAllActions();
+        this._bindingActive.clear();
+      }
+    };
+    this.window?.addEventListener?.('gamepadconnected', this._onGamepadConnected);
+    this.window?.addEventListener?.('gamepaddisconnected', this._onGamepadDisconnected);
     this._loadPersistedConfig();
     this._loadFileConfig();
+    this._hasConnectedGamepad = this._detectConnectedGamepad() !== null;
     this._start();
-  }
-
-  _loadJoypadRuntime() {
-    if (typeof window === 'undefined') return;
-    import('joypad.js').catch(() => {});
   }
 
   _loadPersistedConfig() {
@@ -408,7 +419,13 @@ class GamepadInputController {
   _tick() {
     this._raf = 0;
     if (!this._running) return;
-    this._poll();
+    const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+      ? performance.now()
+      : Date.now();
+    if (this._hasConnectedGamepad || (now - this._lastNoGamepadPollMs) >= NO_GAMEPAD_POLL_INTERVAL_MS) {
+      this._lastNoGamepadPollMs = now;
+      this._poll();
+    }
     this._raf = this.window.requestAnimationFrame(this._tick);
   }
 
@@ -421,17 +438,19 @@ class GamepadInputController {
     }
     const gamepad = this._getPrimaryGamepad();
     if (!gamepad) {
+      this._hasConnectedGamepad = false;
       this._releaseAllActions();
       this._bindingActive.clear();
       return;
     }
+    this._hasConnectedGamepad = true;
     for (const binding of bindings) {
       const nextActive = this._isBindingActive(binding.spec, gamepad);
       this._setBindingState(binding.id, binding.action, nextActive);
     }
   }
 
-  _getPrimaryGamepad() {
+  _detectConnectedGamepad() {
     const rawPads = this.navigator?.getGamepads?.();
     if (!rawPads) return null;
     for (let i = 0; i < rawPads.length; i += 1) {
@@ -439,6 +458,10 @@ class GamepadInputController {
       if (pad && pad.connected !== false) return pad;
     }
     return null;
+  }
+
+  _getPrimaryGamepad() {
+    return this._detectConnectedGamepad();
   }
 
   _isBindingActive(spec, gamepad) {
@@ -499,6 +522,8 @@ class GamepadInputController {
       this.window?.cancelAnimationFrame?.(this._raf);
       this._raf = 0;
     }
+    this.window?.removeEventListener?.('gamepadconnected', this._onGamepadConnected);
+    this.window?.removeEventListener?.('gamepaddisconnected', this._onGamepadDisconnected);
     this._releaseAllActions();
     this._bindingActive.clear();
   }

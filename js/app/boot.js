@@ -91,26 +91,35 @@ const getRuntimeWindow = () => getRuntimeDependency('window', null);
 const getRuntimeDocument = () => getRuntimeDependency('document', null);
 const getRuntimeWebMidi = () => getRuntimeDependency('webMidi', null);
 
+const getAmbientRuntimeDependency = (key, globalKey, fallback = null) => {
+  if (typeof globalThis !== 'undefined' &&
+      Object.prototype.hasOwnProperty.call(globalThis, globalKey)) {
+    const value = globalThis[globalKey];
+    return value === undefined ? fallback : value;
+  }
+  return getRuntimeDependency(key, fallback);
+};
+
 const hydrateRuntimeContext = () => {
-  const windowRef = getRuntimeWindow();
-  const documentRef = getRuntimeDocument();
-  const locationRef = getRuntimeDependency('location', windowRef?.location || null);
+  const windowRef = getAmbientRuntimeDependency('window', 'window', null);
+  const documentRef = getAmbientRuntimeDependency('document', 'document', null);
+  const locationRef = getAmbientRuntimeDependency('location', 'location', windowRef?.location || null);
   const runtimeRolloutFlags = resolveRuntimeRolloutFlags({
     search: locationRef?.search || '',
-    runtimeFlags: getRuntimeDependency('rolloutFlags', null)
+    runtimeFlags: getAmbientRuntimeDependency('rolloutFlags', '__LEMMINGS_ROLLOUT_FLAGS__', null)
   });
   setRuntimeContext({
     window: windowRef,
     document: documentRef,
-    navigator: getRuntimeDependency('navigator', windowRef?.navigator || null),
+    navigator: getAmbientRuntimeDependency('navigator', 'navigator', windowRef?.navigator || null),
     location: locationRef,
-    history: getRuntimeDependency('history', windowRef?.history || null),
-    localStorage: getRuntimeDependency('localStorage', windowRef?.localStorage || null),
-    caches: getRuntimeDependency('caches', null),
-    performance: getRuntimeDependency('performance', (typeof performance !== 'undefined' ? performance : null)),
-    webMidi: getRuntimeWebMidi(),
+    history: getAmbientRuntimeDependency('history', 'history', windowRef?.history || null),
+    localStorage: getAmbientRuntimeDependency('localStorage', 'localStorage', windowRef?.localStorage || null),
+    caches: getAmbientRuntimeDependency('caches', 'caches', null),
+    performance: getAmbientRuntimeDependency('performance', 'performance', (typeof performance !== 'undefined' ? performance : null)),
+    webMidi: getAmbientRuntimeDependency('webMidi', 'WebMidi', null),
     rolloutFlags: runtimeRolloutFlags,
-    bootNoAutoStart: getRuntimeDependency('bootNoAutoStart', false)
+    bootNoAutoStart: getAmbientRuntimeDependency('bootNoAutoStart', '__LEMMINGS_BOOT_NO_AUTO_START__', false)
   });
   return { windowRef, documentRef };
 };

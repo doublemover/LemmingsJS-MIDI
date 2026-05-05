@@ -1,7 +1,8 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { MaskTypes } from '../render/MaskTypes.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class ActionCountdownSystem extends ActionBaseSystem {
   static numberMasks = new Map();
@@ -32,7 +33,7 @@ class ActionCountdownSystem extends ActionBaseSystem {
     lem.countdown--;
     if (lem.countdown === 0) {
       lem.setCountDown(null);
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_OHNO,
         SoundEffectIds.OHNO,

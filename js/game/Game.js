@@ -16,6 +16,7 @@ import { ParticleTable } from '../render/ParticleTable.js';
 import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
 import { TriggerManager } from '../level/TriggerManager.js';
 import { getAppContext, getDependency } from '../core/dependencies.js';
+import { createGameRuntime } from './GameRuntime.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -66,6 +67,7 @@ class Game extends BaseLogger {
     this.soundEvents          = null;
     this.history              = null;
     this.timeTravel           = null;
+    this.runtime              = null;
     this.inputEnabled         = true;
 
     this.onGameEnd      = new EventHandler();
@@ -111,6 +113,7 @@ class Game extends BaseLogger {
     this.soundEvents     = null;
     this.history         = null;
     this.timeTravel      = null;
+    this.runtime         = null;
 
     this.finalGameState  = GameStateTypes.UNKNOWN;
   }
@@ -161,6 +164,8 @@ class Game extends BaseLogger {
     const TimeTravel = getDependency('TimeTravelController', TimeTravelController);
     this.timeTravel = new TimeTravel(this, this.history);
     this.gameTimer?.setTimeTravelController?.(this.timeTravel);
+    this.runtime = createGameRuntime(this, getApp());
+    level.setRuntime?.(this.runtime);
 
     const CommandMgr = getDependency('CommandManager', CommandManager);
     const Skills = getDependency('GameSkills', GameSkills);
@@ -169,7 +174,7 @@ class Game extends BaseLogger {
     this.commandManager       = new CommandMgr(this, this.gameTimer);
     this.skills               = new Skills(level);
     this.gameVictoryCondition = new Victory(level);
-    this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height);
+    this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height, 16, this.runtime);
     this.triggerManager.addRange(level.triggers);
 
     const [masks, lemSprite] = await Promise.all([
@@ -187,6 +192,7 @@ class Game extends BaseLogger {
       this.gameVictoryCondition,
       masks,
       particleTable,
+      this.runtime
     );
 
     const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
@@ -356,8 +362,12 @@ class Game extends BaseLogger {
         this.display?.commitFrameForBackgroundRestore?.();
       }
       if (this.guiDisplay) {
-        this.gameGui.render();
-        this.guiDisplay.redraw();
+        const guiDirty = this.gameGui.render();
+        if (guiDirty) {
+          this.guiDisplay.redraw();
+        } else if (this.display?.hasPendingDirty?.()) {
+          this.display.redraw();
+        }
       } else if (this.display) {
         this.display.redraw();
       }

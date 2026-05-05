@@ -498,6 +498,25 @@ describe('GameTimer', function() {
     }
   });
 
+  it('returns false and remains stopped when no RAF scheduler is available', function() {
+    const timer = new GameTimer({ timeLimit: 1 }, {
+      performance: { now: () => 0 },
+      window: {
+        addEventListener() {},
+        removeEventListener() {},
+        cancelAnimationFrame() {}
+      },
+      document: {
+        addEventListener() {},
+        removeEventListener() {}
+      }
+    });
+
+    expect(timer.continue()).to.equal(false);
+    expect(timer.isRunning()).to.equal(false);
+    timer.stop();
+  });
+
   it('does not advance when loop runs while suspended', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     timer.continue();

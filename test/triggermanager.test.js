@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { useGlobalLemmings, withGlobalLemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import '../js/util/LogHandler.js';
 import '../js/render/ColorPalette.js';
 import '../js/render/Frame.js';
@@ -176,21 +176,17 @@ describe('TriggerManager', function () {
 
   it('records history on add/remove when available', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
-    const tm = new TriggerManager(timer, 31, 31, 16);
     const calls = { add: [], remove: [] };
-    withGlobalLemmings({
-      game: {
-        history: {
-          recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
-          recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
-        }
+    const tm = new TriggerManager(timer, 31, 31, 16, {
+      history: {
+        recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
+        recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
       }
-    }, () => {
-      const owner = { id: 7 };
-      const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, 2, owner);
-      tm.add(tr);
-      tm.removeByOwner(owner);
     });
+    const owner = { id: 7 };
+    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, 2, owner);
+    tm.add(tr);
+    tm.removeByOwner(owner);
 
     expect(calls.add).to.have.length(1);
     expect(calls.add[0].snapshot.ownerId).to.equal(7);
@@ -200,24 +196,69 @@ describe('TriggerManager', function () {
 
   it('records null owner ids in history snapshots', function () {
     const timer = { tick: 0, getGameTicks () { return this.tick; } };
-    const tm = new TriggerManager(timer, 31, 31, 16);
     const calls = { add: [], remove: [] };
-    withGlobalLemmings({
-      game: {
-        history: {
-          recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
-          recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
-        }
+    const tm = new TriggerManager(timer, 31, 31, 16, {
+      history: {
+        recordTriggerAdd(trigger, snapshot) { calls.add.push({ trigger, snapshot }); },
+        recordTriggerRemove(trigger, snapshot) { calls.remove.push({ trigger, snapshot }); }
       }
-    }, () => {
-      const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
-      tm.add(tr);
-      tm.removeByOwner(null);
     });
+    const tr = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5);
+    tm.add(tr);
+    tm.removeByOwner(null);
 
     expect(calls.add[0].snapshot.ownerId).to.equal(null);
     expect(calls.remove[0].snapshot.ownerId).to.equal(null);
 
+  });
+
+  it('runs observer triggers without blocking gameplay triggers', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const cases = [
+      ['gameplay-first', (tm, gameplay, observer) => { tm.add(gameplay); tm.addObserver(observer); }],
+      ['observer-first', (tm, gameplay, observer) => { tm.addObserver(observer); tm.add(gameplay); }]
+    ];
+
+    for (const [name, register] of cases) {
+      const calls = [];
+      const tm = new TriggerManager(timer, 31, 31, 16);
+      const gameplay = new Trigger(TriggerTypes.EXIT_LEVEL, 1, 1, 5, 5, 0, -1, { id: `${name}:exit` });
+      const observer = new Trigger(TriggerTypes.NO_TRIGGER, 1, 1, 5, 5, 0, -1, {
+        id: `${name}:observer`,
+        onTrigger(tick, lemming, trigger, x, y) {
+          calls.push({ tick, x, y, trigger });
+        }
+      });
+      register(tm, gameplay, observer);
+
+      expect(tm.trigger(2, 2), name).to.equal(TriggerTypes.EXIT_LEVEL);
+      expect(calls).to.have.length(1);
+      expect(calls[0]).to.include({ tick: 0, x: 2, y: 2 });
+    }
+  });
+
+  it('keeps observer cooldown independent from gameplay resolution', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 31, 31, 16);
+    const calls = [];
+    const observer = new Trigger(TriggerTypes.NO_TRIGGER, 1, 1, 5, 5, 5, -1, {
+      id: 'observer',
+      onTrigger(tick) {
+        calls.push(tick);
+      }
+    });
+    const gameplay = new Trigger(TriggerTypes.TRAP, 1, 1, 5, 5, 0, -1, { id: 'trap' });
+    tm.addObserver(observer);
+    tm.add(gameplay);
+
+    expect(tm.trigger(2, 2, null, 0)).to.equal(TriggerTypes.TRAP);
+    expect(tm.trigger(2, 2, null, 1)).to.equal(TriggerTypes.TRAP);
+    expect(tm.trigger(2, 2, null, 4)).to.equal(TriggerTypes.TRAP);
+    expect(tm.trigger(2, 2, null, 5)).to.equal(TriggerTypes.TRAP);
+    expect(calls).to.eql([0, 5]);
+
+    tm.removeByOwner(gameplay.owner);
+    expect(tm.trigger(2, 2, null, 6)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 
   it('dispose clears references', function () {

@@ -1952,7 +1952,7 @@ class HistoryStore {
     const minimapState = this._readMinimapState(lemmingManager?.miniMap);
     const victory = this._readVictory(game.getVictoryCondition?.());
     const skills = this._readSkills(game.getGameSkills?.());
-    const timer = this._readTimer(game.getGameTimer?.());
+    const timer = this._readTimer(game.getGameTimer?.(), { includeTickIndex: true });
     const gameState = this._readGameState(game);
     const level = game.level || null;
     let groundMask = null;
@@ -2044,26 +2044,56 @@ class HistoryStore {
 
       const actionType = this._getActionType(manager, lem.action);
       const countdownActive = !!lem.countdownAction;
+      const lookRight = lem.lookRight ? 1 : 0;
+      const state = lem.state ?? 0;
+      const canClimb = lem.canClimb ? 1 : 0;
+      const hasParachute = lem.hasParachute ? 1 : 0;
+      const removed = lem.removed ? 1 : 0;
+      const disabled = lem.disabled ? 1 : 0;
+      const countdown = lem.countdown ?? 0;
+      const hasExploded = lem.hasExploded ? 1 : 0;
+      const lastTriggerType = Number.isFinite(lem.lastTriggerType) ? lem.lastTriggerType : -1;
+      const countdownActiveValue = countdownActive ? 1 : 0;
       if (!prev.present[i]) {
         delta.lemAdded.push(snapshotLemming(lem, actionType, countdownActive));
         this._writeLemmingState(prev, i, lem, actionType, countdownActive);
         continue;
       }
 
+      if (
+        prev.x[i] === lem.x &&
+        prev.y[i] === lem.y &&
+        prev.lookRight[i] === lookRight &&
+        prev.frameIndex[i] === lem.frameIndex &&
+        prev.state[i] === state &&
+        prev.canClimb[i] === canClimb &&
+        prev.hasParachute[i] === hasParachute &&
+        prev.removed[i] === removed &&
+        prev.disabled[i] === disabled &&
+        prev.countdown[i] === countdown &&
+        prev.hasExploded[i] === hasExploded &&
+        prev.lastTriggerType[i] === lastTriggerType &&
+        prev.actionType[i] === actionType &&
+        prev.countdownActive[i] === countdownActiveValue
+      ) {
+        prev.present[i] = 1;
+        continue;
+      }
+
       this._diffLemmingField(delta, i, 0, prev.x[i], lem.x, prev.x);
       this._diffLemmingField(delta, i, 1, prev.y[i], lem.y, prev.y);
-      this._diffLemmingField(delta, i, 2, prev.lookRight[i], lem.lookRight ? 1 : 0, prev.lookRight);
+      this._diffLemmingField(delta, i, 2, prev.lookRight[i], lookRight, prev.lookRight);
       this._diffLemmingField(delta, i, 3, prev.frameIndex[i], lem.frameIndex, prev.frameIndex);
-      this._diffLemmingField(delta, i, 4, prev.state[i], lem.state ?? 0, prev.state);
-      this._diffLemmingField(delta, i, 5, prev.canClimb[i], lem.canClimb ? 1 : 0, prev.canClimb);
-      this._diffLemmingField(delta, i, 6, prev.hasParachute[i], lem.hasParachute ? 1 : 0, prev.hasParachute);
-      this._diffLemmingField(delta, i, 7, prev.removed[i], lem.removed ? 1 : 0, prev.removed);
-      this._diffLemmingField(delta, i, 8, prev.disabled[i], lem.disabled ? 1 : 0, prev.disabled);
-      this._diffLemmingField(delta, i, 9, prev.countdown[i], lem.countdown ?? 0, prev.countdown);
-      this._diffLemmingField(delta, i, 10, prev.hasExploded[i], lem.hasExploded ? 1 : 0, prev.hasExploded);
-      this._diffLemmingField(delta, i, 11, prev.lastTriggerType[i], Number.isFinite(lem.lastTriggerType) ? lem.lastTriggerType : -1, prev.lastTriggerType);
+      this._diffLemmingField(delta, i, 4, prev.state[i], state, prev.state);
+      this._diffLemmingField(delta, i, 5, prev.canClimb[i], canClimb, prev.canClimb);
+      this._diffLemmingField(delta, i, 6, prev.hasParachute[i], hasParachute, prev.hasParachute);
+      this._diffLemmingField(delta, i, 7, prev.removed[i], removed, prev.removed);
+      this._diffLemmingField(delta, i, 8, prev.disabled[i], disabled, prev.disabled);
+      this._diffLemmingField(delta, i, 9, prev.countdown[i], countdown, prev.countdown);
+      this._diffLemmingField(delta, i, 10, prev.hasExploded[i], hasExploded, prev.hasExploded);
+      this._diffLemmingField(delta, i, 11, prev.lastTriggerType[i], lastTriggerType, prev.lastTriggerType);
       this._diffLemmingField(delta, i, 12, prev.actionType[i], actionType, prev.actionType);
-      this._diffLemmingField(delta, i, 13, prev.countdownActive[i], countdownActive ? 1 : 0, prev.countdownActive);
+      this._diffLemmingField(delta, i, 13, prev.countdownActive[i], countdownActiveValue, prev.countdownActive);
       prev.present[i] = 1;
     }
 
@@ -2201,15 +2231,15 @@ class HistoryStore {
   }
 
   _captureScalarState(game) {
-    this._skillsState = this._readSkills(game.getGameSkills?.());
+    this._skillsState = this._readSkills(game.getGameSkills?.(), this._skillsState);
     this._victoryState = this._readVictory(game.getVictoryCondition?.());
     this._timerState = this._readTimer(game.getGameTimer?.());
     this._gameState = this._readGameState(game);
   }
 
   _diffScalarState(game, delta) {
-    const nextSkills = this._readSkills(game.getGameSkills?.());
-    if (this._skillsState && nextSkills && !this._skillsEqual(this._skillsState, nextSkills)) {
+    const nextSkills = this._readSkills(game.getGameSkills?.(), this._skillsState);
+    if (this._skillsState && nextSkills && this._skillsState !== nextSkills) {
       delta.skillsChanges = { prev: this._skillsState, next: nextSkills };
     }
     this._skillsState = nextSkills;
@@ -2233,13 +2263,30 @@ class HistoryStore {
     this._gameState = nextGame;
   }
 
-  _readSkills(skills) {
+  _readSkills(skills, previous = null) {
     if (!skills) return null;
-    const values = Array.isArray(skills.skills) ? skills.skills.slice() : [];
+    const source = Array.isArray(skills.skills) ? skills.skills : [];
+    if (
+      previous &&
+      previous.selectedSkill === skills.selectedSkill &&
+      !!previous.cheatMode === !!skills.cheatMode
+    ) {
+      const prevValues = previous.skills || [];
+      if (prevValues.length === source.length) {
+        let same = true;
+        for (let i = 0; i < source.length; i += 1) {
+          if (prevValues[i] !== source[i]) {
+            same = false;
+            break;
+          }
+        }
+        if (same) return previous;
+      }
+    }
     return {
       selectedSkill: skills.selectedSkill,
       cheatMode: !!skills.cheatMode,
-      skills: values
+      skills: source.slice()
     };
   }
 
@@ -2278,20 +2325,22 @@ class HistoryStore {
       && !!a.isFinalize === !!b.isFinalize;
   }
 
-  _readTimer(timer) {
+  _readTimer(timer, { includeTickIndex = false } = {}) {
     if (!timer) return null;
-    return {
+    const state = {
       speedFactor: timer.speedFactor,
-      frameTime: timer.frameTime,
-      tickIndex: timer.tickIndex
+      frameTime: timer.frameTime
     };
+    if (includeTickIndex) {
+      state.tickIndex = timer.tickIndex;
+    }
+    return state;
   }
 
   _timerEqual(a, b) {
     if (!a || !b) return false;
     return a.speedFactor === b.speedFactor
-      && a.frameTime === b.frameTime
-      && a.tickIndex === b.tickIndex;
+      && a.frameTime === b.frameTime;
   }
 
   _readGameState(game) {
@@ -2485,7 +2534,16 @@ class HistoryStore {
     }
     if (flags & DELTA_FLAG_SCALARS) {
       this._applyScalarChanges(game, delta, useNext);
+    } else {
+      this._applyDerivedTimerTick(game, delta, useNext);
     }
+  }
+
+  _applyDerivedTimerTick(game, delta, useNext) {
+    if (!Number.isFinite(delta?.tick)) return;
+    const timer = game?.getGameTimer?.();
+    if (!timer) return;
+    timer.tickIndex = Math.max(0, Math.trunc(delta.tick) + (useNext ? 1 : 0));
   }
 
   _getDeltaFlags(delta) {
@@ -2674,7 +2732,11 @@ class HistoryStore {
       );
       trig.disabledUntilTick = snap.disabledUntilTick ?? 0;
       trig.__historyId = snap.id;
-      triggerManager.add(trig);
+      if (snap.observer === true && typeof triggerManager.addObserver === 'function') {
+        triggerManager.addObserver(trig);
+      } else {
+        triggerManager.add(trig);
+      }
       this._triggerById.set(snap.id, trig);
     }
     if (delta.triggerCooldownChanges?.ids?.length) {
@@ -2694,12 +2756,15 @@ class HistoryStore {
     if (!triggerManager || !id) return null;
     if (this._triggerById.has(id)) return this._triggerById.get(id);
     let found = null;
-    for (const trig of triggerManager._triggers || []) {
-      const trigId = trig?.__historyId;
-      if (!trigId) continue;
-      this._triggerById.set(trigId, trig);
-      if (trigId === id) {
-        found = trig;
+    const triggerSets = [triggerManager._triggers, triggerManager._observerTriggers];
+    for (const triggerSet of triggerSets) {
+      for (const trig of triggerSet || []) {
+        const trigId = trig?.__historyId;
+        if (!trigId) continue;
+        this._triggerById.set(trigId, trig);
+        if (trigId === id) {
+          found = trig;
+        }
       }
     }
     return found;
@@ -2730,6 +2795,9 @@ class HistoryStore {
   }
 
   _applyScalarChanges(game, delta, useNext) {
+    const derivedTick = Number.isFinite(delta?.tick)
+      ? Math.max(0, Math.trunc(delta.tick) + (useNext ? 1 : 0))
+      : null;
     if (delta.victoryChanges) {
       const victory = game.getVictoryCondition?.();
       const state = useNext ? delta.victoryChanges.next : delta.victoryChanges.prev;
@@ -2759,8 +2827,12 @@ class HistoryStore {
         if (!ignoreSpeed) {
           timer.speedFactor = state.speedFactor;
         }
-        timer.tickIndex = state.tickIndex;
+        timer.frameTime = state.frameTime;
+        timer.tickIndex = Number.isFinite(state.tickIndex) ? state.tickIndex : derivedTick;
       }
+    } else if (derivedTick != null) {
+      const timer = game.getGameTimer?.();
+      if (timer) timer.tickIndex = derivedTick;
     }
     if (delta.gameChanges) {
       const state = useNext ? delta.gameChanges.next : delta.gameChanges.prev;
@@ -2819,10 +2891,10 @@ class HistoryStore {
       const id = this._ensureTriggerId(trig);
       staticTriggers.push({ id, disabledUntilTick: trig.disabledUntilTick });
     }
-    for (const trig of triggerManager._triggers || []) {
-      if (!trig || staticSet.has(trig)) continue;
+    const readDynamicTrigger = (trig, observer = false) => {
+      if (!trig || staticSet.has(trig)) return;
       const ownerSnapshot = this._readTriggerOwnerSnapshot(trig);
-      if (ownerSnapshot.ownerKind == null) continue;
+      if (ownerSnapshot.ownerKind == null) return;
       const id = this._ensureTriggerId(trig);
       dynamicTriggers.push({
         id,
@@ -2834,8 +2906,15 @@ class HistoryStore {
         y2: trig.y2,
         disableTicksCount: trig.disableTicksCount,
         soundIndex: trig.soundIndex,
-        disabledUntilTick: trig.disabledUntilTick
+        disabledUntilTick: trig.disabledUntilTick,
+        observer
       });
+    };
+    for (const trig of triggerManager._triggers || []) {
+      readDynamicTrigger(trig, false);
+    }
+    for (const trig of triggerManager._observerTriggers || []) {
+      readDynamicTrigger(trig, true);
     }
     staticSet.clear();
     return { staticTriggers, dynamicTriggers };
@@ -2861,9 +2940,11 @@ class HistoryStore {
       if (levelTriggers[i]) staticSet.add(levelTriggers[i]);
     }
     const removeList = [];
-    for (const trig of triggerManager._triggers || []) {
-      if (!trig || staticSet.has(trig)) continue;
-      if (this._isReplayManagedDynamicTrigger(trig)) removeList.push(trig);
+    for (const triggerSet of [triggerManager._triggers, triggerManager._observerTriggers]) {
+      for (const trig of triggerSet || []) {
+        if (!trig || staticSet.has(trig)) continue;
+        if (this._isReplayManagedDynamicTrigger(trig)) removeList.push(trig);
+      }
     }
     staticSet.clear();
     for (const trig of removeList) {
@@ -2883,7 +2964,11 @@ class HistoryStore {
       );
       trig.disabledUntilTick = snap.disabledUntilTick;
       trig.__historyId = snap.id;
-      triggerManager.add(trig);
+      if (snap.observer === true && typeof triggerManager.addObserver === 'function') {
+        triggerManager.addObserver(trig);
+      } else {
+        triggerManager.add(trig);
+      }
       this._triggerById.set(snap.id, trig);
     }
   }

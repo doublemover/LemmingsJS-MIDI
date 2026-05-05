@@ -1,7 +1,8 @@
 import { ActionBaseSystem } from './ActionBaseSystem.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
         
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const scaleIntensity = (removed, maxCount) => {
@@ -19,7 +20,7 @@ class ActionDiggSystem extends ActionBaseSystem {
     if (level.isSteelGround(lem.x, lem.y) ||
                 level.isSteelGround(lem.x, lem.y - 1) ||
                 level.isSteelGround(lem.x, lem.y - 2)) {
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.STEEL_HIT,
         SoundEffectIds.STEEL_HIT,
@@ -46,6 +47,25 @@ class ActionDiggSystem extends ActionBaseSystem {
     return LemmingStateType.NO_STATE_TYPE;
   }
   digRow(level, lem, y) {
+    if (typeof level.clearGroundRow === 'function') {
+      const removed = level.clearGroundRow(lem.x - 4, y, 9);
+      const intensity = scaleIntensity(removed, 9);
+      if (removed > 0) {
+        const soundBus = getRuntimeSoundEvents(this.runtime);
+        soundBus?.emitSfx?.(
+          SoundEventTypes.LEMMING_DIG,
+          SoundEffectIds.DIG,
+          {
+            lemmingId: lem.id,
+            x: lem.x,
+            y,
+            removed,
+            intensity
+          }
+        );
+      }
+      return removed > 0;
+    }
     let removeCount = 0;
     for (let x = lem.x - 4; x < lem.x + 5; x++) {
       if (level.hasGroundAt(x, y)) {
@@ -55,7 +75,7 @@ class ActionDiggSystem extends ActionBaseSystem {
     }
     const intensity = scaleIntensity(removeCount, 9);
     if (removeCount > 0) {
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_DIG,
         SoundEffectIds.DIG,

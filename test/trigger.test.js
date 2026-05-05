@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { useGlobalLemmings, withGlobalLemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { Trigger } from '../js/level/Trigger.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 
@@ -23,18 +23,15 @@ describe('Trigger', function() {
 
   it('records trigger cooldown when history is present', function() {
     const calls = [];
-    withGlobalLemmings({
-      game: {
-        history: {
-          recordTriggerCooldown(trigger, prev, next) {
-            calls.push({ trigger, prev, next });
-          }
+    const trig = new Trigger(TriggerTypes.EXIT_LEVEL, 0, 0, 10, 10, 2);
+    trig.runtime = {
+      history: {
+        recordTriggerCooldown(trigger, prev, next) {
+          calls.push({ trigger, prev, next });
         }
       }
-    }, () => {
-      const trig = new Trigger(TriggerTypes.EXIT_LEVEL, 0, 0, 10, 10, 2);
-      trig.trigger(1, 1, 0);
-    });
+    };
+    trig.trigger(1, 1, 0);
     expect(calls).to.have.length(1);
     expect(calls[0].prev).to.equal(0);
     expect(calls[0].next).to.equal(2);

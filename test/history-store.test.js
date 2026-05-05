@@ -1942,6 +1942,7 @@ describe('HistoryStore', function() {
     skills.selectedSkill = 1;
     victory.leftCount = 0;
     timer.tickIndex = 5;
+    timer.speedFactor = 2;
     game.finalGameState = 2;
     level.entrances[0]._opened = true;
 
@@ -2525,7 +2526,7 @@ describe('HistoryStore', function() {
     const timer = { speedFactor: 1, frameTime: 60, tickIndex: 0 };
     const timerState = history._readTimer(timer);
     expect(history._timerEqual(timerState, { ...timerState })).to.equal(true);
-    expect(history._timerEqual(timerState, { ...timerState, tickIndex: 1 })).to.equal(false);
+    expect(history._timerEqual(timerState, { ...timerState, tickIndex: 1 })).to.equal(true);
     expect(history._timerEqual(null, timerState)).to.equal(false);
 
     const gameState = history._readGameState({ finalGameState: 1 });

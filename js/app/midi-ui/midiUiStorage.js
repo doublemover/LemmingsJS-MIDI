@@ -1,4 +1,5 @@
 import { migrateArpConfig } from './midiUiDomain.js';
+import { cloneSafeObject, createNullObject, isPlainObject, safeObjectEntries } from '../../util/safeObject.js';
 
 const midiStorageKeys = {
   storageVersion: 'lemmings.midi.storageVersion',
@@ -20,10 +21,6 @@ const MIDI_STORAGE_VERSION = 3;
 const migratedMidiStorages = new WeakSet();
 const MAX_LEARN_TARGET_LENGTH = 128;
 
-const isPlainObject = (value) => {
-  return !!value && typeof value === 'object' && !Array.isArray(value);
-};
-
 const sanitizeStoredValue = (value, depth = 0) => {
   if (depth > 12) return undefined;
   if (value === null) return null;
@@ -41,8 +38,8 @@ const sanitizeStoredValue = (value, depth = 0) => {
     return out;
   }
   if (isPlainObject(value)) {
-    const out = {};
-    for (const [key, entry] of Object.entries(value)) {
+    const out = createNullObject();
+    for (const [key, entry] of safeObjectEntries(value)) {
       if (key.length > 96) continue;
       const next = sanitizeStoredValue(entry, depth + 1);
       if (next !== undefined) out[key] = next;
@@ -55,10 +52,10 @@ const sanitizeStoredValue = (value, depth = 0) => {
 const migrateMidiOverrides = (value) => {
   const sanitized = sanitizeStoredValue(value);
   if (!isPlainObject(sanitized)) return {};
-  const overrides = { ...sanitized };
+  const overrides = cloneSafeObject(sanitized);
 
   if (isPlainObject(overrides.repeat)) {
-    const repeat = { ...overrides.repeat };
+    const repeat = cloneSafeObject(overrides.repeat);
     const spacingTicks = repeat.spacingTicks;
     if (Number.isFinite(spacingTicks) && !Number.isFinite(repeat.windowBeats)) {
       repeat.windowBeats = spacingTicks;
@@ -67,7 +64,7 @@ const migrateMidiOverrides = (value) => {
   }
 
   if (isPlainObject(overrides.input)) {
-    const input = { ...overrides.input };
+    const input = cloneSafeObject(overrides.input);
     if (typeof input.channel === 'string') {
       const normalized = input.channel.trim().toLowerCase();
       if (normalized === 'omni') {
@@ -85,7 +82,7 @@ const migrateMidiOverrides = (value) => {
   }
 
   if (isPlainObject(overrides.position)) {
-    const position = { ...overrides.position };
+    const position = cloneSafeObject(overrides.position);
     if (Array.isArray(position.mappings)) {
       position.mappings = position.mappings
         .filter(isPlainObject)
@@ -98,10 +95,10 @@ const migrateMidiOverrides = (value) => {
 
   const migrateMappingEntries = (group) => {
     if (!isPlainObject(group)) return group;
-    const out = {};
-    for (const [key, entry] of Object.entries(group)) {
+    const out = createNullObject();
+    for (const [key, entry] of safeObjectEntries(group)) {
       if (!isPlainObject(entry)) continue;
-      const next = { ...entry };
+      const next = cloneSafeObject(entry);
       if (next.arp != null) {
         const migratedArp = migrateArpConfig(next.arp);
         if (migratedArp) {
@@ -154,8 +151,8 @@ const normalizeMidiIntentPayload = (value) => {
 
 const normalizeSectionStatesPayload = (value) => {
   if (!isPlainObject(value)) return {};
-  const out = {};
-  for (const [key, entry] of Object.entries(value)) {
+  const out = createNullObject();
+  for (const [key, entry] of safeObjectEntries(value)) {
     if (key.length > 96) continue;
     if (typeof entry === 'boolean') {
       out[key] = entry;

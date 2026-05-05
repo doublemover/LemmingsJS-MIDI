@@ -101,7 +101,7 @@ describe('LemmingManager coverage', function() {
     manager.miniMap = {
       scaleX: 1,
       scaleY: 1,
-      setLiveDots(arr) { this.dots = arr; },
+      setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
       setSelectedDot(dot) { this.sel = dot; }
     };
     const makeLem = (id) => ({
@@ -147,7 +147,7 @@ describe('LemmingManager coverage', function() {
     const { manager, gvc } = makeManager();
     let called = 0;
     globalThis.lemmings.endless = true;
-    globalThis.lemmings.game.soundEvents = { emitSfx() { called++; } };
+    manager.runtime = { soundEvents: { emitSfx() { called++; } } };
     manager.releaseTickIndex = 4;
     manager.addNewLemmings();
     expect(manager.lemmings.length).to.equal(1);
@@ -300,7 +300,7 @@ describe('LemmingManager coverage', function() {
     manager.miniMap = {
       scaleX: 1,
       scaleY: 1,
-      setLiveDots(arr) { this.dots = arr; },
+      setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
       setSelectedDot(dot) { this.sel = dot; }
     };
     manager.mmTickCounter = 9;

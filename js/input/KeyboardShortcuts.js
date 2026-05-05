@@ -9,14 +9,25 @@ import { SkillTypes } from '../game/SkillTypes.js';
 import { GamepadInputController } from './GamepadInputController.js';
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
 import { formatBindingSpec } from './KeybindingFormatter.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 
 class KeyboardShortcuts {
-  constructor(view) {
+  constructor(view, options = {}) {
     this.view = view;
     this._down = this._onKeyDown.bind(this);
     this._up = this._onKeyUp.bind(this);
-    window.addEventListener('keydown', this._down);
-    window.addEventListener('keyup', this._up);
+    this.window = options.window ?? view?.runtime?.window ?? getRuntimeDependency('window', null);
+    this.performance = options.performance ?? view?.runtime?.performance ?? getRuntimeDependency('performance', null);
+    this.requestAnimationFrame = options.requestAnimationFrame ??
+      view?.runtime?.requestAnimationFrame ??
+      this.window?.requestAnimationFrame?.bind?.(this.window) ??
+      null;
+    this.cancelAnimationFrame = options.cancelAnimationFrame ??
+      view?.runtime?.cancelAnimationFrame ??
+      this.window?.cancelAnimationFrame?.bind?.(this.window) ??
+      null;
+    this.window?.addEventListener?.('keydown', this._down);
+    this.window?.addEventListener?.('keyup', this._up);
     this.mod = { shift:false };
     this.pan = { left:false,right:false,up:false,down:false,vx:0,vy:0,changed:false };
     this.zoom = { dir:0,v:0,reset:null };
@@ -25,6 +36,9 @@ class KeyboardShortcuts {
     this.gamepad = new GamepadInputController({
       mode: 'gameplay',
       fileProvider: this.view?.gameFactory?.fileProvider || null,
+      window: this.window,
+      navigator: options.navigator ?? view?.runtime?.navigator ?? this.window?.navigator ?? getRuntimeDependency('navigator', null),
+      storage: options.storage ?? view?.runtime?.localStorage ?? this.window?.localStorage ?? getRuntimeDependency('localStorage', null),
       onAction: (action, type) => {
         this._handleAction(action, type, null);
       }
@@ -36,19 +50,19 @@ class KeyboardShortcuts {
 
   dispose() {
     if (this._raf) {
-      window.cancelAnimationFrame(this._raf);
+      this.cancelAnimationFrame?.(this._raf);
       this._raf = null;
     }
     this.gamepad?.dispose?.();
     this.gamepad = null;
-    window.removeEventListener('keydown', this._down);
-    window.removeEventListener('keyup', this._up);
+    this.window?.removeEventListener?.('keydown', this._down);
+    this.window?.removeEventListener?.('keyup', this._up);
   }
 
   _startLoop() {
-    if (!this._raf) {
-      this._last = performance.now();
-      this._raf = requestAnimationFrame((t) => this._step(t));
+    if (!this._raf && typeof this.requestAnimationFrame === 'function') {
+      this._last = this.performance?.now?.() ?? Date.now();
+      this._raf = this.requestAnimationFrame((t) => this._step(t));
     }
   }
 
@@ -136,7 +150,11 @@ class KeyboardShortcuts {
       }
     }
     if (again) {
-      this._raf = requestAnimationFrame((tt) => this._step(tt));
+      if (typeof this.requestAnimationFrame === 'function') {
+        this._raf = this.requestAnimationFrame((tt) => this._step(tt));
+      } else {
+        this._raf = null;
+      }
     } else {
       this._raf = null;
     }

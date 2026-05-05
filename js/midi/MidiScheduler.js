@@ -39,6 +39,7 @@ class MidiScheduler {
     this._rateWindowMs = 1000;
     this._rateSent = [];
     this._ratePlanned = [];
+    this._reservationSeq = 0;
     this._maxMessagesPerSecond = 1000;
     this._maxBytesPerSecond = MIDI_BYTES_PER_SECOND;
     this._lastRateErrorMs = 0;
@@ -155,7 +156,7 @@ class MidiScheduler {
     this._removeScheduledNoteOff(oldestToken);
     this._removePlannedRateEntries(oldestToken, 'off');
     if (sentMessages > 0) {
-      this._recordPlanned({
+      this._recordSent({
         timeMs: this._nowMs(),
         count: sentMessages,
         bytes: sentMessages * MIDI_MESSAGE_BYTES,
@@ -206,7 +207,7 @@ class MidiScheduler {
       let write = 0;
       for (let read = 0; read < this._ratePlanned.length; read += 1) {
         const entry = this._ratePlanned[read];
-        if (entry.timeMs <= now) {
+        if (entry.timeMs < now) {
           this._rateSent.push(entry);
         } else {
           this._ratePlanned[write] = entry;
@@ -243,6 +244,129 @@ class MidiScheduler {
       bySfx.set(key, curr);
     }
     return { count, bytes, bySfx };
+  }
+
+  _planEntries(plan) {
+    if (!plan || typeof plan !== 'object') return [];
+    if (Array.isArray(plan.entries)) return plan.entries;
+    const entries = [];
+    if (plan.on) entries.push({ ...plan.on, phase: 'on' });
+    if (plan.off) entries.push({ ...plan.off, phase: 'off' });
+    return entries;
+  }
+
+  _sumPlan(plan, now) {
+    let count = 0;
+    let bytes = 0;
+    const startMs = now - this._rateWindowMs;
+    const endMs = now + this._rateWindowMs;
+    for (const entry of this._planEntries(plan)) {
+      if (!Number.isFinite(entry?.timeMs)) continue;
+      if (entry.timeMs < startMs || entry.timeMs >= endMs) continue;
+      const entryCount = Math.trunc(toFiniteNumber(entry.count, 0));
+      if (entryCount <= 0) continue;
+      const entryBytes = Math.trunc(toFiniteNumber(entry.bytes, entryCount * MIDI_MESSAGE_BYTES));
+      if (entryBytes <= 0) continue;
+      count += entryCount;
+      bytes += entryBytes;
+    }
+    return { count, bytes };
+  }
+
+  getPlanBudget(plan, now = this._nowMs()) {
+    const snapshot = this.getRateSnapshot(now);
+    const proposed = this._sumPlan(plan, now);
+    return {
+      snapshot,
+      proposed,
+      combined: {
+        count: snapshot.past.count + snapshot.next.count + proposed.count,
+        bytes: snapshot.past.bytes + snapshot.next.bytes + proposed.bytes
+      }
+    };
+  }
+
+  canSchedule(plan, now = this._nowMs(), options = {}) {
+    return this.evaluateAndReserve(plan, {}, now, {
+      ...options,
+      reserve: false
+    });
+  }
+
+  evaluateAndReserve(plan, meta = {}, now = this._nowMs(), options = {}) {
+    const maxMessages = Math.min(
+      Math.max(options.maxMessagesPerSecond ?? this._maxMessagesPerSecond, 1),
+      1000
+    );
+    const softMaxMessages = Math.min(
+      Math.max(options.softMaxMessagesPerSecond ?? maxMessages, 1),
+      maxMessages
+    );
+    const maxBytes = Math.max(1, options.maxBytesPerSecond ?? this._maxBytesPerSecond);
+    this._pruneRateEntries(now);
+    const snapshot = {
+      now,
+      past: this._sumRate(this._rateSent, now - this._rateWindowMs, now),
+      next: this._sumRate(this._ratePlanned, now, now + this._rateWindowMs),
+      maxMessagesPerSecond: this._maxMessagesPerSecond,
+      maxBytesPerSecond: this._maxBytesPerSecond
+    };
+    const proposed = this._sumPlan(plan, now);
+    const combined = {
+      count: snapshot.past.count + snapshot.next.count + proposed.count,
+      bytes: snapshot.past.bytes + snapshot.next.bytes + proposed.bytes
+    };
+    const overMessages = combined.count > maxMessages;
+    const overBytes = combined.bytes > maxBytes;
+    const softOverMessages = combined.count > softMaxMessages;
+    const result = {
+      ok: !overMessages && !overBytes,
+      softOk: !softOverMessages && !overBytes,
+      reason: overBytes ? 'byte-limit' : (overMessages ? 'count-limit' : null),
+      maxMessagesPerSecond: maxMessages,
+      softMaxMessagesPerSecond: softMaxMessages,
+      maxBytesPerSecond: maxBytes,
+      snapshot,
+      proposed,
+      combined
+    };
+    if (!result.ok || options.reserve === false) return result;
+    return this.reserveEvaluation(result, plan, meta, now);
+  }
+
+  reserveEvaluation(evaluation, plan, meta = {}, now = this._nowMs()) {
+    if (!evaluation?.ok) return evaluation || { ok: false, reason: 'count-limit' };
+    if (evaluation.reservationId) return evaluation;
+    const reservationId = ++this._reservationSeq;
+    this._pruneRateEntries(now);
+    for (const entry of this._planEntries(plan)) {
+      const count = Math.trunc(toFiniteNumber(entry.count, 0));
+      if (count <= 0) continue;
+      const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
+      if (bytes <= 0) continue;
+      this._recordPlanned({
+        timeMs: entry.timeMs,
+        count,
+        bytes,
+        phase: entry.phase ?? null,
+        reservationId,
+        sfxId: meta.sfxId ?? null,
+        priority: meta.priority ?? 1,
+        triggerType: meta.triggerType ?? null
+      }, now);
+    }
+    return {
+      ...evaluation,
+      ok: true,
+      reservationId
+    };
+  }
+
+  reserve(plan, meta = {}, now = this._nowMs(), options = {}) {
+    return this.evaluateAndReserve(plan, meta, now, {
+      ...options,
+      reserve: true
+    });
   }
 
   getRateSnapshot(now = this._nowMs()) {
@@ -295,20 +419,30 @@ class MidiScheduler {
     return { messages, bytes: messages * MIDI_MESSAGE_BYTES };
   }
 
-  _recordPlanned(entry) {
+  _recordPlanned(entry, now = this._nowMs()) {
     if (!entry || !Number.isFinite(entry.timeMs)) return;
     const count = Math.trunc(toFiniteNumber(entry.count, 0));
     if (count <= 0) return;
     const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
     if (bytes <= 0) return;
     const normalized = { ...entry, count, bytes };
-    const now = this._nowMs();
     this._pruneRateEntries(now);
-    if (normalized.timeMs <= now) {
+    if (normalized.timeMs < now) {
       this._rateSent.push(normalized);
     } else {
       this._ratePlanned.push(normalized);
     }
+    this._trimRateEntries();
+  }
+
+  _recordSent(entry, now = this._nowMs()) {
+    if (!entry || !Number.isFinite(entry.timeMs)) return;
+    const count = Math.trunc(toFiniteNumber(entry.count, 0));
+    if (count <= 0) return;
+    const bytes = Math.trunc(toFiniteNumber(entry.bytes, count * MIDI_MESSAGE_BYTES));
+    if (bytes <= 0) return;
+    this._pruneRateEntries(now);
+    this._rateSent.push({ ...entry, count, bytes });
     this._trimRateEntries();
   }
 
@@ -441,7 +575,7 @@ class MidiScheduler {
         });
       }
       const { messages, bytes } = this.estimateMessages(spec);
-      if (messages > 0) {
+      if (messages > 0 && meta.rateReserved !== true) {
         const offMessages = durationMs > 0 ? (1 + (this.config.mpe?.enabled ? 1 : 0)) : 0;
         const immediateMessages = messages - offMessages;
         const immediateBytes = bytes - (offMessages * MIDI_MESSAGE_BYTES);

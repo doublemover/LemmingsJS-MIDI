@@ -91,4 +91,75 @@ describe('ObjectManager.render', function () {
     expect(draws[0].x).to.equal(4);
     expect(draws[1].x).to.equal(4);
   });
+
+  it('indexes known wide objects into every x bucket they span', function () {
+    const timer = { getGameTicks() { return 1; } };
+    const manager = new ObjectManager(timer);
+    let frameCalls = 0;
+    const wide = {
+      x: 0,
+      y: 4,
+      drawProperties: {},
+      animation: {
+        frames: [{ width: 400, height: 12 }],
+        getFrame() {
+          frameCalls += 1;
+          return { width: 400, height: 12 };
+        }
+      }
+    };
+    manager.addRange([wide]);
+
+    const draws = [];
+    manager.render({
+      stage: {
+        getGameViewRect() {
+          return { x: 380, y: 0, w: 50, h: 20 };
+        }
+      },
+      drawFrameFlags(frame, x, y) {
+        draws.push({ frame, x, y });
+      }
+    });
+
+    expect(frameCalls).to.equal(1);
+    expect(draws).to.have.length(1);
+    expect(wide.__objectManagerBuckets).to.include.members([0, 1, 2, 3]);
+  });
+
+  it('moves unknown-width objects into ranged buckets after their first frame', function () {
+    const timer = { getGameTicks() { return 1; } };
+    const manager = new ObjectManager(timer);
+    let frameCalls = 0;
+    const wide = {
+      x: 0,
+      y: 4,
+      drawProperties: {},
+      animation: {
+        getFrame() {
+          frameCalls += 1;
+          return { width: 400, height: 12 };
+        }
+      }
+    };
+    manager.addRange([wide]);
+    expect(manager._unknownWidthObjects).to.eql([wide]);
+
+    const display = {
+      stage: {
+        getGameViewRect() {
+          return { x: 380, y: 0, w: 50, h: 20 };
+        }
+      },
+      drawFrameFlags() {}
+    };
+
+    manager.render(display);
+    expect(frameCalls).to.equal(1);
+    expect(manager._unknownWidthObjects).to.have.length(0);
+    expect(wide.__objectManagerBuckets).to.include.members([0, 1, 2, 3]);
+
+    manager.render(display);
+    expect(frameCalls).to.equal(2);
+  });
 });

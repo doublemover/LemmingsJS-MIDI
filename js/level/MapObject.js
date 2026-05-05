@@ -1,19 +1,20 @@
 import { Animation } from '../render/Animation.js';
 import { Frame } from '../render/Frame.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { TriggerTypes } from './TriggerTypes.js';
-import { getAppContext } from '../core/dependencies.js';
+import { getRuntimeHistory, getRuntimeSoundEvents } from '../game/GameRuntime.js';
 
 class MapObject {
   /** WeakMap<objectImg, Frame[]> – shared across all MapObject instances. */
   static _frameCache = new WeakMap();
-  constructor (ob, objectImg, animation = new Animation(), triggerType = TriggerTypes.NO_TRIGGER) {
+  constructor (ob, objectImg, animation = new Animation(), triggerType = TriggerTypes.NO_TRIGGER, runtime = null) {
     this.ob              = ob;
     this.obID            = ob.id;
     this.x               = ob.x;
     this.y               = ob.y;
     this.drawProperties  = ob.drawProperties;
     this.triggerType     = triggerType;
+    this.runtime         = runtime;
 
     let frames = MapObject._frameCache.get(objectImg);
     if (!frames) {
@@ -75,13 +76,22 @@ class MapObject {
     this.animation.firstFrameIndex = objectImg.firstFrameIndex;
     this.animation.objectImg       = objectImg;
     this.animation.frames          = frames;
+    const firstFrame = frames[0];
+    if (Number.isFinite(firstFrame?.width) && Number.isFinite(firstFrame?.height)) {
+      this._frameWidth = firstFrame.width;
+      this._frameHeight = firstFrame.height;
+    }
+  }
+
+  setRuntime(runtime = null) {
+    this.runtime = runtime;
   }
 
   /** Called when a lemming collides with this object's trigger zone. */
   onTrigger (globalTick, lemming = null, trigger = null, x = null, y = null) {
     // 1. restart visual cue
     if (this.animation && !this.animation.loop) {
-      const history = getAppContext()?.game?.history ?? null;
+      const history = getRuntimeHistory(this.runtime);
       if (history?.recordObjectAnimation) {
         const prev = {
           firstFrameIndex: this.animation.firstFrameIndex,
@@ -112,7 +122,7 @@ class MapObject {
     }
 
     if (eventType && Number.isFinite(sfxId) && sfxId > 0) {
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         eventType,
         sfxId,

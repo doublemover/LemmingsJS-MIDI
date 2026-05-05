@@ -28,21 +28,10 @@ import { createMidiIntentState, reduceMidiIntent } from './midi-ui/midiUiIntent.
 import { createMidiLearnController } from './midi-ui/midiUiLearn.js';
 import { createMidiUiTabsController } from './midi-ui/midiUiTabs.js';
 import { createMidiUiSectionsController } from './midi-ui/midiUiSections.js';
+import { cloneSafeObject, isPlainObject, mergeDeepSafe } from '../util/safeObject.js';
 
-const mergeDeep = (target, source) => {
-  if (!source || typeof source !== 'object') return target;
-  const out = { ...(target || {}) };
-  for (const [key, value] of Object.entries(source)) {
-    if (value && typeof value === 'object' && !Array.isArray(value)) {
-      out[key] = mergeDeep(out[key], value);
-    } else {
-      out[key] = value;
-    }
-  }
-  return out;
-};
-
-const isPlainObject = (value) => value && typeof value === 'object' && !Array.isArray(value);
+const mergeDeep = mergeDeepSafe;
+const cloneOverrides = (value) => isPlainObject(value) ? cloneSafeObject(value) : {};
 
 const formatNumber = (value, digits = 2) => {
   if (!Number.isFinite(value)) return '--';
@@ -1765,7 +1754,7 @@ export const createMidiUiController = ({
     if (!window) return;
     window.__LEMMINGS_MIDI_UI__ = {
       dispatchIntent: (intent) => runMidiIntent(intent),
-      getIntentState: () => ({ ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) }),
+      getIntentState: () => ({ ...midiIntentState, overrides: cloneOverrides(midiIntentState.overrides) }),
       getFeatureFlags: () => ({ ...midiUiFeatureFlags }),
       setOverrides: (patch) => setMidiOverrides(patch),
       refresh: () => refreshMidiUiFromConfig(),
@@ -2088,7 +2077,7 @@ export const createMidiUiController = ({
       return state;
     },
     getMidiIntentState() {
-      return { ...midiIntentState, overrides: mergeDeep({}, midiIntentState.overrides || {}) };
+      return { ...midiIntentState, overrides: cloneOverrides(midiIntentState.overrides) };
     },
     captureLearnNote(note) {
       return typeof noteCapture === 'function' ? !!noteCapture(note) : false;

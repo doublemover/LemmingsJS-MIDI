@@ -461,6 +461,21 @@ describe('NodeFileProvider', function() {
     });
   });
 
+  it('does not retain a single oversized archive entry', function() {
+    const provider = makeProvider({
+      maxArchiveCacheEntries: 10,
+      maxArchiveCacheBytes: 3
+    });
+    writeNxp(path.join(tmpDir, 'oversized.nxp'), [
+      { name: 'data/file.bin', data: Buffer.from([1, 2, 3, 4]) }
+    ]);
+
+    const map = provider._getNxp('oversized.nxp');
+    expect(map.get('data/file.bin').length).to.equal(4);
+    expect(provider.nxpCache.size).to.equal(0);
+    expect(provider.getCacheStats().nxp.bytes).to.equal(0);
+  });
+
   it('rejects invalid nxp archives', function() {
     const provider = makeProvider();
     fs.writeFileSync(path.join(tmpDir, 'bad-count.nxp'), Buffer.from([2, 0, 0, 0]));

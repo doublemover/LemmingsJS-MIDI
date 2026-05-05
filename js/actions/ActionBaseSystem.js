@@ -13,10 +13,11 @@ class ActionBaseSystem {
      * @param {*} [options.masks] Mask provider
      * @param {*} [options.maskTypes] mask type or {left, right} pair
      */
-  constructor({sprites=null, spriteType=null, singleSprite=false, masks=null, maskTypes=null, actionName=null} = {}) {
+  constructor({sprites=null, spriteType=null, singleSprite=false, masks=null, maskTypes=null, actionName=null, runtime=null} = {}) {
     this.sprites = null;
     this.masks   = null;
     this.actionName = actionName || '';
+    this.runtime = runtime;
 
     if (sprites && spriteType !== null) {
       const cacheKey = this.actionName || spriteType;
@@ -57,6 +58,10 @@ class ActionBaseSystem {
       }
       this.masks = providerCache.get(cacheKey);
     }
+  }
+
+  setRuntime(runtime = null) {
+    this.runtime = runtime;
   }
 
   /** Default implementation simply returns configured actionName. */

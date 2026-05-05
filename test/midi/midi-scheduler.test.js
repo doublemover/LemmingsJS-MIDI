@@ -457,6 +457,42 @@ describe('MidiScheduler', function() {
     }, { performanceValue: (clock) => ({ now: () => clock.now, measure: () => {} }) });
   });
 
+  it('reserves proposed messages against past and future traffic', function() {
+    const scheduler = new MidiScheduler({
+      mpe: { enabled: false },
+      limits: {
+        maxEventsPerSecond: 4,
+        maxBytesPerSecond: 999
+      }
+    });
+    scheduler._rateSent = [
+      { timeMs: 500, count: 2, bytes: 6, sfxId: 1, priority: 1 }
+    ];
+    scheduler._ratePlanned = [
+      { timeMs: 1200, count: 1, bytes: 3, sfxId: 2, priority: 1 }
+    ];
+
+    const rejected = scheduler.canSchedule(
+      { on: { timeMs: 1000, count: 2, bytes: 6 } },
+      1000,
+      { maxMessagesPerSecond: 4 }
+    );
+    expect(rejected.ok).to.equal(false);
+    expect(rejected.reason).to.equal('count-limit');
+
+    const reserved = scheduler.reserve(
+      { on: { timeMs: 1000, count: 1, bytes: 3 } },
+      { sfxId: 3, priority: 1 },
+      1000,
+      { maxMessagesPerSecond: 4 }
+    );
+    expect(reserved.ok).to.equal(true);
+    expect(reserved.reservationId).to.be.a('number');
+    const snapshot = scheduler.getRateSnapshot(1000);
+    expect(snapshot.past.count + snapshot.next.count).to.equal(4);
+    expect(snapshot.next.bySfx.get(3).count).to.equal(1);
+  });
+
   it('logs when byte rate limits are exceeded', function() {
     const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1 } });
     const logs = [];

@@ -1,5 +1,5 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { ActionBashSystem } from '../actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../actions/ActionBuildSystem.js';
@@ -25,6 +25,7 @@ import { BaseLogger, LogHandler } from '../util/LogHandler.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext, getDependency } from '../core/dependencies.js';
+import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
 import {
   canMeasurePerformance,
   recordPerformanceMeasure
@@ -54,7 +55,7 @@ const isBenchMode = (app) => app?.bench || app?.bench2 || app?.benchReverse;
 class LemmingManager extends BaseLogger {
   #mmTickCounter = 0;
   #releaseTickIndex = 0;
-  constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable) {
+  constructor(level, lemmingsSprite, triggerManager, gameVictoryCondition, masks, particleTable, runtime = null) {
     super();
     const endMeasure = this.startMeasure('LemmingManager constructor', {
       track: 'LemmingManager',
@@ -86,6 +87,7 @@ class LemmingManager extends BaseLogger {
         LemmingManager.log = this.log;
       }
       this.level = level;
+      this.runtime = runtime;
       this.triggerManager = triggerManager;
       this.gameVictoryCondition = gameVictoryCondition;
       this.actions = [];
@@ -151,6 +153,10 @@ class LemmingManager extends BaseLogger {
       this.skillActions[SkillTypes.BUILDER] = this.actions[LemmingStateType.BUILDING];
       this.skillActions[SkillTypes.BOMBER]  = new CountdownSystem(masks);
       this.countdownAction = this.skillActions[SkillTypes.BOMBER];
+      for (const action of this.actions) {
+        action?.setRuntime?.(runtime);
+      }
+      this.countdownAction?.setRuntime?.(runtime);
 
       this.actionTypeByAction = new Map();
       for (let i = 0; i < this.actions.length; i++) {
@@ -283,13 +289,14 @@ class LemmingManager extends BaseLogger {
     const lem = pool.length ? pool.pop() : null;
     if (lem && typeof lem.reset === 'function') {
       lem.reset(x, y, id);
+      lem.setRuntime?.(this.runtime);
       return lem;
     }
     const LemmingCtor = this._lemmingCtor;
     if (typeof LemmingCtor !== 'function') {
       throw new Error('LemmingManager requires an explicit lemming constructor.');
     }
-    return new LemmingCtor(x, y, id);
+    return new LemmingCtor(x, y, id, this.runtime);
   }
 
   _releaseLemming(lem) {
@@ -375,8 +382,8 @@ class LemmingManager extends BaseLogger {
           dots[idx++] = x;
           dots[idx++] = y;
         }
-        this.minimapDots = dots.subarray(0, idx);
-        this.miniMap.setLiveDots(this.minimapDots);
+        this.minimapDots = dots;
+        this.miniMap.setLiveDots(this.minimapDots, idx);
         this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
       }
       if (this._activeDirty) {
@@ -445,7 +452,7 @@ class LemmingManager extends BaseLogger {
         const spawnY = entrance.y + 14;
         if (!entrance._opened) {
           entrance._opened = true;
-          const soundBus = getSoundBus();
+          const soundBus = getRuntimeSoundEvents(this.runtime);
           soundBus?.emitSfx?.(
             SoundEventTypes.ENTRANCE_OPEN,
             SoundEffectIds.ENTRANCE_OPEN,
@@ -790,6 +797,7 @@ class LemmingManager extends BaseLogger {
     this._mmVisited = null;
     this._mmVisitStamp = null;
     this.level = null;
+    this.runtime = null;
     this.triggerManager = null;
     this.gameVictoryCondition = null;
     this.skillActions.length = 0;

@@ -9,6 +9,11 @@ import { SolidLayer } from '../render/SolidLayer.js';
 import { Trigger } from './Trigger.js';
 import { getAppContext } from '../core/dependencies.js';
 import {
+  getRuntimeHistory,
+  getRuntimeMiniMap,
+  getRuntimePerformanceContext
+} from '../game/GameRuntime.js';
+import {
   canMeasurePerformance,
   recordPerformanceMeasure
 } from '../util/performanceInstrumentation.js';
@@ -45,10 +50,17 @@ const SET_STEEL_MEASURE_DETAIL = Object.freeze({
   })
 });
 
-const getRuntimeApp = () => getAppContext();
-const getRuntimeGame = () => getRuntimeApp()?.game ?? null;
-const getRuntimeHistory = () => getRuntimeGame()?.history ?? null;
-const getRuntimeMiniMap = () => getRuntimeGame()?.lemmingManager?.miniMap ?? null;
+const getRuntimeApp = (runtime = null) => getRuntimePerformanceContext(runtime) || getAppContext();
+
+const getMaskTransparentSpans = (mask) => {
+  if (!mask) return null;
+  if (typeof mask.getTransparentSpans === 'function') {
+    return mask.getTransparentSpans();
+  }
+  const spans = mask.transparentSpans || null;
+  if (spans?.rows && spans?.starts && spans?.lengths) return spans;
+  return null;
+};
 
 class Level extends BaseLogger {
   constructor(width, height) {
@@ -85,10 +97,24 @@ class Level extends BaseLogger {
     this._groundDirtyTiles = new Set();
     this._groundDirtyFull = true;
     this._groundDirtyRects = [];
+    this.runtime = null;
+  }
+
+  setRuntime(runtime = null) {
+    this.runtime = runtime;
+    for (const obj of this.objects || []) {
+      obj?.setRuntime?.(runtime);
+    }
+    for (const trigger of this.triggers || []) {
+      trigger.runtime = runtime;
+    }
+    for (const trigger of this.arrowTriggers || []) {
+      trigger.runtime = runtime;
+    }
   }
 
   setMapObjects(objects, objectImg) {
-    const app = getRuntimeApp();
+    const app = getRuntimeApp(this.runtime);
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -124,7 +150,7 @@ class Level extends BaseLogger {
           tfxID = 12;
         }
 
-        const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID);
+        const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID, this.runtime);
         this.objects.push(mapOb);
         if (ob.id === 1) this.entrances.push(ob);
 
@@ -141,6 +167,7 @@ class Level extends BaseLogger {
           }
 
           let trigger = new Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
+          trigger.runtime = this.runtime;
 
           if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
             const newRange = new Range();
@@ -258,63 +285,123 @@ class Level extends BaseLogger {
     let maxX = -1;
     let maxY = -1;
     const revealSteel = opts?.revealSteel === true;
-    const history = getRuntimeHistory();
+    const history = getRuntimeHistory(this.runtime);
     const gm = this.groundMask;
     const gmMask = gm.mask;
     const img = this.groundImage;
     const w = this.width;
     const { offsetX, offsetY, width: mw, height: mh } = mask;
-    for (let dy = 0; dy < mh; ++dy) {
-      for (let dx = 0; dx < mw; ++dx) {
-        if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
-        const px = x + offsetX + dx;
+    const spans = getMaskTransparentSpans(mask);
+    const clearPixel = (dx, dy) => {
+      const px = x + offsetX + dx;
+      const py = y + offsetY + dy;
+      if (px < 0 || px >= this.width || py < 0 || py >= this.height) return;
+      const isSteel = this.isSteelAt(px, py);
+      if (isSteel && !revealSteel) return;
+      const maskIdx = py * w + px;
+      const imgIdx = maskIdx * 4;
+      const prevMask = gmMask[maskIdx];
+      const prevR = img[imgIdx];
+      const prevG = img[imgIdx + 1];
+      const prevB = img[imgIdx + 2];
+      const nextMask = isSteel ? prevMask : 0;
+      if (prevMask || prevR || prevG || prevB) {
+        history?.recordGroundChange?.(
+          maskIdx,
+          prevMask,
+          prevR,
+          prevG,
+          prevB,
+          nextMask,
+          0,
+          0,
+          0
+        );
+      }
+      const pixelChanged = (prevMask && !isSteel) || !!(prevR || prevG || prevB);
+      if (prevMask && !isSteel) {
+        changed = true;
+        gmMask[maskIdx] = 0;
+      }
+      if (prevR || prevG || prevB) {
+        removed += 1;
+        changed = true;
+      }
+      if (pixelChanged) {
+        if (px < minX) minX = px;
+        if (py < minY) minY = py;
+        if (px > maxX) maxX = px;
+        if (py > maxY) maxY = py;
+      }
+      img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
+    };
+    if (spans?.rows?.length) {
+      const rows = spans.rows;
+      const starts = spans.starts;
+      const lengths = spans.lengths;
+      for (let i = 0; i < rows.length; i += 1) {
+        const dy = rows[i];
         const py = y + offsetY + dy;
-        if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
-        const isSteel = this.isSteelAt(px, py);
-        if (isSteel && !revealSteel) continue;
-        const maskIdx = py * w + px;
-        const imgIdx = maskIdx * 4;
-        const prevMask = gmMask[maskIdx];
-        const prevR = img[imgIdx];
-        const prevG = img[imgIdx + 1];
-        const prevB = img[imgIdx + 2];
-        const nextMask = isSteel ? prevMask : 0;
-        if (prevMask || prevR || prevG || prevB) {
-          history?.recordGroundChange?.(
-            maskIdx,
-            prevMask,
-            prevR,
-            prevG,
-            prevB,
-            nextMask,
-            0,
-            0,
-            0
-          );
+        if (py < 0 || py >= this.height) continue;
+        const startDx = starts[i];
+        const endDx = startDx + lengths[i];
+        const clippedStart = Math.max(startDx, -x - offsetX);
+        const clippedEnd = Math.min(endDx, this.width - x - offsetX);
+        for (let dx = clippedStart; dx < clippedEnd; dx += 1) {
+          const px = x + offsetX + dx;
+          const isSteel = this.isSteelAt(px, py);
+          if (isSteel && !revealSteel) continue;
+          const maskIdx = py * w + px;
+          const imgIdx = maskIdx * 4;
+          const prevMask = gmMask[maskIdx];
+          const prevR = img[imgIdx];
+          const prevG = img[imgIdx + 1];
+          const prevB = img[imgIdx + 2];
+          const nextMask = isSteel ? prevMask : 0;
+          if (prevMask || prevR || prevG || prevB) {
+            history?.recordGroundChange?.(
+              maskIdx,
+              prevMask,
+              prevR,
+              prevG,
+              prevB,
+              nextMask,
+              0,
+              0,
+              0
+            );
+          }
+          const pixelChanged = (prevMask && !isSteel) || !!(prevR || prevG || prevB);
+          if (prevMask && !isSteel) {
+            changed = true;
+            gmMask[maskIdx] = 0;
+          }
+          if (prevR || prevG || prevB) {
+            removed += 1;
+            changed = true;
+          }
+          if (pixelChanged) {
+            if (px < minX) minX = px;
+            if (py < minY) minY = py;
+            if (px > maxX) maxX = px;
+            if (py > maxY) maxY = py;
+          }
+          img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
         }
-        const pixelChanged = (prevMask && !isSteel) || !!(prevR || prevG || prevB);
-        if (prevMask && !isSteel) {
-          changed = true;
-          gmMask[maskIdx] = 0;
+      }
+    } else {
+      for (let dy = 0; dy < mh; ++dy) {
+        for (let dx = 0; dx < mw; ++dx) {
+          if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
+          clearPixel(dx, dy);
         }
-        if (prevR || prevG || prevB) {
-          removed += 1;
-          changed = true;
-        }
-        if (pixelChanged) {
-          if (px < minX) minX = px;
-          if (py < minY) minY = py;
-          if (px > maxX) maxX = px;
-          if (py > maxY) maxY = py;
-        }
-        img[imgIdx] = img[imgIdx + 1] = img[imgIdx + 2] = 0;
       }
     }
     if (changed && maxX >= minX && maxY >= minY) {
       const width = (maxX - minX) + 1;
       const height = (maxY - minY) + 1;
       this._markGroundDirtyRect(minX, minY, width, height);
-      getRuntimeMiniMap()?.invalidateRegion?.(minX, minY, width, height);
+      getRuntimeMiniMap(this.runtime)?.invalidateRegion?.(minX, minY, width, height);
     }
     return { changed, removed };
   }
@@ -330,7 +417,7 @@ class Level extends BaseLogger {
   applyGroundBulkChange(x, y, width, height, { invalidateMiniMap = true } = {}) {
     this._markGroundDirtyRect(x, y, width, height);
     if (invalidateMiniMap) {
-      getRuntimeMiniMap()?.invalidateRegion?.(x, y, width, height);
+      getRuntimeMiniMap(this.runtime)?.invalidateRegion?.(x, y, width, height);
     }
   }
 
@@ -346,7 +433,7 @@ class Level extends BaseLogger {
     const mask = this.groundMask?.mask;
     const gp = this.groundImage;
     if (!mask || !gp) return 0;
-    const history = recordHistory ? getRuntimeHistory() : null;
+    const history = recordHistory ? getRuntimeHistory(this.runtime) : null;
     const nextR = this.colorPalette.getR(paletteIndex);
     const nextG = this.colorPalette.getG(paletteIndex);
     const nextB = this.colorPalette.getB(paletteIndex);
@@ -391,7 +478,7 @@ class Level extends BaseLogger {
     const maskIdx = y * this.width + x;
     const idx = (y * this.width + x) * 4;
     const gp = this.groundImage;
-    const history = getRuntimeHistory();
+    const history = getRuntimeHistory(this.runtime);
     if (history?.recordGroundChange) {
       const prevMask = this.groundMask.mask[maskIdx];
       const prevR = gp[idx];
@@ -417,7 +504,7 @@ class Level extends BaseLogger {
     gp[idx + 1] = this.colorPalette.getG(paletteIndex);
     gp[idx + 2] = this.colorPalette.getB(paletteIndex);
     this._markGroundDirtyRect(x, y, 1, 1);
-    getRuntimeMiniMap()?.onGroundChanged(x, y, false);
+    getRuntimeMiniMap(this.runtime)?.onGroundChanged(x, y, false);
   }
 
   hasGroundAt(x, y) { return this.groundMask.hasGroundAt(x, y); }
@@ -426,7 +513,7 @@ class Level extends BaseLogger {
     if (this.isSteelAt(x, y)) return;
     const idx = (y * this.width + x) * 4;
     const gp  = this.groundImage;
-    const history = getRuntimeHistory();
+    const history = getRuntimeHistory(this.runtime);
     if (history?.recordGroundChange) {
       const maskIdx = y * this.width + x;
       const prevMask = this.groundMask.mask[maskIdx];
@@ -448,7 +535,55 @@ class Level extends BaseLogger {
     this.groundMask.clearGroundAt(x, y);
     gp[idx] = gp[idx + 1] = gp[idx + 2] = 0;
     this._markGroundDirtyRect(x, y, 1, 1);
-    getRuntimeMiniMap()?.onGroundChanged(x, y, true);
+    getRuntimeMiniMap(this.runtime)?.onGroundChanged(x, y, true);
+  }
+
+  clearGroundRow(x, y, width) {
+    if (!Number.isFinite(y) || y < 0 || y >= this.height) return 0;
+    const x0 = Math.max(0, Math.floor(x));
+    const x1 = Math.min(this.width, Math.ceil(x + width));
+    if (x1 <= x0) return 0;
+    const mask = this.groundMask?.mask;
+    const gp = this.groundImage;
+    if (!mask || !gp) return 0;
+    const yy = Math.trunc(y);
+    const row = yy * this.width;
+    const history = getRuntimeHistory(this.runtime);
+    let changed = 0;
+    let minX = this.width;
+    let maxX = -1;
+    for (let xx = x0; xx < x1; xx += 1) {
+      if (!mask[row + xx]) continue;
+      if (this.isSteelAt(xx, yy)) continue;
+      const maskIdx = row + xx;
+      const imgIdx = maskIdx * 4;
+      const prevMask = mask[maskIdx];
+      const prevR = gp[imgIdx];
+      const prevG = gp[imgIdx + 1];
+      const prevB = gp[imgIdx + 2];
+      history?.recordGroundChange?.(
+        maskIdx,
+        prevMask,
+        prevR,
+        prevG,
+        prevB,
+        0,
+        0,
+        0,
+        0
+      );
+      mask[maskIdx] = 0;
+      gp[imgIdx] = gp[imgIdx + 1] = gp[imgIdx + 2] = 0;
+      changed += 1;
+      if (xx < minX) minX = xx;
+      if (xx > maxX) maxX = xx;
+    }
+    if (changed > 0) {
+      const dirtyWidth = (maxX - minX) + 1;
+      this._markGroundDirtyRect(minX, yy, dirtyWidth, 1);
+      getRuntimeMiniMap(this.runtime)?.invalidateRegion?.(minX, yy, dirtyWidth, 1);
+    }
+    return changed;
   }
 
   setArrowAreas(ranges = []) {
@@ -479,6 +614,24 @@ class Level extends BaseLogger {
 
   hasArrowUnderMask(mask, ox, oy, direction) {
     const { offsetX:mx, offsetY:my, width:w, height:h } = mask;
+    const spans = getMaskTransparentSpans(mask);
+    if (spans?.rows?.length) {
+      const rows = spans.rows;
+      const starts = spans.starts;
+      const lengths = spans.lengths;
+      for (let i = 0; i < rows.length; i += 1) {
+        const dy = rows[i];
+        const y = oy + my + dy;
+        const start = starts[i];
+        const end = start + lengths[i];
+        for (let dx = start; dx < end; dx += 1) {
+          if (this.isArrowGround(ox + mx + dx, y, direction)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
     for (let dy = 0; dy < h; ++dy) {
       for (let dx = 0; dx < w; ++dx) {
         if (!mask.at(dx, dy) && this.isArrowGround(ox + mx + dx, oy + my + dy, direction)) {
@@ -490,7 +643,7 @@ class Level extends BaseLogger {
   }
 
   newSetSteelAreas(levelReader, terrainImages) {
-    const app = getRuntimeApp();
+    const app = getRuntimeApp(this.runtime);
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
       canMeasurePerformance();
@@ -579,6 +732,24 @@ class Level extends BaseLogger {
 
   hasSteelUnderMask(mask, ox, oy) {
     const { offsetX:mx, offsetY:my, width:w, height:h } = mask;
+    const spans = getMaskTransparentSpans(mask);
+    if (spans?.rows?.length) {
+      const rows = spans.rows;
+      const starts = spans.starts;
+      const lengths = spans.lengths;
+      for (let i = 0; i < rows.length; i += 1) {
+        const dy = rows[i];
+        const y = oy + my + dy;
+        const start = starts[i];
+        const end = start + lengths[i];
+        for (let dx = start; dx < end; dx += 1) {
+          if (this.isSteelGround(ox + mx + dx, y)) {
+            return true;
+          }
+        }
+      }
+      return false;
+    }
     for (let dy = 0; dy < h; ++dy) {
       for (let dx = 0; dx < w; ++dx) {
         if (!mask.at(dx, dy) && this.isSteelGround(ox + mx + dx, oy + my + dy)) {

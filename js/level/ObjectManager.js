@@ -20,22 +20,68 @@ class ObjectManager {
     this._bucketWidth = 128;
     this._xBuckets = new Map();
     this._bucketScratch = [];
+    this._unknownWidthObjects = [];
+    this._renderStamp = 0;
   }
 
   _bucketIndexForX(x) {
     return Math.floor(x / this._bucketWidth);
   }
 
+  _frameSizeFromObject(obj) {
+    const width = Number.isFinite(obj?._frameWidth) ? obj._frameWidth : NaN;
+    const height = Number.isFinite(obj?._frameHeight) ? obj._frameHeight : NaN;
+    if (Number.isFinite(width) && Number.isFinite(height)) {
+      return { width, height };
+    }
+    const frame = obj?.animation?.frames?.[0] || null;
+    if (Number.isFinite(frame?.width) && Number.isFinite(frame?.height)) {
+      obj._frameWidth = frame.width;
+      obj._frameHeight = frame.height;
+      return { width: frame.width, height: frame.height };
+    }
+    return null;
+  }
+
   _addObjectToBucket(obj) {
     if (!Number.isFinite(obj?.x)) return;
-    const bucket = this._bucketIndexForX(obj.x);
-    let list = this._xBuckets.get(bucket);
-    if (!list) {
-      list = [];
-      this._xBuckets.set(bucket, list);
+    const size = this._frameSizeFromObject(obj);
+    if (!size || !Number.isFinite(size.width) || size.width <= 0) {
+      this._unknownWidthObjects.push(obj);
+      obj.__objectManagerBuckets = null;
+      return;
     }
-    list.push(obj);
+    const startBucket = this._bucketIndexForX(obj.x);
+    const endBucket = this._bucketIndexForX(obj.x + Math.max(0, size.width - 1));
+    const buckets = [];
+    for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
+      let list = this._xBuckets.get(bucket);
+      if (!list) {
+        list = [];
+        this._xBuckets.set(bucket, list);
+      }
+      list.push(obj);
+      buckets.push(bucket);
+    }
+    obj.__objectManagerBuckets = buckets;
   }
+
+  _moveUnknownObjectToBuckets(obj, index) {
+    const size = this._frameSizeFromObject(obj);
+    if (!size || !Number.isFinite(size.width) || size.width <= 0) return false;
+    const last = this._unknownWidthObjects.length - 1;
+    if (index !== last) this._unknownWidthObjects[index] = this._unknownWidthObjects[last];
+    this._unknownWidthObjects.length = last;
+    this._addObjectToBucket(obj);
+    return true;
+  }
+
+  _pushBucketObject(source, obj, stamp) {
+    if (obj.__objectManagerRenderStamp === stamp) return;
+    obj.__objectManagerRenderStamp = stamp;
+    source.push(obj);
+  }
+
   /** render all Objects to the GameDisplay */
   render(gameDisplay) {
     const app = getAppContext();
@@ -65,12 +111,26 @@ class ObjectManager {
         const endBucket = this._bucketIndexForX(maxX + bucketPad);
         source = this._bucketScratch;
         source.length = 0;
+        this._renderStamp = (this._renderStamp + 1) || 1;
+        const stamp = this._renderStamp;
         for (let bucket = startBucket; bucket <= endBucket; bucket += 1) {
           const list = this._xBuckets.get(bucket);
           if (!list?.length) continue;
           for (let i = 0; i < list.length; i += 1) {
-            source.push(list[i]);
+            this._pushBucketObject(source, list[i], stamp);
           }
+        }
+        for (let i = 0; i < this._unknownWidthObjects.length;) {
+          const obj = this._unknownWidthObjects[i];
+          if (this._moveUnknownObjectToBuckets(obj, i)) {
+            const fw = obj._frameWidth;
+            if ((obj.x + fw) >= minX && obj.x <= maxX) {
+              this._pushBucketObject(source, obj, stamp);
+            }
+            continue;
+          }
+          this._pushBucketObject(source, obj, stamp);
+          i += 1;
         }
       }
       for (let i = 0; i < source.length; i++) {
@@ -91,6 +151,12 @@ class ObjectManager {
           fh = frame.height ?? 0;
           obj._frameWidth = fw;
           obj._frameHeight = fh;
+          if (view && obj.__objectManagerBuckets == null) {
+            const unknownIndex = this._unknownWidthObjects.indexOf(obj);
+            if (unknownIndex >= 0) {
+              this._moveUnknownObjectToBuckets(obj, unknownIndex);
+            }
+          }
         }
         if (view) {
           if ((obj.x + fw) < minX || obj.x > maxX || (obj.y + fh) < minY || obj.y > maxY) {
@@ -115,6 +181,14 @@ class ObjectManager {
       this.objects.push(obj);
       this._addObjectToBucket(obj);
     }
+  }
+
+  dispose() {
+    this.objects.length = 0;
+    this._xBuckets.clear();
+    this._bucketScratch.length = 0;
+    this._unknownWidthObjects.length = 0;
+    this.gameTimer = null;
   }
 }
 

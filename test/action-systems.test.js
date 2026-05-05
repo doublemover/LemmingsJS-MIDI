@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { Lemmings, setTestAppContext, useGlobalLemmings } from './helpers/lemmings.js';
-import { getAppContext, setAppContext } from '../js/core/dependencies.js';
+import { getAppContext } from '../js/core/dependencies.js';
 import { ActionBashSystem } from '../js/actions/ActionBashSystem.js';
 import { ActionBlockerSystem } from '../js/actions/ActionBlockerSystem.js';
 import { ActionBuildSystem } from '../js/actions/ActionBuildSystem.js';
@@ -180,18 +180,20 @@ function withoutLemmingManager() {
   });
 }
 
-function ensureMiniMap() {
-  const app = getAppContext() && typeof getAppContext() === 'object'
-    ? getAppContext()
-    : {};
-  if (!app.game || typeof app.game !== 'object') {
-    app.game = {};
-  }
-  if (!app.game.lemmingManager || typeof app.game.lemmingManager !== 'object') {
-    app.game.lemmingManager = { miniMap: makeMiniMap() };
-  }
-  setAppContext(app);
-  return app.game.lemmingManager;
+function makeRuntime(calls = [], miniMap = makeMiniMap()) {
+  return {
+    soundEvents: {
+      emitSfx(type, sfxId, data) {
+        calls.push({ type, sfxId, data });
+      }
+    },
+    miniMap
+  };
+}
+
+function attachRuntime(sys, calls = [], miniMap = makeMiniMap()) {
+  sys.setRuntime?.(makeRuntime(calls, miniMap));
+  return sys;
 }
 
 // helpers for controlled Action systems
@@ -1193,7 +1195,7 @@ describe('Action systems events and draws', function() {
 
     const bashLevel = new StubLevel();
     bashLevel.steelUnder = true;
-    const bash = new ActionBashSystem(stubSprites, stubMasks());
+    const bash = attachRuntime(new ActionBashSystem(stubSprites, stubMasks()), calls);
     const bashLem = new StubLemming();
     bashLem.id = 1;
     bashLem.frameIndex = 2; // -> state 3
@@ -1201,7 +1203,7 @@ describe('Action systems events and draws', function() {
 
     const digLevel = new StubLevel();
     digLevel.steelGround = () => true;
-    const dig = new ActionDiggSystem(stubSprites);
+    const dig = attachRuntime(new ActionDiggSystem(stubSprites), calls);
     const digLem = new StubLemming();
     digLem.id = 2;
     expect(dig.process(digLevel, digLem)).to.equal(Lemmings.LemmingStateType.SHRUG);
@@ -1215,7 +1217,7 @@ describe('Action systems events and draws', function() {
     const calls = [];
     const restore = useSoundBus(calls);
     const digLevel = new StubLevel();
-    const dig = new ActionDiggSystem(stubSprites);
+    const dig = attachRuntime(new ActionDiggSystem(stubSprites), calls);
     const digLem = new StubLemming(10, 5);
     digLem.id = 9;
     for (let x = digLem.x - 4; x <= digLem.x; x++) {
@@ -1228,7 +1230,7 @@ describe('Action systems events and draws', function() {
 
     const bashLevel = new StubLevel();
     bashLevel.clearCount = 3;
-    const bash = new ActionBashSystem(stubSprites, masks);
+    const bash = attachRuntime(new ActionBashSystem(stubSprites, masks), calls);
     const bashLem = new StubLemming();
     bashLem.id = 10;
     bashLem.frameIndex = 2; // -> state 3
@@ -1236,7 +1238,7 @@ describe('Action systems events and draws', function() {
 
     const mineLevel = new StubLevel();
     mineLevel.clearCount = 2;
-    const mine = new ActionMineSystem(stubSprites, masks);
+    const mine = attachRuntime(new ActionMineSystem(stubSprites, masks), calls);
     const mineLem = new StubLemming();
     mineLem.id = 11;
     mine.process(mineLevel, mineLem);
@@ -1302,7 +1304,7 @@ describe('Action systems events and draws', function() {
     const calls = [];
     const restore = useSoundBus(calls);
     const level = new StubLevel();
-    const sys = new ActionBuildSystem(stubSprites);
+    const sys = attachRuntime(new ActionBuildSystem(stubSprites), calls);
     const lem = new StubLemming();
     lem.id = 3;
     lem.frameIndex = 8;
@@ -1342,7 +1344,7 @@ describe('Action systems events and draws', function() {
   it('ActionCountdownSystem emits ohno when the timer hits zero', function() {
     const calls = [];
     const restore = useSoundBus(calls);
-    const sys = new ActionCountdownSystem(stubMasks());
+    const sys = attachRuntime(new ActionCountdownSystem(stubMasks()), calls);
     const lem = new StubLemming();
     lem.id = 4;
     lem.countdown = 1;
@@ -1359,14 +1361,14 @@ describe('Action systems events and draws', function() {
     const calls = [];
     const restore = useSoundBus(calls);
 
-    const drowning = new ActionDrowningSystem(stubSprites);
+    const drowning = attachRuntime(new ActionDrowningSystem(stubSprites), calls);
     const drownLem = new StubLemming();
     drownLem.id = 5;
     drownLem.lastTriggerType = 'water';
     drowning.process(new StubLevel(), drownLem);
 
     const gvc = new StubGVC();
-    const exit = new ActionExitingSystem(stubSprites, gvc);
+    const exit = attachRuntime(new ActionExitingSystem(stubSprites, gvc), calls);
     const exitLem = new StubLemming();
     exitLem.id = 6;
     exitLem.lastTriggerType = 'exit';
@@ -1393,24 +1395,19 @@ describe('Action systems events and draws', function() {
     const masks = { GetMask() { return { GetMask() { return mask; } }; } };
     const triggerManager = { removed: [], removeByOwner(lem) { this.removed.push(lem); } };
     const particleTable = { draw() {} };
-    const sys = new ActionExplodingSystem(stubSprites, masks, triggerManager, particleTable);
-    const level = { clearGroundWithMask() { return true; } };
-
     const miniMap = {
       invalidations: [],
       deaths: [],
       invalidateRegion(x, y, w, h) { this.invalidations.push({ x, y, w, h }); },
       addDeath(x, y) { this.deaths.push({ x, y }); }
     };
-    const manager = ensureMiniMap();
-    const prevMiniMap = manager.miniMap;
-    manager.miniMap = miniMap;
+    const sys = attachRuntime(new ActionExplodingSystem(stubSprites, masks, triggerManager, particleTable), calls, miniMap);
+    const level = { clearGroundWithMask() { return true; } };
 
     const lem = new StubLemming();
     lem.id = 7;
     sys.process(level, lem);
 
-    manager.miniMap = prevMiniMap;
     restore();
 
     expect(calls[0].type).to.equal(SoundEventTypes.LEMMING_EXPLODE);
@@ -1434,19 +1431,14 @@ describe('Action systems events and draws', function() {
   });
 
   it('ActionFryingSystem reports deaths to minimap', function() {
-    const sys = new ActionFryingSystem(stubSprites);
+    const miniMap = { deaths: [], addDeath(x, y) { this.deaths.push({ x, y }); } };
+    const sys = attachRuntime(new ActionFryingSystem(stubSprites), [], miniMap);
     const level = new StubLevel();
     const lem = new StubLemming();
     lem.frameIndex = 12;
 
-    const miniMap = { deaths: [], addDeath(x, y) { this.deaths.push({ x, y }); } };
-    const manager = ensureMiniMap();
-    const prevMiniMap = manager.miniMap;
-    manager.miniMap = miniMap;
-
     sys.process(level, lem);
 
-    manager.miniMap = prevMiniMap;
     expect(miniMap.deaths[0]).to.eql({ x: 0, y: 0 });
   });
 
@@ -1471,7 +1463,7 @@ describe('Action systems events and draws', function() {
     const restore = useSoundBus(calls);
     const level = new StubLevel();
     level.steelUnder = true;
-    const sys = new ActionMineSystem(stubSprites, stubMasks());
+    const sys = attachRuntime(new ActionMineSystem(stubSprites, stubMasks()), calls);
     const lem = new StubLemming();
     lem.id = 8;
     sys.process(level, lem);
@@ -1496,19 +1488,15 @@ describe('Action systems events and draws', function() {
     const calls = [];
     const restore = useSoundBus(calls);
 
-    const ohNo = new ActionOhNoSystem(stubSprites);
+    const miniMap = { deaths: [], addDeath(x, y) { this.deaths.push({ x, y }); } };
+    const ohNo = attachRuntime(new ActionOhNoSystem(stubSprites), calls, miniMap);
     const ohNoLem = new StubLemming();
     ohNoLem.frameIndex = 15;
     expect(ohNo.triggerLemAction(ohNoLem)).to.equal(false);
 
-    const miniMap = { deaths: [], addDeath(x, y) { this.deaths.push({ x, y }); } };
-    const manager = ensureMiniMap();
-    const prevMiniMap = manager.miniMap;
-    manager.miniMap = miniMap;
-
     ohNo.draw({ drawFrame() {} }, ohNoLem);
 
-    const splatter = new ActionSplatterSystem(stubSprites);
+    const splatter = attachRuntime(new ActionSplatterSystem(stubSprites), calls, miniMap);
     const splatLem = new StubLemming();
     splatLem.id = 9;
     splatLem.frameIndex = 15;
@@ -1518,7 +1506,6 @@ describe('Action systems events and draws', function() {
     splatLem.frameIndex = 0;
     splatter.process(new StubLevel(), splatLem);
 
-    manager.miniMap = prevMiniMap;
     restore();
 
     expect(miniMap.deaths.length).to.equal(2);
