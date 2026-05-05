@@ -1,0 +1,426 @@
+import {
+  BinaryReader,
+  EDITOR_SHORTCUT_SECTIONS,
+  EditorAssetCache,
+  EditorController,
+  EditorHistory,
+  EditorKeybindings,
+  EditorPreviewCache,
+  HISTORY_COALESCE_WINDOW_MS,
+  LevelReader,
+  LevelWriter,
+  MAX_BRUSH_SIZE,
+  MAX_HISTORY,
+  MAX_HISTORY_BYTES,
+  PALETTE_PREVIEW_BATCH_SIZE,
+  PALETTE_SEARCH_DEBOUNCE_MS,
+  ShortcutOverlay,
+  createClassicLevelData,
+  createEditorLevelFromClassic,
+  downloadBinaryFile,
+  downloadTextFile,
+  ensureLevelEntryUids,
+  formatRotation,
+  formatValue,
+  getEntryBounds,
+  getRuntimeDependency,
+  getStyle,
+  getStyleNames,
+  listSavedLevels,
+  loadSavedLevel,
+  normalizeRotation,
+  normalizeText,
+  parseNumber,
+  readArrayBufferFile,
+  readTextFile,
+  sanitizeFileName,
+  saveLevel,
+  validateLevel
+} from './EditorUiControllerShared.js';
+const editorSelectionPanelMethods = {
+  _setSelectionFields(data) {
+    this._suppressInspector = true;
+    if (!data) {
+      this._toggleSelectionActions(false);
+      if (this.el.selType) this.el.selType.textContent = 'None';
+      if (this.el.selName) this.el.selName.textContent = '';
+      const inputs = [
+        this.el.selX,
+        this.el.selY,
+        this.el.selWidth,
+        this.el.selHeight,
+        this.el.selRotate,
+        this.el.selSkill,
+        this.el.selLemmings,
+        this.el.selPairing,
+        this.el.selMidiFlagId
+      ];
+      inputs.forEach(input => {
+        if (input) {
+          input.value = '';
+          input.disabled = true;
+        }
+      });
+      const checks = [
+        this.el.selFlipH,
+        this.el.selFlipV,
+        this.el.selMidiFlag,
+        this.el.selNoOverwrite,
+        this.el.selErase,
+        this.el.selOneWay
+      ];
+      checks.forEach(check => {
+        if (check) {
+          check.checked = false;
+          check.disabled = true;
+        }
+      });
+      if (this.el.deleteSelection) this.el.deleteSelection.disabled = true;
+      this._suppressInspector = false;
+      return;
+    }
+  
+    if (data.multi) {
+      this._toggleSelectionActions(true);
+      if (this.el.selType) this.el.selType.textContent = 'Multiple';
+      if (this.el.selName) this.el.selName.textContent = `${data.count} items`;
+      const inputs = [
+        this.el.selX,
+        this.el.selY,
+        this.el.selWidth,
+        this.el.selHeight,
+        this.el.selRotate,
+        this.el.selSkill,
+        this.el.selLemmings,
+        this.el.selPairing,
+        this.el.selMidiFlagId
+      ];
+      inputs.forEach(input => {
+        if (input) {
+          input.value = '';
+          input.disabled = true;
+        }
+      });
+      const checks = [
+        this.el.selFlipH,
+        this.el.selFlipV,
+        this.el.selMidiFlag,
+        this.el.selNoOverwrite,
+        this.el.selErase,
+        this.el.selOneWay
+      ];
+      checks.forEach(check => {
+        if (check) {
+          check.checked = false;
+          check.disabled = true;
+        }
+      });
+      if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
+      this._suppressInspector = false;
+      return;
+    }
+  
+    this._toggleSelectionActions(true);
+    if (this.el.selType) this.el.selType.textContent = data.type;
+    if (this.el.selName) this.el.selName.textContent = data.name || '';
+  
+    const props = data.props || {};
+    const meta = data.meta || null;
+    const isGadget = data.type === 'gadget';
+    const isSteel = data.type === 'steel';
+    const supportsResize = isSteel;
+    const widthValue = props.WIDTH ?? (isSteel ? undefined : meta?.width);
+    const heightValue = props.HEIGHT ?? (isSteel ? undefined : meta?.height);
+  
+    if (this.el.selX) {
+      this.el.selX.value = formatValue(props.X);
+      this.el.selX.disabled = false;
+    }
+    if (this.el.selY) {
+      this.el.selY.value = formatValue(props.Y);
+      this.el.selY.disabled = false;
+    }
+    if (this.el.selWidth) {
+      this.el.selWidth.value = formatValue(widthValue);
+      this.el.selWidth.disabled = !supportsResize;
+    }
+    if (this.el.selHeight) {
+      this.el.selHeight.value = formatValue(heightValue);
+      this.el.selHeight.disabled = !supportsResize;
+    }
+    if (this.el.selRotate) {
+      this.el.selRotate.value = formatRotation(props.ROTATE);
+      this.el.selRotate.disabled = isSteel;
+    }
+    if (this.el.selSkill) {
+      this.el.selSkill.value = formatValue(props.SKILL);
+      this.el.selSkill.disabled = !isGadget;
+    }
+    if (this.el.selLemmings) {
+      this.el.selLemmings.value = formatValue(props.LEMMINGS);
+      this.el.selLemmings.disabled = !isGadget;
+    }
+    if (this.el.selPairing) {
+      this.el.selPairing.value = formatValue(props.PAIRING);
+      this.el.selPairing.disabled = !isGadget;
+    }
+    if (this.el.selMidiFlag) {
+      const enabled = !!props.MIDI_FLAG;
+      this.el.selMidiFlag.checked = enabled;
+      this.el.selMidiFlag.disabled = !isGadget;
+    }
+    if (this.el.selMidiFlagId) {
+      const flagId = props.MIDI_FLAG_ID;
+      this.el.selMidiFlagId.value = formatValue(flagId);
+      const enabled = !!props.MIDI_FLAG;
+      this.el.selMidiFlagId.disabled = !isGadget || !enabled;
+    }
+  
+    if (this.el.selFlipH) {
+      this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
+      this.el.selFlipH.disabled = isSteel;
+    }
+    if (this.el.selFlipV) {
+      this.el.selFlipV.checked = !!props.FLIP_VERTICAL;
+      this.el.selFlipV.disabled = isSteel;
+    }
+    if (this.el.selNoOverwrite) {
+      this.el.selNoOverwrite.checked = !!props.NO_OVERWRITE;
+      this.el.selNoOverwrite.disabled = isGadget || isSteel;
+    }
+    if (this.el.selErase) {
+      this.el.selErase.checked = !!props.ERASE;
+      this.el.selErase.disabled = isGadget || isSteel;
+    }
+    if (this.el.selOneWay) {
+      this.el.selOneWay.checked = !!props.ONE_WAY;
+      this.el.selOneWay.disabled = true;
+    }
+    if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
+  
+    this._suppressInspector = false;
+  },
+
+  _toggleSelectionActions(visible) {
+    if (this.el.selectionActions) {
+      this.el.selectionActions.hidden = !visible;
+    }
+  },
+
+  _commitSelectionPatch(patch) {
+    const updated = this.controller.updateSelectedProps(patch);
+    if (!updated) return;
+    this.controller.history.pushSnapshot(this.session?.level, 'Edit');
+    this._refreshAfterEdit('Edit');
+  },
+
+  async _syncAfterSelection(label) {
+    if (!this.view) return;
+    const token = this._asyncToken;
+    this._currentSavedId = '';
+    this.session = this.view.editorSession || this.session;
+    this.controller.session = this.session;
+    ensureLevelEntryUids(this.session?.level);
+    this.controller.clearSelection();
+    await this._reloadAssets(token);
+    if (!this._isAsyncCurrent(token)) return;
+    this.controller.resetHistory(label || 'Load');
+    this._setDirty(false);
+    this._refreshUndoRedo();
+    this._refreshHeaderFields(this.session?.level);
+    this._refreshSelection(null);
+    this._refreshValidation();
+    this._refreshSavedList('');
+    this._drawSelectionOverlay();
+    this._updateStatus(label || 'Load');
+  },
+
+  _refreshAfterEdit(label) {
+    this._refreshValidation();
+    this._drawSelectionOverlay();
+    this._updateStatus(label || 'Edit');
+    this._setDirty(true);
+    this._refreshUndoRedo();
+  },
+
+  _setDirty(isDirty) {
+    this._dirty = !!isDirty;
+    if (this.el.dirtyStatus) {
+      this.el.dirtyStatus.textContent = this._dirty ? 'Unsaved' : 'Saved';
+      this.el.dirtyStatus.classList.toggle('is-dirty', this._dirty);
+    }
+    if (this.document) {
+      this.document.title = this._dirty ? `${this._baseTitle} *` : this._baseTitle;
+    }
+  },
+
+  _refreshUndoRedo() {
+    const canUndo = !!this.controller?.history?.canUndo?.();
+    const canRedo = !!this.controller?.history?.canRedo?.();
+    if (this.el.undo) this.el.undo.disabled = !canUndo;
+    if (this.el.redo) this.el.redo.disabled = !canRedo;
+  },
+
+  _refreshValidation() {
+    const issues = validateLevel(this.session?.level, this.assets || null);
+    this._renderIssues(issues);
+  },
+
+  _renderIssues(issues) {
+    this._hasErrors = false;
+    if (!this.el.issuesList) return;
+    this.el.issuesList.innerHTML = '';
+    for (const issue of issues) {
+      if (issue.severity === 'error') this._hasErrors = true;
+      const item = this.document.createElement('div');
+      item.className = `issue-item ${issue.severity}`;
+      const message = this.document.createElement('div');
+      message.textContent = issue.message;
+      item.appendChild(message);
+      if (issue.fix) {
+        const button = this.document.createElement('button');
+        button.type = 'button';
+        button.textContent = issue.fixLabel || 'Fix';
+        button.title = issue.fixLabel
+          ? `Apply fix: ${issue.fixLabel}`
+          : 'Apply automatic fix.';
+        button.addEventListener('click', () => {
+          issue.fix();
+          this.controller.history.pushSnapshot(this.session?.level, 'Fix');
+          this._refreshAfterEdit('Fix');
+          this._refreshPreview('Fix');
+        });
+        item.appendChild(button);
+      }
+      this.el.issuesList.appendChild(item);
+    }
+  },
+
+  _updateStatus(label) {
+    if (this.el.cursorStatus) {
+      if (this._cursorPos) {
+        const cx = Math.round(this._cursorPos.x);
+        const cy = Math.round(this._cursorPos.y);
+        this.el.cursorStatus.textContent = `X:${cx} Y:${cy}`;
+      } else {
+        this.el.cursorStatus.textContent = 'X:— Y:—';
+      }
+    }
+    if (!this.el.status) return;
+    const parts = [];
+    if (label) parts.push(label);
+    parts.push(`Tool: ${this.controller.tool}`);
+    const grid = this.controller.snapEnabled
+      ? `Grid ${this.controller.gridSize}`
+      : 'Grid off';
+    parts.push(grid);
+    parts.push(this._playtest ? 'Playtest' : 'Edit');
+    this.el.status.textContent = parts.join(' • ');
+  },
+
+  _drawSelectionOverlay() {
+    if (!this.view?.game || !this.view.stage) return;
+    this.view.game.render();
+    const stage = this.view.stage;
+    const baseDisplay = stage.getGameDisplay();
+    const overlayDisplay = stage.getGameOverlayDisplay?.() || null;
+    const display = overlayDisplay || baseDisplay;
+    const selectedEntries = this.controller.getSelectedEntries();
+    const marquee = this.controller.getMarqueeBounds();
+    const steelEntries = this.session?.level?.steel;
+    const hasMarquee = !!marquee;
+    const hasSteelOverlay = !!display?.drawStippleRect && Array.isArray(steelEntries) && steelEntries.length > 0;
+    const hasSelectionOverlay = selectedEntries.length > 0;
+    const hasOverlay = hasMarquee || hasSteelOverlay || hasSelectionOverlay;
+    if (overlayDisplay && (hasOverlay || this._selectionOverlayVisible)) {
+      overlayDisplay.clear(0x00000000);
+    }
+    if (marquee) {
+      this._antsOffset = (this._antsOffset + 1) % 12;
+      display.drawMarchingAntRect(
+        marquee.x,
+        marquee.y,
+        marquee.width,
+        marquee.height,
+        3,
+        this._antsOffset,
+        0xFFFFFFFF,
+        0x00000000
+      );
+    }
+    if (display?.drawStippleRect && Array.isArray(steelEntries)) {
+      const gridSize = 16;
+      for (const entry of steelEntries) {
+        const bounds = getEntryBounds(entry, null);
+        display.drawStippleRect(
+          bounds.x,
+          bounds.y,
+          bounds.width,
+          bounds.height,
+          0,
+          180,
+          180
+        );
+        for (let x = bounds.x; x <= bounds.x + bounds.width; x += gridSize) {
+          display.drawStippleRect(x, bounds.y, 0, bounds.height, 0, 255, 255);
+        }
+        for (let y = bounds.y; y <= bounds.y + bounds.height; y += gridSize) {
+          display.drawStippleRect(bounds.x, y, bounds.width, 0, 0, 255, 255);
+        }
+      }
+    }
+    for (const selected of selectedEntries) {
+      const meta = selected.type === 'steel'
+        ? null
+        : selected.type === 'gadget'
+          ? this.assets?.gadgetById?.get?.(selected.entry?.props?.PIECE)
+          : this.assets?.terrainById?.get?.(selected.entry?.props?.PIECE);
+      const bounds = getEntryBounds(selected.entry, meta);
+      display.drawDashedRect(bounds.x, bounds.y, bounds.width, bounds.height, 210, 106, 60, 3);
+    }
+    if (selectedEntries.length === 1 && this.controller.canResizeSelection?.()) {
+      const selected = selectedEntries[0];
+      const meta = selected.type === 'steel'
+        ? null
+        : selected.type === 'gadget'
+          ? this.assets?.gadgetById?.get?.(selected.entry?.props?.PIECE)
+          : this.assets?.terrainById?.get?.(selected.entry?.props?.PIECE);
+      const bounds = getEntryBounds(selected.entry, meta);
+      const handleSize = this.controller.getHandleSize();
+      const half = Math.max(1, Math.floor(handleSize / 2));
+      const midX = bounds.x + Math.round(bounds.width / 2);
+      const midY = bounds.y + Math.round(bounds.height / 2);
+      const handles = [
+        [bounds.x, bounds.y],
+        [midX, bounds.y],
+        [bounds.x + bounds.width, bounds.y],
+        [bounds.x + bounds.width, midY],
+        [bounds.x + bounds.width, bounds.y + bounds.height],
+        [midX, bounds.y + bounds.height],
+        [bounds.x, bounds.y + bounds.height],
+        [bounds.x, midY]
+      ];
+      for (const [hx, hy] of handles) {
+        display.drawRect(hx - half, hy - half, handleSize - 1, handleSize - 1, 255, 255, 255, true);
+      }
+    }
+    if (overlayDisplay) {
+      this._selectionOverlayVisible = hasOverlay;
+      stage.setGameOverlayVisible?.(hasOverlay);
+    } else {
+      this._selectionOverlayVisible = false;
+    }
+    stage.redraw();
+  },
+
+  _togglePlaytest() {
+    this._playtest = !this._playtest;
+    this.view?.setEditorPlaytest?.(this._playtest);
+    if (this.el.playtestToggle) {
+      this.el.playtestToggle.classList.toggle('is-active', this._playtest);
+      this.el.playtestToggle.textContent = this._playtest ? 'Playtest On' : 'Playtest';
+    }
+    this._updateStatus('Playtest');
+  }
+};
+export { editorSelectionPanelMethods };

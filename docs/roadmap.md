@@ -878,7 +878,7 @@ Notes:
   codec, keyframe/delta, lemming, ground/trigger/object, scalar/manager,
   cold-block, replay, timer, and time-travel suites with shared fixtures in
   `test/support/history-fixtures.js`.
-- [ ] Modularize MIDI runtime, UI, and tests. Current inventory:
+- [x] Modularize MIDI runtime, UI, and tests. Current inventory:
   `js/app/midiUiController.js` (2128), `test/midi/midi-event-router.test.js`
   (1944), `test/midi/midi-ui-controller.test.js` (1748),
   `test/midi/midi-mapping.test.js` (1066), `js/midi/MidiScheduler.js` (723),
@@ -897,14 +897,14 @@ Notes:
   `mcp/editorObjectTools.js`, `mcp/visionTools.js`; keep `mcp/server.js` as
   startup, registry, and runtime export wiring. Preserve tool names, aliases,
   schemas, and protocol metadata.
-- [ ] Modularize E2E/editor harnesses and specs. Current inventory:
+- [x] Modularize E2E/editor harnesses and specs. Current inventory:
   `js/app/e2eHarness.js` (2004), `e2e/harness.editor.spec.js` (1062). Target
   tree: `js/app/e2e/stateSerialization.js`, `editorApplyHarness.js`,
   `canvasHarness.js`, `gameControlsHarness.js`, `diagnosticsHarness.js`; keep
   `installE2EHarness`, `isE2EEnabled`, and `window.__E2E__` method names
   stable. Split editor harness specs by state, mutations, saved/import/export,
   and canvas-coordinate flows.
-- [ ] Modularize editor runtime/UI and tests. Current inventory:
+- [x] Modularize editor runtime/UI and tests. Current inventory:
   `js/app/editorUiController.js` (1930), `js/editor/EditorController.js`
   (1619), `test/editor/editor-controller.test.js` (1300). Target tree:
   `js/editor/EditorSelectionModel.js`, `EditorSelectionCommands.js`,
@@ -913,7 +913,7 @@ Notes:
   `editorSelectionPanel.js`, `editorLevelIoUi.js`, `editorStatusUi.js`.
   Preserve `EditorController` and `EditorUiController` public APIs and existing
   editor storage/history behavior.
-- [ ] Modularize render/game UI and tests. Current inventory:
+- [x] Modularize render/game UI and tests. Current inventory:
   `js/game/GameView.js` (1836), `test/gameview.coverage.test.js` (1760),
   `js/render/Stage.js` (1542), `js/render/DisplayImage.js` (1420),
   `test/render/stage.test.js` (1168), `js/game/GameGui.js` (1039),
@@ -927,7 +927,7 @@ Notes:
   `GameGuiRender.js`, `SkillPanelDrawing.js`, `SmoothScroller.js`. Preserve
   exported classes, canvas ownership, render test hooks, and public game UI
   behavior.
-- [ ] Modularize game/level/lemming/data/input/app/script support files.
+- [x] Modularize game/level/lemming/data/input/app/script support files.
   Current inventory: `test/action-systems.test.js` (1760),
   `js/app/procgenController.js` (1497), `test/fileprovider.test.js` (1256),
   `scripts/bench-hotpaths.js` (1240), `js/lemmings/LemmingManager.js` (835),
@@ -944,7 +944,7 @@ Notes:
   modules; input binding/polling/format modules; script-local `scripts/*`
   helper modules. Treat `js/xbrz/xbrz.js` as low-priority algorithmic code and
   split only where behavior is clearly repo-owned.
-- [ ] Keep modularization behavior-preserving. Old facade files must continue
+- [x] Keep modularization behavior-preserving. Old facade files must continue
   exporting the same public symbols, browser `js/` modules must remain
   Node-free, `js/vendor/` must not be touched, and no strict file-length gate
   should be added. Validate each section with its targeted suite before moving
