@@ -64,22 +64,25 @@ const resolveSurfaceFile = (surface, kind, fallbackPath) => {
 const createCopyList = (surface) => {
   const manifestPath = resolveSurfaceFile(surface, 'manifest', 'mcpb/manifest.json');
   const packagePath = resolveSurfaceFile(surface, 'package', 'mcpb/package.json');
+  const serverPath = resolveSurfaceFile(surface, 'server', 'mcpb/server.json');
   return [
     {
       from: manifestPath.fallbackPath,
       to: 'manifest.json',
       candidate: manifestPath.candidate
     },
-    { from: 'mcpb/server.json', to: 'server.json', candidate: null },
+    {
+      from: serverPath.fallbackPath,
+      to: 'server.json',
+      candidate: serverPath.candidate
+    },
     { from: 'mcpb/.mcpbignore', to: '.mcpbignore', candidate: null },
     {
       from: packagePath.fallbackPath,
       to: 'package.json',
       candidate: packagePath.candidate
     },
-    { from: 'keybindings.json', to: 'keybindings.json', candidate: null },
-    { from: 'mcp/server.js', to: 'mcp/server.js', candidate: null },
-    { from: 'mcp/spectator.html', to: 'mcp/spectator.html', candidate: null, optional: true }
+    { from: 'keybindings.json', to: 'keybindings.json', candidate: null }
   ];
 };
 
@@ -125,10 +128,31 @@ const copyFile = async (entry, { distDir, rootDir = ROOT_DIR, fsImpl = fs }) => 
 };
 
 /**
+ * @param {string} fromDir
+ * @param {string} toDir
+ * @param {Pick<typeof fs, 'copyFile' | 'mkdir' | 'readdir' | 'stat'>} fsImpl
+ */
+const copyDirectory = async (fromDir, toDir, fsImpl = fs) => {
+  await fsImpl.mkdir(toDir, { recursive: true });
+  const entries = await fsImpl.readdir(fromDir, { withFileTypes: true });
+  for (const entry of entries) {
+    const sourcePath = path.join(fromDir, entry.name);
+    const destinationPath = path.join(toDir, entry.name);
+    if (entry.isDirectory()) {
+      await copyDirectory(sourcePath, destinationPath, fsImpl);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    await ensureDir(destinationPath, fsImpl);
+    await fsImpl.copyFile(sourcePath, destinationPath);
+  }
+};
+
+/**
  * @param {{
  *   argv?: string[],
  *   rootDir?: string,
- *   fsImpl?: Pick<typeof fs, 'copyFile' | 'mkdir' | 'rm'>,
+ *   fsImpl?: Pick<typeof fs, 'copyFile' | 'mkdir' | 'rm' | 'readdir' | 'stat'>,
  *   log?: Pick<typeof console, 'log'>
  * }} [options]
  * @returns {Promise<{distDir: string, surface: string | null}>}
@@ -152,6 +176,7 @@ const buildBundle = async (
   for (const entry of copyList) {
     await copyFile(entry, { distDir, rootDir, fsImpl });
   }
+  await copyDirectory(path.join(rootDir, 'mcp'), path.join(distDir, 'mcp'), fsImpl);
 
   const relative = path.relative(rootDir, distDir);
   const suffix = options.surface ? ` (surface: ${options.surface})` : '';
@@ -175,6 +200,7 @@ export {
   VALID_SURFACES,
   buildBundle,
   createCopyList,
+  copyDirectory,
   parseArgs,
   resolveSurfaceFile
 };

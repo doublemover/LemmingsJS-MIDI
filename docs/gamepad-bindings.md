@@ -38,9 +38,16 @@ Examples:
 
 ## Remapping and Persistence
 
-- File mappings are loaded from `gamepadbindings.json`.
+- Bindings are composed in this order:
+  1. hardcoded defaults
+  2. file defaults from `gamepadbindings.json`
+  3. persisted user overrides
+  4. in-session overrides
 - Runtime remaps can be applied via:
   - `KeyboardShortcuts.setGamepadBindings(config, options)`
   - `EditorKeybindings.setGamepadBindings(config, options)`
 - Persisted remaps are stored in local storage key
   `lem-gamepad-bindings-v1`.
+- Only the persisted user-override layer is written to local storage. File
+  defaults can change without clobbering user overrides, and non-persisted
+  session remaps are discarded on reload.

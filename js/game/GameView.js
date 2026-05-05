@@ -80,7 +80,7 @@ class GameView extends BaseLogger {
     this._benchMeasureExtras = false;
     this.endless = false; // time doesn't run out, game doesn't end
     this.nukeAfter = 0; // nuke after x seconds
-    this.scale = 0; // zoom 
+    this.scale = 0; // zoom
     this.laggedOut = 0;
     this.extraLemmings = 0;
     this.perfMetrics = false;
@@ -146,7 +146,9 @@ class GameView extends BaseLogger {
       this.stage.dispose();
     }
     const StageCtor = getDependency('Stage', Stage);
-    this.stage = new StageCtor(el);
+    this.stage = new StageCtor(el, {
+      getScale: () => this.scale
+    });
     this.stage.setPerfOverlay?.(this.perfOverlay, () => this.getPerfOverlayData());
     this.stage.setRenderExperimentFlags?.({
       offscreenPresent: this.offscreenPresentExperiment,
@@ -182,6 +184,7 @@ class GameView extends BaseLogger {
         game.history?.setPreserveFutureHistory?.(true);
       }
       this._registerMidiFlagTriggers(game);
+      game.history?.captureReplayBaseline?.(game);
       // Display a custom crosshair cursor sized relative to a lemming
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
@@ -668,7 +671,7 @@ class GameView extends BaseLogger {
     this.bench = this.parseBool(query, ['bench', 'b']);
     this.bench2 = this.parseBool(query, ['bench2', 'b2']);
     this.benchReverse = this.parseBool(query, ['benchReverse', 'bR']);
-    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);        
+    this.benchSequence = this.parseBool(query, ['benchSequence', 'bs']);
     this.preserveHistory = this.parseBool(query, ['preserveHistory', 'ph']);
     if (this.bench || this.bench2 || this.benchSequence) {
       this.benchReverse = false;
@@ -1292,7 +1295,7 @@ class GameView extends BaseLogger {
 
       for (const tr of level.triggers) {
         if (!badTriggers.has(tr.type)) continue;
-        if (spawnX < tr.x1 || spawnX > tr.x2) continue;
+        if (spawnX < tr.x1 || spawnX >= tr.x2) continue;
         // disallow if entrance intersects or is above a deadly trigger
         if (entY + ENTRANCE_HEIGHT > tr.y1 && entY < tr.y2) return false;
         if (entY + ENTRANCE_HEIGHT <= tr.y1 && seg.bottom >= tr.y1) return false;
@@ -1551,6 +1554,7 @@ class GameView extends BaseLogger {
       }
       game.getGameTimer().speedFactor = this.gameSpeedFactor;
       this._registerMidiFlagTriggers(game);
+      game.history?.captureReplayBaseline?.(game);
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
@@ -1691,6 +1695,12 @@ class GameView extends BaseLogger {
         : 0;
       const owner = {
         id: `midi_flag_${midiFlagId ?? i}_${i}`,
+        __historyKind: 'midi_flag',
+        __historyData: {
+          midiFlagId,
+          triggerType,
+          pieceId: flag.pieceId ?? null
+        },
         onTrigger: (_tick, lemming, trigger, x, y) => {
           game.soundEvents.emit({
             type: SoundEventTypes.TRAP_TRIGGER,

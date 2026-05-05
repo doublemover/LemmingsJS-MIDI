@@ -25,7 +25,15 @@ export default [
     }
   },
   {
-    files: ['js/game/**/*.js', 'js/lemmings/**/*.js', 'js/midi/**/*.js', 'js/util/**/*.js'],
+    files: [
+      'js/app/**/*.js',
+      'js/editor/**/*.js',
+      'js/game/**/*.js',
+      'js/lemmings/**/*.js',
+      'js/midi/**/*.js',
+      'js/render/**/*.js',
+      'js/util/**/*.js'
+    ],
     rules: {
       'no-restricted-globals': ['error',
         {

@@ -16,6 +16,7 @@ describe('capabilityMatrix', function () {
     expect(capabilities.webMidi.fallbackPath).to.equal('audio_only');
     expect(capabilities.offscreenCanvas.supported).to.equal(false);
     expect(capabilities.imageBitmap.supported).to.equal(false);
+    expect(capabilities.renderPaths.presentPathSupported).to.equal(false);
     expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(false);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(false);
     expect(capabilities.renderPaths.deterministicFallback).to.equal('canvas2d_main_thread');
@@ -51,6 +52,7 @@ describe('capabilityMatrix', function () {
     expect(capabilities.offscreenCanvas.supported).to.equal(true);
     expect(capabilities.imageBitmap.supported).to.equal(true);
     expect(capabilities.worker.supported).to.equal(true);
+    expect(capabilities.renderPaths.presentPathSupported).to.equal(true);
     expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(true);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(true);
   });
@@ -64,9 +66,10 @@ describe('capabilityMatrix', function () {
       },
       navigatorRef: {}
     });
+    expect(capabilities.renderPaths.presentPathSupported).to.equal(true);
     expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(true);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(false);
-    expect(capabilities.renderPaths.deterministicFallback).to.equal('offscreen_present');
+    expect(capabilities.renderPaths.deterministicFallback).to.equal('drawimage_present');
   });
 
   it('resolves experiment rollback reasons deterministically', function () {
@@ -85,13 +88,15 @@ describe('capabilityMatrix', function () {
       imageBitmap: { supported: true },
       worker: { supported: false },
       renderPaths: {
+        presentPathSupported: true,
         offscreenPresentSupported: true,
         workerOffscreenSupported: false,
-        deterministicFallback: 'offscreen_present'
+        deterministicFallback: 'drawimage_present'
       }
     };
 
     const offscreenState = resolveRenderExperimentState({ offscreenPresent: true }, noImageBitmap);
+    expect(offscreenState.presentPathActive).to.equal(false);
     expect(offscreenState.offscreenPresentActive).to.equal(false);
     expect(offscreenState.rollbackReason).to.equal('imagebitmap_unavailable');
 
@@ -99,6 +104,7 @@ describe('capabilityMatrix', function () {
       { offscreenPresent: true, workerOffscreen: true },
       withImageNoWorker
     );
+    expect(workerState.presentPathActive).to.equal(true);
     expect(workerState.offscreenPresentActive).to.equal(true);
     expect(workerState.workerOffscreenActive).to.equal(false);
     expect(workerState.rollbackReason).to.equal('worker_unavailable');

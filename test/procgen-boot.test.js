@@ -143,6 +143,37 @@ describe('procgenBoot helpers', function () {
     expect(calls).to.deep.equal(['focusBlur', 'controller', 'stageAdapter', 'game', 'view']);
   });
 
+  it('installs and disposes procgen boot listeners', function () {
+    const windowListeners = new Map();
+    const documentListeners = new Map();
+    globalThis.window = {
+      addEventListener(type, handler) {
+        windowListeners.set(type, handler);
+      },
+      removeEventListener(type, handler) {
+        if (windowListeners.get(type) === handler) windowListeners.delete(type);
+      }
+    };
+    globalThis.document = {
+      readyState: 'loading',
+      addEventListener(type, handler) {
+        documentListeners.set(type, handler);
+      },
+      removeEventListener(type, handler) {
+        if (documentListeners.get(type) === handler) documentListeners.delete(type);
+      }
+    };
+
+    procgenBoot.installProcgenBootListeners();
+    expect(windowListeners.has('resize')).to.equal(true);
+    expect(windowListeners.has('beforeunload')).to.equal(true);
+    expect(documentListeners.has('DOMContentLoaded')).to.equal(true);
+
+    procgenBoot.disposeProcgenBootListeners();
+    expect(windowListeners.size).to.equal(0);
+    expect(documentListeners.size).to.equal(0);
+  });
+
   it('resizes canvas and updates stage using explicit runtime handles', function () {
     const canvas = {
       width: 0,

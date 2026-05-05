@@ -25,12 +25,17 @@ This creates `dist/mcpb/` with:
 - `server.json`
 - `.mcpbignore`
 - `package.json`
-- `mcp/server.js`, `mcp/spectator.html`
+- the full `mcp/` server tree
 - `keybindings.json`
 
 Surface builds create `dist/mcpb-game/`, `dist/mcpb-editor/`, or
-`dist/mcpb-interact/` and use `mcpb/manifest.<surface>.json` plus
-`mcpb/package.<surface>.json`.
+`dist/mcpb-interact/` and use surface-specific templates when available:
+
+- `mcpb/manifest.<surface>.json`
+- `mcpb/package.<surface>.json`
+- `mcpb/server.<surface>.json`
+
+Missing surface templates fall back to the generic template for that file.
 
 ## Install dependencies (no bundled browsers)
 
@@ -47,4 +52,5 @@ npx @anthropic-ai/mcpb validate
 npx @anthropic-ai/mcpb pack dist/lemmings-mcp.mcpb
 ```
 
-Update `server.json` with the release URL and SHA-256 before publishing.
+Update `server.json` or `server.<surface>.json` with the release URL and
+SHA-256 before publishing.

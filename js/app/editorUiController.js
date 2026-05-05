@@ -35,6 +35,8 @@ import {
 } from '../editor/EditorStorage.js';
 
 const MAX_HISTORY = 200;
+const MAX_HISTORY_BYTES = 16 * 1024 * 1024;
+const HISTORY_COALESCE_WINDOW_MS = 250;
 const MAX_BRUSH_SIZE = 64;
 const PALETTE_PREVIEW_BATCH_SIZE = 24;
 const PALETTE_SEARCH_DEBOUNCE_MS = 30;
@@ -98,7 +100,11 @@ class EditorUiController {
     this.document = options.document || getRuntimeDependency('document', null);
     this.window = options.window || getRuntimeDependency('window', null);
     this.session = options.session || this.view?.ensureEditorSession?.() || null;
-    this.history = options.history || new EditorHistory({ maxEntries: MAX_HISTORY });
+    this.history = options.history || new EditorHistory({
+      maxEntries: MAX_HISTORY,
+      maxBytes: MAX_HISTORY_BYTES,
+      coalesceWindowMs: HISTORY_COALESCE_WINDOW_MS
+    });
     this.controller = options.controller || new EditorController({
       session: this.session,
       history: this.history
@@ -139,6 +145,11 @@ class EditorUiController {
     this._antsOffset = 0;
     this._selectionOverlayVisible = false;
     this._needsDefaultEntrances = false;
+    this._eventsBound = false;
+    this._disposed = false;
+    this._asyncToken = 0;
+    this._domListeners = [];
+    this._displayListeners = [];
     this.shortcutOverlay = null;
     this._dirty = false;
     this._baseTitle = this.document?.title || 'Lemmings Editor';
@@ -148,6 +159,7 @@ class EditorUiController {
   }
 
   async init() {
+    if (this._disposed) return;
     if (!this.session?.level) {
       this.view?.createBlankEditorLevel({ render: false });
       this.session = this.view?.editorSession || this.session;
@@ -155,7 +167,9 @@ class EditorUiController {
       this._needsDefaultEntrances = true;
     }
     ensureLevelEntryUids(this.session?.level);
-    await this._reloadAssets();
+    const token = this._nextAsyncToken();
+    await this._reloadAssets(token);
+    if (!this._isAsyncCurrent(token)) return;
     this.controller.resetHistory('Init');
     this._setDirty(false);
     this._refreshUndoRedo();
@@ -164,7 +178,7 @@ class EditorUiController {
     this._refreshValidation();
     this._refreshSavedList();
     this._bindEvents();
-    await this._refreshPreview('Init', { preserveView: false });
+    await this._refreshPreview('Init', { preserveView: false, token });
   }
 
   _bindElements() {
@@ -276,7 +290,57 @@ class EditorUiController {
     });
   }
 
+  _nextAsyncToken() {
+    this._asyncToken += 1;
+    return this._asyncToken;
+  }
+
+  _isAsyncCurrent(token) {
+    return !this._disposed && token === this._asyncToken;
+  }
+
+  _addDomListener(element, eventName, handler, options) {
+    if (!element?.addEventListener || typeof handler !== 'function') return;
+    element.addEventListener(eventName, handler, options);
+    if (!Array.isArray(this._domListeners)) this._domListeners = [];
+    this._domListeners.push({ element, eventName, handler, options });
+  }
+
+  _addDisplayListener(eventHandler, handler) {
+    if (!eventHandler?.on || typeof handler !== 'function') return;
+    eventHandler.on(handler);
+    if (!Array.isArray(this._displayListeners)) this._displayListeners = [];
+    this._displayListeners.push({ eventHandler, handler });
+  }
+
+  dispose() {
+    if (this._disposed) return;
+    this._disposed = true;
+    this._asyncToken += 1;
+    this._cancelPalettePreviewHydration();
+    if (this._paletteFilterTimer) {
+      clearTimeout(this._paletteFilterTimer);
+      this._paletteFilterTimer = null;
+    }
+    while (this._displayListeners.length) {
+      const { eventHandler, handler } = this._displayListeners.pop();
+      eventHandler?.off?.(handler);
+    }
+    while (this._domListeners.length) {
+      const { element, eventName, handler, options } = this._domListeners.pop();
+      element?.removeEventListener?.(eventName, handler, options);
+    }
+    this.keybindings?.dispose?.();
+    this.keybindings = null;
+    this.controller?.dispose?.();
+    this.previewCache?.dispose?.();
+    this.shortcutOverlay = null;
+    this._eventsBound = false;
+  }
+
   _bindEvents() {
+    if (this._eventsBound || this._disposed) return;
+    this._eventsBound = true;
     this._bindToolButtons();
     this._bindPaletteTabs();
     this._bindPaletteSearch();
@@ -302,9 +366,9 @@ class EditorUiController {
       this._shiftKey = !!event.shiftKey;
       this._altKey = !!event.altKey;
     };
-    win.addEventListener('keydown', update);
-    win.addEventListener('keyup', update);
-    win.addEventListener('blur', () => {
+    this._addDomListener(win, 'keydown', update);
+    this._addDomListener(win, 'keyup', update);
+    this._addDomListener(win, 'blur', () => {
       this._shiftKey = false;
       this._altKey = false;
     });
@@ -413,7 +477,7 @@ class EditorUiController {
 
   _bindToolButtons() {
     if (!this.el.toolList) return;
-    this.el.toolList.addEventListener('click', (event) => {
+    this._addDomListener(this.el.toolList, 'click', (event) => {
       const button = event.target?.closest?.('button');
       const tool = button?.dataset?.tool;
       if (!tool) return;
@@ -428,7 +492,7 @@ class EditorUiController {
 
   _bindPaletteTabs() {
     if (!this.el.paletteTabs) return;
-    this.el.paletteTabs.addEventListener('click', (event) => {
+    this._addDomListener(this.el.paletteTabs, 'click', (event) => {
       const button = event.target?.closest?.('button');
       const tab = button?.dataset?.tab;
       if (!tab) return;
@@ -438,7 +502,7 @@ class EditorUiController {
 
   _bindPaletteSearch() {
     if (!this.el.paletteSearch) return;
-    this.el.paletteSearch.addEventListener('input', () => {
+    this._addDomListener(this.el.paletteSearch, 'input', () => {
       if (this._paletteFilterTimer) {
         clearTimeout(this._paletteFilterTimer);
       }
@@ -471,13 +535,15 @@ class EditorUiController {
     for (const [key, headerKey, parser] of headerMap) {
       const el = this.el[key];
       if (!el) continue;
-      el.addEventListener('change', async () => {
+      this._addDomListener(el, 'change', async () => {
         if (this._suppressHeader) return;
         const parsed = parser(el.value);
         this.controller.updateHeader(headerKey, parsed);
         this.controller.history.pushSnapshot(this.session?.level, 'Header');
         if (headerKey === 'STYLE') {
-          await this._reloadAssets();
+          const token = this._nextAsyncToken();
+          await this._reloadAssets(token);
+          if (!this._isAsyncCurrent(token)) return;
         }
         this._refreshAfterEdit('Header');
       });
@@ -487,7 +553,7 @@ class EditorUiController {
   _bindSelectionFields() {
     const bindField = (el, handler) => {
       if (!el) return;
-      el.addEventListener('change', () => {
+      this._addDomListener(el, 'change', () => {
         if (this._suppressInspector) return;
         handler();
       });
@@ -522,7 +588,7 @@ class EditorUiController {
     bindField(this.el.selOneWay, () => this._commitSelectionPatch({ ONE_WAY: !!this.el.selOneWay.checked }));
 
     if (this.el.deleteSelection) {
-      this.el.deleteSelection.addEventListener('click', () => {
+      this._addDomListener(this.el.deleteSelection, 'click', () => {
         if (this.controller.deleteSelected()) {
           this._refreshAfterEdit('Delete');
         }
@@ -532,20 +598,20 @@ class EditorUiController {
 
   _bindBrushControls() {
     if (this.el.snapToggle) {
-      this.el.snapToggle.addEventListener('change', () => {
+      this._addDomListener(this.el.snapToggle, 'change', () => {
         this.controller.setSnapEnabled(this.el.snapToggle.checked);
         this._updateStatus();
       });
     }
     if (this.el.gridSize) {
-      this.el.gridSize.addEventListener('change', () => {
+      this._addDomListener(this.el.gridSize, 'change', () => {
         const value = parseNumber(this.el.gridSize.value);
         this.controller.gridSize = value && value > 0 ? value : 1;
         this._updateStatus();
       });
     }
     if (this.el.brushSize) {
-      this.el.brushSize.addEventListener('change', () => {
+      this._addDomListener(this.el.brushSize, 'change', () => {
         const value = parseNumber(this.el.brushSize.value);
         const next = Number.isFinite(value) ? Math.min(Math.max(value, 1), MAX_BRUSH_SIZE) : 1;
         this.controller.setBrushSize(next);
@@ -553,7 +619,7 @@ class EditorUiController {
       });
     }
     if (this.el.eraseGadgets) {
-      this.el.eraseGadgets.addEventListener('change', () => {
+      this._addDomListener(this.el.eraseGadgets, 'change', () => {
         this.controller.setEraseGadgets(this.el.eraseGadgets.checked);
       });
     }
@@ -561,12 +627,12 @@ class EditorUiController {
 
   _bindSavedControls() {
     if (this.el.newLevel) {
-      this.el.newLevel.addEventListener('click', () => {
+      this._addDomListener(this.el.newLevel, 'click', () => {
         this._createNewLevel();
       });
     }
     if (this.el.savedSelect) {
-      this.el.savedSelect.addEventListener('change', () => {
+      this._addDomListener(this.el.savedSelect, 'change', () => {
         const id = this.el.savedSelect.value;
         if (!id) return;
         const text = loadSavedLevel(undefined, id);
@@ -577,35 +643,36 @@ class EditorUiController {
     }
 
     if (this.el.savedSave) {
-      this.el.savedSave.addEventListener('click', () => {
+      this._addDomListener(this.el.savedSave, 'click', () => {
         this._saveCurrentLevel();
       });
     }
 
     if (this.el.savedExport) {
-      this.el.savedExport.addEventListener('click', () => {
+      this._addDomListener(this.el.savedExport, 'click', () => {
         this._exportCurrentLevel();
       });
     }
 
     if (this.el.savedExportClassic) {
-      this.el.savedExportClassic.addEventListener('click', () => {
+      this._addDomListener(this.el.savedExportClassic, 'click', () => {
         this._exportCurrentLevelClassic();
       });
     }
 
     if (this.el.savedImport && this.el.savedImportInput) {
-      this.el.savedImport.addEventListener('click', () => {
+      this._addDomListener(this.el.savedImport, 'click', () => {
         this.el.savedImportInput.click();
       });
-      this.el.savedImportInput.addEventListener('change', async (event) => {
+      this._addDomListener(this.el.savedImportInput, 'change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        const token = this._nextAsyncToken();
         try {
           const text = await readTextFile(file);
-          if (!text) return;
+          if (!text || !this._isAsyncCurrent(token)) return;
           this._currentSavedId = '';
-          this._loadLevelFromText(text, { resetSaved: true });
+          this._loadLevelFromText(text, { resetSaved: true, token });
         } catch (error) {
           console.error('Failed to read level file.', error);
         } finally {
@@ -615,19 +682,20 @@ class EditorUiController {
     }
 
     if (this.el.savedImportClassic && this.el.savedImportClassicInput) {
-      this.el.savedImportClassic.addEventListener('click', () => {
+      this._addDomListener(this.el.savedImportClassic, 'click', () => {
         this.el.savedImportClassicInput.click();
       });
-      this.el.savedImportClassicInput.addEventListener('change', async (event) => {
+      this._addDomListener(this.el.savedImportClassicInput, 'change', async (event) => {
         const file = event.target.files?.[0];
         if (!file) return;
+        const token = this._nextAsyncToken();
         try {
           const buffer = await readArrayBufferFile(file);
-          if (!buffer) return;
+          if (!buffer || !this._isAsyncCurrent(token)) return;
           const binary = new BinaryReader(buffer, 0, undefined, file.name);
           const levelReader = new LevelReader(binary);
           this._currentSavedId = '';
-          this._loadLevelFromClassic(levelReader, { resetSaved: true });
+          this._loadLevelFromClassic(levelReader, { resetSaved: true, token });
         } catch (error) {
           console.error('Failed to read classic level file.', error);
         } finally {
@@ -639,23 +707,29 @@ class EditorUiController {
 
   _bindLevelSelectors() {
     if (this.el.gameType) {
-      this.el.gameType.addEventListener('change', async (event) => {
+      this._addDomListener(this.el.gameType, 'change', async (event) => {
+        const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectGameType?.(value);
+        if (!this._isAsyncCurrent(token)) return;
         await this._syncAfterSelection('Load');
       });
     }
     if (this.el.levelGroup) {
-      this.el.levelGroup.addEventListener('change', async (event) => {
+      this._addDomListener(this.el.levelGroup, 'change', async (event) => {
+        const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectLevelGroup?.(value);
+        if (!this._isAsyncCurrent(token)) return;
         await this._syncAfterSelection('Load');
       });
     }
     if (this.el.levelIndex) {
-      this.el.levelIndex.addEventListener('change', async (event) => {
+      this._addDomListener(this.el.levelIndex, 'change', async (event) => {
+        const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectLevel?.(value);
+        if (!this._isAsyncCurrent(token)) return;
         await this._syncAfterSelection('Load');
       });
     }
@@ -663,7 +737,7 @@ class EditorUiController {
 
   _bindPlaytest() {
     if (!this.el.playtestToggle) return;
-    this.el.playtestToggle.addEventListener('click', () => {
+    this._addDomListener(this.el.playtestToggle, 'click', () => {
       this._togglePlaytest();
     });
   }
@@ -671,32 +745,32 @@ class EditorUiController {
   _bindCanvasInput() {
     const display = this.view?.stage?.getGameDisplay?.();
     if (!display) return;
-    display.onMouseDown.on(pos => {
+    this._addDisplayListener(display.onMouseDown, pos => {
       this._clearActiveInputFocus();
       if (this._playtest) return;
       this._pointerDown = true;
       this.controller.handlePointerDown(pos, 0, { shiftKey: this._shiftKey, altKey: this._altKey });
       this._updateCursor(pos);
     });
-    display.onMouseRightDown.on(pos => {
+    this._addDisplayListener(display.onMouseRightDown, pos => {
       this._clearActiveInputFocus();
       if (this._playtest) return;
       this._pointerDown = false;
       this.controller.handlePointerDown(pos, 2, { shiftKey: this._shiftKey, altKey: this._altKey });
       this._updateCursor(pos);
     });
-    display.onMouseUp.on(() => {
+    this._addDisplayListener(display.onMouseUp, () => {
       if (this._playtest) return;
       this._pointerDown = false;
       this.controller.handlePointerUp();
       this._refreshAfterEdit('Pointer');
     });
-    display.onMouseRightUp.on(() => {
+    this._addDisplayListener(display.onMouseRightUp, () => {
       if (this._playtest) return;
       this.controller.handlePointerUp();
       this._refreshAfterEdit('Pointer');
     });
-    display.onMouseMove.on(pos => {
+    this._addDisplayListener(display.onMouseMove, pos => {
       if (this._playtest) return;
       this.controller.handlePointerMove(pos, { isDown: this._pointerDown });
       this._updateCursor(pos);
@@ -811,10 +885,10 @@ class EditorUiController {
       this._applyPaletteViewMode();
     };
     if (this.el.paletteViewList) {
-      this.el.paletteViewList.addEventListener('click', () => setMode('list'));
+      this._addDomListener(this.el.paletteViewList, 'click', () => setMode('list'));
     }
     if (this.el.paletteViewGrid) {
-      this.el.paletteViewGrid.addEventListener('click', () => setMode('grid'));
+      this._addDomListener(this.el.paletteViewGrid, 'click', () => setMode('grid'));
     }
     this._applyPaletteViewMode();
     this._bindPaletteGridZoom();
@@ -823,7 +897,7 @@ class EditorUiController {
   _bindPaletteGridZoom() {
     const bind = (container) => {
       if (!container) return;
-      container.addEventListener('wheel', (event) => {
+      this._addDomListener(container, 'wheel', (event) => {
         if (!event.ctrlKey || this._paletteViewMode !== 'grid') return;
         if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
         event.preventDefault();
@@ -1360,6 +1434,7 @@ class EditorUiController {
 
   async _createNewLevel() {
     if (!this.view) return;
+    const token = this._nextAsyncToken();
     this.view.createBlankEditorLevel({ render: false });
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
@@ -1370,18 +1445,19 @@ class EditorUiController {
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
     this._refreshSavedList('');
-    await this._reloadAssets();
+    await this._reloadAssets(token);
+    if (!this._isAsyncCurrent(token)) return;
     await this._refreshStyleOptions();
     this._refreshHeaderFields();
     this._refreshSelection(null);
     this._refreshValidation();
-    await this._refreshPreview('New', { preserveView: false });
+    await this._refreshPreview('New', { preserveView: false, token });
   }
 
   _bindSelectionActions() {
     const bind = (el, handler, label = 'Selection') => {
       if (!el) return;
-      el.addEventListener('click', () => {
+      this._addDomListener(el, 'click', () => {
         if (handler()) {
           this._refreshAfterEdit(label);
         }
@@ -1437,14 +1513,14 @@ class EditorUiController {
 
   _bindUndoRedo() {
     if (this.el.undo) {
-      this.el.undo.addEventListener('click', () => {
+      this._addDomListener(this.el.undo, 'click', () => {
         if (this.controller.undo()) {
           this._refreshAfterEdit('Undo');
         }
       });
     }
     if (this.el.redo) {
-      this.el.redo.addEventListener('click', () => {
+      this._addDomListener(this.el.redo, 'click', () => {
         if (this.controller.redo()) {
           this._refreshAfterEdit('Redo');
         }
@@ -1510,12 +1586,14 @@ class EditorUiController {
 
   async _syncAfterSelection(label) {
     if (!this.view) return;
+    const token = this._asyncToken;
     this._currentSavedId = '';
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
-    await this._reloadAssets();
+    await this._reloadAssets(token);
+    if (!this._isAsyncCurrent(token)) return;
     this.controller.resetHistory(label || 'Load');
     this._setDirty(false);
     this._refreshUndoRedo();
@@ -1529,13 +1607,15 @@ class EditorUiController {
 
   _loadLevelFromText(text, options = {}) {
     if (!this.view) return;
+    const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
     const level = this.view.loadEditorLevelFromText(text, { render: false });
     if (!level) return;
     this.session = this.view.editorSession;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
-    this._reloadAssets().then(async () => {
+    this._reloadAssets(token).then(async () => {
+      if (!this._isAsyncCurrent(token)) return;
       this.controller.resetHistory('Import');
       this._setDirty(false);
       this._refreshUndoRedo();
@@ -1543,12 +1623,13 @@ class EditorUiController {
       this._refreshSelection(null);
       this._refreshValidation();
       if (options.resetSaved) this._refreshSavedList('');
-      await this._refreshPreview('Import', { preserveView: false });
+      await this._refreshPreview('Import', { preserveView: false, token });
     });
   }
 
   _loadLevelFromClassic(levelReader, options = {}) {
     if (!this.view) return;
+    const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
     const session = this.view.ensureEditorSession?.() || this.session;
     const editorLevel = createEditorLevelFromClassic(levelReader);
     if (!editorLevel) return;
@@ -1557,7 +1638,8 @@ class EditorUiController {
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
-    this._reloadAssets().then(async () => {
+    this._reloadAssets(token).then(async () => {
+      if (!this._isAsyncCurrent(token)) return;
       this.controller.resetHistory('Import LVL');
       this._setDirty(false);
       this._refreshUndoRedo();
@@ -1565,19 +1647,22 @@ class EditorUiController {
       this._refreshSelection(null);
       this._refreshValidation();
       if (options.resetSaved) this._refreshSavedList('');
-      await this._refreshPreview('Import LVL', { preserveView: false });
+      await this._refreshPreview('Import LVL', { preserveView: false, token });
     });
   }
 
-  async _reloadAssets() {
+  async _reloadAssets(token = this._asyncToken) {
     const config = this.view?.gameResources?.config
       || await this.view?.gameFactory?.getConfig?.(this.view?.gameType);
+    if (!this._isAsyncCurrent(token)) return null;
     const styleName = this.session?.level?.getHeader?.('STYLE');
-    this.assets = await this.assetCache.loadStyleAssets(
+    const assets = await this.assetCache.loadStyleAssets(
       styleName,
       config,
       this.view?.gameFactory?.fileProvider
     );
+    if (!this._isAsyncCurrent(token)) return null;
+    this.assets = assets;
     if (this.previewCache?.invalidateTypeIds) {
       this.previewCache.invalidateTypeIds(
         'terrain',
@@ -1595,6 +1680,8 @@ class EditorUiController {
 
   async _refreshPreview(label, options = {}) {
     if (!this.view) return;
+    const token = Number.isFinite(options.token) ? options.token : this._asyncToken;
+    if (!this._isAsyncCurrent(token)) return;
     const preserveView = options.preserveView !== false;
     if (this._previewInFlight) {
       this._previewQueued = true;
@@ -1614,6 +1701,7 @@ class EditorUiController {
         suspend: !this._playtest,
         preserveView
       });
+      if (!this._isAsyncCurrent(token)) return;
       this.view.setEditorPlaytest(this._playtest);
       this._ensureDefaultEntrancesExits();
       this._drawSelectionOverlay();

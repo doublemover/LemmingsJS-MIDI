@@ -79,8 +79,6 @@ docs/levelpacks.md:71:1 extra blank line at end of file
 docs/mcp/lemmings-mcp-implementation-notes-memresources.md:48:11 trailing whitespace
 docs/mcp/lemmings-mcp-implementation-notes-memresources.md:50:12 trailing whitespace
 docs/mcp/lemmings-mcp-implementation-notes-memresources.md:51:86 trailing whitespace
-docs/mcp/lemmings-mcp-interface-spec-memresources.md:344:47 trailing whitespace
-docs/mcp/lemmings-mcp-interface-spec-memresources.md:346:39 trailing whitespace
 docs/midi-mapping.md:81:74 trailing whitespace
 docs/nl-file-format.md:304:73 trailing whitespace
 docs/port-info/game-controller.md:67:1 extra blank line at end of file
@@ -95,14 +93,6 @@ docs/port-info/resource-packaging.md:41:1 extra blank line at end of file
 docs/port-info/skill-panel-toolbar.md:34:1 extra blank line at end of file
 docs/port-info/sound-system-overview.md:45:1 extra blank line at end of file
 docs/port-info/voice-manager.md:40:1 extra blank line at end of file
-docs/roadmap.md:94:76 trailing whitespace
-docs/roadmap.md:97:77 trailing whitespace
-docs/roadmap.md:185:79 trailing whitespace
-docs/roadmap.md:187:80 trailing whitespace
-e2e/harness.editor.spec.js:283:79 trailing whitespace
-e2e/harness.editor.spec.js:369:75 trailing whitespace
-e2e/harness.editor.spec.js:634:77 trailing whitespace
-e2e/harness.editor.spec.js:977:75 trailing whitespace
 e2e/harness.game.spec.js:85:73 trailing whitespace
 e2e/harness.game.spec.js:116:78 trailing whitespace
 e2e/midi-ui.spec.js:91:78 trailing whitespace
@@ -131,24 +121,6 @@ js/actions/ActionOhNoSystem.js:27:1 trailing whitespace
 js/actions/ActionSplatterSystem.js:7:1 trailing whitespace
 js/data/BitReader.js:6:3 trailing whitespace
 js/data/BitReader.js:66:5 trailing whitespace
-js/game/GameGui.js:247:41 trailing whitespace
-js/game/GameGui.js:793:33 trailing whitespace
-js/game/GameGui.js:797:27 trailing whitespace
-js/game/GameGui.js:798:70 trailing whitespace
-js/game/GameGui.js:799:46 trailing whitespace
-js/game/GameGui.js:912:38 trailing whitespace
-js/game/GameGui.js:913:52 trailing whitespace
-js/game/GameGui.js:917:20 trailing whitespace
-js/game/GameGui.js:918:55 trailing whitespace
-js/game/GameGui.js:924:16 trailing whitespace
-js/game/GameGui.js:934:18 trailing whitespace
-js/game/GameGui.js:935:58 trailing whitespace
-js/game/GameGui.js:936:40 trailing whitespace
-js/game/GameGui.js:1017:28 trailing whitespace
-js/game/GameTimer.js:371:6 trailing whitespace
-js/game/GameTimer.js:372:48 trailing whitespace
-js/game/GameView.js:83:28 trailing whitespace
-js/game/GameView.js:671:73 trailing whitespace
 js/game/SkillTypes.js:3:13 trailing whitespace
 js/game/SkillTypes.js:4:13 trailing whitespace
 js/game/SkillTypes.js:5:12 trailing whitespace
@@ -156,12 +128,8 @@ js/game/SkillTypes.js:6:13 trailing whitespace
 js/game/SkillTypes.js:7:13 trailing whitespace
 js/game/SkillTypes.js:8:12 trailing whitespace
 js/game/SkillTypes.js:9:11 trailing whitespace
-js/lemmings/LemmingManager.js:439:1 trailing whitespace
 js/lemmings/LemmingsSprite.js:99:5 trailing whitespace
 js/lemmings/LemmingsSprite.js:149:1 extra blank line at end of file
-js/level/GroundReader.js:101:47 trailing whitespace
-js/level/Level.js:12:48 trailing whitespace
-js/level/Level.js:273:79 trailing whitespace
 js/level/LevelLoader.js:124:65 trailing whitespace
 js/level/LevelLoader.js:212:74 trailing whitespace
 js/level/LevelLoader.js:214:18 trailing whitespace
@@ -175,19 +143,10 @@ mcp_editor_apply_spec.md:48:48 trailing whitespace
 mcp_editor_apply_spec.md:760:1 extra blank line at end of file
 test/action-systems.test.js:115:78 trailing whitespace
 test/commandmanager.test.js:74:68 trailing whitespace
-test/fileprovider.test.js:723:75 trailing whitespace
-test/fileprovider.test.js:930:79 trailing whitespace
 test/game-gui.coverage.test.js:160:78 trailing whitespace
 test/game-gui.coverage.test.js:352:76 trailing whitespace
 test/game-gui.coverage.test.js:572:77 trailing whitespace
 test/game-timer.test.js:323:74 trailing whitespace
-test/game.test.js:265:77 trailing whitespace
-test/game.test.js:269:77 trailing whitespace
-test/game.test.js:273:79 trailing whitespace
-test/game.test.js:277:77 trailing whitespace
-test/game.test.js:365:77 trailing whitespace
-test/game.test.js:373:77 trailing whitespace
-test/game.test.js:377:73 trailing whitespace
 test/history-store.test.js:1959:76 trailing whitespace
 test/lemmingmanager.test.js:289:73 trailing whitespace
 test/lemmingmanager.test.js:363:73 trailing whitespace
@@ -196,12 +155,10 @@ test/level.arrow.test.js:32:77 trailing whitespace
 test/level.ground.test.js:35:78 trailing whitespace
 test/loghandler.test.js:131:73 trailing whitespace
 test/midi/midi-input-controller.coverage.test.js:55:79 trailing whitespace
-test/midi/midi-input-controller.coverage.test.js:774:1 extra blank line at end of file
 test/midi/midi-input-controller.test.js:103:74 trailing whitespace
 test/midi/midi-mapping-helpers.test.js:161:73 trailing whitespace
 test/midi/midi-mapping.test.js:693:74 trailing whitespace
 test/midi/midi-mapping.test.js:844:79 trailing whitespace
-test/midi/midi-scheduler.coverage.test.js:715:1 extra blank line at end of file
 test/midi/midi-scheduler.test.js:59:74 trailing whitespace
 test/midi/midi-scheduler.test.js:134:73 trailing whitespace
 test/skillpanelsprites.helpers.test.js:72:79 trailing whitespace

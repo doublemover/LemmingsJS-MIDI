@@ -1115,6 +1115,25 @@ class EditorController {
     }
   }
 
+  dispose() {
+    if (this._previewTimer) {
+      clearTimeout(this._previewTimer);
+      this._previewTimer = null;
+    }
+    this._callbacks = {
+      onSelectionChange: null,
+      onLevelChange: null,
+      onPreviewRequest: null,
+      onMarqueeChange: null
+    };
+    this._drag = null;
+    this._resize = null;
+    this._marquee = null;
+    this._steelDraft = null;
+    this._pointerDown = false;
+    this._stampSet.clear();
+  }
+
   _requestPreview(label) {
     if (this._previewTimer) return;
     const callback = this._callbacks.onPreviewRequest;

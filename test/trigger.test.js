@@ -45,7 +45,7 @@ describe('Trigger', function() {
     const mockDisplay = { calls: [], drawRect(...args) { this.calls.push(args); } };
     trig.draw(mockDisplay);
     expect(mockDisplay.calls).to.have.lengthOf(1);
-    expect(mockDisplay.calls[0]).to.eql([2, 3, 3, 4, 255, 0, 0]);
+    expect(mockDisplay.calls[0]).to.eql([2, 3, 2, 3, 255, 0, 0]);
   });
 
   it('invokes owner handler and returns NO_TRIGGER when outside bounds', function() {
@@ -57,6 +57,14 @@ describe('Trigger', function() {
     expect(called).to.equal(true);
     const outside = trig.trigger(5, 5, 0);
     expect(outside).to.equal(TriggerTypes.NO_TRIGGER);
+  });
+
+  it('treats right and bottom trigger bounds as exclusive', function() {
+    const trig = new Trigger(TriggerTypes.TRAP, 10, 20, 13, 24);
+    expect(trig.trigger(10, 20, 0)).to.equal(TriggerTypes.TRAP);
+    expect(trig.trigger(12, 23, 1)).to.equal(TriggerTypes.TRAP);
+    expect(trig.trigger(13, 23, 2)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(trig.trigger(12, 24, 2)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 
   it('wraps disabledUntilTick and skips arrow debug draw', function() {

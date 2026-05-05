@@ -78,7 +78,7 @@ const summarizeSamples = (samples) => {
 };
 
 class Stage {
-  constructor(canvasForOutput) {
+  constructor(canvasForOutput, options = {}) {
     this.controller = null;
     this.fadeTimer = 0;
     this.fadeAlpha = 0;
@@ -146,6 +146,7 @@ class Stage {
     this._overlayFallbackImageData = null;
     this._overlayFallbackBuffer32 = null;
     this._overlayFallbackDisplay = { buffer32: null, imgData: null };
+    this._scaleProvider = typeof options.getScale === 'function' ? options.getScale : null;
 
     this.cursorCanvas = null;
     this.cursorX = 0;
@@ -197,6 +198,20 @@ class Stage {
   setPerfOverlay(enabled, provider = null) {
     this.perfOverlayEnabled = !!enabled;
     this.perfOverlayProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  setScaleProvider(provider = null) {
+    this._scaleProvider = typeof provider === 'function' ? provider : null;
+  }
+
+  _getRequestedScale() {
+    if (!this._scaleProvider) return 0;
+    try {
+      const value = Number(this._scaleProvider());
+      return Number.isFinite(value) ? value : 0;
+    } catch {
+      return 0;
+    }
   }
 
   setRenderExperimentFlags(flags = {}) {
@@ -687,9 +702,9 @@ class Stage {
       return;
     }
 
-    const app = globalThis?.lemmings;
-    if (app?.scale > 0) {
-      this._rawScale = app.scale;
+    const requestedScale = this._getRequestedScale();
+    if (requestedScale > 0) {
+      this._rawScale = requestedScale;
       this.gameImgProps.viewPoint.scale = this.snapScale(this._rawScale);
       this.gameImgProps.viewPoint.setX(targetX);
       this.gameImgProps.viewPoint.setY(targetY);

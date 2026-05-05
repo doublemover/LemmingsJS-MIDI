@@ -27,13 +27,14 @@ class FakeStorage {
   }
 }
 
-const buildPalette = () => ({
+const buildPalette = (seed = 0, version = null) => ({
+  ...(version == null ? {} : { version }),
   getColor(index) {
     const colors = [
-      0xff101010,
-      0xff202020,
-      0xff303030,
-      0xff404040
+      0xff101010 + seed,
+      0xff202020 + seed,
+      0xff303030 + seed,
+      0xff404040 + seed
     ];
     return colors[index % colors.length] >>> 0;
   }
@@ -131,5 +132,37 @@ describe('EditorPreviewCache', () => {
 
     cache.getPreviewUrl({ type: 'terrain', id: 2, image: imageB });
     expect(document.renderCount).to.equal(3);
+  });
+
+  it('keys preview signatures by image and palette identity', () => {
+    const document = createCanvasDocument();
+    const storage = new FakeStorage();
+    const cache = new EditorPreviewCache({ document, storage });
+    const image = buildImage([0, 1, 2, 3]);
+
+    const first = cache.getPreviewUrl({ type: 'terrain', id: 1, image });
+    image.palette = buildPalette(5);
+    const second = cache.getPreviewUrl({ type: 'terrain', id: 1, image });
+    const third = cache.getPreviewUrl({ type: 'terrain', id: 1, image });
+
+    expect(second).to.not.equal(first);
+    expect(third).to.equal(second);
+    expect(document.renderCount).to.equal(2);
+  });
+
+  it('reports cache stats and clears memory state on dispose', () => {
+    const document = createCanvasDocument();
+    const storage = new FakeStorage();
+    const cache = new EditorPreviewCache({ document, storage });
+
+    cache.getPreviewUrl({ type: 'terrain', id: 1, image: buildImage([0, 1, 2, 3]) });
+    expect(cache.getStats()).to.include({
+      memoryEntries: 1,
+      maxMemoryEntries: 512,
+      storageAvailable: true
+    });
+
+    cache.dispose();
+    expect(cache.getStats().memoryEntries).to.equal(0);
   });
 });

@@ -23,4 +23,27 @@ describe('EventHandler', function() {
     ev.trigger(2);
     expect(calls).to.eql(['a2', 'c2']);
   });
+
+  it('uses a stable dispatch snapshot when handlers mutate subscriptions', function() {
+    const ev = new EventHandler();
+    const calls = [];
+    const late = () => calls.push('late');
+    const third = () => calls.push('third');
+    const first = () => {
+      calls.push('first');
+      ev.off(third);
+      ev.on(late);
+    };
+    const second = () => calls.push('second');
+
+    ev.on(first);
+    ev.on(second);
+    ev.on(third);
+    ev.trigger();
+    expect(calls).to.eql(['first', 'second', 'third']);
+
+    calls.length = 0;
+    ev.trigger();
+    expect(calls).to.eql(['first', 'second', 'late']);
+  });
 });

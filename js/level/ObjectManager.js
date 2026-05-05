@@ -1,8 +1,8 @@
 import { getAppContext } from '../core/dependencies.js';
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const RENDER_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -101,14 +101,10 @@ class ObjectManager {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('ObjectManager render', {
-            start: perfStart,
-            detail: RENDER_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('ObjectManager render', {
+          start: perfStart,
+          detail: RENDER_MEASURE_DETAIL
+        });
       }
     }
   }

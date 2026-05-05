@@ -119,6 +119,7 @@ export const createMidiUiController = ({
   let midiUiFeatureFlags = { ...MIDI_UI_FEATURE_FLAG_DEFAULTS };
   let bpmIntervalId = null;
   let debugIntervalId = null;
+  const domListeners = [];
   const queuedRefreshSections = new Set();
   if (!isPlainObject(midiOverrides)) {
     midiOverrides = {};
@@ -299,13 +300,26 @@ export const createMidiUiController = ({
 
   const clearErrorDisplay = () => {
     const errorDisplay = getErrorDisplay();
-    if (errorDisplay) errorDisplay.innerHTML = '';
+    if (!errorDisplay) return;
+    if (typeof errorDisplay.replaceChildren === 'function') {
+      errorDisplay.replaceChildren();
+    } else if ('innerHTML' in errorDisplay) {
+      errorDisplay.innerHTML = '';
+    }
+    errorDisplay.textContent = '';
   };
 
   const appendError = (message) => {
     const errorDisplay = getErrorDisplay();
     if (!errorDisplay || !message) return;
-    errorDisplay.innerHTML += `${message}<br />`;
+    const text = String(message);
+    if (typeof document?.createTextNode === 'function' && typeof errorDisplay.appendChild === 'function') {
+      errorDisplay.appendChild(document.createTextNode(text));
+      errorDisplay.appendChild(document.createElement('br'));
+      return;
+    }
+    const prev = errorDisplay.textContent || '';
+    errorDisplay.textContent = prev ? `${prev}\n${text}` : text;
   };
 
   const renderErrorDisplay = ({ inputs, outputs } = {}) => {
@@ -1755,9 +1769,38 @@ export const createMidiUiController = ({
       getFeatureFlags: () => ({ ...midiUiFeatureFlags }),
       setOverrides: (patch) => setMidiOverrides(patch),
       refresh: () => refreshMidiUiFromConfig(),
+      dispose: () => disposeMidiUi(),
       captureNote: (note) => (typeof noteCapture === 'function' ? !!noteCapture(note) : false),
       auditionMapping: ({ targetKey = 'sfx', id, entry = null } = {}) => auditionMappingEntry({ targetKey, id, entry })
     };
+  };
+
+  const addDomListener = (element, eventName, handler) => {
+    if (!element?.addEventListener || typeof handler !== 'function') return;
+    element.addEventListener(eventName, handler);
+    domListeners.push({ element, eventName, handler });
+  };
+
+  const disposeDomListeners = () => {
+    while (domListeners.length) {
+      const { element, eventName, handler } = domListeners.pop();
+      element?.removeEventListener?.(eventName, handler);
+    }
+  };
+
+  const disposeMidiUi = () => {
+    clearUiIntervals();
+    clearPendingRefreshTimers();
+    unbindDeviceListeners();
+    disposeDomListeners();
+    clearMidiUiHook();
+    clearNoteCapture();
+    midiInputController?.setNoteCapture?.(null);
+    midiInputController?.detach?.();
+    activeMidiInput = null;
+    midiUiBound = false;
+    envControlsBound = false;
+    lastUiSignature = null;
   };
 
   const bindMidiUi = () => {
@@ -1954,7 +1997,7 @@ export const createMidiUiController = ({
       for (const [id, handler] of Object.entries(handlersById)) {
         const element = document.getElementById(id);
         if (!element || typeof handler !== 'function') continue;
-        element.addEventListener(eventName, handler);
+        addDomListener(element, eventName, handler);
       }
     };
 
@@ -2080,6 +2123,7 @@ export const createMidiUiController = ({
     getStorageKeys() {
       return { ...midiStorageKeys };
     },
+    dispose: disposeMidiUi,
     __test__: {
       applySectionStates: tabUi.applySectionStates,
       buildPositionMappingList,

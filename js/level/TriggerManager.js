@@ -2,9 +2,10 @@ import { ColorPalette } from '../render/ColorPalette.js';
 import { Frame } from '../render/Frame.js';
 import { TriggerTypes } from './TriggerTypes.js';
 import { getAppContext } from '../core/dependencies.js';
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const TRIGGER_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -28,13 +29,14 @@ const TRIGGER_MEASURE_DETAIL = Object.freeze({
  *  • Grid cell size defaults to 16 px (power-of-two → shift 4)
  *  • Grid columns/rows are computed from levelW / levelH on construction
  *  • All indices are clamped, so out-of-bounds writes are impossible
+ *  • Trigger rectangles are half-open: [x1, x2) / [y1, y2)
  */
 
 class TriggerManager {
   /**
    * @param {GameTimer} gameTimer
-   * @param {number}  [levelW=1600]   – level width in pixels (inclusive)
-   * @param {number}  [levelH=160]    – level height in pixels (inclusive)
+   * @param {number}  [levelW=1600]   – level width in pixels
+   * @param {number}  [levelH=160]    – level height in pixels
    * @param {number}  [cellSize=16]   – grid cell size, must be power of two
    */
   constructor (gameTimer, levelW = 1600, levelH = 160, cellSize = 16) {
@@ -42,12 +44,12 @@ class TriggerManager {
     this.gameTimer = gameTimer;
     this._cellSize = cellSize;
     this._shift    = Math.log2(cellSize) | 0;   // integer shift
-    this._levelW   = levelW;
-    this._levelH   = levelH;
+    this._levelW   = Math.max(1, Math.trunc(Number(levelW) || 1600));
+    this._levelH   = Math.max(1, Math.trunc(Number(levelH) || 160));
 
     /* derive grid */
-    this._cols   = (levelW  >> this._shift) + 1;   // e.g. 1600 → 101
-    this._rows   = (levelH  >> this._shift) + 1;   // e.g.  160 → 11
+    this._cols   = Math.max(1, Math.ceil(this._levelW / cellSize));
+    this._rows   = Math.max(1, Math.ceil(this._levelH / cellSize));
     const slots  = this._cols * this._rows;
 
     this._grid   = Array.from({length: slots}, () => []);
@@ -60,8 +62,8 @@ class TriggerManager {
     this._lastHitTick   = new Uint32Array(slots);
 
     /* handy bounds */
-    this._maxX = levelW;
-    this._maxY = levelH;
+    this._maxX = this._levelW - 1;
+    this._maxY = this._levelH - 1;
 
     /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
@@ -103,6 +105,12 @@ class TriggerManager {
   addRange (arr) {
     for (let i = 0; i < arr.length; ++i) this.add(arr[i]);
     if (arr.length) this._debugFrame = null;
+  }
+
+  /** Remove one specific trigger instance. */
+  remove(trigger) {
+    if (!this._triggers?.has(trigger)) return;
+    this.#remove(trigger);
   }
 
   /** Remove every trigger that belongs to `owner` */
@@ -162,14 +170,10 @@ class TriggerManager {
       return TriggerTypes.NO_TRIGGER;
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('TriggerManager trigger', {
-            start: perfStart,
-            detail: TRIGGER_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('TriggerManager trigger', {
+          start: perfStart,
+          detail: TRIGGER_MEASURE_DETAIL
+        });
       }
     }
   }
@@ -204,22 +208,33 @@ class TriggerManager {
     const color = ColorPalette.colorFromRGB(255, 0, 0);
     for (const tr of this._triggers) {
       if (tr.type === 7 || tr.type === 8) continue; // arrows handled elsewhere
-      frame.drawRect(tr.x1, tr.y1, tr.x2 - tr.x1, tr.y2 - tr.y1, color);
+      frame.drawRect(
+        tr.x1,
+        tr.y1,
+        Math.max(0, tr.x2 - tr.x1 - 1),
+        Math.max(0, tr.y2 - tr.y1 - 1),
+        color
+      );
     }
     this._debugFrame = frame;
   }
 
   #insert (trigger) {
     /* normalise & clamp bounds */
-    let x0 = Math.max(0, Math.min(this._maxX, Math.min(trigger.x1, trigger.x2)));
-    let x1 = Math.max(0, Math.min(this._maxX, Math.max(trigger.x1, trigger.x2)));
-    let y0 = Math.max(0, Math.min(this._maxY, Math.min(trigger.y1, trigger.y2)));
-    let y1 = Math.max(0, Math.min(this._maxY, Math.max(trigger.y1, trigger.y2)));
+    const x0 = Math.max(0, Math.min(this._levelW, Math.min(trigger.x1, trigger.x2)));
+    const x1 = Math.max(0, Math.min(this._levelW, Math.max(trigger.x1, trigger.x2)));
+    const y0 = Math.max(0, Math.min(this._levelH, Math.min(trigger.y1, trigger.y2)));
+    const y1 = Math.max(0, Math.min(this._levelH, Math.max(trigger.y1, trigger.y2)));
+    if (x1 <= x0 || y1 <= y0) {
+      trigger.__bucketIndices = [];
+      trigger.__bucketCellPositions = [];
+      return;
+    }
 
     const c0 = x0 >> this._shift;
-    const c1 = x1 >> this._shift;
+    const c1 = (x1 - 1) >> this._shift;
     const r0 = y0 >> this._shift;
-    const r1 = y1 >> this._shift;
+    const r1 = (y1 - 1) >> this._shift;
 
     const bucketCount = (r1 - r0 + 1) * (c1 - c0 + 1);
     const buckets = new Array(bucketCount);

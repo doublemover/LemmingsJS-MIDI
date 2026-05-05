@@ -3,6 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { pathToFileURL } from 'url';
+import { load } from 'cheerio';
 import { processHtmlFile } from '../scripts/processHtmlFile.js';
 
 const withTempDir = (fn) => {
@@ -129,6 +130,23 @@ describe('processHtmlFile options', function () {
       assert.ok(!/src="app.js"/.test(result.html));
     });
   });
+
+  it('inlines CSS text without allowing literal closing style tags to break HTML', function () {
+    withTempDir((dir) => {
+      const cssPath = path.join(dir, 'style.css');
+      fs.writeFileSync(cssPath, 'body::before{content:"</style><script>x</script>";}');
+      const html = '<!DOCTYPE html><html><head><link rel="stylesheet" href="style.css"></head><body></body></html>';
+      const file = path.join(dir, 'index.html');
+      fs.writeFileSync(file, html);
+
+      const result = processHtmlFile(file, { inline: true });
+      const $ = load(result.html);
+      assert.ok(result.html.includes('<style>'));
+      assert.ok(!result.html.includes('</style><script>x</script>'));
+      assert.strictEqual($('script').length, 0);
+    });
+  });
+
   it('extracts inline event handlers', function () {
     withTempDir((dir) => {
       const html = '<!DOCTYPE html><html><body><button onclick="doThing()">go</button></body></html>';

@@ -4,6 +4,93 @@ This roadmap consolidates outstanding items from the README (In Progress,
 Roadmap, Bugs and Misc) plus the current workstreams. It is the single place to
 track ongoing and future work. Keep this roadmap current as work lands.
 
+## Current branch readiness: PR #896 (2026-05-05)
+- [x] Fix MCPB surface bundle packaging so `npm run mcpb:build` outputs a
+  runnable server artifact with the split MCP import graph included.
+  GitHub: #897. Touchpoints: `scripts/build-mcpb-bundle.js`,
+  `test/build-mcpb-bundle.test.js`, `docs/mcp/publishing.md`.
+- [x] Align Playwright specs with the supported `window.__E2E__` contract:
+  remove remaining `window.lemmings` reads and require `?e2e=1` anywhere a
+  spec waits on the harness. GitHub: #906. Touchpoints: `e2e/*.spec.js`,
+  `e2e/helpers/*`, `js/app/e2eHarness.js`.
+- [x] Preserve MIDI flag and other non-lemming dynamic triggers across history,
+  rewind, seek, and replay by adding explicit replay-managed trigger metadata
+  and rehydration. GitHub: #899. Touchpoints: `js/game/Game.js`,
+  `js/game/GameView.js`, `js/game/HistoryStore.js`.
+- [x] Make MCP protocol/session metadata truthful and recoverable: normalize
+  event cursors, derive accepted tool-name forms from rollout state, and either
+  implement or explicitly deprecate `spectator.openBrowser`. GitHub: #898.
+  Touchpoints: `mcp/server.js`, `mcp/eventQueue.js`, `mcp/toolRouting.js`.
+- [x] Layer gamepad binding sources so hardcoded defaults, file defaults,
+  persisted user overrides, and in-session remaps compose deterministically.
+  Persist only user override intent. GitHub: #907. Touchpoints:
+  `js/input/GamepadInputController.js`, `docs/gamepad-bindings.md`,
+  `test/input/gamepad-input-controller.test.js`.
+- [x] Clarify render capability vocabulary so the Canvas2D staging +
+  `drawImage` present path is not confused with browser `OffscreenCanvas`
+  support. GitHub: #908. Touchpoints: `js/core/capabilityMatrix.js`,
+  `docs/TESTING.md`, `test/capability-matrix.test.js`.
+- [x] Finish singleton cleanup and guardrails in app/render/editor slices:
+  remove or isolate remaining raw global defaults and expand lint/test coverage
+  beyond the current runtime-only paths. GitHub: #902. Touchpoints:
+  `js/render/Stage.js`, `js/app/canvasFocusBlur.js`,
+  `js/editor/EditorStorage.js`, `eslint.config.js`, `scripts/runTests.js`.
+- [x] Finish text hygiene cleanup by making `git diff --check
+  origin/master...HEAD` clean without relying on baseline entries for newly
+  renamed files. GitHub: #904. Touchpoints:
+  `test/midi/midi-input-controller.coverage.test.js`,
+  `test/midi/midi-scheduler.coverage.test.js`,
+  `scripts/check-text-hygiene-baseline.txt`.
+- [x] Rebase or merge the latest `origin/master` change (`11c0880 Create
+  FUNDING.yml`) before merging PR #896.
+- [x] Finish Playwright service-worker validation with explicit local opt-in,
+  same-origin scope checks, and lifecycle cleanup. GitHub: #905. Touchpoints:
+  `e2e/service-worker.spec.js`, `js/app/registerServiceWorker.js`,
+  `playwright.config.js`, `test/register-service-worker.test.js`.
+- [x] Correct trigger rectangle coordinate semantics and level-dimension
+  indexing so half-open bounds are used consistently. GitHub: #909.
+  Touchpoints: `js/level/Trigger.js`, `js/level/TriggerManager.js`,
+  `js/game/Game.js`, `test/triggermanager.test.js`.
+- [x] Make `GameTimer` cadence deterministic and injectable for headless and
+  multi-runtime tests. GitHub: #910. Touchpoints: `js/game/GameTimer.js`,
+  `test/game-timer.test.js`.
+- [x] Add editor UI lifecycle ownership, idempotent binding, and stale async
+  cancellation for imports/style reloads. GitHub: #911. Touchpoints:
+  `js/app/editorUiController.js`, `js/editor/EditorController.js`,
+  `test/editor/editor-ui-controller.lifecycle.test.js`.
+- [x] Remove browser Node fallbacks and add cache lifecycle/coalescing for
+  asset loading. GitHub: #912. Touchpoints: `js/data/FileProvider.js`,
+  `js/level/GroundReader.js`, `js/steelSpritesData.js`.
+- [x] Clarify `BinaryReader` endian naming and enforce logical-window offset
+  bounds. GitHub: #913. Touchpoints: `js/data/BinaryReader.js`,
+  `test/binaryreader.test.js`.
+- [x] Reduce MIDI hot-path allocations by indexing note actions and reusing
+  scheduler/router scratch buffers. GitHub: #914. Touchpoints:
+  `js/midi/input/MidiInputController.js`, `js/midi/MidiScheduler.js`,
+  `js/midi/MidiEventRouter.js`.
+- [x] Bound editor history memory, expose history/cache stats, and make preview
+  cache identity palette-aware. GitHub: #915. Touchpoints:
+  `js/editor/EditorHistory.js`, `js/app/editorPreviewCache.js`,
+  `test/editor/editor-history.test.js`.
+- [x] Harden event/performance lifecycle behavior: mutation-safe event dispatch,
+  shared-listener disposal, and bounded performance measurements. GitHub: #916.
+  Touchpoints: `js/util/EventHandler.js`, `js/commands/CommandManager.js`,
+  `js/util/performanceInstrumentation.js`.
+- [x] Add service-worker, MIDI UI, procgen boot, and editor controller cleanup
+  paths for long-running sessions. GitHub: #917. Touchpoints:
+  `js/app/registerServiceWorker.js`, `js/app/midiUiController.js`,
+  `js/app/procgenBoot.js`.
+- [x] Harden offline asset tooling with metadata path validation, bounded
+  archive caches, and safe CSS inlining. GitHub: #918. Touchpoints:
+  `tools/packPipeline.js`, `tools/NodeFileProvider.js`,
+  `scripts/processHtmlFile.js`, `docs/offline-tools.md`.
+- [x] Changed-file test selection now resolves a meaningful base by default and
+  has category coverage for editor/offline tooling. GitHub: #900.
+- [x] Maintained Mocha npm scripts now route through `scripts/runTests.js`.
+  GitHub: #901.
+- [x] Stage overlay visibility transitions now invalidate composition and have
+  regression coverage. GitHub: #903.
+
 ## Phase 1: E2E harness adoption and baseline testing
 - [x] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
   saved-level ordering, time travel invariants, reverse playback).
@@ -91,10 +178,10 @@ Notes:
 
 ## Phase 6: Performance and benchmarks
 - [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
-- [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for     
+- [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for
   effectiveness and necessity.
 - [x] Standalone updated performance benchmark.
-- [x] Standalone stress test for history memory (ticks at 30x/60x/120x until    
+- [x] Standalone stress test for history memory (ticks at 30x/60x/120x until
   exhaustion).
 - [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
 
@@ -182,9 +269,9 @@ Notes:
 
 ## Phase 16: MCP v2 docs, examples, and compatibility checks
 - [x] Document compact defaults, delta usage, and event modes in `docs/mcp/`.
-- [x] Update client call examples/configs for the short tool names and default  
+- [x] Update client call examples/configs for the short tool names and default
   compact preset.
-- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new  
+- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new
   defaults and update the compatibility matrix.
 
 ## Phase 17: MCP client compatibility + MCPB publishing readiness

@@ -419,6 +419,46 @@ describe('NodeFileProvider', function() {
     expect(provider.tarCache.size).to.equal(0);
     expect(provider.rarCache.size).to.equal(0);
     expect(provider.nxpCache.size).to.equal(0);
+    expect(provider.getCacheStats().zip.bytes).to.equal(0);
+  });
+
+  it('bounds archive caches by entry count and bytes', function() {
+    const provider = makeProvider({
+      maxArchiveCacheEntries: 2,
+      maxArchiveCacheBytes: 1024
+    });
+    for (const name of ['a.nxp', 'b.nxp', 'c.nxp', 'd.nxp']) {
+      writeNxp(path.join(tmpDir, name), [
+        { name: 'data/file.bin', data: Buffer.from(name) }
+      ]);
+    }
+
+    provider._getNxp('a.nxp');
+    provider._getNxp('b.nxp');
+    provider._getNxp('c.nxp');
+    expect(provider.getCacheStats().nxp.entries).to.equal(2);
+    expect([...provider.nxpCache.keys()].map(key => path.basename(key))).to.deep.equal(['b.nxp', 'c.nxp']);
+
+    provider._getNxp('b.nxp');
+    provider._getNxp('d.nxp');
+    expect([...provider.nxpCache.keys()].map(key => path.basename(key))).to.deep.equal(['b.nxp', 'd.nxp']);
+
+    const byteBounded = makeProvider({
+      maxArchiveCacheEntries: 10,
+      maxArchiveCacheBytes: 5
+    });
+    writeNxp(path.join(tmpDir, 'e.nxp'), [
+      { name: 'data/file.bin', data: Buffer.from([1, 2, 3, 4]) }
+    ]);
+    writeNxp(path.join(tmpDir, 'f.nxp'), [
+      { name: 'data/file.bin', data: Buffer.from([5, 6, 7, 8]) }
+    ]);
+    byteBounded._getNxp('e.nxp');
+    byteBounded._getNxp('f.nxp');
+    expect(byteBounded.getCacheStats().nxp).to.include({
+      entries: 1,
+      bytes: 4
+    });
   });
 
   it('rejects invalid nxp archives', function() {

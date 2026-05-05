@@ -112,9 +112,23 @@ describe('TriggerManager', function () {
 
     expect(tm.trigger(-1, 0)).to.equal(TriggerTypes.NO_TRIGGER);
     expect(tm.trigger(0, -1)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(31, 1)).to.equal(TriggerTypes.NO_TRIGGER);
     expect(tm.trigger(32, 1)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(1, 31)).to.equal(TriggerTypes.NO_TRIGGER);
     expect(tm.trigger(1, 32)).to.equal(TriggerTypes.NO_TRIGGER);
     expect(tm.trigger(2, 2)).to.equal(TriggerTypes.TRAP);
+  });
+
+  it('uses real level dimensions and half-open trigger bounds', function () {
+    const timer = { tick: 0, getGameTicks () { return this.tick; } };
+    const tm = new TriggerManager(timer, 2000, 240, 16);
+    const tr = new Trigger(TriggerTypes.TRAP, 1700, 200, 1710, 210);
+    tm.add(tr);
+
+    expect(tm.trigger(1705, 205)).to.equal(TriggerTypes.TRAP);
+    expect(tm.trigger(1709, 209)).to.equal(TriggerTypes.TRAP);
+    expect(tm.trigger(1710, 209)).to.equal(TriggerTypes.NO_TRIGGER);
+    expect(tm.trigger(1709, 210)).to.equal(TriggerTypes.NO_TRIGGER);
   });
 
   it('colors cells based on state in renderDebug', function () {

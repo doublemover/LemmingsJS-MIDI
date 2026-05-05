@@ -1,9 +1,9 @@
 import { EventHandler } from '../util/EventHandler.js';
 import { getAppContext } from '../core/dependencies.js';
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const EMIT_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -117,14 +117,10 @@ class SoundEventBus {
       if (this.onEvent) this.onEvent.trigger(payload);
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('SoundEventBus emit', {
-            start: perfStart,
-            detail: EMIT_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('SoundEventBus emit', {
+          start: perfStart,
+          detail: EMIT_MEASURE_DETAIL
+        });
       }
     }
   }

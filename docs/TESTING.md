@@ -82,8 +82,8 @@ npm run bench-smoke -- --soak
 For render experiments, use query flags in non-default runs and keep rollback
 ready:
 
-- `offscreenPresent=true` (`osp=true`): enables offscreen present-path
-  experiment when supported.
+- `offscreenPresent=true` (`osp=true`): legacy query name for the Canvas2D
+  staging plus `drawImage` present-path experiment when supported.
 - `workerOffscreen=true` (`osw=true`): requests worker/offscreen path; runtime
   falls back automatically when unsupported.
 
@@ -92,7 +92,9 @@ through `window.__E2E__.getDiagnostics()` / `window.__E2E__.getState()`:
 
 - `capabilities.webMidi`, `capabilities.offscreenCanvas`,
   `capabilities.imageBitmap`, `capabilities.worker`.
-- `capabilities.renderPaths` for deterministic fallback selection.
+- `capabilities.renderPaths` for deterministic fallback selection. New
+  diagnostics use `presentPathSupported`/`drawimage_present`; the older
+  `offscreenPresentSupported` field is retained as a compatibility alias.
 - `rolloutFlags` for staged rollout / emergency rollback state.
 
 Rollout and rollback query toggles:
@@ -162,3 +164,19 @@ npm run check-text-hygiene
 npm run check-undefined
 npm test
 ```
+
+## Playwright base URL overrides
+
+Playwright defaults to `https://localhost:8080`. Override the origin with
+`LEMMINGS_E2E_BASE_URL` when validating another same-machine or LAN URL:
+
+```bash
+npm run test-e2e -- e2e/service-worker.spec.js
+$env:LEMMINGS_E2E_BASE_URL = "https://127.0.0.1:8080"
+npm run test-e2e -- e2e/service-worker.spec.js
+Remove-Item Env:\LEMMINGS_E2E_BASE_URL
+```
+
+The service-worker smoke asserts same-origin scope instead of literal localhost,
+so the same spec should pass for localhost and non-localhost origins served by
+the configured HTTPS server.

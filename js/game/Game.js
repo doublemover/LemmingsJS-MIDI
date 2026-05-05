@@ -16,10 +16,10 @@ import { ParticleTable } from '../render/ParticleTable.js';
 import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
 import { TriggerManager } from '../level/TriggerManager.js';
 import { getAppContext, getDependency } from '../core/dependencies.js';
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const RUN_LOGIC_MEASURE_DETAIL = Object.freeze({
   track: 'Game',
@@ -169,7 +169,7 @@ class Game extends BaseLogger {
     this.commandManager       = new CommandMgr(this, this.gameTimer);
     this.skills               = new Skills(level);
     this.gameVictoryCondition = new Victory(level);
-    this.triggerManager       = new Triggers(this.gameTimer);
+    this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height);
     this.triggerManager.addRange(level.triggers);
 
     const [masks, lemSprite] = await Promise.all([
@@ -274,14 +274,10 @@ class Game extends BaseLogger {
       this.lemmingManager.tick();
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('Game runGameLogic', {
-            start: perfStart,
-            detail: { devtools: RUN_LOGIC_MEASURE_DETAIL }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('Game runGameLogic', {
+          start: perfStart,
+          detail: { devtools: RUN_LOGIC_MEASURE_DETAIL }
+        });
       }
     }
   }
@@ -339,14 +335,10 @@ class Game extends BaseLogger {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('Game checkForGameOver', {
-            start: perfStart,
-            detail: { devtools: GAME_OVER_MEASURE_DETAIL }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('Game checkForGameOver', {
+          start: perfStart,
+          detail: { devtools: GAME_OVER_MEASURE_DETAIL }
+        });
       }
     }
   }
@@ -371,14 +363,10 @@ class Game extends BaseLogger {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('Game render', {
-            start: perfStart,
-            detail: { devtools: RENDER_MEASURE_DETAIL }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('Game render', {
+          start: perfStart,
+          detail: { devtools: RENDER_MEASURE_DETAIL }
+        });
       }
     }
   }

@@ -360,6 +360,29 @@ describe('MidiScheduler', function() {
     expect(snapshot.past.bySfx.get(1).count).to.equal(3);
   });
 
+  it('compacts stale rate entries in place and removes planned phases', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    const keptSent = { timeMs: 900, count: 2, bytes: 6, sfxId: 1 };
+    const future = { timeMs: 1200, count: 1, bytes: 3, token: 7, phase: 'off' };
+    scheduler._rateSent = [
+      { timeMs: -5000, count: 1, bytes: 3 },
+      keptSent
+    ];
+    scheduler._ratePlanned = [
+      { timeMs: 800, count: 1, bytes: 3, token: 7, phase: 'on' },
+      future
+    ];
+
+    scheduler._pruneRateEntries(1000);
+
+    expect(scheduler._rateSent).to.include(keptSent);
+    expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(true);
+    expect(scheduler._ratePlanned).to.deep.equal([future]);
+
+    scheduler._removePlannedRateEntries(7, 'off');
+    expect(scheduler._ratePlanned).to.have.lengthOf(0);
+  });
+
   it('estimateMessages accounts for pitch bend without MPE', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     const estimate = scheduler.estimateMessages({ note: 60, pitchBend: 0.5 });

@@ -270,6 +270,23 @@ describe('EditorController', () => {
     expect(history.snapshots.some(entry => entry.label === 'Erase')).to.equal(true);
   });
 
+  it('coalesces long brush drags into one committed history snapshot', () => {
+    const session = buildSession();
+    const history = new FakeHistory();
+    const controller = new EditorController({ session, history, snapEnabled: false, gridSize: 1 });
+    controller.setAssets(buildAssets());
+    controller.setTool(EditorTools.BRUSH);
+
+    controller.handlePointerDown({ x: 0, y: 0 }, 0);
+    for (let i = 1; i <= 64; i += 1) {
+      controller.handlePointerMove({ x: i, y: i % 8 }, { isDown: true });
+    }
+    controller.handlePointerUp();
+
+    expect(history.snapshots.filter(entry => entry.label === 'Brush')).to.have.length(1);
+    expect(session.level.terrains.length).to.be.greaterThan(10);
+  });
+
   it('stamps brush lines', () => {
     const session = buildSession();
     const controller = new EditorController({ session, gridSize: 4, snapEnabled: true });
@@ -1048,6 +1065,21 @@ describe('EditorController', () => {
     controller._drag = { label: '', entries: [] };
     controller._strokeChanged = true;
     controller.handlePointerUp();
+  });
+
+  it('dispose cancels pending preview callbacks', () => {
+    const session = buildSession();
+    const controller = new EditorController({ session, history: new FakeHistory(), previewDelay: 5 });
+    const previewEvents = [];
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    controller.setCallbacks({ onPreviewRequest: label => previewEvents.push(label) });
+
+    controller._requestPreview('Dispose');
+    controller.dispose();
+    clock.tick(5);
+    clock.uninstall();
+
+    expect(previewEvents).to.deep.equal([]);
   });
 
   it('removes gadgets by id', () => {

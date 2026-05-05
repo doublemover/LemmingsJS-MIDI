@@ -45,18 +45,10 @@ const getCanvasPoint = async (page, xRatio, yRatio) => {
   };
 };
 
-const getWorldPointFromPage = async (page, point, canvasBox) => {
-  return page.evaluate(({ x, y, canvasX, canvasY }) => {
-    const stage = window.lemmings?.stage;
-    if (!stage) return null;
-    const img = stage.gameImgProps;
-    const localX = (x - canvasX) - img.x;
-    const localY = (y - canvasY) - img.y;
-    return {
-      x: img.viewPoint.getSceneX(localX),
-      y: img.viewPoint.getSceneY(localY)
-    };
-  }, { x: point.x, y: point.y, canvasX: canvasBox.x, canvasY: canvasBox.y });
+const getWorldPointFromPage = async (page, point) => {
+  return page.evaluate(({ x, y }) => {
+    return window.__E2E__?.stageWorldFromPage?.({ x, y }) || null;
+  }, { x: point.x, y: point.y });
 };
 
 const snapWorldValue = (value, gridSize, snapEnabled) => {
@@ -105,36 +97,14 @@ const worldToPage = (state, canvasBox, point) => {
 };
 
 const getPagePointFromWorld = async (page, point) => {
-  return page.evaluate(({ x, y }) => {
-    const stage = window.lemmings?.stage;
-    const canvas = stage?.stageCav;
-    const rect = canvas?.getBoundingClientRect?.();
-    const viewRect = stage?.getGameViewRect?.();
-    const scale = stage?.gameImgProps?.viewPoint?.scale ?? 1;
-    if (!rect || !viewRect) return null;
-    const localX = (stage.gameImgProps?.x ?? 0) + (x - viewRect.x) * scale;
-    const localY = (stage.gameImgProps?.y ?? 0) + (y - viewRect.y) * scale;
-    return {
-      x: rect.left + localX,
-      y: rect.top + localY
-    };
+  return page.evaluate((worldPoint) => {
+    return window.__E2E__?.stagePageFromWorld?.(worldPoint) || null;
   }, point);
 };
 
 const centerViewportOn = async (page, point) => {
-  await page.evaluate(({ x, y }) => {
-    const stage = window.lemmings?.stage;
-    if (!stage) return;
-    const viewRect = stage.getGameViewRect?.();
-    if (!viewRect) return;
-    const scale = stage.gameImgProps?.viewPoint?.scale ?? 1;
-    stage.applyViewport(
-      stage.gameImgProps,
-      x - viewRect.w / 2,
-      y - viewRect.h / 2,
-      scale
-    );
-    stage.redraw?.();
+  await page.evaluate((targetPoint) => {
+    window.__E2E__?.centerStageOn?.(targetPoint);
   }, point);
 };
 
@@ -256,8 +226,7 @@ test('Editor playtest toggles timer and input state', async ({ page }) => {
   expect(state.editor.playtest).toBe(false);
   expect(state.game.timer.running).toBe(false);
   expect(state.stage.panEnabled).toBe(false);
-  const inputBefore = await page.evaluate(() => window.lemmings?.game?.inputEnabled);
-  expect(inputBefore).toBe(false);
+  expect(state.game.inputEnabled).toBe(false);
 
   await page.click('#editorPlaytestToggle');
   await page.waitForFunction(() => {
@@ -266,8 +235,7 @@ test('Editor playtest toggles timer and input state', async ({ page }) => {
   });
   state = await getEditorState(page);
   expect(state.stage.panEnabled).toBe(true);
-  const inputAfter = await page.evaluate(() => window.lemmings?.game?.inputEnabled);
-  expect(inputAfter).toBe(true);
+  expect(state.game.inputEnabled).toBe(true);
 
   await page.click('#editorPlaytestToggle');
   await page.waitForFunction(() => {
@@ -276,11 +244,10 @@ test('Editor playtest toggles timer and input state', async ({ page }) => {
   });
   state = await getEditorState(page);
   expect(state.stage.panEnabled).toBe(false);
-  const inputStopped = await page.evaluate(() => window.lemmings?.game?.inputEnabled);
-  expect(inputStopped).toBe(false);
+  expect(state.game.inputEnabled).toBe(false);
 });
 
-test('Editor level selection loads into editor session', async ({ page }) => {  
+test('Editor level selection loads into editor session', async ({ page }) => {
   const state = await getEditorState(page);
   const levelSelect = page.locator('#editorLevelIndexSelect');
   const optionCount = await levelSelect.locator('option').count();
@@ -366,7 +333,7 @@ test('Editor tool.place uses centered terrain placement', async ({ page }) => {
   expect(placed.props.Y).toBe(snappedY - offsetY);
 });
 
-test('Editor layer order buttons reorder selection', async ({ page }) => {      
+test('Editor layer order buttons reorder selection', async ({ page }) => {
   const state = await getEditorState(page);
   const terrainId = state.editor.assets.terrain[0]?.id;
   expect(Number.isFinite(terrainId)).toBe(true);
@@ -553,12 +520,9 @@ test('Editor placement preserves viewport when panned', async ({ page }) => {
     throw new Error('Missing stage view data');
   }
   const targetX = Math.max(0, viewRect.x + viewRect.w * 0.6);
-  await page.evaluate(({ x, scale }) => {
-    const stage = window.lemmings?.stage;
-    if (!stage) return;
-    stage.applyViewport(stage.gameImgProps, x, 0, scale);
-    stage.redraw();
-  }, { x: targetX, scale });
+  await page.evaluate(({ x, y, scale }) => {
+    window.__E2E__?.centerStageOn?.({ x, y, scale });
+  }, { x: targetX + viewRect.w / 2, y: viewRect.y + viewRect.h / 2, scale });
 
   await page.waitForFunction((x) => {
     const rect = window.__E2E__.getState().stage.viewRect;
@@ -631,7 +595,7 @@ test('Editor selection updates inspector state', async ({ page }) => {
   await expect(page.locator('#editorSelX')).toBeEnabled();
 });
 
-test('Editor brush and steel tools modify level data', async ({ page }) => {    
+test('Editor brush and steel tools modify level data', async ({ page }) => {
   const before = await getEditorState(page);
   const terrainBefore = before.editor.session.level.terrains.length;
   const brushStart = getWorldPointFromRatio(before, 0.2, 0.3);
@@ -974,7 +938,7 @@ test('Editor entry.update writes gadget width and height props', async ({ page }
   expect(updated.props.HEIGHT).toBeGreaterThan(0);
 });
 
-test('Editor view stays stable during edit actions', async ({ page }) => {      
+test('Editor view stays stable during edit actions', async ({ page }) => {
   let state = await getEditorState(page);
   const initialRect = state.stage.viewRect;
   expect(initialRect).toBeTruthy();
@@ -1014,4 +978,84 @@ test('Editor apply API supports entry edits and exports', async ({ page }) => {
   expect(result.state?.session?.level?.terrains?.length || 0).toBeGreaterThan(0);
   const entry = result.state?.session?.level?.terrains?.[0];
   expect(entry?.uid).toBeTruthy();
+});
+
+test('Editor MIDI flag triggers survive playtest seek and reverse replay', async ({ page }) => {
+  const editorState = await getEditorState(page);
+  const gadgetId = editorState.editor.assets.gadgets[0]?.id;
+  expect(Number.isFinite(gadgetId)).toBe(true);
+
+  const setup = await applyEditorOps(page, [
+    { type: 'level.new', args: { header: { TITLE: 'MIDI Flag Replay', STYLE: 'dirt' } } },
+    {
+      type: 'entry.add',
+      args: {
+        kind: 'gadget',
+        insert: { index: 0 },
+        props: { PIECE: gadgetId, X: 96, Y: 80 }
+      }
+    },
+    {
+      type: 'entry.update',
+      args: {
+        ref: { kind: 'gadget', index: 0 },
+        set: {
+          MIDI_FLAG: true,
+          MIDI_FLAG_ID: 2,
+          MIDI_FLAG_COOLDOWN: 3
+        }
+      }
+    }
+  ], {
+    history: { record: false },
+    preview: { refresh: true, preserveViewport: true },
+    validate: { run: false },
+    returnState: 'full'
+  });
+  expect(setup.ok).toBe(true);
+
+  await page.evaluate(() => window.__E2E__.setEditorPlaytest(true));
+  await page.evaluate(() => window.__E2E__.pause());
+  await page.waitForFunction(() => {
+    const triggers = window.__E2E__.getState().game?.triggers?.entries || [];
+    return triggers.some(trigger => trigger.ownerKind === 'midi_flag' && trigger.ownerData?.midiFlagId === 2);
+  });
+
+  const baseline = await page.evaluate(() => {
+    const state = window.__E2E__.getState();
+    const trigger = state.game.triggers.entries.find(entry =>
+      entry.ownerKind === 'midi_flag' && entry.ownerData?.midiFlagId === 2
+    );
+    return {
+      tick: state.game.timer.tickIndex,
+      trigger
+    };
+  });
+  expect(baseline.trigger?.ownerId).toContain('midi_flag_2');
+  expect(baseline.trigger?.ownerData?.triggerType).toBeGreaterThan(1000);
+
+  await page.evaluate(() => window.__E2E__.step(8));
+  await page.evaluate((tick) => window.__E2E__.seek(tick), baseline.tick);
+  const restored = await page.evaluate(() => {
+    const state = window.__E2E__.getState();
+    return state.game.triggers.entries.find(entry =>
+      entry.ownerKind === 'midi_flag' && entry.ownerData?.midiFlagId === 2
+    );
+  });
+  expect(restored).toEqual(baseline.trigger);
+
+  await page.evaluate(() => window.__E2E__.step(10));
+  const tickBeforeReverse = await page.evaluate(() => window.__E2E__.getState().game.timer.tickIndex);
+  await page.evaluate(() => window.__E2E__.startReverse());
+  await page.waitForFunction((startTick) => {
+    return window.__E2E__.getState().game.timer.tickIndex < startTick;
+  }, tickBeforeReverse);
+  await page.evaluate(() => window.__E2E__.stopReverse());
+  const afterReverse = await page.evaluate(() => {
+    const state = window.__E2E__.getState();
+    return state.game.triggers.entries.find(entry =>
+      entry.ownerKind === 'midi_flag' && entry.ownerData?.midiFlagId === 2
+    );
+  });
+  expect(afterReverse?.ownerData).toEqual(baseline.trigger.ownerData);
 });

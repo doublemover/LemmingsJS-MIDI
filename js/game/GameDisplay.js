@@ -6,10 +6,10 @@ import { ActionMineSystem } from '../actions/ActionMineSystem.js';
 import { SkillTypes } from './SkillTypes.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { getAppContext, getDependency } from '../core/dependencies.js';
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const RENDER_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -170,14 +170,10 @@ class GameDisplay {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('GameDisplay render', {
-            start: perfStart,
-            detail: RENDER_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('GameDisplay render', {
+          start: perfStart,
+          detail: RENDER_MEASURE_DETAIL
+        });
       }
     }
   }
@@ -212,14 +208,10 @@ class GameDisplay {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('GameDisplay renderDebug', {
-            start: perfStart,
-            detail: RENDER_DEBUG_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('GameDisplay renderDebug', {
+          start: perfStart,
+          detail: RENDER_DEBUG_MEASURE_DETAIL
+        });
       }
     }
   }

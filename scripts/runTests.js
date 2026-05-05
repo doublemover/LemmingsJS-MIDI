@@ -32,9 +32,12 @@ const OFFLINE_TOOL_SOURCE_FILES = Object.freeze(new Set([
 ]));
 
 const RUNTIME_GUARD_TARGETS = Object.freeze([
+  'js/app/**/*.js',
+  'js/editor/**/*.js',
   'js/game/**/*.js',
   'js/lemmings/**/*.js',
   'js/midi/**/*.js',
+  'js/render/**/*.js',
   'js/util/**/*.js'
 ]);
 

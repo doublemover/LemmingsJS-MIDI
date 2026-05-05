@@ -148,20 +148,7 @@ test('Minimap click preserves zoom scale', async ({ page }) => {
     () => window.__E2E__?.getState?.().stage?.gameScale ?? 1
   );
 
-  const minimapPoint = await page.evaluate(() => {
-    const stage = window.lemmings?.stage;
-    const gui = stage?.guiImgProps;
-    const display = gui?.display;
-    const rect = stage?.stageCav?.getBoundingClientRect?.();
-    if (!stage || !gui || !display || !rect) return null;
-    const destX = display.worldDataSize.width - 127;
-    const destY = display.worldDataSize.height - 24 - 1;
-    const scale = gui.viewPoint?.scale ?? 1;
-    return {
-      x: rect.left + gui.x + destX * scale + 2,
-      y: rect.top + gui.y + destY * scale + 2
-    };
-  });
+  const minimapPoint = await page.evaluate(() => window.__E2E__?.getMinimapPagePoint?.() || null);
   if (!minimapPoint) throw new Error('Missing minimap position.');
   await page.mouse.click(minimapPoint.x, minimapPoint.y);
 

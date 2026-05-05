@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import {
   buildBundle,
   createCopyList,
@@ -48,12 +49,14 @@ describe('build-mcpb-bundle helpers', function () {
       fs.mkdirSync(path.join(rootDir, 'mcp'), { recursive: true });
       fs.writeFileSync(path.join(rootDir, 'mcpb', 'manifest.json'), '{"name":"fallback-manifest"}');
       fs.writeFileSync(path.join(rootDir, 'mcpb', 'manifest.editor.json'), '{"name":"editor-manifest"}');
-      fs.writeFileSync(path.join(rootDir, 'mcpb', 'package.json'), '{"name":"fallback-package"}');
-      fs.writeFileSync(path.join(rootDir, 'mcpb', 'package.editor.json'), '{"name":"editor-package"}');
+      fs.writeFileSync(path.join(rootDir, 'mcpb', 'package.json'), '{"name":"fallback-package","type":"module"}');
+      fs.writeFileSync(path.join(rootDir, 'mcpb', 'package.editor.json'), '{"name":"editor-package","type":"module"}');
       fs.writeFileSync(path.join(rootDir, 'mcpb', 'server.json'), '{"server":true}');
+      fs.writeFileSync(path.join(rootDir, 'mcpb', 'server.editor.json'), '{"server":"editor"}');
       fs.writeFileSync(path.join(rootDir, 'mcpb', '.mcpbignore'), 'node_modules');
       fs.writeFileSync(path.join(rootDir, 'keybindings.json'), '{"ok":true}');
-      fs.writeFileSync(path.join(rootDir, 'mcp', 'server.js'), 'export {}');
+      fs.writeFileSync(path.join(rootDir, 'mcp', 'dep.js'), 'export const value = 42;');
+      fs.writeFileSync(path.join(rootDir, 'mcp', 'server.js'), 'import { value } from "./dep.js"; export const ok = value === 42;');
 
       await buildBundle({
         argv: ['--surface=editor'],
@@ -63,7 +66,11 @@ describe('build-mcpb-bundle helpers', function () {
 
       const outDir = path.join(rootDir, 'dist', 'mcpb-editor');
       expect(fs.readFileSync(path.join(outDir, 'manifest.json'), 'utf8')).to.equal('{"name":"editor-manifest"}');
-      expect(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8')).to.equal('{"name":"editor-package"}');
+      expect(fs.readFileSync(path.join(outDir, 'package.json'), 'utf8')).to.equal('{"name":"editor-package","type":"module"}');
+      expect(fs.readFileSync(path.join(outDir, 'server.json'), 'utf8')).to.equal('{"server":"editor"}');
+      expect(fs.existsSync(path.join(outDir, 'mcp', 'dep.js'))).to.equal(true);
+      const builtServer = await import(pathToFileURL(path.join(outDir, 'mcp', 'server.js')).href);
+      expect(builtServer.ok).to.equal(true);
 
       await buildBundle({
         argv: ['--surface=interact'],
@@ -72,7 +79,8 @@ describe('build-mcpb-bundle helpers', function () {
       });
       const interactOutDir = path.join(rootDir, 'dist', 'mcpb-interact');
       expect(fs.readFileSync(path.join(interactOutDir, 'manifest.json'), 'utf8')).to.equal('{"name":"fallback-manifest"}');
-      expect(fs.readFileSync(path.join(interactOutDir, 'package.json'), 'utf8')).to.equal('{"name":"fallback-package"}');
+      expect(fs.readFileSync(path.join(interactOutDir, 'package.json'), 'utf8')).to.equal('{"name":"fallback-package","type":"module"}');
+      expect(fs.readFileSync(path.join(interactOutDir, 'server.json'), 'utf8')).to.equal('{"server":true}');
     });
   });
 });

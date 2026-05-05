@@ -1,6 +1,6 @@
 import { BaseLogger } from '../util/LogHandler.js';
 import { BinaryReader } from './BinaryReader.js';
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getRuntimeDependency } from '../core/dependencies.js';
 import { appendRevisionParam, sanitizeCacheBust } from '../core/cacheBust.js';
 import '../util/LogHandler.js';
 
@@ -31,13 +31,47 @@ class FileProvider extends BaseLogger {
      */
     this._cache = new Map();
     this._idbPromise = null;
+    this._idb = null;
     this._idbDisabled = false;
+    this._validationPromises = new Map();
     this._cacheStats = { localStorageBytes: 0, indexedDbBytes: 0 };
+    this._storage = Object.hasOwn(options, 'localStorage')
+      ? options.localStorage
+      : undefined;
+    this._indexedDB = Object.hasOwn(options, 'indexedDB')
+      ? options.indexedDB
+      : (typeof globalThis !== 'undefined' ? globalThis.indexedDB : null);
+    this._crypto = Object.hasOwn(options, 'crypto')
+      ? options.crypto
+      : null;
+    this._hasFetchOverride = Object.hasOwn(options, 'fetch');
+    this._fetch = this._hasFetchOverride ? options.fetch : null;
+    this._hasXhrOverride = Object.hasOwn(options, 'XMLHttpRequest') ||
+      Object.hasOwn(options, 'createXMLHttpRequest');
+    this._XMLHttpRequest = Object.hasOwn(options, 'XMLHttpRequest')
+      ? options.XMLHttpRequest
+      : null;
+    this._createXMLHttpRequest = typeof options.createXMLHttpRequest === 'function'
+      ? options.createXMLHttpRequest
+      : null;
   }
 
   /** Empty the cache (debug helper). */
   clearCache() {
     this._cache.clear();
+  }
+
+  async close() {
+    const db = this._idb || await this._idbPromise?.catch?.(() => null);
+    db?.close?.();
+    this._idb = null;
+    this._idbPromise = null;
+  }
+
+  dispose() {
+    this._cache.clear();
+    this._validationPromises.clear();
+    this.close();
   }
 
   /** Return cache size telemetry for debug/UI. */
@@ -175,7 +209,13 @@ class FileProvider extends BaseLogger {
   }
 
   _canUseIndexedDb() {
-    return !this._idbDisabled && typeof indexedDB !== 'undefined';
+    return !this._idbDisabled && !!this._indexedDB?.open;
+  }
+
+  _getLocalStorage() {
+    return this._storage === undefined
+      ? getRuntimeDependency('localStorage', null)
+      : this._storage;
   }
 
   _idbRequest(request) {
@@ -187,9 +227,10 @@ class FileProvider extends BaseLogger {
 
   _openIndexedDb() {
     if (!this._canUseIndexedDb()) return Promise.resolve(null);
+    if (this._idb) return Promise.resolve(this._idb);
     if (this._idbPromise) return this._idbPromise;
     this._idbPromise = new Promise((resolve) => {
-      const request = indexedDB.open(IDB_NAME, IDB_VERSION);
+      const request = this._indexedDB.open(IDB_NAME, IDB_VERSION);
       request.onupgradeneeded = () => {
         const db = request.result;
         if (!db.objectStoreNames.contains(IDB_STORE_ENTRIES)) {
@@ -205,11 +246,17 @@ class FileProvider extends BaseLogger {
       };
       request.onsuccess = () => {
         const db = request.result;
-        db.onversionchange = () => db.close();
+        this._idb = db;
+        db.onversionchange = () => {
+          db.close();
+          if (this._idb === db) this._idb = null;
+          this._idbPromise = null;
+        };
         resolve(db);
       };
       request.onerror = () => {
         this._idbDisabled = true;
+        this._idbPromise = null;
         resolve(null);
       };
     });
@@ -227,7 +274,7 @@ class FileProvider extends BaseLogger {
       if (!entry || entry.type !== type) return null;
       const payload = await this._idbRequest(payloads.get(url));
       if (!payload || payload.data == null) return null;
-      this._verifyCache(url, entry);
+      this._scheduleCacheValidation(url, entry);
       this._touchIndexedDbEntry(url, entry);
       let value;
       if (type === 'binary') {
@@ -349,19 +396,20 @@ class FileProvider extends BaseLogger {
   }
 
   _getLocalStorageEntries() {
-    if (typeof localStorage === 'undefined') return [];
+    const storage = this._getLocalStorage();
+    if (!storage) return [];
     const entries = [];
-    if (typeof localStorage.length === 'number' && typeof localStorage.key === 'function') {
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
+    if (typeof storage.length === 'number' && typeof storage.key === 'function') {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
         if (!key || !key.startsWith(LOCAL_STORAGE_PREFIX)) continue;
-        const value = localStorage.getItem(key);
+        const value = storage.getItem(key);
         entries.push({ key, value });
       }
       return entries;
     }
-    if (localStorage.store && typeof localStorage.store.forEach === 'function') {
-      localStorage.store.forEach((value, key) => {
+    if (storage.store && typeof storage.store.forEach === 'function') {
+      storage.store.forEach((value, key) => {
         if (!String(key).startsWith(LOCAL_STORAGE_PREFIX)) return;
         entries.push({ key, value });
       });
@@ -389,7 +437,9 @@ class FileProvider extends BaseLogger {
 
   _setLocalStorageItem(key, json) {
     try {
-      localStorage.setItem(key, json);
+      const storage = this._getLocalStorage();
+      if (!storage?.setItem) return false;
+      storage.setItem(key, json);
       return true;
     } catch (e) {
       return false;
@@ -424,7 +474,7 @@ class FileProvider extends BaseLogger {
     parsed.sort((a, b) => a.lastAccess - b.lastAccess);
     for (const entry of parsed) {
       if (total <= target) break;
-      localStorage.removeItem(entry.key);
+      this._getLocalStorage()?.removeItem?.(entry.key);
       total = Math.max(0, total - entry.size);
     }
     this._cacheStats.localStorageBytes = total;
@@ -445,14 +495,14 @@ class FileProvider extends BaseLogger {
 
   _loadFromLocalStorage(url, type, path = '') {
     try {
-      if (typeof localStorage === 'undefined') return null;
-      const item = localStorage.getItem(this._localStorageKey(url));
+      const storage = this._getLocalStorage();
+      if (!storage) return null;
+      const item = storage.getItem(this._localStorageKey(url));
       if (!item) return null;
       const entry = JSON.parse(item);
       if (entry.type !== type) return null;
 
-      // kick off async validation of cache
-      this._verifyCache(url, entry);
+      this._scheduleCacheValidation(url, entry);
 
       let value;
       if (type === 'binary') {
@@ -469,6 +519,18 @@ class FileProvider extends BaseLogger {
     }
   }
 
+  _scheduleCacheValidation(url, entry) {
+    if (!url || !entry || this._validationPromises.has(url)) return;
+    const promise = this._verifyCache(url, entry)
+      .catch(() => {})
+      .finally(() => {
+        if (this._validationPromises.get(url) === promise) {
+          this._validationPromises.delete(url);
+        }
+      });
+    this._validationPromises.set(url, promise);
+  }
+
   async _verifyCache(url, entry) {
     const head = await this._fetchHead(url);
     if (!head) return;
@@ -481,13 +543,26 @@ class FileProvider extends BaseLogger {
         await this._fetchText(url);
       }
     } catch (e) {
-      console.log('cache update error', e);
+      this.log.log('cache update error', e);
     }
+  }
+
+  _createXhr() {
+    if (this._createXMLHttpRequest) {
+      return this._createXMLHttpRequest();
+    }
+    const XhrCtor = this._hasXhrOverride
+      ? this._XMLHttpRequest
+      : (typeof XMLHttpRequest !== 'undefined' ? XMLHttpRequest : null);
+    if (typeof XhrCtor !== 'function') {
+      throw new Error('XMLHttpRequest API not available');
+    }
+    return new XhrCtor();
   }
 
   async _fetchBinary(url, path) {
     const response = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+      const xhr = this._createXhr();
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           const headers = {
@@ -521,7 +596,7 @@ class FileProvider extends BaseLogger {
 
   async _fetchText(url) {
     const response = await new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
+      const xhr = this._createXhr();
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           const headers = {
@@ -552,9 +627,12 @@ class FileProvider extends BaseLogger {
   }
 
   async _fetchHead(url) {
-    if (typeof fetch !== 'function') return null;
+    const fetchRef = this._hasFetchOverride
+      ? this._fetch
+      : (typeof fetch === 'function' ? fetch : null);
+    if (typeof fetchRef !== 'function') return null;
     try {
-      const resp = await fetch(url, { method: 'HEAD' });
+      const resp = await fetchRef(url, { method: 'HEAD' });
       return { etag: resp.headers.get('ETag'), lastModified: resp.headers.get('Last-Modified') };
     } catch (e) {
       return null;
@@ -562,7 +640,7 @@ class FileProvider extends BaseLogger {
   }
 
   _storeInLocalStorage(url, entry) {
-    if (typeof localStorage === 'undefined') return false;
+    if (!this._getLocalStorage()) return false;
     try {
       const stored = { ...entry };
       if (stored.type === 'binary' && stored.data instanceof ArrayBuffer) {
@@ -580,28 +658,20 @@ class FileProvider extends BaseLogger {
       this._updateLocalStorageStats();
       return true;
     } catch (e) {
-      console.log('cache write error', e);
+      this.log.log('cache write error', e);
       return false;
     }
   }
 
   async _hashBuffer(buffer) {
-    if (typeof globalThis.crypto !== 'undefined' && globalThis.crypto.subtle) {
-      const hashBuf = await globalThis.crypto.subtle.digest('SHA-256', buffer);
+    const cryptoRef = this._crypto || (typeof globalThis !== 'undefined' ? globalThis.crypto : null);
+    if (cryptoRef?.subtle) {
+      const hashBuf = await cryptoRef.subtle.digest('SHA-256', buffer);
       return Array.from(new Uint8Array(hashBuf))
         .map(b => b.toString(16).padStart(2, '0'))
         .join('');
     }
-
-    try {
-      if (this._forceCryptoError) throw new Error('forced');
-      const { createHash } = await import('node:crypto');
-      const hash = createHash('sha256');
-      hash.update(Buffer.from(buffer));
-      return hash.digest('hex');
-    } catch (e) {
-      throw new Error('crypto API not available');
-    }
+    throw new Error('crypto API not available');
   }
 
   async _hashString(str) {

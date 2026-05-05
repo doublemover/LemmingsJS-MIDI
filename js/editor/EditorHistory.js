@@ -5,10 +5,17 @@ import { EditorLevel } from './EditorLevel.js';
 class EditorHistory {
   constructor(options = {}) {
     this.maxEntries = Number.isFinite(options.maxEntries) ? options.maxEntries : 100;
+    this.maxBytes = Number.isFinite(options.maxBytes) && options.maxBytes > 0
+      ? Math.floor(options.maxBytes)
+      : Infinity;
+    this.coalesceWindowMs = Number.isFinite(options.coalesceWindowMs) && options.coalesceWindowMs > 0
+      ? Math.floor(options.coalesceWindowMs)
+      : 0;
     this.parser = options.parser || new NxlvParser();
     this.writer = options.writer || new NxlvWriter();
     this._entries = [];
     this._cursor = -1;
+    this._totalBytes = 0;
     this._transactionDepth = 0;
     this._transactionPending = null;
   }
@@ -16,6 +23,7 @@ class EditorHistory {
   clear() {
     this._entries = [];
     this._cursor = -1;
+    this._totalBytes = 0;
     this._transactionDepth = 0;
     this._transactionPending = null;
   }
@@ -26,6 +34,21 @@ class EditorHistory {
 
   get cursor() {
     return this._cursor;
+  }
+
+  getStats() {
+    const pendingText = this._transactionPending?.changed
+      ? this._transactionPending.text
+      : null;
+    return {
+      entries: this._entries.length,
+      cursor: this._cursor,
+      bytes: this._totalBytes,
+      maxEntries: this.maxEntries,
+      maxBytes: this.maxBytes,
+      transactionDepth: this._transactionDepth,
+      pendingBytes: typeof pendingText === 'string' ? this._estimateBytes(pendingText) : 0
+    };
   }
 
   canUndo() {
@@ -40,20 +63,68 @@ class EditorHistory {
     return this.writer.write(level || new EditorLevel());
   }
 
+  _estimateBytes(text) {
+    return typeof text === 'string' ? text.length * 2 : 0;
+  }
+
+  _removeEntries(start, deleteCount) {
+    if (deleteCount <= 0) return [];
+    const removed = this._entries.splice(start, deleteCount);
+    for (const entry of removed) {
+      this._totalBytes -= entry?.bytes || 0;
+    }
+    this._totalBytes = Math.max(0, this._totalBytes);
+    return removed;
+  }
+
+  _truncateRedoEntries() {
+    if (this._cursor >= this._entries.length - 1) return;
+    this._removeEntries(this._cursor + 1, this._entries.length - this._cursor - 1);
+  }
+
+  _trimToLimits() {
+    while (
+      this._entries.length > 1
+      && (
+        this._entries.length > this.maxEntries
+        || this._totalBytes > this.maxBytes
+      )
+    ) {
+      this._removeEntries(0, 1);
+      this._cursor -= 1;
+    }
+    if (this._entries.length === 0) {
+      this._cursor = -1;
+    } else {
+      this._cursor = Math.min(Math.max(this._cursor, 0), this._entries.length - 1);
+    }
+  }
+
+  _canCoalesce(label, time) {
+    if (!this.coalesceWindowMs || this._cursor < 0) return false;
+    const prev = this._entries[this._cursor];
+    if (!prev || prev.label !== label) return false;
+    return Math.abs(time - prev.time) <= this.coalesceWindowMs;
+  }
+
   _pushSerialized(text, label = '', time = Date.now()) {
     const prev = this._entries[this._cursor]?.text;
     if (prev === text) return false;
-    if (this._cursor < this._entries.length - 1) {
-      this._entries = this._entries.slice(0, this._cursor + 1);
-    }
-    this._entries.push({ text, label, time });
-    if (this._entries.length > this.maxEntries) {
-      const overflow = this._entries.length - this.maxEntries;
-      this._entries.splice(0, overflow);
-      this._cursor = this._entries.length - 1;
+    this._truncateRedoEntries();
+    const bytes = this._estimateBytes(text);
+    if (this._canCoalesce(label, time)) {
+      const entry = this._entries[this._cursor];
+      this._totalBytes += bytes - (entry.bytes || 0);
+      entry.text = text;
+      entry.label = label;
+      entry.time = time;
+      entry.bytes = bytes;
     } else {
+      this._entries.push({ text, label, time, bytes });
+      this._totalBytes += bytes;
       this._cursor = this._entries.length - 1;
     }
+    this._trimToLimits();
     return true;
   }
 

@@ -1,9 +1,14 @@
 import { getAppContext } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const MIDI_BITS_PER_SECOND = 31250;
 const MIDI_BYTES_PER_SECOND = MIDI_BITS_PER_SECOND / 8;
 const MIDI_MESSAGE_BYTES = 3;
+const MAX_RATE_ENTRIES = 4096;
 const toFiniteNumber = (value, fallback) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
@@ -188,18 +193,37 @@ class MidiScheduler {
   _pruneRateEntries(now) {
     const cutoff = now - this._rateWindowMs;
     if (this._rateSent.length) {
-      this._rateSent = this._rateSent.filter(entry => entry.timeMs >= cutoff);
+      let write = 0;
+      for (let read = 0; read < this._rateSent.length; read += 1) {
+        const entry = this._rateSent[read];
+        if (entry.timeMs < cutoff) continue;
+        this._rateSent[write] = entry;
+        write += 1;
+      }
+      this._rateSent.length = write;
     }
     if (this._ratePlanned.length) {
-      const remaining = [];
-      for (const entry of this._ratePlanned) {
+      let write = 0;
+      for (let read = 0; read < this._ratePlanned.length; read += 1) {
+        const entry = this._ratePlanned[read];
         if (entry.timeMs <= now) {
           this._rateSent.push(entry);
         } else {
-          remaining.push(entry);
+          this._ratePlanned[write] = entry;
+          write += 1;
         }
       }
-      this._ratePlanned = remaining;
+      this._ratePlanned.length = write;
+    }
+    this._trimRateEntries();
+  }
+
+  _trimRateEntries() {
+    if (this._rateSent.length > MAX_RATE_ENTRIES) {
+      this._rateSent.splice(0, this._rateSent.length - MAX_RATE_ENTRIES);
+    }
+    if (this._ratePlanned.length > MAX_RATE_ENTRIES) {
+      this._ratePlanned.splice(0, this._ratePlanned.length - MAX_RATE_ENTRIES);
     }
   }
 
@@ -285,15 +309,20 @@ class MidiScheduler {
     } else {
       this._ratePlanned.push(normalized);
     }
+    this._trimRateEntries();
   }
 
   _removePlannedRateEntries(token, phase = null) {
     if (token == null || !this._ratePlanned.length) return;
-    this._ratePlanned = this._ratePlanned.filter((entry) => {
-      if (entry?.token !== token) return true;
-      if (phase == null) return false;
-      return entry.phase !== phase;
-    });
+    let write = 0;
+    for (let read = 0; read < this._ratePlanned.length; read += 1) {
+      const entry = this._ratePlanned[read];
+      const remove = entry?.token === token && (phase == null || entry.phase === phase);
+      if (remove) continue;
+      this._ratePlanned[write] = entry;
+      write += 1;
+    }
+    this._ratePlanned.length = write;
   }
 
   _checkByteRate(now = this._nowMs()) {
@@ -325,9 +354,7 @@ class MidiScheduler {
     const app = this.config?.runtime?.app || getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
+      canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
       if (!this.output || !spec || !Number.isFinite(spec.note)) return false;
@@ -443,14 +470,10 @@ class MidiScheduler {
       return true;
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('MidiScheduler sendNote', {
-            start: perfStart,
-            detail: { devtools: { track: 'MidiScheduler', trackGroup: 'MIDI', color: 'secondary', tooltipText: 'sendNote' } }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('MidiScheduler sendNote', {
+          start: perfStart,
+          detail: { devtools: { track: 'MidiScheduler', trackGroup: 'MIDI', color: 'secondary', tooltipText: 'sendNote' } }
+        });
       }
     }
   }

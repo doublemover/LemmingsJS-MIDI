@@ -205,9 +205,11 @@ const summarizeEditorHistory = (history) => {
   return {
     cursor: history.cursor,
     count: entries.length,
+    stats: typeof history.getStats === 'function' ? history.getStats() : null,
     entries: entries.map(entry => ({
       label: entry.label || '',
       time: entry.time || 0,
+      bytes: entry.bytes || 0,
       textLength: entry.text?.length || 0
     }))
   };
@@ -293,7 +295,9 @@ const serializeTrigger = (trigger) => {
     disableTicksCount: trigger.disableTicksCount,
     disabledUntilTick: trigger.disabledUntilTick,
     soundIndex: trigger.soundIndex,
-    ownerId: trigger.owner?.id ?? null
+    ownerId: trigger.owner?.id ?? null,
+    ownerKind: trigger.owner?.__historyKind ?? trigger.owner?.historyKind ?? null,
+    ownerData: trigger.owner?.__historyData ? { ...trigger.owner.__historyData } : null
   };
 };
 
@@ -579,6 +583,7 @@ const getGameState = (view) => {
   return {
     ready: isGameReady(view),
     finalGameState: game.finalGameState ?? null,
+    inputEnabled: game.inputEnabled !== false,
     state: game.getGameState?.() ?? null,
     timer: timer
       ? {
@@ -1650,6 +1655,98 @@ const getBuffer = (view, name) => {
   }
 };
 
+const getEditorLevelText = (view) => view?.getEditorLevelText?.() || '';
+
+const getStageCanvasRect = (stage) => {
+  const rect = stage?.stageCav?.getBoundingClientRect?.();
+  if (!rect) return null;
+  return {
+    left: rect.left,
+    top: rect.top,
+    width: rect.width,
+    height: rect.height
+  };
+};
+
+const getStageWorldPointFromPage = (view, point = {}) => {
+  const stage = view?.stage;
+  const image = stage?.gameImgProps;
+  const rect = getStageCanvasRect(stage);
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  if (!image?.viewPoint || !rect || !Number.isFinite(x) || !Number.isFinite(y)) {
+    return null;
+  }
+  const localX = (x - rect.left) - (image.x ?? 0);
+  const localY = (y - rect.top) - (image.y ?? 0);
+  return {
+    x: image.viewPoint.getSceneX(localX),
+    y: image.viewPoint.getSceneY(localY)
+  };
+};
+
+const getStagePagePointFromWorld = (view, point = {}) => {
+  const stage = view?.stage;
+  const image = stage?.gameImgProps;
+  const rect = getStageCanvasRect(stage);
+  const viewRect = stage?.getGameViewRect?.();
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  const scale = image?.viewPoint?.scale ?? 1;
+  if (!rect || !viewRect || !Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale)) {
+    return null;
+  }
+  return {
+    x: rect.left + (image?.x ?? 0) + (x - viewRect.x) * scale,
+    y: rect.top + (image?.y ?? 0) + (y - viewRect.y) * scale
+  };
+};
+
+const centerStageOn = (view, point = {}) => {
+  const stage = view?.stage;
+  const viewRect = stage?.getGameViewRect?.();
+  if (!stage || !viewRect || !stage.gameImgProps) return false;
+  const x = Number(point?.x);
+  const y = Number(point?.y);
+  const scale = Number.isFinite(point?.scale)
+    ? Number(point.scale)
+    : (stage.gameImgProps?.viewPoint?.scale ?? 1);
+  if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(scale)) return false;
+  stage.applyViewport(
+    stage.gameImgProps,
+    x - viewRect.w / 2,
+    y - viewRect.h / 2,
+    scale
+  );
+  stage.redraw?.();
+  view?.render?.();
+  return true;
+};
+
+const getMinimapPagePoint = (view, options = {}) => {
+  const stage = view?.stage;
+  const gui = stage?.guiImgProps;
+  const display = gui?.display;
+  const rect = getStageCanvasRect(stage);
+  const miniMap = view?.game?.getLemmingManager?.()?.miniMap || null;
+  if (!gui || !display || !rect || !miniMap) return null;
+  const scale = gui.viewPoint?.scale ?? 1;
+  const offsetX = Number.isFinite(options?.offsetX) ? Number(options.offsetX) : 2;
+  const offsetY = Number.isFinite(options?.offsetY) ? Number(options.offsetY) : 2;
+  const bottomInset = Number.isFinite(options?.bottomInset) ? Number(options.bottomInset) : 1;
+  const destX = display.worldDataSize.width - miniMap.width;
+  const destY = display.worldDataSize.height - miniMap.height - bottomInset;
+  return {
+    x: rect.left + (gui.x ?? 0) + destX * scale + offsetX,
+    y: rect.top + (gui.y ?? 0) + destY * scale + offsetY
+  };
+};
+
+const getMidiOverrides = (view, midiUi) => {
+  if (midiUi?.getMidiOverrides) return midiUi.getMidiOverrides();
+  return view?._midiOverrides || null;
+};
+
 const pauseGame = (view) => {
   const timer = view?.game?.getGameTimer?.();
   if (!timer) return false;
@@ -1852,6 +1949,11 @@ const createE2EApi = (context) => ({
   },
   getCanvasMetrics: () => getCanvasMetrics(context.view),
   getBuffer: (name) => getBuffer(context.view, name),
+  getEditorLevelText: () => getEditorLevelText(context.view),
+  stageWorldFromPage: (point) => getStageWorldPointFromPage(context.view, point),
+  stagePageFromWorld: (point) => getStagePagePointFromWorld(context.view, point),
+  centerStageOn: (point) => centerStageOn(context.view, point),
+  getMinimapPagePoint: (options) => getMinimapPagePoint(context.view, options),
   getEditorHistoryEntry: (index) => getEditorHistoryEntry(context.editorUi?.history || null, index),
   editorApply: (ops, options) => applyEditorOps(context.view, context.editorUi, ops, options),
   pause: () => pauseGame(context.view),
@@ -1877,6 +1979,7 @@ const createE2EApi = (context) => ({
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),
   stopBench: () => stopBench(context.view),
+  midiGetOverrides: () => getMidiOverrides(context.view, context.midiUi),
   midiGetIntentState: () => context.midiUi?.getMidiIntentState?.() || null,
   midiDispatchIntent: (intent) => context.midiUi?.dispatchMidiIntent?.(intent) || null,
   midiSetOverrides: (patch) => context.midiUi?.setMidiOverrides?.(patch) || false,

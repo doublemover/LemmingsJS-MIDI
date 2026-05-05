@@ -186,9 +186,8 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     withPatchedGlobals({ window: {} }, () => {
       scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
       expect(globalThis.window.lastMidiOutputMessage.type).to.equal('noteOn');
-    });
   });
-
+});
   it('covers additional scheduler branch paths', function() {
     const scheduler = new MidiScheduler(null);
     scheduler.setConfig(null);
@@ -711,4 +710,3 @@ describe('MidiScheduler coverage: core behavior', function() {
     expect(errors.length).to.equal(1);
   });
 });
-

@@ -312,6 +312,38 @@ describe('MidiInputController', function() {
     expect(speeds.length).to.equal(1);
   });
 
+  it('indexes note actions and rebuilds when note bindings change', function() {
+    const calls = { pause: 0, restart: 0 };
+    const config = {
+      input: {
+        channel: 'omni',
+        notes: {
+          actions: { pause: 40 }
+        }
+      }
+    };
+    const controller = new MidiInputController({
+      suspend() { calls.pause += 1; },
+      moveToLevel() { calls.restart += 1; }
+    }, {
+      getConfig: () => config
+    });
+
+    controller._onMessage({ data: [0x90, 40, 100] });
+    expect(calls.pause).to.equal(1);
+    expect(controller._noteActions.get(40)).to.equal('pause');
+
+    config.input.notes = {
+      actions: { restart: 41 }
+    };
+    controller._onMessage({ data: [0x90, 41, 100] });
+    controller._onMessage({ data: [0x90, 40, 100] });
+
+    expect(calls.restart).to.equal(1);
+    expect(calls.pause).to.equal(1);
+    expect(controller._noteActions.get(41)).to.equal('restart');
+  });
+
   it('refreshes stale CC cache entries when mappings mutate in place', function() {
     const speeds = [];
     const config = {

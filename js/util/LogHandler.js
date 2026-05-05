@@ -1,4 +1,5 @@
 import { getDependency, getAppContext } from '../core/dependencies.js';
+import { recordPerformanceMeasure } from './performanceInstrumentation.js';
 
 const NOOP = () => {};
 
@@ -79,14 +80,10 @@ class BaseLogger {
     }
     const start = performance.now();
     return () => {
-      try {
-        performance.measure(name, {
-          start,
-          detail: { devtools }
-        });
-      } catch {
-        /* ignored */
-      }
+      recordPerformanceMeasure(name, {
+        start,
+        detail: { devtools }
+      });
     };
   }
 }
@@ -106,14 +103,10 @@ function withPerformance(name, devtools = {}, fn) {
     try {
       return fn.apply(this, args);
     } finally {
-      try {
-        performance.measure(name, {
-          start,
-          detail: { devtools }
-        });
-      } catch {
-        /* ignored */
-      }
+      recordPerformanceMeasure(name, {
+        start,
+        detail: { devtools }
+      });
     }
   };
 }

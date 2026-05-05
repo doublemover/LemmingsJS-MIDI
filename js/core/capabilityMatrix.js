@@ -4,7 +4,7 @@
  * @property {{supported: boolean, ctorSupported: boolean, transferControlSupported: boolean, fallbackPath: string}} offscreenCanvas
  * @property {{supported: boolean, fallbackPath: string}} imageBitmap
  * @property {{supported: boolean, fallbackPath: string}} worker
- * @property {{offscreenPresentSupported: boolean, workerOffscreenSupported: boolean, deterministicFallback: string}} renderPaths
+ * @property {{presentPathSupported: boolean, offscreenPresentSupported: boolean, workerOffscreenSupported: boolean, deterministicFallback: string}} renderPaths
  */
 
 /** @type {CapabilityMatrix} */
@@ -29,6 +29,7 @@ const DEFAULT_CAPABILITY_MATRIX = Object.freeze({
     fallbackPath: 'main_thread'
   }),
   renderPaths: Object.freeze({
+    presentPathSupported: false,
     offscreenPresentSupported: false,
     workerOffscreenSupported: false,
     deterministicFallback: 'canvas2d_main_thread'
@@ -60,13 +61,13 @@ const detectRuntimeCapabilities = ({
     || (typeof createImageBitmap === 'function');
   const workerSupported = hasFunction(windowRef?.Worker);
 
-  const offscreenPresentSupported = canvas2dSupported || (offscreenSupported && imageBitmapSupported);
+  const presentPathSupported = canvas2dSupported || (offscreenSupported && imageBitmapSupported);
   const workerOffscreenSupported = offscreenSupported && imageBitmapSupported && workerSupported;
 
   const renderFallback = workerOffscreenSupported
     ? 'worker_offscreen'
-    : offscreenPresentSupported
-      ? 'offscreen_present'
+    : presentPathSupported
+      ? 'drawimage_present'
       : 'canvas2d_main_thread';
 
   return {
@@ -90,7 +91,8 @@ const detectRuntimeCapabilities = ({
       fallbackPath: workerSupported ? 'worker' : 'main_thread'
     },
     renderPaths: {
-      offscreenPresentSupported,
+      presentPathSupported,
+      offscreenPresentSupported: presentPathSupported,
       workerOffscreenSupported,
       deterministicFallback: renderFallback
     }
@@ -105,16 +107,19 @@ const resolveRenderExperimentState = (requestedFlags = {}, capabilities = DEFAUL
   const requestedOffscreen = !!requestedFlags.offscreenPresent;
   const requestedWorker = !!requestedFlags.workerOffscreen;
   const cap = capabilities || DEFAULT_CAPABILITY_MATRIX;
-  const offscreenSupported = !!cap.renderPaths?.offscreenPresentSupported;
+  const presentPathSupported = !!(
+    cap.renderPaths?.presentPathSupported
+    ?? cap.renderPaths?.offscreenPresentSupported
+  );
   const workerOffscreenSupported = !!cap.renderPaths?.workerOffscreenSupported;
 
-  const offscreenActive = requestedOffscreen && offscreenSupported;
+  const offscreenActive = requestedOffscreen && presentPathSupported;
   const workerActive = requestedWorker && offscreenActive && workerOffscreenSupported;
 
   let rollbackReason = null;
   if (requestedOffscreen && !offscreenActive) {
-    rollbackReason = cap.renderPaths?.offscreenPresentSupported
-      ? 'offscreen_present_unavailable'
+    rollbackReason = presentPathSupported
+      ? 'present_path_unavailable'
       : (cap.offscreenCanvas?.supported
         ? 'imagebitmap_unavailable'
         : 'offscreen_canvas_unavailable');
@@ -131,6 +136,8 @@ const resolveRenderExperimentState = (requestedFlags = {}, capabilities = DEFAUL
   }
 
   return {
+    presentPathRequested: requestedOffscreen,
+    presentPathActive: offscreenActive,
     offscreenPresentRequested: requestedOffscreen,
     offscreenPresentActive: offscreenActive,
     workerOffscreenRequested: requestedWorker,

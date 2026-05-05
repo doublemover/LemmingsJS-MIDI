@@ -149,6 +149,46 @@ const parseGamepadBindingConfig = (text) => {
   }
 };
 
+const cloneGamepadConfig = (config) => {
+  if (!config || typeof config !== 'object') return null;
+  const clone = {
+    version: Number.isFinite(config.version) ? Math.trunc(config.version) : undefined,
+    bindings: {}
+  };
+  const modes = normalizeBindingsMap(config.bindings);
+  let hasBindings = false;
+  for (const modeName of ['gameplay', 'editor']) {
+    const modeBindings = normalizeBindingsMap(modes[modeName]);
+    const nextMode = {};
+    for (const [action, entry] of Object.entries(modeBindings)) {
+      if (Array.isArray(entry)) {
+        nextMode[action] = entry.slice();
+      } else if (typeof entry === 'string') {
+        nextMode[action] = entry;
+      } else {
+        nextMode[action] = entry;
+      }
+    }
+    if (Object.keys(nextMode).length) {
+      clone.bindings[modeName] = nextMode;
+      hasBindings = true;
+    }
+  }
+  if (!hasBindings) delete clone.bindings;
+  if (clone.version == null) delete clone.version;
+  return clone;
+};
+
+const bindingEntriesEqual = (left, right) => {
+  const leftList = normalizeBindingList(left);
+  const rightList = normalizeBindingList(right);
+  if (leftList.length !== rightList.length) return false;
+  for (let i = 0; i < leftList.length; i += 1) {
+    if (leftList[i] !== rightList[i]) return false;
+  }
+  return true;
+};
+
 const mergeGamepadConfig = (base, overrides = null) => {
   const merged = {
     version: base.version,
@@ -169,6 +209,37 @@ const mergeGamepadConfig = (base, overrides = null) => {
     }
   }
   return merged;
+};
+
+const mergeGamepadConfigLayers = (...layers) => {
+  let merged = mergeGamepadConfig(DEFAULT_GAMEPAD_BINDINGS);
+  for (const layer of layers) {
+    if (!layer || typeof layer !== 'object') continue;
+    merged = mergeGamepadConfig(merged, layer);
+  }
+  return merged;
+};
+
+const compactGamepadOverrideConfig = (config, baseConfig = DEFAULT_GAMEPAD_BINDINGS) => {
+  const clone = cloneGamepadConfig(config);
+  if (!clone?.bindings) return clone;
+  const base = mergeGamepadConfig(DEFAULT_GAMEPAD_BINDINGS, baseConfig || null);
+  for (const modeName of ['gameplay', 'editor']) {
+    const modeBindings = normalizeBindingsMap(clone.bindings?.[modeName]);
+    const baseModeBindings = normalizeBindingsMap(base.bindings?.[modeName]);
+    for (const [action, bindings] of Object.entries(modeBindings)) {
+      if (bindingEntriesEqual(bindings, baseModeBindings[action])) {
+        delete modeBindings[action];
+      }
+    }
+    if (!Object.keys(modeBindings).length) {
+      delete clone.bindings[modeName];
+    }
+  }
+  if (!Object.keys(clone.bindings || {}).length) {
+    delete clone.bindings;
+  }
+  return clone;
 };
 
 class GamepadBindingRegistry {
@@ -230,6 +301,11 @@ class GamepadInputController {
     this.fileProvider = options.fileProvider || null;
     this.storageKey = options.storageKey || DEFAULT_STORAGE_KEY;
     this.registry = new GamepadBindingRegistry();
+    this._layers = {
+      file: null,
+      persisted: null,
+      session: null
+    };
     this._bindingActive = new Map();
     this._actionActiveCounts = new Map();
     this._raf = 0;
@@ -251,7 +327,9 @@ class GamepadInputController {
       const stored = this.storage?.getItem?.(this.storageKey);
       const parsed = parseGamepadBindingConfig(stored);
       if (parsed) {
-        this.registry.setConfig(parsed);
+        this._layers.persisted = compactGamepadOverrideConfig(parsed);
+        this._persistConfig();
+        this._applyConfigLayers();
       }
     } catch {
       /* ignored */
@@ -260,7 +338,10 @@ class GamepadInputController {
 
   _persistConfig() {
     try {
-      this.storage?.setItem?.(this.storageKey, JSON.stringify(this.registry.config));
+      this.storage?.setItem?.(this.storageKey, JSON.stringify(this._layers.persisted || {
+        version: this.registry.config.version,
+        bindings: {}
+      }));
     } catch {
       /* ignored */
     }
@@ -272,15 +353,38 @@ class GamepadInputController {
       .then((text) => {
         const parsed = parseGamepadBindingConfig(text);
         if (!parsed) return;
-        this.setConfig(parsed, { persist: false });
+        this._layers.file = cloneGamepadConfig(parsed);
+        if (this._layers.persisted) {
+          this._layers.persisted = compactGamepadOverrideConfig(
+            this._layers.persisted,
+            mergeGamepadConfigLayers(this._layers.file)
+          );
+          this._persistConfig();
+        }
+        this._applyConfigLayers();
       })
       .catch(() => {});
   }
 
-  setConfig(config, { persist = true } = {}) {
-    this.registry.setConfig(config);
+  _applyConfigLayers() {
+    this.registry.setConfig(mergeGamepadConfigLayers(
+      this._layers.file,
+      this._layers.persisted,
+      this._layers.session
+    ));
     this._releaseAllActions();
     this._bindingActive.clear();
+  }
+
+  setConfig(config, { persist = true, layer = null } = {}) {
+    const layerName = layer || (persist ? 'persisted' : 'session');
+    if (!Object.hasOwn(this._layers, layerName)) {
+      throw new Error(`unknown gamepad config layer: ${layerName}`);
+    }
+    this._layers[layerName] = layerName === 'persisted'
+      ? compactGamepadOverrideConfig(config, mergeGamepadConfigLayers(this._layers.file))
+      : cloneGamepadConfig(config);
+    this._applyConfigLayers();
     if (persist) {
       this._persistConfig();
     }
@@ -405,7 +509,9 @@ export {
   GamepadBindingRegistry,
   GamepadInputController,
   formatGamepadBindingSpec,
+  mergeGamepadConfigLayers,
   mergeGamepadConfig,
   parseBindingSpec,
+  compactGamepadOverrideConfig,
   parseGamepadBindingConfig
 };

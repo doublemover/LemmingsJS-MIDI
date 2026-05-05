@@ -8,7 +8,7 @@ test.beforeEach(async ({ page }) => {
       window.localStorage?.clear?.();
     } catch (error) {}
   });
-  await page.goto('/');
+  await page.goto('/?e2e=1');
 });
 
 test('Game loads the first level on startup', async ({ page }) => {

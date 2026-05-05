@@ -2,6 +2,10 @@ import { MidiMapping } from './MidiMapping.js';
 import { MidiScheduler } from './MidiScheduler.js';
 import { isMidiFlagTriggerType } from './MidiFlagTriggers.js';
 import { getAppContext } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const MAX_EVENTS_PER_TICK = 32;
 const MAX_MIDI_MESSAGES_PER_SECOND = 1000;
@@ -22,6 +26,9 @@ class MidiEventRouter {
     this._lastAcceptedBySfx = new Map();
     this._arpStateBySfx = new Map();
     this._repeatHistoryByKey = new Map();
+    this._singleNoteBuffer = [0];
+    this._arpNotesScratch = [];
+    this._arpPatternScratch = [];
     this._lastRateReport = null;
     this._boundOnEvent = this._onEvent.bind(this);
   }
@@ -416,9 +423,7 @@ class MidiEventRouter {
     const app = this.context?.app || getAppContext();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
+      canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
       if (!event || event.sfxId == null) return;
@@ -465,21 +470,39 @@ class MidiEventRouter {
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
       const rawTime = Number.isFinite(event.timeMs) && base != null ? base + event.timeMs : now;
       const sendTimeMs = Math.max(rawTime, now + scheduleAhead);
-      const noteList = Array.isArray(spec.notes) && spec.notes.length ? spec.notes : [spec.note];
+      let noteList;
+      if (Array.isArray(spec.notes) && spec.notes.length) {
+        noteList = spec.notes;
+      } else {
+        this._singleNoteBuffer[0] = spec.note;
+        noteList = this._singleNoteBuffer;
+      }
 
       const arp = spec.arp;
-      let activeNotes = noteList.slice();
+      let activeNotes = noteList;
       if (arp?.enabled && noteList.length) {
-        const sorted = noteList.slice().sort((a, b) => a - b);
+        const sorted = this._arpNotesScratch;
+        sorted.length = 0;
+        for (let i = 0; i < noteList.length; i += 1) {
+          sorted.push(noteList[i]);
+        }
+        sorted.sort((a, b) => a - b);
         const length = Math.max(1, Math.min(arp.length ?? sorted.length, sorted.length));
-        const seq = sorted.slice(0, length);
-        const seqKey = seq.join(',');
-        const patternSteps = Array.isArray(arp?.pattern?.steps)
-          ? arp.pattern.steps
-            .map(step => String(step || '').trim().toLowerCase())
-            .filter(step => step === 'up' || step === 'down' || step === 'hold')
-          : null;
-        const useCustomPattern = arp?.pattern?.preset === 'custom' && Array.isArray(patternSteps) && patternSteps.length > 0;
+        let seqKey = '';
+        for (let i = 0; i < length; i += 1) {
+          seqKey += i === 0 ? String(sorted[i]) : `,${sorted[i]}`;
+        }
+        const patternSteps = this._arpPatternScratch;
+        patternSteps.length = 0;
+        if (Array.isArray(arp?.pattern?.steps)) {
+          for (const rawStep of arp.pattern.steps) {
+            const step = String(rawStep || '').trim().toLowerCase();
+            if (step === 'up' || step === 'down' || step === 'hold') {
+              patternSteps.push(step);
+            }
+          }
+        }
+        const useCustomPattern = arp?.pattern?.preset === 'custom' && patternSteps.length > 0;
         const patternKey = useCustomPattern ? patternSteps.join(',') : '';
         const arpKey = this._resolveArpKey(event, sfx);
         const state = this._arpStateBySfx.get(arpKey) || {
@@ -506,14 +529,16 @@ class MidiEventRouter {
         state.seqKey = seqKey;
         state.patternKey = patternKey;
         let idx = state.index;
-        if (idx >= seq.length || idx < 0) idx = 0;
-        if (seq.length <= 1) {
-          activeNotes = [seq[0]];
+        if (idx >= length || idx < 0) idx = 0;
+        if (length <= 1) {
+          this._singleNoteBuffer[0] = sorted[0];
+          activeNotes = this._singleNoteBuffer;
           state.index = 0;
           state.dir = 1;
           state.patternIndex = 0;
         } else if (useCustomPattern) {
-          activeNotes = [seq[idx]];
+          this._singleNoteBuffer[0] = sorted[idx];
+          activeNotes = this._singleNoteBuffer;
           const step = patternSteps[state.patternIndex % patternSteps.length] || 'hold';
           let nextIdx = idx;
           if (step === 'up') {
@@ -521,25 +546,27 @@ class MidiEventRouter {
           } else if (step === 'down') {
             nextIdx = idx - 1;
           }
-          if (nextIdx >= seq.length) {
+          if (nextIdx >= length) {
             nextIdx = 0;
           } else if (nextIdx < 0) {
-            nextIdx = seq.length - 1;
+            nextIdx = length - 1;
           }
           state.index = nextIdx;
           state.patternIndex = (state.patternIndex + 1) % patternSteps.length;
         } else if (arp.mode === 'down') {
-          const reversed = seq.slice().reverse();
-          activeNotes = [reversed[idx]];
+          this._singleNoteBuffer[0] = sorted[length - 1 - idx];
+          activeNotes = this._singleNoteBuffer;
           state.index = idx + 1;
         } else if (arp.mode === 'updown') {
-          activeNotes = [seq[idx]];
-          if (idx + state.dir >= seq.length || idx + state.dir < 0) {
+          this._singleNoteBuffer[0] = sorted[idx];
+          activeNotes = this._singleNoteBuffer;
+          if (idx + state.dir >= length || idx + state.dir < 0) {
             state.dir *= -1;
           }
           state.index = idx + state.dir;
         } else {
-          activeNotes = [seq[idx]];
+          this._singleNoteBuffer[0] = sorted[idx];
+          activeNotes = this._singleNoteBuffer;
           state.index = idx + 1;
         }
         this._storeArpState(arpKey, state);
@@ -578,14 +605,10 @@ class MidiEventRouter {
       this._lastAcceptedBySfx.set(event.sfxId, sendTimeMs);
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('MidiEventRouter onEvent', {
-            start: perfStart,
-            detail: { devtools: { track: 'MidiEventRouter', trackGroup: 'MIDI', color: 'primary', tooltipText: 'onEvent' } }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('MidiEventRouter onEvent', {
+          start: perfStart,
+          detail: { devtools: { track: 'MidiEventRouter', trackGroup: 'MIDI', color: 'primary', tooltipText: 'onEvent' } }
+        });
       }
     }
   }

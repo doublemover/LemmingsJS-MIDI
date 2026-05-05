@@ -4,6 +4,7 @@ import { DEFAULT_RUNTIME_PROFILE, normalizeRuntimeProfile } from '../core/runtim
 
 const DISABLED_PROFILES = new Set(['dev', 'editor', 'perf', 'e2e']);
 const DISABLED_CACHE_PREFIXES = Object.freeze(['lemmings-core-', 'lemmings-runtime-']);
+let activeServiceWorkerRuntime = null;
 
 const isTruthyQueryValue = (value) => {
   if (value == null || value === '') return true;
@@ -29,16 +30,21 @@ const shouldBypassServiceWorker = ({
   profile = DEFAULT_RUNTIME_PROFILE,
   e2e = false,
   dev = false,
+  enableServiceWorker = false,
   disableServiceWorker = false,
   location = getRuntimeDependency('location', null)
 } = {}) => {
   const rawProfile = String(profile || '').trim().toLowerCase();
   const normalizedProfile = normalizeRuntimeProfile(rawProfile);
-  if (DISABLED_PROFILES.has(rawProfile) || DISABLED_PROFILES.has(normalizedProfile)) return true;
-  if (e2e === true || hasTruthyQueryKey(location, 'e2e')) return true;
+  const explicitlyEnabled = enableServiceWorker === true
+    || hasTruthyQueryKey(location, 'sw')
+    || hasTruthyQueryKey(location, 'serviceWorker');
   if (disableServiceWorker === true || hasTruthyQueryKey(location, 'noSw')) return true;
-  if (dev === true || hasTruthyQueryKey(location, 'dev')) return true;
-  return isDevLocation(location);
+  if (e2e === true || hasTruthyQueryKey(location, 'e2e')) return true;
+  if (DISABLED_PROFILES.has(rawProfile) || DISABLED_PROFILES.has(normalizedProfile)) return true;
+  if (dev === true || hasTruthyQueryKey(location, 'dev')) return !explicitlyEnabled;
+  if (isDevLocation(location)) return !explicitlyEnabled;
+  return false;
 };
 
 const disableActiveServiceWorker = async (
@@ -91,14 +97,48 @@ const disableActiveServiceWorker = async (
 };
 
 const registerServiceWorker = (options = {}) => {
+  activeServiceWorkerRuntime?.dispose?.();
+  activeServiceWorkerRuntime = null;
   const nav = options.navigator ?? getRuntimeDependency('navigator', null);
-  if (!nav || !('serviceWorker' in nav)) return;
-  const serviceWorker = nav.serviceWorker;
   const windowRef = options.window ?? getRuntimeDependency('window', null);
   const documentRef = options.document ?? getRuntimeDependency('document', null);
   const location = options.location ?? windowRef?.location ?? getRuntimeDependency('location', null);
+  let disposed = false;
+  const cleanup = [];
+  let updateIntervalId = null;
+  const addCleanup = (fn) => {
+    if (typeof fn === 'function') cleanup.push(fn);
+  };
+  const addListener = (target, eventName, handler, listenerOptions) => {
+    if (!target?.addEventListener || typeof handler !== 'function') return;
+    target.addEventListener(eventName, handler, listenerOptions);
+    addCleanup(() => target.removeEventListener?.(eventName, handler, listenerOptions));
+  };
+  const runtime = {
+    dispose() {
+      disposed = true;
+      if (updateIntervalId != null) {
+        windowRef?.clearInterval?.(updateIntervalId);
+        updateIntervalId = null;
+      }
+      while (cleanup.length) {
+        try {
+          cleanup.pop()?.();
+        } catch {
+          /* ignored */
+        }
+      }
+      if (activeServiceWorkerRuntime === runtime) {
+        activeServiceWorkerRuntime = null;
+      }
+    }
+  };
+  if (!nav || !('serviceWorker' in nav)) return runtime;
+  const serviceWorker = nav.serviceWorker;
+  activeServiceWorkerRuntime = runtime;
 
   const onLoad = async () => {
+    if (disposed) return;
     if (shouldBypassServiceWorker({ ...options, location })) {
       await disableActiveServiceWorker(
         serviceWorker,
@@ -124,32 +164,39 @@ const registerServiceWorker = (options = {}) => {
         }
       };
       const scheduleUpdate = () => {
+        if (disposed) return;
         requestUpdate();
         activateWaiting();
       };
-      registration.addEventListener?.('updatefound', () => {
+      const onUpdateFound = () => {
         const installing = registration.installing;
         if (!installing) return;
-        installing.addEventListener?.('statechange', () => {
+        const onStateChange = () => {
           if (installing.state === 'installed' && serviceWorker.controller) {
             activateWaiting();
           }
-        });
-      });
-      serviceWorker.addEventListener?.('controllerchange', () => {
+        };
+        addListener(installing, 'statechange', onStateChange);
+      };
+      addListener(registration, 'updatefound', onUpdateFound);
+      const onControllerChange = () => {
         if (!hadController || refreshing) return;
         refreshing = true;
         windowRef?.location?.reload?.();
-      });
+      };
+      addListener(serviceWorker, 'controllerchange', onControllerChange);
       scheduleUpdate();
-      windowRef?.setInterval?.(scheduleUpdate, 5 * 60 * 1000);
-      documentRef?.addEventListener?.('visibilitychange', () => {
+      if (typeof windowRef?.setInterval === 'function') {
+        updateIntervalId = windowRef.setInterval(scheduleUpdate, 5 * 60 * 1000);
+      }
+      const onVisibilityChange = () => {
         if (documentRef.visibilityState === 'visible') {
           scheduleUpdate();
         }
-      });
-      windowRef?.addEventListener?.('focus', scheduleUpdate);
-      windowRef?.addEventListener?.('online', scheduleUpdate);
+      };
+      addListener(documentRef, 'visibilitychange', onVisibilityChange);
+      addListener(windowRef, 'focus', scheduleUpdate);
+      addListener(windowRef, 'online', scheduleUpdate);
     } catch {
       // Ignore service worker registration failures.
     }
@@ -159,11 +206,12 @@ const registerServiceWorker = (options = {}) => {
     if (documentRef.readyState === 'complete') {
       onLoad();
     } else {
-      windowRef.addEventListener('load', onLoad, { once: true });
+      addListener(windowRef, 'load', onLoad, { once: true });
     }
-    return;
+    return runtime;
   }
   onLoad();
+  return runtime;
 };
 
 export {

@@ -540,16 +540,11 @@ describe('FileProvider', function () {
     assert.strictEqual(binEntry.lastModified, 'modified');
   });
 
-  it('falls back to node crypto hashing and reports failures', async function () {
+  it('requires Web Crypto hashing and reports unavailable runtimes', async function () {
     const origDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'crypto');
     try {
       Object.defineProperty(globalThis, 'crypto', { value: undefined, configurable: true });
-      const hash = await provider._hashBuffer(new Uint8Array([1, 2, 3]).buffer);
-      assert.match(hash, /^[a-f0-9]{64}$/);
-
-      provider._forceCryptoError = true;
       await assert.rejects(provider._hashBuffer(new Uint8Array([4]).buffer), /crypto API not available/);
-      provider._forceCryptoError = false;
     } finally {
       if (origDescriptor) {
         Object.defineProperty(globalThis, 'crypto', origDescriptor);
@@ -615,12 +610,8 @@ describe('FileProvider', function () {
   it('_verifyCache swallows update errors', async function () {
     provider._fetchHead = async () => ({ etag: 'new', lastModified: 'new' });
     provider._fetchText = async () => { throw new Error('fail'); };
-    const logs = [];
-    const orig = console.log;
-    console.log = (...args) => logs.push(args);
     await provider._verifyCache('url', { type: 'text', etag: 'old' });
-    console.log = orig;
-    assert.ok(logs.length > 0);
+    assert.ok(provider.log.logged.some(m => m.includes('cache update error')));
   });
 
   it('_verifyCache refreshes stale text entries', async function () {
@@ -631,16 +622,13 @@ describe('FileProvider', function () {
     assert.strictEqual(textCalls, 1);
   });
 
-  it('_hashBuffer falls back to node crypto when web crypto missing', async function () {
+  it('_hashBuffer rejects when web crypto is missing', async function () {
     provider = new FileProvider(rootPath);
     const buf = Uint8Array.from([1,2,3]).buffer;
     const orig = global.crypto;
     delete global.crypto;
-    const hash = await provider._hashBuffer(buf);
+    await assert.rejects(provider._hashBuffer(buf), /crypto API not available/);
     global.crypto = orig;
-    const { createHash } = await import('node:crypto');
-    const expected = createHash('sha256').update(Buffer.from(buf)).digest('hex');
-    assert.strictEqual(hash, expected);
   });
 
   it('_hashBuffer uses web crypto when available', async function () {
@@ -720,7 +708,7 @@ describe('FileProvider', function () {
     assert.strictEqual(result, null);
   });
 
-  it('_fetchHead returns headers and swallows errors', async function () {      
+  it('_fetchHead returns headers and swallows errors', async function () {
     global.fetch = async () => {
       return { headers: { get: key => ({ ETag: 'v', 'Last-Modified': 'm' }[key]) } };
     };
@@ -729,6 +717,43 @@ describe('FileProvider', function () {
     global.fetch = async () => { throw new Error('fail'); };
     const failure = await provider._fetchHead('url');
     assert.strictEqual(failure, null);
+  });
+
+  it('honors injected fetch and XMLHttpRequest dependencies', async function () {
+    const fetchCalls = [];
+    class InjectedXHR {
+      constructor() {
+        this.status = 0;
+        this.response = '';
+        InjectedXHR.instances.push(this);
+      }
+      open(method, url) {
+        this.method = method;
+        this.url = url;
+      }
+      send() {}
+    }
+    InjectedXHR.instances = [];
+    const injectedProvider = new FileProvider(rootPath, {
+      fetch: async (url, options) => {
+        fetchCalls.push([url, options.method]);
+        return { headers: { get: key => ({ ETag: 'etag-injected', 'Last-Modified': 'modified-injected' }[key]) } };
+      },
+      XMLHttpRequest: InjectedXHR
+    });
+    injectedProvider._hashString = async () => 'hash';
+
+    const head = await injectedProvider._fetchHead('injected-url');
+    assert.deepStrictEqual(fetchCalls, [['injected-url', 'HEAD']]);
+    assert.deepStrictEqual(head, { etag: 'etag-injected', lastModified: 'modified-injected' });
+
+    const promise = injectedProvider._fetchText(rootPath + 'injected.txt');
+    const xhr = InjectedXHR.instances[0];
+    xhr.status = 200;
+    xhr.response = 'ok';
+    xhr.getResponseHeader = () => null;
+    xhr.onload();
+    assert.strictEqual(await promise, 'ok');
   });
 
   it('skips indexedDB entries with mismatched types or missing payloads', async function () {
@@ -820,6 +845,13 @@ describe('FileProvider', function () {
     setTextCache(url, 'ok');
     const result = provider._loadFromLocalStorage(url, 'binary', 'data');
     assert.strictEqual(result, null);
+  });
+
+  it('honors explicit localStorage injection boundaries', function () {
+    const isolated = new FileProvider(rootPath, { localStorage: null });
+    global.localStorage.setItem(cacheKey(makeUrl('isolated.txt')), 'x');
+    assert.deepStrictEqual(isolated._getLocalStorageEntries(), []);
+    assert.strictEqual(isolated._loadFromLocalStorage(makeUrl('isolated.txt'), 'text'), null);
   });
 
   it('uses indexedDB cache when available', async function () {
@@ -927,7 +959,7 @@ describe('FileProvider', function () {
     assert.strictEqual(text, 'hello');
   });
 
-  it('handles indexedDB failures in load and touch paths', async function () {  
+  it('handles indexedDB failures in load and touch paths', async function () {
     provider._openIndexedDb = async () => null;
     const missing = await provider._loadFromIndexedDb('url', 'text');
     assert.strictEqual(missing, null);
@@ -965,6 +997,20 @@ describe('FileProvider', function () {
     const db = await provider._openIndexedDb();
     db.onversionchange();
     assert.strictEqual(closeCalls.length, 1);
+  });
+
+  it('closes an open indexedDB handle on close()', async function () {
+    let closeCalls = 0;
+    provider._idb = {
+      close() {
+        closeCalls += 1;
+      }
+    };
+    provider._idbPromise = Promise.resolve(provider._idb);
+    await provider.close();
+    assert.strictEqual(closeCalls, 1);
+    assert.strictEqual(provider._idb, null);
+    assert.strictEqual(provider._idbPromise, null);
   });
 
   it('updates indexedDB sizes when entries already exist', async function () {
@@ -1085,20 +1131,29 @@ describe('FileProvider', function () {
   it('logs and returns false when localStorage serialization fails', function () {
     const original = provider._serializeLocalStorageEntry;
     provider._serializeLocalStorageEntry = () => { throw new Error('fail'); };
-    const logs = [];
-    const origLog = console.log;
-    console.log = (...args) => logs.push(args);
     const result = provider._storeInLocalStorage('url', { type: 'text', data: 'x' });
-    console.log = origLog;
     provider._serializeLocalStorageEntry = original;
     assert.strictEqual(result, false);
-    assert.ok(logs.length > 0);
+    assert.ok(provider.log.logged.some(m => m.includes('cache write error')));
   });
 
   it('serializes localStorage entries with default access times', function () {
     const serialized = provider._serializeLocalStorageEntry({ type: 'text', data: 'x' });
     assert.ok(serialized.entry.lastAccess > 0);
     assert.ok(serialized.entry.size > 0);
+  });
+
+  it('coalesces cache validation per URL', async function () {
+    let calls = 0;
+    provider._verifyCache = async () => {
+      calls += 1;
+    };
+
+    provider._scheduleCacheValidation('same-url', { type: 'text' });
+    provider._scheduleCacheValidation('same-url', { type: 'text' });
+    assert.strictEqual(calls, 1);
+    await Promise.all(Array.from(provider._validationPromises.values()));
+    assert.strictEqual(provider._validationPromises.size, 0);
   });
 
 });

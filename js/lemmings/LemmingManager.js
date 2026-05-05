@@ -25,10 +25,10 @@ import { BaseLogger, LogHandler } from '../util/LogHandler.js';
 import { SkillTypes } from '../game/SkillTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getAppContext, getDependency } from '../core/dependencies.js';
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const TICK_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -385,14 +385,10 @@ class LemmingManager extends BaseLogger {
       this._nearestGridDirty = true;
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('tick', {
-            start: perfStart,
-            detail: TICK_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('tick', {
+          start: perfStart,
+          detail: TICK_MEASURE_DETAIL
+        });
       }
     }
   }
@@ -436,7 +432,7 @@ class LemmingManager extends BaseLogger {
     const app = getApp();
     const endless = app?.endless === true;
     if (app?.bench === true || app?.bench2 === true || app?.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
-            
+
     } else {
       if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
     }
@@ -534,14 +530,10 @@ class LemmingManager extends BaseLogger {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('render', {
-            start: perfStart,
-            detail: RENDER_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('render', {
+          start: perfStart,
+          detail: RENDER_MEASURE_DETAIL
+        });
       }
     }
   }
@@ -786,7 +778,11 @@ class LemmingManager extends BaseLogger {
   }
 
   dispose() {
-    const start = performance.now();
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const start = perfEnabled ? performance.now() : 0;
     if (this.lemmings) this.lemmings.length = 0;
     if (this.activeLemmings) this.activeLemmings.length = 0;
     if (this.minimapDots) this.minimapDots = new Uint8Array(0);
@@ -811,11 +807,8 @@ class LemmingManager extends BaseLogger {
     this._lemmingPool = null;
     this._maxLemmingPoolSize = null;
     this.selectedIndex = null;
-    const app = getApp();
-    if ((app?.performanceAPI === true || app?.perfMetrics === true) &&
-            typeof performance !== 'undefined' &&
-            typeof performance.measure === 'function') {
-      performance.measure('LemmingManager Dispose', {
+    if (perfEnabled) {
+      recordPerformanceMeasure('LemmingManager Dispose', {
         start,
         detail: {
           devtools: {

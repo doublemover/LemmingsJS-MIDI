@@ -109,8 +109,6 @@ class CommandManager extends BaseLogger {
       this.gameTimer.onBeforeGameTick.off(this._tickListener);
       this._tickListener = null;
     }
-    if (this.gameTimer && this.gameTimer.onBeforeGameTick && this.gameTimer.onBeforeGameTick.dispose)
-      this.gameTimer.onBeforeGameTick.dispose();
     this.game = null;
     this.gameTimer = null;
     this.log = null;

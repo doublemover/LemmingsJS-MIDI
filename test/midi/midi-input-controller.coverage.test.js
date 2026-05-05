@@ -770,4 +770,3 @@ describe('MidiInputController coverage: config and mapping', function() {
     });
   });
 });
-

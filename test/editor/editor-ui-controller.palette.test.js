@@ -110,33 +110,75 @@ describe('EditorUiController palette throughput helpers', () => {
     expect(loaded.previewLoaded).to.equal(true);
   });
 
+  it('keeps large palette preview hydration batched across timer turns', () => {
+    const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+    try {
+      const ui = Object.create(EditorUiController.prototype);
+      const records = Array.from({ length: 60 }, (_, i) => createRecord(`terrain-${i}`, false, false));
+      ui._activeTab = 'terrain';
+      ui._palettePreviewQueue = [];
+      ui._palettePreviewIndex = 0;
+      ui._palettePreviewToken = 0;
+      ui._palettePreviewTimer = null;
+      ui._paletteEntries = {
+        terrain: records,
+        gadget: [],
+        trigger: []
+      };
+      let previewCalls = 0;
+      ui._getPreviewUrl = () => {
+        previewCalls += 1;
+        return 'data:image/png;base64,terrain';
+      };
+
+      ui._schedulePalettePreviewHydration();
+      expect(previewCalls).to.equal(0);
+      clock.tick(0);
+      expect(previewCalls).to.equal(24);
+      expect(ui._palettePreviewTimer).to.not.equal(null);
+      clock.tick(1);
+      expect(previewCalls).to.equal(48);
+      clock.tick(1);
+
+      expect(previewCalls).to.equal(60);
+      expect(records.every(record => record.previewLoaded)).to.equal(true);
+      expect(ui._palettePreviewQueue).to.deep.equal([]);
+      expect(ui._palettePreviewTimer).to.equal(null);
+    } finally {
+      clock.uninstall();
+    }
+  });
+
   it('cancels stale preview hydration batches when the token changes', () => {
     const clock = FakeTimers.install({ now: 0, toFake: ['setTimeout', 'clearTimeout', 'Date'] });
-    const ui = Object.create(EditorUiController.prototype);
-    const first = createRecord('a', false, false);
-    ui._activeTab = 'terrain';
-    ui._palettePreviewQueue = [];
-    ui._palettePreviewIndex = 0;
-    ui._palettePreviewToken = 0;
-    ui._palettePreviewTimer = null;
-    ui._paletteEntries = {
-      terrain: [first],
-      gadget: [],
-      trigger: []
-    };
-    let previewCalls = 0;
-    ui._getPreviewUrl = () => {
-      previewCalls += 1;
-      return 'data:image/png;base64,terrain';
-    };
+    try {
+      const ui = Object.create(EditorUiController.prototype);
+      const first = createRecord('a', false, false);
+      ui._activeTab = 'terrain';
+      ui._palettePreviewQueue = [];
+      ui._palettePreviewIndex = 0;
+      ui._palettePreviewToken = 0;
+      ui._palettePreviewTimer = null;
+      ui._paletteEntries = {
+        terrain: [first],
+        gadget: [],
+        trigger: []
+      };
+      let previewCalls = 0;
+      ui._getPreviewUrl = () => {
+        previewCalls += 1;
+        return 'data:image/png;base64,terrain';
+      };
 
-    ui._schedulePalettePreviewHydration();
-    ui._palettePreviewToken += 1;
-    clock.tick(0);
-    clock.uninstall();
+      ui._schedulePalettePreviewHydration();
+      ui._palettePreviewToken += 1;
+      clock.tick(0);
 
-    expect(previewCalls).to.equal(0);
-    expect(first.previewLoaded).to.equal(false);
+      expect(previewCalls).to.equal(0);
+      expect(first.previewLoaded).to.equal(false);
+    } finally {
+      clock.uninstall();
+    }
   });
 
   it('skips hydration timers when no pending previews exist', () => {

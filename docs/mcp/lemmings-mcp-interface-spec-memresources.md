@@ -187,6 +187,9 @@ Create a new session and launch the game page.
 
 **Notes**
 - Must wait until `__E2E__.getState().ready === true` before returning.
+- `spectator.openBrowser` is accepted only for compatibility. This server does
+  not open a local browser window for spectators; requests with this option
+  return a warning and continue without opening a browser.
 
 ---
 
@@ -341,9 +344,9 @@ Directly select a specific lemming by ID.
 **Inputs**
 - `sessionId`
 - `lemmingId` (number)
-- `alsoCenterView` (optional, default `false`)  
+- `alsoCenterView` (optional, default `false`)
   If true, the server may pan the view so the selected lemming is visible (best-effort).
-- `confirm` (optional, default `true`)  
+- `confirm` (optional, default `true`)
   If true, re-read state and confirm `selectedIndex === lemmingId`.
 
 **Outputs**

@@ -6,6 +6,10 @@ import { EventHandler } from '../util/EventHandler.js';
 import { MiniMap } from '../render/MiniMap.js';
 import { SkillTypes } from './SkillTypes.js';
 import { getDependency, getAppContext } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const getApp = () => {
   const app = getAppContext();
@@ -244,7 +248,7 @@ class GameGui {
           }
           if (speedFac > 1) {
             this.gameTimer.speedFactor--;
-            this.drawSpeedChange(false); 
+            this.drawSpeedChange(false);
             syncSpeed();
             return;
           }
@@ -501,20 +505,14 @@ class GameGui {
     const app = getApp();
     const perfEnabled = !!app &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
+      canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     if (!this.display) {
       if (perfEnabled) {
-        try {
-          performance.measure('GameGui render', {
-            start: perfStart,
-            detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('GameGui render', {
+          start: perfStart,
+          detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
+        });
       }
       return;
     }
@@ -758,14 +756,10 @@ class GameGui {
       this.miniMap.render(viewX, viewW);
     }
     if (perfEnabled) {
-      try {
-        performance.measure('GameGui render', {
-          start: perfStart,
-          detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
-        });
-      } catch {
-        /* ignored */
-      }
+      recordPerformanceMeasure('GameGui render', {
+        start: perfStart,
+        detail: { devtools: { track: 'GameGui', trackGroup: 'Render', color: 'secondary', tooltipText: 'render' } }
+      });
     }
   }
 
@@ -790,13 +784,13 @@ class GameGui {
     return this._numLeftCache[d]; }
   _getRightDigit(d) { if (!this._numRightCache[d])
     this._numRightCache[d] = this.skillPanelSprites.getNumberSpriteRight(d);
-  return this._numRightCache[d]; 
+  return this._numRightCache[d];
   }
   _getGreenLetter(ch) {
     const cachedGreenLet  = this._letterCache.get(ch);
-    if (!cachedGreenLet) { 
-      const newGreenLet = this.skillPanelSprites.getLetterSprite(ch); 
-      this._letterCache.set(ch, newGreenLet); 
+    if (!cachedGreenLet) {
+      const newGreenLet = this.skillPanelSprites.getLetterSprite(ch);
+      this._letterCache.set(ch, newGreenLet);
       return newGreenLet;
     } else {
       return cachedGreenLet;
@@ -909,19 +903,19 @@ class GameGui {
     );
   }
 
-  drawPanelNumber(d, num, panelIdx) { 
-    this.drawNumber(d, num, 4 + 16 * panelIdx, 17); 
+  drawPanelNumber(d, num, panelIdx) {
+    this.drawNumber(d, num, 4 + 16 * panelIdx, 17);
   }
 
   drawNumber(d, num, x, y, small = false) {
-    if (num <= 0) { 
-      d.drawFrame(this._numEmptySprite, x, y); return; 
+    if (num <= 0) {
+      d.drawFrame(this._numEmptySprite, x, y); return;
     }
     const tens  = Math.floor(num / 10);
     const ones  = num % 10;
     const left  = this._getLeftDigit(tens);
     const right = this._getRightDigit(ones);
-    if (left) { 
+    if (left) {
       d.drawFrameCovered(left,  x, y, 0, 0, 0);
     }
     d.drawFrame(right, x, y);
@@ -931,9 +925,9 @@ class GameGui {
     for (let i = 0; i < text.length; ++i) {
       const ch = text[i];
       let img  = this._letterCache.get(ch);
-      if (!img) { 
-        img = this.skillPanelSprites.getLetterSprite(ch); 
-        this._letterCache.set(ch, img); 
+      if (!img) {
+        img = this.skillPanelSprites.getLetterSprite(ch);
+        this._letterCache.set(ch, img);
       }
       if (img) {
         d.drawFrameCovered(img, x, y, 0, 0, 0);
@@ -1014,7 +1008,7 @@ class SmoothScroller {
       return;
     }
 
-    this.velocity += delta; 
+    this.velocity += delta;
   }
 
   update() {

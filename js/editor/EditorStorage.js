@@ -1,3 +1,5 @@
+import { getRuntimeDependency } from '../core/dependencies.js';
+
 const STORAGE_KEYS = Object.freeze({
   index: 'lemmings.editor.levels',
   levelPrefix: 'lemmings.editor.level.'
@@ -6,7 +8,7 @@ const EDITOR_STORAGE_VERSION = 2;
 
 let idCounter = 0;
 
-const getDefaultStorage = () => globalThis.localStorage || null;
+const getDefaultStorage = () => getRuntimeDependency('localStorage', null);
 
 const safeGetItem = (storage, key) => {
   try {

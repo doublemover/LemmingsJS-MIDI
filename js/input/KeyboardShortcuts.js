@@ -129,6 +129,8 @@ class KeyboardShortcuts {
         this.zoom.reset = null;
         stage.redraw();
         this.zoom.v = 0;
+      } else if (this.zoom.dir !== 0) {
+        again = true;
       } else {
         this.zoom.v = 0;
       }

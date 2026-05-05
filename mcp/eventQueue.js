@@ -253,6 +253,23 @@ class EventQueue {
   }
 
   /**
+   * Normalize an untrusted client cursor into the queue-owned sequence range.
+   * @param {string|number|undefined} after
+   * @returns {number}
+   */
+  normalizeCursor(after) {
+    const parsedAfter = Number(after);
+    const requested = Number.isFinite(parsedAfter) ? Math.trunc(parsedAfter) : this.lastDelivered;
+    if (this.size <= 0) return this.lastDelivered;
+    const oldest = this.events[this.head];
+    const newest = this.events[(this.head + this.size - 1) % this.maxEvents];
+    if (!oldest || !newest) return this.lastDelivered;
+    if (requested < oldest.seq - 1) return oldest.seq - 1;
+    if (requested > newest.seq) return newest.seq;
+    return requested;
+  }
+
+  /**
    * Drain queued events newer than `after` into a transport envelope.
    * @param {string|number|undefined} after
    * @param {object} [options]
@@ -262,11 +279,10 @@ class EventQueue {
    */
   drain(after, { updateCursor = true, includeHumanSummary = true } = {}) {
     if (this.size <= 0) return null;
-    const parsedAfter = Number(after);
-    const afterSeq = Number.isFinite(parsedAfter) ? Math.trunc(parsedAfter) : this.lastDelivered;
     const oldest = this.events[this.head];
     const newest = this.events[(this.head + this.size - 1) % this.maxEvents];
     if (!oldest || !newest) return null;
+    const afterSeq = this.normalizeCursor(after);
     if (afterSeq >= newest.seq) return null;
 
     const startSeq = Math.max(afterSeq + 1, oldest.seq);

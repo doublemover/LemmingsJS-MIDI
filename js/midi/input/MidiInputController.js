@@ -34,15 +34,20 @@ class MidiInputController {
     this._noteCapture = null;
     this._lastInputChannel = undefined;
     this._lastCcConfigRef = undefined;
+    this._lastNotesConfigRef = undefined;
     this._ccMappings = new Map();
+    this._noteActions = new Map();
+    this._noteSkills = new Map();
     this._handler = this._onMessage.bind(this);
   }
 
   setConfig(config) {
     this._lastInputChannel = config?.input?.channel;
     this._lastCcConfigRef = config?.input?.cc;
+    this._lastNotesConfigRef = config?.input?.notes;
     this.channel = normalizeInputChannel(this._lastInputChannel);
     this._buildCcMappingIndex(this._lastCcConfigRef);
+    this._buildNoteMappingIndex(this._lastNotesConfigRef);
   }
 
   /**
@@ -58,6 +63,27 @@ class MidiInputController {
       const list = this._ccMappings.get(cc) || [];
       list.push({ key, mapping });
       this._ccMappings.set(cc, list);
+    }
+  }
+
+  _buildNoteMappingIndex(notesCfg) {
+    this._noteActions.clear();
+    this._noteSkills.clear();
+    if (!notesCfg || typeof notesCfg !== 'object') return;
+    const skillBase = Number.isFinite(notesCfg.skillBase) ? Math.trunc(notesCfg.skillBase) : 60;
+    const skillOrder = Array.isArray(notesCfg.skillOrder) ? notesCfg.skillOrder : [];
+    for (let i = 0; i < skillOrder.length; i += 1) {
+      const key = skillOrder[i];
+      const skill = SkillTypes[key];
+      if (skill != null) {
+        this._noteSkills.set(skillBase + i, skill);
+      }
+    }
+    const actions = notesCfg.actions || {};
+    if (!actions || typeof actions !== 'object') return;
+    for (const [action, mapped] of Object.entries(actions)) {
+      if (!Number.isFinite(mapped)) continue;
+      this._noteActions.set(Math.trunc(mapped), action);
     }
   }
 
@@ -107,9 +133,11 @@ class MidiInputController {
   _syncConfig(config) {
     const nextInputChannel = config?.input?.channel;
     const nextCcConfig = config?.input?.cc;
+    const nextNotesConfig = config?.input?.notes;
     if (
       nextInputChannel === this._lastInputChannel &&
-      nextCcConfig === this._lastCcConfigRef
+      nextCcConfig === this._lastCcConfigRef &&
+      nextNotesConfig === this._lastNotesConfigRef
     ) {
       return;
     }
@@ -207,23 +235,21 @@ class MidiInputController {
       if (handled) return;
     }
     const notesCfg = config?.input?.notes || {};
-    const skillBase = notesCfg.skillBase ?? 60;
-    const skillOrder = notesCfg.skillOrder || [];
-    const skillIdx = note - skillBase;
-    if (skillIdx >= 0 && skillIdx < skillOrder.length) {
-      const key = skillOrder[skillIdx];
-      const skill = SkillTypes[key];
-      if (skill != null && this.view?.game?.queueCommand) {
+    if (notesCfg !== this._lastNotesConfigRef) {
+      this._lastNotesConfigRef = notesCfg;
+      this._buildNoteMappingIndex(notesCfg);
+    }
+    const skill = this._noteSkills.get(note);
+    if (skill != null) {
+      if (this.view?.game?.queueCommand) {
         this.view.game.queueCommand(new CommandSelectSkill(skill));
         if (this.view.game.gameGui) this.view.game.gameGui.skillSelectionChanged = true;
       }
       return;
     }
 
-    const actions = notesCfg.actions || {};
-    const match = Object.entries(actions).find(([, mapped]) => mapped === note);
-    if (!match) return;
-    const action = match[0];
+    const action = this._noteActions.get(note);
+    if (!action) return;
     if (action === 'pause') this._pauseGame();
     if (action === 'resume') this._resumeGame();
     if (action === 'restart') this._restartLevel();

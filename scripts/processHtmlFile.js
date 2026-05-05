@@ -40,6 +40,10 @@ export function processHtmlFile(filePath, options = {}) {
   const entryScriptSet = new Set();
   const URI_SCHEME_RE = /^[a-z][a-z0-9+.-]*:/i;
 
+  function escapeInlineStyleText(css) {
+    return String(css || '').replace(/<\/style/gi, '<\\/style');
+  }
+
   function splitAssetReference(value) {
     const raw = String(value || '').trim();
     if (!raw) return { pathPart: '', suffix: '' };
@@ -118,7 +122,9 @@ export function processHtmlFile(filePath, options = {}) {
         $(elem).text(code);
       } else if (inline && elem.name === 'link' && $(elem).attr('rel') === 'stylesheet') {
         const css = fs.readFileSync(abs, 'utf8');
-        $(elem).replaceWith(`<style>${css}</style>`);
+        const styleElem = $('<style></style>');
+        styleElem.text(escapeInlineStyleText(css));
+        $(elem).replaceWith(styleElem);
       } else {
         $(elem).attr(attr, `${pathToFileURL(abs).href}${suffix}`);
       }

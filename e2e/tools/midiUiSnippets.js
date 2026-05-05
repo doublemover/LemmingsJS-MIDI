@@ -36,7 +36,11 @@ export const collectPageErrors = (page) => {
 };
 
 export const readMidiOverrides = (page) => {
-  return page.evaluate(() => window.lemmingsMidiOverrides);
+  return page.evaluate(() => {
+    const harnessOverrides = window.__E2E__?.midiGetOverrides?.();
+    if (harnessOverrides) return harnessOverrides;
+    return window.__LEMMINGS_MIDI_UI__?.getIntentState?.()?.overrides || {};
+  });
 };
 
 export const enableWebMidi = async (page) => {
@@ -110,7 +114,9 @@ export const getEventRowIndexMap = async (details) => {
 
 export const rowByLabel = (details, indexMap, label) => {
   const index = indexMap[label];
-  return typeof index === 'number'
-    ? details.locator('label').nth(index)
-    : details.locator('label').first().locator('select').locator('nonexistent');
+  if (typeof index !== 'number') {
+    const available = Object.keys(indexMap || {}).sort().join(', ') || '(none)';
+    throw new Error(`MIDI UI row not found: ${label}. Available rows: ${available}`);
+  }
+  return details.locator('label').nth(index);
 };

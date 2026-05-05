@@ -1,5 +1,6 @@
 // @ts-check
 import { SkillTypes } from './SkillTypes.js';
+import { SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
 import { Trigger } from '../level/Trigger.js';
 
 const DEFAULT_OPTIONS = Object.freeze({
@@ -79,6 +80,43 @@ const toU8 = (value, fallback = 0) => {
 };
 
 const toBoolByte = (value) => (value ? 1 : 0);
+
+const MIDI_FLAG_OWNER_KIND = 'midi_flag';
+
+const clonePlainObject = (value) => {
+  if (!value || typeof value !== 'object') return null;
+  return { ...value };
+};
+
+const createMidiFlagTriggerOwner = (game, snap = {}) => {
+  const data = clonePlainObject(snap.ownerData) || {};
+  const midiFlagId = data.midiFlagId ?? null;
+  const triggerType = data.triggerType ?? snap.triggerType ?? null;
+  const pieceId = data.pieceId ?? null;
+  return {
+    id: snap.ownerId ?? data.ownerId ?? `midi_flag_${midiFlagId ?? 'unknown'}`,
+    __historyKind: MIDI_FLAG_OWNER_KIND,
+    __historyData: { midiFlagId, triggerType, pieceId },
+    onTrigger: (_tick, lemming, trigger, x, y) => {
+      game?.soundEvents?.emit?.({
+        type: SoundEventTypes.TRAP_TRIGGER,
+        sfxId: SoundEffectIds.NONE,
+        triggerType,
+        midiFlagId,
+        pieceId,
+        x,
+        y,
+        lemmingId: lemming?.id ?? null,
+        triggerBounds: {
+          x1: trigger?.x1 ?? snap.x1,
+          y1: trigger?.y1 ?? snap.y1,
+          x2: trigger?.x2 ?? snap.x2,
+          y2: trigger?.y2 ?? snap.y2
+        }
+      });
+    }
+  };
+};
 
 class BinaryWriter {
   constructor(initialCapacity = 256) {
@@ -1429,6 +1467,13 @@ class HistoryStore {
     }
   }
 
+  captureReplayBaseline(game = this.game) {
+    if (!game) return;
+    this.captureBaseline(game);
+    const tickIndex = game.getGameTimer?.()?.tickIndex ?? this.timer?.tickIndex ?? 0;
+    this._setKeyframe(tickIndex, this._captureKeyframe(game, tickIndex));
+  }
+
   pause() {
     this._recording = false;
     this._currentDelta = null;
@@ -1775,13 +1820,85 @@ class HistoryStore {
   recordTriggerAdd(trigger, snapshot) {
     if (!this._currentDelta) return;
     const id = this._ensureTriggerId(trigger);
-    this._currentDelta.triggerAdd.push({ id, ...snapshot });
+    this._currentDelta.triggerAdd.push({
+      id,
+      ...snapshot,
+      ...this._readTriggerOwnerSnapshot(trigger)
+    });
   }
 
   recordTriggerRemove(trigger, snapshot) {
     if (!this._currentDelta) return;
     const id = this._ensureTriggerId(trigger);
-    this._currentDelta.triggerRemove.push({ id, ...snapshot });
+    this._currentDelta.triggerRemove.push({
+      id,
+      ...snapshot,
+      ...this._readTriggerOwnerSnapshot(trigger)
+    });
+  }
+
+  _readTriggerOwnerSnapshot(trigger) {
+    const owner = trigger?.owner ?? null;
+    if (!owner) {
+      return { ownerKind: null, ownerId: null, ownerRef: null, ownerData: null };
+    }
+    if (Number.isFinite(owner.id)) {
+      return {
+        ownerKind: 'lemming',
+        ownerId: owner.id,
+        ownerRef: { id: owner.id },
+        ownerData: null
+      };
+    }
+    const ownerKind = owner.__historyKind || owner.historyKind || null;
+    if (ownerKind) {
+      const ownerData = typeof owner.getHistoryData === 'function'
+        ? owner.getHistoryData(trigger)
+        : (clonePlainObject(owner.__historyData) || clonePlainObject(owner.historyData));
+      return {
+        ownerKind,
+        ownerId: owner.id ?? null,
+        ownerRef: owner.id != null ? { id: owner.id } : null,
+        ownerData
+      };
+    }
+    return { ownerKind: null, ownerId: owner.id ?? null, ownerRef: null, ownerData: null };
+  }
+
+  _resolveTriggerOwner(game, snap) {
+    const ownerKind = snap?.ownerKind || (Number.isFinite(snap?.ownerId) ? 'lemming' : null);
+    if (ownerKind === 'lemming') {
+      const id = Number.isFinite(snap?.ownerRef?.id) ? snap.ownerRef.id : snap?.ownerId;
+      return Number.isFinite(id)
+        ? game.getLemmingManager?.()?.getLemming?.(id) ?? null
+        : null;
+    }
+    if (ownerKind === MIDI_FLAG_OWNER_KIND) {
+      return createMidiFlagTriggerOwner(game, snap);
+    }
+    if (ownerKind) {
+      return { id: snap?.ownerId ?? snap?.ownerRef?.id ?? null };
+    }
+    return null;
+  }
+
+  _isReplayManagedDynamicTrigger(trigger) {
+    if (!trigger) return false;
+    const ownerSnapshot = this._readTriggerOwnerSnapshot(trigger);
+    return ownerSnapshot.ownerKind != null;
+  }
+
+  _removeTriggerInstance(triggerManager, trigger) {
+    if (!triggerManager || !trigger) return;
+    if (typeof triggerManager.remove === 'function') {
+      triggerManager.remove(trigger);
+      return;
+    }
+    if (trigger.owner && typeof triggerManager.removeByOwner === 'function') {
+      triggerManager.removeByOwner(trigger.owner);
+      return;
+    }
+    triggerManager._triggers?.delete?.(trigger);
   }
 
   recordObjectAnimation(obj, prev, next) {
@@ -2538,15 +2655,13 @@ class HistoryStore {
     for (let i = 0; i < (removes?.length || 0); i += 1) {
       const snap = removes[i];
       const trig = this._findTriggerById(triggerManager, snap.id);
-      if (trig && trig.owner) {
-        triggerManager.removeByOwner(trig.owner);
+      if (this._isReplayManagedDynamicTrigger(trig)) {
+        this._removeTriggerInstance(triggerManager, trig);
       }
     }
     for (let i = 0; i < (adds?.length || 0); i += 1) {
       const snap = adds[i];
-      const owner = Number.isFinite(snap.ownerId)
-        ? game.getLemmingManager?.()?.getLemming?.(snap.ownerId)
-        : null;
+      const owner = this._resolveTriggerOwner(game, snap);
       const trig = new Trigger(
         snap.type,
         snap.x1,
@@ -2706,12 +2821,12 @@ class HistoryStore {
     }
     for (const trig of triggerManager._triggers || []) {
       if (!trig || staticSet.has(trig)) continue;
-      const ownerId = Number.isFinite(trig.owner?.id) ? trig.owner.id : null;
-      if (ownerId == null) continue;
+      const ownerSnapshot = this._readTriggerOwnerSnapshot(trig);
+      if (ownerSnapshot.ownerKind == null) continue;
       const id = this._ensureTriggerId(trig);
       dynamicTriggers.push({
         id,
-        ownerId,
+        ...ownerSnapshot,
         type: trig.type,
         x1: trig.x1,
         y1: trig.y1,
@@ -2740,34 +2855,36 @@ class HistoryStore {
     }
 
     const dynamic = state.dynamicTriggers || [];
-    if (dynamic.length) {
-      const removeOwners = this._scratchRemoveOwners;
-      removeOwners.clear();
-      for (const trig of triggerManager._triggers || []) {
-        const ownerId = Number.isFinite(trig.owner?.id) ? trig.owner.id : null;
-        if (ownerId != null) removeOwners.add(ownerId);
-      }
-      for (const ownerId of removeOwners) {
-        const owner = game.getLemmingManager?.()?.getLemming?.(ownerId) ?? null;
-        if (owner) triggerManager.removeByOwner(owner);
-      }
-      removeOwners.clear();
-      for (const snap of dynamic) {
-        const owner = game.getLemmingManager?.()?.getLemming?.(snap.ownerId) ?? null;
-        const trig = new Trigger(
-          snap.type,
-          snap.x1,
-          snap.y1,
-          snap.x2,
-          snap.y2,
-          snap.disableTicksCount,
-          snap.soundIndex,
-          owner
-        );
-        trig.disabledUntilTick = snap.disabledUntilTick;
-        trig.__historyId = snap.id;
-        triggerManager.add(trig);
-      }
+    const staticSet = this._scratchStaticTriggers;
+    staticSet.clear();
+    for (let i = 0; i < levelTriggers.length; i += 1) {
+      if (levelTriggers[i]) staticSet.add(levelTriggers[i]);
+    }
+    const removeList = [];
+    for (const trig of triggerManager._triggers || []) {
+      if (!trig || staticSet.has(trig)) continue;
+      if (this._isReplayManagedDynamicTrigger(trig)) removeList.push(trig);
+    }
+    staticSet.clear();
+    for (const trig of removeList) {
+      this._removeTriggerInstance(triggerManager, trig);
+    }
+    for (const snap of dynamic) {
+      const owner = this._resolveTriggerOwner(game, snap);
+      const trig = new Trigger(
+        snap.type,
+        snap.x1,
+        snap.y1,
+        snap.x2,
+        snap.y2,
+        snap.disableTicksCount,
+        snap.soundIndex,
+        owner
+      );
+      trig.disabledUntilTick = snap.disabledUntilTick;
+      trig.__historyId = snap.id;
+      triggerManager.add(trig);
+      this._triggerById.set(snap.id, trig);
     }
   }
 

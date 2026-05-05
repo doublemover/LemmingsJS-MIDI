@@ -51,6 +51,7 @@ const PROCGEN_SKILLS = {
 
 let activeProcgenRuntime = null;
 let analytics = null;
+let procgenBootListeners = [];
 
 const runFocusBlurCleanup = (runtime) => {
   const cleanup = runtime?.focusBlurCleanup;
@@ -76,6 +77,35 @@ const disposeProcgenRuntime = () => {
   runtime.stageAdapter?.dispose?.();
   runtime.game?.stop?.();
   runtime.view?.dispose?.();
+};
+
+const addProcgenBootListener = (target, eventName, handler, options) => {
+  if (!target?.addEventListener || typeof handler !== 'function') return;
+  target.addEventListener(eventName, handler, options);
+  procgenBootListeners.push({ target, eventName, handler, options });
+};
+
+const disposeProcgenBootListeners = () => {
+  while (procgenBootListeners.length) {
+    const { target, eventName, handler, options } = procgenBootListeners.pop();
+    target?.removeEventListener?.(eventName, handler, options);
+  }
+};
+
+const installProcgenBootListeners = () => {
+  disposeProcgenBootListeners();
+  const boot = () => {
+    resizeCanvas();
+    init();
+  };
+  addProcgenBootListener(window, 'resize', resizeCanvas);
+  addProcgenBootListener(window, 'beforeunload', disposeProcgenRuntime);
+
+  if (document.readyState === 'loading') {
+    addProcgenBootListener(document, 'DOMContentLoaded', boot, { once: true });
+  } else {
+    boot();
+  }
 };
 
 const setActiveProcgenRuntimeForTest = (runtime) => {
@@ -376,18 +406,7 @@ const shouldAutoBoot = () => (
 );
 
 if (shouldAutoBoot()) {
-  window.addEventListener('resize', resizeCanvas);
-  window.addEventListener('beforeunload', disposeProcgenRuntime);
-
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      resizeCanvas();
-      init();
-    });
-  } else {
-    resizeCanvas();
-    init();
-  }
+  installProcgenBootListeners();
 }
 
 export {
@@ -398,5 +417,7 @@ export {
   init,
   resizeCanvas,
   disposeProcgenRuntime,
+  installProcgenBootListeners,
+  disposeProcgenBootListeners,
   setActiveProcgenRuntimeForTest
 };

@@ -117,6 +117,46 @@ describe('packPipeline', function () {
     });
   });
 
+  it('rejects metadata part paths outside the metadata directory', function () {
+    withTempDir((dir) => {
+      const unpackDir = path.join(dir, 'unpack');
+      fs.mkdirSync(unpackDir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'secret.bin'), Buffer.from([9, 9, 9]));
+      fs.writeFileSync(path.join(unpackDir, 'part-000.bin'), Buffer.from([1, 2, 3]));
+      const metaPath = path.join(unpackDir, 'meta.json');
+      const outputDat = path.join(dir, 'output.dat');
+      fs.writeFileSync(metaPath, JSON.stringify({
+        format: 'lemmings-dat-pipeline-v1',
+        parts: [
+          { index: 0, file: '../secret.bin', decompressedSize: 3 }
+        ]
+      }));
+
+      const result = runPackPipeline(['pack', metaPath, outputDat]);
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr.toString()).to.match(/escapes base directory/i);
+      expect(fs.existsSync(outputDat)).to.equal(false);
+    });
+  });
+
+  it('rejects absolute metadata part paths', function () {
+    withTempDir((dir) => {
+      const metaPath = path.join(dir, 'meta.json');
+      const absPart = path.join(dir, 'part-000.bin');
+      fs.writeFileSync(absPart, Buffer.from([1]));
+      fs.writeFileSync(metaPath, JSON.stringify({
+        format: 'lemmings-dat-pipeline-v1',
+        parts: [
+          { index: 0, file: absPart, decompressedSize: 1 }
+        ]
+      }));
+
+      const result = runPackPipeline(['pack', metaPath, path.join(dir, 'output.dat')]);
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr.toString()).to.match(/escapes base directory/i);
+    });
+  });
+
   it('prints usage when command arguments are missing', function () {
     const result = runPackPipeline([]);
     expect(result.status).to.equal(0);

@@ -1,7 +1,9 @@
 import { expect } from 'chai';
 import {
+  DEFAULT_GAMEPAD_BINDINGS,
   GamepadInputController,
-  GamepadBindingRegistry
+  GamepadBindingRegistry,
+  mergeGamepadConfigLayers
 } from '../../js/input/GamepadInputController.js';
 
 const createButton = (pressed = false, value = null) => ({
@@ -28,9 +30,14 @@ const createStorage = () => {
     setItem(key, value) {
       store.set(key, value);
     },
+    removeItem(key) {
+      store.delete(key);
+    },
     _store: store
   };
 };
+
+const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
 describe('GamepadInputController', function () {
   it('routes button and axis bindings with held-action semantics', function () {
@@ -132,6 +139,200 @@ describe('GamepadInputController', function () {
     expect(restored.getDisplayBindings('togglePause')).to.deep.equal(['A / Cross']);
     restored.dispose();
   });
+
+  it('keeps persisted overrides above async file defaults', async function () {
+    const storage = createStorage();
+    storage.setItem('lem-gamepad-bindings-v1', JSON.stringify({
+      version: 1,
+      bindings: {
+        gameplay: {
+          togglePause: ['button:0']
+        }
+      }
+    }));
+    const windowStub = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    const navigatorStub = {
+      getGamepads() {
+        return [];
+      }
+    };
+    const controller = new GamepadInputController({
+      mode: 'gameplay',
+      window: windowStub,
+      navigator: navigatorStub,
+      storage,
+      fileProvider: {
+        loadString() {
+          return Promise.resolve(JSON.stringify({
+            version: 3,
+            bindings: {
+              gameplay: {
+                togglePause: ['button:1'],
+                restartLevel: ['button:3']
+              }
+            }
+          }));
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(controller.getDisplayBindings('togglePause')).to.deep.equal(['A / Cross']);
+    expect(controller.getDisplayBindings('restartLevel')).to.deep.equal(['Y / Triangle']);
+    controller.dispose();
+  });
+
+  it('migrates legacy full persisted snapshots into user overrides', async function () {
+    const storage = createStorage();
+    storage.setItem('lem-gamepad-bindings-v1', JSON.stringify({
+      version: 7,
+      bindings: {
+        gameplay: {
+          ...DEFAULT_GAMEPAD_BINDINGS.bindings.gameplay,
+          togglePause: ['button:0']
+        },
+        editor: {
+          ...DEFAULT_GAMEPAD_BINDINGS.bindings.editor
+        }
+      }
+    }));
+    const windowStub = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    const navigatorStub = {
+      getGamepads() {
+        return [];
+      }
+    };
+    const controller = new GamepadInputController({
+      mode: 'gameplay',
+      window: windowStub,
+      navigator: navigatorStub,
+      storage,
+      fileProvider: {
+        loadString() {
+          return Promise.resolve(JSON.stringify({
+            version: 4,
+            bindings: {
+              gameplay: {
+                restartLevel: ['button:3']
+              },
+              editor: {
+                editorUndo: ['button:1']
+              }
+            }
+          }));
+        }
+      }
+    });
+
+    await flushPromises();
+
+    expect(controller.getDisplayBindings('togglePause')).to.deep.equal(['A / Cross']);
+    expect(controller.getDisplayBindings('restartLevel')).to.deep.equal(['Y / Triangle']);
+    controller.mode = 'editor';
+    expect(controller.getDisplayBindings('editorUndo')).to.deep.equal(['B / Circle']);
+    const persisted = JSON.parse(storage.getItem('lem-gamepad-bindings-v1'));
+    expect(persisted).to.deep.equal({
+      version: 7,
+      bindings: {
+        gameplay: {
+          togglePause: ['button:0']
+        }
+      }
+    });
+    controller.dispose();
+  });
+
+  it('persists only the user override layer', async function () {
+    const storage = createStorage();
+    const windowStub = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    const navigatorStub = {
+      getGamepads() {
+        return [];
+      }
+    };
+    const controller = new GamepadInputController({
+      mode: 'gameplay',
+      window: windowStub,
+      navigator: navigatorStub,
+      storage,
+      fileProvider: {
+        loadString() {
+          return Promise.resolve(JSON.stringify({
+            version: 2,
+            bindings: {
+              gameplay: {
+                restartLevel: ['button:3']
+              }
+            }
+          }));
+        }
+      }
+    });
+
+    await flushPromises();
+    controller.setConfig({
+      version: 5,
+      bindings: {
+        gameplay: {
+          togglePause: ['button:0']
+        }
+      }
+    });
+
+    const persisted = JSON.parse(storage.getItem('lem-gamepad-bindings-v1'));
+    expect(persisted).to.deep.equal({
+      version: 5,
+      bindings: {
+        gameplay: {
+          togglePause: ['button:0']
+        }
+      }
+    });
+    expect(persisted.bindings.gameplay.restartLevel).to.equal(undefined);
+    expect(controller.getDisplayBindings('restartLevel')).to.deep.equal(['Y / Triangle']);
+    controller.dispose();
+  });
+
+  it('applies non-persisted session overrides without writing storage', function () {
+    const storage = createStorage();
+    const windowStub = {
+      requestAnimationFrame() { return 1; },
+      cancelAnimationFrame() {}
+    };
+    const navigatorStub = {
+      getGamepads() {
+        return [];
+      }
+    };
+    const controller = new GamepadInputController({
+      mode: 'gameplay',
+      window: windowStub,
+      navigator: navigatorStub,
+      storage
+    });
+
+    controller.setConfig({
+      bindings: {
+        gameplay: {
+          togglePause: ['button:0']
+        }
+      }
+    }, { persist: false });
+
+    expect(storage.getItem('lem-gamepad-bindings-v1')).to.equal(null);
+    expect(controller.getDisplayBindings('togglePause')).to.deep.equal(['A / Cross']);
+    controller.dispose();
+  });
 });
 
 describe('GamepadBindingRegistry', function () {
@@ -155,5 +356,17 @@ describe('GamepadBindingRegistry', function () {
 
     const compiledEditor = registry.getCompiledBindings('editor');
     expect(compiledEditor.some(entry => entry.action === 'editorUndo')).to.equal(true);
+  });
+
+  it('merges config layers in default, file, persisted, session order', function () {
+    const merged = mergeGamepadConfigLayers(
+      { bindings: { gameplay: { togglePause: ['button:1'], restartLevel: ['button:2'] } } },
+      { bindings: { gameplay: { togglePause: ['button:3'] } } },
+      { bindings: { gameplay: { togglePause: ['button:4'] } } }
+    );
+
+    expect(merged.bindings.gameplay.togglePause).to.deep.equal(['button:4']);
+    expect(merged.bindings.gameplay.restartLevel).to.deep.equal(['button:2']);
+    expect(merged.bindings.gameplay.panLeft).to.deep.equal(['button:14', 'axis:0:-:0.35']);
   });
 });

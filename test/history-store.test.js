@@ -2757,13 +2757,20 @@ describe('HistoryStore', function() {
   it('reads and applies trigger state with missing data', function() {
     const history = new HistoryStore();
     const owner = { id: 1 };
+    const midiOwner = {
+      id: 'midi_flag_2_0',
+      __historyKind: 'midi_flag',
+      __historyData: { midiFlagId: 2, triggerType: 9002, pieceId: 22 }
+    };
     const staticTrigger = new Trigger(TriggerTypes.TRAP, 1, 1, 2, 2, 0, 5, null);
     const dynamicTrigger = new Trigger(TriggerTypes.KILL, 3, 3, 4, 4, 0, 7, owner);
+    const midiTrigger = new Trigger(TriggerTypes.NO_TRIGGER, 7, 7, 9, 9, 0, -1, midiOwner);
     const orphanTrigger = new Trigger(TriggerTypes.KILL, 5, 5, 6, 6, 0, 8, { id: NaN });
     const level = { triggers: [null, staticTrigger] };
     const triggerManager = {
-      _triggers: new Set([staticTrigger, dynamicTrigger, orphanTrigger]),
+      _triggers: new Set([staticTrigger, dynamicTrigger, midiTrigger, orphanTrigger]),
       add(trigger) { this._triggers.add(trigger); },
+      remove(trigger) { this._triggers.delete(trigger); },
       removeByOwner(ownerTarget) {
         for (const trig of Array.from(this._triggers)) {
           if (trig.owner === ownerTarget) this._triggers.delete(trig);
@@ -2777,7 +2784,9 @@ describe('HistoryStore', function() {
     };
     const state = history._readTriggerState(game);
     expect(state.staticTriggers).to.have.length(1);
-    expect(state.dynamicTriggers).to.have.length(1);
+    expect(state.dynamicTriggers).to.have.length(2);
+    const midiState = state.dynamicTriggers.find(entry => entry.ownerKind === 'midi_flag');
+    expect(midiState.ownerData.midiFlagId).to.equal(2);
 
     const stateNoTriggers = history._readTriggerState({
       level: {},
@@ -2818,6 +2827,7 @@ describe('HistoryStore', function() {
     const applyManager = {
       _triggers: new Set([dynamicTrigger, missingOwnerTrigger]),
       add(trigger) { this._triggers.add(trigger); },
+      remove(trigger) { this._triggers.delete(trigger); },
       removeByOwner(ownerTarget) {
         for (const trig of Array.from(this._triggers)) {
           if (trig.owner === ownerTarget) this._triggers.delete(trig);
@@ -2827,6 +2837,7 @@ describe('HistoryStore', function() {
     const applyGame = {
       level: { triggers: [staticTrigger, null] },
       triggerManager: applyManager,
+      soundEvents: { events: [], emit(event) { this.events.push(event); } },
       getLemmingManager: () => ({ getLemming: (id) => (id === 1 ? owner : null) })
     };
     const applyState = {
@@ -2853,9 +2864,39 @@ describe('HistoryStore', function() {
         disableTicksCount: 0,
         soundIndex: 0,
         disabledUntilTick: 0
+      }, {
+        id: 12,
+        ownerKind: 'midi_flag',
+        ownerId: 'midi_flag_2_0',
+        ownerData: { midiFlagId: 2, triggerType: 9002, pieceId: 22 },
+        type: TriggerTypes.NO_TRIGGER,
+        x1: 7,
+        y1: 7,
+        x2: 9,
+        y2: 9,
+        disableTicksCount: 0,
+        soundIndex: -1,
+        disabledUntilTick: 0
       }]
     };
     history._applyTriggerState(applyGame, applyState);
+    const restoredMidi = Array.from(applyManager._triggers)
+      .find(trigger => trigger.__historyId === 12);
+    restoredMidi.owner.onTrigger(3, { id: 42 }, restoredMidi, 8, 8);
+    expect(applyGame.soundEvents.events[0]).to.include({
+      type: 'trap-trigger',
+      triggerType: 9002,
+      midiFlagId: 2,
+      pieceId: 22,
+      lemmingId: 42
+    });
+
+    history._applyTriggerState(applyGame, {
+      staticTriggers: state.staticTriggers,
+      dynamicTriggers: []
+    });
+    expect(Array.from(applyManager._triggers)
+      .some(trigger => trigger.owner?.__historyKind === 'midi_flag')).to.equal(false);
   });
 
   it('handles object state and changes with missing animations', function() {

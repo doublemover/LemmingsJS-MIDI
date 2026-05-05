@@ -35,6 +35,21 @@ const getRawPartBytes = (part) => {
   return new Uint8Array(unpacked.data.slice(start, end));
 };
 
+const resolveMetadataPartPath = (baseDir, fileName) => {
+  if (typeof fileName !== 'string' || !fileName.trim()) {
+    throw new Error('invalid metadata part path');
+  }
+  if (fileName.includes('\0') || path.isAbsolute(fileName)) {
+    throw new Error(`metadata part path escapes base directory: ${fileName}`);
+  }
+  const rawPath = path.resolve(baseDir, fileName);
+  const relative = path.relative(baseDir, rawPath);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`metadata part path escapes base directory: ${fileName}`);
+  }
+  return rawPath;
+};
+
 const collectParts = (container) => {
   const parts = container.parts;
   const out = new Array(parts.length);
@@ -99,14 +114,13 @@ const unpackCommand = (inputPath, outDir) => {
 
 const packCommand = (metaPath, outputPath) => {
   const rawMeta = JSON.parse(fs.readFileSync(metaPath, 'utf8'));
-  const baseDir = path.dirname(metaPath);
+  const baseDir = path.resolve(path.dirname(metaPath));
   const entries = Array.isArray(rawMeta.parts) ? rawMeta.parts.slice() : [];
   entries.sort((a, b) => (a.index | 0) - (b.index | 0));
   const parts = new Array(entries.length);
   for (let i = 0; i < entries.length; i += 1) {
     const entry = entries[i];
-    const fileName = String(entry.file || '');
-    const rawPath = path.resolve(baseDir, fileName);
+    const rawPath = resolveMetadataPartPath(baseDir, entry.file);
     const raw = new Uint8Array(fs.readFileSync(rawPath));
     parts[i] = {
       index: entry.index | 0,

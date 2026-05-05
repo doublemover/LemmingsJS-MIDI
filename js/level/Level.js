@@ -8,8 +8,12 @@ import { SkillTypes } from '../game/SkillTypes.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { Trigger } from './Trigger.js';
 import { getAppContext } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
-// Palette remapping for the fire shooter trap. 
+// Palette remapping for the fire shooter trap.
 const FIRE_INDICES = Object.freeze([3, 4, 5, 6, 10, 11, 12, 13, 14]);
 const ICE_COLORS   = Object.freeze([
   ColorPalette.colorFromRGB(92, 224, 255),
@@ -22,10 +26,6 @@ const ICE_COLORS   = Object.freeze([
   ColorPalette.colorFromRGB(0, 64, 152),
   ColorPalette.colorFromRGB(64, 160, 255)
 ]);
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
 
 const SET_MAP_OBJECTS_MEASURE_DETAIL = Object.freeze({
   devtools: Object.freeze({
@@ -164,14 +164,10 @@ class Level extends BaseLogger {
       this._debugFrame = null; // invalidate cached debug overlay
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('setMapObjects', {
-            start: perfStart,
-            detail: SET_MAP_OBJECTS_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('setMapObjects', {
+          start: perfStart,
+          detail: SET_MAP_OBJECTS_MEASURE_DETAIL
+        });
       }
     }
   }
@@ -270,7 +266,7 @@ class Level extends BaseLogger {
     const { offsetX, offsetY, width: mw, height: mh } = mask;
     for (let dy = 0; dy < mh; ++dy) {
       for (let dx = 0; dx < mw; ++dx) {
-        if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT  
+        if (mask.at(dx, dy)) continue; // Only erase where mask is TRANSPARENT
         const px = x + offsetX + dx;
         const py = y + offsetY + dy;
         if (px < 0 || px >= this.width || py < 0 || py >= this.height) continue;
@@ -538,14 +534,10 @@ class Level extends BaseLogger {
       }
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('newSetSteelAreas', {
-            start: perfStart,
-            detail: SET_STEEL_MEASURE_DETAIL
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('newSetSteelAreas', {
+          start: perfStart,
+          detail: SET_STEEL_MEASURE_DETAIL
+        });
       }
     }
   }

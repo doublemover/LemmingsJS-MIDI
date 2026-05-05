@@ -75,7 +75,12 @@ describe('e2e harness diagnostics', function () {
             },
             capabilities: {
               webMidi: { supported: false, enabled: false, fallbackPath: 'audio_only' },
-              renderPaths: { offscreenPresentSupported: false, workerOffscreenSupported: false, deterministicFallback: 'canvas2d_main_thread' }
+              renderPaths: {
+                presentPathSupported: false,
+                offscreenPresentSupported: false,
+                workerOffscreenSupported: false,
+                deterministicFallback: 'canvas2d_main_thread'
+              }
             },
             featureFlags: {
               debug: true,

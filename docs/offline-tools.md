@@ -106,6 +106,13 @@ Provides a generic DAT workflow:
 - `patch` applies a binary patch to one decompressed part and writes a rebuilt
   DAT in one step.
 
+Implementation notes:
+- `pack` rejects absolute, null-byte, or parent-traversal part paths in
+  `meta.json`; part files must stay inside the metadata directory.
+- Archive caches used by `NodeFileProvider` are bounded by entry count and
+  estimated payload bytes and can still be cleared explicitly with
+  `clearCache()`.
+
 ## archiveDir.js
 
 ```

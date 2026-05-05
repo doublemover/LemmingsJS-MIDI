@@ -10,8 +10,9 @@ test.beforeEach(async ({ page }) => {
     window.prompt = () => 'E2E Save';
     window.alert = () => {};
   });
-  await page.goto('/editor.html');
+  await page.goto('/editor.html?e2e=1');
   await expect(page.locator('#editorStatus')).toContainText('Tool:');
+  await page.waitForFunction(() => typeof window.__E2E__?.getEditorLevelText === 'function');
 });
 
 test('Editor UI loads and tool selection updates state', async ({ page }) => {
@@ -64,7 +65,7 @@ test('Save and import keep saved list wired up', async ({ page }) => {
   await expect(page.locator('#editorSavedSelect')).toContainText('E2E Save');
 
   const text = await page.evaluate(() => {
-    return window.lemmings?.getEditorLevelText?.() || '';
+    return window.__E2E__?.getEditorLevelText?.() || '';
   });
   expect(text.length).toBeGreaterThan(0);
 

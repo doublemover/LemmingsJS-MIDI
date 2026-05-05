@@ -1,3 +1,5 @@
+import { getRuntimeDependency } from '../core/dependencies.js';
+
 const boundCanvasHandlers = new WeakMap();
 
 const blurActiveInput = (documentRef, windowRef) => {
@@ -27,7 +29,10 @@ const blurActiveInput = (documentRef, windowRef) => {
  * Bind canvas interactions that blur active form elements so gameplay input is
  * not trapped by focused controls. Returns a cleanup function for teardown.
  */
-const bindCanvasFocusBlur = (canvas, { documentRef = globalThis.document, windowRef = globalThis.window } = {}) => {
+const bindCanvasFocusBlur = (canvas, options = {}) => {
+  const deps = options && typeof options === 'object' ? options : {};
+  const documentRef = deps.documentRef || getRuntimeDependency('document', null);
+  const windowRef = deps.windowRef || getRuntimeDependency('window', null);
   if (!canvas) return () => {};
   const existingCleanup = boundCanvasHandlers.get(canvas);
   if (existingCleanup) {

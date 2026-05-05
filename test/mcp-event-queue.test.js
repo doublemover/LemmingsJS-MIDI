@@ -72,6 +72,18 @@ describe('EventQueue', function () {
     expect(envelope.cursor).to.equal('3');
   });
 
+  it('normalizes stale and oversized cursors into the queue-owned range', function () {
+    const queue = createQueue(3);
+    queue.add({ source: 'agent', type: 'a' }); // seq 1
+    queue.add({ source: 'agent', type: 'b' }); // seq 2
+    queue.add({ source: 'agent', type: 'c' }); // seq 3
+    queue.add({ source: 'agent', type: 'd' }); // seq 4, drops seq 1
+
+    expect(queue.normalizeCursor('-999')).to.equal(1);
+    expect(queue.normalizeCursor('999')).to.equal(4);
+    expect(queue.drain('999')).to.equal(null);
+  });
+
   it('preserves human summary on peek drains', function () {
     const queue = createQueue(4);
     queue.add({ source: 'human', type: 'input', summary: 'first' });

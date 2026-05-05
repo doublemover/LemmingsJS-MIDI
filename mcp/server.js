@@ -1140,14 +1140,7 @@ const createSession = async (args) => {
   const response = {
     ok: true,
     sessionId,
-    protocol: {
-      version: MCP_PROTOCOL_VERSION,
-      schemaFrozenAt: MCP_PROTOCOL_SCHEMA_FROZEN_AT,
-      acceptedToolNameForms: ['underscore', 'dotted'],
-      deprecatedToolAliases: LEGACY_TOOL_ALIASES,
-      skillNames: SKILL_NAMES,
-      lemmingDeltaFields: LEMMING_DELTA_FIELDS
-    },
+    protocol: createProtocolMetadata(),
     gameUrl,
     spectatorUrl: session.spectator?.url || null,
     spectatorStream: session.spectator?.streamConfig || null,
@@ -1159,7 +1152,7 @@ const createSession = async (args) => {
   };
 
   if (options.spectator?.openBrowser) {
-    response.warnings.push('spectator openBrowser is not implemented');
+    response.warnings.push('spectator.openBrowser is unsupported in this server version');
   }
 
   return attachEvents(session, response);
@@ -1871,13 +1864,12 @@ const watchCancelTool = async (args) => {
 const eventsPollTool = async (args) => {
   const { sessionId, after } = EventsPollSchema.parse(args || {});
   const session = getSession(sessionId);
-  const parsedAfter = Number(after);
-  const normalizedAfter = Number.isFinite(parsedAfter) ? Math.trunc(parsedAfter) : undefined;
   if (session.watches.size) {
     await session.watchController?.tickNow();
   }
+  const normalizedAfter = session.events.normalizeCursor(after);
   const envelope = session.events.drain(normalizedAfter, { updateCursor: true });
-  const cursor = String(Number.isFinite(normalizedAfter) ? normalizedAfter : session.events.lastDelivered);
+  const cursor = String(envelope ? envelope.cursor : normalizedAfter);
   if (!envelope && session.watches.size) {
     requestWatchPoll(session, { immediate: true });
   }
@@ -2028,25 +2020,70 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
   return { contents };
 });
 
-const transport = new StdioServerTransport();
-await server.connect(transport);
-
-const shutdownController = createShutdownController({
-  disposeSessions: async () => {
-    await disposeAllSessionRuntimes(sessions.values(), {
-      stopSpectatorServer,
-      stopWatchLoop
-    });
-    sessions.clear();
+const createProtocolMetadata = () => ({
+  version: MCP_PROTOCOL_VERSION,
+  schemaFrozenAt: MCP_PROTOCOL_SCHEMA_FROZEN_AT,
+  acceptedToolNameForms: [
+    'underscore',
+    ...(MCP_DOTTED_TOOL_FALLBACK_ENABLED ? ['dotted'] : [])
+  ],
+  dottedFallbackEnabled: MCP_DOTTED_TOOL_FALLBACK_ENABLED,
+  legacyAliasesEnabled: MCP_LEGACY_TOOL_ALIASES_ENABLED,
+  deprecatedToolAliases: LEGACY_TOOL_ALIASES,
+  unsupportedOptions: {
+    spectatorOpenBrowser: true
   },
-  closeServer: () => server.close(),
-  closeTransport: () => transport.close()
+  skillNames: SKILL_NAMES,
+  lemmingDeltaFields: LEMMING_DELTA_FIELDS
 });
 
-process.on('SIGINT', async () => {
-  shutdownController.handleSignal('SIGINT');
-});
+const createMcpRuntime = async ({
+  transport = new StdioServerTransport(),
+  processRef = process
+} = {}) => {
+  await server.connect(transport);
 
-process.on('SIGTERM', async () => {
-  shutdownController.handleSignal('SIGTERM');
-});
+  const shutdownController = createShutdownController({
+    disposeSessions: async () => {
+      await disposeAllSessionRuntimes(sessions.values(), {
+        stopSpectatorServer,
+        stopWatchLoop
+      });
+      sessions.clear();
+    },
+    closeServer: () => server.close(),
+    closeTransport: () => transport.close()
+  });
+
+  processRef?.on?.('SIGINT', () => {
+    shutdownController.handleSignal('SIGINT');
+  });
+
+  processRef?.on?.('SIGTERM', () => {
+    shutdownController.handleSignal('SIGTERM');
+  });
+
+  return {
+    server,
+    transport,
+    shutdownController
+  };
+};
+
+const isMainModule = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch {
+    return false;
+  }
+})();
+
+if (isMainModule) {
+  await createMcpRuntime();
+}
+
+export {
+  createMcpRuntime,
+  createProtocolMetadata,
+  server
+};

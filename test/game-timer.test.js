@@ -408,14 +408,75 @@ describe('GameTimer', function() {
     timer.tick(1);
     expect(timer.tickIndex).to.equal(0);
 
-    now = 120;
-    globalThis.window._raf(now);
-    now = 180;
+    now = timer.TIME_PER_FRAME_MS * 17;
     globalThis.window._raf(now);
 
     expect(seconds).to.equal(1);
     timer.toggle();
     expect(timer.isRunning()).to.equal(false);
+  });
+
+  it('emits eachGameSecond from simulated ticks during manual stepping', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    const seconds = [];
+    timer.eachGameSecond.on(second => { seconds.push(second); });
+
+    timer.tick(16);
+    expect(seconds).to.eql([]);
+    timer.tick(1);
+    expect(seconds).to.eql([1]);
+    timer.tick(17);
+    expect(seconds).to.eql([1, 2]);
+  });
+
+  it('does not speed up eachGameSecond cadence with speedFactor', function() {
+    const timer = new GameTimer({ timeLimit: 1 });
+    const seconds = [];
+    timer.eachGameSecond.on(second => { seconds.push(second); });
+    timer.speedFactor = 4;
+    timer.continue();
+
+    now = timer.frameTime * 17;
+    globalThis.window._raf(now);
+
+    expect(timer.tickIndex).to.equal(17);
+    expect(seconds).to.eql([1]);
+    timer.suspend();
+  });
+
+  it('uses injected runtime dependencies for browser integration', function() {
+    const calls = [];
+    const runtime = {
+      performance: { now: () => 0 },
+      document: {
+        visibilityState: 'visible',
+        hasFocus() { return true; },
+        addEventListener(type, handler) { calls.push(['doc:add', type, handler]); },
+        removeEventListener(type, handler) { calls.push(['doc:remove', type, handler]); }
+      },
+      window: {
+        requestAnimationFrame(handler) {
+          calls.push(['win:raf', handler]);
+          return 9;
+        },
+        cancelAnimationFrame(id) { calls.push(['win:cancel', id]); },
+        addEventListener(type, handler) { calls.push(['win:add', type, handler]); },
+        removeEventListener(type, handler) { calls.push(['win:remove', type, handler]); }
+      }
+    };
+
+    const timer = new GameTimer({ timeLimit: 1 }, runtime);
+    timer.continue();
+    timer.stop();
+
+    expect(calls.map(call => call[0])).to.include.members([
+      'doc:add',
+      'win:add',
+      'win:raf',
+      'win:cancel',
+      'doc:remove',
+      'win:remove'
+    ]);
   });
 
   it('returns early when continuing while already running', function() {

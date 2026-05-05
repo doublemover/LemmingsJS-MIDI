@@ -3,19 +3,37 @@ import { ColorPalette } from '../render/ColorPalette.js';
 import { ObjectImageInfo } from './ObjectImageInfo.js';
 import { PaletteImage } from '../render/PaletteImage.js';
 import { TerrainImageInfo } from '../render/TerrainImageInfo.js';
+import { DEFAULT_STEEL_SPRITES } from '../steelSpritesData.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 let steelSprites = null;
+
+const cloneSteelSprites = (source) => {
+  const clone = {};
+  for (const [folder, files] of Object.entries(source || {})) {
+    clone[folder] = {};
+    for (const [filename, ids] of Object.entries(files || {})) {
+      clone[folder][filename] = Array.isArray(ids) ? ids.slice() : [];
+    }
+  }
+  return clone;
+};
 
 async function loadSteelSprites() {
   if (!steelSprites) {
     const url = new URL('../steelSprites.json', import.meta.url);
     try {
-      const res = await fetch(url);
+      const fetchRef = getRuntimeDependency(
+        'fetch',
+        typeof fetch === 'function' ? fetch : null
+      );
+      if (typeof fetchRef !== 'function') {
+        throw new Error('fetch API not available');
+      }
+      const res = await fetchRef(url);
       steelSprites = await res.json();
     } catch (e) {
       if (url.protocol === 'file:') {
-        const { readFile } = await import('node:fs/promises');
-        const txt = await readFile(url, 'utf8');
-        steelSprites = JSON.parse(txt);
+        steelSprites = cloneSteelSprites(DEFAULT_STEEL_SPRITES);
       } else {
         throw e;
       }
@@ -42,11 +60,6 @@ class GroundReader extends BaseLogger {
    */
   constructor (groundFile, vgaTerrain, vgaObject) {
     super();
-    if (groundFile.length !== 1056) {
-      this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
-      return;
-    }
-
     // ---------------------------------------------------------------------
     //  Pre‑allocate fixed‑length arrays so their shape never changes, which
     //  keeps them in V8 "fast elements" mode for O(1) access.
@@ -56,6 +69,13 @@ class GroundReader extends BaseLogger {
 
     this.groundPalette = new ColorPalette();
     this.colorPalette  = new ColorPalette();
+    this.valid = false;
+
+    if (groundFile.length !== 1056) {
+      this.log.log(`groundFile ${groundFile.filename} has wrong size: ${groundFile.length}`);
+      return;
+    }
+    this.valid = true;
 
     // Palette offset is the last block in the file – compute once.
     const paletteOffset = BYTE_SIZE_OF_OBJECTS + BYTE_SIZE_OF_TERRAIN;
@@ -98,7 +118,7 @@ class GroundReader extends BaseLogger {
           let widest  = 0;
           let tallest = 0;
 
-          // scan each row once from the right 
+          // scan each row once from the right
           for (let y = img.height - 1; y >= 0; --y) {
             const rowBase = y * img.width;
             let rowHasPixel = false;
@@ -134,7 +154,6 @@ class GroundReader extends BaseLogger {
   _readObjectImages (fr, offset, palette) {
     fr.setOffset(offset);
 
-    //console.log("obj count: " + OBJECT_COUNT)
     for (let i = 0; i < OBJECT_COUNT; ++i) {
       const img      = new ObjectImageInfo();
       const flags    = fr.readWordBE();
@@ -192,9 +211,7 @@ class GroundReader extends BaseLogger {
       const filename = fr.filename;
       const foldername = fr.foldername;
       if (foldername === '[unknown]') {
-        console.log(
-          'folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel'
-        );
+        this.log.log('folder name for ' + filename + ' is unknown, unable to use magic numbers to make perfect steel');
       } else {
         const sprites = steelSprites ?? {};
         const gameData = sprites[foldername];

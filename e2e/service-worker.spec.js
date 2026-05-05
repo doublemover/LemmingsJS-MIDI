@@ -51,7 +51,7 @@ function expectRootServiceWorkerScope(scope, pageUrl) {
 }
 
 test('Service worker controls the game page and checks for updates', async ({ page }, testInfo) => {
-  await page.goto('/');
+  await page.goto('/?sw=1');
   const result = await ensureServiceWorkerControls(page);
   expect(result).not.toBeNull();
   expect(result?.state).toBeTruthy();
@@ -66,7 +66,7 @@ test('Service worker controls the game page and checks for updates', async ({ pa
 });
 
 test('Editor page bypasses active service workers', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?sw=1');
   const gameResult = await ensureServiceWorkerControls(page);
   expect(gameResult).not.toBeNull();
   expect(gameResult?.state).toBeTruthy();

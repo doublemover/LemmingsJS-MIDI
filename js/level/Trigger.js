@@ -9,8 +9,8 @@ class Trigger {
    * @param {number} [type]
    * @param {number} [x1]
    * @param {number} [y1]
-   * @param {number} [x2]
-   * @param {number} [y2]
+ * @param {number} [x2] exclusive right edge
+ * @param {number} [y2] exclusive bottom edge
    * @param {number} [disableTicksCount]
    * @param {number} [soundIndex]
    * @param {any} [owner]
@@ -40,7 +40,7 @@ class Trigger {
   }
   trigger(x, y, tick, lemming = null) {
     if (this.disabledUntilTick <= tick) {
-      if ((x >= this.x1) && (y >= this.y1) && (x <= this.x2) && (y <= this.y2)) {
+      if ((x >= this.x1) && (y >= this.y1) && (x < this.x2) && (y < this.y2)) {
         const prev = this.disabledUntilTick;
         const next = tick + this.disableTicksCount;
         if (prev !== next) {
@@ -62,7 +62,15 @@ class Trigger {
     if (this.type === TriggerTypes.ONEWAY_LEFT || this.type === TriggerTypes.ONEWAY_RIGHT) {
       return; // don't render arrow triggers to debug display, that is handled in level
     }
-    gameDisplay.drawRect(this.x1, this.y1, this.x2 - this.x1, this.y2 - this.y1, 255, 0, 0);
+    gameDisplay.drawRect(
+      this.x1,
+      this.y1,
+      Math.max(0, this.x2 - this.x1 - 1),
+      Math.max(0, this.y2 - this.y1 - 1),
+      255,
+      0,
+      0
+    );
   }
 }
 

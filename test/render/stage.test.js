@@ -742,11 +742,10 @@ describe('Stage', function() {
     expect(applied[3]).to.equal(1.5);
     expect(redraws).to.equal(1);
 
-    withGlobalLemmings({ scale: 3 }, () => {
-      stage.applyViewport = originalApply;
-      stage.setGameViewPointPosition(2, 3);
-      expect(stage.gameImgProps.viewPoint.scale).to.equal(stage.snapScale(3));
-    });
+    stage.applyViewport = originalApply;
+    stage.setScaleProvider(() => 3);
+    stage.setGameViewPointPosition(2, 3);
+    expect(stage.gameImgProps.viewPoint.scale).to.equal(stage.snapScale(3));
 
     stage._rawScale = NaN;
     stage.setGameViewPointPosition(4, 5, { preserveScale: true });
@@ -763,11 +762,13 @@ describe('Stage', function() {
     expect(Number.isFinite(stage.gameImgProps.viewPoint.x)).to.equal(true);
     expect(Number.isFinite(stage.gameImgProps.viewPoint.y)).to.equal(true);
 
-    withGlobalLemmings({ scale: 0 }, () => {
+    withGlobalLemmings({ scale: 4 }, () => {
+      stage.setScaleProvider(null);
       stage.gameImgProps.display.worldDataSize = { width: 200, height: 100 };
       stage.gameImgProps.canvasViewportSize = { width: 100, height: 100 };
       stage.gameImgProps.viewPoint.scale = 2;
       stage.setGameViewPointPosition(7, 8);
+      expect(stage.gameImgProps.viewPoint.scale).to.equal(2);
       expect(stage.gameImgProps.viewPoint.x).to.equal(7);
       expect(stage.gameImgProps.viewPoint.y).to.equal(8);
     });

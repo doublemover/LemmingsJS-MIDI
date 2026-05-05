@@ -49,6 +49,14 @@ describe('scripts/runTests', function () {
     expect(resolveRuntimeBudgetMs(Symbol('budget'))).to.equal(180000);
   });
 
+  it('covers app, editor, render, and runtime slices with the singleton guard', function () {
+    expect(RUNTIME_GUARD_TARGETS).to.include.members([
+      'js/app/**/*.js',
+      'js/editor/**/*.js',
+      'js/render/**/*.js'
+    ]);
+  });
+
   it('maps changed files to stable category selection', function () {
     const categories = inferCategoriesFromChangedFiles([
       'test/editor-ui-format.test.js',

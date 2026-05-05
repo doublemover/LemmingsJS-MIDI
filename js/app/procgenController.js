@@ -554,11 +554,12 @@ class ProcgenController {
     for (let i = 0; i < hazards.length; i += 1) {
       const trigger = hazards[i];
       if (trigger.x1 > maxX) break;
-      if (trigger.x2 < minX) continue;
-      if (y < trigger.y1 || y > trigger.y2) continue;
+      if (trigger.x2 <= minX) continue;
+      if (y < trigger.y1 || y >= trigger.y2) continue;
+      const rightEdge = trigger.x2 - 1;
       const dx = dir >= 0
         ? (trigger.x1 <= x + 1 ? 1 : trigger.x1 - x)
-        : (trigger.x2 >= x - 1 ? 1 : x - trigger.x2);
+        : (rightEdge >= x - 1 ? 1 : x - rightEdge);
       if (dx < 1 || dx > maxDx) continue;
       if (!best || dx < best.dx) {
         best = { dx, type: trigger.type };

@@ -188,20 +188,29 @@ describe('CommandManager', function() {
     const cm = new TestCommandManager(game, timer);
     const listener = cm._tickListener;
     let offCalled = false;
-    let disposed = false;
     timer.onBeforeGameTick.off = function(fn) {
       if (fn === listener) offCalled = true;
       Lemmings.EventHandler.prototype.off.call(this, fn);
     };
-    timer.onBeforeGameTick.dispose = function() { disposed = true; };
     cm.dispose();
     expect(offCalled).to.equal(true);
-    expect(disposed).to.equal(true);
     expect(cm._tickListener).to.equal(null);
     expect(cm.game).to.equal(null);
     expect(cm.gameTimer).to.equal(null);
     expect(cm.log).to.equal(null);
     expect(cm.runCommands).to.deep.equal({});
     expect(cm.loggedCommads).to.deep.equal({});
+  });
+
+  it('dispose does not clear unrelated before-tick listeners', function() {
+    const timer = new MockTimer();
+    let unrelatedCalls = 0;
+    timer.onBeforeGameTick.on(() => { unrelatedCalls += 1; });
+    const cm = new TestCommandManager(game, timer);
+
+    cm.dispose();
+    timer.next();
+
+    expect(unrelatedCalls).to.equal(1);
   });
 });

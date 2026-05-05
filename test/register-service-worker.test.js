@@ -26,6 +26,14 @@ describe('registerServiceWorker', function () {
       profile: 'classic',
       location: { protocol: 'https:', hostname: 'localhost', search: '' }
     })).to.equal(true);
+    expect(shouldBypassServiceWorker({
+      profile: 'classic',
+      location: { protocol: 'https:', hostname: 'localhost', search: '?sw=1' }
+    })).to.equal(false);
+    expect(shouldBypassServiceWorker({
+      profile: 'classic',
+      location: { protocol: 'https:', hostname: 'localhost', search: '?sw=1&noSw=1' }
+    })).to.equal(true);
     expect(shouldBypassServiceWorker({ profile: 'classic', location: baseLocation })).to.equal(false);
     expect(shouldBypassServiceWorker({ profile: 'e2e', location: baseLocation })).to.equal(true);
   });
@@ -75,6 +83,75 @@ describe('registerServiceWorker', function () {
     expect(calls).to.have.lengthOf(1);
     expect(calls[0].url).to.equal('service-worker.js?rev=phase30b');
     expect(calls[0].options).to.deep.equal({ updateViaCache: 'none' });
+  });
+
+  it('returns a disposable runtime that removes update listeners and intervals', async function () {
+    const removed = [];
+    const cleared = [];
+    const registration = {
+      waiting: null,
+      update() {
+        return Promise.resolve();
+      },
+      addEventListener() {},
+      removeEventListener(type) {
+        removed.push(`registration:${type}`);
+      }
+    };
+    const serviceWorker = {
+      controller: null,
+      register() {
+        return Promise.resolve(registration);
+      },
+      addEventListener() {},
+      removeEventListener(type) {
+        removed.push(`sw:${type}`);
+      }
+    };
+    const windowRef = {
+      location: {
+        protocol: 'https:',
+        hostname: 'example.com',
+        search: ''
+      },
+      setInterval() {
+        return 7;
+      },
+      clearInterval(id) {
+        cleared.push(id);
+      },
+      addEventListener() {},
+      removeEventListener(type) {
+        removed.push(`window:${type}`);
+      }
+    };
+    const documentRef = {
+      readyState: 'complete',
+      visibilityState: 'visible',
+      addEventListener() {},
+      removeEventListener(type) {
+        removed.push(`document:${type}`);
+      }
+    };
+
+    const runtime = registerServiceWorker({
+      profile: 'classic',
+      window: windowRef,
+      document: documentRef,
+      location: windowRef.location,
+      navigator: { serviceWorker }
+    });
+    await flush();
+    runtime.dispose();
+
+    expect(cleared).to.deep.equal([7]);
+    expect(removed).to.include.members([
+      'registration:updatefound',
+      'sw:controllerchange',
+      'document:visibilitychange',
+      'window:focus',
+      'window:online'
+    ]);
   });
 
   it('unregisters active service workers and clears app caches when bypassing', async function () {

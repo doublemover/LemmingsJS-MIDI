@@ -5,6 +5,9 @@ import AdmZip from 'adm-zip';
 import * as tar from 'tar';
 import { createExtractorFromFile, createExtractorFromData } from 'node-unrar-js';
 
+const DEFAULT_MAX_ARCHIVE_CACHE_ENTRIES = 8;
+const DEFAULT_MAX_ARCHIVE_CACHE_BYTES = 64 * 1024 * 1024;
+
 class NodeFileProvider {
   constructor(rootPath = '.', options = {}) {
     this.rootPath = rootPath;
@@ -13,6 +16,20 @@ class NodeFileProvider {
     this.rarCache = new Map();
     this.nxpCache = new Map();
     this._rar = options.rar || { createExtractorFromData, createExtractorFromFile };
+    this._archiveCacheLimits = {
+      maxEntries: Number.isFinite(options.maxArchiveCacheEntries) && options.maxArchiveCacheEntries > 0
+        ? Math.floor(options.maxArchiveCacheEntries)
+        : DEFAULT_MAX_ARCHIVE_CACHE_ENTRIES,
+      maxBytes: Number.isFinite(options.maxArchiveCacheBytes) && options.maxArchiveCacheBytes > 0
+        ? Math.floor(options.maxArchiveCacheBytes)
+        : DEFAULT_MAX_ARCHIVE_CACHE_BYTES
+    };
+    this._archiveCacheBytes = {
+      zip: 0,
+      tar: 0,
+      rar: 0,
+      nxp: 0
+    };
   }
 
   /**
@@ -23,6 +40,78 @@ class NodeFileProvider {
     this.tarCache.clear();
     this.rarCache.clear();
     this.nxpCache.clear();
+    this._archiveCacheBytes.zip = 0;
+    this._archiveCacheBytes.tar = 0;
+    this._archiveCacheBytes.rar = 0;
+    this._archiveCacheBytes.nxp = 0;
+  }
+
+  getCacheStats() {
+    return {
+      maxEntries: this._archiveCacheLimits.maxEntries,
+      maxBytes: this._archiveCacheLimits.maxBytes,
+      zip: { entries: this.zipCache.size, bytes: this._archiveCacheBytes.zip },
+      tar: { entries: this.tarCache.size, bytes: this._archiveCacheBytes.tar },
+      rar: { entries: this.rarCache.size, bytes: this._archiveCacheBytes.rar },
+      nxp: { entries: this.nxpCache.size, bytes: this._archiveCacheBytes.nxp }
+    };
+  }
+
+  _estimateMapBytes(map) {
+    let total = 0;
+    for (const value of map?.values?.() || []) {
+      total += value?.byteLength ?? value?.length ?? 0;
+    }
+    return total;
+  }
+
+  _readCachedArchive(kind, cache, key, stat) {
+    const cached = cache.get(key);
+    if (!cached) return null;
+    if (!this._isCacheValid(cached, stat)) {
+      cache.delete(key);
+      this._archiveCacheBytes[kind] = Math.max(
+        0,
+        this._archiveCacheBytes[kind] - (cached.cacheBytes || 0)
+      );
+      return null;
+    }
+    cache.delete(key);
+    cache.set(key, cached);
+    return cached;
+  }
+
+  _rememberArchive(kind, cache, key, entry, cacheBytes = entry?.size || 0) {
+    const previous = cache.get(key);
+    if (previous) {
+      cache.delete(key);
+      this._archiveCacheBytes[kind] = Math.max(
+        0,
+        this._archiveCacheBytes[kind] - (previous.cacheBytes || 0)
+      );
+    }
+    const next = {
+      ...entry,
+      cacheBytes: Math.max(0, Number.isFinite(cacheBytes) ? cacheBytes : 0)
+    };
+    cache.set(key, next);
+    this._archiveCacheBytes[kind] += next.cacheBytes;
+    while (
+      cache.size > 1
+      && (
+        cache.size > this._archiveCacheLimits.maxEntries
+        || this._archiveCacheBytes[kind] > this._archiveCacheLimits.maxBytes
+      )
+    ) {
+      const oldestKey = cache.keys().next().value;
+      const oldest = cache.get(oldestKey);
+      cache.delete(oldestKey);
+      this._archiveCacheBytes[kind] = Math.max(
+        0,
+        this._archiveCacheBytes[kind] - (oldest?.cacheBytes || 0)
+      );
+    }
+    return next;
   }
 
   _validateEntry(name) {
@@ -104,11 +193,10 @@ class NodeFileProvider {
   _getZip(zipPath) {
     const abs = path.resolve(this.rootPath, zipPath);
     const stat = this._readArchiveStat(abs);
-    const cached = this.zipCache.get(abs);
-    if (!this._isCacheValid(cached, stat)) {
+    const cached = this._readCachedArchive('zip', this.zipCache, abs, stat);
+    if (!cached) {
       const zip = new AdmZip(abs);
-      this.zipCache.set(abs, { ...stat, zip });
-      return zip;
+      return this._rememberArchive('zip', this.zipCache, abs, { ...stat, zip }, stat.size).zip;
     }
     return cached.zip;
   }
@@ -116,8 +204,8 @@ class NodeFileProvider {
   async _getTar(tarPath) {
     const abs = path.resolve(this.rootPath, tarPath);
     const stat = this._readArchiveStat(abs);
-    const cached = this.tarCache.get(abs);
-    if (!this._isCacheValid(cached, stat)) {
+    const cached = this._readCachedArchive('tar', this.tarCache, abs, stat);
+    if (!cached) {
       const map = new Map();
       await tar.t({
         file: abs,
@@ -131,8 +219,13 @@ class NodeFileProvider {
           });
         },
       });
-      this.tarCache.set(abs, { ...stat, map });
-      return map;
+      return this._rememberArchive(
+        'tar',
+        this.tarCache,
+        abs,
+        { ...stat, map },
+        this._estimateMapBytes(map)
+      ).map;
     }
     return cached.map;
   }
@@ -140,8 +233,8 @@ class NodeFileProvider {
   async _getRar(rarPath) {
     const abs = path.resolve(this.rootPath, rarPath);
     const stat = this._readArchiveStat(abs);
-    const cached = this.rarCache.get(abs);
-    if (!this._isCacheValid(cached, stat)) {
+    const cached = this._readCachedArchive('rar', this.rarCache, abs, stat);
+    if (!cached) {
       const map = new Map();
       const data = fs.readFileSync(abs);
       const extractor = await this._rar.createExtractorFromData({ data });
@@ -155,8 +248,13 @@ class NodeFileProvider {
           map.set(h.name.replace(/\\/g, '/'), Buffer.from(f.extraction));
         }
       }
-      this.rarCache.set(abs, { ...stat, map });
-      return map;
+      return this._rememberArchive(
+        'rar',
+        this.rarCache,
+        abs,
+        { ...stat, map },
+        this._estimateMapBytes(map)
+      ).map;
     }
     return cached.map;
   }
@@ -170,8 +268,8 @@ class NodeFileProvider {
   _getNxp(nxpPath) {
     const abs = path.resolve(this.rootPath, nxpPath);
     const stat = this._readArchiveStat(abs);
-    const cached = this.nxpCache.get(abs);
-    if (this._isCacheValid(cached, stat)) return cached.map;
+    const cached = this._readCachedArchive('nxp', this.nxpCache, abs, stat);
+    if (cached) return cached.map;
 
     const data = fs.readFileSync(abs);
     if (data.length < 4) {
@@ -200,8 +298,13 @@ class NodeFileProvider {
       }
       map.set(name, data.subarray(offset, offset + size));
     }
-    this.nxpCache.set(abs, { ...stat, map });
-    return map;
+    return this._rememberArchive(
+      'nxp',
+      this.nxpCache,
+      abs,
+      { ...stat, map },
+      this._estimateMapBytes(map)
+    ).map;
   }
 
   _findEntry(map, entryName) {

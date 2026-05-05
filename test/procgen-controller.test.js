@@ -19,7 +19,7 @@ describe('ProcgenController', function () {
     expect(right).to.deep.equal({ dx: 3, type: TriggerTypes.FRYING });
 
     const left = controller._findHazardAhead(12, 6, 20, -1);
-    expect(left).to.deep.equal({ dx: 3, type: TriggerTypes.DROWN });
+    expect(left).to.deep.equal({ dx: 4, type: TriggerTypes.DROWN });
   });
 
   it('prunes stale tracking state and offscreen gap backlog', function () {

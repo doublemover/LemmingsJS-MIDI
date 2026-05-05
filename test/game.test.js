@@ -66,7 +66,13 @@ describe('Game', function() {
     });
 
     setDependency('TriggerManager', class {
-      constructor(timer) { this.timer = timer; this.disposed = false; this.added = null; }
+      constructor(timer, levelW, levelH) {
+        this.timer = timer;
+        this.levelW = levelW;
+        this.levelH = levelH;
+        this.disposed = false;
+        this.added = null;
+      }
       addRange(arr) { this.added = arr; }
       dispose() { this.disposed = true; }
     });
@@ -117,6 +123,23 @@ describe('Game', function() {
     expect(game.objectManager).to.be.instanceOf(Lemmings.ObjectManager);
     expect(game.gameGui).to.be.instanceOf(Lemmings.GameGui);
     expect(game.gameDisplay).to.be.instanceOf(Lemmings.GameDisplay);
+  });
+
+  it('passes loaded level dimensions into TriggerManager', async function() {
+    const level = {
+      timeLimit: 5,
+      colorPalette: 0,
+      width: 2048,
+      height: 256,
+      triggers: [],
+      objects: [],
+      screenPositionX: 0
+    };
+    const game = new Game(new Lemmings.GameResources());
+    await game.loadCustomLevel(level);
+
+    expect(game.triggerManager.levelW).to.equal(2048);
+    expect(game.triggerManager.levelH).to.equal(256);
   });
 
   it('loadCustomLevel returns null without a level', async function() {
@@ -262,19 +285,19 @@ describe('Game', function() {
     expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
   });
 
-  it('getGameState returns RUNNING when bench mode is enabled', function() {    
+  it('getGameState returns RUNNING when bench mode is enabled', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ bench: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
-  it('getGameState returns RUNNING when benchReverse is enabled', function() {  
+  it('getGameState returns RUNNING when benchReverse is enabled', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ benchReverse: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
@@ -362,7 +385,7 @@ describe('Game', function() {
     game.onGameEnd.on(() => { ended++; });
     game.checkForGameOver();
     expect(game.gameVictoryCondition.finalizeCalled).to.equal(1);
-    expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.SUCCEEDED);    
+    expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.SUCCEEDED);
     expect(ended).to.equal(1);
   });
 
@@ -370,11 +393,11 @@ describe('Game', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ endless: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
-  it('getGameState returns failed out of time when needed', function() {        
+  it('getGameState returns failed out of time when needed', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     game.gameTimer = { getGameLeftTime: () => 0 };

@@ -24,6 +24,12 @@ if (!TestElement.prototype.contains) {
   };
 }
 
+if (!TestElement.prototype.removeEventListener) {
+  TestElement.prototype.removeEventListener = function(type, handler) {
+    const handlers = this.listeners.get(type) || [];
+    this.listeners.set(type, handlers.filter(next => next !== handler));
+  };
+}
 
 const createWebMidiStub = (inputs, outputs) => {
   const listeners = new Map();
@@ -1548,7 +1554,7 @@ describe('midiUiController', function() {
     webMidi.enabled = true;
     controller.onEnabled();
     controller.showError('nope');
-    const errorText = doc.getElementById('errorDisplay').innerHTML;
+    const errorText = doc.getElementById('errorDisplay').textContent;
     expect(errorText).to.contain('nope');
     controller.showError(null);
   });
@@ -1575,6 +1581,70 @@ describe('midiUiController', function() {
     enabledToggle.checked = true;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
+  });
+
+  it('disposes MIDI UI timers, hooks, device listeners, and bound DOM handlers', function() {
+    const doc = new TestDocument();
+    const win = createTestWindow();
+    const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
+    registerElement(doc, 'div', 'errorDisplay');
+    registerElement(doc, 'span', 'midiBpmCurrent');
+    win.localStorage.setItem('lemmings.midi.enabled', 'true');
+    const clearedIntervals = [];
+    let nextIntervalId = 10;
+    win.setInterval = () => nextIntervalId++;
+    win.clearInterval = (id) => {
+      clearedIntervals.push(id);
+    };
+    const removedDeviceEvents = [];
+    const webMidi = {
+      enabled: true,
+      inputs: [{ id: 'in-1', name: 'Input 1' }],
+      outputs: [{ id: 'out-1', name: 'Output 1' }],
+      getInputById(id) {
+        return this.inputs.find(input => input.id === id) || null;
+      },
+      getOutputById(id) {
+        return this.outputs.find(output => output.id === id) || null;
+      },
+      addListener() {},
+      removeListener(type) {
+        removedDeviceEvents.push(type);
+      }
+    };
+    const midiInputController = {
+      detached: 0,
+      captured: undefined,
+      detach() {
+        this.detached += 1;
+      },
+      attach() {},
+      setNoteCapture(handler) {
+        this.captured = handler;
+      }
+    };
+
+    const controller = createMidiUiController({
+      document: doc,
+      window: win,
+      getWebMidi: () => webMidi,
+      getLemmings: () => ({})
+    });
+    controller.setMidiInputController(midiInputController);
+    controller.bindMidiUi();
+    controller.onEnabled();
+
+    expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
+    expect(enabledToggle.listeners.get('change')).to.have.length.greaterThan(0);
+
+    controller.dispose();
+
+    expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
+    expect(enabledToggle.listeners.get('change')).to.have.lengthOf(0);
+    expect(clearedIntervals).to.include.members([10, 11]);
+    expect(removedDeviceEvents).to.include.members(['connected', 'disconnected', 'portschanged']);
+    expect(midiInputController.detached).to.be.greaterThan(0);
+    expect(midiInputController.captured).to.equal(null);
   });
 
   it('retries scheduled refresh after errors', function() {

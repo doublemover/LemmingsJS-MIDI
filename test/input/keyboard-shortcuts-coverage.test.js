@@ -508,6 +508,22 @@ describe('KeyboardShortcuts coverage', function() {
     shortcuts.dispose();
   });
 
+  it('keeps zoom input active when the first frame has no elapsed time', function() {
+    const { view } = createFixture();
+    const shortcuts = new KeyboardShortcuts(view);
+    shortcuts.zoom.dir = 1;
+    shortcuts._startLoop();
+
+    const firstFrame = globals.rafCallbacks.shift();
+    firstFrame(0);
+    expect(view.stage.redraws).to.equal(0);
+    expect(globals.rafCallbacks).to.have.lengthOf(1);
+
+    globals.rafCallbacks.shift()(16.666);
+    expect(view.stage.redraws).to.be.greaterThan(0);
+    shortcuts.dispose();
+  });
+
   it('resets zoom and formats display bindings', function() {
     const globals = setupGlobals();
     const { view } = createFixture();

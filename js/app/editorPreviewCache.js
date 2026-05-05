@@ -38,12 +38,21 @@ const hashFrame = (hash, frame) => {
   return hash;
 };
 
+const resolveVersion = (value) => {
+  const version = value?._previewHashVersion ?? value?.previewVersion ?? value?.version;
+  return Number.isFinite(version) ? version : null;
+};
+
 const pickFrame = (image) => {
   const frames = image?.frames || [];
   const previewIndex = Number.isFinite(image?.preview_image_index)
     ? image.preview_image_index
     : 0;
   return frames[previewIndex] || frames[0] || null;
+};
+
+const getPreviewIndex = (image) => {
+  return Number.isFinite(image?.preview_image_index) ? image.preview_image_index : 0;
 };
 
 const buildPreviewDataUrl = (image, palette, document) => {
@@ -95,6 +104,7 @@ class EditorPreviewCache {
       ? Math.floor(options.maxMemoryEntries)
       : DEFAULT_MAX_MEMORY_ENTRIES;
     this.memory = new Map();
+    this._hashCache = new WeakMap();
   }
 
   _remember(key, value) {
@@ -149,23 +159,89 @@ class EditorPreviewCache {
     }
   }
 
+  _getImageSignature(image, palette, frame) {
+    const previewIndex = getPreviewIndex(image);
+    const width = image?.width || 0;
+    const height = image?.height || 0;
+    const frameVersion = resolveVersion(frame) ?? resolveVersion(image);
+    const paletteVersion = resolveVersion(palette);
+    let paletteHash = null;
+    if (paletteVersion == null) {
+      paletteHash = hashPalette(2166136261, palette).toString(16);
+    }
+
+    const cached = image && this._hashCache.get(image);
+    const frameStable = cached
+      && cached.frame === frame
+      && cached.frameLength === frame.length
+      && cached.frameVersion === frameVersion
+      && cached.width === width
+      && cached.height === height
+      && cached.previewIndex === previewIndex;
+    if (
+      frameStable
+      && cached.palette === palette
+      && cached.paletteVersion === paletteVersion
+      && cached.paletteHash === paletteHash
+    ) {
+      return cached.signature;
+    }
+
+    const frameHash = frameStable
+      ? cached.frameHash
+      : hashFrame(2166136261, frame).toString(16);
+    let hash = 2166136261;
+    hash = hashStep(hash, width);
+    hash = hashStep(hash, height);
+    hash = hashStep(hash, previewIndex);
+    hash = hashStep(hash, frame.length);
+    for (let i = 0; i < frameHash.length; i += 1) {
+      hash = hashStep(hash, frameHash.charCodeAt(i));
+    }
+    const paletteKey = paletteVersion == null ? paletteHash : String(paletteVersion);
+    for (let i = 0; i < paletteKey.length; i += 1) {
+      hash = hashStep(hash, paletteKey.charCodeAt(i));
+    }
+    const signature = hash.toString(16);
+    if (image) {
+      this._hashCache.set(image, {
+        frame,
+        frameLength: frame.length,
+        frameVersion,
+        width,
+        height,
+        previewIndex,
+        palette,
+        paletteVersion,
+        paletteHash,
+        frameHash,
+        signature
+      });
+      image._previewHash = signature;
+    }
+    return signature;
+  }
+
+  getStats() {
+    return {
+      memoryEntries: this.memory.size,
+      maxMemoryEntries: this.maxMemoryEntries,
+      storageAvailable: !!this.storage
+    };
+  }
+
+  dispose() {
+    this.memory.clear();
+    this._hashCache = new WeakMap();
+  }
+
   getPreviewUrl({ type, id, image }) {
     if (!type || !image) return null;
     const palette = image.palette || null;
     const frame = pickFrame(image);
     if (!frame || !palette) return null;
 
-    let signature = image._previewHash;
-    if (!signature) {
-      let hash = 2166136261;
-      hash = hashStep(hash, image.width || 0);
-      hash = hashStep(hash, image.height || 0);
-      hash = hashPalette(hash, palette);
-      hash = hashFrame(hash, frame);
-      signature = hash.toString(16);
-      image._previewHash = signature;
-    }
-
+    const signature = this._getImageSignature(image, palette, frame);
     const key = `${CACHE_PREFIX}:v${this.version}:${type}:${id}:${signature}`;
     if (this.memory.has(key)) {
       const cachedMemory = this.memory.get(key);

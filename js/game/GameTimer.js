@@ -1,6 +1,10 @@
 import { COUNTER_LIMIT } from '../core/constants.js';
 import { getAppContext } from '../core/dependencies.js';
 import { EventHandler } from '../util/EventHandler.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
 
 const getApp = () => {
   const app = getAppContext();
@@ -14,10 +18,6 @@ const TIMER_LOOP_DEVTOOLS = Object.freeze({
   color: 'primary',
   tooltipText: 'loop'
 });
-
-const canMeasurePerformance = () => (typeof performance !== 'undefined' &&
-  typeof performance.now === 'function' &&
-  typeof performance.measure === 'function');
 
 class GameTimer {
   #speedFactor;
@@ -34,11 +34,17 @@ class GameTimer {
   #catchupBaseSpeed;
   #visHandler;
   #timeTravel;
+  #windowRef;
+  #documentRef;
+  #performanceRef;
   benchStartupFrames = 0;
   benchStableFactor = 1;
 
-  constructor(level) {
+  constructor(level, runtime = {}) {
     this.TIME_PER_FRAME_MS = 60;
+    this.#windowRef = runtime.window ?? (typeof window !== 'undefined' ? window : null);
+    this.#documentRef = runtime.document ?? (typeof document !== 'undefined' ? document : null);
+    this.#performanceRef = runtime.performance ?? (typeof performance !== 'undefined' ? performance : null);
     this.#speedFactor = 1;
     this.#frameTime = this.TIME_PER_FRAME_MS;
     this.#rafId = 0;
@@ -60,7 +66,9 @@ class GameTimer {
       const app = getApp();
       const skip = app?.bench || app?.bench2 || app?.benchReverse || app?.benchSequence;
       if (skip) return;
-      const hidden = document.visibilityState === 'hidden' || !document.hasFocus();
+      const documentRef = this.#documentRef;
+      const hidden = documentRef?.visibilityState === 'hidden' ||
+        (typeof documentRef?.hasFocus === 'function' && !documentRef.hasFocus());
       if (hidden) {
         if (this.isRunning()) {
           this.#autoPaused = true;
@@ -71,9 +79,9 @@ class GameTimer {
         this.continue();
       }
     };
-    document.addEventListener('visibilitychange', this.#visHandler, false);
-    window.addEventListener('blur',  this.#visHandler, false);
-    window.addEventListener('focus', this.#visHandler, false);
+    this.#documentRef?.addEventListener?.('visibilitychange', this.#visHandler, false);
+    this.#windowRef?.addEventListener?.('blur',  this.#visHandler, false);
+    this.#windowRef?.addEventListener?.('focus', this.#visHandler, false);
     this.#updateFrameTime();
     this.benchStartupFrames = 0;
     this.benchStableFactor = 1;
@@ -93,17 +101,38 @@ class GameTimer {
       console.warn('tickIndex wrapped, resetting to 0');
       this.#tickIndex = 0;
     } else {
-      this.#tickIndex = v;
+      this.#tickIndex = Math.max(0, Math.trunc(Number(v) || 0));
     }
+    this.#lastGameSecond = this.#getWholeGameSecond();
   }
   #incrementTickIndex() {
     const next = this.#tickIndex + 1;
     if (next >= COUNTER_LIMIT) {
       console.warn('tickIndex wrapped, resetting to 0');
       this.#tickIndex = 0;
+      this.#lastGameSecond = 0;
       return;
     }
     this.#tickIndex = next;
+  }
+
+  #now() {
+    return this.#performanceRef?.now?.() ?? Date.now();
+  }
+
+  #getWholeGameSecond() {
+    return Math.floor(this.#tickIndex * (this.TIME_PER_FRAME_MS / 1000));
+  }
+
+  #emitGameSecondIfChanged() {
+    if (!this.eachGameSecond) return;
+    const current = this.#getWholeGameSecond();
+    if (current === this.#lastGameSecond) return;
+    const step = current > this.#lastGameSecond ? 1 : -1;
+    while (this.#lastGameSecond !== current) {
+      this.#lastGameSecond += step;
+      this.eachGameSecond.trigger(this.#lastGameSecond);
+    }
   }
 
   get speedFactor() { return this.#speedFactor; }
@@ -132,14 +161,14 @@ class GameTimer {
 
   continue() {
     if (this.isRunning()) return;
-    this.#lastTime = performance.now();
+    this.#lastTime = this.#now();
     this.#running = true;
-    this.#rafId = window.requestAnimationFrame(this.#loopBound);
+    this.#rafId = this.#windowRef?.requestAnimationFrame?.(this.#loopBound) ?? 0;
   }
 
   suspend() {
     if (this.#rafId) {
-      window.cancelAnimationFrame(this.#rafId);
+      this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
       this.#rafId = 0;
     }
     this.#running = false;
@@ -164,10 +193,12 @@ class GameTimer {
       if (dir >= 0) {
         if (beforeTick) beforeTick.trigger(this.#tickIndex);
         this.#incrementTickIndex();
+        this.#emitGameSecondIfChanged();
         if (onTick) onTick.trigger();
       } else if (this.#tickIndex > 0) {
         this.#tickIndex -= 1;
         if (beforeTick) beforeTick.trigger(this.#tickIndex);
+        this.#emitGameSecondIfChanged();
         if (onTick) onTick.trigger();
       }
     }
@@ -184,21 +215,14 @@ class GameTimer {
     const perfEnabled = !!app &&
       !inBenchMode &&
       (app.performanceAPI === true || app.perfMetrics === true) &&
-      canMeasurePerformance();
-    const perfStart = perfEnabled ? performance.now() : 0;
+      canMeasurePerformance(this.#performanceRef);
+    const perfStart = perfEnabled ? this.#now() : 0;
 
     try {
-      window.cancelAnimationFrame(this.#rafId);
+      this.#windowRef?.cancelAnimationFrame?.(this.#rafId);
       this.#rafId = 0;
       const frameTime = this.#frameTime;
       if (app) app.tps = 1000 / frameTime;
-      const gameSeconds = Math.floor(this.#lastTime / this.TIME_PER_FRAME_MS);
-      if (gameSeconds > this.#lastGameSecond) {
-        if (this.eachGameSecond) {
-          this.#lastGameSecond = gameSeconds;
-          this.eachGameSecond.trigger();
-        }
-      }
       let delta = now - this.#lastTime;
       if (delta >= frameTime) {
         const steps = Math.floor(delta / frameTime);
@@ -216,20 +240,17 @@ class GameTimer {
         for (let i = 0; i < steps; ++i) {
           if (beforeTick) beforeTick.trigger(this.#tickIndex);
           this.#incrementTickIndex();
+          this.#emitGameSecondIfChanged();
           if (onTick) onTick.trigger();
         }
       }
-      this.#rafId = window.requestAnimationFrame(this.#loopBound);
+      this.#rafId = this.#windowRef?.requestAnimationFrame?.(this.#loopBound) ?? 0;
     } finally {
       if (perfEnabled) {
-        try {
-          performance.measure('GameTimer loop', {
-            start: perfStart,
-            detail: { devtools: TIMER_LOOP_DEVTOOLS }
-          });
-        } catch {
-          /* ignored */
-        }
+        recordPerformanceMeasure('GameTimer loop', {
+          start: perfStart,
+          detail: { devtools: TIMER_LOOP_DEVTOOLS }
+        }, { performanceRef: this.#performanceRef });
       }
     }
   }
@@ -333,9 +354,9 @@ class GameTimer {
 
   stop() {
     this.suspend();
-    document.removeEventListener('visibilitychange', this.#visHandler, false);
-    window.removeEventListener('blur', this.#visHandler, false);
-    window.removeEventListener('focus', this.#visHandler, false);
+    this.#documentRef?.removeEventListener?.('visibilitychange', this.#visHandler, false);
+    this.#windowRef?.removeEventListener?.('blur', this.#visHandler, false);
+    this.#windowRef?.removeEventListener?.('focus', this.#visHandler, false);
 
     // Dispose all event handlers to prevent leaks across level reloads
     if (this.onBeforeGameTick && this.onBeforeGameTick.dispose)
@@ -368,8 +389,8 @@ class GameTimer {
     const app = getApp();
     if (app?.endless === true) {
       return 42069 * (this.TIME_PER_FRAME_MS / 1000);
-    }  
-    return t * (this.TIME_PER_FRAME_MS / 1000); 
+    }
+    return t * (this.TIME_PER_FRAME_MS / 1000);
   }
   secondsToTicks(s) { return s * (1000 / this.TIME_PER_FRAME_MS); }
 }

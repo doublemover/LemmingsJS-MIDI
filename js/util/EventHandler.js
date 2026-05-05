@@ -20,10 +20,10 @@ class EventHandler {
     this.handlers.clear();
   }
 
-  // Run every handler with `arg`.  No `.slice()` → no transient allocations
+  // Run a stable snapshot; mutations during dispatch affect the next trigger.
   trigger (arg) {
-    // snapshot length once to tolerate `off` during iteration without skipping
-    for (const handler of this.handlers) {
+    const snapshot = Array.from(this.handlers);
+    for (const handler of snapshot) {
       handler(arg);
     }
   }
