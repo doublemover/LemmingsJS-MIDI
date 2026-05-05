@@ -5,7 +5,7 @@ import { MidiScheduler } from '../../js/midi/MidiScheduler.js';
 import { makeOutput } from '../support/midi-output.js';
 import { withFakeClockAndPerformance } from '../support/timers.js';
 
-describe('MidiScheduler', function() {
+describe('MidiScheduler 1', function() {
   it('schedules note offs and converts signed pan', function() {
     const calls = [];
     const output = makeOutput([1], calls);
@@ -16,19 +16,19 @@ describe('MidiScheduler', function() {
       });
       scheduler.setOutput(output);
       scheduler.setTickMs(10);
-
+  
       const ok = scheduler.sendNote({
         note: 60,
         velocity: 64,
         durationTicks: 2,
         pan: -127
       });
-
+  
       expect(ok).to.equal(true);
       expect(calls.some(c => c.type === 'cc' && c.cc === 10 && c.value === 0)).to.equal(true);
-
+  
       expect(calls.some(c => c.type === 'noteOff' && c.note === 60)).to.equal(true);
-
+  
       clock.tick(25);
       expect(scheduler._activeNotes.size).to.equal(0);
     });
@@ -40,7 +40,7 @@ describe('MidiScheduler', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler.setOutput(output);
     scheduler.setTickMs(10);
-
+  
     const ok = scheduler.sendNote({
       note: 60,
       velocity: 80,
@@ -48,7 +48,7 @@ describe('MidiScheduler', function() {
       durationTicks: 1,
       reverse: true
     });
-
+  
     expect(ok).to.equal(true);
     const noteOn = calls.find(c => c.type === 'noteOn');
     const noteOff = calls.find(c => c.type === 'noteOff');
@@ -65,11 +65,11 @@ describe('MidiScheduler', function() {
         limits: { maxActiveNotes: 1 }
       });
       scheduler.setOutput(output);
-
+  
       scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
       clock.tick(1);
       scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0 });
-
+  
       const noteOffs = calls.filter(c => c.type === 'noteOff').map(c => c.note);
       expect(noteOffs).to.include(60);
     });
@@ -89,20 +89,20 @@ describe('MidiScheduler', function() {
         }
       });
       scheduler.setOutput(output);
-
+  
       const bendRangeChannels = calls
         .filter(c => c.type === 'bendRange')
         .map(c => c.id)
         .sort();
       expect(bendRangeChannels).to.eql([1, 2, 3]);
-
+  
       calls.length = 0;
       scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0, pitchBend: 0.5, timbre: 80 });
       clock.tick(1);
       scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, pitchBend: 0, timbre: 90 });
       clock.tick(1);
       scheduler.sendNote({ note: 64, velocity: 64, durationTicks: 0, pitchBend: -0.5, timbre: 100 });
-
+  
       const noteOff = calls.find(c => c.type === 'noteOff' && c.id === 2 && c.note === 60);
       expect(noteOff).to.be.ok;
       const timbreCalls = calls.filter(c => c.type === 'cc' && c.cc === 74);
@@ -118,14 +118,14 @@ describe('MidiScheduler', function() {
       position: { panRange: { min: 0, max: 127 } }
     });
     scheduler.setOutput(output);
-
+  
     const ok = scheduler.sendNote({
       note: 60,
       velocity: 64,
       durationTicks: 0,
       pan: -10
     });
-
+  
     expect(ok).to.equal(true);
     const panCall = calls.find(c => c.type === 'cc' && c.cc === 10);
     expect(panCall.value).to.equal(0);
@@ -138,11 +138,11 @@ describe('MidiScheduler', function() {
       mpe: { enabled: true, masterChannel: 1, memberChannels: [2, 3] }
     });
     scheduler.setOutput(output);
-
+  
     scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
     scheduler._noteOffTimerId = setTimeout(() => {}, 10);
     scheduler.allNotesOff();
-
+  
     const allNotes = calls.filter(c => c.type === 'allNotesOff').map(c => c.id).sort();
     expect(allNotes).to.eql([1, 2, 3]);
     expect(scheduler._activeNotes.size).to.equal(0);
@@ -153,7 +153,7 @@ describe('MidiScheduler', function() {
   it('handles invalid sendNote inputs and tick updates', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     expect(scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 1 })).to.equal(false);
-
+  
     const calls = [];
     const output = makeOutput([3], calls);
     scheduler.setOutput(output);
@@ -161,10 +161,10 @@ describe('MidiScheduler', function() {
     expect(scheduler.tickMs).to.equal(60);
     scheduler.setTickMs(5);
     expect(scheduler.tickMs).to.equal(5);
-
+  
     expect(scheduler.sendNote(null)).to.equal(false);
     expect(scheduler.sendNote({ note: NaN })).to.equal(false);
-
+  
     scheduler.output = { channels: {} };
     expect(scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 })).to.equal(false);
   });
@@ -193,7 +193,7 @@ describe('MidiScheduler', function() {
         memberChannels: [2, 2, 0, 17, 'x']
       }
     });
-
+  
     expect(scheduler._maxActiveNotes).to.equal(32);
     expect(scheduler._maxMessagesPerSecond).to.equal(1000);
     expect(scheduler._maxBytesPerSecond).to.equal(3906.25);
@@ -256,12 +256,12 @@ describe('MidiScheduler', function() {
     const output = makeOutput([2], calls);
     const scheduler = new MidiScheduler({ mpe: { enabled: true, memberChannels: [2] } });
     scheduler.setOutput(output);
-
+  
     scheduler._activeNotes.set('token', { note: 60, channel: 2, mpe: true, startedAt: 0 });
     scheduler._activeByChannel.set(2, { note: 60, token: 'token', mpe: true, startedAt: 0 });
-
+  
     scheduler._stealOldestNote();
-
+  
     expect(scheduler._activeNotes.size).to.equal(0);
     expect(scheduler._activeByChannel.size).to.equal(0);
     expect(calls.some(c => c.type === 'noteOff')).to.equal(true);
@@ -339,13 +339,13 @@ describe('MidiScheduler', function() {
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 5 });
     const free = scheduler._allocateChannel();
     expect(free).to.equal(3);
-
+  
     scheduler._activeByChannel.set(3, { note: 62, token: 2, startedAt: 10 });
     scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true, startedAt: 5 });
     scheduler._activeNotes.set(2, { note: 62, channel: 3, mpe: true, startedAt: 10 });
     const reused = scheduler._allocateChannel();
     expect(reused).to.equal(2);
-
+  
     const masterOnly = new MidiScheduler({ mpe: { enabled: true, masterChannel: 9 } });
     expect(masterOnly._allocateChannel()).to.equal(9);
   });
@@ -372,13 +372,13 @@ describe('MidiScheduler', function() {
       { timeMs: 800, count: 1, bytes: 3, token: 7, phase: 'on' },
       future
     ];
-
+  
     scheduler._pruneRateEntries(1000);
-
+  
     expect(scheduler._rateSent).to.include(keptSent);
     expect(scheduler._rateSent.some(entry => entry.timeMs === 800)).to.equal(true);
     expect(scheduler._ratePlanned).to.deep.equal([future]);
-
+  
     scheduler._removePlannedRateEntries(7, 'off');
     expect(scheduler._ratePlanned).to.have.lengthOf(0);
   });
@@ -432,9 +432,9 @@ describe('MidiScheduler', function() {
     scheduler.setOutput(output);
     scheduler._activeByChannel.set(1, { note: 60, token: 1, mpe: false });
     scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: false });
-
+  
     scheduler.dispose();
-
+  
     expect(calls.some(c => c.type === 'noteOff' && c.id === 1 && c.note === 60)).to.equal(true);
   });
 
@@ -455,109 +455,5 @@ describe('MidiScheduler', function() {
       expect(scheduler._activeByChannel.size).to.equal(0);
       expect(scheduler._activeNotes.size).to.equal(0);
     }, { performanceValue: (clock) => ({ now: () => clock.now, measure: () => {} }) });
-  });
-
-  it('reserves proposed messages against past and future traffic', function() {
-    const scheduler = new MidiScheduler({
-      mpe: { enabled: false },
-      limits: {
-        maxEventsPerSecond: 4,
-        maxBytesPerSecond: 999
-      }
-    });
-    scheduler._rateSent = [
-      { timeMs: 500, count: 2, bytes: 6, sfxId: 1, priority: 1 }
-    ];
-    scheduler._ratePlanned = [
-      { timeMs: 1200, count: 1, bytes: 3, sfxId: 2, priority: 1 }
-    ];
-
-    const rejected = scheduler.canSchedule(
-      { on: { timeMs: 1000, count: 2, bytes: 6 } },
-      1000,
-      { maxMessagesPerSecond: 4 }
-    );
-    expect(rejected.ok).to.equal(false);
-    expect(rejected.reason).to.equal('count-limit');
-
-    const reserved = scheduler.reserve(
-      { on: { timeMs: 1000, count: 1, bytes: 3 } },
-      { sfxId: 3, priority: 1 },
-      1000,
-      { maxMessagesPerSecond: 4 }
-    );
-    expect(reserved.ok).to.equal(true);
-    expect(reserved.reservationId).to.be.a('number');
-    const snapshot = scheduler.getRateSnapshot(1000);
-    expect(snapshot.past.count + snapshot.next.count).to.equal(4);
-    expect(snapshot.next.bySfx.get(3).count).to.equal(1);
-  });
-
-  it('logs when byte rate limits are exceeded', function() {
-    const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1 } });
-    const logs = [];
-    const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
-    scheduler.getRateSnapshot = () => ({
-      past: { bytes: 2 },
-      next: { bytes: 0 }
-    });
-    scheduler._lastRateErrorMs = -2000;
-    scheduler._checkByteRate(0);
-    restoreConsole();
-    expect(logs.length).to.equal(1);
-  });
-
-  it('logs when message rate limits are exceeded', function() {
-    const scheduler = new MidiScheduler({
-      limits: {
-        maxEventsPerSecond: 1,
-        maxBytesPerSecond: 999999
-      }
-    });
-    const logs = [];
-    const restoreConsole = withConsoleStub({ error: msg => logs.push(msg) });
-    scheduler.getRateSnapshot = () => ({
-      past: { count: 2, bytes: 0 },
-      next: { count: 0, bytes: 0 }
-    });
-    scheduler._lastRateErrorMs = -2000;
-    scheduler._checkByteRate(0);
-    restoreConsole();
-    expect(logs.length).to.equal(1);
-    expect(logs[0]).to.match(/messages\/sec/i);
-  });
-
-  it('swallows performance measurement errors', function() {
-    const calls = [];
-    const output = makeOutput([1], calls);
-    const originalPerf = globalThis.performance;
-    globalThis.performance = { now: () => 0, measure: () => { throw new Error('boom'); } };
-    try {
-      withGlobalLemmings({ performanceAPI: true }, () => {
-        const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-        scheduler.setOutput(output);
-        const ok = scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0 });
-        expect(ok).to.equal(true);
-      });
-    } finally {
-      globalThis.performance = originalPerf;
-    }
-  });
-
-  it('computes usage share for rate snapshots', function() {
-    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    scheduler._rateSent = [
-      { timeMs: 900, count: 2, bytes: 6, sfxId: 1, priority: 1 }
-    ];
-    const shares = scheduler.getUsageShare('past', 1000);
-    expect(shares.length).to.equal(1);
-    expect(shares[0].sfxId).to.equal(1);
-    expect(shares[0].percentCount).to.equal(1);
-  });
-
-  it('counts pitch bend messages when MPE is disabled', function() {
-    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
-    const estimate = scheduler.estimateMessages({ note: 60, pitchBend: 0.5, durationTicks: 0 });
-    expect(estimate.messages).to.equal(2);
   });
 });
