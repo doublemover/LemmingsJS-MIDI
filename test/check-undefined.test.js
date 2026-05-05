@@ -23,34 +23,28 @@ const runCheck = (args = [], options = {}) => {
 };
 
 describe('scripts/check-undefined.js', function () {
-  it('detects undefined function calls', function () {
+  it('detects undefined inline HTML references', function () {
     withTempDir((dir) => {
-      fs.mkdirSync(path.join(dir, 'js'));
       const html = '<html><body><script>missingCall();</script></body></html>';
       fs.writeFileSync(path.join(dir, 'index.html'), html);
       const result = runCheck([], { cwd: dir });
       expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/missingCall|require is not defined/);
+      expect(result.stderr || result.stdout).to.match(/'missingCall' is not defined/);
     });
   });
 
-  it('detects global leaks assigned without var/let', function () {
+  it('detects undefined JS references when JS files are passed explicitly', function () {
     withTempDir((dir) => {
       const file = path.join(dir, 'leak.js');
       fs.writeFileSync(file, 'leakFn = function(){}; leakFn();');
       const result = runCheck(file);
       expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/leakFn is not defined/);
+      expect(result.stderr || result.stdout).to.match(/'leakFn' is not defined/);
     });
   });
 
   it('returns success when all calls are defined', function () {
     withTempDir((dir) => {
-      fs.mkdirSync(path.join(dir, 'js'));
-      fs.writeFileSync(
-        path.join(dir, 'js', 'main.js'),
-        'function foo(){}; foo();\n'
-      );
       const html = '<html><body><script>function bar(){}</script>\n' +
         '<script>bar();</script></body></html>';
       fs.writeFileSync(path.join(dir, 'index.html'), html);
@@ -83,41 +77,31 @@ describe('scripts/check-undefined.js', function () {
 
       const result = runCheck(['page.html'], { cwd: dir });
       expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/missingFromEntry is not defined/);
+      expect(result.stderr || result.stdout).to.match(/'missingFromEntry' is not defined/);
     });
   });
 
-  it('handles built-in methods and code fragments', function () {
+  it('allows inline event-handler fragments', function () {
     withTempDir((dir) => {
-      const file = path.join(dir, 'frag.js');
-      fs.writeFileSync(file, 'foo.appendChild(); return 5;');
-      const result = runCheck('frag.js', { cwd: dir });
+      fs.writeFileSync(
+        path.join(dir, 'page.html'),
+        '<html><body><button onclick="return false;"></button></body></html>'
+      );
+      const result = runCheck('page.html', { cwd: dir });
       expect(result.status).to.equal(0);
       expect(result.stdout).to.match(/No undefined calls/);
     });
   });
 
-  it('skips node_modules, .git, and jquery.js when scanning the tree', function () {
+  it('skips node_modules, .git, and vendor scripts when scanning entrypoints', function () {
     withTempDir((dir) => {
       const jsDir = path.join(dir, 'js');
+      const vendorDir = path.join(jsDir, 'vendor');
       fs.mkdirSync(jsDir);
-      fs.mkdirSync(path.join(jsDir, 'sub'));
+      fs.mkdirSync(vendorDir);
 
-      fs.writeFileSync(path.join(jsDir, 'main.js'), 'function ok(){};');
-      fs.writeFileSync(
-        path.join(jsDir, 'sub', 'helper.js'),
-        [
-          'class Foo {',
-          '  jump() {}',
-          '  bar = () => {};',
-          '}',
-          'const arrow = () => {};',
-          'const named = function named() {};',
-          'const arr = [,];',
-          'with (Math) { }'
-        ].join('\n')
-      );
-      fs.writeFileSync(path.join(jsDir, 'jquery.js'), 'missingFromJquery();');
+      fs.writeFileSync(path.join(vendorDir, 'webmidi.js'), 'missingFromVendor();');
+      fs.writeFileSync(path.join(jsDir, 'main.js'), 'function ok(){} ok();');
 
       fs.mkdirSync(path.join(dir, 'node_modules'));
       fs.mkdirSync(path.join(dir, '.git'));
@@ -131,11 +115,7 @@ describe('scripts/check-undefined.js', function () {
       );
       fs.writeFileSync(
         path.join(dir, 'index.html'),
-        '<html><body><script>ok(); this.jump(); console.log("ok"); setTimeout(function(){},0);</script></body></html>'
-      );
-      fs.writeFileSync(
-        path.join(dir, 'bad.html'),
-        '<html><body><script>const = 1;</script></body></html>'
+        '<html><head><script src="js/vendor/webmidi.js"></script><script src="js/main.js"></script></head><body><script>console.log("ok"); setTimeout(function(){},0);</script></body></html>'
       );
 
       const result = runCheck([], { cwd: dir });
@@ -144,14 +124,14 @@ describe('scripts/check-undefined.js', function () {
     });
   });
 
-  it('returns success when JS cannot be parsed', function () {
+  it('reports parse errors for explicit JS files', function () {
     withTempDir((dir) => {
       const file = path.join(dir, 'bad.js');
       fs.writeFileSync(file, 'const = 1;');
 
       const result = runCheck(file);
-      expect(result.status).to.equal(0);
-      expect(result.stdout).to.match(/No undefined calls/);
+      expect(result.status).to.not.equal(0);
+      expect(result.stderr || result.stdout).to.match(/Parsing error|Unexpected token/);
     });
   });
 
@@ -164,7 +144,7 @@ describe('scripts/check-undefined.js', function () {
 
       const result = runCheck([], { cwd: dir });
       expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/missingCustomEntry is not defined/);
+      expect(result.stderr || result.stdout).to.match(/'missingCustomEntry' is not defined/);
     });
   });
 
@@ -179,53 +159,6 @@ describe('scripts/check-undefined.js', function () {
         '    test("ok", function () {});',
         '  });',
         '});'
-      ].join('\n'));
-
-      const result = runCheck(file, { cwd: dir });
-      expect(result.status).to.equal(0);
-      expect(result.stdout).to.match(/No undefined calls/);
-    });
-  });
-
-  it('reports undefined methods on non-builtin objects', function () {
-    withTempDir((dir) => {
-      const file = path.join(dir, 'missing-method.js');
-      fs.writeFileSync(file, 'const obj = {}; obj.missing(); ({}).alsoMissing();');
-
-      const result = runCheck(file, { cwd: dir });
-      expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/missing|alsoMissing/);
-    });
-  });
-
-  it('reports undefined methods called on this', function () {
-    withTempDir((dir) => {
-      const file = path.join(dir, 'missing-this-method.js');
-      fs.writeFileSync(file, [
-        'class Demo {',
-        '  ok() {}',
-        '  run() { this.missing(); }',
-        '}',
-        'new Demo().run();'
-      ].join('\n'));
-
-      const result = runCheck(file, { cwd: dir });
-      expect(result.status).to.not.equal(0);
-      expect(result.stderr || result.stdout).to.match(/missing is not defined/);
-    });
-  });
-
-  it('does not report assigned this members invoked as methods', function () {
-    withTempDir((dir) => {
-      const file = path.join(dir, 'assigned-this-member.js');
-      fs.writeFileSync(file, [
-        'class Demo {',
-        '  constructor(cb) {',
-        '    this._handler = cb;',
-        '  }',
-        '  run() { this._handler(); }',
-        '}',
-        'new Demo(() => {}).run();'
       ].join('\n'));
 
       const result = runCheck(file, { cwd: dir });

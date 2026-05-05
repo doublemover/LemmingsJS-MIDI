@@ -1,3 +1,5 @@
+import { lintGlobals, testLintGlobals } from './scripts/lint-globals.js';
+
 export default [
   {
     files: ['**/*.js'],
@@ -15,13 +17,21 @@ export default [
     ],
     languageOptions: {
       ecmaVersion: 2022,
-      sourceType: 'module'
+      sourceType: 'module',
+      globals: lintGlobals
     },
     rules: {
       indent: ['error', 2],
       quotes: ['error', 'single'],
       semi: ['error', 'always'],
+      'no-undef': ['error', { typeof: true }],
       radix: ['error', 'always']
+    }
+  },
+  {
+    files: ['test/**/*.js', 'e2e/**/*.js'],
+    languageOptions: {
+      globals: testLintGlobals
     }
   },
   {
