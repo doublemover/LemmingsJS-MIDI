@@ -748,6 +748,7 @@ const createMidiUiController = ({
       renderLearnPanel();
       return false;
     }
+    if (hasRecordCapture()) cancelRecording();
     learnState.active = true;
     learnState.pending = null;
     learnState.sourceId = source.id;

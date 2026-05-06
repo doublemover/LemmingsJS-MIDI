@@ -800,6 +800,34 @@ describe('midiUiController sequencer', function() {
     expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
+  it('cancels recording before starting learn capture', function() {
+    const captureCalls = [];
+    const messageCaptureCalls = [];
+    const fakeInputController = {
+      setNoteCapture(handler) {
+        captureCalls.push(handler);
+      },
+      setMessageCapture(handler) {
+        messageCaptureCalls.push(handler);
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'recorded', name: 'Recorded', lengthSteps: 4 } });
+
+    expect(controller.startRecording()).to.equal(true);
+    expect(messageCaptureCalls.at(-1)).to.be.a('function');
+    expect(controller.startLearn()).to.equal(true);
+
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
+    expect(captureCalls.at(-1)).to.be.a('function');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Learning next note');
+    expect(doc.getElementById('midiRecordStatus').textContent).to.equal('Record writes captured notes into clip steps.');
+  });
+
   it('records mocked MIDI notes into selected clip steps', function() {
     const messageCaptureCalls = [];
     const fakeInputController = {
