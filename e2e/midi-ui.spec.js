@@ -678,6 +678,50 @@ test('MIDI step grid keyboard navigation preserves the edited field', async ({ p
   await expect.poll(activeStep).toMatchObject({ className: 'midi-step-probability', stepIndex: '0', label: 'Step 1 probability' });
 });
 
+test('MIDI step grid supports rest controls', async ({ page }) => {
+  await openMidiUi(page);
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'rest-clip', name: 'Rest Clip', lengthSteps: 4 } });
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'clip.step.update',
+      clipId: 'rest-clip',
+      stepIndex: 0,
+      patch: {
+        note: 72,
+        velocity: 96,
+        durationTicks: 12,
+        probability: 0.5,
+        hold: true,
+        tie: true
+      }
+    });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'rest-clip' });
+  });
+
+  const restButton = page.locator('.midi-step-rest[data-step-index="0"]');
+  await expect(restButton).toHaveAttribute('aria-label', 'Step 1 rest');
+  await restButton.click();
+
+  const step = await page.evaluate(() => {
+    const clip = window.__E2E__.midiGetProject().clips.find(entry => entry.id === 'rest-clip');
+    return clip.steps[0];
+  });
+  expect(step).toMatchObject({
+    index: 0,
+    note: null,
+    velocity: null,
+    durationTicks: null,
+    probability: 1,
+    hold: false,
+    tie: false
+  });
+  await expect(page.locator('.midi-step-note[data-step-index="0"]')).toHaveValue('');
+  await expect(page.locator('.midi-step-velocity[data-step-index="0"]')).toHaveValue('');
+  await expect(page.locator('.midi-step-duration[data-step-index="0"]')).toHaveValue('');
+  await expect(page.locator('.midi-step-hold[data-step-index="0"]')).not.toBeChecked();
+  await expect(page.locator('.midi-step-tie[data-step-index="0"]')).not.toBeChecked();
+});
+
 test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and phone sizes', async ({ page }) => {
   for (const viewport of [
     { width: 1280, height: 900 },

@@ -100,7 +100,8 @@ const STEP_GRID_FIELD_CLASSES = Object.freeze([
   'midi-step-duration',
   'midi-step-probability',
   'midi-step-hold',
-  'midi-step-tie'
+  'midi-step-tie',
+  'midi-step-rest'
 ]);
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
@@ -1566,7 +1567,21 @@ const createMidiUiController = ({
       tie.setAttribute('aria-label', `${stepLabel} tie`);
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
-      cell.append(label, noteLabel, velocityLabel, durationLabel, probabilityLabel, holdLabel, tieLabel);
+      const rest = document.createElement('button');
+      rest.className = 'midi-step-rest';
+      rest.dataset.stepIndex = String(index);
+      rest.type = 'button';
+      rest.textContent = 'Rest';
+      rest.setAttribute('aria-label', `${stepLabel} rest`);
+      rest.addEventListener('click', () => updateSelectedClipStep(index, {
+        note: null,
+        velocity: null,
+        durationTicks: null,
+        probability: 1,
+        hold: false,
+        tie: false
+      }));
+      cell.append(label, noteLabel, velocityLabel, durationLabel, probabilityLabel, holdLabel, tieLabel, rest);
       grid.appendChild(cell);
     }
   };
