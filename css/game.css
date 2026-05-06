@@ -147,6 +147,14 @@ canvas {
     font-size: 10px;
 }
 
+#levelSelects,
+#levelName,
+#levelPrevButton,
+#levelNextButton {
+    position: relative;
+    z-index: 8;
+}
+
 .midi-sequencer {
     position: fixed;
     inset: 8px;
