@@ -1223,6 +1223,50 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
   });
 
+  it('shows no-device setup state and clears routed outputs', function() {
+    let registeredOutputs = null;
+    let allNotesOffCalls = 0;
+    let clearQueueCalls = 0;
+    const webMidi = {
+      enabled: true,
+      inputs: [],
+      outputs: [],
+      addListener() {},
+      removeListener() {}
+    };
+    const { controller, doc, view } = createControllerHarness({
+      webMidi,
+      lemmings: {
+        midiRouter: {
+          scheduler: {
+            setOutputs(outputs) {
+              registeredOutputs = outputs;
+            },
+            allNotesOff() {
+              allNotesOffCalls += 1;
+            },
+            clearQueue() {
+              clearQueueCalls += 1;
+            }
+          }
+        }
+      }
+    });
+
+    controller.bindMidiUi();
+    controller.onEnabled();
+
+    expect(registeredOutputs).to.deep.equal([]);
+    expect(view.midiOut).to.equal(null);
+    expect(controller.getProject().devices).to.include({ inputId: null, outputId: null });
+    expect(doc.getElementById('midiInSelect').disabled).to.equal(true);
+    expect(doc.getElementById('midiOutSelect').disabled).to.equal(true);
+    expect(doc.getElementById('errorDisplay').textContent).to.contain('No input device');
+    expect(doc.getElementById('errorDisplay').textContent).to.contain('No output device');
+    expect(allNotesOffCalls).to.equal(1);
+    expect(clearQueueCalls).to.equal(1);
+  });
+
   it('refreshes mocked devices, auditions through the selected track, and panics', function() {
     const sent = [];
     let registeredOutputs = [];
@@ -1311,5 +1355,56 @@ describe('midiUiController sequencer', function() {
 
     expect(controller.panic()).to.equal(true);
     expect(sent.some(entry => entry.panic)).to.equal(true);
+  });
+
+  it('falls back to the next output when the selected MIDI output disappears', function() {
+    let registeredOutputs = [];
+    let allNotesOffCalls = 0;
+    let clearQueueCalls = 0;
+    const out1 = { id: 'out-1', name: 'Output 1' };
+    const out2 = { id: 'out-2', name: 'Output 2' };
+    const webMidi = {
+      enabled: true,
+      inputs: [{ id: 'in-1', name: 'Input 1', addListener() {}, removeListener() {} }],
+      outputs: [out1],
+      getInputById(id) { return this.inputs.find(input => input.id === id) || null; },
+      getOutputById(id) { return this.outputs.find(output => output.id === id) || null; },
+      addListener() {},
+      removeListener() {}
+    };
+    const { controller, doc, view } = createControllerHarness({
+      webMidi,
+      lemmings: {
+        midiRouter: {
+          scheduler: {
+            setOutputs(outputs) {
+              registeredOutputs = outputs;
+            },
+            allNotesOff() {
+              allNotesOffCalls += 1;
+            },
+            clearQueue() {
+              clearQueueCalls += 1;
+            }
+          }
+        }
+      }
+    });
+
+    controller.bindMidiUi();
+    controller.onEnabled();
+    expect(controller.getProject().devices.outputId).to.equal('out-1');
+
+    allNotesOffCalls = 0;
+    clearQueueCalls = 0;
+    webMidi.outputs = [out2];
+    controller.onEnabled();
+
+    expect(controller.getProject().devices.outputId).to.equal('out-2');
+    expect(doc.getElementById('midiOutSelect').value).to.equal('out-2');
+    expect(view.midiOut).to.equal(out2);
+    expect(registeredOutputs).to.deep.equal([out2]);
+    expect(allNotesOffCalls).to.equal(1);
+    expect(clearQueueCalls).to.equal(1);
   });
 });
