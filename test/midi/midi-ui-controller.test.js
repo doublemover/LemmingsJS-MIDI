@@ -773,6 +773,34 @@ describe('midiUiController sequencer', function() {
     expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
+  it('records only notes that fit in the selected clip', function() {
+    const fakeInputController = {
+      setNoteCapture() {},
+      setMessageCapture(handler) {
+        this.handler = handler;
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc, win } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'one-step', name: 'One Step', lengthSteps: 1 } });
+
+    expect(controller.startRecording()).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x90, note: 64, velocity: 90, channel: 1, timestamp: 0 })).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x80, note: 64, velocity: 0, channel: 1, timestamp: 120 })).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x90, note: 67, velocity: 88, channel: 1, timestamp: 140 })).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x80, note: 67, velocity: 0, channel: 1, timestamp: 260 })).to.equal(true);
+    expect(controller.commitRecording()).to.equal(true);
+
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    const clip = stored.clips.find(entry => entry.id === 'one-step');
+    expect(clip.steps).to.have.lengthOf(1);
+    expect(clip.steps[0]).to.include({ note: 64, velocity: 90 });
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Recorded 1 note into One Step');
+  });
+
   it('cancels recording and clears message capture on dispose', function() {
     const messageCaptureCalls = [];
     const fakeInputController = {

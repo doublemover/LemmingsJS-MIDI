@@ -938,7 +938,7 @@ const createMidiUiController = ({
     const noteCount = Math.min(recordState.notes.length, clip.lengthSteps);
     resetRecordState();
     commitProject(next);
-    logOutput(`Recorded ${noteCount} notes into ${clip.name}`);
+    logOutput(`Recorded ${noteCount} ${noteCount === 1 ? 'note' : 'notes'} into ${clip.name}`);
     return true;
   };
 
