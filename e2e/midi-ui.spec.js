@@ -104,6 +104,43 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await expect(page.locator('#midiSelectedSourceSummary')).toContainText('Lead');
 });
 
+test('MIDI sequencer lowers direct chord mappings into runtime config', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  const setField = async (selector, value) => {
+    await page.locator(selector).evaluate((element, nextValue) => {
+      element.value = String(nextValue);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
+  };
+  await midi.enable();
+
+  await page.locator('#midiMappingChord').selectOption('seventh');
+  await setField('#midiMappingDegree', '2');
+  await setField('#midiMappingOctave', '5');
+  await setField('#midiMappingChordInversion', '1');
+  const state = await page.evaluate(() => ({
+    auditioned: window.__E2E__.midiAudition({ sourceId: 'sfx-1' }),
+    project: window.__E2E__.midiGetProject(),
+    runtime: window.__E2E__.midiGetRuntimeConfig()
+  }));
+  const mapping = state.project.sources.find(source => source.id === 'sfx-1').mapping;
+
+  expect(mapping).toMatchObject({
+    note: null,
+    degree: 2,
+    octave: 5,
+    chord: { type: 'seventh', inversion: 1 }
+  });
+  expect(state.runtime.sfx['1']).toMatchObject({
+    degree: 2,
+    octave: 5,
+    chord: { type: 'seventh', inversion: 1 }
+  });
+  expect(state.runtime.sfx['1'].note).toBeUndefined();
+  expect(state.auditioned).toBe(true);
+  await expect(midi.outputLog()).toContainText('Audition');
+});
+
 test('MIDI project persists across reload', async ({ page }) => {
   await openMidiUi(page);
   await page.evaluate(() => {
