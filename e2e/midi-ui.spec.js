@@ -44,10 +44,18 @@ test('MIDI sequencer creates a fresh project and clears legacy storage', async (
 
 test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {
   const midi = await openMidiUi(page);
+  const setField = async (selector, value) => {
+    await page.locator(selector).evaluate((element, nextValue) => {
+      element.value = String(nextValue);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
+  };
   await midi.enable();
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
   await page.locator('#midiTrackOutputSelect').selectOption('pw-output-1');
+  await page.locator('#midiQuantize').selectOption('1/8');
+  await setField('#midiSwing', '0.25');
 
   const project = await page.evaluate(() => {
     let next = window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
@@ -56,10 +64,19 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
     window.__E2E__.midiAudition({ sourceId: 'sfx-1', trackId: 'lead' });
     return next;
   });
+  await page.locator('#midiMappingArp').selectOption('down');
+  await setField('#midiMappingPan', '-24');
+  await setField('#midiMappingTimbre', '88');
+  await setField('#midiMappingPitchBend', '0.5');
+  const updatedProject = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const updatedMapping = updatedProject.sources.find(source => source.id === 'sfx-1').mapping;
 
   expect(project.tracks.some(track => track.id === 'lead' && track.channel === 3)).toBe(true);
   expect(project.tracks.find(track => track.id === 'track-1').outputId).toBe('pw-output-1');
   expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
+  expect(updatedProject.transport).toMatchObject({ quantize: '1/8', swing: 0.25 });
+  expect(updatedMapping).toMatchObject({ note: 72, velocity: 96, durationTicks: 5, pan: -24, timbre: 88, pitchBend: 0.5 });
+  expect(updatedMapping.arp).toMatchObject({ enabled: true, mode: 'down' });
   await expect(midi.outputLog()).toContainText(/Audition|skipped/);
   await expect(page.locator('#midiTrackList')).toContainText('Lead');
   await expect(page.locator('#midiSelectedSourceSummary')).toContainText('Lead');
@@ -176,6 +193,9 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
 
   await midi.clipAddButton().click();
   await setField('#midiClipName', 'Lead Clip');
+  await page.locator('#midiClipType').selectOption('arp');
+  await page.locator('#midiClipArpMode').selectOption('updown');
+  await page.locator('#midiClipArpPattern').selectOption('custom');
   await setField('.midi-step-note[data-step-index="0"]', 66);
   await setField('.midi-step-velocity[data-step-index="0"]', 91);
   await setField('.midi-step-note[data-step-index="1"]', 70);
@@ -186,6 +206,13 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
   const clip = project.clips.find(entry => entry.name === 'Lead Clip');
   const source = project.sources.find(entry => entry.id === 'sfx-1');
+  expect(clip).toMatchObject({
+    type: 'arp',
+    arp: {
+      mode: 'updown',
+      pattern: { preset: 'custom' }
+    }
+  });
   expect(clip.steps[0]).toMatchObject({ note: 66, velocity: 91 });
   expect(clip.steps[1]).toMatchObject({ note: 70 });
   expect(source).toMatchObject({ mode: 'clip', clipId: clip.id });
@@ -269,14 +296,18 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiTrackVelocityScale', '0.5');
   await setField('#midiGlobalIntensity', '96');
   await setField('#midiGlobalAccent', '0.8');
+  await setField('#midiGlobalEnvAttack', '1.25');
+  await setField('#midiGlobalEnvRelease', '0.75');
   await page.locator('#midiGlobalViewPan').check();
   await page.locator('#midiEnvelopeOverrideToggle').check();
   await midi.automationAddButton().click();
+  await page.locator('.midi-automation-axis-op').last().selectOption('mul');
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(project.tracks[0].velocityScale).toBe(0.5);
   expect(project.global.velocityRange.default).toBe(96);
   expect(project.global.density.velocityBoost).toBe(0.8);
+  expect(project.global.envelope).toMatchObject({ attack: 1.25, release: 0.75 });
   expect(project.global.position.viewPan).toBe(true);
   expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
     attack: 1,
@@ -285,6 +316,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
     release: 1
   });
   expect(project.automation.length).toBeGreaterThan(automationCount);
+  expect(project.automation.at(-1).axisOp).toBe('mul');
 
   await midi.automationRemoveButtons().last().click();
   await expect(midi.automationRows()).toHaveCount(automationCount);
