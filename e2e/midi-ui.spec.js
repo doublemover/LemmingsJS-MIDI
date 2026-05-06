@@ -192,6 +192,8 @@ test('MIDI sequencer panic button logs feedback', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
 
+  await expect(midi.outputLog()).toHaveAttribute('role', 'status');
+  await expect(midi.outputLog()).toHaveAttribute('aria-live', 'polite');
   await page.locator('#midiPanicButton').click();
   await expect(midi.outputLog()).toContainText('Panic sent');
 });
