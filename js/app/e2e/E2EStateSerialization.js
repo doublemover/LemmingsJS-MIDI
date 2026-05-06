@@ -394,6 +394,16 @@ const getViewState = (view) => {
     configPath: view.gameResources?.config?.path ?? null
   };
 };
+const resolveProcgenController = (source) => {
+  if (!source) return null;
+  if (typeof source.getDebugState === 'function') return source;
+  return source.procgenController || source.procgen?.controller || null;
+};
+const getProcgenState = (source) => {
+  const controller = resolveProcgenController(source);
+  if (!controller || typeof controller.getDebugState !== 'function') return null;
+  return controller.getDebugState();
+};
 const getGameState = (view) => {
   const game = view?.game;
   if (!game) return null;
@@ -575,5 +585,6 @@ export {
   serializeSteelRanges,
   isGameReady,
   getViewState,
+  getProcgenState,
   getGameState
 };

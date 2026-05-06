@@ -1,11 +1,363 @@
 import {
   HAZARD_TRIGGER_TYPES,
-  Lemming,
-  SkillTypes,
-  SoundEventTypes,
-  TriggerTypes
+  Lemming
 } from './ProcgenControllerShared.js';
+
+const DEAD_FRONTIER_ACTIONS = new Set([
+  'drowning',
+  'exiting',
+  'exploding',
+  'frying',
+  'oh-no',
+  'splatter'
+]);
+const STATIONARY_FRONTIER_ACTIONS = new Set(['blocking', 'countdown']);
+const AIRBORNE_FRONTIER_ACTIONS = new Set(['falling', 'floating', 'jump']);
+const ASSIGNABLE_ACTIONS = new Set(['', 'walk', 'walking']);
+
 const procgenTerrainPlanningMethods = {
+  _getProcgenTick() {
+    const timer = this.game?.getGameTimer?.();
+    return timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+  },
+
+  _getProcgenLemmings() {
+    const manager = this.game?.getLemmingManager?.();
+    if (Array.isArray(manager?.activeLemmings)) return manager.activeLemmings;
+    if (Array.isArray(manager?.lemmings)) return manager.lemmings;
+    return [];
+  },
+
+  _getLemmingActionName(lem) {
+    return lem?.action?.getActionName?.() || '';
+  },
+
+  _isAssignableAction(lem) {
+    return ASSIGNABLE_ACTIONS.has(this._getLemmingActionName(lem));
+  },
+
+  _isLiveFrontierLemming(lem) {
+    if (!lem || lem.removed || lem.disabled) return false;
+    if (lem.isRemoved?.() === true || lem.isDisabled?.() === true) return false;
+    return Number.isFinite(lem.x) && Number.isFinite(lem.y);
+  },
+
+  _trackFrontierLemming(lem, tick) {
+    if (!Number.isFinite(lem?.id)) return null;
+    if (!this._frontierLemmingState) this._frontierLemmingState = new Map();
+    const previous = this._frontierLemmingState.get(lem.id) || null;
+    const previousTick = Number.isFinite(previous?.lastSeenTick) ? previous.lastSeenTick : tick - 1;
+    const sameTick = previous && previousTick === tick;
+    const tickDelta = sameTick ? 0 : Math.max(1, tick - previousTick);
+    const velocityDivisor = Math.max(1, tick - previousTick);
+    const previousX = Number.isFinite(previous?.x) ? previous.x : lem.x;
+    const previousY = Number.isFinite(previous?.y) ? previous.y : lem.y;
+    const dx = lem.x - previousX;
+    const dy = lem.y - previousY;
+    const moved = Math.abs(dx) + Math.abs(dy);
+    const bestX = Math.max(Number.isFinite(previous?.bestX) ? previous.bestX : lem.x, lem.x);
+    const madeRightwardProgress = !previous || lem.x > bestX - 0.5;
+    let stallTicks = Number.isFinite(previous?.stallTicks) ? previous.stallTicks : 0;
+    if (sameTick) {
+      stallTicks = Number.isFinite(previous?.stallTicks) ? previous.stallTicks : 0;
+    } else if (moved < 0.5) {
+      stallTicks += tickDelta;
+    } else {
+      stallTicks = Math.max(0, stallTicks - tickDelta);
+    }
+    let flipCount = Number.isFinite(previous?.flipCount) ? previous.flipCount : 0;
+    if (previous && previous.lookRight !== lem.lookRight && Math.abs(dx) < 8) {
+      flipCount += 1;
+    } else if (!sameTick && moved > 2) {
+      flipCount = Math.max(0, flipCount - 1);
+    }
+    const state = {
+      id: lem.id,
+      x: lem.x,
+      y: lem.y,
+      lookRight: !!lem.lookRight,
+      actionName: this._getLemmingActionName(lem),
+      lastSeenTick: tick,
+      lastProgressTick: madeRightwardProgress
+        ? tick
+        : (Number.isFinite(previous?.lastProgressTick) ? previous.lastProgressTick : tick),
+      bestX,
+      stallTicks,
+      flipCount,
+      velocityX: dx / velocityDivisor,
+      velocityY: dy / velocityDivisor
+    };
+    this._frontierLemmingState.set(lem.id, state);
+    return state;
+  },
+
+  _evaluateFrontierViability(lem, tracker) {
+    if (!this._isLiveFrontierLemming(lem)) {
+      return { viable: false, reason: 'inactive', penalty: Infinity };
+    }
+    const actionName = this._getLemmingActionName(lem);
+    if (DEAD_FRONTIER_ACTIONS.has(actionName)) {
+      return { viable: false, reason: 'dead-action', penalty: Infinity };
+    }
+    if (STATIONARY_FRONTIER_ACTIONS.has(actionName)) {
+      return { viable: false, reason: 'stationary-action', penalty: Infinity };
+    }
+    const levelWidth = this.level?.width ?? Infinity;
+    const levelHeight = this.level?.height ?? Infinity;
+    if (lem.x < 0 || lem.x >= levelWidth || lem.y < Lemming.LEM_MIN_Y || lem.y >= levelHeight + 6) {
+      return { viable: false, reason: 'out-of-level', penalty: Infinity };
+    }
+    if (actionName === 'falling' && !lem.hasParachute) {
+      const fallDistance = Number.isFinite(lem.state) ? lem.state : 0;
+      const maxSafeFall = Math.min(this.maxDrop, Lemming.LEM_MAX_FALLING);
+      if (fallDistance > maxSafeFall) {
+        return { viable: false, reason: 'falling-lethal', penalty: Infinity };
+      }
+    }
+    const airborne = AIRBORNE_FRONTIER_ACTIONS.has(actionName);
+    if (!airborne && tracker) {
+      if (tracker.stallTicks >= this.frontierStuckTicks) {
+        return { viable: false, reason: 'stuck', penalty: Infinity };
+      }
+      if (tracker.flipCount >= this.frontierTurnaroundLimit) {
+        return { viable: false, reason: 'turnaround-stuck', penalty: Infinity };
+      }
+    }
+    let penalty = 0;
+    let reason = actionName || 'live';
+    if (!lem.lookRight) {
+      penalty += this.frontierTurnaroundPenalty;
+      reason = `${reason}:turnaround`;
+    }
+    if (actionName === 'falling' && !lem.hasParachute) {
+      penalty += 4;
+    }
+    return { viable: true, reason, actionName, penalty };
+  },
+
+  _getFrontierFallbackX() {
+    const entrance = this.level?.entrances?.[0] || null;
+    if (Number.isFinite(entrance?.x)) return entrance.x;
+    if (Number.isFinite(this.entranceX)) return this.entranceX;
+    return null;
+  },
+
+  _selectFrontierState({ force = false, requireRight = false } = {}) {
+    const tick = this._getProcgenTick();
+    if (!force && !requireRight && this._frontierState && this._frontierCacheTick === tick) {
+      if (!this._frontierState.lemming || this._isLiveFrontierLemming(this._frontierState.lemming)) {
+        return this._frontierState;
+      }
+    }
+    const lems = this._getProcgenLemmings();
+    const activeIds = new Set();
+    let best = null;
+    let bestTracker = null;
+    let bestViability = null;
+    let bestScore = -Infinity;
+    let liveCount = 0;
+    let viableCount = 0;
+    let rightMovingCount = 0;
+    let rightmostX = null;
+    for (const lem of lems) {
+      if (!this._isLiveFrontierLemming(lem)) continue;
+      liveCount += 1;
+      if (Number.isFinite(lem.id)) activeIds.add(lem.id);
+      const tracker = this._trackFrontierLemming(lem, tick);
+      const viability = this._evaluateFrontierViability(lem, tracker);
+      if (!viability.viable) continue;
+      viableCount += 1;
+      if (lem.lookRight) rightMovingCount += 1;
+      if (rightmostX == null || lem.x > rightmostX) rightmostX = lem.x;
+      if (requireRight && !lem.lookRight) continue;
+      const score = lem.x - viability.penalty;
+      if (score > bestScore || (score === bestScore && (!best || lem.x > best.x))) {
+        best = lem;
+        bestTracker = tracker;
+        bestViability = viability;
+        bestScore = score;
+      }
+    }
+    const fallbackX = best ? best.x : this._getFrontierFallbackX();
+    const state = {
+      tick,
+      lemming: best,
+      id: best?.id ?? null,
+      x: Number.isFinite(fallbackX) ? fallbackX : null,
+      y: Number.isFinite(best?.y) ? best.y : null,
+      lookRight: best ? !!best.lookRight : null,
+      actionName: bestViability?.actionName ?? null,
+      reason: bestViability?.reason ?? (liveCount ? 'no-viable-lemming' : 'no-live-lemming'),
+      velocityX: bestTracker?.velocityX ?? 0,
+      velocityY: bestTracker?.velocityY ?? 0,
+      liveCount,
+      viableCount,
+      rightMovingCount,
+      rightmostX
+    };
+    this._pruneFrontierTrackingState(activeIds, tick);
+    if (!requireRight) {
+      this._frontierState = state;
+      this._frontierCacheTick = tick;
+      this._frontier = state;
+      this._getLookaheadState(state);
+    }
+    return state;
+  },
+
+  _getFrontierState(options = {}) {
+    return this._selectFrontierState(options || {});
+  },
+
+  _getFrontierLemming({ requireRight = false } = {}) {
+    return this._selectFrontierState({ requireRight }).lemming;
+  },
+
+  _getFollowLemming() {
+    return this._getFrontierLemming();
+  },
+
+  _isViableFrontierLemming(lem, { requireRight = false } = {}) {
+    if (requireRight && !lem?.lookRight) return false;
+    const tick = this._getProcgenTick();
+    const tracker = this._trackFrontierLemming(lem, tick);
+    return this._evaluateFrontierViability(lem, tracker).viable;
+  },
+
+  _getFrontierSummary() {
+    const state = this._getFrontierState({ force: true });
+    return {
+      id: state.id,
+      x: state.lemming ? state.x : null,
+      y: state.y,
+      lookRight: state.lookRight,
+      action: state.actionName,
+      reason: state.reason,
+      tick: state.tick,
+      velocityX: state.velocityX,
+      liveCount: state.liveCount,
+      viableCount: state.viableCount,
+      rightMovingCount: state.rightMovingCount,
+      rightmostX: state.rightmostX
+    };
+  },
+
+  _getLookaheadState(frontierOrX = null) {
+    const frontierX = Number.isFinite(frontierOrX)
+      ? frontierOrX
+      : (Number.isFinite(frontierOrX?.x) ? frontierOrX.x : this._frontierState?.x);
+    const velocityX = Math.max(0, Number.isFinite(frontierOrX?.velocityX)
+      ? frontierOrX.velocityX
+      : (this._frontierState?.velocityX ?? 0));
+    const min = Math.max(1, Math.floor(this.lookAheadMin ?? this.lookAhead ?? 1));
+    const max = Math.max(min, Math.floor(this.lookAheadMax ?? this.lookAhead ?? min));
+    const speedBonus = Math.ceil(velocityX * (this.lookAheadSpeedTicks ?? 0));
+    const range = Math.max(0, max - min);
+    const previousVariation = this._lookaheadState?.variation;
+    const variation = Number.isFinite(previousVariation)
+      ? Math.max(0, Math.min(range, Math.floor(previousVariation)))
+      : this._randInt(0, range);
+    const distance = Math.max(min, Math.min(max, min + speedBonus + variation));
+    const generatedEndX = Number.isFinite(this._groundEndX) ? this._groundEndX : null;
+    const groundAhead = Number.isFinite(frontierX) && Number.isFinite(generatedEndX)
+      ? generatedEndX - frontierX
+      : null;
+    const threshold = Math.max(0, Math.floor(this.extendThreshold || 0));
+    const state = {
+      distance,
+      min,
+      max,
+      threshold,
+      groundAhead,
+      distanceToGeneratedEnd: groundAhead,
+      generatedEndX,
+      variation,
+      due: Number.isFinite(groundAhead) ? groundAhead <= distance + threshold : false
+    };
+    this.lookAhead = distance;
+    this._lookAheadDistance = distance;
+    this._lookAheadThreshold = threshold;
+    this._lookaheadState = state;
+    return state;
+  },
+
+  _getLookaheadTarget() {
+    return this._getLookaheadState(this._frontierState).distance;
+  },
+
+  _refreshLookaheadTarget() {
+    if (this._lookaheadState) {
+      this._lookaheadState = { ...this._lookaheadState, variation: Number.NaN };
+    }
+    return this._getLookaheadState(this._frontierState).distance;
+  },
+
+  _needsGroundForFrontier(frontierX) {
+    if (!Number.isFinite(frontierX)) return false;
+    return this._getLookaheadState(frontierX).due;
+  },
+
+  getDebugState() {
+    const frontier = this._getFrontierSummary();
+    const lookahead = this._getLookaheadState(this._frontierState);
+    return {
+      version: 1,
+      selectedTheme: this._getSelectedTheme?.() ?? this.assets?.styleName ?? null,
+      seed: this._rngSeed ?? null,
+      generatedEndX: Number.isFinite(this._groundEndX) ? Math.max(0, Math.floor(this._groundEndX)) : 0,
+      frontier,
+      lookahead: {
+        distance: lookahead.distance,
+        min: lookahead.min,
+        max: lookahead.max,
+        threshold: lookahead.threshold,
+        extendThreshold: lookahead.threshold,
+        groundAhead: lookahead.groundAhead,
+        distanceToGeneratedEnd: lookahead.distanceToGeneratedEnd,
+        variation: lookahead.variation,
+        due: lookahead.due,
+        levelWidth: this.level?.width ?? null
+      },
+      recentChunks: (this._recentChunks || []).map(chunk => ({ ...chunk })),
+      recentPieces: (this._recentPieces || []).map(piece => ({
+        ...piece,
+        bounds: piece.bounds ? { ...piece.bounds } : null
+      })),
+      recentAssists: (this._recentAssists || []).map(assist => ({
+        ...assist,
+        lemming: assist.lemming ? { ...assist.lemming } : null,
+        scan: assist.scan ? {
+          direction: assist.scan.direction,
+          gap: assist.scan.gap ? { ...assist.scan.gap } : null,
+          wall: assist.scan.wall ? { ...assist.scan.wall } : null,
+          hazard: assist.scan.hazard ? { ...assist.scan.hazard } : null
+        } : null
+      })),
+      trackingSizes: this._getTrackingSizes()
+    };
+  },
+
+  _getTrackingSizes() {
+    const scanCacheSizes = {};
+    for (const [key, value] of Object.entries(this._scanCache || {})) {
+      scanCacheSizes[key] = value?.size ?? 0;
+    }
+    return {
+      gaps: this._gaps?.length ?? 0,
+      gapScanStart: this._gapScanStart ?? 0,
+      seenFalls: this._seenFalls?.size ?? 0,
+      aiCooldowns: this._aiLemmingCooldown?.size ?? 0,
+      aiStalls: this._aiStallState?.size ?? 0,
+      frontier: this._frontierLemmingState?.size ?? 0,
+      hazardTriggers: this._hazardTriggers?.length ?? 0,
+      recentChunks: this._recentChunks?.length ?? 0,
+      recentPieces: this._recentPieces?.length ?? 0,
+      recentAssists: this._recentAssists?.length ?? 0,
+      recentDecor: this._recentDecor?.length ?? 0,
+      scanCache: scanCacheSizes
+    };
+  },
+
   _getStructurePlan() {
     if (!this._structurePlan || this._structurePlan.remaining <= 0) {
       this._structurePlan = this._seedStructurePlan();
@@ -85,7 +437,8 @@ const procgenTerrainPlanningMethods = {
     const raise = this._randInt(6, 22);
     const destY = baseY - decor.bounds.height - raise;
     if (this._overlapsRecentDecor(destX, destY, decor)) return;
-    this.stamper.stamp(decor, destX, destY);
+    const rect = this.stamper.stamp(decor, destX, destY);
+    this._trackGeneratedPiece(decor, destX, destY, 'decor', rect);
     this._trackDecorPlacement(destX, destY, decor);
   },
 
@@ -101,6 +454,11 @@ const procgenTerrainPlanningMethods = {
       const xOverlap = Math.min(rect.x + rect.w, other.x + other.w) - Math.max(rect.x, other.x);
       const yOverlap = Math.min(rect.y + rect.h, other.y + other.h) - Math.max(rect.y, other.y);
       if (xOverlap > 2 && yOverlap > 2) {
+        return true;
+      }
+      const centerDx = Math.abs((rect.x + rect.w / 2) - (other.x + other.w / 2));
+      const centerDy = Math.abs((rect.y + rect.h / 2) - (other.y + other.h / 2));
+      if (centerDx < 24 && centerDy < 36) {
         return true;
       }
     }
@@ -141,15 +499,29 @@ const procgenTerrainPlanningMethods = {
 
   _pruneGapQueue(referenceX = null) {
     this._advanceGapScanCursor(referenceX);
-    if (this._gapScanStart <= 0) return;
-    if (this._gapScanStart < 256 && this._gapScanStart < (this._gaps.length >> 1)) return;
+    if (this._gapScanStart <= 0) {
+      this._capGapQueue();
+      return;
+    }
+    if (this._gapScanStart < 256 && this._gapScanStart < (this._gaps.length >> 1)) {
+      this._capGapQueue();
+      return;
+    }
     this._gaps.splice(0, this._gapScanStart);
     this._gapScanStart = 0;
+    this._capGapQueue();
+  },
+
+  _capGapQueue() {
+    const limit = Math.max(1, Math.floor(this.gapTrackingLimit ?? 256));
+    if (!Array.isArray(this._gaps) || this._gaps.length <= limit) return;
+    const removeCount = this._gaps.length - limit;
+    this._gaps.splice(0, removeCount);
+    this._gapScanStart = Math.max(0, this._gapScanStart - removeCount);
   },
 
   _collectActiveLemmingIds() {
-    const manager = this.game?.getLemmingManager?.();
-    const lems = manager?.lemmings || [];
+    const lems = this._getProcgenLemmings();
     const ids = new Set();
     for (let i = 0; i < lems.length; i += 1) {
       const lem = lems[i];
@@ -176,7 +548,54 @@ const procgenTerrainPlanningMethods = {
       if (Number.isFinite(seenTick) && seenTick >= minSeenTick) continue;
       this._seenFalls.delete(id);
     }
+    this._pruneFrontierTrackingState(activeIds, tick);
+    const maxTracked = Math.max(activeIds.size, Math.floor(this.frontierMaxTrackedLemmings ?? 128));
+    this._pruneMapToLimit(this._aiLemmingCooldown, maxTracked, activeIds, value => value);
+    this._pruneMapToLimit(this._aiStallState, maxTracked, activeIds, value => value?.lastSeenTick ?? 0);
+    this._pruneMapToLimit(this._seenFalls, maxTracked, activeIds, value => value);
     this._pruneGapQueue();
+    this._pruneGeneratedTracking();
+  },
+
+  _pruneFrontierTrackingState(activeIds = new Set(), tick = null) {
+    if (!this._frontierLemmingState) return;
+    const staleBefore = Number.isFinite(tick)
+      ? tick - Math.max(this.fallEventMemoryTicks, this.frontierStuckTicks * 2)
+      : -Infinity;
+    for (const [id, state] of this._frontierLemmingState) {
+      if (activeIds.has(id)) continue;
+      if (Number.isFinite(state?.lastSeenTick) && state.lastSeenTick >= staleBefore) continue;
+      this._frontierLemmingState.delete(id);
+    }
+    const maxTracked = Math.max(activeIds.size, Math.floor(this.frontierMaxTrackedLemmings ?? 128));
+    this._pruneMapToLimit(this._frontierLemmingState, maxTracked, activeIds, value => value?.lastSeenTick ?? 0);
+  },
+
+  _pruneMapToLimit(map, limit, activeIds = new Set(), getSortValue = value => value) {
+    if (!map || typeof map.size !== 'number') return;
+    const maxSize = Math.max(0, Math.floor(limit));
+    if (map.size <= maxSize) return;
+    if (maxSize === 0) {
+      map.clear();
+      return;
+    }
+    const entries = [];
+    for (const [key, value] of map) {
+      entries.push({
+        key,
+        active: activeIds.has(key),
+        sort: Number(getSortValue(value)) || 0
+      });
+    }
+    entries.sort((a, b) => {
+      if (a.active !== b.active) return a.active ? 1 : -1;
+      return a.sort - b.sort;
+    });
+    for (const entry of entries) {
+      if (map.size <= maxSize) break;
+      if (entry.active && map.size <= activeIds.size) break;
+      map.delete(entry.key);
+    }
   },
 
   _rebuildHazardIndex(tick = null) {

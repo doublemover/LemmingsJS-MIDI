@@ -27,21 +27,21 @@ class ProcgenTerrainStamper {
 
   stamp(piece, x, y, drawProperties = {}) {
     const level = this.level;
-    if (!level || !piece?.image || !piece?.frame) return;
+    if (!level || !piece?.image || !piece?.frame) return null;
     const img = piece.image;
     const width = img.width | 0;
     const height = img.height | 0;
-    if (width <= 0 || height <= 0) return;
+    if (width <= 0 || height <= 0) return null;
 
     this._ensureLevelViews(level);
     const dest32 = this._dest32;
     const mask = this._mask;
     const levelW = this._levelWidth;
     const levelH = this._levelHeight;
-    if (!dest32 || !mask || levelW <= 0 || levelH <= 0) return;
+    if (!dest32 || !mask || levelW <= 0 || levelH <= 0) return null;
 
     const palLookup = getPaletteLookup(img.palette);
-    if (!palLookup) return;
+    if (!palLookup) return null;
 
     const xOffset = x | 0;
     const yOffset = y | 0;
@@ -49,7 +49,7 @@ class ProcgenTerrainStamper {
     const srcY0 = Math.max(0, -yOffset);
     const srcX1 = Math.min(width, levelW - xOffset);
     const srcY1 = Math.min(height, levelH - yOffset);
-    if (srcX0 >= srcX1 || srcY0 >= srcY1) return;
+    if (srcX0 >= srcX1 || srcY0 >= srcY1) return null;
 
     const isUpsideDown = !!drawProperties.isUpsideDown;
     const noOverwrite = !!drawProperties.noOverwrite;
@@ -94,10 +94,18 @@ class ProcgenTerrainStamper {
       }
     }
     if (maxX >= minX && maxY >= minY) {
-      level.applyGroundBulkChange?.(minX, minY, (maxX - minX) + 1, (maxY - minY) + 1, {
+      const rect = {
+        x: minX,
+        y: minY,
+        width: (maxX - minX) + 1,
+        height: (maxY - minY) + 1
+      };
+      level.applyGroundBulkChange?.(rect.x, rect.y, rect.width, rect.height, {
         invalidateMiniMap: true
       });
+      return rect;
     }
+    return null;
   }
 
   /**

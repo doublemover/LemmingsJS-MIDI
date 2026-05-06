@@ -127,6 +127,7 @@ Top-level fields:
 - `bench`: bench metrics snapshot (if available).
 - `diagnostics`: runtime profile + feature flags + cache snapshot summary.
 - `midi`: midi enable/router summary.
+- `procgen`: compact procgen debug state when the procgen controller is active.
 
 ### view
 - `gameType`, `levelGroupIndex`, `levelIndex`.
@@ -162,6 +163,15 @@ Top-level fields:
 - `projectId`: current MIDI project id.
 - `selectedTrackId`: selected MIDI track id.
 - `selectedSourceId`: selected MIDI source id.
+
+### procgen
+- `selectedTheme`: selected style/theme for the seeded run.
+- `seed`: normalized procgen seed.
+- `generatedEndX`: current generated terrain extent.
+- `frontier`: live rightmost viable lemming summary.
+- `lookahead`: threshold/distance data used to decide when to generate.
+- `recentChunks`, `recentPieces`, `recentAssists`: bounded debug lists.
+- `trackingSizes`: sizes of bounded procgen tracking structures.
 
 ### stage
 - `panEnabled`.

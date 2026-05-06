@@ -1,9 +1,5 @@
 import {
-  HAZARD_TRIGGER_TYPES,
-  Lemming,
-  SkillTypes,
-  SoundEventTypes,
-  TriggerTypes
+  SkillTypes
 } from './ProcgenControllerShared.js';
 const procgenTerrainDirectorMethods = {
   getGroundExtentX() {
@@ -11,18 +7,11 @@ const procgenTerrainDirectorMethods = {
   },
 
   _getRightmostX() {
-    const manager = this.game?.getLemmingManager?.();
-    const lems = manager?.activeLemmings || manager?.lemmings || [];
-    let max = null;
-    for (const lem of lems) {
-      if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-      if (max == null || lem.x > max) max = lem.x;
-    }
-    if (max == null) {
-      const entrance = this.level?.entrances?.[0] || null;
-      return Number.isFinite(entrance?.x) ? entrance.x : null;
-    }
-    return max;
+    const frontier = this._getFrontierSummary?.();
+    if (Number.isFinite(frontier?.x)) return frontier.x;
+    if (Number.isFinite(frontier?.rightmostX)) return frontier.rightmostX;
+    const entrance = this.level?.entrances?.[0] || null;
+    return Number.isFinite(entrance?.x) ? entrance.x : null;
   },
 
   _scheduleBuilderBurst(originX) {
@@ -91,8 +80,7 @@ const procgenTerrainDirectorMethods = {
     let bestDist = Infinity;
     for (const lem of lems) {
       if (!lem || lem.removed || lem.disabled) continue;
-      const actionName = lem.action?.getActionName?.() || '';
-      if (actionName && actionName !== 'walking') continue;
+      if (!this._isAssignableAction(lem)) continue;
       if (burst.edgeAction === 'builder-left' && lem.lookRight) continue;
       if (burst.edgeAction === 'blocker' && lem.lookRight) continue;
       const dist = Math.abs((lem.x ?? 0) - edgeX);
@@ -106,7 +94,13 @@ const procgenTerrainDirectorMethods = {
     const key = burst.edgeAction === 'builder-left' ? 'builder' : 'blocker';
     if (!this._canSpend(key)) return false;
     if (manager.doLemmingAction(best, skill)) {
-      this._noteAiAction(best, tick, burst.edgeAction === 'builder-left' ? 48 : 32);
+      this._noteAiAction(best, tick, burst.edgeAction === 'builder-left' ? 48 : 32, {
+        action: key,
+        reason: burst.edgeAction,
+        skillType: skill,
+        spent: true,
+        targetX: burst.edgeX
+      });
       return true;
     }
     this._refundBudget(key);
@@ -119,9 +113,8 @@ const procgenTerrainDirectorMethods = {
     const lems = manager?.lemmings || [];
     let leadX = null;
     if (lems.length) {
-      const follow = this._getFollowLemming();
-      const leadId = follow?.id ?? null;
-      leadX = Number.isFinite(follow?.x) ? follow.x : null;
+      const frontier = this._getFrontierLemming();
+      leadX = Number.isFinite(frontier?.x) ? frontier.x : null;
       this._advanceGapScanCursor(leadX);
       const maxTriggerX = Number.isFinite(leadX) ? leadX + this.gapTriggerDistance : Infinity;
       for (let i = this._gapScanStart; i < this._gaps.length; i += 1) {
@@ -135,8 +128,7 @@ const procgenTerrainDirectorMethods = {
         let bestDist = Infinity;
         for (const lem of lems) {
           if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-          const actionName = lem.action?.getActionName?.() || '';
-          if (actionName && actionName !== 'walking') continue;
+          if (!this._isAssignableAction(lem)) continue;
           const dist = Math.abs((lem.x ?? 0) - gap.x);
           if (dist < bestDist) {
             bestDist = dist;
@@ -144,13 +136,17 @@ const procgenTerrainDirectorMethods = {
           }
         }
         if (!best) continue;
-        if (leadId != null && best.id !== leadId && Number.isFinite(leadX)) {
-          if (best.x < leadX - 8) continue;
-        }
+        if (Number.isFinite(leadX) && best.x < leadX - 8) continue;
         if (manager.doLemmingAction(best, SkillTypes.BUILDER)) {
           const timer = this.game?.getGameTimer?.();
           const tick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
-          this._noteAiAction(best, tick, 48);
+          this._noteAiAction(best, tick, 48, {
+            action: 'builder',
+            reason: 'small-gap',
+            skillType: SkillTypes.BUILDER,
+            spent: true,
+            targetX: gap.x
+          });
           gap.assigned = true;
         }
       }
@@ -206,7 +202,12 @@ const procgenTerrainDirectorMethods = {
     }
 
     if (manager.doLemmingAction(target, SkillTypes.BUILDER)) {
-      this._noteAiAction(target, tick, 48);
+      this._noteAiAction(target, tick, 48, {
+        action: 'builder',
+        reason: 'midair-safe-drop',
+        skillType: SkillTypes.BUILDER,
+        spent: true
+      });
       this._pendingMidairBuilder = null;
       return;
     }
@@ -222,8 +223,7 @@ const procgenTerrainDirectorMethods = {
       let bestDist = Infinity;
       for (const lem of lems) {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-        const actionName = lem.action?.getActionName?.() || '';
-        if (actionName && actionName !== 'walking') continue;
+        if (!this._isAssignableAction(lem)) continue;
         if (burst.used?.has?.(lem.id)) continue;
         if (lem.x > burst.edgeX + 8) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.edgeX);
@@ -234,7 +234,13 @@ const procgenTerrainDirectorMethods = {
       }
       if (best && manager.doLemmingAction(best, SkillTypes.BUILDER)) {
         const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
-        this._noteAiAction(best, tick, 48);
+        this._noteAiAction(best, tick, 48, {
+          action: 'builder',
+          reason: 'edge-burst',
+          skillType: SkillTypes.BUILDER,
+          spent: true,
+          targetX: burst.edgeX
+        });
         burst.used?.add?.(best.id);
         return true;
       }
@@ -244,8 +250,7 @@ const procgenTerrainDirectorMethods = {
       let bestDist = Infinity;
       for (const lem of lems) {
         if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-        const actionName = lem.action?.getActionName?.() || '';
-        if (actionName && actionName !== 'walking') continue;
+        if (!this._isAssignableAction(lem)) continue;
         if (burst.used?.has?.(lem.id)) continue;
         const dist = Math.abs((lem.x ?? 0) - burst.originX);
         if (dist < bestDist) {
@@ -255,7 +260,13 @@ const procgenTerrainDirectorMethods = {
       }
       if (best && manager.doLemmingAction(best, SkillTypes.BUILDER)) {
         const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
-        this._noteAiAction(best, tick, 48);
+        this._noteAiAction(best, tick, 48, {
+          action: 'builder',
+          reason: 'fall-recovery',
+          skillType: SkillTypes.BUILDER,
+          spent: true,
+          targetX: burst.originX
+        });
         burst.used?.add?.(best.id);
         return true;
       }
@@ -266,12 +277,16 @@ const procgenTerrainDirectorMethods = {
       const idx = (start + i) % lems.length;
       const lem = lems[idx];
       if (!lem || lem.removed || lem.disabled) continue;
-      const actionName = lem.action?.getActionName?.() || '';
-      if (actionName && actionName !== 'walking') continue;
+      if (!this._isAssignableAction(lem)) continue;
       this._builderCursorId = idx + 1;
       if (manager.doLemmingAction(lem, SkillTypes.BUILDER)) {
         const tick = this.game?.getGameTimer?.().tickIndex ?? 0;
-        this._noteAiAction(lem, tick, 48);
+        this._noteAiAction(lem, tick, 48, {
+          action: 'builder',
+          reason: 'builder-burst',
+          skillType: SkillTypes.BUILDER,
+          spent: true
+        });
         return true;
       }
     }
@@ -281,7 +296,9 @@ const procgenTerrainDirectorMethods = {
   _ensureGround(rightmostX) {
     const levelWidth = this.level?.width ?? 0;
     if (!Number.isFinite(levelWidth) || levelWidth <= 0) return;
-    while (rightmostX + this.lookAhead >= this._groundEndX - this.extendThreshold) {
+    const frontierX = Number.isFinite(rightmostX) ? rightmostX : this._getRightmostX();
+    if (!Number.isFinite(frontierX)) return;
+    while (this._needsGroundForFrontier(frontierX)) {
       if (this._groundEndX >= levelWidth) break;
       const segmentWidth = this._pickSegmentWidth();
       if (this._shouldInsertGap()) {
@@ -293,16 +310,34 @@ const procgenTerrainDirectorMethods = {
           y: this._groundTopY,
           assigned: false
         });
-        this._groundEndX = Math.min(levelWidth, this._groundEndX + gapWidth);
+        const gapEnd = Math.min(levelWidth, this._groundEndX + gapWidth);
+        this._trackGeneratedChunk({
+          type: 'gap',
+          startX: gapStart,
+          endX: gapEnd,
+          y: this._groundTopY
+        });
+        this._groundEndX = gapEnd;
+        this._refreshLookaheadTarget();
         this._gapCooldown = this._randInt(16, 40);
         continue;
       }
       const nextTop = this._pickNextTopY();
       const colorIndex = this._getNextColorIndex();
-      this._paintGround(this._groundEndX, segmentWidth, nextTop, colorIndex);
+      const segmentStart = this._groundEndX;
+      this._paintGround(segmentStart, segmentWidth, nextTop, colorIndex);
       this._groundTopY = nextTop;
       this._groundEndX = Math.min(levelWidth, this._groundEndX + segmentWidth);
+      this._trackGeneratedChunk({
+        type: 'terrain',
+        startX: segmentStart,
+        endX: this._groundEndX,
+        topY: nextTop,
+        colorIndex
+      });
+      this._refreshLookaheadTarget();
     }
+    this._pruneGeneratedTracking(frontierX);
   },
 
   _paintGround(startX, width, topY, colorIndex) {
@@ -380,7 +415,8 @@ const procgenTerrainDirectorMethods = {
     for (let i = 0; i < repeats; i++) {
       const destX = cursorX + stamped - piece.bounds.minX;
       const destY = this._clampSurfaceForEntrance(surfaceY, piece, cursorX + stamped) - piece.bounds.maxY;
-      this.stamper.stamp(piece, destX, destY);
+      const rect = this.stamper.stamp(piece, destX, destY);
+      this._trackGeneratedPiece(piece, destX, destY, 'ground', rect);
       if (this._rand() < (this.decorChance + decorBias * 0.01)) {
         this._placeDecoration(destX, destY, piece);
       }
@@ -397,7 +433,8 @@ const procgenTerrainDirectorMethods = {
     for (let i = 0; i < repeats; i++) {
       const destX = cursorX - piece.bounds.minX;
       const destY = topY - piece.bounds.maxY;
-      this.stamper.stamp(piece, destX, destY);
+      const rect = this.stamper.stamp(piece, destX, destY);
+      this._trackGeneratedPiece(piece, destX, destY, 'support', rect);
       topY -= pieceHeight;
     }
     return pieceWidth;

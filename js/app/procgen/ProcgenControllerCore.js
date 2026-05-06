@@ -19,6 +19,8 @@ class ProcgenController {
     this.stamper = stamper || null;
     this._rng = typeof options.rng === 'function' ? options.rng : Math.random;
     this._rngSeed = Number.isFinite(options.rngSeed) ? (Math.trunc(options.rngSeed) >>> 0) : null;
+    this._selectedTheme = options.selectedTheme || assets?.styleName || assets?.selectedTheme || null;
+    this._themeContract = options.themeContract || null;
     this._tickHandler = null;
     this._running = false;
     this._cameraX = 0;
@@ -72,14 +74,47 @@ class ProcgenController {
     this._splatTarget = this._randInt(3, 10);
     this._pendingMidairBuilder = null;
     this._recentDecor = [];
+    this._recentAssists = [];
+    this._recentChunks = [];
+    this._recentPieces = [];
+    this._recentChunkSerial = 0;
+    this._recentPieceSerial = 0;
+    this._lastNoopAssist = null;
+    this._frontierState = null;
+    this._frontierCacheTick = -Infinity;
+    this._frontierLemmingState = new Map();
+    this._lookaheadState = null;
+    this._lookAheadDistance = 0;
+    this._lookAheadThreshold = 0;
 
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
     this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 120;
-    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 2;
-    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 6;
-    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 4;
-    this.lookAhead = Number.isFinite(options.lookAhead) ? options.lookAhead : 20;
+    this.segmentMinWidth = Number.isFinite(options.segmentMinWidth) ? options.segmentMinWidth : 24;
+    this.segmentMaxWidth = Number.isFinite(options.segmentMaxWidth) ? options.segmentMaxWidth : 72;
+    this.extendThreshold = Number.isFinite(options.extendThreshold) ? options.extendThreshold : 16;
+    const explicitLookAhead = Number.isFinite(options.lookAhead)
+      ? Math.max(24, Math.floor(options.lookAhead))
+      : null;
+    this.lookAheadMin = Number.isFinite(options.lookAheadMin)
+      ? Math.max(24, Math.floor(options.lookAheadMin))
+      : (explicitLookAhead ?? 140);
+    this.lookAheadMax = Number.isFinite(options.lookAheadMax)
+      ? Math.max(this.lookAheadMin, Math.floor(options.lookAheadMax))
+      : Math.max(this.lookAheadMin, explicitLookAhead ?? 220);
+    this.lookAhead = this.lookAheadMax;
+    this.lookAheadSpeedTicks = Number.isFinite(options.lookAheadSpeedTicks)
+      ? Math.max(0, Math.floor(options.lookAheadSpeedTicks))
+      : 48;
+    this.recentChunkLimit = Number.isFinite(options.recentChunkLimit)
+      ? Math.max(1, Math.floor(options.recentChunkLimit))
+      : 32;
+    this.recentPieceLimit = Number.isFinite(options.recentPieceLimit)
+      ? Math.max(1, Math.floor(options.recentPieceLimit))
+      : 96;
+    this.generatedTrackingPruneDistance = Number.isFinite(options.generatedTrackingPruneDistance)
+      ? Math.max(0, Math.floor(options.generatedTrackingPruneDistance))
+      : 512;
     this.followLerp = Number.isFinite(options.followLerp) ? options.followLerp : 0.12;
     this.maxStepUp = Number.isFinite(options.maxStepUp) ? options.maxStepUp : 3;
     this.maxDrop = Number.isFinite(options.maxDrop) ? options.maxDrop : (Lemming.LEM_MAX_FALLING - 1);
@@ -87,7 +122,7 @@ class ProcgenController {
     this.gapMinWidth = Number.isFinite(options.gapMinWidth) ? options.gapMinWidth : 3;
     this.gapMaxWidth = Number.isFinite(options.gapMaxWidth) ? options.gapMaxWidth : 9;
     this.gapTriggerDistance = Number.isFinite(options.gapTriggerDistance) ? options.gapTriggerDistance : 10;
-    this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.12;
+    this.decorChance = Number.isFinite(options.decorChance) ? options.decorChance : 0.06;
     this.aiDecisionInterval = Number.isFinite(options.aiDecisionInterval) ? options.aiDecisionInterval : 3;
     this.aiScanAhead = Number.isFinite(options.aiScanAhead) ? options.aiScanAhead : 24;
     this.aiWallHeight = Number.isFinite(options.aiWallHeight) ? options.aiWallHeight : 10;
@@ -95,6 +130,9 @@ class ProcgenController {
     this.aiFloaterDrop = Number.isFinite(options.aiFloaterDrop) ? options.aiFloaterDrop : (Lemming.LEM_MAX_FALLING - 2);
     this.aiDebugOverlay = options.aiDebugOverlay === true;
     this.aiActionCooldown = Number.isFinite(options.aiActionCooldown) ? options.aiActionCooldown : 5;
+    this.aiNoopDebugIntervalTicks = Number.isFinite(options.aiNoopDebugIntervalTicks)
+      ? Math.max(1, Math.floor(options.aiNoopDebugIntervalTicks))
+      : 30;
     this.aiHazardIndexRefreshTicks = Number.isFinite(options.aiHazardIndexRefreshTicks)
       ? Math.max(1, Math.floor(options.aiHazardIndexRefreshTicks))
       : 64;
@@ -104,6 +142,21 @@ class ProcgenController {
     this.fallEventMemoryTicks = Number.isFinite(options.fallEventMemoryTicks)
       ? Math.max(30, Math.floor(options.fallEventMemoryTicks))
       : 360;
+    this.frontierStuckTicks = Number.isFinite(options.frontierStuckTicks)
+      ? Math.max(1, Math.floor(options.frontierStuckTicks))
+      : 90;
+    this.frontierTurnaroundLimit = Number.isFinite(options.frontierTurnaroundLimit)
+      ? Math.max(1, Math.floor(options.frontierTurnaroundLimit))
+      : 6;
+    this.frontierTurnaroundPenalty = Number.isFinite(options.frontierTurnaroundPenalty)
+      ? Math.max(0, Math.floor(options.frontierTurnaroundPenalty))
+      : 12;
+    this.frontierMaxTrackedLemmings = Number.isFinite(options.frontierMaxTrackedLemmings)
+      ? Math.max(1, Math.floor(options.frontierMaxTrackedLemmings))
+      : 128;
+    this.gapTrackingLimit = Number.isFinite(options.gapTrackingLimit)
+      ? Math.max(1, Math.floor(options.gapTrackingLimit))
+      : 256;
     this.entranceX = Number.isFinite(options.entranceX) ? options.entranceX : null;
     this.entranceY = Number.isFinite(options.entranceY) ? options.entranceY : null;
     this.entranceClearance = Number.isFinite(options.entranceClearance) ? options.entranceClearance : 24;

@@ -1,9 +1,6 @@
 import {
-  HAZARD_TRIGGER_TYPES,
-  Lemming,
   SkillTypes,
-  SoundEventTypes,
-  TriggerTypes
+  SoundEventTypes
 } from './ProcgenControllerShared.js';
 const procgenLifecycleMethods = {
   start() {
@@ -35,11 +32,17 @@ const procgenLifecycleMethods = {
     this._seenFalls.clear();
     this._aiLemmingCooldown.clear();
     this._aiStallState.clear();
+    this._frontierLemmingState.clear();
     this._gaps.length = 0;
     this._gapScanStart = 0;
     this._scanCache = null;
     this._scanCacheGround = null;
     this._scanCacheTick = -Infinity;
+    this._lastNoopAssist = null;
+    this._recentAssists.length = 0;
+    this._recentChunks.length = 0;
+    this._recentPieces.length = 0;
+    this._recentDecor.length = 0;
   },
 
   _bindTimer() {
@@ -130,21 +133,29 @@ const procgenLifecycleMethods = {
     this._sustainRemaining = 0;
     this._paintGround(startX, this.initialGroundWidth, this._groundTopY, this._segmentColorIndex);
     this._groundEndX = Math.max(this._groundEndX, startX + this.initialGroundWidth);
+    this._recordGeneratedChunk?.({
+      type: 'initial-ground',
+      x: startX,
+      y: this._groundTopY,
+      width: this.initialGroundWidth,
+      height: this.groundHeight,
+      endX: startX + this.initialGroundWidth
+    });
   },
 
   _onTick() {
     if (!this._running) return;
     this._updateTimers();
-    const follow = this._getFollowLemming();
-    const followX = Number.isFinite(follow?.x) ? follow.x : null;
-    const guideX = Number.isFinite(followX) ? followX : this._getRightmostX();
+    const frontier = this._getFrontierLemming();
+    const frontierX = Number.isFinite(frontier?.x) ? frontier.x : null;
+    const guideX = Number.isFinite(frontierX) ? frontierX : this._getRightmostX();
     if (!Number.isFinite(guideX)) return;
     this._ensureGround(guideX);
     this._processBuilderBurst();
     this._processGapBridges();
     this._processMidairBuilder();
     this._updateAiDirector();
-    this._updateCamera(Number.isFinite(followX) ? followX : guideX);
+    this._updateCamera(Number.isFinite(frontierX) ? frontierX : guideX);
   },
 
   _updateTimers() {
@@ -188,6 +199,166 @@ const procgenLifecycleMethods = {
     const alpha = Math.min(1, Math.max(0.01, frameMs / 500));
     this._cameraX += (this._cameraTargetX - this._cameraX) * alpha;
     stage.applyViewport(stageImage, this._cameraX, 0, stageImage.viewPoint.scale);
+  },
+
+  _getSelectedTheme() {
+    return this._selectedTheme ||
+      this._themeContract?.selectedTheme ||
+      this.assets?.styleName ||
+      this.level?.styleName ||
+      null;
+  },
+
+  _trimRecentList(list, maxLength) {
+    if (!Array.isArray(list) || list.length <= maxLength) return;
+    list.splice(0, list.length - maxLength);
+  },
+
+  _pruneGeneratedTracking(referenceX = null) {
+    const anchorX = Number.isFinite(referenceX) ? referenceX : this._getRightmostX();
+    if (!Number.isFinite(anchorX)) return;
+    const cutoff = anchorX - this.generatedTrackingPruneDistance;
+    const keepRecent = entry => {
+      const endX = Number(entry?.endX ?? ((entry?.x ?? entry?.startX) + entry?.width));
+      return !Number.isFinite(endX) || endX >= cutoff;
+    };
+    if (Array.isArray(this._recentChunks)) {
+      for (let i = this._recentChunks.length - 1; i >= 0; i -= 1) {
+        if (keepRecent(this._recentChunks[i])) continue;
+        this._recentChunks.splice(i, 1);
+      }
+      this._trimRecentList(this._recentChunks, this.recentChunkLimit);
+    }
+    if (Array.isArray(this._recentPieces)) {
+      for (let i = this._recentPieces.length - 1; i >= 0; i -= 1) {
+        if (keepRecent(this._recentPieces[i])) continue;
+        this._recentPieces.splice(i, 1);
+      }
+      this._trimRecentList(this._recentPieces, this.recentPieceLimit);
+    }
+  },
+
+  _trackGeneratedChunk(chunk) {
+    if (!chunk) return;
+    const startX = Number(chunk.startX ?? chunk.x);
+    const endX = Number(chunk.endX ?? (startX + Number(chunk.width)));
+    if (!Number.isFinite(startX) || !Number.isFinite(endX)) return;
+    this._recentChunkSerial += 1;
+    this._recentChunks.push({
+      serial: this._recentChunkSerial,
+      type: chunk.type || 'terrain',
+      theme: this._getSelectedTheme(),
+      startX,
+      endX,
+      width: Math.max(0, endX - startX),
+      y: Number.isFinite(chunk.y) ? chunk.y : null,
+      topY: Number.isFinite(chunk.topY) ? chunk.topY : null,
+      colorIndex: Number.isFinite(chunk.colorIndex) ? chunk.colorIndex : null
+    });
+    this._trimRecentList(this._recentChunks, this.recentChunkLimit);
+  },
+
+  _recordGeneratedChunk(chunk) {
+    this._trackGeneratedChunk(chunk);
+  },
+
+  _trackGeneratedPiece(piece, destX, destY, role = 'ground', rect = null) {
+    if (!piece?.bounds) return;
+    if (!Number.isFinite(destX) || !Number.isFinite(destY)) return;
+    const x = Number.isFinite(rect?.x) ? rect.x : destX + piece.bounds.minX;
+    const y = Number.isFinite(rect?.y) ? rect.y : destY + piece.bounds.minY;
+    const width = Number.isFinite(rect?.width) ? rect.width : piece.bounds.width;
+    const height = Number.isFinite(rect?.height) ? rect.height : piece.bounds.height;
+    this._recentPieceSerial += 1;
+    this._recentPieces.push({
+      serial: this._recentPieceSerial,
+      role,
+      theme: piece.styleName || piece.theme || this._getSelectedTheme(),
+      pieceId: piece.id ?? null,
+      x,
+      y,
+      endX: x + width,
+      width,
+      height,
+      bounds: {
+        minX: piece.bounds.minX,
+        minY: piece.bounds.minY,
+        maxX: piece.bounds.maxX,
+        maxY: piece.bounds.maxY,
+        width: piece.bounds.width,
+        height: piece.bounds.height
+      }
+    });
+    this._trimRecentList(this._recentPieces, this.recentPieceLimit);
+  },
+
+  _summarizeScan(scan) {
+    if (!scan) return null;
+    return {
+      direction: scan.direction ?? null,
+      gap: scan.gap ? {
+        dx: scan.gap.dx,
+        width: scan.gap.width,
+        drop: scan.gap.drop
+      } : null,
+      wall: scan.wall ? {
+        dx: scan.wall.dx,
+        height: scan.wall.height
+      } : null,
+      hazard: scan.hazard ? {
+        dx: scan.hazard.dx,
+        type: scan.hazard.type
+      } : null
+    };
+  },
+
+  _getSkillName(skillType) {
+    for (const [name, value] of Object.entries(SkillTypes)) {
+      if (value === skillType) return name.toLowerCase();
+    }
+    return null;
+  },
+
+  _recordAssistDecision(entry = {}) {
+    const timer = this.game?.getGameTimer?.();
+    const fallbackTick = timer?.getGameTicks?.() ?? timer?.tickIndex ?? 0;
+    const tick = Number.isFinite(entry.tick) ? entry.tick : fallbackTick;
+    const lemming = entry.lemming || null;
+    const type = entry.type || (entry.skillType != null ? 'skill' : 'noop');
+    const reason = entry.reason || type;
+    if (type === 'noop') {
+      const bucketX = Number.isFinite(lemming?.x) ? Math.floor(lemming.x / 32) : null;
+      const key = `${lemming?.id ?? 'none'}:${bucketX}:${reason}`;
+      if (
+        this._lastNoopAssist &&
+        this._lastNoopAssist.key === key &&
+        tick - this._lastNoopAssist.tick < this.aiNoopDebugIntervalTicks
+      ) {
+        return;
+      }
+      this._lastNoopAssist = { key, tick };
+    }
+    const skillType = entry.skillType ?? entry.skill ?? null;
+    this._recentAssists.push({
+      tick,
+      type,
+      reason,
+      action: entry.action || entry.key || null,
+      skillType,
+      skillName: entry.skillName || this._getSkillName(skillType),
+      spent: entry.spent === true,
+      success: entry.success !== false,
+      targetX: Number.isFinite(entry.targetX) ? entry.targetX : null,
+      lemming: lemming ? {
+        id: lemming.id ?? null,
+        x: Number.isFinite(lemming.x) ? lemming.x : null,
+        y: Number.isFinite(lemming.y) ? lemming.y : null,
+        lookRight: !!lemming.lookRight,
+        action: this._getLemmingActionName(lemming) || null
+      } : null,
+      scan: this._summarizeScan(entry.scan)
+    });
+    this._trimRecentList(this._recentAssists, 32);
   },
 
   _initDebugOverlay() {

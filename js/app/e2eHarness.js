@@ -23,6 +23,7 @@ import {
   serializeMapObject,
   isGameReady,
   getViewState,
+  getProcgenState,
   getGameState
 } from './e2e/E2EStateSerialization.js';
 import {
@@ -82,6 +83,7 @@ const createE2EApi = (context) => ({
     context.view = next?.view || context.view;
     context.editorUi = next?.editorUi || context.editorUi;
     context.midiUi = next?.midiUi || context.midiUi;
+    context.procgenController = next?.procgenController || context.procgenController || null;
   },
   getState: () => {
     const view = context.view;
@@ -96,6 +98,7 @@ const createE2EApi = (context) => ({
       editor: getEditorState(view, editorUi),
       bench: getBenchMetrics(view),
       diagnostics: getEnvironmentDiagnostics(view),
+      procgen: getProcgenState(context.procgenController || view),
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
@@ -158,14 +161,19 @@ const createE2EApi = (context) => ({
   midiCaptureRecordMessage: (message) => context.midiUi?.captureRecordMessage?.(message) || false,
   midiAudition: (request) => context.midiUi?.audition?.(request) || false
 });
-const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {
+const installE2EHarness = ({ view, editorUi, midiUi, procgenController } = {}) => {
   if (!isE2EEnabled()) return null;
   const root = getRuntimeDependency('window', null) || {};
   if (root.__E2E__ && typeof root.__E2E__._setContext === 'function') {
-    root.__E2E__._setContext({ view, editorUi, midiUi });
+    root.__E2E__._setContext({ view, editorUi, midiUi, procgenController });
     return root.__E2E__;
   }
-  const context = { view: view || null, editorUi: editorUi || null, midiUi: midiUi || null };
+  const context = {
+    view: view || null,
+    editorUi: editorUi || null,
+    midiUi: midiUi || null,
+    procgenController: procgenController || null
+  };
   const api = createE2EApi(context);
   root.__E2E__ = api;
   return api;

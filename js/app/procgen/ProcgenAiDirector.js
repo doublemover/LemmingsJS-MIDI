@@ -1,9 +1,5 @@
 import {
-  HAZARD_TRIGGER_TYPES,
-  Lemming,
-  SkillTypes,
-  SoundEventTypes,
-  TriggerTypes
+  SkillTypes
 } from './ProcgenControllerShared.js';
 const procgenAiDirectorMethods = {
   _initAiDirector() {
@@ -54,7 +50,7 @@ const procgenAiDirectorMethods = {
     this._applyEdgeBlockers(tick);
     this._applyBunchingAssist(tick);
 
-    const lemming = this._getFollowLemming();
+    const lemming = this._getFrontierLemming();
     if (!lemming) return;
     if (this._shouldSkipAiFor(lemming, tick)) return;
     const scan = this._scanAhead(lemming);
@@ -93,8 +89,7 @@ const procgenAiDirectorMethods = {
     if (!ground) return;
     for (const lem of lems) {
       if (!lem || lem.removed || lem.disabled || lem.lookRight) continue;
-      const actionName = lem.action?.getActionName?.() || '';
-      if (actionName && actionName !== 'walking') continue;
+      if (!this._isAssignableAction(lem)) continue;
       if (this._shouldSkipAiFor(lem, tick)) continue;
       const x = Number.isFinite(lem.x) ? Math.floor(lem.x) : null;
       const y = Number.isFinite(lem.y) ? Math.floor(lem.y) : null;
@@ -103,7 +98,13 @@ const procgenAiDirectorMethods = {
       const drop = this._getDropAt(ground, x - 1, y, this.maxDrop);
       if ((nearLeftEdge || drop > 0) && this._canSpend('blocker')) {
         if (manager.doLemmingAction(lem, SkillTypes.BLOCKER)) {
-          this._noteAiAction(lem, tick, 32);
+          this._noteAiAction(lem, tick, 32, {
+            action: 'blocker',
+            reason: 'left-edge',
+            skillType: SkillTypes.BLOCKER,
+            spent: true,
+            targetX: x
+          });
           return;
         }
         this._refundBudget('blocker');
@@ -118,8 +119,7 @@ const procgenAiDirectorMethods = {
     const levelHeight = this.level?.height ?? 0;
     for (const lem of lems) {
       if (!lem || lem.removed || lem.disabled) continue;
-      const actionName = lem.action?.getActionName?.() || '';
-      if (actionName && actionName !== 'walking') continue;
+      if (!this._isAssignableAction(lem)) continue;
       if (this._shouldSkipAiFor(lem, tick)) continue;
       const key = lem.id;
       const prev = this._aiStallState.get(key) || {
@@ -156,7 +156,12 @@ const procgenAiDirectorMethods = {
         for (const option of attempts) {
           if (!this._canSpend(option.key)) continue;
           if (manager.doLemmingAction(lem, option.skill)) {
-            this._noteAiAction(lem, tick, option.cooldown);
+            this._noteAiAction(lem, tick, option.cooldown, {
+              action: option.key,
+              reason: 'bunching',
+              skillType: option.skill,
+              spent: true
+            });
             stallTicks = 0;
             flipCount = 0;
             break;
@@ -307,36 +312,104 @@ const procgenAiDirectorMethods = {
     if (!scan) return null;
     const manager = this.game?.getLemmingManager?.();
     if (!manager) return null;
-    const actionName = lemming.action?.getActionName?.() || '';
-    if (actionName && actionName !== 'walking') return null;
+    if (!this._isAssignableAction(lemming)) return null;
     const skillOrder = [];
+    let noopReason = 'traversable';
     if (scan.direction === -1 && scan.gap && scan.gap.dx <= 2) {
-      skillOrder.push({ skill: SkillTypes.BLOCKER, key: 'blocker', cooldown: 40 });
+      skillOrder.push({
+        skill: SkillTypes.BLOCKER,
+        key: 'blocker',
+        cooldown: 40,
+        reason: 'wrong-way-gap'
+      });
     }
     if (scan.hazard && scan.hazard.dx <= this.aiHazardDistance) {
-      skillOrder.push({ skill: SkillTypes.BLOCKER, key: 'blocker' });
+      skillOrder.push({
+        skill: SkillTypes.BLOCKER,
+        key: 'blocker',
+        reason: 'hazard'
+      });
     }
     if (scan.gap && scan.gap.width >= 2 && scan.gap.width <= 8) {
-      skillOrder.push({ skill: SkillTypes.BUILDER, key: 'builder', cooldown: 48 });
+      skillOrder.push({
+        skill: SkillTypes.BUILDER,
+        key: 'builder',
+        cooldown: 48,
+        reason: 'small-gap',
+        targetX: lemming.x + scan.gap.dx * scan.direction
+      });
+    } else if (scan.gap && scan.gap.drop >= this.aiFloaterDrop) {
+      skillOrder.push({
+        skill: SkillTypes.FLOATER,
+        key: 'floater',
+        reason: 'unsafe-drop',
+        targetX: lemming.x + scan.gap.dx * scan.direction
+      });
+    } else if (scan.gap && scan.gap.drop > 0) {
+      noopReason = 'safe-drop';
     }
-    if (scan.gap && scan.gap.drop >= this.aiFloaterDrop) {
-      skillOrder.push({ skill: SkillTypes.FLOATER, key: 'floater' });
-    }
-    if (scan.wall && scan.wall.height >= 6) {
-      skillOrder.push({ skill: SkillTypes.BASHER, key: 'bash' });
-      skillOrder.push({ skill: SkillTypes.DIGGER, key: 'dig' });
+    const smallBarrierHeight = Math.max(2, Math.floor(this.maxStepUp) + 1);
+    if (scan.wall && scan.wall.height >= smallBarrierHeight) {
+      const barrierReason = scan.wall.height <= this.aiWallHeight + 4
+        ? 'small-barrier'
+        : 'large-barrier';
+      skillOrder.push({
+        skill: SkillTypes.BASHER,
+        key: 'bash',
+        reason: barrierReason,
+        targetX: lemming.x + scan.wall.dx * scan.direction
+      });
+      skillOrder.push({
+        skill: SkillTypes.DIGGER,
+        key: 'dig',
+        reason: barrierReason,
+        targetX: lemming.x + scan.wall.dx * scan.direction
+      });
       if (scan.wall.height >= this.aiWallHeight + 4 || this._rand() < 0.15) {
-        skillOrder.push({ skill: SkillTypes.MINER, key: 'mine' });
+        skillOrder.push({
+          skill: SkillTypes.MINER,
+          key: 'mine',
+          reason: barrierReason,
+          targetX: lemming.x + scan.wall.dx * scan.direction
+        });
       }
     }
-    if (!skillOrder.length) return null;
+    if (!skillOrder.length) {
+      this._recordAssistDecision({
+        tick,
+        type: 'noop',
+        reason: noopReason,
+        lemming,
+        scan,
+        success: true
+      });
+      return null;
+    }
     for (const option of skillOrder) {
       if (!this._canSpend(option.key)) continue;
       if (manager.doLemmingAction(lemming, option.skill)) {
-        this._noteAiAction(lemming, tick, option.cooldown);
+        this._noteAiAction(lemming, tick, option.cooldown, {
+          action: option.key,
+          reason: option.reason,
+          skillType: option.skill,
+          spent: true,
+          scan,
+          targetX: option.targetX
+        });
         return option.key;
       }
       this._refundBudget(option.key);
+      this._recordAssistDecision({
+        tick,
+        type: 'failed',
+        action: option.key,
+        reason: option.reason,
+        skillType: option.skill,
+        lemming,
+        scan,
+        success: false,
+        targetX: option.targetX
+      });
     }
     return null;
   },
@@ -348,9 +421,17 @@ const procgenAiDirectorMethods = {
     return false;
   },
 
-  _noteAiAction(lemming, tick, extraCooldown = 0) {
+  _noteAiAction(lemming, tick, extraCooldown = 0, assist = null) {
     const cooldown = Math.max(this.aiActionCooldown, extraCooldown || 0);
     this._aiLemmingCooldown.set(lemming.id, tick + cooldown);
+    if (assist) {
+      this._recordAssistDecision({
+        tick,
+        type: 'skill',
+        lemming,
+        ...assist
+      });
+    }
   },
 
   _canSpend(key) {
@@ -400,18 +481,6 @@ const procgenAiDirectorMethods = {
       manager?.doNukeAllLemmings?.();
     }
     this._nukeElapsed = 0;
-  },
-
-  _getFollowLemming() {
-    const manager = this.game?.getLemmingManager?.();
-    const first = manager?.getLemming?.(0);
-    if (first && Number.isFinite(first.x) && first.lookRight) return first;
-    const lems = manager?.activeLemmings || manager?.lemmings || [];
-    for (const lem of lems) {
-      if (!lem || lem.removed || lem.disabled || !lem.lookRight) continue;
-      return lem;
-    }
-    return null;
   }
 };
 export { procgenAiDirectorMethods };

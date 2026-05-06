@@ -1,6 +1,62 @@
 import { expect } from 'chai';
 import { ProcgenController } from '../js/app/procgenController.js';
+import { SkillTypes } from '../js/game/SkillTypes.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
+
+const walkAction = { getActionName: () => 'walk' };
+const actionNamed = name => ({ getActionName: () => name });
+
+const makeLemming = (id, x, {
+  y = 60,
+  lookRight = true,
+  actionName = 'walk',
+  removed = false,
+  disabled = false,
+  state = 0,
+  hasParachute = false
+} = {}) => ({
+  id,
+  x,
+  y,
+  lookRight,
+  removed,
+  disabled,
+  state,
+  hasParachute,
+  action: actionNamed(actionName)
+});
+
+const createFrontierFixture = (lemmings, options = {}) => {
+  let tick = 0;
+  const manager = {
+    lemmings,
+    activeLemmings: lemmings,
+    selectedIndex: -1,
+    getLemming(id) {
+      return this.lemmings.find(lem => lem?.id === id) || null;
+    }
+  };
+  const controller = new ProcgenController({
+    game: {
+      getLemmingManager: () => manager,
+      getGameTimer: () => ({ tickIndex: tick })
+    },
+    level: {
+      width: 1000,
+      height: 160,
+      entrances: [{ x: 64, y: 80 }]
+    },
+    options
+  });
+  return {
+    controller,
+    manager,
+    advance(delta = 1) {
+      tick += delta;
+      return tick;
+    }
+  };
+};
 
 describe('ProcgenController', function () {
   it('finds nearest hazard trigger in both scan directions', function () {
@@ -140,5 +196,311 @@ describe('ProcgenController', function () {
     controller._scanAhead(lemming);
     expect(gapDepthCalls).to.be.greaterThan(firstGapCalls);
     expect(wallHeightCalls).to.be.greaterThan(firstWallCalls);
+  });
+
+  it('streams selected-theme pieces ahead of the live frontier', function () {
+    const lemming = makeLemming(5, 60);
+    const piece = {
+      id: 'route-cap',
+      styleName: 'crystal',
+      width: 10,
+      height: 4,
+      bounds: {
+        minX: 0,
+        minY: 0,
+        maxX: 9,
+        maxY: 3,
+        width: 10,
+        height: 4
+      }
+    };
+    const stamps = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          lemmings: [lemming],
+          activeLemmings: [lemming]
+        }),
+        getGameTimer: () => ({ tickIndex: 10 })
+      },
+      level: {
+        width: 400,
+        height: 120,
+        entrances: [{ x: 64, y: 80 }]
+      },
+      assets: {
+        styleName: 'crystal',
+        pickGroundPiece() {
+          return piece;
+        },
+        pickDecorPiece() {
+          return null;
+        }
+      },
+      stamper: {
+        stamp(stampedPiece, x, y) {
+          stamps.push({ stampedPiece, x, y });
+          return {
+            x: x + stampedPiece.bounds.minX,
+            y: y + stampedPiece.bounds.minY,
+            width: stampedPiece.bounds.width,
+            height: stampedPiece.bounds.height
+          };
+        }
+      },
+      options: {
+        selectedTheme: 'crystal',
+        rng: () => 0,
+        groundHeight: 4,
+        segmentMinWidth: 40,
+        segmentMaxWidth: 40,
+        lookAheadMin: 80,
+        lookAheadMax: 80,
+        gapChance: 0,
+        decorChance: 0,
+        recentChunkLimit: 4,
+        recentPieceLimit: 16
+      }
+    });
+    controller._groundEndX = 100;
+    controller._groundTopY = 100;
+    controller._sustainBaseY = 100;
+    controller._sustainRemaining = 100;
+    controller._terrainPlan = { mode: 'flat', remaining: 100 };
+
+    controller._ensureGround(lemming.x);
+    const debug = controller.getDebugState();
+
+    expect(stamps.length).to.be.greaterThan(0);
+    expect(debug.selectedTheme).to.equal('crystal');
+    expect(debug.frontier.id).to.equal(5);
+    expect(debug.generatedEndX - debug.frontier.x).to.be.greaterThan(debug.lookahead.distance);
+    expect(debug.recentPieces).to.have.length.of.at.most(16);
+    expect(debug.recentPieces.every(entry => entry.theme === 'crystal')).to.equal(true);
+    expect(debug.recentChunks.every(entry => entry.theme === 'crystal')).to.equal(true);
+  });
+
+  it('tracks the rightmost viable frontier instead of the first lemming id', function () {
+    const manager = {
+      lemmings: [
+        { id: 0, x: 100, y: 60, lookRight: false, action: walkAction },
+        { id: 1, x: 95, y: 60, lookRight: true, action: walkAction },
+        { id: 2, x: 40, y: 60, lookRight: true, removed: true, action: walkAction }
+      ]
+    };
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => manager,
+        getGameTimer: () => ({ tickIndex: 12 })
+      },
+      level: { width: 200, height: 120 },
+      assets: { styleName: 'dirt' },
+      options: { rngSeed: 123 }
+    });
+
+    const debug = controller.getDebugState();
+
+    expect(debug.selectedTheme).to.equal('dirt');
+    expect(debug.seed).to.equal(123);
+    expect(debug.frontier.id).to.equal(1);
+    expect(debug.frontier.x).to.equal(95);
+    expect(debug.frontier.viableCount).to.equal(2);
+  });
+
+  it('ignores selected lemming changes and falls back when the lead is removed', function () {
+    const lems = [
+      makeLemming(0, 120),
+      makeLemming(1, 190),
+      makeLemming(2, 250, { actionName: 'splatter' })
+    ];
+    const { controller, manager, advance } = createFrontierFixture(lems);
+
+    manager.selectedIndex = 0;
+    expect(controller._getFrontierLemming().id).to.equal(1);
+
+    manager.selectedIndex = 1;
+    advance();
+    expect(controller._getFrontierLemming().id).to.equal(1);
+
+    lems[1].removed = true;
+    advance();
+    expect(controller._getFrontierLemming().id).to.equal(0);
+    expect(controller._getFrontierSummary().reason).to.equal('walk');
+  });
+
+  it('drops stuck turnaround leads but keeps moving turnaround leads viable', function () {
+    const lead = makeLemming(7, 260, { lookRight: false });
+    const follower = makeLemming(3, 240);
+    const { controller, advance } = createFrontierFixture([lead, follower], {
+      frontierStuckTicks: 2,
+      frontierTurnaroundPenalty: 12
+    });
+
+    expect(controller._getFrontierState({ force: true }).id).to.equal(7);
+
+    advance();
+    follower.x += 1;
+    controller._getFrontierState({ force: true });
+    advance();
+    follower.x += 1;
+    const afterStall = controller._getFrontierState({ force: true });
+
+    expect(afterStall.id).to.equal(3);
+    expect(afterStall.reason).to.equal('walk');
+  });
+
+  it('keeps recoverable falling leads viable and skips lethal falls', function () {
+    const fallingLead = makeLemming(8, 280, {
+      actionName: 'falling',
+      state: 12
+    });
+    const follower = makeLemming(2, 230);
+    const { controller, advance } = createFrontierFixture([fallingLead, follower]);
+
+    expect(controller._getFrontierState({ force: true }).id).to.equal(8);
+
+    fallingLead.state = 100;
+    advance();
+    expect(controller._getFrontierState({ force: true }).id).to.equal(2);
+
+    fallingLead.hasParachute = true;
+    advance();
+    expect(controller._getFrontierState({ force: true }).id).to.equal(8);
+  });
+
+  it('bounds frontier, assist, fall, and gap tracking growth', function () {
+    const { controller } = createFrontierFixture([
+      makeLemming(1, 100),
+      makeLemming(2, 120)
+    ], {
+      frontierMaxTrackedLemmings: 3,
+      gapTrackingLimit: 3
+    });
+    for (let id = 1; id <= 12; id += 1) {
+      controller._frontierLemmingState.set(id, { lastSeenTick: id });
+      controller._aiLemmingCooldown.set(id, id);
+      controller._aiStallState.set(id, { lastSeenTick: id });
+      controller._seenFalls.set(id, id);
+    }
+    controller._gaps = Array.from({ length: 10 }, (_, index) => ({
+      x: index * 20,
+      width: 4,
+      assigned: false
+    }));
+
+    controller._pruneTrackingState(500);
+
+    expect(controller._frontierLemmingState.size).to.be.at.most(3);
+    expect(controller._aiLemmingCooldown.size).to.be.at.most(3);
+    expect(controller._aiStallState.size).to.be.at.most(3);
+    expect(controller._seenFalls.size).to.be.at.most(3);
+    expect(controller._gaps.length).to.be.at.most(3);
+    expect(controller._frontierLemmingState.has(1)).to.equal(true);
+    expect(controller._frontierLemmingState.has(2)).to.equal(true);
+  });
+
+  it('records no-op decisions for traversable terrain', function () {
+    const calls = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          doLemmingAction(_lem, skill) {
+            calls.push(skill);
+            return true;
+          }
+        }),
+        getGameTimer: () => ({ tickIndex: 20 })
+      },
+      level: { width: 200, height: 120 }
+    });
+    controller._initAiDirector();
+    const lemming = { id: 1, x: 30, y: 60, lookRight: true, action: walkAction };
+
+    const result = controller._decideAssist(lemming, {
+      direction: 1,
+      gap: null,
+      wall: null,
+      hazard: null
+    }, 20);
+
+    expect(result).to.equal(null);
+    expect(calls).to.deep.equal([]);
+    expect(controller.getDebugState().recentAssists.at(-1)).to.include({
+      type: 'noop',
+      reason: 'traversable',
+      spent: false
+    });
+  });
+
+  it('records safe drops without spending a skill', function () {
+    const calls = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          doLemmingAction(_lem, skill) {
+            calls.push(skill);
+            return true;
+          }
+        }),
+        getGameTimer: () => ({ tickIndex: 30 })
+      },
+      level: { width: 200, height: 120 }
+    });
+    controller._initAiDirector();
+    const lemming = { id: 1, x: 30, y: 60, lookRight: true, action: walkAction };
+
+    const result = controller._decideAssist(lemming, {
+      direction: 1,
+      gap: { dx: 2, width: 1, drop: 4 },
+      wall: null,
+      hazard: null
+    }, 30);
+
+    expect(result).to.equal(null);
+    expect(calls).to.deep.equal([]);
+    expect(controller.getDebugState().recentAssists.at(-1)).to.include({
+      type: 'noop',
+      reason: 'safe-drop',
+      spent: false
+    });
+  });
+
+  it('uses minimal skills for small gaps and small barriers', function () {
+    const calls = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          doLemmingAction(_lem, skill) {
+            calls.push(skill);
+            return true;
+          }
+        }),
+        getGameTimer: () => ({ tickIndex: 40 })
+      },
+      level: { width: 200, height: 120 }
+    });
+    controller._initAiDirector();
+    const gapLemming = { id: 1, x: 30, y: 60, lookRight: true, action: walkAction };
+    const barrierLemming = { id: 2, x: 50, y: 60, lookRight: true, action: walkAction };
+
+    const gapResult = controller._decideAssist(gapLemming, {
+      direction: 1,
+      gap: { dx: 3, width: 4, drop: 2 },
+      wall: null,
+      hazard: null
+    }, 40);
+    const barrierResult = controller._decideAssist(barrierLemming, {
+      direction: 1,
+      gap: null,
+      wall: { dx: 2, height: controller.maxStepUp + 2 },
+      hazard: null
+    }, 45);
+
+    expect(gapResult).to.equal('builder');
+    expect(barrierResult).to.equal('bash');
+    expect(calls).to.deep.equal([SkillTypes.BUILDER, SkillTypes.BASHER]);
+    const assists = controller.getDebugState().recentAssists;
+    expect(assists.some(assist => assist.reason === 'small-gap' && assist.skillName === 'builder')).to.equal(true);
+    expect(assists.some(assist => assist.reason === 'small-barrier' && assist.skillName === 'basher')).to.equal(true);
   });
 });
