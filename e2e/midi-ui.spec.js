@@ -58,6 +58,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await page.locator('#midiScaleName').selectOption('major');
   await page.locator('#midiQuantize').selectOption('1/8');
   await setField('#midiSwing', '0.25');
+  await page.locator('#midiReversePanicToggle').check();
 
   const project = await page.evaluate(() => {
     let next = window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
@@ -94,6 +95,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   });
   expect(updatedProject.global.scale).toMatchObject({ name: 'major', root: 2 });
   expect(updatedProject.global.scale.degrees).toEqual([0, 2, 4, 5, 7, 9, 11]);
+  expect(updatedProject.global.reverse.allNotesOffOnToggle).toBe(true);
   expect(updatedProject.transport).toMatchObject({ quantize: '1/8', swing: 0.25 });
   expect(updatedMapping).toMatchObject({ note: 72, velocity: 96, durationTicks: 5, pan: -24, timbre: 88, pitchBend: 0.5 });
   expect(updatedMapping.arp).toMatchObject({ enabled: true, mode: 'down' });

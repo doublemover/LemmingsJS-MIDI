@@ -13,6 +13,7 @@ old two-pane Events/Triggers/ADSR configuration UI.
   and quantize/swing project settings exposed to the MIDI runtime config.
 - Template: choose the factory template or a saved user template for reset.
 - Reset: creates a fresh project from the selected template.
+- Reverse Panic: enables all-notes-off when reverse playback is toggled.
 - Save Template, Export, Import: save reusable project templates and move
   sanitized project JSON in or out of the sequencer.
 - Panic: sends all-notes-off and clears queued MIDI notes.

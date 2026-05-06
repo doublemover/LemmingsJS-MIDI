@@ -1873,6 +1873,7 @@ const createMidiUiController = ({
     renderScaleNameOptions(document?.getElementById('midiScaleName'), current.global.scale.name);
     setInputValue(document?.getElementById('midiQuantize'), current.transport.quantize);
     setInputValue(document?.getElementById('midiSwing'), current.transport.swing);
+    setChecked(document?.getElementById('midiReversePanicToggle'), current.global.reverse.allNotesOffOnToggle);
     renderTemplateOptions();
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     setStatus(current.enabled ? 'MIDI enabled' : 'MIDI disabled');
@@ -2051,6 +2052,10 @@ const createMidiUiController = ({
     });
     bindById('midiProjectResetButton', 'click', () => resetProject());
     bindById('midiPanicButton', 'click', () => panic());
+    bindById('midiReversePanicToggle', 'change', event => {
+      const current = ensureProject();
+      updateGlobal({ reverse: { ...current.global.reverse, allNotesOffOnToggle: !!event.target.checked } });
+    });
     bindById('midiTemplateSelect', 'change', () => setStatus('Template ready'));
     bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
     bindById('midiProjectExportButton', 'click', () => exportProject());

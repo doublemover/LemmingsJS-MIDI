@@ -26,6 +26,7 @@ const registerSequencerDom = (doc) => {
     midiTemplateSelect: 'select',
     midiProjectResetButton: 'button',
     midiPanicButton: 'button',
+    midiReversePanicToggle: 'input',
     midiTemplateSaveButton: 'button',
     midiProjectExportButton: 'button',
     midiProjectImportButton: 'button',
@@ -326,16 +327,21 @@ describe('midiUiController sequencer', function() {
     const scaleName = doc.getElementById('midiScaleName');
     scaleName.value = 'major';
     scaleName.dispatchEvent({ type: 'change', target: scaleName });
+    const reversePanic = doc.getElementById('midiReversePanicToggle');
+    reversePanic.checked = true;
+    reversePanic.dispatchEvent({ type: 'change', target: reversePanic });
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(stored.transport).to.include({ quantize: '1/8', swing: 0.25 });
     expect(stored.global.scale).to.include({ name: 'major', root: 2 });
     expect(stored.global.scale.degrees).to.deep.equal([0, 2, 4, 5, 7, 9, 11]);
+    expect(stored.global.reverse.allNotesOffOnToggle).to.equal(true);
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(view.projectConfigs.at(-1).timing).to.include({ quantize: '1/8', swing: 0.25 });
     expect(view.projectConfigs.at(-1).scale).to.include({ name: 'major', root: 2 });
     expect(view.projectConfigs.at(-1).scale.degrees).to.deep.equal([0, 2, 4, 5, 7, 9, 11]);
+    expect(view.projectConfigs.at(-1).reverse.allNotesOffOnToggle).to.equal(true);
 
     controller.applyRuntimePatch({
       timing: { timeSignature: { beats: 5, unit: 16 }, quantize: '1/32', swing: 0.5 },
