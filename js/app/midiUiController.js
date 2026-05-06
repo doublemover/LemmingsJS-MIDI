@@ -1841,6 +1841,8 @@ const createMidiUiController = ({
     renderTrackOptions(document?.getElementById('midiSourceTrackSelect'), source?.trackId);
     renderTrackOptions(document?.getElementById('midiAssignTrackSelect'), track?.id);
     renderClipOptions(document?.getElementById('midiSourceClipSelect'), source?.clipId || clip?.id);
+    const assignClipButton = document?.getElementById('midiAssignClipButton');
+    if (assignClipButton) assignClipButton.disabled = !source || !current.clips.length;
     setInputValue(document?.getElementById('midiSourceModeSelect'), source?.mode || 'direct');
     renderConflictSummary(report, source, track, source?.mode === 'clip' ? current.clips.find(item => item.id === source.clipId) || clip : clip);
     renderLearnPanel();
@@ -2166,7 +2168,7 @@ const createMidiUiController = ({
     });
     bindById('midiAssignClipButton', 'click', () => {
       const source = selectedSource();
-      const clipId = document?.getElementById('midiSourceClipSelect')?.value || ensureSelectedClipId();
+      const clipId = document?.getElementById('midiSourceClipSelect')?.value || selectedClip()?.id || null;
       if (source && clipId) dispatchProjectIntent({ type: 'source.clip.assign', sourceId: source.id, clipId });
     });
     bindById('midiAuditionButton', 'click', () => audition());

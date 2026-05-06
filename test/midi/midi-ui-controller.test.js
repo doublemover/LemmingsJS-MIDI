@@ -892,6 +892,17 @@ describe('midiUiController sequencer', function() {
     expect(sent[0].meta).to.include({ eventType: 'clip-audition', sourceId: 'sfx-1', trackId: 'track-1', clipId: 'riff' });
   });
 
+  it('disables clip assignment when no clip exists', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const assignClip = doc.getElementById('midiAssignClipButton');
+    expect(assignClip.disabled).to.equal(true);
+    assignClip.dispatchEvent({ type: 'click', target: assignClip });
+    expect(controller.getProject().clips).to.have.lengthOf(0);
+    expect(controller.getProject().sources[0]).to.include({ mode: 'direct', clipId: null });
+  });
+
   it('filters silent and tied clip steps from runtime clip mappings', function() {
     const { controller, view } = createControllerHarness();
     controller.bindMidiUi();
