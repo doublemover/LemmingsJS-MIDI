@@ -1394,19 +1394,19 @@ const createMidiUiController = ({
     const list = document?.getElementById('midiTrackList');
     if (!list) return;
     removeChildren(list);
-    const activeOptionId = current.tracks.some(track => track.id === current.ui.selectedTrackId)
-      ? listOptionId('track', current.ui.selectedTrackId)
-      : '';
+    const activeTrack = current.tracks.find(track => track.id === current.ui.selectedTrackId) || current.tracks[0] || null;
+    const activeOptionId = activeTrack ? listOptionId('track', activeTrack.id) : '';
     configureListbox(list, activeOptionId);
     for (const track of current.tracks) {
       const selected = current.ui.selectedTrackId === track.id;
+      const active = activeTrack?.id === track.id;
       const row = document.createElement('button');
       row.type = 'button';
       row.id = listOptionId('track', track.id);
       row.className = 'midi-track-row';
       row.classList.toggle('is-selected', selected);
       row.dataset.trackId = track.id;
-      row.tabIndex = selected ? 0 : -1;
+      row.tabIndex = active ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
       row.setAttribute('aria-label', `${track.name}, channel ${track.channel}, ${track.instrumentLabel}${track.mute ? ', muted' : ''}${track.solo ? ', solo' : ''}`);
