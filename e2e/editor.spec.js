@@ -28,15 +28,23 @@ test('Editor UI loads and tool selection updates state', async ({ page }) => {
 });
 
 test('Palette tabs switch visible lists', async ({ page }) => {
+  const terrainTab = page.locator('#editorPaletteTabs button[data-tab="terrain"]');
   const gadgetsTab = page.locator('#editorPaletteTabs button[data-tab="gadgets"]');
+  const triggersTab = page.locator('#editorPaletteTabs button[data-tab="triggers"]');
+  await expect(terrainTab).toHaveAttribute('aria-pressed', 'true');
+  await expect(gadgetsTab).toHaveAttribute('aria-pressed', 'false');
+
   await gadgetsTab.click();
+  await expect(terrainTab).toHaveAttribute('aria-pressed', 'false');
+  await expect(gadgetsTab).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#editorPaletteGadgets')).toHaveJSProperty('hidden', false);
   await expect(page.locator('#editorPaletteGadgets')).toBeVisible();
   await expect(page.locator('#editorPaletteTerrain')).toHaveJSProperty('hidden', true);
   await expect(page.locator('#editorPaletteTerrain')).toBeHidden();
 
-  const triggersTab = page.locator('#editorPaletteTabs button[data-tab="triggers"]');
   await triggersTab.click();
+  await expect(gadgetsTab).toHaveAttribute('aria-pressed', 'false');
+  await expect(triggersTab).toHaveAttribute('aria-pressed', 'true');
   await expect(page.locator('#editorPaletteTriggers')).toHaveJSProperty('hidden', false);
   await expect(page.locator('#editorPaletteTriggers')).toBeVisible();
   await expect(page.locator('#editorPaletteTerrain')).toHaveJSProperty('hidden', true);
@@ -49,14 +57,20 @@ test('Palette view toggle switches list and grid layouts', async ({ page }) => {
   const terrainList = page.locator('#editorPaletteTerrain');
 
   await expect(listButton).toHaveClass(/active/);
+  await expect(listButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(gridButton).toHaveAttribute('aria-pressed', 'false');
   await expect(terrainList).not.toHaveClass(/grid/);
 
   await gridButton.click();
   await expect(gridButton).toHaveClass(/active/);
+  await expect(listButton).toHaveAttribute('aria-pressed', 'false');
+  await expect(gridButton).toHaveAttribute('aria-pressed', 'true');
   await expect(terrainList).toHaveClass(/grid/);
 
   await listButton.click();
   await expect(listButton).toHaveClass(/active/);
+  await expect(listButton).toHaveAttribute('aria-pressed', 'true');
+  await expect(gridButton).toHaveAttribute('aria-pressed', 'false');
   await expect(terrainList).not.toHaveClass(/grid/);
 });
 

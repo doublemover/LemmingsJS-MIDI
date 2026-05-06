@@ -111,6 +111,23 @@ body {
   color: #fff;
 }
 
+.editor-controls button:focus-visible,
+.editor-controls select:focus-visible,
+.editor-controls input:focus-visible,
+.tool-grid button:focus-visible,
+.palette-tabs button:focus-visible,
+.palette-view-toggle button:focus-visible,
+.palette-list button:focus-visible,
+.editor-button:focus-visible,
+.inspector-grid input:focus-visible,
+.inspector-grid select:focus-visible,
+.control-row input:focus-visible,
+.control-row select:focus-visible,
+.shortcut-overlay__close:focus-visible {
+  outline: 3px solid rgba(210, 106, 60, 0.55);
+  outline-offset: 2px;
+}
+
 .editor-main {
   display: grid;
   grid-template-columns: minmax(200px, 280px) 1fr minmax(220px, 320px);

@@ -274,6 +274,7 @@ const editorSelectionPanelMethods = {
       if (issue.severity === 'error') this._hasErrors = true;
       const item = this.document.createElement('div');
       item.className = `issue-item ${issue.severity}`;
+      item.setAttribute('role', 'listitem');
       const message = this.document.createElement('div');
       message.textContent = issue.message;
       item.appendChild(message);

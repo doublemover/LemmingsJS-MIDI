@@ -41,7 +41,11 @@ const editorPaletteUiMethods = {
   _setPaletteTab(tab) {
     this._activeTab = tab;
     const tabs = this.el.paletteTabs?.querySelectorAll?.('button') || [];
-    tabs.forEach(button => button.classList.toggle('active', button.dataset?.tab === tab));
+    tabs.forEach(button => {
+      const isActive = button.dataset?.tab === tab;
+      button.classList.toggle('active', isActive);
+      button.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
+    });
     if (this.el.paletteTerrain) this.el.paletteTerrain.hidden = tab !== 'terrain';
     if (this.el.paletteGadgets) this.el.paletteGadgets.hidden = tab !== 'gadgets';
     if (this.el.paletteTriggers) this.el.paletteTriggers.hidden = tab !== 'triggers';
@@ -70,15 +74,20 @@ const editorPaletteUiMethods = {
   },
 
   _bindPaletteView() {
-    const setMode = (mode) => {
-      this._paletteViewMode = mode;
-      const isList = mode === 'list';
+    const syncButtons = () => {
+      const isList = this._paletteViewMode === 'list';
       if (this.el.paletteViewList) {
         this.el.paletteViewList.classList.toggle('active', isList);
+        this.el.paletteViewList.setAttribute?.('aria-pressed', isList ? 'true' : 'false');
       }
       if (this.el.paletteViewGrid) {
         this.el.paletteViewGrid.classList.toggle('active', !isList);
+        this.el.paletteViewGrid.setAttribute?.('aria-pressed', isList ? 'false' : 'true');
       }
+    };
+    const setMode = (mode) => {
+      this._paletteViewMode = mode;
+      syncButtons();
       this._applyPaletteViewMode();
     };
     if (this.el.paletteViewList) {
@@ -87,6 +96,7 @@ const editorPaletteUiMethods = {
     if (this.el.paletteViewGrid) {
       this._addDomListener(this.el.paletteViewGrid, 'click', () => setMode('grid'));
     }
+    syncButtons();
     this._applyPaletteViewMode();
     this._bindPaletteGridZoom();
   },

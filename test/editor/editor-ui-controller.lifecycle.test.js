@@ -104,6 +104,21 @@ describe('EditorUiController lifecycle', function() {
     expect(display.onMouseMove.handlers.size).to.equal(0);
   });
 
+  it('renders validation issues as list items', function() {
+    const doc = new TestDocument();
+    const issuesList = registerElement(doc, 'div', 'editorIssuesList');
+    const ui = Object.create(EditorUiController.prototype);
+    ui.document = doc;
+    ui.el = { issuesList };
+
+    ui._renderIssues([{ severity: 'error', message: 'Missing entrance.' }]);
+
+    expect(ui._hasErrors).to.equal(true);
+    expect(issuesList.children).to.have.lengthOf(1);
+    expect(issuesList.children[0].getAttribute('role')).to.equal('listitem');
+    expect(issuesList.children[0].children[0].textContent).to.equal('Missing entrance.');
+  });
+
   it('ignores stale async level imports after a newer import starts', async function() {
     const doc = new TestDocument();
     const win = createTestWindow();

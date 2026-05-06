@@ -34,7 +34,80 @@ const createRecord = (searchKey, hidden = false, previewLoaded = false) => ({
   previewLoaded
 });
 
+const createButtonStub = (dataset = {}) => {
+  const attrs = new Map();
+  const listeners = new Map();
+  return {
+    dataset,
+    classList: createClassList(),
+    setAttribute(name, value) {
+      attrs.set(name, String(value));
+    },
+    getAttribute(name) {
+      return attrs.get(name) || null;
+    },
+    addEventListener(type, handler) {
+      listeners.set(type, handler);
+    },
+    dispatch(type, event = {}) {
+      listeners.get(type)?.({ type, target: this, ...event });
+    }
+  };
+};
+
 describe('EditorUiController palette throughput helpers', () => {
+  it('updates palette tab pressed state with the active tab', () => {
+    const ui = Object.create(EditorUiController.prototype);
+    const terrain = createButtonStub({ tab: 'terrain' });
+    const gadgets = createButtonStub({ tab: 'gadgets' });
+    const triggers = createButtonStub({ tab: 'triggers' });
+    ui.el = {
+      paletteTabs: { querySelectorAll: () => [terrain, gadgets, triggers] },
+      paletteTerrain: {},
+      paletteGadgets: {},
+      paletteTriggers: {}
+    };
+    ui._schedulePalettePreviewHydration = () => {};
+
+    ui._setPaletteTab('gadgets');
+
+    expect(terrain.classList.contains('active')).to.equal(false);
+    expect(terrain.getAttribute('aria-pressed')).to.equal('false');
+    expect(gadgets.classList.contains('active')).to.equal(true);
+    expect(gadgets.getAttribute('aria-pressed')).to.equal('true');
+    expect(triggers.getAttribute('aria-pressed')).to.equal('false');
+    expect(ui.el.paletteTerrain.hidden).to.equal(true);
+    expect(ui.el.paletteGadgets.hidden).to.equal(false);
+  });
+
+  it('updates palette view pressed state when switching modes', () => {
+    const ui = Object.create(EditorUiController.prototype);
+    const list = createButtonStub();
+    const grid = createButtonStub();
+    ui.el = {
+      paletteViewList: list,
+      paletteViewGrid: grid,
+      paletteTerrain: null,
+      paletteGadgets: null,
+      paletteTriggers: null
+    };
+    ui._paletteViewMode = 'list';
+    ui._addDomListener = (element, type, handler) => element.addEventListener(type, handler);
+    ui._applyPaletteViewMode = () => {};
+    ui._bindPaletteGridZoom = () => {};
+
+    ui._bindPaletteView();
+    expect(list.classList.contains('active')).to.equal(true);
+    expect(list.getAttribute('aria-pressed')).to.equal('true');
+    expect(grid.getAttribute('aria-pressed')).to.equal('false');
+
+    grid.dispatch('click');
+    expect(list.classList.contains('active')).to.equal(false);
+    expect(list.getAttribute('aria-pressed')).to.equal('false');
+    expect(grid.classList.contains('active')).to.equal(true);
+    expect(grid.getAttribute('aria-pressed')).to.equal('true');
+  });
+
   it('uses gadget preview keys for trigger entries', () => {
     const ui = Object.create(EditorUiController.prototype);
     const calls = [];
