@@ -328,6 +328,9 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalEnvAttack', '1.25');
   await setField('#midiGlobalEnvRelease', '0.75');
   await page.locator('#midiGlobalViewPan').check();
+  await setField('#midiGlobalPanMin', '-48');
+  await setField('#midiGlobalPanMax', '48');
+  await setField('#midiGlobalPanDeadZone', '0.08');
   await page.locator('#midiEnvelopeOverrideToggle').check();
   await midi.automationAddButton().click();
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
@@ -340,6 +343,8 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   expect(project.global.limits).toMatchObject({ maxActiveNotes: 24, maxEventsPerTick: 16 });
   expect(project.global.envelope).toMatchObject({ attack: 1.25, release: 0.75 });
   expect(project.global.position.viewPan).toBe(true);
+  expect(project.global.position.panRange).toMatchObject({ min: -48, max: 48 });
+  expect(project.global.position.panDeadZonePct).toBe(0.08);
   expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
     attack: 1,
     decay: 0,
