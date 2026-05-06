@@ -1164,7 +1164,7 @@ const createMidiUiController = ({
       });
     }
     project = current;
-    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.density || patch.envelope || patch.mpe || patch.limits || patch.reverse) {
+    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.density || patch.envelope || patch.position || patch.mpe || patch.limits || patch.reverse) {
       patchGlobal({
         ...(patch.scale ? { scale: { ...current.global.scale, ...patch.scale } } : {}),
         ...(patch.noteRange ? { noteRange: { ...current.global.noteRange, ...patch.noteRange } } : {}),
@@ -1172,6 +1172,7 @@ const createMidiUiController = ({
         ...(patch.durationTicks ? { durationTicks: { ...current.global.durationTicks, ...patch.durationTicks } } : {}),
         ...(patch.density ? { density: { ...current.global.density, ...patch.density } } : {}),
         ...(patch.envelope ? { envelope: { ...current.global.envelope, ...patch.envelope } } : {}),
+        ...(patch.position ? { position: { ...current.global.position, ...patch.position } } : {}),
         ...(patch.mpe ? { mpe: { ...current.global.mpe, ...patch.mpe } } : {}),
         ...(patch.limits ? { limits: { ...current.global.limits, ...patch.limits } } : {}),
         ...(patch.reverse ? { reverse: { ...current.global.reverse, ...patch.reverse } } : {})

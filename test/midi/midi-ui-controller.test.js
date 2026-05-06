@@ -462,7 +462,12 @@ describe('midiUiController sequencer', function() {
       velocityRange: { min: 24, max: 112 },
       density: { windowTicks: 18, durationScale: 0.75 },
       durationTicks: { default: 12, min: 3, max: 48 },
-      envelope: { sustain: 1.5 }
+      envelope: { sustain: 1.5 },
+      position: {
+        panRange: { min: -64, max: 64 },
+        timbreRange: { min: 10, max: 100 },
+        panDeadZonePct: 0.1
+      }
     });
     const afterPatch = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(afterPatch.global.noteRange).to.include({ min: 48, max: 84 });
@@ -470,11 +475,17 @@ describe('midiUiController sequencer', function() {
     expect(afterPatch.global.density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(afterPatch.global.durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(afterPatch.global.envelope.sustain).to.equal(1.5);
+    expect(afterPatch.global.position.panRange).to.deep.equal({ min: -64, max: 64 });
+    expect(afterPatch.global.position.timbreRange).to.deep.equal({ min: 10, max: 100 });
+    expect(afterPatch.global.position.panDeadZonePct).to.equal(0.1);
     expect(view.projectConfigs.at(-1).noteRange).to.include({ min: 48, max: 84 });
     expect(view.projectConfigs.at(-1).velocityRange).to.include({ default: 96, min: 24, max: 112 });
     expect(view.projectConfigs.at(-1).density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(view.projectConfigs.at(-1).durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(view.projectConfigs.at(-1).envelope.sustain).to.equal(1.5);
+    expect(view.projectConfigs.at(-1).position.panRange).to.deep.equal({ min: -64, max: 64 });
+    expect(view.projectConfigs.at(-1).position.timbreRange).to.deep.equal({ min: 10, max: 100 });
+    expect(view.projectConfigs.at(-1).position.panDeadZonePct).to.equal(0.1);
 
     const removeButton = doc.getElementById('midiAutomationList').children[0].children.find(child => child.className === 'midi-automation-remove');
     removeButton.dispatchEvent({ type: 'click', target: removeButton });
