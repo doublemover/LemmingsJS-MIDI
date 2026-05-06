@@ -512,13 +512,24 @@ const createMidiUiController = ({
     'midi-mapping'
   );
 
+  const selectedTemplateLabel = (templateId) => {
+    const id = templateId || selectedTemplateId();
+    if (!id || id === 'midi-mapping') return 'Factory';
+    return getProjectTemplates().find(template => template.id === id)?.name || 'Factory';
+  };
+
   const resetProject = (templateId = null) => {
     const factory = getFactoryConfig() || {};
+    const nextTemplateId = templateId || selectedTemplateId();
+    const nextTemplateLabel = selectedTemplateLabel(nextTemplateId);
     captureFactoryProject(factory);
-    project = resetMidiProjectStorage(storage, factory, templateId || selectedTemplateId());
+    project = resetMidiProjectStorage(storage, factory, nextTemplateId);
     projectNeedsFactory = false;
     applyProjectToRuntime();
     render();
+    const message = `Reset project from ${nextTemplateLabel}`;
+    setStatus(message);
+    logOutput(message);
     return project;
   };
 

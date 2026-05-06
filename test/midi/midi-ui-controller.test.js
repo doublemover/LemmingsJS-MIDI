@@ -657,6 +657,8 @@ describe('midiUiController sequencer', function() {
     const reset = controller.resetProject('lead-template');
     expect(reset).to.include({ name: 'Lead Template', templateId: 'lead-template' });
     expect(reset.sources[0].mapping.note).to.equal(76);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Reset project from Lead Template');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Reset project from Lead Template');
 
     await controller.importProjectFile({ text: '{"bad":' });
     expect(doc.getElementById('errorDisplay').textContent).to.contain('not valid JSON');
