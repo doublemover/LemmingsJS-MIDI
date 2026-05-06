@@ -45,6 +45,7 @@ import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTr
 import {
   buildChordNotes,
   clampNoteToRange,
+  DEFAULT_SCALES,
   resolveScale
 } from '../midi/midi-mapping/MidiMappingDomain.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
@@ -67,6 +68,17 @@ const CHORD_TYPES = Object.freeze([
   'sus4',
   'octave'
 ]);
+
+const KEY_ROOT_LABELS = Object.freeze(['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']);
+const SCALE_LABELS = Object.freeze({
+  major: 'Major',
+  minor: 'Minor',
+  dorian: 'Dorian',
+  mixolydian: 'Mixolydian',
+  pentatonic: 'Pentatonic',
+  chromatic: 'Chromatic',
+  'chromatic-minor': 'Chromatic minor'
+});
 
 const AUTOMATION_TARGET_LABELS = Object.freeze({
   note: 'Note',
@@ -143,6 +155,10 @@ const appendOption = (document, select, value, label) => {
   option.textContent = label;
   select.appendChild(option);
 };
+
+const scalePresetDegrees = (name) => (
+  Array.isArray(DEFAULT_SCALES[name]) ? [...DEFAULT_SCALES[name]] : null
+);
 
 const configureListbox = (list, activeOptionId) => {
   if (!list) return;
@@ -579,6 +595,27 @@ const createMidiUiController = ({
     }
     select.dataset.channelsBound = 'true';
     select.value = String(value ?? (includeOmni ? 'omni' : 1));
+  };
+
+  const renderScaleRootOptions = (select, selectedRoot) => {
+    if (!select) return;
+    removeChildren(select);
+    for (let root = 0; root < KEY_ROOT_LABELS.length; root += 1) {
+      appendOption(document, select, root, KEY_ROOT_LABELS[root]);
+    }
+    select.value = String(selectedRoot ?? 0);
+  };
+
+  const renderScaleNameOptions = (select, selectedName) => {
+    if (!select) return;
+    removeChildren(select);
+    for (const name of Object.keys(DEFAULT_SCALES)) {
+      appendOption(document, select, name, SCALE_LABELS[name] || name);
+    }
+    if (selectedName && !DEFAULT_SCALES[selectedName]) {
+      appendOption(document, select, selectedName, selectedName);
+    }
+    select.value = selectedName || 'chromatic-minor';
   };
 
   const selectedTrack = () => {
@@ -1166,8 +1203,17 @@ const createMidiUiController = ({
     }
     project = current;
     if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.density || patch.envelope || patch.position || patch.mpe || patch.limits || patch.reverse) {
+      const nextScaleDegrees = patch.scale?.name && !Array.isArray(patch.scale.degrees)
+        ? scalePresetDegrees(patch.scale.name)
+        : null;
       patchGlobal({
-        ...(patch.scale ? { scale: { ...current.global.scale, ...patch.scale } } : {}),
+        ...(patch.scale ? {
+          scale: {
+            ...current.global.scale,
+            ...patch.scale,
+            ...(nextScaleDegrees ? { degrees: nextScaleDegrees } : {})
+          }
+        } : {}),
         ...(patch.noteRange ? { noteRange: { ...current.global.noteRange, ...patch.noteRange } } : {}),
         ...(patch.velocityRange ? { velocityRange: { ...current.global.velocityRange, ...patch.velocityRange } } : {}),
         ...(patch.durationTicks ? { durationTicks: { ...current.global.durationTicks, ...patch.durationTicks } } : {}),
@@ -1816,6 +1862,8 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiBpmBase'), current.transport.bpmBase);
     setInputValue(document?.getElementById('midiTimeSignatureBeats'), current.transport.timeSignature?.beats ?? 4);
     setInputValue(document?.getElementById('midiTimeSignatureUnit'), current.transport.timeSignature?.unit ?? 4);
+    renderScaleRootOptions(document?.getElementById('midiScaleRoot'), current.global.scale.root);
+    renderScaleNameOptions(document?.getElementById('midiScaleName'), current.global.scale.name);
     setInputValue(document?.getElementById('midiQuantize'), current.transport.quantize);
     setInputValue(document?.getElementById('midiSwing'), current.transport.swing);
     renderTemplateOptions();
@@ -1980,6 +2028,20 @@ const createMidiUiController = ({
     };
     bindById('midiTimeSignatureBeats', 'change', updateTimeSignature);
     bindById('midiTimeSignatureUnit', 'change', updateTimeSignature);
+    const updateScale = (patch) => {
+      const current = ensureProject();
+      updateGlobal({ scale: { ...current.global.scale, ...patch } });
+    };
+    bindById('midiScaleRoot', 'change', event => {
+      updateScale({ root: toNumberOrNull(event.target.value) ?? 0 });
+    });
+    bindById('midiScaleName', 'change', event => {
+      const name = event.target.value || 'chromatic-minor';
+      updateScale({
+        name,
+        degrees: scalePresetDegrees(name) || ensureProject().global.scale.degrees
+      });
+    });
     bindById('midiProjectResetButton', 'click', () => resetProject());
     bindById('midiPanicButton', 'click', () => panic());
     bindById('midiTemplateSelect', 'change', () => setStatus('Template ready'));

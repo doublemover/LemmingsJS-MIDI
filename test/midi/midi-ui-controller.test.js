@@ -19,6 +19,8 @@ const registerSequencerDom = (doc) => {
     midiBpmBase: 'input',
     midiTimeSignatureBeats: 'input',
     midiTimeSignatureUnit: 'select',
+    midiScaleRoot: 'select',
+    midiScaleName: 'select',
     midiQuantize: 'select',
     midiSwing: 'input',
     midiTemplateSelect: 'select',
@@ -124,6 +126,8 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiClipType').value = 'stepPattern';
   doc.getElementById('midiClipArpMode').value = 'up';
   doc.getElementById('midiClipArpPattern').value = 'up';
+  doc.getElementById('midiScaleRoot').value = '0';
+  doc.getElementById('midiScaleName').value = 'chromatic-minor';
   doc.getElementById('midiQuantize').value = '1/16';
   doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
 };
@@ -309,19 +313,36 @@ describe('midiUiController sequencer', function() {
     const swing = doc.getElementById('midiSwing');
     swing.value = '0.25';
     swing.dispatchEvent({ type: 'change', target: swing });
+    const scaleRoot = doc.getElementById('midiScaleRoot');
+    scaleRoot.value = '2';
+    scaleRoot.dispatchEvent({ type: 'change', target: scaleRoot });
+    const scaleName = doc.getElementById('midiScaleName');
+    scaleName.value = 'major';
+    scaleName.dispatchEvent({ type: 'change', target: scaleName });
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(stored.transport).to.include({ quantize: '1/8', swing: 0.25 });
+    expect(stored.global.scale).to.include({ name: 'major', root: 2 });
+    expect(stored.global.scale.degrees).to.deep.equal([0, 2, 4, 5, 7, 9, 11]);
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(view.projectConfigs.at(-1).timing).to.include({ quantize: '1/8', swing: 0.25 });
+    expect(view.projectConfigs.at(-1).scale).to.include({ name: 'major', root: 2 });
+    expect(view.projectConfigs.at(-1).scale.degrees).to.deep.equal([0, 2, 4, 5, 7, 9, 11]);
 
-    controller.applyRuntimePatch({ timing: { timeSignature: { beats: 5, unit: 16 }, quantize: '1/32', swing: 0.5 } });
+    controller.applyRuntimePatch({
+      timing: { timeSignature: { beats: 5, unit: 16 }, quantize: '1/32', swing: 0.5 },
+      scale: { name: 'minor', root: 5 }
+    });
     const patched = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(patched.transport.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
     expect(patched.transport).to.include({ quantize: '1/32', swing: 0.5 });
+    expect(patched.global.scale).to.include({ name: 'minor', root: 5 });
+    expect(patched.global.scale.degrees).to.deep.equal([0, 2, 3, 5, 7, 8, 10]);
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
     expect(view.projectConfigs.at(-1).timing).to.include({ quantize: '1/32', swing: 0.5 });
+    expect(view.projectConfigs.at(-1).scale).to.include({ name: 'minor', root: 5 });
+    expect(view.projectConfigs.at(-1).scale.degrees).to.deep.equal([0, 2, 3, 5, 7, 8, 10]);
   });
 
   it('edits arp clip mode and lowers it into runtime config', function() {

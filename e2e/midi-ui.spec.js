@@ -54,6 +54,8 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
   await page.locator('#midiTrackOutputSelect').selectOption('pw-output-1');
+  await page.locator('#midiScaleRoot').selectOption('2');
+  await page.locator('#midiScaleName').selectOption('major');
   await page.locator('#midiQuantize').selectOption('1/8');
   await setField('#midiSwing', '0.25');
 
@@ -74,6 +76,8 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   expect(project.tracks.some(track => track.id === 'lead' && track.channel === 3)).toBe(true);
   expect(project.tracks.find(track => track.id === 'track-1').outputId).toBe('pw-output-1');
   expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
+  expect(updatedProject.global.scale).toMatchObject({ name: 'major', root: 2 });
+  expect(updatedProject.global.scale.degrees).toEqual([0, 2, 4, 5, 7, 9, 11]);
   expect(updatedProject.transport).toMatchObject({ quantize: '1/8', swing: 0.25 });
   expect(updatedMapping).toMatchObject({ note: 72, velocity: 96, durationTicks: 5, pan: -24, timbre: 88, pitchBend: 0.5 });
   expect(updatedMapping.arp).toMatchObject({ enabled: true, mode: 'down' });
