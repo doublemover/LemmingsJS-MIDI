@@ -38,6 +38,7 @@ import {
   buildTriggerLabel,
   createArpPatternFromPreset,
   deriveArpModeFromPattern,
+  POSITION_AXIS_OPERATORS,
   resolveAvailableSfxIds
 } from './midi-ui/midiUiDomain.js';
 import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
@@ -1574,6 +1575,23 @@ const createMidiUiController = ({
       }));
       axisLabel.append(axisText, axis);
 
+      const opLabel = document.createElement('label');
+      opLabel.className = 'midi-field midi-field--compact';
+      const opText = document.createElement('span');
+      opText.textContent = 'Op';
+      const op = document.createElement('select');
+      op.className = 'midi-automation-axis-op';
+      for (const entry of POSITION_AXIS_OPERATORS) {
+        appendOption(document, op, entry.value, entry.label);
+      }
+      op.value = lane.axisOp || 'add';
+      op.addEventListener('change', event => dispatchProjectIntent({
+        type: 'automation.update',
+        automationId: lane.id,
+        patch: { axisOp: event.target.value }
+      }));
+      opLabel.append(opText, op);
+
       const minLabel = document.createElement('label');
       minLabel.className = 'midi-field midi-field--compact';
       const minText = document.createElement('span');
@@ -1614,7 +1632,7 @@ const createMidiUiController = ({
         automationId: lane.id
       }));
 
-      row.append(enabledLabel, targetLabel, axisLabel, minLabel, maxLabel, remove);
+      row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, remove);
       list.appendChild(row);
     }
     if (!current.automation.length) {

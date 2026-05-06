@@ -244,14 +244,14 @@ describe('MidiProject', function() {
       }
     });
     project = reduceMidiProject(project, { type: 'automation.add', automation: { id: 'lane', target: 'note', axis: 'x', min: -7, max: 7 } });
-    project = reduceMidiProject(project, { type: 'automation.update', automationId: 'lane', patch: { target: 'pan', min: -80, max: 80 } });
+    project = reduceMidiProject(project, { type: 'automation.update', automationId: 'lane', patch: { target: 'pan', axisOp: 'mul', min: -80, max: 80 } });
     project = reduceMidiProject(project, { type: 'automation.point.update', automationId: 'lane', pointIndex: 0, patch: { beat: 2, value: 10 } });
 
     expect(project.global.velocityRange.default).to.equal(96);
     expect(project.global.density.velocityBoost).to.equal(0.75);
     expect(project.global.envelope.attack).to.equal(1.4);
     expect(project.global.position.viewPan).to.equal(true);
-    expect(project.automation[0]).to.include({ id: 'lane', target: 'pan', axis: 'x', min: -80, max: 80 });
+    expect(project.automation[0]).to.include({ id: 'lane', target: 'pan', axis: 'x', axisOp: 'mul', min: -80, max: 80 });
     expect(project.automation[0].points[0]).to.deep.equal({ beat: 2, value: 10 });
 
     const config = projectToMidiConfig(project, {});
@@ -260,7 +260,7 @@ describe('MidiProject', function() {
     expect(config.envelope.attack).to.equal(1.4);
     expect(config.position.viewPan).to.equal(true);
     expect(config.position.mappings).to.deep.equal([
-      { axis: 'x', axisOp: 'add', target: 'pan', min: -80, max: 80, enabled: true }
+      { axis: 'x', axisOp: 'mul', target: 'pan', min: -80, max: 80, enabled: true }
     ]);
   });
 

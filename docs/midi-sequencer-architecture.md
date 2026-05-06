@@ -33,8 +33,9 @@ simultaneous clip notes become `notes`, and arp clips add the existing `arp`
 mapping shape.
 
 Automation lanes are project-owned positional mappings. The factory template's
-`position.mappings` entries import as automation lanes, and the adapter lowers
-enabled global lanes back into explicit runtime `position.mappings`. Global
+`position.mappings` entries import as automation lanes with axis operators, and
+the adapter lowers enabled global lanes back into explicit runtime
+`position.mappings`. Global
 intensity, accent/density, envelope defaults, and view pan live under
 `project.global`; per-track velocity scale is applied to both direct and clip
 runtime mappings.

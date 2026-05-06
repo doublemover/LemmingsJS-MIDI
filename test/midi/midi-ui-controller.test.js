@@ -359,6 +359,13 @@ describe('midiUiController sequencer', function() {
     envelopeToggle.dispatchEvent({ type: 'change', target: envelopeToggle });
 
     doc.getElementById('midiAutomationAddButton').dispatchEvent({ type: 'click', target: doc.getElementById('midiAutomationAddButton') });
+    const automationRow = doc.getElementById('midiAutomationList').children[0];
+    const axisOp = automationRow.children
+      .flatMap(child => child.children || [])
+      .find(child => child.className === 'midi-automation-axis-op');
+    axisOp.value = 'mul';
+    axisOp.dispatchEvent({ type: 'change', target: axisOp });
+
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.tracks[0].velocityScale).to.equal(0.5);
     expect(stored.global.velocityRange.default).to.equal(96);
@@ -366,13 +373,14 @@ describe('midiUiController sequencer', function() {
     expect(stored.global.position.viewPan).to.equal(true);
     expect(stored.sources[0].mapping.envelope).to.deep.equal({ attack: 1, decay: 0, sustain: 1, release: 1 });
     expect(stored.automation).to.have.lengthOf(1);
-    expect(doc.getElementById('midiAutomationList').children[0].className).to.equal('midi-automation-row');
+    expect(stored.automation[0].axisOp).to.equal('mul');
+    expect(automationRow.className).to.equal('midi-automation-row');
 
     const runtime = view.projectConfigs.at(-1);
     expect(runtime.velocityRange.default).to.equal(96);
     expect(runtime.density.velocityBoost).to.equal(0.8);
     expect(runtime.position.viewPan).to.equal(true);
-    expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', enabled: true });
+    expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
 
     const removeButton = doc.getElementById('midiAutomationList').children[0].children.find(child => child.className === 'midi-automation-remove');
