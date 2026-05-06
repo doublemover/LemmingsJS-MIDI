@@ -18,6 +18,13 @@ const openMidiUi = async (page, { resetStorage = false, withDevices = true } = {
   return midi;
 };
 
+const setFieldValue = async (page, selector, value) => {
+  await page.locator(selector).evaluate((element, nextValue) => {
+    element.value = String(nextValue);
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  }, value);
+};
+
 test('MIDI sequencer gives editor controls scoped accessible names', async ({ page }) => {
   const midi = await openMidiUi(page);
   await expect(midi.workspace()).toBeVisible();
@@ -29,7 +36,10 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
     '#midiProjectExportButton',
     '#midiProjectImportButton',
     '#midiTrackAdd',
+    '#midiTrackRemove',
     '#midiClipAddButton',
+    '#midiClipDuplicateButton',
+    '#midiClipRemoveButton',
     '#midiAssignSourceButton',
     '#midiAuditionButton',
     '#midiClipAuditionButton',
@@ -53,7 +63,10 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
     midiProjectExportButton: 'Export MIDI project',
     midiProjectImportButton: 'Import MIDI project',
     midiTrackAdd: 'Add MIDI track',
+    midiTrackRemove: 'Remove selected MIDI track',
     midiClipAddButton: 'Add MIDI clip',
+    midiClipDuplicateButton: 'Duplicate selected MIDI clip',
+    midiClipRemoveButton: 'Remove selected MIDI clip',
     midiAssignSourceButton: 'Assign selected source to track',
     midiAuditionButton: 'Audition selected source',
     midiClipAuditionButton: 'Audition selected clip',
@@ -260,6 +273,57 @@ test('MIDI sequencer routes multiple sources to separate track channels', async 
   expect(state.runtime.sfx['2']).toMatchObject({ trackId: 'drums', channel: 10, note: 36, velocity: 110 });
   await expect(page.locator('#midiTrackList')).toContainText('Melody');
   await expect(page.locator('#midiTrackList')).toContainText('Drums');
+});
+
+test('MIDI sequencer removes tracks and manages clip library controls', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await expect(midi.trackRemoveButton()).toBeDisabled();
+  await expect(midi.clipDuplicateButton()).toBeDisabled();
+  await expect(midi.clipRemoveButton()).toBeDisabled();
+
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'drums', name: 'Drums', channel: 10 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'drums' });
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'automation.add',
+      automation: { id: 'lane-drums', scope: 'track', trackId: 'drums', target: 'velocity', axis: 'y' }
+    });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.select', trackId: 'drums' });
+  });
+  await expect(midi.trackRemoveButton()).toBeEnabled();
+  await midi.trackRemoveButton().click();
+
+  let project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(project.tracks.map(track => track.id)).toEqual(['track-1', 'lead']);
+  expect(project.ui.selectedTrackId).toBe('lead');
+  expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
+  expect(project.automation.some(lane => lane.id === 'lane-drums')).toBe(false);
+  expect(project.automation.every(lane => lane.trackId !== 'drums')).toBe(true);
+
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.step.update', clipId: 'riff', stepIndex: 0, patch: { note: 65, velocity: 90 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'riff' });
+  });
+  await expect(midi.clipDuplicateButton()).toBeEnabled();
+  await expect(midi.clipRemoveButton()).toBeEnabled();
+  await midi.clipDuplicateButton().click();
+
+  project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(project.clips.map(clip => clip.id)).toEqual(['riff', 'fill', 'riff-copy']);
+  expect(project.ui.selectedClipId).toBe('riff-copy');
+  expect(project.clips.find(clip => clip.id === 'riff-copy').steps[0]).toMatchObject({ note: 65, velocity: 90 });
+  expect(project.sources.find(source => source.id === 'sfx-1')).toMatchObject({ mode: 'clip', clipId: 'riff' });
+
+  await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'riff' }));
+  await midi.clipRemoveButton().click();
+  project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(project.clips.map(clip => clip.id)).toEqual(['fill', 'riff-copy']);
+  expect(project.ui.selectedClipId).toBe('fill');
+  expect(project.sources.find(source => source.id === 'sfx-1')).toMatchObject({ mode: 'direct', clipId: null });
 });
 
 test('MIDI sequencer panic button logs feedback', async ({ page }) => {
@@ -632,7 +696,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
       removeTopOffset: removeRect.top - rowRect.top
     };
   });
-  expect(laneLayout.childCount).toBe(7);
+  expect(laneLayout.childCount).toBe(9);
   expect(laneLayout.removeTopOffset).toBeLessThan(laneLayout.rowHeight / 2);
   const laneA11y = await page.locator('.midi-automation-row').last().evaluate(row => ({
     role: row.getAttribute('role'),
@@ -650,11 +714,22 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
     `${laneName} operator`,
     `${laneName} minimum`,
     `${laneName} maximum`,
+    `${laneName} point beat`,
+    `${laneName} point value`,
     `Remove modulation lane ${laneName}`
   ]));
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
+  await midi.automationPointBeatFields().last().evaluate(element => {
+    element.value = '2';
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  await midi.automationPointValueFields().last().evaluate(element => {
+    element.value = '0.7';
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  });
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const runtime = await midi.runtimeConfig();
   expect(project.tracks[0].velocityScale).toBe(0.5);
   expect(project.global.velocityRange).toMatchObject({ default: 96, min: 20, max: 110 });
   expect(project.global.noteRange).toMatchObject({ min: 36, max: 96 });
@@ -674,6 +749,8 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   });
   expect(project.automation.length).toBeGreaterThan(automationCount);
   expect(project.automation.at(-1).axisOp).toBe('mul');
+  expect(project.automation.at(-1).points[0]).toEqual({ beat: 2, value: 0.7 });
+  expect(runtime.position.mappings.at(-1).points).toEqual([{ beat: 2, value: 0.7 }]);
 
   await midi.automationRemoveButtons().last().click();
   await expect(midi.automationRows()).toHaveCount(automationCount);
@@ -776,6 +853,8 @@ test('MIDI step grid keyboard navigation preserves the edited field', async ({ p
   await page.locator('.midi-step-probability[data-step-index="3"]').focus();
   await page.keyboard.press('Home');
   await expect.poll(activeStep).toMatchObject({ className: 'midi-step-probability', stepIndex: '0', label: 'Step 1 probability' });
+  await setFieldValue(page, '.midi-step-probability[data-step-index="0"]', '0.25');
+  await expect.poll(activeStep).toMatchObject({ className: 'midi-step-probability', stepIndex: '0', label: 'Step 1 probability' });
 });
 
 test('MIDI step grid supports rest controls', async ({ page }) => {
@@ -822,6 +901,24 @@ test('MIDI step grid supports rest controls', async ({ page }) => {
   await expect(page.locator('.midi-step-tie[data-step-index="0"]')).not.toBeChecked();
 });
 
+test('MIDI E2E helpers expose runtime config and UI metrics', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  const before = await midi.uiMetrics();
+
+  await setFieldValue(page, '#midiMappingNote', 77);
+
+  const after = await midi.uiMetrics();
+  const runtime = await midi.runtimeConfig();
+  expect(before).toMatchObject({
+    renderCount: expect.any(Number),
+    queuedRenderCount: expect.any(Number),
+    lastRenderDurationMs: expect.any(Number)
+  });
+  expect(after.renderCount).toBeGreaterThan(before.renderCount);
+  expect(after.lastRenderDurationMs).toBeGreaterThanOrEqual(0);
+  expect(runtime.sfx['1']).toMatchObject({ note: 77, trackId: 'track-1' });
+});
+
 test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and phone sizes', async ({ page }) => {
   for (const viewport of [
     { width: 1280, height: 900 },
@@ -844,5 +941,12 @@ test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and p
     for (const metric of metrics) {
       expect(metric.scrollWidth).toBeLessThanOrEqual(metric.clientWidth + 2);
     }
+    const stack = await page.evaluate(() => ({
+      sequencer: Number(window.getComputedStyle(document.getElementById('midiSequencerWorkspace')).zIndex),
+      previous: Number(window.getComputedStyle(document.getElementById('levelPrevButton')).zIndex),
+      next: Number(window.getComputedStyle(document.getElementById('levelNextButton')).zIndex)
+    }));
+    expect(stack.sequencer).toBeGreaterThan(stack.previous);
+    expect(stack.sequencer).toBeGreaterThan(stack.next);
   }
 });

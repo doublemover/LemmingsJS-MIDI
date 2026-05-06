@@ -1,7 +1,6 @@
 # MIDI UI Guide
 
-The MIDI UI is an in-game sequencer workspace layered over `/`. It replaces the
-old two-pane Events/Triggers/ADSR configuration UI.
+The MIDI UI is an in-game sequencer workspace layered over `/`.
 
 ## Setup
 
@@ -80,15 +79,18 @@ factory projects.
 - `resetProject(templateId?)`
 - `exportProject({ asTemplate?, download? })`
 - `importProject(payload)`
+- `importProjectFile(file)`
 - `saveProjectTemplate({ id?, name? })`
 - `getProjectTemplates()`
 - `getUiMetrics()`
 - `startLearn()`
 - `confirmLearn()`
 - `cancelLearn()`
+- `captureLearnNote(note, velocity, channel)`
 - `startRecording()`
 - `commitRecording()`
 - `cancelRecording()`
+- `captureRecordMessage(message)`
 - `audition({ sourceId?, trackId?, mapping?, clipId? })`
 - `panic()`
 
@@ -120,5 +122,6 @@ factory projects.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
   cleanup, setup, transport meter, project and per-track output routing, direct
   mapping, clip creation/editing, clip assignment, import/export/template reset,
-  learn capture, short recording, modulation controls, audition, persistence,
-  filters, conflict warnings, and responsive overflow checks.
+  learn capture, short recording, modulation controls, track and clip removal,
+  clip duplication, audition, persistence, filters, conflict warnings, E2E
+  helper metrics, and responsive overflow checks.

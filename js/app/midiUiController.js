@@ -513,7 +513,7 @@ const createMidiUiController = ({
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
     project = sanitizeMidiProject(nextProject);
     if (persist) project = saveMidiProject(storage, project);
-    if (apply) applyProjectToRuntime();
+    if (apply && !renderUi) applyProjectToRuntime();
     if (renderUi) render();
     return project;
   };
@@ -1557,6 +1557,12 @@ const createMidiUiController = ({
     const grid = document?.getElementById('midiStepPatternGrid');
     if (!grid) return;
     const columnCount = resolveStepGridColumnCount();
+    const active = document?.activeElement;
+    const activeClass = typeof active?.className === 'string'
+      ? active.className.split(/\s+/).find(name => name.startsWith('midi-step-'))
+      : '';
+    const activeStepIndex = active?.dataset?.stepIndex;
+    const restoreStepFocus = grid.contains?.(active) && activeClass && activeStepIndex != null;
     removeChildren(grid);
     if (!clip) {
       grid.setAttribute('aria-rowcount', '0');
@@ -1672,6 +1678,9 @@ const createMidiUiController = ({
       }));
       cell.append(label, noteLabel, velocityLabel, durationLabel, probabilityLabel, holdLabel, tieLabel, rest);
       grid.appendChild(cell);
+    }
+    if (restoreStepFocus) {
+      grid.querySelector?.(`.${activeClass}[data-step-index="${activeStepIndex}"]`)?.focus?.();
     }
   };
 

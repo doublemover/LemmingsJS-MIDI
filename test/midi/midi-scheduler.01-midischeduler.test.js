@@ -81,13 +81,14 @@ describe('MidiScheduler 1', function() {
     scheduler.setOutput(output);
     scheduler.setOutputs([output]);
     scheduler.setTickMs(10);
+    const sendTimeMs = scheduler._nowMs() + 1000;
 
     const ok = scheduler.sendNote(
       {
         note: 60,
         velocity: 64,
         durationTicks: 2,
-        timeMs: 1000,
+        timeMs: sendTimeMs,
         trackId: 'lead',
         outputId: 'out-1',
         voiceBudget: 4

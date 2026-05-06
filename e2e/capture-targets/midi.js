@@ -99,9 +99,17 @@ const config = {
     { name: 'midi-record', type: 'selector', selector: '#midiRecordPanel' },
     { name: 'midi-modulation', type: 'selector', selector: '#midiModulationInspector' },
     { name: 'midi-step-pattern', type: 'selector', selector: '#midiStepPatternGrid' },
-    { name: 'midi-output-status', type: 'selector', selector: '#midiOutputStatus' }
+    { name: 'midi-output-status', type: 'selector', selector: '#midiOutputStatus' },
+    { name: 'midi-level-prev-arrow', type: 'selector', selector: '#levelPrevButton' },
+    { name: 'midi-level-next-arrow', type: 'selector', selector: '#levelNextButton' }
   ],
   probes: [
+    {
+      name: 'midi-workspace-focus',
+      selector: '#midiSequencerWorkspace',
+      checks: ['hiddenFocusedElement'],
+      required: true
+    },
     {
       name: 'midi-source-browser',
       selector: '#midiSourceBrowser',
@@ -151,6 +159,11 @@ const config = {
       name: 'midi-output-status',
       selector: '#midiOutputStatus',
       checks: ['horizontalOverflow', 'clippedText']
+    },
+    {
+      name: 'midi-level-arrows',
+      selector: '#levelPrevButton, #levelNextButton',
+      checks: ['smallTapTarget']
     }
   ]
 };

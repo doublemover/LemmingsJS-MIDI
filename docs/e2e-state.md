@@ -38,8 +38,28 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.selectLemmingById(id)` selects a lemming by ID (returns
   `true` on success).
 - `window.__E2E__.midiGetProject()` returns the current MIDI project.
+- `window.__E2E__.midiGetRuntimeConfig()` returns the lowered runtime MIDI
+  config used by the existing MIDI router and scheduler.
 - `window.__E2E__.midiDispatchProjectIntent(intent)` dispatches a MIDI project
   intent.
+- `window.__E2E__.midiResetProject(templateId)` resets the project from the
+  factory template or a saved template.
+- `window.__E2E__.midiExportProject(options)` returns a sanitized MIDI project
+  export payload.
+- `window.__E2E__.midiImportProject(payload)` imports a sanitized MIDI project
+  or template payload.
+- `window.__E2E__.midiSaveProjectTemplate(options)` stores the current project
+  as a user template.
+- `window.__E2E__.midiGetProjectTemplates()` returns saved MIDI templates.
+- `window.__E2E__.midiGetUiMetrics()` returns MIDI UI render metrics.
+- `window.__E2E__.midiStartLearn()` / `midiConfirmLearn()` /
+  `midiCancelLearn()` drive MIDI learn.
+- `window.__E2E__.midiCaptureLearnNote(note, velocity, channel)` injects a
+  learned note into the active learn capture.
+- `window.__E2E__.midiStartRecording()` / `midiCommitRecording()` /
+  `midiCancelRecording()` drive MIDI clip recording.
+- `window.__E2E__.midiCaptureRecordMessage(message)` injects a MIDI message into
+  the active recording capture.
 - `window.__E2E__.midiAudition(request)` triggers project audition through the
   live MIDI router.
 

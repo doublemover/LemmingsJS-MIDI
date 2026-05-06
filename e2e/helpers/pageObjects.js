@@ -7,8 +7,11 @@ const midiUiSelectors = Object.freeze({
   sourceAssignFilter: '#midiSourceAssignFilter',
   conflictRows: '#midiSourceList .midi-source-row.has-conflict',
   trackRows: '#midiTrackList .midi-track-row',
+  trackRemoveButton: '#midiTrackRemove',
   clipRows: '#midiClipList .midi-clip-row',
   clipAddButton: '#midiClipAddButton',
+  clipDuplicateButton: '#midiClipDuplicateButton',
+  clipRemoveButton: '#midiClipRemoveButton',
   clipInspector: '#midiClipInspector',
   clipAuditionButton: '#midiClipAuditionButton',
   sourceModeSelect: '#midiSourceModeSelect',
@@ -19,6 +22,8 @@ const midiUiSelectors = Object.freeze({
   automationRows: '#midiAutomationList .midi-automation-row',
   automationRemoveButtons: '#midiAutomationList .midi-automation-remove',
   automationAddButton: '#midiAutomationAddButton',
+  automationPointBeatFields: '#midiAutomationList .midi-automation-point-beat',
+  automationPointValueFields: '#midiAutomationList .midi-automation-point-value',
   templateSelect: '#midiTemplateSelect',
   templateSaveButton: '#midiTemplateSaveButton',
   projectExportButton: '#midiProjectExportButton',
@@ -74,12 +79,24 @@ class MidiUiPage {
     return this.page.locator(midiUiSelectors.trackRows);
   }
 
+  trackRemoveButton() {
+    return this.page.locator(midiUiSelectors.trackRemoveButton);
+  }
+
   clipRows() {
     return this.page.locator(midiUiSelectors.clipRows);
   }
 
   clipAddButton() {
     return this.page.locator(midiUiSelectors.clipAddButton);
+  }
+
+  clipDuplicateButton() {
+    return this.page.locator(midiUiSelectors.clipDuplicateButton);
+  }
+
+  clipRemoveButton() {
+    return this.page.locator(midiUiSelectors.clipRemoveButton);
   }
 
   clipInspector() {
@@ -120,6 +137,22 @@ class MidiUiPage {
 
   automationAddButton() {
     return this.page.locator(midiUiSelectors.automationAddButton);
+  }
+
+  automationPointBeatFields() {
+    return this.page.locator(midiUiSelectors.automationPointBeatFields);
+  }
+
+  automationPointValueFields() {
+    return this.page.locator(midiUiSelectors.automationPointValueFields);
+  }
+
+  runtimeConfig() {
+    return this.page.evaluate(() => window.__E2E__.midiGetRuntimeConfig());
+  }
+
+  uiMetrics() {
+    return this.page.evaluate(() => window.__E2E__.midiGetUiMetrics());
   }
 
   templateSelect() {
