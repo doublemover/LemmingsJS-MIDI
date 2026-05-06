@@ -738,6 +738,12 @@ const updateById = (items, id, patch) => items.map(item => (
   item.id === id ? { ...item, ...cloneObject(patch) } : item
 ));
 
+const updatePatch = (patch) => {
+  const clean = cloneObject(patch);
+  delete clean.id;
+  return clean;
+};
+
 const updateSourceMapping = (items, id, patch) => items.map(item => (
   item.id === id ? { ...item, mapping: { ...createEmptyDirectMapping(), ...item.mapping, ...cloneObject(patch) } } : item
 ));
@@ -807,7 +813,7 @@ const updateAutomationLane = (automation, automationId, patch, tracks) => {
   const trackIds = new Set(tracks.map(track => track.id));
   return automation.map(lane => {
     if (lane.id !== automationId) return lane;
-    const cleanPatch = cloneObject(patch);
+    const cleanPatch = updatePatch(patch);
     if (cleanPatch.trackId != null) {
       const trackId = String(cleanPatch.trackId);
       if (trackIds.has(trackId)) {
@@ -845,7 +851,7 @@ function reduceMidiProject(project, intent = {}) {
     next = addTrack(current, intent.track);
     break;
   case 'track.update':
-    next = { ...current, tracks: updateById(current.tracks, intent.trackId, intent.patch) };
+    next = { ...current, tracks: updateById(current.tracks, intent.trackId, updatePatch(intent.patch)) };
     break;
   case 'track.select':
     next = { ...current, ui: { ...current.ui, selectedTrackId: intent.trackId, activeRegion: 'tracks' } };
@@ -854,7 +860,7 @@ function reduceMidiProject(project, intent = {}) {
     next = { ...current, ui: { ...current.ui, selectedSourceId: intent.sourceId, activeRegion: 'sources' } };
     break;
   case 'source.update':
-    next = { ...current, sources: updateById(current.sources, intent.sourceId, intent.patch) };
+    next = { ...current, sources: updateById(current.sources, intent.sourceId, updatePatch(intent.patch)) };
     break;
   case 'source.assignTrack': {
     const trackId = intent.trackId == null ? null : String(intent.trackId);
@@ -888,7 +894,7 @@ function reduceMidiProject(project, intent = {}) {
     next = addClip(current, intent.clip);
     break;
   case 'clip.update':
-    next = { ...current, clips: updateById(current.clips, intent.clipId, intent.patch) };
+    next = { ...current, clips: updateById(current.clips, intent.clipId, updatePatch(intent.patch)) };
     break;
   case 'clip.step.update':
     next = { ...current, clips: updateClipStep(current.clips, intent.clipId, intent.stepIndex, intent.patch) };

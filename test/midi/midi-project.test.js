@@ -222,6 +222,30 @@ describe('MidiProject', function() {
     expect(projectToMidiConfig(project, {}).sfx['1']).to.include({ trackId: 'lead', channel: 3 });
   });
 
+  it('ignores identity fields in reducer update intents', function() {
+    let project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    project = reduceMidiProject(project, { type: 'automation.add', automation: { id: 'lane', target: 'velocity' } });
+    project = reduceMidiProject(project, { type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'lead' });
+    project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+
+    project = reduceMidiProject(project, { type: 'track.update', trackId: 'lead', patch: { id: 'renamed-track', name: 'Lead 2' } });
+    project = reduceMidiProject(project, { type: 'source.update', sourceId: 'sfx-1', patch: { id: 'renamed-source', label: 'Select 2' } });
+    project = reduceMidiProject(project, { type: 'clip.update', clipId: 'riff', patch: { id: 'renamed-clip', name: 'Riff 2' } });
+    project = reduceMidiProject(project, { type: 'automation.update', automationId: 'lane', patch: { id: 'renamed-lane', target: 'pan' } });
+
+    expect(project.tracks.map(track => track.id)).to.include('lead');
+    expect(project.sources.map(source => source.id)).to.include('sfx-1');
+    expect(project.clips.map(clip => clip.id)).to.include('riff');
+    expect(project.automation.map(lane => lane.id)).to.include('lane');
+    expect(project.sources[0]).to.include({ trackId: 'lead', clipId: 'riff' });
+    expect(projectToMidiConfig(project, {}).sfx['1']).to.include({ trackId: 'lead', clipId: 'riff' });
+  });
+
   it('reduces clip library, step editing, source assignment, and runtime clip lowering', function() {
     let project = createMidiProjectFromMidiConfig({
       sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
