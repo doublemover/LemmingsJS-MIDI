@@ -17,6 +17,7 @@ const midiUiSelectors = Object.freeze({
   conflictBadges: '#midiSourceList .midi-conflict-badge',
   modulationInspector: '#midiModulationInspector',
   automationRows: '#midiAutomationList .midi-automation-row',
+  automationRemoveButtons: '#midiAutomationList .midi-automation-remove',
   automationAddButton: '#midiAutomationAddButton',
   templateSelect: '#midiTemplateSelect',
   templateSaveButton: '#midiTemplateSaveButton',
@@ -111,6 +112,10 @@ class MidiUiPage {
 
   automationRows() {
     return this.page.locator(midiUiSelectors.automationRows);
+  }
+
+  automationRemoveButtons() {
+    return this.page.locator(midiUiSelectors.automationRemoveButtons);
   }
 
   automationAddButton() {

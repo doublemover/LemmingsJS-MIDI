@@ -1534,7 +1534,17 @@ const createMidiUiController = ({
       }));
       maxLabel.append(maxText, max);
 
-      row.append(enabledLabel, targetLabel, axisLabel, minLabel, maxLabel);
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'midi-automation-remove';
+      remove.textContent = 'Remove';
+      remove.setAttribute('aria-label', `Remove modulation lane ${lane.name}`);
+      remove.addEventListener('click', () => dispatchProjectIntent({
+        type: 'automation.remove',
+        automationId: lane.id
+      }));
+
+      row.append(enabledLabel, targetLabel, axisLabel, minLabel, maxLabel, remove);
       list.appendChild(row);
     }
     if (!current.automation.length) {

@@ -232,6 +232,13 @@ describe('midiUiController sequencer', function() {
     expect(runtime.position.viewPan).to.equal(true);
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
+
+    const removeButton = doc.getElementById('midiAutomationList').children[0].children.find(child => child.className === 'midi-automation-remove');
+    removeButton.dispatchEvent({ type: 'click', target: removeButton });
+    const afterRemove = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterRemove.automation).to.have.lengthOf(0);
+    expect(view.projectConfigs.at(-1).position.mappings).to.have.lengthOf(0);
+    expect(doc.getElementById('midiAutomationList').children[0].textContent).to.equal('No modulation lanes');
   });
 
   it('exports, imports, saves templates, and resets from a user template', async function() {

@@ -283,6 +283,11 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
     release: 1
   });
   expect(project.automation.length).toBeGreaterThan(automationCount);
+
+  await midi.automationRemoveButtons().last().click();
+  await expect(midi.automationRows()).toHaveCount(automationCount);
+  const afterRemove = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(afterRemove.automation.length).toBe(automationCount);
 });
 
 test('MIDI sequencer surfaces source conflicts in the browser and inspector', async ({ page }) => {
