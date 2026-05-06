@@ -68,6 +68,8 @@ This spec defines the standalone editor page UI and interaction model for the cl
   - Optional flags (steel, trigger)
 - Active selection highlight per tab.
 - Search/filter input to narrow list (client-side only).
+- Recently used pieces appear in a compact strip, capped to the most recent
+  eight terrain/object/trigger selections.
 - List and Grid view modes; Ctrl+wheel adjusts grid density in grid view.
 
 ## Canvas Preview (Center)

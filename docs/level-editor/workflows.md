@@ -8,7 +8,8 @@ intentionally brief so it can stay current.
 1. Open `editor.html`.
 2. Use the tool list to pick Terrain, Object, Trigger, Entrance, Exit, Steel,
    Brush, or Eraser.
-3. Use the palette to pick a piece, then click or drag in the canvas.
+3. Use the palette to pick a piece, or reselect a recent piece from the palette
+   strip, then click or drag in the canvas.
 4. Use the inspector to edit coordinates, dimensions, or flags.
 5. Use Playtest to run the level without leaving the editor.
 
@@ -27,6 +28,9 @@ intentionally brief so it can stay current.
 - The dirty chip shows Saved/Unsaved state for the current editor session.
 - Export and Import handle `.nxlv` editor levels.
 - Export LVL and Import LVL handle classic `.lvl` files.
+- Terrain `ONE_WAY` flags are preserved by `.nxlv` import/export only. Classic
+  `.lvl` export/import drops terrain `ONE_WAY`; classic one-way behavior must be
+  modeled as arrow/object gadgets separately.
 
 ## Validation
 

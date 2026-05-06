@@ -200,10 +200,28 @@ describe('EditorLevelLoader', () => {
     expect(reader.terrains[0].id).to.equal(4);
     expect(reader.terrains[0].drawProperties.isUpsideDown).to.equal(true);
     expect(reader.terrains[0].drawProperties.isErase).to.equal(true);
+    expect(reader.terrains[0].drawProperties).to.not.have.property('oneWay');
+    expect(reader.terrains[0].drawProperties).to.not.have.property('isOneWay');
     expect(reader.objects[0].id).to.equal(3);
     expect(reader.objects[0].drawProperties.noOverwrite).to.equal(true);
     expect(reader.steel).to.have.length(1);
     expect(reader.steel[0].width).to.equal(6);
+  });
+
+  it('does not lower editor terrain one-way flags into classic terrain data', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 4, name: 'block' }]
+    });
+    const level = buildLevel();
+    level.terrains[0].props.ONE_WAY = true;
+
+    const data = createClassicLevelData(level, { styleName: 'preview' });
+    const terrain = data.levelReader.terrains[0];
+
+    expect(terrain.drawProperties).to.not.have.property('oneWay');
+    expect(terrain.drawProperties).to.not.have.property('isOneWay');
   });
 
   it('falls back to default style values and ignores unknown skills', () => {

@@ -128,6 +128,7 @@ describe('ClassicLevelConverter', () => {
     expect(terrain.props.FLIP_VERTICAL).to.equal(true);
     expect(terrain.props.NO_OVERWRITE).to.equal(true);
     expect(terrain.props.ERASE).to.equal(true);
+    expect(terrain.props).to.not.have.property('ONE_WAY');
     const gadget = level.gadgets[0];
     expect(gadget.props.FLIP_VERTICAL).to.equal(undefined);
   });
