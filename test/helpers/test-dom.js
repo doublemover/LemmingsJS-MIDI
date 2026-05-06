@@ -62,6 +62,7 @@ class TestElement {
     this.max = '';
     this.step = '';
     this._innerHTML = '';
+    this.ownerDocument = null;
   }
 
   set innerHTML(value) {
@@ -75,6 +76,7 @@ class TestElement {
 
   appendChild(child) {
     child.parent = this;
+    if (!child.ownerDocument) child.ownerDocument = this.ownerDocument;
     this.children.push(child);
     return child;
   }
@@ -113,6 +115,24 @@ class TestElement {
     const handlers = this.listeners.get(event.type) || [];
     handlers.forEach(handler => handler(event));
   }
+
+  focus() {
+    if (this.ownerDocument) this.ownerDocument.activeElement = this;
+  }
+
+  querySelectorAll(selector) {
+    if (!selector || selector[0] !== '.') return [];
+    const className = selector.slice(1);
+    const matches = [];
+    const visit = (element) => {
+      for (const child of element.children) {
+        if (child.classList.contains(className)) matches.push(child);
+        visit(child);
+      }
+    };
+    visit(this);
+    return matches;
+  }
 }
 
 class TestDocument {
@@ -120,10 +140,12 @@ class TestDocument {
     this._elementsById = new Map();
     this._all = [];
     this.documentElement = { clientWidth: 800, clientHeight: 600 };
+    this.activeElement = null;
   }
 
   createElement(tagName) {
     const el = new TestElement(tagName);
+    el.ownerDocument = this;
     this._all.push(el);
     return el;
   }

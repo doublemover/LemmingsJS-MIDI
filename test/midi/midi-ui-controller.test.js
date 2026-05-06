@@ -960,6 +960,13 @@ describe('midiUiController sequencer', function() {
     expect(stepGrid.getAttribute('aria-rowcount')).to.equal('4');
     expect(stepGrid.children[1].getAttribute('aria-rowindex')).to.equal('2');
     expect(stepGrid.children[1].getAttribute('aria-colindex')).to.equal('1');
+    stepGrid.dispatchEvent({
+      type: 'keydown',
+      key: 'ArrowDown',
+      target: stepGrid.children[0].children[1].children[0],
+      preventDefault() {}
+    });
+    expect(doc.activeElement).to.equal(stepGrid.children[1].children[1].children[0]);
 
     win.innerWidth = 700;
     controller.refreshMidiUiFromConfig();
@@ -967,6 +974,13 @@ describe('midiUiController sequencer', function() {
     expect(stepGrid.getAttribute('aria-rowcount')).to.equal('2');
     expect(stepGrid.children[2].getAttribute('aria-rowindex')).to.equal('2');
     expect(stepGrid.children[2].getAttribute('aria-colindex')).to.equal('1');
+    stepGrid.dispatchEvent({
+      type: 'keydown',
+      key: 'ArrowDown',
+      target: stepGrid.children[0].children[1].children[0],
+      preventDefault() {}
+    });
+    expect(doc.activeElement).to.equal(stepGrid.children[2].children[1].children[0]);
   });
 
   it('disables clip assignment when no clip exists', function() {
