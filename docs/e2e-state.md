@@ -37,12 +37,11 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
   entry with full text.
 - `window.__E2E__.selectLemmingById(id)` selects a lemming by ID (returns
   `true` on success).
-- `window.__E2E__.midiGetIntentState()` returns the current MIDI intent state.
-- `window.__E2E__.midiDispatchIntent(intent)` dispatches a MIDI intent action.
-- `window.__E2E__.midiSetOverrides(patch)` applies MIDI override patches.
-- `window.__E2E__.midiCaptureLearnNote(note)` injects a MIDI-learn capture note.
-- `window.__E2E__.midiAuditionMapping(targetKey, id, entry?)` triggers mapping
-  preview/audition through the live MIDI router.
+- `window.__E2E__.midiGetProject()` returns the current MIDI project.
+- `window.__E2E__.midiDispatchProjectIntent(intent)` dispatches a MIDI project
+  intent.
+- `window.__E2E__.midiAudition(request)` triggers project audition through the
+  live MIDI router.
 
 ## getCaptureRects(options?)
 
@@ -141,9 +140,9 @@ Top-level fields:
 - `enabled`: current MIDI enabled state.
 - `hasRouter`: whether the runtime MIDI router is attached.
 - `outputName`: selected MIDI output device name (or `null`).
-- `intentRevision`: current `MidiIntent` revision.
-- `learnTarget`: active MIDI-learn target (or `null`).
-- `featureFlags`: MIDI UI feature flags (`expressiveControls`, `audition`).
+- `projectId`: current MIDI project id.
+- `selectedTrackId`: selected MIDI track id.
+- `selectedSourceId`: selected MIDI source id.
 
 ### stage
 - `panEnabled`.

@@ -8,18 +8,12 @@ const focusGameCanvas = async (page) => {
   if (!canvasBox) {
     throw new Error('gameCanvas is not visible');
   }
-  const panelBox = await page.locator('#controlLeft').boundingBox();
-  let clickX = canvasBox.x + canvasBox.width * 0.5;
-  const clickY = canvasBox.y + canvasBox.height * 0.5;
-  if (panelBox) {
-    const safeX = panelBox.x + panelBox.width + 20;
-    if (safeX < canvasBox.x + canvasBox.width - 5) {
-      clickX = Math.max(clickX, safeX);
-    } else {
-      clickX = canvasBox.x + canvasBox.width - 5;
-    }
-  }
-  await page.mouse.click(clickX, clickY);
+  await page.evaluate(() => {
+    const canvasElement = document.getElementById('gameCanvas');
+    if (!canvasElement) return;
+    canvasElement.setAttribute('tabindex', '-1');
+    canvasElement.focus();
+  });
 };
 
 test.beforeEach(async ({ page }) => {

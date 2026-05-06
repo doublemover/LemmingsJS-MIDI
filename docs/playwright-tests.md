@@ -30,7 +30,7 @@ Add `?e2e=1` to enable `window.__E2E__`. The current schemas are documented in:
 - [`e2e-editor-state.md`](e2e-editor-state.md)
 
 Playwright specs use this harness for deterministic state snapshots, time
-control, editor mutations, MIDI intent automation, and runtime capture
+control, editor mutations, MIDI project automation, and runtime capture
 rectangles.
 
 ## WebMIDI
@@ -84,7 +84,7 @@ export default {
     await page.waitForFunction(() => window.__E2E__?.getState?.()?.ready);
   },
   targets: [
-    { name: 'controls', type: 'selector', selector: '#controlLeft' },
+    { name: 'controls', type: 'selector', selector: '#midiSequencerWorkspace' },
     { name: 'header', type: 'pageRect', rect: { x: 0, y: 0, width: 480, height: 120 } },
     { name: 'canvas', type: 'runtimeRect', id: 'canvas' },
     { name: 'stage-parts', type: 'runtimeRects', ids: ['game', 'gui', 'minimap'] },
@@ -95,7 +95,7 @@ export default {
   probes: [
     {
       name: 'controls-overflow',
-      selector: '#controlLeft',
+      selector: '#midiSequencerWorkspace',
       checks: ['horizontalOverflow', 'verticalOverflow', 'unexpectedScrollbar']
     }
   ]

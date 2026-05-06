@@ -1,242 +1,217 @@
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
+import { clearLocalStorage, waitForHarnessReady } from './helpers/harness.js';
 import { MidiUiPage } from './helpers/pageObjects.js';
+import { installWebMidiStub } from './helpers/webmidiStub.js';
 
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
 });
 
-const openMidiUi = async (page, path = '/') => {
+const openMidiUi = async (page, { resetStorage = false, withDevices = true } = {}) => {
+  if (resetStorage) await clearLocalStorage(page);
+  await installWebMidiStub(page, { withDevices });
   const midi = new MidiUiPage(page);
-  await midi.goto(path);
+  await midi.goto('/?e2e=1');
+  await waitForHarnessReady(page);
+  await page.waitForSelector('#midiSourceList .midi-source-row');
   return midi;
 };
 
-test('MIDI UI starts disabled and hides panels', async ({ page }) => {
-  const midi = await openMidiUi(page);
+test('MIDI sequencer creates a fresh project and clears legacy storage', async ({ page }) => {
+  await page.addInitScript(() => {
+    window.localStorage?.setItem?.('lemmings.midi.intent', '{"revision":99}');
+    window.localStorage?.setItem?.('lemmings.midi.overrides', '{"sfx":{"1":{"note":99}}}');
+    window.localStorage?.setItem?.('lemmings.midi.inputId', 'legacy-input');
+  });
+  const midi = await openMidiUi(page, { resetStorage: false, withDevices: false });
+
+  await expect(midi.workspace()).toBeVisible();
   await expect(page.locator('body')).toHaveClass(/midi-disabled/);
-  await expect(midi.enabledToggle()).not.toBeChecked();
-  await expect(midi.controlRight()).toBeHidden();
+  const state = await page.evaluate(() => ({
+    legacyIntent: window.localStorage.getItem('lemmings.midi.intent'),
+    legacyOverrides: window.localStorage.getItem('lemmings.midi.overrides'),
+    legacyInput: window.localStorage.getItem('lemmings.midi.inputId'),
+    project: window.__E2E__.midiGetProject()
+  }));
+
+  expect(state.legacyIntent).toBeNull();
+  expect(state.legacyOverrides).toBeNull();
+  expect(state.legacyInput).toBeNull();
+  expect(state.project.version).toBe(1);
+  expect(state.project.sources.some(source => source.kind === 'sfx' && source.sourceKey === '1')).toBe(true);
 });
 
-test('Enabling MIDI reveals panels and inputs', async ({ page }) => {
+test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
-  await expect(page.locator('body')).not.toHaveClass(/midi-disabled/);
-  await expect(midi.controlRight()).toBeVisible();
-  const inputState = await page.evaluate(() => {
-    const input = document.getElementById('midiInSelect');
-    const output = document.getElementById('midiOutSelect');
-    const error = document.getElementById('errorDisplay');
-    return {
-      inputDisabled: input?.disabled ?? null,
-      outputDisabled: output?.disabled ?? null,
-      inputLabel: input?.options?.[0]?.textContent ?? '',
-      outputLabel: output?.options?.[0]?.textContent ?? '',
-      errorText: error?.textContent ?? ''
-    };
+  await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
+  await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
+
+  const project = await page.evaluate(() => {
+    let next = window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    next = window.__E2E__.midiDispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'lead' });
+    next = window.__E2E__.midiDispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 72, velocity: 96, durationTicks: 5 } });
+    window.__E2E__.midiAudition({ sourceId: 'sfx-1', trackId: 'lead' });
+    return next;
   });
-  if (inputState.inputDisabled) {
-    expect(inputState.inputLabel).toContain('No input');
-    expect(inputState.errorText).toContain('No input device');
-  } else {
-    await expect(page.locator('#midiInSelect')).toBeEnabled();
-  }
-  if (inputState.outputDisabled) {
-    expect(inputState.outputLabel).toContain('No output');
-    expect(inputState.errorText).toContain('No output device');
-  } else {
-    await expect(page.locator('#midiOutSelect')).toBeEnabled();
-  }
+
+  expect(project.tracks.some(track => track.id === 'lead' && track.channel === 3)).toBe(true);
+  expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
+  await expect(midi.outputLog()).toContainText(/Audition|skipped/);
+  await expect(page.locator('#midiTrackList')).toContainText('Lead');
+  await expect(page.locator('#midiSelectedSourceSummary')).toContainText('Lead');
 });
 
-test('MIDI panels render expected layout and tab content', async ({ page }) => {
-  const midi = await openMidiUi(page);
-  await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  const leftPanel = page.locator('#controlLeft');
-  const rightPanel = midi.controlRight();
-  await expect(leftPanel).toBeVisible();
-  await expect(rightPanel).toBeVisible();
+test('MIDI project persists across reload', async ({ page }) => {
+  await openMidiUi(page);
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 74 } });
+  });
 
-  const bounds = await Promise.all([
-    leftPanel.boundingBox(),
-    rightPanel.boundingBox()
-  ]);
-  const leftBounds = bounds[0];
-  const rightBounds = bounds[1];
-  expect(leftBounds).not.toBeNull();
-  expect(rightBounds).not.toBeNull();
-  expect(rightBounds.x).toBeGreaterThan(leftBounds.x + 200);
-  expect(leftBounds.height).toBeGreaterThan(200);
-  expect(rightBounds.height).toBeGreaterThan(200);
-
-  const eventDetailsCount = await page.locator('#midiEventList details').count();
-  expect(eventDetailsCount).toBeGreaterThan(0);
-  await expect(page.locator('#midiEventList summary .panel-title-text').first()).toContainText('#');
-  await midi.tabButton('midiTabTriggers').click();
-  await expect(page.locator('#midiTabTriggers')).toHaveClass(/active/);
-  const triggerDetailsCount = await page.locator('#midiTriggerList details').count();
-  expect(triggerDetailsCount).toBeGreaterThan(0);
-  await midi.tabButton('midiTabAdsr').click();
-  await expect(page.locator('#midiTabAdsr')).toHaveClass(/active/);
-  await expect(page.locator('#midiEnvAttack')).toBeVisible();
-  await expect(page.locator('#midiEnvRelease')).toBeVisible();
-  await midi.tabButton('midiTabGlobalFx').click();
-  await expect(page.locator('#midiTabGlobalFx')).toHaveClass(/active/);
-  await expect(page.locator('#midiIntensity')).toBeVisible();
-  await expect(page.locator('#midiAccent')).toBeVisible();
+  await page.reload();
+  await waitForHarnessReady(page);
+  await page.waitForSelector('#midiSourceList .midi-source-row');
+  const note = await page.evaluate(() => (
+    window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note
+  ));
+  expect(note).toBe(74);
 });
 
-test('MIDI event and trigger titles render with width', async ({ page }) => {
+test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  await expect(midi.controlRight()).toBeVisible();
-  await page.waitForSelector('#midiTabEvents #midiEventList summary .panel-title-text', { state: 'visible' });
-  const eventTitle = page.locator('#midiTabEvents #midiEventList summary .panel-title-text').first();
-  await expect(eventTitle).toContainText('#');
-  const eventWidth = await eventTitle.evaluate(el => el.getBoundingClientRect().width);
-  expect(eventWidth).toBeGreaterThan(1);
-  await midi.tabButton('midiTabTriggers').click();
-  await page.waitForSelector('#midiTabTriggers #midiTriggerList summary .panel-title-text', { state: 'visible' });
-  const triggerTitle = page.locator('#midiTabTriggers #midiTriggerList summary .panel-title-text').first();
-  await expect(triggerTitle).toContainText('#');
-  const triggerWidth = await triggerTitle.evaluate(el => el.getBoundingClientRect().width);
-  expect(triggerWidth).toBeGreaterThan(1);
+  const setField = async (selector, value) => {
+    await page.locator(selector).evaluate((element, nextValue) => {
+      element.value = String(nextValue);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
+  };
+
+  await midi.clipAddButton().click();
+  await setField('#midiClipName', 'Lead Clip');
+  await setField('.midi-step-note[data-step-index="0"]', 66);
+  await setField('.midi-step-velocity[data-step-index="0"]', 91);
+  await setField('.midi-step-note[data-step-index="1"]', 70);
+  await midi.sourceModeSelect().selectOption('clip');
+  await page.locator('#midiAssignClipButton').click();
+  await midi.clipAuditionButton().click();
+
+  const project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const clip = project.clips.find(entry => entry.name === 'Lead Clip');
+  const source = project.sources.find(entry => entry.id === 'sfx-1');
+  expect(clip.steps[0]).toMatchObject({ note: 66, velocity: 91 });
+  expect(clip.steps[1]).toMatchObject({ note: 70 });
+  expect(source).toMatchObject({ mode: 'clip', clipId: clip.id });
+  await expect(midi.outputLog()).toContainText(/Audition|skipped/);
+
+  await page.reload();
+  await waitForHarnessReady(page);
+  await page.waitForSelector('#midiClipList .midi-clip-row');
+  const reloaded = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(reloaded.clips.find(entry => entry.name === 'Lead Clip').steps[0].note).toBe(66);
+  expect(reloaded.sources.find(entry => entry.id === 'sfx-1').mode).toBe('clip');
 });
 
-test('MIDI event list excludes unknown-0B', async ({ page }) => {
+test('MIDI source browser search and filters remain usable', async ({ page }) => {
   const midi = await openMidiUi(page);
-  await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  await expect(page.locator('#midiEventList')).not.toContainText('unknown-0B');
+  await expect(midi.sourceRows().first()).toBeVisible();
+
+  await page.locator('#midiSourceSearch').fill('skill');
+  await expect(midi.sourceRows().first()).toContainText(/skill/i);
+  await page.locator('#midiSourceKindFilter').selectOption('trigger');
+  await expect(page.locator('#midiSourceList')).toContainText(/No sources|Trigger|MIDI_FLAG/i);
+  await page.locator('#midiSourceSearch').fill('no-such-source-name');
+  await expect(page.locator('#midiSourceList')).toContainText('No sources match');
 });
 
-test('MIDI panels warn when scrolling is required', async ({ page }, testInfo) => {
+test('MIDI sequencer edits modulation controls', async ({ page }) => {
   const midi = await openMidiUi(page);
-  await midi.enable();
-  const selectors = ['#controlLeft', '#controlRight'];
-  for (const selector of selectors) {
-    const metrics = await page.evaluate((sel) => {
-      const panel = document.querySelector(sel);
-      if (!panel) return null;
-      const styles = window.getComputedStyle(panel);
-      const paddingLeft = Number.parseFloat(styles.paddingLeft) || 0;
-      const paddingRight = Number.parseFloat(styles.paddingRight) || 0;
-      return {
-        scrollHeight: panel.scrollHeight,
-        clientHeight: panel.clientHeight,
-        scrollWidth: panel.scrollWidth,
-        clientWidth: panel.clientWidth,
-        paddingX: paddingLeft + paddingRight
-      };
-    }, selector);
-    if (!metrics) continue;
-    expect(metrics.scrollWidth).toBeLessThanOrEqual(
-      metrics.clientWidth + metrics.paddingX + 2
-    );
-    if (metrics.scrollHeight > metrics.clientHeight + 2) {
-      testInfo.annotations.push({
-        type: 'warning',
-        description: `${selector} requires scrolling at default size.`
+  await expect(midi.modulationInspector()).toBeVisible();
+  const setField = async (selector, value) => {
+    await page.locator(selector).evaluate((element, nextValue) => {
+      element.value = String(nextValue);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
+  };
+  const automationCount = await midi.automationRows().count();
+
+  await setField('#midiTrackVelocityScale', '0.5');
+  await setField('#midiGlobalIntensity', '96');
+  await setField('#midiGlobalAccent', '0.8');
+  await page.locator('#midiGlobalViewPan').check();
+  await page.locator('#midiEnvelopeOverrideToggle').check();
+  await midi.automationAddButton().click();
+
+  const project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  expect(project.tracks[0].velocityScale).toBe(0.5);
+  expect(project.global.velocityRange.default).toBe(96);
+  expect(project.global.density.velocityBoost).toBe(0.8);
+  expect(project.global.position.viewPan).toBe(true);
+  expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
+    attack: 1,
+    decay: 0,
+    sustain: 1,
+    release: 1
+  });
+  expect(project.automation.length).toBeGreaterThan(automationCount);
+});
+
+test('MIDI sequencer surfaces source conflicts in the browser and inspector', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await page.evaluate(() => {
+    const project = window.__E2E__.midiGetProject();
+    const source = project.sources.find(entry => entry.id === 'sfx-1');
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'project.set',
+      project: {
+        ...project,
+        sources: [
+          ...project.sources,
+          {
+            ...source,
+            id: 'sfx-1-conflict',
+            label: 'Duplicate Skill Select'
+          }
+        ],
+        ui: {
+          ...project.ui,
+          selectedSourceId: 'sfx-1'
+        }
+      }
+    });
+  });
+
+  await expect(midi.conflictRows().first()).toBeVisible();
+  expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
+  await expect(midi.conflictSummary()).toContainText('Duplicate runtime key');
+
+  await midi.sourceAssignFilter().selectOption('clean');
+  await expect(midi.conflictRows()).toHaveCount(0);
+  await midi.sourceAssignFilter().selectOption('conflicts');
+  expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
+});
+
+test('MIDI sequencer layout avoids horizontal overflow at desktop and phone sizes', async ({ page }) => {
+  for (const viewport of [
+    { width: 1280, height: 900 },
+    { width: 390, height: 844 }
+  ]) {
+    await page.setViewportSize(viewport);
+    await openMidiUi(page);
+    const metrics = await page.evaluate(() => {
+      const selectors = ['#midiSequencerWorkspace', '#midiSourceBrowser', '#midiSourceList', '#midiTrackWorkspace', '#midiInspector', '#midiConflictSummary', '#midiModulationInspector', '#midiAutomationList'];
+      return selectors.map(selector => {
+        const el = document.querySelector(selector);
+        return {
+          selector,
+          scrollWidth: el?.scrollWidth ?? 0,
+          clientWidth: el?.clientWidth ?? 0
+        };
       });
+    });
+    for (const metric of metrics) {
+      expect(metric.scrollWidth).toBeLessThanOrEqual(metric.clientWidth + 2);
     }
   }
-});
-
-test('Canvas interaction clears focused MIDI inputs', async ({ page }) => {
-  const midi = await openMidiUi(page);
-  await midi.enable();
-  const bpmInput = page.locator('#midiBpmBase');
-  await bpmInput.focus();
-  await expect(bpmInput).toBeFocused();
-  const canvas = page.locator('#gameCanvas');
-  await canvas.click({ position: { x: 20, y: 20 }, force: true });
-  await expect(bpmInput).not.toBeFocused();
-});
-
-test('Expressive MIDI controls expose keyboard editing, arp patterns, and preview hooks', async ({ page }) => {
-  const midi = await openMidiUi(page);
-  await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  await midi.openFirstEventDetails();
-  const result = await page.evaluate(() => {
-    const api = window.__LEMMINGS_MIDI_UI__;
-    const details = document.querySelector('#midiEventList details');
-    if (!api || !details) {
-      return { ok: false, reason: 'missing-api-or-details' };
-    }
-    details.open = true;
-    const summaryText = details.querySelector('summary')?.textContent || '';
-    const match = summaryText.match(/#(\d+)/);
-    const id = match ? match[1] : null;
-    if (!id) {
-      return { ok: false, reason: 'missing-id' };
-    }
-    const rows = Array.from(details.querySelectorAll('label'));
-    const rowByLabel = (label) => rows.find(row => row.querySelector('span')?.textContent?.trim() === label) || null;
-    const modeSelect = rowByLabel('Mode')?.querySelector('select');
-    if (modeSelect) {
-      modeSelect.value = 'note';
-      modeSelect.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    const keyboardRow = rowByLabel('Keyboard');
-    const keyButtons = Array.from(keyboardRow?.querySelectorAll('.midi-note-key') || []);
-    if (keyButtons[7]) {
-      keyButtons[7].click();
-    }
-    const arpPresetRow = rowByLabel('Arp preset');
-    const downPresetButton = Array.from(arpPresetRow?.querySelectorAll('button') || [])
-      .find(button => button.dataset?.value === 'down');
-    const arpToggle = rowByLabel('Arp')?.querySelector('input[type="checkbox"]');
-    if (arpToggle) {
-      arpToggle.checked = true;
-      arpToggle.dispatchEvent(new Event('change', { bubbles: true }));
-    }
-    downPresetButton?.click();
-    const previewButton = rowByLabel('Preview')?.querySelector('button');
-    previewButton?.click();
-    const overrides = api.getIntentState?.()?.overrides || {};
-    const mappedEntry = overrides?.sfx?.[id] || null;
-    const previewResult = api.auditionMapping?.({ targetKey: 'sfx', id }) ?? null;
-    return {
-      ok: true,
-      keyButtonCount: keyButtons.length,
-      keyButtonsHaveLabels: keyButtons.every(button => !!button.getAttribute('aria-label')),
-      mappedNote: mappedEntry?.note ?? null,
-      arpPreset: mappedEntry?.arp?.pattern?.preset ?? null,
-      previewResultType: typeof previewResult
-    };
-  });
-
-  expect(result.ok).toBe(true);
-  expect(result.keyButtonCount).toBe(12);
-  expect(result.keyButtonsHaveLabels).toBe(true);
-  expect((result.mappedNote ?? 0) % 12).toBe(7);
-  expect(result.arpPreset).toBe('down');
-  expect(result.previewResultType).toBe('boolean');
-});
-
-test('Expressive controls keep mobile layout parity', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });
-  const midi = await openMidiUi(page);
-  await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  await midi.openFirstEventDetails();
-  const metrics = await page.evaluate(() => {
-    const right = document.getElementById('controlRight');
-    const details = document.querySelector('#midiEventList details');
-    details?.setAttribute?.('open', '');
-    details.open = true;
-    const keyboardRow = Array.from(details?.querySelectorAll('label') || [])
-      .find(row => row.querySelector('span')?.textContent?.trim() === 'Keyboard');
-    return {
-      keyboardVisible: !!keyboardRow,
-      panelScrollWidth: right?.scrollWidth ?? 0,
-      panelClientWidth: right?.clientWidth ?? 0
-    };
-  });
-  expect(metrics.keyboardVisible).toBe(true);
-  expect(metrics.panelScrollWidth).toBeLessThanOrEqual(metrics.panelClientWidth + 80);
 });

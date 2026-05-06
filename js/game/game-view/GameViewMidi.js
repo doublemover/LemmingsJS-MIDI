@@ -135,7 +135,11 @@ const gameViewMidiMethods = {
     if (!this.midiRouter) {
       await this._ensureWebMidiEnabled();
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
-      this.applyMidiOverrides(this._midiOverrides);
+      if (this._midiProjectConfig) {
+        this.setMidiProjectConfig(this._midiProjectConfig);
+      } else {
+        this.applyMidiOverrides(this._midiOverrides);
+      }
       const Router = getDependency('MidiEventRouter', MidiEventRouter);
       this.midiRouter = new Router(this._midiMapping);
     }
@@ -174,6 +178,12 @@ const gameViewMidiMethods = {
   setMidiOverrides(overrides) {
     this._midiOverrides = cloneConfig(overrides || {});
     this.applyMidiOverrides(this._midiOverrides);
+  },
+
+  setMidiProjectConfig(config) {
+    this._midiProjectConfig = cloneConfig(config || {});
+    this._midiMapping = new MidiMapping(this._midiProjectConfig);
+    if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
   },
 
   getMidiConfig() {

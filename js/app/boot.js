@@ -183,7 +183,6 @@ function init({ windowRef, documentRef, embedMode }) {
 
   lemmings = new GameView();
   lemmings.applyProfileHistoryRetentionPolicy?.();
-  lemmings.setMidiOverrides?.(midiUi.getMidiOverrides?.() || {});
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
@@ -210,7 +209,7 @@ function init({ windowRef, documentRef, embedMode }) {
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
-    onConfigChange: patch => midiUi.setMidiOverrides(patch)
+    onConfigChange: patch => midiUi.applyRuntimePatch(patch)
   });
   midiUi.setMidiInputController(midiInputController);
   const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();

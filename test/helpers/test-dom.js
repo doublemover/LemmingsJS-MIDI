@@ -79,6 +79,31 @@ class TestElement {
     return child;
   }
 
+  append(...children) {
+    children.forEach(child => this.appendChild(child));
+  }
+
+  removeChild(child) {
+    const index = this.children.indexOf(child);
+    if (index >= 0) {
+      this.children.splice(index, 1);
+      child.parent = null;
+    }
+    return child;
+  }
+
+  get firstChild() {
+    return this.children[0] || null;
+  }
+
+  setAttribute(name, value) {
+    this.attributes.set(name, String(value));
+  }
+
+  getAttribute(name) {
+    return this.attributes.get(name) || null;
+  }
+
   addEventListener(type, handler) {
     if (!this.listeners.has(type)) this.listeners.set(type, []);
     this.listeners.get(type).push(handler);

@@ -2,9 +2,25 @@ import { clearLocalStorage, waitForHarnessReady } from './harness.js';
 
 const midiUiSelectors = Object.freeze({
   enabledToggle: '#midiEnabledToggle',
-  controlRight: '#controlRight',
-  eventDetails: '#midiEventList details',
-  triggerDetails: '#midiTriggerList details'
+  workspace: '#midiSequencerWorkspace',
+  sourceRows: '#midiSourceList .midi-source-row',
+  sourceAssignFilter: '#midiSourceAssignFilter',
+  conflictRows: '#midiSourceList .midi-source-row.has-conflict',
+  trackRows: '#midiTrackList .midi-track-row',
+  clipRows: '#midiClipList .midi-clip-row',
+  clipAddButton: '#midiClipAddButton',
+  clipInspector: '#midiClipInspector',
+  clipAuditionButton: '#midiClipAuditionButton',
+  sourceModeSelect: '#midiSourceModeSelect',
+  sourceClipSelect: '#midiSourceClipSelect',
+  conflictSummary: '#midiConflictSummary',
+  conflictBadges: '#midiSourceList .midi-conflict-badge',
+  modulationInspector: '#midiModulationInspector',
+  automationRows: '#midiAutomationList .midi-automation-row',
+  automationAddButton: '#midiAutomationAddButton',
+  stepCells: '#midiStepPatternGrid .midi-step-cell',
+  inspector: '#midiInspector',
+  outputLog: '#midiOutputLog'
 });
 
 class MidiUiPage {
@@ -25,20 +41,80 @@ class MidiUiPage {
     await this.enabledToggle().check();
   }
 
-  controlRight() {
-    return this.page.locator(midiUiSelectors.controlRight);
+  workspace() {
+    return this.page.locator(midiUiSelectors.workspace);
   }
 
-  eventDetails() {
-    return this.page.locator(midiUiSelectors.eventDetails);
+  sourceRows() {
+    return this.page.locator(midiUiSelectors.sourceRows);
   }
 
-  async openFirstEventDetails() {
-    await this.eventDetails().first().locator('summary').click();
+  sourceAssignFilter() {
+    return this.page.locator(midiUiSelectors.sourceAssignFilter);
   }
 
-  tabButton(targetId) {
-    return this.page.locator(`[data-tab-target="${targetId}"]`);
+  conflictRows() {
+    return this.page.locator(midiUiSelectors.conflictRows);
+  }
+
+  trackRows() {
+    return this.page.locator(midiUiSelectors.trackRows);
+  }
+
+  clipRows() {
+    return this.page.locator(midiUiSelectors.clipRows);
+  }
+
+  clipAddButton() {
+    return this.page.locator(midiUiSelectors.clipAddButton);
+  }
+
+  clipInspector() {
+    return this.page.locator(midiUiSelectors.clipInspector);
+  }
+
+  clipAuditionButton() {
+    return this.page.locator(midiUiSelectors.clipAuditionButton);
+  }
+
+  sourceModeSelect() {
+    return this.page.locator(midiUiSelectors.sourceModeSelect);
+  }
+
+  sourceClipSelect() {
+    return this.page.locator(midiUiSelectors.sourceClipSelect);
+  }
+
+  conflictSummary() {
+    return this.page.locator(midiUiSelectors.conflictSummary);
+  }
+
+  conflictBadges() {
+    return this.page.locator(midiUiSelectors.conflictBadges);
+  }
+
+  modulationInspector() {
+    return this.page.locator(midiUiSelectors.modulationInspector);
+  }
+
+  automationRows() {
+    return this.page.locator(midiUiSelectors.automationRows);
+  }
+
+  automationAddButton() {
+    return this.page.locator(midiUiSelectors.automationAddButton);
+  }
+
+  stepCells() {
+    return this.page.locator(midiUiSelectors.stepCells);
+  }
+
+  inspector() {
+    return this.page.locator(midiUiSelectors.inspector);
+  }
+
+  outputLog() {
+    return this.page.locator(midiUiSelectors.outputLog);
   }
 }
 

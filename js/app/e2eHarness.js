@@ -58,7 +58,6 @@ import {
   getCaptureRects
 } from './e2e/E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,
@@ -101,9 +100,9 @@ const createE2EApi = (context) => ({
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
         outputName: view?.midiOut?.name || null,
-        intentRevision: context.midiUi?.getMidiIntentState?.()?.revision ?? null,
-        learnTarget: context.midiUi?.getMidiIntentState?.()?.learn?.target ?? null,
-        featureFlags: context.midiUi?.getFeatureFlags?.() || null
+        projectId: context.midiUi?.getProject?.()?.id ?? null,
+        selectedTrackId: context.midiUi?.getProject?.()?.ui?.selectedTrackId ?? null,
+        selectedSourceId: context.midiUi?.getProject?.()?.ui?.selectedSourceId ?? null
       }
     };
   },
@@ -140,12 +139,9 @@ const createE2EApi = (context) => ({
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),
   stopBench: () => stopBench(context.view),
-  midiGetOverrides: () => getMidiOverrides(context.view, context.midiUi),
-  midiGetIntentState: () => context.midiUi?.getMidiIntentState?.() || null,
-  midiDispatchIntent: (intent) => context.midiUi?.dispatchMidiIntent?.(intent) || null,
-  midiSetOverrides: (patch) => context.midiUi?.setMidiOverrides?.(patch) || false,
-  midiCaptureLearnNote: (note) => context.midiUi?.captureLearnNote?.(note) || false,
-  midiAuditionMapping: (targetKey, id, entry) => context.midiUi?.auditionMapping?.(targetKey, id, entry) || false
+  midiGetProject: () => context.midiUi?.getProject?.() || null,
+  midiDispatchProjectIntent: (intent) => context.midiUi?.dispatchProjectIntent?.(intent) || null,
+  midiAudition: (request) => context.midiUi?.audition?.(request) || false
 });
 const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {
   if (!isE2EEnabled()) return null;
