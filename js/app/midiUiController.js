@@ -1602,10 +1602,14 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiClipType'), clip?.type);
     setInputValue(arpMode, clip?.arp?.mode || 'up');
     setInputValue(arpPattern, clip?.arp?.pattern?.preset || clip?.arp?.mode || 'up');
+    const active = document?.activeElement;
+    const activeInArpControls = !isArpClip && [arpModeField, arpPatternField]
+      .some(field => field && (field === active || field.contains?.(active)));
     if (arpMode) arpMode.disabled = !isArpClip;
     if (arpPattern) arpPattern.disabled = !isArpClip;
     if (arpModeField) arpModeField.style.display = isArpClip ? '' : 'none';
     if (arpPatternField) arpPatternField.style.display = isArpClip ? '' : 'none';
+    if (activeInArpControls) document?.getElementById('midiClipType')?.focus?.();
     setInputValue(document?.getElementById('midiClipLengthSteps'), clip?.lengthSteps);
     renderRecordPanel();
     renderStepPatternGrid(clip);

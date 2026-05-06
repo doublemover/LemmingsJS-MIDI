@@ -434,6 +434,26 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   expect(reloaded.sources.find(entry => entry.id === 'sfx-1').mode).toBe('clip');
 });
 
+test('MIDI clip inspector moves focus when arp controls hide', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await midi.clipAddButton().click();
+  await page.locator('#midiClipType').selectOption('arp');
+  await expect(page.locator('#midiClipArpPatternField')).toBeVisible();
+  await page.locator('#midiClipArpPattern').focus();
+
+  const clipId = await page.evaluate(() => window.__E2E__.midiGetProject().ui.selectedClipId);
+  await page.evaluate(selectedClipId => {
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'clip.update',
+      clipId: selectedClipId,
+      patch: { type: 'stepPattern' }
+    });
+  }, clipId);
+
+  await expect(page.locator('#midiClipArpPatternField')).toBeHidden();
+  await expect.poll(() => page.evaluate(() => document.activeElement?.id)).toBe('midiClipType');
+});
+
 test('MIDI source browser search and filters remain usable', async ({ page }) => {
   const midi = await openMidiUi(page);
   await expect(midi.sourceRows().first()).toBeVisible();
