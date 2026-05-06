@@ -1026,8 +1026,41 @@ describe('midiUiController sequencer', function() {
     expect(afterDurationEdit.clips[0].steps[0].durationTicks).to.equal(9);
     expect(view.projectConfigs.at(-1).sfx['1'].durationTicks).to.equal(9);
 
+    const stepControl = (stepIndex, childIndex) => stepGrid.children[stepIndex].children[childIndex].children[0];
+    const probability = stepControl(1, 4);
+    expect(probability.className).to.equal('midi-step-probability');
+    probability.value = '0.35';
+    probability.dispatchEvent({ type: 'change', target: probability });
+    const hold = stepControl(1, 5);
+    expect(hold.className).to.equal('midi-step-hold');
+    hold.checked = true;
+    hold.dispatchEvent({ type: 'change', target: hold });
+    const tie = stepControl(1, 6);
+    expect(tie.className).to.equal('midi-step-tie');
+    tie.checked = true;
+    tie.dispatchEvent({ type: 'change', target: tie });
+    const afterStepToggles = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterStepToggles.clips[0].steps[1]).to.include({ note: 69, probability: 0.35, hold: true, tie: true });
+    expect(view.projectConfigs.at(-1).sfx['1']).to.include({ note: 65 });
+    expect(view.projectConfigs.at(-1).sfx['1'].notes).to.equal(undefined);
+
+    const rest = stepGrid.children[1].children[7];
+    expect(rest.className).to.equal('midi-step-rest');
+    rest.dispatchEvent({ type: 'click', target: rest });
+    const afterRest = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterRest.clips[0].steps[1]).to.include({
+      note: null,
+      velocity: null,
+      durationTicks: null,
+      probability: 1,
+      hold: false,
+      tie: false
+    });
+    expect(view.projectConfigs.at(-1).sfx['1']).to.include({ note: 65 });
+    expect(view.projectConfigs.at(-1).sfx['1'].notes).to.equal(undefined);
+
     expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(true);
-    expect(sent.map(entry => entry.spec.note)).to.deep.equal([65, 69]);
+    expect(sent.map(entry => entry.spec.note)).to.deep.equal([65]);
     expect(sent[0].meta).to.include({ eventType: 'clip-audition', sourceId: 'sfx-1', trackId: 'track-1', clipId: 'riff' });
   });
 
