@@ -79,6 +79,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await setField('#midiMappingTimbre', '88');
   await setField('#midiMappingPitchBend', '0.5');
   const updatedProject = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const runtime = await page.evaluate(() => window.__E2E__.midiGetRuntimeConfig());
   const updatedMapping = updatedProject.sources.find(source => source.id === 'sfx-1').mapping;
   const updatedTrack = updatedProject.tracks.find(track => track.id === 'lead');
 
@@ -99,6 +100,19 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   expect(updatedProject.transport).toMatchObject({ quantize: '1/8', swing: 0.25 });
   expect(updatedMapping).toMatchObject({ note: 72, velocity: 96, durationTicks: 5, pan: -24, timbre: 88, pitchBend: 0.5 });
   expect(updatedMapping.arp).toMatchObject({ enabled: true, mode: 'down' });
+  expect(runtime.sfx['1']).toMatchObject({
+    note: 72,
+    velocity: 72,
+    durationTicks: 5,
+    channel: 3,
+    trackId: 'lead',
+    priority: 4,
+    voiceBudget: 6,
+    pan: -24,
+    timbre: 88,
+    pitchBend: 0.5
+  });
+  expect(runtime.sfx['1'].arp).toMatchObject({ enabled: true, mode: 'down' });
   await expect(midi.outputLog()).toContainText(/Audition|skipped/);
   await expect(page.locator('#midiTrackList')).toContainText('Lead');
   await expect(page.locator('#midiSelectedSourceSummary')).toContainText('Lead');
