@@ -126,7 +126,7 @@ describe('NodeFileProvider', function() {
     const nxpText = await provider.loadString('pack.nxp/docs/readme.txt');
     expect(nxpText).to.equal('nxp-text');
 
-    expect(() => provider._validateEntry('../evil.txt')).to.throw();        
+    expect(() => provider._validateEntry('../evil.txt')).to.throw();
   });
 
   it('throws when archive text entries are missing', async function() {

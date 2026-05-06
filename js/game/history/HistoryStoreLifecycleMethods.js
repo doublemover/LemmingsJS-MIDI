@@ -350,7 +350,7 @@ const historyStoreLifecycleMethods = {
     } else {
       this.minDeltaTick = nextMin;
     }
-  
+
     if (!this.keyframeTicks.length) return;
     const keyframeTicks = this.keyframeTicks;
     let removeCount = 0;

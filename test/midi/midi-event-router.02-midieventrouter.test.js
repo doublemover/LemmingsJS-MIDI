@@ -234,12 +234,12 @@ describe('MidiEventRouter 2', function() {
       { defaultMapEvent: true }
     );
     router._nowMs = () => 1000;
-  
+
     for (let i = 0; i < 700; i += 1) {
       router._onEvent({ sfxId: 1, tick: i + 1, tps: 60, triggerType: 5, timeMs: i * 10 + 1 + i });
       router._onEvent({ sfxId: 1, tick: i + 1, tps: 60, triggerType: 5 + i, timeMs: i * 10 + 2 + i });
     }
-  
+
     expect(router._repeatHistoryByKey.size).to.be.at.most(512);
   });
 
@@ -254,12 +254,12 @@ describe('MidiEventRouter 2', function() {
 
   it('reverses direction for updown arps at bounds', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'updown', length: 3 });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 3, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 4, tps: 50 });
-  
+
     expect(sent.map(entry => entry.note)).to.eql([60, 64, 67, 64]);
   });
 
@@ -270,13 +270,13 @@ describe('MidiEventRouter 2', function() {
       length: 3,
       pattern: { preset: 'custom', steps: ['up', 'hold', 'down'] }
     });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 3, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 4, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 5, tps: 50 });
-  
+
     expect(sent.map(entry => entry.note)).to.eql([60, 64, 64, 60, 64]);
   });
 
@@ -287,7 +287,7 @@ describe('MidiEventRouter 2', function() {
       length: 3,
       pattern: { preset: 'custom', steps: ['up'] }
     });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
     router.mapping.mapEvent = () => ({
@@ -303,13 +303,13 @@ describe('MidiEventRouter 2', function() {
       }
     });
     router._onEvent({ sfxId: 1, tick: 3, tps: 50 });
-  
+
     expect(sent.map(entry => entry.note)).to.eql([60, 64, 60]);
   });
 
   it('resets arpeggio state when the mode changes', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router.mapping.mapEvent = () => ({
       notes: [60, 64, 67],
@@ -319,7 +319,7 @@ describe('MidiEventRouter 2', function() {
       arp: { enabled: true, mode: 'down', length: 3 }
     });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
-  
+
     expect(sent.length).to.equal(2);
   });
 
@@ -333,10 +333,10 @@ describe('MidiEventRouter 2', function() {
       mapEvent: () => defaultSpec()
     });
     router._nowMs = () => 1000;
-  
+
     router._onEvent({ sfxId: 1, tick: 1, timeMs: 0, frameMs: 60, speedFactor: 1 });
     router._onEvent({ sfxId: 1, tick: 2, timeMs: 60, frameMs: 120, speedFactor: 0.5 });
-  
+
     expect(allOffCalls).to.equal(1);
   });
 
@@ -352,11 +352,11 @@ describe('MidiEventRouter 2', function() {
       timing: { bpmBase: 120 },
       limits: { maxEventsPerSecond: 1000 }
     }, { mapEvent: () => ({ note: 60, velocity: 40, durationTicks: 2 }) });
-  
+
     router._nowMs = () => 1000;
     router._onEvent({ sfxId: 1, tick: 1 });
     router._onEvent({ sfxId: 1, tick: 2 });
-  
+
     expect(sent.length).to.equal(2);
     expect(sent[1].velocity).to.be.greaterThan(sent[0].velocity);
     expect(sent[1].durationTicks).to.be.greaterThan(sent[0].durationTicks);
@@ -373,13 +373,13 @@ describe('MidiEventRouter 2', function() {
       timing: { bpmBase: 120 },
       limits: { maxEventsPerSecond: 1000 }
     }, { mapEvent: () => ({ note: 60, velocity: 40, durationTicks: 1 }) });
-  
+
     let now = 0;
     router._nowMs = () => now;
     router._onEvent({ sfxId: 1, tick: 1 });
     now = 100;
     router._onEvent({ sfxId: 1, tick: 2 });
-  
+
     expect(sent.length).to.equal(2);
     expect(sent[1].note).to.be.greaterThan(sent[0].note);
   });
@@ -403,9 +403,9 @@ describe('MidiEventRouter 2', function() {
         mapEvent: () => ({ note: 60, velocity: 64, durationTicks: 1 })
       }
     );
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
-  
+
     expect(sent.length).to.equal(0);
     expect(router.getRateReport().reason).to.equal('byte-limit');
   });
@@ -431,7 +431,7 @@ describe('MidiEventRouter 2', function() {
     router.setMapping({ timing: { bpmBase: 90 } });
     expect(router.mapping).to.be.instanceOf(MidiMapping);
     expect(configured).to.equal(router.mapping.config);
-  
+
     const bus = { onEvent: new EventHandler() };
     router.attach(bus, null);
     expect(router.context).to.eql({});

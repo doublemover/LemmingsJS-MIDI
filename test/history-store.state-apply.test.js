@@ -29,7 +29,7 @@ describe('HistoryStore state application', function() {
     const changes = { indices: [5], spans: null };
     history._compressGroundChanges(changes);
     expect(changes.spans).to.equal(null);
-  
+
     changes.indices = [1, 2, 4, 5];
     history._compressGroundChanges(changes);
     expect(changes.spans.starts).to.eql([1, 4]);
@@ -45,7 +45,7 @@ describe('HistoryStore state application', function() {
     seedHistory(history, { deltas: [0] });
     history._enforceHistoryCap();
     expect(history.getDelta(0)).to.be.ok;
-  
+
     const capped = new HistoryStore({
       enableHistoryCap: true,
       historyCapTicks: 3
@@ -62,9 +62,9 @@ describe('HistoryStore state application', function() {
       groundMask: new Uint8Array([9, 9]),
       groundImage: new Uint8ClampedArray([1, 2, 3, 4])
     };
-  
+
     const frame = history._captureKeyframe(game, 0);
-  
+
     expect(frame.groundMask).to.equal(history._lastKeyframe.groundMask);
     expect(frame.groundImage).to.equal(history._lastKeyframe.groundImage);
   });
@@ -87,9 +87,9 @@ describe('HistoryStore state application', function() {
       nextG: [30, 40],
       nextB: [50, 60]
     };
-  
+
     history._applyGroundChanges(level, changes, true);
-  
+
     expect(level.groundMask.mask[0]).to.equal(1);
     expect(level.groundMask.mask[1]).to.equal(1);
     expect(level.groundImage[0]).to.equal(10);
@@ -123,9 +123,9 @@ describe('HistoryStore state application', function() {
   it('truncates history before a cutoff', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
     seedHistory(history, { deltas: [0, 1, 2], keyframes: [0, 2] });
-  
+
     history._truncateBefore(2);
-  
+
     expect(history.getDelta(0)).to.equal(null);
     expect(history.getDelta(1)).to.equal(null);
     expect(history.getDelta(2)).to.be.ok;
@@ -146,16 +146,16 @@ describe('HistoryStore state application', function() {
     triggerManager._triggers.add(staticTrigger);
     triggerManager._triggers.add(dynamicTrigger);
     triggerManager._triggers.add(extraTrigger);
-  
+
     const state = history._readTriggerState(game);
     expect(state.staticTriggers).to.have.length(1);
     expect(state.dynamicTriggers).to.have.length(2);
     expect(state.staticTriggers[0].disabledUntilTick).to.equal(5);
-  
+
     staticTrigger.disabledUntilTick = 0;
     state.dynamicTriggers = state.dynamicTriggers.slice(0, 1);
     history._applyTriggerState(game, state);
-  
+
     expect(staticTrigger.disabledUntilTick).to.equal(5);
     const dynamic = Array.from(triggerManager._triggers)
       .filter(tr => tr.owner === owner);
@@ -168,15 +168,15 @@ describe('HistoryStore state application', function() {
     const objA = { animation: { firstFrameIndex: 1, isFinished: false } };
     const objB = { animation: { firstFrameIndex: 5, isFinished: true } };
     level.objects = [objA, objB];
-  
+
     const state = history._readObjectState(level);
     objA.animation.firstFrameIndex = 9;
     objA.animation.isFinished = true;
     objB.animation.firstFrameIndex = 11;
     objB.animation.isFinished = false;
-  
+
     history._applyObjectState(level, state);
-  
+
     expect(objA.animation.firstFrameIndex).to.equal(1);
     expect(objA.animation.isFinished).to.equal(false);
     expect(objB.animation.firstFrameIndex).to.equal(5);
@@ -210,7 +210,7 @@ describe('HistoryStore state application', function() {
       expect(warnings).to.have.length(1);
       history._maybeWarnHistory();
       expect(warnings).to.have.length(1);
-  
+
       seedHistory(history, { deltas: [2] });
       history._enforceHistoryCap();
       expect(history.getDelta(0)).to.equal(null);
@@ -229,7 +229,7 @@ describe('HistoryStore state application', function() {
       actions: [actionA, actionB],
       actionTypeByAction: new Map([[actionA, 7]])
     };
-  
+
     expect(history._getActionType(manager, actionA)).to.equal(7);
     expect(history._getActionType(manager, actionB)).to.equal(1);
     expect(history._getActionType(manager, null)).to.equal(-1);
@@ -287,21 +287,21 @@ describe('HistoryStore state application', function() {
     };
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
-  
+
     scenario(history, timer).tick(0, {
       mutate() {
         manager.lemmings[0] = null;
         manager.lemmings.length = 1;
       }
     });
-  
+
     const delta = history.getDelta(0);
     expect(delta.lemRemoved).to.have.length(2);
-  
+
     history.applyDeltaBackward(game, delta);
     expect(manager.lemmings[0]).to.be.ok;
     expect(manager.lemmings[1]).to.be.ok;
-  
+
     history.applyDeltaForward(game, delta);
     expect(manager.lemmings[0]).to.equal(null);
     expect(manager.lemmings[1]).to.equal(null);
@@ -354,7 +354,7 @@ describe('HistoryStore state application', function() {
     };
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
-  
+
     scenario(history, timer).tick(0, {
       mutate() {
         lemming.x = 11;
@@ -373,10 +373,10 @@ describe('HistoryStore state application', function() {
         lemming.countdownAction = bomberAction;
       }
     });
-  
+
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
-  
+
     expect(lemming.x).to.equal(11);
     expect(lemming.y).to.equal(22);
     expect(lemming.lookRight).to.equal(false);
@@ -391,7 +391,7 @@ describe('HistoryStore state application', function() {
     expect(lemming.lastTriggerType).to.equal(null);
     expect(lemming.action).to.equal(null);
     expect(lemming.countdownAction).to.equal(bomberAction);
-  
+
     history.applyDeltaBackward(game, delta);
     expect(lemming.x).to.equal(5);
     expect(lemming.y).to.equal(6);
@@ -455,7 +455,7 @@ describe('HistoryStore state application', function() {
     };
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
-  
+
     scenario(history, timer).tick(0, {
       mutate() {
         manager.selectedIndex = 1;
@@ -463,13 +463,13 @@ describe('HistoryStore state application', function() {
         manager._nukeTargets = [lemmingB, null];
       }
     });
-  
+
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
     expect(manager.selectedIndex).to.equal(1);
     expect(manager.nextNukingLemmingsIndex).to.equal(2);
     expect(manager._nukeTargets).to.eql([lemmingB]);
-  
+
     history.applyDeltaBackward(game, delta);
     expect(manager.selectedIndex).to.equal(-1);
     expect(manager.nextNukingLemmingsIndex).to.equal(-1);

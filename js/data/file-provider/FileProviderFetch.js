@@ -20,7 +20,7 @@ const fileProviderFetchMethods = {
     if (!opts.forceReload && this._cache.has(url)) {
       return this._cache.get(url);
     }
-  
+
     let promise;
     if (!opts.forceReload) {
       if (this._canUseIndexedDb()) {
@@ -45,17 +45,17 @@ const fileProviderFetchMethods = {
         }
       }
     }
-  
+
     if (!promise) {
       this.log.debug('loading: ' + url);
       promise = this._fetchBinary(url, path);
     }
-  
+
     const guarded = promise.catch((err) => {
       if (!opts.forceReload) this._cache.delete(url);
       throw err;
     });
-  
+
     if (!opts.forceReload) {
       this._cache.set(url, guarded);
     }
@@ -67,7 +67,7 @@ const fileProviderFetchMethods = {
     if (!opts.forceReload && this._cache.has(resolvedUrl)) {
       return this._cache.get(resolvedUrl);
     }
-  
+
     let promise;
     if (!opts.forceReload) {
       if (this._canUseIndexedDb()) {
@@ -90,17 +90,17 @@ const fileProviderFetchMethods = {
         }
       }
     }
-  
+
     if (!promise) {
       // this.log.debug('loading text: ' + url);
       promise = this._fetchText(resolvedUrl);
     }
-  
+
     const guarded = promise.catch((err) => {
       if (!opts.forceReload) this._cache.delete(resolvedUrl);
       throw err;
     });
-  
+
     if (!opts.forceReload) {
       this._cache.set(resolvedUrl, guarded);
     }
@@ -145,7 +145,7 @@ const fileProviderFetchMethods = {
       xhr.responseType = 'arraybuffer';
       xhr.send();
     });
-  
+
     const buf = response.buffer;
     const Reader = getDependency('BinaryReader', BinaryReader);
     const reader = new Reader(buf, 0, null, this._filenameFromUrl(url), path);
@@ -185,7 +185,7 @@ const fileProviderFetchMethods = {
       xhr.responseType = 'text';
       xhr.send();
     });
-  
+
     const text = response.text;
     let hash = null;
     try {

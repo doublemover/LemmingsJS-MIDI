@@ -59,7 +59,7 @@ const gameViewLevelSelectionMethods = {
       let levelGroupIndex = this.levelGroupIndex;
       let levelIndex = (this.levelIndex + moveInterval) | 0;
       let config = await this.gameFactory.getConfig(gameType);
-  
+
       const savedEntries = this._getSavedLevelEntries();
       const getBaseGroupCount = cfg => cfg?.level?.order?.length ?? 0;
       const getGroupLength = (cfg, groupIndex) => {
@@ -72,7 +72,7 @@ const gameViewLevelSelectionMethods = {
       };
       const isValidGameType = (type) =>
         type > 0 && type < gameTypes.length;
-  
+
       if (moveInterval < 0) {
         let rewindAttempts = 0;
         const rewindLimit = Math.max(1, gameTypes.length * 4);
@@ -135,17 +135,17 @@ const gameViewLevelSelectionMethods = {
           levelGroupIndex = 0;
         }
       }
-  
+
       if (!isValidGameType(gameType)) {
         gameType = 1;
         levelGroupIndex = 0;
         levelIndex = 0;
       }
-  
+
       this.gameType = gameType;
       this.levelGroupIndex = levelGroupIndex;
       this.levelIndex = levelIndex;
-  
+
       if (oldGameType !== this.gameType) {
         this.gameResources = await this.gameFactory.getGameResources(this.gameType);
       }

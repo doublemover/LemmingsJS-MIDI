@@ -37,20 +37,20 @@ const gameGuiRenderMethods = {
     const overlayDisplay = d.stage?.getGuiOverlayDisplay?.() || null;
     const bench = app?.bench === true || app?.bench2 === true || app?.benchReverse === true || app?.benchSequence === true;
     if (bench) this.gameTimeChanged = true;
-  
+
     if (this.backgroundChanged) {
       this.backgroundChanged = false;
       this._invalidateAntState();
       d.initSize(this._panelSprite.width, this._panelSprite.height);
       d.setBackground(this._panelSprite.getData());
       this.miniMap?.invalidateFrame?.();
-  
+
       this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.releaseRateChanged = this.gameSpeedChanged = true;
     }
-  
+
     if (this.gameTimeChanged) {
       this.gameTimeChanged = false;
-  
+
       if (!bench) {
         let text = '';
         if (this._hoverPanelIdx >= 0) {
@@ -102,23 +102,23 @@ const gameGuiRenderMethods = {
         }
       }
     }
-  
+
     if (this.gameSpeedChanged) {
       this.gameSpeedChanged = false;
       const speedFac = this.gameTimer.speedFactor;
-  
+
       d.drawRect(160, 32, 16, 10, 0, 0, 0, true); // draw bottom black rect on pause button
-  
+
       if (speedFac !== 120) {
         const greenS  = this._getGreenLetter('f');
         d.drawFrameResized(greenS, 173, 34, 3, 4);
       }
-  
+
       if (speedFac !== 0.1) {
         const greenP  = this._getGreenLetter('-');
         d.drawFrameResized(greenP, 161, 33, 3, 6);
       }
-  
+
       const tens  = Math.floor(speedFac / 10);
       const ones  = speedFac % 10;
       const left  = this._getLeftDigit(tens);
@@ -138,7 +138,7 @@ const gameGuiRenderMethods = {
         d.drawFrameResized(small, 164, 33, 8, 6);
         d.drawHorizontalLine(169, 33, 175, 0, 0, 0);
       }
-  
+
       if (this._hoverSpeedUp) {
         d.drawHorizontalLine(172, 32, 175, 0, 166, 0);
         d.drawHorizontalLine(172, 38, 175, 0, 166, 0);
@@ -147,8 +147,8 @@ const gameGuiRenderMethods = {
         d.drawHorizontalLine(161, 38, 164, 0, 166, 0);
       }
     }
-  
-  
+
+
     if (this.skillsCountChanged) {
       this.skillsCountChanged = false;
       for (let s = 1; s < SKILL_COUNT; ++s) {
@@ -166,7 +166,7 @@ const gameGuiRenderMethods = {
     if (this.skillSelectionChanged) {
       this.skillSelectionChanged = false;
     }
-  
+
     const paused = !this.gameTimer.isRunning();
     const selectedPanel = this.getPanelIndexBySkill(this.skills.getSelectedSkill());
     const antDelay = this._getSelectionAnimDelay(paused);
@@ -208,7 +208,7 @@ const gameGuiRenderMethods = {
       }
       return drawn;
     };
-  
+
     if (overlayDisplay) {
       if (antStateChanged) {
         overlayDisplay.clear(0x00000000);
@@ -237,7 +237,7 @@ const gameGuiRenderMethods = {
       }
       this._overlayHadContent = false;
     }
-  
+
     if (antStateChanged) {
       this._lastAntPanel = selectedPanel;
       this._lastAntPaused = paused;
@@ -250,27 +250,27 @@ const gameGuiRenderMethods = {
       this.drawPanelNumber(d, this.gameVictoryCondition.getMinReleaseRate(),     0);
       this.drawPanelNumber(d, this.gameVictoryCondition.getCurrentReleaseRate(), 1);
     }
-  
+
     const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
     const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
     const rrCur = this.gameVictoryCondition.getCurrentReleaseRate?.() ?? 0;
-  
+
     const lockMin = rrCur <= rrMin;
     const lockMax = rrCur >= rrMax;
-  
+
     if (lockMin) this._drawLockEdge(d, 0);
     if (lockMax) this._drawLockEdge(d, 1);
-  
+
     if (this._rrLockMin && !lockMin) this.backgroundChanged = true;
     if (this._rrLockMax && !lockMax) this.backgroundChanged = true;
-  
+
     this._rrLockMin = lockMin;
     this._rrLockMax = lockMax;
-  
+
     if (this.miniMap) {
       const viewX = this.game.level.screenPositionX;
       const viewW = d.worldDataSize.width;
-  
+
       this.miniMap.render(viewX, viewW);
     }
     if (perfEnabled) {
@@ -393,7 +393,7 @@ const gameGuiRenderMethods = {
       this.display.drawHorizontalLine(161, 32, 175, 111, 0, 0);
       this.display.drawHorizontalLine(161, 38, 175, 111, 0, 0);
     }
-  
+
     if (this._hoverSpeedUp) {
       this.display.drawHorizontalLine(172, 32, 175, 0, 166, 0);
       this.display.drawHorizontalLine(172, 38, 175, 0, 166, 0);
@@ -401,7 +401,7 @@ const gameGuiRenderMethods = {
       this.display.drawHorizontalLine(161, 32, 164, 0, 166, 0);
       this.display.drawHorizontalLine(161, 38, 164, 0, 166, 0);
     }
-  
+
     this.gameSpeedChanged = true;
     this._requestGuiRender();
   },

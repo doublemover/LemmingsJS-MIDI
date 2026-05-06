@@ -37,7 +37,7 @@ describe('Level ground operations', function() {
     expect(Array.from(level.groundImage.slice(idx, idx + 3))).to.eql([0, 0, 0]);
   });
 
-  it('clears ground with masks while skipping steel and bounds', function() {   
+  it('clears ground with masks while skipping steel and bounds', function() {
     const level = new Level(3, 3);
     const palette = new Lemmings.ColorPalette();
     palette.setColorRGB(1, 10, 20, 30);

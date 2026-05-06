@@ -52,25 +52,25 @@ describe('HistoryStore replay application', function() {
       getVictoryCondition: () => victory,
       getGameTimer: () => timer
     };
-  
+
     history._captureScalarState(game);
     history._captureEntrances(level);
-  
+
     const noChange = history._allocDelta(0);
     history._diffScalarState(game, noChange);
     expect(noChange.skillsChanges).to.equal(null);
-  
+
     skills.selectedSkill = 1;
     victory.leftCount = 0;
     timer.tickIndex = 5;
     timer.speedFactor = 2;
     game.finalGameState = 2;
     level.entrances[0]._opened = true;
-  
+
     const delta = history._allocDelta(0);
     history._diffScalarState(game, delta);
     history._diffEntrances(level, delta);
-  
+
     expect(delta.skillsChanges).to.be.ok;
     expect(delta.victoryChanges).to.be.ok;
     expect(delta.timerChanges).to.be.ok;
@@ -78,7 +78,7 @@ describe('HistoryStore replay application', function() {
     expect(delta.entranceChanges.indices).to.have.length(1);
   });
 
-  it('applies lemming removals, changes, and manager targets', function() {     
+  it('applies lemming removals, changes, and manager targets', function() {
     const history = new HistoryStore();
     const bombAction = { name: 'bomber' };
     const walkAction = { name: 'walk' };
@@ -90,10 +90,10 @@ describe('HistoryStore replay application', function() {
       actions: [walkAction],
       skillActions
     };
-  
+
     history._applyLemmingRemovals(manager, [null, { id: NaN }, { id: 0 }]);
     expect(manager.lemmings[0]).to.equal(null);
-  
+
     manager.lemmings[0] = lem;
     history._applyLemmingChanges(manager, {
       ids: [0, 0, 0],
@@ -104,7 +104,7 @@ describe('HistoryStore replay application', function() {
     expect(lem.lastTriggerType).to.equal(2);
     expect(lem.action).to.equal(walkAction);
     expect(lem.countdownAction).to.equal(bombAction);
-  
+
     const changes = {
       prev: {
         selectedIndex: 0,
@@ -165,7 +165,7 @@ describe('HistoryStore replay application', function() {
       skillActions: [],
       actionTypeByAction: new Map([[walkAction, 0]])
     };
-  
+
     history._captureLemmingState(manager);
     expect(history._lemmingState.present[0]).to.equal(0);
     expect(history._lemmingState.present[1]).to.equal(1);
@@ -174,26 +174,26 @@ describe('HistoryStore replay application', function() {
   it('handles helper defaults and early exits', function() {
     const history = new HistoryStore();
     const state = __test__.createLemmingState(1);
-  
+
     __test__.cloneLemmingState(state, null);
     __test__.cloneLemmingState(state, 1);
-  
+
     const delta = history._allocDelta(0);
     history.options.deltaPoolLimit = null;
     history._releaseDelta(delta);
     expect(history._deltaPool).to.have.length(1);
-  
+
     history.options.deltaPoolLimit = 0;
     history._releaseDelta(history._allocDelta(1));
     expect(history._deltaPool).to.have.length(0);
-  
+
     history._bindTimer();
     history.attach(null);
     history.start();
     history.truncateAfter(NaN);
     history.beginTick(0);
     history.captureBaseline(null);
-  
+
     runHistoryOps(history, [
       ['recordSoundEvent', {}],
       ['recordGroundChange', 0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -204,7 +204,7 @@ describe('HistoryStore replay application', function() {
       ['recordObjectAnimation', {}, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 0, isFinished: false }],
       ['recordMinimapDeath', {}]
     ]);
-  
+
     const historyWithTimer = new HistoryStore();
     const timer = createStubTimer();
     const game = {
@@ -217,7 +217,7 @@ describe('HistoryStore replay application', function() {
     };
     historyWithTimer.attach(game, { captureBaseline: false });
     expect(historyWithTimer.timer).to.equal(timer);
-  
+
     const historyNoTimer = new HistoryStore();
     const gameNoTimer = {
       level: { entrances: [] },
@@ -264,13 +264,13 @@ describe('HistoryStore replay application', function() {
       }],
       ['recordMinimapDeath', { x: 1, y: 2, ttl: 3, prevCount: 0 }]
     ]);
-  
+
     const existingTrigger = { __historyId: 9 };
     expect(history._ensureTriggerId(existingTrigger)).to.equal(9);
     expect(history._ensureTriggerId(null)).to.equal(0);
     const newTrigger = {};
     expect(history._ensureTriggerId(newTrigger)).to.be.greaterThan(0);
-  
+
     const existingObj = { __historyId: 11 };
     expect(history._ensureObjectId(existingObj)).to.equal(11);
     expect(history._ensureObjectId(null)).to.equal(0);
@@ -284,17 +284,17 @@ describe('HistoryStore replay application', function() {
     history._insertKeyframeTick(1);
     history._insertKeyframeTick(3);
     expect(history.keyframeTicks).to.eql([1, 2, 3, 4]);
-  
+
     history.keyframes[2] = { tickIndex: 2 };
     history.keyframes[3] = { tickIndex: 3 };
     history.keyframes[4] = { tickIndex: 4 };
     expect(history.getKeyframeAtOrBefore(3).tickIndex).to.equal(3);
-  
+
     history.keyframeTicks = [5, 10];
     history.keyframes[5] = { tickIndex: 5 };
     history.keyframes[10] = { tickIndex: 10 };
     expect(history.getKeyframeAtOrBefore(6).tickIndex).to.equal(5);
-  
+
     history.keyframeTicks = [7];
     history.keyframes[7] = undefined;
     expect(history.getKeyframeAtOrBefore(7)).to.equal(null);

@@ -20,7 +20,7 @@ describe('MidiScheduler 2', function() {
     scheduler._ratePlanned = [
       { timeMs: 1200, count: 1, bytes: 3, sfxId: 2, priority: 1 }
     ];
-  
+
     const rejected = scheduler.canSchedule(
       { on: { timeMs: 1000, count: 2, bytes: 6 } },
       1000,
@@ -28,7 +28,7 @@ describe('MidiScheduler 2', function() {
     );
     expect(rejected.ok).to.equal(false);
     expect(rejected.reason).to.equal('count-limit');
-  
+
     const reserved = scheduler.reserve(
       { on: { timeMs: 1000, count: 1, bytes: 3 } },
       { sfxId: 3, priority: 1 },

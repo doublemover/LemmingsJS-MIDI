@@ -112,7 +112,7 @@ class StubLevel {
       }
     };
   }
-  clearGroundWithMask(mask, x, y) { this.clearedMasks.push({ mask, x, y }); }   
+  clearGroundWithMask(mask, x, y) { this.clearedMasks.push({ mask, x, y }); }
   clearGroundWithMaskCount(mask, x, y) {
     this.clearGroundWithMask(mask, x, y);
     return this.clearCount ?? 1;

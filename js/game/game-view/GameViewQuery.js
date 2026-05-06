@@ -133,7 +133,7 @@ const gameViewQueryMethods = {
     this.extraLemmings = this.parseNumber(query, ['extra', 'ex'], 0, 1, 1000);
     this.scale = this.parseNumber(query, ['scale', 'sc'], 0, 0.0125, 8);
     this.laggedOut = 0;
-  
+
     this.shortcut = false;
     if (query.get('shortcut') || query.get('_')) {
       this.shortcut = (query.get('shortcut') || query.get('_')) === 'true';
@@ -190,14 +190,14 @@ const gameViewQueryMethods = {
         params.set(this.shortcut && shortName ? shortName : longName, value);
       }
     };
-  
+
     // main game state should always remain visible
     setParam('version', 'v', this.gameType, undefined, true);
     setParam('difficulty', 'd', this.levelGroupIndex + 1, undefined, true);
     setParam('level', 'l', this.levelIndex + 1, undefined, true);
     setParam('speed', 's', this.gameSpeedFactor, undefined, true);
     setParam('cheat', 'c', this.cheatEnabled, undefined, true);
-  
+
     // optional flags only appear when non-default
     setParam('debug', 'dbg', this.debug, false);
     setParam('bench', 'b', this.bench, false);
@@ -215,13 +215,13 @@ const gameViewQueryMethods = {
     setParam('offscreenPresent', null, this.offscreenPresentExperiment, false);
     setParam('workerOffscreen', null, this.workerOffscreenExperiment, false);
     setParam('profile', 'pr', this.startupProfile, DEFAULT_RUNTIME_PROFILE);
-  
+
     if (this.shortcut) {
       params.set('_', true);
     } else {
       params.delete('_');
     }
-  
+
     this.setHistoryState(params);
   },
 

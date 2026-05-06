@@ -229,7 +229,7 @@ const lemmingManagerSpawningMethods = {
     this.lemmings.push(lem);
     this._addActiveLemming(lem);
     this.spawnTotal += 1;
-  
+
     const extraCount = app?.extraLemmings | 0;
     if (extraCount > 0) {
       const action = this.actions[LemmingStateType.FALLING];
@@ -257,7 +257,7 @@ const lemmingManagerSpawningMethods = {
     const app = getApp();
     const endless = app?.endless === true;
     if (app?.bench === true || app?.bench2 === true || app?.benchReverse === true) { // if bench is enabled just keep spawning lems by skipping gameVictoryCondition check
-  
+
     } else {
       if (!endless && this.gameVictoryCondition.getLeftCount() <= 0) return;
     }

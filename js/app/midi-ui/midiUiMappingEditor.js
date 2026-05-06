@@ -25,7 +25,7 @@ const createBuildMappingEditor = ({
 }) => {
   const buildMappingEditor = ({ id, name, entry, targetKey, allowIndependentArp = false }) => {
     const midiUiFeatureFlags = getMidiUiFeatureFlags();
-  
+
     const details = document.createElement('details');
     details.className = 'panel-section';
     const summary = document.createElement('summary');
@@ -44,14 +44,14 @@ const createBuildMappingEditor = ({
     summary.appendChild(summaryTitle);
     summary.appendChild(enabledLabel);
     details.appendChild(summary);
-  
+
     summary.addEventListener('click', (event) => {
       if (enabledLabel.contains(event.target)) return;
       event.preventDefault();
       details.open = !details.open;
     });
     const useExpressiveControls = midiUiFeatureFlags.expressiveControls !== false;
-  
+
     const modeSelect = document.createElement('select');
     ['note', 'degree', 'chord'].forEach(mode => {
       const opt = document.createElement('option');
@@ -74,7 +74,7 @@ const createBuildMappingEditor = ({
     noteInput.type = 'number';
     noteInput.min = '0';
     noteInput.max = '127';
-  
+
     const noteOctaveInput = document.createElement('input');
     noteOctaveInput.type = 'number';
     noteOctaveInput.min = '0';
@@ -121,17 +121,17 @@ const createBuildMappingEditor = ({
     octaveShift.appendChild(octaveLabel);
     octaveShift.appendChild(octaveUpButton);
     notePicker.appendChild(octaveShift);
-  
+
     const degreeInput = document.createElement('input');
     degreeInput.type = 'number';
     degreeInput.min = '0';
     degreeInput.max = '12';
-  
+
     const octaveInput = document.createElement('input');
     octaveInput.type = 'number';
     octaveInput.min = '0';
     octaveInput.max = '9';
-  
+
     const chordSelect = document.createElement('select');
     CHORD_OPTIONS.forEach(chord => {
       const opt = document.createElement('option');
@@ -147,7 +147,7 @@ const createBuildMappingEditor = ({
         updateEntry();
       }
     );
-  
+
     const arpToggle = document.createElement('input');
     arpToggle.type = 'checkbox';
     const arpMode = document.createElement('select');
@@ -229,15 +229,15 @@ const createBuildMappingEditor = ({
     arpLength.type = 'number';
     arpLength.min = '1';
     arpLength.max = '8';
-  
+
     const arpIndependentToggle = document.createElement('input');
     arpIndependentToggle.type = 'checkbox';
-  
+
     const priorityInput = document.createElement('input');
     priorityInput.type = 'number';
     priorityInput.min = '1';
     priorityInput.max = '4';
-  
+
     const initialMode = entry?.chord
       ? 'chord'
       : (entry?.degree != null ? 'degree' : 'note');
@@ -277,7 +277,7 @@ const createBuildMappingEditor = ({
       }
       arpPresetButtons.setValue(arpPattern.preset || 'up');
     };
-  
+
     const syncDirectNoteFromKeyOctave = () => {
       const key = Number(noteKeySelect.value);
       const octave = Number(noteOctaveInput.value);
@@ -287,7 +287,7 @@ const createBuildMappingEditor = ({
       }
       noteInput.value = String(Math.max(0, Math.min(127, key + octave * 12)));
     };
-  
+
     const syncKeyOctaveFromDirectNote = () => {
       const note = Number(noteInput.value);
       if (noteInput.value === '' || !Number.isFinite(note)) {
@@ -300,7 +300,7 @@ const createBuildMappingEditor = ({
       noteKeySelect.value = String(clamped % 12);
       noteOctaveInput.value = String(Math.floor(clamped / 12));
     };
-  
+
     const syncNotePickerUi = () => {
       const selectedKey = Number(noteKeySelect.value);
       const selectedOctave = Number(noteOctaveInput.value);
@@ -319,7 +319,7 @@ const createBuildMappingEditor = ({
         ? `Oct ${selectedOctave}`
         : 'Oct --';
     };
-  
+
     const buildEntryFromControls = () => {
       const next = { ...(entry || {}) };
       if (name) next.name = name;
@@ -370,7 +370,7 @@ const createBuildMappingEditor = ({
       if (!enabledToggle.checked) next.disabled = true;
       return next;
     };
-  
+
     const updateModeAvailability = () => {
       const mode = modeSelect.value;
       const noteEnabled = mode === 'note';
@@ -389,7 +389,7 @@ const createBuildMappingEditor = ({
       syncArpPatternUi();
     };
     updateModeAvailability();
-  
+
     const updateEntry = () => {
       const next = buildEntryFromControls();
       chordQuick.setValue(chordSelect.value || 'triad');
@@ -397,7 +397,7 @@ const createBuildMappingEditor = ({
       const patch = { [targetKey]: { [String(id)]: next } };
       setMidiOverrides(patch);
     };
-  
+
     const resolveScaleForNote = () => {
       const config = getConfig();
       const scale = config?.scale || {};
@@ -407,7 +407,7 @@ const createBuildMappingEditor = ({
         : (ScaleLibrary[scale.name] || ScaleLibrary['chromatic-minor'] || NOTE_NAMES.map((_, idx) => idx));
       return { root, degrees };
     };
-  
+
     const noteToScaleDegree = (note) => {
       const { root, degrees } = resolveScaleForNote();
       const relative = ((note - root) % 12 + 12) % 12;
@@ -428,7 +428,7 @@ const createBuildMappingEditor = ({
       const octave = Math.max(0, Math.floor((note - root - degreeOffset) / 12));
       return { degree: degreeIndex, octave };
     };
-  
+
     const applyLearnedNote = (note) => {
       if (!Number.isFinite(note)) return;
       if (modeSelect.value === 'note') {
@@ -443,7 +443,7 @@ const createBuildMappingEditor = ({
       }
       updateEntry();
     };
-  
+
     const bindNoteCapture = (row, input, options = {}) => {
       if (!row || !input) return;
       const learnTarget = `${targetKey}:${id}:${row.children?.[0]?.textContent || 'field'}`;
@@ -477,7 +477,7 @@ const createBuildMappingEditor = ({
         source?.addEventListener?.('blur', () => disarmMidiLearn(learnTarget));
       }
     };
-  
+
     modeSelect.addEventListener('change', () => {
       updateModeAvailability();
       updateEntry();
@@ -594,7 +594,7 @@ const createBuildMappingEditor = ({
       chordQuick.setValue(chordSelect.value || 'triad');
       updateEntry();
     });
-  
+
     const modeRow = createRow('Mode', modeSelect);
     const noteRow = createRow('Note', noteInput);
     const keyRow = createRow('Key', noteKeySelect);

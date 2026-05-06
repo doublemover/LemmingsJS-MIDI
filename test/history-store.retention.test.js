@@ -135,9 +135,9 @@ describe('HistoryStore retention', function() {
       timer: { speedFactor: 2, tickIndex: 5 },
       gameState: { finalGameState: 9 }
     };
-  
+
     history.applyKeyframe(game, keyframe);
-  
+
     expect(created).to.have.length(1);
     expect(manager.lemmings[0]).to.be.ok;
     expect(manager.lemmings[1]).to.equal(null);
@@ -174,11 +174,11 @@ describe('HistoryStore retention', function() {
       nextG: [20],
       nextB: [30]
     };
-  
+
     history._applyGroundChanges(level, changes, true);
     expect(level.groundMask.mask[2]).to.equal(1);
     expect(level.groundImage[8]).to.equal(10);
-  
+
     const trigger = new Trigger(TriggerTypes.TRAP, 1, 1, 2, 2);
     trigger.__historyId = 9;
     const triggerManager = { _triggers: new Set([trigger]) };
@@ -215,17 +215,17 @@ describe('HistoryStore retention', function() {
     state.y[0] = 8;
     state.lookRight[0] = 1;
     state.countdownActive[0] = 1;
-  
+
     const cloneDefault = __test__.cloneLemmingState(state);
     const cloneShort = __test__.cloneLemmingState(state, 0);
     expect(cloneDefault.present.length).to.equal(1);
     expect(cloneShort.present.length).to.equal(0);
-  
+
     const grown = __test__.ensureLemmingCapacity(state, 2);
     const same = __test__.ensureLemmingCapacity(grown, 1);
     expect(grown.present.length).to.be.at.least(2);
     expect(same).to.equal(grown);
-  
+
     const lem = {
       id: 1,
       x: 2,
@@ -245,7 +245,7 @@ describe('HistoryStore retention', function() {
     expect(snap.lastTriggerType).to.equal(-1);
     expect(snap.actionType).to.equal(-1);
     expect(snap.countdownActive).to.equal(0);
-  
+
     const walk = { name: 'walk' };
     const bomb = { name: 'bomber' };
     const target = {};
@@ -258,7 +258,7 @@ describe('HistoryStore retention', function() {
     expect(target.lastTriggerType).to.equal(3);
     expect(target.action).to.equal(walk);
     expect(target.countdownAction).to.equal(bomb);
-  
+
     __test__.applyLemmingSnapshot(
       target,
       { ...snap, lastTriggerType: -1, countdownActive: 0 },
@@ -273,15 +273,15 @@ describe('HistoryStore retention', function() {
     const history = new HistoryStore();
     expect(history.getKeyframe(NaN)).to.equal(null);
     expect(history.getHistoryStats().spanTicks).to.equal(0);
-  
+
     seedHistory(history, { deltas: [0, 2], keyframes: [2] });
     expect(history.getKeyframe(2)).to.be.ok;
     expect(history.getKeyframe(4)).to.equal(null);
-  
+
     const stats = history.getHistoryStats();
     expect(stats.spanTicks).to.equal(3);
     expect(stats.deltaCount).to.equal(2);
-  
+
     seedHistory(history, { keyframes: [5] });
     const found = history.getKeyframeAtOrBefore(4);
     expect(found.tickIndex).to.equal(2);
@@ -295,14 +295,14 @@ describe('HistoryStore retention', function() {
       historyCapTicks: 20000,
       historyWarnTicks: 15000
     });
-  
+
     const normalized = new HistoryStore({
       enableHistoryCap: true,
       historyCapTicks: 10,
       historyWarnTicks: 50
     });
     expect(normalized.getRetentionPolicy().historyWarnTicks).to.equal(10);
-  
+
     const configured = normalized.configureRetention({
       enableHistoryCap: false,
       historyCapTicks: 5,
@@ -323,7 +323,7 @@ describe('HistoryStore retention', function() {
     history.pause();
     expect(history._recording).to.equal(false);
     expect(history._currentDelta).to.equal(null);
-  
+
     history.resume();
     expect(history._recording).to.equal(true);
     expect(history._groundDirty).to.equal(true);
@@ -332,12 +332,12 @@ describe('HistoryStore retention', function() {
   it('truncates deltas and keyframes across gaps', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
     seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
-  
+
     history._truncateDeltasAfter(1);
     expect(history.maxDeltaTick).to.equal(0);
     history._truncateDeltasAfter(-1);
     expect(history.minDeltaTick).to.equal(null);
-  
+
     history._truncateKeyframesAfter(-1);
     expect(history.keyframeTicks).to.have.length(0);
     expect(history.minKeyframeTick).to.equal(null);

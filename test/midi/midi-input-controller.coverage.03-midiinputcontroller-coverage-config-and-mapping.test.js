@@ -41,7 +41,7 @@ describe('MidiInputController coverage: config and mapping', function() {
     const controller = new MidiInputController(view);
     controller._setSpeedFactor(2);
     expect(speeds[0]).to.equal(2);
-  
+
     const viewFallback = { gameSpeedFactor: 1 };
     const controllerFallback = new MidiInputController(viewFallback);
     controllerFallback._setSpeedFactor(3);
@@ -95,11 +95,11 @@ describe('MidiInputController coverage: config and mapping', function() {
       getConfig: () => config,
       onConfigChange: patch => patches.push(patch)
     });
-  
+
     controller._handleControlChange(10, 127, config);
     controller._handleControlChange(11, 127, config);
     controller._handleControlChange(12, 64, config);
-  
+
     expect(patches.some(patch => patch.scale?.name === 'minor')).to.equal(true);
     expect(patches.some(patch => patch.position?.viewPan === true)).to.equal(true);
     expect(patches.some(patch => typeof patch.timing?.bpmBase === 'number')).to.equal(true);
@@ -130,7 +130,7 @@ describe('MidiInputController coverage: config and mapping', function() {
     const controller = new MidiInputController(view, { getConfig: () => config });
     controller._applyConfigPatch({ timing: { bpmBase: 111 } });
     expect(patches[0].timing.bpmBase).to.equal(111);
-  
+
     controller._onMessage({ data: [0xFA] });
     controller._onMessage({ data: [0xFC] });
     controller._onMessage({ data: [0xFB] });
@@ -179,7 +179,7 @@ describe('MidiInputController coverage: config and mapping', function() {
     });
     controller._handleNoteOn(60, 100, config, 1);
     expect(captured).to.eql([60]);
-  
+
     controller.setNoteCapture(null);
     controller._handleNoteOn(60, 100, config, 1);
     controller._handleNoteOn(36, 100, config, 1);
@@ -192,7 +192,7 @@ describe('MidiInputController coverage: config and mapping', function() {
     controller._handleNoteOn(43, 100, config, 1);
     expect(view.midiEnabled).to.equal(false);
     expect(patches.some(patch => patch.position?.viewPan === true)).to.equal(true);
-  
+
     const before = view.lastSpeed;
     controller._handleNoteOn(60, 0, config, 1);
     expect(view.lastSpeed).to.equal(before);
@@ -222,12 +222,12 @@ describe('MidiInputController coverage: config and mapping', function() {
     controller._handleControlChange(3, 100, config);
     controller._handleControlChange(4, 127, config);
     controller._handleControlChange(5, 127, config);
-  
+
     expect(view.speed).to.be.greaterThan(0);
     expect(patches.some(patch => patch.timing?.bpmBase)).to.equal(true);
     expect(patches.some(patch => patch.velocityRange?.default)).to.equal(true);
     expect(patches.some(patch => patch.density?.velocityBoost != null)).to.equal(true);
-  
+
     controller._onMessage({ data: [0x80, 60, 100] });
   });
 

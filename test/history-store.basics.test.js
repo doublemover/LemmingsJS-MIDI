@@ -23,15 +23,15 @@ describe('HistoryStore basics and scalar replay', function() {
       manager.lemmings[0].y = 12;
       manager.selectedIndex = 0;
     });
-  
+
     const delta = history.getDelta(0);
     expect(delta).to.be.ok;
-  
+
     history.applyDeltaBackward(game, delta);
     expect(manager.lemmings[0].x).to.equal(5);
     expect(manager.lemmings[0].y).to.equal(6);
     expect(manager.selectedIndex).to.equal(-1);
-  
+
     history.applyDeltaForward(game, delta);
     expect(manager.lemmings[0].x).to.equal(10);
     expect(manager.lemmings[0].y).to.equal(12);
@@ -43,7 +43,7 @@ describe('HistoryStore basics and scalar replay', function() {
     const owner = manager.lemmings[0];
     const trigger = new Trigger(TriggerTypes.TRAP, 1, 1, 2, 2, 0, 0, owner);
     triggerManager.add(trigger);
-  
+
     scenario(history, timer)
       .tick(0, {
         ops: [['recordTriggerCooldown', trigger, 0, 5]],
@@ -61,13 +61,13 @@ describe('HistoryStore basics and scalar replay', function() {
           manager.mmTickCounter = 7;
         }
       });
-  
+
     const delta = history.getDelta(1);
     const baseline = history._captureKeyframe(game);
-  
+
     history.applyDeltaBackward(game, delta);
     history.applyDeltaForward(game, delta);
-  
+
     const replayed = history._captureKeyframe(game);
     expect(replayed).to.deep.equal(baseline);
   });
@@ -75,11 +75,11 @@ describe('HistoryStore basics and scalar replay', function() {
   it('truncates future history unless preservation is enabled', function() {
     const history = new HistoryStore({ keyframeInterval: 5 });
     seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
-  
+
     history.truncateAfter(0);
     expect(!!history.deltas[2]).to.equal(false);
     expect(!!history.keyframes[2]).to.equal(false);
-  
+
     seedHistory(history, { deltas: [2], keyframes: [2] });
     history.setPreserveFutureHistory(true);
     history.truncateAfter(0);
@@ -215,13 +215,13 @@ describe('HistoryStore basics and scalar replay', function() {
       victory,
       level
     } = createHistoryFixture();
-  
+
     manager.miniMap = {
       deadDots: new Uint8Array(0),
       deadTTLs: new Uint8Array(0),
       deadCount: 0
     };
-  
+
     const obj = { animation: { firstFrameIndex: 0, isFinished: false } };
     level.objects = [obj];
     level.groundMask.mask[1] = 1;
@@ -232,7 +232,7 @@ describe('HistoryStore basics and scalar replay', function() {
     level.groundImage[8] = 11;
     level.groundImage[9] = 21;
     level.groundImage[10] = 31;
-  
+
     scenario(history, timer).tick(0, {
       ops: [
         ['recordGroundChange', 1, 1, 10, 20, 30, 0, 0, 0, 0],
@@ -254,10 +254,10 @@ describe('HistoryStore basics and scalar replay', function() {
         game.finalGameState = 3;
       }
     });
-  
+
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
-  
+
     expect(level.groundMask.mask[1]).to.equal(0);
     expect(level.groundMask.mask[2]).to.equal(0);
     expect(level.groundImage[4]).to.equal(0);
@@ -280,7 +280,7 @@ describe('HistoryStore basics and scalar replay', function() {
     expect(timer.speedFactor).to.equal(2);
     expect(timer.tickIndex).to.equal(1);
     expect(game.finalGameState).to.equal(3);
-  
+
     history.applyDeltaBackward(game, delta);
     expect(level.groundMask.mask[1]).to.equal(1);
     expect(level.groundMask.mask[2]).to.equal(1);
@@ -321,11 +321,11 @@ describe('HistoryStore basics and scalar replay', function() {
       owner
     );
     triggerManager.add(trigger);
-  
+
     scenario(history, timer).tick(0, {
       ops: [['recordTriggerCooldown', trigger, 0, 5]]
     });
-  
+
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
     expect(trigger.disabledUntilTick).to.equal(5);
@@ -346,7 +346,7 @@ describe('HistoryStore basics and scalar replay', function() {
       9,
       owner
     );
-  
+
     scenario(history, timer).tick(0, {
       ops: [[
         'recordTriggerAdd',
@@ -364,7 +364,7 @@ describe('HistoryStore basics and scalar replay', function() {
         }
       ]]
     });
-  
+
     const delta = history.getDelta(0);
     history.applyDeltaForward(game, delta);
     expect(triggerManager._triggers.size).to.equal(1);
@@ -374,7 +374,7 @@ describe('HistoryStore basics and scalar replay', function() {
     expect(added.y1).to.equal(trigger.y1);
     expect(added.x2).to.equal(trigger.x2);
     expect(added.y2).to.equal(trigger.y2);
-  
+
     history.applyDeltaBackward(game, delta);
     expect(triggerManager._triggers.size).to.equal(0);
   });
@@ -384,7 +384,7 @@ describe('HistoryStore basics and scalar replay', function() {
     expect(history.getDelta(NaN)).to.equal(null);
     expect(history.getKeyframeAtOrBefore(NaN)).to.equal(null);
     expect(history.getKeyframeAtOrBefore(1)).to.equal(null);
-  
+
     seedHistory(history, { keyframes: [3] });
     expect(history.getKeyframeAtOrBefore(2)).to.equal(null);
     expect(history.getKeyframeAtOrBefore(3)).to.be.ok;
@@ -424,7 +424,7 @@ describe('HistoryStore basics and scalar replay', function() {
       getGameSkills: () => null,
       getVictoryCondition: () => null
     };
-  
+
     history.attach(game, { captureBaseline: false });
     expect(calls.onBefore).to.equal(1);
     expect(calls.onAfter).to.equal(1);

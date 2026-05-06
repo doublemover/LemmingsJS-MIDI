@@ -20,9 +20,9 @@ const editorControllerPointerInputMethods = {
       this._clearMarquee();
       return;
     }
-  
+
     this._beginStroke();
-  
+
     switch (this.tool) {
     case EditorTools.SELECT: {
       const resizeHandle = !shiftKey ? this._getResizeHandleAt(x, y) : null;
@@ -129,12 +129,12 @@ const editorControllerPointerInputMethods = {
     const isDown = typeof options.isDown === 'boolean'
       ? options.isDown
       : this._pointerDown;
-  
+
     if (this._steelDraft && this.tool === EditorTools.STEEL) {
       this._updateSteelDraft(x, y);
       return;
     }
-  
+
     if (this._resize && this.tool === EditorTools.SELECT) {
       const selected = this.getSelectedEntry();
       if (!selected) return;
@@ -171,7 +171,7 @@ const editorControllerPointerInputMethods = {
       this._requestPreview('Resize');
       return;
     }
-  
+
     if (this._drag && this.tool === EditorTools.SELECT) {
       for (const dragEntry of this._drag.entries || []) {
         const list = this._getListForType(dragEntry.type);
@@ -188,12 +188,12 @@ const editorControllerPointerInputMethods = {
       }
       return;
     }
-  
+
     if (isDown && this._marquee && this.tool === EditorTools.SELECT) {
       this._updateMarquee(x, y);
       return;
     }
-  
+
     if (isDown && this.tool === EditorTools.BRUSH) {
       if (this._lastBrushPos) {
         this._brushLine(this._lastBrushPos, { x, y });
@@ -203,7 +203,7 @@ const editorControllerPointerInputMethods = {
       this._lastBrushPos = { x, y };
       this._requestPreview('Brush');
     }
-  
+
     if (isDown && this.tool === EditorTools.ERASER) {
       if (this._lastBrushPos) {
         this._eraseLine(this._lastBrushPos, { x, y });
@@ -250,7 +250,7 @@ const editorControllerPointerInputMethods = {
       this._clearMarquee();
       return;
     }
-  
+
     if (this.tool === EditorTools.BRUSH && this._strokeChanged) {
       this._commitHistory('Brush');
     }

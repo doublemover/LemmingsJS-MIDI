@@ -88,7 +88,7 @@ test('MIDI panels render expected layout and tab content', async ({ page }) => {
   await expect(page.locator('#midiAccent')).toBeVisible();
 });
 
-test('MIDI event and trigger titles render with width', async ({ page }) => {   
+test('MIDI event and trigger titles render with width', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
   await midi.eventDetails().first().waitFor();

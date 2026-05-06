@@ -237,19 +237,19 @@ const gameViewRuntimeMethods = {
   },
 
   playMusic(moveInterval) {
-  
+
   },
 
   stopMusic() {
-  
+
   },
 
   stopSound() {
-  
+
   },
 
   playSound(moveInterval) {
-  
+
   }
 };
 export { gameViewRuntimeMethods };

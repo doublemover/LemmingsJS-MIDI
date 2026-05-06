@@ -23,7 +23,7 @@ describe('GameTimer core loop', function() {
     now = 0;
     globalThis.performance = { now: () => now };
     restoreLemmings = setGlobalLemmings({ endless: false });
-  
+
     const listeners = new Map();
     this.listeners = listeners;
     globalThis.document = {
@@ -64,17 +64,17 @@ describe('GameTimer core loop', function() {
     const ticks = [];
     timer.onBeforeGameTick.on(v => before.push(v));
     timer.onGameTick.on(() => ticks.push(timer.tickIndex));
-  
+
     timer.tick(2);
     expect(timer.tickIndex).to.equal(2);
     expect(before).to.eql([0, 1]);
     expect(ticks.length).to.equal(2);
-  
+
     timer.tick(-1);
     expect(timer.tickIndex).to.equal(1);
     expect(before).to.eql([0, 1, 1]);
     expect(ticks.length).to.equal(3);
-  
+
     timer.tick(-5);
     expect(timer.tickIndex).to.equal(0);
     expect(before).to.eql([0, 1, 1, 0]);
@@ -100,10 +100,10 @@ describe('GameTimer core loop', function() {
   it('formats left time and honors endless mode', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     expect(timer.getGameLeftTimeString()).to.equal('1-00');
-  
+
     timer.tickIndex = timer.ticksTimeLimit + 10;
     expect(timer.getGameLeftTimeString()).to.equal('0-00');
-  
+
     withGlobalLemmings({ endless: true }, () => {
       expect(timer.getGameLeftTimeString()).to.equal('4-20');
     });
@@ -113,13 +113,13 @@ describe('GameTimer core loop', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const ticks = [];
     timer.onGameTick.on(() => ticks.push(timer.tickIndex));
-  
+
     timer.continue();
     expect(typeof globalThis.window._raf).to.equal('function');
-  
+
     now = 120;
     globalThis.window._raf(120);
-  
+
     expect(timer.tickIndex).to.equal(2);
     expect(ticks.length).to.equal(2);
     timer.suspend();
@@ -133,16 +133,16 @@ describe('GameTimer core loop', function() {
     const originalContinue = timer.continue.bind(timer);
     timer.suspend = () => { suspendCalls++; originalSuspend(); };
     timer.continue = () => { continueCalls++; originalContinue(); };
-  
+
     timer.continue();
     timer.speedFactor = 2;
-  
+
     expect(timer.speedFactor).to.equal(2);
     expect(timer.frameTime).to.equal(30);
     expect(timer.tps).to.be.closeTo(1000 / 30, 0.0001);
     expect(suspendCalls).to.equal(1);
     expect(continueCalls).to.equal(2);
-  
+
     timer.speedFactor = 2;
     timer.speedFactor = -1;
     expect(timer.speedFactor).to.equal(2);
@@ -152,11 +152,11 @@ describe('GameTimer core loop', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const handler = this.listeners.get('visibilitychange');
     timer.continue();
-  
+
     globalThis.document.visibilityState = 'hidden';
     handler();
     expect(timer.isRunning()).to.equal(false);
-  
+
     globalThis.document.visibilityState = 'visible';
     handler();
     expect(timer.isRunning()).to.equal(true);
@@ -168,7 +168,7 @@ describe('GameTimer core loop', function() {
       const timer = new GameTimer({ timeLimit: 1 });
       const handler = this.listeners.get('visibilitychange');
       timer.continue();
-  
+
       globalThis.document.visibilityState = 'hidden';
       handler();
       expect(timer.isRunning()).to.equal(true);
@@ -189,10 +189,10 @@ describe('GameTimer core loop', function() {
     }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       now = 60 * 200;
       globalThis.window._raf(now);
-  
+
       expect(globalThis.lemmings.steps).to.equal(200);
       expect(timer.speedFactor).to.equal(0.2);
       expect(overlayCalls.length).to.equal(1);
@@ -214,17 +214,17 @@ describe('GameTimer core loop', function() {
     }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       timer.speedFactor = 70;
       now = 30;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.equal(60);
-  
+
       timer.speedFactor = 50;
       now = 60;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.equal(40);
-  
+
       timer.speedFactor = 20;
       now = 93;
       globalThis.window._raf(now);
@@ -243,12 +243,12 @@ describe('GameTimer core loop', function() {
     }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       timer.speedFactor = 5;
       now = 144;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.equal(4);
-  
+
       timer.speedFactor = 0.5;
       now = 3000;
       globalThis.window._raf(now);

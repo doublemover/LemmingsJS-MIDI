@@ -232,12 +232,12 @@ describe('MidiEventRouter 1', function() {
         return defaultSpec();
       }
     });
-  
+
     let now = 0;
     router._nowMs = () => now;
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
-  
+
     expect(router.scheduler.tickMs).to.equal(20);
     expect(densities[0]).to.equal(0);
     expect(densities[1]).to.be.closeTo(0.9, 0.01);
@@ -246,9 +246,9 @@ describe('MidiEventRouter 1', function() {
 
   it('passes reverse flags to the scheduler', function() {
     const { router, sent } = makeRouter(new MidiMapping(), { defaultMapEvent: true });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, reverse: true });
-  
+
     expect(sent[0].reverse).to.equal(true);
   });
 
@@ -267,7 +267,7 @@ describe('MidiEventRouter 1', function() {
         events: [{ sfxId: 1, tick: 1 }, {}]
       }
     ];
-  
+
     for (const testCase of cases) {
       const { router, sent } = makeRouter(testCase.config, {
         defaultMapEvent: true,
@@ -291,10 +291,10 @@ describe('MidiEventRouter 1', function() {
         return { note: 65, velocity: 80, durationTicks: 2 };
       }
     });
-  
+
     router._onEvent({ sfxId: 0, triggerType, tick: 1, x: 10, y: 10 });
     expect(sent).to.have.length(0);
-  
+
     router.mapping.config.triggers[String(triggerType)] = { note: 67, velocity: 100, durationTicks: 2 };
     router._onEvent({ sfxId: 0, triggerType, tick: 2, x: 12, y: 12 });
     expect(sent).to.have.length(1);
@@ -308,9 +308,9 @@ describe('MidiEventRouter 1', function() {
     }, { defaultMapEvent: true });
     router._nowMs = () => 1000;
     router._resolveScheduleBase = () => 900;
-  
+
     router._onEvent({ sfxId: 1, tick: 1, timeMs: 0 });
-  
+
     expect(sent[0].timeMs).to.equal(1050);
   });
 
@@ -319,17 +319,17 @@ describe('MidiEventRouter 1', function() {
       mpe: { enabled: false },
       limits: { maxEventsPerTick: 1, maxEventsPerSecond: 2 }
     }, { defaultMapEvent: true });
-  
+
     let now = 0;
     router._nowMs = () => now;
-  
+
     router._onEvent({ sfxId: 1, tick: 1 });
     router._onEvent({ sfxId: 1, tick: 1 });
     expect(sent.length).to.equal(1);
-  
+
     router._onEvent({ sfxId: 1, tick: 2 });
     expect(sent.length).to.equal(1);
-  
+
     now = 1100;
     router._onEvent({ sfxId: 1, tick: 3 });
     expect(sent.length).to.equal(2);
@@ -387,10 +387,10 @@ describe('MidiEventRouter 1', function() {
 
   it('steps through arpeggio notes across events', function() {
     const { router, sent } = makeArpRouter({ enabled: true, mode: 'up', length: 3 });
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
-  
+
     expect(sent[0].note).to.equal(60);
     expect(sent[1].note).to.equal(64);
   });
@@ -401,10 +401,10 @@ describe('MidiEventRouter 1', function() {
       {},
       [60]
     );
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50 });
-  
+
     expect(sent.length).to.equal(2);
     expect(sent[0].note).to.equal(60);
     expect(sent[1].note).to.equal(60);
@@ -415,11 +415,11 @@ describe('MidiEventRouter 1', function() {
       { enabled: true, mode: 'down', length: 3 },
       { triggers: { '5': { arp: { independent: true } } } }
     );
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, triggerType: 5, objectId: 100 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50, triggerType: 5, objectId: 100 });
     router._onEvent({ sfxId: 1, tick: 3, tps: 50, triggerType: 5, objectId: 200 });
-  
+
     expect(sent[0].note).to.equal(67);
     expect(sent[1].note).to.equal(64);
     expect(sent[2].note).to.equal(67);
@@ -438,11 +438,11 @@ describe('MidiEventRouter 1', function() {
         })
       }
     );
-  
+
     for (let i = 0; i < 300; i += 1) {
       router._onEvent({ sfxId: 1, tick: i + 1, tps: 50, triggerType: 5, objectId: i });
     }
-  
+
     expect(router._arpStateBySfx.size).to.be.at.most(256);
     expect(router._arpStateBySfx.has('trigger:5:1:object:0')).to.equal(false);
     expect(router._arpStateBySfx.has('trigger:5:1:object:299')).to.equal(true);

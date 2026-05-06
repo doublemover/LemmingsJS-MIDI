@@ -26,11 +26,11 @@ describe('TimeTravelController edge cases', function() {
       const controller = new TimeTravelController(game, history);
       const steps = [];
       controller.stepBackward = (count) => steps.push(count);
-  
+
       controller.startReverse();
       rafCallback?.(10);
       rafCallback?.(25);
-  
+
       expect(steps).to.eql([1]);
       controller.stopReverse();
     } finally {
@@ -57,7 +57,7 @@ describe('TimeTravelController edge cases', function() {
       const game = { getGameTimer: () => timer, inputEnabled: true };
       const controller = new TimeTravelController(game, history);
       controller.stepBackward = () => {};
-  
+
       controller.startReverse();
       rafCallback?.(700);
       controller._reverseActive = false;
@@ -120,10 +120,10 @@ describe('TimeTravelController edge cases', function() {
       };
       const game = { getGameTimer: () => timer, inputEnabled: true };
       const controller = new TimeTravelController(game, history);
-  
+
       controller.startReverse();
       controller.stopReverse();
-  
+
       expect(resumed).to.equal(1);
       expect(truncated).to.equal(0);
       expect(continued).to.equal(0);
@@ -162,14 +162,14 @@ describe('TimeTravelController edge cases', function() {
       const steps = [];
       controller.stepBackward = (count) => steps.push(count);
       controller.maxReverseStepsPerFrame = 3;
-  
+
       controller.startReverse();
       rafCallback?.(100);
       rafCallback?.(120);
-  
+
       expect(steps).to.eql([3, 3]);
       expect(controller._reverseCarryMs).to.equal(60);
-  
+
       controller.stopReverse();
       expect(controller._reverseCarryMs).to.equal(0);
     } finally {
@@ -203,7 +203,7 @@ describe('TimeTravelController edge cases', function() {
       controller.maxReverseStepsPerFrame = Number.NaN;
       const steps = [];
       controller.stepBackward = (count) => steps.push(count);
-  
+
       controller.startReverse();
       rafCallback?.(50);
       expect(steps[0]).to.equal(5);
@@ -223,9 +223,9 @@ describe('TimeTravelController edge cases', function() {
     const controller = new TimeTravelController(game, history);
     const seeks = [];
     controller.seekToTick = (tick) => seeks.push(tick);
-  
+
     controller.stepBackward(1);
-  
+
     expect(seeks).to.eql([3]);
   });
 
@@ -236,7 +236,7 @@ describe('TimeTravelController edge cases', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     expect(() => controller.seekToTick(1)).to.not.throw();
     expect(timer.tickIndex).to.equal(2);
   });

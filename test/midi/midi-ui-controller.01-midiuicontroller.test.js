@@ -107,13 +107,13 @@ describe('midiUiController 1', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal(expected);
   });
@@ -123,22 +123,22 @@ describe('midiUiController 1', function() {
     const win = createDeferredWindow();
     registerElement(doc, 'input', 'midiEnabledToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getLemmings: () => ({})
     });
     controller.bindMidiUi();
-  
+
     controller.setMidiOverrides({ timing: { bpmBase: 110 } });
     controller.setMidiOverrides({ scale: { name: 'major' } });
     controller.setMidiOverrides({ velocityRange: { default: 95 } });
     expect(win.__timerCount()).to.equal(1);
-  
+
     win.__runNextTimer();
     expect(win.__timerCount()).to.equal(0);
-  
+
     controller.setMidiOverrides({ repeat: { enabled: true } });
     expect(win.__timerCount()).to.equal(1);
   });
@@ -154,20 +154,20 @@ describe('midiUiController 1', function() {
       [{ id: 'in-1', name: 'Input 1' }],
       [{ id: 'out-1', name: 'Output 1' }]
     );
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getWebMidi: () => webMidi,
       getLemmings: () => ({})
     });
-  
+
     controller.onEnabled();
     webMidi.emit('connected');
     webMidi.emit('portschanged');
     expect(win.__timerCount()).to.equal(1);
     expect(win.__scheduledDelays.at(-1)).to.equal(100);
-  
+
     win.__runNextTimer();
     webMidi.emit('disconnected');
     expect(win.__timerCount()).to.equal(1);
@@ -181,7 +181,7 @@ describe('midiUiController 1', function() {
     registerElement(doc, 'select', 'midiOutSelect');
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const inputDevice = { id: 'in-1', name: 'Input 1' };
     const outputDevice = { id: 'out-1', name: 'Output 1' };
     const webMidi = createWebMidiStub([inputDevice], [outputDevice]);
@@ -200,7 +200,7 @@ describe('midiUiController 1', function() {
       attach() { this.attachCount += 1; },
       detach() { this.detachCount += 1; }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -211,10 +211,10 @@ describe('midiUiController 1', function() {
     controller.onEnabled();
     expect(midiInputController.attachCount).to.equal(1);
     expect(schedulerCalls.filter(call => call === 'off').length).to.equal(1);
-  
+
     webMidi.emit('connected');
     win.__runNextTimer();
-  
+
     expect(midiInputController.attachCount).to.equal(1);
     expect(midiInputController.detachCount).to.equal(0);
     expect(schedulerCalls.filter(call => call === 'off').length).to.equal(1);
@@ -227,7 +227,7 @@ describe('midiUiController 1', function() {
     registerElement(doc, 'select', 'midiOutSelect');
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const webMidi = createWebMidiStub(
       [{ id: 'in-1', name: 'Input 1' }],
       [{ id: 'out-1', name: 'Output 1' }]
@@ -238,7 +238,7 @@ describe('midiUiController 1', function() {
       getWebMidi: () => webMidi,
       getLemmings: () => ({})
     });
-  
+
     controller.onEnabled();
     webMidi.inputs = [];
     expect(() => controller.setActiveMidiInput('in-1')).to.not.throw();
@@ -259,7 +259,7 @@ describe('midiUiController 1', function() {
       }
       originalSetItem(key, value);
     };
-  
+
     const webMidi = createWebMidiStub(
       [{ id: 'in-1', name: 'Input 1' }],
       [{ id: 'out-1', name: 'Output 1' }]
@@ -270,7 +270,7 @@ describe('midiUiController 1', function() {
       getWebMidi: () => webMidi,
       getLemmings: () => ({})
     });
-  
+
     controller.onEnabled();
     const initialWrites = writes.length;
     controller.onEnabled();
@@ -284,12 +284,12 @@ describe('midiUiController 1', function() {
     registerElement(doc, 'select', 'midiOutSelect');
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     win.localStorage.setItem('lemmings.midi.tabLeft', 'panelB');
     win.localStorage.setItem('lemmings.midi.sectionStates', JSON.stringify({ alpha: false }));
     win.localStorage.setItem('lemmings.midi.inputId', 'missing-input');
     win.localStorage.setItem('lemmings.midi.outputId', 'out-1');
-  
+
     const webMidi = createWebMidiStub(
       [{ id: 'in-1', name: 'Input 1' }],
       [{ id: 'out-1', name: 'Output 1' }]
@@ -300,9 +300,9 @@ describe('midiUiController 1', function() {
       getWebMidi: () => webMidi,
       getLemmings: () => ({})
     });
-  
+
     controller.onEnabled();
-  
+
     expect(win.localStorage.getItem('lemmings.midi.tabLeft')).to.equal('panelB');
     expect(win.localStorage.getItem('lemmings.midi.sectionStates')).to.equal('{"alpha":false}');
   });
@@ -314,7 +314,7 @@ describe('midiUiController 1', function() {
     registerElement(doc, 'select', 'midiOutSelect');
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const inputDevice = { id: 'in-1', name: 'Input 1' };
     const webMidi = createWebMidiStub([inputDevice], [{ id: 'out-1', name: 'Output 1' }]);
     const attached = [];
@@ -324,13 +324,13 @@ describe('midiUiController 1', function() {
       getWebMidi: () => webMidi,
       getLemmings: () => ({})
     });
-  
+
     controller.onEnabled();
     controller.setMidiInputController({
       attach(device) { attached.push(device); },
       detach() {}
     });
-  
+
     expect(attached).to.eql([inputDevice]);
   });
 
@@ -344,7 +344,7 @@ describe('midiUiController 1', function() {
       window: win,
       getLemmings: () => ({})
     });
-  
+
     controller.bindMidiUi();
     controller.dispatchMidiIntent({
       type: 'overrides.merge',
@@ -362,7 +362,7 @@ describe('midiUiController 1', function() {
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
     win.localStorage.setItem('lemmings.midi.viewPan', 'true');
-  
+
     const applied = [];
     const webMidi = createWebMidiStub(
       [{ id: 'in-1', name: 'Input 1' }],
@@ -376,10 +376,10 @@ describe('midiUiController 1', function() {
         applyMidiOverrides(patch) { applied.push(patch); }
       })
     });
-  
+
     controller.onEnabled();
     expect(applied.filter(patch => patch?.position?.viewPan === true).length).to.equal(1);
-  
+
     webMidi.emit('connected');
     win.__runNextTimer();
     expect(applied.filter(patch => patch?.position?.viewPan === true).length).to.equal(1);
@@ -395,7 +395,7 @@ describe('midiUiController 1', function() {
     const resetButton = registerElement(doc, 'button', 'midiResetButton');
     const viewPan = registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const calls = [];
     const lemmings = { setMidiEnabled(value) { calls.push(value); } };
     const controller = createMidiUiController({
@@ -403,11 +403,11 @@ describe('midiUiController 1', function() {
       window: win,
       getLemmings: () => lemmings
     });
-  
+
     controller.bindMidiUi();
     enabledToggle.checked = false;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
-  
+
     expect(win.localStorage.getItem('lemmings.midi.enabled')).to.equal('false');
     expect(calls).to.eql([false]);
     expect(inputSelect.disabled).to.equal(true);
@@ -431,24 +431,24 @@ describe('midiUiController 1', function() {
       [{ id: 'in-1', name: 'Input 1' }],
       [{ id: 'out-1', name: 'Output 1' }]
     );
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getWebMidi: () => webMidi,
       getLemmings: () => ({ setMidiEnabled: async () => {} })
     });
-  
+
     controller.bindMidiUi();
     controller.setMidiOverrides({ timing: { bpmBase: 128 } });
     controller.onEnabled();
     webMidi.emit('connected');
     expect(win.__timerCount()).to.be.greaterThan(0);
-  
+
     enabledToggle.checked = false;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     await Promise.resolve();
-  
+
     expect(win.__timerCount()).to.equal(0);
   });
 });

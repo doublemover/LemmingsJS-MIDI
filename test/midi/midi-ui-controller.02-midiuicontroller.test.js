@@ -107,13 +107,13 @@ describe('midiUiController 2', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal(expected);
   });
@@ -124,17 +124,17 @@ describe('midiUiController 2', function() {
     registerElement(doc, 'input', 'midiEnabledToggle');
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getLemmings: () => ({})
     });
     controller.bindMidiUi();
-  
+
     inputChannel.value = '2';
     inputChannel.dispatchEvent({ type: 'change', target: inputChannel });
-  
+
     expect(win.localStorage.getItem('lemmings.midi.inputChannel')).to.equal('2');
     expect(controller.getMidiOverrides().input.channel).to.equal(2);
   });
@@ -153,9 +153,9 @@ describe('midiUiController 2', function() {
         applyMidiOverrides(patch) { applied.push(patch); }
       })
     });
-  
+
     controller.bindMidiUi();
-  
+
     expect(win.localStorage.getItem('lemmings.midi.overrides')).to.equal(null);
     expect(win.localStorage.getItem('lemmings.midi.schemaHash')).to.equal('new');
     expect(controller.getMidiOverrides()).to.eql({});
@@ -167,13 +167,13 @@ describe('midiUiController 2', function() {
     const win = createTestWindow();
     const panel = registerElement(doc, 'div', 'controlLeft');
     const toggle = registerElement(doc, 'div', 'midiPanelToggle');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getLemmings: () => ({})
     });
-  
+
     controller.bindMidiUi();
     toggle.dispatchEvent({ type: 'click' });
     expect(panel.classList.contains('collapsed')).to.equal(true);
@@ -185,22 +185,22 @@ describe('midiUiController 2', function() {
     const win = createTestWindow();
     const viewPan = registerElement(doc, 'input', 'midiViewPanToggle');
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const config = {
       position: { viewPan: true },
       input: { channel: 3 },
       timing: { bpmBase: 120 }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => config
     });
-  
+
     controller.bindMidiUi();
     controller.refreshMidiUiFromConfig();
-  
+
     expect(viewPan.checked).to.equal(true);
     expect(inputChannel.value).to.equal('3');
     expect(win.localStorage.getItem('lemmings.midi.viewPan')).to.equal(null);
@@ -213,15 +213,15 @@ describe('midiUiController 2', function() {
     const keySelect = registerElement(doc, 'select', 'midiKeySelect');
     const scaleSelect = registerElement(doc, 'select', 'midiScaleSelect');
     const eventList = registerElement(doc, 'div', 'midiEventList');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ timing: { bpmBase: 120 }, sfx: {} })
     });
-  
+
     controller.refreshMidiUiFromConfig();
-  
+
     expect(keySelect.children.length).to.be.greaterThan(1);
     expect(scaleSelect.children.length).to.be.greaterThan(0);
     expect(eventList.children.length).to.be.greaterThan(0);
@@ -234,18 +234,18 @@ describe('midiUiController 2', function() {
     const bpmCurrent = registerElement(doc, 'span', 'midiBpmCurrent');
     registerElement(doc, 'input', 'midiEnabledToggle');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getLemmings: () => ({ gameSpeedFactor: 2 }),
       getMidiConfig: () => ({ timing: { bpmBase: 120 } })
     });
-  
+
     controller.bindMidiUi();
     bpmBase.value = '100';
     bpmBase.dispatchEvent({ type: 'input', target: bpmBase });
-  
+
     expect(bpmCurrent.textContent).to.contain('2x 100 = 200 BPM');
   });
 
@@ -253,7 +253,7 @@ describe('midiUiController 2', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const positionList = registerElement(doc, 'div', 'midiPositionList');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -265,9 +265,9 @@ describe('midiUiController 2', function() {
         timing: { bpmBase: 120 }
       })
     });
-  
+
     controller.refreshMidiUiFromConfig();
-  
+
     const rangeRow = findElement(positionList, el => (
       el.tagName === 'LABEL' && el.children?.[0]?.textContent === 'Min / Max'
     ));
@@ -290,7 +290,7 @@ describe('midiUiController 2', function() {
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'select', 'midiInputChannel');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const inputDevice = { id: 'in-1', name: 'Input 1' };
     const outputDevice = { id: 'out-1', name: 'Output 1' };
     const webMidi = {
@@ -300,13 +300,13 @@ describe('midiUiController 2', function() {
       getInputById(id) { return this.inputs.find(dev => dev.id === id); },
       getOutputById(id) { return this.outputs.find(dev => dev.id === id); }
     };
-  
+
     let attached = null;
     const midiInputController = {
       attach(input) { attached = input; },
       detach() {}
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -315,7 +315,7 @@ describe('midiUiController 2', function() {
     });
     controller.setMidiInputController(midiInputController);
     controller.onEnabled();
-  
+
     expect(inputSelect.value).to.equal('in-1');
     expect(outputSelect.value).to.equal('out-1');
     expect(attached).to.equal(inputDevice);
@@ -329,7 +329,7 @@ describe('midiUiController 2', function() {
     registerElement(doc, 'input', 'midiViewPanToggle');
     registerElement(doc, 'select', 'midiInputChannel');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const inputDevice = { id: 'in-1', name: 'Input 1' };
     const outputDevice = { id: 'out-1', name: 'Output 1' };
     const webMidi = {
@@ -339,7 +339,7 @@ describe('midiUiController 2', function() {
       getInputById(id) { return this.inputs.get(id) || null; },
       getOutputById(id) { return this.outputs.get(id) || null; }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -347,7 +347,7 @@ describe('midiUiController 2', function() {
       getWebMidi: () => webMidi
     });
     controller.onEnabled();
-  
+
     expect(inputSelect.disabled).to.equal(false);
     expect(outputSelect.disabled).to.equal(false);
     expect(inputSelect.value).to.equal('in-1');
@@ -365,7 +365,7 @@ describe('midiUiController 2', function() {
     registerElement(doc, 'select', 'midiRepeatTarget');
     registerElement(doc, 'input', 'midiRepeatAmount');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const config = {
       scale: { name: 'minor', root: 2 },
       position: { mappings: [{ axis: 'x', target: 'note', min: -12, max: 12, enabled: true }] },
@@ -377,17 +377,17 @@ describe('midiUiController 2', function() {
       triggers: { '1': { note: 62 } },
       timing: { bpmBase: 120 }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => config
     });
-  
+
     expect(controller.refreshMidiUiFromConfig()).to.equal(true);
     expect(eventList.children.length).to.equal(1);
     expect(triggerList.children.length).to.be.greaterThan(0);
-  
+
     const notePicker = findRowInputByLabel(eventList.children[0], 'Keyboard');
     const keyButton = findElement(notePicker, el => (
       el.tagName === 'BUTTON' && el.dataset?.noteValue === '5'
@@ -396,7 +396,7 @@ describe('midiUiController 2', function() {
     expect(keyButton).to.be.ok;
     keyButton.dispatchEvent({ type: 'click', target: keyButton });
     expect(controller.getMidiOverrides().sfx['1'].note).to.equal(65);
-  
+
     const triggerIndependent = findElement(triggerList, el => (
       el.tagName === 'SPAN' && el.textContent === 'Independent arp'
     ));
@@ -414,7 +414,7 @@ describe('midiUiController 2', function() {
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -423,7 +423,7 @@ describe('midiUiController 2', function() {
         timing: { bpmBase: 120 }
       })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     const mapping = eventList.children[0];
     expect(findRowInputByLabel(mapping, 'Keyboard')).to.be.ok;

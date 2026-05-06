@@ -43,7 +43,7 @@ const displayBlitMethods = {
       destW   = this.imgData.width, destH = this.imgData.height,
       baseX   = posX + frameOffsetX, baseY = posY + frameOffsetY,
       dest32  = this.buffer32;
-  
+
     const {
       nullColor32   = null,
       checkGround   = false,
@@ -54,13 +54,13 @@ const displayBlitMethods = {
       size          = null, // { width, height }
       scaleMode     = 'nearest'
     } = opts ?? {};
-  
+
     // If no scaling requested or size matches source → fall back to original fast path
     const dstW = size?.width  ?? srcW;
     const dstH = size?.height ?? srcH;
     const isScaled = (dstW !== srcW) || (dstH !== srcH);
     this.markDirtyRect(baseX, baseY, dstW, dstH);
-  
+
     if (!isScaled) {
       const spanCache = frame.getSpanCache?.();
       if (spanCache && nullColor32 === null) {
@@ -101,7 +101,7 @@ const displayBlitMethods = {
         }
         return;
       }
-  
+
       const fullyInBounds =
           !checkGround &&
           nullColor32 === null &&
@@ -130,14 +130,14 @@ const displayBlitMethods = {
         }
         return;
       }
-  
+
       let srcXStart = 0;
       if (baseX < 0) srcXStart = -baseX;
       let srcXEnd = srcW;
       const maxRight = destW - baseX;
       if (srcXEnd > maxRight) srcXEnd = maxRight;
       if (srcXEnd <= srcXStart) return;
-  
+
       for (let sy = 0; sy < srcH; sy++) {
         const sourceY = upsideDown ? srcH - sy - 1 : sy;
         const outY = sy + baseY;
@@ -159,7 +159,7 @@ const displayBlitMethods = {
       }
       return;
     }
-  
+
     // Scaled path – choose algorithm
     const scaleOpts = {
       dest32,
@@ -174,7 +174,7 @@ const displayBlitMethods = {
       upsideDown,
       groundMask
     };
-  
+
     if (scaleMode === 'xbrz') {
       scaleXbrz(frame, dstW, dstH, scaleOpts);
     } else if (scaleMode === 'hqx') {

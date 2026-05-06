@@ -27,7 +27,7 @@ const midiSchedulerSendMethods = {
         : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
       const channel = this.output.channels?.[channelNumber];
       if (!channel) return false;
-  
+
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
       const durationMs = Number.isFinite(spec.durationTicks)
         ? Math.max(0, spec.durationTicks * this.tickMs)
@@ -39,7 +39,7 @@ const midiSchedulerSendMethods = {
       const attackVelocity = reverse ? baseRelease : baseVelocity;
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
-  
+
       if (this.config.mpe?.enabled) {
         if (Number.isFinite(spec.pitchBend) && spec.pitchBend !== 0) {
           channel.sendPitchBend(clamp(spec.pitchBend, -1, 1), { time: sendTimeMs });
@@ -59,13 +59,13 @@ const midiSchedulerSendMethods = {
         }
         channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
       }
-  
+
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
       if (this._activeNotes.size >= this._maxActiveNotes) {
         this._stealOldestNote();
       }
-  
+
       channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs });
       if (typeof window !== 'undefined') {
         window.lastMidiOutputMessage = {
@@ -76,7 +76,7 @@ const midiSchedulerSendMethods = {
           timeMs: sendTimeMs
         };
       }
-  
+
       this._activeNotes.set(token, {
         channel: channelNumber,
         note: spec.note,

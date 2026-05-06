@@ -167,7 +167,7 @@ const historyStoreDiffMethods = {
         }
         continue;
       }
-  
+
       const actionType = this._getActionType(manager, lem.action);
       const countdownActive = !!lem.countdownAction;
       const lookRight = lem.lookRight ? 1 : 0;
@@ -185,7 +185,7 @@ const historyStoreDiffMethods = {
         this._writeLemmingState(prev, i, lem, actionType, countdownActive);
         continue;
       }
-  
+
       if (
         prev.x[i] === lem.x &&
           prev.y[i] === lem.y &&
@@ -205,7 +205,7 @@ const historyStoreDiffMethods = {
         prev.present[i] = 1;
         continue;
       }
-  
+
       this._diffLemmingField(delta, i, 0, prev.x[i], lem.x, prev.x);
       this._diffLemmingField(delta, i, 1, prev.y[i], lem.y, prev.y);
       this._diffLemmingField(delta, i, 2, prev.lookRight[i], lookRight, prev.lookRight);
@@ -222,7 +222,7 @@ const historyStoreDiffMethods = {
       this._diffLemmingField(delta, i, 13, prev.countdownActive[i], countdownActiveValue, prev.countdownActive);
       prev.present[i] = 1;
     }
-  
+
     for (let i = lems.length; i < prev.present.length; i++) {
       if (prev.present[i]) {
         const snap = {
@@ -369,19 +369,19 @@ const historyStoreDiffMethods = {
       delta.skillsChanges = { prev: this._skillsState, next: nextSkills };
     }
     this._skillsState = nextSkills;
-  
+
     const nextVictory = this._readVictory(game.getVictoryCondition?.());
     if (this._victoryState && nextVictory && !this._victoryEqual(this._victoryState, nextVictory)) {
       delta.victoryChanges = { prev: this._victoryState, next: nextVictory };
     }
     this._victoryState = nextVictory;
-  
+
     const nextTimer = this._readTimer(game.getGameTimer?.());
     if (this._timerState && nextTimer && !this._timerEqual(this._timerState, nextTimer)) {
       delta.timerChanges = { prev: this._timerState, next: nextTimer };
     }
     this._timerState = nextTimer;
-  
+
     const nextGame = this._readGameState(game);
     if (this._gameState && nextGame && !this._gameStateEqual(this._gameState, nextGame)) {
       delta.gameChanges = { prev: this._gameState, next: nextGame };

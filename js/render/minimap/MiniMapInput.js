@@ -26,11 +26,11 @@ const miniMapInputMethods = {
     const gd = this.guiDisplay;
     const destX = gd.worldDataSize.width - this.width;
     const destY = gd.worldDataSize.height - this.height;
-  
+
     const mx = event.x - destX;
     const my = event.y - destY;
     if (mx < 0 || my < 0 || mx >= this.width || my >= this.height) return;
-  
+
     const pct = this.width <= 1 ? 0 : (mx / (this.width - 1));
     const stageViewWidth = getApp(this.runtime)?.stage?.getGameViewRect?.()?.w;
     const viewportWorldWidth = Number.isFinite(stageViewWidth) && stageViewWidth > 0

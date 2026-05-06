@@ -153,13 +153,13 @@ const historyStoreColdBlockCodecMethods = {
     if (version !== COLD_BLOCK_VERSION) {
       throw new Error(`HistoryStore cold-block version ${version} is unsupported.`);
     }
-  
+
     const noOpCount = reader.readVarUint();
     const noOpRanges = new Array(noOpCount);
     for (let i = 0; i < noOpCount; i += 1) {
       noOpRanges[i] = [reader.readVarUint(), reader.readVarUint()];
     }
-  
+
     const deltaCount = reader.readVarUint();
     const offsets = new Array(deltaCount);
     const lengths = new Array(deltaCount);
@@ -260,7 +260,7 @@ const historyStoreColdBlockCodecMethods = {
     const flags = reader.readU32() | 0;
     const delta = createDelta(tick);
     delta.flags = flags;
-  
+
     if (flags & DELTA_FLAG_LEMMING_CHANGES) {
       delta.lemChanges = unpackLemmingChanges(readPackedLemmingChanges(reader));
     }

@@ -230,14 +230,14 @@ const editorControllerPointerToolMethods = {
     const hasEntrance = Number.isFinite(entranceId) && this._hasGadgetId(entranceId);
     const hasExit = Number.isFinite(exitId) && this._hasGadgetId(exitId);
     if (hasEntrance && hasExit) return false;
-  
+
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
     const baseX = viewRect ? viewRect.x : 0;
     const baseY = viewRect ? viewRect.y : 0;
     const viewW = viewRect ? viewRect.w : Math.min(levelWidth, 320);
     const viewH = viewRect ? viewRect.h : Math.min(levelHeight, 160);
     const targetY = clamp(baseY + viewH - 32, 0, Math.max(0, levelHeight - 1));
-  
+
     if (!hasEntrance && Number.isFinite(entranceId)) {
       const meta = this._getGadgetMeta(entranceId);
       const offset = Math.max(8, Math.floor((meta?.width || 16) / 2));
@@ -250,7 +250,7 @@ const editorControllerPointerToolMethods = {
       const x = clamp(baseX + viewW - offset, 0, Math.max(0, levelWidth - 1));
       this._placeGadgetAt(x, targetY, exitId);
     }
-  
+
     this._commitHistory('Defaults');
     this._requestPreview('Defaults');
     return true;

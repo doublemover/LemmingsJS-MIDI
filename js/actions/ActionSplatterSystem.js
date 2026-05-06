@@ -4,7 +4,7 @@ import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { TriggerTypes } from '../level/TriggerTypes.js';
 import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
-        
+
 class ActionSplatterSystem extends ActionBaseSystem {
   constructor(sprites) {
     super({ sprites, spriteType: SpriteTypes.SPLATTING, singleSprite: true, actionName: 'splatter' });

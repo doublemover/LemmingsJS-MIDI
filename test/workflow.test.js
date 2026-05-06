@@ -16,12 +16,12 @@ describe('GitHub test workflow', function () {
     expect(runSteps).to.include.members([
       'npm ci',
       'npm run check-undefined',
-      'npm run check-text-hygiene',
       'npm run lint',
       'npm run release-readiness',
       'npm run test-bench-unit',
       'npm test'
     ]);
+    expect(runSteps.some(step => step.includes('git diff --check'))).to.equal(true);
 
     const syncStep = steps.find(
       s => s.run && s.run.includes('git checkout origin/master -- tools')

@@ -16,12 +16,12 @@ const createVisionToolHandlers = ({
     const result = await callE2E(session, 'getCanvasMetrics');
     return result.ok ? result.value : null;
   };
-  
+
   const resolveCanvasClip = (metrics, target, rect) => {
     if (!metrics) return null;
     const scaleX = metrics.rect.width / metrics.size.width;
     const scaleY = metrics.rect.height / metrics.size.height;
-  
+
     let base = null;
     if (target === 'gameCanvas' && metrics.gameRect) {
       base = metrics.gameRect;
@@ -30,7 +30,7 @@ const createVisionToolHandlers = ({
     } else if (target === 'stageCanvas') {
       base = null;
     }
-  
+
     const baseCss = base
       ? {
         x: base.x * scaleX,
@@ -39,7 +39,7 @@ const createVisionToolHandlers = ({
         height: base.height * scaleY
       }
       : { x: 0, y: 0, width: metrics.rect.width, height: metrics.rect.height };
-  
+
     const clip = rect
       ? {
         x: baseCss.x + rect.x,
@@ -48,7 +48,7 @@ const createVisionToolHandlers = ({
         height: rect.height
       }
       : baseCss;
-  
+
     return {
       clip: {
         x: metrics.rect.x + clip.x,
@@ -60,7 +60,7 @@ const createVisionToolHandlers = ({
       height: clip.height
     };
   };
-  
+
   const captureFrame = async (session, options) => {
     const target = options.target || 'page';
     const rect = options.rect || null;
@@ -71,11 +71,11 @@ const createVisionToolHandlers = ({
     const delivery = options.delivery || 'resource';
     const tag = options.tag || null;
     const mimeType = formatToMime(format);
-  
+
     let clip = null;
     let width = null;
     let height = null;
-  
+
     if (target === 'rect') {
       if (!rect) return { ok: false, reason: 'rect_required' };
       clip = rect;
@@ -97,11 +97,11 @@ const createVisionToolHandlers = ({
       width = viewport?.width ?? null;
       height = viewport?.height ?? null;
     }
-  
+
     if (clip && (!Number.isFinite(clip.width) || !Number.isFinite(clip.height) || clip.width <= 0 || clip.height <= 0)) {
       return { ok: false, reason: 'invalid_clip' };
     }
-  
+
     const screenshotOptions = {
       type: format
     };
@@ -111,11 +111,11 @@ const createVisionToolHandlers = ({
     if (clip) {
       screenshotOptions.clip = clip;
     }
-  
+
     const bytes = await session.page.screenshot(screenshotOptions);
     const sizeBytes = bytes.length;
     const tickIndex = await getTickIndex(session);
-  
+
     const frame = {
       id: makeId(),
       mimeType,
@@ -129,12 +129,12 @@ const createVisionToolHandlers = ({
     if (rect) {
       frame.clip = rect;
     }
-  
+
     if (delivery === 'inline') {
       frame.dataBase64 = Buffer.from(bytes).toString('base64');
       return { ok: true, frame };
     }
-  
+
     const stored = session.resources.put({
       sessionId: session.id,
       bytes,
@@ -151,7 +151,7 @@ const createVisionToolHandlers = ({
     }
     return { ok: true, frame };
   };
-  
+
   const captureSequence = async (session, args) => {
     const frames = [];
     const sequenceId = makeId();
@@ -161,11 +161,11 @@ const createVisionToolHandlers = ({
     const capture = args.capture || {};
     const requestedFrames = Number.isFinite(args.frames) ? Math.trunc(args.frames) : 1;
     const total = Math.min(MCP_MAX_CAPTURE_SEQUENCE_FRAMES, Math.max(1, requestedFrames));
-  
+
     if (mode === 'step') {
       await callE2E(session, 'pause');
     }
-  
+
     for (let i = 0; i < total; i += 1) {
       const result = await captureFrame(session, capture);
       if (!result?.ok || !result?.frame) {
@@ -185,7 +185,7 @@ const createVisionToolHandlers = ({
         await session.page.waitForTimeout(everyMs);
       }
     }
-  
+
     let manifestResourceUri = null;
     if (args.returnManifest !== false) {
       const manifest = {
@@ -210,14 +210,14 @@ const createVisionToolHandlers = ({
       }
       manifestResourceUri = stored?.uri || null;
     }
-  
+
     session.events.add({
       source: 'agent',
       type: 'capture',
       summary: `captureSequence:${sequenceId}`,
       resourceUris: manifestResourceUri ? [manifestResourceUri] : undefined
     });
-  
+
     return {
       ok: true,
       sequenceId,
@@ -241,7 +241,7 @@ const createVisionToolHandlers = ({
     });
     return attachEvents(session, { frame: result.frame });
   };
-  
+
   const visionSequenceTool = async (args) => {
     const options = VisionSequenceSchema.parse(args || {});
     const session = getSession(options.sessionId);

@@ -49,7 +49,7 @@ const midiEventRouterPlanningMethods = {
     const target = repeatCfg.target || 'velocity';
     const updated = { ...spec };
     let notes = activeNotes;
-  
+
     switch (target) {
     case 'velocity':
     case 'accent': {
@@ -273,7 +273,7 @@ const midiEventRouterPlanningMethods = {
       };
       return false;
     }
-  
+
     shareReport = getShareReport();
     const sameGroup = shareReport.filter(entry => entry.priority === priority);
     const current = sameGroup.find(entry => entry.sfxId === meta.sfxId);

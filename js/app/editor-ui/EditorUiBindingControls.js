@@ -30,7 +30,7 @@ const editorUiBindingControlMethods = {
       ['headerStartX', 'START_X', value => parseNumber(value)],
       ['headerStartY', 'START_Y', value => parseNumber(value)]
     ];
-  
+
     for (const [key, headerKey, parser] of headerMap) {
       const el = this.el[key];
       if (!el) continue;
@@ -57,7 +57,7 @@ const editorUiBindingControlMethods = {
         handler();
       });
     };
-  
+
     bindField(this.el.selX, () => this._commitSelectionPatch({ X: parseNumber(this.el.selX.value) }));
     bindField(this.el.selY, () => this._commitSelectionPatch({ Y: parseNumber(this.el.selY.value) }));
     bindField(this.el.selWidth, () => this._commitSelectionPatch({ WIDTH: parseNumber(this.el.selWidth.value) }));
@@ -79,13 +79,13 @@ const editorUiBindingControlMethods = {
       });
     });
     bindField(this.el.selMidiFlagId, () => this._commitSelectionPatch({ MIDI_FLAG_ID: parseNumber(this.el.selMidiFlagId.value) }));
-  
+
     bindField(this.el.selFlipH, () => this._commitSelectionPatch({ FLIP_HORIZONTAL: !!this.el.selFlipH.checked }));
     bindField(this.el.selFlipV, () => this._commitSelectionPatch({ FLIP_VERTICAL: !!this.el.selFlipV.checked }));
     bindField(this.el.selNoOverwrite, () => this._commitSelectionPatch({ NO_OVERWRITE: !!this.el.selNoOverwrite.checked }));
     bindField(this.el.selErase, () => this._commitSelectionPatch({ ERASE: !!this.el.selErase.checked }));
     bindField(this.el.selOneWay, () => this._commitSelectionPatch({ ONE_WAY: !!this.el.selOneWay.checked }));
-  
+
     if (this.el.deleteSelection) {
       this._addDomListener(this.el.deleteSelection, 'click', () => {
         if (this.controller.deleteSelected()) {
@@ -140,25 +140,25 @@ const editorUiBindingControlMethods = {
         this._loadLevelFromText(text, { resetSaved: false });
       });
     }
-  
+
     if (this.el.savedSave) {
       this._addDomListener(this.el.savedSave, 'click', () => {
         this._saveCurrentLevel();
       });
     }
-  
+
     if (this.el.savedExport) {
       this._addDomListener(this.el.savedExport, 'click', () => {
         this._exportCurrentLevel();
       });
     }
-  
+
     if (this.el.savedExportClassic) {
       this._addDomListener(this.el.savedExportClassic, 'click', () => {
         this._exportCurrentLevelClassic();
       });
     }
-  
+
     if (this.el.savedImport && this.el.savedImportInput) {
       this._addDomListener(this.el.savedImport, 'click', () => {
         this.el.savedImportInput.click();
@@ -179,7 +179,7 @@ const editorUiBindingControlMethods = {
         }
       });
     }
-  
+
     if (this.el.savedImportClassic && this.el.savedImportClassicInput) {
       this._addDomListener(this.el.savedImportClassic, 'click', () => {
         this.el.savedImportClassicInput.click();

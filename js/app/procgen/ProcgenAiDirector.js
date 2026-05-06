@@ -50,10 +50,10 @@ const procgenAiDirectorMethods = {
     if (tick - this._aiLastDecisionTick < this._aiDecisionInterval) return;
     this._aiLastDecisionTick = tick;
     this._beginScanCacheWindow(tick);
-  
+
     this._applyEdgeBlockers(tick);
     this._applyBunchingAssist(tick);
-  
+
     const lemming = this._getFollowLemming();
     if (!lemming) return;
     if (this._shouldSkipAiFor(lemming, tick)) return;
@@ -142,7 +142,7 @@ const procgenAiDirectorMethods = {
       } else if (deltaX > 2) {
         flipCount = Math.max(0, flipCount - 1);
       }
-  
+
       const stuck = stallTicks >= 18 || flipCount >= 3;
       if (stuck) {
         const highEnough = levelHeight > 0 && (lem.y ?? 0) < levelHeight * 0.6;
@@ -164,7 +164,7 @@ const procgenAiDirectorMethods = {
           this._refundBudget(option.key);
         }
       }
-  
+
       this._aiStallState.set(key, {
         lastX: lem.x,
         lastDir: lem.lookRight,

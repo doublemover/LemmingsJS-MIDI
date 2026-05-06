@@ -21,7 +21,7 @@ class MiniMap {
     this.level = level;
     this.guiDisplay = guiDisplay;
     this.runtime = runtime;
-  
+
     this.width = 127;
     this.height = 24;
     this.size = this.width * this.height;
@@ -31,7 +31,7 @@ class MiniMap {
     this.levelHeight = levelHeight;
     this.scaleX = this.width / levelWidth;
     this.scaleY = this.height / levelHeight;
-  
+
     this.terrain = new Uint8Array(this.size);
     this.terrainColors = new Uint32Array(this.size);
     this._terrainDirtyFlags = new Uint8Array(this.size);
@@ -42,7 +42,7 @@ class MiniMap {
     this.terrainRevalidateBudget = Math.max(64, this.size >> 2);
     this._objectMarkerIndices = new Uint16Array(0);
     this._objectMarkerColors = new Uint32Array(0);
-  
+
     if (!MiniMap.palette) {
       MiniMap.palette = new Uint32Array(129);
       for (let i = 1; i <= 128; ++i) {
@@ -51,7 +51,7 @@ class MiniMap {
     }
     this._buildTerrain();
     this._buildObjectMarkers();
-  
+
     // dynamic state
     this.fog = new Uint8Array(this.size); // 0 = unseen
     this.fog.fill(1); // disabled
@@ -63,12 +63,12 @@ class MiniMap {
     this.deadDots = new Uint8Array(64);
     this.deadTTLs = new Uint8Array(32);
     this.deadCount = 0;
-  
+
     // render target (drawn into the GUI canvas once per frame)
     this.frame = new Frame(this.width, this.height);
     this.frame.mask.fill(1);
     //this.renderFrame = new Frame(this.renderWidth, this.renderHeight);
-  
+
     this._displayListeners = null;
     this._mouseDown = false;
     this.viewportDashOffset = 0;

@@ -204,7 +204,7 @@ const gameViewEditorModeMethods = {
       }
       : null;
     this._preserveEditorViewport = !!prevViewport;
-  
+
     if (this.stage) {
       const gameDisplay = this.stage.getGameDisplay();
       gameDisplay.clear();

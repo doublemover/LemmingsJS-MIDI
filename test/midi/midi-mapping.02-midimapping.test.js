@@ -88,7 +88,7 @@ describe('MidiMapping 2', function() {
       expect: { pan: 127 }
     }
   ];
-  
+
   for (const testCase of mappingCases) {
     it(testCase.name, function() {
       const spec = mapEvent(
@@ -107,10 +107,10 @@ describe('MidiMapping 2', function() {
       noteDefaults: { degree: null, octave: null },
       sfx: { '1': { degree: 2 }, '2': { degree: 2, octave: 5 } }
     });
-  
+
     const fallback = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(fallback.note).to.equal(50);
-  
+
     const explicit = mapping.mapEvent({ sfxId: 2 }, {}, 0);
     expect(explicit.note).to.equal(62);
   });
@@ -141,7 +141,7 @@ describe('MidiMapping 2', function() {
         panOffscreenRange: null
       }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1, x: 10 }, {}, 0);
     expect(spec.pan).to.equal(null);
   });
@@ -151,7 +151,7 @@ describe('MidiMapping 2', function() {
       scale: { name: 'mystery-scale', degrees: [] },
       noteRange: { min: 60, max: 60 }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(60);
   });
@@ -161,7 +161,7 @@ describe('MidiMapping 2', function() {
       scale: { degrees: [0], root: 0 },
       noteRange: { min: 0, max: 127 }
     });
-  
+
     const up = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 59 });
     const down = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 61 });
     expect(up.note).to.equal(60);
@@ -173,7 +173,7 @@ describe('MidiMapping 2', function() {
       scale: { degrees: [99], root: 0 },
       noteRange: { min: 0, max: 127 }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 60 });
     expect(spec.note).to.equal(60);
   });
@@ -184,7 +184,7 @@ describe('MidiMapping 2', function() {
       noteDefaults: { octave: 4, degree: 0, chord: 'triad' },
       sfx: { '1': { degree: 0, chord: { type: 'triad', inversion: 1 } } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.notes).to.eql([52, 55, 60]);
   });
@@ -195,7 +195,7 @@ describe('MidiMapping 2', function() {
       noteDefaults: { octave: 4, degree: 0 },
       sfx: { '1': { degree: 2, octave: 4 } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(52);
   });
@@ -209,13 +209,13 @@ describe('MidiMapping 2', function() {
       },
       sfx: { '1': { notes: [60, 64, 67] } }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 100 },
       { levelWidth: 100, levelHeight: 100 },
       0
     );
-  
+
     expect(spec.notes).to.eql([72, 76, 79]);
     expect(spec.note).to.equal(72);
   });
@@ -231,7 +231,7 @@ describe('MidiMapping 2', function() {
         ]
       }
     }, { sfxId: 1, x: 100 }, { levelWidth: 100, levelHeight: 100 }, 0);
-  
+
     expect(spec.pitchBend).to.equal(1);
     expect(spec.durationTicks).to.be.greaterThan(0);
   });
@@ -315,7 +315,7 @@ describe('MidiMapping 2', function() {
     );
     expect(spec.pan).to.not.equal(null);
     expect(spec.pitchBend).to.be.a('number');
-  
+
     const missingAxis = mapping.mapEvent(
       { sfxId: 1, x: 50 },
       { levelWidth: 100 },
@@ -332,14 +332,14 @@ describe('MidiMapping 2', function() {
     });
     const inScale = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(inScale.note).to.equal(64);
-  
+
     const clamped = mapping.mapEvent({ sfxId: 1 }, {}, 0, { note: 30 });
     expect(clamped.note).to.equal(67);
   });
 
   it('builds sixth chords and falls back to triads', function() {
     const mapping = new MidiMapping({
-      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },       
+      scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },
       noteDefaults: { octave: 4, degree: 0, chord: 'triad' }
     });
     const sixth = mapping.mapEvent({ sfxId: 1 }, {}, 0, { degree: 0, chord: { type: 'sixth' } });
@@ -361,7 +361,7 @@ describe('MidiMapping 2', function() {
       velocityRange: { min: 1, max: 127, default: 50 },
       durationTicks: { default: 4, min: 1, max: 10 }
     });
-  
+
     const specFreq = mapping.mapEvent(
       { sfxId: 1, x: 50 },
       { levelWidth: 100, levelHeight: 100 },
@@ -371,7 +371,7 @@ describe('MidiMapping 2', function() {
     expect(specFreq.pitchBend).to.equal(0);
     expect(specFreq.velocity).to.equal(90);
     expect(specFreq.durationTicks).to.equal(8);
-  
+
     const specOverride = mapping.mapEvent(
       { sfxId: 1, x: 100 },
       { levelWidth: 100, levelHeight: 100 },
@@ -403,7 +403,7 @@ describe('MidiMapping 2', function() {
     });
     const center = mapping.mapEvent({ sfxId: 1, x: 50 }, { viewRect: { x: 0, w: 100 } }, 0);
     expect(center.pan).to.equal(0);
-  
+
     const zero = mapping.mapEvent({ sfxId: 1, x: 10 }, { viewRect: { x: 0, w: 0 } }, 0);
     expect(zero.pan).to.equal(null);
   });
@@ -411,7 +411,7 @@ describe('MidiMapping 2', function() {
   it('returns null for missing events and ignores non-plain envelopes', function() {
     const mapping = makeMapping();
     expect(mapping.mapEvent(null, {}, 0)).to.equal(null);
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0, { envelope: [] });
     expect(spec.velocity).to.be.a('number');
   });
@@ -420,7 +420,7 @@ describe('MidiMapping 2', function() {
     const mapping = makeMapping();
     const spec = mapping.mapEvent({ sfxId: 1 });
     expect(spec.note).to.be.a('number');
-  
+
     const overrideSpec = mapping.mapEvent({ sfxId: 1 }, undefined, undefined, { note: 70 });
     expect(overrideSpec.note).to.equal(70);
   });

@@ -517,15 +517,3 @@ export function scaleImage (scaleSize, src, trg, srcWidth, srcHeight, yFirst, yL
     }
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-

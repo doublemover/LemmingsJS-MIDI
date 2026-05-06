@@ -35,12 +35,11 @@ track ongoing and future work. Keep this roadmap current as work lands.
   beyond the current runtime-only paths. GitHub: #902. Touchpoints:
   `js/render/Stage.js`, `js/app/canvasFocusBlur.js`,
   `js/editor/EditorStorage.js`, `eslint.config.js`, `scripts/runTests.js`.
-- [x] Finish text hygiene cleanup by making `git diff --check
-  origin/master...HEAD` clean without relying on baseline entries for newly
-  renamed files. GitHub: #904. Touchpoints:
+- [x] Replace the custom text-hygiene baseline with changed-line
+  `git diff --check` CI coverage and keep the PR diff clean. GitHub: #904.
+  Touchpoints:
   `test/midi/midi-input-controller.coverage.test.js`,
-  `test/midi/midi-scheduler.coverage.test.js`,
-  `scripts/check-text-hygiene-baseline.txt`.
+  `test/midi/midi-scheduler.coverage.test.js`, `.github/workflows/test.yml`.
 - [x] Rebase or merge the latest `origin/master` change (`11c0880 Create
   FUNDING.yml`) before merging PR #896.
 - [x] Finish Playwright service-worker validation with explicit local opt-in,

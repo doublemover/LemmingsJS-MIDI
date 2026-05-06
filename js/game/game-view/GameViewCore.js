@@ -118,7 +118,7 @@ class GameView extends BaseLogger {
     this._midiSchemaHash = null;
     this._midiStatusHandlers = { onEnabled: null, onError: null };
     this.midiEnabled = false;
-  
+
     this.includeSavedLevels = false;
     this.autoExitEditorOnSelect = false;
     this.editorMode = false;
@@ -127,7 +127,7 @@ class GameView extends BaseLogger {
     this._editorWasRunning = false;
     this._editorInputWasEnabled = true;
     this._editorPanWasEnabled = true;
-  
+
     const gameTypes = getGameTypes();
     this.log.log('selected level: ' + gameTypes.toString(this.gameType) + ' : ' + this.levelIndex + ' / ' + this.levelGroupIndex);
   }

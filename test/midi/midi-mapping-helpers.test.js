@@ -171,7 +171,7 @@ describe('MidiMapping helpers', function() {
     expect(__test__.clampNoteToRange(130, { min: 60 })).to.equal(118);
 
     const baseScale = { degrees: [0, 2, 4], root: 0 };
-    const chord = __test__.buildChordNotes(0, baseScale, 4, 'triad', 0);        
+    const chord = __test__.buildChordNotes(0, baseScale, 4, 'triad', 0);
     expect(chord).to.have.length(3);
   });
 

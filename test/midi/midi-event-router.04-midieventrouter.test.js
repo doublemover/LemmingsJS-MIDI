@@ -230,12 +230,12 @@ describe('MidiEventRouter 4', function() {
       timing: { bpmBase: 10 }
     });
     router.context = { game: { getGameTimer() { return { speedFactor: 2 }; } } };
-  
+
     expect(router._getEventPriority({ sfxId: 5 }, {})).to.equal(2);
     expect(router._getEventPriority({ sfxId: 1 }, { priority: 3 })).to.equal(3);
     expect(router._getEventPriority({ sfxId: 2 }, {})).to.equal(1);
     expect(router._getBpm()).to.equal(20);
-  
+
     const arpCfg = { arp: { independent: true } };
     expect(router._resolveArpKey({ triggerType: 7, sfxId: 1, objectId: 10 }, arpCfg))
       .to.equal('trigger:7:1:object:10');
@@ -251,40 +251,40 @@ describe('MidiEventRouter 4', function() {
       noteRange: { min: 0, max: 127 },
       position: { timbreRange: { min: 0, max: 127 }, panRange: { min: -127, max: 127 } }
     });
-  
+
     const repeatCfg = { maxRepeats: 2, windowBeats: 1, amount: 0.5, target: 'velocity' };
     expect(router._getRepeatFactor('sfx:1', 0, repeatCfg, 60)).to.equal(0);
     expect(router._getRepeatFactor('sfx:1', 500, repeatCfg, 60)).to.equal(0.5);
-  
+
     const baseSpec = { note: 60, velocity: 64, durationTicks: 4, releaseVelocity: 64 };
     const notes = [60, 64];
     const velocity = router._applyRepeatTarget(baseSpec, notes, repeatCfg, 0.5).spec;
     expect(velocity.velocity).to.be.greaterThan(64);
-  
+
     const duration = router._applyRepeatTarget(baseSpec, notes, { amount: 0.5, target: 'duration' }, 1).spec;
     expect(duration.durationTicks).to.be.greaterThan(4);
-  
+
     const note = router._applyRepeatTarget(baseSpec, notes, { amount: 0.5, target: 'note' }, 1);
     expect(note.activeNotes[0]).to.be.greaterThan(60);
-  
+
     const timbre = router._applyRepeatTarget({ ...baseSpec, timbre: 10 }, notes, { amount: 0.5, target: 'timbre' }, 1).spec;
     expect(timbre.timbre).to.be.greaterThan(10);
-  
+
     const pan = router._applyRepeatTarget({ ...baseSpec, pan: 0 }, notes, { amount: 0.5, target: 'pan' }, 1).spec;
     expect(pan.pan).to.not.equal(0);
-  
+
     const bend = router._applyRepeatTarget({ ...baseSpec, pitchBend: 0.2 }, notes, { amount: 0.5, target: 'pitchBend' }, 1).spec;
     expect(bend.pitchBend).to.be.greaterThan(0.2);
-  
+
     const attack = router._applyRepeatTarget(baseSpec, notes, { amount: 0.5, target: 'attack' }, 1).spec;
     expect(attack.velocity).to.be.greaterThan(64);
-  
+
     const sustain = router._applyRepeatTarget(baseSpec, notes, { amount: 0.5, target: 'sustain' }, 1).spec;
     expect(sustain.durationTicks).to.be.greaterThan(4);
-  
+
     const release = router._applyRepeatTarget(baseSpec, notes, { amount: 0.5, target: 'release' }, 1).spec;
     expect(release.releaseVelocity).to.be.greaterThan(64);
-  
+
     const noAmount = router._applyRepeatTarget(baseSpec, notes, { target: 'velocity' }, 1);
     expect(noAmount.spec.velocity).to.equal(64);
   });
@@ -346,7 +346,7 @@ describe('MidiEventRouter 4', function() {
     );
     expect(spacingOk).to.equal(false);
     expect(router.getRateReport().reason).to.equal('spacing');
-  
+
     const bySfx = new Map([[1, { count: 4, bytes: 0, priority: 1 }]]);
     router.scheduler.getRateSnapshot = () => (
       makeRateSnapshot({ count: 4, bytes: 0, bySfx }, { count: 0, bytes: 0 }, 100)
@@ -370,17 +370,17 @@ describe('MidiEventRouter 4', function() {
     const { router, sent } = makeRouter({ enabled: false });
     router._onEvent({ sfxId: 1, tick: 1 });
     expect(sent.length).to.equal(0);
-  
+
     router.setMapping({ enabled: true, limits: { maxEventsPerSecond: 1000 } });
     router.scheduler.output = null;
     router._onEvent({ sfxId: 1, tick: 1 });
     expect(sent.length).to.equal(0);
-  
+
     router.scheduler.output = {};
     router.mapping.mapEvent = () => null;
     router._onEvent({ sfxId: 1, tick: 1 });
     expect(sent.length).to.equal(0);
-  
+
     router.mapping.mapEvent = () => ({ note: 1, velocity: 1, durationTicks: 1 });
     router.setMapping({ enabled: true, limits: { maxEventsPerSecond: 1 } });
     router._onEvent({ sfxId: 1, tick: 1 });
@@ -394,7 +394,7 @@ describe('MidiEventRouter 4', function() {
     const output = { channels: {} };
     router.setOutput(output);
     expect(seen).to.equal(output);
-  
+
     const spec = { note: 60, velocity: 64, durationTicks: 2 };
     const result = router._applyRepeatTarget(
       spec,
@@ -414,10 +414,10 @@ describe('MidiEventRouter 4', function() {
   it('covers tick defaults and density edge cases', function() {
     const { router, mapping } = makeRouter({ density: { windowTicks: 0 } });
     router.context = {};
-  
+
     expect(router._tickMsFromEvent({})).to.equal(60);
     expect(router._densityForEvent({ sfxId: 1, tick: 1 })).to.equal(0);
-  
+
     router.mapping.config.density.windowTicks = 5;
     expect(router._densityForEvent({ sfxId: null, tick: 1 })).to.equal(0);
     router._lastTickBySfx.set(1, 5);
@@ -446,7 +446,7 @@ describe('MidiEventRouter 4', function() {
     expect(base).to.equal(900);
     const again = router._resolveScheduleBase(200, 60, 1);
     expect(again).to.equal(base);
-  
+
     const factorA = router._getRepeatFactor('sfx:1', 1000, mapping.config.repeat, 60);
     const factorB = router._getRepeatFactor('sfx:1', 1100, mapping.config.repeat, 60);
     expect(factorA).to.equal(0);

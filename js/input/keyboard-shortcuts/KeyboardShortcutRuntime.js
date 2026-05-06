@@ -43,7 +43,7 @@ const keyboardShortcutRuntimeMethods = {
       const scale = vp.scale;
       // hold shift to pan much further per frame
       const shiftMul = this.mod.shift ? 2 : 1;
-  
+
       // ----- panning -----
       // tweak distance per frame; previous values felt too large
       const baseX = 18 * scale;
@@ -74,7 +74,7 @@ const keyboardShortcutRuntimeMethods = {
       } else {
         this.pan.vx = this.pan.vy = 0;
       }
-  
+
       // ----- zooming -----
       // anchor zooming around the current screen centre without
       // drifting the viewpoint. Using updateViewPoint() directly was

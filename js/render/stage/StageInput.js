@@ -125,7 +125,7 @@ const stageInputMethods = {
     this.controller.onMouseMove.on((e) => {
       this.cursorX = e.x;
       this.cursorY = e.y;
-  
+
       if (e.button) {
         const stageImage = this.getStageImageAt(e.mouseDownX, e.mouseDownY);
         if (!stageImage || !stageImage.display) return;
@@ -144,7 +144,7 @@ const stageInputMethods = {
         stageImage.display.onMouseMove.trigger(
           new Position2D(worldX, worldY)
         );
-  
+
       }
     });
   },
@@ -153,7 +153,7 @@ const stageInputMethods = {
     this.controller.onZoom.on((e) => {
       const stageImage = this.gameImgProps;
       if (!stageImage || !stageImage.display) return;
-  
+
       // Always zoom around the cursor position e.x,e.y
       this.updateViewPoint(stageImage, e.x, e.y, e.deltaZoom, e.velocity);
     });
@@ -161,23 +161,23 @@ const stageInputMethods = {
 
   updateViewPoint(stageImage, argX, argY, deltaZoom, veloUpdate = false) {
     if (!stageImage || !stageImage.display) return;
-  
+
     let targetScale = stageImage.viewPoint.scale || 1;
     let targetX = stageImage.viewPoint.x;
     let targetY = stageImage.viewPoint.y;
-  
+
     if (deltaZoom !== 0) {
       const screenX_rel = argX - stageImage.x;
       const screenY_rel = argY - stageImage.y;
-  
+
       const sceneX_pre = stageImage.viewPoint.getSceneX(screenX_rel);
       const sceneY_pre = stageImage.viewPoint.getSceneY(screenY_rel);
-  
+
       const zoomSensitivity = 0.001125;
       const desiredScale = targetScale + deltaZoom * zoomSensitivity;
       const snappedScale = this.snapScale(desiredScale);
       targetScale = snappedScale;
-  
+
       if (!veloUpdate && snappedScale !== stageImage.viewPoint.scale) {
         targetX = sceneX_pre - screenX_rel / targetScale;
         targetY = sceneY_pre - screenY_rel / targetScale;
@@ -207,28 +207,28 @@ const stageInputMethods = {
   snapScale(rawScale) {
     const { width: dispW, height: dispH } = this.gameImgProps.display.worldDataSize;
     if (dispW === 0 || dispH === 0) return rawScale;
-  
+
     const gcd = (a, b) => (b ? gcd(b, a % b) : a);
     const g = gcd(dispW, dispH);
     const step = 1 / g;
-  
+
     const minScale = 0.25;
     const maxScale = 8;
     let clamped = rawScale;
     if (clamped < minScale) clamped = minScale;
     if (clamped > maxScale) clamped = maxScale;
-  
+
     return Math.round(clamped / step) * step;
   },
 
   applyViewport(stageImage, targetX, targetY, targetScale) {
     if (!stageImage || !stageImage.display) return;
-  
+
     this._rawScale = targetScale;
     stageImage.viewPoint.scale = this.snapScale(targetScale);
     stageImage.viewPoint.setX(targetX);
     stageImage.viewPoint.setY(targetY);
-  
+
     this.clampViewPoint(stageImage);
   },
 
@@ -257,22 +257,22 @@ const stageInputMethods = {
     const guiActive = this.guiEnabled && !!this.guiImgProps.display;
     // this margin is for the level <select> elements in the html
     const margin = guiActive ? this.hudMargin : 0;
-  
+
     // HUD scale adapts to available space
     const rawHUDH = guiActive ? (this.guiImgProps.display?.worldDataSize.height || 80) : 0;
     const rawHUDW = guiActive ? (this.guiImgProps.display?.worldDataSize.width || 720) : 0;
-  
+
     const maxScaleW = guiActive && rawHUDW ? stageW / rawHUDW : 1;
     const maxScaleH = guiActive && rawHUDH ? (stageH - margin) / rawHUDH : 1;
     let hudScale = guiActive ? Math.min(4, maxScaleW, maxScaleH) : 1;
     if (!isFinite(hudScale) || hudScale <= 0) hudScale = 1;
     this.guiImgProps.viewPoint.scale = hudScale;
-  
+
     const hudH = guiActive ? rawHUDH * hudScale : 0;
     const hudW = guiActive ? rawHUDW * hudScale : 0;
-  
+
     const gameH = Math.max(0, stageH - hudH - margin);
-  
+
     Object.assign(this.gameImgProps, { x: 0, y: 0 });
     this.gameImgProps.canvasViewportSize = { width: stageW, height: gameH };
     Object.assign(this.guiImgProps, {
@@ -281,36 +281,36 @@ const stageInputMethods = {
     });
     this.guiImgProps.canvasViewportSize = { width: hudW, height: hudH };
     this._syncOverlayLayout();
-  
+
     if (this.gameImgProps.display) {
       const { width: worldW, height: worldH } = this.gameImgProps.display.worldDataSize;
-  
+
       const scale = this.gameImgProps.viewPoint.scale || 2;
       const viewH_world = gameH / scale;
       const viewW_world = stageW / scale;
-  
+
       let x = this.gameImgProps.viewPoint.x;
       let y = this.gameImgProps.viewPoint.y;
       if (!isFinite(x)) x = 0;
       if (!isFinite(y)) y = 0;
-  
+
       if (worldW * scale <= stageW) {
         x = (worldW - viewW_world) / 2;
       }
-  
+
       this.applyViewport(this.gameImgProps, x, y, scale);
-  
+
       // Redraw at initial position
       this.clear(this.gameImgProps);
       const gameImg = this.gameImgProps.display.getImageData();
       this.draw(this.gameImgProps, gameImg);
     }
-  
+
     if (guiActive && this.guiImgProps.display) {
       const guiImg = this.guiImgProps.display.getImageData();
       this.draw(this.guiImgProps, guiImg);
     }
-  
+
     this._syncOverlayDisplaySize(this.gameImgProps, this.gameOverlayImgProps);
     this._syncOverlayDisplaySize(this.guiImgProps, this.guiOverlayImgProps);
   },
@@ -394,7 +394,7 @@ const stageInputMethods = {
       this.redraw(true);
       return;
     }
-  
+
     const requestedScale = this._getRequestedScale();
     if (requestedScale > 0) {
       this._rawScale = requestedScale;
@@ -402,11 +402,11 @@ const stageInputMethods = {
       this.gameImgProps.viewPoint.setX(targetX);
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
-  
+
       this.redraw(true);
       return;
     }
-  
+
     let scale = this.gameImgProps.viewPoint.scale;
     if (scale === 2) {
       this._rawScale = scale;
@@ -414,11 +414,11 @@ const stageInputMethods = {
       this.gameImgProps.viewPoint.setX(targetX);
       this.gameImgProps.viewPoint.setY(targetY);
       this.clampViewPoint(this.gameImgProps);
-  
+
       this.redraw(true);
       return;
     }
-  
+
     const sceneX = this.gameImgProps.viewPoint.getSceneX(targetX - this.gameImgProps.x);
     const sceneY = this.gameImgProps.viewPoint.getSceneY(targetY - this.gameImgProps.y);
     this._rawScale = 2;
@@ -430,7 +430,7 @@ const stageInputMethods = {
       sceneY - (targetY - this.gameImgProps.y) / this.gameImgProps.viewPoint.scale
     );
     this.clampViewPoint(this.gameImgProps);
-  
+
     this.redraw(true);
   }
 };

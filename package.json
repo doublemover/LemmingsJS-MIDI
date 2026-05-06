@@ -17,7 +17,6 @@
     "mcpb:build:interact": "node scripts/build-mcpb-bundle.js --surface interact",
     "mcpb:validate": "npm run mcpb:build && npx @anthropic-ai/mcpb validate dist/mcpb",
     "check-undefined": "node scripts/check-undefined.js",
-    "check-text-hygiene": "node scripts/check-text-hygiene.js",
     "typecheck:critical": "tsc -p tsconfig.checkjs.json --pretty false",
     "test": "node scripts/runTests.js",
     "test:budget": "cross-env LEMMINGS_TEST_ENFORCE_BUDGET=true LEMMINGS_TEST_BUDGET_MS=180000 node scripts/runTests.js",

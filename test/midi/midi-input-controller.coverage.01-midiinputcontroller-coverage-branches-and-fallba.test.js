@@ -52,7 +52,7 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     expect(patches).to.have.length(0);
   });
 
-  it('ignores realtime messages that are not transport commands', function() {  
+  it('ignores realtime messages that are not transport commands', function() {
     const controller = new MidiInputController({}, { getConfig: () => makeConfig('omni') });
     let transportCalls = 0;
     controller._handleTransport = () => { transportCalls += 1; };
@@ -74,20 +74,20 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     expect(controller.channel).to.equal('omni');
     controller.setConfig({ input: { channel: 99 } });
     expect(controller.channel).to.equal(16);
-  
+
     controller._applyConfigPatch({ timing: { bpmBase: 110 } });
     expect(patches.length).to.equal(1);
-  
+
     const target = {};
     controller._setNested(target, 0, 'x');
     controller._setNested(target, 'a.b', 2);
     expect(target.a.b).to.equal(2);
-  
+
     const selectorView = { selectSpeedFactor(value) { this.last = value; } };
     const controllerSelect = new MidiInputController(selectorView);
     controllerSelect._setSpeedFactor(2);
     expect(selectorView.last).to.equal(2);
-  
+
     const fallbackView = {};
     const controllerFallback = new MidiInputController(fallbackView);
     let setValue = null;
@@ -142,11 +142,11 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
       getConfig: () => config,
       onConfigChange: patch => patches.push(patch)
     });
-  
+
     controller._handleTransport(0xFA, config);
     controller._handleTransport(0xFC, config);
     controller._handleTransport(0xFB, config);
-  
+
     controller._handleNoteOn(60, 100, config, 1);
     controller._handleNoteOn(10, 100, config, 1);
     controller._handleNoteOn(11, 100, config, 1);
@@ -157,7 +157,7 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     controller._handleNoteOn(16, 100, config, 1);
     controller.getConfig = null;
     controller._handleNoteOn(17, 100, config, 1);
-  
+
     controller._handleControlChange(1, 64, config);
     controller._handleControlChange(2, 0, config);
     controller._handleControlChange(3, 127, config);
@@ -167,7 +167,7 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     controller._handleControlChange(7, 64, config);
     controller._handleControlChange(8, 64, config);
     controller._handleControlChange(9, 64, config);
-  
+
     expect(calls.pause).to.equal(2);
     expect(calls.resume).to.equal(2);
     expect(calls.restart).to.equal(2);
@@ -223,13 +223,13 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     controller._onMessage({ data: [0xF8] });
     controller.setConfig(config);
     controller._applyConfigPatch({ timing: { bpmBase: 120 } });
-  
+
     controller._changeSpeed(1);
     controller.getConfig = () => config;
     controller._onMessage({ data: [0xFA] });
     controller._onMessage({ data: [0xFC] });
     controller._onMessage({ data: [0xFB] });
-  
+
     controller._handleNoteOn(60, 100, config, 1);
     controller._handleNoteOn(1, 100, config, 1);
     controller._handleNoteOn(2, 100, config, 1);
@@ -241,11 +241,11 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     controller._handleNoteOn(8, 100, config, 1);
     controller.getConfig = null;
     controller._handleNoteOn(8, 100, config, 1);
-  
+
     const missConfig = { input: { channel: 'omni', notes: { skillBase: 60, skillOrder: ['NOPE'] } } };
     const missController = new MidiInputController({ game: { queueCommand() {}, gameGui: null } }, { getConfig: () => missConfig });
     missController._handleNoteOn(60, 100, missConfig, 1);
-  
+
     controller._handleControlChange(1, 64, config);
     controller._handleControlChange(2, 64, config);
     controller._handleControlChange(3, 127, config);
@@ -255,10 +255,10 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     controller._handleControlChange(7, 64, config);
     controller._handleControlChange(8, 64, { input: { cc: {} } });
     controller._handleControlChange(99, 64, { input: {} });
-  
+
     controller.setConfig({ input: { channel: 2 } });
     controller._onMessage({ data: [0x90, 60, 100] });
-  
+
     expect(view.paused).to.equal(true);
     expect(view.resumed).to.equal(true);
     expect(view.restarted).to.equal(true);
@@ -292,20 +292,20 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     const controller = new MidiInputController(view);
     controller.setConfig({ input: { channel: '' } });
     controller._setNested({}, null, 1);
-  
+
     controller._onMessage({ data: [0xFA] });
     controller._onMessage({ data: [0xFC] });
     controller._onMessage({ data: [0xFB] });
-  
+
     controller.setConfig({ input: { channel: 2 } });
     controller._onMessage({ data: [0x90, 60, 127] });
-  
+
     const config = view.getMidiConfig();
     controller._handleNoteOn(60, 100, config, 1);
     controller._handleNoteOn(61, 100, config, 1);
     controller._handleNoteOn(62, 100, config, 1);
     controller._handleNoteOn(63, 100, config, 1);
-  
+
     expect(view.restarted).to.equal(true);
     expect(view.paused).to.equal(true);
     expect(view.resumed).to.equal(true);
@@ -317,10 +317,10 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     const controller = new MidiInputController(view);
     controller._changeSpeed(1);
     expect(view.gameSpeedFactor).to.equal(2);
-  
+
     const bareController = new MidiInputController({});
     bareController._changeSpeed(1);
-  
+
     const noQueueView = { game: {} };
     const config = { input: { notes: { skillBase: 60, skillOrder: ['CLIMBER'] } } };
     const noQueue = new MidiInputController(noQueueView, { getConfig: () => config });
@@ -367,45 +367,45 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     nullViewController.getConfig();
     controller.setConfig({ input: { channel: '' } });
     controller._applyConfigPatch({ timing: { bpmBase: 110 } });
-  
+
     const handlerController = new MidiInputController(view, {
       onConfigChange: patch => patches.push(patch)
     });
     handlerController._applyConfigPatch({ timing: { bpmBase: 120 } });
-  
+
     controller._setNested({}, null, 1);
     controller._setSpeedFactor(2);
     const fallbackView = { gameSpeedFactor: 1 };
     const fallbackController = new MidiInputController(fallbackView);
     fallbackController._setSpeedFactor(2);
-  
+
     const speedView = {
       selectSpeedFactor(value) { this.speed = value; },
       game: { getGameTimer() { return { speedFactor: 2 }; } }
     };
     const speedController = new MidiInputController(speedView);
     speedController._changeSpeed(1);
-  
+
     const config = view.getMidiConfig();
     controller._handleTransport(0xFC, config);
     controller._handleTransport(0xFB, config);
-  
+
     controller._handleNoteOn(60, 100, config, 1);
     controller._handleNoteOn(61, 100, config, 1);
     controller._handleNoteOn(62, 100, config, 1);
     controller._handleNoteOn(63, 100, config, 1);
-  
+
     controller._handleControlChange(1, 64, config);
     controller._handleControlChange(2, 64, config);
     controller._handleControlChange(4, 127, config);
     controller._handleControlChange(5, 127, config);
     controller._handleControlChange(3, 64, { input: { cc: { custom: { cc: 3, target: 'timing.bpmBase', min: 0, max: 1 } } } });
     controller._handleControlChange(1, 64, { input: {} });
-  
+
     controller._onMessage({ data: [0xFA] });
     controller.setConfig({ input: { channel: 2 } });
     controller._onMessage({ data: [0x90, 60, 100] });
-  
+
     expect(view.paused).to.equal(true);
     expect(view.resumed).to.equal(true);
   });

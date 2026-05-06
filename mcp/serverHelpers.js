@@ -20,7 +20,7 @@ const createServerHelpers = ({
     cachedKeybindingsMtimeMs = stat.mtimeMs;
     return cachedKeybindings;
   };
-  
+
   const ensureBlurred = async (session) => {
     await session.page.evaluate(() => {
       const active = document.activeElement;
@@ -29,7 +29,7 @@ const createServerHelpers = ({
       }
     });
   };
-  
+
   const callE2E = async (session, method, ...args) => session.page.evaluate(
     ({ method, args }) => {
       const api = window.__E2E__;
@@ -44,17 +44,17 @@ const createServerHelpers = ({
     },
     { method, args }
   );
-  
+
   const getState = async (session) => {
     const result = await callE2E(session, 'getState');
     return result.ok ? result.value : null;
   };
-  
+
   const getTickIndex = async (session) => {
     const state = await getState(session);
     return state?.game?.timer?.tickIndex ?? null;
   };
-  
+
   const filterStateSnapshot = (snapshot, include) => {
     const config = {
       view: false,
@@ -69,16 +69,16 @@ const createServerHelpers = ({
       mode: snapshot.mode,
       ready: snapshot.ready
     };
-  
+
     if (config.view) output.view = snapshot.view;
     if (config.stage) output.stage = snapshot.stage;
     if (config.game) output.game = snapshot.game;
     if (config.editor) output.editor = snapshot.editor;
     if (config.midi) output.midi = snapshot.midi;
-  
+
     return output;
   };
-  
+
   const buildSkillInfo = (skills) => {
     if (!skills) return null;
     const counts = SKILL_NAMES.map((_, idx) => {
@@ -105,7 +105,7 @@ const createServerHelpers = ({
       availableMask
     };
   };
-  
+
   const buildLemmingPrunePolicy = (state, skillInfo) => {
     const lemmings = Array.isArray(state?.game?.lemmings) ? state.game.lemmings : [];
     const availableMask = skillInfo?.availableMask ?? 0;
@@ -122,7 +122,7 @@ const createServerHelpers = ({
       includeDisabled: hasDisabled
     };
   };
-  
+
   const pruneLemming = (lem, policy) => {
     if (!lem) return null;
     const output = {
@@ -142,7 +142,7 @@ const createServerHelpers = ({
     if (policy?.includeDisabled && lem.disabled) output.disabled = true;
     return output;
   };
-  
+
   const buildLemmingSummaryCompact = (state, policy, options = {}) => {
     const summary = buildLemmingSummary(state, options);
     return {
@@ -151,17 +151,17 @@ const createServerHelpers = ({
       top: Array.isArray(summary.top) ? summary.top.map((lem) => pruneLemming(lem, policy)) : []
     };
   };
-  
+
   const ensureGameFocus = async (session) => {
     await ensureBlurred(session);
   };
-  
+
   const pressKey = async (session, key) => {
     const normalized = normalizeKeyChord(key);
     if (!normalized) return;
     await session.page.keyboard.press(normalized);
   };
-  
+
   const pressAction = async (session, action, repeat = 1) => {
     const bindings = session.keybindings?.bindings || {};
     const chordList = bindings[action];
@@ -179,7 +179,7 @@ const createServerHelpers = ({
     });
     return { ok: true, action, repeat };
   };
-  
+
 
   return {
     loadKeybindings,

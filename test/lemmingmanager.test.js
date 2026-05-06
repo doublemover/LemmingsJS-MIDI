@@ -286,7 +286,7 @@ describe('LemmingManager additional', function() {
     const lem = manager.lemmings[0];
     manager.setLemmingState(lem, Lemmings.LemmingStateType.BLOCKING);
     let removed=false; manager.triggerManager.removeByOwner=()=>{removed=true;};
-    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);        
+    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);
     expect(ok).to.be.true;
     expect(removed).to.be.true;
   });
@@ -360,7 +360,7 @@ describe('LemmingManager triggers and nuking', function() {
     expect(logs[0]).to.match(/unknown trigger type/i);
   });
 
-  it('nuking skips disabled targets and ends when applied', function() {        
+  it('nuking skips disabled targets and ends when applied', function() {
     const { manager } = makeManager();
     manager.addLemming(1, 1);
     manager.addLemming(2, 2);
@@ -394,7 +394,7 @@ describe('LemmingManager triggers and nuking', function() {
     expect(manager._nukeTargets).to.equal(null);
   });
 
-  it('clears nuke targets when index jumps beyond count', function() {     
+  it('clears nuke targets when index jumps beyond count', function() {
     const { manager } = makeManager();
     manager._nukeTargets = [{ id: 1 }];
     let calls = 0;

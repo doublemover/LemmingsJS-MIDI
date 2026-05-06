@@ -79,7 +79,7 @@ const stageCompositorMethods = {
         overlayVisibilityChanged ||
         overlayDirty ||
         (overlayVisible && (gameDirty || guiDirty));
-  
+
     if (!requiresFullComposite && !gameDirty && !guiDirty && !overlayDirty) {
       this._lastCursorX = this.cursorX;
       this._lastCursorY = this.cursorY;
@@ -122,7 +122,7 @@ const stageCompositorMethods = {
       this._lastCursorStateVersion = this._cursorStateVersion;
       return;
     }
-  
+
     if (requiresFullComposite) {
       this.clear();
       if (gameDisplay) {

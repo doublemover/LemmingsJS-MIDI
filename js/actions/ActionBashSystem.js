@@ -61,7 +61,7 @@ class ActionBashSystem extends ActionBaseSystem {
           );
           return LemmingStateType.SHRUG;
         }
-        if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {    
+        if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
           return LemmingStateType.SHRUG;
         }
       }
@@ -95,7 +95,7 @@ class ActionBashSystem extends ActionBaseSystem {
 
     return LemmingStateType.NO_STATE_TYPE;
   }
-  
+
   findGapDelta(groundMask, x, y) {
     for (let i = 0; i < 3; i++) {
       if (groundMask.hasGroundAt(x, y + i)) {

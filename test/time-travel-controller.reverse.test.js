@@ -16,9 +16,9 @@ describe('TimeTravelController reverse playback', function() {
       gameGui: { gameTimeChanged: false }
     };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(2);
-  
+
     expect(game._keyframe.tickIndex).to.equal(0);
     expect(game._forward).to.equal(2);
     expect(timer.tickIndex).to.equal(2);
@@ -33,9 +33,9 @@ describe('TimeTravelController reverse playback', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(5);
-  
+
     expect(timer.tickIndex).to.equal(5);
   });
 
@@ -49,9 +49,9 @@ describe('TimeTravelController reverse playback', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(5);
-  
+
     expect(timer.tickIndex).to.equal(5);
   });
 
@@ -65,9 +65,9 @@ describe('TimeTravelController reverse playback', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(2);
-  
+
     expect(timer.tickIndex).to.equal(0);
   });
 
@@ -84,9 +84,9 @@ describe('TimeTravelController reverse playback', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(1);
-  
+
     expect(suspended).to.equal(1);
     expect(applied).to.have.length(1);
   });
@@ -96,9 +96,9 @@ describe('TimeTravelController reverse playback', function() {
     const history = { getKeyframeAtOrBefore() { return null; } };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.seekToTick(2);
-  
+
     expect(timer.tickIndex).to.equal(3);
   });
 
@@ -130,13 +130,13 @@ describe('TimeTravelController reverse playback', function() {
       };
       const game = { getGameTimer: () => timer, inputEnabled: true };
       const controller = new TimeTravelController(game, history);
-  
+
       controller.startReverse();
       expect(controller.isReversing).to.equal(true);
       expect(suspended).to.equal(1);
       expect(paused).to.equal(1);
       expect(game.inputEnabled).to.equal(false);
-  
+
       controller.stopReverse();
       expect(controller.isReversing).to.equal(false);
       expect(resumed).to.equal(1);
@@ -174,16 +174,16 @@ describe('TimeTravelController reverse playback', function() {
       const controller = new TimeTravelController(game, history);
       let steps = 0;
       controller.stepBackward = (count) => { steps += count; };
-  
+
       controller.startReverse();
       expect(controller.isReversing).to.equal(true);
       expect(typeof rafCallback).to.equal('function');
-  
+
       rafCallback(30);
       expect(steps).to.equal(0);
       rafCallback(61);
       expect(steps).to.equal(1);
-  
+
       controller.stopReverse();
       expect(controller.isReversing).to.equal(false);
     } finally {
@@ -205,7 +205,7 @@ describe('TimeTravelController reverse playback', function() {
       const history = { pause() {} };
       const game = { getGameTimer: () => timer };
       const controller = new TimeTravelController(game, history);
-  
+
       controller.startReverse();
       expect(controller._prevInputEnabled).to.equal(true);
     } finally {
@@ -227,11 +227,11 @@ describe('TimeTravelController reverse playback', function() {
       const history = { pause() {}, resume() {} };
       const game = { getGameTimer: () => timer, inputEnabled: true, gameGui: { gameTimeChanged: false } };
       const controller = new TimeTravelController(game, history);
-  
+
       controller.toggleReverse();
       expect(controller.isReversing).to.equal(true);
       expect(game.gameGui.gameTimeChanged).to.equal(true);
-  
+
       game.gameGui.gameTimeChanged = false;
       controller.toggleReverse();
       expect(controller.isReversing).to.equal(false);

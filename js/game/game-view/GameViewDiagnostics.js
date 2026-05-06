@@ -63,7 +63,7 @@ const gameViewDiagnosticsMethods = {
     const group = this._getGroupNames(savedEntries)[this.levelGroupIndex];
     const lvlName = level.name ? level.name.trim() : '';
     console.log(`starting bench series for ${lvlName} in ${group} in ${pack}, adding ${entrances} entrances with ${this.extraLemmings} extra lemmings`);
-  
+
     if (!this._benchBaseEntrances) {
       this._benchBaseEntrances = level.entrances.slice();
     }
@@ -77,13 +77,13 @@ const gameViewDiagnosticsMethods = {
       triggerTypes.KILL,
       triggerTypes.TRAP,
     ]);
-  
+
     const increments = [100, 50, 25, 12, 6];
     const SEGMENT_DURATION = 60;
     const ENTRANCE_HEIGHT = 28;
     const SPAWN_OFFSET_Y = 14;
     const SAFE_ENTRANCE_DROP = getLemmingCtor().LEM_MAX_FALLING - SPAWN_OFFSET_Y;
-  
+
     const clearHeight = (x, y) => {
       if (y < 0 || y + ENTRANCE_HEIGHT > level.height) return false;
       for (let i = 0; i < ENTRANCE_HEIGHT; i++) {
@@ -91,7 +91,7 @@ const gameViewDiagnosticsMethods = {
       }
       return true;
     };
-  
+
     const findOpenSegment = x => {
       let best = null;
       let y = 0;
@@ -109,7 +109,7 @@ const gameViewDiagnosticsMethods = {
       }
       return best;
     };
-  
+
     const trySpawn = spawnX => {
       if (spawnX < 0 || spawnX >= level.width) return false;
       const seg = findOpenSegment(spawnX);
@@ -118,7 +118,7 @@ const gameViewDiagnosticsMethods = {
       if (drop < 15) return false;
       const entY = seg.bottom - ENTRANCE_HEIGHT - drop;
       if (!clearHeight(spawnX, entY)) return false;
-  
+
       for (const tr of level.triggers) {
         if (!badTriggers.has(tr.type)) continue;
         if (spawnX < tr.x1 || spawnX >= tr.x2) continue;
@@ -126,18 +126,18 @@ const gameViewDiagnosticsMethods = {
         if (entY + ENTRANCE_HEIGHT > tr.y1 && entY < tr.y2) return false;
         if (entY + ENTRANCE_HEIGHT <= tr.y1 && seg.bottom >= tr.y1) return false;
       }
-  
+
       const entX = spawnX - 24;
       if (entX < 0 || entX >= level.width || entY < 0 || entY >= level.height) return false;
-  
+
       for (const ent of level.entrances) {
         if (ent.x === entX && ent.y === entY) return false;
       }
-  
+
       level.entrances.push({ x: entX, y: entY });
       return true;
     };
-  
+
     if (!this._benchEntrancePool) {
       level.entrances = baseEntrances.slice();
       const target = Math.max(...this._benchCounts);

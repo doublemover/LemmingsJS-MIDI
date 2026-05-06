@@ -17,20 +17,20 @@ const createWatchToolHandlers = ({
   const startWatchLoop = (session) => {
     session.watchController?.start();
   };
-  
+
   const stopWatchLoop = (session) => {
     session.watchController?.stop();
   };
-  
+
   const requestWatchPoll = (session, { immediate = false } = {}) => {
     session.watchController?.request({ immediate });
   };
-  
+
   const nudgeWatchPolling = (session) => {
     if (!session?.watches?.size) return;
     requestWatchPoll(session, { immediate: true });
   };
-  
+
   const pollWatches = async (session) => {
     if (!session.watches.size) return { triggeredCount: 0 };
     const state = await getState(session);
@@ -50,7 +50,7 @@ const createWatchToolHandlers = ({
         watch.pointerState = pointerState;
         triggered = updatePointerWatchState(pointerState, state);
       }
-  
+
       if (!triggered) continue;
       triggeredCount += 1;
       if (!Array.isArray(watch.actions) || !watch.actions.length) {
@@ -62,7 +62,7 @@ const createWatchToolHandlers = ({
         });
         continue;
       }
-  
+
       for (const action of watch.actions) {
         if (action.type === 'emitSummary') {
           const data = {};
@@ -119,7 +119,7 @@ const createWatchToolHandlers = ({
     }
     return { triggeredCount };
   };
-  
+
 
   const watchCreateTool = async (args) => {
     const { sessionId, watch, actions, enabled } = WatchCreateSchema.parse(args || {});
@@ -130,7 +130,7 @@ const createWatchToolHandlers = ({
     const pointerState = watch.type === 'onChange'
       ? createPointerWatchState(watch.jsonPointer, state)
       : null;
-  
+
     const entry = {
       id: watchId,
       type: watch.type,
@@ -142,17 +142,17 @@ const createWatchToolHandlers = ({
       pointerState,
       lastCaptureTick: -Infinity
     };
-  
+
     session.watches.set(watchId, entry);
     startWatchLoop(session);
     requestWatchPoll(session, { immediate: true });
-  
+
     return attachEvents(session, {
       watchId,
       ok: true
     });
   };
-  
+
   const watchCancelTool = async (args) => {
     const { sessionId, watchId } = WatchCancelSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -162,7 +162,7 @@ const createWatchToolHandlers = ({
     }
     return attachEvents(session, { ok });
   };
-  
+
   const eventsPollTool = async (args) => {
     const { sessionId, after } = EventsPollSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -177,7 +177,7 @@ const createWatchToolHandlers = ({
     }
     return envelope || { cursor, events: [] };
   };
-  
+
 
   return {
     startWatchLoop,

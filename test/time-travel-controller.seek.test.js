@@ -28,9 +28,9 @@ describe('TimeTravelController seek and retention', function() {
       gameGui: { gameTimeChanged: false }
     };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.stepBackward(1);
-  
+
     expect(timer.tickIndex).to.equal(0);
     expect(applied).to.have.length(1);
     expect(events[0].reverse).to.equal(true);
@@ -104,10 +104,10 @@ describe('TimeTravelController seek and retention', function() {
     };
     const controller = new TimeTravelController(game, history);
     const before = history.computeReplayHash();
-  
+
     controller.seekToTick(1);
     controller.stepBackward(1);
-  
+
     const after = history.computeReplayHash();
     expect(after).to.equal(before);
   });
@@ -134,14 +134,14 @@ describe('TimeTravelController seek and retention', function() {
     };
     const controller = new TimeTravelController(game, history);
     const before = history.computeReplayHash();
-  
+
     for (let i = 0; i < 40; i += 1) {
       const seekTarget = (i * 13) % 180;
       controller.seekToTick(seekTarget);
       controller.stepBackward((i % 5) + 1);
     }
     controller.seekToTick(180);
-  
+
     const after = history.computeReplayHash();
     expect(after).to.equal(before);
   });
@@ -171,9 +171,9 @@ describe('TimeTravelController seek and retention', function() {
       const history = { pause() { paused += 1; } };
       const game = { getGameTimer: () => timer, inputEnabled: true };
       const controller = new TimeTravelController(game, history);
-  
+
       controller.startReverse();
-  
+
       expect(controller.isReversing).to.equal(false);
       expect(suspended).to.equal(0);
       expect(paused).to.equal(0);
@@ -197,9 +197,9 @@ describe('TimeTravelController seek and retention', function() {
     };
     const game = { getGameTimer: () => timer, render() {}, gameGui: { gameTimeChanged: false } };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.stepBackward(1);
-  
+
     expect(suspended).to.equal(1);
   });
 
@@ -215,9 +215,9 @@ describe('TimeTravelController seek and retention', function() {
     };
     const game = { getGameTimer: () => timer, render() {} };
     const controller = new TimeTravelController(game, history);
-  
+
     controller.stepBackward(3);
-  
+
     expect(timer.tickIndex).to.equal(0);
     expect(applied).to.equal(0);
   });
@@ -229,9 +229,9 @@ describe('TimeTravelController seek and retention', function() {
     const controller = new TimeTravelController(game, history);
     const calls = [];
     controller.seekToTick = (tick) => calls.push(tick);
-  
+
     controller.stepBackward(1);
-  
+
     expect(calls).to.eql([1]);
     expect(timer.tickIndex).to.equal(2);
   });

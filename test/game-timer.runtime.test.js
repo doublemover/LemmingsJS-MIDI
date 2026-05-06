@@ -23,7 +23,7 @@ describe('GameTimer runtime integration', function() {
     now = 0;
     globalThis.performance = { now: () => now };
     restoreLemmings = setGlobalLemmings({ endless: false });
-  
+
     const listeners = new Map();
     this.listeners = listeners;
     globalThis.document = {
@@ -78,11 +78,11 @@ describe('GameTimer runtime integration', function() {
         removeEventListener(type, handler) { calls.push(['win:remove', type, handler]); }
       }
     };
-  
+
     const timer = new GameTimer({ timeLimit: 1 }, runtime);
     timer.continue();
     timer.stop();
-  
+
     expect(calls.map(call => call[0])).to.include.members([
       'doc:add',
       'win:add',
@@ -125,7 +125,7 @@ describe('GameTimer runtime integration', function() {
         removeEventListener() {}
       }
     });
-  
+
     expect(timer.continue()).to.equal(false);
     expect(timer.isRunning()).to.equal(false);
     timer.stop();
@@ -196,10 +196,10 @@ describe('GameTimer runtime integration', function() {
       timer.benchStartupFrames = 5;
       timer.benchStableFactor = 2;
       timer.continue();
-  
+
       now = timer.frameTime * 12;
       globalThis.window._raf(now);
-  
+
       expect(timer.speedFactor).to.equal(1);
       expect(overlayCalls[0].color).to.match(/^rgba\(255,0,0/);
     });
@@ -210,10 +210,10 @@ describe('GameTimer runtime integration', function() {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.speedFactor = 0.5;
       timer.continue();
-  
+
       now = timer.frameTime * 30;
       globalThis.window._raf(now);
-  
+
       expect(timer.speedFactor).to.be.closeTo(0.4, 0.0001);
     });
   });

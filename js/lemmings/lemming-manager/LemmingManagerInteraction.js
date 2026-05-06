@@ -164,7 +164,7 @@ const lemmingManagerInteractionMethods = {
     const shift = this._nearestCellShift;
     const cx = x >> shift;
     const cy = y >> shift;
-  
+
     let best = null;
     let bestDist = Infinity;
     for (let dy = -1; dy <= 1; dy += 1) {
@@ -176,7 +176,7 @@ const lemmingManagerInteractionMethods = {
       }
     }
     if (best) return best;
-  
+
     const lems = this.activeLemmings;
     for (let i = 0; i < lems.length; i += 1) {
       const lem = lems[i];

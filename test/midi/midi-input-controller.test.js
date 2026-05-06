@@ -100,7 +100,7 @@ describe('MidiInputController', function() {
     expect(patches.some(patch => patch.density?.velocityBoost === 1)).to.equal(true);
   });
 
-  it('captures note input when a capture handler is active', function() {       
+  it('captures note input when a capture handler is active', function() {
     const commands = [];
     const view = {
       game: {

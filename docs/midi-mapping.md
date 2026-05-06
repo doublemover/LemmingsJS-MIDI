@@ -78,7 +78,7 @@ are omitted. Values outside the ranges are clamped.
 ## Customization tips
 
 - Edit the `input` section in `midi-mapping.json` to change note or CC mappings.
-- Use `input.channel` to switch between omni and a specific MIDI channel.       
+- Use `input.channel` to switch between omni and a specific MIDI channel.
 - Mapping changes take effect on refresh.
 - There is no standard MIDI CC for time signatures; the defaults use CC 80/81,
   but you can remap or disable them in `midi-mapping.json`.

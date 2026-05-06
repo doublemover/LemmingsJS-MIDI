@@ -105,7 +105,7 @@ const historyStoreApplyStateMethods = {
       }
       this._rebuildActiveLemmings(manager);
     }
-  
+
     if (manager && keyframe.lemmingManagerState) {
       const state = keyframe.lemmingManagerState;
       manager.selectedIndex = state.selectedIndex ?? -1;
@@ -115,36 +115,36 @@ const historyStoreApplyStateMethods = {
       manager.nextNukingLemmingsIndex = state.nextNukingLemmingsIndex ?? -1;
       manager._nukeTargets = this._resolveNukeTargets(manager, state.nukeTargets);
     }
-  
+
     if (game.level && keyframe.entranceOpened) {
       const entrances = game.level.entrances || [];
       for (let i = 0; i < entrances.length; i++) {
         entrances[i]._opened = !!keyframe.entranceOpened[i];
       }
     }
-  
+
     if (game.triggerManager && keyframe.triggerState) {
       this._applyTriggerState(game, keyframe.triggerState);
     }
-  
+
     if (game.level && keyframe.objectState) {
       this._applyObjectState(game.level, keyframe.objectState);
     }
-  
+
     if (manager?.miniMap && keyframe.minimapState) {
       const miniMap = manager.miniMap;
       miniMap.deadDots = new Uint8Array(keyframe.minimapState.deadDots || []);
       miniMap.deadTTLs = new Uint8Array(keyframe.minimapState.deadTTLs || []);
       miniMap.deadCount = keyframe.minimapState.deadCount ?? 0;
     }
-  
+
     if (game.level?.groundMask && keyframe.groundMask) {
       game.level.groundMask.mask = new Uint8Array(keyframe.groundMask);
     }
     if (game.level && keyframe.groundImage) {
       game.level.groundImage = new Uint8ClampedArray(keyframe.groundImage);
     }
-  
+
     if (keyframe.victory) {
       const victory = game.getVictoryCondition?.();
       if (victory) {
@@ -156,7 +156,7 @@ const historyStoreApplyStateMethods = {
         victory.isFinalize = !!keyframe.victory.isFinalize;
       }
     }
-  
+
     if (keyframe.skills) {
       const skills = game.getGameSkills?.();
       if (skills) {
@@ -165,7 +165,7 @@ const historyStoreApplyStateMethods = {
         skills.skills = keyframe.skills.skills.slice();
       }
     }
-  
+
     if (keyframe.timer) {
       const timer = game.getGameTimer?.();
       if (timer) {
@@ -177,11 +177,11 @@ const historyStoreApplyStateMethods = {
         timer.tickIndex = keyframe.timer.tickIndex;
       }
     }
-  
+
     if (keyframe.gameState) {
       game.finalGameState = keyframe.gameState.finalGameState;
     }
-  
+
     this.captureBaseline(game);
   },
 
@@ -244,7 +244,7 @@ const historyStoreApplyStateMethods = {
       trig.disabledUntilTick = entry.disabledUntilTick;
       this._ensureTriggerId(trig);
     }
-  
+
     const dynamic = state.dynamicTriggers || [];
     const staticSet = this._scratchStaticTriggers;
     staticSet.clear();

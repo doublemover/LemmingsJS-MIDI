@@ -92,7 +92,7 @@ const gameGuiInputMethods = {
       this.backgroundChanged = true;
       this.gameTimeChanged = true;
     }
-  
+
     if (panelIndex === 0 || panelIndex === 1) {
       const step = panelIndex === 0 ? -3 : +3;
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
@@ -202,13 +202,13 @@ const gameGuiInputMethods = {
 
   handleSkillMouseRightDown(e) {
     const panelIndex = Math.trunc(e.x / 16);
-  
+
     this.nukePrepared = false; // always cancel nuke confirmation on right click
     this.gameTimeChanged = true;
     if (!this._isMechanicEnabled('rightClickGlitch', true)) {
       return;
     }
-  
+
     if (panelIndex === 0) {
       const min = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
       this.gameVictoryCondition.setCurrentReleaseRate?.(min) ??
@@ -218,7 +218,7 @@ const gameGuiInputMethods = {
       this._applyReleaseRateAuto({ queueWhenClamped: true });
       return;
     }
-  
+
     if (panelIndex === 1) {
       const max = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
       this.gameVictoryCondition.setCurrentReleaseRate?.(max) ??
@@ -228,7 +228,7 @@ const gameGuiInputMethods = {
       this._applyReleaseRateAuto({ queueWhenClamped: true });
       return;
     }
-  
+
     if (panelIndex === 10) { // reset game speed if you right click pause
       if (this.gameTimer.speedFactor !== 1) {
         this.gameTimer.speedFactor = 1;
@@ -238,7 +238,7 @@ const gameGuiInputMethods = {
       }
       return;
     }
-  
+
     if (panelIndex === 11) { // enable debug mode if you right click nuke
       this.game.showDebug = !this.game.showDebug;
       return;
@@ -253,11 +253,11 @@ const gameGuiInputMethods = {
   handleMouseMove(e) {
     const rawIdx = e.y > 15 ? Math.trunc(e.x / 16) : -1;
     let idx = rawIdx;
-  
+
     if (!this.gameTimer.isRunning() && rawIdx !== 11) {
       idx = -1;
     }
-  
+
     if (rawIdx === 0 || rawIdx === 1) {
       const rrMin = this.gameVictoryCondition.getMinReleaseRate?.() ?? 0;
       const rrMax = this.gameVictoryCondition.getMaxReleaseRate?.() ?? 99;
@@ -269,14 +269,14 @@ const gameGuiInputMethods = {
       const skill = this.getSkillByPanelIndex(rawIdx);
       if (this.skills.getSkill(skill) <= 0) idx = -1;
     }
-  
+
     const wasIdx = this._hoverPanelIdx;
     if (idx !== wasIdx) {
       this._hoverPanelIdx = idx;
       this.backgroundChanged = true;
       this.gameTimeChanged = true;
     }
-  
+
     let up = false, down = false;
     if (rawIdx === 10 && e.y >= 32) {
       const pauseIndex = Math.trunc((e.x - 159) / 9);
@@ -305,7 +305,7 @@ const gameGuiInputMethods = {
       const MiniMapCtor = getDependency('MiniMap', MiniMap);
       this.setMiniMap(new MiniMapCtor(this.game.gameDisplay, this.game.level, display, this.game.runtime));
     }
-  
+
     this._displayListeners = [
       ['onMouseDown', e => {
         this.deltaReleaseRate = 0;
@@ -336,12 +336,12 @@ const gameGuiInputMethods = {
     for (const [event, handler] of this._displayListeners) {
       display[event].on(handler);
     }
-  
+
     // Initialize the HUD size immediately so Stage can center it
     display.initSize(this._panelSprite.width, this._panelSprite.height);
     display.setBackground(this._panelSprite.getData());
     display.stage.updateStageSize();
-  
+
     this.gameTimeChanged = this.skillsCountChanged = this.skillSelectionChanged = this.backgroundChanged = this.releaseRateChanged = true;
     this._requestGuiRender();
   },
@@ -387,7 +387,7 @@ const gameGuiInputMethods = {
     this.miniMap = null;
     this.smoothScroller = null;
     this._overlayHadContent = false;
-  
+
   }
 };
 export { gameGuiInputMethods };

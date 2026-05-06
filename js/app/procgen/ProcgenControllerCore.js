@@ -72,7 +72,7 @@ class ProcgenController {
     this._splatTarget = this._randInt(3, 10);
     this._pendingMidairBuilder = null;
     this._recentDecor = [];
-  
+
     this.groundHeight = Number.isFinite(options.groundHeight) ? options.groundHeight : 4;
     this.groundColorIndex = Number.isFinite(options.groundColorIndex) ? options.groundColorIndex : 1;
     this.initialGroundWidth = Number.isFinite(options.initialGroundWidth) ? options.initialGroundWidth : 120;

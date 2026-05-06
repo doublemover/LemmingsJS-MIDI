@@ -23,7 +23,7 @@ describe('GameTimer bench speed control', function() {
     now = 0;
     globalThis.performance = { now: () => now };
     restoreLemmings = setGlobalLemmings({ endless: false });
-  
+
     const listeners = new Map();
     this.listeners = listeners;
     globalThis.document = {
@@ -71,10 +71,10 @@ describe('GameTimer bench speed control', function() {
     }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       now = 1200;
       globalThis.window._raf(now);
-  
+
       expect(overlayCalls.length).to.equal(1);
       expect(overlayCalls[0].rect).to.equal(null);
     });
@@ -94,10 +94,10 @@ describe('GameTimer bench speed control', function() {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.speedFactor = 0.9;
       timer.continue();
-  
+
       now = 1000;
       globalThis.window._raf(now);
-  
+
       expect(timer.speedFactor).to.be.closeTo(0.8, 0.0001);
       expect(overlayCalls.length).to.equal(1);
       expect(overlayCalls[0].rect).to.equal(null);
@@ -118,23 +118,23 @@ describe('GameTimer bench speed control', function() {
     withGlobalLemmings(app, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       now = 120;
       globalThis.window._raf(now);
-  
+
       expect(globalThis.lemmings).to.equal(null);
     });
   });
 
-  it('slows down and restores speed in bench2 catchup mode', function() {  
+  it('slows down and restores speed in bench2 catchup mode', function() {
     withGlobalLemmings({ bench2: true }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       now = 600;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.be.lessThan(1);
-  
+
       now = 1200;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.be.closeTo(1, 0.0001);
@@ -145,11 +145,11 @@ describe('GameTimer bench speed control', function() {
     withGlobalLemmings({ bench2: true }, () => {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.continue();
-  
+
       now = 120;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.be.lessThan(1);
-  
+
       now = 240;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.equal(1);
@@ -161,11 +161,11 @@ describe('GameTimer bench speed control', function() {
       const timer = new GameTimer({ timeLimit: 1 });
       timer.speedFactor = 2;
       timer.continue();
-  
+
       now = 120;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.be.lessThan(2);
-  
+
       now = 360;
       globalThis.window._raf(now);
       expect(timer.speedFactor).to.equal(2);
@@ -178,14 +178,14 @@ describe('GameTimer bench speed control', function() {
     const restoreConsole = withConsoleStub({ warn: msg => { warning = msg; } });
     timer.tickIndex = COUNTER_LIMIT;
     restoreConsole();
-  
+
     expect(timer.tickIndex).to.equal(0);
     expect(warning).to.match(/tickIndex wrapped/i);
-  
+
     timer.tickIndex = 120;
     expect(timer.getGameTime()).to.be.closeTo(7.2, 0.001);
     expect(timer.secondsToTicks(2)).to.be.closeTo(33.333333333333336, 0.0001);
-  
+
     withGlobalLemmings({ endless: true }, () => {
       expect(timer.ticksToSeconds(1)).to.be.closeTo(2524.14, 0.01);
     });
@@ -196,7 +196,7 @@ describe('GameTimer bench speed control', function() {
     timer.onGameTick.on(() => {});
     timer.onBeforeGameTick.on(() => {});
     timer.eachGameSecond.on(() => {});
-  
+
     timer.stop();
     expect(timer.onGameTick).to.equal(null);
     expect(timer.onBeforeGameTick).to.equal(null);
@@ -208,15 +208,15 @@ describe('GameTimer bench speed control', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     let seconds = 0;
     timer.eachGameSecond.on(() => { seconds += 1; });
-  
+
     timer.toggle();
     expect(timer.isRunning()).to.equal(true);
     timer.tick(1);
     expect(timer.tickIndex).to.equal(0);
-  
+
     now = timer.TIME_PER_FRAME_MS * 17;
     globalThis.window._raf(now);
-  
+
     expect(seconds).to.equal(1);
     timer.toggle();
     expect(timer.isRunning()).to.equal(false);
@@ -226,7 +226,7 @@ describe('GameTimer bench speed control', function() {
     const timer = new GameTimer({ timeLimit: 1 });
     const seconds = [];
     timer.eachGameSecond.on(second => { seconds.push(second); });
-  
+
     timer.tick(16);
     expect(seconds).to.eql([]);
     timer.tick(1);
@@ -241,10 +241,10 @@ describe('GameTimer bench speed control', function() {
     timer.eachGameSecond.on(second => { seconds.push(second); });
     timer.speedFactor = 4;
     timer.continue();
-  
+
     now = timer.frameTime * 17;
     globalThis.window._raf(now);
-  
+
     expect(timer.tickIndex).to.equal(17);
     expect(seconds).to.eql([1]);
     timer.suspend();

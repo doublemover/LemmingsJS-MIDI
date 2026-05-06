@@ -88,7 +88,7 @@ describe('MidiMapping 3', function() {
       expect: { pan: 127 }
     }
   ];
-  
+
   for (const testCase of mappingCases) {
     it(testCase.name, function() {
       const spec = mapEvent(
@@ -126,7 +126,7 @@ describe('MidiMapping 3', function() {
         panRange: { min: -50, max: 50 }
       }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 100, y: 50, intensity: 1.5 },
       { levelWidth: 100, levelHeight: 100 },
@@ -135,7 +135,7 @@ describe('MidiMapping 3', function() {
     expect(spec.timbre).to.be.within(0, 127);
     expect(spec.pan).to.be.within(-50, 50);
     expect(spec.durationTicks).to.be.at.least(1);
-  
+
     const missingAxis = mapping.mapEvent(
       { sfxId: 1, x: 50 },
       { levelWidth: 100 },
@@ -157,7 +157,7 @@ describe('MidiMapping 3', function() {
       },
       sfx: { '1': { notes: [60, 64] } }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 100 },
       { levelWidth: 100, levelHeight: 100 },
@@ -167,7 +167,7 @@ describe('MidiMapping 3', function() {
     expect(spec.pitchBend).to.equal(1);
   });
 
-  it('mapEvent applies envelope defaults and view pan fallbacks', function() {  
+  it('mapEvent applies envelope defaults and view pan fallbacks', function() {
     const mapping = new MidiMapping({
       envelope: { attack: NaN, decay: NaN, sustain: NaN, release: NaN },
       position: {
@@ -237,7 +237,7 @@ describe('MidiMapping 3', function() {
       noteDefaults: { degree: 1, octave: 5, chord: 'seventh' },
       sfx: { '1': { chord: {} } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.notes).to.have.length(4);
     expect(spec.note).to.equal(spec.notes[0]);
@@ -254,7 +254,7 @@ describe('MidiMapping 3', function() {
         panOffscreenRange: 1
       }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1, x: 0 }, { levelWidth: 100 }, 0);
     expect(spec.pan).to.be.lessThan(0);
   });
@@ -266,7 +266,7 @@ describe('MidiMapping 3', function() {
       noteRange: { min: 0, max: 127 },
       sfx: { '1': { chord: {}, note: null } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.notes).to.have.length(3);
     expect(spec.note).to.equal(49);
@@ -292,13 +292,13 @@ describe('MidiMapping 3', function() {
       },
       sfx: { '1': { note: 60 } }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 50, y: 50 },
       { levelWidth: 100, levelHeight: 100 },
       0
     );
-  
+
     expect(spec.velocity).to.be.within(1, 127);
     expect(spec.timbre).to.be.within(0, 127);
     expect(spec.pan).to.be.within(-127, 127);
@@ -317,7 +317,7 @@ describe('MidiMapping 3', function() {
       },
       sfx: { '1': { note: 60 } }
     });
-  
+
     const context = { viewRect: { x: 20, w: 100 }, levelWidth: 200 };
     const centered = mapping.mapEvent({ sfxId: 1, x: 70 }, context, 0);
     const offscreen = mapping.mapEvent({ sfxId: 1, x: 170 }, context, 0);
@@ -340,7 +340,7 @@ describe('MidiMapping 3', function() {
       noteRange: { min: null, max: 60 },
       sfx: { '1': { note: 80 } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(56);
   });
@@ -351,7 +351,7 @@ describe('MidiMapping 3', function() {
       noteRange: { min: 0, max: 127 },
       sfx: { '1': { note: 62, chord: { type: 'seventh' } } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.notes).to.equal(null);
     expect(spec.note).to.equal(62);
@@ -362,7 +362,7 @@ describe('MidiMapping 3', function() {
       velocityRange: { min: null, max: null, default: null },
       durationTicks: { min: null, max: null, default: null }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.velocity).to.equal(127);
     expect(spec.durationTicks).to.equal(6);
@@ -374,7 +374,7 @@ describe('MidiMapping 3', function() {
       noteDefaults: { degree: 0, octave: 4 },
       sfx: { '1': { degree: 1 } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.note).to.equal(50);
   });

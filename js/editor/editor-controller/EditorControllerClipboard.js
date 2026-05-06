@@ -327,7 +327,7 @@ const editorControllerClipboardMethods = {
           .filter(value => Number.isFinite(value))
       ));
       if (!candidates.length) return false;
-  
+
       let random = Math.random;
       if (Number.isFinite(seed)) {
         let state = (Math.floor(seed) >>> 0) || 1;
@@ -500,7 +500,7 @@ const editorControllerClipboardMethods = {
         }
         return null;
       };
-  
+
       const nextSelection = [];
       for (const [type, indices] of Object.entries(groups)) {
         const list = this._getListForType(type);

@@ -107,13 +107,13 @@ describe('midiUiController 4', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal(expected);
   });
@@ -125,7 +125,7 @@ describe('midiUiController 4', function() {
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const trapId = SoundEffectIds.TRAP_ZAP;
     const config = {
       scale: { name: 'major', root: 0, degrees: [0, 2, 4, 5, 7, 9, 11] },
@@ -141,23 +141,23 @@ describe('midiUiController 4', function() {
       triggers: { '1': { note: 60 } },
       timing: { bpmBase: 120 }
     };
-  
+
     let noteCaptureHandler = null;
     const midiInputController = {
       setNoteCapture(handler) {
         noteCaptureHandler = handler;
       }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => config
     });
-  
+
     controller.setMidiInputController(midiInputController);
     controller.refreshMidiUiFromConfig();
-  
+
     const mapping = eventList.children[0];
     const summary = findElement(mapping, el => el.tagName === 'SUMMARY');
     const enabledToggle = findElement(mapping, el => (
@@ -168,7 +168,7 @@ describe('midiUiController 4', function() {
     summary.dispatchEvent({ type: 'click', target: summary.children[0], preventDefault() {} });
     enabledLabel.dispatchEvent({ type: 'click', stopPropagation() {} });
     enabledToggle.dispatchEvent({ type: 'click', stopPropagation() {} });
-  
+
     const modeSelect = findRowInputByLabel(mapping, 'Mode');
     const keyboardPicker = findRowInputByLabel(mapping, 'Keyboard');
     const keyButton = findElement(keyboardPicker, el => (
@@ -188,7 +188,7 @@ describe('midiUiController 4', function() {
     expect(keyboardPicker).to.be.ok;
     expect(keyButton).to.be.ok;
     expect(arpDownPreset).to.be.ok;
-  
+
     keyButton.focus = () => keyButton.dispatchEvent({ type: 'focus', target: keyButton });
     degreeInput.focus = () => degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
     const keyboardRow = findElement(mapping, el => (
@@ -199,13 +199,13 @@ describe('midiUiController 4', function() {
       preventDefault() {},
       stopPropagation() {}
     });
-  
+
     modeSelect.value = 'degree';
     modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
     degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
     expect(noteCaptureHandler).to.be.a('function');
     noteCaptureHandler(61);
-  
+
     modeSelect.value = 'note';
     modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
     keyButton.dispatchEvent({ type: 'focus', target: keyButton });
@@ -213,19 +213,19 @@ describe('midiUiController 4', function() {
     noteCaptureHandler(60);
     degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
     degreeInput.dispatchEvent({ type: 'blur', target: degreeInput });
-  
+
     config.scale.degrees = null;
     modeSelect.value = 'degree';
     modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
     degreeInput.dispatchEvent({ type: 'focus', target: degreeInput });
     expect(noteCaptureHandler).to.be.a('function');
     noteCaptureHandler(62);
-  
+
     modeSelect.value = 'chord';
     modeSelect.dispatchEvent({ type: 'change', target: modeSelect });
     chordSelect.value = 'seventh';
     chordSelect.dispatchEvent({ type: 'change', target: chordSelect });
-  
+
     arpToggle.checked = true;
     arpDownPreset.dispatchEvent({ type: 'click', target: arpDownPreset });
     arpLength.value = '4';
@@ -234,7 +234,7 @@ describe('midiUiController 4', function() {
     enabledToggle.checked = false;
     [arpToggle, arpLength, arpIndependent, priorityInput, enabledToggle]
       .forEach(el => el.dispatchEvent({ type: 'change', target: el }));
-  
+
     expect(controller.getMidiOverrides().sfx[trapId].priority).to.equal(3);
     expect(controller.getMidiOverrides().sfx[trapId].disabled).to.equal(true);
     expect(noteCaptureHandler).to.equal(null);
@@ -260,7 +260,7 @@ describe('midiUiController 4', function() {
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const config = {
       position: {
         xNoteRange: { min: 1, max: 12 },
@@ -283,7 +283,7 @@ describe('midiUiController 4', function() {
       durationTicks: { min: 2, max: 16 },
       timing: { bpmBase: 120 }
     };
-  
+
     let throwRefresh = false;
     const originalGet = doc.getElementById.bind(doc);
     doc.getElementById = (id) => {
@@ -292,7 +292,7 @@ describe('midiUiController 4', function() {
       }
       return originalGet(id);
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -302,7 +302,7 @@ describe('midiUiController 4', function() {
     const restoreConsole = withConsoleStub({
       error: (...args) => errors.push(args)
     });
-  
+
     try {
       controller.bindMidiUi();
       controller.refreshMidiUiFromConfig();
@@ -345,7 +345,7 @@ describe('midiUiController 4', function() {
       const removeButton = findElement(firstMapping, el => (
         el.tagName === 'BUTTON' && el.textContent === 'Remove'
       ));
-  
+
       axisX.checked = false;
       axisY.checked = false;
       axisX.dispatchEvent({ type: 'change', target: axisX });
@@ -363,11 +363,11 @@ describe('midiUiController 4', function() {
       throwRefresh = true;
       removeButton.dispatchEvent({ type: 'click', target: removeButton });
       throwRefresh = false;
-  
+
       repeatEnabled.checked = true;
       repeatEnabled.dispatchEvent({ type: 'click', stopPropagation() {} });
       repeatEnabled.dispatchEvent({ type: 'change', target: repeatEnabled });
-  
+
       throwRefresh = true;
       positionAdd.dispatchEvent({ type: 'click' });
       throwRefresh = false;
@@ -389,15 +389,15 @@ describe('midiUiController 4', function() {
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const config = { timing: { bpmBase: 120 } };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => config
     });
-  
+
     controller.__test__.buildPositionMappingList(positionList, [
       { axis: 'xy', target: 'velocity' },
       { axis: 'y', target: 'note' },

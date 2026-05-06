@@ -107,13 +107,13 @@ describe('midiUiController 6', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal(expected);
   });
@@ -126,13 +126,13 @@ describe('midiUiController 6', function() {
     registerElement(doc, 'div', 'midiTriggerList');
     registerElement(doc, 'select', 'midiEnvTarget');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ timing: { bpmBase: 120 } })
     });
-  
+
     controller.bindMidiUi();
     const state0 = controller.getMidiIntentState();
     expect(state0).to.have.property('revision');

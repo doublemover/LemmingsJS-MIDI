@@ -37,7 +37,7 @@ const createGameToolHandlers = ({
       tickIndex
     });
   };
-  
+
   const resumeTime = async (args) => {
     const { sessionId } = TimeSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -51,7 +51,7 @@ const createGameToolHandlers = ({
       tickIndex
     });
   };
-  
+
   const stepTime = async (args) => {
     const { sessionId, count, ensurePaused } = TimeStepSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -70,13 +70,13 @@ const createGameToolHandlers = ({
       tickIndexAfter
     });
   };
-  
+
 
   const centerViewOnLemming = async (session, lemmingId) => {
     const result = await callE2E(session, 'centerViewOnLemming', lemmingId);
     return !!(result.ok && result.value);
   };
-  
+
   const selectLemmingTool = async (args) => {
     const { sessionId, lemmingId, alsoCenterView, confirm } = LemmingSelectSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -98,25 +98,25 @@ const createGameToolHandlers = ({
         reason
       });
     }
-  
+
     if (alsoCenterView) {
       await centerViewOnLemming(session, lemmingId);
     }
     nudgeWatchPolling(session);
-  
+
     let selectedNow = null;
     if (confirm !== false) {
       const state = await getState(session);
       selectedNow = state?.game?.lemmingManager?.selectedIndex ?? null;
     }
-  
+
     return attachEvents(session, {
       ok: true,
       lemmingId,
       selectedNow
     });
   };
-  
+
   const applySkillTool = async (args) => {
     const { sessionId, skill, lemmingId, ensurePaused, requireAvailable, postStep, verify } =
       SkillApplySchema.parse(args || {});
@@ -124,7 +124,7 @@ const createGameToolHandlers = ({
     if (ensurePaused !== false) {
       await callE2E(session, 'pause');
     }
-  
+
     let tickIndexBefore = null;
     let tickIndexAfter = null;
     let beforeState = null;
@@ -132,12 +132,12 @@ const createGameToolHandlers = ({
       beforeState = await getState(session);
       tickIndexBefore = beforeState?.game?.timer?.tickIndex ?? null;
     }
-  
+
     const action = SKILL_ACTIONS[skill];
     if (!action) {
       return attachEvents(session, { ok: false, reason: 'unknown_skill', skill });
     }
-  
+
     if (requireAvailable) {
       const skills = beforeState?.game?.skills || null;
       const skillIndex = SKILL_INDEX_BY_NAME[skill];
@@ -148,7 +148,7 @@ const createGameToolHandlers = ({
         return attachEvents(session, { ok: false, reason: 'no_skill_remaining', skill });
       }
     }
-  
+
     if (Number.isFinite(lemmingId)) {
       const selectResult = await callE2E(session, 'selectLemmingById', lemmingId);
       if (!selectResult.ok || !selectResult.value) {
@@ -160,7 +160,7 @@ const createGameToolHandlers = ({
         });
       }
     }
-  
+
     const selectKey = await pressAction(session, action, 1);
     if (!selectKey.ok) {
       return attachEvents(session, { ok: false, reason: 'missing_binding', skill, action });
@@ -169,12 +169,12 @@ const createGameToolHandlers = ({
     if (!applyKey.ok) {
       return attachEvents(session, { ok: false, reason: 'missing_binding', action: 'applySkillToSelected' });
     }
-  
+
     const steps = Number.isFinite(postStep) ? Math.trunc(postStep) : 1;
     if (steps > 0) {
       await callE2E(session, 'step', steps);
     }
-  
+
     let verification = null;
     let lemmingIdAppliedTo = lemmingId ?? null;
     if (verify !== false) {
@@ -210,7 +210,7 @@ const createGameToolHandlers = ({
         changedFields
       };
     }
-  
+
     nudgeWatchPolling(session);
     return attachEvents(session, {
       ok: true,
@@ -221,7 +221,7 @@ const createGameToolHandlers = ({
       verification
     });
   };
-  
+
   const inputActionTool = async (args) => {
     const { sessionId, action, repeat } = InputActionSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -231,13 +231,13 @@ const createGameToolHandlers = ({
     }
     return attachEvents(session, response);
   };
-  
+
   const inputKeysTool = async (args) => {
     const { sessionId, keys, repeat, events } = InputKeysSchema.parse(args || {});
     const session = getSession(sessionId);
     await ensureGameFocus(session);
     let injected = 0;
-  
+
     if (Array.isArray(keys) && keys.length) {
       const count = repeat || 1;
       for (let i = 0; i < count; i += 1) {
@@ -259,7 +259,7 @@ const createGameToolHandlers = ({
         injected += 1;
       }
     }
-  
+
     if (injected) {
       session.events.add({
         source: 'agent',
@@ -268,10 +268,10 @@ const createGameToolHandlers = ({
       });
       nudgeWatchPolling(session);
     }
-  
+
     return attachEvents(session, { ok: true, eventsInjected: injected });
   };
-  
+
 
   return {
     pauseTime,

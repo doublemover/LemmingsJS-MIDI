@@ -88,7 +88,7 @@ describe('MidiMapping 1', function() {
       expect: { pan: 127 }
     }
   ];
-  
+
   for (const testCase of mappingCases) {
     it(testCase.name, function() {
       const spec = mapEvent(
@@ -108,12 +108,12 @@ describe('MidiMapping 1', function() {
       mpe: { pitchBendRange: { semitones: 2, cents: 0 } },
       sfx: { '1': { frequencyHz: freq } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, { levelWidth: 100, levelHeight: 100 }, 0);
     const floatNote = 69 + 12 * Math.log2(freq / 440);
     const baseNote = Math.round(floatNote);
     const expectedBend = (floatNote - baseNote) / 2;
-  
+
     expect(spec.note).to.equal(baseNote);
     expect(spec.pitchBend).to.be.closeTo(expectedBend, 0.01);
     expect(spec.frequencyHz).to.equal(freq);
@@ -124,9 +124,9 @@ describe('MidiMapping 1', function() {
       mpe: { pitchBendRange: { semitones: 0, cents: 0 } },
       sfx: { '1': { frequencyHz: 440 } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
-  
+
     expect(Number.isFinite(spec.pitchBend)).to.equal(true);
     expect(spec.pitchBend).to.equal(0);
   });
@@ -146,7 +146,7 @@ describe('MidiMapping 1', function() {
         panRange: { min: -127, max: 127 }
       }
     }, { sfxId: 1, x: 25, y: 75 }, { levelWidth: 100, levelHeight: 100 }, 0);
-  
+
     expectSpec(spec, {
       velocity: 26,
       timbre: 25,
@@ -162,7 +162,7 @@ describe('MidiMapping 1', function() {
         mappings: [{ axisX: true, axisY: true, axisOp: 'mul', target: 'velocity', min: 1, max: 127, enabled: true }]
       }
     }, { sfxId: 1, x: 50 }, { levelWidth: 100, levelHeight: null }, 0);
-  
+
     expect(spec.velocity).to.equal(10);
   });
 
@@ -180,12 +180,12 @@ describe('MidiMapping 1', function() {
       }
     };
     const spec = mapEvent(config, { sfxId: 1, x: 25, y: 75 }, { levelWidth: 100, levelHeight: 100 }, 0);
-  
+
     expectSpec(spec, { velocity: 26, timbre: 19 });
     expect(spec.pan).to.be.below(0);
-  
+
     const zeroSpec = mapEvent(config, { sfxId: 1, x: 25, y: 0 }, { levelWidth: 100, levelHeight: 100 }, 0);
-  
+
     expect(zeroSpec.pan).to.equal(127);
   });
 
@@ -196,7 +196,7 @@ describe('MidiMapping 1', function() {
         mappings: [{ axis: 'xy', target: 'velocity', min: 1, max: 127, enabled: true }]
       }
     }, { sfxId: 1, x: 50 }, { levelWidth: 100, levelHeight: null }, 0);
-  
+
     expect(spec.velocity).to.equal(10);
   });
 
@@ -211,7 +211,7 @@ describe('MidiMapping 1', function() {
         panOffscreenRange: 1
       }
     });
-  
+
     const center = mapping.mapEvent(
       { sfxId: 1, x: 50 },
       { viewRect: { x: 0, w: 100 } },
@@ -222,7 +222,7 @@ describe('MidiMapping 1', function() {
       { viewRect: { x: 0, w: 100 } },
       0
     );
-  
+
     expect(center.pan).to.equal(0);
     expect(right.pan).to.be.greaterThan(0);
     expect(right.pan).to.be.at.most(127);
@@ -235,7 +235,7 @@ describe('MidiMapping 1', function() {
       { viewRect: { x: 0, w: 100 }, levelWidth: 100 },
       0
     );
-  
+
     expect(spec.pan).to.be.at.least(-127);
     expect(spec.pan).to.be.at.most(127);
   });
@@ -251,13 +251,13 @@ describe('MidiMapping 1', function() {
         panOffscreenRange: null,
       }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 80 },
       { viewRect: { x: 0, w: 100 } },
       0
     );
-  
+
     expect(spec.pan).to.be.within(-127, 127);
     expect(spec.pan).to.not.equal(0);
   });
@@ -273,13 +273,13 @@ describe('MidiMapping 1', function() {
         panOffscreenRange: 1,
       }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 100 },
       { viewRect: { x: 0, w: 50 } },
       0
     );
-  
+
     expect(spec.pan).to.equal(0);
   });
 
@@ -324,7 +324,7 @@ describe('MidiMapping 1', function() {
       velocityRange: { min: 10, max: 127, default: 80 },
       position: { mappings: [{ axis: 'x', target: 'velocity', min: 10, max: 20, enabled: true }] }
     }, { sfxId: 1, x: 100 }, { levelWidth: 100 }, 0, { velocity: 90 });
-  
+
     expect(spec.velocity).to.equal(90);
   });
 
@@ -346,7 +346,7 @@ describe('MidiMapping 1', function() {
     expect(mapping.getSfxConfig(3)).to.equal(null);
     const spec = mapping.mapEvent({ sfxId: 2 }, {}, 0);
     expect(spec).to.equal(null);
-  
+
     const disabled = new MidiMapping({ enabled: false });
     expect(disabled.mapEvent({ sfxId: 1 }, {}, 0)).to.equal(null);
   });
@@ -386,14 +386,14 @@ describe('MidiMapping 1', function() {
       },
       scale: { degrees: [0, 2, 4, 5, 7, 9, 11], root: 0 }
     });
-  
+
     const spec = mapping.mapEvent(
       { sfxId: 1, x: 50, y: 25, intensity: 1.2 },
       { levelWidth: 100, levelHeight: 50 },
       0.5,
       { notes: [60, 64], envelope: { attack: 1.2 } }
     );
-  
+
     expect(spec.notes).to.have.length(2);
     expect(spec.pitchBend).to.be.a('number');
     expect(spec.timbre).to.be.a('number');
@@ -436,7 +436,7 @@ describe('MidiMapping 1', function() {
       envelope: { attack: 1.2, decay: 0.1, sustain: 1, release: 0.8 },
       sfx: { '1': { degree: 0, chord: { type: 'triad' } } }
     });
-  
+
     const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
     expect(spec.notes).to.have.length(3);
     expect(spec.velocity).to.be.greaterThan(0);

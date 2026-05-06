@@ -50,7 +50,7 @@ class ActionMineSystem extends ActionBaseSystem {
         );
         return LemmingStateType.SHRUG;
       }
-      if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {      
+      if (level.hasArrowUnderMask(subMask, lem.x, lem.y, lem.lookRight)) {
         return LemmingStateType.SHRUG;
       }
       const removed = typeof level.clearGroundWithMaskCount === 'function'

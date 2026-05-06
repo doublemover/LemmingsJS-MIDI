@@ -99,7 +99,7 @@ class Stage {
     this._overlayFallbackBuffer32 = null;
     this._overlayFallbackDisplay = { buffer32: null, imgData: null };
     this._scaleProvider = typeof options.getScale === 'function' ? options.getScale : null;
-  
+
     this.cursorCanvas = null;
     this.cursorX = 0;
     this.cursorY = 0;
@@ -110,7 +110,7 @@ class Stage {
     this._lastCursorStateVersion = 0;
     this.guiEnabled = true;
     this.hudMargin = 20;
-  
+
     this.stageCav = canvasForOutput;
     this.stageCtx = canvasForOutput.getContext('2d', { alpha: true, willReadFrequently: true });
     this.stageCtx.imageSmoothingEnabled = false;
@@ -121,17 +121,17 @@ class Stage {
     this.guiImgProps  = new StageImageProperties();
     this.gameOverlayImgProps = new StageImageProperties();
     this.guiOverlayImgProps = new StageImageProperties();
-  
+
     // HUD always starts at scale = 4
     this.guiImgProps.viewPoint = new ViewPoint(0, 0, 4);
     this.gameOverlayImgProps.viewPoint = this.gameImgProps.viewPoint;
     this.guiOverlayImgProps.viewPoint = this.guiImgProps.viewPoint;
     this._rawScale = this.gameImgProps.viewPoint.scale || 1;
-  
+
     // Initialize DisplayImage instances
     this.getGameDisplay();
     this.getGuiDisplay();
-  
+
     this.controller = new UserInputManager(canvasForOutput, {
       passiveMouseMove: true
     });
@@ -142,7 +142,7 @@ class Stage {
     this.handleOnMouseMove();
     this.handleOnDoubleClick();
     this.handleOnZoom();
-  
+
     this.updateStageSize();
     this.clear();
   }

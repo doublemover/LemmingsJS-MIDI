@@ -107,7 +107,7 @@ const historyStoreApplyDeltaMethods = {
         this._applyMinimapDeaths(manager, delta.minimapDeaths, useNext);
       }
     }
-  
+
     if (flags & DELTA_FLAG_ENTRANCE) {
       this._applyEntranceChanges(game.level, delta.entranceChanges, useNext);
     }

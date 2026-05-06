@@ -231,19 +231,19 @@ describe('MidiEventRouter 3', function() {
     });
     expect(router._getRepeatFactor('x', 10, { enabled: false }, 120)).to.equal(0);
     expect(router._getRepeatFactor('x', Number.NaN, { maxRepeats: 1, windowBeats: 1 }, 120)).to.equal(0);
-  
+
     const baseSpec = { note: 60, velocity: 64, durationTicks: 2, timbre: 50, pan: 0, pitchBend: 0.2 };
     const noteList = [60, 64];
     const amountCfg = { amount: 1, target: 'timbre' };
     const timbreResult = router._applyRepeatTarget(baseSpec, noteList, amountCfg, 0.5);
     expect(timbreResult.spec.timbre).to.not.equal(50);
-  
+
     const panResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'pan' }, 0.5);
     expect(panResult.spec.pan).to.not.equal(0);
-  
+
     const attackResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'attack' }, 0.5);
     expect(attackResult.spec.velocity).to.not.equal(64);
-  
+
     const sustainResult = router._applyRepeatTarget(baseSpec, noteList, { amount: 1, target: 'sustain' }, 0.5);
     expect(sustainResult.spec.durationTicks).to.not.equal(2);
     const sustainDefault = router._applyRepeatTarget(
@@ -253,7 +253,7 @@ describe('MidiEventRouter 3', function() {
       0.5
     );
     expect(sustainDefault.spec.durationTicks).to.be.at.least(1);
-  
+
     const noTimbre = router._applyRepeatTarget({ ...baseSpec, timbre: null }, noteList, { amount: 1, target: 'timbre' }, 0.5);
     expect(noTimbre.spec.timbre).to.equal(null);
     const noPan = router._applyRepeatTarget({ ...baseSpec, pan: null }, noteList, { amount: 1, target: 'pan' }, 0.5);
@@ -417,7 +417,7 @@ describe('MidiEventRouter 3', function() {
     expect(router._tickMsFromEvent({ tps: 25 })).to.equal(40);
     expect(router._tickMsFromEvent({ frameMs: 10 })).to.equal(10);
     expect(router._tickMsFromEvent({})).to.equal(30);
-  
+
     expect(router._densityForEvent({})).to.equal(0);
     router._lastTickBySfx.set(1, 5);
     expect(router._densityForEvent({ sfxId: 1, tick: 5 })).to.equal(1);
@@ -433,11 +433,11 @@ describe('MidiEventRouter 3', function() {
       }
     });
     router._nowMs = () => 1000;
-  
+
     expect(router._resolveScheduleBase(NaN, 60, 1)).to.equal(null);
     const base = router._resolveScheduleBase(100, 60, 1);
     expect(base).to.equal(900);
-  
+
     router._resolveScheduleBase(120, 30, 1);
     expect(cleared).to.equal(2);
   });

@@ -159,7 +159,7 @@ describe('GameGui coverage', function() {
   });
 
   it('handles skill mouse actions', function() {
-    const { gui, game, skills, timer, victory } = makeGui({ running: true });   
+    const { gui, game, skills, timer, victory } = makeGui({ running: true });
     victory.releaseRate = 10;
     gui.handleSkillMouseDown({ x: 0, y: 20 });
     expect(gui.skillSelectionChanged).to.equal(true);
@@ -351,7 +351,7 @@ describe('GameGui coverage', function() {
     expect(game.commands.length).to.equal(0);
   });
 
-  it('suppresses hover when paused or skill counts are empty', function() {     
+  it('suppresses hover when paused or skill counts are empty', function() {
     const { gui, skills, timer } = makeGui({ running: false });
     timer.isRunning = () => false;
     gui.handleMouseMove({ x: 32, y: 20 });

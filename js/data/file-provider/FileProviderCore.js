@@ -25,7 +25,7 @@ class FileProvider extends BaseLogger {
     this._cacheBustRevision = sanitizeCacheBust(
       options.cacheBustRevision ?? options.cacheBust ?? null
     );
-  
+
     /**
        * Cache mapping full URL → Promise<BinaryReader> or Promise<string>.
        * Store the Promise itself so concurrent callers share one in‑flight XHR.

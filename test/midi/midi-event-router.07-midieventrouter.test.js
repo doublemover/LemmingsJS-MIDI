@@ -252,10 +252,10 @@ describe('MidiEventRouter 7', function() {
     router.scheduler.setOutput(output);
     router._shouldSend = () => true;
     router.scheduler.sendNote = () => {};
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, timeMs: 0 });
     router._onEvent({ sfxId: 1, tick: 2, tps: 50, timeMs: 20 });
-  
+
     const { router: boostRouter } = makeRouter({
       enabled: true,
       timing: { bpmBase: 120 },
@@ -279,9 +279,9 @@ describe('MidiEventRouter 7', function() {
     }, { mapEvent: () => ({ note: 60 }) });
     router.context = { level: { width: 200, height: 100 } };
     router._nowMs = () => 0;
-  
+
     router._onEvent({ sfxId: 1, tick: 1, triggerType: 5, timeMs: 0, tps: 50 });
-  
+
     expect(sent.length).to.equal(1);
     expect(sent[0].velocity).to.equal(64);
     expect(sent[0].durationTicks).to.equal(1);
@@ -292,7 +292,7 @@ describe('MidiEventRouter 7', function() {
     const routerB = new MidiEventRouter({ timing: { bpmBase: 120 } });
     expect(routerA.mapping).to.equal(mapping);
     expect(routerB.mapping).to.be.instanceOf(MidiMapping);
-  
+
     let onCalls = 0;
     let offCalls = 0;
     const onEvent = { on() { onCalls += 1; }, off() { offCalls += 1; } };
@@ -302,7 +302,7 @@ describe('MidiEventRouter 7', function() {
     routerA.detach();
     expect(onCalls).to.equal(2);
     expect(offCalls).to.equal(2);
-  
+
     routerA.context = { game: { getGameTimer() { return { frameTime: 30, speedFactor: 1 }; } } };
     expect(routerA._tickMsFromEvent({ tps: 50 })).to.equal(20);
     expect(routerA._tickMsFromEvent({ frameMs: 40 })).to.equal(40);
@@ -319,21 +319,21 @@ describe('MidiEventRouter 7', function() {
     expect(router._densityForEvent({ sfxId: 1, tick: 5 })).to.equal(1);
     expect(router._densityForEvent({ sfxId: 1, tick: 9 })).to.equal(0);
     expect(router._densityForEvent({ sfxId: 1, tick: 7 })).to.be.closeTo(0.5, 0.01);
-  
+
     const originalPerf = globalThis.performance;
     globalThis.performance = undefined;
     const now = router._nowMs();
     globalThis.performance = originalPerf;
     expect(Number.isFinite(now)).to.equal(true);
-  
+
     router.scheduler = null;
     expect(router._resolveScheduleBase(NaN, 0, 0)).to.equal(null);
-  
+
     router._clockFrameMs = 10;
     router._clockSpeedFactor = 1;
     router._nowMs = () => 1000;
     router._resolveScheduleBase(100, 20, 1);
-  
+
     let cleared = 0;
     router.scheduler = { allNotesOff() { cleared += 1; }, clearQueue() { cleared += 1; } };
     router._resolveScheduleBase(200, 21, 2);
@@ -345,14 +345,14 @@ describe('MidiEventRouter 7', function() {
     const bpm = 60;
     expect(router._getRepeatFactor('sfx:1', 0, mapping.config.repeat, bpm)).to.equal(0);
     expect(router._getRepeatFactor('sfx:1', 1000, mapping.config.repeat, bpm)).to.be.greaterThan(0);
-  
+
     const spec = { note: 60, velocity: 64, durationTicks: 2, pitchBend: 0.2, releaseVelocity: 64 };
     const notes = [60, 64];
     const noAmount = router._applyRepeatTarget(spec, notes, { target: 'velocity', amount: 'bad' }, 1);
     expect(noAmount.spec).to.equal(spec);
     const zeroAmount = router._applyRepeatTarget(spec, notes, { target: 'velocity', amount: 0 }, 1);
     expect(zeroAmount.spec).to.equal(spec);
-  
+
     router._applyRepeatTarget(spec, notes, { target: 'accent', amount: 0.5 }, 1);
     router._applyRepeatTarget(spec, notes, { target: 'duration', amount: 0.5 }, 1);
     router._applyRepeatTarget(spec, notes, { target: 'note', amount: 0.5 }, 1);
@@ -365,7 +365,7 @@ describe('MidiEventRouter 7', function() {
     router._applyRepeatTarget(spec, notes, { target: 'sustain', amount: 0.5 }, 1);
     router._applyRepeatTarget(spec, notes, { target: 'release', amount: 0.5 }, 1);
     router._applyRepeatTarget(spec, notes, { target: 'unknown', amount: 0.5 }, 1);
-  
+
     const { router: mpeRouter } = makeRouter({ mpe: { enabled: true } });
     mpeRouter.scheduler.tickMs = 10;
     const planA = mpeRouter._planEntries({ note: 60, durationTicks: NaN }, 1000, 2);
@@ -443,9 +443,9 @@ describe('MidiEventRouter 7', function() {
       }
     });
     router.scheduler.output = {};
-  
+
     router._onEvent({ sfxId: 1, tick: 1, tps: 50, triggerType: 7 });
-  
+
     expect(captured.velocity).to.equal(20);
     expect(sent.length).to.equal(1);
   });

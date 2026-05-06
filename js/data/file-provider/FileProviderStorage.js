@@ -319,9 +319,9 @@ const fileProviderStorageMethods = {
       if (!item) return null;
       const entry = JSON.parse(item);
       if (entry.type !== type) return null;
-  
+
       this._scheduleCacheValidation(url, entry);
-  
+
       let value;
       if (type === 'binary') {
         const buf = this._base64ToArrayBuffer(entry.data);

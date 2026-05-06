@@ -38,13 +38,13 @@ const displayPrimitivesMethods = {
     const x2 = x + width;
     const y2 = y + height;
     this.drawHorizontalLine(x, y,  x2, r, g, b);
-  
+
     if (filled) {
       for (let i = y; i <= y+height; i++) {
         this.drawHorizontalLine(x, i, x2, r, g, b);
       }
     }
-  
+
     this.drawHorizontalLine(x, y2, x2, r, g, b);
     this.drawVerticalLine(  x,  y,  y2, r, g, b);
     this.drawVerticalLine( x2,  y,  y2, r, g, b);
@@ -117,7 +117,7 @@ const displayPrimitivesMethods = {
         dashLenOrR >= 0 && dashLenOrR <= 255 &&
         offsetOrG >= 0 && offsetOrG <= 255 &&
         color1OrB >= 0 && color1OrB <= 255;
-  
+
     if (isRgbSignature) {
       const r = dashLenOrR;
       const g = offsetOrG;
@@ -138,7 +138,7 @@ const displayPrimitivesMethods = {
       this.markDirtyRect(x, y, width + 1, height + 1);
       return;
     }
-  
+
     drawDashedRect(
       this,
       x,
@@ -171,9 +171,9 @@ const displayPrimitivesMethods = {
     const h = typeof size === 'object' ? size.height : size;
     const x2 = x + w - 1;
     const y2 = y + h - 1;
-  
+
     const len = Math.max(1, length);
-  
+
     // top-left
     this.drawHorizontalLine(x, y, Math.min(x + len, x2), r, g, b);
     this.drawVerticalLine(x, y, Math.min(y + len, y2), r, g, b);
@@ -186,7 +186,7 @@ const displayPrimitivesMethods = {
     // bottom-right
     this.drawHorizontalLine(Math.max(x2 - len, x), y2, x2, r, g, b);
     this.drawVerticalLine(x2, Math.max(y2 - len, y), y2, r, g, b);
-  
+
     if (midLine && midLen > 0) {
       const hx1 = Math.max(x + Math.floor((w - midLen) / 2), x);
       const hx2 = Math.min(hx1 + midLen - 1, x2);

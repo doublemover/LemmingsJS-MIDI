@@ -313,7 +313,7 @@ describe('GameGui coverage', function() {
     expect(miniMap.args).to.eql({ x: 3, w: display.worldDataSize.width });
   });
 
-  it('returns early when display is missing with perf enabled', function() {    
+  it('returns early when display is missing with perf enabled', function() {
     const { gui } = makeGui({ running: true });
     let measured = 0;
     const originalPerformance = globalThis.performance;

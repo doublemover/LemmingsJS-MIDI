@@ -107,13 +107,13 @@ describe('midiUiController 5', function() {
     const doc = new TestDocument();
     const win = createTestWindow();
     const inputChannel = registerElement(doc, 'select', 'midiInputChannel');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
       getMidiConfig: () => ({ input: { channel }, timing: { bpmBase: 120 } })
     });
-  
+
     controller.refreshMidiUiFromConfig();
     expect(inputChannel.value).to.equal(expected);
   });
@@ -139,7 +139,7 @@ describe('midiUiController 5', function() {
       return timeouts.length;
     };
     win.dispatchEvent = (event) => dispatched.push(event.type);
-  
+
     const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
     const inputSelect = registerElement(doc, 'select', 'midiInSelect');
     const outputSelect = registerElement(doc, 'select', 'midiOutSelect');
@@ -154,13 +154,13 @@ describe('midiUiController 5', function() {
     const debugInput = registerElement(doc, 'span', 'midiDebugInput');
     const debugOutput = registerElement(doc, 'span', 'midiDebugOutput');
     registerElement(doc, 'div', 'errorDisplay');
-  
+
     win.localStorage.setItem('lemmings.midi.viewPan', 'true');
     win.localStorage.setItem('lemmings.midi.inputId', 'missing');
     win.localStorage.setItem('lemmings.midi.outputId', 'out-2');
     win.localStorage.setItem('lemmings.midi.inputChannel', '2');
     win.localStorage.setItem('lemmings.midi.enabled', 'true');
-  
+
     const inputs = [{ id: 'in-1', name: 'Input A' }];
     const outputs = [
       { id: 'out-1', name: 'Output A' },
@@ -181,7 +181,7 @@ describe('midiUiController 5', function() {
       getMidiSchemaHash: () => null,
       game: { getGameTimer() { return timerState; } }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -189,7 +189,7 @@ describe('midiUiController 5', function() {
       getWebMidi: () => webMidi,
       getMidiConfig: () => ({ timing: { bpmBase: 90 } })
     });
-  
+
     controller.bindMidiUi();
     controller.bindMidiUi();
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
@@ -198,32 +198,32 @@ describe('midiUiController 5', function() {
     intervals.forEach(cb => cb());
     expect(debugInput.textContent).to.contain('Input: 90 3c 7f');
     expect(debugOutput.textContent).to.contain('note 61');
-  
+
     delete timerState.tps;
     timerState.frameTime = 16;
     timerState.speedFactor = 0;
     win.lastMidiOutputMessage = [1, 2, 3];
     intervals.forEach(cb => cb());
-  
+
     win.lastMidiInputMessage = 'raw';
     win.lastMidiOutputMessage = 'raw';
     intervals.forEach(cb => cb());
-  
+
     win.lastMidiOutputMessage = { note: NaN, velocity: NaN, channel: NaN };
     intervals.forEach(cb => cb());
-  
+
     win.lastMidiOutputMessage = null;
     win.lastMidiInputMessage = [];
     intervals.forEach(cb => cb());
     expect(debugOutput.textContent).to.contain('--');
-  
+
     globalThis.Event = function Event(type) { this.type = type; };
     panelToggle.dispatchEvent({ type: 'click' });
     timeouts.shift()();
     expect(dispatched).to.include('resize');
     expect(leftPanel.classList.contains('collapsed')).to.equal(true);
     delete globalThis.Event;
-  
+
     const midiInputController = {
       attach(device) { this.attached = device; },
       detach() { this.detached = true; },
@@ -251,21 +251,21 @@ describe('midiUiController 5', function() {
     expect(applied[applied.length - 1]).to.eql({});
     enabledToggle.checked = true;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
-  
+
     enabledToggle.checked = false;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(midiInputController.detached).to.equal(true);
     expect(clearedIntervals.length).to.be.at.least(2);
     expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
-  
+
     while (timeouts.length) {
       timeouts.shift()();
     }
-  
+
     webMidi.enabled = false;
     controller.setActiveMidiInput('in-1');
     controller.setActiveMidiOutput('out-1');
-  
+
     webMidi.inputs = [];
     webMidi.outputs = [];
     webMidi.enabled = true;
@@ -282,7 +282,7 @@ describe('midiUiController 5', function() {
     const enabledToggle = registerElement(doc, 'input', 'midiEnabledToggle');
     registerElement(doc, 'div', 'errorDisplay');
     win.localStorage.setItem('lemmings.midi.enabled', 'true');
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -290,11 +290,11 @@ describe('midiUiController 5', function() {
     });
     controller.bindMidiUi();
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
-  
+
     enabledToggle.checked = false;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
-  
+
     enabledToggle.checked = true;
     enabledToggle.dispatchEvent({ type: 'change', target: enabledToggle });
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
@@ -340,7 +340,7 @@ describe('midiUiController 5', function() {
         this.captured = handler;
       }
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -350,12 +350,12 @@ describe('midiUiController 5', function() {
     controller.setMidiInputController(midiInputController);
     controller.bindMidiUi();
     controller.onEnabled();
-  
+
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
     expect(enabledToggle.listeners.get('change')).to.have.length.greaterThan(0);
-  
+
     controller.dispose();
-  
+
     expect(win.__LEMMINGS_MIDI_UI__).to.equal(undefined);
     expect(enabledToggle.listeners.get('change')).to.have.lengthOf(0);
     expect(clearedIntervals).to.include.members([10, 11]);
@@ -381,7 +381,7 @@ describe('midiUiController 5', function() {
       timeouts.push(cb);
       return timeouts.length;
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,
@@ -391,7 +391,7 @@ describe('midiUiController 5', function() {
     const restoreConsole = withConsoleStub({
       error: (...args) => errors.push(args)
     });
-  
+
     try {
       controller.scheduleMidiUiRefresh();
       while (timeouts.length) {
@@ -416,7 +416,7 @@ describe('midiUiController 5', function() {
       }
       return originalGet(id);
     };
-  
+
     const controller = createMidiUiController({
       document: doc,
       window: win,

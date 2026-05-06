@@ -72,7 +72,7 @@ const midiEventRouterEventMethods = {
         this._singleNoteBuffer[0] = spec.note;
         noteList = this._singleNoteBuffer;
       }
-  
+
       const arp = spec.arp;
       let activeNotes = noteList;
       if (arp?.enabled && noteList.length) {
@@ -166,7 +166,7 @@ const midiEventRouterEventMethods = {
         }
         this._storeArpState(arpKey, state);
       }
-  
+
       const repeatCfg = { ...(this.mapping.config?.repeat || {}), ...(sfx.repeat || {}) };
       const bpm = this._getBpm();
       const repeatKey = event?.triggerType != null

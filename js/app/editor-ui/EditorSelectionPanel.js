@@ -79,7 +79,7 @@ const editorSelectionPanelMethods = {
       this._suppressInspector = false;
       return;
     }
-  
+
     if (data.multi) {
       this._toggleSelectionActions(true);
       if (this.el.selType) this.el.selType.textContent = 'Multiple';
@@ -119,11 +119,11 @@ const editorSelectionPanelMethods = {
       this._suppressInspector = false;
       return;
     }
-  
+
     this._toggleSelectionActions(true);
     if (this.el.selType) this.el.selType.textContent = data.type;
     if (this.el.selName) this.el.selName.textContent = data.name || '';
-  
+
     const props = data.props || {};
     const meta = data.meta || null;
     const isGadget = data.type === 'gadget';
@@ -131,7 +131,7 @@ const editorSelectionPanelMethods = {
     const supportsResize = isSteel;
     const widthValue = props.WIDTH ?? (isSteel ? undefined : meta?.width);
     const heightValue = props.HEIGHT ?? (isSteel ? undefined : meta?.height);
-  
+
     if (this.el.selX) {
       this.el.selX.value = formatValue(props.X);
       this.el.selX.disabled = false;
@@ -175,7 +175,7 @@ const editorSelectionPanelMethods = {
       const enabled = !!props.MIDI_FLAG;
       this.el.selMidiFlagId.disabled = !isGadget || !enabled;
     }
-  
+
     if (this.el.selFlipH) {
       this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
       this.el.selFlipH.disabled = isSteel;
@@ -197,7 +197,7 @@ const editorSelectionPanelMethods = {
       this.el.selOneWay.disabled = true;
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
-  
+
     this._suppressInspector = false;
   },
 

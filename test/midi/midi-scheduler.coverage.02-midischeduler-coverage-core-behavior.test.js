@@ -173,14 +173,14 @@ describe('MidiScheduler coverage: core behavior', function() {
   it('handles missing active channels in stop/steal logic', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler._stopActiveChannel(1);
-  
+
     scheduler.setOutput(makeOutput([1], []));
     scheduler._activeNotes = {
       size: 1,
       entries: () => [[1, { startedAt: Infinity }]]
     };
     scheduler._stealOldestNote();
-  
+
     scheduler._activeNotes = {
       size: 1,
       entries: () => [[1, { startedAt: 0 }]],
@@ -192,11 +192,11 @@ describe('MidiScheduler coverage: core behavior', function() {
   it('allocates channels across mpe and default paths', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 3 });
     expect(scheduler._allocateChannel()).to.equal(3);
-  
+
     scheduler.setConfig({ mpe: { enabled: true, masterChannel: 9, memberChannels: [2] } });
     scheduler._memberChannels = [2];
     expect(scheduler._allocateChannel()).to.equal(2);
-  
+
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     let stopped = null;
     scheduler._stopActiveChannel = ch => { stopped = ch; };
@@ -282,7 +282,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     scheduler.setOutput(output);
     scheduler.allNotesOff();
     expect(calls.some(call => call.type === 'allNotesOff')).to.equal(true);
-  
+
     scheduler._activeByChannel.set(2, { note: 60, token: 1, startedAt: 0 });
     let stopped = false;
     scheduler._stopActiveChannel = () => { stopped = true; };
@@ -346,7 +346,7 @@ describe('MidiScheduler coverage: core behavior', function() {
     scheduler.output = null;
     scheduler._stealOldestNote();
     expect(scheduler._activeNotes.size).to.equal(1);
-  
+
     const calls = [];
     scheduler.output = makeOutput([2], calls);
     scheduler._activeNotes = new Map([[1, { note: 60, channel: 2, mpe: true, startedAt: NaN }]]);

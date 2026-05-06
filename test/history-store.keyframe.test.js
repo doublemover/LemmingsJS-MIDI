@@ -20,7 +20,7 @@ describe('HistoryStore keyframes', function() {
     const history = new HistoryStore();
     history._applyLemmingManagerState(null, null, true);
     history._rebuildActiveLemmings(null);
-  
+
     const lem = { id: 0, removed: false };
     const manager = { lemmings: [lem] };
     history._applyLemmingManagerState(manager, {
@@ -34,7 +34,7 @@ describe('HistoryStore keyframes', function() {
       }
     }, true);
     expect(manager._nukeTargets).to.eql([lem]);
-  
+
     history._applyLemmingManagerState(manager, {
       next: { nukeTargets: null }
     }, true);
@@ -44,7 +44,7 @@ describe('HistoryStore keyframes', function() {
     expect(manager.mmTickCounter).to.equal(0);
     expect(manager.nextNukingLemmingsIndex).to.equal(-1);
     expect(manager._nukeTargets).to.equal(null);
-  
+
     history._applyLemmingManagerState(manager, { next: null }, true);
   });
 
@@ -52,7 +52,7 @@ describe('HistoryStore keyframes', function() {
     const history = new HistoryStore();
     history._applyEntranceChanges(null, null, true);
     history._applyGroundChanges(null, null, true);
-  
+
     const level = {
       entrances: [{ _opened: false }],
       groundMask: { mask: new Uint8Array(1) },
@@ -61,7 +61,7 @@ describe('HistoryStore keyframes', function() {
     const entranceChanges = { indices: [0], prev: [0], next: [1] };
     history._applyEntranceChanges(level, entranceChanges, true);
     expect(level.entrances[0]._opened).to.equal(true);
-  
+
     const groundChanges = {
       spans: null,
       indices: [0],
@@ -99,11 +99,11 @@ describe('HistoryStore keyframes', function() {
     existing.__historyId = 2;
     existing.disabledUntilTick = 5;
     triggerManager._triggers.add(existing);
-  
+
     const cooldown = new Trigger(TriggerTypes.TRAP, 2, 2, 3, 3, 0, 0, cooldownOwner);
     cooldown.__historyId = 3;
     triggerManager._triggers.add(cooldown);
-  
+
     const game = { triggerManager, getLemmingManager: () => manager };
     const delta = {
       triggerAdd: [{
@@ -120,7 +120,7 @@ describe('HistoryStore keyframes', function() {
       triggerRemove: [{ id: 2 }],
       triggerCooldownChanges: { ids: [3, 99], prev: [0, 0], next: [7, 8] }
     };
-  
+
     history._applyTriggerChanges(game, delta, true);
     expect(triggerManager._triggers.has(existing)).to.equal(false);
     const added = Array.from(triggerManager._triggers)
@@ -128,12 +128,12 @@ describe('HistoryStore keyframes', function() {
     expect(added).to.be.ok;
     expect(added.disabledUntilTick).to.equal(0);
     expect(cooldown.disabledUntilTick).to.equal(7);
-  
+
     const found = history._findTriggerById(triggerManager, 3);
     expect(found).to.equal(cooldown);
     expect(history._findTriggerById(triggerManager, 123)).to.equal(null);
     expect(history._findTriggerById({}, 5)).to.equal(null);
-  
+
     history._applyTriggerChanges(game, { triggerAdd: [], triggerRemove: null }, true);
     history._applyTriggerChanges(game, { triggerAdd: null, triggerRemove: [] }, true);
   });
@@ -171,22 +171,22 @@ describe('HistoryStore keyframes', function() {
     expect(state.dynamicTriggers).to.have.length(2);
     const midiState = state.dynamicTriggers.find(entry => entry.ownerKind === 'midi_flag');
     expect(midiState.ownerData.midiFlagId).to.equal(2);
-  
+
     const stateNoTriggers = history._readTriggerState({
       level: {},
       triggerManager: { _triggers: new Set() }
     });
     expect(stateNoTriggers.staticTriggers).to.have.length(0);
-  
+
     history._applyTriggerState({ level: null, triggerManager: null }, null);
-  
+
     const applyGameEmpty = {
       level: { triggers: [staticTrigger, null] },
       triggerManager: { _triggers: undefined, add() {}, removeByOwner() {} },
       getLemmingManager: () => null
     };
     history._applyTriggerState(applyGameEmpty, { staticTriggers: state.staticTriggers });
-  
+
     const applyGameNoList = {
       level: {},
       triggerManager: { _triggers: undefined, add() {}, removeByOwner() {} },
@@ -206,7 +206,7 @@ describe('HistoryStore keyframes', function() {
         disabledUntilTick: 0
       }]
     });
-  
+
     const missingOwnerTrigger = new Trigger(TriggerTypes.KILL, 2, 2, 3, 3, 0, 0, { id: 2 });
     const applyManager = {
       _triggers: new Set([dynamicTrigger, missingOwnerTrigger]),
@@ -274,7 +274,7 @@ describe('HistoryStore keyframes', function() {
       pieceId: 22,
       lemmingId: 42
     });
-  
+
     history._applyTriggerState(applyGame, {
       staticTriggers: state.staticTriggers,
       dynamicTriggers: []
@@ -287,10 +287,10 @@ describe('HistoryStore keyframes', function() {
     const history = new HistoryStore();
     const obj = { animation: { firstFrameIndex: 0, isFinished: false } };
     const level = { objects: [obj, {}] };
-  
+
     const state = history._readObjectState(level);
     expect(state).to.have.length(1);
-  
+
     const objId = history._ensureObjectId(obj);
     const changes = {
       ids: [objId, 999],
@@ -301,7 +301,7 @@ describe('HistoryStore keyframes', function() {
     };
     history._applyObjectChanges(level, changes, true);
     expect(obj.animation.firstFrameIndex).to.equal(2);
-  
+
     obj.animation = null;
     history._applyObjectChanges(level, {
       ids: [objId],
@@ -310,7 +310,7 @@ describe('HistoryStore keyframes', function() {
       nextFirst: [1],
       nextFinished: [1]
     }, true);
-  
+
     history._objectById = new Map();
     history._applyObjectChanges({}, {
       ids: [objId],
@@ -319,18 +319,18 @@ describe('HistoryStore keyframes', function() {
       nextFirst: [1],
       nextFinished: [1]
     }, true);
-  
+
     history._applyObjectState(level, null);
-  
+
     history._objectById = new Map();
     const entries = [{ id: objId, firstFrameIndex: 5, isFinished: true }];
     obj.animation = { firstFrameIndex: 0, isFinished: false };
     history._applyObjectState(level, entries);
     expect(obj.animation.firstFrameIndex).to.equal(5);
-  
+
     obj.animation = null;
     history._applyObjectState(level, entries);
-  
+
     history._applyObjectState(null, [{
       id: 123,
       firstFrameIndex: 0,
@@ -346,7 +346,7 @@ describe('HistoryStore keyframes', function() {
         deadTTLs: new Uint8Array(0)
       }
     };
-  
+
     history._applyMinimapDeaths(manager, [{
       x: undefined,
       y: undefined,
@@ -355,17 +355,17 @@ describe('HistoryStore keyframes', function() {
     }], true);
     expect(manager.miniMap.deadDots[0]).to.equal(0);
     expect(manager.miniMap.deadTTLs[0]).to.equal(0);
-  
+
     history._applyMinimapDeaths(manager, [{
       x: 2,
       y: 3,
       ttl: 4,
       prevCount: 1
     }], true);
-  
+
     history._applyMinimapDeaths(manager, [{ prevCount: 1 }, {}], false);
     expect(manager.miniMap.deadCount).to.equal(1);
-  
+
     const minimapState = history._readMinimapState({
       deadDots: null,
       deadTTLs: null,
@@ -388,7 +388,7 @@ describe('HistoryStore keyframes', function() {
     const frame = history._captureKeyframe(game, 0);
     expect(frame.entranceOpened).to.have.length(0);
     expect(frame.groundMask).to.equal(null);
-  
+
     const gameWithLevel = {
       level: { entrances: [{ _opened: true }, { _opened: false }] },
       finalGameState: 0,

@@ -29,7 +29,7 @@ const createSessionToolHandlers = ({
     const headless = options.headless !== false;
     const viewport = options.viewport || DEFAULT_VIEWPORT;
     const sessionId = makeId();
-  
+
     let browser = null;
     let context = null;
     let page = null;
@@ -40,7 +40,7 @@ const createSessionToolHandlers = ({
         headless,
         args: ['--allow-insecure-localhost']
       });
-  
+
       context = await browser.newContext({
         viewport: {
           width: viewport.width,
@@ -49,10 +49,10 @@ const createSessionToolHandlers = ({
         deviceScaleFactor: Number.isFinite(viewport.deviceScaleFactor) ? viewport.deviceScaleFactor : 1,
         ignoreHTTPSErrors: true
       });
-  
+
       page = await context.newPage();
       keybindings = await loadKeybindings();
-  
+
       session = {
         id: sessionId,
         browser,
@@ -70,14 +70,14 @@ const createSessionToolHandlers = ({
         watchController: null,
         spectator: null
       };
-  
+
       session.watchController = new WatchPollingController({
         hasWatchesFn: () => session.watches.size > 0,
         pollFn: () => pollWatches(session)
       });
-  
+
       sessions.set(sessionId, session);
-  
+
       page.on('pageerror', (error) => {
         session.events.add({
           source: 'system',
@@ -86,7 +86,7 @@ const createSessionToolHandlers = ({
           data: { message: error?.message || String(error) }
         });
       });
-  
+
       page.on('console', (msg) => {
         if (msg.type() === 'error') {
           session.events.add({
@@ -97,14 +97,14 @@ const createSessionToolHandlers = ({
           });
         }
       });
-  
+
       await page.goto(gameUrl, { waitUntil: 'domcontentloaded' });
       await page.waitForFunction(
         () => window.__E2E__?.getState?.().ready === true,
         null,
         { timeout: 30000 }
       );
-  
+
       if (options.enableSpectator) {
         await startSpectatorServer(session, options.spectator || {});
       }
@@ -123,7 +123,7 @@ const createSessionToolHandlers = ({
       }
       throw err;
     }
-  
+
     const actions = Object.keys(keybindings?.bindings || {}).sort();
     const response = {
       ok: true,
@@ -138,14 +138,14 @@ const createSessionToolHandlers = ({
       },
       warnings: []
     };
-  
+
     if (options.spectator?.openBrowser) {
       response.warnings.push('spectator.openBrowser is unsupported in this server version');
     }
-  
+
     return attachEvents(session, response);
   };
-  
+
   const closeSession = async (args) => {
     const { sessionId } = SessionCloseSchema.parse(args || {});
     const session = getSession(sessionId);
@@ -156,7 +156,7 @@ const createSessionToolHandlers = ({
     sessions.delete(normalizeSessionId(sessionId));
     return { ok: true };
   };
-  
+
 
   return { createSession, closeSession };
 };

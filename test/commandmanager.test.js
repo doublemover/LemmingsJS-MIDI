@@ -71,7 +71,7 @@ describe('CommandManager', function() {
     expect(cm.serialize()).to.equal('1=x1');
   });
 
-  it('loadReplay schedules commands for future ticks', function() {     
+  it('loadReplay schedules commands for future ticks', function() {
     const timer = new MockTimer();
     const cm = new TestCommandManager(game, timer);
     cm.loadReplay('2=x5&bad&4=x6');

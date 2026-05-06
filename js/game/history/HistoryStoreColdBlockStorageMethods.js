@@ -175,7 +175,7 @@ const historyStoreColdBlockStorageMethods = {
     block.encodedStoreKey = storeKey;
     block.decoded = null;
     this._coldBlockCount += 1;
-  
+
     for (let tick = block.startTick; tick <= block.endTick; tick += 1) {
       const entry = this.deltas[tick];
       if (!entry || entry === COLD_DELTA_SENTINEL) continue;
@@ -240,13 +240,13 @@ const historyStoreColdBlockStorageMethods = {
     const firstStart = this._deltaBlockStart(this.minDeltaTick);
     const lastStart = this._deltaBlockStart(cutoff);
     if (lastStart < firstStart) return;
-  
+
     if (!Number.isFinite(this._coldCompactionCursor)
           || this._coldCompactionCursor < firstStart
           || this._coldCompactionCursor > lastStart) {
       this._coldCompactionCursor = firstStart;
     }
-  
+
     const budget = this.options.coldCompactionMaxBlocksPerSweep
         || DEFAULT_OPTIONS.coldCompactionMaxBlocksPerSweep;
     const stride = this.options.deltaBlockSizeTicks || DEFAULT_OPTIONS.deltaBlockSizeTicks;

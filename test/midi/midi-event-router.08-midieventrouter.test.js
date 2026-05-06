@@ -227,7 +227,7 @@ describe('MidiEventRouter 8', function() {
   it('applies repeat defaults when velocity and duration are missing', function() {
     const { router } = makeRouter();
     const baseSpec = { note: 60 };
-  
+
     const velocity = router._applyRepeatTarget(
       baseSpec,
       [60],
@@ -235,7 +235,7 @@ describe('MidiEventRouter 8', function() {
       1
     ).spec.velocity;
     expect(velocity).to.equal(96);
-  
+
     const duration = router._applyRepeatTarget(
       baseSpec,
       [60],
@@ -243,7 +243,7 @@ describe('MidiEventRouter 8', function() {
       1
     ).spec.durationTicks;
     expect(duration).to.equal(2);
-  
+
     const release = router._applyRepeatTarget(
       baseSpec,
       [60],
@@ -259,7 +259,7 @@ describe('MidiEventRouter 8', function() {
     }));
     const baseSpec = { note: 60, timbre: 10, pan: 0 };
     const notes = [60];
-  
+
     const timbre = router._applyRepeatTarget(
       baseSpec,
       notes,
@@ -268,7 +268,7 @@ describe('MidiEventRouter 8', function() {
     ).spec.timbre;
     expect(timbre).to.be.within(0, 127);
     expect(timbre).to.not.equal(10);
-  
+
     const pan = router._applyRepeatTarget(
       baseSpec,
       notes,
@@ -276,7 +276,7 @@ describe('MidiEventRouter 8', function() {
       1
     ).spec.pan;
     expect(pan).to.be.within(-127, 127);
-  
+
     const attack = router._applyRepeatTarget(
       { note: 60 },
       notes,
@@ -318,10 +318,10 @@ describe('MidiEventRouter 8', function() {
     router._getRepeatFactor('sfx:1', 0, repeatCfg, bpm);
     const factor = router._getRepeatFactor('sfx:1', 100, repeatCfg, bpm);
     expect(factor).to.equal(1);
-  
+
     const fallback = router._getRepeatFactor('sfx:2', 50, { spacingTicks: 2 }, bpm);
     expect(fallback).to.equal(0);
-  
+
     const emptyWindow = router._getRepeatFactor('sfx:3', 60, { maxRepeats: 2 }, bpm);
     expect(emptyWindow).to.equal(0);
   });
@@ -341,12 +341,12 @@ describe('MidiEventRouter 8', function() {
     router._getRepeatFactor('sfx:1', 0, { maxRepeats: 2, spacingTicks: 2 }, bpm);
     const factor = router._getRepeatFactor('sfx:1', 100, { maxRepeats: 2, spacingTicks: 2 }, bpm);
     expect(factor).to.be.greaterThan(0);
-  
+
     const baseSpec = { velocity: 50, note: 200 };
     const adjusted = router._applyRepeatTarget(baseSpec, [200], { amount: 0.5 }, 1);
     expect(adjusted.spec.velocity).to.be.greaterThan(50);
     expect(adjusted.activeNotes[0]).to.equal(200);
-  
+
     const noteAdjusted = router._applyRepeatTarget(
       baseSpec,
       [200],
@@ -354,7 +354,7 @@ describe('MidiEventRouter 8', function() {
       1
     );
     expect(noteAdjusted.activeNotes[0]).to.equal(127);
-  
+
     const timbreAdjusted = router._applyRepeatTarget(
       { ...baseSpec, timbre: 10 },
       [60],

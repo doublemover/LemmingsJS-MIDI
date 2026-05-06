@@ -93,7 +93,7 @@ class LemmingManager extends BaseLogger {
       this._lemmingPool = [];
       const releaseCount = Math.max(1, gameVictoryCondition.getReleaseCount() || 0);
       this._maxLemmingPoolSize = Math.max(64, releaseCount * 4);
-  
+
       const WalkSystem = getDependency('ActionWalkSystem', ActionWalkSystem);
       const FallSystem = getDependency('ActionFallSystem', ActionFallSystem);
       const JumpSystem = getDependency('ActionJumpSystem', ActionJumpSystem);
@@ -113,7 +113,7 @@ class LemmingManager extends BaseLogger {
       const DrownSystem = getDependency('ActionDrowningSystem', ActionDrowningSystem);
       const FrySystem = getDependency('ActionFryingSystem', ActionFryingSystem);
       const CountdownSystem = getDependency('ActionCountdownSystem', ActionCountdownSystem);
-  
+
       this.actions[LemmingStateType.WALKING]    = new WalkSystem(lemmingsSprite);
       this.actions[LemmingStateType.FALLING]    = new FallSystem(lemmingsSprite);
       this.actions[LemmingStateType.JUMPING]    = new JumpSystem(lemmingsSprite);
@@ -132,7 +132,7 @@ class LemmingManager extends BaseLogger {
       this.actions[LemmingStateType.SPLATTING]  = new SplatterSystem(lemmingsSprite);
       this.actions[LemmingStateType.DROWNING]   = new DrownSystem(lemmingsSprite);
       this.actions[LemmingStateType.FRYING]     = new FrySystem(lemmingsSprite);
-  
+
       this.skillActions[SkillTypes.DIGGER]  = this.actions[LemmingStateType.DIGGING];
       this.skillActions[SkillTypes.FLOATER] = this.actions[LemmingStateType.FLOATING];
       this.skillActions[SkillTypes.BLOCKER] = this.actions[LemmingStateType.BLOCKING];
@@ -146,13 +146,13 @@ class LemmingManager extends BaseLogger {
         action?.setRuntime?.(runtime);
       }
       this.countdownAction?.setRuntime?.(runtime);
-  
+
       this.actionTypeByAction = new Map();
       for (let i = 0; i < this.actions.length; i++) {
         const action = this.actions[i];
         if (action) this.actionTypeByAction.set(action, i);
       }
-  
+
       this._actionTypes = {
         blocker: BlockSystem,
         basher: BashSystem,
@@ -178,7 +178,7 @@ class LemmingManager extends BaseLogger {
       this._keepBlockerWallBySkill[SkillTypes.CLIMBER] = 1;
       this._keepBlockerWallBySkill[SkillTypes.FLOATER] = 1;
       this._lemmingCtor = getDependency('Lemming', Lemming);
-  
+
       this.releaseTickIndex = this.gameVictoryCondition.getCurrentReleaseRate() - 30;
     } finally {
       endMeasure();

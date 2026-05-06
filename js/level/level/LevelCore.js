@@ -33,13 +33,13 @@ class Level extends BaseLogger {
     this.groundImages = null;
     this.steelRanges = new Int32Array(0);
     this.steelMask = new SolidLayer(this.width, this.height);
-  
+
     this.objects = [];
     this.entrances = [];
     this.triggers = [];
     this.arrowRanges = new Int32Array(0);
     this.arrowTriggers = [];
-  
+
     this.name = '';
     this.releaseRate = 0;
     this.releaseCount = 0;
@@ -50,7 +50,7 @@ class Level extends BaseLogger {
     this.isSuperLemming = false;
     /** mechanics customization */
     this.mechanics = {};
-  
+
     /** @type {Frame|null} prebuilt debug overlay */
     this._debugFrame = null;
     this._groundTileSize = 64;
@@ -72,18 +72,18 @@ class Level extends BaseLogger {
     const steelColor  = ColorPalette.colorFromRGB(0, 255, 255);
     const arrowRColor = ColorPalette.colorFromRGB(128, 255, 0);
     const arrowLColor = ColorPalette.colorFromRGB(255, 128, 0);
-  
+
     const s = this.steelRanges;
     for (let i = 0, len = s.length; i < len; i += 4) {
       frame.drawRect(s[i], s[i+1], s[i+2], s[i+3], steelColor);
     }
-  
+
     const a = this.arrowRanges;
     for (let i = 0, len = a.length; i < len; i += 5) {
       const col = a[i+4] ? arrowRColor : arrowLColor;
       frame.drawRect(a[i], a[i+1], a[i+2], a[i+3], col);
     }
-  
+
     this._debugFrame = frame;
   }
 }

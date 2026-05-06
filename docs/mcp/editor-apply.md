@@ -49,7 +49,7 @@ This spec defines the shipped `editor.apply` contract. The server exposes it as
 
 ## Tool name
 
-Internal canonical name: `editor.apply`  
+Internal canonical name: `editor.apply`
 External call name: `editor_apply`
 
 ---

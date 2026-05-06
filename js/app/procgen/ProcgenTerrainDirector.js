@@ -170,7 +170,7 @@ const procgenTerrainDirectorMethods = {
     const levelHeight = this.level?.height ?? 0;
     const maxDrop = Math.min(this.maxDrop, levelHeight);
     let target = null;
-  
+
     if (Number.isFinite(pending.targetId)) {
       target = manager?.getLemming?.(pending.targetId) || null;
       const actionName = target?.action?.getActionName?.() || '';
@@ -180,7 +180,7 @@ const procgenTerrainDirectorMethods = {
         target = null;
       }
     }
-  
+
     if (!target) {
       for (const lem of lems) {
         if (!lem || lem.removed || lem.disabled) continue;
@@ -192,11 +192,11 @@ const procgenTerrainDirectorMethods = {
         break;
       }
     }
-  
+
     if (!target || !Number.isFinite(pending.dueTick)) return;
     if (tick < pending.dueTick) return;
     if (!this._canSpend('builder')) return;
-  
+
     const drop = ground && Number.isFinite(target.x) && Number.isFinite(target.y)
       ? this._getDropAt(ground, Math.floor(target.x), Math.floor(target.y), maxDrop)
       : null;
@@ -204,7 +204,7 @@ const procgenTerrainDirectorMethods = {
       this._refundBudget('builder');
       return;
     }
-  
+
     if (manager.doLemmingAction(target, SkillTypes.BUILDER)) {
       this._noteAiAction(target, tick, 48);
       this._pendingMidairBuilder = null;

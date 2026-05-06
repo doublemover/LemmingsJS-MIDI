@@ -77,7 +77,7 @@ const stageOverlaysMethods = {
     const deltaMs = Math.max(0, now - this._fadeClockMs);
     if (deltaMs <= 0) return;
     this._fadeClockMs = now;
-  
+
     const alphaStep = deltaMs * (0.02 / 40);
     if (this._fadeOutActive) {
       this.fadeAlpha = Math.min(this.fadeAlpha + alphaStep, 1);
@@ -86,7 +86,7 @@ const stageOverlaysMethods = {
         this.fadeTimer = 0;
       }
     }
-  
+
     if (this._overlayFadeActive) {
       this.overlayAlpha = Math.max(this.overlayAlpha - alphaStep, 0);
       const dashLen = this.overlayDashLen || 0;
@@ -108,7 +108,7 @@ const stageOverlaysMethods = {
         this._fadeDashAccumulator = 0;
       }
     }
-  
+
     if (!this._fadeOutActive && !this._overlayFadeActive) {
       this._fadeClockMs = NaN;
     }
@@ -148,7 +148,7 @@ const stageOverlaysMethods = {
     if (!img || !Number.isFinite(img.width) || !Number.isFinite(img.height) || img.width < 1 || img.height < 1) {
       return;
     }
-  
+
     const displayImage = display.display;
     const dirtyTiles = displayImage?.consumeDirtyTiles?.();
     const dirtyRects = displayImage?.consumeDirtyRects?.();
@@ -250,10 +250,10 @@ const stageOverlaysMethods = {
       displayImage?.releaseConsumedDirtyRects?.(dirtyRects);
       this._accumulateFrameDamage(damageStats);
     }
-  
+
     const ctx = this.stageCtx;
     this._setGlobalAlpha(1);
-  
+
     let sx = display.viewPoint.x;
     let sy = display.viewPoint.y;
     let sw = img.width - sx;
@@ -268,12 +268,12 @@ const stageOverlaysMethods = {
     }
     sw = Math.min(sw, img.width - sx);
     sh = Math.min(sh, img.height - sy);
-  
+
     const dx = display.x + Math.max(-display.viewPoint.x, 0) * display.viewPoint.scale;
     const dy = display.y + Math.max(-display.viewPoint.y, 0) * display.viewPoint.scale;
     let dw = sw * display.viewPoint.scale;
     let dh = sh * display.viewPoint.scale;
-  
+
     if (dw > display.width) {
       sw = display.width / display.viewPoint.scale;
       dw = display.width;
@@ -282,7 +282,7 @@ const stageOverlaysMethods = {
       sh = display.height / display.viewPoint.scale;
       dh = display.height;
     }
-  
+
     ctx.drawImage(
       display.cav,
       sx,
@@ -294,14 +294,14 @@ const stageOverlaysMethods = {
       Math.trunc(dw),
       Math.trunc(dh)
     );
-  
+
     if (applyStageEffects && this.fadeAlpha !== 0) {
       this._setGlobalAlpha(this.fadeAlpha);
       this._setFillStyle('black');
       ctx.fillRect(display.x, display.y, Math.trunc(dw), Math.trunc(dh));
       this._setGlobalAlpha(1);
     }
-  
+
     if (applyStageEffects && this.overlayAlpha > 0) {
       this._setGlobalAlpha(this.overlayAlpha);
       this._setFillStyle(this.overlayColor);
@@ -386,14 +386,14 @@ const stageOverlaysMethods = {
     const { width: vpW, height: vpH } = stageImage.canvasViewportSize;
     const viewW = vpW / scale;
     const viewH = vpH / scale;
-  
+
     const maxY = Math.max(worldH - viewH, 0);
     stageImage.viewPoint.y = this.limitValue(
       0,
       stageImage.viewPoint.y,
       maxY
     );
-  
+
     if (worldW <= viewW) {
       stageImage.viewPoint.x = (worldW - viewW) / 2;
     } else {
@@ -411,7 +411,7 @@ const stageOverlaysMethods = {
       y: this.gameImgProps.viewPoint.y,
       w: this.gameImgProps.canvasViewportSize.width  / this.gameImgProps.viewPoint.scale,
       h: this.gameImgProps.canvasViewportSize.height / this.gameImgProps.viewPoint.scale
-  
+
     };
   },
 

@@ -101,19 +101,19 @@ describe('HistoryStore cold blocks', function() {
     const { history, game, manager, walkAction } = createHistoryFixture();
     game.level.entrances = undefined;
     manager.actions = [walkAction];
-  
+
     const lemmingState = __test__.createLemmingState(1);
     lemmingState.present[0] = 1;
     lemmingState.x[0] = 1;
     lemmingState.y[0] = 2;
     lemmingState.actionType[0] = -1;
-  
+
     history.applyKeyframe(game, {
       lemmingState,
       lemmingManagerState: { nukeTargets: [NaN] },
       entranceOpened: new Uint8Array(0)
     });
-  
+
     expect(manager.lemmings[0].action).to.equal(null);
     expect(manager._nukeTargets).to.eql([]);
   });
@@ -144,7 +144,7 @@ describe('HistoryStore cold blocks', function() {
     history.applyKeyframe(game, { lemmingState });
     expect(manager.lemmings[0]).to.be.ok;
     expect(ctorCalls).to.have.length(1);
-  
+
     manager._lemmingCtor = null;
     manager.lemmings = [];
     lemmingState.x[0] = 7;
@@ -163,11 +163,11 @@ describe('HistoryStore cold blocks', function() {
       coldCompactionMaxBlocksPerSweep: 64,
       enableColdBlockCompression: true
     });
-  
+
     for (let tick = 0; tick < 10; tick += 1) {
       recordTick(history, timer, tick, null, tick + 1);
     }
-  
+
     const stats = history.getHistoryStats();
     expect(stats.coldBlockCount).to.be.greaterThan(0);
     const coldTick = 0;
@@ -186,15 +186,15 @@ describe('HistoryStore cold blocks', function() {
       enableColdBlockCompression: true
     });
     seedHistory(history, { deltas: [0, 1, 2, 3, 4, 5] });
-  
+
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(1);
     expect(history.deltas[0]).to.equal(1);
     expect(history.deltas[5]).to.not.equal(1);
-  
+
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(2);
-  
+
     history._maybeCompactDeltaBlocks();
     history._maybeCompactDeltaBlocks();
     history._maybeCompactDeltaBlocks();
@@ -212,14 +212,14 @@ describe('HistoryStore cold blocks', function() {
       enableColdBlockCompression: true
     });
     seedHistory(history, { deltas: [0, 1, 2, 3, 4] });
-  
+
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(0);
-  
+
     history._setDelta(5, history._allocDelta(5));
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.equal(0);
-  
+
     history._setDelta(6, history._allocDelta(6));
     history._maybeCompactDeltaBlocks();
     expect(history._coldBlockCount).to.be.greaterThan(0);
@@ -236,11 +236,11 @@ describe('HistoryStore cold blocks', function() {
       enableColdBlockCompression: true,
       enableColdBlockDedupe: true
     });
-  
+
     for (let tick = 0; tick < 10; tick += 1) {
       recordTick(history, timer, tick, null, tick + 1);
     }
-  
+
     const uniqueBuckets = Array.from(history._coldBlockStore.values());
     expect(uniqueBuckets.length).to.be.greaterThan(0);
     const hasSharedRef = uniqueBuckets.some(bucket => bucket.some(entry => entry.refs > 1));
@@ -270,14 +270,14 @@ describe('HistoryStore cold blocks', function() {
       coldCompactionMaxBlocksPerSweep: 64,
       enableColdBlockCompression: true
     });
-  
+
     for (let tick = 0; tick < 9; tick += 1) {
       recordTick(history, timer, tick, () => {
         manager.lemmings[0].x = 10 + (tick % 3);
         manager.lemmings[0].frameIndex = tick % 5;
       }, tick + 1);
     }
-  
+
     const before = history.computeReplayHash();
     for (const start of history._deltaBlocks.keys()) {
       history._thawDeltaBlock(start);
@@ -296,7 +296,7 @@ describe('HistoryStore cold blocks', function() {
       coldCompactionMaxBlocksPerSweep: 128,
       enableColdBlockCompression: true
     });
-  
+
     for (let tick = 0; tick < 240; tick += 1) {
       recordTick(history, timer, tick, () => {
         manager.lemmings[0].x = 10 + (tick % 17);
@@ -309,17 +309,17 @@ describe('HistoryStore cold blocks', function() {
         game.finalGameState = tick % 4;
       }, tick + 1);
     }
-  
+
     const baseline = history.computeReplayHash();
     expect(baseline).to.be.a('string');
-  
+
     for (let tick = history.maxDeltaTick; tick >= history.minDeltaTick; tick -= 3) {
       const delta = history.getDelta(tick);
       expect(delta).to.be.ok;
     }
     const afterDecode = history.computeReplayHash();
     expect(afterDecode).to.equal(baseline);
-  
+
     for (const start of Array.from(history._deltaBlocks.keys())) {
       history._thawDeltaBlock(start);
     }
@@ -338,7 +338,7 @@ describe('HistoryStore cold blocks', function() {
       enableColdBlockCompression: true,
       enableColdBlockDedupe: true
     });
-  
+
     for (let tick = 0; tick < 300; tick += 1) {
       recordTick(history, timer, tick, () => {
         if ((tick % 4) === 0) {
@@ -353,7 +353,7 @@ describe('HistoryStore cold blocks', function() {
         }
       }, tick + 1);
     }
-  
+
     const baseline = history.computeReplayHash();
     expect(baseline).to.be.a('string');
     let seed = 0x1234abcd;
@@ -381,7 +381,7 @@ describe('HistoryStore cold blocks', function() {
         expect(history.computeReplayHash()).to.equal(baseline);
       }
     }
-  
+
     const after = history.computeReplayHash();
     expect(after).to.equal(baseline);
   });

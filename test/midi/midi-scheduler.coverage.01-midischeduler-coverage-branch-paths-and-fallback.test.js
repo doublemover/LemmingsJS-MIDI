@@ -90,11 +90,11 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     const scheduler = new MidiScheduler();
     scheduler.setConfig(undefined);
     expect(scheduler.config).to.eql({});
-  
+
     scheduler._initMpe();
     scheduler.setConfig({ mpe: {} });
     expect(scheduler._memberChannels).to.eql([]);
-  
+
     scheduler._stopActiveChannel(99);
     scheduler.output = makeOutput([1], []);
     scheduler._activeNotes.clear();
@@ -108,7 +108,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     scheduler._activeNotes = new Map([[1, { note: 60, channel: 1, mpe: false, startedAt: NaN }]]);
     scheduler._stealOldestNote();
     expect(scheduler._activeNotes.size).to.equal(1);
-  
+
     scheduler._activeNotes = {
       size: 1,
       entries: () => [[1, { note: 60, channel: 1, mpe: true, startedAt: 0 }]],
@@ -129,9 +129,9 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
       { timeMs: 20, count: 1, bytes: 3, token: 1, phase: 'on' },
       { timeMs: 30, count: 1, bytes: 3, token: 2, phase: 'off' }
     ];
-  
+
     scheduler._stealOldestNote();
-  
+
     expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'off')).to.equal(false);
     expect(scheduler._ratePlanned.some((entry) => entry.token === 1 && entry.phase === 'on')).to.equal(true);
     expect(scheduler._ratePlanned.some((entry) => entry.token === 2 && entry.phase === 'off')).to.equal(true);
@@ -151,19 +151,19 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
       withMissingGlobalLemmings(() => {
         scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
       });
-  
+
       withGlobalLemmings({ perfMetrics: true }, () => {
         globalThis.performance = undefined;
         scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
       });
-  
+
       withGlobalLemmings({ performanceAPI: true }, () => {
         globalThis.performance = { now: () => 1 };
         scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-  
+
         globalThis.performance = { now: () => 1, measure: () => {} };
         scheduler.sendNote({ note: 60, pan: 10, durationTicks: NaN });
-  
+
         let measures = 0;
         scheduler.setConfig({
           position: { panRange: { min: -127, max: 127 } },
@@ -193,25 +193,25 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     const scheduler = new MidiScheduler(null);
     scheduler.setConfig(null);
     scheduler._initMpe();
-  
+
     scheduler.setOutput({ channels: {} });
     scheduler.setConfig({ mpe: { enabled: true } });
-  
+
     const calls = [];
     scheduler.setOutput(makeOutput([1], calls));
     scheduler.setConfig({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
-  
+
     scheduler._stealOldestNote();
     scheduler._stopActiveChannel(99);
-  
+
     scheduler._rateSent = [{ timeMs: 0, count: 1, bytes: 3, sfxId: 1 }];
     const snapshot = scheduler.getRateSnapshot(1);
     expect(snapshot.past.bySfx.get(1).priority).to.equal(1);
-  
+
     scheduler.setConfig({ mpe: { enabled: false } });
     const estimate = scheduler.estimateMessages({ note: 60, pitchBend: 0.5 });
     expect(estimate.messages).to.equal(2);
-  
+
     scheduler._maxBytesPerSecond = 1000;
     let errorCount = 0;
     const restoreConsole = withConsoleStub({ error: () => { errorCount += 1; } });
@@ -221,13 +221,13 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
       restoreConsole();
     }
     expect(errorCount).to.equal(0);
-  
+
     withPatchedGlobals({ performance: { now: () => 1, measure: () => {} } }, () => {
       withMissingGlobalLemmings(() => {
         scheduler.sendNote({ note: 60, durationTicks: NaN, pan: 0 });
       });
     });
-  
+
     withFakeClockAndPerformance(() => {
       scheduler.output = makeOutput([1], []);
       scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: false, startedAt: 0 });
@@ -235,7 +235,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
       scheduler._armNoteOffTimer();
       scheduler._processNoteOffs();
     }, { performanceValue: { now: () => 0 } });
-  
+
     const scheduler2 = new MidiScheduler({ mpe: { enabled: true, masterChannel: 1, memberChannels: [2] } });
     scheduler2.setOutput(makeOutput([1], []));
     scheduler2._noteOffTimerId = 1;
@@ -249,7 +249,7 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
         scheduler._noteOffs = [{ timeMs: 5, token: 1 }];
         scheduler._armNoteOffTimer();
         expect(scheduler._noteOffTimerId).to.not.equal(0);
-  
+
         scheduler.output = makeOutput([1], []);
         scheduler._activeNotes.set(1, { note: 60, channel: 1, mpe: true, startedAt: 0 });
         scheduler._activeByChannel.set(1, { note: 60, token: 1, startedAt: 0 });
@@ -274,18 +274,18 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
   it('covers allocation fallbacks and rate helpers', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false }, defaultChannel: 9 });
     expect(scheduler._allocateChannel()).to.equal(9);
-  
+
     scheduler.setConfig({ mpe: { enabled: true, masterChannel: 7, memberChannels: [] } });
     scheduler._memberChannels = [];
     expect(scheduler._allocateChannel()).to.equal(7);
-  
+
     scheduler._rateSent = [
       { timeMs: 0, count: 1, bytes: 3, sfxId: 1 },
       { timeMs: 0, count: 2, bytes: 6, sfxId: 1 }
     ];
     const snapshot = scheduler.getRateSnapshot(1);
     expect(snapshot.past.bySfx.get(1).count).to.equal(3);
-  
+
     const estimate = scheduler.estimateMessages({ note: 60, pitchBend: 0.5 });
     expect(estimate.messages).to.equal(2);
   });
@@ -298,19 +298,19 @@ describe('MidiScheduler coverage: branch paths and fallbacks', function() {
     scheduler._activeNotes.set(1, { note: 60, channel: 2, mpe: true, startedAt: 0 });
     scheduler._stopActiveChannel(2);
     expect(calls.some(call => call.type === 'noteOff')).to.equal(true);
-  
+
     scheduler._activeNotes.set(2, { note: 61, channel: 2, mpe: true, startedAt: 0 });
     scheduler._stealOldestNote();
-  
+
     scheduler.output = null;
     scheduler._stopActiveChannel(99);
     scheduler._stealOldestNote();
-  
+
     scheduler.output = { channels: {} };
     scheduler._noteOffTimerId = 1;
     scheduler.allNotesOff();
     expect(scheduler._noteOffTimerId).to.equal(0);
-  
+
     scheduler._activeByChannel.set(1, { note: 60, token: 1, startedAt: 0 });
     scheduler.dispose();
   });

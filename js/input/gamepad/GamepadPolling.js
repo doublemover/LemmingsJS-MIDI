@@ -80,7 +80,7 @@ const gamepadPollingMethods = {
     const prev = this._bindingActive.get(bindingId) === true;
     if (prev === active) return;
     this._bindingActive.set(bindingId, active);
-  
+
     const prevCount = this._actionActiveCounts.get(action) || 0;
     if (active) {
       const nextCount = prevCount + 1;
@@ -90,7 +90,7 @@ const gamepadPollingMethods = {
       }
       return;
     }
-  
+
     const nextCount = Math.max(0, prevCount - 1);
     if (nextCount === 0) {
       this._actionActiveCounts.delete(action);

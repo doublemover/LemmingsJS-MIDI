@@ -19,13 +19,13 @@ describe('HistoryStore diffing', function() {
   it('truncates before gaps and clears keyframes', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
     seedHistory(history, { deltas: [0, 2], keyframes: [0, 1] });
-  
+
     history._truncateBefore(1);
     expect(history.minDeltaTick).to.equal(2);
-  
+
     history._truncateBefore(5);
     expect(history.minDeltaTick).to.equal(null);
-  
+
     const history2 = new HistoryStore({ keyframeInterval: 2 });
     seedHistory(history2, { deltas: [0], keyframes: [0, 1] });
     history2._truncateBefore(2);
@@ -39,7 +39,7 @@ describe('HistoryStore diffing', function() {
       historyWarnTicks: 2
     });
     seedHistory(history, { deltas: [0, 1, 2, 3], keyframes: [1] });
-  
+
     let warned = 0;
     const restoreConsole = withConsoleStub({ warn: () => { warned += 1; } });
     try {
@@ -49,7 +49,7 @@ describe('HistoryStore diffing', function() {
       restoreConsole();
     }
     expect(warned).to.equal(1);
-  
+
     history._enforceHistoryCap();
     expect(history.minDeltaTick).to.equal(1);
   });
@@ -60,7 +60,7 @@ describe('HistoryStore diffing', function() {
       historyCapTicks: 2
     });
     seedHistory(history, { deltas: [5, 6, 7], keyframes: [0] });
-  
+
     history._enforceHistoryCap();
     expect(history.minDeltaTick).to.equal(5);
   });
@@ -70,7 +70,7 @@ describe('HistoryStore diffing', function() {
     history._groundDirty = true;
     game.level.groundMask.mask[0] = 1;
     game.level.groundImage[0] = 5;
-  
+
     const frame = history._captureKeyframe(game, 0);
     expect(frame.groundMask[0]).to.equal(1);
     expect(frame.groundImage[0]).to.equal(5);
@@ -120,10 +120,10 @@ describe('HistoryStore diffing', function() {
       skillActions: [],
       actionTypeByAction: new Map()
     };
-  
+
     history._captureLemmingState(manager);
     const delta = history._allocDelta(0);
-  
+
     manager.lemmings[0] = null;
     manager.lemmings[1].x = 10;
     manager.lemmings.push({
@@ -143,7 +143,7 @@ describe('HistoryStore diffing', function() {
       action: walkAction,
       countdownAction: null
     });
-  
+
     history._diffLemmings(manager, delta);
     expect(delta.lemRemoved).to.have.length(1);
     expect(delta.lemAdded).to.have.length(1);
@@ -163,7 +163,7 @@ describe('HistoryStore diffing', function() {
       skillActions: [],
       actionTypeByAction: new Map()
     };
-  
+
     history._captureLemmingState(manager);
     manager.lemmings.length = 1;
     const delta = history._allocDelta(0);

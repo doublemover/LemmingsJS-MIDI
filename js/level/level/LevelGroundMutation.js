@@ -50,7 +50,7 @@ const levelGroundMutationMethods = {
       for (const ob of objects) {
         let objectInfo = objectImg[ob.id];
         if (objectInfo == null) continue;
-  
+
         // // Ice palette swap for fire shooter traps
         // if (ob.id === 8 || ob.id === 10) {
         //   const pal = new ColorPalette();
@@ -60,22 +60,22 @@ const levelGroundMutationMethods = {
         //   for (let i = 0; i < FIRE_INDICES.length; ++i) {
         //     pal.setColorInt(FIRE_INDICES[i], ICE_COLORS[i]);
         //   }
-  
+
         //   const clone = new ObjectImageInfo();
         //   Object.assign(clone, objectInfo);
         //   clone.palette = pal;
         //   objectInfo = clone;
         // }
         let tfxID = objectInfo.trigger_effect_id;
-  
+
         if (tfxID === 6 && (ob.id === 7 || ob.id === 8 || ob.id === 10)) {
           tfxID = 12;
         }
-  
+
         const mapOb = new MapObject(ob, objectInfo, new Animation(), tfxID, this.runtime);
         this.objects.push(mapOb);
         if (ob.id === 1) this.entrances.push(ob);
-  
+
         if (tfxID !== 0) {
           const x1 = ob.x + objectInfo.trigger_left;
           const y1 = ob.y + objectInfo.trigger_top;
@@ -87,10 +87,10 @@ const levelGroundMutationMethods = {
               repeatDelay = objectInfo.frameCount;
             }
           }
-  
+
           let trigger = new Trigger(tfxID, x1, y1, x2, y2, repeatDelay, objectInfo.trap_sound_effect_id, mapOb);
           trigger.runtime = this.runtime;
-  
+
           if (mapOb.triggerType == 7 || mapOb.triggerType == 8) {
             const newRange = new Range();
             newRange.x = ob.x + objectInfo.trigger_left;
@@ -101,7 +101,7 @@ const levelGroundMutationMethods = {
             arrowRects.push(newRange);
             this.arrowTriggers.push(trigger);
           }
-  
+
           this.triggers.push(trigger);
         }
       }

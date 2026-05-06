@@ -3,7 +3,7 @@ import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
 import { LemmingStateType } from '../lemmings/LemmingStateType.js';
 import { SpriteTypes } from '../lemmings/SpriteTypes.js';
 import { getRuntimeSoundEvents } from '../game/GameRuntime.js';
-        
+
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 const scaleIntensity = (removed, maxCount) => {
   if (!removed || removed <= 0) return 1;

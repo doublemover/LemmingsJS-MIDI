@@ -121,7 +121,7 @@ class LevelLoader {
     if (levelInfo == null) return null;
 
     const useOddTable   = levelInfo.useOddTable && this.config.level.useOddTable;
-    const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);   
+    const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);
 
     const baseLevel     = this.fileProvider.loadBinary(
       this.config.path,
@@ -209,9 +209,9 @@ class LevelLoader {
     level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
 
     level.setSteelAreas(levelReader.steel);
-    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages()); 
+    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());
 
-    return level;  
+    return level;
   }
 }
 

@@ -166,12 +166,12 @@ const miniMapTerrainMethods = {
     const xEnd = Math.min(this.levelWidth, Math.ceil(x + w));
     const yEnd = Math.min(this.levelHeight, Math.ceil(y + h));
     if (xEnd <= xStart || yEnd <= yStart) return;
-  
+
     const mX0 = Math.max(0, Math.floor(xStart * this.scaleX));
     const mY0 = Math.max(0, Math.floor(yStart * this.scaleY));
     const mX1 = Math.min(this.width - 1, Math.floor((xEnd - 1) * this.scaleX));
     const mY1 = Math.min(this.height - 1, Math.floor((yEnd - 1) * this.scaleY));
-  
+
     for (let mY = mY0; mY <= mY1; mY += 1) {
       for (let mX = mX0; mX <= mX1; mX += 1) {
         this._markTerrainCellDirty((mY * this.width) + mX);
@@ -220,7 +220,7 @@ const miniMapTerrainMethods = {
         prevCount: this.deadCount
       });
     }
-  
+
     if (this.deadCount >= this.deadTTLs.length) {
       const next = Math.max(4, this.deadTTLs.length * 2);
       const coords = new Uint8Array(next * 2);
@@ -230,7 +230,7 @@ const miniMapTerrainMethods = {
       this.deadDots = coords;
       this.deadTTLs = ttls;
     }
-  
+
     const idx = this.deadCount++;
     this.deadDots[idx * 2] = sx;
     this.deadDots[idx * 2 + 1] = sy;

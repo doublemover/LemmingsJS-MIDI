@@ -18,21 +18,21 @@ const miniMapRenderMethods = {
     const app = getApp(this.runtime);
     const reversing = isRuntimeReplayApplying(this.runtime);
     this._renderStats.draws += 1;
-  
+
     let dashChanged = false;
     if (++this._viewportCounter >= this.viewportDashDelay) {
       this._viewportCounter = 0;
       this.viewportDashOffset += 1;
       dashChanged = true;
     }
-  
+
     const {
       width: W,
       height: H,
       frame,
     } = this;
     const frameData = frame.data;
-  
+
     const viewRect = app?.stage?.getGameViewRect?.();
     if (!viewRect) return false;
     const vpX = (viewRect.x * this.scaleX) | 0;
@@ -53,7 +53,7 @@ const miniMapRenderMethods = {
       this._lastViewRectH = vpH;
       this._lastViewDashOffset = this.viewportDashOffset;
     }
-  
+
     if (this.liveDots !== this._lastLiveDotsRef || this.liveDotsLength !== this._lastLiveDotsLength) {
       this._frameNeedsCompose = true;
       this._lastLiveDotsRef = this.liveDots;
@@ -81,11 +81,11 @@ const miniMapRenderMethods = {
     if (!reversing && this._decayDeathDots()) {
       this._frameNeedsCompose = true;
     }
-  
+
     if (this._frameNeedsCompose) {
       frameData.set(this.terrainColors);
       this._paintObjectMarkers(frameData);
-  
+
       let vpXW = vpX + vpW;
       // dumb fix to keep right edge of viewport rect visible
       if (vpXW === this.width) {
@@ -101,7 +101,7 @@ const miniMapRenderMethods = {
         0xFF00FF00,
         0xFF005500
       );
-  
+
       /* Live lemmings */
       for (let i = 0; i < this.liveDotsLength; i += 2) {
         const x = this.liveDots[i];
@@ -117,7 +117,7 @@ const miniMapRenderMethods = {
           frameData[(y * W) + x] = 0xFFFFFFFF;
         }
       }
-  
+
       /* Death flashes */
       const total = this.deadCount;
       for (let i = 0; i < total; ++i) {
@@ -139,10 +139,10 @@ const miniMapRenderMethods = {
       this._renderStats.lastDeadCount = this.deadCount;
       return false;
     }
-  
+
     this._renderStats.lastTerrainCells = this._lastTerrainRevalidated;
     this._renderStats.lastDeadCount = this.deadCount;
-  
+
     /* Blit */
     const destX = this.guiDisplay.worldDataSize.width  - W;
     const destY = this.guiDisplay.worldDataSize.height - H;

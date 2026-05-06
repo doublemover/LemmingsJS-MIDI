@@ -43,13 +43,13 @@ describe('HistoryStore edge branches', function() {
     };
     const history = new HistoryStore({ keyframeInterval: 5 });
     history.attach(game, { captureBaseline: true });
-  
+
     scenario(history, timer).tick(0, {
       mutate() {
         level.entrances.push({ _opened: true });
       }
     });
-  
+
     const delta = history.getDelta(0);
     expect(delta.entranceChanges.indices).to.have.length(0);
     expect(history._entranceOpened).to.have.length(2);
@@ -77,9 +77,9 @@ describe('HistoryStore edge branches', function() {
       triggerAdd: [],
       triggerRemove: [{ id: 7 }]
     };
-  
+
     history._applyTriggerChanges(game, delta, true);
-  
+
     expect(triggerManager._triggers.size).to.equal(0);
     expect(history._triggerById.get(7)).to.equal(trigger);
   });
@@ -95,9 +95,9 @@ describe('HistoryStore edge branches', function() {
       nextFirst: [5],
       nextFinished: [1]
     };
-  
+
     history._applyObjectChanges(level, changes, true);
-  
+
     expect(obj.animation.firstFrameIndex).to.equal(5);
     expect(obj.animation.isFinished).to.equal(true);
   });
@@ -115,7 +115,7 @@ describe('HistoryStore edge branches', function() {
     const history = new HistoryStore();
     history.start();
     expect(history._recording).to.equal(false);
-  
+
     const timer = createStubTimer();
     const game = {
       level: { entrances: [] },
@@ -143,9 +143,9 @@ describe('HistoryStore edge branches', function() {
       getGameSkills: () => null,
       getVictoryCondition: () => null
     };
-  
+
     const frame = history._captureKeyframe(game, 0);
-  
+
     expect(frame.groundMask).to.equal(null);
     expect(frame.groundImage).to.equal(null);
     expect(history._readMinimapState(null)).to.equal(null);
@@ -170,16 +170,16 @@ describe('HistoryStore edge branches', function() {
       action: walkAction,
       countdownAction: null
     };
-  
+
     scenario(history, timer).tick(0, {
       mutate() {
         manager.lemmings.push(newLem);
       }
     });
-  
+
     const delta = history.getDelta(0);
     expect(delta.lemAdded).to.have.length(1);
-  
+
     history._applyLemmingChanges(manager, {
       ids: [0],
       fields: [99],
@@ -192,7 +192,7 @@ describe('HistoryStore edge branches', function() {
   it('skips delta application and ground changes when data is missing', function() {
     const history = new HistoryStore();
     history._applyDelta(null, null, true);
-  
+
     const level = { groundMask: null, groundImage: null };
     history._applyGroundChanges(level, {
       indices: [0],
@@ -235,9 +235,9 @@ describe('HistoryStore edge branches', function() {
       actionType: -1,
       countdownActive: 0
     };
-  
+
     history._applyLemmingAdds(manager, [null, { id: NaN }, snap]);
-  
+
     expect(created).to.have.length(1);
     expect(manager.lemmings[0]).to.be.instanceOf(LemCtor);
   });
@@ -262,9 +262,9 @@ describe('HistoryStore edge branches', function() {
       triggerRemove: [{ id: 3 }],
       triggerCooldownChanges: { ids: [9], prev: [0], next: [1] }
     };
-  
+
     history._applyTriggerChanges(game, delta, true);
-  
+
     expect(triggerManager._triggers.size).to.equal(1);
   });
 
@@ -288,14 +288,14 @@ describe('HistoryStore edge branches', function() {
       triggerManager,
       getLemmingManager: () => ({ getLemming: () => null })
     };
-  
+
     const state = history._readTriggerState(game);
     expect(state.dynamicTriggers).to.have.length(0);
     state.staticTriggers[0].disabledUntilTick = 5;
     state.dynamicTriggers = [];
-  
+
     history._applyTriggerState(game, state);
-  
+
     expect(staticTrigger.disabledUntilTick).to.equal(5);
     expect(triggerManager._triggers.has(ownerless)).to.equal(true);
   });
@@ -307,7 +307,7 @@ describe('HistoryStore edge branches', function() {
     const level = { objects: [objWithAnim, objNoAnim] };
     const state = history._readObjectState(level);
     expect(state).to.have.length(1);
-  
+
     history._applyObjectState(level, [{ id: 999, firstFrameIndex: 9, isFinished: true }]);
     expect(objWithAnim.animation.firstFrameIndex).to.equal(2);
   });
@@ -326,9 +326,9 @@ describe('HistoryStore edge branches', function() {
       timerChanges: { prev: null, next: { speedFactor: 1, frameTime: 60, tickIndex: 2 } },
       gameChanges: { prev: { finalGameState: 0 }, next: { finalGameState: 4 } }
     };
-  
+
     history._applyScalarChanges(game, delta, true);
-  
+
     expect(game.finalGameState).to.equal(4);
   });
 
@@ -337,13 +337,13 @@ describe('HistoryStore edge branches', function() {
     const delta = history._allocDelta(0);
     history._releaseDelta(delta);
     expect(history._deltaPool).to.have.length(0);
-  
+
     history.attach(null);
     history._bindTimer();
     history.beginTick(0);
     history.endTick();
     history.captureBaseline(null);
-  
+
     runHistoryOps(history, [
       ['recordSoundEvent', { type: 'sfx' }],
       ['recordGroundChange', 0, 0, 0, 0, 0, 1, 1, 1, 1],
@@ -354,7 +354,7 @@ describe('HistoryStore edge branches', function() {
       ['recordObjectAnimation', null, { firstFrameIndex: 0, isFinished: false }, { firstFrameIndex: 1, isFinished: true }],
       ['recordMinimapDeath', { x: 1 }]
     ]);
-  
+
     expect(history._ensureTriggerId(null)).to.equal(0);
     expect(history._ensureObjectId(null)).to.equal(0);
   });
@@ -363,7 +363,7 @@ describe('HistoryStore edge branches', function() {
     const { history, timer, level } = createHistoryFixture();
     const obj = { animation: { firstFrameIndex: 0, isFinished: false } };
     level.objects = [obj];
-  
+
     scenario(history, timer).tick(0, {
       ops: [
         ['recordSoundEvent', { type: 'step' }],
@@ -372,7 +372,7 @@ describe('HistoryStore edge branches', function() {
         ['recordMinimapDeath', { x: 2, y: 3, ttl: 4, prevCount: 0 }]
       ]
     });
-  
+
     const delta = history.getDelta(0);
     expect(delta.soundEvents).to.have.length(1);
     expect(delta.entranceChanges.prev[0]).to.equal(0);
@@ -385,16 +385,16 @@ describe('HistoryStore edge branches', function() {
   it('truncates deltas and keyframes when removing all history', function() {
     const history = new HistoryStore({ keyframeInterval: 2 });
     seedHistory(history, { deltas: [0, 2], keyframes: [0, 2] });
-  
+
     history._truncateDeltasAfter(-1);
     expect(history.minDeltaTick).to.equal(null);
     expect(history.maxDeltaTick).to.equal(null);
-  
+
     seedHistory(history, { keyframes: [1] });
     history._truncateKeyframesAfter(0);
     expect(history.keyframeTicks).to.have.length(1);
     expect(history.keyframeTicks[0]).to.equal(0);
-  
+
     seedHistory(history, { deltas: [0] });
     history._truncateBefore(5);
     expect(history.minDeltaTick).to.equal(null);

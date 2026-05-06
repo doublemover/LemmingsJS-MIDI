@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4.2.0
         with:
           node-version: 20
@@ -23,7 +25,13 @@ jobs:
       - run: npm audit --audit-level=moderate
       - run: npx playwright install --with-deps chromium
       - run: npm run format
-      - run: npm run check-text-hygiene
+      - name: Check changed-line whitespace
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git diff --check "origin/${{ github.base_ref }}...HEAD"
+          else
+            git diff --check "${{ github.event.before }}...HEAD"
+          fi
       - run: git diff --exit-code
       - run: npm run check-undefined
       - run: npm run lint

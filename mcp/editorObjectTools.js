@@ -15,12 +15,12 @@ const createEditorObjectToolHandlers = ({
   } = schemas;
 
   const getEditorLevelFromState = (state) => state?.editor?.session?.level ?? null;
-  
+
   const getEditorRevisionFromState = (state) => {
     const revision = state?.editor?.history?.cursor;
     return Number.isFinite(revision) ? Number(revision) : null;
   };
-  
+
   const getEditorListByKind = (level, kind) => {
     if (!level) return null;
     if (kind === 'terrain') return Array.isArray(level.terrains) ? level.terrains : [];
@@ -28,7 +28,7 @@ const createEditorObjectToolHandlers = ({
     if (kind === 'steel') return Array.isArray(level.steel) ? level.steel : [];
     return null;
   };
-  
+
   const normalizeEditorBBox = (bbox) => {
     if (!bbox || !Number.isFinite(bbox.x) || !Number.isFinite(bbox.y)) return null;
     const width = Number.isFinite(bbox.width) ? bbox.width : bbox.w;
@@ -41,14 +41,14 @@ const createEditorObjectToolHandlers = ({
       height: Number(height)
     };
   };
-  
+
   const editorBoundsIntersect = (a, b) => (
     a.x < b.x + b.width &&
     a.x + a.width > b.x &&
     a.y < b.y + b.height &&
     a.y + a.height > b.y
   );
-  
+
   const getEditorObjectBounds = (entry, kind) => {
     const props = entry?.props || {};
     const x = Number.isFinite(props.X) ? props.X : (Number.isFinite(props.x) ? props.x : 0);
@@ -60,11 +60,11 @@ const createEditorObjectToolHandlers = ({
     }
     return { x, y, width: 1, height: 1 };
   };
-  
+
   const buildEditorObjectId = (kind, index, entry) => (
     entry?.uid ? `${kind}:${entry.uid}` : `${kind}:#${index}`
   );
-  
+
   const buildEditorObjectRecord = (kind, index, entry, fields = 'compact') => {
     const props = entry?.props || {};
     const bounds = getEditorObjectBounds(entry, kind);
@@ -90,7 +90,7 @@ const createEditorObjectToolHandlers = ({
     });
     return record;
   };
-  
+
   const collectEditorObjectRecords = (level, kind, fields) => {
     const kinds = kind === 'all' ? ['terrain', 'gadget', 'steel'] : [kind];
     const records = [];
@@ -102,7 +102,7 @@ const createEditorObjectToolHandlers = ({
     }
     return records;
   };
-  
+
   const resolveEditorObjectRef = (level, ref) => {
     const requestedKind = ref?.kind;
     const kinds = requestedKind && requestedKind !== 'all'
@@ -136,7 +136,7 @@ const createEditorObjectToolHandlers = ({
     }
     return null;
   };
-  
+
   const cacheEditorListSnapshot = (session, queryKey, revision, records) => {
     if (!session.editorObjectListCache) {
       session.editorObjectListCache = new Map();
@@ -149,7 +149,7 @@ const createEditorObjectToolHandlers = ({
       session.editorObjectListCache.delete(oldestKey);
     }
   };
-  
+
   const buildEditorListDelta = (previous, current, sinceRevision, toRevision) => {
     if (!previous || previous.revision !== sinceRevision) {
       return {
@@ -183,7 +183,7 @@ const createEditorObjectToolHandlers = ({
       updated
     };
   };
-  
+
   const runEditorApply = async (session, ops, options = {}) => {
     const result = await callE2E(session, 'editorApply', ops || [], {
       atomic: options.atomic,
@@ -200,14 +200,14 @@ const createEditorObjectToolHandlers = ({
         error: result.error || null
       });
     }
-  
+
     const payload = result.value || {};
     if (!payload.ok) {
       return attachEvents(session, payload);
     }
-  
+
     nudgeWatchPolling(session);
-  
+
     const resources = [];
     if (Array.isArray(payload.resources)) {
       for (const resource of payload.resources) {
@@ -233,7 +233,7 @@ const createEditorObjectToolHandlers = ({
         });
       }
     }
-  
+
     return attachEvents(session, {
       ok: true,
       results: Array.isArray(payload.results) ? payload.results : [],
@@ -241,7 +241,7 @@ const createEditorObjectToolHandlers = ({
       resources
     });
   };
-  
+
   const editorApplyTool = async (args) => {
     const parsed = EditorApplySchema.parse(args || {});
     const session = getSession(parsed.sessionId);
@@ -254,7 +254,7 @@ const createEditorObjectToolHandlers = ({
       returnState: parsed.returnState
     });
   };
-  
+
   const listObjectsTool = async (args) => {
     const parsed = ObjectsListSchema.parse(args || {});
     const session = getSession(parsed.sessionId);
@@ -266,7 +266,7 @@ const createEditorObjectToolHandlers = ({
         reason: 'not_in_editor_mode'
       });
     }
-  
+
     const kind = parsed.kind || 'all';
     const fields = parsed.fields || 'compact';
     const bbox = normalizeEditorBBox(parsed.bbox);
@@ -293,7 +293,7 @@ const createEditorObjectToolHandlers = ({
       );
     }
     cacheEditorListSnapshot(session, queryKey, revision, records);
-  
+
     return attachEvents(session, {
       ok: true,
       revision,
@@ -308,7 +308,7 @@ const createEditorObjectToolHandlers = ({
       delta
     });
   };
-  
+
   const placeObjectsTool = async (args) => {
     const parsed = ObjectsPlaceSchema.parse(args || {});
     const session = getSession(parsed.sessionId);
@@ -328,7 +328,7 @@ const createEditorObjectToolHandlers = ({
     }));
     return runEditorApply(session, ops, parsed.options || {});
   };
-  
+
   const updateObjectsTool = async (args) => {
     const parsed = ObjectsUpdateSchema.parse(args || {});
     const session = getSession(parsed.sessionId);
@@ -363,7 +363,7 @@ const createEditorObjectToolHandlers = ({
     }
     return runEditorApply(session, ops, parsed.options || {});
   };
-  
+
   const deleteObjectsTool = async (args) => {
     const parsed = ObjectsDeleteSchema.parse(args || {});
     const session = getSession(parsed.sessionId);
@@ -393,7 +393,7 @@ const createEditorObjectToolHandlers = ({
       args: { refs }
     }], parsed.options || {});
   };
-  
+
 
   return {
     editorApplyTool,

@@ -268,7 +268,7 @@ describe('MidiEventRouter 5', function() {
       { mapEvent: () => ({ note: 60, notes: [], velocity: 64, durationTicks: 0 }) }
     );
     router._nowMs = () => 10;
-  
+
     router._onEvent({ sfxId: 1, timeMs: NaN });
     expect(sent.length).to.equal(1);
   });
@@ -413,7 +413,7 @@ describe('MidiEventRouter 5', function() {
     router._nowMs = () => 1000;
     expect(router._resolveScheduleBase(NaN, 0, 0)).to.equal(null);
     router._resolveScheduleBase(100, 60, 1);
-  
+
     router.scheduler = { allNotesOff() { this.off = true; }, clearQueue() { this.clear = true; } };
     router._resolveScheduleBase(110, 120, 1);
     expect(router.scheduler.off).to.equal(true);
