@@ -323,6 +323,8 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalAccent', '0.8');
   await setField('#midiGlobalDensityWindow', '12');
   await setField('#midiGlobalDurationScale', '0.25');
+  await setField('#midiGlobalMaxActiveNotes', '24');
+  await setField('#midiGlobalMaxEventsPerTick', '16');
   await setField('#midiGlobalEnvAttack', '1.25');
   await setField('#midiGlobalEnvRelease', '0.75');
   await page.locator('#midiGlobalViewPan').check();
@@ -335,6 +337,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   expect(project.global.velocityRange).toMatchObject({ default: 96, min: 20, max: 110 });
   expect(project.global.noteRange).toMatchObject({ min: 36, max: 96 });
   expect(project.global.density).toMatchObject({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
+  expect(project.global.limits).toMatchObject({ maxActiveNotes: 24, maxEventsPerTick: 16 });
   expect(project.global.envelope).toMatchObject({ attack: 1.25, release: 0.75 });
   expect(project.global.position.viewPan).toBe(true);
   expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
