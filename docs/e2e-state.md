@@ -8,6 +8,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.getDiagnostics()` returns deterministic environment diagnostics
   (runtime profile, rollout/capability snapshots, feature flags, and active
   cache snapshots).
+- `window.__E2E__.getCaptureRects(options?)` returns page-space CSS rectangles
+  for visual capture tooling.
 - `window.__E2E__.getBuffer(name)` returns one heavy buffer at a time.
 - `window.__E2E__.step(count)` steps forward/backward (negative allowed).
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
@@ -31,6 +33,46 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.midiCaptureLearnNote(note)` injects a MIDI-learn capture note.
 - `window.__E2E__.midiAuditionMapping(targetKey, id, entry?)` triggers mapping
   preview/audition through the live MIDI router.
+
+## getCaptureRects(options?)
+
+`getCaptureRects` returns:
+
+```js
+{
+  version: 1,
+  rects: {
+    canvas: { x, y, width, height }
+  },
+  diagnostics: {
+    route,
+    mode,
+    missing,
+    available
+  }
+}
+```
+
+Runtime rectangle ids are omitted when the current route cannot provide them.
+Known ids include `canvas`, `stageCanvas`, `game`, `gui`, `minimap`,
+`editorCanvas`, and `editorSelection`.
+
+For world-space capture, pass a world rectangle and optional padding:
+
+```js
+window.__E2E__.getCaptureRects({
+  worldRect: {
+    id: 'lead-area',
+    rect: { x: 0, y: 0, width: 320, height: 160 },
+    padding: 8
+  }
+});
+```
+
+All returned rectangles are finite positive CSS-pixel rectangles suitable for
+the Playwright visual capture helper. The helper writes disposable screenshots
+under ignored `temp/e2e-captures/`; no manifests, baselines, or generated images
+are checked in.
 
 ## getState() structure
 

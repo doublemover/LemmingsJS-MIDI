@@ -54,7 +54,8 @@ import {
   getStageWorldPointFromPage,
   getStagePagePointFromWorld,
   centerStageOn,
-  getMinimapPagePoint
+  getMinimapPagePoint,
+  getCaptureRects
 } from './e2e/E2ECanvasHarness.js';
 import {
   getMidiOverrides,
@@ -107,6 +108,7 @@ const createE2EApi = (context) => ({
     };
   },
   getCanvasMetrics: () => getCanvasMetrics(context.view),
+  getCaptureRects: (options) => getCaptureRects(context.view, context.editorUi, options),
   getBuffer: (name) => getBuffer(context.view, name),
   getEditorLevelText: () => getEditorLevelText(context.view),
   stageWorldFromPage: (point) => getStageWorldPointFromPage(context.view, point),
