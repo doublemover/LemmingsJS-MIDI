@@ -10,8 +10,8 @@ factory template, but editable state lives only in
 
 - project metadata, devices, transport, global ranges, tracks, sources, clips,
   automation, and UI selection.
-- direct mappings, including chord and arp payloads, plus clip-backed source
-  routing for audition and gameplay routing.
+- direct mappings, including chord, arp, pan, timbre, and pitch-bend payloads,
+  plus clip-backed source routing for audition and gameplay routing.
 - validation for channels, notes, velocities, durations, selected ids, clips,
   tracks, and malformed source mappings.
 - sanitized project/template import and export envelopes for JSON interchange.

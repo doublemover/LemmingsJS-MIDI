@@ -73,6 +73,9 @@ const registerSequencerDom = (doc) => {
     midiMappingChord: 'select',
     midiMappingChordInversion: 'input',
     midiMappingArp: 'select',
+    midiMappingPan: 'input',
+    midiMappingTimbre: 'input',
+    midiMappingPitchBend: 'input',
     midiEnvAttack: 'input',
     midiEnvDecay: 'input',
     midiEnvSustain: 'input',
@@ -256,6 +259,25 @@ describe('midiUiController sequencer', function() {
     mapping = controller.getProject().sources[0].mapping;
     expect(mapping.arp).to.equal(null);
     expect(view.projectConfigs.at(-1).sfx['1'].arp).to.equal(undefined);
+  });
+
+  it('edits direct expression controls and exports them to runtime config', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const pan = doc.getElementById('midiMappingPan');
+    pan.value = '-32';
+    pan.dispatchEvent({ type: 'change', target: pan });
+    const timbre = doc.getElementById('midiMappingTimbre');
+    timbre.value = '91';
+    timbre.dispatchEvent({ type: 'change', target: timbre });
+    const bend = doc.getElementById('midiMappingPitchBend');
+    bend.value = '0.5';
+    bend.dispatchEvent({ type: 'change', target: bend });
+
+    const mapping = controller.getProject().sources[0].mapping;
+    expect(mapping).to.include({ pan: -32, timbre: 91, pitchBend: 0.5 });
+    expect(view.projectConfigs.at(-1).sfx['1']).to.include({ pan: -32, timbre: 91, pitchBend: 0.5 });
   });
 
   it('edits transport time signature controls', function() {

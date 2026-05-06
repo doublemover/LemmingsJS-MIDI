@@ -1724,6 +1724,9 @@ const createMidiUiController = ({
       'midiMappingChord',
       'midiMappingChordInversion',
       'midiMappingArp',
+      'midiMappingPan',
+      'midiMappingTimbre',
+      'midiMappingPitchBend',
       'midiEnvelopeOverrideToggle'
     ]) {
       const element = document?.getElementById(id);
@@ -1745,6 +1748,9 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiMappingChord'), mapping.chord?.type || '');
     setInputValue(document?.getElementById('midiMappingChordInversion'), mapping.chord?.inversion ?? 0);
     setInputValue(document?.getElementById('midiMappingArp'), mapping.arp?.enabled === false ? '' : mapping.arp?.mode || '');
+    setInputValue(document?.getElementById('midiMappingPan'), mapping.pan);
+    setInputValue(document?.getElementById('midiMappingTimbre'), mapping.timbre);
+    setInputValue(document?.getElementById('midiMappingPitchBend'), mapping.pitchBend);
     setInputValue(document?.getElementById('midiEnvAttack'), mapping.envelope?.attack);
     setInputValue(document?.getElementById('midiEnvDecay'), mapping.envelope?.decay);
     setInputValue(document?.getElementById('midiEnvSustain'), mapping.envelope?.sustain);
@@ -2057,6 +2063,9 @@ const createMidiUiController = ({
     bindById('midiMappingOctave', 'change', event => updateSelectedMapping({ octave: Number(event.target.value) || 4 }));
     bindById('midiMappingVelocity', 'change', event => updateSelectedMapping({ velocity: toNumberOrNull(event.target.value) }));
     bindById('midiMappingDuration', 'change', event => updateSelectedMapping({ durationTicks: toNumberOrNull(event.target.value) }));
+    bindById('midiMappingPan', 'change', event => updateSelectedMapping({ pan: toNumberOrNull(event.target.value) }));
+    bindById('midiMappingTimbre', 'change', event => updateSelectedMapping({ timbre: toNumberOrNull(event.target.value) }));
+    bindById('midiMappingPitchBend', 'change', event => updateSelectedMapping({ pitchBend: toNumberOrNull(event.target.value) }));
     bindById('midiMappingChord', 'change', event => {
       const type = event.target.value;
       const inversion = selectedSource()?.mapping?.chord?.inversion ?? 0;
