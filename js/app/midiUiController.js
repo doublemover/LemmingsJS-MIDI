@@ -1600,12 +1600,15 @@ const createMidiUiController = ({
       const row = document.createElement('div');
       row.className = 'midi-automation-row';
       row.dataset.automationId = lane.id;
+      row.setAttribute('role', 'group');
+      row.setAttribute('aria-label', `Modulation lane ${lane.name}`);
 
       const enabledLabel = document.createElement('label');
       enabledLabel.className = 'midi-field midi-field--toggle';
       const enabled = document.createElement('input');
       enabled.type = 'checkbox';
       enabled.checked = !!lane.enabled;
+      enabled.setAttribute('aria-label', `Enable modulation lane ${lane.name}`);
       enabled.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,
@@ -1624,6 +1627,7 @@ const createMidiUiController = ({
         appendOption(document, target, value, AUTOMATION_TARGET_LABELS[value] || value);
       }
       target.value = lane.target;
+      target.setAttribute('aria-label', `${lane.name} target`);
       target.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,
@@ -1640,6 +1644,7 @@ const createMidiUiController = ({
         appendOption(document, axis, value, value.toUpperCase());
       }
       axis.value = lane.axis;
+      axis.setAttribute('aria-label', `${lane.name} axis`);
       axis.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,
@@ -1657,6 +1662,7 @@ const createMidiUiController = ({
         appendOption(document, op, entry.value, entry.label);
       }
       op.value = lane.axisOp || 'add';
+      op.setAttribute('aria-label', `${lane.name} operator`);
       op.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,
@@ -1672,6 +1678,7 @@ const createMidiUiController = ({
       min.type = 'number';
       min.step = '0.05';
       min.value = String(lane.min);
+      min.setAttribute('aria-label', `${lane.name} minimum`);
       min.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,
@@ -1687,6 +1694,7 @@ const createMidiUiController = ({
       max.type = 'number';
       max.step = '0.05';
       max.value = String(lane.max);
+      max.setAttribute('aria-label', `${lane.name} maximum`);
       max.addEventListener('change', event => dispatchProjectIntent({
         type: 'automation.update',
         automationId: lane.id,

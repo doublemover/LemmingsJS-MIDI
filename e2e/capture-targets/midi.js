@@ -1,6 +1,7 @@
 const config = {
   name: 'midi',
   route: '/',
+  webMidiStub: { withDevices: true },
   async setup(page) {
     await page.waitForSelector('#midiEnabledToggle', { state: 'visible' });
     await page.locator('#midiEnabledToggle').check();
@@ -76,10 +77,14 @@ const config = {
       window.__E2E__?.midiStartRecording?.();
       window.__E2E__?.midiCaptureRecordMessage?.({ type: 0x90, note: 62, velocity: 90, channel: 1, timestamp: 0 });
       window.__E2E__?.midiCaptureRecordMessage?.({ type: 0x80, note: 62, velocity: 0, channel: 1, timestamp: 240 });
+      window.__E2E__?.midiAudition?.({ sourceId: 'sfx-1' });
     });
     await page.waitForSelector('#midiClipList .midi-clip-row');
     await page.waitForSelector('#midiStepPatternGrid .midi-step-cell');
     await page.waitForSelector('#midiSourceList .midi-conflict-badge');
+    await page.waitForFunction(() => (
+      /Audition Capture Clip ->/.test(document.getElementById('midiOutputLog')?.textContent || '')
+    ));
   },
   targets: [
     { name: 'midi-transport', type: 'selector', selector: '#midiTransportStrip' },
@@ -141,6 +146,11 @@ const config = {
       name: 'midi-step-pattern',
       selector: '#midiStepPatternGrid',
       checks: ['horizontalOverflow']
+    },
+    {
+      name: 'midi-output-status',
+      selector: '#midiOutputStatus',
+      checks: ['horizontalOverflow', 'clippedText']
     }
   ]
 };

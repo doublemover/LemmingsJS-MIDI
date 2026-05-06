@@ -396,6 +396,25 @@ describe('MidiProject', function() {
     expect(report.bySourceId.disabled[0]).to.include({ severity: 'info', code: 'disabled_source' });
   });
 
+  it('detects missing required project output conflicts', function() {
+    const report = detectMidiProjectConflicts({
+      enabled: true,
+      devices: { outputId: null },
+      tracks: [{ id: 'track-1', name: 'Main', channel: 1 }],
+      sources: []
+    }, { requireOutput: true });
+
+    expect(report.ok).to.equal(true);
+    expect(report.summary.warnings).to.equal(1);
+    expect(report.issues[0]).to.include({
+      severity: 'warning',
+      code: 'missing_project_output'
+    });
+    expect(report.issues[0].path).to.deep.equal(['devices', 'outputId']);
+    expect(report.bySourceId).to.deep.equal({});
+    expect(report.byTrackId).to.deep.equal({});
+  });
+
   it('detects muted, solo-hidden, empty clip, and note collapse conflicts', function() {
     const project = sanitizeMidiProject({
       global: { noteRange: { min: 60, max: 60 } },

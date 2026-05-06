@@ -10,6 +10,7 @@ import {
   sanitizeCaptureName
 } from '../e2e/helpers/visualCapture.js';
 import { installExternalAssetStubs } from '../e2e/helpers/externalAssets.js';
+import { installWebMidiStub } from '../e2e/helpers/webmidiStub.js';
 import { resolvePlaywrightBaseUrl } from '../playwright.config.js';
 
 const VIEWPORT_PRESETS = Object.freeze({
@@ -188,6 +189,12 @@ const runCaptureCli = async (argv = process.argv.slice(2)) => {
     });
     const page = await context.newPage();
     await installExternalAssetStubs(page);
+    if (loaded.config.webMidiStub) {
+      const webMidiStubOptions = typeof loaded.config.webMidiStub === 'object'
+        ? loaded.config.webMidiStub
+        : {};
+      await installWebMidiStub(page, webMidiStubOptions);
+    }
     await page.goto(url, { waitUntil: loaded.config.waitUntil || 'domcontentloaded' });
     if (typeof loaded.config.setup === 'function') {
       await loaded.config.setup(page, {

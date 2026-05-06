@@ -483,6 +483,24 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   });
   expect(laneLayout.childCount).toBe(7);
   expect(laneLayout.removeTopOffset).toBeLessThan(laneLayout.rowHeight / 2);
+  const laneA11y = await page.locator('.midi-automation-row').last().evaluate(row => ({
+    role: row.getAttribute('role'),
+    rowLabel: row.getAttribute('aria-label'),
+    controlLabels: Array.from(row.querySelectorAll('input, select, button'))
+      .map(control => control.getAttribute('aria-label') || '')
+  }));
+  const laneName = laneA11y.rowLabel.replace(/^Modulation lane /, '');
+  expect(laneA11y.role).toBe('group');
+  expect(laneA11y.rowLabel).toBe(`Modulation lane ${laneName}`);
+  expect(laneA11y.controlLabels).toEqual(expect.arrayContaining([
+    `Enable modulation lane ${laneName}`,
+    `${laneName} target`,
+    `${laneName} axis`,
+    `${laneName} operator`,
+    `${laneName} minimum`,
+    `${laneName} maximum`,
+    `Remove modulation lane ${laneName}`
+  ]));
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
