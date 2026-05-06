@@ -137,7 +137,11 @@ const midiSchedulerSendMethods = {
           token,
           phase: 'on',
           sfxId: meta.sfxId ?? null,
-          priority: meta.priority ?? 1
+          priority: meta.priority ?? 1,
+          triggerType: meta.triggerType ?? null,
+          trackId,
+          outputId,
+          voiceBudget
         });
         if (durationMs > 0) {
           this._recordPlanned({
@@ -147,7 +151,11 @@ const midiSchedulerSendMethods = {
             token,
             phase: 'off',
             sfxId: meta.sfxId ?? null,
-            priority: meta.priority ?? 1
+            priority: meta.priority ?? 1,
+            triggerType: meta.triggerType ?? null,
+            trackId,
+            outputId,
+            voiceBudget
           });
         }
       }

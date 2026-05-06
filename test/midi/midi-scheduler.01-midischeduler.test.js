@@ -74,6 +74,46 @@ describe('MidiScheduler 1', function() {
     });
   });
 
+  it('preserves routing metadata on unreserved planned sends', function() {
+    const calls = [];
+    const output = makeOutput([1], calls, 'out-1');
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.setOutput(output);
+    scheduler.setOutputs([output]);
+    scheduler.setTickMs(10);
+
+    const ok = scheduler.sendNote(
+      {
+        note: 60,
+        velocity: 64,
+        durationTicks: 2,
+        timeMs: 1000,
+        trackId: 'lead',
+        outputId: 'out-1',
+        voiceBudget: 4
+      },
+      {
+        sfxId: 3,
+        priority: 2,
+        triggerType: 'skill'
+      }
+    );
+
+    expect(ok).to.equal(true);
+    expect(scheduler._ratePlanned).to.have.lengthOf(2);
+    for (const entry of scheduler._ratePlanned) {
+      expect(entry).to.include({
+        sfxId: 3,
+        priority: 2,
+        triggerType: 'skill',
+        trackId: 'lead',
+        outputId: 'out-1',
+        voiceBudget: 4
+      });
+    }
+    expect(scheduler._ratePlanned.map(entry => entry.phase)).to.deep.equal(['on', 'off']);
+  });
+
   it('swaps attack and release velocity when reversing', function() {
     const calls = [];
     const output = makeOutput([1], calls);
