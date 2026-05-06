@@ -94,6 +94,10 @@ const registerSequencerDom = (doc) => {
     midiRecordCancelButton: 'button',
     midiStepPatternGrid: 'div',
     midiGlobalIntensity: 'input',
+    midiGlobalVelocityMin: 'input',
+    midiGlobalVelocityMax: 'input',
+    midiGlobalNoteMin: 'input',
+    midiGlobalNoteMax: 'input',
     midiGlobalAccent: 'input',
     midiGlobalViewPan: 'input',
     midiGlobalDensityWindow: 'input',
@@ -379,6 +383,18 @@ describe('midiUiController sequencer', function() {
     const intensity = doc.getElementById('midiGlobalIntensity');
     intensity.value = '96';
     intensity.dispatchEvent({ type: 'change', target: intensity });
+    const velocityMin = doc.getElementById('midiGlobalVelocityMin');
+    velocityMin.value = '20';
+    velocityMin.dispatchEvent({ type: 'change', target: velocityMin });
+    const velocityMax = doc.getElementById('midiGlobalVelocityMax');
+    velocityMax.value = '110';
+    velocityMax.dispatchEvent({ type: 'change', target: velocityMax });
+    const noteMin = doc.getElementById('midiGlobalNoteMin');
+    noteMin.value = '36';
+    noteMin.dispatchEvent({ type: 'change', target: noteMin });
+    const noteMax = doc.getElementById('midiGlobalNoteMax');
+    noteMax.value = '96';
+    noteMax.dispatchEvent({ type: 'change', target: noteMax });
     const accent = doc.getElementById('midiGlobalAccent');
     accent.value = '0.8';
     accent.dispatchEvent({ type: 'change', target: accent });
@@ -420,7 +436,8 @@ describe('midiUiController sequencer', function() {
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.tracks[0].velocityScale).to.equal(0.5);
-    expect(stored.global.velocityRange.default).to.equal(96);
+    expect(stored.global.velocityRange).to.include({ default: 96, min: 20, max: 110 });
+    expect(stored.global.noteRange).to.include({ min: 36, max: 96 });
     expect(stored.global.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
     expect(stored.global.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(stored.global.position.viewPan).to.equal(true);
@@ -431,7 +448,8 @@ describe('midiUiController sequencer', function() {
     expect(automationRow.className).to.equal('midi-automation-row');
 
     const runtime = view.projectConfigs.at(-1);
-    expect(runtime.velocityRange.default).to.equal(96);
+    expect(runtime.velocityRange).to.include({ default: 96, min: 20, max: 110 });
+    expect(runtime.noteRange).to.include({ min: 36, max: 96 });
     expect(runtime.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
     expect(runtime.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(runtime.position.viewPan).to.equal(true);
@@ -440,14 +458,20 @@ describe('midiUiController sequencer', function() {
     expect(runtime.sfx['1'].velocity).to.equal(48);
 
     controller.applyRuntimePatch({
+      noteRange: { min: 48, max: 84 },
+      velocityRange: { min: 24, max: 112 },
       density: { windowTicks: 18, durationScale: 0.75 },
       durationTicks: { default: 12, min: 3, max: 48 },
       envelope: { sustain: 1.5 }
     });
     const afterPatch = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterPatch.global.noteRange).to.include({ min: 48, max: 84 });
+    expect(afterPatch.global.velocityRange).to.include({ default: 96, min: 24, max: 112 });
     expect(afterPatch.global.density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(afterPatch.global.durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(afterPatch.global.envelope.sustain).to.equal(1.5);
+    expect(view.projectConfigs.at(-1).noteRange).to.include({ min: 48, max: 84 });
+    expect(view.projectConfigs.at(-1).velocityRange).to.include({ default: 96, min: 24, max: 112 });
     expect(view.projectConfigs.at(-1).density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(view.projectConfigs.at(-1).durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(view.projectConfigs.at(-1).envelope.sustain).to.equal(1.5);

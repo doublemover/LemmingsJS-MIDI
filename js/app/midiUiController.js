@@ -1648,6 +1648,10 @@ const createMidiUiController = ({
   const renderModulation = () => {
     const current = ensureProject();
     setInputValue(document?.getElementById('midiGlobalIntensity'), current.global.velocityRange.default);
+    setInputValue(document?.getElementById('midiGlobalVelocityMin'), current.global.velocityRange.min);
+    setInputValue(document?.getElementById('midiGlobalVelocityMax'), current.global.velocityRange.max);
+    setInputValue(document?.getElementById('midiGlobalNoteMin'), current.global.noteRange.min);
+    setInputValue(document?.getElementById('midiGlobalNoteMax'), current.global.noteRange.max);
     setInputValue(document?.getElementById('midiGlobalAccent'), current.global.density.velocityBoost);
     setInputValue(document?.getElementById('midiGlobalDensityWindow'), current.global.density.windowTicks);
     setInputValue(document?.getElementById('midiGlobalDurationScale'), current.global.density.durationScale);
@@ -2114,10 +2118,34 @@ const createMidiUiController = ({
     for (const id of ['midiEnvAttack', 'midiEnvDecay', 'midiEnvSustain', 'midiEnvRelease']) {
       bindById(id, 'change', updateEnvelope);
     }
+    const readGlobalNumber = (value, fallback) => toNumberOrNull(value) ?? fallback;
+    const updateGlobalVelocityRange = (patch) => {
+      const current = ensureProject();
+      updateGlobal({ velocityRange: { ...current.global.velocityRange, ...patch } });
+    };
+    const updateGlobalNoteRange = (patch) => {
+      const current = ensureProject();
+      updateGlobal({ noteRange: { ...current.global.noteRange, ...patch } });
+    };
     bindById('midiGlobalIntensity', 'change', event => {
       const current = ensureProject();
-      const velocityRange = { ...current.global.velocityRange, default: Number(event.target.value) || current.global.velocityRange.default };
-      updateGlobal({ velocityRange });
+      updateGlobalVelocityRange({ default: readGlobalNumber(event.target.value, current.global.velocityRange.default) });
+    });
+    bindById('midiGlobalVelocityMin', 'change', event => {
+      const current = ensureProject();
+      updateGlobalVelocityRange({ min: readGlobalNumber(event.target.value, current.global.velocityRange.min) });
+    });
+    bindById('midiGlobalVelocityMax', 'change', event => {
+      const current = ensureProject();
+      updateGlobalVelocityRange({ max: readGlobalNumber(event.target.value, current.global.velocityRange.max) });
+    });
+    bindById('midiGlobalNoteMin', 'change', event => {
+      const current = ensureProject();
+      updateGlobalNoteRange({ min: readGlobalNumber(event.target.value, current.global.noteRange.min) });
+    });
+    bindById('midiGlobalNoteMax', 'change', event => {
+      const current = ensureProject();
+      updateGlobalNoteRange({ max: readGlobalNumber(event.target.value, current.global.noteRange.max) });
     });
     const updateGlobalDensity = (patch) => {
       const current = ensureProject();
