@@ -70,6 +70,7 @@ const registerSequencerDom = (doc) => {
     midiMappingDuration: 'input',
     midiMappingChord: 'select',
     midiMappingChordInversion: 'input',
+    midiMappingArp: 'select',
     midiEnvAttack: 'input',
     midiEnvDecay: 'input',
     midiEnvSustain: 'input',
@@ -99,6 +100,7 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiSourceKindFilter').value = 'all';
   doc.getElementById('midiSourceAssignFilter').value = 'all';
   doc.getElementById('midiSourceModeSelect').value = 'direct';
+  doc.getElementById('midiMappingArp').value = '';
   doc.getElementById('midiClipType').value = 'stepPattern';
   doc.getElementById('midiClipArpMode').value = 'up';
   doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
@@ -229,6 +231,25 @@ describe('midiUiController sequencer', function() {
     expect(controller.audition()).to.equal(true);
     expect(sent.map(entry => entry.spec.note)).to.deep.equal([50, 52, 60]);
     expect(sent.every(entry => entry.meta.eventType === 'audition')).to.equal(true);
+  });
+
+  it('edits direct arp mode and exports it to runtime config', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const arp = doc.getElementById('midiMappingArp');
+    arp.value = 'down';
+    arp.dispatchEvent({ type: 'change', target: arp });
+
+    let mapping = controller.getProject().sources[0].mapping;
+    expect(mapping.arp).to.include({ enabled: true, mode: 'down' });
+    expect(view.projectConfigs.at(-1).sfx['1'].arp).to.include({ enabled: true, mode: 'down' });
+
+    arp.value = '';
+    arp.dispatchEvent({ type: 'change', target: arp });
+    mapping = controller.getProject().sources[0].mapping;
+    expect(mapping.arp).to.equal(null);
+    expect(view.projectConfigs.at(-1).sfx['1'].arp).to.equal(undefined);
   });
 
   it('edits transport time signature controls', function() {

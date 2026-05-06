@@ -171,7 +171,7 @@ describe('MidiProject', function() {
     project = reduceMidiProject(project, { type: 'track.select', trackId: 'lead' });
     project = reduceMidiProject(project, { type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'lead' });
     project = reduceMidiProject(project, { type: 'source.update', sourceId: 'sfx-1', patch: { enabled: true, label: 'Select' } });
-    project = reduceMidiProject(project, { type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 200, velocity: 0 } });
+    project = reduceMidiProject(project, { type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 200, velocity: 0, arp: { enabled: true, mode: 'down' } } });
     project = reduceMidiProject(project, { type: 'source.select', sourceId: 'sfx-1' });
     project = reduceMidiProject(project, { type: 'ui.set', ui: { activeRegion: 'audition' } });
 
@@ -183,6 +183,8 @@ describe('MidiProject', function() {
     expect(project.tracks.find(track => track.id === 'lead')).to.include({ channel: 3, solo: true, priority: 5, instrumentLabel: 'Lead synth' });
     expect(project.sources[0]).to.include({ trackId: 'lead', label: 'Select' });
     expect(project.sources[0].mapping).to.include({ note: 127, velocity: 1 });
+    expect(project.sources[0].mapping.arp).to.include({ enabled: true, mode: 'down' });
+    expect(projectToMidiConfig(project, {}).sfx['1'].arp).to.include({ enabled: true, mode: 'down' });
   });
 
   it('reduces clip library, step editing, source assignment, and runtime clip lowering', function() {

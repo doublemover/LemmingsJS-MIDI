@@ -150,7 +150,7 @@ const createDefaultMidiStep = (index = 0, overrides = {}) => ({
   probability: overrides.probability ?? 1
 });
 
-const sanitizeClipArp = (arp) => {
+const sanitizeArpPayload = (arp) => {
   if (!isPlainObject(arp)) return null;
   const clean = cloneObject(arp);
   return {
@@ -171,7 +171,7 @@ const createDefaultMidiClip = (overrides = {}) => {
     type: CLIP_TYPES.includes(overrides.type) ? overrides.type : 'stepPattern',
     lengthSteps,
     steps,
-    arp: sanitizeClipArp(overrides.arp)
+    arp: sanitizeArpPayload(overrides.arp)
   };
 };
 
@@ -263,7 +263,7 @@ const sanitizeDirectMapping = (mapping = {}) => {
   out.timbre = out.timbre == null ? null : clamp(toInteger(out.timbre, 0), 0, 127);
   out.pitchBend = out.pitchBend == null ? null : clamp(toFiniteNumber(out.pitchBend, 0), -1, 1);
   out.envelope = sanitizeEnvelope(out.envelope);
-  out.arp = isPlainObject(out.arp) ? cloneObject(out.arp) : null;
+  out.arp = sanitizeArpPayload(out.arp);
   return out;
 };
 
@@ -453,7 +453,7 @@ const sanitizeClip = (clip, fallbackIndex, usedIds) => {
     type,
     lengthSteps,
     steps,
-    arp: sanitizeClipArp(clip.arp)
+    arp: sanitizeArpPayload(clip.arp)
   };
 };
 

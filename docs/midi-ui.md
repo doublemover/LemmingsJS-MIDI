@@ -35,10 +35,10 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Assignment: route the selected source to a selected track, or switch it from
   direct mode to clip mode and assign a selected clip.
 - Inspector: edit the selected source direct mapping with note, degree, octave,
-  chord type/inversion, velocity, duration, envelope override, clip, audition
-  controls, and conflict warnings for the selected route. Changed sources can
-  be reverted to the factory template mapping, or to the project default for
-  sources not present in the factory template.
+  chord type/inversion, arp direction, velocity, duration, envelope override,
+  clip, audition controls, and conflict warnings for the selected route.
+  Changed sources can be reverted to the factory template mapping, or to the
+  project default for sources not present in the factory template.
 - Learn: arm a selected direct source, capture the next MIDI note-on as a
   pending note/velocity/channel assignment, then commit or cancel it.
 - Record: capture a short mocked or live MIDI phrase into consecutive steps of

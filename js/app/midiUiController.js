@@ -1695,6 +1695,7 @@ const createMidiUiController = ({
       'midiMappingDuration',
       'midiMappingChord',
       'midiMappingChordInversion',
+      'midiMappingArp',
       'midiEnvelopeOverrideToggle'
     ]) {
       const element = document?.getElementById(id);
@@ -1715,6 +1716,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiMappingDuration'), mapping.durationTicks);
     setInputValue(document?.getElementById('midiMappingChord'), mapping.chord?.type || '');
     setInputValue(document?.getElementById('midiMappingChordInversion'), mapping.chord?.inversion ?? 0);
+    setInputValue(document?.getElementById('midiMappingArp'), mapping.arp?.enabled === false ? '' : mapping.arp?.mode || '');
     setInputValue(document?.getElementById('midiEnvAttack'), mapping.envelope?.attack);
     setInputValue(document?.getElementById('midiEnvDecay'), mapping.envelope?.decay);
     setInputValue(document?.getElementById('midiEnvSustain'), mapping.envelope?.sustain);
@@ -2036,6 +2038,14 @@ const createMidiUiController = ({
           ...chord,
           inversion: Math.max(0, Math.round(Number(event.target.value) || 0))
         }
+      });
+    });
+    bindById('midiMappingArp', 'change', event => {
+      const mode = ARP_MODES.includes(event.target.value) ? event.target.value : '';
+      updateSelectedMapping({
+        arp: mode
+          ? { ...(selectedSource()?.mapping?.arp || {}), enabled: true, mode }
+          : null
       });
     });
     bindById('midiEnvelopeOverrideToggle', 'change', event => {
