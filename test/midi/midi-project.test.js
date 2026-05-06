@@ -227,6 +227,40 @@ describe('MidiProject', function() {
     expect(config.triggers['5'].notes).to.deep.equal([64, 67]);
   });
 
+  it('flags reducer-assigned missing clips and lowers them as disabled runtime mappings', function() {
+    let project = createMidiProjectFromMidiConfig({
+      enabled: true,
+      sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
+      triggers: {}
+    });
+
+    project = reduceMidiProject(project, {
+      type: 'source.clip.assign',
+      sourceId: 'sfx-1',
+      clipId: 'missing-riff'
+    });
+
+    expect(project.sources[0]).to.include({
+      mode: 'clip',
+      clipId: null,
+      mapping: null
+    });
+
+    const report = detectMidiProjectConflicts(project);
+    expect(report.ok).to.equal(false);
+    expect(report.bySourceId['sfx-1'].map(issue => issue.code)).to.include('missing_clip');
+
+    const config = projectToMidiConfig(project, {});
+    expect(config.sfx['1']).to.include({
+      clipId: null,
+      clipType: 'stepPattern',
+      disabled: true
+    });
+    expect(config.sfx['1'].note).to.equal(null);
+    expect(config.sfx['1']).to.not.have.property('notes');
+    expect(config.sfx['1']).to.not.have.property('arp');
+  });
+
   it('reduces global modulation and lowers automation lanes into runtime position mappings', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,
