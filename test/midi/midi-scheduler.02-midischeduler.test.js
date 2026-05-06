@@ -78,6 +78,43 @@ describe('MidiScheduler 2', function() {
     });
   });
 
+  it('aggregates rate snapshots by track and output', function() {
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler._ratePlanned = [
+      {
+        timeMs: 1000,
+        count: 2,
+        bytes: 6,
+        sfxId: 3,
+        priority: 2,
+        trackId: 'lead',
+        outputId: 'out-1',
+        voiceBudget: 4
+      },
+      {
+        timeMs: 1100,
+        count: 1,
+        bytes: 3,
+        sfxId: 4,
+        priority: 1,
+        trackId: 'lead',
+        outputId: 'out-1'
+      }
+    ];
+
+    const snapshot = scheduler.getRateSnapshot(1000);
+    expect(snapshot.next.byTrack.get('lead')).to.include({
+      count: 3,
+      bytes: 9,
+      voiceBudget: 4
+    });
+    expect(snapshot.next.byOutput.get('out-1')).to.include({
+      count: 3,
+      bytes: 9,
+      voiceBudget: 4
+    });
+  });
+
   it('logs when byte rate limits are exceeded', function() {
     const scheduler = new MidiScheduler({ limits: { maxBytesPerSecond: 1 } });
     const logs = [];

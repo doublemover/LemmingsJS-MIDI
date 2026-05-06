@@ -55,18 +55,25 @@ const midiSchedulerRateMethods = {
     let count = 0;
     let bytes = 0;
     const bySfx = new Map();
+    const byTrack = new Map();
+    const byOutput = new Map();
+    const addShare = (map, key, entry) => {
+      const curr = map.get(key) || { count: 0, bytes: 0, priority: entry.priority ?? 1 };
+      curr.count += entry.count;
+      curr.bytes += entry.bytes;
+      if (entry.priority != null) curr.priority = entry.priority;
+      if (entry.voiceBudget != null) curr.voiceBudget = entry.voiceBudget;
+      map.set(key, curr);
+    };
     for (const entry of entries) {
       if (entry.timeMs < startMs || entry.timeMs >= endMs) continue;
       count += entry.count;
       bytes += entry.bytes;
-      const key = entry.sfxId ?? 'unknown';
-      const curr = bySfx.get(key) || { count: 0, bytes: 0, priority: entry.priority ?? 1 };
-      curr.count += entry.count;
-      curr.bytes += entry.bytes;
-      if (entry.priority != null) curr.priority = entry.priority;
-      bySfx.set(key, curr);
+      addShare(bySfx, entry.sfxId ?? 'unknown', entry);
+      addShare(byTrack, entry.trackId ?? 'project', entry);
+      addShare(byOutput, entry.outputId ?? 'project', entry);
     }
-    return { count, bytes, bySfx };
+    return { count, bytes, bySfx, byTrack, byOutput };
   },
 
   _planEntries(plan) {
