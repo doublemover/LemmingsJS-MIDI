@@ -22,10 +22,11 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 ## Sequencing
 
-1. MIDI sequencer workspace polish.
-2. Level editor audit and productization.
-3. Procedural generation productization.
-4. Solver and solvability platform.
+1. Level editor audit and productization.
+2. Procedural generation productization.
+3. Solver and solvability platform.
+4. MIDI sequencer follow-up polish only when captures, tests, or real workflow
+   use expose a concrete gap.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
@@ -34,12 +35,13 @@ events. It should let users design, route, audition, sequence, automate, and
 perform MIDI responses with the polish expected from music software, while
 remaining deterministic and testable without real hardware.
 
-Current status: the project-based sequencer, source browser filters, track/clip
-editing, learn/record flows, modulation lanes, template import/export, legacy
-storage cleanup, and per-track output dispatch are implemented. Remaining
-Milestone 1 work should stay limited to focused polish, missing
-runtime-confidence tests, and small editor controls rather than broad sequencer
-rewrites.
+Current status: checkpointed on May 6, 2026. The project-based sequencer,
+source browser filters, track/clip editing, learn/record flows, modulation
+lanes, template import/export, legacy storage cleanup, per-track output
+dispatch, targeted mocked-device coverage, and disposable desktop/tablet/mobile
+captures are implemented. Remaining Milestone 1 work should stay limited to
+focused polish, missing runtime-confidence tests, and small editor controls
+rather than broad sequencer rewrites.
 
 **Product Goals**
 
