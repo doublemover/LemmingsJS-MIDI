@@ -188,6 +188,26 @@ describe('MidiProject', function() {
     expect(projectToMidiConfig(project, {}).sfx['1'].arp).to.include({ enabled: true, mode: 'down' });
   });
 
+  it('sanitizes invalid reducer selection intents', function() {
+    let project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, {
+      type: 'clip.add',
+      clip: { id: 'riff', name: 'Riff', lengthSteps: 4 }
+    });
+
+    const badTrack = reduceMidiProject(project, { type: 'track.select', trackId: 'missing-track' });
+    expect(badTrack.ui).to.include({ selectedTrackId: 'track-1', activeRegion: 'tracks' });
+
+    const badSource = reduceMidiProject(project, { type: 'source.select', sourceId: 'missing-source' });
+    expect(badSource.ui).to.include({ selectedSourceId: 'sfx-1', activeRegion: 'sources' });
+
+    const badClip = reduceMidiProject(project, { type: 'clip.select', clipId: 'missing-clip' });
+    expect(badClip.ui).to.include({ selectedClipId: null, activeRegion: 'clips' });
+  });
+
   it('reduces clip library, step editing, source assignment, and runtime clip lowering', function() {
     let project = createMidiProjectFromMidiConfig({
       sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
