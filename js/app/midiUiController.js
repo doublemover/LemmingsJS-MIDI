@@ -1392,19 +1392,19 @@ const createMidiUiController = ({
     const list = document?.getElementById('midiClipList');
     if (!list) return;
     removeChildren(list);
-    const activeOptionId = current.clips.some(clip => clip.id === current.ui.selectedClipId)
-      ? listOptionId('clip', current.ui.selectedClipId)
-      : '';
+    const activeClip = current.clips.find(clip => clip.id === current.ui.selectedClipId) || current.clips[0] || null;
+    const activeOptionId = activeClip ? listOptionId('clip', activeClip.id) : '';
     configureListbox(list, activeOptionId);
     for (const clip of current.clips) {
       const selected = current.ui.selectedClipId === clip.id;
+      const active = activeClip?.id === clip.id;
       const row = document.createElement('button');
       row.type = 'button';
       row.id = listOptionId('clip', clip.id);
       row.className = 'midi-clip-row';
       row.classList.toggle('is-selected', selected);
       row.dataset.clipId = clip.id;
-      row.tabIndex = selected ? 0 : -1;
+      row.tabIndex = active ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
       row.setAttribute('aria-label', `${clip.name}, ${clip.type}, ${clip.lengthSteps} steps`);

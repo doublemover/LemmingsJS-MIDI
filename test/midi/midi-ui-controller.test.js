@@ -1060,6 +1060,31 @@ describe('midiUiController sequencer', function() {
     expect(prevented).to.equal(4);
   });
 
+  it('keeps a clip listbox option active when no clip is selected', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({
+      type: 'project.set',
+      project: {
+        ...controller.getProject(),
+        ui: {
+          ...controller.getProject().ui,
+          selectedClipId: null
+        }
+      }
+    });
+
+    const clipList = doc.getElementById('midiClipList');
+    const activeId = clipList.getAttribute('aria-activedescendant');
+    const active = clipList.children.find(row => row.id === activeId);
+    expect(activeId).to.equal('midi-clip-option-riff');
+    expect(active.tabIndex).to.equal(0);
+    expect(active.getAttribute('aria-selected')).to.equal('false');
+    expect(controller.getProject().ui.selectedClipId).to.equal(null);
+  });
+
   it('panics by stopping notes and clearing queued MIDI events', function() {
     let allNotesOffCalls = 0;
     let clearQueueCalls = 0;
