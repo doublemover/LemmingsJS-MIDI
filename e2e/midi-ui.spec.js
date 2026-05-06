@@ -625,9 +625,10 @@ test('MIDI step grid keyboard navigation preserves the edited field', async ({ p
   await expect.poll(activeStep).toMatchObject({ className: 'midi-step-probability', stepIndex: '0', label: 'Step 1 probability' });
 });
 
-test('MIDI sequencer layout avoids horizontal overflow at desktop and phone sizes', async ({ page }) => {
+test('MIDI sequencer layout avoids horizontal overflow at desktop, tablet, and phone sizes', async ({ page }) => {
   for (const viewport of [
     { width: 1280, height: 900 },
+    { width: 820, height: 1180 },
     { width: 390, height: 844 }
   ]) {
     await page.setViewportSize(viewport);
