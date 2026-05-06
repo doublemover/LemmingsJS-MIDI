@@ -203,6 +203,11 @@ const runCaptureCli = async (argv = process.argv.slice(2)) => {
       route: new URL(url).pathname + new URL(url).search,
       viewport: viewportPreset.viewport
     });
+    await page.evaluate(() => {
+      window.scrollTo?.(0, 0);
+      if (document?.documentElement) document.documentElement.scrollTop = 0;
+      if (document?.body) document.body.scrollTop = 0;
+    });
     const probeResult = await runVisualProbes(page, loaded.config.probes || [], {
       minTapTargetSize: loaded.config.minTapTargetSize
     });

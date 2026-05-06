@@ -31,7 +31,12 @@ errors before exporting.
 
 ## Visual checks
 
-Use `npm run capture:e2e:editor` for a disposable desktop capture of the editor
-shell, canvas, palette, inspector, header rectangle, and viewport. The PNGs are
-written under ignored `temp/e2e-captures/` and can be attached manually to
-issues or review notes.
+Use `npm run capture:e2e:editor` for a disposable desktop capture. The capture
+setup stages a selected terrain entry, a saved-level option, validation issues,
+and playtest mode, then records the shell, canvas, palette, inspector, file
+controls, selection actions, validation list, playtest status, header rectangle,
+and viewport. The PNGs are written under ignored `temp/e2e-captures/` and can be
+attached manually to issues or review notes.
+
+For non-desktop checks, run the capture CLI directly with `--viewport=tablet` or
+`--viewport=mobile`.
