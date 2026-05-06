@@ -331,6 +331,8 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalPanMin', '-48');
   await setField('#midiGlobalPanMax', '48');
   await setField('#midiGlobalPanDeadZone', '0.08');
+  await setField('#midiGlobalTimbreMin', '12');
+  await setField('#midiGlobalTimbreMax', '100');
   await page.locator('#midiEnvelopeOverrideToggle').check();
   await midi.automationAddButton().click();
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
@@ -345,6 +347,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   expect(project.global.position.viewPan).toBe(true);
   expect(project.global.position.panRange).toMatchObject({ min: -48, max: 48 });
   expect(project.global.position.panDeadZonePct).toBe(0.08);
+  expect(project.global.position.timbreRange).toMatchObject({ min: 12, max: 100 });
   expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
     attack: 1,
     decay: 0,

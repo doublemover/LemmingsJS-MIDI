@@ -27,11 +27,11 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
   fields and use Arrow keys, Home, and End to move through the active region.
 - Modulation: set global intensity, velocity range, note range, accent, density
-  window, density duration scale, view pan range/dead zone, safety limits,
-  duration defaults/range, and add, edit, or remove compact position lanes with
-  axis operators for note, velocity, pan, duration, timbre, and envelope targets.
-  Global envelope defaults set the baseline for direct mappings unless a source
-  has an envelope override.
+  window, density duration scale, view pan range/dead zone, timbre range, safety
+  limits, duration defaults/range, and add, edit, or remove compact position
+  lanes with axis operators for note, velocity, pan, duration, timbre, and
+  envelope targets. Global envelope defaults set the baseline for direct mappings
+  unless a source has an envelope override.
 - Clips: create reusable step, chord, or arp clips, set arp direction and
   pattern preset, and edit compact step patterns with note, velocity, duration,
   probability, hold, and tie controls.

@@ -105,6 +105,8 @@ const registerSequencerDom = (doc) => {
     midiGlobalPanMin: 'input',
     midiGlobalPanMax: 'input',
     midiGlobalPanDeadZone: 'input',
+    midiGlobalTimbreMin: 'input',
+    midiGlobalTimbreMax: 'input',
     midiGlobalDensityWindow: 'input',
     midiGlobalDurationScale: 'input',
     midiGlobalMaxActiveNotes: 'input',
@@ -457,6 +459,12 @@ describe('midiUiController sequencer', function() {
     const panDeadZone = doc.getElementById('midiGlobalPanDeadZone');
     panDeadZone.value = '0.08';
     panDeadZone.dispatchEvent({ type: 'change', target: panDeadZone });
+    const timbreMin = doc.getElementById('midiGlobalTimbreMin');
+    timbreMin.value = '12';
+    timbreMin.dispatchEvent({ type: 'change', target: timbreMin });
+    const timbreMax = doc.getElementById('midiGlobalTimbreMax');
+    timbreMax.value = '100';
+    timbreMax.dispatchEvent({ type: 'change', target: timbreMax });
     const globalAttack = doc.getElementById('midiGlobalEnvAttack');
     globalAttack.value = '1.25';
     globalAttack.dispatchEvent({ type: 'change', target: globalAttack });
@@ -485,6 +493,7 @@ describe('midiUiController sequencer', function() {
     expect(stored.global.position.viewPan).to.equal(true);
     expect(stored.global.position.panRange).to.deep.equal({ min: -48, max: 48 });
     expect(stored.global.position.panDeadZonePct).to.equal(0.08);
+    expect(stored.global.position.timbreRange).to.deep.equal({ min: 12, max: 100 });
     expect(stored.global.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(stored.sources[0].mapping.envelope).to.deep.equal({ attack: 1, decay: 0, sustain: 1, release: 1 });
     expect(stored.automation).to.have.lengthOf(1);
@@ -500,6 +509,7 @@ describe('midiUiController sequencer', function() {
     expect(runtime.position.viewPan).to.equal(true);
     expect(runtime.position.panRange).to.deep.equal({ min: -48, max: 48 });
     expect(runtime.position.panDeadZonePct).to.equal(0.08);
+    expect(runtime.position.timbreRange).to.deep.equal({ min: 12, max: 100 });
     expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);

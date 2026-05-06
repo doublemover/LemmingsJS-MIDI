@@ -1720,6 +1720,8 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalPanMin'), current.global.position.panRange.min);
     setInputValue(document?.getElementById('midiGlobalPanMax'), current.global.position.panRange.max);
     setInputValue(document?.getElementById('midiGlobalPanDeadZone'), current.global.position.panDeadZonePct);
+    setInputValue(document?.getElementById('midiGlobalTimbreMin'), current.global.position.timbreRange.min);
+    setInputValue(document?.getElementById('midiGlobalTimbreMax'), current.global.position.timbreRange.max);
     setInputValue(document?.getElementById('midiGlobalMaxActiveNotes'), current.global.limits.maxActiveNotes);
     setInputValue(document?.getElementById('midiGlobalMaxEventsPerTick'), current.global.limits.maxEventsPerTick);
     setInputValue(document?.getElementById('midiGlobalDurationDefault'), current.global.durationTicks.default);
@@ -2281,6 +2283,24 @@ const createMidiUiController = ({
       const current = ensureProject();
       updateGlobalPosition({
         panDeadZonePct: readGlobalNumber(event.target.value, current.global.position.panDeadZonePct)
+      });
+    });
+    bindById('midiGlobalTimbreMin', 'change', event => {
+      const current = ensureProject();
+      updateGlobalPosition({
+        timbreRange: {
+          ...current.global.position.timbreRange,
+          min: readGlobalNumber(event.target.value, current.global.position.timbreRange.min)
+        }
+      });
+    });
+    bindById('midiGlobalTimbreMax', 'change', event => {
+      const current = ensureProject();
+      updateGlobalPosition({
+        timbreRange: {
+          ...current.global.position.timbreRange,
+          max: readGlobalNumber(event.target.value, current.global.position.timbreRange.max)
+        }
       });
     });
     const updateGlobalDurationTicks = () => {
