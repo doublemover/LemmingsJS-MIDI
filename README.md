@@ -151,23 +151,32 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 
 ## MIDI
 
-- Enable MIDI from the left control panel (toggle persists). 
-  - When disabled, WebMIDI is not enabled and the MIDI router is detached.
-- Use the I/O section for Input/Output, Input channel, and `MIDI reset`.
-  - Input channel defaults to `Omni` and can be set to a specific 1-16 channel.
-- Use `reset all` to clear stored configuration and UI state.
-- Base BPM is the sequencing anchor; current BPM shows `speed x base`, plus ticks per second/beat/measure.
-- Global FX tab:
-  - Intensity and Accent adjust default velocity and density scaling.
-  - Positional Modifiers add X/Y mappings (with optional operators) and per-target min/max ranges.
-  - Global Repeat applies a beat window, max count, target, and amount to scale parameters on rapid repeats.
-- Events/Triggers tabs:
-  - Configure each SFX event or trigger with mode (note/degree/chord), key+octave, or scale degree + octave.
-  - Chords support triad, seventh, sixth, ninth, power, sus2, sus4, and octave.
-  - Arps support up/down/updown; triggers can optionally run independent arps per source.
-- ADSR tab lets you target Global, a specific SFX, or a trigger to override envelope values.
-- UI state is stored in localStorage. Defaults come from `midi-mapping.json` and apply only on first run or when a value is missing.
-- Full defaults and customization notes live in `midi-mapping.json` and `docs/midi-mapping.md`.
+- The in-game MIDI sequencer workspace is layered over `/` with transport
+  setup, source browser, track routing, inspector, clip editing, and output
+  status regions.
+- Enable MIDI from the transport strip, then choose WebMIDI input/output
+  devices and an input channel. Panic sends all-notes-off and clears queued
+  notes.
+- Editable state is stored only as `lemmings.midi.project.v1`. Fresh projects
+  are created from the checked-in `midi-mapping.json` factory template, and
+  legacy MIDI storage keys are cleared on load.
+- Use the source browser to search and filter SFX events, trigger types, MIDI
+  flags, system events, assigned/unassigned sources, and conflict status.
+- Tracks route sources to channels and output devices with mute, solo, arm,
+  velocity scale, priority, and voice budget controls.
+- The inspector edits direct note/degree/chord/velocity/duration/envelope
+  mappings, assigns clips, audits conflicts, and auditions the selected source
+  or clip through the selected track.
+- Clips support step, chord, and arp types. Step clips expose note, velocity,
+  probability, hold, and tie controls, plus keyboard navigation across the grid.
+- Save Template, Export, and Import move sanitized project/template JSON through
+  the project validator.
+- Learn captures a pending MIDI note assignment for a selected direct source.
+  Record captures a short mocked or live MIDI phrase into consecutive clip
+  steps.
+- Full defaults and runtime mapping notes live in `midi-mapping.json` and
+  `docs/midi-mapping.md`. Current UI behavior is documented in
+  `docs/midi-ui.md`.
 
 ### MIDI input mapping
 

@@ -10,7 +10,7 @@ import {
 
 describe('visual capture helper', function() {
   it('sanitizes capture names for disposable file output', function() {
-    expect(sanitizeCaptureName(' MIDI panel / left controls ')).to.equal('MIDI-panel-left-controls');
+    expect(sanitizeCaptureName(' MIDI sequencer / source browser ')).to.equal('MIDI-sequencer-source-browser');
     expect(sanitizeCaptureName('')).to.equal('capture');
   });
 
