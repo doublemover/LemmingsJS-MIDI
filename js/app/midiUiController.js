@@ -927,6 +927,7 @@ const createMidiUiController = ({
     }
     setActiveMidiInput(inputId);
     setActiveMidiOutput(outputId);
+    renderTrackOutputOptions(document?.getElementById('midiTrackOutputSelect'), selectedTrack()?.outputId);
     const missing = [];
     if (!inputs.length) missing.push('No input device');
     if (!outputs.length) missing.push('No output device');
@@ -1311,6 +1312,23 @@ const createMidiUiController = ({
     select.value = selectedId || ensureProject().tracks[0]?.id || '';
   };
 
+  const renderTrackOutputOptions = (select, selectedOutputId) => {
+    if (!select) return;
+    removeChildren(select);
+    appendOption(document, select, '', 'Project output');
+    const outputs = toDeviceList(getWebMidi()?.outputs);
+    const outputIds = new Set();
+    for (const output of outputs) {
+      if (!output?.id) continue;
+      outputIds.add(output.id);
+      appendOption(document, select, output.id, output.name || output.id);
+    }
+    if (selectedOutputId && !outputIds.has(selectedOutputId)) {
+      appendOption(document, select, selectedOutputId, `Unavailable: ${selectedOutputId}`);
+    }
+    select.value = selectedOutputId || '';
+  };
+
   const renderClipOptions = (select, selectedId) => {
     if (!select) return;
     removeChildren(select);
@@ -1577,6 +1595,7 @@ const createMidiUiController = ({
     const report = getConflictReport();
     setInputValue(document?.getElementById('midiTrackName'), track?.name);
     setInputValue(document?.getElementById('midiTrackInstrument'), track?.instrumentLabel);
+    renderTrackOutputOptions(document?.getElementById('midiTrackOutputSelect'), track?.outputId);
     setInputValue(document?.getElementById('midiTrackChannel'), track?.channel);
     setInputValue(document?.getElementById('midiTrackPriority'), track?.priority);
     setInputValue(document?.getElementById('midiTrackVoiceBudget'), track?.voiceBudget);
@@ -1855,6 +1874,7 @@ const createMidiUiController = ({
     bindById('midiLearnCancelButton', 'click', () => cancelLearn());
     bindById('midiTrackName', 'change', event => updateSelectedTrack({ name: event.target.value }));
     bindById('midiTrackInstrument', 'change', event => updateSelectedTrack({ instrumentLabel: event.target.value }));
+    bindById('midiTrackOutputSelect', 'change', event => updateSelectedTrack({ outputId: event.target.value || null }));
     bindById('midiTrackChannel', 'change', event => updateSelectedTrack({ channel: Number(event.target.value) || 1 }));
     bindById('midiTrackPriority', 'change', event => updateSelectedTrack({ priority: Number(event.target.value) || 0 }));
     bindById('midiTrackVoiceBudget', 'change', event => updateSelectedTrack({ voiceBudget: Number(event.target.value) || 1 }));

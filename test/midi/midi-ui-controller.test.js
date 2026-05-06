@@ -40,6 +40,7 @@ const registerSequencerDom = (doc) => {
     midiClipAuditionButton: 'button',
     midiTrackName: 'input',
     midiTrackInstrument: 'input',
+    midiTrackOutputSelect: 'select',
     midiTrackChannel: 'input',
     midiTrackPriority: 'input',
     midiTrackVoiceBudget: 'input',
@@ -631,7 +632,14 @@ describe('midiUiController sequencer', function() {
 
     expect(doc.getElementById('midiInSelect').value).to.equal('in-1');
     expect(doc.getElementById('midiOutSelect').value).to.equal('out-1');
+    expect(doc.getElementById('midiTrackOutputSelect').children.map(option => option.value)).to.include('out-1');
     expect(view.midiOut).to.equal(webMidi.outputs[0]);
+
+    const trackOutput = doc.getElementById('midiTrackOutputSelect');
+    trackOutput.value = 'out-1';
+    trackOutput.dispatchEvent({ type: 'change', target: trackOutput });
+    expect(controller.getProject().tracks[0].outputId).to.equal('out-1');
+    expect(controller.getMidiConfig().sfx['1'].outputId).to.equal('out-1');
 
     expect(controller.audition()).to.equal(true);
     const note = sent.find(entry => entry.spec);

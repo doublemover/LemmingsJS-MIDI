@@ -47,6 +47,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await midi.enable();
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
+  await page.locator('#midiTrackOutputSelect').selectOption('pw-output-1');
 
   const project = await page.evaluate(() => {
     let next = window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
@@ -57,6 +58,7 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   });
 
   expect(project.tracks.some(track => track.id === 'lead' && track.channel === 3)).toBe(true);
+  expect(project.tracks.find(track => track.id === 'track-1').outputId).toBe('pw-output-1');
   expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
   await expect(midi.outputLog()).toContainText(/Audition|skipped/);
   await expect(page.locator('#midiTrackList')).toContainText('Lead');

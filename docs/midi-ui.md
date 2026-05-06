@@ -20,8 +20,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Sources: browse SFX, triggers, MIDI flags, system, and procgen sources with
   search, category, changed, current-level availability, assignment, conflict,
   and clean filters.
-- Tracks: create and select tracks, set channel, instrument label, mute, solo,
-  arm, velocity scale, priority, and voice budget.
+- Tracks: create and select tracks, set output, channel, instrument label,
+  mute, solo, arm, velocity scale, priority, and voice budget.
 - Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
   fields and use Arrow keys, Home, and End to move through the active region.
 - Modulation: set global intensity, accent, view pan, and compact position
