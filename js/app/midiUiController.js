@@ -1439,6 +1439,8 @@ const createMidiUiController = ({
     const activeClip = current.clips.find(clip => clip.id === current.ui.selectedClipId) || current.clips[0] || null;
     const activeOptionId = activeClip ? listOptionId('clip', activeClip.id) : '';
     configureListbox(list, activeOptionId);
+    const removeButton = document?.getElementById('midiClipRemoveButton');
+    if (removeButton) removeButton.disabled = !activeClip;
     for (const clip of current.clips) {
       const selected = current.ui.selectedClipId === clip.id;
       const active = activeClip?.id === clip.id;
@@ -2111,6 +2113,20 @@ const createMidiUiController = ({
     dispatchProjectIntent({ type: 'clip.update', clipId: clip.id, patch });
   };
 
+  const removeSelectedClip = () => {
+    const clip = selectedClip();
+    if (!clip) return false;
+    if (recordState.clipId === clip.id && hasRecordCapture()) {
+      clearRecordCapture();
+      resetRecordState();
+    }
+    dispatchProjectIntent({ type: 'clip.remove', clipId: clip.id });
+    const message = `Removed clip ${clip.name}`;
+    setStatus(message);
+    logOutput(message);
+    return true;
+  };
+
   const updateSelectedClipStep = (stepIndex, patch) => {
     const clip = selectedClip();
     if (!clip) return;
@@ -2280,6 +2296,7 @@ const createMidiUiController = ({
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));
+    bindById('midiClipRemoveButton', 'click', () => removeSelectedClip());
     bindById('midiAssignSourceButton', 'click', () => {
       const source = selectedSource();
       const trackId = document?.getElementById('midiAssignTrackSelect')?.value;

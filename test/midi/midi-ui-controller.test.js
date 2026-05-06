@@ -40,6 +40,7 @@ const registerSequencerDom = (doc) => {
     midiTrackAdd: 'button',
     midiTrackList: 'div',
     midiClipAddButton: 'button',
+    midiClipRemoveButton: 'button',
     midiClipList: 'div',
     midiSelectedSourceSummary: 'div',
     midiAssignTrackSelect: 'select',
@@ -1082,6 +1083,43 @@ describe('midiUiController sequencer', function() {
     expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(true);
     expect(sent.map(entry => entry.spec.note)).to.deep.equal([65]);
     expect(sent[0].meta).to.include({ eventType: 'clip-audition', sourceId: 'sfx-1', trackId: 'track-1', clipId: 'riff' });
+  });
+
+  it('removes selected clips and cancels active recording capture', function() {
+    const messageCaptureCalls = [];
+    const fakeInputController = {
+      setNoteCapture() {},
+      setMessageCapture(handler) {
+        messageCaptureCalls.push(handler);
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    const remove = doc.getElementById('midiClipRemoveButton');
+    expect(remove.disabled).to.equal(true);
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+    controller.dispatchProjectIntent({ type: 'clip.select', clipId: 'riff' });
+    expect(remove.disabled).to.equal(false);
+    expect(controller.startRecording()).to.equal(true);
+    expect(messageCaptureCalls.at(-1)).to.be.a('function');
+
+    remove.dispatchEvent({ type: 'click', target: remove });
+
+    const project = controller.getProject();
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
+    expect(project.clips.map(clip => clip.id)).to.deep.equal(['fill']);
+    expect(project.ui.selectedClipId).to.equal('fill');
+    expect(project.sources[0]).to.include({ mode: 'direct', clipId: null });
+    expect(project.sources[0].mapping).to.include({ note: null, velocity: null });
+    expect(doc.getElementById('midiRecordStatus').textContent).to.equal('Record writes captured notes into clip steps.');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Removed clip Riff');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Removed clip Riff');
   });
 
   it('reports responsive step grid aria geometry', function() {

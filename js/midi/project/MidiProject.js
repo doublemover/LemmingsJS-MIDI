@@ -769,6 +769,30 @@ const addClip = (project, clip = {}) => {
   };
 };
 
+const removeClip = (project, clipId) => {
+  const index = project.clips.findIndex(clip => clip.id === clipId);
+  if (index < 0) return project;
+  const clips = project.clips.filter(clip => clip.id !== clipId);
+  const selectedClipId = project.ui.selectedClipId === clipId || !clips.some(clip => clip.id === project.ui.selectedClipId)
+    ? clips[index]?.id ?? clips[index - 1]?.id ?? null
+    : project.ui.selectedClipId;
+  return {
+    ...project,
+    clips,
+    sources: project.sources.map(source => (
+      source.mode === 'clip' && source.clipId === clipId
+        ? {
+          ...source,
+          mode: 'direct',
+          clipId: null,
+          mapping: createEmptyDirectMapping()
+        }
+        : source
+    )),
+    ui: { ...project.ui, selectedClipId, activeRegion: 'clips' }
+  };
+};
+
 const addAutomation = (project, automation = {}) => {
   const existing = new Set(project.automation.map(item => item.id));
   const target = AUTOMATION_TARGETS.includes(automation.target) ? automation.target : 'velocity';
@@ -907,6 +931,9 @@ function reduceMidiProject(project, intent = {}) {
     break;
   case 'clip.update':
     next = { ...current, clips: updateById(current.clips, intent.clipId, updatePatch(intent.patch)) };
+    break;
+  case 'clip.remove':
+    next = removeClip(current, intent.clipId);
     break;
   case 'clip.step.update':
     next = { ...current, clips: updateClipStep(current.clips, intent.clipId, intent.stepIndex, intent.patch) };

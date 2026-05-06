@@ -317,6 +317,31 @@ describe('MidiProject', function() {
     expect(config.triggers['5'].notes).to.deep.equal([64, 67]);
   });
 
+  it('removes clips and returns affected sources to direct mode', function() {
+    let project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: { '5': { name: 'trap', note: 55 } }
+    });
+
+    project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+    project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: 'trigger-5', clipId: 'fill' });
+    project = reduceMidiProject(project, { type: 'clip.select', clipId: 'riff' });
+    project = reduceMidiProject(project, { type: 'clip.remove', clipId: 'riff' });
+
+    expect(project.clips.map(clip => clip.id)).to.deep.equal(['fill']);
+    expect(project.ui.selectedClipId).to.equal('fill');
+    expect(project.sources.find(source => source.id === 'sfx-1')).to.include({ mode: 'direct', clipId: null });
+    expect(project.sources.find(source => source.id === 'sfx-1').mapping).to.include({ note: null, velocity: null });
+    expect(project.sources.find(source => source.id === 'trigger-5')).to.include({ mode: 'clip', clipId: 'fill' });
+
+    project = reduceMidiProject(project, { type: 'clip.remove', clipId: 'fill' });
+    expect(project.clips).to.have.lengthOf(0);
+    expect(project.ui.selectedClipId).to.equal(null);
+    expect(project.sources.every(source => source.mode === 'direct')).to.equal(true);
+  });
+
   it('flags reducer-assigned missing clips and lowers them as disabled runtime mappings', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,
