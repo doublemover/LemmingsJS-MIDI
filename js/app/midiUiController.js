@@ -2004,16 +2004,6 @@ const createMidiUiController = ({
     dispatchProjectIntent({ type: 'clip.step.update', clipId: clip.id, stepIndex, patch });
   };
 
-  const ensureSelectedClipId = () => {
-    const current = ensureProject();
-    if (current.ui.selectedClipId && current.clips.some(clip => clip.id === current.ui.selectedClipId)) {
-      return current.ui.selectedClipId;
-    }
-    if (current.clips[0]) return current.clips[0].id;
-    const next = dispatchProjectIntent({ type: 'clip.add', clip: {} });
-    return next.ui.selectedClipId || next.clips[0]?.id || null;
-  };
-
   const updateEnvelope = () => {
     const attack = toNumberOrNull(document?.getElementById('midiEnvAttack')?.value);
     const decay = toNumberOrNull(document?.getElementById('midiEnvDecay')?.value);
