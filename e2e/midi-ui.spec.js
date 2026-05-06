@@ -40,6 +40,12 @@ test('MIDI sequencer creates a fresh project and clears legacy storage', async (
   expect(state.legacyInput).toBeNull();
   expect(state.project.version).toBe(1);
   expect(state.project.sources.some(source => source.kind === 'sfx' && source.sourceKey === '1')).toBe(true);
+
+  await midi.enable();
+  await expect(page.locator('#midiInSelect')).toContainText('No input devices');
+  await expect(page.locator('#midiOutSelect')).toContainText('No output devices');
+  await expect(page.locator('#errorDisplay')).toContainText('No input device');
+  await expect(page.locator('#errorDisplay')).toContainText('No output device');
 });
 
 test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {
