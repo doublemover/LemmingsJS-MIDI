@@ -817,7 +817,9 @@ const createMidiUiController = ({
     learnState.conflicts = [];
     clearLearnCapture();
     commitProject(next);
-    logOutput(`Learned ${label}`);
+    const message = `Learned ${label}`;
+    setStatus(message);
+    logOutput(message);
     return true;
   };
 
@@ -972,7 +974,9 @@ const createMidiUiController = ({
     const noteCount = Math.min(recordState.notes.length, clip.lengthSteps);
     resetRecordState();
     commitProject(next);
-    logOutput(`Recorded ${noteCount} ${noteCount === 1 ? 'note' : 'notes'} into ${clip.name}`);
+    const message = `Recorded ${noteCount} ${noteCount === 1 ? 'note' : 'notes'} into ${clip.name}`;
+    setStatus(message);
+    logOutput(message);
     return true;
   };
 

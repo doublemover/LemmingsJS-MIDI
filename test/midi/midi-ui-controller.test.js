@@ -692,6 +692,8 @@ describe('midiUiController sequencer', function() {
     expect(fakeInputController.handler(82, 101, 5)).to.equal(true);
     expect(doc.getElementById('midiLearnStatus').textContent).to.contain('Pending note 82');
     expect(controller.confirmLearn()).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Learned skill-select');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Learned skill-select');
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.sources[0].mapping).to.include({ note: 82, velocity: 101, degree: null, chord: null });
@@ -843,7 +845,7 @@ describe('midiUiController sequencer', function() {
       attach() {},
       detach() {}
     };
-    const { controller, win } = createControllerHarness();
+    const { controller, doc, win } = createControllerHarness();
     controller.setMidiInputController(fakeInputController);
     controller.bindMidiUi();
     controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'recorded', name: 'Recorded', lengthSteps: 4 } });
@@ -854,6 +856,8 @@ describe('midiUiController sequencer', function() {
     expect(fakeInputController.handler({ type: 0x80, note: 64, velocity: 0, channel: 1, timestamp: 240 })).to.equal(true);
     expect(fakeInputController.handler({ type: 0x90, note: 67, velocity: 88, channel: 1, timestamp: 260 })).to.equal(true);
     expect(controller.commitRecording()).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Recorded 2 notes into Recorded');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Recorded 2 notes into Recorded');
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     const clip = stored.clips.find(entry => entry.id === 'recorded');
