@@ -66,16 +66,32 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
     window.__E2E__.midiAudition({ sourceId: 'sfx-1', trackId: 'lead' });
     return next;
   });
+  await setField('#midiTrackPriority', '4');
+  await setField('#midiTrackVoiceBudget', '6');
+  await setField('#midiTrackVelocityScale', '0.75');
+  await page.locator('#midiTrackMute').check();
+  await page.locator('#midiTrackMute').uncheck();
+  await page.locator('#midiTrackSolo').check();
+  await page.locator('#midiTrackArm').check();
   await page.locator('#midiMappingArp').selectOption('down');
   await setField('#midiMappingPan', '-24');
   await setField('#midiMappingTimbre', '88');
   await setField('#midiMappingPitchBend', '0.5');
   const updatedProject = await page.evaluate(() => window.__E2E__.midiGetProject());
   const updatedMapping = updatedProject.sources.find(source => source.id === 'sfx-1').mapping;
+  const updatedTrack = updatedProject.tracks.find(track => track.id === 'lead');
 
   expect(project.tracks.some(track => track.id === 'lead' && track.channel === 3)).toBe(true);
   expect(project.tracks.find(track => track.id === 'track-1').outputId).toBe('pw-output-1');
   expect(project.sources.find(source => source.id === 'sfx-1').trackId).toBe('lead');
+  expect(updatedTrack).toMatchObject({
+    priority: 4,
+    voiceBudget: 6,
+    velocityScale: 0.75,
+    mute: false,
+    solo: true,
+    arm: true
+  });
   expect(updatedProject.global.scale).toMatchObject({ name: 'major', root: 2 });
   expect(updatedProject.global.scale.degrees).toEqual([0, 2, 4, 5, 7, 9, 11]);
   expect(updatedProject.transport).toMatchObject({ quantize: '1/8', swing: 0.25 });
