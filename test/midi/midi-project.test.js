@@ -319,6 +319,38 @@ describe('MidiProject', function() {
     ]);
   });
 
+  it('omits disabled automation lanes from runtime position mappings', function() {
+    let project = createMidiProjectFromMidiConfig({
+      enabled: true,
+      position: { mappings: [] },
+      sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
+      triggers: {}
+    });
+
+    project = reduceMidiProject(project, {
+      type: 'automation.add',
+      automation: { id: 'lane-pan', target: 'pan', axis: 'x', min: -64, max: 64 }
+    });
+    project = reduceMidiProject(project, {
+      type: 'automation.add',
+      automation: { id: 'lane-timbre', target: 'timbre', axis: 'y', min: 0, max: 127 }
+    });
+    project = reduceMidiProject(project, {
+      type: 'automation.update',
+      automationId: 'lane-timbre',
+      patch: { enabled: false }
+    });
+
+    const config = projectToMidiConfig(project, {});
+    expect(config.position.mappings).to.have.lengthOf(1);
+    expect(config.position.mappings[0]).to.include({
+      axis: 'x',
+      target: 'pan',
+      enabled: true
+    });
+    expect(config.position.mappings.some(mapping => mapping.target === 'timbre')).to.equal(false);
+  });
+
   it('exports, imports, and templates sanitized MIDI projects', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,
