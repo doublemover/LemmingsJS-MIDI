@@ -2,6 +2,11 @@ import { expect } from 'chai';
 import { withGlobalLemmings } from '../helpers/lemmings.js';
 import { MidiEventRouter } from '../../js/midi/MidiEventRouter.js';
 import { MidiMapping } from '../../js/midi/MidiMapping.js';
+import {
+  createMidiProjectFromMidiConfig,
+  projectToMidiConfig,
+  reduceMidiProject
+} from '../../js/midi/project/MidiProject.js';
 import { EventHandler } from '../../js/util/EventHandler.js';
 import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
@@ -315,6 +320,52 @@ describe('MidiEventRouter 7', function() {
     expect(sent).to.have.lengthOf(1);
     expect(sent[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
     expect(metas[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
+  });
+
+  it('dispatches project-lowered clip mappings through the router', function() {
+    let project = createMidiProjectFromMidiConfig({
+      enabled: true,
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    project = reduceMidiProject(project, {
+      type: 'clip.step.update',
+      clipId: 'riff',
+      stepIndex: 0,
+      patch: { note: 64, velocity: 90, durationTicks: 5 }
+    });
+    project = reduceMidiProject(project, {
+      type: 'clip.step.update',
+      clipId: 'riff',
+      stepIndex: 1,
+      patch: { note: 67, velocity: 70, durationTicks: 4 }
+    });
+    project = reduceMidiProject(project, {
+      type: 'clip.step.update',
+      clipId: 'riff',
+      stepIndex: 2,
+      patch: { note: 70, tie: true }
+    });
+    project = reduceMidiProject(project, {
+      type: 'clip.step.update',
+      clipId: 'riff',
+      stepIndex: 3,
+      patch: { note: 72, probability: 0 }
+    });
+    project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+
+    const sent = [];
+    const { router } = makeRouter(projectToMidiConfig(project, {}), { sent });
+    router.scheduler.sendNote = spec => sent.push({ ...spec });
+    router._shouldSend = () => true;
+    router._nowMs = () => 0;
+
+    router._onEvent({ sfxId: 1, tick: 1, timeMs: 0, tps: 50 });
+
+    expect(sent.map(spec => spec.note)).to.deep.equal([64, 67]);
+    expect(sent[0]).to.include({ velocity: 90, durationTicks: 5, channel: 1 });
+    expect(sent[0].notes).to.deep.equal([64, 67]);
   });
 
   it('covers attach cleanup and tick defaults', function() {
