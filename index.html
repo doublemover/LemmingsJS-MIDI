@@ -247,7 +247,7 @@
             No conflicts for the selected source.
           </div>
           <div id="midiLearnPanel" class="midi-learn-panel" aria-live="polite">
-            <div id="midiLearnStatus" class="midi-learn-status">Learn waits for the next note-on.</div>
+            <div id="midiLearnStatus" class="midi-learn-status" role="status">Learn waits for the next note-on.</div>
             <div class="midi-button-row">
               <button id="midiLearnButton" type="button" aria-label="Start MIDI learn">Learn</button>
               <button id="midiLearnConfirmButton" type="button" aria-label="Commit MIDI learn">Commit</button>
@@ -498,7 +498,7 @@
             </label>
           </div>
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
-            <div id="midiRecordStatus" class="midi-learn-status">Record writes captured notes into clip steps.</div>
+            <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
               <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>
               <button id="midiRecordCommitButton" type="button" aria-label="Commit MIDI recording">Commit</button>
@@ -509,7 +509,7 @@
         </div>
       </section>
       <section id="midiOutputStatus" class="midi-region midi-output-status" aria-label="MIDI output status">
-        <div id="midiSchedulerPressure">Scheduler: idle</div>
+        <div id="midiSchedulerPressure" role="status" aria-live="polite">Scheduler: idle</div>
         <div id="midiOutputLog" class="midi-output-log" role="status" aria-live="polite">No output yet</div>
       </section>
     </div>

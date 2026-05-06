@@ -18,7 +18,7 @@ const openMidiUi = async (page, { resetStorage = false, withDevices = true } = {
   return midi;
 };
 
-test('MIDI sequencer gives editor buttons scoped accessible names', async ({ page }) => {
+test('MIDI sequencer gives editor controls scoped accessible names', async ({ page }) => {
   const midi = await openMidiUi(page);
   await expect(midi.workspace()).toBeVisible();
 
@@ -66,6 +66,25 @@ test('MIDI sequencer gives editor buttons scoped accessible names', async ({ pag
     midiRecordButton: 'Start MIDI recording',
     midiRecordCommitButton: 'Commit MIDI recording',
     midiRecordCancelButton: 'Cancel MIDI recording'
+  });
+
+  const statuses = await page.locator([
+    '#midiLearnStatus',
+    '#midiRecordStatus',
+    '#midiSchedulerPressure',
+    '#midiOutputLog'
+  ].join(', ')).evaluateAll(elements => Object.fromEntries(
+    elements.map(element => [element.id, {
+      role: element.getAttribute('role'),
+      live: element.getAttribute('aria-live') || ''
+    }])
+  ));
+
+  expect(statuses).toEqual({
+    midiLearnStatus: { role: 'status', live: '' },
+    midiRecordStatus: { role: 'status', live: '' },
+    midiSchedulerPressure: { role: 'status', live: 'polite' },
+    midiOutputLog: { role: 'status', live: 'polite' }
   });
 });
 
