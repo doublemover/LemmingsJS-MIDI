@@ -37,6 +37,11 @@ import {
   resolveAvailableSfxIds
 } from './midi-ui/midiUiDomain.js';
 import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
+import {
+  buildChordNotes,
+  clampNoteToRange,
+  resolveScale
+} from '../midi/midi-mapping/MidiMappingDomain.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 
 const SOURCE_KIND_LABELS = Object.freeze({
@@ -1066,6 +1071,23 @@ const createMidiUiController = ({
     return 60;
   };
 
+  const resolveAuditionNotes = (mapping) => {
+    if (Array.isArray(mapping?.notes) && mapping.notes.length) {
+      return mapping.notes.map(note => clamp(Math.round(note), 0, 127));
+    }
+    if (mapping?.chord && (Number.isFinite(mapping.degree) || !Number.isFinite(mapping.note))) {
+      const current = ensureProject();
+      const scale = resolveScale(current.global.scale);
+      const degree = Number.isFinite(mapping.degree) ? Math.max(0, Math.round(mapping.degree)) : 0;
+      const octave = Number.isFinite(mapping.octave) ? Math.round(mapping.octave) : 4;
+      const type = CHORD_TYPES.includes(mapping.chord?.type) ? mapping.chord.type : 'triad';
+      const inversion = Number.isFinite(mapping.chord?.inversion) ? Math.max(0, Math.round(mapping.chord.inversion)) : 0;
+      return buildChordNotes(degree, scale, octave, type, inversion)
+        .map(note => clampNoteToRange(note, current.global.noteRange));
+    }
+    return [resolveAuditionNote(mapping)];
+  };
+
   const audition = (request = {}) => {
     const { source, track, mapping, clip } = resolveAuditionMapping(request);
     if (!track || !mapping) {
@@ -1081,9 +1103,7 @@ const createMidiUiController = ({
       logOutput(`Audition skipped: ${track.name} muted`);
       return false;
     }
-    const notes = Array.isArray(mapping.notes) && mapping.notes.length
-      ? mapping.notes.map(note => clamp(Math.round(note), 0, 127))
-      : [resolveAuditionNote(mapping)];
+    const notes = resolveAuditionNotes(mapping);
     const velocity = mapping.velocity ?? ensureProject().global.velocityRange.default ?? 80;
     const durationTicks = mapping.durationTicks ?? ensureProject().global.durationTicks.default ?? 6;
     let sent = false;
@@ -1667,11 +1687,14 @@ const createMidiUiController = ({
       'midiMappingVelocity',
       'midiMappingDuration',
       'midiMappingChord',
+      'midiMappingChordInversion',
       'midiEnvelopeOverrideToggle'
     ]) {
       const element = document?.getElementById(id);
       if (element) element.disabled = directDisabled;
     }
+    const chordInversion = document?.getElementById('midiMappingChordInversion');
+    if (chordInversion) chordInversion.disabled = directDisabled || !mapping.chord;
     const envelopeEnabled = !!mapping.envelope && !directDisabled;
     setChecked(document?.getElementById('midiEnvelopeOverrideToggle'), !!mapping.envelope);
     for (const id of ['midiEnvAttack', 'midiEnvDecay', 'midiEnvSustain', 'midiEnvRelease']) {
@@ -1684,6 +1707,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiMappingVelocity'), mapping.velocity);
     setInputValue(document?.getElementById('midiMappingDuration'), mapping.durationTicks);
     setInputValue(document?.getElementById('midiMappingChord'), mapping.chord?.type || '');
+    setInputValue(document?.getElementById('midiMappingChordInversion'), mapping.chord?.inversion ?? 0);
     setInputValue(document?.getElementById('midiEnvAttack'), mapping.envelope?.attack);
     setInputValue(document?.getElementById('midiEnvDecay'), mapping.envelope?.decay);
     setInputValue(document?.getElementById('midiEnvSustain'), mapping.envelope?.sustain);
@@ -1973,10 +1997,21 @@ const createMidiUiController = ({
     bindById('midiMappingDuration', 'change', event => updateSelectedMapping({ durationTicks: toNumberOrNull(event.target.value) }));
     bindById('midiMappingChord', 'change', event => {
       const type = event.target.value;
+      const inversion = selectedSource()?.mapping?.chord?.inversion ?? 0;
       updateSelectedMapping({
-        chord: CHORD_TYPES.includes(type) ? { type, inversion: 0 } : null,
+        chord: CHORD_TYPES.includes(type) ? { type, inversion } : null,
         note: type ? null : selectedSource()?.mapping?.note ?? null,
         degree: type ? selectedSource()?.mapping?.degree ?? 0 : selectedSource()?.mapping?.degree ?? null
+      });
+    });
+    bindById('midiMappingChordInversion', 'change', event => {
+      const chord = selectedSource()?.mapping?.chord;
+      if (!chord) return;
+      updateSelectedMapping({
+        chord: {
+          ...chord,
+          inversion: Math.max(0, Math.round(Number(event.target.value) || 0))
+        }
       });
     });
     bindById('midiEnvelopeOverrideToggle', 'change', event => {

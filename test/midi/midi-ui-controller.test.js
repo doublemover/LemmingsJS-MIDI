@@ -67,6 +67,7 @@ const registerSequencerDom = (doc) => {
     midiMappingVelocity: 'input',
     midiMappingDuration: 'input',
     midiMappingChord: 'select',
+    midiMappingChordInversion: 'input',
     midiEnvAttack: 'input',
     midiEnvDecay: 'input',
     midiEnvSustain: 'input',
@@ -187,6 +188,42 @@ describe('midiUiController sequencer', function() {
     expect(win.localStorage.getItem('lemmings.midi.intent')).to.equal(null);
     expect(win.localStorage.getItem('lemmings.midi.overrides')).to.equal(null);
     expect(view.projectConfigs.at(-1).sfx['1']).to.include({ note: 72, velocity: 100, channel: 3 });
+  });
+
+  it('edits direct chord inversions and auditions chord notes', function() {
+    const sent = [];
+    const { controller, doc } = createControllerHarness({
+      lemmings: {
+        midiRouter: {
+          scheduler: {
+            sendNote(spec, meta) {
+              sent.push({ spec, meta });
+              return true;
+            },
+            allNotesOff() {},
+            clearQueue() {}
+          }
+        }
+      }
+    });
+    controller.bindMidiUi();
+
+    const chord = doc.getElementById('midiMappingChord');
+    chord.value = 'triad';
+    chord.dispatchEvent({ type: 'change', target: chord });
+    const inversion = doc.getElementById('midiMappingChordInversion');
+    inversion.value = '1';
+    inversion.dispatchEvent({ type: 'change', target: inversion });
+
+    const mapping = controller.getProject().sources[0].mapping;
+    expect(mapping.note).to.equal(null);
+    expect(mapping.degree).to.equal(0);
+    expect(mapping.chord).to.deep.equal({ type: 'triad', inversion: 1 });
+    expect(inversion.disabled).to.equal(false);
+
+    expect(controller.audition()).to.equal(true);
+    expect(sent.map(entry => entry.spec.note)).to.deep.equal([50, 52, 60]);
+    expect(sent.every(entry => entry.meta.eventType === 'audition')).to.equal(true);
   });
 
   it('edits modulation controls and exports runtime automation config', function() {
