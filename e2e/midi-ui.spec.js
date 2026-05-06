@@ -276,6 +276,38 @@ test('MIDI sequencer surfaces source conflicts in the browser and inspector', as
   expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
 });
 
+test('MIDI sequencer listboxes support keyboard navigation', async ({ page }) => {
+  await openMidiUi(page);
+  const optionId = (kind, id) => `midi-${kind}-option-${String(id).replace(/[^a-zA-Z0-9_-]+/g, '-')}`;
+  const visibleSources = await page.locator('#midiSourceList .midi-source-row').evaluateAll(rows => rows.map(row => row.dataset.sourceId));
+  expect(visibleSources.length).toBeGreaterThan(1);
+
+  await page.locator('#midiSourceList').focus();
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().ui.selectedSourceId)).toBe(visibleSources[1]);
+  await expect(page.locator('#midiSourceList')).toHaveAttribute('aria-activedescendant', optionId('source', visibleSources[1]));
+
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'keys', name: 'Keys', channel: 2 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'pad', name: 'Pad', channel: 3 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.select', trackId: 'track-1' });
+  });
+  await page.locator('#midiTrackList').focus();
+  await page.keyboard.press('End');
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().ui.selectedTrackId)).toBe('pad');
+  await expect(page.locator('#midiTrackList')).toHaveAttribute('aria-activedescendant', 'midi-track-option-pad');
+
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'riff' });
+  });
+  await page.locator('#midiClipList').focus();
+  await page.keyboard.press('End');
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().ui.selectedClipId)).toBe('fill');
+  await expect(page.locator('#midiClipList')).toHaveAttribute('aria-activedescendant', 'midi-clip-option-fill');
+});
+
 test('MIDI sequencer layout avoids horizontal overflow at desktop and phone sizes', async ({ page }) => {
   for (const viewport of [
     { width: 1280, height: 900 },

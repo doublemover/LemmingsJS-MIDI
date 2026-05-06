@@ -77,6 +77,11 @@ const toNumberOrNull = (value) => {
 };
 
 const formatSourceKey = (source) => `${source.kind}:${source.sourceKey}`;
+const domIdSafe = (value, fallback = 'item') => {
+  const text = String(value || fallback).replace(/[^a-zA-Z0-9_-]+/g, '-');
+  return text || fallback;
+};
+const listOptionId = (kind, id) => `midi-${kind}-option-${domIdSafe(id)}`;
 const filenameSafe = (value, fallback) => {
   const text = String(value || fallback || 'midi-project')
     .trim()
@@ -114,6 +119,34 @@ const appendOption = (document, select, value, label) => {
   option.value = value == null ? '' : String(value);
   option.textContent = label;
   select.appendChild(option);
+};
+
+const configureListbox = (list, activeOptionId) => {
+  if (!list) return;
+  list.tabIndex = 0;
+  list.setAttribute('aria-orientation', 'vertical');
+  list.setAttribute('aria-activedescendant', activeOptionId || '');
+};
+
+const handleListboxNavigation = (event, items, getId, currentId, selectId) => {
+  if (!event || !Array.isArray(items) || !items.length) return false;
+  const key = event.key;
+  if (!['ArrowDown', 'ArrowRight', 'ArrowUp', 'ArrowLeft', 'Home', 'End'].includes(key)) return false;
+  const currentIndex = items.findIndex(item => getId(item) === currentId);
+  let nextIndex = currentIndex;
+  if (key === 'Home') {
+    nextIndex = 0;
+  } else if (key === 'End') {
+    nextIndex = items.length - 1;
+  } else if (key === 'ArrowDown' || key === 'ArrowRight') {
+    nextIndex = currentIndex < 0 ? 0 : Math.min(currentIndex + 1, items.length - 1);
+  } else if (key === 'ArrowUp' || key === 'ArrowLeft') {
+    nextIndex = currentIndex < 0 ? items.length - 1 : Math.max(currentIndex - 1, 0);
+  }
+  event.preventDefault?.();
+  const nextId = getId(items[nextIndex]);
+  if (nextId && nextId !== currentId) selectId(nextId);
+  return true;
 };
 
 const createMidiUiController = ({
@@ -1004,19 +1037,27 @@ const createMidiUiController = ({
     removeChildren(list);
     const report = getConflictReport();
     const sources = filteredSources(report);
+    const activeOptionId = sources.some(source => source.id === current.ui.selectedSourceId)
+      ? listOptionId('source', current.ui.selectedSourceId)
+      : '';
+    configureListbox(list, activeOptionId);
     setText(document.getElementById('midiSourceCount'), String(sources.length));
     for (const source of sources) {
       const track = current.tracks.find(item => item.id === source.trackId);
       const conflicts = getSourceConflicts(report, source.id);
+      const selected = current.ui.selectedSourceId === source.id;
       const row = document.createElement('button');
       row.type = 'button';
+      row.id = listOptionId('source', source.id);
       row.className = 'midi-source-row';
-      row.classList.toggle('is-selected', current.ui.selectedSourceId === source.id);
+      row.classList.toggle('is-selected', selected);
       row.classList.toggle('is-disabled', !source.enabled);
       row.classList.toggle('has-conflict', conflicts.length > 0);
       row.dataset.sourceId = source.id;
+      row.tabIndex = selected ? 0 : -1;
       row.setAttribute('role', 'option');
-      row.setAttribute('aria-selected', current.ui.selectedSourceId === source.id ? 'true' : 'false');
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${conflicts.length ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}` : ''}`);
       const label = document.createElement('span');
       label.className = 'midi-source-row__label';
       label.textContent = source.label;
@@ -1032,6 +1073,7 @@ const createMidiUiController = ({
         badge.className = 'midi-conflict-badge';
         badge.dataset.conflictCount = String(conflicts.length);
         badge.title = conflicts.map(issue => issue.message).join('\n');
+        badge.setAttribute('aria-hidden', 'true');
         badge.textContent = String(conflicts.length);
         row.appendChild(badge);
       }
@@ -1042,6 +1084,9 @@ const createMidiUiController = ({
     if (!sources.length) {
       const empty = document.createElement('div');
       empty.className = 'midi-selection-summary';
+      empty.setAttribute('role', 'option');
+      empty.setAttribute('aria-disabled', 'true');
+      empty.setAttribute('aria-selected', 'false');
       empty.textContent = 'No sources match the filters';
       list.appendChild(empty);
     }
@@ -1052,14 +1097,22 @@ const createMidiUiController = ({
     const list = document?.getElementById('midiTrackList');
     if (!list) return;
     removeChildren(list);
+    const activeOptionId = current.tracks.some(track => track.id === current.ui.selectedTrackId)
+      ? listOptionId('track', current.ui.selectedTrackId)
+      : '';
+    configureListbox(list, activeOptionId);
     for (const track of current.tracks) {
+      const selected = current.ui.selectedTrackId === track.id;
       const row = document.createElement('button');
       row.type = 'button';
+      row.id = listOptionId('track', track.id);
       row.className = 'midi-track-row';
-      row.classList.toggle('is-selected', current.ui.selectedTrackId === track.id);
+      row.classList.toggle('is-selected', selected);
       row.dataset.trackId = track.id;
+      row.tabIndex = selected ? 0 : -1;
       row.setAttribute('role', 'option');
-      row.setAttribute('aria-selected', current.ui.selectedTrackId === track.id ? 'true' : 'false');
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      row.setAttribute('aria-label', `${track.name}, channel ${track.channel}, ${track.instrumentLabel}${track.mute ? ', muted' : ''}${track.solo ? ', solo' : ''}`);
       const label = document.createElement('span');
       label.className = 'midi-track-row__label';
       label.textContent = track.name;
@@ -1077,14 +1130,22 @@ const createMidiUiController = ({
     const list = document?.getElementById('midiClipList');
     if (!list) return;
     removeChildren(list);
+    const activeOptionId = current.clips.some(clip => clip.id === current.ui.selectedClipId)
+      ? listOptionId('clip', current.ui.selectedClipId)
+      : '';
+    configureListbox(list, activeOptionId);
     for (const clip of current.clips) {
+      const selected = current.ui.selectedClipId === clip.id;
       const row = document.createElement('button');
       row.type = 'button';
+      row.id = listOptionId('clip', clip.id);
       row.className = 'midi-clip-row';
-      row.classList.toggle('is-selected', current.ui.selectedClipId === clip.id);
+      row.classList.toggle('is-selected', selected);
       row.dataset.clipId = clip.id;
+      row.tabIndex = selected ? 0 : -1;
       row.setAttribute('role', 'option');
-      row.setAttribute('aria-selected', current.ui.selectedClipId === clip.id ? 'true' : 'false');
+      row.setAttribute('aria-selected', selected ? 'true' : 'false');
+      row.setAttribute('aria-label', `${clip.name}, ${clip.type}, ${clip.lengthSteps} steps`);
       const label = document.createElement('span');
       label.className = 'midi-clip-row__label';
       label.textContent = clip.name;
@@ -1098,6 +1159,9 @@ const createMidiUiController = ({
     if (!current.clips.length) {
       const empty = document.createElement('div');
       empty.className = 'midi-selection-summary';
+      empty.setAttribute('role', 'option');
+      empty.setAttribute('aria-disabled', 'true');
+      empty.setAttribute('aria-selected', 'false');
       empty.textContent = 'No clips yet';
       list.appendChild(empty);
     }
@@ -1590,6 +1654,33 @@ const createMidiUiController = ({
     bindById('midiSourceAssignFilter', 'change', event => {
       sourceFilters.assignment = event.target.value || 'all';
       renderSourceList();
+    });
+    bindById('midiSourceList', 'keydown', event => {
+      handleListboxNavigation(
+        event,
+        filteredSources(),
+        source => source.id,
+        ensureProject().ui.selectedSourceId,
+        sourceId => dispatchProjectIntent({ type: 'source.select', sourceId })
+      );
+    });
+    bindById('midiTrackList', 'keydown', event => {
+      handleListboxNavigation(
+        event,
+        ensureProject().tracks,
+        track => track.id,
+        ensureProject().ui.selectedTrackId,
+        trackId => dispatchProjectIntent({ type: 'track.select', trackId })
+      );
+    });
+    bindById('midiClipList', 'keydown', event => {
+      handleListboxNavigation(
+        event,
+        ensureProject().clips,
+        clip => clip.id,
+        ensureProject().ui.selectedClipId,
+        clipId => dispatchProjectIntent({ type: 'clip.select', clipId })
+      );
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));

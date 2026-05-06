@@ -448,15 +448,69 @@ describe('midiUiController sequencer', function() {
     const conflictedRows = sourceRows.filter(row => row.classList?.contains('has-conflict'));
     expect(conflictedRows).to.have.lengthOf(2);
     expect(conflictedRows[0].children.some(child => child.className === 'midi-conflict-badge')).to.equal(true);
+    expect(conflictedRows[0].children.find(child => child.className === 'midi-conflict-badge')?.getAttribute('aria-hidden')).to.equal('true');
     expect(doc.getElementById('midiConflictSummary').children[0].textContent).to.contain('Duplicate runtime key');
 
     const filter = doc.getElementById('midiSourceAssignFilter');
     filter.value = 'clean';
     filter.dispatchEvent({ type: 'change', target: filter });
-    expect(doc.getElementById('midiSourceList').children[0].textContent).to.contain('No sources match');
+    const empty = doc.getElementById('midiSourceList').children[0];
+    expect(empty.textContent).to.contain('No sources match');
+    expect(empty.getAttribute('role')).to.equal('option');
+    expect(empty.getAttribute('aria-disabled')).to.equal('true');
     filter.value = 'conflicts';
     filter.dispatchEvent({ type: 'change', target: filter });
     expect(doc.getElementById('midiSourceList').children.filter(row => row.classList?.contains('has-conflict'))).to.have.lengthOf(2);
+  });
+
+  it('moves source, track, and clip listbox selections from the keyboard', function() {
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        sfx: {
+          '1': { name: 'skill-select', note: 60, durationTicks: 4 },
+          '2': { name: 'builder', note: 62, durationTicks: 4 }
+        },
+        triggers: {}
+      }
+    });
+    controller.bindMidiUi();
+    let prevented = 0;
+    const keydown = (element, key) => element.dispatchEvent({
+      type: 'keydown',
+      key,
+      preventDefault() {
+        prevented += 1;
+      }
+    });
+
+    const sourceList = doc.getElementById('midiSourceList');
+    expect(sourceList.getAttribute('aria-activedescendant')).to.equal('midi-source-option-sfx-1');
+    keydown(sourceList, 'ArrowDown');
+    expect(controller.getProject().ui.selectedSourceId).to.equal('sfx-2');
+    expect(sourceList.getAttribute('aria-activedescendant')).to.equal('midi-source-option-sfx-2');
+    expect(sourceList.children[1].getAttribute('aria-selected')).to.equal('true');
+    expect(sourceList.children[1].tabIndex).to.equal(0);
+
+    controller.dispatchProjectIntent({ type: 'track.add', track: { id: 'bass', name: 'Bass', channel: 2 } });
+    controller.dispatchProjectIntent({ type: 'track.select', trackId: 'track-1' });
+    const trackList = doc.getElementById('midiTrackList');
+    keydown(trackList, 'End');
+    expect(controller.getProject().ui.selectedTrackId).to.equal('bass');
+    expect(trackList.getAttribute('aria-activedescendant')).to.equal('midi-track-option-bass');
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'fill', name: 'Fill', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'clip.select', clipId: 'riff' });
+    const clipList = doc.getElementById('midiClipList');
+    keydown(clipList, 'End');
+    expect(controller.getProject().ui.selectedClipId).to.equal('fill');
+    expect(clipList.getAttribute('aria-activedescendant')).to.equal('midi-clip-option-fill');
+    keydown(clipList, 'Home');
+    expect(controller.getProject().ui.selectedClipId).to.equal('riff');
+    expect(clipList.getAttribute('aria-activedescendant')).to.equal('midi-clip-option-riff');
+    expect(prevented).to.equal(4);
   });
 
   it('refreshes mocked devices, auditions through the selected track, and panics', function() {

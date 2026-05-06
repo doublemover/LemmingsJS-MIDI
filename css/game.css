@@ -833,6 +833,9 @@ details.panel-section > summary.panel-title {
 .midi-sequencer button:focus-visible,
 .midi-sequencer input:focus-visible,
 .midi-sequencer select:focus-visible,
+.midi-source-list:focus-visible,
+.midi-track-list:focus-visible,
+.midi-clip-list:focus-visible,
 .midi-source-row:focus-visible,
 .midi-track-row:focus-visible,
 .midi-clip-row:focus-visible {
