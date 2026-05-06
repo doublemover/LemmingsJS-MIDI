@@ -72,6 +72,9 @@ export async function installWebMidiStub(page, { withDevices = true } = {}) {
       },
       sendNoteOn(note, velocity = 100, channel = 1, inputId = 'pw-input-1') {
         return this.sendInput([0x90 + Math.max(0, Math.min(15, channel - 1)), note, velocity], inputId);
+      },
+      sendNoteOff(note, velocity = 0, channel = 1, inputId = 'pw-input-1') {
+        return this.sendInput([0x80 + Math.max(0, Math.min(15, channel - 1)), note, velocity], inputId);
       }
     };
   }, { withDevices });

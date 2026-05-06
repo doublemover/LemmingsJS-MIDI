@@ -69,6 +69,11 @@ const registerSequencerDom = (doc) => {
     midiClipName: 'input',
     midiClipType: 'select',
     midiClipLengthSteps: 'input',
+    midiRecordPanel: 'div',
+    midiRecordStatus: 'div',
+    midiRecordButton: 'button',
+    midiRecordCommitButton: 'button',
+    midiRecordCancelButton: 'button',
     midiStepPatternGrid: 'div',
     midiGlobalIntensity: 'input',
     midiGlobalAccent: 'input',
@@ -320,6 +325,61 @@ describe('midiUiController sequencer', function() {
     controller.startLearn();
     controller.dispose();
     expect(captureCalls.at(-1)).to.equal(null);
+  });
+
+  it('records mocked MIDI notes into selected clip steps', function() {
+    const messageCaptureCalls = [];
+    const fakeInputController = {
+      setNoteCapture() {},
+      setMessageCapture(handler) {
+        messageCaptureCalls.push(handler);
+        this.handler = handler;
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, win } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'recorded', name: 'Recorded', lengthSteps: 4 } });
+
+    expect(controller.startRecording()).to.equal(true);
+    expect(fakeInputController.handler).to.be.a('function');
+    expect(fakeInputController.handler({ type: 0x90, note: 64, velocity: 90, channel: 1, timestamp: 0 })).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x80, note: 64, velocity: 0, channel: 1, timestamp: 240 })).to.equal(true);
+    expect(fakeInputController.handler({ type: 0x90, note: 67, velocity: 88, channel: 1, timestamp: 260 })).to.equal(true);
+    expect(controller.commitRecording()).to.equal(true);
+
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    const clip = stored.clips.find(entry => entry.id === 'recorded');
+    expect(clip.steps[0]).to.include({ note: 64, velocity: 90, durationTicks: 2 });
+    expect(clip.steps[1]).to.include({ note: 67, velocity: 88 });
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
+  });
+
+  it('cancels recording and clears message capture on dispose', function() {
+    const messageCaptureCalls = [];
+    const fakeInputController = {
+      setNoteCapture() {},
+      setMessageCapture(handler) {
+        messageCaptureCalls.push(handler);
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'recorded', name: 'Recorded', lengthSteps: 4 } });
+
+    expect(controller.startRecording()).to.equal(true);
+    expect(messageCaptureCalls.at(-1)).to.be.a('function');
+    expect(controller.cancelRecording()).to.equal(true);
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
+
+    controller.startRecording();
+    controller.dispose();
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
   it('creates clips, assigns a source to clip mode, persists steps, and auditions clip notes', function() {

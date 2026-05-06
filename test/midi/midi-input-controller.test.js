@@ -157,6 +157,37 @@ describe('MidiInputController', function() {
     expect(commands[0].skill).to.equal(SkillTypes.CLIMBER);
   });
 
+  it('captures normalized MIDI messages after channel filtering and can swallow dispatch', function() {
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = {
+      input: {
+        channel: 3,
+        notes: { skillBase: 60, skillOrder: ['CLIMBER'] }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    const messages = [];
+    controller.setMessageCapture((message) => {
+      messages.push(message);
+      return true;
+    });
+
+    controller._onMessage({ data: [0x90, 60, 100], timeStamp: 5 });
+    controller._onMessage({ data: [0x92, 61, 0], timeStamp: 6 });
+    controller._onMessage({ data: [0x82, 61, 0], timeStamp: 7 });
+
+    expect(messages).to.have.lengthOf(2);
+    expect(messages[0]).to.include({ status: 0x92, type: 0x90, channel: 3, note: 61, velocity: 0, timestamp: 6 });
+    expect(messages[1]).to.include({ status: 0x82, type: 0x80, channel: 3, note: 61, velocity: 0, timestamp: 7 });
+    expect(commands).to.have.lengthOf(0);
+  });
+
   it('stores the last MIDI message on window', function() {
     const view = {};
     const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });

@@ -26,6 +26,10 @@ const midiUiSelectors = Object.freeze({
   learnButton: '#midiLearnButton',
   learnConfirmButton: '#midiLearnConfirmButton',
   learnStatus: '#midiLearnStatus',
+  recordPanel: '#midiRecordPanel',
+  recordButton: '#midiRecordButton',
+  recordCommitButton: '#midiRecordCommitButton',
+  recordStatus: '#midiRecordStatus',
   stepCells: '#midiStepPatternGrid .midi-step-cell',
   inspector: '#midiInspector',
   outputLog: '#midiOutputLog'
@@ -143,6 +147,22 @@ class MidiUiPage {
 
   learnStatus() {
     return this.page.locator(midiUiSelectors.learnStatus);
+  }
+
+  recordPanel() {
+    return this.page.locator(midiUiSelectors.recordPanel);
+  }
+
+  recordButton() {
+    return this.page.locator(midiUiSelectors.recordButton);
+  }
+
+  recordCommitButton() {
+    return this.page.locator(midiUiSelectors.recordCommitButton);
+  }
+
+  recordStatus() {
+    return this.page.locator(midiUiSelectors.recordStatus);
   }
 
   stepCells() {

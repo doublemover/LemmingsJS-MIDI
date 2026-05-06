@@ -150,6 +150,10 @@ const createE2EApi = (context) => ({
   midiConfirmLearn: () => context.midiUi?.confirmLearn?.() || false,
   midiCancelLearn: () => context.midiUi?.cancelLearn?.() || false,
   midiCaptureLearnNote: (note, velocity, channel) => context.midiUi?.captureLearnNote?.(note, velocity, channel) || false,
+  midiStartRecording: () => context.midiUi?.startRecording?.() || false,
+  midiCommitRecording: () => context.midiUi?.commitRecording?.() || false,
+  midiCancelRecording: () => context.midiUi?.cancelRecording?.() || false,
+  midiCaptureRecordMessage: (message) => context.midiUi?.captureRecordMessage?.(message) || false,
   midiAudition: (request) => context.midiUi?.audition?.(request) || false
 });
 const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {

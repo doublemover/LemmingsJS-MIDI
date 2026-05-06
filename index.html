@@ -286,8 +286,8 @@
           </div>
           <div id="midiAutomationList" class="midi-automation-list" aria-label="Position modulation lanes"></div>
         </div>
-        <div id="midiClipInspector" class="midi-inspector-group">
-          <h3>Clip</h3>
+          <div id="midiClipInspector" class="midi-inspector-group">
+            <h3>Clip</h3>
           <div class="midi-inline-fields">
             <label class="midi-field midi-field--compact">
               <span>Name</span>
@@ -305,6 +305,14 @@
               <span>Steps</span>
               <input id="midiClipLengthSteps" type="number" min="1" max="32" step="1" />
             </label>
+          </div>
+          <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
+            <div id="midiRecordStatus" class="midi-learn-status">Record writes captured notes into clip steps.</div>
+            <div class="midi-button-row">
+              <button id="midiRecordButton" type="button">Record</button>
+              <button id="midiRecordCommitButton" type="button">Commit</button>
+              <button id="midiRecordCancelButton" type="button">Cancel</button>
+            </div>
           </div>
           <div id="midiStepPatternGrid" class="midi-step-grid" role="grid" aria-label="Step pattern"></div>
         </div>

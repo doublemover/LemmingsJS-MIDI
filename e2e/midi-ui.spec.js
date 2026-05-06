@@ -141,6 +141,27 @@ test('MIDI sequencer learns a selected direct source note from mocked input', as
   expect(source.mapping).toMatchObject({ note: 86, velocity: 104, degree: null, chord: null });
 });
 
+test('MIDI sequencer records mocked MIDI notes into a step clip', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await midi.enable();
+
+  await midi.clipAddButton().click();
+  await expect(midi.recordPanel()).toBeVisible();
+  await midi.recordButton().click();
+  await expect(midi.recordStatus()).toContainText('Recording');
+  await page.evaluate(() => {
+    window.__WEBMIDI_STUB__.sendNoteOn(62, 90, 1);
+    window.__WEBMIDI_STUB__.sendNoteOff(62, 0, 1);
+    window.__WEBMIDI_STUB__.sendNoteOn(65, 88, 1);
+  });
+  await midi.recordCommitButton().click();
+
+  const project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const clip = project.clips.find(entry => entry.id === project.ui.selectedClipId);
+  expect(clip.steps[0]).toMatchObject({ note: 62, velocity: 90 });
+  expect(clip.steps[1]).toMatchObject({ note: 65, velocity: 88 });
+});
+
 test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();

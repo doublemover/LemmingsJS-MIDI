@@ -73,6 +73,9 @@ const config = {
       }
       window.__E2E__?.midiStartLearn?.();
       window.__E2E__?.midiCaptureLearnNote?.(86, 104, 6);
+      window.__E2E__?.midiStartRecording?.();
+      window.__E2E__?.midiCaptureRecordMessage?.({ type: 0x90, note: 62, velocity: 90, channel: 1, timestamp: 0 });
+      window.__E2E__?.midiCaptureRecordMessage?.({ type: 0x80, note: 62, velocity: 0, channel: 1, timestamp: 240 });
     });
     await page.waitForSelector('#midiClipList .midi-clip-row');
     await page.waitForSelector('#midiStepPatternGrid .midi-step-cell');
@@ -88,6 +91,7 @@ const config = {
     { name: 'midi-inspector', type: 'selector', selector: '#midiInspector' },
     { name: 'midi-conflict-summary', type: 'selector', selector: '#midiConflictSummary' },
     { name: 'midi-learn', type: 'selector', selector: '#midiLearnPanel' },
+    { name: 'midi-record', type: 'selector', selector: '#midiRecordPanel' },
     { name: 'midi-modulation', type: 'selector', selector: '#midiModulationInspector' },
     { name: 'midi-step-pattern', type: 'selector', selector: '#midiStepPatternGrid' },
     { name: 'midi-output-status', type: 'selector', selector: '#midiOutputStatus' }
@@ -121,6 +125,11 @@ const config = {
     {
       name: 'midi-learn',
       selector: '#midiLearnPanel',
+      checks: ['horizontalOverflow', 'clippedText']
+    },
+    {
+      name: 'midi-record',
+      selector: '#midiRecordPanel',
       checks: ['horizontalOverflow', 'clippedText']
     },
     {

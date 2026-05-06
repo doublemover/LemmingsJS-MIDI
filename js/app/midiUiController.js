@@ -145,6 +145,13 @@ const createMidiUiController = ({
     trackId: null,
     conflicts: []
   };
+  const recordState = {
+    active: false,
+    clipId: null,
+    trackId: null,
+    notes: [],
+    activeNotes: new Map()
+  };
   const sourceFilters = {
     search: '',
     kind: 'all',
@@ -559,6 +566,154 @@ const createMidiUiController = ({
     clearLearnCapture();
     commitProject(next);
     logOutput(`Learned ${label}`);
+    return true;
+  };
+
+  const clearRecordCapture = () => {
+    midiInputController?.setMessageCapture?.(null);
+  };
+
+  const resetRecordState = () => {
+    recordState.active = false;
+    recordState.clipId = null;
+    recordState.trackId = null;
+    recordState.notes = [];
+    recordState.activeNotes.clear();
+  };
+
+  const renderRecordPanel = () => {
+    const panel = document?.getElementById('midiRecordPanel');
+    if (!panel) return;
+    const status = document?.getElementById('midiRecordStatus');
+    const start = document?.getElementById('midiRecordButton');
+    const commit = document?.getElementById('midiRecordCommitButton');
+    const cancel = document?.getElementById('midiRecordCancelButton');
+    const clip = selectedClip();
+    panel.classList.toggle('is-active', recordState.active || recordState.notes.length > 0);
+    if (start) start.disabled = !clip || recordState.active;
+    if (commit) commit.disabled = !recordState.notes.length && !recordState.activeNotes.size;
+    if (cancel) cancel.disabled = !recordState.active && !recordState.notes.length;
+    if (!status) return;
+    if (!clip) {
+      status.textContent = 'Create a clip before recording.';
+      return;
+    }
+    if (recordState.active) {
+      status.textContent = `Recording into ${clip.name}: ${recordState.notes.length} notes captured.`;
+      return;
+    }
+    status.textContent = recordState.notes.length
+      ? `${recordState.notes.length} notes ready to commit.`
+      : 'Record writes captured notes into clip steps.';
+  };
+
+  const noteKey = (event) => `${event.channel}:${event.note}`;
+
+  const durationMsToTicks = (durationMs) => {
+    const current = ensureProject();
+    const fallback = current.global.durationTicks.default ?? 6;
+    if (!Number.isFinite(durationMs) || durationMs <= 0) return fallback;
+    return clamp(Math.round(durationMs / 120), current.global.durationTicks.min, current.global.durationTicks.max);
+  };
+
+  const finishRecordNote = (event, fallbackTime = null) => {
+    const key = noteKey(event);
+    const started = recordState.activeNotes.get(key);
+    if (!started) return;
+    recordState.activeNotes.delete(key);
+    const endTime = Number.isFinite(event.timestamp) ? event.timestamp : fallbackTime;
+    recordState.notes.push({
+      note: clamp(Math.round(started.note), 0, 127),
+      velocity: clamp(Math.round(started.velocity), 1, 127),
+      channel: clamp(Math.round(started.channel), 1, 16),
+      durationTicks: durationMsToTicks((endTime ?? started.timestamp) - started.timestamp)
+    });
+  };
+
+  const handleRecordMessage = (event) => {
+    if (!recordState.active) return false;
+    const type = event?.type;
+    const note = Number(event?.note);
+    const velocity = Number(event?.velocity ?? 0);
+    if ((type !== 0x90 && type !== 0x80) || !Number.isFinite(note)) return false;
+    const timestamp = Number.isFinite(event.timestamp) ? event.timestamp : Date.now();
+    const normalized = {
+      note: clamp(Math.round(note), 0, 127),
+      velocity: clamp(Math.round(velocity), 0, 127),
+      channel: clamp(Math.round(event.channel), 1, 16),
+      timestamp
+    };
+    if (type === 0x90 && normalized.velocity > 0) {
+      finishRecordNote(normalized, timestamp);
+      recordState.activeNotes.set(noteKey(normalized), normalized);
+    } else {
+      finishRecordNote(normalized, timestamp);
+    }
+    renderRecordPanel();
+    return true;
+  };
+
+  const startRecording = () => {
+    const clipId = ensureSelectedClipId();
+    const clip = ensureProject().clips.find(entry => entry.id === clipId);
+    if (!clip) {
+      renderRecordPanel();
+      return false;
+    }
+    cancelLearn();
+    resetRecordState();
+    recordState.active = true;
+    recordState.clipId = clip.id;
+    recordState.trackId = selectedTrack()?.id ?? null;
+    midiInputController?.setMessageCapture?.(handleRecordMessage);
+    setStatus('Recording MIDI clip');
+    renderRecordPanel();
+    return true;
+  };
+
+  const cancelRecording = () => {
+    clearRecordCapture();
+    resetRecordState();
+    setStatus('Recording canceled');
+    renderRecordPanel();
+    return true;
+  };
+
+  const commitRecording = () => {
+    const now = Date.now();
+    for (const started of recordState.activeNotes.values()) {
+      finishRecordNote({ ...started, timestamp: now }, now);
+    }
+    recordState.activeNotes.clear();
+    clearRecordCapture();
+    const current = ensureProject();
+    const clipId = recordState.clipId || current.ui.selectedClipId;
+    const clip = current.clips.find(entry => entry.id === clipId);
+    if (!clip || !recordState.notes.length) {
+      resetRecordState();
+      renderRecordPanel();
+      return false;
+    }
+    let next = current;
+    recordState.notes.slice(0, clip.lengthSteps).forEach((note, index) => {
+      next = reduceMidiProject(next, {
+        type: 'clip.step.update',
+        clipId: clip.id,
+        stepIndex: index,
+        patch: {
+          note: note.note,
+          velocity: note.velocity,
+          durationTicks: note.durationTicks,
+          probability: 1,
+          hold: false,
+          tie: false
+        }
+      });
+    });
+    const noteCount = Math.min(recordState.notes.length, clip.lengthSteps);
+    resetRecordState();
+    commitProject(next);
+    logOutput(`Recorded ${noteCount} notes into ${clip.name}`);
     return true;
   };
 
@@ -1058,6 +1213,7 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiClipName'), clip?.name);
     setInputValue(document?.getElementById('midiClipType'), clip?.type);
     setInputValue(document?.getElementById('midiClipLengthSteps'), clip?.lengthSteps);
+    renderRecordPanel();
     renderStepPatternGrid(clip);
   };
 
@@ -1529,6 +1685,9 @@ const createMidiUiController = ({
     bindById('midiClipName', 'change', event => updateSelectedClip({ name: event.target.value }));
     bindById('midiClipType', 'change', event => updateSelectedClip({ type: event.target.value }));
     bindById('midiClipLengthSteps', 'change', event => updateSelectedClip({ lengthSteps: Number(event.target.value) || 16 }));
+    bindById('midiRecordButton', 'click', () => startRecording());
+    bindById('midiRecordCommitButton', 'click', () => commitRecording());
+    bindById('midiRecordCancelButton', 'click', () => cancelRecording());
     setMidiUiHook();
     render();
     bound = true;
@@ -1566,6 +1725,10 @@ const createMidiUiController = ({
       confirmLearn,
       cancelLearn,
       captureLearnNote: handleLearnNote,
+      startRecording,
+      commitRecording,
+      cancelRecording,
+      captureRecordMessage: handleRecordMessage,
       audition,
       panic
     };
@@ -1584,6 +1747,7 @@ const createMidiUiController = ({
     disposeDomListeners();
     clearMidiUiHook();
     clearLearnCapture();
+    clearRecordCapture();
     midiInputController?.detach?.();
     activeMidiInput = null;
     bound = false;
@@ -1611,6 +1775,10 @@ const createMidiUiController = ({
     confirmLearn,
     cancelLearn,
     captureLearnNote: handleLearnNote,
+    startRecording,
+    commitRecording,
+    cancelRecording,
+    captureRecordMessage: handleRecordMessage,
     audition,
     panic,
     applyRuntimePatch,
@@ -1629,6 +1797,7 @@ const createMidiUiController = ({
       midiInputController = controller;
       if (activeMidiInput) midiInputController?.attach?.(activeMidiInput);
       if (learnState.active) midiInputController?.setNoteCapture?.(handleLearnNote);
+      if (recordState.active) midiInputController?.setMessageCapture?.(handleRecordMessage);
     },
     setActiveMidiInput,
     setActiveMidiOutput,

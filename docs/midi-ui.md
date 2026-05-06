@@ -32,6 +32,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
   conflict warnings for the selected route.
 - Learn: arm a selected direct source, capture the next MIDI note-on as a
   pending note/velocity/channel assignment, then commit or cancel it.
+- Record: capture a short mocked or live MIDI phrase into consecutive steps of
+  the selected step clip, then commit or cancel the transient recording.
 - Output Status: shows recent audition/output activity and scheduler pressure.
 
 ## Conflict Checks
@@ -68,6 +70,9 @@ factory projects.
 - `startLearn()`
 - `confirmLearn()`
 - `cancelLearn()`
+- `startRecording()`
+- `commitRecording()`
+- `cancelRecording()`
 - `audition({ sourceId?, trackId?, mapping?, clipId? })`
 - `panic()`
 
@@ -84,6 +89,10 @@ factory projects.
 - `midiConfirmLearn()`
 - `midiCancelLearn()`
 - `midiCaptureLearnNote(note, velocity, channel)`
+- `midiStartRecording()`
+- `midiCommitRecording()`
+- `midiCancelRecording()`
+- `midiCaptureRecordMessage(message)`
 - `midiAudition(request)`
 
 ## Visual and E2E Coverage
@@ -92,6 +101,6 @@ factory projects.
   `temp/e2e-captures/`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
   cleanup, setup, track routing, direct mapping, clip creation/editing,
-  clip assignment, import/export/template reset, learn capture, modulation
-  controls, audition, persistence, filters, conflict warnings, and responsive
-  overflow checks.
+  clip assignment, import/export/template reset, learn capture, short recording,
+  modulation controls, audition, persistence, filters, conflict warnings, and
+  responsive overflow checks.
