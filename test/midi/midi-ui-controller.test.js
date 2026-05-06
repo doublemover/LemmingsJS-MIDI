@@ -1030,6 +1030,31 @@ describe('midiUiController sequencer', function() {
     expect(prevented).to.equal(4);
   });
 
+  it('panics by stopping notes and clearing queued MIDI events', function() {
+    let allNotesOffCalls = 0;
+    let clearQueueCalls = 0;
+    const { controller, doc } = createControllerHarness({
+      lemmings: {
+        midiRouter: {
+          scheduler: {
+            allNotesOff() {
+              allNotesOffCalls += 1;
+            },
+            clearQueue() {
+              clearQueueCalls += 1;
+            }
+          }
+        }
+      }
+    });
+    controller.bindMidiUi();
+
+    expect(controller.panic()).to.equal(true);
+    expect(allNotesOffCalls).to.equal(1);
+    expect(clearQueueCalls).to.equal(1);
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
+  });
+
   it('refreshes mocked devices, auditions through the selected track, and panics', function() {
     const sent = [];
     let registeredOutputs = [];
