@@ -37,6 +37,52 @@ import {
   saveLevel,
   validateLevel
 } from './EditorUiControllerShared.js';
+import {
+  buildClassicSubsetIssues,
+  getErrorMessage,
+  isDestructiveQuickFix
+} from './editorClassicSubsetContract.js';
+
+const getMultiSelectionCapabilities = (entries = []) => {
+  const types = new Set(entries.map(entry => entry?.type).filter(Boolean));
+  const type = types.size === 1 ? Array.from(types)[0] : null;
+  const isTerrain = type === 'terrain';
+  const isGadget = type === 'gadget';
+  const isSteel = type === 'steel';
+  return {
+    type,
+    x: !!type,
+    y: !!type,
+    width: isSteel,
+    height: isSteel,
+    rotate: isTerrain || isGadget,
+    skill: isGadget,
+    lemmings: isGadget,
+    pairing: isGadget,
+    midiFlag: isGadget,
+    midiFlagId: isGadget,
+    flipH: isTerrain || isGadget,
+    flipV: isTerrain || isGadget,
+    noOverwrite: isTerrain,
+    erase: isTerrain,
+    oneWay: isTerrain
+  };
+};
+
+const setBatchInputState = (input, enabled) => {
+  if (!input) return;
+  input.value = '';
+  input.disabled = !enabled;
+  input.placeholder = enabled ? 'batch' : '';
+};
+
+const setBatchCheckState = (check, enabled) => {
+  if (!check) return;
+  check.checked = false;
+  check.indeterminate = !!enabled;
+  check.disabled = !enabled;
+};
+
 const editorSelectionPanelMethods = {
   _setSelectionFields(data) {
     this._suppressInspector = true;
@@ -58,6 +104,7 @@ const editorSelectionPanelMethods = {
       inputs.forEach(input => {
         if (input) {
           input.value = '';
+          input.placeholder = '';
           input.disabled = true;
         }
       });
@@ -72,6 +119,7 @@ const editorSelectionPanelMethods = {
       checks.forEach(check => {
         if (check) {
           check.checked = false;
+          check.indeterminate = false;
           check.disabled = true;
         }
       });
@@ -81,40 +129,28 @@ const editorSelectionPanelMethods = {
     }
 
     if (data.multi) {
+      const capabilities = getMultiSelectionCapabilities(data.entries || []);
       this._toggleSelectionActions(true);
       if (this.el.selType) this.el.selType.textContent = 'Multiple';
-      if (this.el.selName) this.el.selName.textContent = `${data.count} items`;
-      const inputs = [
-        this.el.selX,
-        this.el.selY,
-        this.el.selWidth,
-        this.el.selHeight,
-        this.el.selRotate,
-        this.el.selSkill,
-        this.el.selLemmings,
-        this.el.selPairing,
-        this.el.selMidiFlagId
-      ];
-      inputs.forEach(input => {
-        if (input) {
-          input.value = '';
-          input.disabled = true;
-        }
-      });
-      const checks = [
-        this.el.selFlipH,
-        this.el.selFlipV,
-        this.el.selMidiFlag,
-        this.el.selNoOverwrite,
-        this.el.selErase,
-        this.el.selOneWay
-      ];
-      checks.forEach(check => {
-        if (check) {
-          check.checked = false;
-          check.disabled = true;
-        }
-      });
+      if (this.el.selName) {
+        const suffix = capabilities.type ? `${capabilities.type} items` : 'mixed items';
+        this.el.selName.textContent = `${data.count} ${suffix}`;
+      }
+      setBatchInputState(this.el.selX, capabilities.x);
+      setBatchInputState(this.el.selY, capabilities.y);
+      setBatchInputState(this.el.selWidth, capabilities.width);
+      setBatchInputState(this.el.selHeight, capabilities.height);
+      setBatchInputState(this.el.selRotate, capabilities.rotate);
+      setBatchInputState(this.el.selSkill, capabilities.skill);
+      setBatchInputState(this.el.selLemmings, capabilities.lemmings);
+      setBatchInputState(this.el.selPairing, capabilities.pairing);
+      setBatchInputState(this.el.selMidiFlagId, capabilities.midiFlagId);
+      setBatchCheckState(this.el.selFlipH, capabilities.flipH);
+      setBatchCheckState(this.el.selFlipV, capabilities.flipV);
+      setBatchCheckState(this.el.selMidiFlag, capabilities.midiFlag);
+      setBatchCheckState(this.el.selNoOverwrite, capabilities.noOverwrite);
+      setBatchCheckState(this.el.selErase, capabilities.erase);
+      setBatchCheckState(this.el.selOneWay, capabilities.oneWay);
       if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
       this._suppressInspector = false;
       return;
@@ -135,66 +171,81 @@ const editorSelectionPanelMethods = {
 
     if (this.el.selX) {
       this.el.selX.value = formatValue(props.X);
+      this.el.selX.placeholder = '';
       this.el.selX.disabled = false;
     }
     if (this.el.selY) {
       this.el.selY.value = formatValue(props.Y);
+      this.el.selY.placeholder = '';
       this.el.selY.disabled = false;
     }
     if (this.el.selWidth) {
       this.el.selWidth.value = formatValue(widthValue);
+      this.el.selWidth.placeholder = '';
       this.el.selWidth.disabled = !supportsResize;
     }
     if (this.el.selHeight) {
       this.el.selHeight.value = formatValue(heightValue);
+      this.el.selHeight.placeholder = '';
       this.el.selHeight.disabled = !supportsResize;
     }
     if (this.el.selRotate) {
       this.el.selRotate.value = formatRotation(props.ROTATE);
+      this.el.selRotate.placeholder = '';
       this.el.selRotate.disabled = isSteel;
     }
     if (this.el.selSkill) {
       this.el.selSkill.value = formatValue(props.SKILL);
+      this.el.selSkill.placeholder = '';
       this.el.selSkill.disabled = !isGadget;
     }
     if (this.el.selLemmings) {
       this.el.selLemmings.value = formatValue(props.LEMMINGS);
+      this.el.selLemmings.placeholder = '';
       this.el.selLemmings.disabled = !isGadget;
     }
     if (this.el.selPairing) {
       this.el.selPairing.value = formatValue(props.PAIRING);
+      this.el.selPairing.placeholder = '';
       this.el.selPairing.disabled = !isGadget;
     }
     if (this.el.selMidiFlag) {
       const enabled = !!props.MIDI_FLAG;
       this.el.selMidiFlag.checked = enabled;
+      this.el.selMidiFlag.indeterminate = false;
       this.el.selMidiFlag.disabled = !isGadget;
     }
     if (this.el.selMidiFlagId) {
       const flagId = props.MIDI_FLAG_ID;
       this.el.selMidiFlagId.value = formatValue(flagId);
+      this.el.selMidiFlagId.placeholder = '';
       const enabled = !!props.MIDI_FLAG;
       this.el.selMidiFlagId.disabled = !isGadget || !enabled;
     }
 
     if (this.el.selFlipH) {
       this.el.selFlipH.checked = !!props.FLIP_HORIZONTAL;
+      this.el.selFlipH.indeterminate = false;
       this.el.selFlipH.disabled = isSteel;
     }
     if (this.el.selFlipV) {
       this.el.selFlipV.checked = !!props.FLIP_VERTICAL;
+      this.el.selFlipV.indeterminate = false;
       this.el.selFlipV.disabled = isSteel;
     }
     if (this.el.selNoOverwrite) {
       this.el.selNoOverwrite.checked = !!props.NO_OVERWRITE;
+      this.el.selNoOverwrite.indeterminate = false;
       this.el.selNoOverwrite.disabled = isGadget || isSteel;
     }
     if (this.el.selErase) {
       this.el.selErase.checked = !!props.ERASE;
+      this.el.selErase.indeterminate = false;
       this.el.selErase.disabled = isGadget || isSteel;
     }
     if (this.el.selOneWay) {
       this.el.selOneWay.checked = !!props.ONE_WAY;
+      this.el.selOneWay.indeterminate = false;
       this.el.selOneWay.disabled = !isTerrain;
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
@@ -237,6 +288,7 @@ const editorSelectionPanelMethods = {
   },
 
   _refreshAfterEdit(label) {
+    this._clearTransientIssue?.('import');
     this._refreshValidation();
     this._drawSelectionOverlay();
     this._updateStatus(label || 'Edit');
@@ -263,13 +315,48 @@ const editorSelectionPanelMethods = {
   },
 
   _refreshValidation() {
-    const issues = validateLevel(this.session?.level, this.assets || null);
+    const level = this.session?.level;
+    const issues = [
+      ...validateLevel(level, this.assets || null),
+      ...buildClassicSubsetIssues(level),
+      ...(this._transientIssues || [])
+    ];
     this._renderIssues(issues);
+  },
+
+  _setTransientIssue(id, issue) {
+    if (!id || !issue?.message) return;
+    if (!Array.isArray(this._transientIssues)) this._transientIssues = [];
+    this._transientIssues = this._transientIssues.filter(entry => entry.id !== id);
+    this._transientIssues.push({
+      id,
+      severity: issue.severity || 'error',
+      message: issue.message
+    });
+  },
+
+  _clearTransientIssue(id) {
+    if (!Array.isArray(this._transientIssues)) return;
+    this._transientIssues = this._transientIssues.filter(entry => entry.id !== id);
+  },
+
+  _reportImportFailure(kind, error) {
+    const message = getErrorMessage(error);
+    this._setTransientIssue('import', {
+      severity: 'error',
+      message: `${kind} import failed: ${message}`
+    });
+    this._refreshValidation();
+    this._updateStatus(`${kind} import failed`);
   },
 
   _renderIssues(issues) {
     this._hasErrors = false;
-    if (!this.el.issuesList) return;
+    const summary = { error: 0, warning: 0, info: 0 };
+    if (!this.el.issuesList) {
+      this._validationSummary = summary;
+      return;
+    }
     this.el.issuesList.innerHTML = '';
     for (const issue of issues) {
       const severity = issue.severity === 'error'
@@ -279,6 +366,7 @@ const editorSelectionPanelMethods = {
           : 'info';
       const severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
       if (severity === 'error') this._hasErrors = true;
+      summary[severity] += 1;
       const item = this.document.createElement('div');
       item.className = `issue-item ${severity}`;
       item.setAttribute('role', 'listitem');
@@ -293,12 +381,21 @@ const editorSelectionPanelMethods = {
       message.textContent = issue.message;
       item.appendChild(message);
       if (issue.fix) {
+        const destructive = isDestructiveQuickFix(issue);
+        if (destructive) {
+          item.classList.add('has-destructive-fix');
+          item.setAttribute('data-fix', 'destructive');
+          const note = this.document.createElement('div');
+          note.className = 'issue-note';
+          note.textContent = 'Destructive quick fix: changes or removes level data.';
+          item.appendChild(note);
+        }
         const button = this.document.createElement('button');
-        button.className = 'issue-action';
+        button.className = destructive ? 'issue-action destructive' : 'issue-action';
         button.type = 'button';
         button.textContent = issue.fixLabel || 'Fix';
         button.title = issue.fixLabel
-          ? `Apply fix: ${issue.fixLabel}`
+          ? `${destructive ? 'Destructive quick fix' : 'Apply fix'}: ${issue.fixLabel}`
           : 'Apply automatic fix.';
         button.addEventListener('click', () => {
           issue.fix();
@@ -310,6 +407,7 @@ const editorSelectionPanelMethods = {
       }
       this.el.issuesList.appendChild(item);
     }
+    this._validationSummary = summary;
   },
 
   _updateStatus(label) {
@@ -331,6 +429,13 @@ const editorSelectionPanelMethods = {
       : 'Grid off';
     parts.push(grid);
     parts.push(this._playtest ? 'Playtest' : 'Edit');
+    const summary = this._validationSummary || {};
+    if (summary.error) {
+      parts.push(`${summary.error} error${summary.error === 1 ? '' : 's'}`);
+    }
+    if (summary.warning) {
+      parts.push(`${summary.warning} warning${summary.warning === 1 ? '' : 's'}`);
+    }
     this.el.status.textContent = parts.join(' • ');
   },
 

@@ -1,7 +1,11 @@
 import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
 import { createClassicLevelData, loadEditorLevel } from '../../js/editor/EditorLevelLoader.js';
+import { createEditorLevelFromClassic } from '../../js/editor/ClassicLevelConverter.js';
 import { resetStyleRegistry, registerClassicStyles, registerStyle } from '../../js/editor/StyleRegistry.js';
+import { BinaryReader } from '../../js/data/BinaryReader.js';
+import { LevelReader } from '../../js/level/LevelReader.js';
+import { LevelWriter } from '../../js/level/LevelWriter.js';
 import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 const buildEntry = (props) => ({ props, order: Object.keys(props), unknownLines: [] });
@@ -222,6 +226,146 @@ describe('EditorLevelLoader', () => {
 
     expect(terrain.drawProperties).to.not.have.property('oneWay');
     expect(terrain.drawProperties).to.not.have.property('isOneWay');
+  });
+
+  it('returns lossy classic export warnings and caps binary lists', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 0, name: 'block' }],
+      gadgetPieces: [{ id: 0, name: 'exit' }]
+    });
+    const level = buildLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.terrainGroups = [{ terrains: [buildEntry({ STYLE: 'preview', PIECE: 'block', X: 1, Y: 2 })] }];
+    level.terrains = Array.from({ length: 401 }, (_, index) => buildEntry({
+      STYLE: 'preview',
+      PIECE: 'block',
+      X: index,
+      Y: 0,
+      ONE_WAY: index === 0 ? true : undefined
+    }));
+    level.gadgets = Array.from({ length: 33 }, (_, index) => buildEntry({
+      STYLE: 'preview',
+      PIECE: 'exit',
+      X: index,
+      Y: 0,
+      MIDI_FLAG: index === 0 ? true : undefined
+    }));
+    level.steel = Array.from({ length: 33 }, (_, index) => buildEntry({
+      X: index,
+      Y: 0,
+      WIDTH: 4,
+      HEIGHT: 4,
+      PIECE: index === 0 ? 1 : undefined
+    }));
+
+    const data = createClassicLevelData(level, { styleName: 'preview' });
+    const codes = data.warnings.map(warning => warning.code);
+
+    expect(data.metadata).to.deep.equal({ format: 'classicLvl', lossy: true });
+    expect(data.levelReader.levelProperties.levelName).to.have.length(32);
+    expect(data.levelReader.terrains).to.have.length(400);
+    expect(data.levelReader.objects).to.have.length(32);
+    expect(data.levelReader.steel).to.have.length(32);
+    expect(codes).to.include.members([
+      'classic_title_length',
+      'classic_terrain_groups',
+      'classic_unsupported_terrain_props',
+      'classic_unsupported_gadget_props',
+      'classic_unsupported_steel_props',
+      'classic_terrains_count',
+      'classic_gadgets_count',
+      'classic_steel_count'
+    ]);
+    expect(data.warnings.find(warning => warning.code === 'classic_unsupported_terrain_props').props)
+      .to.include('ONE_WAY');
+    expect(data.warnings.find(warning => warning.code === 'classic_unsupported_gadget_props').props)
+      .to.include('MIDI_FLAG');
+    expect(data.warnings.every(warning => warning.destructive)).to.equal(true);
+  });
+
+  it('documents lossy classic export/import for unsupported editor metadata', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 4, name: 'block' }],
+      gadgetPieces: [{ id: 3, name: 'plain-object' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.setHeader('STYLE', 'preview');
+    level.terrains = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'block',
+        X: 10,
+        Y: 20,
+        ONE_WAY: true
+      })
+    ];
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'plain-object',
+        X: 48,
+        Y: 64,
+        MIDI_FLAG: true,
+        MIDI_FLAG_ID: 7
+      })
+    ];
+    level.unknownSections = [{ name: 'NEOLEMMIX_ONLY', lines: ['CUSTOM value'] }];
+
+    const classic = createClassicLevelData(level, { styleName: 'preview' });
+    const bytes = new LevelWriter().write(classic.levelReader);
+    const reader = new LevelReader(new BinaryReader(bytes));
+    const imported = createEditorLevelFromClassic(reader, { styleName: 'preview' });
+
+    expect(classic.metadata.lossy).to.equal(true);
+    expect(classic.warnings.map(warning => warning.code)).to.include.members([
+      'classic_title_length',
+      'classic_preserved_nxlv_metadata',
+      'classic_unsupported_terrain_props',
+      'classic_unsupported_gadget_props'
+    ]);
+    expect(imported.getHeader('TITLE')).to.have.length(32);
+    expect(imported.terrains[0].props).to.not.have.property('ONE_WAY');
+    expect(imported.gadgets[0].props).to.not.have.property('MIDI_FLAG');
+    expect(imported.gadgets[0].props).to.not.have.property('MIDI_FLAG_ID');
+    expect(imported.unknownSections).to.deep.equal([]);
+  });
+
+  it('round-trips classic gadgets without modifier flags through binary export/import', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      gadgetPieces: [{ id: 3, name: 'plain-object' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'Plain Gadget');
+    level.setHeader('STYLE', 'preview');
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'plain-object',
+        X: 48,
+        Y: 64
+      })
+    ];
+
+    const classic = createClassicLevelData(level, { styleName: 'preview' });
+    const bytes = new LevelWriter().write(classic.levelReader);
+    const reader = new LevelReader(new BinaryReader(bytes));
+    const imported = createEditorLevelFromClassic(reader, { styleName: 'preview' });
+
+    expect(reader.objects).to.have.length(1);
+    expect(imported.gadgets).to.have.length(1);
+    expect(imported.gadgets[0].props).to.include({
+      STYLE: 'preview',
+      PIECE: 3,
+      X: 48,
+      Y: 64
+    });
   });
 
   it('falls back to default style values and ignores unknown skills', () => {

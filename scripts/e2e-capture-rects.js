@@ -112,8 +112,11 @@ const loadConfig = async (configPath) => {
   if (!config || typeof config !== 'object' || Array.isArray(config)) {
     throw new Error(`Capture config must export an object: ${resolvedPath}`);
   }
-  if (!Array.isArray(config.targets) || config.targets.length === 0) {
-    throw new Error(`Capture config must define a non-empty targets array: ${resolvedPath}`);
+  const hasTargets = Array.isArray(config.targets) && config.targets.length > 0;
+  const hasStates = Array.isArray(config.states)
+    && config.states.some(state => Array.isArray(state?.targets) && state.targets.length > 0);
+  if (!hasTargets && !hasStates) {
+    throw new Error(`Capture config must define a non-empty targets array or capture states: ${resolvedPath}`);
   }
   return {
     path: resolvedPath,
@@ -140,6 +143,112 @@ const selectTargets = (targets, selectedNames = []) => {
     throw new Error(`Unknown target(s): ${missing.join(', ')}`);
   }
   return matched;
+};
+
+const normalizeCaptureStates = (config) => (
+  Array.isArray(config.states)
+    ? config.states
+      .map((state, index) => ({
+        name: sanitizeCaptureName(state?.name || `state-${index + 1}`),
+        setup: state?.setup,
+        targets: Array.isArray(state?.targets) ? state.targets : [],
+        probes: Array.isArray(state?.probes) ? state.probes : []
+      }))
+      .filter(state => state.targets.length > 0)
+    : []
+);
+
+const prefixStateTarget = (stateName, target) => ({
+  ...target,
+  name: `${stateName}-${target.name}`
+});
+
+const prefixStateProbe = (stateName, probe) => {
+  if (typeof probe === 'string') {
+    return { name: `${stateName}-${probe}`, selector: probe };
+  }
+  return {
+    ...probe,
+    name: `${stateName}-${probe?.name || probe?.selector || 'probe'}`
+  };
+};
+
+const targetMatchesSelection = (target, selectedNames, rawName) => {
+  if (!selectedNames.length) return true;
+  return selectedNames.includes(target.name) || selectedNames.includes(rawName);
+};
+
+const runConfiguredCaptures = async (page, config, options) => {
+  const states = normalizeCaptureStates(config);
+  if (!states.length) {
+    const targets = selectTargets(config.targets, options.selectedTargets);
+    const captureResult = await captureTargets(page, targets, options.capture);
+    await resetPageScroll(page);
+    const probeResult = await runVisualProbes(page, config.probes || [], {
+      minTapTargetSize: config.minTapTargetSize
+    });
+    return {
+      outDir: captureResult.outDir,
+      captures: captureResult.captures,
+      probes: probeResult
+    };
+  }
+
+  const selectedTargets = options.selectedTargets || [];
+  const matchedTargets = new Set();
+  const captures = [];
+  const probeResults = [];
+  let outDir = null;
+
+  for (const state of states) {
+    if (typeof state.setup === 'function') {
+      await state.setup(page, {
+        ...options.context,
+        stateName: state.name
+      });
+    }
+    const prefixedTargets = state.targets.map(target => prefixStateTarget(state.name, target));
+    const selectedStateTargets = prefixedTargets.filter((target, index) => {
+      const rawName = state.targets[index]?.name;
+      const matches = targetMatchesSelection(target, selectedTargets, rawName);
+      if (matches) {
+        matchedTargets.add(target.name);
+        if (rawName) matchedTargets.add(rawName);
+      }
+      return matches;
+    });
+    if (selectedStateTargets.length) {
+      const captureResult = await captureTargets(page, selectedStateTargets, options.capture);
+      outDir = captureResult.outDir;
+      captures.push(...captureResult.captures);
+    }
+    await resetPageScroll(page);
+    const probes = state.probes.length
+      ? state.probes.map(probe => prefixStateProbe(state.name, probe))
+      : [];
+    if (probes.length) {
+      probeResults.push(await runVisualProbes(page, probes, {
+        minTapTargetSize: config.minTapTargetSize
+      }));
+    }
+  }
+
+  const missing = selectedTargets.filter(name => !matchedTargets.has(name));
+  if (missing.length) {
+    throw new Error(`Unknown target(s): ${missing.join(', ')}`);
+  }
+
+  const issues = probeResults.flatMap(result => result.issues);
+  return {
+    outDir: outDir || options.capture.outDir,
+    captures,
+    probes: {
+      version: 1,
+      issues,
+      warnings: issues.filter(issue => !issue.required),
+      failures: issues.filter(issue => issue.required)
+    }
+  };
 };
 
 const formatRect = (rect) => {
@@ -173,6 +282,14 @@ const printHumanSummary = (result) => {
   }
 };
 
+const resetPageScroll = async (page) => {
+  await page.evaluate(() => {
+    window.scrollTo?.(0, 0);
+    if (document?.documentElement) document.documentElement.scrollTop = 0;
+    if (document?.body) document.body.scrollTop = 0;
+  });
+};
+
 const runCaptureCli = async (argv = process.argv.slice(2)) => {
   const args = parseCliArgs(argv);
   if (args.help) {
@@ -187,7 +304,6 @@ const runCaptureCli = async (argv = process.argv.slice(2)) => {
   const configName = sanitizeCaptureName(
     loaded.config.name || path.basename(loaded.path, path.extname(loaded.path))
   );
-  const targets = selectTargets(loaded.config.targets, args.targets);
   const url = buildCaptureUrl(baseUrl, loaded.config);
   const outDir = args.outDir
     ? path.resolve(args.outDir)
@@ -221,30 +337,32 @@ const runCaptureCli = async (argv = process.argv.slice(2)) => {
         config: loaded.config
       });
     }
-    const captureResult = await captureTargets(page, targets, {
-      outDir,
-      route: new URL(url).pathname + new URL(url).search,
-      viewport: viewportPreset.viewport
-    });
-    await page.evaluate(() => {
-      window.scrollTo?.(0, 0);
-      if (document?.documentElement) document.documentElement.scrollTop = 0;
-      if (document?.body) document.body.scrollTop = 0;
-    });
-    const probeResult = await runVisualProbes(page, loaded.config.probes || [], {
-      minTapTargetSize: loaded.config.minTapTargetSize
+    const captureRun = await runConfiguredCaptures(page, loaded.config, {
+      selectedTargets: args.targets,
+      capture: {
+        outDir,
+        route: new URL(url).pathname + new URL(url).search,
+        viewport: viewportPreset.viewport
+      },
+      context: {
+        baseUrl,
+        url,
+        viewportName: args.viewport,
+        viewport: viewportPreset.viewport,
+        config: loaded.config
+      }
     });
     const result = {
-      ok: probeResult.failures.length === 0,
+      ok: captureRun.probes.failures.length === 0,
       configName,
       configPath: loaded.path,
       url,
       baseUrl,
       viewportName: args.viewport,
       viewport: viewportPreset.viewport,
-      outDir: captureResult.outDir,
-      captures: captureResult.captures,
-      probes: probeResult
+      outDir: captureRun.outDir,
+      captures: captureRun.captures,
+      probes: captureRun.probes
     };
     result.exitCode = result.ok ? 0 : 1;
     result.json = args.json;
@@ -297,6 +415,7 @@ export {
   VIEWPORT_PRESETS,
   buildCaptureUrl,
   loadConfig,
+  normalizeCaptureStates,
   npmConfigArgsFromEnv,
   parseCliArgs,
   runCaptureCli,

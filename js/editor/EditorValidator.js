@@ -1,4 +1,11 @@
-import { DEFAULT_LEVEL_WIDTH, DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
+import {
+  DEFAULT_LEVEL_WIDTH,
+  DEFAULT_LEVEL_HEIGHT,
+  LEVEL_OBJECT_COUNT,
+  LEVEL_TERRAIN_COUNT,
+  LEVEL_STEEL_COUNT,
+  LEVEL_NAME_LENGTH
+} from '../level/ClassicLevelConstants.js';
 import { createGadgetEntry, removeEntryAt } from './EditorEntryFactory.js';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -33,8 +40,12 @@ const findPieceIndices = (entries, pieceId) => {
   return matches;
 };
 
-const createIssue = (severity, message, fixLabel = null, fix = null) => {
-  return { severity, message, fixLabel, fix };
+const createIssue = (severity, message, fixLabel = null, fix = null, details = null) => {
+  const issue = { severity, message, fixLabel, fix };
+  if (details && typeof details === 'object') {
+    Object.assign(issue, details);
+  }
+  return issue;
 };
 
 const normalizeRotation = (value) => {
@@ -42,6 +53,63 @@ const normalizeRotation = (value) => {
   const normalized = ((numeric % 360) + 360) % 360;
   const snapped = Math.round(normalized / 90) * 90;
   return ((snapped % 360) + 360) % 360;
+};
+
+const createDestructiveIssue = (code, message, fixLabel = null, fix = null, details = {}) => {
+  return createIssue('warning', message, fixLabel, fix, {
+    code,
+    exportFormat: 'classicLvl',
+    destructive: true,
+    ...details
+  });
+};
+
+const truncateEntries = (level, key, max) => {
+  const entries = Array.isArray(level?.[key]) ? level[key] : [];
+  entries.length = Math.min(entries.length, max);
+};
+
+const getUnsupportedPropKeys = (entry, allowedKeys) => {
+  const props = entry?.props;
+  if (!props) return [];
+  return Object.keys(props).filter(key => !allowedKeys.has(key));
+};
+
+const hasUnsupportedProps = (entry, allowedKeys) => {
+  return getUnsupportedPropKeys(entry, allowedKeys).length > 0;
+};
+
+const stripUnsupportedProps = (entry, allowedKeys) => {
+  if (!entry?.props) return;
+  for (const key of Object.keys(entry.props)) {
+    if (!allowedKeys.has(key)) {
+      delete entry.props[key];
+    }
+  }
+};
+
+const countPreservedNxlvMetadata = (level) => {
+  if (!level) return 0;
+  let count = 0;
+  if (Array.isArray(level.unknownLines)) count += level.unknownLines.length;
+  if (Array.isArray(level.unknownSections)) count += level.unknownSections.length;
+  if (Array.isArray(level.skillsetUnknownLines)) count += level.skillsetUnknownLines.length;
+  const addEntryUnknownLines = (entries) => {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (Array.isArray(entry?.unknownLines)) count += entry.unknownLines.length;
+    }
+  };
+  addEntryUnknownLines(level.terrains);
+  addEntryUnknownLines(level.gadgets);
+  addEntryUnknownLines(level.steel);
+  if (Array.isArray(level.terrainGroups)) {
+    for (const group of level.terrainGroups) {
+      if (Array.isArray(group?.unknownLines)) count += group.unknownLines.length;
+      addEntryUnknownLines(group?.terrains);
+    }
+  }
+  return count;
 };
 
 const validateLevel = (level, assets = null, options = {}) => {
@@ -65,12 +133,49 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Title is empty.', 'Set title', () => {
       level.setHeader('TITLE', 'Untitled');
     }));
+  } else if (String(title).length > LEVEL_NAME_LENGTH) {
+    const titleText = String(title);
+    issues.push(createDestructiveIssue(
+      'classic_title_length',
+      `Classic .lvl export stores ${LEVEL_NAME_LENGTH} title characters; the remaining ${titleText.length - LEVEL_NAME_LENGTH} will be omitted.`,
+      'Truncate title',
+      () => {
+        level.setHeader('TITLE', titleText.slice(0, LEVEL_NAME_LENGTH));
+      },
+      {
+        target: 'header.TITLE',
+        count: titleText.length,
+        max: LEVEL_NAME_LENGTH
+      }
+    ));
   }
 
   if (Array.isArray(level.terrainGroups) && level.terrainGroups.length > 0) {
-    issues.push(createIssue(
-      'warning',
-      'Terrain groups are not supported in editor preview/runtime.'
+    issues.push(createDestructiveIssue(
+      'classic_terrain_groups',
+      'Terrain groups are not exported to classic .lvl; ungroup terrain before classic export.',
+      null,
+      null,
+      {
+        target: 'terrainGroups',
+        count: level.terrainGroups.length,
+        max: 0
+      }
+    ));
+  }
+
+  const preservedMetadataCount = countPreservedNxlvMetadata(level);
+  if (preservedMetadataCount) {
+    issues.push(createDestructiveIssue(
+      'classic_preserved_nxlv_metadata',
+      'Comments and unknown NXLV sections are preserved for NXLV but are not exported to classic .lvl.',
+      null,
+      null,
+      {
+        target: 'nxlvMetadata',
+        count: preservedMetadataCount,
+        max: 0
+      }
     ));
   }
 
@@ -216,6 +321,55 @@ const validateLevel = (level, assets = null, options = {}) => {
   const exitId = assets?.exitId ?? null;
   const gadgets = Array.isArray(level.gadgets) ? level.gadgets : [];
   const steelEntries = Array.isArray(level.steel) ? level.steel : [];
+  const directTerrains = Array.isArray(level.terrains) ? level.terrains : [];
+
+  if (gadgets.length > LEVEL_OBJECT_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_object_count',
+      `Classic .lvl export stores ${LEVEL_OBJECT_COUNT} gadgets; the remaining ${gadgets.length - LEVEL_OBJECT_COUNT} will be omitted.`,
+      'Keep first gadgets',
+      () => {
+        truncateEntries(level, 'gadgets', LEVEL_OBJECT_COUNT);
+      },
+      {
+        target: 'gadgets',
+        count: gadgets.length,
+        max: LEVEL_OBJECT_COUNT
+      }
+    ));
+  }
+
+  if (directTerrains.length > LEVEL_TERRAIN_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_terrain_count',
+      `Classic .lvl export stores ${LEVEL_TERRAIN_COUNT} terrain pieces; the remaining ${directTerrains.length - LEVEL_TERRAIN_COUNT} will be omitted.`,
+      'Keep first terrain',
+      () => {
+        truncateEntries(level, 'terrains', LEVEL_TERRAIN_COUNT);
+      },
+      {
+        target: 'terrains',
+        count: directTerrains.length,
+        max: LEVEL_TERRAIN_COUNT
+      }
+    ));
+  }
+
+  if (steelEntries.length > LEVEL_STEEL_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_steel_count',
+      `Classic .lvl export stores ${LEVEL_STEEL_COUNT} steel rectangles; the remaining ${steelEntries.length - LEVEL_STEEL_COUNT} will be omitted.`,
+      'Keep first steel',
+      () => {
+        truncateEntries(level, 'steel', LEVEL_STEEL_COUNT);
+      },
+      {
+        target: 'steel',
+        count: steelEntries.length,
+        max: LEVEL_STEEL_COUNT
+      }
+    ));
+  }
 
   if (Number.isFinite(entranceId)) {
     const entrances = findPieceIndices(gadgets, entranceId);
@@ -334,15 +488,36 @@ const validateLevel = (level, assets = null, options = {}) => {
   }
 
   const terrainEntries = [
-    ...(Array.isArray(level.terrains) ? level.terrains : []),
+    ...directTerrains,
     ...(Array.isArray(level.terrainGroups)
       ? level.terrainGroups.flatMap(group => Array.isArray(group?.terrains) ? group.terrains : [])
       : [])
   ];
   const gadgetEntries = Array.isArray(level.gadgets) ? level.gadgets : [];
   const gadgetOnlyProps = ['SKILL', 'LEMMINGS', 'PAIRING'];
-  const terrainUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
-  const gadgetUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
+  const terrainClassicProps = new Set([
+    'STYLE',
+    'PIECE',
+    'X',
+    'Y',
+    'FLIP_VERTICAL',
+    'NO_OVERWRITE',
+    'ERASE'
+  ]);
+  const gadgetClassicProps = new Set([
+    'STYLE',
+    'PIECE',
+    'X',
+    'Y',
+    'FLIP_VERTICAL',
+    'NO_OVERWRITE'
+  ]);
+  const steelClassicProps = new Set([
+    'X',
+    'Y',
+    'WIDTH',
+    'HEIGHT'
+  ]);
 
   const hasAnyProps = (entry, keys) => {
     const props = entry?.props;
@@ -373,26 +548,62 @@ const validateLevel = (level, assets = null, options = {}) => {
     ));
   }
 
-  const terrainWithUnsupported = terrainEntries.filter(entry => hasAnyProps(entry, terrainUnsupportedProps));
+  const terrainWithUnsupported = terrainEntries.filter(entry => hasUnsupportedProps(entry, terrainClassicProps));
   if (terrainWithUnsupported.length) {
-    issues.push(createIssue(
-      'warning',
-      'Terrain entries include unsupported classic properties (rotate/flip H/resize).',
+    const propKeys = Array.from(new Set(terrainWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, terrainClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_terrain_props',
+      `Terrain entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
       'Remove unsupported terrain props',
       () => {
-        for (const entry of terrainWithUnsupported) stripProps(entry, terrainUnsupportedProps);
+        for (const entry of terrainWithUnsupported) stripUnsupportedProps(entry, terrainClassicProps);
+      },
+      {
+        target: 'terrains',
+        count: terrainWithUnsupported.length,
+        props: propKeys
       }
     ));
   }
 
-  const gadgetWithUnsupported = gadgetEntries.filter(entry => hasAnyProps(entry, gadgetUnsupportedProps));
+  const gadgetWithUnsupported = gadgetEntries.filter(entry => hasUnsupportedProps(entry, gadgetClassicProps));
   if (gadgetWithUnsupported.length) {
-    issues.push(createIssue(
-      'warning',
-      'Gadget entries include unsupported classic properties (rotate/flip H/resize).',
+    const propKeys = Array.from(new Set(gadgetWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, gadgetClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_gadget_props',
+      `Gadget entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
       'Remove unsupported gadget props',
       () => {
-        for (const entry of gadgetWithUnsupported) stripProps(entry, gadgetUnsupportedProps);
+        for (const entry of gadgetWithUnsupported) stripUnsupportedProps(entry, gadgetClassicProps);
+      },
+      {
+        target: 'gadgets',
+        count: gadgetWithUnsupported.length,
+        props: propKeys
+      }
+    ));
+  }
+
+  const steelWithUnsupported = steelEntries.filter(entry => hasUnsupportedProps(entry, steelClassicProps));
+  if (steelWithUnsupported.length) {
+    const propKeys = Array.from(new Set(steelWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, steelClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_steel_props',
+      `Steel entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
+      'Remove unsupported steel props',
+      () => {
+        for (const entry of steelWithUnsupported) stripUnsupportedProps(entry, steelClassicProps);
+      },
+      {
+        target: 'steel',
+        count: steelWithUnsupported.length,
+        props: propKeys
       }
     ));
   }
@@ -432,7 +643,9 @@ const validateLevel = (level, assets = null, options = {}) => {
       'Snap rotations',
       () => {
         for (const { entry, snapped } of snapRotations) {
-          if (entry?.props) entry.props.ROTATE = snapped;
+          if (entry?.props && Object.prototype.hasOwnProperty.call(entry.props, 'ROTATE')) {
+            entry.props.ROTATE = snapped;
+          }
         }
       }
     ));

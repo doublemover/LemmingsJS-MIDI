@@ -37,6 +37,9 @@ import {
   saveLevel,
   validateLevel
 } from './EditorUiControllerShared.js';
+import {
+  getClassicExportLossSummary
+} from './editorClassicSubsetContract.js';
 const editorLevelIoUiMethods = {
   _refreshSavedList(selectedId = this._currentSavedId) {
     if (!this.el.savedSelect) return;
@@ -77,6 +80,7 @@ const editorLevelIoUiMethods = {
   async _createNewLevel() {
     if (!this.view) return;
     const token = this._nextAsyncToken();
+    this._clearTransientIssue?.('import');
     this.view.createBlankEditorLevel({ render: false });
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
@@ -207,6 +211,7 @@ const editorLevelIoUiMethods = {
       return;
     }
     if (!this.session?.level) return;
+    const loss = getClassicExportLossSummary(this.session.level);
     const classic = createClassicLevelData(this.session.level);
     if (!classic?.levelReader) return;
     const writer = new LevelWriter();
@@ -224,13 +229,24 @@ const editorLevelIoUiMethods = {
     const title = this.view.getEditorLevelTitle();
     const filename = `${sanitizeFileName(title)}.lvl`;
     downloadBinaryFile(this.document, bytes, filename);
+    this._updateStatus(loss.hasLoss ? `Export LVL lossy: ${loss.summary}` : 'Export LVL');
   },
 
   _loadLevelFromText(text, options = {}) {
     if (!this.view) return;
     const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
-    const level = this.view.loadEditorLevelFromText(text, { render: false });
-    if (!level) return;
+    let level = null;
+    try {
+      level = this.view.loadEditorLevelFromText(text, { render: false });
+    } catch (error) {
+      this._reportImportFailure?.('NXLV', error);
+      return;
+    }
+    if (!level) {
+      this._reportImportFailure?.('NXLV', 'No level data was loaded.');
+      return;
+    }
+    this._clearTransientIssue?.('import');
     this.session = this.view.editorSession;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
@@ -252,8 +268,18 @@ const editorLevelIoUiMethods = {
     if (!this.view) return;
     const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
     const session = this.view.ensureEditorSession?.() || this.session;
-    const editorLevel = createEditorLevelFromClassic(levelReader);
-    if (!editorLevel) return;
+    let editorLevel = null;
+    try {
+      editorLevel = createEditorLevelFromClassic(levelReader);
+    } catch (error) {
+      this._reportImportFailure?.('LVL', error);
+      return;
+    }
+    if (!editorLevel) {
+      this._reportImportFailure?.('LVL', 'No classic level data was loaded.');
+      return;
+    }
+    this._clearTransientIssue?.('import');
     session.level = editorLevel;
     this.session = session;
     this.controller.session = this.session;

@@ -276,7 +276,7 @@ describe('EditorValidator', () => {
       props: { X: 0, Y: 0, ROTATE: 45, FLIP_HORIZONTAL: true, WIDTH: 4, HEIGHT: 4 }
     });
     level.steel = [
-      { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999, LEMMINGS: 5 } }
+      { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999, LEMMINGS: 5, PIECE: 1 } }
     ];
 
     const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
@@ -287,8 +287,9 @@ describe('EditorValidator', () => {
     expect(issues.some(issue => issue.message.includes('Spawn interval is out of range'))).to.equal(true);
     expect(issues.some(issue => issue.message.includes('Time limit exceeds classic max'))).to.equal(true);
     const gadgetPropsIssue = issues.find(issue => issue.message.includes('Gadget-only properties'));
-    const terrainUnsupportedIssue = issues.find(issue => issue.message.includes('Terrain entries include unsupported classic properties'));
-    const gadgetUnsupportedIssue = issues.find(issue => issue.message.includes('Gadget entries include unsupported classic properties'));
+    const terrainUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_terrain_props');
+    const gadgetUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_gadget_props');
+    const steelUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_steel_props');
     const oversizeIssue = issues.find(issue => issue.message.includes('Steel sizes exceed the level bounds'));
     const widthIssue = issues.find(issue => issue.message.includes('Width exceeds classic preview max'));
     const heightIssue = issues.find(issue => issue.message.includes('Height exceeds classic preview max'));
@@ -299,6 +300,11 @@ describe('EditorValidator', () => {
     expect(gadgetPropsIssue).to.exist;
     expect(terrainUnsupportedIssue).to.exist;
     expect(gadgetUnsupportedIssue).to.exist;
+    expect(steelUnsupportedIssue).to.exist;
+    expect(terrainUnsupportedIssue.destructive).to.equal(true);
+    expect(terrainUnsupportedIssue.props).to.include.members(['FLIP_HORIZONTAL', 'HEIGHT', 'ONE_WAY', 'ROTATE', 'SKILL', 'WIDTH']);
+    expect(gadgetUnsupportedIssue.props).to.include.members(['FLIP_HORIZONTAL', 'HEIGHT', 'ROTATE', 'WIDTH']);
+    expect(steelUnsupportedIssue.props).to.include('PIECE');
     expect(oversizeIssue).to.exist;
     expect(widthIssue).to.exist;
     expect(heightIssue).to.exist;
@@ -310,6 +316,7 @@ describe('EditorValidator', () => {
     gadgetPropsIssue.fix();
     terrainUnsupportedIssue.fix();
     gadgetUnsupportedIssue.fix();
+    steelUnsupportedIssue.fix();
     oversizeIssue.fix();
     widthIssue.fix();
     heightIssue.fix();
@@ -319,9 +326,41 @@ describe('EditorValidator', () => {
     timeLimitIssue.fix();
     expect(level.terrains[0].props).to.not.have.property('SKILL');
     expect(level.terrains[0].props).to.not.have.property('ROTATE');
-    expect(level.terrains[0].props.ONE_WAY).to.equal(true);
+    expect(level.terrains[0].props).to.not.have.property('ONE_WAY');
     expect(level.gadgets[0].props).to.not.have.property('ROTATE');
     expect(level.steel[0].props).to.not.have.property('LEMMINGS');
+    expect(level.steel[0].props).to.not.have.property('PIECE');
+  });
+
+  it('warns and fixes destructive classic export caps', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.gadgets = Array.from({ length: 33 }, (_, index) => ({ props: { PIECE: index, X: index, Y: 0 } }));
+    level.terrains = Array.from({ length: 401 }, (_, index) => ({ props: { PIECE: index, X: index, Y: 0 } }));
+    level.steel = Array.from({ length: 33 }, (_, index) => ({
+      props: { X: index, Y: 0, WIDTH: 4, HEIGHT: 4 }
+    }));
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const titleIssue = issues.find(issue => issue.code === 'classic_title_length');
+    const objectIssue = issues.find(issue => issue.code === 'classic_object_count');
+    const terrainIssue = issues.find(issue => issue.code === 'classic_terrain_count');
+    const steelIssue = issues.find(issue => issue.code === 'classic_steel_count');
+
+    expect(titleIssue).to.include({ destructive: true, target: 'header.TITLE', max: 32 });
+    expect(objectIssue).to.include({ destructive: true, target: 'gadgets', max: 32 });
+    expect(terrainIssue).to.include({ destructive: true, target: 'terrains', max: 400 });
+    expect(steelIssue).to.include({ destructive: true, target: 'steel', max: 32 });
+
+    titleIssue.fix();
+    objectIssue.fix();
+    terrainIssue.fix();
+    steelIssue.fix();
+
+    expect(level.getHeader('TITLE')).to.have.length(32);
+    expect(level.gadgets).to.have.length(32);
+    expect(level.terrains).to.have.length(400);
+    expect(level.steel).to.have.length(32);
   });
 
   it('clamps negative time limits and invalid start positions', () => {

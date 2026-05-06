@@ -10,6 +10,15 @@ import {
   readTextFile
 } from './EditorUiControllerShared.js';
 
+const reportImportFailure = (ui, kind, error) => {
+  console.error(`${kind} import failed`, error);
+  if (typeof ui?._reportImportFailure === 'function') {
+    ui._reportImportFailure(kind, error);
+  } else {
+    ui?._updateStatus?.(`${kind} import failed`);
+  }
+};
+
 const editorUiBindingControlMethods = {
   _bindHeaderFields() {
     /** @type {Array<[string, string, (value: any) => any]>} */
@@ -169,11 +178,12 @@ const editorUiBindingControlMethods = {
         const token = this._nextAsyncToken();
         try {
           const text = await readTextFile(file);
-          if (!text || !this._isAsyncCurrent(token)) return;
+          if (!text) throw new Error('Level file is empty.');
+          if (!this._isAsyncCurrent(token)) return;
           this._currentSavedId = '';
           this._loadLevelFromText(text, { resetSaved: true, token });
         } catch (error) {
-          console.error('Failed to read level file.', error);
+          reportImportFailure(this, 'NXLV', error);
         } finally {
           event.target.value = '';
         }
@@ -190,13 +200,14 @@ const editorUiBindingControlMethods = {
         const token = this._nextAsyncToken();
         try {
           const buffer = await readArrayBufferFile(file);
-          if (!buffer || !this._isAsyncCurrent(token)) return;
+          if (!buffer || buffer.byteLength === 0) throw new Error('Classic level file is empty.');
+          if (!this._isAsyncCurrent(token)) return;
           const binary = new BinaryReader(buffer, 0, undefined, file.name);
           const levelReader = new LevelReader(binary);
           this._currentSavedId = '';
           this._loadLevelFromClassic(levelReader, { resetSaved: true, token });
         } catch (error) {
-          console.error('Failed to read classic level file.', error);
+          reportImportFailure(this, 'LVL', error);
         } finally {
           event.target.value = '';
         }

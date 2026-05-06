@@ -6,7 +6,14 @@ import { GroundRenderer } from '../render/GroundRenderer.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { DrawProperties } from '../render/DrawProperties.js';
 import { SkillTypes } from '../game/SkillTypes.js';
-import { DEFAULT_LEVEL_WIDTH, DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
+import {
+  DEFAULT_LEVEL_WIDTH,
+  DEFAULT_LEVEL_HEIGHT,
+  LEVEL_OBJECT_COUNT,
+  LEVEL_TERRAIN_COUNT,
+  LEVEL_STEEL_COUNT,
+  LEVEL_NAME_LENGTH
+} from '../level/ClassicLevelConstants.js';
 import { MIDI_FLAG_TRIGGER_MAX, clampMidiFlagId, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import {
   getDefaultStyle,
@@ -95,6 +102,95 @@ const createSteelRanges = (entries) => {
     .filter(Boolean);
 };
 
+const createExportWarning = (code, message, details = {}) => {
+  return {
+    severity: 'warning',
+    code,
+    exportFormat: 'classicLvl',
+    destructive: true,
+    message,
+    ...details
+  };
+};
+
+const capClassicList = (entries, max, codeTarget, label, warnings) => {
+  const list = Array.isArray(entries) ? entries : [];
+  if (list.length <= max) return list;
+  warnings.push(createExportWarning(
+    `classic_${codeTarget}_count`,
+    `Classic .lvl export stores ${max} ${label}; ${list.length - max} will be omitted.`,
+    {
+      target: codeTarget,
+      count: list.length,
+      max
+    }
+  ));
+  return list.slice(0, max);
+};
+
+const collectUnsupportedClassicProps = (entries, allowedProps) => {
+  const keys = new Set();
+  if (!Array.isArray(entries)) return [];
+  for (const entry of entries) {
+    const props = entry?.props;
+    if (!props) continue;
+    for (const key of Object.keys(props)) {
+      if (!allowedProps.has(key)) keys.add(key);
+    }
+  }
+  return Array.from(keys).sort();
+};
+
+const countPreservedNxlvMetadata = (editorLevel) => {
+  if (!editorLevel) return 0;
+  let count = 0;
+  if (Array.isArray(editorLevel.unknownLines)) count += editorLevel.unknownLines.length;
+  if (Array.isArray(editorLevel.unknownSections)) count += editorLevel.unknownSections.length;
+  if (Array.isArray(editorLevel.skillsetUnknownLines)) count += editorLevel.skillsetUnknownLines.length;
+  const addEntryUnknownLines = (entries) => {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (Array.isArray(entry?.unknownLines)) count += entry.unknownLines.length;
+    }
+  };
+  addEntryUnknownLines(editorLevel.terrains);
+  addEntryUnknownLines(editorLevel.gadgets);
+  addEntryUnknownLines(editorLevel.steel);
+  if (Array.isArray(editorLevel.terrainGroups)) {
+    for (const group of editorLevel.terrainGroups) {
+      if (Array.isArray(group?.unknownLines)) count += group.unknownLines.length;
+      addEntryUnknownLines(group?.terrains);
+    }
+  }
+  return count;
+};
+
+const TERRAIN_CLASSIC_PROPS = new Set([
+  'STYLE',
+  'PIECE',
+  'X',
+  'Y',
+  'FLIP_VERTICAL',
+  'NO_OVERWRITE',
+  'ERASE'
+]);
+
+const GADGET_CLASSIC_PROPS = new Set([
+  'STYLE',
+  'PIECE',
+  'X',
+  'Y',
+  'FLIP_VERTICAL',
+  'NO_OVERWRITE'
+]);
+
+const STEEL_CLASSIC_PROPS = new Set([
+  'X',
+  'Y',
+  'WIDTH',
+  'HEIGHT'
+]);
+
 /**
  * Convert editor gadget props tagged with MIDI flag metadata into runtime
  * trigger descriptors consumed by GameView.
@@ -179,19 +275,96 @@ const buildSkills = (skillset) => {
 
 const createClassicLevelData = (editorLevel, options = {}) => {
   if (!editorLevel) return null;
+  const warnings = [];
   const styleName = resolveStyleName(editorLevel, options);
   const groundSet = resolveGroundSet(styleName);
   const width = coerceNumber(editorLevel.getHeader('WIDTH'), DEFAULT_LEVEL_WIDTH);
   const height = coerceNumber(editorLevel.getHeader('HEIGHT'), DEFAULT_LEVEL_HEIGHT);
-  const title = editorLevel.getHeader('TITLE') || 'Untitled';
+  const rawTitle = String(editorLevel.getHeader('TITLE') || 'Untitled');
+  const title = rawTitle.length > LEVEL_NAME_LENGTH
+    ? rawTitle.slice(0, LEVEL_NAME_LENGTH)
+    : rawTitle;
   const releaseCount = coerceNumber(editorLevel.getHeader('LEMMINGS'), 0);
   const needCount = coerceNumber(editorLevel.getHeader('SAVE_REQUIREMENT'), 0);
   const releaseRate = coerceNumber(editorLevel.getHeader('MAX_SPAWN_INTERVAL'), DEFAULT_RELEASE_RATE);
   const timeLimit = resolveTimeLimit(editorLevel.getHeader('TIME_LIMIT'));
   const startX = coerceNumber(editorLevel.getHeader('START_X'), 0);
+  const terrainUnsupported = collectUnsupportedClassicProps(editorLevel.terrains, TERRAIN_CLASSIC_PROPS);
+  const gadgetUnsupported = collectUnsupportedClassicProps(editorLevel.gadgets, GADGET_CLASSIC_PROPS);
+  const steelUnsupported = collectUnsupportedClassicProps(editorLevel.steel, STEEL_CLASSIC_PROPS);
+  const preservedMetadataCount = countPreservedNxlvMetadata(editorLevel);
+
+  if (rawTitle.length > LEVEL_NAME_LENGTH) {
+    warnings.push(createExportWarning(
+      'classic_title_length',
+      `Classic .lvl export stores ${LEVEL_NAME_LENGTH} title characters; ${rawTitle.length - LEVEL_NAME_LENGTH} will be omitted.`,
+      {
+        target: 'header.TITLE',
+        count: rawTitle.length,
+        max: LEVEL_NAME_LENGTH
+      }
+    ));
+  }
+
+  if (Array.isArray(editorLevel.terrainGroups) && editorLevel.terrainGroups.length) {
+    warnings.push(createExportWarning(
+      'classic_terrain_groups',
+      'Terrain groups are not exported to classic .lvl.',
+      {
+        target: 'terrainGroups',
+        count: editorLevel.terrainGroups.length,
+        max: 0
+      }
+    ));
+  }
+
+  if (preservedMetadataCount) {
+    warnings.push(createExportWarning(
+      'classic_preserved_nxlv_metadata',
+      'Comments and unknown NXLV sections are preserved for NXLV but are not exported to classic .lvl.',
+      {
+        target: 'nxlvMetadata',
+        count: preservedMetadataCount,
+        max: 0
+      }
+    ));
+  }
+
+  if (terrainUnsupported.length) {
+    warnings.push(createExportWarning(
+      'classic_unsupported_terrain_props',
+      `Terrain entries include properties classic .lvl cannot export (${terrainUnsupported.join(', ')}).`,
+      {
+        target: 'terrains',
+        props: terrainUnsupported
+      }
+    ));
+  }
+
+  if (gadgetUnsupported.length) {
+    warnings.push(createExportWarning(
+      'classic_unsupported_gadget_props',
+      `Gadget entries include properties classic .lvl cannot export (${gadgetUnsupported.join(', ')}).`,
+      {
+        target: 'gadgets',
+        props: gadgetUnsupported
+      }
+    ));
+  }
+
+  if (steelUnsupported.length) {
+    warnings.push(createExportWarning(
+      'classic_unsupported_steel_props',
+      `Steel entries include properties classic .lvl cannot export (${steelUnsupported.join(', ')}).`,
+      {
+        target: 'steel',
+        props: steelUnsupported
+      }
+    ));
+  }
 
   const levelProperties = {
-    levelName: String(title),
+    levelName: title,
     releaseRate,
     releaseCount,
     needCount,
@@ -199,11 +372,30 @@ const createClassicLevelData = (editorLevel, options = {}) => {
     skills: buildSkills(editorLevel.skillset)
   };
 
-  const terrains = createLevelElements(editorLevel.terrains, styleName, resolveTerrainId);
-  const objects = createLevelElements(editorLevel.gadgets, styleName, resolveGadgetId);
-  const steelRanges = Array.isArray(options.steelRanges)
+  const terrains = capClassicList(
+    createLevelElements(editorLevel.terrains, styleName, resolveTerrainId),
+    LEVEL_TERRAIN_COUNT,
+    'terrains',
+    'terrain pieces',
+    warnings
+  );
+  const objects = capClassicList(
+    createLevelElements(editorLevel.gadgets, styleName, resolveGadgetId),
+    LEVEL_OBJECT_COUNT,
+    'gadgets',
+    'gadgets',
+    warnings
+  );
+  const rawSteelRanges = Array.isArray(options.steelRanges)
     ? options.steelRanges
     : createSteelRanges(editorLevel.steel);
+  const steelRanges = capClassicList(
+    rawSteelRanges,
+    LEVEL_STEEL_COUNT,
+    'steel',
+    'steel rectangles',
+    warnings
+  );
 
   return {
     levelReader: {
@@ -219,7 +411,12 @@ const createClassicLevelData = (editorLevel, options = {}) => {
       steel: steelRanges
     },
     styleName,
-    groundSet
+    groundSet,
+    warnings,
+    metadata: {
+      format: 'classicLvl',
+      lossy: warnings.length > 0
+    }
   };
 };
 

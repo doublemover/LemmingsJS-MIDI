@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 
@@ -26,6 +27,98 @@ const applyEditorOps = (page, ops, options = {}) => page.evaluate(
   ({ ops, options }) => window.__E2E__.editorApply(ops, options),
   { ops, options }
 );
+
+const sortByJson = (items) => [...items].sort((a, b) => JSON.stringify(a).localeCompare(JSON.stringify(b)));
+const propNumber = (value) => {
+  if (Number.isFinite(value)) return value;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+};
+const propBoolean = (value) => (
+  value === true || value === 1 || value === 'true' || value === '1'
+);
+
+const getEditorAssetIds = (page) => page.evaluate(() => {
+  const assets = window.__E2E__.getState().editor.assets;
+  return {
+    terrainId: assets.terrain[0]?.id,
+    triggerId: assets.triggers[0]?.id,
+    entranceId: assets.entranceId,
+    exitId: assets.exitId
+  };
+});
+
+const semanticSummary = (level) => ({
+  header: {
+    TITLE: level.header?.TITLE || '',
+    STYLE: level.header?.STYLE || '',
+    LEMMINGS: propNumber(level.header?.LEMMINGS),
+    SAVE_REQUIREMENT: propNumber(level.header?.SAVE_REQUIREMENT),
+    WIDTH: propNumber(level.header?.WIDTH),
+    HEIGHT: propNumber(level.header?.HEIGHT)
+  },
+  terrains: sortByJson((level.terrains || []).map(entry => ({
+    PIECE: propNumber(entry.props?.PIECE),
+    X: propNumber(entry.props?.X),
+    Y: propNumber(entry.props?.Y),
+    ONE_WAY: propBoolean(entry.props?.ONE_WAY)
+  }))),
+  gadgets: sortByJson((level.gadgets || []).map(entry => ({
+    PIECE: propNumber(entry.props?.PIECE),
+    X: propNumber(entry.props?.X),
+    Y: propNumber(entry.props?.Y),
+    MIDI_FLAG: propBoolean(entry.props?.MIDI_FLAG),
+    MIDI_FLAG_ID: propNumber(entry.props?.MIDI_FLAG_ID),
+    MIDI_FLAG_COOLDOWN: propNumber(entry.props?.MIDI_FLAG_COOLDOWN)
+  }))),
+  steel: sortByJson((level.steel || []).map(entry => ({
+    X: propNumber(entry.props?.X),
+    Y: propNumber(entry.props?.Y),
+    WIDTH: propNumber(entry.props?.WIDTH),
+    HEIGHT: propNumber(entry.props?.HEIGHT)
+  })))
+});
+
+const buildWarningImportText = ({ terrainId, entranceId, exitId }) => [
+  '# E2E warning import keeps unsupported NeoLemmix data visible.',
+  'TITLE E2E Warning Import',
+  'STYLE dirt',
+  'WIDTH 640',
+  'HEIGHT 192',
+  'LEMMINGS 8',
+  'SAVE_REQUIREMENT 5',
+  '$TERRAINGROUP',
+  '  STEEL true',
+  '  $TERRAIN',
+  `    PIECE ${terrainId}`,
+  '    X 64',
+  '    Y 112',
+  '    ROTATE 45',
+  '    WIDTH 32',
+  '  $END',
+  '$END',
+  '$TERRAIN',
+  `  PIECE ${terrainId}`,
+  '  X 120',
+  '  Y 128',
+  '  ROTATE 45',
+  '  FLIP_HORIZONTAL true',
+  '$END',
+  '$GADGET',
+  `  PIECE ${entranceId}`,
+  '  X 32',
+  '  Y 80',
+  '$END',
+  '$GADGET',
+  `  PIECE ${exitId}`,
+  '  X 560',
+  '  Y 80',
+  '$END',
+  '$TALISMAN',
+  '  TITLE Preserved Unsupported Data',
+  '$END',
+  ''
+].join('\n');
 
 test('Editor UI loads and tool selection updates state', async ({ page }) => {
   await expect(page.locator('#editorCanvas')).toBeVisible();
@@ -152,6 +245,127 @@ test('Validation panel renders and applies fix buttons', async ({ page }) => {
   const header = await page.evaluate(() => window.__E2E__.getState().editor.session.level.header);
   expect(header.SAVE_REQUIREMENT).toBe(5);
   expect(header.LEMMINGS).toBe(5);
+});
+
+test('Unsupported NeoLemmix data imports with visible warnings and preserved export text', async ({ page }) => {
+  const ids = await getEditorAssetIds(page);
+  expect(Number.isFinite(ids.terrainId)).toBe(true);
+  expect(Number.isFinite(ids.entranceId)).toBe(true);
+  expect(Number.isFinite(ids.exitId)).toBe(true);
+
+  await page.setInputFiles('#editorSavedImportInput', {
+    name: 'warning-import.nxlv',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(buildWarningImportText(ids), 'utf-8')
+  });
+
+  const warningList = page.locator('#editorIssuesList');
+  await expect(warningList.locator('.issue-item[data-severity="warning"]', {
+    hasText: 'Terrain groups are not exported to classic .lvl'
+  })).toBeVisible();
+  await expect(warningList.locator('.issue-item[data-severity="warning"]', {
+    hasText: 'Terrain entries include properties classic .lvl cannot export'
+  })).toBeVisible();
+  await expect(warningList.locator('.issue-item[data-severity="warning"]', {
+    hasText: 'Classic LVL export is lossy'
+  })).toBeVisible();
+
+  const state = await page.evaluate(() => window.__E2E__.getState().editor);
+  expect(state.validation.hasErrors).toBe(false);
+  expect(state.session.level.terrainGroups).toHaveLength(1);
+  expect(state.session.level.unknownSections.some(section => section.name === 'TALISMAN')).toBe(true);
+
+  const exported = await page.evaluate(() => window.__E2E__.getEditorLevelText());
+  expect(exported).toContain('$TERRAINGROUP');
+  expect(exported).toContain('$TALISMAN');
+  expect(exported).toContain('ROTATE 45');
+});
+
+test('Empty editor import reports a visible failure without replacing the current level', async ({ page }) => {
+  const titleBefore = await page.evaluate(() => window.__E2E__.getState().editor.session.level.header.TITLE);
+
+  await page.setInputFiles('#editorSavedImportInput', {
+    name: 'empty-import.nxlv',
+    mimeType: 'text/plain',
+    buffer: Buffer.from('', 'utf-8')
+  });
+
+  await expect(page.locator('#editorStatus')).toContainText('NXLV import failed');
+  await expect(page.locator('#editorIssuesList .issue-item[data-severity="error"]', {
+    hasText: 'NXLV import failed: Level file is empty.'
+  })).toBeVisible();
+  const titleAfter = await page.evaluate(() => window.__E2E__.getState().editor.session.level.header.TITLE);
+  expect(titleAfter).toBe(titleBefore);
+});
+
+test('UI export and import accepts the same semantic editor state', async ({ page }) => {
+  const ids = await getEditorAssetIds(page);
+  expect(Number.isFinite(ids.terrainId)).toBe(true);
+  expect(Number.isFinite(ids.triggerId)).toBe(true);
+  expect(Number.isFinite(ids.entranceId)).toBe(true);
+  expect(Number.isFinite(ids.exitId)).toBe(true);
+
+  await applyEditorOps(page, [
+    {
+      type: 'level.new',
+      args: {
+        header: {
+          TITLE: 'E2E UI Semantic Roundtrip',
+          STYLE: 'dirt',
+          WIDTH: 640,
+          HEIGHT: 192,
+          LEMMINGS: 10,
+          SAVE_REQUIREMENT: 6,
+          TIME_LIMIT: 'INFINITE',
+          MAX_SPAWN_INTERVAL: 50
+        },
+        resetHistory: true
+      }
+    },
+    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: ids.terrainId, X: 64, Y: 120 } } },
+    { type: 'entry.update', args: { ref: { kind: 'terrain', index: 0 }, set: { ONE_WAY: true } } },
+    { type: 'entry.add', args: { kind: 'steel', props: { X: 72, Y: 136, WIDTH: 48, HEIGHT: 12 } } },
+    { type: 'entry.add', args: { kind: 'gadget', props: { PIECE: ids.entranceId, X: 32, Y: 88 } } },
+    { type: 'entry.add', args: { kind: 'gadget', props: { PIECE: ids.exitId, X: 560, Y: 88 } } },
+    { type: 'entry.add', args: { kind: 'gadget', props: { PIECE: ids.triggerId, X: 196, Y: 104 } } },
+    {
+      type: 'entry.update',
+      args: {
+        ref: { kind: 'gadget', index: 2 },
+        set: { MIDI_FLAG: true, MIDI_FLAG_ID: 9, MIDI_FLAG_COOLDOWN: 3 }
+      }
+    }
+  ], {
+    history: { record: false },
+    preview: { refresh: true, preserveViewport: true },
+    validate: { run: true },
+    returnState: 'full'
+  });
+
+  await page.waitForFunction(() => window.__E2E__.getState().editor.validation.hasErrors === false);
+  const beforeLevel = await page.evaluate(() => window.__E2E__.getState().editor.session.level);
+  const before = semanticSummary(beforeLevel);
+
+  const [download] = await Promise.all([
+    page.waitForEvent('download'),
+    page.click('#editorSavedExport')
+  ]);
+  const downloadPath = await download.path();
+  const exportedText = await fs.readFile(downloadPath, 'utf-8');
+  expect(exportedText).toContain('E2E UI Semantic Roundtrip');
+  expect(exportedText).toContain('MIDI_FLAG true');
+
+  await page.setInputFiles('#editorSavedImportInput', {
+    name: 'semantic-roundtrip.nxlv',
+    mimeType: 'text/plain',
+    buffer: Buffer.from(exportedText, 'utf-8')
+  });
+  await page.waitForFunction(() => (
+    window.__E2E__.getState().editor.session.level.header.TITLE === 'E2E UI Semantic Roundtrip'
+  ));
+
+  const afterLevel = await page.evaluate(() => window.__E2E__.getState().editor.session.level);
+  expect(semanticSummary(afterLevel)).toEqual(before);
 });
 
 test('Selection inspector toggles terrain one-way flags', async ({ page }) => {

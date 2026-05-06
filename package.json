@@ -30,7 +30,7 @@
     "test-editor": "node scripts/runTests.js editor",
     "test:changed": "node scripts/runTests.js --changed",
     "test-e2e": "playwright test",
-    "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor.spec.js",
+    "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor-mode.spec.js e2e/harness.editor-saved.spec.js e2e/harness.editor.01-editor-harness-exposes-state-and-history.spec.js e2e/harness.editor.02-editor-pack-switch-refreshes-palettes-and-placem.spec.js e2e/harness.editor.03-editor-eraser-removes-terrain-entries.spec.js e2e/harness.editor.04-editor-entrance-and-exit-tools-enforce-classic-l.spec.js e2e/harness.editor.05-editor-roundtrip-workflow.spec.js e2e/harness.editor.06-editor-playtest-runtime-workflow.spec.js",
     "test-e2e:ui": "playwright test --ui",
     "test-e2e:install": "playwright install chromium",
     "capture:e2e:midi": "node scripts/e2e-capture-rects.js --config=e2e/capture-targets/midi.js",

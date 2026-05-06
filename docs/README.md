@@ -39,6 +39,8 @@ The level editor docs are canonical for the current classic-subset editor unless
 the file explicitly says it is backlog:
 
 - [`level-editor/workflows.md`](level-editor/workflows.md)
+- [`level-editor/audit.md`](level-editor/audit.md)
+- [`level-editor/classic-subset-contract.md`](level-editor/classic-subset-contract.md)
 - [`level-editor/design-overview.md`](level-editor/design-overview.md)
 - [`level-editor/data-model.md`](level-editor/data-model.md)
 - [`level-editor/ui-and-tools.md`](level-editor/ui-and-tools.md)

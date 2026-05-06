@@ -162,7 +162,7 @@ class EditorUiController {
       return;
     }
     if (entries.length > 1) {
-      this._setSelectionFields({ multi: true, count: entries.length });
+      this._setSelectionFields({ multi: true, count: entries.length, entries });
       this._updateSelectionStatus();
       return;
     }
