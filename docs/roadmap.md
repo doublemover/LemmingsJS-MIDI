@@ -22,18 +22,17 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 ## Sequencing
 
-1. MIDI configuration UI excellence.
+1. MIDI sequencer workspace polish.
 2. Level editor audit and productization.
 3. Procedural generation productization.
 4. Solver and solvability platform.
 
 ## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
-**Outcome:** The MIDI surface evolves from a configuration panel into a
-fully-featured, DAW-like multichannel MIDI sequencer for gameplay events. It
-should let users design, route, audition, sequence, automate, and perform MIDI
-responses with the polish expected from music software, while remaining
-deterministic and testable without real hardware.
+**Outcome:** The MIDI surface is a DAW-like multichannel sequencer for gameplay
+events. It should let users design, route, audition, sequence, automate, and
+perform MIDI responses with the polish expected from music software, while
+remaining deterministic and testable without real hardware.
 
 Current status: the project-based sequencer, source browser filters, track/clip
 editing, learn/record flows, modulation lanes, template import/export, legacy
