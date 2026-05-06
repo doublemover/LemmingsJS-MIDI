@@ -1058,6 +1058,7 @@ function detectMidiProjectConflicts(project = {}, options = {}) {
   const rawTracks = cloneArray(raw.tracks);
   const rawSources = cloneArray(raw.sources);
   const rawClips = cloneArray(raw.clips);
+  const rawAutomation = cloneArray(raw.automation);
   const issues = [];
   const tracksById = new Map(clean.tracks.map(track => [track.id, track]));
   const clipsById = new Map(clean.clips.map(clip => [clip.id, clip]));
@@ -1114,6 +1115,21 @@ function detectMidiProjectConflicts(project = {}, options = {}) {
         message: `Track output ${track.outputId} is not available.`
       });
     }
+  });
+
+  rawAutomation.forEach((automation, index) => {
+    if (!isPlainObject(automation) || automation.scope !== 'track' || automation.trackId == null) return;
+    const rawTrackId = String(automation.trackId);
+    if (trackIds.has(rawTrackId)) return;
+    const cleanLane = clean.automation[index] || null;
+    issues.push({
+      severity: 'warning',
+      code: 'missing_automation_track',
+      automationId: cleanLane?.id ?? sanitizeId(automation.id, `automation-${index + 1}`),
+      trackId: rawTrackId,
+      path: ['automation', index, 'trackId'],
+      message: `${cleanLane?.name || 'Automation lane'} references missing track ${rawTrackId}.`
+    });
   });
 
   const runtimeSources = new Map();

@@ -448,6 +448,36 @@ describe('MidiProject', function() {
     expect(report.bySourceId.disabled[0]).to.include({ severity: 'info', code: 'disabled_source' });
   });
 
+  it('detects missing track-scoped automation conflicts', function() {
+    const report = detectMidiProjectConflicts({
+      tracks: [
+        { id: 'track-1', name: 'Main', channel: 1 }
+      ],
+      automation: [
+        {
+          id: 'lane-missing',
+          name: 'Missing Track Lane',
+          enabled: true,
+          scope: 'track',
+          trackId: 'ghost-track',
+          target: 'velocity',
+          axis: 'y'
+        }
+      ],
+      sources: []
+    });
+
+    expect(report.ok).to.equal(true);
+    expect(report.summary.warnings).to.equal(1);
+    expect(report.issues[0]).to.include({
+      severity: 'warning',
+      code: 'missing_automation_track',
+      automationId: 'lane-missing',
+      trackId: 'ghost-track'
+    });
+    expect(report.issues[0].path).to.deep.equal(['automation', 0, 'trackId']);
+  });
+
   it('detects missing required project output conflicts', function() {
     const report = detectMidiProjectConflicts({
       enabled: true,
