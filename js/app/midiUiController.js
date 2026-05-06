@@ -1400,6 +1400,7 @@ const createMidiUiController = ({
     for (const track of current.tracks) {
       const selected = current.ui.selectedTrackId === track.id;
       const active = activeTrack?.id === track.id;
+      const outputLabel = trackOutputLabel(track);
       const row = document.createElement('button');
       row.type = 'button';
       row.id = listOptionId('track', track.id);
@@ -1409,13 +1410,13 @@ const createMidiUiController = ({
       row.tabIndex = active ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
-      row.setAttribute('aria-label', `${track.name}, channel ${track.channel}, ${track.instrumentLabel}${track.mute ? ', muted' : ''}${track.solo ? ', solo' : ''}`);
+      row.setAttribute('aria-label', `${track.name}, channel ${track.channel}, ${track.instrumentLabel}, ${outputLabel}${track.mute ? ', muted' : ''}${track.solo ? ', solo' : ''}`);
       const label = document.createElement('span');
       label.className = 'midi-track-row__label';
       label.textContent = track.name;
       const meta = document.createElement('span');
       meta.className = 'midi-track-row__meta';
-      meta.textContent = `ch ${track.channel} | ${track.instrumentLabel}${track.mute ? ' | muted' : ''}${track.solo ? ' | solo' : ''}`;
+      meta.textContent = `ch ${track.channel} | ${track.instrumentLabel} | ${outputLabel}${track.mute ? ' | muted' : ''}${track.solo ? ' | solo' : ''}`;
       row.append(label, meta);
       row.addEventListener('click', () => dispatchProjectIntent({ type: 'track.select', trackId: track.id }));
       list.appendChild(row);
@@ -1488,6 +1489,13 @@ const createMidiUiController = ({
       appendOption(document, select, selectedOutputId, `Unavailable: ${selectedOutputId}`);
     }
     select.value = selectedOutputId || '';
+  };
+
+  const trackOutputLabel = (track) => {
+    if (!track?.outputId) return 'Project output';
+    const output = toDeviceList(getWebMidi()?.outputs)
+      .find(device => device?.id === track.outputId);
+    return output?.name || `Unavailable: ${track.outputId}`;
   };
 
   const renderClipOptions = (select, selectedId) => {

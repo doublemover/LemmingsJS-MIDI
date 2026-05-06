@@ -1340,6 +1340,30 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
   });
 
+  it('shows track output labels in track rows', function() {
+    const webMidi = {
+      enabled: true,
+      inputs: [],
+      outputs: [{ id: 'out-1', name: 'Output 1' }]
+    };
+    const { controller, doc } = createControllerHarness({ webMidi });
+    controller.bindMidiUi();
+
+    let row = doc.getElementById('midiTrackList').children[0];
+    expect(row.children[1].textContent).to.contain('Project output');
+    expect(row.getAttribute('aria-label')).to.contain('Project output');
+
+    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'track-1', patch: { outputId: 'out-1' } });
+    row = doc.getElementById('midiTrackList').children[0];
+    expect(row.children[1].textContent).to.contain('Output 1');
+    expect(row.getAttribute('aria-label')).to.contain('Output 1');
+
+    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'track-1', patch: { outputId: 'missing-out' } });
+    row = doc.getElementById('midiTrackList').children[0];
+    expect(row.children[1].textContent).to.contain('Unavailable: missing-out');
+    expect(row.getAttribute('aria-label')).to.contain('Unavailable: missing-out');
+  });
+
   it('shows no-device setup state and clears routed outputs', function() {
     let registeredOutputs = null;
     let allNotesOffCalls = 0;
