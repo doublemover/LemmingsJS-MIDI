@@ -38,6 +38,7 @@ const registerSequencerDom = (doc) => {
     midiSourceList: 'div',
     midiSourceCount: 'span',
     midiTrackAdd: 'button',
+    midiTrackRemove: 'button',
     midiTrackList: 'div',
     midiClipAddButton: 'button',
     midiClipDuplicateButton: 'button',
@@ -1477,6 +1478,53 @@ describe('midiUiController sequencer', function() {
     expect(controller.getProject().ui.selectedClipId).to.equal('riff');
     expect(clipList.getAttribute('aria-activedescendant')).to.equal('midi-clip-option-riff');
     expect(prevented).to.equal(4);
+  });
+
+  it('removes selected tracks and cancels learn capture for that track', function() {
+    const captureCalls = [];
+    const fakeInputController = {
+      setNoteCapture(handler) {
+        captureCalls.push(handler);
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        position: { mappings: [] },
+        sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
+        triggers: {}
+      }
+    });
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    const remove = doc.getElementById('midiTrackRemove');
+    expect(remove.disabled).to.equal(true);
+
+    controller.dispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    controller.dispatchProjectIntent({ type: 'track.add', track: { id: 'drums', name: 'Drums', channel: 10 } });
+    controller.dispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'drums' });
+    controller.dispatchProjectIntent({
+      type: 'automation.add',
+      automation: { id: 'lane-drums', scope: 'track', trackId: 'drums', target: 'velocity', axis: 'y' }
+    });
+    expect(remove.disabled).to.equal(false);
+    expect(controller.startLearn()).to.equal(true);
+    expect(captureCalls.at(-1)).to.be.a('function');
+
+    remove.dispatchEvent({ type: 'click', target: remove });
+
+    const project = controller.getProject();
+    expect(captureCalls.at(-1)).to.equal(null);
+    expect(project.tracks.map(track => track.id)).to.deep.equal(['track-1', 'lead']);
+    expect(project.ui.selectedTrackId).to.equal('lead');
+    expect(project.sources[0].trackId).to.equal('lead');
+    expect(project.automation).to.have.lengthOf(0);
+    expect(doc.getElementById('midiLearnStatus').textContent).to.equal('Learn waits for the next note-on.');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Removed track Drums');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Removed track Drums');
   });
 
   it('keeps a clip listbox option active when no clip is selected', function() {

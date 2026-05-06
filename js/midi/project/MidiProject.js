@@ -769,6 +769,25 @@ const addTrack = (project, track = {}) => {
   };
 };
 
+const removeTrack = (project, trackId) => {
+  const index = project.tracks.findIndex(track => track.id === trackId);
+  if (index < 0 || project.tracks.length <= 1) return project;
+  const tracks = project.tracks.filter(track => track.id !== trackId);
+  const fallbackTrackId = tracks[index]?.id ?? tracks[index - 1]?.id ?? tracks[0].id;
+  const selectedTrackId = project.ui.selectedTrackId === trackId || !tracks.some(track => track.id === project.ui.selectedTrackId)
+    ? fallbackTrackId
+    : project.ui.selectedTrackId;
+  return {
+    ...project,
+    tracks,
+    sources: project.sources.map(source => (
+      source.trackId === trackId ? { ...source, trackId: fallbackTrackId } : source
+    )),
+    automation: project.automation.filter(lane => !(lane.scope === 'track' && lane.trackId === trackId)),
+    ui: { ...project.ui, selectedTrackId, activeRegion: 'tracks' }
+  };
+};
+
 const addClip = (project, clip = {}) => {
   const existing = new Set(project.clips.map(item => item.id));
   const id = uniqueId(sanitizeId(clip.id, `clip-${project.clips.length + 1}`), existing);
@@ -905,6 +924,9 @@ function reduceMidiProject(project, intent = {}) {
     break;
   case 'track.update':
     next = { ...current, tracks: updateById(current.tracks, intent.trackId, updatePatch(intent.patch)) };
+    break;
+  case 'track.remove':
+    next = removeTrack(current, intent.trackId ?? current.ui.selectedTrackId);
     break;
   case 'track.select':
     next = { ...current, ui: { ...current.ui, selectedTrackId: intent.trackId, activeRegion: 'tracks' } };

@@ -1405,6 +1405,8 @@ const createMidiUiController = ({
     const activeTrack = current.tracks.find(track => track.id === current.ui.selectedTrackId) || current.tracks[0] || null;
     const activeOptionId = activeTrack ? listOptionId('track', activeTrack.id) : '';
     configureListbox(list, activeOptionId);
+    const removeButton = document?.getElementById('midiTrackRemove');
+    if (removeButton) removeButton.disabled = !activeTrack || current.tracks.length <= 1;
     for (const track of current.tracks) {
       const selected = current.ui.selectedTrackId === track.id;
       const active = activeTrack?.id === track.id;
@@ -2083,6 +2085,29 @@ const createMidiUiController = ({
     dispatchProjectIntent({ type: 'track.update', trackId: track.id, patch });
   };
 
+  const removeSelectedTrack = () => {
+    const current = ensureProject();
+    const track = selectedTrack();
+    if (!track || current.tracks.length <= 1) return false;
+    if (learnState.trackId === track.id && hasLearnCapture()) {
+      learnState.active = false;
+      learnState.pending = null;
+      learnState.sourceId = null;
+      learnState.trackId = null;
+      learnState.conflicts = [];
+      clearLearnCapture();
+    }
+    if (recordState.trackId === track.id && hasRecordCapture()) {
+      clearRecordCapture();
+      resetRecordState();
+    }
+    dispatchProjectIntent({ type: 'track.remove', trackId: track.id });
+    const message = `Removed track ${track.name}`;
+    setStatus(message);
+    logOutput(message);
+    return true;
+  };
+
   const updateSelectedSource = (patch) => {
     const source = selectedSource();
     if (!source) return;
@@ -2308,6 +2333,7 @@ const createMidiUiController = ({
       handleStepGridNavigation(event, document?.getElementById('midiStepPatternGrid'), stepCount, resolveStepGridColumnCount());
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
+    bindById('midiTrackRemove', 'click', () => removeSelectedTrack());
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));
     bindById('midiClipDuplicateButton', 'click', () => duplicateSelectedClip());
     bindById('midiClipRemoveButton', 'click', () => removeSelectedClip());

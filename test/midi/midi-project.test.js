@@ -254,6 +254,40 @@ describe('MidiProject', function() {
     expect(noResolvedClip.sources[0].mapping).to.include({ note: 60 });
   });
 
+  it('removes tracks while rerouting sources and dropping track automation', function() {
+    let project = createMidiProjectFromMidiConfig({
+      position: { mappings: [] },
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    project = reduceMidiProject(project, { type: 'track.add', track: { id: 'drums', name: 'Drums', channel: 10 } });
+    project = reduceMidiProject(project, { type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'drums' });
+    project = reduceMidiProject(project, {
+      type: 'automation.add',
+      automation: { id: 'lane-drums', scope: 'track', trackId: 'drums', target: 'velocity', axis: 'y' }
+    });
+    project = reduceMidiProject(project, {
+      type: 'automation.add',
+      automation: { id: 'lane-lead', scope: 'track', trackId: 'lead', target: 'pan', axis: 'x' }
+    });
+    project = reduceMidiProject(project, { type: 'track.select', trackId: 'drums' });
+    project = reduceMidiProject(project, { type: 'track.remove', trackId: 'drums' });
+
+    expect(project.tracks.map(track => track.id)).to.deep.equal(['track-1', 'lead']);
+    expect(project.ui.selectedTrackId).to.equal('lead');
+    expect(project.sources[0].trackId).to.equal('lead');
+    expect(project.automation.map(lane => lane.id)).to.deep.equal(['lane-lead']);
+    expect(projectToMidiConfig(project, {}).sfx['1']).to.include({ trackId: 'lead', channel: 3 });
+
+    const afterLastGuard = reduceMidiProject(
+      reduceMidiProject(project, { type: 'track.remove', trackId: 'lead' }),
+      { type: 'track.remove', trackId: 'track-1' }
+    );
+    expect(afterLastGuard.tracks.map(track => track.id)).to.deep.equal(['track-1']);
+    expect(afterLastGuard.sources[0].trackId).to.equal('track-1');
+  });
+
   it('ignores identity fields in reducer update intents', function() {
     let project = createMidiProjectFromMidiConfig({
       sfx: { '1': { name: 'skill-select', note: 60 } },
