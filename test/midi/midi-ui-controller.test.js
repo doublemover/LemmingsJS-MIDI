@@ -1174,6 +1174,32 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiSourceList').children.filter(row => row.classList?.contains('has-conflict'))).to.have.lengthOf(2);
   });
 
+  it('keeps direct source conflict summaries scoped away from the selected clip', function() {
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        sfx: {
+          '1': { name: 'skill-select', note: 60, durationTicks: 4 },
+          '2': { name: 'builder', note: 62, durationTicks: 4 }
+        },
+        triggers: {}
+      }
+    });
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 2 } });
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'silent', name: 'Silent Clip', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-2', trackId: 'lead' });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-2', clipId: 'silent' });
+    controller.dispatchProjectIntent({ type: 'source.select', sourceId: 'sfx-1' });
+    controller.dispatchProjectIntent({ type: 'track.select', trackId: 'track-1' });
+    controller.dispatchProjectIntent({ type: 'clip.select', clipId: 'silent' });
+
+    const summary = doc.getElementById('midiConflictSummary');
+    expect(summary.className).to.contain('is-clean');
+    expect(summary.textContent).to.equal('No conflicts for the selected source.');
+  });
+
   it('filters sources changed from the factory template', function() {
     const { controller, doc } = createControllerHarness({
       factoryConfig: {

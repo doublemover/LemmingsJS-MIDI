@@ -1903,7 +1903,10 @@ const createMidiUiController = ({
     const assignClipButton = document?.getElementById('midiAssignClipButton');
     if (assignClipButton) assignClipButton.disabled = !source || !current.clips.length;
     setInputValue(document?.getElementById('midiSourceModeSelect'), source?.mode || 'direct');
-    renderConflictSummary(report, source, track, source?.mode === 'clip' ? current.clips.find(item => item.id === source.clipId) || clip : clip);
+    const sourceClip = source?.mode === 'clip'
+      ? current.clips.find(item => item.id === source.clipId) || null
+      : null;
+    renderConflictSummary(report, source, track, sourceClip);
     renderLearnPanel();
     const mapping = source?.mapping || createEmptyDirectMapping();
     const directDisabled = source?.mode === 'clip';
