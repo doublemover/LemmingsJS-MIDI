@@ -141,6 +141,33 @@ test('MIDI sequencer lowers direct chord mappings into runtime config', async ({
   await expect(midi.outputLog()).toContainText('Audition');
 });
 
+test('MIDI sequencer routes multiple sources to separate track channels', async ({ page }) => {
+  await openMidiUi(page);
+
+  const state = await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'melody', name: 'Melody', channel: 2 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'track.add', track: { id: 'drums', name: 'Drums', channel: 10 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'melody' });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'source.assignTrack', sourceId: 'sfx-2', trackId: 'drums' });
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'source.mapping.update',
+      sourceId: 'sfx-2',
+      patch: { note: 36, velocity: 110 }
+    });
+    return {
+      project: window.__E2E__.midiGetProject(),
+      runtime: window.__E2E__.midiGetRuntimeConfig()
+    };
+  });
+
+  expect(state.project.sources.find(source => source.id === 'sfx-1')).toMatchObject({ trackId: 'melody' });
+  expect(state.project.sources.find(source => source.id === 'sfx-2')).toMatchObject({ trackId: 'drums' });
+  expect(state.runtime.sfx['1']).toMatchObject({ trackId: 'melody', channel: 2 });
+  expect(state.runtime.sfx['2']).toMatchObject({ trackId: 'drums', channel: 10, note: 36, velocity: 110 });
+  await expect(page.locator('#midiTrackList')).toContainText('Melody');
+  await expect(page.locator('#midiTrackList')).toContainText('Drums');
+});
+
 test('MIDI sequencer panic button logs feedback', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
