@@ -692,6 +692,34 @@ describe('midiUiController sequencer', function() {
     expect(captureCalls.at(-1)).to.equal(null);
   });
 
+  it('surfaces learn conflict warnings without blocking confirmation', function() {
+    const fakeInputController = {
+      handler: null,
+      setNoteCapture(handler) {
+        this.handler = handler;
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc, win } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+
+    controller.dispatchProjectIntent({
+      type: 'global.update',
+      patch: { noteRange: { min: 60, max: 70 } }
+    });
+
+    expect(controller.startLearn()).to.equal(true);
+    expect(fakeInputController.handler(82, 101, 5)).to.equal(true);
+    expect(doc.getElementById('midiLearnStatus').textContent).to.contain('Pending note 82');
+    expect(doc.getElementById('midiLearnStatus').textContent).to.contain('1 warning');
+
+    expect(controller.confirmLearn()).to.equal(true);
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(stored.sources[0].mapping).to.include({ note: 82, velocity: 101 });
+  });
+
   it('cancels learn capture and clears it on dispose', function() {
     const captureCalls = [];
     const fakeInputController = {
