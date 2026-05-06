@@ -803,6 +803,24 @@ const updateAutomationPoint = (automation, automationId, pointIndex, patch) => a
   return { ...lane, points };
 });
 
+const updateAutomationLane = (automation, automationId, patch, tracks) => {
+  const trackIds = new Set(tracks.map(track => track.id));
+  return automation.map(lane => {
+    if (lane.id !== automationId) return lane;
+    const cleanPatch = cloneObject(patch);
+    if (cleanPatch.trackId != null) {
+      const trackId = String(cleanPatch.trackId);
+      if (trackIds.has(trackId)) {
+        cleanPatch.trackId = trackId;
+      } else {
+        delete cleanPatch.trackId;
+      }
+    }
+    if (cleanPatch.scope === 'global') cleanPatch.trackId = null;
+    return { ...lane, ...cleanPatch };
+  });
+};
+
 function reduceMidiProject(project, intent = {}) {
   const current = sanitizeMidiProject(project);
   let next = current;
@@ -882,7 +900,7 @@ function reduceMidiProject(project, intent = {}) {
     next = addAutomation(current, intent.automation);
     break;
   case 'automation.update':
-    next = { ...current, automation: updateById(current.automation, intent.automationId, intent.patch) };
+    next = { ...current, automation: updateAutomationLane(current.automation, intent.automationId, intent.patch, current.tracks) };
     break;
   case 'automation.point.update':
     next = { ...current, automation: updateAutomationPoint(current.automation, intent.automationId, intent.pointIndex, intent.patch) };

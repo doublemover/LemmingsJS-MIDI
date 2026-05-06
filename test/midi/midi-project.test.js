@@ -365,6 +365,28 @@ describe('MidiProject', function() {
     expect(config.position.mappings.some(mapping => mapping.target === 'timbre')).to.equal(false);
   });
 
+  it('ignores automation track assignment updates for missing tracks', function() {
+    let project = createMidiProjectFromMidiConfig({
+      enabled: true,
+      position: { mappings: [] },
+      sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    project = reduceMidiProject(project, {
+      type: 'automation.add',
+      automation: { id: 'lane-lead', scope: 'track', trackId: 'lead', target: 'velocity', axis: 'y' }
+    });
+    project = reduceMidiProject(project, {
+      type: 'automation.update',
+      automationId: 'lane-lead',
+      patch: { trackId: 'ghost-track' }
+    });
+
+    expect(project.automation[0]).to.include({ scope: 'track', trackId: 'lead' });
+    expect(detectMidiProjectConflicts(project).issues.map(issue => issue.code)).to.not.include('missing_automation_track');
+  });
+
   it('exports, imports, and templates sanitized MIDI projects', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,
