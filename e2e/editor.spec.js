@@ -192,3 +192,21 @@ test('Canvas interaction clears focused editor inputs', async ({ page }) => {
   await page.locator('#editorCanvas').click({ position: { x: 12, y: 12 }, force: true });
   await expect(titleInput).not.toBeFocused();
 });
+
+test('Shortcut overlay focuses close control and restores focus on Escape', async ({ page }) => {
+  const opener = page.locator('#editorSavedSave');
+  const overlay = page.locator('#editorShortcutOverlay');
+  const close = overlay.locator('.shortcut-overlay__close');
+
+  await page.waitForSelector('#editorShortcutOverlay .shortcut-row');
+  await opener.focus();
+  await expect(opener).toBeFocused();
+
+  await page.keyboard.press('F1');
+  await expect(overlay).toHaveAttribute('aria-hidden', 'false');
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveAttribute('aria-hidden', 'true');
+  await expect(opener).toBeFocused();
+});
