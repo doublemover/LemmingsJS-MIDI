@@ -1649,6 +1649,9 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalIntensity'), current.global.velocityRange.default);
     setInputValue(document?.getElementById('midiGlobalAccent'), current.global.density.velocityBoost);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
+    setInputValue(document?.getElementById('midiGlobalDurationDefault'), current.global.durationTicks.default);
+    setInputValue(document?.getElementById('midiGlobalDurationMin'), current.global.durationTicks.min);
+    setInputValue(document?.getElementById('midiGlobalDurationMax'), current.global.durationTicks.max);
     setInputValue(document?.getElementById('midiGlobalEnvAttack'), current.global.envelope.attack);
     setInputValue(document?.getElementById('midiGlobalEnvDecay'), current.global.envelope.decay);
     setInputValue(document?.getElementById('midiGlobalEnvSustain'), current.global.envelope.sustain);
@@ -2122,6 +2125,20 @@ const createMidiUiController = ({
       const current = ensureProject();
       updateGlobal({ position: { ...current.global.position, viewPan: !!event.target.checked } });
     });
+    const updateGlobalDurationTicks = () => {
+      const current = ensureProject();
+      const readDurationValue = (id, fallback) => toNumberOrNull(document?.getElementById(id)?.value) ?? fallback;
+      updateGlobal({
+        durationTicks: {
+          default: readDurationValue('midiGlobalDurationDefault', current.global.durationTicks.default),
+          min: readDurationValue('midiGlobalDurationMin', current.global.durationTicks.min),
+          max: readDurationValue('midiGlobalDurationMax', current.global.durationTicks.max)
+        }
+      });
+    };
+    for (const id of ['midiGlobalDurationDefault', 'midiGlobalDurationMin', 'midiGlobalDurationMax']) {
+      bindById(id, 'change', updateGlobalDurationTicks);
+    }
     const updateGlobalEnvelope = () => {
       const current = ensureProject();
       const readEnvelopeValue = (id, fallback) => toNumberOrNull(document?.getElementById(id)?.value) ?? fallback;
