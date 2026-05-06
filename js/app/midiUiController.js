@@ -1717,6 +1717,8 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalDensityWindow'), current.global.density.windowTicks);
     setInputValue(document?.getElementById('midiGlobalDurationScale'), current.global.density.durationScale);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
+    setInputValue(document?.getElementById('midiGlobalMaxActiveNotes'), current.global.limits.maxActiveNotes);
+    setInputValue(document?.getElementById('midiGlobalMaxEventsPerTick'), current.global.limits.maxEventsPerTick);
     setInputValue(document?.getElementById('midiGlobalDurationDefault'), current.global.durationTicks.default);
     setInputValue(document?.getElementById('midiGlobalDurationMin'), current.global.durationTicks.min);
     setInputValue(document?.getElementById('midiGlobalDurationMax'), current.global.durationTicks.max);
@@ -2236,6 +2238,16 @@ const createMidiUiController = ({
     });
     bindById('midiGlobalDurationScale', 'change', event => {
       updateGlobalDensity({ durationScale: Number(event.target.value) || 0 });
+    });
+    const updateGlobalLimits = (patch) => {
+      const current = ensureProject();
+      updateGlobal({ limits: { ...current.global.limits, ...patch } });
+    };
+    bindById('midiGlobalMaxActiveNotes', 'change', event => {
+      updateGlobalLimits({ maxActiveNotes: Number(event.target.value) || 1 });
+    });
+    bindById('midiGlobalMaxEventsPerTick', 'change', event => {
+      updateGlobalLimits({ maxEventsPerTick: Number(event.target.value) || 1 });
     });
     bindById('midiGlobalViewPan', 'change', event => {
       const current = ensureProject();

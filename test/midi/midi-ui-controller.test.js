@@ -104,6 +104,8 @@ const registerSequencerDom = (doc) => {
     midiGlobalViewPan: 'input',
     midiGlobalDensityWindow: 'input',
     midiGlobalDurationScale: 'input',
+    midiGlobalMaxActiveNotes: 'input',
+    midiGlobalMaxEventsPerTick: 'input',
     midiGlobalDurationDefault: 'input',
     midiGlobalDurationMin: 'input',
     midiGlobalDurationMax: 'input',
@@ -425,6 +427,12 @@ describe('midiUiController sequencer', function() {
     const durationScale = doc.getElementById('midiGlobalDurationScale');
     durationScale.value = '0.25';
     durationScale.dispatchEvent({ type: 'change', target: durationScale });
+    const maxActiveNotes = doc.getElementById('midiGlobalMaxActiveNotes');
+    maxActiveNotes.value = '24';
+    maxActiveNotes.dispatchEvent({ type: 'change', target: maxActiveNotes });
+    const maxEventsPerTick = doc.getElementById('midiGlobalMaxEventsPerTick');
+    maxEventsPerTick.value = '16';
+    maxEventsPerTick.dispatchEvent({ type: 'change', target: maxEventsPerTick });
     const durationDefault = doc.getElementById('midiGlobalDurationDefault');
     durationDefault.value = '10';
     durationDefault.dispatchEvent({ type: 'change', target: durationDefault });
@@ -460,6 +468,7 @@ describe('midiUiController sequencer', function() {
     expect(stored.global.velocityRange).to.include({ default: 96, min: 20, max: 110 });
     expect(stored.global.noteRange).to.include({ min: 36, max: 96 });
     expect(stored.global.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
+    expect(stored.global.limits).to.include({ maxActiveNotes: 24, maxEventsPerTick: 16 });
     expect(stored.global.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(stored.global.position.viewPan).to.equal(true);
     expect(stored.global.envelope).to.include({ attack: 1.25, release: 0.75 });
@@ -472,6 +481,7 @@ describe('midiUiController sequencer', function() {
     expect(runtime.velocityRange).to.include({ default: 96, min: 20, max: 110 });
     expect(runtime.noteRange).to.include({ min: 36, max: 96 });
     expect(runtime.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
+    expect(runtime.limits).to.include({ maxActiveNotes: 24, maxEventsPerTick: 16 });
     expect(runtime.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(runtime.position.viewPan).to.equal(true);
     expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
