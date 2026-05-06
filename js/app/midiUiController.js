@@ -566,6 +566,7 @@ const createMidiUiController = ({
       const message = e?.message || 'MIDI project import failed.';
       showError(message);
       setStatus('Import failed');
+      logOutput(`Import failed: ${message}`);
       return null;
     }
   };

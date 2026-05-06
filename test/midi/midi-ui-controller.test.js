@@ -660,6 +660,8 @@ describe('midiUiController sequencer', function() {
 
     await controller.importProjectFile({ text: '{"bad":' });
     expect(doc.getElementById('errorDisplay').textContent).to.contain('not valid JSON');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Import failed:');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('not valid JSON');
   });
 
   it('learns a direct source note through the MIDI input capture hook', function() {
