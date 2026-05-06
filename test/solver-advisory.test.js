@@ -14,7 +14,8 @@ import {
   PROCGEN_CHALLENGE_TYPES,
   createProcgenChallengeCertificate,
   decideProcgenFallback,
-  verifyProcgenChallengeCertificate
+  verifyProcgenChallengeCertificate,
+  verifyProcgenChallengeCertificateSync
 } from '../js/solver/ProcgenCertificates.js';
 import {
   EDITOR_ADVISORY_WARNING_CODES,
@@ -68,6 +69,27 @@ describe('ProcgenCertificates', function() {
     expect(verified.verificationResult.explanations[0].code).to.equal(
       SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC
     );
+  });
+
+  it('verifies local chunks through the default tactical solver', async function() {
+    const verified = await verifyProcgenChallengeCertificate({
+      challengeType: PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP,
+      expectedSkill: 'builder'
+    }, createSmallGapFixture());
+
+    expect(verified.verificationResult.resultType).to.equal(SOLVER_RESULT_TYPES.SOLVED);
+    expect(decideProcgenFallback(verified.verificationResult).decision).to.equal(
+      PROCGEN_FALLBACK_DECISIONS.ACCEPT
+    );
+  });
+
+  it('supports synchronous procgen certificate decisions', function() {
+    const verified = verifyProcgenChallengeCertificateSync({
+      challengeType: PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP,
+      expectedSkill: 'builder'
+    }, createSmallGapFixture());
+
+    expect(verified.verificationResult.resultType).to.equal(SOLVER_RESULT_TYPES.SOLVED);
   });
 
   it('chooses simplify, replace, and extend fallbacks for failed chunks', function() {

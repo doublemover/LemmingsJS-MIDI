@@ -1,6 +1,13 @@
 import {
   SkillTypes
 } from './ProcgenControllerShared.js';
+import {
+  PROCGEN_CHALLENGE_TYPES,
+  PROCGEN_FALLBACK_DECISIONS,
+  createProcgenChallengeCertificate,
+  decideProcgenFallback,
+  verifyProcgenChallengeCertificateSync
+} from '../../solver/ProcgenCertificates.js';
 const procgenTerrainDirectorMethods = {
   getGroundExtentX() {
     return Math.max(1, Math.floor(this._groundEndX || 0));
@@ -293,6 +300,145 @@ const procgenTerrainDirectorMethods = {
     return false;
   },
 
+  _fillProcgenChallengeGround(mask, width, height, x0, x1, y0, groundHeight) {
+    const startX = Math.max(0, Math.floor(x0));
+    const endX = Math.min(width, Math.ceil(x1));
+    const startY = Math.max(0, Math.floor(y0));
+    const endY = Math.min(height, Math.ceil(y0 + groundHeight));
+    for (let y = startY; y < endY; y += 1) {
+      const row = y * width;
+      for (let x = startX; x < endX; x += 1) {
+        mask[row + x] = 1;
+      }
+    }
+  },
+
+  _createGapChallengeFixture(gapStart, gapWidth) {
+    const width = Math.max(72, Math.floor(gapWidth) + 64);
+    const height = 48;
+    const footY = 24;
+    const supportY = footY + 1;
+    const leftEnd = 24;
+    const rightStart = leftEnd + Math.max(0, Math.floor(gapWidth));
+    const groundMask = new Uint8Array(width * height);
+    this._fillProcgenChallengeGround(groundMask, width, height, 0, leftEnd, supportY, this.groundHeight);
+    this._fillProcgenChallengeGround(groundMask, width, height, rightStart, width, supportY, this.groundHeight);
+    return {
+      kind: 'procgen-local-challenge',
+      id: `procgen-gap-${Math.floor(gapStart)}-${Math.floor(gapWidth)}`,
+      width,
+      height,
+      groundMask,
+      steelMask: new Uint8Array(width * height),
+      entrances: [{ x: 8, y: footY }],
+      exits: [{ x: Math.min(width - 8, rightStart + 24), y: footY }],
+      lemmings: [{ id: 0, x: 8, y: footY, lookRight: true, action: 'walking' }],
+      skills: { builder: 1 },
+      challenge: {
+        type: 'builder-gap',
+        sourceStartX: Math.floor(gapStart),
+        sourceWidth: Math.floor(gapWidth)
+      }
+    };
+  },
+
+  _createGapChallengeCertificate(gapStart, gapWidth) {
+    const localGapStart = 24;
+    const localGapEnd = localGapStart + Math.max(0, Math.floor(gapWidth));
+    return createProcgenChallengeCertificate({
+      id: `procgen-gap-${this._recentCertificateSerial + 1}-${Math.floor(gapStart)}`,
+      challengeType: PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP,
+      expectedSkill: 'builder',
+      assignmentWindow: { start: 20, end: 80 },
+      expectedLandingSegment: {
+        x0: localGapEnd,
+        y0: 24,
+        x1: localGapEnd + 16,
+        y1: 24
+      },
+      expectedExitSegment: {
+        x0: localGapEnd + 16,
+        y0: 24,
+        x1: localGapEnd + 32,
+        y1: 24
+      },
+      minimalSkillCount: 1
+    });
+  },
+
+  _normalizeVerifierOutput(output, certificate) {
+    if (output?.verificationResult) return output;
+    return createProcgenChallengeCertificate({
+      ...certificate,
+      verificationResult: output
+    });
+  },
+
+  _verifyGeneratedGap(gapStart, gapWidth, surfaceY) {
+    const certificate = this._createGapChallengeCertificate(gapStart, gapWidth);
+    const chunk = this._createGapChallengeFixture(gapStart, gapWidth, surfaceY);
+    let verified = null;
+    let fallback = {
+      decision: PROCGEN_FALLBACK_DECISIONS.ACCEPT,
+      resultType: 'skipped',
+      reasonCodes: [],
+      summary: 'Procgen certificate verification is disabled'
+    };
+    if (this.procgenCertificateVerification) {
+      const options = {
+        ...this.procgenCertificateOptions,
+        controller: this
+      };
+      const raw = this.procgenCertificateVerifier
+        ? this.procgenCertificateVerifier(certificate, chunk, options)
+        : verifyProcgenChallengeCertificateSync(certificate, chunk, options);
+      verified = this._normalizeVerifierOutput(raw, certificate);
+      fallback = decideProcgenFallback(verified.verificationResult);
+    } else {
+      verified = certificate;
+    }
+    this._trackProcgenCertificate(verified, fallback, {
+      startX: gapStart,
+      endX: gapStart + gapWidth,
+      width: gapWidth,
+      surfaceY
+    });
+    return {
+      certificate: verified,
+      fallback,
+      accepted: fallback.decision === PROCGEN_FALLBACK_DECISIONS.ACCEPT
+    };
+  },
+
+  _trackProcgenCertificate(verified, fallback, meta = {}) {
+    this._recentCertificateSerial += 1;
+    this._recentCertificates.push({
+      serial: this._recentCertificateSerial,
+      id: verified?.id ?? null,
+      challengeType: verified?.challengeType ?? PROCGEN_CHALLENGE_TYPES.UNKNOWN,
+      expectedSkill: verified?.expectedSkill ?? null,
+      resultType: fallback?.resultType ?? verified?.verificationResult?.resultType ?? null,
+      decision: fallback?.decision ?? PROCGEN_FALLBACK_DECISIONS.ACCEPT,
+      reasonCodes: Array.isArray(fallback?.reasonCodes) ? fallback.reasonCodes.slice() : [],
+      summary: fallback?.summary ?? verified?.verificationResult?.summary ?? null,
+      startX: Number.isFinite(meta.startX) ? Math.floor(meta.startX) : null,
+      endX: Number.isFinite(meta.endX) ? Math.floor(meta.endX) : null,
+      width: Number.isFinite(meta.width) ? Math.floor(meta.width) : null,
+      surfaceY: Number.isFinite(meta.surfaceY) ? Math.floor(meta.surfaceY) : null
+    });
+    const limit = Math.max(1, Math.floor(this.recentCertificateLimit ?? 32));
+    if (this._recentCertificates.length > limit) {
+      this._recentCertificates.splice(0, this._recentCertificates.length - limit);
+    }
+  },
+
+  _fallbackTerrainWidth(segmentWidth, gapWidth, fallback) {
+    if (fallback?.decision === PROCGEN_FALLBACK_DECISIONS.EXTEND) {
+      return Math.max(segmentWidth, gapWidth + this._pickSegmentWidth());
+    }
+    return Math.max(segmentWidth, gapWidth);
+  },
+
   _ensureGround(rightmostX) {
     const levelWidth = this.level?.width ?? 0;
     if (!Number.isFinite(levelWidth) || levelWidth <= 0) return;
@@ -304,18 +450,72 @@ const procgenTerrainDirectorMethods = {
       if (this._shouldInsertGap()) {
         const gapWidth = this._pickGapWidth();
         const gapStart = this._groundEndX;
+        const verification = this._verifyGeneratedGap(gapStart, gapWidth, this._groundTopY);
+        if (!verification.accepted) {
+          const fallback = verification.fallback;
+          if (fallback.decision === PROCGEN_FALLBACK_DECISIONS.SIMPLIFY) {
+            const simplifiedWidth = Math.max(2, Math.min(gapWidth, 8));
+            if (simplifiedWidth < gapWidth) {
+              this._gaps.push({
+                x: gapStart,
+                width: simplifiedWidth,
+                y: this._groundTopY,
+                assigned: false,
+                certificateDecision: fallback.decision,
+                certificateResultType: fallback.resultType
+              });
+              const simplifiedEnd = Math.min(levelWidth, this._groundEndX + simplifiedWidth);
+              this._trackGeneratedChunk({
+                type: 'gap',
+                startX: gapStart,
+                endX: simplifiedEnd,
+                y: this._groundTopY,
+                certificateDecision: fallback.decision,
+                certificateResultType: fallback.resultType
+              });
+              this._groundEndX = simplifiedEnd;
+              this._refreshLookaheadTarget();
+              this._gapCooldown = this._randInt(16, 40);
+              continue;
+            }
+          }
+          const fallbackWidth = this._fallbackTerrainWidth(segmentWidth, gapWidth, fallback);
+          const nextTop = this._pickNextTopY();
+          const colorIndex = this._getNextColorIndex();
+          const fallbackStart = this._groundEndX;
+          this._paintGround(fallbackStart, fallbackWidth, nextTop, colorIndex);
+          this._groundTopY = nextTop;
+          this._groundEndX = Math.min(levelWidth, this._groundEndX + fallbackWidth);
+          this._trackGeneratedChunk({
+            type: 'solver-fallback',
+            originalType: 'gap',
+            startX: fallbackStart,
+            endX: this._groundEndX,
+            topY: nextTop,
+            colorIndex,
+            certificateDecision: fallback.decision,
+            certificateResultType: fallback.resultType
+          });
+          this._refreshLookaheadTarget();
+          this._gapCooldown = this._randInt(12, 28);
+          continue;
+        }
         this._gaps.push({
           x: gapStart,
           width: gapWidth,
           y: this._groundTopY,
-          assigned: false
+          assigned: false,
+          certificateDecision: verification.fallback.decision,
+          certificateResultType: verification.fallback.resultType
         });
         const gapEnd = Math.min(levelWidth, this._groundEndX + gapWidth);
         this._trackGeneratedChunk({
           type: 'gap',
           startX: gapStart,
           endX: gapEnd,
-          y: this._groundTopY
+          y: this._groundTopY,
+          certificateDecision: verification.fallback.decision,
+          certificateResultType: verification.fallback.resultType
         });
         this._groundEndX = gapEnd;
         this._refreshLookaheadTarget();

@@ -72,6 +72,10 @@ and no MIDI UI.
   floater before splat range.
 - Traversable terrain should produce a no-op decision and no skill spend.
 - Repeated failed attempts on the same lemming/challenge should be cooled down.
+- Generated local gaps emit bounded challenge certificates. The local tactical
+  solver verifies those certificates synchronously during generation; rejected
+  gaps are simplified or replaced with extended terrain according to the solver
+  fallback decision.
 
 ## Production hardening notes
 - Hazard scans use a rebuilt hazard index instead of per-scan trigger-set
@@ -95,6 +99,8 @@ should remain compact and JSON-safe:
 - `lookahead`: current lookahead distance, threshold, and distance to generated
   end.
 - `recentChunks`: bounded list of recent generated route chunks.
+- `recentCertificates`: bounded list of recent local challenge certificate
+  decisions, including result type and fallback action.
 - `recentPieces`: bounded list of recent stamped pieces, including style/theme.
 - `recentAssists`: bounded list of recent assist decisions and no-op scans.
 - `trackingSizes`: sizes of cooldown, stuck, gap, chunk, piece, and assist
@@ -115,7 +121,8 @@ This state is for tests and local debugging. It is not a save format.
 
 ## Productization status
 
-This checkpoint productizes themed piece streaming and frontier-driven
-lookahead. Solver-backed local challenge checks remain a later integration:
-procgen may emit intended local challenge certificates, but the runtime replay
-verifier is authoritative once the solver milestone lands.
+This checkpoint productizes themed piece streaming, frontier-driven lookahead,
+minimal assists, and local certificate checks for generated gaps. The checks are
+bounded and advisory to generation only: they can simplify or replace local
+chunks, while the runtime replay verifier remains authoritative for complete
+solutions.

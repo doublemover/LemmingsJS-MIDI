@@ -319,6 +319,7 @@ const procgenTerrainPlanningMethods = {
         levelWidth: this.level?.width ?? null
       },
       recentChunks: (this._recentChunks || []).map(chunk => ({ ...chunk })),
+      recentCertificates: (this._recentCertificates || []).map(entry => ({ ...entry })),
       recentPieces: (this._recentPieces || []).map(piece => ({
         ...piece,
         bounds: piece.bounds ? { ...piece.bounds } : null
@@ -351,6 +352,7 @@ const procgenTerrainPlanningMethods = {
       frontier: this._frontierLemmingState?.size ?? 0,
       hazardTriggers: this._hazardTriggers?.length ?? 0,
       recentChunks: this._recentChunks?.length ?? 0,
+      recentCertificates: this._recentCertificates?.length ?? 0,
       recentPieces: this._recentPieces?.length ?? 0,
       recentAssists: this._recentAssists?.length ?? 0,
       recentDecor: this._recentDecor?.length ?? 0,

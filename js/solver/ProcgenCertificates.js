@@ -3,6 +3,7 @@ import {
   SOLVER_RESULT_TYPES,
   createSolverResult
 } from './SolverTypes.js';
+import { solveTactical } from './TacticalSolver.js';
 
 const PROCGEN_CHALLENGE_TYPES = Object.freeze({
   WALK: 'walk',
@@ -30,6 +31,8 @@ const TACTICAL_SOLVER_METHODS = [
   'solve',
   'run'
 ];
+
+const solveProcgenTacticalChunk = (chunk, _certificate, options) => solveTactical(chunk, options);
 
 const isPlainObject = value => value != null && typeof value === 'object' && !Array.isArray(value);
 
@@ -149,6 +152,17 @@ const createSolverErrorResult = error => createSolverResult({
   }]
 });
 
+const createAsyncSolverResult = () => createSolverResult({
+  resultType: SOLVER_RESULT_TYPES.UNKNOWN,
+  summary: 'Tactical solver returned an async result for synchronous procgen verification',
+  explanations: [{
+    code: SOLVER_EXPLANATION_CODES.STATE_EXPLOSION,
+    detail: 'Procgen generation requires synchronous local certificate decisions.'
+  }]
+});
+
+const isPromiseLike = value => value != null && typeof value.then === 'function';
+
 const callSolverFunction = (fn, chunk, certificate, options) => {
   if (fn.length >= 2) return fn(chunk, certificate, options);
   return fn({ chunk, certificate, options });
@@ -167,11 +181,31 @@ const invokeTacticalSolver = async (solver, chunk, certificate, options) => {
   if (typeof solver === 'function') {
     const source = Function.prototype.toString.call(solver);
     if (/^class\s/.test(source)) {
-      return invokeSolverObject(new solver(options), chunk, certificate, options);
+      return invokeSolverObject(new solver(chunk, options), chunk, certificate, options);
     }
     return callSolverFunction(solver, chunk, certificate, options);
   }
   return invokeSolverObject(solver, chunk, certificate, options);
+};
+
+const invokeSolverObjectSync = (solver, chunk, certificate, options) => {
+  for (const methodName of TACTICAL_SOLVER_METHODS) {
+    if (typeof solver?.[methodName] === 'function') {
+      return callSolverFunction(solver[methodName].bind(solver), chunk, certificate, options);
+    }
+  }
+  return null;
+};
+
+const invokeTacticalSolverSync = (solver, chunk, certificate, options) => {
+  if (typeof solver === 'function') {
+    const source = Function.prototype.toString.call(solver);
+    if (/^class\s/.test(source)) {
+      return invokeSolverObjectSync(new solver(chunk, options), chunk, certificate, options);
+    }
+    return callSolverFunction(solver, chunk, certificate, options);
+  }
+  return invokeSolverObjectSync(solver, chunk, certificate, options);
 };
 
 const resolveTacticalSolver = async options => {
@@ -182,18 +216,21 @@ const resolveTacticalSolver = async options => {
     return { solver: options.TacticalSolver };
   }
   try {
-    const module = await import('./TacticalSolver.js');
-    return {
-      solver: module.TacticalSolver ??
-        module.createTacticalSolver ??
-        module.solveTacticalChallenge ??
-        module.default ??
-        null
-    };
+    return { solver: solveProcgenTacticalChunk };
   } catch (error) {
     if (error?.code === 'ERR_MODULE_NOT_FOUND') return { solver: null };
     return { solver: null, error };
   }
+};
+
+const resolveTacticalSolverSync = options => {
+  if (Object.prototype.hasOwnProperty.call(options, 'tacticalSolver')) {
+    return { solver: options.tacticalSolver };
+  }
+  if (Object.prototype.hasOwnProperty.call(options, 'TacticalSolver')) {
+    return { solver: options.TacticalSolver };
+  }
+  return { solver: solveProcgenTacticalChunk };
 };
 
 const createProcgenChallengeCertificate = (input = {}) => {
@@ -242,6 +279,30 @@ const verifyProcgenChallengeCertificate = async (certificate, chunk, options = {
     try {
       const rawResult = await invokeTacticalSolver(resolved.solver, chunk, normalized, options);
       verificationResult = normalizeSolverLikeResult(rawResult);
+    } catch (error) {
+      verificationResult = createSolverErrorResult(error);
+    }
+  }
+  return {
+    ...normalized,
+    verificationResult
+  };
+};
+
+const verifyProcgenChallengeCertificateSync = (certificate, chunk, options = {}) => {
+  const normalized = createProcgenChallengeCertificate(certificate);
+  const resolved = resolveTacticalSolverSync(options);
+  let verificationResult;
+  if (resolved.error) {
+    verificationResult = createSolverErrorResult(resolved.error);
+  } else if (!resolved.solver) {
+    verificationResult = createUnavailableSolverResult();
+  } else {
+    try {
+      const rawResult = invokeTacticalSolverSync(resolved.solver, chunk, normalized, options);
+      verificationResult = isPromiseLike(rawResult)
+        ? createAsyncSolverResult()
+        : normalizeSolverLikeResult(rawResult);
     } catch (error) {
       verificationResult = createSolverErrorResult(error);
     }
@@ -301,5 +362,6 @@ export {
   PROCGEN_FALLBACK_DECISIONS,
   createProcgenChallengeCertificate,
   decideProcgenFallback,
-  verifyProcgenChallengeCertificate
+  verifyProcgenChallengeCertificate,
+  verifyProcgenChallengeCertificateSync
 };

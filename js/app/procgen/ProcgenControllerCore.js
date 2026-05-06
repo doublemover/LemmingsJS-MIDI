@@ -76,8 +76,10 @@ class ProcgenController {
     this._recentDecor = [];
     this._recentAssists = [];
     this._recentChunks = [];
+    this._recentCertificates = [];
     this._recentPieces = [];
     this._recentChunkSerial = 0;
+    this._recentCertificateSerial = 0;
     this._recentPieceSerial = 0;
     this._lastNoopAssist = null;
     this._frontierState = null;
@@ -109,9 +111,21 @@ class ProcgenController {
     this.recentChunkLimit = Number.isFinite(options.recentChunkLimit)
       ? Math.max(1, Math.floor(options.recentChunkLimit))
       : 32;
+    this.recentCertificateLimit = Number.isFinite(options.recentCertificateLimit)
+      ? Math.max(1, Math.floor(options.recentCertificateLimit))
+      : 32;
     this.recentPieceLimit = Number.isFinite(options.recentPieceLimit)
       ? Math.max(1, Math.floor(options.recentPieceLimit))
       : 96;
+    this.procgenCertificateVerification = options.procgenCertificateVerification !== false;
+    this.procgenCertificateVerifier = typeof options.procgenCertificateVerifier === 'function'
+      ? options.procgenCertificateVerifier
+      : null;
+    this.procgenCertificateOptions = options.procgenCertificateOptions &&
+      typeof options.procgenCertificateOptions === 'object' &&
+      !Array.isArray(options.procgenCertificateOptions)
+      ? options.procgenCertificateOptions
+      : {};
     this.generatedTrackingPruneDistance = Number.isFinite(options.generatedTrackingPruneDistance)
       ? Math.max(0, Math.floor(options.generatedTrackingPruneDistance))
       : 512;

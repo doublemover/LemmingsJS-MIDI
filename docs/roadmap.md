@@ -642,10 +642,10 @@ types: solved, failed, unknown, timed out, or unsupported.
   - rough assignment window.
   - expected landing/exit segment.
   - minimal skill count.
-- Procgen can ask the solver to verify local chunks before or shortly after
-  placement.
-- Failed local verification should cause procgen to simplify, replace, or
-  extend terrain rather than creating impossible content.
+- Procgen verifies generated gap certificates synchronously through the local
+  tactical solver before placement.
+- Failed local verification causes procgen to simplify, replace, or extend
+  terrain rather than creating impossible content.
 - Fixed procgen seeds should replay through solver verification for small
   generated challenges.
 

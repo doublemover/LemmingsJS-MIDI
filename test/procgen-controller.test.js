@@ -2,6 +2,11 @@ import { expect } from 'chai';
 import { ProcgenController } from '../js/app/procgenController.js';
 import { SkillTypes } from '../js/game/SkillTypes.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
+import {
+  SOLVER_EXPLANATION_CODES,
+  SOLVER_RESULT_TYPES,
+  createSolverResult
+} from '../js/solver/SolverTypes.js';
 
 const walkAction = { getActionName: () => 'walk' };
 const actionNamed = name => ({ getActionName: () => name });
@@ -278,6 +283,133 @@ describe('ProcgenController', function () {
     expect(debug.recentPieces).to.have.length.of.at.most(16);
     expect(debug.recentPieces.every(entry => entry.theme === 'crystal')).to.equal(true);
     expect(debug.recentChunks.every(entry => entry.theme === 'crystal')).to.equal(true);
+  });
+
+  it('records accepted procgen challenge certificates for generated gaps', function () {
+    const controller = new ProcgenController({
+      level: {
+        width: 120,
+        height: 80,
+        entrances: [{ x: 8, y: 40 }],
+        setGroundRect() {}
+      },
+      options: {
+        rng: () => 0,
+        groundHeight: 4,
+        segmentMinWidth: 12,
+        segmentMaxWidth: 12,
+        lookAheadMin: 24,
+        lookAheadMax: 24,
+        gapChance: 1,
+        gapMinWidth: 5,
+        gapMaxWidth: 5
+      }
+    });
+    controller._groundEndX = 10;
+    controller._groundTopY = 60;
+    controller._sustainBaseY = 60;
+    controller._sustainRemaining = 100;
+    controller._terrainPlan = { mode: 'flat', remaining: 100 };
+
+    controller._ensureGround(0);
+    const debug = controller.getDebugState();
+
+    expect(debug.recentCertificates.some(entry => {
+      return entry.challengeType === 'bridge-gap' && entry.decision === 'accept';
+    })).to.equal(true);
+    expect(debug.recentChunks.some(entry => {
+      return entry.type === 'gap' && entry.certificateDecision === 'accept';
+    })).to.equal(true);
+  });
+
+  it('simplifies generated gaps when certificate verification rejects builder budget', function () {
+    const controller = new ProcgenController({
+      level: {
+        width: 160,
+        height: 80,
+        entrances: [{ x: 8, y: 40 }],
+        setGroundRect() {}
+      },
+      options: {
+        rng: () => 0,
+        groundHeight: 4,
+        segmentMinWidth: 12,
+        segmentMaxWidth: 12,
+        lookAheadMin: 24,
+        lookAheadMax: 24,
+        gapChance: 1,
+        gapMinWidth: 20,
+        gapMaxWidth: 20,
+        procgenCertificateVerifier: () => createSolverResult({
+          resultType: SOLVER_RESULT_TYPES.FAILED,
+          summary: 'gap exceeds injected builder budget',
+          explanations: [SOLVER_EXPLANATION_CODES.GAP_EXCEEDS_BUILDER_BUDGET]
+        })
+      }
+    });
+    controller._groundEndX = 10;
+    controller._groundTopY = 60;
+    controller._sustainBaseY = 60;
+    controller._sustainRemaining = 100;
+    controller._terrainPlan = { mode: 'flat', remaining: 100 };
+
+    controller._ensureGround(0);
+    const debug = controller.getDebugState();
+    const simplified = debug.recentChunks.find(entry => entry.certificateDecision === 'simplify');
+
+    expect(controller._gaps[0].width).to.equal(8);
+    expect(simplified).to.include({
+      type: 'gap',
+      certificateDecision: 'simplify',
+      certificateResultType: SOLVER_RESULT_TYPES.FAILED
+    });
+  });
+
+  it('extends terrain instead of placing rejected no-route gaps', function () {
+    const painted = [];
+    const controller = new ProcgenController({
+      level: {
+        width: 160,
+        height: 80,
+        entrances: [{ x: 8, y: 40 }],
+        setGroundRect(x, y, width, height) {
+          painted.push({ x, y, width, height });
+        }
+      },
+      options: {
+        rng: () => 0,
+        groundHeight: 4,
+        segmentMinWidth: 12,
+        segmentMaxWidth: 12,
+        lookAheadMin: 24,
+        lookAheadMax: 24,
+        gapChance: 1,
+        gapMinWidth: 6,
+        gapMaxWidth: 6,
+        procgenCertificateVerifier: () => createSolverResult({
+          resultType: SOLVER_RESULT_TYPES.FAILED,
+          summary: 'missing route after injected verification',
+          explanations: [SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT]
+        })
+      }
+    });
+    controller._groundEndX = 10;
+    controller._groundTopY = 60;
+    controller._sustainBaseY = 60;
+    controller._sustainRemaining = 100;
+    controller._terrainPlan = { mode: 'flat', remaining: 100 };
+
+    controller._ensureGround(0);
+    const debug = controller.getDebugState();
+    const fallback = debug.recentChunks.find(entry => entry.type === 'solver-fallback');
+
+    expect(painted.length).to.be.greaterThan(0);
+    expect(controller._gaps).to.have.length(0);
+    expect(fallback).to.include({
+      originalType: 'gap',
+      certificateDecision: 'extend',
+      certificateResultType: SOLVER_RESULT_TYPES.FAILED
+    });
   });
 
   it('tracks the rightmost viable frontier instead of the first lemming id', function () {

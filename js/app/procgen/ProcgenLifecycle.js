@@ -253,7 +253,10 @@ const procgenLifecycleMethods = {
       width: Math.max(0, endX - startX),
       y: Number.isFinite(chunk.y) ? chunk.y : null,
       topY: Number.isFinite(chunk.topY) ? chunk.topY : null,
-      colorIndex: Number.isFinite(chunk.colorIndex) ? chunk.colorIndex : null
+      colorIndex: Number.isFinite(chunk.colorIndex) ? chunk.colorIndex : null,
+      originalType: chunk.originalType || null,
+      certificateDecision: chunk.certificateDecision || null,
+      certificateResultType: chunk.certificateResultType || null
     });
     this._trimRecentList(this._recentChunks, this.recentChunkLimit);
   },
