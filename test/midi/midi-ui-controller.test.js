@@ -79,6 +79,8 @@ const registerSequencerDom = (doc) => {
     midiClipType: 'select',
     midiClipArpModeField: 'label',
     midiClipArpMode: 'select',
+    midiClipArpPatternField: 'label',
+    midiClipArpPattern: 'select',
     midiClipLengthSteps: 'input',
     midiRecordPanel: 'div',
     midiRecordStatus: 'div',
@@ -103,6 +105,7 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiMappingArp').value = '';
   doc.getElementById('midiClipType').value = 'stepPattern';
   doc.getElementById('midiClipArpMode').value = 'up';
+  doc.getElementById('midiClipArpPattern').value = 'up';
   doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
 };
 
@@ -283,20 +286,35 @@ describe('midiUiController sequencer', function() {
 
     const arpField = doc.getElementById('midiClipArpModeField');
     const arpMode = doc.getElementById('midiClipArpMode');
+    const arpPatternField = doc.getElementById('midiClipArpPatternField');
+    const arpPattern = doc.getElementById('midiClipArpPattern');
     expect(arpField.style.display).to.equal('');
     expect(arpMode.disabled).to.equal(false);
+    expect(arpPatternField.style.display).to.equal('');
+    expect(arpPattern.disabled).to.equal(false);
     expect(arpMode.value).to.equal('up');
+    expect(arpPattern.value).to.equal('up');
 
     arpMode.value = 'updown';
     arpMode.dispatchEvent({ type: 'change', target: arpMode });
 
     const clip = controller.getProject().clips.find(entry => entry.id === 'riff');
     expect(clip.arp).to.include({ mode: 'updown' });
+    expect(clip.arp.pattern.preset).to.equal('updown');
     expect(view.projectConfigs.at(-1).sfx['1'].arp).to.include({ enabled: true, mode: 'updown', length: 2 });
+
+    arpPattern.value = 'custom';
+    arpPattern.dispatchEvent({ type: 'change', target: arpPattern });
+    const customClip = controller.getProject().clips.find(entry => entry.id === 'riff');
+    expect(customClip.arp.pattern.preset).to.equal('custom');
+    expect(customClip.arp.pattern.steps).to.deep.equal(['up', 'hold', 'down', 'hold', 'up', 'hold', 'down', 'hold']);
+    expect(view.projectConfigs.at(-1).sfx['1'].arp.pattern.preset).to.equal('custom');
 
     controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'riff', patch: { type: 'stepPattern' } });
     expect(arpField.style.display).to.equal('none');
     expect(arpMode.disabled).to.equal(true);
+    expect(arpPatternField.style.display).to.equal('none');
+    expect(arpPattern.disabled).to.equal(true);
   });
 
   it('edits modulation controls and exports runtime automation config', function() {

@@ -33,8 +33,11 @@ import {
   toDeviceList
 } from './midi-ui/midiUiDevices.js';
 import {
+  ARP_PATTERN_PRESETS,
   collectTriggerTypes,
   buildTriggerLabel,
+  createArpPatternFromPreset,
+  deriveArpModeFromPattern,
   resolveAvailableSfxIds
 } from './midi-ui/midiUiDomain.js';
 import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
@@ -1497,12 +1500,17 @@ const createMidiUiController = ({
     const clip = selectedClip();
     const arpMode = document?.getElementById('midiClipArpMode');
     const arpModeField = document?.getElementById('midiClipArpModeField');
+    const arpPattern = document?.getElementById('midiClipArpPattern');
+    const arpPatternField = document?.getElementById('midiClipArpPatternField');
     const isArpClip = clip?.type === 'arp';
     setInputValue(document?.getElementById('midiClipName'), clip?.name);
     setInputValue(document?.getElementById('midiClipType'), clip?.type);
     setInputValue(arpMode, clip?.arp?.mode || 'up');
+    setInputValue(arpPattern, clip?.arp?.pattern?.preset || clip?.arp?.mode || 'up');
     if (arpMode) arpMode.disabled = !isArpClip;
+    if (arpPattern) arpPattern.disabled = !isArpClip;
     if (arpModeField) arpModeField.style.display = isArpClip ? '' : 'none';
+    if (arpPatternField) arpPatternField.style.display = isArpClip ? '' : 'none';
     setInputValue(document?.getElementById('midiClipLengthSteps'), clip?.lengthSteps);
     renderRecordPanel();
     renderStepPatternGrid(clip);
@@ -2082,7 +2090,20 @@ const createMidiUiController = ({
     bindById('midiClipType', 'change', event => updateSelectedClip({ type: event.target.value }));
     bindById('midiClipArpMode', 'change', event => {
       const mode = ARP_MODES.includes(event.target.value) ? event.target.value : 'up';
-      updateSelectedClip({ arp: { ...(selectedClip()?.arp || {}), mode } });
+      const clip = selectedClip();
+      const patternLength = Array.isArray(clip?.arp?.pattern?.steps) ? clip.arp.pattern.steps.length : undefined;
+      const pattern = createArpPatternFromPreset(mode, patternLength);
+      updateSelectedClip({ arp: { ...(clip?.arp || {}), mode, pattern } });
+    });
+    bindById('midiClipArpPattern', 'change', event => {
+      const clip = selectedClip();
+      const preset = ARP_PATTERN_PRESETS.some(entry => entry.value === event.target.value)
+        ? event.target.value
+        : 'up';
+      const patternLength = Array.isArray(clip?.arp?.pattern?.steps) ? clip.arp.pattern.steps.length : undefined;
+      const pattern = createArpPatternFromPreset(preset, patternLength);
+      const mode = deriveArpModeFromPattern(pattern, clip?.arp?.mode || 'up');
+      updateSelectedClip({ arp: { ...(clip?.arp || {}), mode, pattern } });
     });
     bindById('midiClipLengthSteps', 'change', event => updateSelectedClip({ lengthSteps: Number(event.target.value) || 16 }));
     bindById('midiRecordButton', 'click', () => startRecording());

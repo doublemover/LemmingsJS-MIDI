@@ -194,7 +194,7 @@ describe('MidiProject', function() {
     });
 
     project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
-    project = reduceMidiProject(project, { type: 'clip.update', clipId: 'riff', patch: { name: 'Lead Riff', type: 'arp', arp: { mode: 'down' } } });
+    project = reduceMidiProject(project, { type: 'clip.update', clipId: 'riff', patch: { name: 'Lead Riff', type: 'arp', arp: { mode: 'down', pattern: { preset: 'custom', steps: ['up', 'hold', 'down'] } } } });
     project = reduceMidiProject(project, { type: 'clip.step.update', clipId: 'riff', stepIndex: 0, patch: { note: 64, velocity: 96, durationTicks: 5 } });
     project = reduceMidiProject(project, { type: 'clip.step.update', clipId: 'riff', stepIndex: 1, patch: { note: 67, probability: 0.5 } });
     project = reduceMidiProject(project, { type: 'clip.step.update', clipId: 'riff', stepIndex: 2, patch: { note: 999, tie: true } });
@@ -221,6 +221,7 @@ describe('MidiProject', function() {
     });
     expect(config.sfx['1'].notes).to.deep.equal([64, 67]);
     expect(config.sfx['1'].arp).to.include({ enabled: true, mode: 'down', length: 2 });
+    expect(config.sfx['1'].arp.pattern).to.deep.equal({ preset: 'custom', steps: ['up', 'hold', 'down'] });
     expect(config.triggers['5']).to.include({ note: 64, clipId: 'riff', clipType: 'arp' });
     expect(config.triggers['5'].notes).to.deep.equal([64, 67]);
   });
