@@ -1313,7 +1313,10 @@ const createMidiUiController = ({
       row.tabIndex = active ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
-      row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${changed ? ', changed' : ''}${conflicts.length ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}` : ''}`);
+      const conflictLabel = conflicts.length
+        ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}: ${conflicts[0].message}${conflicts.length > 1 ? `, ${conflicts.length - 1} more` : ''}`
+        : '';
+      row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${changed ? ', changed' : ''}${conflictLabel}`);
       const label = document.createElement('span');
       label.className = 'midi-source-row__label';
       label.textContent = source.label;

@@ -704,12 +704,14 @@ test('MIDI sequencer surfaces source conflicts in the browser and inspector', as
 
   await expect(midi.conflictRows().first()).toBeVisible();
   expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
+  await expect(midi.conflictRows().first()).toHaveAttribute('aria-label', /Duplicate runtime key/);
   await expect(midi.conflictSummary()).toContainText('Duplicate runtime key');
 
   await midi.sourceAssignFilter().selectOption('clean');
   await expect(midi.conflictRows()).toHaveCount(0);
   await midi.sourceAssignFilter().selectOption('conflicts');
   expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
+  await expect(midi.conflictRows().first()).toHaveAttribute('aria-label', /Duplicate runtime key/);
 });
 
 test('MIDI sequencer listboxes support keyboard navigation', async ({ page }) => {
