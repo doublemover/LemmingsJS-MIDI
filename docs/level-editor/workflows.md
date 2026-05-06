@@ -15,14 +15,18 @@ intentionally brief so it can stay current.
 ## Selection and transforms
 
 - Click to select an entry; shift-click or marquee to multi-select.
-- Drag to move selections; handles resize single selections.
+- Drag to move selections; handles resize single steel selections.
 - Use copy/paste/duplicate, and nudge with arrow keys (shift = grid size).
+- Use ordering, align/distribute, replace piece, randomize pieces with optional
+  seed/same-size matching, and transform scale for bulk selection edits.
 
-## Saved levels
+## Saved levels and files
 
+- New Level creates a blank editor level.
 - Save stores to localStorage and refreshes the Saved selector.
-- Export `.nxlv` for NeoLemmix-style workflows.
-- Import `.nxlv` or classic `.lvl` files to convert into editor levels.
+- The dirty chip shows Saved/Unsaved state for the current editor session.
+- Export and Import handle `.nxlv` editor levels.
+- Export LVL and Import LVL handle classic `.lvl` files.
 
 ## Validation
 

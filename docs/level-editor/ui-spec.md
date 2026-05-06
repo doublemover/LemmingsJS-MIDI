@@ -19,7 +19,8 @@ This spec defines the standalone editor page UI and interaction model for the cl
   - Left: tool palette, piece palettes, brush/snap controls.
   - Center: game canvas preview + status strip.
   - Right: header fields, selection inspector, validation output.
-- DOM overlay panels layered over the canvas using CSS grid; no canvas-rendered UI.
+- Side panels and the canvas are arranged in the editor CSS grid shell; no
+  canvas-rendered UI.
 
 ## Visual Style
 - High-contrast, print-like UI with warm neutrals.
@@ -30,10 +31,12 @@ This spec defines the standalone editor page UI and interaction model for the cl
 ## Header Bar
 - Title: "Lemmings Editor".
 - Level selectors (game type, group, level) for classic levels.
-- Saved levels dropdown (localStorage) with Save/Export/Import buttons.
+- Saved levels dropdown (localStorage) with New Level, Save, Export, Export
+  LVL, Import, Import LVL, Undo/Redo, dirty state, and Playtest controls.
 - Save prompts for a name before writing to localStorage.
 - Playtest toggle that resumes gameplay without leaving the editor.
-- Status chip showing: current style, selected tool, last action, playtest state.
+- Dirty chip shows Saved/Unsaved; the status strip shows cursor, grid,
+  edit/playtest state, and selection summary.
 
 ## Tools Panel (Left)
 - Tool buttons in a vertical stack:
@@ -65,6 +68,7 @@ This spec defines the standalone editor page UI and interaction model for the cl
   - Optional flags (steel, trigger)
 - Active selection highlight per tab.
 - Search/filter input to narrow list (client-side only).
+- List and Grid view modes; Ctrl+wheel adjusts grid density in grid view.
 
 ## Canvas Preview (Center)
 - Uses existing game renderer for live preview.
@@ -76,10 +80,11 @@ This spec defines the standalone editor page UI and interaction model for the cl
 - Selection summary:
   - Type (terrain/gadget)
   - Piece name + id
-  - Bounding box (from WIDTH/HEIGHT or asset sizes)
+  - Bounding box (from steel WIDTH/HEIGHT or terrain/gadget asset sizes)
 - Transform fields:
   - X, Y (number)
-  - WIDTH, HEIGHT (number, optional)
+  - WIDTH, HEIGHT for steel rectangles; terrain/gadget size fields are
+    informational unless supported.
   - Rotate (number, degrees, snapped to 0/90/180/270)
   - Flip H, Flip V (checkboxes)
 - Terrain-only flags:
@@ -120,7 +125,8 @@ This spec defines the standalone editor page UI and interaction model for the cl
 ## Interaction Model
 - Click to select; shift-click to multi-select; drag to move.
 - Drag a marquee box (marching ants) to select multiple entries.
-- Resize handles appear for single selection.
+- Resize handles appear for single resizable selections, currently steel
+  rectangles.
 - Brush/eraser: click and drag to paint/erase terrain stamps along the drag path.
 - Alt-drag duplicates the current selection before moving it.
 - Right-click clears selection.
@@ -132,7 +138,7 @@ This spec defines the standalone editor page UI and interaction model for the cl
 ## Accessibility
 - All buttons and inputs are keyboard-focusable.
 - Tool buttons are `<button>` elements with `aria-pressed`.
-- Validation list uses semantic headings and badges.
+- Validation list shows severity-styled issue rows and optional fix buttons.
 
 ## Errors & Warnings
 - Errors should block export but not prevent saving to localStorage.

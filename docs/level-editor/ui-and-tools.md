@@ -6,9 +6,11 @@ See `docs/level-editor/workflows.md` for end-to-end editing flows.
 
 - **Editor toolbar** (left of canvas): tool buttons and mode status.
 - **Palette panel** (left side, below tools): tabs for Terrain, Objects, and
-  Triggers.
+  Triggers, with List/Grid view modes and Ctrl+wheel grid-density changes in
+  grid view.
 - **Inspector panel** (right side): properties for selected entry (position,
-  flags, ordering, alignment, delete).
+  flags, ordering, alignment/distribution, piece replacement, randomized
+  replacement, transform scale, and delete).
 - **Saved levels**: the existing Saved dropdown stays available while editing.
 
 ## Tools
@@ -29,7 +31,8 @@ See `docs/level-editor/workflows.md` for end-to-end editing flows.
 
 - Selected entry is outlined on the preview.
 - Inspector reflects the selected entry’s properties.
-- Resize is offered when the entry exposes `WIDTH/HEIGHT`.
+- Resize is currently offered for steel rectangles; terrain/gadget dimensions
+  come from asset metadata unless a specific entry type supports sizing.
 - Copy/paste/duplicate operate on the current selection.
 
 ## Keyboard and mouse
