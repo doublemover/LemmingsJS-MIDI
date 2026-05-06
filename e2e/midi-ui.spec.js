@@ -69,6 +69,7 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
   });
 
   const statuses = await page.locator([
+    '#midiConflictSummary',
     '#midiLearnStatus',
     '#midiRecordStatus',
     '#midiSchedulerPressure',
@@ -81,6 +82,7 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
   ));
 
   expect(statuses).toEqual({
+    midiConflictSummary: { role: 'status', live: 'polite' },
     midiLearnStatus: { role: 'status', live: '' },
     midiRecordStatus: { role: 'status', live: '' },
     midiSchedulerPressure: { role: 'status', live: 'polite' },
