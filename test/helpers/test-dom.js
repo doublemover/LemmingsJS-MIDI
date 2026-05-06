@@ -120,6 +120,14 @@ class TestElement {
     if (this.ownerDocument) this.ownerDocument.activeElement = this;
   }
 
+  contains(candidate) {
+    if (candidate === this) return true;
+    return this.children.some(child => (
+      child === candidate ||
+      (typeof child.contains === 'function' && child.contains(candidate))
+    ));
+  }
+
   querySelectorAll(selector) {
     if (!selector || selector[0] !== '.') return [];
     const className = selector.slice(1);

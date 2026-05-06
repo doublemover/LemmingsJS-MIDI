@@ -412,6 +412,7 @@ describe('midiUiController sequencer', function() {
     const arpMode = doc.getElementById('midiClipArpMode');
     const arpPatternField = doc.getElementById('midiClipArpPatternField');
     const arpPattern = doc.getElementById('midiClipArpPattern');
+    arpPatternField.appendChild(arpPattern);
     expect(arpField.style.display).to.equal('');
     expect(arpMode.disabled).to.equal(false);
     expect(arpPatternField.style.display).to.equal('');
@@ -434,11 +435,16 @@ describe('midiUiController sequencer', function() {
     expect(customClip.arp.pattern.steps).to.deep.equal(['up', 'hold', 'down', 'hold', 'up', 'hold', 'down', 'hold']);
     expect(view.projectConfigs.at(-1).sfx['1'].arp.pattern.preset).to.equal('custom');
 
-    controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'riff', patch: { type: 'stepPattern' } });
+    arpPattern.focus();
+    expect(doc.activeElement).to.equal(arpPattern);
+    const clipType = doc.getElementById('midiClipType');
+    clipType.value = 'stepPattern';
+    clipType.dispatchEvent({ type: 'change', target: clipType });
     expect(arpField.style.display).to.equal('none');
     expect(arpMode.disabled).to.equal(true);
     expect(arpPatternField.style.display).to.equal('none');
     expect(arpPattern.disabled).to.equal(true);
+    expect(doc.activeElement).to.equal(clipType);
   });
 
   it('edits modulation controls and exports runtime automation config', function() {
