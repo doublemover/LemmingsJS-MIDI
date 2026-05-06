@@ -307,10 +307,11 @@ const serializeLemming = (manager, lem) => {
     lastTriggerType: Number.isFinite(lem.lastTriggerType) ? lem.lastTriggerType : null
   };
 };
-const serializeTrigger = (trigger) => {
+const serializeTrigger = (trigger, observer = false) => {
   if (!trigger) return null;
   return {
     id: trigger.__historyId ?? null,
+    observer: !!observer,
     type: trigger.type,
     x1: trigger.x1,
     y1: trigger.y1,
@@ -341,6 +342,21 @@ const serializeMapObject = (obj) => {
       : null
   };
 };
+
+const serializeSteelRanges = (ranges) => {
+  if (!ranges || typeof ranges.length !== 'number') return [];
+  const entries = [];
+  for (let i = 0; i + 3 < ranges.length; i += 4) {
+    entries.push({
+      x: ranges[i],
+      y: ranges[i + 1],
+      width: ranges[i + 2],
+      height: ranges[i + 3]
+    });
+  }
+  return entries;
+};
+
 const isGameReady = (view) => {
   const game = view?.game;
   const stage = view?.stage;
@@ -401,14 +417,19 @@ const getGameState = (view) => {
     ? manager._nukeTargets.map(lem => lem?.id).filter(id => Number.isFinite(id))
     : [];
 
-  const triggers = triggerManager?._triggers
-    ? Array.from(triggerManager._triggers).map(serializeTrigger)
-    : [];
+  const triggers = [];
+  if (triggerManager?._triggers) {
+    triggers.push(...Array.from(triggerManager._triggers).map(trigger => serializeTrigger(trigger, false)));
+  }
+  if (triggerManager?._observerTriggers) {
+    triggers.push(...Array.from(triggerManager._observerTriggers).map(trigger => serializeTrigger(trigger, true)));
+  }
   const dynamicCount = triggers.filter(trigger => trigger && trigger.ownerId != null).length;
 
   const objects = Array.isArray(level?.objects)
     ? level.objects.map(serializeMapObject)
     : [];
+  const steel = serializeSteelRanges(level?.steelRanges);
 
   const minimap = manager?.miniMap
     ? {
@@ -516,6 +537,10 @@ const getGameState = (view) => {
       count: objects.length,
       entries: objects
     },
+    steel: {
+      count: steel.length,
+      entries: steel
+    },
     minimap,
     bench,
     soundEvents: soundEvents
@@ -547,6 +572,7 @@ export {
   serializeLemming,
   serializeTrigger,
   serializeMapObject,
+  serializeSteelRanges,
   isGameReady,
   getViewState,
   getGameState
