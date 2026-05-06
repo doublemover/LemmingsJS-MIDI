@@ -22,7 +22,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 
 - Sources: browse SFX, triggers, MIDI flags, system, and procgen sources with
   search, category, changed, current-level availability, assignment, conflict,
-  and clean filters.
+  and clean filters. Filter counts are announced as status text, and conflicted
+  rows expose the first conflict message in the row label.
 - Tracks: create and select tracks, set optional per-track output, channel,
   instrument label, mute, solo, arm, velocity scale, priority, and voice budget.
 - Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
@@ -35,7 +36,7 @@ old two-pane Events/Triggers/ADSR configuration UI.
   direct mappings unless a source has an envelope override.
 - Clips: create reusable step, chord, or arp clips, set arp direction and
   pattern preset, and edit compact step patterns with note, velocity, duration,
-  probability, hold, and tie controls.
+  probability, hold, tie, and rest controls.
 - Assignment: route the selected source to a selected track, or switch it from
   direct mode to clip mode and assign a selected clip.
 - Inspector: edit the selected source direct mapping with note, degree, octave,
