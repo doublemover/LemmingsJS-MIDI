@@ -1500,6 +1500,30 @@ describe('midiUiController sequencer', function() {
     expect(row.getAttribute('aria-label')).to.contain('Unavailable: missing-out');
   });
 
+  it('rerenders sanitized track numeric controls after invalid edits', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const channel = doc.getElementById('midiTrackChannel');
+    channel.value = '99';
+    channel.dispatchEvent({ type: 'change', target: channel });
+    expect(controller.getProject().tracks[0].channel).to.equal(16);
+    expect(channel.value).to.equal('16');
+    expect(view.projectConfigs.at(-1).sfx['1'].channel).to.equal(16);
+
+    const voiceBudget = doc.getElementById('midiTrackVoiceBudget');
+    voiceBudget.value = '99';
+    voiceBudget.dispatchEvent({ type: 'change', target: voiceBudget });
+    expect(controller.getProject().tracks[0].voiceBudget).to.equal(32);
+    expect(voiceBudget.value).to.equal('32');
+
+    const velocityScale = doc.getElementById('midiTrackVelocityScale');
+    velocityScale.value = '9';
+    velocityScale.dispatchEvent({ type: 'change', target: velocityScale });
+    expect(controller.getProject().tracks[0].velocityScale).to.equal(4);
+    expect(velocityScale.value).to.equal('4');
+  });
+
   it('summarizes selected source route channel and output', function() {
     const webMidi = {
       enabled: true,
