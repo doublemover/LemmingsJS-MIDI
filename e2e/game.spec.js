@@ -51,3 +51,27 @@ test('Space toggles pause state', async ({ page }) => {
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__E2E__?.getState?.().game?.timer?.running === true);
 });
+
+test('Game shortcut overlay focuses close control and restores canvas focus', async ({ page }) => {
+  await page.waitForFunction(() => window.__E2E__?.getState?.().ready);
+  await page.waitForSelector('#shortcutOverlay .shortcut-row');
+  const canvas = page.locator('#gameCanvas');
+  const overlay = page.locator('#shortcutOverlay');
+  const close = overlay.locator('.shortcut-overlay__close');
+
+  await canvas.evaluate(element => {
+    element.setAttribute('tabindex', '-1');
+  });
+  await canvas.focus();
+  await expect(canvas).toBeFocused();
+
+  await expect(async () => {
+    await page.keyboard.press('F1');
+    await expect(overlay).toHaveAttribute('aria-hidden', 'false', { timeout: 1000 });
+  }).toPass({ timeout: 5000 });
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveAttribute('aria-hidden', 'true');
+  await expect(canvas).toBeFocused();
+});
