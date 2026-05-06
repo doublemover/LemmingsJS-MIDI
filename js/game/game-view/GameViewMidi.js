@@ -137,8 +137,6 @@ const gameViewMidiMethods = {
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
       if (this._midiProjectConfig) {
         this.setMidiProjectConfig(this._midiProjectConfig);
-      } else {
-        this.applyMidiOverrides(this._midiOverrides);
       }
       const Router = getDependency('MidiEventRouter', MidiEventRouter);
       this.midiRouter = new Router(this._midiMapping);
@@ -167,20 +165,6 @@ const gameViewMidiMethods = {
     if (this.game?.soundEvents) {
       this.midiRouter?.attach(this.game.soundEvents, { game: this.game, stage: this.stage });
     }
-  },
-
-  applyMidiOverrides(overrides) {
-    if (!this._midiBaseConfig) return;
-    const merged = typeof MidiMapping?.mergeConfigs === 'function'
-      ? MidiMapping.mergeConfigs(this._midiBaseConfig, overrides || {})
-      : { ...this._midiBaseConfig, ...(overrides || {}) };
-    this._midiMapping = new MidiMapping(merged);
-    if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
-  },
-
-  setMidiOverrides(overrides) {
-    this._midiOverrides = cloneConfig(overrides || {});
-    this.applyMidiOverrides(this._midiOverrides);
   },
 
   setMidiProjectConfig(config) {

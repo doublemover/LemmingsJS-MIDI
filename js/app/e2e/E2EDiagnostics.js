@@ -70,7 +70,6 @@ import {
   getMinimapPagePoint
 } from './E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,
@@ -148,8 +147,7 @@ const getRuntimeDiagnostics = (view) => {
       benchSequence: !!view?.benchSequence
     },
     caches: {
-      fileProvider: view?.gameFactory?.fileProvider?.getCacheStats?.() || null,
-      midiOverrideKeys: Object.keys(view?._midiOverrides || {}).sort()
+      fileProvider: view?.gameFactory?.fileProvider?.getCacheStats?.() || null
     }
   };
   const diagnostics = view?.getRuntimeDiagnostics?.() || fallback;
@@ -166,10 +164,7 @@ const getRuntimeDiagnostics = (view) => {
       ...(diagnostics.featureFlags || {})
     },
     caches: {
-      fileProvider: diagnostics.caches?.fileProvider ?? fallback.caches.fileProvider,
-      midiOverrideKeys: toSortedStringList(
-        diagnostics.caches?.midiOverrideKeys ?? fallback.caches.midiOverrideKeys
-      )
+      fileProvider: diagnostics.caches?.fileProvider ?? fallback.caches.fileProvider
     }
   };
 };

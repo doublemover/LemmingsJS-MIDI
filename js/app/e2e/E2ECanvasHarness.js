@@ -70,7 +70,6 @@ import {
   applyEditorOps
 } from './E2EEditorApply.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,

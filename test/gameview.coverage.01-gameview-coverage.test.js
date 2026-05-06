@@ -130,7 +130,6 @@ describe('GameView coverage', function() {
     view.debug = true;
     view.midiEnabled = true;
     view.bench = true;
-    view._midiOverrides = { zeta: {}, alpha: {} };
     view.gameFactory = {
       fileProvider: {
         getCacheStats() {
@@ -151,7 +150,6 @@ describe('GameView coverage', function() {
       localStorageBytes: 10,
       indexedDbBytes: 11
     });
-    expect(diagnostics.caches.midiOverrideKeys).to.deep.equal(['alpha', 'zeta']);
   });
 
   runScenarioTable([

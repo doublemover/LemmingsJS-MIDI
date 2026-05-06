@@ -130,7 +130,6 @@ Top-level fields:
 - `featureFlags`: normalized boolean flag snapshot from `GameView`.
 - `caches.fileProvider`: `memoryEntries`, `localStorageBytes`,
   `indexedDbBytes` when available.
-- `caches.midiOverrideKeys`: sorted list of active MIDI override keys.
 - `caches.cacheStorageKeys`: sorted Cache Storage keys (`null` in
   `getState()`, populated by `getDiagnostics()`).
 - `serviceWorker`: `supported`, `controlled`.

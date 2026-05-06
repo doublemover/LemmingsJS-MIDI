@@ -55,7 +55,6 @@ import {
   getMinimapPagePoint
 } from './E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,

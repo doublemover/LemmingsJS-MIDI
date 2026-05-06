@@ -78,10 +78,6 @@ import {
   centerStageOn,
   getMinimapPagePoint
 } from './E2ECanvasHarness.js';
-const getMidiOverrides = (view, midiUi) => {
-  if (midiUi?.getMidiOverrides) return midiUi.getMidiOverrides();
-  return view?._midiOverrides || null;
-};
 const pauseGame = (view) => {
   const timer = view?.game?.getGameTimer?.();
   if (!timer) return false;
@@ -236,7 +232,6 @@ const stopBench = (view) => {
   return true;
 };
 export {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,

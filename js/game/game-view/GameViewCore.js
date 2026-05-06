@@ -114,7 +114,6 @@ class GameView extends BaseLogger {
     this._midiOut = null;
     this._midiMapping = null;
     this._midiBaseConfig = null;
-    this._midiOverrides = {};
     this._midiSchemaHash = null;
     this._midiStatusHandlers = { onEnabled: null, onError: null };
     this.midiEnabled = false;

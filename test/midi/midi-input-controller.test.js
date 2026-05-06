@@ -239,12 +239,12 @@ describe('MidiInputController', function() {
     expect(calls.some(call => call.type === 'midimessage' && call.removed)).to.equal(true);
   });
 
-  it('applies config patches through the view when no handler is provided', function() {
+  it('ignores config patches when no handler is provided', function() {
     const patches = [];
-    const view = { applyMidiOverrides(patch) { patches.push(patch); } };
+    const view = {};
     const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
     controller._applyConfigPatch({ timing: { bpmBase: 140 } });
-    expect(patches).to.eql([{ timing: { bpmBase: 140 } }]);
+    expect(patches).to.eql([]);
   });
 
   it('uses the view config getter and adjusts speed with game timer', function() {

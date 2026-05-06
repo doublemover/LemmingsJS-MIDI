@@ -178,10 +178,6 @@ class MidiInputController {
   _applyConfigPatch(patch) {
     if (this.onConfigChange) {
       this.onConfigChange(patch);
-      return;
-    }
-    if (this.view?.applyMidiOverrides) {
-      this.view.applyMidiOverrides(patch);
     }
   }
 

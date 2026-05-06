@@ -447,8 +447,6 @@ const createMidiUiController = ({
     const config = getProjectConfig();
     if (typeof lemmings.setMidiProjectConfig === 'function') {
       lemmings.setMidiProjectConfig(config);
-    } else if (typeof lemmings.applyMidiOverrides === 'function') {
-      lemmings.applyMidiOverrides(config);
     }
     lemmings.midiEnabled = !!project?.enabled;
   };
