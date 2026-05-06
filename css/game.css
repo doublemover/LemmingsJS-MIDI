@@ -349,18 +349,23 @@ canvas {
     min-width: 0;
     font-size: 11px;
     line-height: 1.25;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .midi-status {
     color: rgba(233, 238, 242, 0.82);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .midi-error {
     grid-column: 1 / -1;
     display: none;
     color: #ffb4a8;
+    line-height: 1.3;
+    overflow: visible;
+    overflow-wrap: anywhere;
+    white-space: normal;
 }
 
 .midi-error:not(:empty) {
