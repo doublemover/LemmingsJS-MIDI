@@ -762,6 +762,8 @@ const createMidiUiController = ({
     return true;
   };
 
+  const hasLearnCapture = () => learnState.active || !!learnState.pending;
+
   const confirmLearn = () => {
     if (!learnState.pending || !learnState.sourceId) {
       renderLearnPanel();
@@ -912,6 +914,14 @@ const createMidiUiController = ({
     setStatus('Recording canceled');
     renderRecordPanel();
     return true;
+  };
+
+  const hasRecordCapture = () => recordState.active || recordState.notes.length > 0 || recordState.activeNotes.size > 0;
+
+  const cancelActiveCapture = () => {
+    if (hasLearnCapture()) return cancelLearn();
+    if (hasRecordCapture()) return cancelRecording();
+    return false;
   };
 
   const commitRecording = () => {
@@ -2450,6 +2460,11 @@ const createMidiUiController = ({
     bindById('midiRecordButton', 'click', () => startRecording());
     bindById('midiRecordCommitButton', 'click', () => commitRecording());
     bindById('midiRecordCancelButton', 'click', () => cancelRecording());
+    bindById('midiSequencerWorkspace', 'keydown', event => {
+      if (event.key !== 'Escape' || !cancelActiveCapture()) return;
+      event.preventDefault?.();
+      event.stopPropagation?.();
+    });
     setMidiUiHook();
     render();
     bound = true;

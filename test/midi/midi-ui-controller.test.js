@@ -10,6 +10,7 @@ import { registerElement } from '../support/dom-fixtures.js';
 const registerSequencerDom = (doc) => {
   doc.body = doc.createElement('body');
   const ids = {
+    midiSequencerWorkspace: 'div',
     midiProjectStatus: 'div',
     errorDisplay: 'div',
     midiEnabledToggle: 'input',
@@ -743,6 +744,60 @@ describe('midiUiController sequencer', function() {
     controller.startLearn();
     controller.dispose();
     expect(captureCalls.at(-1)).to.equal(null);
+  });
+
+  it('cancels learn and recording capture flows with Escape', function() {
+    const captureCalls = [];
+    const messageCaptureCalls = [];
+    const fakeInputController = {
+      noteHandler: null,
+      messageHandler: null,
+      setNoteCapture(handler) {
+        captureCalls.push(handler);
+        this.noteHandler = handler;
+      },
+      setMessageCapture(handler) {
+        messageCaptureCalls.push(handler);
+        this.messageHandler = handler;
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    const workspace = doc.getElementById('midiSequencerWorkspace');
+
+    expect(controller.startLearn()).to.equal(true);
+    expect(fakeInputController.noteHandler(82, 101, 5)).to.equal(true);
+    expect(doc.getElementById('midiLearnStatus').textContent).to.contain('Pending note 82');
+    workspace.dispatchEvent({
+      type: 'keydown',
+      key: 'Escape',
+      preventDefault() {},
+      stopPropagation() {}
+    });
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Learn canceled');
+    expect(doc.getElementById('midiLearnStatus').textContent).to.equal('Learn waits for the next note-on.');
+    expect(controller.getProject().sources[0].mapping.note).to.equal(60);
+    expect(captureCalls.at(-1)).to.equal(null);
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'escape-clip', name: 'Escape Clip', lengthSteps: 4 } });
+    expect(controller.startRecording()).to.equal(true);
+    expect(fakeInputController.messageHandler({ type: 0x90, note: 64, velocity: 90, channel: 1, timestamp: 0 })).to.equal(true);
+    expect(fakeInputController.messageHandler({ type: 0x80, note: 64, velocity: 0, channel: 1, timestamp: 240 })).to.equal(true);
+    expect(doc.getElementById('midiRecordStatus').textContent).to.contain('1 notes captured');
+    workspace.dispatchEvent({
+      type: 'keydown',
+      key: 'Escape',
+      preventDefault() {},
+      stopPropagation() {}
+    });
+    const clip = controller.getProject().clips.find(entry => entry.id === 'escape-clip');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Recording canceled');
+    expect(doc.getElementById('midiRecordStatus').textContent).to.equal('Record writes captured notes into clip steps.');
+    expect(clip.steps[0].note).to.equal(60);
+    expect(messageCaptureCalls.at(-1)).to.equal(null);
   });
 
   it('records mocked MIDI notes into selected clip steps', function() {
