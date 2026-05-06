@@ -275,6 +275,60 @@ test('Editor level selection loads into editor session', async ({ page }) => {
   expect(normalizedTitle).toBe(targetName);
 });
 
+test('Editor built-in classic level can be edited, saved, reloaded, and exported', async ({ page }) => {
+  const state = await getEditorState(page);
+  const levelSelect = page.locator('#editorLevelIndexSelect');
+  const optionCount = await levelSelect.locator('option').count();
+  expect(optionCount).toBeGreaterThan(1);
+
+  const currentIndex = state.view.levelIndex ?? 0;
+  const targetIndex = currentIndex === 0 ? 1 : 0;
+  const targetOption = levelSelect.locator(`option[value="${targetIndex}"]`);
+  const targetLabel = await targetOption.textContent();
+  const targetName = parseLevelName(targetLabel);
+  expect(targetName).not.toBe('');
+
+  await levelSelect.selectOption(String(targetIndex));
+  await page.waitForFunction((name) => {
+    const title = window.__E2E__.getState().editor.session.level.header.TITLE || '';
+    return title.replace(/\0/g, '').trim() === name;
+  }, targetName);
+
+  const loaded = await getEditorState(page);
+  const terrainId = loaded.editor.assets.terrain[0]?.id;
+  expect(Number.isFinite(terrainId)).toBe(true);
+
+  const editedTitle = 'Classic Edited E2E';
+  const uniqueX = 137;
+  const uniqueY = 93;
+  const edited = await applyEditorOps(page, [
+    { type: 'level.patchHeader', args: { set: { TITLE: editedTitle } } },
+    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: terrainId, X: uniqueX, Y: uniqueY } } },
+    { type: 'level.save', args: { name: 'classic-edited-e2e' } }
+  ], { preview: { refresh: false }, returnState: 'editor' });
+  expect(edited.ok).toBe(true);
+  const saveResult = edited.results.find(result => result.type === 'level.save');
+  const savedId = saveResult?.value?.savedId;
+  expect(savedId).toBeTruthy();
+
+  const reloaded = await applyEditorOps(page, [
+    { type: 'level.patchHeader', args: { set: { TITLE: 'Unsaved Noise' } } },
+    { type: 'level.loadSaved', args: { savedId, resetHistory: true } },
+    { type: 'level.export', args: { format: 'classicLvl', filename: 'classic-edited-e2e.lvl' } }
+  ], { preview: { refresh: false }, returnState: 'editor' });
+
+  expect(reloaded.ok).toBe(true);
+  expect(reloaded.state.session.level.header.TITLE).toBe(editedTitle);
+  expect(reloaded.state.session.level.terrains.some(entry =>
+    entry.props?.PIECE === terrainId
+    && entry.props?.X === uniqueX
+    && entry.props?.Y === uniqueY
+  )).toBe(true);
+  const exported = reloaded.resources.find(resource => resource.meta?.format === 'classicLvl');
+  expect(exported?.encoding).toBe('base64');
+  expect(exported?.data?.length || 0).toBeGreaterThan(0);
+});
+
 test('Editor new level seeds entrance and exit', async ({ page }) => {
   await page.click('#editorNewLevel');
   await page.waitForFunction(() => {
