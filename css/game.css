@@ -155,6 +155,12 @@ canvas {
     z-index: 8;
 }
 
+#levelPrevButton:focus-visible,
+#levelNextButton:focus-visible {
+    outline: 2px solid #0f0;
+    outline-offset: 3px;
+}
+
 .midi-sequencer {
     position: fixed;
     inset: 8px;

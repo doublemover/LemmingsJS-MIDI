@@ -41,6 +41,35 @@ test('Arrow navigation updates the selected level', async ({ page }) => {
   }, initialValue);
 });
 
+test('Level arrows support keyboard activation', async ({ page }) => {
+  const levelSelect = page.locator('#levelIndexSelect');
+  await page.waitForFunction(() => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.options.length > 1;
+  });
+  const initialValue = await levelSelect.inputValue();
+  const next = page.locator('#levelNextButton');
+  const prev = page.locator('#levelPrevButton');
+
+  await expect(next).toHaveAttribute('role', 'button');
+  await expect(next).toHaveAttribute('aria-label', 'Next level');
+  await next.focus();
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((prevValue) => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.value !== prevValue;
+  }, initialValue);
+
+  await prev.focus();
+  await expect(prev).toBeFocused();
+  await page.keyboard.press('Space');
+  await page.waitForFunction((prevValue) => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.value === prevValue;
+  }, initialValue);
+});
+
 test('Space toggles pause state', async ({ page }) => {
   await page.goto('/?e2e=1');
   await page.waitForFunction(() => window.__E2E__?.getState?.().ready);

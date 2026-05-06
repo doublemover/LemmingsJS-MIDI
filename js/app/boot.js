@@ -281,16 +281,18 @@ function init({ windowRef, documentRef, embedMode }) {
   }
   const levelPrevButton = optionalElement(documentRef, 'levelPrevButton');
   const levelNextButton = optionalElement(documentRef, 'levelNextButton');
-  if (levelPrevButton) {
-    levelPrevButton.addEventListener('click', () => {
-      lemmings.moveToLevel(-1);
+  const bindLevelArrow = (element, delta) => {
+    if (!element) return;
+    const move = () => lemmings.moveToLevel(delta);
+    element.addEventListener('click', move);
+    element.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault?.();
+      move();
     });
-  }
-  if (levelNextButton) {
-    levelNextButton.addEventListener('click', () => {
-      lemmings.moveToLevel(1);
-    });
-  }
+  };
+  bindLevelArrow(levelPrevButton, -1);
+  bindLevelArrow(levelNextButton, 1);
 
   const savedSelect = optionalElement(documentRef, 'savedLevelSelect');
   const savedSaveButton = optionalElement(documentRef, 'savedLevelSave');
