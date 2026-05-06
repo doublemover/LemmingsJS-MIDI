@@ -71,6 +71,8 @@ const config = {
           }
         });
       }
+      window.__E2E__?.midiStartLearn?.();
+      window.__E2E__?.midiCaptureLearnNote?.(86, 104, 6);
     });
     await page.waitForSelector('#midiClipList .midi-clip-row');
     await page.waitForSelector('#midiStepPatternGrid .midi-step-cell');
@@ -85,6 +87,7 @@ const config = {
     { name: 'midi-clip-library', type: 'selector', selector: '#midiClipLibrary' },
     { name: 'midi-inspector', type: 'selector', selector: '#midiInspector' },
     { name: 'midi-conflict-summary', type: 'selector', selector: '#midiConflictSummary' },
+    { name: 'midi-learn', type: 'selector', selector: '#midiLearnPanel' },
     { name: 'midi-modulation', type: 'selector', selector: '#midiModulationInspector' },
     { name: 'midi-step-pattern', type: 'selector', selector: '#midiStepPatternGrid' },
     { name: 'midi-output-status', type: 'selector', selector: '#midiOutputStatus' }
@@ -113,6 +116,11 @@ const config = {
     {
       name: 'midi-conflict-summary',
       selector: '#midiConflictSummary',
+      checks: ['horizontalOverflow', 'clippedText']
+    },
+    {
+      name: 'midi-learn',
+      selector: '#midiLearnPanel',
       checks: ['horizontalOverflow', 'clippedText']
     },
     {

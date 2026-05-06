@@ -99,6 +99,13 @@ The `/` route uses `#midiSequencerWorkspace` over the game canvas:
 The old two-pane Events/Triggers/ADSR tabs and their storage behavior are
 removed.
 
+Learn mode is intentionally transient UI state. `MidiInputController` already
+supports a note capture hook; the sequencer installs it while Learn is active,
+shows the captured note/velocity/channel as pending, and commits through normal
+project reducer intents. The first slice learns selected direct-source notes
+only. Phrase recording remains separate because it needs timestamped note-on
+and note-off capture before writing quantized clip steps.
+
 ## Validation
 
 Focused unit coverage lives in:

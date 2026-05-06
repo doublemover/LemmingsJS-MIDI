@@ -138,6 +138,13 @@ const createMidiUiController = ({
   let deviceListener = null;
   let refreshTimer = null;
   let lastStatus = 'Project loading';
+  const learnState = {
+    active: false,
+    pending: null,
+    sourceId: null,
+    trackId: null,
+    conflicts: []
+  };
   const sourceFilters = {
     search: '',
     kind: 'all',
@@ -394,6 +401,165 @@ const createMidiUiController = ({
   const selectedClip = () => {
     const current = ensureProject();
     return current.clips.find(clip => clip.id === current.ui.selectedClipId) || current.clips[0] || null;
+  };
+
+  const selectedLearnSource = () => {
+    const source = selectedSource();
+    return source?.mode === 'clip' ? null : source;
+  };
+
+  const clearLearnCapture = () => {
+    midiInputController?.setNoteCapture?.(null);
+  };
+
+  const previewLearnProject = (capture) => {
+    const current = ensureProject();
+    const source = current.sources.find(entry => entry.id === learnState.sourceId) || selectedLearnSource();
+    const track = current.tracks.find(entry => entry.id === learnState.trackId) ||
+      current.tracks.find(entry => entry.id === source?.trackId) ||
+      selectedTrack();
+    if (!source || !track || !capture) return current;
+    let preview = reduceMidiProject(current, {
+      type: 'source.mapping.update',
+      sourceId: source.id,
+      patch: {
+        note: capture.note,
+        velocity: capture.velocity,
+        degree: null,
+        notes: null,
+        chord: null
+      }
+    });
+    if (track.arm) {
+      preview = reduceMidiProject(preview, {
+        type: 'track.update',
+        trackId: track.id,
+        patch: { channel: capture.channel }
+      });
+    }
+    return preview;
+  };
+
+  const renderLearnPanel = () => {
+    const panel = document?.getElementById('midiLearnPanel');
+    if (!panel) return;
+    const status = document?.getElementById('midiLearnStatus');
+    const confirm = document?.getElementById('midiLearnConfirmButton');
+    const cancel = document?.getElementById('midiLearnCancelButton');
+    const learn = document?.getElementById('midiLearnButton');
+    const source = selectedLearnSource();
+    panel.classList.toggle('is-active', learnState.active || !!learnState.pending);
+    if (learn) learn.disabled = !source;
+    if (confirm) confirm.disabled = !learnState.pending;
+    if (cancel) cancel.disabled = !learnState.active && !learnState.pending;
+    if (!status) return;
+    if (!source) {
+      status.textContent = 'Learn needs a direct source.';
+      return;
+    }
+    if (learnState.pending) {
+      const conflictText = learnState.conflicts.length
+        ? ` ${learnState.conflicts.length} warning${learnState.conflicts.length === 1 ? '' : 's'}.`
+        : ' No conflicts.';
+      status.textContent = `Pending note ${learnState.pending.note}, velocity ${learnState.pending.velocity}, channel ${learnState.pending.channel}.${conflictText}`;
+      return;
+    }
+    status.textContent = learnState.active
+      ? `Listening for ${source.label}.`
+      : 'Learn waits for the next note-on.';
+  };
+
+  const handleLearnNote = (note, velocity, channel) => {
+    if (!learnState.active) return false;
+    const capture = {
+      note: clamp(Math.round(note), 0, 127),
+      velocity: clamp(Math.round(velocity), 1, 127),
+      channel: clamp(Math.round(channel), 1, 16)
+    };
+    learnState.pending = capture;
+    const preview = previewLearnProject(capture);
+    const report = detectMidiProjectConflicts(preview);
+    learnState.conflicts = learnState.sourceId
+      ? (report.bySourceId?.[learnState.sourceId] || []).filter(isActionableConflict)
+      : [];
+    clearLearnCapture();
+    setStatus('Learn note captured');
+    renderLearnPanel();
+    return true;
+  };
+
+  const startLearn = () => {
+    const source = selectedLearnSource();
+    const track = selectedTrack();
+    if (!source || !track) {
+      setStatus('Learn unavailable');
+      renderLearnPanel();
+      return false;
+    }
+    learnState.active = true;
+    learnState.pending = null;
+    learnState.sourceId = source.id;
+    learnState.trackId = track.id;
+    learnState.conflicts = [];
+    midiInputController?.setNoteCapture?.(handleLearnNote);
+    setStatus('Learning next note');
+    renderLearnPanel();
+    return true;
+  };
+
+  const cancelLearn = () => {
+    learnState.active = false;
+    learnState.pending = null;
+    learnState.sourceId = null;
+    learnState.trackId = null;
+    learnState.conflicts = [];
+    clearLearnCapture();
+    setStatus('Learn canceled');
+    renderLearnPanel();
+    return true;
+  };
+
+  const confirmLearn = () => {
+    if (!learnState.pending || !learnState.sourceId) {
+      renderLearnPanel();
+      return false;
+    }
+    const current = ensureProject();
+    const source = current.sources.find(entry => entry.id === learnState.sourceId);
+    const track = current.tracks.find(entry => entry.id === learnState.trackId) ||
+      current.tracks.find(entry => entry.id === source?.trackId);
+    if (!source || source.mode === 'clip') {
+      cancelLearn();
+      return false;
+    }
+    let next = reduceMidiProject(current, {
+      type: 'source.mapping.update',
+      sourceId: source.id,
+      patch: {
+        note: learnState.pending.note,
+        velocity: learnState.pending.velocity,
+        degree: null,
+        notes: null,
+        chord: null
+      }
+    });
+    if (track?.arm) {
+      next = reduceMidiProject(next, {
+        type: 'track.update',
+        trackId: track.id,
+        patch: { channel: learnState.pending.channel }
+      });
+    }
+    const label = source.label;
+    learnState.active = false;
+    learnState.pending = null;
+    learnState.sourceId = null;
+    learnState.trackId = null;
+    learnState.conflicts = [];
+    clearLearnCapture();
+    commitProject(next);
+    logOutput(`Learned ${label}`);
+    return true;
   };
 
   const setActiveMidiInput = (inputId) => {
@@ -1056,6 +1222,7 @@ const createMidiUiController = ({
     renderClipOptions(document?.getElementById('midiSourceClipSelect'), source?.clipId || clip?.id);
     setInputValue(document?.getElementById('midiSourceModeSelect'), source?.mode || 'direct');
     renderConflictSummary(report, source, track, source?.mode === 'clip' ? current.clips.find(item => item.id === source.clipId) || clip : clip);
+    renderLearnPanel();
     const mapping = source?.mapping || createEmptyDirectMapping();
     const directDisabled = source?.mode === 'clip';
     for (const id of [
@@ -1282,6 +1449,9 @@ const createMidiUiController = ({
     });
     bindById('midiAuditionButton', 'click', () => audition());
     bindById('midiClipAuditionButton', 'click', () => audition({ clipId: selectedClip()?.id, trackId: selectedTrack()?.id }));
+    bindById('midiLearnButton', 'click', () => startLearn());
+    bindById('midiLearnConfirmButton', 'click', () => confirmLearn());
+    bindById('midiLearnCancelButton', 'click', () => cancelLearn());
     bindById('midiTrackName', 'change', event => updateSelectedTrack({ name: event.target.value }));
     bindById('midiTrackInstrument', 'change', event => updateSelectedTrack({ instrumentLabel: event.target.value }));
     bindById('midiTrackChannel', 'change', event => updateSelectedTrack({ channel: Number(event.target.value) || 1 }));
@@ -1392,6 +1562,10 @@ const createMidiUiController = ({
       importProjectFile,
       saveProjectTemplate,
       getProjectTemplates,
+      startLearn,
+      confirmLearn,
+      cancelLearn,
+      captureLearnNote: handleLearnNote,
       audition,
       panic
     };
@@ -1409,6 +1583,7 @@ const createMidiUiController = ({
     unbindDeviceListeners();
     disposeDomListeners();
     clearMidiUiHook();
+    clearLearnCapture();
     midiInputController?.detach?.();
     activeMidiInput = null;
     bound = false;
@@ -1432,6 +1607,10 @@ const createMidiUiController = ({
     importProjectFile,
     saveProjectTemplate,
     getProjectTemplates,
+    startLearn,
+    confirmLearn,
+    cancelLearn,
+    captureLearnNote: handleLearnNote,
     audition,
     panic,
     applyRuntimePatch,
@@ -1449,6 +1628,7 @@ const createMidiUiController = ({
       }
       midiInputController = controller;
       if (activeMidiInput) midiInputController?.attach?.(activeMidiInput);
+      if (learnState.active) midiInputController?.setNoteCapture?.(handleLearnNote);
     },
     setActiveMidiInput,
     setActiveMidiOutput,

@@ -115,16 +115,46 @@ describe('MidiInputController', function() {
       }
     };
     const controller = new MidiInputController(view, { getConfig: () => config });
-    let captured = null;
-    controller.setNoteCapture((note) => {
-      captured = note;
+    const captured = [];
+    controller.setNoteCapture((note, velocity, channel) => {
+      captured.push({ note, velocity, channel });
       return true;
     });
 
     controller._onMessage({ data: [0x90, 60, 100] });
 
-    expect(captured).to.equal(60);
+    expect(captured).to.deep.equal([{ note: 60, velocity: 100, channel: 1 }]);
     expect(commands.length).to.equal(0);
+  });
+
+  it('capture handlers respect channel filtering, velocity-zero note-ons, and fallthrough', function() {
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = {
+      input: {
+        channel: 2,
+        notes: { skillBase: 60, skillOrder: ['CLIMBER'] }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    const captured = [];
+    controller.setNoteCapture((note, velocity, channel) => {
+      captured.push({ note, velocity, channel });
+      return false;
+    });
+
+    controller._onMessage({ data: [0x90, 60, 100] });
+    controller._onMessage({ data: [0x91, 60, 0] });
+    controller._onMessage({ data: [0x91, 60, 100] });
+
+    expect(captured).to.deep.equal([{ note: 60, velocity: 100, channel: 2 }]);
+    expect(commands.length).to.equal(1);
+    expect(commands[0].skill).to.equal(SkillTypes.CLIMBER);
   });
 
   it('stores the last MIDI message on window', function() {

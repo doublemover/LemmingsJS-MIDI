@@ -50,6 +50,11 @@ const registerSequencerDom = (doc) => {
     midiSourceClipSelect: 'select',
     midiAssignClipButton: 'button',
     midiConflictSummary: 'div',
+    midiLearnPanel: 'div',
+    midiLearnStatus: 'div',
+    midiLearnButton: 'button',
+    midiLearnConfirmButton: 'button',
+    midiLearnCancelButton: 'button',
     midiEnvelopeOverrideToggle: 'input',
     midiMappingNote: 'input',
     midiMappingDegree: 'input',
@@ -264,6 +269,57 @@ describe('midiUiController sequencer', function() {
 
     await controller.importProjectFile({ text: '{"bad":' });
     expect(doc.getElementById('errorDisplay').textContent).to.contain('not valid JSON');
+  });
+
+  it('learns a direct source note through the MIDI input capture hook', function() {
+    const captureCalls = [];
+    const fakeInputController = {
+      handler: null,
+      setNoteCapture(handler) {
+        captureCalls.push(handler);
+        this.handler = handler;
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc, win } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'track-1', patch: { arm: true } });
+
+    expect(controller.startLearn()).to.equal(true);
+    expect(fakeInputController.handler).to.be.a('function');
+    expect(fakeInputController.handler(82, 101, 5)).to.equal(true);
+    expect(doc.getElementById('midiLearnStatus').textContent).to.contain('Pending note 82');
+    expect(controller.confirmLearn()).to.equal(true);
+
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(stored.sources[0].mapping).to.include({ note: 82, velocity: 101, degree: null, chord: null });
+    expect(stored.tracks[0]).to.include({ channel: 5, arm: true });
+    expect(captureCalls.at(-1)).to.equal(null);
+  });
+
+  it('cancels learn capture and clears it on dispose', function() {
+    const captureCalls = [];
+    const fakeInputController = {
+      setNoteCapture(handler) {
+        captureCalls.push(handler);
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+
+    expect(controller.startLearn()).to.equal(true);
+    expect(captureCalls.at(-1)).to.be.a('function');
+    expect(controller.cancelLearn()).to.equal(true);
+    expect(captureCalls.at(-1)).to.equal(null);
+
+    controller.startLearn();
+    controller.dispose();
+    expect(captureCalls.at(-1)).to.equal(null);
   });
 
   it('creates clips, assigns a source to clip mode, persists steps, and auditions clip notes', function() {

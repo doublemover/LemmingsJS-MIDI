@@ -1072,6 +1072,32 @@ details.panel-section > summary.panel-title {
     color: #ffb4a8;
 }
 
+.midi-learn-panel {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    min-height: 38px;
+    margin: 0 0 8px;
+    padding: 7px 8px;
+    border: 1px solid rgba(134, 245, 216, 0.18);
+    border-radius: 6px;
+    background: rgba(14, 21, 25, 0.78);
+}
+
+.midi-learn-panel.is-active {
+    border-color: rgba(134, 245, 216, 0.62);
+    background: rgba(22, 44, 43, 0.86);
+}
+
+.midi-learn-status {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: rgba(233, 238, 242, 0.72);
+    font-size: 11px;
+    line-height: 1.25;
+}
+
 .midi-automation-list {
     display: flex;
     flex-direction: column;
@@ -1257,6 +1283,10 @@ body.midi-disabled .midi-region select {
 
     .midi-automation-row {
         grid-template-columns: auto minmax(80px, 1fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr);
+    }
+
+    .midi-learn-panel {
+        grid-template-columns: 1fr;
     }
 }
 

@@ -30,6 +30,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Inspector: edit the selected source direct mapping with note, degree, octave,
   chord, velocity, duration, envelope override, clip, audition controls, and
   conflict warnings for the selected route.
+- Learn: arm a selected direct source, capture the next MIDI note-on as a
+  pending note/velocity/channel assignment, then commit or cancel it.
 - Output Status: shows recent audition/output activity and scheduler pressure.
 
 ## Conflict Checks
@@ -63,6 +65,9 @@ factory projects.
 - `importProject(payload)`
 - `saveProjectTemplate({ id?, name? })`
 - `getProjectTemplates()`
+- `startLearn()`
+- `confirmLearn()`
+- `cancelLearn()`
 - `audition({ sourceId?, trackId?, mapping?, clipId? })`
 - `panic()`
 
@@ -75,6 +80,10 @@ factory projects.
 - `midiImportProject(payload)`
 - `midiSaveProjectTemplate(options)`
 - `midiGetProjectTemplates()`
+- `midiStartLearn()`
+- `midiConfirmLearn()`
+- `midiCancelLearn()`
+- `midiCaptureLearnNote(note, velocity, channel)`
 - `midiAudition(request)`
 
 ## Visual and E2E Coverage
@@ -83,5 +92,6 @@ factory projects.
   `temp/e2e-captures/`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
   cleanup, setup, track routing, direct mapping, clip creation/editing,
-  clip assignment, import/export/template reset, modulation controls, audition,
-  persistence, filters, conflict warnings, and responsive overflow checks.
+  clip assignment, import/export/template reset, learn capture, modulation
+  controls, audition, persistence, filters, conflict warnings, and responsive
+  overflow checks.

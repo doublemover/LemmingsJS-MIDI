@@ -197,6 +197,14 @@
           <div id="midiConflictSummary" class="midi-conflict-summary" aria-live="polite">
             No conflicts for the selected source.
           </div>
+          <div id="midiLearnPanel" class="midi-learn-panel" aria-live="polite">
+            <div id="midiLearnStatus" class="midi-learn-status">Learn waits for the next note-on.</div>
+            <div class="midi-button-row">
+              <button id="midiLearnButton" type="button">Learn</button>
+              <button id="midiLearnConfirmButton" type="button">Commit</button>
+              <button id="midiLearnCancelButton" type="button">Cancel</button>
+            </div>
+          </div>
           <div class="midi-toggle-row">
             <label><input id="midiEnvelopeOverrideToggle" type="checkbox" /> Envelope override</label>
           </div>

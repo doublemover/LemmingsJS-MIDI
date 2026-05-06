@@ -124,6 +124,23 @@ test('MIDI sequencer imports, exports, saves templates, and resets from template
   await expect(midi.templateSelect()).toContainText('Lead Template');
 });
 
+test('MIDI sequencer learns a selected direct source note from mocked input', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await midi.enable();
+
+  await expect(midi.learnPanel()).toBeVisible();
+  await midi.learnButton().click();
+  await expect(midi.learnStatus()).toContainText('Listening');
+  const sent = await page.evaluate(() => window.__WEBMIDI_STUB__.sendNoteOn(86, 104, 6));
+  expect(sent).toBe(true);
+  await expect(midi.learnStatus()).toContainText('Pending note 86');
+  await midi.learnConfirmButton().click();
+
+  const project = await page.evaluate(() => window.__E2E__.midiGetProject());
+  const source = project.sources.find(entry => entry.id === 'sfx-1');
+  expect(source.mapping).toMatchObject({ note: 86, velocity: 104, degree: null, chord: null });
+});
+
 test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
