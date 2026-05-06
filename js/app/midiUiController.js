@@ -1993,7 +1993,11 @@ const createMidiUiController = ({
   const renderOutputStatus = () => {
     const router = getLemmings()?.midiRouter;
     const report = router?.getRateReport?.();
-    const pressure = report?.reason ? `Scheduler: ${report.reason}` : 'Scheduler: idle';
+    const snapshot = report?.snapshot || router?.getRateSnapshot?.();
+    const queued = Math.max(0, Math.round(Number(snapshot?.next?.count) || 0));
+    const pressure = report?.reason
+      ? `Scheduler: ${report.reason}`
+      : (queued ? `Scheduler: queued ${queued}` : 'Scheduler: idle');
     setText(document?.getElementById('midiSchedulerPressure'), pressure);
     setText(document?.getElementById('midiOutputLog'), outputLog[0] || 'No output yet');
   };

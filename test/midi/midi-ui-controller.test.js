@@ -1344,6 +1344,27 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Panic sent');
   });
 
+  it('shows queued scheduler pressure when no rate limit is active', function() {
+    const { controller, doc } = createControllerHarness({
+      lemmings: {
+        midiRouter: {
+          getRateReport() {
+            return null;
+          },
+          getRateSnapshot() {
+            return {
+              past: { count: 0 },
+              next: { count: 3 }
+            };
+          }
+        }
+      }
+    });
+
+    controller.bindMidiUi();
+    expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: queued 3');
+  });
+
   it('shows track output labels in track rows', function() {
     const webMidi = {
       enabled: true,
