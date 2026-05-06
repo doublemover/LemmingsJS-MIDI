@@ -96,6 +96,10 @@ const registerSequencerDom = (doc) => {
     midiGlobalIntensity: 'input',
     midiGlobalAccent: 'input',
     midiGlobalViewPan: 'input',
+    midiGlobalEnvAttack: 'input',
+    midiGlobalEnvDecay: 'input',
+    midiGlobalEnvSustain: 'input',
+    midiGlobalEnvRelease: 'input',
     midiAutomationAddButton: 'button',
     midiAutomationList: 'div',
     midiSchedulerPressure: 'div',
@@ -376,6 +380,12 @@ describe('midiUiController sequencer', function() {
     const viewPan = doc.getElementById('midiGlobalViewPan');
     viewPan.checked = true;
     viewPan.dispatchEvent({ type: 'change', target: viewPan });
+    const globalAttack = doc.getElementById('midiGlobalEnvAttack');
+    globalAttack.value = '1.25';
+    globalAttack.dispatchEvent({ type: 'change', target: globalAttack });
+    const globalRelease = doc.getElementById('midiGlobalEnvRelease');
+    globalRelease.value = '0.75';
+    globalRelease.dispatchEvent({ type: 'change', target: globalRelease });
     const envelopeToggle = doc.getElementById('midiEnvelopeOverrideToggle');
     envelopeToggle.checked = true;
     envelopeToggle.dispatchEvent({ type: 'change', target: envelopeToggle });
@@ -393,6 +403,7 @@ describe('midiUiController sequencer', function() {
     expect(stored.global.velocityRange.default).to.equal(96);
     expect(stored.global.density.velocityBoost).to.equal(0.8);
     expect(stored.global.position.viewPan).to.equal(true);
+    expect(stored.global.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(stored.sources[0].mapping.envelope).to.deep.equal({ attack: 1, decay: 0, sustain: 1, release: 1 });
     expect(stored.automation).to.have.lengthOf(1);
     expect(stored.automation[0].axisOp).to.equal('mul');
@@ -402,8 +413,14 @@ describe('midiUiController sequencer', function() {
     expect(runtime.velocityRange.default).to.equal(96);
     expect(runtime.density.velocityBoost).to.equal(0.8);
     expect(runtime.position.viewPan).to.equal(true);
+    expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
+
+    controller.applyRuntimePatch({ envelope: { sustain: 1.5 } });
+    const afterPatch = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterPatch.global.envelope.sustain).to.equal(1.5);
+    expect(view.projectConfigs.at(-1).envelope.sustain).to.equal(1.5);
 
     const removeButton = doc.getElementById('midiAutomationList').children[0].children.find(child => child.className === 'midi-automation-remove');
     removeButton.dispatchEvent({ type: 'click', target: removeButton });

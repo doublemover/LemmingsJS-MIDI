@@ -1164,12 +1164,13 @@ const createMidiUiController = ({
       });
     }
     project = current;
-    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.mpe || patch.limits || patch.reverse) {
+    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.envelope || patch.mpe || patch.limits || patch.reverse) {
       patchGlobal({
         ...(patch.scale ? { scale: { ...current.global.scale, ...patch.scale } } : {}),
         ...(patch.noteRange ? { noteRange: { ...current.global.noteRange, ...patch.noteRange } } : {}),
         ...(patch.velocityRange ? { velocityRange: { ...current.global.velocityRange, ...patch.velocityRange } } : {}),
         ...(patch.durationTicks ? { durationTicks: { ...current.global.durationTicks, ...patch.durationTicks } } : {}),
+        ...(patch.envelope ? { envelope: { ...current.global.envelope, ...patch.envelope } } : {}),
         ...(patch.mpe ? { mpe: { ...current.global.mpe, ...patch.mpe } } : {}),
         ...(patch.limits ? { limits: { ...current.global.limits, ...patch.limits } } : {}),
         ...(patch.reverse ? { reverse: { ...current.global.reverse, ...patch.reverse } } : {})
@@ -1648,6 +1649,10 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalIntensity'), current.global.velocityRange.default);
     setInputValue(document?.getElementById('midiGlobalAccent'), current.global.density.velocityBoost);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
+    setInputValue(document?.getElementById('midiGlobalEnvAttack'), current.global.envelope.attack);
+    setInputValue(document?.getElementById('midiGlobalEnvDecay'), current.global.envelope.decay);
+    setInputValue(document?.getElementById('midiGlobalEnvSustain'), current.global.envelope.sustain);
+    setInputValue(document?.getElementById('midiGlobalEnvRelease'), current.global.envelope.release);
     renderAutomationList();
   };
 
@@ -2117,6 +2122,21 @@ const createMidiUiController = ({
       const current = ensureProject();
       updateGlobal({ position: { ...current.global.position, viewPan: !!event.target.checked } });
     });
+    const updateGlobalEnvelope = () => {
+      const current = ensureProject();
+      const readEnvelopeValue = (id, fallback) => toNumberOrNull(document?.getElementById(id)?.value) ?? fallback;
+      updateGlobal({
+        envelope: {
+          attack: readEnvelopeValue('midiGlobalEnvAttack', current.global.envelope.attack),
+          decay: readEnvelopeValue('midiGlobalEnvDecay', current.global.envelope.decay),
+          sustain: readEnvelopeValue('midiGlobalEnvSustain', current.global.envelope.sustain),
+          release: readEnvelopeValue('midiGlobalEnvRelease', current.global.envelope.release)
+        }
+      });
+    };
+    for (const id of ['midiGlobalEnvAttack', 'midiGlobalEnvDecay', 'midiGlobalEnvSustain', 'midiGlobalEnvRelease']) {
+      bindById(id, 'change', updateGlobalEnvelope);
+    }
     bindById('midiAutomationAddButton', 'click', () => {
       const current = ensureProject();
       const targets = ['note', 'velocity', 'pan', 'duration'];

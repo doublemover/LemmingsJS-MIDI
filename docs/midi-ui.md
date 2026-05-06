@@ -28,7 +28,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
   fields and use Arrow keys, Home, and End to move through the active region.
 - Modulation: set global intensity, accent, view pan, and add, edit, or remove
   compact position lanes with axis operators for note, velocity, pan, duration,
-  timbre, and envelope targets.
+  timbre, and envelope targets. Global envelope defaults set the baseline for
+  direct mappings unless a source has an envelope override.
 - Clips: create reusable step, chord, or arp clips, set arp direction and
   pattern preset, and edit compact step patterns with note, velocity,
   probability, hold, and tie controls.
