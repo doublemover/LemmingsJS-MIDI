@@ -165,21 +165,34 @@ test('MIDI sequencer imports, exports, saves templates, and resets from template
   await expect(midi.templateSelect()).toContainText('Lead Template');
 });
 
-test('MIDI sequencer learns a selected direct source note from mocked input', async ({ page }) => {
+test('MIDI sequencer learns a selected direct source note and resolves range warnings', async ({ page }) => {
   const midi = await openMidiUi(page);
   await midi.enable();
+  const setField = async (selector, value) => {
+    await page.locator(selector).evaluate((element, nextValue) => {
+      element.value = String(nextValue);
+      element.dispatchEvent(new Event('change', { bubbles: true }));
+    }, value);
+  };
 
+  await setField('#midiGlobalNoteMax', '80');
   await expect(midi.learnPanel()).toBeVisible();
   await midi.learnButton().click();
   await expect(midi.learnStatus()).toContainText('Listening');
   const sent = await page.evaluate(() => window.__WEBMIDI_STUB__.sendNoteOn(86, 104, 6));
   expect(sent).toBe(true);
   await expect(midi.learnStatus()).toContainText('Pending note 86');
+  await expect(midi.learnStatus()).toContainText('1 warning');
   await midi.learnConfirmButton().click();
+  await expect(midi.conflictSummary()).toContainText('outside the project note range');
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
   const source = project.sources.find(entry => entry.id === 'sfx-1');
   expect(source.mapping).toMatchObject({ note: 86, velocity: 104, degree: null, chord: null });
+  await setField('#midiGlobalNoteMax', '96');
+  await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'source.select', sourceId: 'sfx-1' }));
+  await expect.poll(() => page.evaluate(() => window.__E2E__.midiGetProject().ui.selectedSourceId)).toBe('sfx-1');
+  await expect(midi.conflictSummary()).not.toContainText('outside the project note range');
 });
 
 test('MIDI sequencer records mocked MIDI notes into a step clip', async ({ page }) => {
