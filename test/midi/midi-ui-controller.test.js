@@ -488,7 +488,10 @@ describe('midiUiController sequencer', function() {
         panRange: { min: -64, max: 64 },
         timbreRange: { min: 10, max: 100 },
         panDeadZonePct: 0.1
-      }
+      },
+      mpe: { enabled: false, masterChannel: 3 },
+      limits: { maxActiveNotes: 12, maxEventsPerTick: 8 },
+      reverse: { allNotesOffOnToggle: true }
     });
     const afterPatch = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(afterPatch.global.noteRange).to.include({ min: 48, max: 84 });
@@ -499,6 +502,9 @@ describe('midiUiController sequencer', function() {
     expect(afterPatch.global.position.panRange).to.deep.equal({ min: -64, max: 64 });
     expect(afterPatch.global.position.timbreRange).to.deep.equal({ min: 10, max: 100 });
     expect(afterPatch.global.position.panDeadZonePct).to.equal(0.1);
+    expect(afterPatch.global.mpe).to.include({ enabled: false, masterChannel: 3 });
+    expect(afterPatch.global.limits).to.include({ maxActiveNotes: 12, maxEventsPerTick: 8 });
+    expect(afterPatch.global.reverse).to.include({ allNotesOffOnToggle: true });
     expect(view.projectConfigs.at(-1).noteRange).to.include({ min: 48, max: 84 });
     expect(view.projectConfigs.at(-1).velocityRange).to.include({ default: 96, min: 24, max: 112 });
     expect(view.projectConfigs.at(-1).density).to.include({ windowTicks: 18, durationScale: 0.75 });
@@ -507,6 +513,9 @@ describe('midiUiController sequencer', function() {
     expect(view.projectConfigs.at(-1).position.panRange).to.deep.equal({ min: -64, max: 64 });
     expect(view.projectConfigs.at(-1).position.timbreRange).to.deep.equal({ min: 10, max: 100 });
     expect(view.projectConfigs.at(-1).position.panDeadZonePct).to.equal(0.1);
+    expect(view.projectConfigs.at(-1).mpe).to.include({ enabled: false, masterChannel: 3 });
+    expect(view.projectConfigs.at(-1).limits).to.include({ maxActiveNotes: 12, maxEventsPerTick: 8 });
+    expect(view.projectConfigs.at(-1).reverse).to.include({ allNotesOffOnToggle: true });
 
     const removeButton = doc.getElementById('midiAutomationList').children[0].children.find(child => child.className === 'midi-automation-remove');
     removeButton.dispatchEvent({ type: 'click', target: removeButton });
