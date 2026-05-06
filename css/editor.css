@@ -515,7 +515,32 @@ body {
   border-left: 4px solid var(--warn);
 }
 
-.issue-item button {
+.issue-severity {
+  align-self: flex-start;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #efe6d9;
+  color: var(--muted);
+}
+
+.issue-item.error .issue-severity {
+  background: rgba(179, 54, 45, 0.12);
+  color: var(--error);
+}
+
+.issue-item.warning .issue-severity {
+  background: rgba(199, 124, 47, 0.14);
+  color: var(--warn);
+}
+
+.issue-message {
+  line-height: 1.35;
+}
+
+.issue-action {
   align-self: flex-start;
   background: var(--accent);
   color: #fff;

@@ -272,15 +272,29 @@ const editorSelectionPanelMethods = {
     if (!this.el.issuesList) return;
     this.el.issuesList.innerHTML = '';
     for (const issue of issues) {
-      if (issue.severity === 'error') this._hasErrors = true;
+      const severity = issue.severity === 'error'
+        ? 'error'
+        : issue.severity === 'warning'
+          ? 'warning'
+          : 'info';
+      const severityLabel = severity.charAt(0).toUpperCase() + severity.slice(1);
+      if (severity === 'error') this._hasErrors = true;
       const item = this.document.createElement('div');
-      item.className = `issue-item ${issue.severity}`;
+      item.className = `issue-item ${severity}`;
       item.setAttribute('role', 'listitem');
+      item.setAttribute('data-severity', severity);
+      item.setAttribute('aria-label', `${severityLabel}: ${issue.message}`);
+      const label = this.document.createElement('span');
+      label.className = 'issue-severity';
+      label.textContent = severityLabel;
+      item.appendChild(label);
       const message = this.document.createElement('div');
+      message.className = 'issue-message';
       message.textContent = issue.message;
       item.appendChild(message);
       if (issue.fix) {
         const button = this.document.createElement('button');
+        button.className = 'issue-action';
         button.type = 'button';
         button.textContent = issue.fixLabel || 'Fix';
         button.title = issue.fixLabel

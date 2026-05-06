@@ -111,10 +111,16 @@ test('Validation panel renders and applies fix buttons', async ({ page }) => {
   await setEditorField(page, '#editorHeaderLemmings', 5);
   await setEditorField(page, '#editorHeaderSaveRequirement', 8);
 
+  await expect(page.locator('#editorIssuesList')).toHaveAttribute('role', 'list');
+  await expect(page.locator('#editorIssuesList')).toHaveAttribute('aria-live', 'polite');
   const issue = page.locator('#editorIssuesList .issue-item', {
     hasText: 'Save requirement exceeds lemmings.'
   });
   await expect(issue).toBeVisible();
+  await expect(issue).toHaveAttribute('data-severity', 'error');
+  await expect(issue).toHaveAttribute('aria-label', 'Error: Save requirement exceeds lemmings.');
+  await expect(issue.locator('.issue-severity')).toHaveText('Error');
+  await expect(issue.locator('.issue-message')).toHaveText('Save requirement exceeds lemmings.');
   await issue.getByRole('button', { name: 'Clamp save requirement' }).click();
   await expect(page.locator('#editorIssuesList')).not.toContainText('Save requirement exceeds lemmings.');
 

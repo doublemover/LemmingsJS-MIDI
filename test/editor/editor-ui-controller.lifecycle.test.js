@@ -111,12 +111,31 @@ describe('EditorUiController lifecycle', function() {
     ui.document = doc;
     ui.el = { issuesList };
 
-    ui._renderIssues([{ severity: 'error', message: 'Missing entrance.' }]);
+    ui._renderIssues([{
+      severity: 'error',
+      message: 'Missing entrance.',
+      fixLabel: 'Add entrance',
+      fix: () => {}
+    }]);
 
     expect(ui._hasErrors).to.equal(true);
     expect(issuesList.children).to.have.lengthOf(1);
-    expect(issuesList.children[0].getAttribute('role')).to.equal('listitem');
-    expect(issuesList.children[0].children[0].textContent).to.equal('Missing entrance.');
+    const issueItem = issuesList.children.find(child => child.classList.contains('issue-item'));
+    expect(issueItem).to.exist;
+    expect(issueItem.getAttribute('role')).to.equal('listitem');
+    expect(issueItem.getAttribute('data-severity')).to.equal('error');
+    expect(issueItem.getAttribute('aria-label')).to.equal('Error: Missing entrance.');
+
+    const severity = issueItem.children.find(child => child.classList.contains('issue-severity'));
+    expect(severity?.textContent).to.equal('Error');
+
+    const message = issueItem.children.find(child => child.classList.contains('issue-message'));
+    expect(message?.textContent).to.equal('Missing entrance.');
+
+    const action = issueItem.children.find(child => child.classList.contains('issue-action'));
+    expect(action?.tagName).to.equal('BUTTON');
+    expect(action?.textContent).to.equal('Add entrance');
+    expect(action?.title).to.equal('Apply fix: Add entrance');
   });
 
   it('ignores stale async level imports after a newer import starts', async function() {
