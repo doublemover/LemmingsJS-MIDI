@@ -41,6 +41,15 @@ jobs:
       - run: npm run check-mcp-clients
       - run: npm run test-bench-unit
       - run: npm test
+      - name: Create localhost HTTPS cert
+        run: |
+          mkdir -p certs
+          openssl req -x509 -newkey rsa:2048 -nodes \
+            -keyout certs/localhost-key.pem \
+            -out certs/localhost.pem \
+            -days 1 \
+            -subj "/CN=localhost" \
+            -addext "subjectAltName=DNS:localhost,IP:127.0.0.1"
       - name: Start HTTPS server
         run: |
           npm run start-https > /tmp/lemmings-http.log 2>&1 &
