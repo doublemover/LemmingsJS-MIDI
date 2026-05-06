@@ -222,6 +222,38 @@ describe('MidiProject', function() {
     expect(projectToMidiConfig(project, {}).sfx['1']).to.include({ trackId: 'lead', channel: 3 });
   });
 
+  it('sanitizes source mode clip intents without a valid clip back to direct mode', function() {
+    const project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+
+    const missingClip = reduceMidiProject(project, {
+      type: 'source.mode.set',
+      sourceId: 'sfx-1',
+      mode: 'clip',
+      clipId: 'missing-riff'
+    });
+
+    expect(missingClip.sources[0]).to.include({
+      mode: 'direct',
+      clipId: null
+    });
+    expect(missingClip.sources[0].mapping).to.include({ note: 60 });
+
+    const noResolvedClip = reduceMidiProject(project, {
+      type: 'source.mode.set',
+      sourceId: 'sfx-1',
+      mode: 'clip'
+    });
+
+    expect(noResolvedClip.sources[0]).to.include({
+      mode: 'direct',
+      clipId: null
+    });
+    expect(noResolvedClip.sources[0].mapping).to.include({ note: 60 });
+  });
+
   it('ignores identity fields in reducer update intents', function() {
     let project = createMidiProjectFromMidiConfig({
       sfx: { '1': { name: 'skill-select', note: 60 } },

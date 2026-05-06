@@ -869,18 +869,30 @@ function reduceMidiProject(project, intent = {}) {
       : current;
     break;
   }
-  case 'source.mode.set':
-    next = { ...current, sources: current.sources.map(source => (
-      source.id === intent.sourceId
-        ? {
+  case 'source.mode.set': {
+    const requestedClipId = intent.clipId ?? current.ui.selectedClipId;
+    const validClipId = current.clips.some(clip => clip.id === requestedClipId)
+      ? requestedClipId
+      : null;
+    next = { ...current, sources: current.sources.map(source => {
+      if (source.id !== intent.sourceId) return source;
+      if (intent.mode === 'clip' && validClipId) {
+        return {
           ...source,
-          mode: intent.mode === 'clip' ? 'clip' : 'direct',
-          clipId: intent.mode === 'clip' ? intent.clipId ?? current.ui.selectedClipId : null,
-          mapping: intent.mode === 'clip' ? null : source.mapping || createEmptyDirectMapping()
-        }
-        : source
-    )) };
+          mode: 'clip',
+          clipId: validClipId,
+          mapping: null
+        };
+      }
+      return {
+        ...source,
+        mode: 'direct',
+        clipId: null,
+        mapping: source.mapping || createEmptyDirectMapping()
+      };
+    }) };
     break;
+  }
   case 'source.clip.assign':
     next = { ...current, sources: updateById(current.sources, intent.sourceId, {
       mode: 'clip',
