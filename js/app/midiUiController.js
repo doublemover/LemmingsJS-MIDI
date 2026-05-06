@@ -2199,7 +2199,12 @@ const createMidiUiController = ({
       const source = selectedSource();
       if (!source) return;
       const mode = event.target.value === 'clip' ? 'clip' : 'direct';
-      const clipId = mode === 'clip' ? ensureSelectedClipId() : null;
+      const clipId = mode === 'clip' ? selectedClip()?.id || null : null;
+      if (mode === 'clip' && !clipId) {
+        setStatus('Create a clip before using clip mode');
+        renderInspector();
+        return;
+      }
       dispatchProjectIntent({ type: 'source.mode.set', sourceId: source.id, mode, clipId });
     });
     bindById('midiSourceClipSelect', 'change', event => {

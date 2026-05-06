@@ -903,6 +903,20 @@ describe('midiUiController sequencer', function() {
     expect(controller.getProject().sources[0]).to.include({ mode: 'direct', clipId: null });
   });
 
+  it('keeps source mode direct when clip mode has no clip', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const mode = doc.getElementById('midiSourceModeSelect');
+    mode.value = 'clip';
+    mode.dispatchEvent({ type: 'change', target: mode });
+
+    expect(controller.getProject().clips).to.have.lengthOf(0);
+    expect(controller.getProject().sources[0]).to.include({ mode: 'direct', clipId: null });
+    expect(doc.getElementById('midiSourceModeSelect').value).to.equal('direct');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Create a clip before using clip mode');
+  });
+
   it('filters silent and tied clip steps from runtime clip mappings', function() {
     const { controller, view } = createControllerHarness();
     controller.bindMidiUi();
