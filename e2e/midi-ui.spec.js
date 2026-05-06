@@ -18,6 +18,57 @@ const openMidiUi = async (page, { resetStorage = false, withDevices = true } = {
   return midi;
 };
 
+test('MIDI sequencer gives editor buttons scoped accessible names', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await expect(midi.workspace()).toBeVisible();
+
+  const labels = await page.locator([
+    '#midiProjectResetButton',
+    '#midiPanicButton',
+    '#midiTemplateSaveButton',
+    '#midiProjectExportButton',
+    '#midiProjectImportButton',
+    '#midiTrackAdd',
+    '#midiClipAddButton',
+    '#midiAssignSourceButton',
+    '#midiAuditionButton',
+    '#midiClipAuditionButton',
+    '#midiSourceRevertButton',
+    '#midiAssignClipButton',
+    '#midiLearnButton',
+    '#midiLearnConfirmButton',
+    '#midiLearnCancelButton',
+    '#midiAutomationAddButton',
+    '#midiRecordButton',
+    '#midiRecordCommitButton',
+    '#midiRecordCancelButton'
+  ].join(', ')).evaluateAll(buttons => Object.fromEntries(
+    buttons.map(button => [button.id, button.getAttribute('aria-label')])
+  ));
+
+  expect(labels).toEqual({
+    midiProjectResetButton: 'Reset MIDI project',
+    midiPanicButton: 'Panic all MIDI notes',
+    midiTemplateSaveButton: 'Save MIDI template',
+    midiProjectExportButton: 'Export MIDI project',
+    midiProjectImportButton: 'Import MIDI project',
+    midiTrackAdd: 'Add MIDI track',
+    midiClipAddButton: 'Add MIDI clip',
+    midiAssignSourceButton: 'Assign selected source to track',
+    midiAuditionButton: 'Audition selected source',
+    midiClipAuditionButton: 'Audition selected clip',
+    midiSourceRevertButton: 'Revert selected source mapping',
+    midiAssignClipButton: 'Assign selected clip to source',
+    midiLearnButton: 'Start MIDI learn',
+    midiLearnConfirmButton: 'Commit MIDI learn',
+    midiLearnCancelButton: 'Cancel MIDI learn',
+    midiAutomationAddButton: 'Add modulation lane',
+    midiRecordButton: 'Start MIDI recording',
+    midiRecordCommitButton: 'Commit MIDI recording',
+    midiRecordCancelButton: 'Cancel MIDI recording'
+  });
+});
+
 test('MIDI sequencer creates a fresh project and clears legacy storage', async ({ page }) => {
   await page.addInitScript(() => {
     window.localStorage?.setItem?.('lemmings.midi.intent', '{"revision":99}');

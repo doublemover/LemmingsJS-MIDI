@@ -105,15 +105,15 @@
         <span>Template</span>
         <select id="midiTemplateSelect"></select>
       </label>
-      <button id="midiProjectResetButton" type="button">Reset</button>
-      <button id="midiPanicButton" type="button">Panic</button>
+      <button id="midiProjectResetButton" type="button" aria-label="Reset MIDI project">Reset</button>
+      <button id="midiPanicButton" type="button" aria-label="Panic all MIDI notes">Panic</button>
       <label class="midi-field midi-field--toggle">
         <span>Reverse Panic</span>
         <input type="checkbox" id="midiReversePanicToggle" />
       </label>
-      <button id="midiTemplateSaveButton" type="button">Save Template</button>
-      <button id="midiProjectExportButton" type="button">Export</button>
-      <button id="midiProjectImportButton" type="button">Import</button>
+      <button id="midiTemplateSaveButton" type="button" aria-label="Save MIDI template">Save Template</button>
+      <button id="midiProjectExportButton" type="button" aria-label="Export MIDI project">Export</button>
+      <button id="midiProjectImportButton" type="button" aria-label="Import MIDI project">Import</button>
       <input id="midiProjectImportInput" class="midi-hidden-file-input" type="file" accept="application/json,.json" />
       <div id="midiProjectStatus" class="midi-status" role="status">Project loading</div>
       <div id="errorDisplay" class="midi-error" role="status"></div>
@@ -154,28 +154,28 @@
       <section id="midiTrackWorkspace" class="midi-region midi-track-workspace" aria-label="MIDI tracks">
         <div class="midi-region__header">
           <h2>Tracks</h2>
-          <button id="midiTrackAdd" type="button">Add</button>
+          <button id="midiTrackAdd" type="button" aria-label="Add MIDI track">Add</button>
         </div>
         <div id="midiTrackList" class="midi-track-list" role="listbox" aria-label="Project tracks"></div>
         <div id="midiClipLibrary" class="midi-clip-library">
           <div class="midi-region__header midi-region__header--compact">
             <h2>Clips</h2>
-            <button id="midiClipAddButton" type="button">Add</button>
+            <button id="midiClipAddButton" type="button" aria-label="Add MIDI clip">Add</button>
           </div>
           <div id="midiClipList" class="midi-clip-list" role="listbox" aria-label="Project clips"></div>
         </div>
         <div id="midiSelectedSourceSummary" class="midi-selection-summary">No source selected</div>
         <div class="midi-assignment-row">
           <select id="midiAssignTrackSelect" aria-label="Assign source to track"></select>
-          <button id="midiAssignSourceButton" type="button">Assign Source</button>
+          <button id="midiAssignSourceButton" type="button" aria-label="Assign selected source to track">Assign Source</button>
         </div>
       </section>
       <section id="midiInspector" class="midi-region midi-inspector" aria-label="MIDI inspector">
         <div class="midi-region__header">
           <h2>Inspector</h2>
           <div class="midi-button-row">
-            <button id="midiAuditionButton" type="button">Audition</button>
-            <button id="midiClipAuditionButton" type="button">Clip</button>
+            <button id="midiAuditionButton" type="button" aria-label="Audition selected source">Audition</button>
+            <button id="midiClipAuditionButton" type="button" aria-label="Audition selected clip">Clip</button>
           </div>
         </div>
         <div id="midiTrackInspector" class="midi-inspector-group">
@@ -219,7 +219,7 @@
         <div id="midiSourceInspector" class="midi-inspector-group">
           <h3>Source</h3>
           <div class="midi-button-row">
-            <button id="midiSourceRevertButton" type="button">Revert Source</button>
+            <button id="midiSourceRevertButton" type="button" aria-label="Revert selected source mapping">Revert Source</button>
           </div>
           <label class="midi-field midi-field--toggle">
             <span>Enabled</span>
@@ -241,7 +241,7 @@
               <span>Clip</span>
               <select id="midiSourceClipSelect"></select>
             </label>
-            <button id="midiAssignClipButton" type="button">Assign Clip</button>
+            <button id="midiAssignClipButton" type="button" aria-label="Assign selected clip to source">Assign Clip</button>
           </div>
           <div id="midiConflictSummary" class="midi-conflict-summary" aria-live="polite">
             No conflicts for the selected source.
@@ -249,9 +249,9 @@
           <div id="midiLearnPanel" class="midi-learn-panel" aria-live="polite">
             <div id="midiLearnStatus" class="midi-learn-status">Learn waits for the next note-on.</div>
             <div class="midi-button-row">
-              <button id="midiLearnButton" type="button">Learn</button>
-              <button id="midiLearnConfirmButton" type="button">Commit</button>
-              <button id="midiLearnCancelButton" type="button">Cancel</button>
+              <button id="midiLearnButton" type="button" aria-label="Start MIDI learn">Learn</button>
+              <button id="midiLearnConfirmButton" type="button" aria-label="Commit MIDI learn">Commit</button>
+              <button id="midiLearnCancelButton" type="button" aria-label="Cancel MIDI learn">Cancel</button>
             </div>
           </div>
           <div class="midi-toggle-row">
@@ -344,7 +344,7 @@
         <div id="midiModulationInspector" class="midi-inspector-group">
           <div class="midi-region__header midi-region__header--compact">
             <h3>Modulation</h3>
-            <button id="midiAutomationAddButton" type="button">Add Mod</button>
+            <button id="midiAutomationAddButton" type="button" aria-label="Add modulation lane">Add Mod</button>
           </div>
           <div class="midi-inline-fields">
             <label class="midi-field midi-field--compact">
@@ -500,9 +500,9 @@
           <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
             <div id="midiRecordStatus" class="midi-learn-status">Record writes captured notes into clip steps.</div>
             <div class="midi-button-row">
-              <button id="midiRecordButton" type="button">Record</button>
-              <button id="midiRecordCommitButton" type="button">Commit</button>
-              <button id="midiRecordCancelButton" type="button">Cancel</button>
+              <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>
+              <button id="midiRecordCommitButton" type="button" aria-label="Commit MIDI recording">Commit</button>
+              <button id="midiRecordCancelButton" type="button" aria-label="Cancel MIDI recording">Cancel</button>
             </div>
           </div>
           <div id="midiStepPatternGrid" class="midi-step-grid" role="grid" aria-label="Step pattern"></div>
