@@ -404,6 +404,25 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   expect(availableIds).not.toContain('system-e2e-unavailable');
   await midi.sourceAssignFilter().selectOption('all');
 
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'source.update',
+      sourceId: 'sfx-2',
+      patch: { enabled: false }
+    });
+  });
+  await midi.sourceAssignFilter().selectOption('disabled');
+  const disabledIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
+  expect(disabledIds).toContain('sfx-2');
+  await midi.sourceAssignFilter().selectOption('enabled');
+  const enabledIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
+  expect(enabledIds).not.toContain('sfx-2');
+  await midi.sourceAssignFilter().selectOption('assigned');
+  await expect(midi.sourceRows().first()).toBeVisible();
+  await midi.sourceAssignFilter().selectOption('unassigned');
+  await expect(page.locator('#midiSourceList')).toContainText('No sources match');
+  await midi.sourceAssignFilter().selectOption('all');
+
   await page.locator('#midiSourceSearch').fill('skill');
   await expect(midi.sourceRows().first()).toContainText(/skill/i);
   await page.locator('#midiSourceKindFilter').selectOption('trigger');
