@@ -28,17 +28,33 @@ const VIEWPORT_PRESETS = Object.freeze({
   }
 });
 
-const parseCliArgs = (argv = process.argv.slice(2)) => {
+const npmConfigArgsFromEnv = (env = process.env) => {
+  const args = [];
+  const addValue = (envName, optionName) => {
+    const value = String(env?.[envName] || '').trim();
+    if (value) args.push(`--${optionName}=${value}`);
+  };
+  addValue('npm_config_base_url', 'base-url');
+  addValue('npm_config_out_dir', 'out-dir');
+  addValue('npm_config_viewport', 'viewport');
+  addValue('npm_config_target', 'target');
+  if (/^(1|true|yes)$/i.test(String(env?.npm_config_json || '').trim())) {
+    args.push('--json');
+  }
+  return args;
+};
+
+const parseCliArgs = (argv = process.argv.slice(2), env = process.env) => {
   const parsed = {
     config: null,
-    baseUrl: process.env.LEMMINGS_E2E_BASE_URL || null,
+    baseUrl: env.LEMMINGS_E2E_BASE_URL || null,
     outDir: null,
     viewport: 'desktop',
     targets: [],
     json: false,
     help: false
   };
-  for (const rawArg of argv) {
+  for (const rawArg of [...npmConfigArgsFromEnv(env), ...argv]) {
     const arg = String(rawArg || '');
     if (arg === '--help' || arg === '-h') {
       parsed.help = true;
@@ -281,6 +297,7 @@ export {
   VIEWPORT_PRESETS,
   buildCaptureUrl,
   loadConfig,
+  npmConfigArgsFromEnv,
   parseCliArgs,
   runCaptureCli,
   selectTargets
