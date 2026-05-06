@@ -777,6 +777,43 @@ describe('midiUiController sequencer', function() {
     expect(sent[0].meta).to.include({ eventType: 'clip-audition', sourceId: 'sfx-1', trackId: 'track-1', clipId: 'riff' });
   });
 
+  it('filters silent and tied clip steps from runtime clip mappings', function() {
+    const { controller, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'filtered', name: 'Filtered', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({
+      type: 'clip.step.update',
+      clipId: 'filtered',
+      stepIndex: 0,
+      patch: { note: 60, probability: 0 }
+    });
+    controller.dispatchProjectIntent({
+      type: 'clip.step.update',
+      clipId: 'filtered',
+      stepIndex: 1,
+      patch: { note: 62, tie: true }
+    });
+    controller.dispatchProjectIntent({
+      type: 'clip.step.update',
+      clipId: 'filtered',
+      stepIndex: 2,
+      patch: { note: 72, velocity: 85, durationTicks: 6 }
+    });
+    controller.dispatchProjectIntent({
+      type: 'clip.step.update',
+      clipId: 'filtered',
+      stepIndex: 3,
+      patch: { note: 76 }
+    });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'filtered' });
+
+    const runtimeMapping = view.projectConfigs.at(-1).sfx['1'];
+    expect(runtimeMapping).to.include({ note: 72, velocity: 85, durationTicks: 6, clipId: 'filtered' });
+    expect(runtimeMapping.notes).to.deep.equal([72, 76]);
+    expect(runtimeMapping.disabled).to.equal(undefined);
+  });
+
   it('renders source conflict badges, conflict filters, and inspector warnings', function() {
     const { controller, doc } = createControllerHarness({
       factoryConfig: {
