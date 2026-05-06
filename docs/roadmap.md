@@ -651,8 +651,10 @@ types: solved, failed, unknown, timed out, or unsupported.
 
 **Editor Integration**
 
-- Add an advisory "check solvability" command after the core solver API is
-  stable.
+- Validation can surface bounded solver advisory warnings when the editor has a
+  rendered preview or other source with route geometry.
+- Add a dedicated advisory "check solvability" command after preview-backed
+  validation has enough user-facing mileage.
 - Show solver result as guidance, not as an absolute guarantee.
 - Highlight likely problem areas:
   - unreachable exit.
@@ -662,7 +664,8 @@ types: solved, failed, unknown, timed out, or unsupported.
   - insufficient skill budget.
   - missing entrance/exit.
 - Allow saving a temporary local failure capture under `temp/` for debugging.
-- Attach concise solver explanations to editor validation output.
+- Attach concise solver explanations and stable advisory codes to editor
+  validation output.
 
 **MCP/E2E Integration**
 
@@ -703,7 +706,8 @@ types: solved, failed, unknown, timed out, or unsupported.
 - Synthetic fixture suite.
 - Curated classic-level mini corpus.
 - Procgen challenge certificate API.
-- Optional editor advisory integration after API stabilization.
+- Editor advisory integration for validation plus future dedicated advisory
+  controls after API stabilization.
 - Solver docs covering capabilities, limits, result meanings, budgets, and
   reproduction.
 

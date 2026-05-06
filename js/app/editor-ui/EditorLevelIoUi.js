@@ -352,6 +352,7 @@ const editorLevelIoUiMethods = {
       this.view.setEditorPlaytest(this._playtest);
       this._ensureDefaultEntrancesExits();
       this._drawSelectionOverlay();
+      this._refreshValidation();
       this._updateStatus(label || 'Preview');
     } finally {
       this._previewInFlight = false;

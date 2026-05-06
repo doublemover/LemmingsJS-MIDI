@@ -1,3 +1,16 @@
+import { SkillTypes } from '../game/SkillTypes.js';
+
+const SKILL_INDEX_BY_NAME = new Map([
+  ['climber', SkillTypes.CLIMBER],
+  ['floater', SkillTypes.FLOATER],
+  ['bomber', SkillTypes.BOMBER],
+  ['blocker', SkillTypes.BLOCKER],
+  ['builder', SkillTypes.BUILDER],
+  ['basher', SkillTypes.BASHER],
+  ['miner', SkillTypes.MINER],
+  ['digger', SkillTypes.DIGGER]
+]);
+
 const EDITOR_ADVISORY_WARNING_CODES = Object.freeze({
   MISSING_ENTRANCE: 'missing-entrance',
   MISSING_EXIT: 'missing-exit',
@@ -120,7 +133,7 @@ const normalizeAdvisoryContext = (source, options = {}) => {
     oneWay: Array.isArray(source?.oneWay) ? source.oneWay : [],
     hazards: Array.isArray(source?.hazards) ? source.hazards : [],
     unsupportedMechanics: Array.isArray(source?.unsupportedMechanics) ? source.unsupportedMechanics : [],
-    skills: source?.skills ?? {}
+    skills: source?.skills ?? source?.skillset ?? {}
   };
 };
 
@@ -151,9 +164,21 @@ const pushWarningOnce = (warnings, warning) => {
 };
 
 const getSkillCount = (skills, skillName) => {
-  if (skills instanceof Map) return toPositiveInteger(skills.get(skillName), 0);
-  if (!isPlainObject(skills)) return 0;
   const expected = String(skillName).toLowerCase();
+  if (skills instanceof Map) {
+    for (const [key, value] of skills.entries()) {
+      const normalizedKey = String(key).toLowerCase();
+      if (normalizedKey === expected || normalizedKey === `${expected}s`) {
+        return Math.max(0, Math.floor(toFiniteNumber(value, 0)));
+      }
+    }
+    return 0;
+  }
+  if (Array.isArray(skills) || ArrayBuffer.isView(skills)) {
+    const index = SKILL_INDEX_BY_NAME.get(expected);
+    return index == null ? 0 : Math.max(0, Math.floor(toFiniteNumber(skills[index], 0)));
+  }
+  if (!isPlainObject(skills)) return 0;
   for (const [key, value] of Object.entries(skills)) {
     const normalizedKey = String(key).toLowerCase();
     if (normalizedKey === expected || normalizedKey === `${expected}s`) {

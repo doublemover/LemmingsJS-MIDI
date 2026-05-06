@@ -91,7 +91,9 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
 
   const validateAndFix = () => {
     if (validateOptions.run === false) return null;
-    const issues = validateLevel(getLevel(), ctx.assets);
+    const issues = validateLevel(getLevel(), ctx.assets, {
+      solverAdvisorySource: view?.game?.level || null
+    });
     if (validateOptions.autoFix && validateOptions.autoFix !== 'none') {
       let fixed = false;
       for (const issue of issues) {

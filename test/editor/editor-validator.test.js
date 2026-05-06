@@ -1,6 +1,8 @@
 import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
 import { validateLevel } from '../../js/editor/EditorValidator.js';
+import { createSmallGapFixture } from '../../js/solver/SolverFixtures.js';
+import { EDITOR_ADVISORY_WARNING_CODES } from '../../js/solver/EditorAdvisory.js';
 
 const createLevel = () => {
   const level = new EditorLevel();
@@ -17,6 +19,38 @@ const createLevel = () => {
   level.terrains = [];
   level.gadgets = [];
   return level;
+};
+
+const installRuntimeFixture = (level, fixture) => {
+  level.setHeader('TITLE', 'Advisory route');
+  level.setHeader('WIDTH', fixture.width);
+  level.setHeader('HEIGHT', fixture.height);
+  level.setHeader('LEMMINGS', 1);
+  level.setHeader('SAVE_REQUIREMENT', 1);
+  level.gadgets = [
+    { props: { PIECE: 1, X: fixture.entrances[0].x, Y: fixture.entrances[0].y } },
+    { props: { PIECE: 2, X: fixture.exits[0].x, Y: fixture.exits[0].y } }
+  ];
+  level.width = fixture.width;
+  level.height = fixture.height;
+  level.groundMask = {
+    width: fixture.width,
+    height: fixture.height,
+    mask: fixture.groundMask,
+    hasGroundAt(x, y) {
+      const ix = Math.floor(x);
+      const iy = Math.floor(y);
+      if (ix < 0 || iy < 0 || ix >= fixture.width || iy >= fixture.height) return false;
+      return fixture.groundMask[ix + iy * fixture.width] !== 0;
+    }
+  };
+  level.entrances = fixture.entrances.map(entry => ({ ...entry }));
+  level.exits = fixture.exits.map(entry => ({ ...entry }));
+  level.oneWay = fixture.oneWay.map(entry => ({ ...entry }));
+  level.hazards = fixture.hazards.map(entry => ({ ...entry }));
+  for (const [skill, count] of Object.entries(fixture.skills || {})) {
+    level.setSkill(skill, count);
+  }
 };
 
 describe('EditorValidator', () => {
@@ -382,5 +416,77 @@ describe('EditorValidator', () => {
     expect(level.getHeader('TIME_LIMIT')).to.equal(0);
     expect(level.getHeader('START_X')).to.equal(0);
     expect(level.getHeader('START_Y')).to.equal(0);
+  });
+
+  it('attaches non-blocking solver advisory warnings to validation output', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture({
+      skills: {},
+      oneWay: [{ x: 20, y: 58, width: 20, height: 4 }]
+    });
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const advisoryIssues = issues.filter(issue => issue.solverAdvisory);
+    const codes = advisoryIssues.map(issue => issue.code);
+    const gapIssue = advisoryIssues.find(issue => {
+      return issue.advisoryCode === EDITOR_ADVISORY_WARNING_CODES.UNREACHABLE_GAP;
+    });
+
+    expect(codes).to.include('solver_advisory_unreachable_gap');
+    expect(codes).to.include('solver_advisory_insufficient_skills');
+    expect(codes).to.include('solver_advisory_unsupported_mechanic');
+    expect(gapIssue).to.include({
+      severity: 'warning',
+      source: 'solver-advisory',
+      blocking: false,
+      blocksEditing: false,
+      blocksExport: false
+    });
+    expect(gapIssue.fix).to.equal(null);
+    expect(gapIssue.budgetUsage.scannedColumns).to.be.greaterThan(0);
+  });
+
+  it('uses the supplied runtime source for editor solver advisory validation', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'Editor source');
+    level.setHeader('WIDTH', 140);
+    level.setHeader('HEIGHT', 72);
+    level.setHeader('LEMMINGS', 1);
+    level.setHeader('SAVE_REQUIREMENT', 1);
+    level.gadgets = [
+      { props: { PIECE: 1, X: 12, Y: 57 } },
+      { props: { PIECE: 2, X: 120, Y: 57 } }
+    ];
+    const runtimeSource = createSmallGapFixture({ skills: {} });
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 }, {
+      solverAdvisorySource: runtimeSource
+    });
+
+    expect(issues.some(issue => issue.code === 'solver_advisory_unreachable_gap')).to.equal(true);
+  });
+
+  it('uses editor skillsets for solver advisory skill budgets', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture();
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+
+    expect(issues.some(issue => issue.code === 'solver_advisory_unreachable_gap')).to.equal(false);
+    expect(issues.some(issue => issue.code === 'solver_advisory_insufficient_skills')).to.equal(false);
+  });
+
+  it('can disable solver advisory validation', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture({ skills: {} });
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 }, {
+      solverAdvisory: false
+    });
+
+    expect(issues.some(issue => issue.solverAdvisory)).to.equal(false);
   });
 });

@@ -20,6 +20,7 @@ import {
   EDITOR_ADVISORY_WARNING_CODES,
   checkEditorSolvabilityAdvisory
 } from '../js/solver/EditorAdvisory.js';
+import { SkillTypes } from '../js/game/SkillTypes.js';
 
 describe('ProcgenCertificates', function() {
   it('verifies positive local chunks through a tactical solver', async function() {
@@ -125,6 +126,18 @@ describe('EditorAdvisory', function() {
     expect(advisory.warnings.map(warning => warning.code)).to.include(
       EDITOR_ADVISORY_WARNING_CODES.LETHAL_DROP
     );
+  });
+
+  it('reads runtime skill arrays for advisory skill budgets', function() {
+    const gap = createSmallGapFixture({ skills: {} });
+    gap.skills = [];
+    gap.skills[SkillTypes.BUILDER] = 2;
+
+    const advisory = checkEditorSolvabilityAdvisory(gap);
+    const codes = advisory.warnings.map(warning => warning.code);
+
+    expect(codes).to.not.include(EDITOR_ADVISORY_WARNING_CODES.UNREACHABLE_GAP);
+    expect(codes).to.not.include(EDITOR_ADVISORY_WARNING_CODES.INSUFFICIENT_SKILLS);
   });
 
   it('returns deterministic missing entrance and exit warnings', function() {

@@ -261,9 +261,16 @@ const serializeIssues = (issues) => {
   if (!Array.isArray(issues)) return { hasErrors: false, issues: [] };
   const sanitized = issues.map(issue => ({
     severity: issue.severity,
+    code: issue.code || null,
+    source: issue.source || null,
     message: issue.message,
     fixLabel: issue.fixLabel || null,
-    hasFix: typeof issue.fix === 'function'
+    hasFix: typeof issue.fix === 'function',
+    solverAdvisory: issue.solverAdvisory === true,
+    advisoryCode: issue.advisoryCode || null,
+    blocking: issue.blocking === true,
+    blocksEditing: issue.blocksEditing === true,
+    blocksExport: issue.blocksExport === true
   }));
   const hasErrors = sanitized.some(issue => issue.severity === 'error');
   return { hasErrors, issues: sanitized };

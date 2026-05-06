@@ -60,3 +60,8 @@ This checkpoint establishes local modules for runtime replay, state extraction,
 geometry analysis, tactical fixtures, procgen certificates, and editor advisory
 checks. The solver is bounded and advisory; editor/export workflows must not be
 blocked by solver output.
+
+Editor validation now surfaces solver advisory findings as warning-only issues
+when a level or rendered editor preview exposes route geometry. Advisory
+warnings carry stable `solver_advisory_*` codes for E2E diagnostics, but they do
+not add quick fixes and must never block editing, saving, or export.

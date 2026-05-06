@@ -6,6 +6,10 @@ import {
   LEVEL_STEEL_COUNT,
   LEVEL_NAME_LENGTH
 } from '../level/ClassicLevelConstants.js';
+import {
+  EDITOR_ADVISORY_WARNING_CODES,
+  checkEditorSolvabilityAdvisory
+} from '../solver/EditorAdvisory.js';
 import { createGadgetEntry, removeEntryAt } from './EditorEntryFactory.js';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -16,6 +20,10 @@ const coerceNumber = (value, fallback = 0) => {
 
 const isFiniteNumber = (value) => Number.isFinite(value);
 const ROTATION_STEPS = new Set([0, 90, 180, 270]);
+const VALIDATOR_HANDLED_ADVISORY_CODES = new Set([
+  EDITOR_ADVISORY_WARNING_CODES.MISSING_ENTRANCE,
+  EDITOR_ADVISORY_WARNING_CODES.MISSING_EXIT
+]);
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
 const MAX_LEVEL_WIDTH = DEFAULT_LEVEL_WIDTH;
@@ -62,6 +70,56 @@ const createDestructiveIssue = (code, message, fixLabel = null, fix = null, deta
     destructive: true,
     ...details
   });
+};
+
+const normalizeSolverAdvisoryConfig = (options) => {
+  if (options?.solverAdvisory === false) return null;
+  return options?.solverAdvisory && typeof options.solverAdvisory === 'object'
+    ? options.solverAdvisory
+    : {};
+};
+
+const toSolverAdvisoryIssueCode = (code) => {
+  const normalized = String(code || 'unknown')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `solver_advisory_${normalized || 'unknown'}`;
+};
+
+const appendSolverAdvisoryIssues = (issues, level, assets, options) => {
+  const config = normalizeSolverAdvisoryConfig(options);
+  if (!config) return;
+  const { source = null, ...advisoryOptions } = config;
+  const advisorySource = source || options?.solverAdvisorySource || options?.runtimeLevel || level;
+  if (!advisorySource) return;
+  const advisory = checkEditorSolvabilityAdvisory(advisorySource, {
+    assets,
+    entranceId: assets?.entranceId,
+    exitId: assets?.exitId,
+    ...advisoryOptions
+  });
+  for (const warning of advisory.warnings || []) {
+    if (VALIDATOR_HANDLED_ADVISORY_CODES.has(warning.code)) continue;
+    issues.push(createIssue(
+      'warning',
+      `Solver advisory: ${warning.message}`,
+      null,
+      null,
+      {
+        code: toSolverAdvisoryIssueCode(warning.code),
+        source: 'solver-advisory',
+        solverAdvisory: true,
+        advisoryCode: warning.code,
+        target: warning.target ?? null,
+        blocking: false,
+        blocksEditing: advisory.blocksEditing === true,
+        blocksExport: advisory.blocksExport === true,
+        budgetUsage: advisory.budgetUsage || null
+      }
+    ));
+  }
 };
 
 const truncateEntries = (level, key, max) => {
@@ -651,6 +709,7 @@ const validateLevel = (level, assets = null, options = {}) => {
     ));
   }
 
+  appendSolverAdvisoryIssues(issues, level, assets, options);
   return issues;
 };
 

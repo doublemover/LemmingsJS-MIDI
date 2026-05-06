@@ -99,7 +99,9 @@ const getEditorState = (view, editorUi) => {
   const controller = editorUi?.controller || null;
   const history = editorUi?.history || null;
   const level = session?.level || null;
-  const issues = serializeIssues(validateLevel(level, editorUi?.assets || null));
+  const issues = serializeIssues(validateLevel(level, editorUi?.assets || null, {
+    solverAdvisorySource: view?.game?.level || null
+  }));
   return {
     mode: !!view?.editorMode,
     playtest: !!view?.editorPlaytest,

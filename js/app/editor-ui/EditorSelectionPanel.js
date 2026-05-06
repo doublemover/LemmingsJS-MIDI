@@ -317,7 +317,9 @@ const editorSelectionPanelMethods = {
   _refreshValidation() {
     const level = this.session?.level;
     const issues = [
-      ...validateLevel(level, this.assets || null),
+      ...validateLevel(level, this.assets || null, {
+        solverAdvisorySource: this.view?.game?.level || null
+      }),
       ...buildClassicSubsetIssues(level),
       ...(this._transientIssues || [])
     ];
