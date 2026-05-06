@@ -175,7 +175,10 @@ const midiSchedulerRateMethods = {
         reservationId,
         sfxId: meta.sfxId ?? null,
         priority: meta.priority ?? 1,
-        triggerType: meta.triggerType ?? null
+        triggerType: meta.triggerType ?? null,
+        trackId: meta.trackId ?? null,
+        outputId: meta.outputId ?? null,
+        voiceBudget: meta.voiceBudget ?? null
       }, now);
     }
     return {
