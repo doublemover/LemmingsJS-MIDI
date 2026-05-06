@@ -126,6 +126,7 @@ test('Editor blank level round-trips semantic state through NXLV', async ({ page
   const before = semanticSummary(edited.state.session.level);
   const exported = edited.resources.find(resource => resource.meta?.format === 'nxlv');
   expect(exported?.data).toContain('E2E Round Trip');
+  expect(exported?.data).toContain('ONE_WAY true');
   expect(exported?.data).toContain('MIDI_FLAG true');
 
   const imported = await applyEditorOps(page, [

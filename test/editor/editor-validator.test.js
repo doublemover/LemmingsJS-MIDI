@@ -319,6 +319,7 @@ describe('EditorValidator', () => {
     timeLimitIssue.fix();
     expect(level.terrains[0].props).to.not.have.property('SKILL');
     expect(level.terrains[0].props).to.not.have.property('ROTATE');
+    expect(level.terrains[0].props.ONE_WAY).to.equal(true);
     expect(level.gadgets[0].props).to.not.have.property('ROTATE');
     expect(level.steel[0].props).to.not.have.property('LEMMINGS');
   });

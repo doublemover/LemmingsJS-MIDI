@@ -128,6 +128,7 @@ const editorSelectionPanelMethods = {
     const meta = data.meta || null;
     const isGadget = data.type === 'gadget';
     const isSteel = data.type === 'steel';
+    const isTerrain = data.type === 'terrain';
     const supportsResize = isSteel;
     const widthValue = props.WIDTH ?? (isSteel ? undefined : meta?.width);
     const heightValue = props.HEIGHT ?? (isSteel ? undefined : meta?.height);
@@ -194,7 +195,7 @@ const editorSelectionPanelMethods = {
     }
     if (this.el.selOneWay) {
       this.el.selOneWay.checked = !!props.ONE_WAY;
-      this.el.selOneWay.disabled = true;
+      this.el.selOneWay.disabled = !isTerrain;
     }
     if (this.el.deleteSelection) this.el.deleteSelection.disabled = false;
 

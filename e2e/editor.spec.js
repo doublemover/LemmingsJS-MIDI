@@ -22,6 +22,11 @@ const setEditorField = async (page, selector, value) => {
   }, value);
 };
 
+const applyEditorOps = (page, ops, options = {}) => page.evaluate(
+  ({ ops, options }) => window.__E2E__.editorApply(ops, options),
+  { ops, options }
+);
+
 test('Editor UI loads and tool selection updates state', async ({ page }) => {
   await expect(page.locator('#editorCanvas')).toBeVisible();
 
@@ -116,6 +121,37 @@ test('Validation panel renders and applies fix buttons', async ({ page }) => {
   const header = await page.evaluate(() => window.__E2E__.getState().editor.session.level.header);
   expect(header.SAVE_REQUIREMENT).toBe(5);
   expect(header.LEMMINGS).toBe(5);
+});
+
+test('Selection inspector toggles terrain one-way flags', async ({ page }) => {
+  const terrainId = await page.evaluate(() => window.__E2E__.getState().editor.assets.terrain[0]?.id);
+  expect(Number.isFinite(terrainId)).toBe(true);
+
+  await applyEditorOps(page, [
+    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: terrainId, X: 32, Y: 32 } } },
+    { type: 'entry.add', args: { kind: 'steel', props: { X: 96, Y: 32, WIDTH: 16, HEIGHT: 16 } } },
+    { type: 'selection.set', args: { selection: [{ kind: 'terrain', index: 0 }] } }
+  ], { preview: { refresh: false }, returnState: 'editor' });
+
+  const oneWay = page.locator('#editorSelOneWay');
+  await page.locator('#editorSelectionFlags').evaluate(element => {
+    element.open = true;
+  });
+  await expect(oneWay).toBeEnabled();
+  await expect(oneWay).not.toBeChecked();
+
+  await oneWay.check();
+  const checkedProps = await page.evaluate(() => window.__E2E__.getState().editor.session.level.terrains[0].props);
+  expect(checkedProps.ONE_WAY).toBe(true);
+
+  await oneWay.uncheck();
+  const uncheckedProps = await page.evaluate(() => window.__E2E__.getState().editor.session.level.terrains[0].props);
+  expect(Object.prototype.hasOwnProperty.call(uncheckedProps, 'ONE_WAY')).toBe(false);
+
+  await applyEditorOps(page, [
+    { type: 'selection.set', args: { selection: [{ kind: 'steel', index: 0 }] } }
+  ], { preview: { refresh: false }, returnState: 'editor' });
+  await expect(oneWay).toBeDisabled();
 });
 
 test('Canvas interaction clears focused editor inputs', async ({ page }) => {

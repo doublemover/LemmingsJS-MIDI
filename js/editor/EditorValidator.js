@@ -341,7 +341,7 @@ const validateLevel = (level, assets = null, options = {}) => {
   ];
   const gadgetEntries = Array.isArray(level.gadgets) ? level.gadgets : [];
   const gadgetOnlyProps = ['SKILL', 'LEMMINGS', 'PAIRING'];
-  const terrainUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'ONE_WAY', 'WIDTH', 'HEIGHT'];
+  const terrainUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
   const gadgetUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
 
   const hasAnyProps = (entry, keys) => {
@@ -377,7 +377,7 @@ const validateLevel = (level, assets = null, options = {}) => {
   if (terrainWithUnsupported.length) {
     issues.push(createIssue(
       'warning',
-      'Terrain entries include unsupported classic properties (rotate/flip H/resize/one-way).',
+      'Terrain entries include unsupported classic properties (rotate/flip H/resize).',
       'Remove unsupported terrain props',
       () => {
         for (const entry of terrainWithUnsupported) stripProps(entry, terrainUnsupportedProps);
