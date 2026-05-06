@@ -1940,8 +1940,14 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiEnvSustain'), mapping.envelope?.sustain);
     setInputValue(document?.getElementById('midiEnvRelease'), mapping.envelope?.release);
 
+    const routeTrack = source
+      ? current.tracks.find(item => item.id === source.trackId)
+      : null;
+    const routeLabel = routeTrack
+      ? `${routeTrack.name} (ch ${routeTrack.channel}, ${trackOutputLabel(routeTrack)})`
+      : 'no track';
     const summary = source
-      ? `${source.label} routes to ${current.tracks.find(item => item.id === source.trackId)?.name || 'no track'} in ${source.mode} mode${source.clipId ? ` using ${current.clips.find(item => item.id === source.clipId)?.name || source.clipId}` : ''}.`
+      ? `${source.label} routes to ${routeLabel} in ${source.mode} mode${source.clipId ? ` using ${current.clips.find(item => item.id === source.clipId)?.name || source.clipId}` : ''}.`
       : 'No source selected';
     setText(document?.getElementById('midiSelectedSourceSummary'), summary);
   };

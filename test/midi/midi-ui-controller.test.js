@@ -1364,6 +1364,25 @@ describe('midiUiController sequencer', function() {
     expect(row.getAttribute('aria-label')).to.contain('Unavailable: missing-out');
   });
 
+  it('summarizes selected source route channel and output', function() {
+    const webMidi = {
+      enabled: true,
+      inputs: [],
+      outputs: [{ id: 'out-1', name: 'Output 1' }]
+    };
+    const { controller, doc } = createControllerHarness({ webMidi });
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({
+      type: 'track.update',
+      trackId: 'track-1',
+      patch: { channel: 4, outputId: 'out-1' }
+    });
+
+    const summary = doc.getElementById('midiSelectedSourceSummary').textContent;
+    expect(summary).to.contain('routes to Track 1 (ch 4, Output 1)');
+    expect(summary).to.contain('direct mode');
+  });
+
   it('shows no-device setup state and clears routed outputs', function() {
     let registeredOutputs = null;
     let allNotesOffCalls = 0;
