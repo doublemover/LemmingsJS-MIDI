@@ -1,973 +1,876 @@
 # Roadmap
 
-This roadmap consolidates outstanding items from the README (In Progress,
-Roadmap, Bugs and Misc) plus the current workstreams. It is the single place to
-track ongoing and future work. Keep this roadmap current as work lands.
-
-## Current branch readiness: PR #896 (2026-05-05)
-- [x] Fix MCPB surface bundle packaging so `npm run mcpb:build` outputs a
-  runnable server artifact with the split MCP import graph included.
-  GitHub: #897. Touchpoints: `scripts/build-mcpb-bundle.js`,
-  `test/build-mcpb-bundle.test.js`, `docs/mcp/publishing.md`.
-- [x] Align Playwright specs with the supported `window.__E2E__` contract:
-  remove remaining `window.lemmings` reads and require `?e2e=1` anywhere a
-  spec waits on the harness. GitHub: #906. Touchpoints: `e2e/*.spec.js`,
-  `e2e/helpers/*`, `js/app/e2eHarness.js`.
-- [x] Preserve MIDI flag and other non-lemming dynamic triggers across history,
-  rewind, seek, and replay by adding explicit replay-managed trigger metadata
-  and rehydration. GitHub: #899. Touchpoints: `js/game/Game.js`,
-  `js/game/GameView.js`, `js/game/HistoryStore.js`.
-- [x] Make MCP protocol/session metadata truthful and recoverable: normalize
-  event cursors, derive accepted tool-name forms from rollout state, and either
-  implement or explicitly deprecate `spectator.openBrowser`. GitHub: #898.
-  Touchpoints: `mcp/server.js`, `mcp/eventQueue.js`, `mcp/toolRouting.js`.
-- [x] Layer gamepad binding sources so hardcoded defaults, file defaults,
-  persisted user overrides, and in-session remaps compose deterministically.
-  Persist only user override intent. GitHub: #907. Touchpoints:
-  `js/input/GamepadInputController.js`, `docs/gamepad-bindings.md`,
-  `test/input/gamepad-input-controller.test.js`.
-- [x] Clarify render capability vocabulary so the Canvas2D staging +
-  `drawImage` present path is not confused with browser `OffscreenCanvas`
-  support. GitHub: #908. Touchpoints: `js/core/capabilityMatrix.js`,
-  `docs/TESTING.md`, `test/capability-matrix.test.js`.
-- [x] Finish singleton cleanup and guardrails in app/render/editor slices:
-  remove or isolate remaining raw global defaults and expand lint/test coverage
-  beyond the current runtime-only paths. GitHub: #902. Touchpoints:
-  `js/render/Stage.js`, `js/app/canvasFocusBlur.js`,
-  `js/editor/EditorStorage.js`, `eslint.config.js`, `scripts/runTests.js`.
-- [x] Replace the custom text-hygiene baseline with changed-line
-  `git diff --check` CI coverage and keep the PR diff clean. GitHub: #904.
-  Touchpoints:
-  `test/midi/midi-input-controller.coverage.test.js`,
-  `test/midi/midi-scheduler.coverage.test.js`, `.github/workflows/test.yml`.
-- [x] Rebase or merge the latest `origin/master` change (`11c0880 Create
-  FUNDING.yml`) before merging PR #896.
-- [x] Finish Playwright service-worker validation with explicit local opt-in,
-  same-origin scope checks, and lifecycle cleanup. GitHub: #905. Touchpoints:
-  `e2e/service-worker.spec.js`, `js/app/registerServiceWorker.js`,
-  `playwright.config.js`, `test/register-service-worker.test.js`.
-- [x] Correct trigger rectangle coordinate semantics and level-dimension
-  indexing so half-open bounds are used consistently. GitHub: #909.
-  Touchpoints: `js/level/Trigger.js`, `js/level/TriggerManager.js`,
-  `js/game/Game.js`, `test/triggermanager.test.js`.
-- [x] Make `GameTimer` cadence deterministic and injectable for headless and
-  multi-runtime tests. GitHub: #910. Touchpoints: `js/game/GameTimer.js`,
-  `test/game-timer.test.js`.
-- [x] Add editor UI lifecycle ownership, idempotent binding, and stale async
-  cancellation for imports/style reloads. GitHub: #911. Touchpoints:
-  `js/app/editorUiController.js`, `js/editor/EditorController.js`,
-  `test/editor/editor-ui-controller.lifecycle.test.js`.
-- [x] Remove browser Node fallbacks and add cache lifecycle/coalescing for
-  asset loading. GitHub: #912. Touchpoints: `js/data/FileProvider.js`,
-  `js/level/GroundReader.js`, `js/steelSpritesData.js`.
-- [x] Clarify `BinaryReader` endian naming and enforce logical-window offset
-  bounds. GitHub: #913. Touchpoints: `js/data/BinaryReader.js`,
-  `test/binaryreader.test.js`.
-- [x] Reduce MIDI hot-path allocations by indexing note actions and reusing
-  scheduler/router scratch buffers. GitHub: #914. Touchpoints:
-  `js/midi/input/MidiInputController.js`, `js/midi/MidiScheduler.js`,
-  `js/midi/MidiEventRouter.js`.
-- [x] Bound editor history memory, expose history/cache stats, and make preview
-  cache identity palette-aware. GitHub: #915. Touchpoints:
-  `js/editor/EditorHistory.js`, `js/app/editorPreviewCache.js`,
-  `test/editor/editor-history.test.js`.
-- [x] Harden event/performance lifecycle behavior: mutation-safe event dispatch,
-  shared-listener disposal, and bounded performance measurements. GitHub: #916.
-  Touchpoints: `js/util/EventHandler.js`, `js/commands/CommandManager.js`,
-  `js/util/performanceInstrumentation.js`.
-- [x] Add service-worker, MIDI UI, procgen boot, and editor controller cleanup
-  paths for long-running sessions. GitHub: #917. Touchpoints:
-  `js/app/registerServiceWorker.js`, `js/app/midiUiController.js`,
-  `js/app/procgenBoot.js`.
-- [x] Harden offline asset tooling with metadata path validation, bounded
-  archive caches, and safe CSS inlining. GitHub: #918. Touchpoints:
-  `tools/packPipeline.js`, `tools/NodeFileProvider.js`,
-  `scripts/processHtmlFile.js`, `docs/offline-tools.md`.
-- [x] Changed-file test selection now resolves a meaningful base by default and
-  has category coverage for editor/offline tooling. GitHub: #900.
-- [x] Maintained Mocha npm scripts now route through `scripts/runTests.js`.
-  GitHub: #901.
-- [x] Stage overlay visibility transitions now invalidate composition and have
-  regression coverage. GitHub: #903.
-
-## Phase 1: E2E harness adoption and baseline testing
-- [x] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
-  saved-level ordering, time travel invariants, reverse playback).
-- [x] Add harness-backed regression tests for input and view controls.
-- [x] Add harness-backed MIDI UI tests once permission flows are stable.
-
-Notes:
-- "Ready" means the level is loaded, everything is visible and interactable, and
-  the game can advance without error.
-- Saved levels always follow default packs under a separate group label, sorted
-  by name then time.
-- Input/view regression should cover all controls.
-- MIDI UI tests should be UI-only when reliable MIDI access is not available.
-- Define and enforce invariants (state hash symmetry, lemming counts/positions,
-  minimap state, command log, sound events).
-
-## Phase 2: Editor testing and completion (multi-phase)
-- [x] Phase 2.0: Fix editor page layout (game view too low, side panels too large, top of game should be at top of window just like the game page)
-- [x] Phase 2.1: Verify core editor tools plus overlay/inspector coverage
-  (palette, placement, selection, brush, triggers, steel).
-- [x] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
-  loads into the editor while editing; confirm playtest flow.
-- [x] Phase 2.3: Cover editing workflows (multi-select, drag/resize,
-  copy/paste/duplicate, undo/redo, snap/nudge, delete/duplicate).
-- [x] Phase 2.4: Validate saved-level pipeline (saved dropdown, localStorage
-  persistence, import/export for `.nxlv` and classic `.lvl`).
-- [x] Phase 2.5: Evaluate brush/eraser feasibility (tileable assets + grid size)
-  and style registry coverage for terrain/gadgets.
-- [x] Phase 2.6: Ensure steel rectangle editing and resizable gadgets behave
-  correctly; enforce classic limits.
-- [x] Phase 2.7: Defer `.nxlv` round-trip tests/unknown section handling for now;
-  focus on editor runtime mapping validation (blank level defaults, preview
-  mapping, trigger behavior).
-- [x] Phase 2.8: Fix editor view jumps (layout/canvas offsets, scale, event
-  ordering).
-- [x] Phase 2.9: Polish UI/UX and editor documentation.
-
-Notes:
-- Cover all tools and inspector fields.
-- Show the saved-level selector only when saved levels exist; ordering/naming
-  is not important.
-- Brush grid sizes: 1/2/4/8/16/32; skip if assets are not tileable.
-- Define edit-mode toggle expectations (pause state, HUD visibility, command
-  suppression, playtest lock).
-- Clarify steel behavior/limits (mask rules, overlap handling, limit enforcement).
-- View-jump repro steps pending; do a brief exploration first.
-- Keep editor docs brief.
-
-## Phase 3: UX, input, and presentation
-- [x] Add a shortcut overlay toggle (game/editor) that fades in/out and is easy
-  to dismiss.
-- [x] Fix keyboard view navigation acceleration (too fast at either speed).
-- [x] Robust touch controls and ensure scaling on iPad.
-- [x] Improve the website (summary metadata for social embeds).
-
-Notes:
-- Overlay fade duration is 250 ms; use F1 and ? if possible; separate overlays
-  for game and editor.
-- Keyboard view acceleration should be smooth with a low max speed cap; Shift
-  should still feel useful for faster pan.
-- Touch targets: landscape by default; portrait only on larger tablets; use
-  sensible gesture mappings.
-
-## Phase 4: Time travel and history coverage
-- [x] Expand HistoryStore snapshots/deltas to cover mutable gameplay state
-  (lemmings, manager, triggers, objects, ground, minimap deaths, victory,
-  skills, timer, sound events).
-- [x] Reverse playback (toggle + step) with input suppression and HUD direction
-  indicator.
-- [x] Reverse playback updates minimap deaths and emits reverse sound events.
-- [x] Ignore game speed changes during reverse playback (speedFactor remains
-  stable while rewinding).
-
-Notes:
-- Determinism is explicitly out of scope for this phase.
-
-## Phase 5: MIDI sequencing and UI
-- [x] Iterate on the MIDI UI and mapping UX.
-- [x] Add MIDI debug display.
-- [x] Ability to place flags to trigger MIDI events.
-
-Notes:
-- MIDI flag workflow now lands via Phase 29 (editor placement, runtime trigger
-  registration, and mapping UI integration).
-
-## Phase 6: Performance and benchmarks
-- [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
-- [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for
-  effectiveness and necessity.
-- [x] Standalone updated performance benchmark.
-- [x] Standalone stress test for history memory (ticks at 30x/60x/120x until
-  exhaustion).
-- [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
-
-## Phase 7: Gameplay parity, packs, and assets
-- [x] Build reproducible parity repro cases and fix behavior directly in runtime
-  logic (no research/documentation gate before implementation).
-- [x] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
-  consider built-stairs handling.
-- [x] Traps: add missing squish, fix generic trap using splat death.
-- [x] Bombs: remove ground overlapping steel to reveal it.
-- [x] Super lemmings act twice per tick.
-- [x] No palette-swapped frying animation (2-2-9, 1-4-30).
-- [x] Building stairs off horizontal edge causes wraparound steps.
-- [x] Pack navigation bugs: previous pack flashing/crash when navigating
-  1 -> 2 then past 2-4-20; cannot go back to version 1 from version 2.
-- [x] Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers,
-  palettes).
-- [x] Pack decompression/patch/compression pipeline.
-- [x] Full support for pack-specific glitches (pack mechanics now gate pause,
-  nuke-doubleclick, and right-click glitch behavior).
-- [x] Support for other popular pack types (`.nxp` archive reads in tooling).
-- [x] High resolution and 32-bit color sprite support (renderer/object paths now
-  accept RGBA frames and optional sourceScale downsampling for hi-res assets).
-- [x] Procgen production hardening and long-run stability/perf at high entity
-  counts (bounded tracking-state pruning, indexed hazard scans, and lower-allocation
-  terrain/asset hot paths).
-
-## Phase 9: Gamepad support (deferred)
-- [x] Add `joypad.js` as a dependency and implement full gamepad
-  support (gameplay + editor bindings, navigation, remapping).
-
-## Phase 10: MCP automation + in-memory resources
-- [x] Build MCP server with `@modelcontextprotocol/sdk` (v1) and stdio transport,
-  plus npm scripts for local runs.
-- [x] Session management + Playwright boot for `https://localhost:8080/?e2e=1`
-  with localhost cert handling and focus management.
-- [x] Harness additions for MCP (notably `selectLemmingById`) and doc updates in
-  `docs/e2e-state.md` and `docs/mcp/`.
-- [x] Implement core tools: time control, `state.get`, lemmings summary, input
-  actions/keys, lemming select, and skill apply.
-- [x] In-memory resource store with LRU/TTL and `resources/read` (plus optional
-  `resources/list`) for `lemmings://` URIs.
-- [x] Vision capture tools (single + sequence) with manifest support.
-- [x] Events queue, watch create/cancel, and events poll with per-call envelopes.
-- [x] Spectator UI plus human input relay (opt-in).
-- [x] Host setup notes and smoke tests for Codex CLI, Claude Code, and LM Studio.
-
-Notes:
-- Default to stdio; LM Studio can use HTTP if needed.
-- Always include the events envelope when non-empty.
-
-## Phase 11: MCP client compatibility checks
-- [x] Add automated checks that capture Codex CLI/Claude Code/LM Studio versions,
-  verify MCP config formats, and flag format updates we need to track.
-
-## Phase 12: Broken tests
-- [x] None recorded (latest run: `npm test` on February 22, 2026, no errors).
-
-## Phase 13: Procedural endless mode (procgen)
-- [x] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.
-- [x] Use pack/style 2 assets for the procgen level bootstrap.
-- [x] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
-- [x] Implement rightmost-lemming camera tracking with clamping and smooth follow.
-- [x] Add minimal E2E smoke coverage for procgen readiness and endless spawning.
-
-## Phase 14: MCP v2 compact defaults and tool ergonomics
-- [x] Switch tool responses to compact JSON by default (no pretty printing) and
-  omit excluded sections instead of returning null placeholders.
-- [x] Make shipped underscore tool names the only MCP call names.
-- [x] Set default event envelopes to `minimal` and avoid auto-attaching agent
-  echo events unless explicitly requested.
-- [x] Shorten session/resource/watch/event IDs to reduce payload size and URI
-  length in responses.
-
-## Phase 15: MCP v2 deltas, summaries, and skill semantics
-- [x] Expose HistoryStore deltas via the harness and implement `state.delta`
-  with filtering defaults that suppress x/y motion churn.
-- [x] Fix lemming summary counts and top-K selection heuristics; support both
-  rect schemas and include selected lemming when requested.
-- [x] Add protocol mappings on `session.create` (skill names + lemming field
-  codes) and clamp non-finite skill counts to JSON-safe values.
-- [x] Improve `skill.apply` verification with skill-specific checks and
-  fast-fail when skills are unavailable.
-
-## Phase 16: MCP v2 docs, examples, and compatibility checks
-- [x] Document compact defaults, delta usage, and event modes in `docs/mcp/`.
-- [x] Update client call examples/configs for the short tool names and default
-  compact preset.
-- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new
-  defaults and update the compatibility matrix.
-
-## Phase 17: MCP client compatibility + MCPB publishing readiness
-- [x] Fold LM Studio into the MCP config examples and add Claude Desktop + VS
-  Code examples.
-- [x] Add MCPB bundle templates (manifest, server registry entry, mcpb ignore)
-  and document the packaging steps.
-- [x] Add a disabled-by-default CI workflow for MCPB validation (Windows/macOS).
-- [x] Update MCP docs with publishing/registry checklist and compatibility notes.
-
-## Phase 18: MCP editor.apply tool (editor mutation API)
-- [x] Add stable UID support for editor entries and expose them in editor state.
-- [x] Implement `editor.apply` in the E2E harness (ops, batching, history,
-  preview refresh, validation, export).
-- [x] Add `editor.apply` tool in MCP server + schema + docs and resources export.
-- [x] Add tests for editor.apply flows (new/load/save/export, entry CRUD,
-  selection, history, validate).
-
-## Phase 19: Editor audit fixes + parity guardrails
-  - [x] Load `terrainGroups` into editor preview/runtime or warn as unsupported.
-  - [x] Preserve section-local comments in NXLV round-trips.
-  - [x] Add validation caps for width/height/brush/steel sizes and unsafe header
-    values; clarify INFINITE time handling.
-  - [x] Hide/disable or implement unsupported inspector fields (rotate, flip H,
-    resize, one-way) and add warnings for gadget-only props in classic mode.
-  - [x] Add editor UX safety upgrades (history cap, dirty indicator, undo/redo
-    buttons, preview refresh label coalescing).
-
-## Phase 20: Procgen terrain stamping + assets
-- [x] Add procgen asset manager (terrain/object categorization from packs).
-- [x] Replace pixel writes with terrain-piece stamping and chunk streaming.
-- [x] Add decoration and hazard placement with counterplay rules.
-
-## Phase 21: Procgen AI director + solvability
-- [x] Add environment sensing primitives (drop/wall/gap/hazard scans).
-- [x] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
-  blocker coordination).
-- [x] Add pacing/budget controls plus debug overlay for AI decisions.
-
-## Phase 22: Implementation-First Backlog + Touchpoint Map
-
-This phase folds in outstanding work from:
-`01_codebase_bug_audit.md`, `02_mcp_split_plan.md`,
-`03_agent_prompt_for_mcp_servers.md`, `04_midi_ui_enhancements.md`,
-`05_history_compression_plan.md`, `06_rendering_blitting_optimizations.md`,
-and `08_other_improvements.md`.
-
-### 22.1 Engine correctness hardening
-- [x] Replace Stage color parsing with a strict parser that accepts practical
-  `rgb/rgba` input variants and clamps channels before packing.
-  Touchpoints: `js/render/Stage.js`, `test/render/stage.test.js`.
-- [x] Apply explicit radix (`10`) to runtime numeric parsing and normalize
-  parse/validation helpers shared by app/game/render modules.
-  Touchpoints: `js/app/*`, `js/game/*`, `js/render/*`.
-- [x] Remove non-intentional loose equality in gameplay hot paths to avoid
-  coercion bugs under high-frequency simulation.
-  Touchpoints: `js/actions/*`, `js/lemmings/*`, `js/game/*`.
-- [x] Replace ad-hoc DOM querying with explicit required/optional resolution
-  helpers and fail-fast initialization for required UI nodes.
-  Touchpoints: `js/app/boot.js`, `js/app/bootstrap.js`.
-- [x] Route app/runtime/midi access through explicit dependency/context flows
-  instead of broad `globalThis` reads in hot paths.
-  Touchpoints: `js/core/dependencies.js`, `js/app/*`, `js/game/GameTimer.js`.
-- [x] Enable bounded history defaults and make retention policy explicit in
-  runtime config so long sessions do not silently overgrow memory.
-  Touchpoints: `js/game/HistoryStore.js`, `js/game/TimeTravelController.js`.
-
-### 22.2 MCP implementation split and runtime behavior
-- [x] Split MCP tool registration into composable modules (`game`, `editor`,
-  `interact`) backed by shared session/state infrastructure.
-  Touchpoints: `mcp/server.js`, `mcp/`.
-- [x] Publish separate MCPB package manifests for each tool surface while
-  keeping shared code in one implementation core.
-  Touchpoints: `mcpb/manifest.json`, `mcpb/package.json`, `MCP_COMPAT_PUBLISHING/*`.
-- [x] Implement strict runtime routing per surface (tool namespace ownership,
-  shared session IDs, no accidental cross-surface handler leakage).
-  Touchpoints: `mcp/server.js`, `scripts/mcp-smoke.js`.
-- [x] Update MCP docs/prompts to exact shipped tool names and call flows after
-  split lands (no speculative docs before implementation).
-  Touchpoints: `docs/mcp/README.md`, `docs/mcp/call-examples.md`.
-
-### 22.3 MIDI UI runtime modernization
-- [x] Introduce a unified `MidiIntent` state model with reducer-style updates
-  and persistence bridge, then rewire existing control handlers to it.
-  Touchpoints: `js/app/midi-ui/*`, `js/app/midiUiController.js`.
-- [x] Replace dropdown-first note/chord/arp editing with direct controls
-  (keyboard/grid/pattern interactions) while preserving existing mappings.
-  Touchpoints: `js/app/midiUiController.js`, `css/game.css`.
-- [x] Expand MIDI-learn to a generalized arm/disarm workflow for all editable
-  controls (notes, CC, chord, arp, transport mappings).
-  Touchpoints: `js/midi/input/MidiInputController.js`, `js/app/midiUiController.js`.
-- [x] Add deterministic automation hooks to keep E2E coverage robust as UI
-  complexity grows.
-  Touchpoints: `e2e/midi-ui.spec.js`, `e2e/tools/midiUiSnippets.js`.
-
-### 22.4 History compression and rewind storage
-- [x] Add fixed-size delta block containers over per-tick deltas to reduce
-  metadata overhead and speed seek/index operations.
-  Touchpoints: `js/game/HistoryStore.js`.
-- [x] Add canonical binary encoding for blocks and optional cold-block
-  compression in storage paths.
-  Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
-- [x] Add hash-based chunk dedupe for repeated cold blocks to cap growth in
-  repetitive scenarios.
-  Touchpoints: `js/game/HistoryStore.js`.
-- [x] Add no-op span tokenization/RLE to compress idle periods without
-  affecting replay determinism.
-  Touchpoints: `js/game/HistoryStore.js`.
-- [x] Add replay-hash validation runs during test flows to guard deterministic
-  seek/replay behavior through compression changes.
-  Touchpoints: `test/history-store.test.js`, `test/time-travel-controller.test.js`.
-
-### 22.5 Canvas2D maximum-performance program
-- [x] Keep rendering on Canvas2D only; all optimizations target Canvas2D
-  compositing, caching, and memory locality (no WebGL/WebGPU migration).
-  Touchpoints: `js/render/*`, `js/game/GameView.js`.
-- [x] Add an opt-in in-game perf overlay fed by render/tick timing probes to
-  expose hot stages and frame spikes during play and bench runs.
-  Touchpoints: `js/game/GameView.js`, `js/render/Stage.js`.
-- [x] Replace full-frame update tendencies with damage-region accumulation and
-  region-scoped layer flushes in Stage + GroundRenderer.
-  Touchpoints: `js/render/Stage.js`, `js/render/GroundRenderer.js`.
-- [x] Move expensive pixel work out of per-frame paths by precomputing
-  palette-expanded/static assets and reusing typed-array/image buffers.
-  Touchpoints: `js/render/Frame.js`, `js/render/DisplayImage.js`, `js/render/StageImageProperties.js`.
-- [x] Reduce Canvas2D state churn by batching sprite/text draws, minimizing
-  context property flips, and avoiding unnecessary clear/repaint cycles.
-  Touchpoints: `js/render/*`, `js/game/GameGui.js`.
-- [x] Add aggressive allocation reduction in hot loops (object reuse, scratch
-  buffers, stable arrays) for render, lemming update, and history flows.
-  Touchpoints: `js/render/*`, `js/lemmings/LemmingManager.js`, `js/game/HistoryStore.js`.
-- [x] Add level-scale stress profiles focused on sustained high-entity runs and
-  reverse playback to tune for worst-case practical performance.
-  Touchpoints: `scripts/bench-performance.js`, `test/gameview.benchreverse.test.js`.
-
-### 22.6 Editor and workflow throughput improvements
-- [x] Add runtime startup profiles (`gameplay`, `editor`, `perf`) that preload
-  relevant settings and disable unnecessary subsystems per mode.
-  Touchpoints: `js/app/boot.js`, `js/game/GameView.js`, `docs/config.md`.
-- [x] Expand editor batch operations (replace selected, align/distribute,
-  randomize-with-rules) as first-class controller actions.
-  Touchpoints: `js/editor/EditorController.js`, `js/app/editorUiController.js`.
-- [x] Harden offline tooling pipeline performance for large pack processing with
-  streaming I/O and reduced intermediate allocations.
-  Touchpoints: `tools/*`, `scripts/*`.
-- [x] Add focused architecture docs that explain how renderer/time-travel/MCP
-  internals are intended to behave for fast implementation onboarding.
-  Touchpoints: `docs/`.
-
-### 22.7 Execution order (performance-first)
-- [x] Wave 1: correctness + low-risk hot-path cleanup (`22.1`, parser/equality/
-  DOM/global cleanup, bounded history defaults).
-- [x] Wave 2: Canvas2D frame-time reduction (`22.5` damage regions, buffer
-  reuse, draw batching, perf overlay instrumentation).
-- [x] Wave 3: history storage compaction (`22.4` blocks/encoding/dedupe/no-op
-  tokenization with replay-hash safeguards).
-- [x] Wave 4: MCP split and MIDI/editor modernization (`22.2`, `22.3`, `22.6`)
-  after core runtime perf characteristics are stable.
-
-### 22.8 Validation matrix for active work
-- [x] Baseline: `npm run lint`, `npm run check-undefined`, `npm test`.
-- [x] Performance: `npm run bench-performance -- --mode=sequence`,
-  `npm run bench-history`.
-- [x] MCP: `npm run check-mcp-clients`, `npm run test-mcp-smoke`.
-- [x] Editor/MIDI: `npm run test-editor`, `npx mocha \"test/midi/*.test.js\"`.
-
-Notes:
-- Performance matrix runs on February 22, 2026 used shortened local durations
-  (`BENCH_DURATION_MS=5000`, `HISTORY_DURATION_MS=5000`) while preserving the
-  same scripts and runtime paths.
-
-## Phase 23: Runtime hard-cutover and dependency cleanup
-- [x] Remove remaining gameplay/render/action hot-path `globalThis.lemmings`
-  reads and route through explicit runtime dependencies/context.
-  Touchpoints: `js/actions/*`, `js/level/Level.js`, `js/level/Trigger*.js`,
-  `js/render/MiniMap.js`, `js/game/GameDisplay.js`, `js/game/SoundEvents.js`.
-- [x] Remove `globalThis` MIDI override bridge variables and replace with
-  explicit state handoff between boot, `GameView`, and MIDI UI controller.
-  Touchpoints: `js/game/GameView.js`, `js/app/boot.js`,
-  `js/app/midiUiController.js`.
-- [x] Remove magic world-width assumptions in zoom/input flow and derive zoom
-  eligibility from stage/image metadata.
-  Touchpoints: `js/input/UserInputManager.js`, `js/render/Stage.js`.
-- [x] Add explicit app-context injection for MCP helpers currently reading the
-  singleton directly.
-  Touchpoints: `mcp/server.js`, `js/app/e2eHarness.js`.
-
-## Phase 24: Canvas2D performance tier 3 (no WebGL/WebGPU)
-- [x] Stop full background upload on every frame; only push ground updates when
-  terrain changed and keep cached background state otherwise.
-  Touchpoints: `js/game/Game.js`, `js/level/Level.js`,
-  `js/render/DisplayImage.js`.
-- [x] Add a bulk terrain-write API so high-volume generators can update spans/
-  chunks without per-pixel history/minimap callbacks.
-  Touchpoints: `js/level/Level.js`, `js/app/procgenController.js`,
-  `js/app/procgenTerrainStamper.js`.
-- [x] Replace dirty-rect array copies with zero-copy handoff/reuse buffers to
-  reduce per-frame allocations.
-  Touchpoints: `js/render/DisplayImage.js`, `js/render/Stage.js`.
-- [x] Upgrade scaled-frame variant cache to true LRU semantics so hot scale
-  variants stay resident and expensive recalculation is avoided.
-  Touchpoints: `js/render/DisplayImage.js`.
-- [x] Reduce marching-ants and dashed-outline cost via cached edge spans and
-  throttled offset updates at low movement.
-  Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`.
-- [x] Optimize Stage overlay fallback path to avoid repeated
-  `getImageData/putImageData` churn on browsers without line-dash support.
-  Touchpoints: `js/render/Stage.js`.
-- [x] Skip redundant resize-triggered redraw work when canvas dimensions are
-  unchanged and displays have no pending dirty state.
-  Touchpoints: `js/render/Stage.js`.
-- [x] Add CPU-only render hotpath benchmark (no browser launch) for dirty-rect,
-  marching-ants, and GUI overlay paths.
-  Touchpoints: `scripts/bench-hotpaths.js`, `js/render/*`, `js/game/GameGui.js`.
-
-## Phase 25: Procgen production tier 3
-- [x] Add deterministic seeded RNG for procgen generation/AI so scenarios can be
-  replayed and benchmarked exactly.
-  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenController.js`,
-  `docs/procgen.md`.
-- [x] Replace full gap-array scans with cursored/partitioned processing so cost
-  scales with nearby gaps instead of total historical gaps.
-  Touchpoints: `js/app/procgenController.js`.
-- [x] Ensure procgen stage adapter has full listener lifecycle cleanup so repeat
-  start/stop cycles do not leak wheel/resize handlers.
-  Touchpoints: `js/app/procgenStageAdapter.js`, `js/app/procgenBoot.js`.
-- [x] Add scan-cache strategy for repeated environment queries
-  (gap/wall/drop/hazard) during the same AI decision window.
-  Touchpoints: `js/app/procgenController.js`, `js/render/SolidLayer.js`.
-- [x] Add entity pooling/reuse path for long bench/procgen runs to reduce GC
-  churn from repeated lemming object allocation.
-  Touchpoints: `js/lemmings/LemmingManager.js`, `js/lemmings/Lemming.js`.
-- [x] Add long-run headless soak benchmark for procgen (entity growth + memory
-  ceilings + frame-time summary) with strict cleanup.
-  Touchpoints: `scripts/bench-procgen-soak.js`, `test/procgen*.test.js`.
-- [x] Expand procgen coverage for bootstrap/style selection/stage adapter
-  branches and shutdown behavior.
-  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`,
-  `test/*procgen*.test.js`.
-
-## Phase 26: MCP throughput and lifecycle hardening
-- [x] Replace `EventQueue` shift/filter behavior with a ring-buffer cursor model
-  to eliminate O(n) drains and head removals.
-  Touchpoints: `mcp/server.js`.
-- [x] Add adaptive watch polling cadence/backoff and on-demand polling hooks so
-  idle sessions do less work.
-  Touchpoints: `mcp/server.js`, `mcp/watchPolling.js`.
-- [x] Add spectator backpressure controls (frame skip policy, configurable
-  cadence/quality) for multi-client sessions.
-  Touchpoints: `mcp/server.js`, `mcp/spectator.html`,
-  `mcp/spectatorBroadcaster.js`.
-- [x] Split `mcp/server.js` transport/session/resource/watch/event logic into
-  dedicated modules while preserving tool contracts.
-  Touchpoints: `mcp/server.js`, `mcp/eventEnvelope.js`, `mcp/resourceStore.js`,
-  `mcp/sessionStore.js`, `mcp/tools/*`, `scripts/mcp-smoke.js`.
-- [x] Add shutdown/leak tests to ensure intervals, sockets, and browser
-  resources are always reclaimed.
-  Touchpoints: `mcp/server.js`, `mcp/sessionLifecycle.js`,
-  `scripts/mcp-smoke.js`, `test/mcp*.test.js`.
-
-## Phase 27: Test and benchmark throughput
-- [x] Add changed-file targeted test selection with stable category mapping and
-  fallback to full-suite safety.
-  Touchpoints: `scripts/runTests.js`, `package.json`.
-- [x] Add short performance smoke gates (<2 min) for CI/PR and keep long soak
-  suites for explicit/nightly runs.
-  Touchpoints: `scripts/bench-performance.js`, `scripts/bench-history-stress.js`,
-  `scripts/bench-hotpaths.js`.
-- [x] Add branch-coverage tests for large remaining bootstrap/input modules that
-  still rely mostly on integration coverage.
-  Touchpoints: `js/app/boot.js`, `js/input/UserInputManager.js`,
-  `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.
-- [x] Remove expected-error console noise in tests by scoped stubbing so real
-  regressions stay visible in output.
-  Touchpoints: `test/midi/midi-ui-controller.test.js`, `test/helpers/*`.
-
-## Phase 28: Editor runtime throughput and data integrity
-- [x] Add indexed lookup tables for selected entries/UIDs in editor hot paths to
-  avoid repeated linear scans on large maps.
-  Touchpoints: `js/editor/EditorController.js`, `js/editor/EditorEntryFactory.js`.
-- [x] Add parser/writer fuzz/property tests for NXLV comment/unknown-section
-  round trips and malformed payload recovery.
-  Touchpoints: `js/editor/NxlvParser.js`, `js/editor/NxlvWriter.js`,
-  `test/editor/*.test.js`.
-- [x] Add palette/search filtering with cached preview invalidation policies for
-  large style sets.
-  Touchpoints: `js/app/editorUiController.js`, `js/app/editorPreviewCache.js`,
-  `css/editor.css`.
-- [x] Add explicit undo/redo transaction grouping for batch operations so
-  generated edits remain predictable and reversible.
-  Touchpoints: `js/editor/EditorHistory.js`, `js/editor/EditorController.js`.
-
-## Phase 29: MIDI runtime scalability and modularity
-- [x] Implement end-to-end MIDI flag trigger workflow (editor placement,
-  runtime trigger registration, and mapping UI integration) and retire the
-  deferred Phase 5 flag item.
-  Touchpoints: `js/editor/EditorTools.js`, `js/editor/EditorController.js`,
-  `js/app/midiUiController.js`, `js/game/GameView.js`, `test/midi/*.test.js`.
-- [x] Split `midiUiController` into smaller feature modules (state, binding,
-  rendering sections, learn flow) behind a stable facade.
-  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
-- [x] Coalesce high-frequency UI refresh paths to avoid full-section rebuilds on
-  single-control changes.
-  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiDomain.js`.
-- [x] Add strict intent payload validation and migration guards for persisted
-  overrides/state.
-  Touchpoints: `js/app/midi-ui/midiUiIntent.js`, `js/app/midi-ui/midiUiStorage.js`.
-- [x] Add focused bench coverage for MIDI routing/scheduler throughput under high
-  event density.
-  Touchpoints: `js/midi/MidiEventRouter.js`, `js/midi/MidiScheduler.js`,
-  `scripts/bench-hotpaths.js`.
-
-## Phase 30: Platform and dev-loop reliability
-- [x] Ensure service worker is disabled or bypassed in `dev/e2e/perf` profiles
-  and add explicit cache-busting for static assets/config changes.
-  Touchpoints: `js/app/registerServiceWorker.js`, `js/app/boot.js`,
-  `js/game/GameFactory.js`.
-- [x] Audit pointer/touch listener passive flags and latency-sensitive handlers
-  for mobile responsiveness.
-  Touchpoints: `js/input/*`, `js/render/Stage.js`, `js/game/GameView.js`.
-- [x] Add deterministic environment diagnostics endpoint for runtime profile,
-  feature flags, and active caches to simplify bug triage.
-  Touchpoints: `js/app/e2eHarness.js`, `js/game/GameView.js`, `docs/e2e-state.md`.
-
-## Phase 31: Runtime hard cutover (no global singleton fallback)
-- [x] Remove remaining runtime reads of implicit `lemmings` globals in gameplay,
-  render, MIDI, and logging paths; route all runtime flags/state through
-  explicit context objects.
-  Touchpoints: `js/game/Game.js`, `js/game/GameTimer.js`,
-  `js/lemmings/LemmingManager.js`, `js/midi/MidiScheduler.js`,
-  `js/midi/MidiEventRouter.js`, `js/util/LogHandler.js`, `js/lemmings/Lemming.js`.
-- [x] Replace `globalThis.onEnabled` / `globalThis.onMidiError` callback bridge
-  with explicit event wiring between boot, `GameView`, and MIDI UI controller.
-  Touchpoints: `js/app/boot.js`, `js/game/GameView.js`,
-  `js/app/midiUiController.js`.
-- [x] Remove compatibility fallbacks to `globalThis.lemmings` / bare `lemmings`
-  in remaining runtime helpers and factories.
-  Touchpoints: `js/game/GameFactory.js`, `js/game/GameGui.js`,
-  `js/game/GameVictoryCondition.js`, `js/game/HistoryStore.js`.
-- [x] Enforce hard-cutover guardrails in lint/tests so new global fallback usage
-  cannot regress.
-  Touchpoints: `eslint.config.js`, `test/*`, `scripts/runTests.js`.
-
-## Phase 32: Replay data layout tier 2 (binary-first cold path)
-- [x] Replace JSON clone/serialize cold-block paths with binary codecs to avoid
-  `JSON.parse(JSON.stringify(...))` in history compaction.
-  Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
-- [x] Store cold-block lemming mutation streams in typed-array sections
-  (field-packed) instead of object arrays to reduce memory and decode cost.
-  Touchpoints: `js/game/HistoryStore.js`.
-- [x] Remove `Lemming` constructor global fallbacks during keyframe/delta apply
-  and require explicit ctor wiring from manager/runtime context.
-  Touchpoints: `js/game/HistoryStore.js`, `js/lemmings/LemmingManager.js`.
-- [x] Add seek/replay perf gates and long-session parity checks for the new
-  binary layout.
-  Touchpoints: `scripts/bench-history-stress.js`, `test/history-store.test.js`,
-  `test/time-travel-controller.test.js`.
-
-## Phase 33: Canvas2D render composition tier 4
-- [x] Move terrain presentation to a tile/chunk compositing model so stage draws
-  update dirty tiles rather than repeatedly uploading large regions.
-  Touchpoints: `js/render/GroundRenderer.js`, `js/level/Level.js`,
-  `js/render/DisplayImage.js`, `js/render/Stage.js`.
-- [x] Add a dedicated overlay plane for marching ants/selection/hover so
-  high-frequency HUD outlines avoid unnecessary main-layer invalidation.
-  Touchpoints: `js/render/DisplayImage.js`, `js/game/GameGui.js`,
-  `js/game/GameDisplay.js`, `js/render/Stage.js`.
-- [x] Optimize scaled blit paths with precomputed source-coordinate maps and
-  branch-reduced inner loops.
-  Touchpoints: `js/render/DisplayImage.js`.
-- [x] Extend CPU hotpath benchmarks to isolate tile-composition, overlay, and
-  scaled-blit regressions.
-  Touchpoints: `scripts/bench-hotpaths.js`, `scripts/bench-smoke.js`,
-  `test/bench-hotpaths.test.js`.
-
-## Phase 34: MCP throughput tier 2 + API cutover
-- [x] Keep short canonical MCP tool names only.
-  Touchpoints: `mcp/server.js`, `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
-- [x] Split remaining heavy state/delta/spectator logic from `mcp/server.js`
-  into dedicated modules to reduce hot-path branching and improve testability.
-  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `mcp/sessionLifecycle.js`.
-- [x] Replace watch `onChange` JSON-stringify comparisons with pointer-aware
-  comparators/hashes to reduce poll overhead.
-  Touchpoints: `mcp/server.js`, `mcp/watchPolling.js`.
-- [x] Rework lemming summary extraction to single-pass accumulation with bounded
-  top-K selection (no full candidate sort unless requested).
-  Touchpoints: `mcp/server.js`, `test/mcp*.test.js`.
-
-## Phase 35: Frontend/UI runtime dependency cleanup
-- [x] Remove jQuery runtime dependency from boot/resize flow and switch to
-  native DOM/event APIs end-to-end.
-  Touchpoints: `js/app/boot.js`, `index.html`, `editor.html`, `package.json`.
-- [x] Eliminate `window.lemmings` coupling in procgen/bootstrap paths and route
-  stage updates through explicit runtime handles.
-  Touchpoints: `js/app/procgenBoot.js`, `js/app/procgenStageAdapter.js`.
-- [x] Reduce MIDI UI listener churn by consolidating repetitive per-control
-  binding into delegated/section-level handlers where feasible.
-  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/midiUiSections.js`.
-- [x] Add versioned storage migration for editor/MIDI settings to keep persisted
-  state deterministic across UI schema changes.
-  Touchpoints: `js/app/midi-ui/midiUiStorage.js`, `js/editor/EditorStorage.js`.
-
-## Phase 36: Test suite throughput tier 2
-- [x] Extract shared test support harnesses (globals/dom/canvas/timers/deps) and
-  refactor largest suites to remove duplicated scaffolding.
-  Touchpoints: `test/helpers/*`, `test/support/*`, `test/midi/*.test.js`,
-  `test/gameview.coverage.test.js`, `test/history-store.test.js`.
-- [x] Split oversized coverage-heavy suites into focused behavior suites while
-  preserving branch coverage guarantees.
-  Touchpoints: `test/*coverage*.test.js`, `test/action-systems.test.js`.
-- [x] Tighten fast benchmark smoke defaults so perf checks stay under a short
-  dev-loop budget by default, with explicit opt-in soak runs.
-  Touchpoints: `scripts/bench-smoke.js`, `scripts/bench-performance.js`,
-  `scripts/bench-history-stress.js`, `docs/TESTING.md`.
-- [x] Clarify and align test script semantics/docs (`test-bench` vs bench
-  scripts) to avoid misuse and false expectations.
-  Touchpoints: `package.json`, `docs/TESTING.md`.
-
-## Phase 37: Static analysis and correctness guardrails
-- [x] Replace ad-hoc undefined-call scanning with scope-aware analysis and
-  controlled HTML entrypoint scanning to reduce false positives/negatives.
-  Touchpoints: `scripts/check-undefined.js`, `scripts/processHtmlFile.js`,
-  `test/check-undefined.test.js`.
-- [x] Add guardrails for tricky perf/correctness invariants (dirty-rect
-  integrity, history replay equivalence, trigger ownership cleanup) with
-  targeted invariant tests.
-  Touchpoints: `test/render/stage.test.js`, `test/history-store.test.js`,
-  `test/level/trigger-manager.test.js`.
-
-## Phase 38: Runtime lifecycle and static safety hardening
-- [x] Replace hard `process.exit` signal shutdown behavior in MCP server with an
-  idempotent graceful shutdown controller that disposes runtime sessions and
-  closes server transports in a deterministic order.
-  Touchpoints: `mcp/server.js`, `mcp/shutdownController.js`,
-  `test/mcp-shutdown-controller.test.js`.
-- [x] Enforce radix-safe integer parsing in lint and clear remaining non-vendor
-  `parseInt` hotpath usage without explicit base to prevent coercion edge
-  cases.
-  Touchpoints: `eslint.config.js`, `js/xbrz/xbrz.js`.
-
-## Phase 39: Test suite overlap reduction
-- [x] Consolidate overlapping SoundEvent bus suites into a single canonical test
-  file and remove redundant duplicate coverage to reduce maintenance churn while
-  preserving assertions.
-  Touchpoints: `test/sound-events.test.js`, `test/soundevents.test.js`.
-
-## Phase 40: MCP server surface split and semantic-first workflows
-- [x] Freeze versioned semantic schemas in the current MCP surface first
-  (`game.*`, `editor.*`) with hard-cut underscore call names.
-  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/protocol-v2.md`.
-- [x] Replace catch-all editor mutation flows with typed verbs (`objects.list`,
-  `objects.place`, `objects.update`, `objects.delete`) that support paging,
-  bbox filtering, compact field profiles, and revision-aware deltas.
-  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `test/mcp*.test.js`.
-- [x] Remove non-canonical protocol support after the semantic tools shipped.
-  Touchpoints: `mcp/server.js`, `test/mcp*.test.js`, `docs/mcp/*`.
-- [x] Split MCP into dedicated game/editor/interact registrations/manifests
-  only after semantic APIs and adapters are stable.
-  Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/*`.
-- [x] Add conformance tests that enforce semantic-first usage (game/editor
-  servers reject raw input tools; interact server remains explicit fallback).
-  Touchpoints: `test/mcp*.test.js`, `docs/mcp/protocol-v2.md`.
-- [x] Publish MCP agent playbooks only after schema freeze, including
-  snapshot-first loops, batching, paging, and explicit Interact fallback rules.
-  Touchpoints: `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
-
-## Phase 41: History/rewind compression tier 3
-- [x] Ship bounded-history defaults and profile-driven retention first so long
-  sessions are safe before deeper codec changes.
-  Touchpoints: `js/game/HistoryStore.js`, `js/app/boot.js`, `docs/TESTING.md`.
-- [x] Add replay invariant harnesses (random seek/rewind/replay + stable hashes)
-  and make them mandatory guards before enabling new compression layers.
-  Touchpoints: `test/history-store.test.js`, `test/time-travel-controller.test.js`.
-- [x] Add no-op delta tokens plus run-length encoding for unchanged tick spans
-  to reduce idle-history memory growth.
-  Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
-- [x] Encode deltas into fixed-size canonical typed-array blocks to improve
-  locality and reduce per-tick object churn.
-  Touchpoints: `js/game/HistoryStore.js`, `docs/compression-format.md`.
-- [x] Add optional cold-block compression and dictionary dedupe behind feature
-  flags with benchmark gates and collision-safe verification fallback.
-  Touchpoints: `js/game/HistoryStore.js`, `scripts/bench-history-stress.js`.
-
-## Phase 42: Render throughput tier 5 (Canvas2D-first)
-- [x] Extend perf instrumentation first with p50/p95/p99/worst-case capture and
-  allocation-aware diagnostics so optimization claims are evidence-based.
-  Touchpoints: `js/render/Stage.js`, `scripts/bench-hotpaths.js`,
-  `docs/TESTING.md`.
-- [x] Unify damage tracking into one authoritative aggregator for terrain,
-  sprites, and overlays with deterministic full-redraw fallback thresholds.
-  Touchpoints: `js/render/Stage.js`, `js/render/GroundRenderer.js`,
-  `js/game/GameView.js`.
-- [x] Audit minimap/particle redraw cadence and batching for quick wins before
-  deeper compositor changes.
-  Touchpoints: `js/game/MiniMap.js`, `js/game/ParticleTable.js`,
-  `test/minimap.test.js`.
-- [x] Reduce hot-path `putImageData` with capability-gated offscreen composition
-  and `drawImage` present paths while keeping correctness fallbacks.
-  Touchpoints: `js/render/Stage.js`, `js/render/DisplayImage.js`.
-- [x] Run a feature-gated worker/offscreen experiment path (non-default) with
-  rollback flags for unsupported browser/device profiles.
-  Touchpoints: `js/render/Stage.js`, `docs/TESTING.md`.
-
-## Phase 43: MIDI UI expressive controls and intent model
-- [x] Extract a stable `MidiIntent` model used by UI, persistence, and router
-  layers so control widgets are decoupled from mapping internals.
-  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`.
-- [x] Add settings migration and backward-compatible persistence mapping for
-  `MidiIntent` before replacing legacy widget contracts.
-  Touchpoints: `js/app/midi-ui/*`, `test/midi/*.test.js`.
-- [x] Introduce feature flags for new controls and require accessibility parity
-  (keyboard navigation + labels + focus behavior) before defaulting on.
-  Touchpoints: `js/app/midiUiController.js`, `css/*`, `e2e/midi-ui.spec.js`.
-- [x] Replace key/octave dropdown flows with direct-manipulation controls
-  (keyboard-style picker + octave shift) and deterministic test hooks.
-  Touchpoints: `js/app/midiUiController.js`, `css/*`, `test/midi/*.test.js`.
-- [x] Replace arpeggiator mode dropdown with a compact step-pattern editor plus
-  presets and explicit serialization semantics.
-  Touchpoints: `js/app/midi-ui/*`, `test/midi/*.test.js`.
-- [x] Add preview/audition and MIDI-learn affordances that remain fully
-  automatable in E2E harness flows.
-  Touchpoints: `js/app/midiUiController.js`, `e2e/midi-ui.spec.js`.
-- [x] Finalize expressive controls as the only mapping UI after accessibility
-  checks pass across desktop/mobile layouts.
-  Touchpoints: `js/app/midiUiController.js`, `test/midi/*.test.js`.
-
-## Phase 44: Runtime correctness and profile hardening
-- [x] Introduce runtime profile presets (`classic`, `midi`, `editor`, `e2e`,
-  `perf`) to centralize history, logging, and rendering defaults.
-  Touchpoints: `js/app/boot.js`, `js/game/GameFactory.js`, `docs/TESTING.md`.
-- [x] Complete DOM resolution hardening in boot paths via explicit
-  required/optional element helpers and clearer embed-mode failure behavior.
-  Touchpoints: `js/app/boot.js`, `js/app/domResolver.js`, `test/app-boot.test.js`.
-- [x] Add targeted `tsc --checkJs` coverage for critical modules to catch
-  undefined-shape regressions before runtime.
-  Touchpoints: `js/game/HistoryStore.js`, `js/render/Stage.js`,
-  `js/level/Trigger.js`, `package.json`.
-- [x] Roll out strict-equality guardrails via lint + codemods in scoped slices,
-  allowing intentional `== null` usage only where dual-null semantics are
-  documented.
-  Touchpoints: `eslint.config.js`, `js/actions/*`, `js/game/*`, `js/lemmings/*`.
-- [x] Remove remaining runtime reads of `globalThis.*` singletons in app/game
-  paths and route through explicit dependency/context boundaries.
-  Touchpoints: `js/app/*`, `js/game/*`, `js/midi/*`, `js/core/dependencies.js`.
-
-## Phase 45: Test suite condensation tier 3
-- [x] Expand shared test support (`dom`, `canvas`, `deps`, fixtures) and migrate
-  largest suites to remove duplicated scaffolding.
-  Touchpoints: `test/support/*`, `test/helpers/*`, `test/*coverage*.test.js`.
-- [x] Merge remaining near-duplicate coverage suites and standardize naming
-  conventions to avoid case/collision drift.
-  Touchpoints: `test/*`.
-- [x] Refactor top-volume suites into table-driven scenario runners with shared
-  harnesses while preserving branch coverage guarantees.
-  Touchpoints: `test/history-store.test.js`, `test/action-systems.test.js`,
-  `test/midi/*.test.js`, `test/gameview.coverage.test.js`.
-- [x] Add E2E page-object fixtures and semantic selector helpers to reduce
-  repeated harness setup boilerplate.
-  Touchpoints: `e2e/*.spec.js`, `e2e/helpers/*`.
-- [x] Add test-runtime budgets and suite-duration guardrails so condensation
-  work measurably improves local dev-loop speed.
-  Touchpoints: `scripts/runTests.js`, `docs/TESTING.md`, `package.json`.
-
-## Phase 46: Privacy-first analytics (optional)
-- [x] Document consent defaults and data-minimization constraints for visitor
-  stats and gameplay/editor events.
-  Touchpoints: `docs/*`.
-- [x] Add local-only analytics ring buffer with explicit export/import so
-  development telemetry works with zero hosted backend.
-  Touchpoints: `js/app/*`, `docs/*`.
-- [x] Add optional managed `sendBeacon` endpoint integration path (off by
-  default) with strict, versioned, low-cardinality event schema and sampling.
-  Touchpoints: `js/app/*`, `docs/*`.
-- [x] Add explicit build/runtime kill switches so analytics remains disabled by
-  default in development and can be hard-disabled per deployment.
-  Touchpoints: `js/app/*`, `docs/*`.
-
-## Phase 47: Cross-cutting risk retirement (complex/tricky)
-- [x] Add browser capability matrix coverage for WebMIDI, OffscreenCanvas,
-  ImageBitmap paths, and deterministic fallbacks.
-  Touchpoints: `js/app/*`, `js/render/*`, `test/*`, `e2e/*`.
-- [x] Introduce staged rollout flags and rollback toggles for high-risk changes
-  in phases 40-43 (MCP/API split, history codec, render present paths, MIDI UI).
-  Touchpoints: `js/app/boot.js`, `js/game/GameFactory.js`, `docs/TESTING.md`.
-- [x] Add long-session soak tests (memory, GC churn, replay integrity, event
-  queue growth) and enforce regression thresholds in CI.
-  Touchpoints: `scripts/bench-*.js`, `scripts/runTests.js`, `test/*`.
-- [x] Add release-readiness checklist gates covering compatibility, migration,
-  performance, accessibility, and rollback rehearsals before enabling defaults.
-  Touchpoints: `docs/*`, `scripts/*`.
-
-## Phase 48: Large-file modularization
-- [x] Modularize history/time storage and tests. Current inventory:
-  `test/history-store.test.js` (3398 lines), `js/game/HistoryStore.js` (3031),
-  `test/time-travel-controller.test.js` (718), `test/game-timer.test.js` (650).
-  Target tree: `js/game/history/HistoryStoreCore.js`,
-  `HistoryBinaryCodec.js`, `HistoryDeltaCodec.js`, `HistoryLemmingState.js`,
-  `HistoryTriggerState.js`, `HistoryObjectState.js`, `HistoryGroundState.js`,
-  `HistoryScalarState.js`, `HistoryColdBlocks.js`; keep
-  `js/game/HistoryStore.js` as the stable facade export. Split tests into
-  codec, keyframe/delta, lemming, ground/trigger/object, scalar/manager,
-  cold-block, replay, timer, and time-travel suites with shared fixtures in
-  `test/support/history-fixtures.js`.
-- [x] Modularize MIDI runtime, UI, and tests. Current inventory:
-  `js/app/midiUiController.js` (2128), `test/midi/midi-event-router.test.js`
-  (1944), `test/midi/midi-ui-controller.test.js` (1748),
-  `test/midi/midi-mapping.test.js` (1066), `js/midi/MidiScheduler.js` (723),
-  `test/midi/midi-scheduler.coverage.test.js` (713),
-  `js/midi/MidiEventRouter.js` (698), `js/midi/MidiMapping.js` (626),
-  `test/midi/midi-scheduler.test.js` (564). Target tree:
-  `js/app/midi-ui/midiUiDevices.js`, `midiUiErrors.js`,
-  `midiUiMappingEditor.js`, `midiUiDebug.js`, `midiUiLifecycle.js`;
-  `js/midi/MidiRateLimiter.js`, `MidiMpeAllocator.js`, `MidiNoteQueue.js`,
-  `MidiRoutePlanner.js`, `MidiRepeatState.js`, `MidiArpState.js`,
-  `MidiRouteBudget.js`. Preserve `createMidiUiController`, scheduler/router
-  public constructors, mapping persistence keys, and MIDI test hooks.
-- [x] Modularize MCP server surface. Current inventory: `mcp/server.js` (2090),
-  `mcp/watchPolling.js` (552). Target tree: `mcp/schemas.js`,
-  `mcp/protocolMetadata.js`, `mcp/sessionTools.js`, `mcp/gameTools.js`,
-  `mcp/editorObjectTools.js`, `mcp/visionTools.js`; keep `mcp/server.js` as
-  startup, registry, and runtime export wiring. Preserve shipped tool names,
-  schemas, and protocol metadata.
-- [x] Modularize E2E/editor harnesses and specs. Current inventory:
-  `js/app/e2eHarness.js` (2004), `e2e/harness.editor.spec.js` (1062). Target
-  tree: `js/app/e2e/stateSerialization.js`, `editorApplyHarness.js`,
-  `canvasHarness.js`, `gameControlsHarness.js`, `diagnosticsHarness.js`; keep
-  `installE2EHarness`, `isE2EEnabled`, and `window.__E2E__` method names
-  stable. Split editor harness specs by state, mutations, saved/import/export,
-  and canvas-coordinate flows.
-- [x] Modularize editor runtime/UI and tests. Current inventory:
-  `js/app/editorUiController.js` (1930), `js/editor/EditorController.js`
-  (1619), `test/editor/editor-controller.test.js` (1300). Target tree:
-  `js/editor/EditorSelectionModel.js`, `EditorSelectionCommands.js`,
-  `EditorPlacementTools.js`, `EditorPointerController.js`;
-  `js/app/editor-ui/editorUiBindings.js`, `editorPaletteUi.js`,
-  `editorSelectionPanel.js`, `editorLevelIoUi.js`, `editorStatusUi.js`.
-  Preserve `EditorController` and `EditorUiController` public APIs and existing
-  editor storage/history behavior.
-- [x] Modularize render/game UI and tests. Current inventory:
-  `js/game/GameView.js` (1836), `test/gameview.coverage.test.js` (1760),
-  `js/render/Stage.js` (1542), `js/render/DisplayImage.js` (1420),
-  `test/render/stage.test.js` (1168), `js/game/GameGui.js` (1039),
-  `test/game-gui.coverage.test.js` (761), `js/render/MiniMap.js` (588).
-  Target tree: `js/game/game-view/GameViewQuery.js`,
-  `GameViewLevelSelection.js`, `GameViewMidi.js`, `GameViewEditorMode.js`,
-  `GameViewDiagnostics.js`; `js/render/stage/StagePerf.js`,
-  `StageInput.js`, `StageCompositor.js`, `StageOverlays.js`;
-  `js/render/display/DisplayDirtyTracking.js`, `DisplayFrameCache.js`,
-  `DisplayPrimitives.js`, `DisplayBlit.js`; `js/game/game-gui/GameGuiInput.js`,
-  `GameGuiRender.js`, `SkillPanelDrawing.js`, `SmoothScroller.js`. Preserve
-  exported classes, canvas ownership, render test hooks, and public game UI
-  behavior.
-- [x] Modularize game/level/lemming/data/input/app/script support files.
-  Current inventory: `test/action-systems.test.js` (1760),
-  `js/app/procgenController.js` (1497), `test/fileprovider.test.js` (1256),
-  `scripts/bench-hotpaths.js` (1240), `js/lemmings/LemmingManager.js` (835),
-  `js/level/Level.js` (831), `test/midi/midi-input-controller.coverage.test.js`
-  (773), `scripts/check-undefined.js` (766), `js/data/FileProvider.js` (758),
-  `js/app/analytics.js` (582), `test/input/keyboard-shortcuts-coverage.test.js`
-  (572), `scripts/runTests.js` (566), `js/app/boot.js` (547),
-  `js/input/GamepadInputController.js` (543), `scripts/bench-long-session.js`
-  (542), `scripts/bench-history-stress.js` (537), `js/xbrz/xbrz.js` (532),
-  `js/input/KeyboardShortcuts.js` (525). Target trees: procgen director,
-  terrain generation, terrain painting, and tracking modules; level object,
-  ground mutation, steel, and arrow modules; lemming action registry, spawner,
-  selection index, and nuke modules; FileProvider fetch/cache/validation
-  modules; input binding/polling/format modules; script-local `scripts/*`
-  helper modules. Treat `js/xbrz/xbrz.js` as low-priority algorithmic code and
-  split only where behavior is clearly repo-owned.
-- [x] Keep modularization behavior-preserving. Old facade files must continue
-  exporting the same public symbols, browser `js/` modules must remain
-  Node-free, `js/vendor/` must not be touched, and no strict file-length gate
-  should be added. Validate each section with its targeted suite before moving
-  on, then run `npm run format`, `npm run check-undefined`, `npm run lint`,
-  `npm run typecheck:critical`, `npm test`, `npm run test-bench-unit`, and
-  `npm run depcheck` before completing the phase.
-
-## Phase 49: Hard-cut cleanup and current guardrails
-- [x] Remove non-canonical MCP tool-name paths and rollout environment toggles
-  so `listTools` names are the only accepted call names.
-  Touchpoints: `mcp/server.js`, `mcp/toolRouting.js`,
-  `mcp/protocolMetadata.js`, `docs/mcp/*`, `test/mcp*.test.js`.
-- [x] Remove retired MIDI legacy-control rollout paths and keep expressive MIDI
-  mapping controls as the only UI contract.
-  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`,
-  `js/core/rolloutFlags.js`, `docs/midi-ui.md`, `test/midi/*`.
-- [x] Add existing audit/typecheck/MCP client/MCP smoke/benchmark smoke checks
-  to CI with an HTTPS server startup step for browser-backed smoke scripts.
-  Touchpoints: `.github/workflows/test.yml`.
-- [x] Expand critical typecheck coverage to the newly extracted high-risk
-  modules that can pass without introducing repo-wide mixin declarations.
-  Touchpoints: `tsconfig.checkjs.json`.
-- [x] Continue second-pass modularization of the largest remaining editor and
-  MIDI UI files by extracting feature flags, refresh-section derivation,
-  editor pointer method groups, editor UI binding groups, and E2E editor apply
-  helpers/result assembly.
-  Touchpoints: `js/app/midi-ui/*`, `js/app/e2e/*`,
-  `js/editor/editor-controller/*`, `js/app/editor-ui/*`.
-- [x] Move the root `mcp_editor_apply_spec.md` into `docs/mcp/editor-apply.md`
-  and rewrite it as the shipped contract rather than a proposal.
-  Touchpoints: `docs/mcp/editor-apply.md`, `docs/mcp/README.md`.
+Historical completed roadmap entries live in git history. This file is the
+current source of truth for future work and should stay focused on active
+product and tooling direction.
+
+## Format
+
+Each milestone uses the same shape:
+
+- **Outcome:** What should be true for users or maintainers when the milestone
+  is done.
+- **Scope:** Work that belongs in the milestone.
+- **Workflow Coverage:** Real workflows that must be exercised, preferably by
+  headless Playwright or deterministic unit/integration tests.
+- **Deliverables:** Concrete code, docs, tools, or artifacts.
+- **Acceptance:** Observable completion criteria.
+- **Out of Scope:** Tempting work that should not be mixed into the milestone.
+
+Prefer hard cutovers over aliases, shims, fallbacks, or retired behavior tests.
+When a milestone replaces an old path, remove the old path in the same phase.
+
+## Sequencing
+
+1. Generic visual iteration and Playwright capture tooling.
+2. Documentation and source-of-truth cleanup.
+3. MIDI configuration UI excellence.
+4. Level editor audit and productization.
+5. Procedural generation productization.
+6. Solver and solvability platform.
+
+## Milestone 1: Generic Visual Iteration and Playwright Capture Tooling
+
+**Outcome:** UI work can be iterated visually and repeatably in headless
+Playwright without hardcoding today's panel layout. Tests and tools can capture
+any DOM selector, explicit page rectangle, canvas/world rectangle, or generated
+runtime rectangle into ignored `temp/` output for quick inspection.
+
+**Scope**
+
+- Add a reusable E2E capture helper that accepts a route, viewport, device scale
+  factor, setup function, and a list of capture targets.
+- Support target types:
+  - CSS selector resolved through Playwright locators.
+  - Explicit page-space rectangle `{ x, y, width, height }`.
+  - Runtime rectangle returned by `window.__E2E__`, such as canvas metrics,
+    stage game rects, GUI rects, minimap rects, editor selection bounds, or
+    world-to-page conversions.
+  - Full page and full viewport captures for quick diagnosis.
+- Allow callers to pass arbitrary target names rather than baked-in names like
+  "left panel" or "right panel".
+- Write screenshots and any lightweight run output only under ignored
+  `temp/e2e-captures/`.
+- Print the resolved target names and rectangles to stdout so the run is easy to
+  inspect without creating a durable artifact format.
+- Keep captures disposable. They are development aids, not checked-in baselines
+  or review artifacts.
+- Add overflow and visibility probes that can be applied to any selector:
+  horizontal overflow, vertical overflow, clipped text, zero-size text, hidden
+  focused element, unusable tap target, and unexpected scrollbar.
+- Keep the helper generic enough for MIDI, editor, procgen, game HUD, docs
+  screenshots, and future UI surfaces.
+
+**Workflow Coverage**
+
+- Capture arbitrary DOM selectors on `/`, `/editor.html`, and `/procgen.html`.
+- Capture explicit page rectangles provided by a test.
+- Capture world-space editor/game objects by converting through the E2E harness.
+- Capture several rectangles in one run into a timestamped `temp/` directory.
+- Run on desktop, tablet, and narrow mobile viewport presets.
+- Validate that missing selectors produce actionable errors with available
+  page diagnostics.
+
+**Deliverables**
+
+- `e2e/helpers/visualCapture.js` or equivalent reusable helper.
+- `scripts/e2e-capture-rects.js` or equivalent CLI for ad hoc capture runs.
+- `npm` scripts for common capture runs, using generic target config files
+  rather than hardcoded panel assumptions.
+- Lightweight documentation in `docs/playwright-tests.md` showing how to pass
+  selectors, explicit rects, and runtime rect producers.
+- Example target configs for MIDI, editor, procgen, and game HUD captures. These
+  configs should describe targets, not store generated screenshots.
+
+**Acceptance**
+
+- A developer can run one command and capture named arbitrary selectors/rects
+  from any route.
+- The same helper works for current MIDI panels and would still work if those
+  panels are redesigned or removed.
+- Capture output is disposable, ignored by git, and easy to regenerate.
+- Existing E2E tests continue to pass.
+
+**Out of Scope**
+
+- Broad UI redesign.
+- Pixel-perfect visual regression enforcement as a required CI gate.
+- Checked-in screenshot baselines or generated image inventories.
+- Browser support beyond the current Playwright Chromium baseline.
+
+## Milestone 2: Documentation and Source-of-Truth Cleanup
+
+**Outcome:** The docs describe the current system accurately, old planning text
+is removed or reclassified, and the new visual tooling is documented as a
+temporary local aid rather than a source of checked-in artifacts.
+
+**Scope**
+
+- Audit all docs and classify each file as:
+  - Canonical user/developer docs.
+  - Reference material.
+  - Historical notes.
+  - Stale or misleading content to remove or rewrite.
+- Update docs to reflect hard-cut current behavior, not retired compatibility
+  paths.
+- Reconcile roadmap-adjacent docs with the new roadmap:
+  - `docs/playwright-tests.md`
+  - `docs/e2e-state.md`
+  - `docs/e2e-editor-state.md`
+  - `docs/midi-ui.md`
+  - `docs/midi-mapping.md`
+  - `docs/level-editor/*`
+  - `docs/procgen.md`
+  - `docs/mcp/*`
+  - benchmark and testing docs.
+- Replace stale prose-only UI descriptions with current workflow docs. Use
+  locally generated `temp/` captures while authoring, but do not commit
+  generated screenshots unless a specific durable doc image is intentionally
+  requested.
+- Remove stale broken-test/fixable-test/incoherent-test reports if they no
+  longer represent the current test state.
+- Document how to run the new visual capture tooling and how to attach captures
+  to future issues.
+- Keep Camanis/source reference docs intact unless a specific file is clearly
+  duplicated, malformed, or misleading.
+
+**Workflow Coverage**
+
+- Run docs examples that involve commands where practical.
+- Verify documented npm scripts exist.
+- Verify documented E2E harness methods exist.
+- Verify the temporary capture workflow on MIDI, editor, and procgen routes.
+
+**Deliverables**
+
+- Updated canonical docs.
+- Removed or rewritten stale planning/report files.
+- A short docs index explaining where to find user docs, developer docs,
+  reference material, and historical source notes.
+- Clear instructions for producing local UI captures when docs or reviews need
+  visual evidence.
+
+**Acceptance**
+
+- A new contributor can follow docs for tests, E2E, MIDI UI, editor, procgen,
+  and MCP without running into obsolete commands or obsolete UI descriptions.
+- Docs do not describe completed roadmap phases as future work.
+- Any retained historical documents are clearly labeled as historical/reference.
+
+**Out of Scope**
+
+- Rewriting external format reference material for style.
+- Adding new product features while cleaning docs.
+
+## Milestone 3: DAW-Like Multichannel MIDI Sequencer UI
+
+**Outcome:** The MIDI surface evolves from a configuration panel into a
+fully-featured, DAW-like multichannel MIDI sequencer for gameplay events. It
+should let users design, route, audition, sequence, automate, and perform MIDI
+responses with the polish expected from music software, while remaining
+deterministic and testable without real hardware.
+
+**Product Goals**
+
+- Make first-run setup obvious: enable MIDI, pick devices, confirm permissions,
+  choose a starter template, hear a preview, and recover from device errors.
+- Treat game events, trigger flags, procgen events, and global modulation as
+  sequencer sources that can be assigned to tracks and channels.
+- Support multichannel routing with clear track strips, output devices,
+  channels, instruments, mute/solo/arm, velocity, priority, and panic controls.
+- Make editing musical: piano-roll style note entry, step sequencing, chord
+  editing, arpeggiators, envelopes, repeats, probability, swing, quantization,
+  and automation lanes.
+- Make mappings easy to understand at a glance: what is enabled, what changed,
+  what conflicts, what is silent, what track/channel it routes through, and what
+  global rules affect it.
+- Make live performance safe: all-notes-off, stuck-note detection, scheduler
+  pressure display, output log, device reconnect handling, and readable status.
+- Make recovery safe: undo/reset per field, mapping, clip, track, profile, and
+  whole project.
+
+**Sequencer Model**
+
+- Preserve the existing intent-style state model, but expand it into a canonical
+  MIDI project model:
+  - project metadata and schema version.
+  - devices and output routing.
+  - tracks with channel/output/instrument labels.
+  - event sources mapped to clips or direct mappings.
+  - clips/patterns for notes, chords, arps, repeats, and automation.
+  - global tempo/key/scale/quantization/swing settings.
+  - per-track and per-mapping envelopes, velocity curves, priority, and limits.
+  - diagnostics and migration metadata.
+- Hard-cut obsolete duplicate persistence paths after migration; do not keep
+  legacy aliases as editable contracts.
+- Define import/export JSON for MIDI projects and templates.
+- Support factory templates and user templates.
+
+**Interface Scope**
+
+- Transport and setup:
+  - device chooser.
+  - input channel and output routing.
+  - tempo/BPM and game-speed relationship.
+  - quantization and swing.
+  - MIDI reset and panic.
+  - device health and permission state.
+- Track mixer:
+  - multiple MIDI tracks.
+  - output device and channel per track.
+  - track name and instrument label.
+  - mute/solo/arm.
+  - track volume/velocity scale.
+  - priority and voice budget.
+  - scheduler pressure and recent output indicators.
+- Source browser:
+  - SFX events.
+  - trigger types.
+  - MIDI flags.
+  - procgen/challenge events when available.
+  - global/system events.
+  - search, category filters, changed-only, enabled-only, conflict-only,
+    available-in-level, and assigned/unassigned views.
+- Arrangement and pattern editing:
+  - map an event source directly to a note/chord/arp or to a reusable clip.
+  - clip/pattern library.
+  - step sequencer grid with note, rest, hold, tie, velocity, probability, and
+    channel/track awareness.
+  - compact piano-roll style editor for short MIDI phrases.
+  - chord builder with common shapes, inversions, voicing, and scale locking.
+  - arpeggiator editor with direction, pattern, rate, octave range, gate, and
+    reset behavior.
+  - repeat/rhythm editor that reads as musical timing rather than raw config.
+- Automation and modulation:
+  - envelope editor with curve preview.
+  - velocity curves.
+  - global intensity and accent.
+  - position-based modulation mapped to velocity, pitch, CC, repeat, density, or
+    track selection.
+  - per-track and per-event automation lanes where they add real value.
+- Inspector:
+  - selected source, track, clip, or step.
+  - contextual controls only.
+  - validation/conflict status.
+  - audition controls.
+  - reset/revert at the smallest useful scope.
+- Learn and recording:
+  - global Learn mode.
+  - arm a target from the inspector.
+  - capture note/channel/velocity.
+  - show pending assignment before commit.
+  - record a short step pattern from mocked or real MIDI input.
+  - detect and resolve conflicts.
+  - keyboard-only capture flow with mocked WebMIDI in tests.
+- Audition:
+  - preview selected mapping.
+  - preview clip/pattern.
+  - preview chord/arp over a short beat window.
+  - preview through the selected track/channel/output.
+  - preview with current key/scale/global shaping.
+  - visible output log and all-notes-off/panic.
+- Layout:
+  - desktop: stable DAW-like workspace with transport, browser, track/mixer, and
+    inspector regions.
+  - tablet: collapsible browser/inspector with the sequencer grid still usable.
+  - phone/narrow: task-focused single-column flows for setup, browse, edit, and
+    audition without clipped labels.
+- Accessibility:
+  - semantic controls.
+  - focus order matching visual order.
+  - keyboard navigation for browser, track list, piano keys, step grid, tabs,
+    template operations, and inspector controls.
+  - visible focus states.
+  - aria labels for icon-only controls.
+  - no hidden focused element when panels change.
+- Performance:
+  - no full mapping or track rebuild for single-field edits.
+  - large mapping sets and clip libraries remain responsive.
+  - no recurring layout thrash while MIDI input is active.
+  - UI refresh metrics exposed to diagnostics in E2E mode.
+
+**Workflow Coverage**
+
+- First-run no-device state with clear permission and device messaging.
+- First-run with mocked input/output devices.
+- Enable MIDI, choose input/output, configure tracks/channels, send reset, and
+  use panic.
+- Create a project from a factory template; edit it, duplicate it, export it,
+  import it, and reset it.
+- Create multiple tracks and route different event sources to different
+  channels.
+- Search and filter sources by text, category, enabled state, changed state,
+  conflict state, assigned state, and current-level availability.
+- Assign an event source to:
+  - direct note.
+  - chord.
+  - arp.
+  - step pattern.
+  - reusable clip.
+  - automation/modulation target.
+- Edit a step pattern with note/rest/hold/velocity/probability and verify the
+  generated MIDI events.
+- Use learn mode to capture a mocked note and resolve a conflict.
+- Record a short mocked MIDI phrase into a step pattern.
+- Audition a track, source mapping, chord, arp, and clip without real hardware.
+- Verify persistence across reload.
+- Verify migration hard-cuts obsolete storage after migration.
+- Desktop/tablet/mobile visual capture runs for setup, track mixer, source
+  browser, sequencer grid, inspector, learn, diagnostics, and import/export.
+
+**Deliverables**
+
+- New MIDI sequencer architecture docs.
+- Expanded canonical MIDI project state and migration.
+- Refactored UI modules for transport/setup, tracks, source browser, sequencer
+  grid, inspector, templates, learn, audition, diagnostics, and layout.
+- Project/template import/export UI.
+- Conflict detection and validation.
+- Expanded Playwright coverage using mocked WebMIDI and generic visual capture
+  helpers.
+- Focused unit coverage for project validation, sequencing, conflict detection,
+  scheduler reservations, migrations, and intent/project updates.
+
+**Acceptance**
+
+- A user can build a multichannel MIDI project from scratch without editing
+  JSON.
+- Game events can drive multiple tracks/channels with note, chord, arp, clip,
+  and automation behavior.
+- The UI works without MIDI hardware through the mocked test path.
+- Major MIDI sequencer states have disposable local captures and overflow
+  checks.
+- No obsolete legacy mapping UI or duplicate persistence path remains after the
+  migration/cutover phase.
+
+**Out of Scope**
+
+- Audio recording, audio mixing, plugin hosting, soft synths, or waveform
+  editing.
+- Supporting non-WebMIDI browser APIs.
+- Network sync or cloud project storage.
+
+## Milestone 4: Level Editor Audit and Productization
+
+**Outcome:** The level editor is evaluated from real workflows, then upgraded
+into a trustworthy creation tool with documented capabilities, clear limits,
+usable UX, and robust workflow tests.
+
+**Audit Scope**
+
+- Perform a current-state editor audit before changing behavior:
+  - layout screenshots across desktop/tablet/mobile.
+  - local `temp/` captures for major flows where visual evidence is useful.
+  - docs-vs-code matrix.
+  - implemented vs claimed feature matrix.
+  - severity-ranked UX issues.
+  - severity-ranked correctness/data-integrity issues.
+  - test coverage map for each workflow.
+- Evaluate the editor as a product, not just as code:
+  - how quickly a user can create a playable level.
+  - how easy it is to select, move, inspect, duplicate, align, reorder, and
+    delete pieces.
+  - whether validation explains problems and offers safe fixes.
+  - whether playtest flow feels connected to editing.
+  - whether import/export errors are understandable.
+  - whether classic subset limits are obvious.
+  - whether NeoLemmix limitations are explicit.
+
+**Productization Scope**
+
+- Workflow and navigation:
+  - New level.
+  - Open classic level.
+  - Open saved level.
+  - Import `.nxlv`.
+  - Import classic `.lvl`.
+  - Save locally.
+  - Export `.nxlv`.
+  - Export classic `.lvl`.
+  - Playtest and return to editing.
+  - Undo/redo across all meaningful edits.
+- Canvas UX:
+  - pan/zoom behavior that never fights placement.
+  - selection outlines and handles that remain visible at common zoom levels.
+  - marquee select.
+  - drag, nudge, duplicate, copy/paste.
+  - align/distribute and ordering controls.
+  - grid/snap controls that are visible and predictable.
+  - context actions for common operations.
+- Palette UX:
+  - terrain/object/trigger browsing with thumbnails.
+  - search/filter/sort.
+  - style switch behavior.
+  - missing asset handling.
+  - recently used pieces.
+  - favorites or pinned pieces if audit shows palette scanning is slow.
+- Inspector UX:
+  - single selection editor.
+  - multi-selection summary and batch edit.
+  - safe numeric editing with commit/revert behavior.
+  - transform controls.
+  - flags/properties only where they apply.
+  - selected entry identity, uid, type, and source style.
+- Validation UX:
+  - clear error/warning separation.
+  - fix buttons grouped by issue.
+  - export blocking only for true blockers.
+  - validation report export.
+  - pack-level consistency checks where data is available.
+- Data integrity:
+  - round-trip `.nxlv` comments and unknown sections.
+  - preserve unknown data that the editor does not understand.
+  - hard-cut unsupported runtime preview paths into explicit warnings.
+  - no silent data loss during import, save, export, playtest, or style switch.
+- NeoLemmix decision track:
+  - decide whether the editor remains a classic subset or expands.
+  - if expanding, phase parser/model/UI/runtime work for `$TERRAINGROUP`,
+    `$TALISMAN`, `$PRETEXT`, `$POSTTEXT`, lemming placement, custom trigger
+    boxes, and style metadata.
+  - document unsupported NeoLemmix features in the UI, not only in docs.
+- Project workflow:
+  - project or pack export bundle plan.
+  - level metadata and level list handling.
+  - local project storage strategy.
+  - import/export validation reports.
+
+**Workflow Coverage**
+
+- Create a blank level, place entrance/exit/terrain/steel/trap/MIDI flag,
+  validate, playtest, save, export, import back, and compare semantic state.
+- Load a built-in classic level, modify it, save locally, reload, and export.
+- Import `.nxlv` with comments, unknown sections, terrain groups, and unsupported
+  props; verify preservation or explicit warnings.
+- Exercise selection:
+  - click select.
+  - shift multi-select.
+  - marquee select.
+  - move.
+  - resize where supported.
+  - duplicate.
+  - copy/paste.
+  - reorder.
+  - delete.
+  - undo/redo each.
+- Exercise palette:
+  - search.
+  - style switch.
+  - thumbnail loading.
+  - missing asset state.
+- Exercise validation:
+  - missing entrance.
+  - missing exit.
+  - out-of-bounds pieces.
+  - invalid counts.
+  - unsupported classic props.
+  - terrain groups.
+  - steel bounds.
+- Exercise playtest:
+  - timer state.
+  - input suppression while editing.
+  - return to editor.
+  - history/seek/reverse interactions where relevant.
+- Run visual capture matrices for editor shell, canvas, palette, inspector,
+  validation, save/import/export, and playtest states.
+
+**Deliverables**
+
+- Editor audit report committed under `docs/level-editor/`.
+- Updated editor docs based on current behavior.
+- Expanded Playwright editor workflows using generic visual capture tooling.
+- UX fixes prioritized from the audit.
+- Clear classic-subset vs NeoLemmix-expansion decision and follow-up plan.
+- Optional project export design if the audit confirms it is the next highest
+  value editor workflow.
+
+**Acceptance**
+
+- The editor can create and round-trip a playable level through tested
+  workflows.
+- Major UX states have screenshot captures and overflow checks.
+- Unsupported or lossy operations are impossible or explicitly warned.
+- Editor docs match current behavior.
+
+**Out of Scope**
+
+- Implementing every NeoLemmix feature before the audit is complete.
+- Adding solver-backed validation before the solver milestone produces a stable
+  interface.
+
+## Milestone 5: Procedural Level-Piece Streaming
+
+**Outcome:** Procgen is an endless left-to-right mode that picks one visual
+theme, then efficiently and tastefully adds level pieces ahead of the lemmings
+as they progress. It should feel like a coherent generated Lemmings level, not
+random pixels or a stress-test mode with hazards sprinkled around.
+
+**Core Behavior**
+
+- Pick one theme/style for the run and stay visually coherent.
+- Build the world out of real level pieces from that theme:
+  - terrain pieces.
+  - decorative pieces.
+  - simple obstacles.
+  - occasional gadgets only when they make sense for the theme and generated
+    path.
+- Stream pieces from left to right as the lemmings advance.
+- Track progression from the actual rightmost viable lemming position, not from
+  lemming id. Lemmings can turn around, bounce, die, or get stuck, so the
+  generator must derive the lead edge from current positions and viability.
+- Maintain a generation lookahead that varies enough to avoid a mechanical feel
+  but always creates needed terrain before lemmings reach it.
+- Keep generation bounded and efficient:
+  - avoid full scans over all historic lemmings or pieces.
+  - prune old tracking state.
+  - track only recent/near-future generated chunks.
+  - avoid unnecessary allocations in per-tick logic.
+- Use minimal automatic skill assists only where basic generated challenges
+  require them:
+  - build over smaller gaps.
+  - dig or mine through smaller barriers.
+  - bash through simple horizontal obstructions.
+  - assign floaters only for small, intentional fall challenges.
+- Do not spam skills. The ideal run should look like occasional purposeful
+  interventions, not constant AI control.
+
+**Generation Scope**
+
+- Theme selection:
+  - choose a compatible style from available packs.
+  - expose the selected theme in the URL/debug state.
+  - allow deterministic seeds for repros.
+- Piece placement:
+  - maintain a stable baseline path.
+  - add rises, dips, small gaps, small barriers, and visual variety.
+  - use pieces with sensible overlap and no obvious floating/ugly seams.
+  - avoid unreadable clutter around the active path.
+  - prefer tasteful, theme-appropriate decoration away from the route.
+- Lookahead and pacing:
+  - calculate a lead lemming/frontier each update.
+  - decide when more terrain is needed based on distance to generated end,
+    current speed, release rate, and recent lead movement.
+  - vary the lookahead threshold within safe bounds.
+  - guarantee the next playable segment exists before it can be reached.
+- Challenge design:
+  - small gaps that can be bridged with a low number of builders.
+  - small barriers that can be dug, mined, or bashed.
+  - safe landing surfaces for intentional drops.
+  - avoid unavoidable traps, impossible gaps, hard steel blockers, and
+    challenge chains that require precise expert timing.
+- Assist design:
+  - detect the next simple challenge before contact.
+  - spend the smallest useful skill.
+  - prefer the lead viable lemming.
+  - avoid repeated attempts on the same failed situation.
+  - expose recent assist decisions for debugging.
+- Camera:
+  - follow progression smoothly.
+  - do not jump because an old or wrong-id lemming becomes selected.
+  - keep the generated path readable ahead of the lead.
+
+**Workflow Coverage**
+
+- Start procgen and verify it chooses exactly one theme for the run.
+- Verify generated pieces come from the selected theme.
+- Step through fixed seeds and assert generated end stays safely ahead of the
+  rightmost viable lemming.
+- Verify the lead frontier changes correctly when the previous lead turns,
+  bounces, dies, or gets stuck.
+- Verify small gaps trigger minimal builder usage.
+- Verify small barriers trigger minimal dig/mine/bash usage.
+- Verify no assist is spent when terrain is already traversable.
+- Verify generation continues for a long run without unbounded tracking growth.
+- Capture temporary local screenshots around the lead and newest generated
+  pieces when debugging visual quality.
+
+**Deliverables**
+
+- Clear procgen spec in `docs/procgen.md` matching this product intent.
+- Theme selection and seed repro path.
+- Efficient rightmost viable lemming/frontier tracker.
+- Piece-streaming planner using real theme assets.
+- Safe lookahead policy with bounded variation.
+- Minimal skill-assist planner for basic generated challenges.
+- Debug state for selected theme, generated end, lead frontier, recent pieces,
+  and recent assists.
+- E2E and unit coverage for frontier tracking, lookahead, piece placement, and
+  minimal assists.
+- Long-run benchmark coverage for bounded memory and allocation behavior.
+
+**Acceptance**
+
+- Procgen reliably adds coherent theme pieces before lemmings need them.
+- The generated level reads as tasteful themed terrain, not noise.
+- Rightmost progression is based on live viable positions, not lemming id.
+- Small generated gaps/barriers are handled with minimal appropriate skills.
+- Long runs do not grow tracking state without bound.
+
+**Out of Scope**
+
+- Full campaign/level-pack generation.
+- Complex puzzle design requiring precise human timing.
+- Guaranteeing every possible seed is solvable before the solver milestone.
+
+## Milestone 6: Solver and Solvability Platform
+
+**Outcome:** The project gains a comprehensive deterministic solver platform
+that can reason about levels, replay candidate solutions through the real game
+runtime, verify procgen chunks, and eventually provide useful editor
+solvability guidance. The solver should be ambitious, but honest about result
+types: solved, failed, unknown, timed out, or unsupported.
+
+**Core Principles**
+
+- The real game runtime is the authority. Any proposed solution must replay
+  successfully in the actual simulation.
+- Solver state extraction can be optimized, but it must not become a divergent
+  gameplay implementation.
+- Every solver run is deterministic for a fixed level, seed, skill set, options,
+  and budget.
+- Bounded "unknown" is a valid result. Hanging or unbounded search is not.
+- Explanations matter: a failed or unknown solve should say what blocked
+  progress.
+
+**Foundations**
+
+- Deterministic headless runner:
+  - load built-in levels, editor levels, procgen chunks, and synthetic fixtures.
+  - step/pause/seek through existing runtime APIs.
+  - isolate solver runs from UI state.
+  - support fixed random seeds.
+- State snapshot and hashing:
+  - terrain mask.
+  - steel and one-way constraints.
+  - entrances/exits.
+  - hazards/traps/water.
+  - blockers.
+  - lemming positions, actions, directions, fall distance, timers, skills.
+  - active builder stairs and terrain mutations.
+  - victory/save counts and timer state.
+- Action script format:
+  - skill type.
+  - target lemming selector.
+  - tick or tick window.
+  - preconditions.
+  - expected postconditions.
+  - optional rationale.
+- Replay verifier:
+  - apply candidate scripts to the real runtime.
+  - confirm exit/save target.
+  - emit final state summary.
+  - detect divergence from expected postconditions.
+
+**Environment Understanding**
+
+- Geometry analysis:
+  - walkable surfaces.
+  - cliffs and fall distances.
+  - small gaps.
+  - large gaps.
+  - walls/barriers.
+  - ceilings.
+  - steel-blocked dig/bash/mine paths.
+  - landing zones.
+  - route continuity.
+- Hazard analysis:
+  - trap trigger areas.
+  - water/drown zones.
+  - fire/frying zones.
+  - fall-death zones.
+  - unavoidable hazards.
+  - hazards avoidable by route, bridge, dig, or timing.
+- Skill affordance analysis:
+  - builder reach and stair landing.
+  - basher horizontal tunnel candidates.
+  - miner diagonal tunnel candidates.
+  - digger vertical shaft candidates.
+  - floater/parachute survival.
+  - blocker turnarounds and crowd control.
+  - climber-specific routes where available.
+  - bomber/destructive changes only when allowed by pack mechanics and scope.
+- Reachability graph:
+  - coarse segments connected by walking, falling, building, digging, mining,
+    bashing, turning, and exiting.
+  - annotations for required skills, estimated timing windows, hazards, and
+    uncertainty.
+  - incremental invalidation when terrain changes.
+
+**Solver Layers**
+
+- Tactical local solvers:
+  - bridge small gaps with minimal builders.
+  - cross larger but bounded gaps with multiple builders when skill budget
+    allows.
+  - dig through small vertical barriers.
+  - bash through horizontal barriers.
+  - mine through diagonal barriers or down to a landing.
+  - survive falls with floaters.
+  - turn around with blockers when needed.
+  - route around or neutralize simple hazards.
+  - reach a nearby exit from a bounded local area.
+- Route planner:
+  - find candidate paths from entrance/frontier to exit.
+  - score routes by required skills, timing difficulty, hazard exposure, and
+    terrain mutations.
+  - prefer minimal-skill, low-risk routes.
+  - produce a plan skeleton before exact timing search.
+- Timing search:
+  - choose assignment ticks/windows.
+  - handle lemming identity changes, crowding, and selection ambiguity.
+  - use deterministic pruning for equivalent states.
+  - support beam/A-star-style search with explicit node/time/depth budgets.
+  - keep route-plan guidance separate from runtime verification.
+- Multi-lemming reasoning:
+  - identify useful candidate lemmings by position/action/direction.
+  - reason about lead lemming vs crowd.
+  - detect when a blocker or crowd-control action is required.
+  - avoid plans that save one lemming while dooming the required save count.
+- Terrain mutation planning:
+  - model generated builder stairs, dig shafts, bash tunnels, and mine tunnels.
+  - update reachability after replayed mutations.
+  - detect destructive actions blocked by steel or one-way constraints.
+- Pack/mechanics awareness:
+  - respect pack-specific mechanics that affect skill behavior.
+  - record unsupported mechanics as explicit unsupported result reasons.
+
+**Search and Budgeting**
+
+- Solver options:
+  - max ticks.
+  - max nodes.
+  - max wall time.
+  - max actions.
+  - skill subset.
+  - target save count.
+  - allowed/destructive skills.
+  - tactical-only vs route search vs full search.
+- Result types:
+  - `solved`: verified in runtime.
+  - `failed`: proof-like local reason within supported scope.
+  - `unknown`: search exhausted or unsupported complexity.
+  - `timeout`: wall-time budget reached.
+  - `unsupported`: required mechanic is outside solver scope.
+- Explanations:
+  - no route to exit.
+  - missing landing.
+  - gap exceeds builder budget.
+  - barrier blocked by steel.
+  - hazard unavoidable.
+  - timing window too narrow.
+  - save count unreachable.
+  - state explosion.
+  - unsupported mechanic.
+
+**Procgen Integration**
+
+- Each generated challenge can include an intended solution certificate:
+  - challenge type.
+  - expected skill.
+  - rough assignment window.
+  - expected landing/exit segment.
+  - minimal skill count.
+- Procgen can ask the solver to verify local chunks before or shortly after
+  placement.
+- Failed local verification should cause procgen to simplify, replace, or
+  extend terrain rather than creating impossible content.
+- Fixed procgen seeds should replay through solver verification for small
+  generated challenges.
+
+**Editor Integration**
+
+- Add an advisory "check solvability" command after the core solver API is
+  stable.
+- Show solver result as guidance, not as an absolute guarantee.
+- Highlight likely problem areas:
+  - unreachable exit.
+  - impossible gap.
+  - lethal drop.
+  - steel-blocked intended dig/bash/mine.
+  - insufficient skill budget.
+  - missing entrance/exit.
+- Allow saving a temporary local failure capture under `temp/` for debugging.
+- Attach concise solver explanations to editor validation output.
+
+**MCP/E2E Integration**
+
+- Expose solver runs through deterministic local APIs first.
+- Add MCP tools only after the local API and result schema stabilize.
+- Return compact result JSON with optional references to `temp/` captures during
+  local development.
+- Avoid huge state dumps by default.
+
+**Workflow Coverage**
+
+- Solve tactical positive fixtures for gap, wall, dig, mine, bash, floater, and
+  blocker cases.
+- Return meaningful failed/unknown/unsupported results for negative fixtures.
+- Replay every positive solver result in the real runtime.
+- Solve a small built-in classic level or curated mini-level end to end.
+- Verify procgen local challenge certificates for fixed seeds.
+- Run editor-created levels through bounded advisory checks.
+- Verify deterministic output for repeated runs with identical inputs.
+- Verify all budgets terminate cleanly.
+- Save temporary local captures for selected solver failures when requested.
+
+**Deliverables**
+
+- Solver module tree with clear boundaries:
+  - runtime runner.
+  - state extraction.
+  - geometry analysis.
+  - hazard analysis.
+  - skill affordance analysis.
+  - reachability graph.
+  - tactical solvers.
+  - route planner.
+  - timing search.
+  - replay verifier.
+  - result/explanation formatting.
+- Action script schema and replay verifier.
+- Synthetic fixture suite.
+- Curated classic-level mini corpus.
+- Procgen challenge certificate API.
+- Optional editor advisory integration after API stabilization.
+- Solver docs covering capabilities, limits, result meanings, budgets, and
+  reproduction.
+
+**Acceptance**
+
+- Tactical fixtures are solved or rejected deterministically.
+- Positive solutions replay successfully in the real runtime.
+- Negative results are useful enough to guide a developer or level designer.
+- Procgen can use solver checks to avoid simple impossible generated chunks.
+- Editor solvability checks are advisory, bounded, and never block normal work.
+- The solver never hangs or silently exceeds budgets.
+
+**Out of Scope**
+
+- Claiming complete solvability for every original or custom Lemmings level.
+- Replacing gameplay logic with a separate authoritative simulation.
+- Non-deterministic external services.
+- Cloud solving.
+
+## Cross-Cutting Validation
+
+Use the narrowest useful validation while work is in progress. Before merging a
+complete milestone, run the relevant subset plus the standard repo checks:
+
+- `npm run format`
+- `npm run check-undefined`
+- `npm run lint`
+- `npm run typecheck:critical`
+- `npm test`
+- `npm run test-bench-unit`
+
+Milestones that touch Playwright should also run targeted E2E commands. Long
+soaks and broad seed corpuses should stay opt-in unless explicitly promoted to
+CI.
+
+## Roadmap Maintenance Rules
+
+- Keep this file focused on active and future work.
+- Do not add separate plan files unless explicitly requested. If one is created,
+  absorb the durable work back into this file and remove the plan file.
+- Remove completed detail when it stops being useful; git preserves history.
+- Prefer observable deliverables over vague intentions.
+- Record hard-cut decisions directly in the relevant milestone.
