@@ -159,6 +159,14 @@ const handleListboxNavigation = (event, items, getId, currentId, selectId) => {
 
 const stepGridFieldClass = (target) => STEP_GRID_FIELD_CLASSES.find(className => target?.classList?.contains?.(className)) || null;
 
+const sourceChangeSnapshot = (source = {}) => ({
+  enabled: !!source.enabled,
+  trackId: source.trackId || '',
+  mode: source.mode === 'clip' ? 'clip' : 'direct',
+  mapping: source.mode === 'clip' ? null : source.mapping || null,
+  clipId: source.mode === 'clip' ? source.clipId || null : null
+});
+
 const focusStepGridField = (grid, fieldClass, stepIndex) => {
   const fields = Array.from(grid?.querySelectorAll?.(`.${fieldClass}`) || []);
   const field = fields.find(item => Number(item.dataset?.stepIndex) === stepIndex);
@@ -214,6 +222,7 @@ const createMidiUiController = ({
   let deviceListener = null;
   let refreshTimer = null;
   let lastStatus = 'Project loading';
+  let factorySourceIndex = null;
   const learnState = {
     active: false,
     pending: null,
@@ -240,6 +249,33 @@ const createMidiUiController = ({
     return lemmings?.getMidiBaseConfig?.() || null;
   };
 
+  const captureFactoryProject = (factoryConfig = getFactoryConfig() || {}) => {
+    const factoryProject = createMidiProjectFromMidiConfig(factoryConfig || {});
+    factorySourceIndex = new Map(factoryProject.sources.map(source => [formatSourceKey(source), source]));
+    return factoryProject;
+  };
+
+  const getFactorySourceIndex = () => {
+    if (!factorySourceIndex) captureFactoryProject();
+    return factorySourceIndex;
+  };
+
+  const defaultRuntimeSourceSnapshot = (source, currentProject = ensureProject()) => sourceChangeSnapshot({
+    enabled: true,
+    trackId: currentProject.tracks[0]?.id || 'track-1',
+    mode: 'direct',
+    mapping: createEmptyDirectMapping(),
+    clipId: null
+  });
+
+  const isSourceChangedFromFactory = (source, factorySources = getFactorySourceIndex(), currentProject = ensureProject()) => {
+    const factorySource = factorySources.get(formatSourceKey(source));
+    const baseline = factorySource
+      ? sourceChangeSnapshot(factorySource)
+      : defaultRuntimeSourceSnapshot(source, currentProject);
+    return JSON.stringify(sourceChangeSnapshot(source)) !== JSON.stringify(baseline);
+  };
+
   const getProjectConfig = () => projectToMidiConfig(ensureProject(), getFactoryConfig() || {});
 
   const getConflictReport = () => detectMidiProjectConflicts(ensureProject(), {
@@ -255,15 +291,16 @@ const createMidiUiController = ({
 
   const readOrCreateProject = () => {
     cleanupLegacyMidiProjectStorage(storage);
+    const factory = getFactoryConfig();
+    const factoryProject = factory ? captureFactoryProject(factory) : null;
     const stored = readStoredMidiProject(storage);
     if (stored) {
       projectNeedsFactory = false;
       return stored;
     }
-    const factory = getFactoryConfig();
-    if (factory) {
+    if (factoryProject) {
       projectNeedsFactory = false;
-      return saveMidiProject(storage, createMidiProjectFromMidiConfig(factory));
+      return saveMidiProject(storage, factoryProject);
     }
     projectNeedsFactory = true;
     return createMidiProjectFromMidiConfig({ enabled: false, sfx: {}, triggers: {} });
@@ -276,7 +313,7 @@ const createMidiUiController = ({
     if (projectNeedsFactory) {
       const factory = getFactoryConfig();
       if (factory) {
-        project = saveMidiProject(storage, createMidiProjectFromMidiConfig(factory));
+        project = saveMidiProject(storage, captureFactoryProject(factory));
         projectNeedsFactory = false;
       }
     }
@@ -374,7 +411,7 @@ const createMidiUiController = ({
     const current = ensureProject();
     const factory = getFactoryConfig() || {};
     const next = intent?.type === 'project.reset'
-      ? createMidiProjectFromMidiConfig(factory)
+      ? captureFactoryProject(factory)
       : reduceMidiProject(current, intent);
     return commitProject(next);
   };
@@ -388,7 +425,9 @@ const createMidiUiController = ({
   );
 
   const resetProject = (templateId = null) => {
-    project = resetMidiProjectStorage(storage, getFactoryConfig() || {}, templateId || selectedTemplateId());
+    const factory = getFactoryConfig() || {};
+    captureFactoryProject(factory);
+    project = resetMidiProjectStorage(storage, factory, templateId || selectedTemplateId());
     projectNeedsFactory = false;
     applyProjectToRuntime();
     render();
@@ -1059,9 +1098,11 @@ const createMidiUiController = ({
   const filteredSources = (report = getConflictReport()) => {
     const current = ensureProject();
     const search = sourceFilters.search.trim().toLowerCase();
+    const factorySources = sourceFilters.assignment === 'changed' ? getFactorySourceIndex() : null;
     return current.sources.filter(source => {
       const conflicts = getSourceConflicts(report, source.id);
       if (sourceFilters.kind !== 'all' && source.kind !== sourceFilters.kind) return false;
+      if (sourceFilters.assignment === 'changed' && !isSourceChangedFromFactory(source, factorySources, current)) return false;
       if (sourceFilters.assignment === 'assigned' && !source.trackId) return false;
       if (sourceFilters.assignment === 'unassigned' && source.trackId) return false;
       if (sourceFilters.assignment === 'enabled' && !source.enabled) return false;
@@ -1080,6 +1121,7 @@ const createMidiUiController = ({
     removeChildren(list);
     const report = getConflictReport();
     const sources = filteredSources(report);
+    const factorySources = getFactorySourceIndex();
     const activeOptionId = sources.some(source => source.id === current.ui.selectedSourceId)
       ? listOptionId('source', current.ui.selectedSourceId)
       : '';
@@ -1088,6 +1130,7 @@ const createMidiUiController = ({
     for (const source of sources) {
       const track = current.tracks.find(item => item.id === source.trackId);
       const conflicts = getSourceConflicts(report, source.id);
+      const changed = isSourceChangedFromFactory(source, factorySources, current);
       const selected = current.ui.selectedSourceId === source.id;
       const row = document.createElement('button');
       row.type = 'button';
@@ -1095,12 +1138,13 @@ const createMidiUiController = ({
       row.className = 'midi-source-row';
       row.classList.toggle('is-selected', selected);
       row.classList.toggle('is-disabled', !source.enabled);
+      row.classList.toggle('is-changed', changed);
       row.classList.toggle('has-conflict', conflicts.length > 0);
       row.dataset.sourceId = source.id;
       row.tabIndex = selected ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
-      row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${conflicts.length ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}` : ''}`);
+      row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${changed ? ', changed' : ''}${conflicts.length ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}` : ''}`);
       const label = document.createElement('span');
       label.className = 'midi-source-row__label';
       label.textContent = source.label;
@@ -1111,6 +1155,12 @@ const createMidiUiController = ({
       meta.className = 'midi-source-row__meta';
       meta.textContent = `${source.sourceKey} -> ${track?.name || 'Unassigned'}`;
       row.append(label, pill);
+      if (changed) {
+        const changedPill = document.createElement('span');
+        changedPill.className = 'midi-pill midi-pill--changed';
+        changedPill.textContent = 'Changed';
+        row.appendChild(changedPill);
+      }
       if (conflicts.length) {
         const badge = document.createElement('span');
         badge.className = 'midi-conflict-badge';

@@ -469,6 +469,33 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiSourceList').children.filter(row => row.classList?.contains('has-conflict'))).to.have.lengthOf(2);
   });
 
+  it('filters sources changed from the factory template', function() {
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        sfx: {
+          '1': { name: 'skill-select', note: 60, durationTicks: 4 },
+          '2': { name: 'builder', note: 62, durationTicks: 4 }
+        },
+        triggers: {}
+      }
+    });
+    controller.bindMidiUi();
+    const filter = doc.getElementById('midiSourceAssignFilter');
+
+    filter.value = 'changed';
+    filter.dispatchEvent({ type: 'change', target: filter });
+    expect(doc.getElementById('midiSourceList').children[0].textContent).to.contain('No sources match');
+
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-2', patch: { note: 70 } });
+    const changedRows = doc.getElementById('midiSourceList').children.filter(row => row.classList?.contains('is-changed'));
+    expect(changedRows).to.have.lengthOf(1);
+    expect(changedRows[0].children[0].textContent).to.equal('builder');
+    expect(changedRows[0].children.some(child => child.textContent === 'Changed')).to.equal(true);
+    expect(changedRows[0].getAttribute('aria-label')).to.contain('changed');
+  });
+
   it('moves source, track, and clip listbox selections from the keyboard', function() {
     const { controller, doc } = createControllerHarness({
       factoryConfig: {

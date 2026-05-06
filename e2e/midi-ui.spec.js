@@ -201,6 +201,19 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   const midi = await openMidiUi(page);
   await expect(midi.sourceRows().first()).toBeVisible();
 
+  await midi.sourceAssignFilter().selectOption('changed');
+  await expect(page.locator('#midiSourceList')).toContainText('No sources match');
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'source.mapping.update',
+      sourceId: 'sfx-1',
+      patch: { note: 91 }
+    });
+  });
+  await expect(midi.sourceRows()).toHaveCount(1);
+  await expect(midi.sourceRows().first()).toContainText('Changed');
+  await midi.sourceAssignFilter().selectOption('all');
+
   await page.locator('#midiSourceSearch').fill('skill');
   await expect(midi.sourceRows().first()).toContainText(/skill/i);
   await page.locator('#midiSourceKindFilter').selectOption('trigger');

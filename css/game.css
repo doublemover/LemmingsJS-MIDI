@@ -450,7 +450,7 @@ canvas {
 }
 
 .midi-source-row {
-    grid-template-columns: minmax(0, 1fr) auto auto;
+    grid-template-columns: minmax(0, 1fr) auto auto auto;
     gap: 4px 8px;
 }
 
@@ -471,6 +471,10 @@ canvas {
 
 .midi-source-row.has-conflict {
     border-color: rgba(255, 197, 112, 0.56);
+}
+
+.midi-source-row.is-changed {
+    background: rgba(22, 31, 34, 0.9);
 }
 
 .midi-source-row__label,
@@ -519,6 +523,11 @@ canvas {
     font-size: 10px;
     text-align: center;
     text-transform: uppercase;
+}
+
+.midi-pill--changed {
+    background: rgba(138, 171, 255, 0.16);
+    color: #cad6ff;
 }
 
 .midi-selection-summary {
