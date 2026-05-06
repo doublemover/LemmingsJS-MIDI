@@ -269,6 +269,45 @@ describe('midiUiController sequencer', function() {
     expect(sent.every(entry => entry.meta.eventType === 'audition')).to.equal(true);
   });
 
+  it('skips audition for muted and solo-hidden tracks', function() {
+    const sent = [];
+    const { controller, doc } = createControllerHarness({
+      lemmings: {
+        midiRouter: {
+          scheduler: {
+            sendNote(spec, meta) {
+              sent.push({ spec, meta });
+              return true;
+            }
+          }
+        }
+      }
+    });
+    controller.bindMidiUi();
+
+    controller.dispatchProjectIntent({
+      type: 'track.update',
+      trackId: 'track-1',
+      patch: { mute: true }
+    });
+    expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(false);
+    expect(sent).to.have.lengthOf(0);
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Audition skipped: Track 1 muted');
+
+    controller.dispatchProjectIntent({
+      type: 'track.update',
+      trackId: 'track-1',
+      patch: { mute: false }
+    });
+    controller.dispatchProjectIntent({
+      type: 'track.add',
+      track: { id: 'lead', name: 'Lead', solo: true }
+    });
+    expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(false);
+    expect(sent).to.have.lengthOf(0);
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Audition skipped: Track 1 hidden by solo');
+  });
+
   it('edits direct arp mode and exports it to runtime config', function() {
     const { controller, doc, view } = createControllerHarness();
     controller.bindMidiUi();

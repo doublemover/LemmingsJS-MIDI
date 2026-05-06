@@ -1143,8 +1143,13 @@ const createMidiUiController = ({
       logOutput('Audition skipped: no router');
       return false;
     }
-    if (track.mute || (ensureProject().tracks.some(item => item.solo && !item.mute) && !track.solo)) {
+    const hasAudibleSolo = ensureProject().tracks.some(item => item.solo && !item.mute);
+    if (track.mute) {
       logOutput(`Audition skipped: ${track.name} muted`);
+      return false;
+    }
+    if (hasAudibleSolo && !track.solo) {
+      logOutput(`Audition skipped: ${track.name} hidden by solo`);
       return false;
     }
     const notes = resolveAuditionNotes(mapping);
