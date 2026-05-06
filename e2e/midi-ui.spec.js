@@ -141,6 +141,14 @@ test('MIDI sequencer lowers direct chord mappings into runtime config', async ({
   await expect(midi.outputLog()).toContainText('Audition');
 });
 
+test('MIDI sequencer panic button logs feedback', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await midi.enable();
+
+  await page.locator('#midiPanicButton').click();
+  await expect(midi.outputLog()).toContainText('Panic sent');
+});
+
 test('MIDI project persists across reload', async ({ page }) => {
   await openMidiUi(page);
   await page.evaluate(() => {
