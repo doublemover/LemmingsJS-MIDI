@@ -31,8 +31,12 @@ import {
   resolveMidiId,
   toDeviceList
 } from './midi-ui/midiUiDevices.js';
-import { collectTriggerTypes, buildTriggerLabel } from './midi-ui/midiUiDomain.js';
-import { toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
+import {
+  collectTriggerTypes,
+  buildTriggerLabel,
+  resolveAvailableSfxIds
+} from './midi-ui/midiUiDomain.js';
+import { isMidiFlagTriggerType, toMidiFlagTriggerType } from '../midi/MidiFlagTriggers.js';
 import { cloneSafeObject, isPlainObject } from '../util/safeObject.js';
 
 const SOURCE_KIND_LABELS = Object.freeze({
@@ -323,6 +327,42 @@ const createMidiUiController = ({
   const getRuntimeLevel = () => {
     const lemmings = getLemmings();
     return lemmings?.game?.level || lemmings?.level || null;
+  };
+
+  const getRuntimeSkills = () => {
+    const lemmings = getLemmings();
+    return (
+      lemmings?.game?.getGameSkills?.() ||
+      lemmings?.getGameSkills?.() ||
+      lemmings?.game?.skills ||
+      lemmings?.skills ||
+      null
+    );
+  };
+
+  const getAvailableSourceKeys = (currentProject = ensureProject()) => {
+    const keys = new Set();
+    const level = getRuntimeLevel();
+    const skills = getRuntimeSkills();
+    const add = (kind, sourceKey) => keys.add(`${kind}:${String(sourceKey)}`);
+    const sfxConfig = { sfx: {} };
+    for (const source of currentProject.sources) {
+      if (source.kind === 'sfx') sfxConfig.sfx[source.sourceKey] = { name: source.label };
+    }
+    for (const id of resolveAvailableSfxIds(sfxConfig, level, skills)) {
+      add('sfx', id);
+    }
+    for (const triggerType of collectTriggerTypes(level)) {
+      if (!isMidiFlagTriggerType(triggerType)) add('trigger', triggerType);
+    }
+    const flags = Array.isArray(level?.midiFlags) ? level.midiFlags : [];
+    for (const flag of flags) {
+      const triggerType = Number.isFinite(flag?.triggerType)
+        ? Math.trunc(flag.triggerType)
+        : toMidiFlagTriggerType(flag?.id);
+      if (Number.isFinite(triggerType)) add('midiFlag', triggerType);
+    }
+    return keys;
   };
 
   const syncRuntimeSources = () => {
@@ -1099,10 +1139,12 @@ const createMidiUiController = ({
     const current = ensureProject();
     const search = sourceFilters.search.trim().toLowerCase();
     const factorySources = sourceFilters.assignment === 'changed' ? getFactorySourceIndex() : null;
+    const availableSourceKeys = sourceFilters.assignment === 'available' ? getAvailableSourceKeys(current) : null;
     return current.sources.filter(source => {
       const conflicts = getSourceConflicts(report, source.id);
       if (sourceFilters.kind !== 'all' && source.kind !== sourceFilters.kind) return false;
       if (sourceFilters.assignment === 'changed' && !isSourceChangedFromFactory(source, factorySources, current)) return false;
+      if (sourceFilters.assignment === 'available' && !availableSourceKeys.has(formatSourceKey(source))) return false;
       if (sourceFilters.assignment === 'assigned' && !source.trackId) return false;
       if (sourceFilters.assignment === 'unassigned' && source.trackId) return false;
       if (sourceFilters.assignment === 'enabled' && !source.enabled) return false;

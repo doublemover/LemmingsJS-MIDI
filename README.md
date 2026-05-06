@@ -161,8 +161,8 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
   are created from the checked-in `midi-mapping.json` factory template, and
   legacy MIDI storage keys are cleared on load.
 - Use the source browser to search and filter SFX events, trigger types, MIDI
-  flags, system events, changed sources, assigned/unassigned sources, and
-  conflict status.
+  flags, system events, changed sources, sources available in the current
+  level, assigned/unassigned sources, and conflict status.
 - Tracks route sources to channels and output devices with mute, solo, arm,
   velocity scale, priority, and voice budget controls.
 - The inspector edits direct note/degree/chord/velocity/duration/envelope

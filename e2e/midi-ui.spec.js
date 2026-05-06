@@ -214,6 +214,35 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   await expect(midi.sourceRows().first()).toContainText('Changed');
   await midi.sourceAssignFilter().selectOption('all');
 
+  await page.evaluate(() => {
+    const project = window.__E2E__.midiGetProject();
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'project.set',
+      project: {
+        ...project,
+        sources: [
+          ...project.sources,
+          {
+            id: 'system-e2e-unavailable',
+            kind: 'system',
+            sourceKey: 'e2e-unavailable',
+            label: 'E2E unavailable system',
+            enabled: true,
+            trackId: project.tracks[0]?.id || 'track-1',
+            mode: 'direct',
+            mapping: { note: 60 },
+            clipId: null
+          }
+        ]
+      }
+    });
+  });
+  await midi.sourceAssignFilter().selectOption('available');
+  const availableIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
+  expect(availableIds).toContain('sfx-16');
+  expect(availableIds).not.toContain('system-e2e-unavailable');
+  await midi.sourceAssignFilter().selectOption('all');
+
   await page.locator('#midiSourceSearch').fill('skill');
   await expect(midi.sourceRows().first()).toContainText(/skill/i);
   await page.locator('#midiSourceKindFilter').selectOption('trigger');

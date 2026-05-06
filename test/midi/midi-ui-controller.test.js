@@ -1,5 +1,8 @@
 import { expect } from 'chai';
 import { createMidiUiController } from '../../js/app/midiUiController.js';
+import { SoundEffectIds } from '../../js/game/SoundEvents.js';
+import { TriggerTypes } from '../../js/level/TriggerTypes.js';
+import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 import { PROJECT_STORAGE_KEY } from '../../js/midi/project/MidiProjectStorage.js';
 import { TestDocument, createTestWindow } from '../helpers/test-dom.js';
 import { registerElement } from '../support/dom-fixtures.js';
@@ -494,6 +497,52 @@ describe('midiUiController sequencer', function() {
     expect(changedRows[0].children[0].textContent).to.equal('builder');
     expect(changedRows[0].children.some(child => child.textContent === 'Changed')).to.equal(true);
     expect(changedRows[0].getAttribute('aria-label')).to.contain('changed');
+  });
+
+  it('filters sources available in the current level', function() {
+    const flagTrigger = toMidiFlagTriggerType(3);
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        sfx: {
+          [SoundEffectIds.EXIT]: { name: 'exit', note: 60, durationTicks: 4 },
+          [SoundEffectIds.BUILDER_STEP]: { name: 'builder-step', note: 62, durationTicks: 4 }
+        },
+        triggers: {
+          [TriggerTypes.EXIT_LEVEL]: { name: 'exit-trigger', note: 64, durationTicks: 4 },
+          [TriggerTypes.TRAP]: { name: 'trap-trigger', note: 65, durationTicks: 4 }
+        }
+      },
+      lemmings: {
+        game: {
+          level: {
+            triggers: [{ type: TriggerTypes.EXIT_LEVEL }],
+            midiFlags: [{ id: 3, triggerType: flagTrigger }],
+            skills: []
+          },
+          getGameSkills() {
+            return { getSkill: () => 0 };
+          }
+        }
+      }
+    });
+    controller.bindMidiUi();
+
+    const filter = doc.getElementById('midiSourceAssignFilter');
+    filter.value = 'available';
+    filter.dispatchEvent({ type: 'change', target: filter });
+
+    const sourceIds = doc.getElementById('midiSourceList')
+      .children
+      .map(row => row.dataset?.sourceId)
+      .filter(Boolean);
+    expect(sourceIds).to.include(`sfx-${SoundEffectIds.EXIT}`);
+    expect(sourceIds).to.not.include(`sfx-${SoundEffectIds.BUILDER_STEP}`);
+    expect(sourceIds).to.include(`trigger-${TriggerTypes.EXIT_LEVEL}`);
+    expect(sourceIds).to.not.include(`trigger-${TriggerTypes.TRAP}`);
+    expect(sourceIds).to.include(`midiFlag-${flagTrigger}`);
+    expect(sourceIds).to.not.include(`trigger-${flagTrigger}`);
   });
 
   it('moves source, track, and clip listbox selections from the keyboard', function() {

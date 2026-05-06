@@ -18,7 +18,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 ## Workspace
 
 - Sources: browse SFX, triggers, MIDI flags, system, and procgen sources with
-  search, category, changed, assignment, conflict, and clean filters.
+  search, category, changed, current-level availability, assignment, conflict,
+  and clean filters.
 - Tracks: create and select tracks, set channel, instrument label, mute, solo,
   arm, velocity scale, priority, and voice budget.
 - Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
