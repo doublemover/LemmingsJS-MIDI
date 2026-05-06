@@ -295,7 +295,13 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
 
   await setField('#midiTrackVelocityScale', '0.5');
   await setField('#midiGlobalIntensity', '96');
+  await setField('#midiGlobalVelocityMin', '20');
+  await setField('#midiGlobalVelocityMax', '110');
+  await setField('#midiGlobalNoteMin', '36');
+  await setField('#midiGlobalNoteMax', '96');
   await setField('#midiGlobalAccent', '0.8');
+  await setField('#midiGlobalDensityWindow', '12');
+  await setField('#midiGlobalDurationScale', '0.25');
   await setField('#midiGlobalEnvAttack', '1.25');
   await setField('#midiGlobalEnvRelease', '0.75');
   await page.locator('#midiGlobalViewPan').check();
@@ -305,8 +311,9 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(project.tracks[0].velocityScale).toBe(0.5);
-  expect(project.global.velocityRange.default).toBe(96);
-  expect(project.global.density.velocityBoost).toBe(0.8);
+  expect(project.global.velocityRange).toMatchObject({ default: 96, min: 20, max: 110 });
+  expect(project.global.noteRange).toMatchObject({ min: 36, max: 96 });
+  expect(project.global.density).toMatchObject({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
   expect(project.global.envelope).toMatchObject({ attack: 1.25, release: 0.75 });
   expect(project.global.position.viewPan).toBe(true);
   expect(project.sources.find(source => source.id === 'sfx-1').mapping.envelope).toMatchObject({
