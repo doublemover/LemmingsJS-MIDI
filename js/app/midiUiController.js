@@ -1717,6 +1717,9 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiGlobalDensityWindow'), current.global.density.windowTicks);
     setInputValue(document?.getElementById('midiGlobalDurationScale'), current.global.density.durationScale);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
+    setInputValue(document?.getElementById('midiGlobalPanMin'), current.global.position.panRange.min);
+    setInputValue(document?.getElementById('midiGlobalPanMax'), current.global.position.panRange.max);
+    setInputValue(document?.getElementById('midiGlobalPanDeadZone'), current.global.position.panDeadZonePct);
     setInputValue(document?.getElementById('midiGlobalMaxActiveNotes'), current.global.limits.maxActiveNotes);
     setInputValue(document?.getElementById('midiGlobalMaxEventsPerTick'), current.global.limits.maxEventsPerTick);
     setInputValue(document?.getElementById('midiGlobalDurationDefault'), current.global.durationTicks.default);
@@ -2249,9 +2252,36 @@ const createMidiUiController = ({
     bindById('midiGlobalMaxEventsPerTick', 'change', event => {
       updateGlobalLimits({ maxEventsPerTick: Number(event.target.value) || 1 });
     });
-    bindById('midiGlobalViewPan', 'change', event => {
+    const updateGlobalPosition = (patch) => {
       const current = ensureProject();
-      updateGlobal({ position: { ...current.global.position, viewPan: !!event.target.checked } });
+      updateGlobal({ position: { ...current.global.position, ...patch } });
+    };
+    bindById('midiGlobalViewPan', 'change', event => {
+      updateGlobalPosition({ viewPan: !!event.target.checked });
+    });
+    bindById('midiGlobalPanMin', 'change', event => {
+      const current = ensureProject();
+      updateGlobalPosition({
+        panRange: {
+          ...current.global.position.panRange,
+          min: readGlobalNumber(event.target.value, current.global.position.panRange.min)
+        }
+      });
+    });
+    bindById('midiGlobalPanMax', 'change', event => {
+      const current = ensureProject();
+      updateGlobalPosition({
+        panRange: {
+          ...current.global.position.panRange,
+          max: readGlobalNumber(event.target.value, current.global.position.panRange.max)
+        }
+      });
+    });
+    bindById('midiGlobalPanDeadZone', 'change', event => {
+      const current = ensureProject();
+      updateGlobalPosition({
+        panDeadZonePct: readGlobalNumber(event.target.value, current.global.position.panDeadZonePct)
+      });
     });
     const updateGlobalDurationTicks = () => {
       const current = ensureProject();

@@ -102,6 +102,9 @@ const registerSequencerDom = (doc) => {
     midiGlobalNoteMax: 'input',
     midiGlobalAccent: 'input',
     midiGlobalViewPan: 'input',
+    midiGlobalPanMin: 'input',
+    midiGlobalPanMax: 'input',
+    midiGlobalPanDeadZone: 'input',
     midiGlobalDensityWindow: 'input',
     midiGlobalDurationScale: 'input',
     midiGlobalMaxActiveNotes: 'input',
@@ -445,6 +448,15 @@ describe('midiUiController sequencer', function() {
     const viewPan = doc.getElementById('midiGlobalViewPan');
     viewPan.checked = true;
     viewPan.dispatchEvent({ type: 'change', target: viewPan });
+    const panMin = doc.getElementById('midiGlobalPanMin');
+    panMin.value = '-48';
+    panMin.dispatchEvent({ type: 'change', target: panMin });
+    const panMax = doc.getElementById('midiGlobalPanMax');
+    panMax.value = '48';
+    panMax.dispatchEvent({ type: 'change', target: panMax });
+    const panDeadZone = doc.getElementById('midiGlobalPanDeadZone');
+    panDeadZone.value = '0.08';
+    panDeadZone.dispatchEvent({ type: 'change', target: panDeadZone });
     const globalAttack = doc.getElementById('midiGlobalEnvAttack');
     globalAttack.value = '1.25';
     globalAttack.dispatchEvent({ type: 'change', target: globalAttack });
@@ -471,6 +483,8 @@ describe('midiUiController sequencer', function() {
     expect(stored.global.limits).to.include({ maxActiveNotes: 24, maxEventsPerTick: 16 });
     expect(stored.global.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(stored.global.position.viewPan).to.equal(true);
+    expect(stored.global.position.panRange).to.deep.equal({ min: -48, max: 48 });
+    expect(stored.global.position.panDeadZonePct).to.equal(0.08);
     expect(stored.global.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(stored.sources[0].mapping.envelope).to.deep.equal({ attack: 1, decay: 0, sustain: 1, release: 1 });
     expect(stored.automation).to.have.lengthOf(1);
@@ -484,6 +498,8 @@ describe('midiUiController sequencer', function() {
     expect(runtime.limits).to.include({ maxActiveNotes: 24, maxEventsPerTick: 16 });
     expect(runtime.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(runtime.position.viewPan).to.equal(true);
+    expect(runtime.position.panRange).to.deep.equal({ min: -48, max: 48 });
+    expect(runtime.position.panDeadZonePct).to.equal(0.08);
     expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
