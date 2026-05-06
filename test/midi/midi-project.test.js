@@ -385,7 +385,15 @@ describe('MidiProject', function() {
     expect(config.envelope.attack).to.equal(1.4);
     expect(config.position.viewPan).to.equal(true);
     expect(config.position.mappings).to.deep.equal([
-      { axis: 'x', axisOp: 'mul', target: 'pan', min: -80, max: 80, enabled: true }
+      {
+        axis: 'x',
+        axisOp: 'mul',
+        target: 'pan',
+        min: -80,
+        max: 80,
+        enabled: true,
+        points: [{ beat: 2, value: 10 }]
+      }
     ]);
   });
 

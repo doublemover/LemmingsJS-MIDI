@@ -972,14 +972,18 @@ const activeClipSteps = (clip) => (
 
 const automationToPositionMappings = (automation = []) => automation
   .filter(lane => lane.enabled && lane.scope === 'global')
-  .map(lane => ({
-    axis: lane.axis,
-    axisOp: lane.axisOp,
-    target: lane.target,
-    min: lane.min,
-    max: lane.max,
-    enabled: true
-  }));
+  .map(lane => {
+    const mapping = {
+      axis: lane.axis,
+      axisOp: lane.axisOp,
+      target: lane.target,
+      min: lane.min,
+      max: lane.max,
+      enabled: true
+    };
+    if (lane.points.length) mapping.points = lane.points.map(point => cloneObject(point));
+    return mapping;
+  });
 
 const runtimeBucketForSource = (source) => {
   const kind = normalizeKind(source?.kind);

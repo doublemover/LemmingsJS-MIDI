@@ -1790,6 +1790,44 @@ const createMidiUiController = ({
       }));
       maxLabel.append(maxText, max);
 
+      const point = lane.points[0] || { beat: 0, value: lane.min };
+      const pointBeatLabel = document.createElement('label');
+      pointBeatLabel.className = 'midi-field midi-field--compact';
+      const pointBeatText = document.createElement('span');
+      pointBeatText.textContent = 'Beat';
+      const pointBeat = document.createElement('input');
+      pointBeat.className = 'midi-automation-point-beat';
+      pointBeat.type = 'number';
+      pointBeat.min = '0';
+      pointBeat.step = '0.25';
+      pointBeat.value = String(point.beat);
+      pointBeat.setAttribute('aria-label', `${lane.name} point beat`);
+      pointBeat.addEventListener('change', event => dispatchProjectIntent({
+        type: 'automation.point.update',
+        automationId: lane.id,
+        pointIndex: 0,
+        patch: { beat: Number(event.target.value) }
+      }));
+      pointBeatLabel.append(pointBeatText, pointBeat);
+
+      const pointValueLabel = document.createElement('label');
+      pointValueLabel.className = 'midi-field midi-field--compact';
+      const pointValueText = document.createElement('span');
+      pointValueText.textContent = 'Value';
+      const pointValue = document.createElement('input');
+      pointValue.className = 'midi-automation-point-value';
+      pointValue.type = 'number';
+      pointValue.step = '0.05';
+      pointValue.value = String(point.value);
+      pointValue.setAttribute('aria-label', `${lane.name} point value`);
+      pointValue.addEventListener('change', event => dispatchProjectIntent({
+        type: 'automation.point.update',
+        automationId: lane.id,
+        pointIndex: 0,
+        patch: { value: Number(event.target.value) }
+      }));
+      pointValueLabel.append(pointValueText, pointValue);
+
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'midi-automation-remove';
@@ -1800,7 +1838,7 @@ const createMidiUiController = ({
         automationId: lane.id
       }));
 
-      row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, remove);
+      row.append(enabledLabel, targetLabel, axisLabel, opLabel, minLabel, maxLabel, pointBeatLabel, pointValueLabel, remove);
       list.appendChild(row);
     }
     if (!current.automation.length) {

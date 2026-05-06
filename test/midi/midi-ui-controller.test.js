@@ -542,6 +542,18 @@ describe('midiUiController sequencer', function() {
       .find(child => child.className === 'midi-automation-axis-op');
     axisOp.value = 'mul';
     axisOp.dispatchEvent({ type: 'change', target: axisOp });
+    const pointBeat = automationRow.children
+      .flatMap(child => child.children || [])
+      .find(child => child.className === 'midi-automation-point-beat');
+    const pointValue = automationRow.children
+      .flatMap(child => child.children || [])
+      .find(child => child.className === 'midi-automation-point-value');
+    expect(pointBeat.value).to.equal('0');
+    expect(pointValue.value).to.equal('-12');
+    pointBeat.value = '2';
+    pointBeat.dispatchEvent({ type: 'change', target: pointBeat });
+    pointValue.value = '0.7';
+    pointValue.dispatchEvent({ type: 'change', target: pointValue });
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.tracks[0].velocityScale).to.equal(0.5);
@@ -559,6 +571,7 @@ describe('midiUiController sequencer', function() {
     expect(stored.sources[0].mapping.envelope).to.deep.equal({ attack: 1, decay: 0, sustain: 1, release: 1 });
     expect(stored.automation).to.have.lengthOf(1);
     expect(stored.automation[0].axisOp).to.equal('mul');
+    expect(stored.automation[0].points[0]).to.deep.equal({ beat: 2, value: 0.7 });
     expect(automationRow.className).to.equal('midi-automation-row');
 
     const runtime = view.projectConfigs.at(-1);
@@ -574,6 +587,7 @@ describe('midiUiController sequencer', function() {
     expect(runtime.position.xNoteRange).to.deep.equal({ min: -18, max: 18 });
     expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
+    expect(runtime.position.mappings[0].points).to.deep.equal([{ beat: 2, value: 0.7 }]);
     expect(runtime.sfx['1'].velocity).to.equal(48);
 
     controller.applyRuntimePatch({
