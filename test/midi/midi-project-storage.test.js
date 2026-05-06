@@ -2,10 +2,13 @@ import { expect } from 'chai';
 import {
   LEGACY_MIDI_STORAGE_KEYS,
   PROJECT_STORAGE_KEY,
+  TEMPLATE_STORAGE_KEY,
   clearMidiProjectStorage,
   loadMidiProject,
+  readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
-  saveMidiProject
+  saveMidiProject,
+  saveMidiProjectTemplate
 } from '../../js/midi/project/MidiProjectStorage.js';
 
 const createStorage = () => {
@@ -32,6 +35,7 @@ const createStorage = () => {
 describe('MidiProjectStorage', function() {
   it('exports the canonical project key and legacy cleanup list', function() {
     expect(PROJECT_STORAGE_KEY).to.equal('lemmings.midi.project.v1');
+    expect(TEMPLATE_STORAGE_KEY).to.equal('lemmings.midi.templates.v1');
     expect(LEGACY_MIDI_STORAGE_KEYS).to.include.members([
       'lemmings.midi.intent',
       'lemmings.midi.overrides',
@@ -113,6 +117,37 @@ describe('MidiProjectStorage', function() {
     for (const key of LEGACY_MIDI_STORAGE_KEYS) {
       expect(storage.backing.has(key)).to.equal(false);
     }
+  });
+
+  it('saves user templates and can reset a project from a selected template', function() {
+    const storage = createStorage();
+    const project = saveMidiProject(storage, {
+      enabled: true,
+      devices: { inputId: 'in-1', outputId: 'out-1', inputChannel: 7 },
+      tracks: [{ id: 'lead', name: 'Lead', channel: 3 }],
+      sources: [{ id: 'sfx-1', kind: 'sfx', sourceKey: '1', label: 'Skill', trackId: 'lead', mapping: { note: 72 } }],
+      ui: { selectedTrackId: 'lead', selectedSourceId: 'sfx-1' }
+    });
+
+    const template = saveMidiProjectTemplate(storage, project, {
+      id: 'lead-template',
+      name: 'Lead Template',
+      now: 99
+    });
+    expect(template).to.include({ id: 'lead-template', name: 'Lead Template' });
+    expect(template.project).to.include({ enabled: false, templateId: 'lead-template' });
+    expect(template.project.devices).to.deep.equal({ inputId: null, outputId: null, inputChannel: 7 });
+    expect(readStoredMidiProjectTemplates(storage).map(entry => entry.id)).to.deep.equal(['lead-template']);
+
+    const reset = resetMidiProjectStorage(storage, {
+      sfx: { '2': { note: 60 } },
+      triggers: {}
+    }, 'lead-template');
+    expect(reset).to.include({ enabled: false, templateId: 'lead-template', name: 'Lead Template' });
+    expect(reset.tracks[0]).to.include({ id: 'lead', name: 'Lead', channel: 3 });
+    expect(reset.sources[0]).to.include({ id: 'sfx-1', sourceKey: '1', trackId: 'lead' });
+    expect(reset.sources[0].mapping.note).to.equal(72);
+    expect(JSON.parse(storage.backing.get(TEMPLATE_STORAGE_KEY)).templates[0].id).to.equal('lead-template');
   });
 
   it('clears project and legacy storage keys and swallows storage failures', function() {

@@ -4,19 +4,28 @@ import {
   AUTOMATION_TARGETS,
   createDefaultMidiStep,
   createEmptyDirectMapping,
+  createMidiProjectExportPayload,
   createMidiProjectFromMidiConfig,
   detectMidiProjectConflicts,
+  importMidiProjectPayload,
   projectToMidiConfig,
   reduceMidiProject,
   sanitizeMidiProject
 } from '../midi/project/MidiProject.js';
 import {
   PROJECT_STORAGE_KEY,
+  TEMPLATE_STORAGE_KEY,
   cleanupLegacyMidiProjectStorage,
   readStoredMidiProject,
+  readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
-  saveMidiProject
+  saveMidiProject,
+  saveMidiProjectTemplate
 } from '../midi/project/MidiProjectStorage.js';
+import {
+  downloadTextFile as downloadTextFileDefault,
+  readTextFile as readTextFileDefault
+} from './editor-ui/editorUiFiles.js';
 import {
   populateMidiSelect,
   resolveMidiId,
@@ -68,6 +77,14 @@ const toNumberOrNull = (value) => {
 };
 
 const formatSourceKey = (source) => `${source.kind}:${source.sourceKey}`;
+const filenameSafe = (value, fallback) => {
+  const text = String(value || fallback || 'midi-project')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return text || fallback || 'midi-project';
+};
 
 const isActionableConflict = (issue) => issue?.severity !== 'info';
 
@@ -104,7 +121,9 @@ const createMidiUiController = ({
   document = getRuntimeDependency('document', null),
   getLemmings = () => getAppContext(),
   getWebMidi = () => getRuntimeDependency('webMidi', null),
-  getMidiConfig = null
+  getMidiConfig = null,
+  downloadTextFile = downloadTextFileDefault,
+  readTextFile = readTextFileDefault
 } = {}) => {
   const storage = window?.localStorage || getRuntimeDependency('localStorage', null);
   const domListeners = [];
@@ -270,8 +289,16 @@ const createMidiUiController = ({
     return commitProject(next);
   };
 
-  const resetProject = () => {
-    project = resetMidiProjectStorage(storage, getFactoryConfig() || {});
+  const getProjectTemplates = () => readStoredMidiProjectTemplates(storage);
+
+  const selectedTemplateId = () => (
+    document?.getElementById('midiTemplateSelect')?.value ||
+    ensureProject().templateId ||
+    'midi-mapping'
+  );
+
+  const resetProject = (templateId = null) => {
+    project = resetMidiProjectStorage(storage, getFactoryConfig() || {}, templateId || selectedTemplateId());
     projectNeedsFactory = false;
     applyProjectToRuntime();
     render();
@@ -279,6 +306,52 @@ const createMidiUiController = ({
   };
 
   const setProject = (nextProject) => commitProject(nextProject);
+
+  const saveProjectTemplate = (options = {}) => {
+    const template = saveMidiProjectTemplate(storage, ensureProject(), options);
+    setStatus(`Saved template ${template.name}`);
+    renderTransport();
+    return template;
+  };
+
+  const exportProject = (options = {}) => {
+    const current = ensureProject();
+    const payload = createMidiProjectExportPayload(current, options);
+    const name = payload.template?.name || payload.project?.name || current.name;
+    const suffix = options.asTemplate ? 'template' : 'project';
+    const filename = `${filenameSafe(name, `midi-${suffix}`)}.lemmings-midi-${suffix}.json`;
+    if (options.download !== false) {
+      downloadTextFile(
+        document,
+        `${JSON.stringify(payload, null, 2)}\n`,
+        filename,
+        'application/json'
+      );
+      logOutput(`Exported ${options.asTemplate ? 'template' : 'project'}`);
+    }
+    return payload;
+  };
+
+  const importProject = (payload) => {
+    const imported = importMidiProjectPayload(payload);
+    projectNeedsFactory = false;
+    const next = commitProject(imported);
+    setStatus(`Imported ${next.name}`);
+    logOutput(`Imported ${next.name}`);
+    return next;
+  };
+
+  const importProjectFile = async (file) => {
+    if (!file) return null;
+    try {
+      return importProject(await readTextFile(file));
+    } catch (e) {
+      const message = e?.message || 'MIDI project import failed.';
+      showError(message);
+      setStatus('Import failed');
+      return null;
+    }
+  };
 
   const logOutput = (message) => {
     const text = String(message || '').trim();
@@ -1020,6 +1093,21 @@ const createMidiUiController = ({
     setText(document?.getElementById('midiSelectedSourceSummary'), summary);
   };
 
+  const renderTemplateOptions = () => {
+    const select = document?.getElementById('midiTemplateSelect');
+    if (!select) return;
+    const current = ensureProject();
+    const selected = current.templateId || 'midi-mapping';
+    removeChildren(select);
+    appendOption(document, select, 'midi-mapping', 'Factory');
+    for (const template of getProjectTemplates()) {
+      appendOption(document, select, template.id, template.name);
+    }
+    select.value = Array.from(select.children).some(option => option.value === selected)
+      ? selected
+      : 'midi-mapping';
+  };
+
   const renderTransport = () => {
     const current = ensureProject();
     const enabledToggle = document?.getElementById('midiEnabledToggle');
@@ -1027,6 +1115,7 @@ const createMidiUiController = ({
     renderChannelOptions(document?.getElementById('midiInputChannel'), current.devices.inputChannel, { includeOmni: true });
     setInputValue(document?.getElementById('midiInputChannel'), current.devices.inputChannel);
     setInputValue(document?.getElementById('midiBpmBase'), current.transport.bpmBase);
+    renderTemplateOptions();
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     setStatus(current.enabled ? 'MIDI enabled' : 'MIDI disabled');
   };
@@ -1158,6 +1247,15 @@ const createMidiUiController = ({
     });
     bindById('midiProjectResetButton', 'click', () => resetProject());
     bindById('midiPanicButton', 'click', () => panic());
+    bindById('midiTemplateSelect', 'change', () => setStatus('Template ready'));
+    bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
+    bindById('midiProjectExportButton', 'click', () => exportProject());
+    bindById('midiProjectImportButton', 'click', () => document?.getElementById('midiProjectImportInput')?.click?.());
+    bindById('midiProjectImportInput', 'change', async event => {
+      const file = event.target?.files?.[0] || null;
+      await importProjectFile(file);
+      if (event.target) event.target.value = '';
+    });
     bindById('midiSourceSearch', 'input', event => {
       sourceFilters.search = event.target.value || '';
       renderSourceList();
@@ -1289,6 +1387,11 @@ const createMidiUiController = ({
       dispatchProjectIntent,
       setProject,
       resetProject,
+      exportProject,
+      importProject,
+      importProjectFile,
+      saveProjectTemplate,
+      getProjectTemplates,
       audition,
       panic
     };
@@ -1324,6 +1427,11 @@ const createMidiUiController = ({
     dispatchProjectIntent,
     setProject,
     resetProject,
+    exportProject,
+    importProject,
+    importProjectFile,
+    saveProjectTemplate,
+    getProjectTemplates,
     audition,
     panic,
     applyRuntimePatch,
@@ -1346,7 +1454,7 @@ const createMidiUiController = ({
     setActiveMidiOutput,
     dispose,
     getStorageKeys() {
-      return { project: PROJECT_STORAGE_KEY };
+      return { project: PROJECT_STORAGE_KEY, templates: TEMPLATE_STORAGE_KEY };
     }
   };
 };

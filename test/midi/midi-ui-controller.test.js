@@ -14,8 +14,13 @@ const registerSequencerDom = (doc) => {
     midiOutSelect: 'select',
     midiInputChannel: 'select',
     midiBpmBase: 'input',
+    midiTemplateSelect: 'select',
     midiProjectResetButton: 'button',
     midiPanicButton: 'button',
+    midiTemplateSaveButton: 'button',
+    midiProjectExportButton: 'button',
+    midiProjectImportButton: 'button',
+    midiProjectImportInput: 'input',
     midiSourceSearch: 'input',
     midiSourceKindFilter: 'select',
     midiSourceAssignFilter: 'select',
@@ -75,6 +80,7 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiSourceAssignFilter').value = 'all';
   doc.getElementById('midiSourceModeSelect').value = 'direct';
   doc.getElementById('midiClipType').value = 'stepPattern';
+  doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
 };
 
 const createControllerHarness = ({
@@ -107,7 +113,14 @@ const createControllerHarness = ({
     window: win,
     document: doc,
     getLemmings: () => view,
-    getWebMidi: () => webMidi
+    getWebMidi: () => webMidi,
+    downloadTextFile(document, text, filename, mimeType) {
+      view.downloads = view.downloads || [];
+      view.downloads.push({ text, filename, mimeType });
+    },
+    readTextFile(file) {
+      return Promise.resolve(file?.text ?? '');
+    }
   });
   return { controller, doc, win, view, webMidi };
 };
@@ -133,6 +146,10 @@ describe('midiUiController sequencer', function() {
       'dispatchProjectIntent',
       'setProject',
       'resetProject',
+      'exportProject',
+      'importProject',
+      'saveProjectTemplate',
+      'getProjectTemplates',
       'audition',
       'panic'
     ]);
@@ -201,6 +218,52 @@ describe('midiUiController sequencer', function() {
     expect(runtime.position.viewPan).to.equal(true);
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
+  });
+
+  it('exports, imports, saves templates, and resets from a user template', async function() {
+    const { controller, doc, win, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 76 } });
+    const exported = controller.exportProject();
+    expect(exported.project.sources[0].mapping.note).to.equal(76);
+    expect(view.downloads[0]).to.include({
+      filename: 'factory-midi-project.lemmings-midi-project.json',
+      mimeType: 'application/json'
+    });
+    expect(JSON.parse(view.downloads[0].text).project.sources[0].mapping.note).to.equal(76);
+
+    const template = controller.saveProjectTemplate({ id: 'lead-template', name: 'Lead Template', now: 10 });
+    expect(template).to.include({ id: 'lead-template', name: 'Lead Template' });
+    expect(controller.getProjectTemplates().map(entry => entry.id)).to.deep.equal(['lead-template']);
+    expect(doc.getElementById('midiTemplateSelect').children.map(option => option.value)).to.include('lead-template');
+
+    const importedPayload = JSON.stringify({
+      kind: 'lemmings.midi.project',
+      version: 1,
+      project: {
+        ...controller.getProject(),
+        name: 'Imported Project',
+        sources: [
+          {
+            ...controller.getProject().sources[0],
+            mapping: { ...controller.getProject().sources[0].mapping, note: 81 }
+          }
+        ]
+      }
+    });
+    const imported = controller.importProject(importedPayload);
+    expect(imported).to.include({ name: 'Imported Project' });
+    expect(imported.sources[0].mapping.note).to.equal(81);
+    expect(JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY)).sources[0].mapping.note).to.equal(81);
+
+    doc.getElementById('midiTemplateSelect').value = 'lead-template';
+    const reset = controller.resetProject('lead-template');
+    expect(reset).to.include({ name: 'Lead Template', templateId: 'lead-template' });
+    expect(reset.sources[0].mapping.note).to.equal(76);
+
+    await controller.importProjectFile({ text: '{"bad":' });
+    expect(doc.getElementById('errorDisplay').textContent).to.contain('not valid JSON');
   });
 
   it('creates clips, assigns a source to clip mode, persists steps, and auditions clip notes', function() {

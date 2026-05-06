@@ -14,6 +14,7 @@ factory template, but editable state lives only in
   routing.
 - validation for channels, notes, velocities, durations, selected ids, clips,
   tracks, and malformed source mappings.
+- sanitized project/template import and export envelopes for JSON interchange.
 - conflict detection for duplicate runtime keys, missing references, muted or
   solo-hidden routes, empty mappings, output availability, and range clamping.
 - deterministic reducer intents for setup, device selection, track creation,
@@ -40,12 +41,17 @@ runtime mappings.
 ## Storage Cutover
 
 `js/midi/project/MidiProjectStorage.js` reads and writes only
-`lemmings.midi.project.v1`. On load and reset it removes obsolete MIDI keys such
-as `lemmings.midi.intent`, `lemmings.midi.overrides`, old device ids, tab state,
+`lemmings.midi.project.v1` for the active editable project. User templates are
+stored separately in `lemmings.midi.templates.v1`; they are sanitized snapshots
+of a project with hardware device ids and enabled state cleared.
+
+On load and reset the storage layer removes obsolete MIDI keys such as
+`lemmings.midi.intent`, `lemmings.midi.overrides`, old device ids, tab state,
 section state, schema hash, and the old audition feature flag.
 
 Old local override data is intentionally not migrated. A missing project creates
-a fresh project from the current factory template.
+a fresh project from the current factory template. Reset can target the factory
+template or a saved user template.
 
 ## Runtime Adapter
 
@@ -80,8 +86,8 @@ to a later scheduler/router phase.
 
 The `/` route uses `#midiSequencerWorkspace` over the game canvas:
 
-- `#midiTransportStrip`: enable, input, output, input channel, BPM, reset,
-  panic, status, and device errors.
+- `#midiTransportStrip`: enable, input, output, input channel, BPM, template
+  selection, reset, project import/export, panic, status, and device errors.
 - `#midiSourceBrowser`: source search, category filter, assignment/conflict
   filter, and source list with conflict badges.
 - `#midiTrackWorkspace`: track list, clip library, selected-source summary,

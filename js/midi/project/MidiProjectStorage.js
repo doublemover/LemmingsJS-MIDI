@@ -1,9 +1,12 @@
 import {
+  createMidiProjectTemplate,
   createMidiProjectFromMidiConfig,
   sanitizeMidiProject
 } from './MidiProject.js';
 
 const PROJECT_STORAGE_KEY = 'lemmings.midi.project.v1';
+const TEMPLATE_STORAGE_KEY = 'lemmings.midi.templates.v1';
+const FACTORY_TEMPLATE_ID = 'midi-mapping';
 
 const LEGACY_MIDI_STORAGE_KEYS = Object.freeze([
   'lemmings.midi.intent',
@@ -69,14 +72,63 @@ const readStoredMidiProject = (storage) => {
   }
 };
 
+const readStoredMidiProjectTemplates = (storage) => {
+  const raw = safeGetItem(storage, TEMPLATE_STORAGE_KEY);
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    const entries = Array.isArray(parsed) ? parsed : parsed.templates;
+    if (!Array.isArray(entries)) return [];
+    return entries
+      .map(template => createMidiProjectTemplate(template?.project, template))
+      .filter(template => template.id);
+  } catch (e) {
+    return [];
+  }
+};
+
+const saveStoredMidiProjectTemplates = (storage, templates) => {
+  const clean = Array.isArray(templates)
+    ? templates.map(template => createMidiProjectTemplate(template?.project, template))
+    : [];
+  safeSetItem(storage, TEMPLATE_STORAGE_KEY, JSON.stringify({ version: 1, templates: clean }));
+  return clean;
+};
+
+const saveMidiProjectTemplate = (storage, project, options = {}) => {
+  const template = createMidiProjectTemplate(project, options);
+  const templates = readStoredMidiProjectTemplates(storage)
+    .filter(entry => entry.id !== template.id);
+  templates.push(template);
+  saveStoredMidiProjectTemplates(storage, templates);
+  return template;
+};
+
+const resolveStoredMidiProjectTemplate = (storage, templateId) => (
+  readStoredMidiProjectTemplates(storage)
+    .find(template => template.id === templateId) || null
+);
+
 const loadMidiProject = (storage, factoryConfig = {}) => {
   cleanupLegacyMidiProjectStorage(storage);
   return readStoredMidiProject(storage) || createMidiProjectFromMidiConfig(factoryConfig);
 };
 
-const resetMidiProjectStorage = (storage, factoryConfig = {}) => {
+const resetMidiProjectStorage = (storage, factoryConfig = {}, templateId = FACTORY_TEMPLATE_ID) => {
   cleanupLegacyMidiProjectStorage(storage);
-  const project = createMidiProjectFromMidiConfig(factoryConfig);
+  const template = templateId && templateId !== FACTORY_TEMPLATE_ID
+    ? resolveStoredMidiProjectTemplate(storage, templateId)
+    : null;
+  const project = template
+    ? sanitizeMidiProject({
+      ...template.project,
+      id: template.project.id,
+      name: template.name,
+      templateId: template.id,
+      createdAt: Date.now(),
+      updatedAt: Date.now()
+    })
+    : createMidiProjectFromMidiConfig(factoryConfig);
   return saveMidiProject(storage, project);
 };
 
@@ -88,10 +140,15 @@ const clearMidiProjectStorage = (storage) => {
 export {
   LEGACY_MIDI_STORAGE_KEYS,
   PROJECT_STORAGE_KEY,
+  TEMPLATE_STORAGE_KEY,
   cleanupLegacyMidiProjectStorage,
   clearMidiProjectStorage,
   loadMidiProject,
   readStoredMidiProject,
+  readStoredMidiProjectTemplates,
   resetMidiProjectStorage,
-  saveMidiProject
+  resolveStoredMidiProjectTemplate,
+  saveMidiProject,
+  saveMidiProjectTemplate,
+  saveStoredMidiProjectTemplates
 };

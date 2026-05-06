@@ -13,6 +13,11 @@ const config = {
           clip: { id: 'capture-clip', name: 'Capture Clip', lengthSteps: 8 }
         });
       }
+      window.__E2E__?.midiSaveProjectTemplate?.({
+        id: 'capture-template',
+        name: 'Capture Template',
+        now: 1
+      });
       window.__E2E__?.midiDispatchProjectIntent?.({
         type: 'clip.step.update',
         clipId: 'capture-clip',

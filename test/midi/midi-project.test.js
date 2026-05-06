@@ -1,12 +1,18 @@
 import { expect } from 'chai';
 import { readFile } from 'node:fs/promises';
 import {
+  MIDI_PROJECT_EXPORT_KIND,
   MIDI_PROJECT_VERSION,
+  MIDI_TEMPLATE_EXPORT_KIND,
+  createMidiProjectExportPayload,
+  createMidiProjectTemplate,
   createMidiProjectFromMidiConfig,
   detectMidiProjectConflicts,
+  importMidiProjectPayload,
   projectToMidiConfig,
   reduceMidiProject,
-  sanitizeMidiProject
+  sanitizeMidiProject,
+  stringifyMidiProjectExport
 } from '../../js/midi/project/MidiProject.js';
 
 const loadFactoryConfig = async () => JSON.parse(
@@ -252,6 +258,50 @@ describe('MidiProject', function() {
     expect(config.position.mappings).to.deep.equal([
       { axis: 'x', axisOp: 'add', target: 'pan', min: -80, max: 80, enabled: true }
     ]);
+  });
+
+  it('exports, imports, and templates sanitized MIDI projects', function() {
+    let project = createMidiProjectFromMidiConfig({
+      enabled: true,
+      input: { channel: 4 },
+      sfx: { '1': { name: 'skill-select', note: 60, velocity: 80, durationTicks: 4 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'track.update', trackId: 'track-1', patch: { channel: 3 } });
+    project = reduceMidiProject(project, { type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 72 } });
+
+    const payload = createMidiProjectExportPayload(project, { exportedAt: 10 });
+    expect(payload).to.include({ kind: MIDI_PROJECT_EXPORT_KIND, version: MIDI_PROJECT_VERSION, exportedAt: 10 });
+    expect(payload.project.sources[0].mapping.note).to.equal(72);
+
+    const text = stringifyMidiProjectExport(project, { exportedAt: 11 });
+    const imported = importMidiProjectPayload(text);
+    expect(imported.sources[0].mapping.note).to.equal(72);
+    expect(imported.tracks[0].channel).to.equal(3);
+
+    const template = createMidiProjectTemplate(project, {
+      id: 'user-lead',
+      name: 'Lead Template',
+      now: 20
+    });
+    expect(template).to.include({ id: 'user-lead', name: 'Lead Template', createdAt: 20, updatedAt: 20 });
+    expect(template.project).to.include({ enabled: false, templateId: 'user-lead' });
+    expect(template.project.devices).to.deep.equal({ inputId: null, outputId: null, inputChannel: 4 });
+
+    const templatePayload = createMidiProjectExportPayload(project, {
+      asTemplate: true,
+      id: 'template-export',
+      name: 'Template Export',
+      exportedAt: 30,
+      now: 30
+    });
+    expect(templatePayload).to.include({ kind: MIDI_TEMPLATE_EXPORT_KIND, exportedAt: 30 });
+    const importedTemplate = importMidiProjectPayload(templatePayload);
+    expect(importedTemplate).to.include({ enabled: false, templateId: 'template-export' });
+    expect(importedTemplate.sources[0].mapping.note).to.equal(72);
+
+    expect(() => importMidiProjectPayload('{bad json')).to.throw('not valid JSON');
+    expect(() => importMidiProjectPayload({ kind: MIDI_PROJECT_EXPORT_KIND })).to.throw('did not contain a project');
   });
 
   it('applies track velocity scale to clip mappings', function() {

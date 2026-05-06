@@ -691,11 +691,15 @@ details.panel-section > summary.panel-title {
 
 .midi-transport {
     display: grid;
-    grid-template-columns: auto auto minmax(120px, 1fr) minmax(120px, 1fr) 86px 72px 72px 72px minmax(140px, 1.2fr);
+    grid-template-columns: auto auto minmax(120px, 1fr) minmax(120px, 1fr) 86px 72px minmax(120px, 1fr) repeat(5, auto) minmax(140px, 1.2fr);
     align-items: end;
     gap: 8px;
     min-height: 58px;
     padding: 8px;
+}
+
+.midi-hidden-file-input {
+    display: none;
 }
 
 .midi-transport__title {
@@ -1181,10 +1185,12 @@ body.midi-disabled .midi-region select {
 
 @media (max-width: 1080px) {
     .midi-transport {
-        grid-template-columns: auto auto minmax(110px, 1fr) minmax(110px, 1fr) 76px 64px 68px 68px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 
-    .midi-status {
+    .midi-transport__title,
+    .midi-status,
+    .midi-error {
         grid-column: 1 / -1;
     }
 

@@ -9,7 +9,10 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Input and Output: select WebMIDI devices when available.
 - Channel: input channel, either `omni` or 1-16.
 - BPM: base transport tempo used by the MIDI runtime.
-- Reset: creates a fresh project from `midi-mapping.json`.
+- Template: choose the factory template or a saved user template for reset.
+- Reset: creates a fresh project from the selected template.
+- Save Template, Export, Import: save reusable project templates and move
+  sanitized project JSON in or out of the sequencer.
 - Panic: sends all-notes-off and clears queued MIDI notes.
 
 ## Workspace
@@ -44,6 +47,10 @@ Editable MIDI state is stored only in `lemmings.midi.project.v1`.
 Legacy localStorage keys from the old UI are deleted on load and are not
 migrated into the project.
 
+User templates are stored separately in `lemmings.midi.templates.v1`. Imported
+projects and saved templates are sanitized through the same project validator as
+factory projects.
+
 ## E2E Hooks
 
 `window.__LEMMINGS_MIDI_UI__` exposes project-oriented methods:
@@ -52,6 +59,10 @@ migrated into the project.
 - `dispatchProjectIntent(intent)`
 - `setProject(project)`
 - `resetProject(templateId?)`
+- `exportProject({ asTemplate?, download? })`
+- `importProject(payload)`
+- `saveProjectTemplate({ id?, name? })`
+- `getProjectTemplates()`
 - `audition({ sourceId?, trackId?, mapping?, clipId? })`
 - `panic()`
 
@@ -59,6 +70,11 @@ migrated into the project.
 
 - `midiGetProject()`
 - `midiDispatchProjectIntent(intent)`
+- `midiResetProject(templateId)`
+- `midiExportProject(options)`
+- `midiImportProject(payload)`
+- `midiSaveProjectTemplate(options)`
+- `midiGetProjectTemplates()`
 - `midiAudition(request)`
 
 ## Visual and E2E Coverage
@@ -67,5 +83,5 @@ migrated into the project.
   `temp/e2e-captures/`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
   cleanup, setup, track routing, direct mapping, clip creation/editing,
-  clip assignment, modulation controls, audition, persistence, filters,
-  conflict warnings, and responsive overflow checks.
+  clip assignment, import/export/template reset, modulation controls, audition,
+  persistence, filters, conflict warnings, and responsive overflow checks.

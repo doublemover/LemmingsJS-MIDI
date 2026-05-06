@@ -4,6 +4,8 @@ import { cloneSafeObject, isPlainObject, safeObjectEntries } from '../../util/sa
 const MIDI_PROJECT_VERSION = 1;
 const DEFAULT_TRACK_ID = 'track-1';
 const DEFAULT_TEMPLATE_ID = 'midi-mapping';
+const MIDI_PROJECT_EXPORT_KIND = 'lemmings.midi.project';
+const MIDI_TEMPLATE_EXPORT_KIND = 'lemmings.midi.template';
 const MIN_DURATION_TICKS = 1;
 const MAX_DURATION_TICKS = 960;
 
@@ -622,6 +624,99 @@ function sanitizeMidiProject(project = {}) {
     }
   };
 }
+
+const parseMidiProjectPayload = (payload) => {
+  if (typeof payload !== 'string') return cloneSafeObject(payload);
+  try {
+    return JSON.parse(payload);
+  } catch (e) {
+    throw new Error('MIDI project import is not valid JSON.');
+  }
+};
+
+const createMidiProjectTemplate = (project = {}, options = {}) => {
+  const clean = sanitizeMidiProject(project);
+  const now = Number.isFinite(options.now) ? options.now : Date.now();
+  const id = sanitizeId(
+    options.id,
+    clean.templateId && clean.templateId !== DEFAULT_TEMPLATE_ID
+      ? clean.templateId
+      : `user-template-${now}`
+  );
+  const name = sanitizeId(options.name, `${clean.name} Template`);
+  const templateProject = sanitizeMidiProject({
+    ...clean,
+    name,
+    templateId: id,
+    enabled: false,
+    devices: {
+      inputId: null,
+      outputId: null,
+      inputChannel: clean.devices.inputChannel
+    },
+    ui: {
+      ...clean.ui,
+      activeRegion: 'setup'
+    }
+  });
+  return {
+    version: MIDI_PROJECT_VERSION,
+    id,
+    name,
+    createdAt: Number.isFinite(options.createdAt) ? options.createdAt : now,
+    updatedAt: Number.isFinite(options.updatedAt) ? options.updatedAt : now,
+    project: templateProject
+  };
+};
+
+const createMidiProjectExportPayload = (project = {}, options = {}) => {
+  const exportedAt = Number.isFinite(options.exportedAt) ? options.exportedAt : Date.now();
+  if (options.asTemplate) {
+    return {
+      kind: MIDI_TEMPLATE_EXPORT_KIND,
+      version: MIDI_PROJECT_VERSION,
+      exportedAt,
+      template: createMidiProjectTemplate(project, options)
+    };
+  }
+  return {
+    kind: MIDI_PROJECT_EXPORT_KIND,
+    version: MIDI_PROJECT_VERSION,
+    exportedAt,
+    project: sanitizeMidiProject(project)
+  };
+};
+
+const stringifyMidiProjectExport = (project = {}, options = {}) => (
+  `${JSON.stringify(createMidiProjectExportPayload(project, options), null, 2)}\n`
+);
+
+const importMidiProjectPayload = (payload) => {
+  const parsed = parseMidiProjectPayload(payload);
+  if (!isPlainObject(parsed)) {
+    throw new Error('MIDI project import did not contain a project.');
+  }
+  let projectPayload = null;
+  let templateId = null;
+  if (parsed.kind === MIDI_TEMPLATE_EXPORT_KIND) {
+    projectPayload = parsed.template?.project ?? parsed.project;
+    templateId = parsed.template?.id ?? parsed.templateId ?? projectPayload?.templateId ?? null;
+  } else if (parsed.kind === MIDI_PROJECT_EXPORT_KIND) {
+    projectPayload = parsed.project;
+  } else if (isPlainObject(parsed.project)) {
+    projectPayload = parsed.project;
+    templateId = parsed.templateId ?? parsed.project.templateId ?? null;
+  } else {
+    projectPayload = parsed;
+  }
+  if (!isPlainObject(projectPayload)) {
+    throw new Error('MIDI project import did not contain a project.');
+  }
+  return sanitizeMidiProject({
+    ...projectPayload,
+    templateId: templateId ?? projectPayload.templateId ?? null
+  });
+};
 
 const touchProject = (project) => ({
   ...project,
@@ -1247,18 +1342,24 @@ export {
   AUTOMATION_TARGETS,
   DIRECT_MAPPING_KEYS,
   MAX_DURATION_TICKS,
+  MIDI_PROJECT_EXPORT_KIND,
   MIDI_PROJECT_VERSION,
+  MIDI_TEMPLATE_EXPORT_KIND,
   MIN_DURATION_TICKS,
   createDefaultMidiAutomation,
   createDefaultMidiClip,
   createDefaultMidiStep,
   createDefaultMidiTrack,
   createEmptyDirectMapping,
+  createMidiProjectExportPayload,
+  createMidiProjectTemplate,
   detectMidiProjectConflicts,
   createMidiProject,
   createMidiProjectFromMidiConfig,
   createMidiSourceFromMapping,
+  importMidiProjectPayload,
   projectToMidiConfig,
   reduceMidiProject,
-  sanitizeMidiProject
+  sanitizeMidiProject,
+  stringifyMidiProjectExport
 };

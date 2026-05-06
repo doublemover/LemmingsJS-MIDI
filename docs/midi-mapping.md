@@ -68,6 +68,10 @@ automation lanes. The sequencer lowers enabled lanes back into the runtime
 mapping, while global intensity, accent, envelope defaults, and view pan are
 stored in the project global block.
 
+Project import/export JSON is sanitized through the same canonical project
+model. Exported templates use the same project shape with hardware device ids
+and enabled state cleared before storage or reset.
+
 ## Target ranges
 
 These ranges are used by positional modifiers and defaults when min/max values
@@ -87,7 +91,7 @@ are omitted. Values outside the ranges are clamped.
 ## Customization tips
 
 - Use the in-game sequencer UI for editable mappings, clips, tracks, devices,
-  modulation, and audition.
+  modulation, import/export, user templates, and audition.
 - Edit `midi-mapping.json` only to change the factory template used by fresh
   projects and reset.
 - Use project `devices.inputChannel` to switch between omni and a specific MIDI

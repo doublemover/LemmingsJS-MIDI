@@ -18,6 +18,10 @@ const midiUiSelectors = Object.freeze({
   modulationInspector: '#midiModulationInspector',
   automationRows: '#midiAutomationList .midi-automation-row',
   automationAddButton: '#midiAutomationAddButton',
+  templateSelect: '#midiTemplateSelect',
+  templateSaveButton: '#midiTemplateSaveButton',
+  projectExportButton: '#midiProjectExportButton',
+  projectImportButton: '#midiProjectImportButton',
   stepCells: '#midiStepPatternGrid .midi-step-cell',
   inspector: '#midiInspector',
   outputLog: '#midiOutputLog'
@@ -103,6 +107,22 @@ class MidiUiPage {
 
   automationAddButton() {
     return this.page.locator(midiUiSelectors.automationAddButton);
+  }
+
+  templateSelect() {
+    return this.page.locator(midiUiSelectors.templateSelect);
+  }
+
+  templateSaveButton() {
+    return this.page.locator(midiUiSelectors.templateSaveButton);
+  }
+
+  projectExportButton() {
+    return this.page.locator(midiUiSelectors.projectExportButton);
+  }
+
+  projectImportButton() {
+    return this.page.locator(midiUiSelectors.projectImportButton);
   }
 
   stepCells() {
