@@ -17,6 +17,8 @@ const registerSequencerDom = (doc) => {
     midiOutSelect: 'select',
     midiInputChannel: 'select',
     midiBpmBase: 'input',
+    midiTimeSignatureBeats: 'input',
+    midiTimeSignatureUnit: 'select',
     midiTemplateSelect: 'select',
     midiProjectResetButton: 'button',
     midiPanicButton: 'button',
@@ -224,6 +226,22 @@ describe('midiUiController sequencer', function() {
     expect(controller.audition()).to.equal(true);
     expect(sent.map(entry => entry.spec.note)).to.deep.equal([50, 52, 60]);
     expect(sent.every(entry => entry.meta.eventType === 'audition')).to.equal(true);
+  });
+
+  it('edits transport time signature controls', function() {
+    const { controller, doc, win, view } = createControllerHarness();
+    controller.bindMidiUi();
+
+    const beats = doc.getElementById('midiTimeSignatureBeats');
+    beats.value = '7';
+    beats.dispatchEvent({ type: 'change', target: beats });
+    const unit = doc.getElementById('midiTimeSignatureUnit');
+    unit.value = '8';
+    unit.dispatchEvent({ type: 'change', target: unit });
+
+    const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(stored.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
+    expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
   });
 
   it('edits modulation controls and exports runtime automation config', function() {

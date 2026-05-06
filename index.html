@@ -65,6 +65,20 @@
         <span>BPM</span>
         <input type="number" id="midiBpmBase" min="40" max="240" step="1" />
       </label>
+      <label class="midi-field midi-field--compact">
+        <span>Beats</span>
+        <input type="number" id="midiTimeSignatureBeats" min="1" max="16" step="1" />
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Unit</span>
+        <select id="midiTimeSignatureUnit">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </label>
       <label class="midi-field">
         <span>Template</span>
         <select id="midiTemplateSelect"></select>

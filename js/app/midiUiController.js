@@ -1741,6 +1741,8 @@ const createMidiUiController = ({
     renderChannelOptions(document?.getElementById('midiInputChannel'), current.devices.inputChannel, { includeOmni: true });
     setInputValue(document?.getElementById('midiInputChannel'), current.devices.inputChannel);
     setInputValue(document?.getElementById('midiBpmBase'), current.transport.bpmBase);
+    setInputValue(document?.getElementById('midiTimeSignatureBeats'), current.transport.timeSignature?.beats ?? 4);
+    setInputValue(document?.getElementById('midiTimeSignatureUnit'), current.transport.timeSignature?.unit ?? 4);
     renderTemplateOptions();
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     setStatus(current.enabled ? 'MIDI enabled' : 'MIDI disabled');
@@ -1882,6 +1884,21 @@ const createMidiUiController = ({
     bindById('midiBpmBase', 'change', event => {
       dispatchProjectIntent({ type: 'transport.set', transport: { bpmBase: Number(event.target.value) || 120 } });
     });
+    const updateTimeSignature = () => {
+      const current = ensureProject();
+      const beats = Number(document?.getElementById('midiTimeSignatureBeats')?.value) ||
+        current.transport.timeSignature?.beats ||
+        4;
+      const unit = Number(document?.getElementById('midiTimeSignatureUnit')?.value) ||
+        current.transport.timeSignature?.unit ||
+        4;
+      dispatchProjectIntent({
+        type: 'transport.set',
+        transport: { timeSignature: { beats, unit } }
+      });
+    };
+    bindById('midiTimeSignatureBeats', 'change', updateTimeSignature);
+    bindById('midiTimeSignatureUnit', 'change', updateTimeSignature);
     bindById('midiProjectResetButton', 'click', () => resetProject());
     bindById('midiPanicButton', 'click', () => panic());
     bindById('midiTemplateSelect', 'change', () => setStatus('Template ready'));

@@ -9,7 +9,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Input and Project Output: select the WebMIDI input and default output device
   when available.
 - Channel: input channel, either `omni` or 1-16.
-- BPM: base transport tempo used by the MIDI runtime.
+- BPM, Beats, Unit: base transport tempo and time signature used by the MIDI
+  runtime.
 - Template: choose the factory template or a saved user template for reset.
 - Reset: creates a fresh project from the selected template.
 - Save Template, Export, Import: save reusable project templates and move
