@@ -928,6 +928,9 @@ describe('midiUiController sequencer', function() {
       webMidi,
       lemmings: {
         midiRouter: {
+          getRateReport() {
+            return { reason: 'count-limit' };
+          },
           scheduler: {
             setOutputs(outputs) {
               registeredOutputs = outputs;
@@ -946,6 +949,7 @@ describe('midiUiController sequencer', function() {
     });
 
     controller.bindMidiUi();
+    expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: count-limit');
     controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
     controller.dispatchProjectIntent({ type: 'track.update', trackId: 'track-1', patch: { channel: 4 } });
     controller.onEnabled();
