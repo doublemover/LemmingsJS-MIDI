@@ -280,6 +280,28 @@ const createMidiUiController = ({
     return JSON.stringify(sourceChangeSnapshot(source)) !== JSON.stringify(baseline);
   };
 
+  const sourceBaselinePatch = (source, currentProject = ensureProject(), factorySources = getFactorySourceIndex()) => {
+    const factorySource = factorySources.get(formatSourceKey(source));
+    if (factorySource) {
+      return {
+        label: factorySource.label,
+        enabled: factorySource.enabled,
+        trackId: factorySource.trackId,
+        mode: factorySource.mode,
+        mapping: cloneSafeObject(factorySource.mapping) || createEmptyDirectMapping(),
+        clipId: factorySource.clipId
+      };
+    }
+    return {
+      label: source.label,
+      enabled: true,
+      trackId: currentProject.tracks[0]?.id || 'track-1',
+      mode: 'direct',
+      mapping: createEmptyDirectMapping(),
+      clipId: null
+    };
+  };
+
   const getProjectConfig = () => projectToMidiConfig(ensureProject(), getFactoryConfig() || {});
 
   const getConflictReport = () => detectMidiProjectConflicts(ensureProject(), {
@@ -1614,6 +1636,10 @@ const createMidiUiController = ({
     setChecked(document?.getElementById('midiTrackSolo'), track?.solo);
     setChecked(document?.getElementById('midiTrackArm'), track?.arm);
 
+    const revertButton = document?.getElementById('midiSourceRevertButton');
+    if (revertButton) {
+      revertButton.disabled = !source || !isSourceChangedFromFactory(source, getFactorySourceIndex(), current);
+    }
     setChecked(document?.getElementById('midiSourceEnabled'), source?.enabled);
     renderTrackOptions(document?.getElementById('midiSourceTrackSelect'), source?.trackId);
     renderTrackOptions(document?.getElementById('midiAssignTrackSelect'), track?.id);
@@ -1735,6 +1761,17 @@ const createMidiUiController = ({
     const source = selectedSource();
     if (!source) return;
     dispatchProjectIntent({ type: 'source.mapping.update', sourceId: source.id, patch });
+  };
+
+  const revertSelectedSource = () => {
+    const current = ensureProject();
+    const source = selectedSource();
+    if (!source) return;
+    dispatchProjectIntent({
+      type: 'source.update',
+      sourceId: source.id,
+      patch: sourceBaselinePatch(source, current)
+    });
   };
 
   const updateSelectedClip = (patch) => {
@@ -1892,6 +1929,7 @@ const createMidiUiController = ({
     bindById('midiTrackMute', 'change', event => updateSelectedTrack({ mute: !!event.target.checked }));
     bindById('midiTrackSolo', 'change', event => updateSelectedTrack({ solo: !!event.target.checked }));
     bindById('midiTrackArm', 'change', event => updateSelectedTrack({ arm: !!event.target.checked }));
+    bindById('midiSourceRevertButton', 'click', () => revertSelectedSource());
     bindById('midiSourceEnabled', 'change', event => updateSelectedSource({ enabled: !!event.target.checked }));
     bindById('midiSourceTrackSelect', 'change', event => {
       const source = selectedSource();

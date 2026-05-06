@@ -33,7 +33,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
   direct mode to clip mode and assign a selected clip.
 - Inspector: edit the selected source direct mapping with note, degree, octave,
   chord, velocity, duration, envelope override, clip, audition controls, and
-  conflict warnings for the selected route.
+  conflict warnings for the selected route. Changed sources can be reverted to
+  the factory or runtime default mapping.
 - Learn: arm a selected direct source, capture the next MIDI note-on as a
   pending note/velocity/channel assignment, then commit or cancel it.
 - Record: capture a short mocked or live MIDI phrase into consecutive steps of

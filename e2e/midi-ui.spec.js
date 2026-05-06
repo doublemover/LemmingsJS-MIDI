@@ -214,6 +214,8 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   });
   await expect(midi.sourceRows()).toHaveCount(1);
   await expect(midi.sourceRows().first()).toContainText('Changed');
+  await page.locator('#midiSourceRevertButton').click();
+  await expect(page.locator('#midiSourceList')).toContainText('No sources match');
   await midi.sourceAssignFilter().selectOption('all');
 
   await page.evaluate(() => {

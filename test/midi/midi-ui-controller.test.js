@@ -48,6 +48,7 @@ const registerSequencerDom = (doc) => {
     midiTrackMute: 'input',
     midiTrackSolo: 'input',
     midiTrackArm: 'input',
+    midiSourceRevertButton: 'button',
     midiSourceEnabled: 'input',
     midiSourceTrackSelect: 'select',
     midiSourceModeSelect: 'select',
@@ -499,12 +500,19 @@ describe('midiUiController sequencer', function() {
     filter.dispatchEvent({ type: 'change', target: filter });
     expect(doc.getElementById('midiSourceList').children[0].textContent).to.contain('No sources match');
 
+    controller.dispatchProjectIntent({ type: 'source.select', sourceId: 'sfx-2' });
     controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-2', patch: { note: 70 } });
     const changedRows = doc.getElementById('midiSourceList').children.filter(row => row.classList?.contains('is-changed'));
     expect(changedRows).to.have.lengthOf(1);
     expect(changedRows[0].children[0].textContent).to.equal('builder');
     expect(changedRows[0].children.some(child => child.textContent === 'Changed')).to.equal(true);
     expect(changedRows[0].getAttribute('aria-label')).to.contain('changed');
+
+    const revert = doc.getElementById('midiSourceRevertButton');
+    expect(revert.disabled).to.equal(false);
+    revert.dispatchEvent({ type: 'click', target: revert });
+    expect(controller.getProject().sources.find(source => source.id === 'sfx-2').mapping.note).to.equal(62);
+    expect(doc.getElementById('midiSourceList').children[0].textContent).to.contain('No sources match');
   });
 
   it('filters sources available in the current level', function() {
