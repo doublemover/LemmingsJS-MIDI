@@ -242,6 +242,11 @@ describe('midiUiController sequencer', function() {
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
+
+    controller.applyRuntimePatch({ timing: { timeSignature: { beats: 5, unit: 16 } } });
+    const patched = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(patched.transport.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
+    expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
   });
 
   it('edits modulation controls and exports runtime automation config', function() {

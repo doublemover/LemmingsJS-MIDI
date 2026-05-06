@@ -108,7 +108,7 @@ factory projects.
 - `npm run capture:e2e:midi` captures the sequencer regions under
   `temp/e2e-captures/`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
-  cleanup, setup, project and per-track output routing, direct mapping, clip
-  creation/editing, clip assignment, import/export/template reset, learn
-  capture, short recording, modulation controls, audition, persistence, filters,
-  conflict warnings, and responsive overflow checks.
+  cleanup, setup, transport meter, project and per-track output routing, direct
+  mapping, clip creation/editing, clip assignment, import/export/template reset,
+  learn capture, short recording, modulation controls, audition, persistence,
+  filters, conflict warnings, and responsive overflow checks.

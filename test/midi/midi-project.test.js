@@ -165,7 +165,7 @@ describe('MidiProject', function() {
 
     project = reduceMidiProject(project, { type: 'enabled.set', enabled: true });
     project = reduceMidiProject(project, { type: 'devices.set', devices: { inputId: 'in-1', outputId: 'out-1', inputChannel: 4 } });
-    project = reduceMidiProject(project, { type: 'transport.set', transport: { bpmBase: 95 } });
+    project = reduceMidiProject(project, { type: 'transport.set', transport: { bpmBase: 95, timeSignature: { beats: 7, unit: 8 } } });
     project = reduceMidiProject(project, { type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
     project = reduceMidiProject(project, { type: 'track.update', trackId: 'lead', patch: { solo: true, priority: 5, instrumentLabel: 'Lead synth' } });
     project = reduceMidiProject(project, { type: 'track.select', trackId: 'lead' });
@@ -178,6 +178,7 @@ describe('MidiProject', function() {
     expect(project.enabled).to.equal(true);
     expect(project.devices).to.deep.equal({ inputId: 'in-1', outputId: 'out-1', inputChannel: 4 });
     expect(project.transport.bpmBase).to.equal(95);
+    expect(project.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
     expect(project.ui).to.include({ selectedTrackId: 'lead', selectedSourceId: 'sfx-1', activeRegion: 'audition' });
     expect(project.tracks.find(track => track.id === 'lead')).to.include({ channel: 3, solo: true, priority: 5, instrumentLabel: 'Lead synth' });
     expect(project.sources[0]).to.include({ trackId: 'lead', label: 'Select' });
@@ -420,6 +421,7 @@ describe('MidiProject', function() {
     expect(config.input.enabled).to.equal(true);
     expect(config.input.channel).to.equal(7);
     expect(config.timing.bpmBase).to.equal(140);
+    expect(config.timing.timeSignature).to.deep.equal({ beats: 3, unit: 4 });
     expect(config.scale.name).to.equal('major');
     expect(config.noteRange).to.deep.equal({ min: 24, max: 96 });
     expect(config.sfx).to.not.have.property('old');

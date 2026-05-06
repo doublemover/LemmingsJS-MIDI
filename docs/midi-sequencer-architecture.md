@@ -88,8 +88,9 @@ selected project output. Voice budgets remain project-owned scheduling metadata.
 
 The `/` route uses `#midiSequencerWorkspace` over the game canvas:
 
-- `#midiTransportStrip`: enable, input, output, input channel, BPM, template
-  selection, reset, project import/export, panic, status, and device errors.
+- `#midiTransportStrip`: enable, input, output, input channel, BPM, time
+  signature, template selection, reset, project import/export, panic, status,
+  and device errors.
 - `#midiSourceBrowser`: source search, category filter, assignment/conflict
   filter, and source list with conflict badges.
 - `#midiTrackWorkspace`: track list, clip library, selected-source summary,
