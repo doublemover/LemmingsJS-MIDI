@@ -529,6 +529,59 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
 });
 
+test('MIDI source filters keep an active listbox option', async ({ page }) => {
+  const midi = await openMidiUi(page);
+  await page.evaluate(() => {
+    const project = window.__E2E__.midiGetProject();
+    window.__E2E__.midiDispatchProjectIntent({
+      type: 'project.set',
+      project: {
+        ...project,
+        sources: [
+          ...project.sources,
+          {
+            id: 'system-e2e-unavailable',
+            kind: 'system',
+            sourceKey: 'e2e-unavailable',
+            label: 'E2E unavailable system',
+            enabled: true,
+            trackId: project.tracks[0]?.id || 'track-1',
+            mode: 'direct',
+            mapping: { note: 60 },
+            clipId: null
+          }
+        ],
+        ui: {
+          ...project.ui,
+          selectedSourceId: 'system-e2e-unavailable'
+        }
+      }
+    });
+  });
+
+  await midi.sourceAssignFilter().selectOption('available');
+  await expect(midi.sourceRows().first()).toBeVisible();
+  const listState = await page.evaluate(() => {
+    const list = document.getElementById('midiSourceList');
+    const rows = Array.from(list.querySelectorAll('.midi-source-row'));
+    const activeId = list.getAttribute('aria-activedescendant');
+    const active = document.getElementById(activeId);
+    return {
+      activeId,
+      firstId: rows[0]?.id || '',
+      activeTabIndex: active?.tabIndex,
+      activeSelected: active?.getAttribute('aria-selected') || '',
+      selectedSourceId: window.__E2E__.midiGetProject().ui.selectedSourceId
+    };
+  });
+
+  expect(listState.activeId).not.toBe('');
+  expect(listState.activeId).toBe(listState.firstId);
+  expect(listState.activeTabIndex).toBe(0);
+  expect(listState.activeSelected).toBe('false');
+  expect(listState.selectedSourceId).toBe('system-e2e-unavailable');
+});
+
 test('MIDI sequencer edits modulation controls', async ({ page }) => {
   const midi = await openMidiUi(page);
   await expect(midi.modulationInspector()).toBeVisible();

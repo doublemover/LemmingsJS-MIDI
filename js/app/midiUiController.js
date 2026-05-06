@@ -1291,9 +1291,8 @@ const createMidiUiController = ({
     const report = getConflictReport();
     const sources = filteredSources(report);
     const factorySources = getFactorySourceIndex();
-    const activeOptionId = sources.some(source => source.id === current.ui.selectedSourceId)
-      ? listOptionId('source', current.ui.selectedSourceId)
-      : '';
+    const activeSource = sources.find(source => source.id === current.ui.selectedSourceId) || sources[0] || null;
+    const activeOptionId = activeSource ? listOptionId('source', activeSource.id) : '';
     configureListbox(list, activeOptionId);
     setText(document.getElementById('midiSourceCount'), String(sources.length));
     for (const source of sources) {
@@ -1301,6 +1300,7 @@ const createMidiUiController = ({
       const conflicts = getSourceConflicts(report, source.id);
       const changed = isSourceChangedFromFactory(source, factorySources, current);
       const selected = current.ui.selectedSourceId === source.id;
+      const active = activeSource?.id === source.id;
       const row = document.createElement('button');
       row.type = 'button';
       row.id = listOptionId('source', source.id);
@@ -1310,7 +1310,7 @@ const createMidiUiController = ({
       row.classList.toggle('is-changed', changed);
       row.classList.toggle('has-conflict', conflicts.length > 0);
       row.dataset.sourceId = source.id;
-      row.tabIndex = selected ? 0 : -1;
+      row.tabIndex = active ? 0 : -1;
       row.setAttribute('role', 'option');
       row.setAttribute('aria-selected', selected ? 'true' : 'false');
       row.setAttribute('aria-label', `${source.label}, ${SOURCE_KIND_LABELS[source.kind] || source.kind}, ${track?.name || 'Unassigned'}${changed ? ', changed' : ''}${conflicts.length ? `, ${conflicts.length} conflict${conflicts.length === 1 ? '' : 's'}` : ''}`);
