@@ -198,6 +198,7 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   await page.locator('#midiClipArpPattern').selectOption('custom');
   await setField('.midi-step-note[data-step-index="0"]', 66);
   await setField('.midi-step-velocity[data-step-index="0"]', 91);
+  await setField('.midi-step-duration[data-step-index="0"]', 9);
   await setField('.midi-step-note[data-step-index="1"]', 70);
   await midi.sourceModeSelect().selectOption('clip');
   await page.locator('#midiAssignClipButton').click();
@@ -213,7 +214,7 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
       pattern: { preset: 'custom' }
     }
   });
-  expect(clip.steps[0]).toMatchObject({ note: 66, velocity: 91 });
+  expect(clip.steps[0]).toMatchObject({ note: 66, velocity: 91, durationTicks: 9 });
   expect(clip.steps[1]).toMatchObject({ note: 70 });
   expect(source).toMatchObject({ mode: 'clip', clipId: clip.id });
   await expect(midi.outputLog()).toContainText(/Audition|skipped/);

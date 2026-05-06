@@ -681,6 +681,14 @@ describe('midiUiController sequencer', function() {
     expect(stepGrid.children[0].getAttribute('aria-rowindex')).to.equal('1');
     expect(stepGrid.children[0].getAttribute('aria-colindex')).to.equal('1');
     expect(stepGrid.children[0].children[1].children[0].getAttribute('aria-label')).to.equal('Step 1 note');
+    const duration = stepGrid.children[0].children[3].children[0];
+    expect(duration.className).to.equal('midi-step-duration');
+    expect(duration.value).to.equal('7');
+    duration.value = '9';
+    duration.dispatchEvent({ type: 'change', target: duration });
+    const afterDurationEdit = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterDurationEdit.clips[0].steps[0].durationTicks).to.equal(9);
+    expect(view.projectConfigs.at(-1).sfx['1'].durationTicks).to.equal(9);
 
     expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(true);
     expect(sent.map(entry => entry.spec.note)).to.deep.equal([65, 69]);

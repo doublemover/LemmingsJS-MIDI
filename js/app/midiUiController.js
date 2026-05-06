@@ -85,6 +85,7 @@ const STEP_GRID_COLUMNS = 4;
 const STEP_GRID_FIELD_CLASSES = Object.freeze([
   'midi-step-note',
   'midi-step-velocity',
+  'midi-step-duration',
   'midi-step-probability',
   'midi-step-hold',
   'midi-step-tie'
@@ -1464,6 +1465,19 @@ const createMidiUiController = ({
       velocity.setAttribute('aria-label', `${stepLabel} velocity`);
       velocity.addEventListener('change', event => updateSelectedClipStep(index, { velocity: toNumberOrNull(event.target.value) }));
       velocityLabel.appendChild(velocity);
+      const durationLabel = document.createElement('label');
+      durationLabel.textContent = 'Dur';
+      const duration = document.createElement('input');
+      duration.className = 'midi-step-duration';
+      duration.dataset.stepIndex = String(index);
+      duration.type = 'number';
+      duration.min = '1';
+      duration.max = '960';
+      duration.step = '1';
+      duration.value = step.durationTicks == null ? '' : String(step.durationTicks);
+      duration.setAttribute('aria-label', `${stepLabel} duration`);
+      duration.addEventListener('change', event => updateSelectedClipStep(index, { durationTicks: toNumberOrNull(event.target.value) }));
+      durationLabel.appendChild(duration);
       const probabilityLabel = document.createElement('label');
       probabilityLabel.textContent = 'Prob';
       const probability = document.createElement('input');
@@ -1497,7 +1511,7 @@ const createMidiUiController = ({
       tie.setAttribute('aria-label', `${stepLabel} tie`);
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
-      cell.append(label, noteLabel, velocityLabel, probabilityLabel, holdLabel, tieLabel);
+      cell.append(label, noteLabel, velocityLabel, durationLabel, probabilityLabel, holdLabel, tieLabel);
       grid.appendChild(cell);
     }
   };

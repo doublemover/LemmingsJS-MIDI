@@ -32,7 +32,7 @@ old two-pane Events/Triggers/ADSR configuration UI.
   pan, duration, timbre, and envelope targets. Global envelope defaults set the
   baseline for direct mappings unless a source has an envelope override.
 - Clips: create reusable step, chord, or arp clips, set arp direction and
-  pattern preset, and edit compact step patterns with note, velocity,
+  pattern preset, and edit compact step patterns with note, velocity, duration,
   probability, hold, and tie controls.
 - Assignment: route the selected source to a selected track, or switch it from
   direct mode to clip mode and assign a selected clip.
