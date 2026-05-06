@@ -634,6 +634,8 @@ describe('midiUiController sequencer', function() {
     expect(template).to.include({ id: 'lead-template', name: 'Lead Template' });
     expect(controller.getProjectTemplates().map(entry => entry.id)).to.deep.equal(['lead-template']);
     expect(doc.getElementById('midiTemplateSelect').children.map(option => option.value)).to.include('lead-template');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Saved template Lead Template');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Saved template Lead Template');
 
     const importedPayload = JSON.stringify({
       kind: 'lemmings.midi.project',

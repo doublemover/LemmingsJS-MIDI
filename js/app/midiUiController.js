@@ -546,8 +546,10 @@ const createMidiUiController = ({
 
   const saveProjectTemplate = (options = {}) => {
     const template = saveMidiProjectTemplate(storage, ensureProject(), options);
-    setStatus(`Saved template ${template.name}`);
     renderTransport();
+    const message = `Saved template ${template.name}`;
+    setStatus(message);
+    logOutput(message);
     return template;
   };
 
