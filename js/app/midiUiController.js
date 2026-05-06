@@ -2055,6 +2055,9 @@ const createMidiUiController = ({
       sourceId: source.id,
       patch: sourceBaselinePatch(source, current)
     });
+    const message = `Reverted ${source.label}`;
+    setStatus(message);
+    logOutput(message);
   };
 
   const updateSelectedClip = (patch) => {

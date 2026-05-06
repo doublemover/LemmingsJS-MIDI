@@ -1155,6 +1155,8 @@ describe('midiUiController sequencer', function() {
     expect(revert.disabled).to.equal(false);
     revert.dispatchEvent({ type: 'click', target: revert });
     expect(controller.getProject().sources.find(source => source.id === 'sfx-2').mapping.note).to.equal(62);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Reverted builder');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Reverted builder');
     expect(doc.getElementById('midiSourceList').children[0].textContent).to.contain('No sources match');
   });
 
