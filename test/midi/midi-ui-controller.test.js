@@ -949,6 +949,26 @@ describe('midiUiController sequencer', function() {
     expect(sent[0].meta).to.include({ eventType: 'clip-audition', sourceId: 'sfx-1', trackId: 'track-1', clipId: 'riff' });
   });
 
+  it('reports responsive step grid aria geometry', function() {
+    const { controller, doc, win } = createControllerHarness();
+    win.innerWidth = 500;
+    controller.bindMidiUi();
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'phone-grid', name: 'Phone Grid', lengthSteps: 4 } });
+    const stepGrid = doc.getElementById('midiStepPatternGrid');
+    expect(stepGrid.getAttribute('aria-colcount')).to.equal('1');
+    expect(stepGrid.getAttribute('aria-rowcount')).to.equal('4');
+    expect(stepGrid.children[1].getAttribute('aria-rowindex')).to.equal('2');
+    expect(stepGrid.children[1].getAttribute('aria-colindex')).to.equal('1');
+
+    win.innerWidth = 700;
+    controller.refreshMidiUiFromConfig();
+    expect(stepGrid.getAttribute('aria-colcount')).to.equal('2');
+    expect(stepGrid.getAttribute('aria-rowcount')).to.equal('2');
+    expect(stepGrid.children[2].getAttribute('aria-rowindex')).to.equal('2');
+    expect(stepGrid.children[2].getAttribute('aria-colindex')).to.equal('1');
+  });
+
   it('disables clip assignment when no clip exists', function() {
     const { controller, doc } = createControllerHarness();
     controller.bindMidiUi();

@@ -94,6 +94,8 @@ const AUTOMATION_TARGET_LABELS = Object.freeze({
 
 const STEP_FIELD_COUNT = 32;
 const STEP_GRID_COLUMNS = 4;
+const STEP_GRID_TABLET_MAX_WIDTH = 900;
+const STEP_GRID_PHONE_MAX_WIDTH = 520;
 const STEP_GRID_FIELD_CLASSES = Object.freeze([
   'midi-step-note',
   'midi-step-velocity',
@@ -118,6 +120,12 @@ const domIdSafe = (value, fallback = 'item') => {
   return text || fallback;
 };
 const listOptionId = (kind, id) => `midi-${kind}-option-${domIdSafe(id)}`;
+const normalizeStepGridColumns = (value) => {
+  const columns = Math.round(Number(value));
+  return Number.isFinite(columns)
+    ? Math.max(1, Math.min(STEP_GRID_COLUMNS, columns))
+    : STEP_GRID_COLUMNS;
+};
 const filenameSafe = (value, fallback) => {
   const text = String(value || fallback || 'midi-project')
     .trim()
@@ -205,7 +213,7 @@ const focusStepGridField = (grid, fieldClass, stepIndex) => {
   field?.focus?.();
 };
 
-const handleStepGridNavigation = (event, grid, stepCount) => {
+const handleStepGridNavigation = (event, grid, stepCount, columnCount = STEP_GRID_COLUMNS) => {
   if (!event || stepCount <= 0) return false;
   const fieldClass = stepGridFieldClass(event.target);
   if (!fieldClass) return false;
@@ -213,6 +221,7 @@ const handleStepGridNavigation = (event, grid, stepCount) => {
   if (!Number.isInteger(currentIndex)) return false;
   const key = event.key;
   if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(key)) return false;
+  const columns = normalizeStepGridColumns(columnCount);
   let nextIndex = currentIndex;
   if (key === 'Home') {
     nextIndex = 0;
@@ -223,9 +232,9 @@ const handleStepGridNavigation = (event, grid, stepCount) => {
   } else if (key === 'ArrowLeft') {
     nextIndex = Math.max(currentIndex - 1, 0);
   } else if (key === 'ArrowDown') {
-    nextIndex = Math.min(currentIndex + STEP_GRID_COLUMNS, stepCount - 1);
+    nextIndex = Math.min(currentIndex + columns, stepCount - 1);
   } else if (key === 'ArrowUp') {
-    nextIndex = Math.max(currentIndex - STEP_GRID_COLUMNS, 0);
+    nextIndex = Math.max(currentIndex - columns, 0);
   }
   event.preventDefault?.();
   if (nextIndex !== currentIndex) focusStepGridField(grid, fieldClass, nextIndex);
@@ -1496,13 +1505,25 @@ const createMidiUiController = ({
     select.value = selectedId || selectedClip()?.id || clips[0]?.id || '';
   };
 
+  const resolveStepGridColumnCount = () => {
+    if (window?.matchMedia?.(`(max-width: ${STEP_GRID_PHONE_MAX_WIDTH}px)`)?.matches) return 1;
+    if (window?.matchMedia?.(`(max-width: ${STEP_GRID_TABLET_MAX_WIDTH}px)`)?.matches) return 2;
+    const width = Number(window?.innerWidth);
+    if (Number.isFinite(width) && width > 0) {
+      if (width <= STEP_GRID_PHONE_MAX_WIDTH) return 1;
+      if (width <= STEP_GRID_TABLET_MAX_WIDTH) return 2;
+    }
+    return STEP_GRID_COLUMNS;
+  };
+
   const renderStepPatternGrid = (clip) => {
     const grid = document?.getElementById('midiStepPatternGrid');
     if (!grid) return;
+    const columnCount = resolveStepGridColumnCount();
     removeChildren(grid);
     if (!clip) {
       grid.setAttribute('aria-rowcount', '0');
-      grid.setAttribute('aria-colcount', String(STEP_GRID_COLUMNS));
+      grid.setAttribute('aria-colcount', String(columnCount));
       const empty = document.createElement('div');
       empty.className = 'midi-selection-summary';
       empty.setAttribute('role', 'note');
@@ -1511,8 +1532,8 @@ const createMidiUiController = ({
       return;
     }
     const count = Math.min(clip.lengthSteps || 0, STEP_FIELD_COUNT);
-    grid.setAttribute('aria-rowcount', String(Math.ceil(count / STEP_GRID_COLUMNS)));
-    grid.setAttribute('aria-colcount', String(STEP_GRID_COLUMNS));
+    grid.setAttribute('aria-rowcount', String(Math.ceil(count / columnCount)));
+    grid.setAttribute('aria-colcount', String(columnCount));
     for (let index = 0; index < count; index += 1) {
       const step = clip.steps[index] || createDefaultMidiStep(index, { note: null });
       const stepLabel = `Step ${index + 1}`;
@@ -1520,8 +1541,8 @@ const createMidiUiController = ({
       cell.className = 'midi-step-cell';
       cell.dataset.stepIndex = String(index);
       cell.setAttribute('role', 'gridcell');
-      cell.setAttribute('aria-rowindex', String(Math.floor(index / STEP_GRID_COLUMNS) + 1));
-      cell.setAttribute('aria-colindex', String((index % STEP_GRID_COLUMNS) + 1));
+      cell.setAttribute('aria-rowindex', String(Math.floor(index / columnCount) + 1));
+      cell.setAttribute('aria-colindex', String((index % columnCount) + 1));
       cell.setAttribute('aria-label', stepLabel);
       const label = document.createElement('div');
       label.className = 'midi-step-cell__index';
@@ -2178,7 +2199,7 @@ const createMidiUiController = ({
     bindById('midiStepPatternGrid', 'keydown', event => {
       const clip = selectedClip();
       const stepCount = Math.min(clip?.lengthSteps || 0, STEP_FIELD_COUNT);
-      handleStepGridNavigation(event, document?.getElementById('midiStepPatternGrid'), stepCount);
+      handleStepGridNavigation(event, document?.getElementById('midiStepPatternGrid'), stepCount, resolveStepGridColumnCount());
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));
