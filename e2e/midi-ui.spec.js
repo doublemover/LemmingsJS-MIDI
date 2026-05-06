@@ -73,7 +73,8 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
     '#midiLearnStatus',
     '#midiRecordStatus',
     '#midiSchedulerPressure',
-    '#midiOutputLog'
+    '#midiOutputLog',
+    '#midiSourceCount'
   ].join(', ')).evaluateAll(elements => Object.fromEntries(
     elements.map(element => [element.id, {
       role: element.getAttribute('role'),
@@ -86,7 +87,8 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
     midiLearnStatus: { role: 'status', live: '' },
     midiRecordStatus: { role: 'status', live: '' },
     midiSchedulerPressure: { role: 'status', live: 'polite' },
-    midiOutputLog: { role: 'status', live: 'polite' }
+    midiOutputLog: { role: 'status', live: 'polite' },
+    midiSourceCount: { role: 'status', live: 'polite' }
   });
 });
 
@@ -462,6 +464,7 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
 
   await midi.sourceAssignFilter().selectOption('changed');
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
+  await expect(page.locator('#midiSourceCount')).toHaveAttribute('aria-label', '0 sources shown');
   await page.evaluate(() => {
     window.__E2E__.midiDispatchProjectIntent({
       type: 'source.mapping.update',
@@ -470,6 +473,7 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
     });
   });
   await expect(midi.sourceRows()).toHaveCount(1);
+  await expect(page.locator('#midiSourceCount')).toHaveAttribute('aria-label', '1 source shown');
   await expect(midi.sourceRows().first()).toContainText('Changed');
   await page.locator('#midiSourceRevertButton').click();
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');

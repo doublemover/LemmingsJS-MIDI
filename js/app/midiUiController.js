@@ -1294,7 +1294,9 @@ const createMidiUiController = ({
     const activeSource = sources.find(source => source.id === current.ui.selectedSourceId) || sources[0] || null;
     const activeOptionId = activeSource ? listOptionId('source', activeSource.id) : '';
     configureListbox(list, activeOptionId);
-    setText(document.getElementById('midiSourceCount'), String(sources.length));
+    const sourceCount = document.getElementById('midiSourceCount');
+    setText(sourceCount, String(sources.length));
+    sourceCount?.setAttribute?.('aria-label', `${sources.length} source${sources.length === 1 ? '' : 's'} shown`);
     for (const source of sources) {
       const track = current.tracks.find(item => item.id === source.trackId);
       const conflicts = getSourceConflicts(report, source.id);
