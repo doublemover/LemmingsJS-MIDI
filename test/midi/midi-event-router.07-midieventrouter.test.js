@@ -308,7 +308,8 @@ describe('MidiEventRouter 7', function() {
         '1': {
           note: 60,
           outputId: 'track-out',
-          trackId: 'track-1'
+          trackId: 'track-1',
+          voiceBudget: 5
         }
       }
     }, { scheduler });
@@ -318,8 +319,8 @@ describe('MidiEventRouter 7', function() {
     router._onEvent({ sfxId: 1, tick: 1, timeMs: 0, tps: 50 });
 
     expect(sent).to.have.lengthOf(1);
-    expect(sent[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
-    expect(metas[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
+    expect(sent[0]).to.include({ outputId: 'track-out', trackId: 'track-1', voiceBudget: 5 });
+    expect(metas[0]).to.include({ outputId: 'track-out', trackId: 'track-1', voiceBudget: 5 });
   });
 
   it('dispatches project-lowered clip mappings through the router', function() {

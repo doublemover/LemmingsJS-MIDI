@@ -401,7 +401,7 @@ describe('MidiProject', function() {
       },
       tracks: [
         { id: 'drums', name: 'Drums', channel: 10, mute: true, priority: 3 },
-        { id: 'lead', name: 'Lead', channel: 2, solo: true, priority: 9, velocityScale: 0.5 },
+        { id: 'lead', name: 'Lead', channel: 2, solo: true, priority: 9, velocityScale: 0.5, voiceBudget: 4 },
         { id: 'hidden', name: 'Hidden', channel: 4 }
       ],
       sources: [
@@ -426,10 +426,10 @@ describe('MidiProject', function() {
     expect(config.noteRange).to.deep.equal({ min: 24, max: 96 });
     expect(config.sfx).to.not.have.property('old');
     expect(config.triggers).to.not.have.property('old');
-    expect(config.sfx['1']).to.include({ note: 60, durationTicks: 4, channel: 10, priority: 3, disabled: true });
-    expect(config.sfx['2']).to.include({ velocity: 50, channel: 2, priority: 9 });
+    expect(config.sfx['1']).to.include({ note: 60, durationTicks: 4, channel: 10, priority: 3, voiceBudget: 32, disabled: true });
+    expect(config.sfx['2']).to.include({ velocity: 50, channel: 2, priority: 9, voiceBudget: 4 });
     expect(config.sfx['2']).to.not.have.property('disabled');
     expect(config.sfx['2'].notes).to.deep.equal([64, 67]);
-    expect(config.triggers['5']).to.include({ degree: 2, octave: 4, channel: 4, disabled: true });
+    expect(config.triggers['5']).to.include({ degree: 2, octave: 4, channel: 4, voiceBudget: 32, disabled: true });
   });
 });

@@ -42,6 +42,10 @@ const midiSchedulerSendMethods = {
       const attackVelocity = reverse ? baseRelease : baseVelocity;
       const releaseVelocity = reverse ? baseVelocity : baseRelease;
       const timbreCc = this.config.mpe?.timbreCc ?? 74;
+      const trackId = this._normalizeTrackId?.(spec.trackId) ?? null;
+      const voiceBudget = trackId && spec.voiceBudget != null
+        ? clamp(toPositiveInt(spec.voiceBudget, this._maxActiveNotes), 1, this._maxActiveNotes)
+        : null;
 
       if (this.config.mpe?.enabled) {
         if (Number.isFinite(spec.pitchBend) && spec.pitchBend !== 0) {
@@ -65,6 +69,13 @@ const midiSchedulerSendMethods = {
 
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
+      if (
+        trackId &&
+          voiceBudget != null &&
+          this._countActiveNotesForTrack?.(trackId) >= voiceBudget
+      ) {
+        this._stealOldestNoteForTrack(trackId);
+      }
       if (this._activeNotes.size >= this._maxActiveNotes) {
         this._stealOldestNote();
       }
@@ -86,6 +97,8 @@ const midiSchedulerSendMethods = {
         note: spec.note,
         startedAt,
         token,
+        trackId,
+        voiceBudget,
         outputId,
         mpe: !!this.config.mpe?.enabled
       });

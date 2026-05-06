@@ -73,6 +73,7 @@ const midiEventRouterEventMethods = {
         priority,
         triggerType: event.triggerType ?? null,
         trackId: spec.trackId ?? null,
+        voiceBudget: spec.voiceBudget ?? null,
         outputId: spec.outputId ?? null
       };
       const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;

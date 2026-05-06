@@ -17,6 +17,10 @@ const normalizeOutputId = (outputId) => (
   outputId == null || outputId === '' ? null : String(outputId)
 );
 
+const normalizeTrackId = (trackId) => (
+  trackId == null || trackId === '' ? null : String(trackId)
+);
+
 const toOutputList = (outputs) => {
   if (!outputs) return [];
   if (Array.isArray(outputs)) return outputs;
@@ -105,6 +109,10 @@ const midiSchedulerChannelMethods = {
     return id ? `${id}:${channelNumber}` : channelNumber;
   },
 
+  _normalizeTrackId(trackId = null) {
+    return normalizeTrackId(trackId);
+  },
+
   setTickMs(tickMs) {
     if (Number.isFinite(tickMs) && tickMs > 0) {
       this.tickMs = tickMs;
@@ -169,17 +177,47 @@ const midiSchedulerChannelMethods = {
     this._armNoteOffTimer();
   },
 
-  _stealOldestNote() {
-    if (!this._activeNotes.size || !this.hasAnyOutput()) return;
+  _findOldestActiveNote(matches = null) {
+    if (!this._activeNotes?.size || typeof this._activeNotes.entries !== 'function') return null;
     let oldestToken = null;
     let oldestTime = Infinity;
     for (const [token, info] of this._activeNotes.entries()) {
+      if (!info || (matches && !matches(info, token))) continue;
       if (info.startedAt < oldestTime) {
         oldestTime = info.startedAt;
         oldestToken = token;
       }
     }
-    if (oldestToken == null) return;
+    return oldestToken;
+  },
+
+  _countActiveNotesForTrack(trackId) {
+    const normalized = normalizeTrackId(trackId);
+    if (!normalized || !this._activeNotes?.size || typeof this._activeNotes.entries !== 'function') return 0;
+    let count = 0;
+    for (const [, info] of this._activeNotes.entries()) {
+      if (normalizeTrackId(info?.trackId) === normalized) count += 1;
+    }
+    return count;
+  },
+
+  _stealOldestNoteForTrack(trackId) {
+    const normalized = normalizeTrackId(trackId);
+    if (!normalized) return;
+    const oldestToken = this._findOldestActiveNote(
+      info => normalizeTrackId(info?.trackId) === normalized
+    );
+    this._stopActiveNoteToken(oldestToken);
+  },
+
+  _stealOldestNote() {
+    const oldestToken = this._findOldestActiveNote();
+    this._stopActiveNoteToken(oldestToken);
+  },
+
+  _stopActiveNoteToken(oldestToken) {
+    if (oldestToken == null || !this.hasAnyOutput()) return;
+    if (typeof this._activeNotes?.get !== 'function') return;
     const info = this._activeNotes.get(oldestToken);
     if (!info) return;
     const output = this._resolveOutput(info.outputId);
@@ -194,7 +232,9 @@ const midiSchedulerChannelMethods = {
         sentMessages += 1;
       }
     }
-    this._activeNotes.delete(oldestToken);
+    if (typeof this._activeNotes.delete === 'function') {
+      this._activeNotes.delete(oldestToken);
+    }
     if (info.mpe) {
       this._activeByChannel.delete(this._activeChannelKey(info.channel, info.outputId));
     }

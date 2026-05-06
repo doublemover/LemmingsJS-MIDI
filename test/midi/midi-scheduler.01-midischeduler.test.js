@@ -115,6 +115,27 @@ describe('MidiScheduler 1', function() {
     });
   });
 
+  it('steals the oldest note on a track when its voice budget is exceeded', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    withFakeClockAndPerformance((clock) => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(output);
+
+      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0, trackId: 'lead', voiceBudget: 1 });
+      clock.tick(1);
+      scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, trackId: 'pad', voiceBudget: 1 });
+      clock.tick(1);
+      scheduler.sendNote({ note: 64, velocity: 64, durationTicks: 0, trackId: 'lead', voiceBudget: 1 });
+
+      const noteOffs = calls.filter(c => c.type === 'noteOff').map(c => c.note);
+      expect(noteOffs).to.deep.equal([60]);
+      expect([...scheduler._activeNotes.values()].map(info => info.note).sort()).to.deep.equal([62, 64]);
+      expect(scheduler._countActiveNotesForTrack('lead')).to.equal(1);
+      expect(scheduler._countActiveNotesForTrack('pad')).to.equal(1);
+    });
+  });
+
   it('initializes MPE channels and reuses the oldest member', function() {
     const calls = [];
     const output = makeOutput([1, 2, 3], calls);

@@ -80,9 +80,9 @@ The adapter:
 - honors mute and solo by disabling mappings hidden by track state.
 - applies per-track velocity scale to direct and clip mappings before routing.
 
-Per-track output ids lower into runtime mappings and are resolved by the
-router/scheduler dispatch path. Tracks without an explicit output use the
-selected project output. Voice budgets remain project-owned scheduling metadata.
+Per-track output ids and voice budgets lower into runtime mappings and are
+resolved by the router/scheduler dispatch path. Tracks without an explicit
+output use the selected project output.
 
 ## UI Regions
 

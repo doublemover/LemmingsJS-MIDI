@@ -900,6 +900,7 @@ const buildRuntimeMapping = (source, track, hiddenByTrack, globalVelocityDefault
   out.name = source.label;
   out.channel = track.channel;
   out.priority = track.priority;
+  out.voiceBudget = track.voiceBudget;
   out.trackId = track.id;
   out.outputId = track.outputId;
   if (track.velocityScale !== 1) {
@@ -1250,6 +1251,7 @@ const buildRuntimeClipMapping = (source, track, clip, hiddenByTrack, globalVeloc
     name: source.label,
     channel: track.channel,
     priority: track.priority,
+    voiceBudget: track.voiceBudget,
     trackId: track.id,
     outputId: track.outputId,
     clipId: clip?.id ?? source.clipId,
