@@ -1150,7 +1150,9 @@ const createMidiUiController = ({
         type: 'transport.set',
         transport: {
           bpmBase: patch.timing.bpmBase ?? current.transport.bpmBase,
-          timeSignature: patch.timing.timeSignature ?? current.transport.timeSignature
+          timeSignature: patch.timing.timeSignature ?? current.transport.timeSignature,
+          quantize: patch.timing.quantize ?? current.transport.quantize,
+          swing: patch.timing.swing ?? current.transport.swing
         }
       });
     }
@@ -1760,6 +1762,8 @@ const createMidiUiController = ({
     setInputValue(document?.getElementById('midiBpmBase'), current.transport.bpmBase);
     setInputValue(document?.getElementById('midiTimeSignatureBeats'), current.transport.timeSignature?.beats ?? 4);
     setInputValue(document?.getElementById('midiTimeSignatureUnit'), current.transport.timeSignature?.unit ?? 4);
+    setInputValue(document?.getElementById('midiQuantize'), current.transport.quantize);
+    setInputValue(document?.getElementById('midiSwing'), current.transport.swing);
     renderTemplateOptions();
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
     setStatus(current.enabled ? 'MIDI enabled' : 'MIDI disabled');
@@ -1900,6 +1904,12 @@ const createMidiUiController = ({
     });
     bindById('midiBpmBase', 'change', event => {
       dispatchProjectIntent({ type: 'transport.set', transport: { bpmBase: Number(event.target.value) || 120 } });
+    });
+    bindById('midiQuantize', 'change', event => {
+      dispatchProjectIntent({ type: 'transport.set', transport: { quantize: event.target.value || '1/16' } });
+    });
+    bindById('midiSwing', 'change', event => {
+      dispatchProjectIntent({ type: 'transport.set', transport: { swing: Number(event.target.value) || 0 } });
     });
     const updateTimeSignature = () => {
       const current = ensureProject();

@@ -425,6 +425,7 @@ describe('MidiProject', function() {
     expect(config.input.channel).to.equal(7);
     expect(config.timing.bpmBase).to.equal(140);
     expect(config.timing.timeSignature).to.deep.equal({ beats: 3, unit: 4 });
+    expect(config.timing).to.include({ quantize: '1/8', swing: 0.2 });
     expect(config.scale.name).to.equal('major');
     expect(config.noteRange).to.deep.equal({ min: 24, max: 96 });
     expect(config.sfx).to.not.have.property('old');

@@ -19,6 +19,8 @@ const registerSequencerDom = (doc) => {
     midiBpmBase: 'input',
     midiTimeSignatureBeats: 'input',
     midiTimeSignatureUnit: 'select',
+    midiQuantize: 'select',
+    midiSwing: 'input',
     midiTemplateSelect: 'select',
     midiProjectResetButton: 'button',
     midiPanicButton: 'button',
@@ -106,6 +108,7 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiClipType').value = 'stepPattern';
   doc.getElementById('midiClipArpMode').value = 'up';
   doc.getElementById('midiClipArpPattern').value = 'up';
+  doc.getElementById('midiQuantize').value = '1/16';
   doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
 };
 
@@ -265,15 +268,25 @@ describe('midiUiController sequencer', function() {
     const unit = doc.getElementById('midiTimeSignatureUnit');
     unit.value = '8';
     unit.dispatchEvent({ type: 'change', target: unit });
+    const quantize = doc.getElementById('midiQuantize');
+    quantize.value = '1/8';
+    quantize.dispatchEvent({ type: 'change', target: quantize });
+    const swing = doc.getElementById('midiSwing');
+    swing.value = '0.25';
+    swing.dispatchEvent({ type: 'change', target: swing });
 
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.transport.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
+    expect(stored.transport).to.include({ quantize: '1/8', swing: 0.25 });
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 7, unit: 8 });
+    expect(view.projectConfigs.at(-1).timing).to.include({ quantize: '1/8', swing: 0.25 });
 
-    controller.applyRuntimePatch({ timing: { timeSignature: { beats: 5, unit: 16 } } });
+    controller.applyRuntimePatch({ timing: { timeSignature: { beats: 5, unit: 16 }, quantize: '1/32', swing: 0.5 } });
     const patched = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(patched.transport.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
+    expect(patched.transport).to.include({ quantize: '1/32', swing: 0.5 });
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
+    expect(view.projectConfigs.at(-1).timing).to.include({ quantize: '1/32', swing: 0.5 });
   });
 
   it('edits arp clip mode and lowers it into runtime config', function() {

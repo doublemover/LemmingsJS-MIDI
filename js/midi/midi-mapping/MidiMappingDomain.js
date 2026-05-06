@@ -27,7 +27,9 @@ const DEFAULT_CONFIG = Object.freeze({
   timing: {
     bpmBase: 120,
     scheduleAheadMs: 0,
-    timeSignature: { beats: 4, unit: 4 }
+    timeSignature: { beats: 4, unit: 4 },
+    quantize: '1/16',
+    swing: 0
   },
   reverse: {
     allNotesOffOnToggle: false

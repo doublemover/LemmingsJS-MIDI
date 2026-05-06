@@ -1297,6 +1297,8 @@ function projectToMidiConfig(project, factoryConfig = {}) {
     timing: {
       bpmBase: clean.transport.bpmBase,
       timeSignature: clean.transport.timeSignature,
+      quantize: clean.transport.quantize,
+      swing: clean.transport.swing,
       scheduleAheadMs: base.timing?.scheduleAheadMs ?? 0
     },
     scale: clean.global.scale,

@@ -74,9 +74,9 @@ The adapter:
   `note`, `notes`, `velocity`, `durationTicks`, and optional `arp`.
 - writes SFX sources to `config.sfx` and trigger/MIDI flag sources to
   `config.triggers`.
-- applies project enabled state, input channel, transport, scale, ranges, MPE,
-  limits, density/accent, envelope defaults, automation mappings, and reverse
-  settings.
+- applies project enabled state, input channel, transport tempo/meter plus
+  quantize/swing settings, scale, ranges, MPE, limits, density/accent, envelope
+  defaults, automation mappings, and reverse settings.
 - maps track channel and priority into direct mappings.
 - honors mute and solo by disabling mappings hidden by track state.
 - applies per-track velocity scale to direct and clip mappings before routing.
