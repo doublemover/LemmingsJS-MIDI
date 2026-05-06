@@ -208,6 +208,20 @@ describe('MidiProject', function() {
     expect(badClip.ui).to.include({ selectedClipId: null, activeRegion: 'clips' });
   });
 
+  it('ignores source track assignment intents for missing tracks', function() {
+    let project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+    project = reduceMidiProject(project, { type: 'track.add', track: { id: 'lead', name: 'Lead', channel: 3 } });
+    project = reduceMidiProject(project, { type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'lead' });
+    project = reduceMidiProject(project, { type: 'source.assignTrack', sourceId: 'sfx-1', trackId: 'ghost-track' });
+
+    const source = project.sources.find(entry => entry.id === 'sfx-1');
+    expect(source.trackId).to.equal('lead');
+    expect(projectToMidiConfig(project, {}).sfx['1']).to.include({ trackId: 'lead', channel: 3 });
+  });
+
   it('reduces clip library, step editing, source assignment, and runtime clip lowering', function() {
     let project = createMidiProjectFromMidiConfig({
       sfx: { '1': { name: 'skill-select', note: 60, durationTicks: 4 } },

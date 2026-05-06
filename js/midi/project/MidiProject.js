@@ -838,9 +838,13 @@ function reduceMidiProject(project, intent = {}) {
   case 'source.update':
     next = { ...current, sources: updateById(current.sources, intent.sourceId, intent.patch) };
     break;
-  case 'source.assignTrack':
-    next = { ...current, sources: updateById(current.sources, intent.sourceId, { trackId: intent.trackId }) };
+  case 'source.assignTrack': {
+    const trackId = intent.trackId == null ? null : String(intent.trackId);
+    next = current.tracks.some(track => track.id === trackId)
+      ? { ...current, sources: updateById(current.sources, intent.sourceId, { trackId }) }
+      : current;
     break;
+  }
   case 'source.mode.set':
     next = { ...current, sources: current.sources.map(source => (
       source.id === intent.sourceId
