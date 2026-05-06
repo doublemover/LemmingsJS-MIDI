@@ -1081,6 +1081,38 @@ describe('midiUiController sequencer', function() {
     expect(sourceIds).to.not.include(`trigger-${flagTrigger}`);
   });
 
+  it('moves source keyboard navigation from the visible fallback row', function() {
+    const { controller, doc } = createControllerHarness({
+      factoryConfig: {
+        enabled: false,
+        input: { channel: 'omni' },
+        sfx: {
+          '1': { name: 'skill-select', note: 60, durationTicks: 4 },
+          '2': { name: 'builder', note: 62, durationTicks: 4 },
+          '3': { name: 'digger', note: 64, durationTicks: 4 }
+        },
+        triggers: {}
+      }
+    });
+    controller.bindMidiUi();
+    const filter = doc.getElementById('midiSourceAssignFilter');
+    filter.value = 'changed';
+    filter.dispatchEvent({ type: 'change', target: filter });
+
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-2', patch: { note: 70 } });
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-3', patch: { note: 71 } });
+    const sourceList = doc.getElementById('midiSourceList');
+    expect(sourceList.getAttribute('aria-activedescendant')).to.equal('midi-source-option-sfx-2');
+    sourceList.dispatchEvent({
+      type: 'keydown',
+      key: 'ArrowDown',
+      preventDefault() {}
+    });
+
+    expect(controller.getProject().ui.selectedSourceId).to.equal('sfx-3');
+    expect(sourceList.getAttribute('aria-activedescendant')).to.equal('midi-source-option-sfx-3');
+  });
+
   it('moves source, track, and clip listbox selections from the keyboard', function() {
     const { controller, doc } = createControllerHarness({
       factoryConfig: {
@@ -1154,6 +1186,14 @@ describe('midiUiController sequencer', function() {
     expect(active.tabIndex).to.equal(0);
     expect(active.getAttribute('aria-selected')).to.equal('false');
     expect(controller.getProject().ui.selectedClipId).to.equal(null);
+
+    clipList.dispatchEvent({
+      type: 'keydown',
+      key: 'ArrowDown',
+      preventDefault() {}
+    });
+    expect(controller.getProject().ui.selectedClipId).to.equal('fill');
+    expect(clipList.getAttribute('aria-activedescendant')).to.equal('midi-clip-option-fill');
   });
 
   it('panics by stopping notes and clearing queued MIDI events', function() {

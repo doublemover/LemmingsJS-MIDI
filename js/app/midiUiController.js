@@ -2118,11 +2118,16 @@ const createMidiUiController = ({
       renderSourceList();
     });
     bindById('midiSourceList', 'keydown', event => {
+      const sources = filteredSources();
+      const selectedSourceId = ensureProject().ui.selectedSourceId;
+      const currentSourceId = sources.some(source => source.id === selectedSourceId)
+        ? selectedSourceId
+        : sources[0]?.id ?? selectedSourceId;
       handleListboxNavigation(
         event,
-        filteredSources(),
+        sources,
         source => source.id,
-        ensureProject().ui.selectedSourceId,
+        currentSourceId,
         sourceId => dispatchProjectIntent({ type: 'source.select', sourceId })
       );
     });
@@ -2136,11 +2141,16 @@ const createMidiUiController = ({
       );
     });
     bindById('midiClipList', 'keydown', event => {
+      const clips = ensureProject().clips;
+      const selectedClipId = ensureProject().ui.selectedClipId;
+      const currentClipId = clips.some(clip => clip.id === selectedClipId)
+        ? selectedClipId
+        : clips[0]?.id ?? selectedClipId;
       handleListboxNavigation(
         event,
-        ensureProject().clips,
+        clips,
         clip => clip.id,
-        ensureProject().ui.selectedClipId,
+        currentClipId,
         clipId => dispatchProjectIntent({ type: 'clip.select', clipId })
       );
     });
