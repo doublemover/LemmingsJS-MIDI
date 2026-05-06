@@ -39,9 +39,8 @@ The maintained subset scripts (`test-core`, `test-bench-unit`,
 through `scripts/runTests.js`, so they share the same runtime-global guard,
 critical typecheck guard, and runtime budget reporting as `npm test`.
 
-Tests that require significant manual setup or large downloads are documented in
-[`excluded-tests.md`](excluded-tests.md). They are skipped in continuous
-integration.
+Tests that require significant manual setup or large downloads belong in
+[`excluded-tests.md`](excluded-tests.md). No tests are currently excluded.
 
 The tests require no special environment variables. A minimal `lemmings` object
 is created and temporary files are written under your operating system's temp
@@ -160,7 +159,7 @@ npm test
 Playwright defaults to `https://localhost:8080`. Override the origin with
 `LEMMINGS_E2E_BASE_URL` when validating another same-machine or LAN URL:
 
-```bash
+```powershell
 npm run test-e2e -- e2e/service-worker.spec.js
 $env:LEMMINGS_E2E_BASE_URL = "https://127.0.0.1:8080"
 npm run test-e2e -- e2e/service-worker.spec.js
@@ -170,3 +169,18 @@ Remove-Item Env:\LEMMINGS_E2E_BASE_URL
 The service-worker smoke asserts same-origin scope instead of literal localhost,
 so the same spec should pass for localhost and non-localhost origins served by
 the configured HTTPS server.
+
+## Visual capture smoke
+
+Disposable local screenshots are documented in
+[`playwright-tests.md`](playwright-tests.md). Start `npm run start-https` first
+when invoking the capture CLI directly:
+
+```bash
+npm run capture:e2e:midi
+npm run capture:e2e:editor
+npm run capture:e2e:procgen
+npm run capture:e2e:game-hud
+```
+
+Output stays under ignored `temp/e2e-captures/`.

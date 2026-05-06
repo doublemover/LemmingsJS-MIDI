@@ -1,24 +1,34 @@
 # Continuous Integration
 
-This project uses GitHub Actions to run tests on every push and pull request targeting the `master` branch.
+GitHub Actions runs on pushes and pull requests targeting `master`.
 
-The workflow is defined in [`.github/workflows/test.yml`](../.github/workflows/test.yml). Although the `package.json` requires Node 20 or newer, the workflow installs **Node 20**:
+Workflow source: [`.github/workflows/test.yml`](../.github/workflows/test.yml).
+The job installs Node 20, installs Playwright Chromium, runs the static/unit
+gates, starts the local HTTPS server for browser-backed checks, and uploads
+coverage.
 
-```yaml
-- uses: actions/setup-node@v4
-  with:
-    node-version: 20
-```
-
-The CI job performs the following steps:
+Current gate order:
 
 1. `npm ci`
-2. `npm run format`
-3. `git diff --exit-code`
-4. `npm run check-undefined`
-5. `npm run lint`
-6. `npm run depcheck`
-7. `npm test`
-8. `npm run coverage`
+2. `npm audit --audit-level=moderate`
+3. `npx playwright install --with-deps chromium`
+4. `npm run format`
+5. `git diff --check` against changed lines
+6. `git diff --exit-code`
+7. `npm run check-undefined`
+8. `npm run lint`
+9. `npm run typecheck:critical`
+10. `npm run release-readiness`
+11. `npm run depcheck`
+12. `npm run check-mcp-clients`
+13. `npm run test-bench-unit`
+14. `npm test`
+15. generate temporary localhost HTTPS certs
+16. start `npm run start-https`
+17. `npm run test-mcp-smoke`
+18. `npm run bench-smoke`
+19. stop the HTTPS server
+20. `npm run coverage`
 
-All tests must pass before code is merged.
+All generated certs, server logs, coverage, and browser artifacts are CI-local
+or ignored unless explicitly uploaded as artifacts.

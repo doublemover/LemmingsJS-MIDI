@@ -21,7 +21,7 @@ Advanced tutorials describe how to modify files directly. The Toolkit saves
 
 ## Relation to this repository
 
-Each level pack directory in the repo (`lemmings/`, `lemmings_ohNo/`, `xmas91/`, `xmas92/`, `holiday93/`, `holiday94/`) contains files extracted from its original game or pack archive. The folders follow the general NeoLemmix layout described in [docs/levelpacks.md](docs/levelpacks.md) so the Node tools can load them via `NodeFileProvider`. `config.json` lists the packs and their level orders.
+Each level pack directory in the repo (`lemmings/`, `lemmings_ohNo/`, `xmas91/`, `xmas92/`, `holiday93/`, `holiday94/`) contains files extracted from its original game or pack archive. The folders follow the general NeoLemmix layout described in [levelpacks.md](levelpacks.md) so the Node tools can load them via `NodeFileProvider`. `config.json` lists the packs and their level orders.
 
 Custom graphics, music and sprites may be replaced in these folders if you
 wish to experiment with your own pack built from NeoLemmix assets.

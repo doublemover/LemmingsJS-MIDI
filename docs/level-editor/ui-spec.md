@@ -41,6 +41,7 @@ This spec defines the standalone editor page UI and interaction model for the cl
   - Terrain Stamp
   - Object
   - Trigger
+  - MIDI Flag
   - Entrance
   - Exit
   - Steel
@@ -139,5 +140,4 @@ This spec defines the standalone editor page UI and interaction model for the cl
 
 ## Future Extensions (Out of Scope)
 - Full NeoLemmix terrain groups and pre-placed skillsets.
-- Steel area editor tool.
 - Arbitrary terrain brush.

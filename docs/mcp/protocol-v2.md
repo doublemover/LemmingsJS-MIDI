@@ -39,7 +39,7 @@ implementation notes in this folder.
 
 ## state.delta
 
-- New tool for returning filtered history deltas.
+- Returns filtered history deltas.
 - Defaults to changes since the last `state.get` tick.
 - Supports filtering lemming fields and excluding x/y motion churn.
 

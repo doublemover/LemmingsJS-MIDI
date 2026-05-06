@@ -1,6 +1,9 @@
 /**
  * LemmingsJS MCP - Zod Schemas (v1, memory-backed resources)
  *
+ * Historical schema reference snapshot. The current runtime schemas live in
+ * ../../mcp/schemas.js.
+ *
  * This file defines Zod schemas for tool inputs/outputs and shared types.
  * It targets the v1 MCP SDK and mirrors the interface spec in docs/mcp.
  *

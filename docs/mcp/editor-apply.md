@@ -278,7 +278,7 @@ Loads a full NXLV text blob into the editor session.
 ---
 
 #### `level.loadSaved`
-Loads a saved level from local storage (as listed in `state.get.editor.storage.savedLevels`).
+Loads a saved level from local storage (as listed in `state.get.editor.savedLevels`).
 
 **Args**
 ```jsonc
@@ -671,44 +671,25 @@ Runs `validateLevel` and returns issues (same as editor UI list).
 | Selection inspector edits | `entry.update` (or `selection.set` + `entry.update`) |
 | Ordering buttons | `entry.reorder` |
 | Delete selection | `entry.remove` |
-| Validation fixes | `validate.run` with `autoFix`, or `issue.fix` optional future op |
+| Validation fixes | `validate.run` with `autoFix` |
 | Undo/Redo | `history.undo`, `history.redo` |
 | Viewport preservation | `preview.preserveViewport` |
 
 ---
 
-## Implementation notes (where to hook in this codebase)
+## Implementation map
 
-### A) Extend the E2E harness (`js/app/e2eHarness.js`)
-Add a new method, e.g.:
+This contract is shipped.
 
-- `editorApply(ops, options)`
-- `editorExport(format, options)`
-- `editorHistoryGet(index)`
-
-These should:
-- locate the editor controller via `context.view.editorUi?.controller`
-- mutate `controller.session.level` via existing controller methods whenever possible
-- call `controller.history.pushSnapshot(...)` when requested
-- trigger preview via the already-wired `onPreviewRequest` callback *or* by calling `view.loadEditorPreviewLevel(...)` directly when `preview.refresh=true`
-- return structured results (per-op success + values)
-
-### B) Add the MCP tool in `mcp/server.js`
-- Define `EditorApplySchema` (zod) matching this spec
-- Add tool entry `{ name: 'editor.apply', ... }` into `TOOL_SPECS`
-- Implement handler:
-  - validate session exists
-  - call `callE2E(session, 'editorApply', ops, options)`
-  - if `level.export` produces bytes/text: store via `resourceStore.put(...)`
-  - return resources + optionally new state
-
-### C) Stable `uid` support
-This is the single biggest usability win for LLM editing.
-
-Suggested implementation strategy:
-- when a level is loaded or created, walk all entries and ensure `entry.uid` exists
-- preserve `uid` on clone/duplicate/paste when desired, or generate new ones for clones
-- update selection serialization in `e2eHarness` to include `uid` in selection entries and refs
+- Browser harness entry: `window.__E2E__.editorApply(ops, options)`.
+- Harness implementation: `js/app/e2e/E2EEditorApply.js`.
+- MCP schema: `EditorApplySchema` in `mcp/schemas.js`.
+- MCP handler: `editorApplyTool` in `mcp/editorObjectTools.js`.
+- MCP routing: semantic `editor.apply`, exposed call name `editor_apply`.
+- Export results are returned as MCP session resources when the operation emits
+  text or bytes.
+- Stable entry `uid` values are ensured by the editor serialization/apply path
+  and are accepted in entry refs.
 
 ---
 
@@ -733,30 +714,30 @@ Suggested implementation strategy:
 }
 ```
 
-### Example 2: “Move every exit 32px right”
+### Example 2: “Move a known gadget 32px right”
 ```jsonc
 {
   "sessionId": "S1",
   "ops": [
-    { "type": "query.find", "args": { "kind": "gadget", "where": { "triggerEffectId": "EXIT_LEVEL" } } },
     { "type": "entry.update", "args": { "ref": { "kind": "gadget", "uid": "g_..." }, "set": { "X": 1232 } } }
   ]
 }
 ```
 
-(Where `query.find` is an optional but strongly recommended quality-of-life op.)
-
 ---
 
-## Recommended “minimum viable” subset (if you want to implement iteratively)
+## Shipped operation families
 
-If you want to ship quickly, implement in this order:
-
-1. `level.new`, `level.loadText`, `level.export`
-2. `entry.add`, `entry.update`, `entry.remove`
-3. `history.undo`, `history.redo`
-4. `validate.run`
-5. Tool parity wrappers: `tool.place`, `tool.stroke`, `tool.steelRect`
-6. Stable `uid` support + `query.find` + `selection.hitTest`
-
-That already enables an LLM to fully build and modify levels without UI automation.
+- Session/editor guard: `editor.ensure`.
+- Level lifecycle: `level.new`, `level.loadText`, `level.loadSaved`,
+  `level.save`, `level.export`, `level.importClassicLvl`, `level.patchHeader`,
+  `level.patchSkillset`.
+- Editor controls: `editor.setTool`, `editor.setBrushSettings`,
+  `editor.setPaletteSelection`.
+- Selection: `selection.clear`, `selection.set`, `selection.hitTest`,
+  `selection.boxSelect`.
+- Entries: `entry.add`, `entry.update`, `entry.remove`, `entry.duplicate`,
+  `entry.reorder`.
+- Tool parity: `tool.place`, `tool.stroke`, `tool.erase`, `tool.steelRect`.
+- History and validation: `history.undo`, `history.redo`,
+  `history.getEntry`, `validate.run`.

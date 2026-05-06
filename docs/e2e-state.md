@@ -8,9 +8,17 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.getDiagnostics()` returns deterministic environment diagnostics
   (runtime profile, rollout/capability snapshots, feature flags, and active
   cache snapshots).
+- `window.__E2E__.getCanvasMetrics()` returns canvas/stage sizing diagnostics.
 - `window.__E2E__.getCaptureRects(options?)` returns page-space CSS rectangles
   for visual capture tooling.
 - `window.__E2E__.getBuffer(name)` returns one heavy buffer at a time.
+- `window.__E2E__.stageWorldFromPage(point)` converts a page point to a game
+  world point.
+- `window.__E2E__.stagePageFromWorld(point)` converts a game world point to a
+  page point.
+- `window.__E2E__.centerStageOn(point)` centers the stage on a world point.
+- `window.__E2E__.getMinimapPagePoint(options?)` returns a usable page point in
+  the minimap.
 - `window.__E2E__.step(count)` steps forward/backward (negative allowed).
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
 - `window.__E2E__.pause()` / `window.__E2E__.resume()` control the game timer.
@@ -22,6 +30,8 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.startBenchSequence()` starts the sequence bench run.
 - `window.__E2E__.startBench(entrances)` starts a single bench run.
 - `window.__E2E__.stopBench()` stops bench flags.
+- `window.__E2E__.getDelta(tickIndex)` and
+  `window.__E2E__.getDeltas(fromTick, toTick, maxTicks?)` return history deltas.
 - `window.__E2E__.setEditorPlaytest(enabled)` toggles editor playtest.
 - `window.__E2E__.getEditorHistoryEntry(index)` returns one editor history
   entry with full text.
@@ -54,8 +64,15 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 ```
 
 Runtime rectangle ids are omitted when the current route cannot provide them.
-Known ids include `canvas`, `stageCanvas`, `game`, `gui`, `minimap`,
-`editorCanvas`, and `editorSelection`.
+Known ids include:
+
+- `canvas`: `#gameCanvas` or `#editorCanvas`.
+- `stageCanvas`: the Stage canvas element.
+- `game`: the rendered game image rectangle.
+- `gui`: the rendered HUD image rectangle.
+- `minimap`: the minimap area inside the HUD.
+- `editorCanvas`: the editor canvas element.
+- `editorSelection`: current editor selection bounds when a selection exists.
 
 For world-space capture, pass a world rectangle and optional padding:
 
@@ -73,6 +90,9 @@ All returned rectangles are finite positive CSS-pixel rectangles suitable for
 the Playwright visual capture helper. The helper writes disposable screenshots
 under ignored `temp/e2e-captures/`; no manifests, baselines, or generated images
 are checked in.
+
+`diagnostics.missing` explains omitted ids. Missing surfaces are expected on
+routes that do not expose that surface.
 
 ## getState() structure
 
@@ -103,7 +123,8 @@ Top-level fields:
 
 ### diagnostics
 - `version`: schema version (currently `1`).
-- `profile`: runtime profile (`gameplay`, `editor`, `perf`, etc.).
+- `profile`: runtime profile (`classic`, `midi`, `editor`, `e2e`, `perf`,
+  etc.). Legacy `gameplay` query values are normalized to `classic`.
 - `rolloutFlags`: active staged-rollout/rollback flags.
 - `capabilities`: runtime/browser capability matrix for WebMIDI and render
   paths.

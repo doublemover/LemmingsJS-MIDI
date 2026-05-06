@@ -1,54 +1,80 @@
 # Playwright Tests
 
-Playwright tests are opt-in end-to-end checks that live under `e2e/` and do not
-run as part of `npm test`.
+Playwright tests are opt-in end-to-end checks under `e2e/`. They do not run as
+part of `npm test`.
 
 ## Running
+
 - `npm run test-e2e:install`
 - `npm run test-e2e`
 - `npm run test-e2e:ui`
-- `LEMMINGS_E2E_BASE_URL=https://10.0.0.126:8080 npm run test-e2e`
+- `npm run test-e2e -- e2e/harness.game.spec.js`
 
-## HTTPS dev server
-Playwright defaults to `https://localhost:8080` and starts the server via
-`npm run start-https`, which uses the self-signed cert in `certs/`. Set
-`LEMMINGS_E2E_BASE_URL` to a reachable origin when the browser must use a LAN
-or VM/container host instead of loopback. If you need a trusted local cert,
-replace the files in `certs/` with your own.
+Playwright defaults to `https://localhost:8080` and starts the HTTPS server via
+`npm run start-https`. To point tests at another same-origin server:
 
-## E2E harness
-Add `?e2e=1` to enable the test harness and `window.__E2E__` API. The current
-schema is documented in:
-- `docs/e2e-state.md`
-- `docs/e2e-editor-state.md`
+```powershell
+$env:LEMMINGS_E2E_BASE_URL = "https://127.0.0.1:8080"
+npm run test-e2e
+Remove-Item Env:\LEMMINGS_E2E_BASE_URL
+```
+
+The server uses the self-signed certs in `certs/`. Replace those files locally
+if a trusted certificate is needed for a device or VM.
+
+## E2E Harness
+
+Add `?e2e=1` to enable `window.__E2E__`. The current schemas are documented in:
+
+- [`e2e-state.md`](e2e-state.md)
+- [`e2e-editor-state.md`](e2e-editor-state.md)
+
+Playwright specs use this harness for deterministic state snapshots, time
+control, editor mutations, MIDI intent automation, and runtime capture
+rectangles.
 
 ## WebMIDI
-E2E tests can grant real MIDI permissions (Chromium-only) or use the stub in
-`e2e/helpers/webmidiStub.js` to avoid hardware dependencies. The stub is
-optional and should be used only when real MIDI access is unavailable.
 
-## Disposable visual captures
-Use the visual capture CLI for local inspection while working on UI, editor,
-procgen, or HUD issues. Captures are written under ignored
-`temp/e2e-captures/`; do not commit generated screenshots, manifests, baselines,
-or image inventories.
+Chromium can be granted MIDI permission through Playwright context options. For
+hardware-independent tests, use `e2e/helpers/webmidiStub.js`.
 
-Common runs:
+## Disposable Visual Captures
+
+The visual capture CLI is a local developer aid for UI, editor, procgen, HUD,
+and docs review. It writes PNGs only under ignored `temp/e2e-captures/`. Do not
+commit generated screenshots, manifests, baselines, or image inventories.
+
+Start the server first when running the CLI directly:
+
+```powershell
+npm run start-https
+```
+
+Common commands:
+
 - `npm run capture:e2e:midi`
 - `npm run capture:e2e:editor`
 - `npm run capture:e2e:procgen`
 - `npm run capture:e2e:game-hud`
 
 Direct CLI form:
+
 - `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/midi.js`
 - `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/editor.js --viewport=tablet`
 - `node scripts/e2e-capture-rects.js --config=e2e/capture-targets/game-hud.js --target=game-runtime-hud --json`
 
-The script uses `LEMMINGS_E2E_BASE_URL` when set, otherwise it follows the
-Playwright default base URL. Start `npm run start-https` first when running the
-CLI directly outside Playwright's test runner.
+Supported flags:
 
-Capture configs export a plain object:
+- `--config=<path>`: required config module.
+- `--base-url=<origin>`: overrides `LEMMINGS_E2E_BASE_URL` and the Playwright
+  default.
+- `--out-dir=<path>`: output directory; it must stay under
+  `temp/e2e-captures/`.
+- `--viewport=desktop|tablet|mobile`: viewport preset.
+- `--target=name[,name...]`: capture only named targets.
+- `--json`: machine-readable output.
+
+Capture configs export a plain object with optional async setup:
 
 ```js
 export default {
@@ -65,15 +91,32 @@ export default {
     { name: 'world-start', type: 'worldRect', rect: { x: 0, y: 0, width: 320, height: 160 }, padding: 8 },
     { name: 'viewport', type: 'viewport' },
     { name: 'page', type: 'fullPage' }
+  ],
+  probes: [
+    {
+      name: 'controls-overflow',
+      selector: '#controlLeft',
+      checks: ['horizontalOverflow', 'verticalOverflow', 'unexpectedScrollbar']
+    }
   ]
 };
 ```
 
-Probe output is printed as warnings unless a config marks a probe as required.
-When a capture is useful for an issue or review, attach the relevant PNGs from
-`temp/e2e-captures/<run>/` manually.
+Target types:
 
-## Phased coverage plan
-1) MIDI UI: enable/disable flow, pane visibility, event list sanity.
-2) Level editor: load, tool selection, save/import basics.
-3) Game: initial load, basic controls, level navigation.
+- `selector`: exactly one visible Playwright locator match.
+- `pageRect`: explicit page-space CSS-pixel rectangle.
+- `runtimeRect`: one rectangle id from `window.__E2E__.getCaptureRects()`.
+- `runtimeRects`: multiple runtime ids, or all available ids when `ids` is
+  omitted.
+- `worldRect`: world-space rectangle converted through the E2E harness.
+- `viewport`: current viewport screenshot.
+- `fullPage`: full-page screenshot.
+
+Visual probes report warnings by default. A probe with `required: true` makes
+matching issues fail the CLI. Supported checks are `horizontalOverflow`,
+`verticalOverflow`, `clippedText`, `zeroSizeVisibleText`, `hiddenFocusedElement`,
+`smallTapTarget`, and `unexpectedScrollbar`.
+
+When captures are useful for an issue or review, attach selected PNGs from the
+run directory manually. Keep `temp/e2e-captures/` disposable.

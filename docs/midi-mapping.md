@@ -1,7 +1,8 @@
 # MIDI Mapping Cheatsheet
 
-This document summarizes the default MIDI mappings in `midi-mapping.json`.
-Edit that file to customize your setup.
+This document summarizes the default MIDI mappings in
+[`../midi-mapping.json`](../midi-mapping.json). Edit that file to customize
+defaults for a local checkout.
 
 For UI behavior and controls, see `docs/midi-ui.md`.
 
@@ -55,9 +56,11 @@ Default skill order:
 | 80 | timing.timeSignature.beats | 1-12 | 4 |
 | 81 | timing.timeSignature.unit | 1, 2, 4, 8, 16 | 4 |
 
-Position routing now uses explicit entries in `position.mappings`; toggle-style
-`position.xToNote` / `position.yToVelocity` / `position.yToTimbre` flags are no
-longer supported.
+Position routing in the runtime mapper uses explicit entries in
+`position.mappings`. Legacy toggle-style flags such as `position.xToNote`,
+`position.yToVelocity`, and `position.yToTimbre` may still appear in older local
+data or input CC metadata, but they are ignored by the event mapper unless they
+are represented as explicit mapping entries.
 
 ## Target ranges
 

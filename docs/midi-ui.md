@@ -1,12 +1,12 @@
-# MIDI UI guide
+# MIDI UI Guide
 
-The MIDI UI is split into left and right control panes. Enable MIDI before
-editing mappings; the toggle state persists in localStorage.
+The current MIDI UI is a two-pane configuration surface layered over the game.
+Enable MIDI before editing mappings; the toggle state persists in localStorage.
 
 ## Left pane
 
 - MIDI enabled: master toggle. Disabling detaches the router.
-- Reset all: clears stored overrides and UI state back to defaults.
+- Reset all: clears stored mapping state and UI state back to defaults.
 - I/O section: input, output, input channel, and MIDI reset.
 - Base BPM: master sequencing tempo; current BPM reflects game speed.
 - MIDI Debug: shows the last MIDI input and output message.
@@ -34,4 +34,12 @@ UI state is stored in localStorage. Defaults come from `midi-mapping.json` and
 apply only when no stored value exists or after Reset all.
 
 - `lemmings.midi.intent` stores versioned `MidiIntent` state.
-- `lemmings.midi.overrides` is still written for backward compatibility.
+- `lemmings.midi.overrides` is a compatibility mirror of the active overrides
+  used by current migration tests and older local data.
+
+## Visual and E2E coverage
+
+- `npm run capture:e2e:midi` captures the current MIDI controls under
+  `temp/e2e-captures/`.
+- `e2e/midi-ui.spec.js` covers the deterministic UI automation path using
+  mocked WebMIDI where needed.

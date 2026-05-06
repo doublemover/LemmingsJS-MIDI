@@ -5,8 +5,10 @@ See `docs/level-editor/workflows.md` for end-to-end editing flows.
 ## UI layout
 
 - **Editor toolbar** (left of canvas): tool buttons and mode status.
-- **Palette panel** (right of canvas): tabs for Terrain, Gadgets, Triggers.
-- **Inspector panel**: properties for selected entry (position, flags, delete).
+- **Palette panel** (left side, below tools): tabs for Terrain, Objects, and
+  Triggers.
+- **Inspector panel** (right side): properties for selected entry (position,
+  flags, ordering, alignment, delete).
 - **Saved levels**: the existing Saved dropdown stays available while editing.
 
 ## Tools
@@ -15,6 +17,7 @@ See `docs/level-editor/workflows.md` for end-to-end editing flows.
 - **Terrain stamp**: place a single terrain piece at cursor.
 - **Gadget stamp**: place a gadget (objects like entrance/exit/traps).
 - **Trigger stamp**: place gadgets filtered to trigger-only objects.
+- **MIDI Flag**: place the MIDI flag gadget used by MIDI-trigger workflows.
 - **Entrance**: places the entrance gadget.
 - **Exit**: places the exit gadget.
 - **Steel**: place a resizable steel rectangle (editor-only).
@@ -39,7 +42,7 @@ See `docs/level-editor/workflows.md` for end-to-end editing flows.
 - Right click cancels placement or clears selection.
 - Alt-drag duplicates the active selection before moving it.
 - Arrow keys nudge the selection; shift+arrows nudge by the grid size.
-- Mouse wheel zoom and arrow-key panning still work in editor mode.
+- Mouse wheel zoom remains available. Arrow keys nudge selections while editing.
 - Preview reloads preserve the current viewport during edit operations.
 
 ## Brush feasibility

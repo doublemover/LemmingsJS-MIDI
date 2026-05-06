@@ -3,6 +3,10 @@
 Editor state is returned under `window.__E2E__.getState().editor`. This document
 lists every field surfaced by the harness for editor mode.
 
+Editor mutations for Playwright and MCP go through
+`window.__E2E__.editorApply(ops, options)`. The operation contract is documented
+in [`mcp/editor-apply.md`](mcp/editor-apply.md).
+
 ## Top-level editor fields
 - `mode`: `true` when editor mode is active.
 - `playtest`: editor playtest toggle (from GameView).

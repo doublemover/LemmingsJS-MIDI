@@ -20,8 +20,8 @@ are recorded consistently and without UI timing variance.
 1. Use the E2E harness and run the benchmark script:
    - `npm run bench-performance -- --mode=sequence`
 2. Review the JSON output for max TPS, max speed, and per-sample values.
-3. If investigating reverse playback cost, run with `--mode=reverse` once the
-   bench-reverse entry point is wired for that mode.
+3. If investigating reverse playback cost, run with `--profile=reverse` or
+   `--mode=reverse`.
 
 ## History stress test
 

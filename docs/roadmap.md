@@ -22,147 +22,12 @@ When a milestone replaces an old path, remove the old path in the same phase.
 
 ## Sequencing
 
-1. Generic visual iteration and Playwright capture tooling.
-2. Documentation and source-of-truth cleanup.
-3. MIDI configuration UI excellence.
-4. Level editor audit and productization.
-5. Procedural generation productization.
-6. Solver and solvability platform.
+1. MIDI configuration UI excellence.
+2. Level editor audit and productization.
+3. Procedural generation productization.
+4. Solver and solvability platform.
 
-## Milestone 1: Generic Visual Iteration and Playwright Capture Tooling
-
-**Outcome:** UI work can be iterated visually and repeatably in headless
-Playwright without hardcoding today's panel layout. Tests and tools can capture
-any DOM selector, explicit page rectangle, canvas/world rectangle, or generated
-runtime rectangle into ignored `temp/` output for quick inspection.
-
-**Scope**
-
-- Add a reusable E2E capture helper that accepts a route, viewport, device scale
-  factor, setup function, and a list of capture targets.
-- Support target types:
-  - CSS selector resolved through Playwright locators.
-  - Explicit page-space rectangle `{ x, y, width, height }`.
-  - Runtime rectangle returned by `window.__E2E__`, such as canvas metrics,
-    stage game rects, GUI rects, minimap rects, editor selection bounds, or
-    world-to-page conversions.
-  - Full page and full viewport captures for quick diagnosis.
-- Allow callers to pass arbitrary target names rather than baked-in names like
-  "left panel" or "right panel".
-- Write screenshots and any lightweight run output only under ignored
-  `temp/e2e-captures/`.
-- Print the resolved target names and rectangles to stdout so the run is easy to
-  inspect without creating a durable artifact format.
-- Keep captures disposable. They are development aids, not checked-in baselines
-  or review artifacts.
-- Add overflow and visibility probes that can be applied to any selector:
-  horizontal overflow, vertical overflow, clipped text, zero-size text, hidden
-  focused element, unusable tap target, and unexpected scrollbar.
-- Keep the helper generic enough for MIDI, editor, procgen, game HUD, docs
-  screenshots, and future UI surfaces.
-
-**Workflow Coverage**
-
-- Capture arbitrary DOM selectors on `/`, `/editor.html`, and `/procgen.html`.
-- Capture explicit page rectangles provided by a test.
-- Capture world-space editor/game objects by converting through the E2E harness.
-- Capture several rectangles in one run into a timestamped `temp/` directory.
-- Run on desktop, tablet, and narrow mobile viewport presets.
-- Validate that missing selectors produce actionable errors with available
-  page diagnostics.
-
-**Deliverables**
-
-- `e2e/helpers/visualCapture.js` or equivalent reusable helper.
-- `scripts/e2e-capture-rects.js` or equivalent CLI for ad hoc capture runs.
-- `npm` scripts for common capture runs, using generic target config files
-  rather than hardcoded panel assumptions.
-- Lightweight documentation in `docs/playwright-tests.md` showing how to pass
-  selectors, explicit rects, and runtime rect producers.
-- Example target configs for MIDI, editor, procgen, and game HUD captures. These
-  configs should describe targets, not store generated screenshots.
-
-**Acceptance**
-
-- A developer can run one command and capture named arbitrary selectors/rects
-  from any route.
-- The same helper works for current MIDI panels and would still work if those
-  panels are redesigned or removed.
-- Capture output is disposable, ignored by git, and easy to regenerate.
-- Existing E2E tests continue to pass.
-
-**Out of Scope**
-
-- Broad UI redesign.
-- Pixel-perfect visual regression enforcement as a required CI gate.
-- Checked-in screenshot baselines or generated image inventories.
-- Browser support beyond the current Playwright Chromium baseline.
-
-## Milestone 2: Documentation and Source-of-Truth Cleanup
-
-**Outcome:** The docs describe the current system accurately, old planning text
-is removed or reclassified, and the new visual tooling is documented as a
-temporary local aid rather than a source of checked-in artifacts.
-
-**Scope**
-
-- Audit all docs and classify each file as:
-  - Canonical user/developer docs.
-  - Reference material.
-  - Historical notes.
-  - Stale or misleading content to remove or rewrite.
-- Update docs to reflect hard-cut current behavior, not retired compatibility
-  paths.
-- Reconcile roadmap-adjacent docs with the new roadmap:
-  - `docs/playwright-tests.md`
-  - `docs/e2e-state.md`
-  - `docs/e2e-editor-state.md`
-  - `docs/midi-ui.md`
-  - `docs/midi-mapping.md`
-  - `docs/level-editor/*`
-  - `docs/procgen.md`
-  - `docs/mcp/*`
-  - benchmark and testing docs.
-- Replace stale prose-only UI descriptions with current workflow docs. Use
-  locally generated `temp/` captures while authoring, but do not commit
-  generated screenshots unless a specific durable doc image is intentionally
-  requested.
-- Remove stale broken-test/fixable-test/incoherent-test reports if they no
-  longer represent the current test state.
-- Document how to run the new visual capture tooling and how to attach captures
-  to future issues.
-- Keep Camanis/source reference docs intact unless a specific file is clearly
-  duplicated, malformed, or misleading.
-
-**Workflow Coverage**
-
-- Run docs examples that involve commands where practical.
-- Verify documented npm scripts exist.
-- Verify documented E2E harness methods exist.
-- Verify the temporary capture workflow on MIDI, editor, and procgen routes.
-
-**Deliverables**
-
-- Updated canonical docs.
-- Removed or rewritten stale planning/report files.
-- A short docs index explaining where to find user docs, developer docs,
-  reference material, and historical source notes.
-- Clear instructions for producing local UI captures when docs or reviews need
-  visual evidence.
-
-**Acceptance**
-
-- A new contributor can follow docs for tests, E2E, MIDI UI, editor, procgen,
-  and MCP without running into obsolete commands or obsolete UI descriptions.
-- Docs do not describe completed roadmap phases as future work.
-- Any retained historical documents are clearly labeled as historical/reference.
-
-**Out of Scope**
-
-- Rewriting external format reference material for style.
-- Adding new product features while cleaning docs.
-
-## Milestone 3: DAW-Like Multichannel MIDI Sequencer UI
+## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
 **Outcome:** The MIDI surface evolves from a configuration panel into a
 fully-featured, DAW-like multichannel MIDI sequencer for gameplay events. It
@@ -350,7 +215,7 @@ deterministic and testable without real hardware.
 - Supporting non-WebMIDI browser APIs.
 - Network sync or cloud project storage.
 
-## Milestone 4: Level Editor Audit and Productization
+## Milestone 2: Level Editor Audit and Productization
 
 **Outcome:** The level editor is evaluated from real workflows, then upgraded
 into a trustworthy creation tool with documented capabilities, clear limits,
@@ -497,7 +362,7 @@ usable UX, and robust workflow tests.
 - Adding solver-backed validation before the solver milestone produces a stable
   interface.
 
-## Milestone 5: Procedural Level-Piece Streaming
+## Milestone 3: Procedural Level-Piece Streaming
 
 **Outcome:** Procgen is an endless left-to-right mode that picks one visual
 theme, then efficiently and tastefully adds level pieces ahead of the lemmings
@@ -611,7 +476,7 @@ random pixels or a stress-test mode with hazards sprinkled around.
 - Complex puzzle design requiring precise human timing.
 - Guaranteeing every possible seed is solvable before the solver milestone.
 
-## Milestone 6: Solver and Solvability Platform
+## Milestone 4: Solver and Solvability Platform
 
 **Outcome:** The project gains a comprehensive deterministic solver platform
 that can reason about levels, replay candidate solutions through the real game

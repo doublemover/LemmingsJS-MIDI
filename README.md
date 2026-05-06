@@ -229,6 +229,7 @@ Keybindings are configurable in `keybindings.json`. The in-game defaults map to 
 
 ## Docs
 
+- Index: [docs/README.md](docs/README.md)
 - Usage: [docs/usage.md](docs/usage.md)
 - Offline tools: [docs/offline-tools.md](docs/offline-tools.md)
 - Exporting sprites: [docs/exporting-sprites.md](docs/exporting-sprites.md)
@@ -249,7 +250,8 @@ mode. Touch input still needs polish, so please file bugs for any issues you hit
 
 ## Roadmap
 
-See [docs/roadmap.md](docs/roadmap.md) for the consolidated roadmap and phases.
+See [docs/roadmap.md](docs/roadmap.md) for the active roadmap. Completed
+phases live in git history.
 
 ## Credits
 

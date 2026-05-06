@@ -16,6 +16,6 @@ Caches keep heavy data like replays and styles in memory so screens can switch q
 
 ## Helper utilities (`Prog.Base`, `Prog.Data`, `Prog.Tools` and `Prog.Voice`)
 
-`Prog.Base` defines enums and constants shared across the engine. `Prog.Data` loads resources such as graphics or data files. `Prog.Tools` collects assorted helper procedures used throughout the codebase. `Prog.Voice` implements the voice manager that announces events; see [Lemmix Voice Manager Overview](../../port-info/lemmix-voice.md) for details.
+`Prog.Base` defines enums and constants shared across the engine. `Prog.Data` loads resources such as graphics or data files. `Prog.Tools` collects assorted helper procedures used throughout the codebase. `Prog.Voice` implements the voice manager that announces events; see [Voice manager](voice-manager.md) for details.
 
 These modules hide platform specifics so the game logic can stay portable. The JavaScript port implements similar helpers to keep code organized.

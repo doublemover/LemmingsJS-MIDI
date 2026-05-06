@@ -1,5 +1,10 @@
 # LemmingsJS MCP Interface Spec (Playwright + Keyboard-First + In‑Memory Resources)
 
+Status: historical design reference. The shipped MCP behavior is summarized in
+[`README.md`](README.md), [`protocol-v2.md`](protocol-v2.md), and
+[`editor-apply.md`](editor-apply.md). Use this file for design background, not
+as the current call contract.
+
 This document defines a **practical MCP (Model Context Protocol) interface** for an agent to (1) control the LemmingsJS-MIDI game reliably using **existing keyboard shortcuts**, (2) **select a specific lemming by ID** and apply a skill, (3) query **structured state** (individual + aggregate lemming summaries), and (4) request **images** of the full game or subregions **on demand**, **every X ticks**, **as a sequence**, or **when a value changes**.
 
 It assumes the game is launched with the existing **E2E harness** enabled (`?e2e=1`), exposing `window.__E2E__` for state snapshots and deterministic time control.

@@ -54,3 +54,13 @@ and no MIDI UI.
 - Unit tests in `test/procgen-controller.test.js`,
   `test/procgen-terrain-stamper.test.js`, and
   `test/procgen-asset-manager.test.js` cover stability/perf-sensitive behavior.
+- `npm run capture:e2e:procgen` captures the procgen viewport, canvas/runtime
+  rects, and a sample world-space band into ignored `temp/e2e-captures/` for
+  visual inspection.
+
+## Productization status
+
+The current runtime is a deterministic procgen mode with terrain streaming,
+bounded tracking cleanup, and basic assist behavior. The active roadmap still
+tracks future productization work for stronger themed piece streaming,
+rightmost-viable frontier tracking, and solver-backed local challenge checks.

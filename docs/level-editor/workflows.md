@@ -28,3 +28,10 @@ intentionally brief so it can stay current.
 
 The Validation panel lists issues with quick-fix actions where possible. Fix
 errors before exporting.
+
+## Visual checks
+
+Use `npm run capture:e2e:editor` for a disposable desktop capture of the editor
+shell, canvas, palette, inspector, header rectangle, and viewport. The PNGs are
+written under ignored `temp/e2e-captures/` and can be attached manually to
+issues or review notes.
