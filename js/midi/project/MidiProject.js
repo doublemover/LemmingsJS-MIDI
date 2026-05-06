@@ -26,6 +26,7 @@ const DIRECT_MAPPING_KEYS = Object.freeze([
 
 const SOURCE_KINDS = Object.freeze(['sfx', 'trigger', 'midiFlag', 'system', 'procgen']);
 const CLIP_TYPES = Object.freeze(['stepPattern', 'chord', 'arp']);
+const ARP_MODES = Object.freeze(['up', 'down', 'updown']);
 const AUTOMATION_SCOPES = Object.freeze(['global', 'track']);
 const AUTOMATION_AXES = Object.freeze(['x', 'y', 'xy']);
 const AUTOMATION_AXIS_OPS = Object.freeze(['add', 'sub', 'mul', 'div']);
@@ -149,6 +150,16 @@ const createDefaultMidiStep = (index = 0, overrides = {}) => ({
   probability: overrides.probability ?? 1
 });
 
+const sanitizeClipArp = (arp) => {
+  if (!isPlainObject(arp)) return null;
+  const clean = cloneObject(arp);
+  return {
+    ...clean,
+    mode: ARP_MODES.includes(clean.mode) ? clean.mode : 'up',
+    pattern: isPlainObject(clean.pattern) ? cloneObject(clean.pattern) : null
+  };
+};
+
 const createDefaultMidiClip = (overrides = {}) => {
   const lengthSteps = clamp(toInteger(overrides.lengthSteps, 16), 1, 256);
   const steps = Array.isArray(overrides.steps) && overrides.steps.length
@@ -160,7 +171,7 @@ const createDefaultMidiClip = (overrides = {}) => {
     type: CLIP_TYPES.includes(overrides.type) ? overrides.type : 'stepPattern',
     lengthSteps,
     steps,
-    arp: isPlainObject(overrides.arp) ? cloneObject(overrides.arp) : null
+    arp: sanitizeClipArp(overrides.arp)
   };
 };
 
@@ -442,7 +453,7 @@ const sanitizeClip = (clip, fallbackIndex, usedIds) => {
     type,
     lengthSteps,
     steps,
-    arp: isPlainObject(clip.arp) ? cloneObject(clip.arp) : null
+    arp: sanitizeClipArp(clip.arp)
   };
 };
 
@@ -1333,6 +1344,7 @@ function projectToMidiConfig(project, factoryConfig = {}) {
 export {
   AUTOMATION_AXES,
   AUTOMATION_TARGETS,
+  ARP_MODES,
   DIRECT_MAPPING_KEYS,
   MAX_DURATION_TICKS,
   MIDI_PROJECT_EXPORT_KIND,

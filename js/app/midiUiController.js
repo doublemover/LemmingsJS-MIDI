@@ -2,6 +2,7 @@ import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
 import {
   AUTOMATION_AXES,
   AUTOMATION_TARGETS,
+  ARP_MODES,
   createDefaultMidiStep,
   createEmptyDirectMapping,
   createMidiProjectExportPayload,
@@ -1494,8 +1495,14 @@ const createMidiUiController = ({
 
   const renderClipInspector = () => {
     const clip = selectedClip();
+    const arpMode = document?.getElementById('midiClipArpMode');
+    const arpModeField = document?.getElementById('midiClipArpModeField');
+    const isArpClip = clip?.type === 'arp';
     setInputValue(document?.getElementById('midiClipName'), clip?.name);
     setInputValue(document?.getElementById('midiClipType'), clip?.type);
+    setInputValue(arpMode, clip?.arp?.mode || 'up');
+    if (arpMode) arpMode.disabled = !isArpClip;
+    if (arpModeField) arpModeField.style.display = isArpClip ? '' : 'none';
     setInputValue(document?.getElementById('midiClipLengthSteps'), clip?.lengthSteps);
     renderRecordPanel();
     renderStepPatternGrid(clip);
@@ -2063,6 +2070,10 @@ const createMidiUiController = ({
     });
     bindById('midiClipName', 'change', event => updateSelectedClip({ name: event.target.value }));
     bindById('midiClipType', 'change', event => updateSelectedClip({ type: event.target.value }));
+    bindById('midiClipArpMode', 'change', event => {
+      const mode = ARP_MODES.includes(event.target.value) ? event.target.value : 'up';
+      updateSelectedClip({ arp: { ...(selectedClip()?.arp || {}), mode } });
+    });
     bindById('midiClipLengthSteps', 'change', event => updateSelectedClip({ lengthSteps: Number(event.target.value) || 16 }));
     bindById('midiRecordButton', 'click', () => startRecording());
     bindById('midiRecordCommitButton', 'click', () => commitRecording());

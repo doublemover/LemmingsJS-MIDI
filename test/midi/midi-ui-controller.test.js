@@ -76,6 +76,8 @@ const registerSequencerDom = (doc) => {
     midiEnvRelease: 'input',
     midiClipName: 'input',
     midiClipType: 'select',
+    midiClipArpModeField: 'label',
+    midiClipArpMode: 'select',
     midiClipLengthSteps: 'input',
     midiRecordPanel: 'div',
     midiRecordStatus: 'div',
@@ -98,6 +100,7 @@ const registerSequencerDom = (doc) => {
   doc.getElementById('midiSourceAssignFilter').value = 'all';
   doc.getElementById('midiSourceModeSelect').value = 'direct';
   doc.getElementById('midiClipType').value = 'stepPattern';
+  doc.getElementById('midiClipArpMode').value = 'up';
   doc.getElementById('midiTemplateSelect').value = 'midi-mapping';
 };
 
@@ -247,6 +250,32 @@ describe('midiUiController sequencer', function() {
     const patched = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(patched.transport.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
     expect(view.projectConfigs.at(-1).timing.timeSignature).to.deep.equal({ beats: 5, unit: 16 });
+  });
+
+  it('edits arp clip mode and lowers it into runtime config', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', type: 'arp', lengthSteps: 2 } });
+    controller.dispatchProjectIntent({ type: 'clip.step.update', clipId: 'riff', stepIndex: 0, patch: { note: 64 } });
+    controller.dispatchProjectIntent({ type: 'clip.step.update', clipId: 'riff', stepIndex: 1, patch: { note: 67 } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+
+    const arpField = doc.getElementById('midiClipArpModeField');
+    const arpMode = doc.getElementById('midiClipArpMode');
+    expect(arpField.style.display).to.equal('');
+    expect(arpMode.disabled).to.equal(false);
+    expect(arpMode.value).to.equal('up');
+
+    arpMode.value = 'updown';
+    arpMode.dispatchEvent({ type: 'change', target: arpMode });
+
+    const clip = controller.getProject().clips.find(entry => entry.id === 'riff');
+    expect(clip.arp).to.include({ mode: 'updown' });
+    expect(view.projectConfigs.at(-1).sfx['1'].arp).to.include({ enabled: true, mode: 'updown', length: 2 });
+
+    controller.dispatchProjectIntent({ type: 'clip.update', clipId: 'riff', patch: { type: 'stepPattern' } });
+    expect(arpField.style.display).to.equal('none');
+    expect(arpMode.disabled).to.equal(true);
   });
 
   it('edits modulation controls and exports runtime automation config', function() {

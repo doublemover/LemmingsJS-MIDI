@@ -29,8 +29,9 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Modulation: set global intensity, accent, view pan, and add, edit, or remove
   compact position lanes for note, velocity, pan, duration, timbre, and envelope
   targets.
-- Clips: create reusable step, chord, or arp clips and edit compact step
-  patterns with note, velocity, probability, hold, and tie controls.
+- Clips: create reusable step, chord, or arp clips, set arp direction, and edit
+  compact step patterns with note, velocity, probability, hold, and tie
+  controls.
 - Assignment: route the selected source to a selected track, or switch it from
   direct mode to clip mode and assign a selected clip.
 - Inspector: edit the selected source direct mapping with note, degree, octave,

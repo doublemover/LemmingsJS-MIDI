@@ -26,10 +26,10 @@ priority, and voice budget. Sources carry a source kind/key, label, track route,
 direct-or-clip mode, direct mapping, and optional clip id.
 
 Clips currently support compact step, chord, and arp payloads. Step data stores
-note, velocity, optional duration, probability, hold, and tie. The first clip
-runtime adapter lowers playable steps into existing direct mapping fields:
-simultaneous clip notes become `notes`, and arp clips add the existing `arp`
-mapping shape.
+note, velocity, optional duration, probability, hold, and tie. Arp payloads
+store a sanitized direction mode. The first clip runtime adapter lowers
+playable steps into existing direct mapping fields: simultaneous clip notes
+become `notes`, and arp clips add the existing `arp` mapping shape.
 
 Automation lanes are project-owned positional mappings. The factory template's
 `position.mappings` entries import as automation lanes, and the adapter lowers
