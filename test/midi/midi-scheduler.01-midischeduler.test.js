@@ -34,6 +34,46 @@ describe('MidiScheduler 1', function() {
     });
   });
 
+  it('routes notes and panic to registered track outputs', function() {
+    const projectCalls = [];
+    const trackCalls = [];
+    const projectOutput = makeOutput([1], projectCalls, 'project-out');
+    const trackOutput = makeOutput([1], trackCalls, 'track-out');
+    withFakeClockAndPerformance((clock) => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(projectOutput);
+      scheduler.setOutputs([projectOutput, trackOutput]);
+      scheduler.setTickMs(10);
+
+      const ok = scheduler.sendNote({
+        note: 60,
+        velocity: 64,
+        durationTicks: 2,
+        outputId: 'track-out'
+      });
+
+      expect(ok).to.equal(true);
+      expect(projectCalls.some(call => call.type === 'noteOn')).to.equal(false);
+      expect(trackCalls.some(call => call.type === 'noteOn' && call.note === 60)).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 60)).to.equal(true);
+
+      clock.tick(25);
+      expect(scheduler._activeNotes.size).to.equal(0);
+
+      projectCalls.length = 0;
+      trackCalls.length = 0;
+      expect(scheduler.sendNote({ note: 62, durationTicks: 0, outputId: 'missing-out' })).to.equal(false);
+      expect(projectCalls.length).to.equal(0);
+      expect(trackCalls.length).to.equal(0);
+
+      scheduler.sendNote({ note: 64, durationTicks: 0 });
+      scheduler.sendNote({ note: 65, durationTicks: 0, outputId: 'track-out' });
+      scheduler.allNotesOff();
+      expect(projectCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    });
+  });
+
   it('swaps attack and release velocity when reversing', function() {
     const calls = [];
     const output = makeOutput([1], calls);

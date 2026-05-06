@@ -23,6 +23,10 @@ const midiEventRouterLifecycleMethods = {
     this.scheduler.setOutput(output);
   },
 
+  setOutputs(outputs) {
+    this.scheduler.setOutputs?.(outputs);
+  },
+
   attach(soundBus, context = {}) {
     if (this.soundBus?.onEvent) {
       this.soundBus.onEvent.off(this._boundOnEvent);

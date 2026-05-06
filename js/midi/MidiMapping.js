@@ -300,6 +300,8 @@ class MidiMapping {
       pitchBend,
       frequencyHz,
       channel: sfx.channel ?? null,
+      outputId: sfx.outputId ?? null,
+      trackId: sfx.trackId ?? null,
       arp: sfx.arp ?? null
     };
   }

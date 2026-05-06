@@ -613,6 +613,7 @@ describe('midiUiController sequencer', function() {
 
   it('refreshes mocked devices, auditions through the selected track, and panics', function() {
     const sent = [];
+    let registeredOutputs = [];
     const webMidi = {
       enabled: true,
       inputs: [{ id: 'in-1', name: 'Input 1', addListener() {}, removeListener() {} }],
@@ -627,6 +628,9 @@ describe('midiUiController sequencer', function() {
       lemmings: {
         midiRouter: {
           scheduler: {
+            setOutputs(outputs) {
+              registeredOutputs = outputs;
+            },
             sendNote(spec, meta) {
               sent.push({ spec, meta });
               return true;
@@ -649,6 +653,7 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutSelect').value).to.equal('out-1');
     expect(doc.getElementById('midiTrackOutputSelect').children.map(option => option.value)).to.include('out-1');
     expect(view.midiOut).to.equal(webMidi.outputs[0]);
+    expect(registeredOutputs).to.deep.equal(webMidi.outputs);
 
     const trackOutput = doc.getElementById('midiTrackOutputSelect');
     trackOutput.value = 'out-1';
@@ -658,7 +663,7 @@ describe('midiUiController sequencer', function() {
 
     expect(controller.audition()).to.equal(true);
     const note = sent.find(entry => entry.spec);
-    expect(note.spec).to.include({ note: 60, velocity: 80, durationTicks: 4, channel: 4 });
+    expect(note.spec).to.include({ note: 60, velocity: 80, durationTicks: 4, channel: 4, outputId: 'out-1' });
     expect(note.meta).to.include({ eventType: 'audition', sourceId: 'sfx-1', trackId: 'track-1' });
 
     expect(controller.panic()).to.equal(true);

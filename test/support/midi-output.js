@@ -7,8 +7,12 @@ const makeChannel = (id, calls) => ({
   sendAllNotesOff() { calls.push({ type: 'allNotesOff', id }); }
 });
 
-const makeOutput = (ids, calls) => ({
-  channels: Object.fromEntries(ids.map((id) => [id, makeChannel(id, calls)]))
-});
+const makeOutput = (ids, calls, outputId = null) => {
+  const output = {
+    channels: Object.fromEntries(ids.map((id) => [id, makeChannel(id, calls)]))
+  };
+  if (outputId) output.id = outputId;
+  return output;
+};
 
 export { makeChannel, makeOutput };

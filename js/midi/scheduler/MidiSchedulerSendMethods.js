@@ -21,11 +21,14 @@ const midiSchedulerSendMethods = {
         canMeasurePerformance();
     const perfStart = perfEnabled ? performance.now() : 0;
     try {
-      if (!this.output || !spec || !Number.isFinite(spec.note)) return false;
+      if (!spec || !Number.isFinite(spec.note)) return false;
+      const outputId = this._resolveOutputId?.(spec.outputId) ?? null;
+      const output = this._resolveOutput ? this._resolveOutput(outputId) : this.output;
+      if (!output) return false;
       const channelNumber = this.config.mpe?.enabled
-        ? this._allocateChannel()
+        ? this._allocateChannel(outputId)
         : normalizeChannelNumber(spec.channel ?? this.config.defaultChannel, 1);
-      const channel = this.output.channels?.[channelNumber];
+      const channel = output.channels?.[channelNumber];
       if (!channel) return false;
 
       const sendTimeMs = Number.isFinite(spec.timeMs) ? spec.timeMs : this._nowMs();
@@ -73,6 +76,7 @@ const midiSchedulerSendMethods = {
           note: spec.note,
           velocity: attackVelocity,
           channel: channelNumber,
+          outputId,
           timeMs: sendTimeMs
         };
       }
@@ -82,11 +86,14 @@ const midiSchedulerSendMethods = {
         note: spec.note,
         startedAt,
         token,
+        outputId,
         mpe: !!this.config.mpe?.enabled
       });
       if (this.config.mpe?.enabled) {
-        this._activeByChannel.set(channelNumber, {
+        this._activeByChannel.set(this._activeChannelKey(channelNumber, outputId), {
+          channel: channelNumber,
           note: spec.note,
+          outputId,
           startedAt,
           token
         });
@@ -100,6 +107,7 @@ const midiSchedulerSendMethods = {
           timeMs: offTimeMs,
           channel: channelNumber,
           note: spec.note,
+          outputId,
           token,
           mpe: !!this.config.mpe?.enabled
         });
@@ -167,14 +175,14 @@ const midiSchedulerSendMethods = {
 
   _processNoteOffs() {
     this._noteOffTimerId = 0;
-    if (!this.output || !this._noteOffs.length) return;
+    if (!this.hasAnyOutput() || !this._noteOffs.length) return;
     const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
     let idx = 0;
     while (idx < this._noteOffs.length && this._noteOffs[idx].timeMs <= now + 1) {
       const entry = this._noteOffs[idx];
       const active = this._activeNotes.get(entry.token);
       if (active && entry.mpe) {
-        this._activeByChannel.delete(entry.channel);
+        this._activeByChannel.delete(this._activeChannelKey(entry.channel, active.outputId ?? entry.outputId));
       }
       if (active) this._activeNotes.delete(entry.token);
       idx++;
@@ -186,7 +194,7 @@ const midiSchedulerSendMethods = {
   },
 
   allNotesOff() {
-    if (!this.output) return;
+    if (!this.hasAnyOutput()) return;
     const mpe = this.config.mpe;
     let channels;
     if (mpe?.enabled) {
@@ -198,11 +206,13 @@ const midiSchedulerSendMethods = {
     } else {
       channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
     }
-    for (const ch of channels) {
-      const channel = this.output.channels?.[ch];
-      if (!channel) continue;
-      channel.sendAllNotesOff?.();
-      channel.sendPitchBend?.(0);
+    for (const output of this._listOutputs()) {
+      for (const ch of channels) {
+        const channel = output.channels?.[ch];
+        if (!channel) continue;
+        channel.sendAllNotesOff?.();
+        channel.sendPitchBend?.(0);
+      }
     }
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {
@@ -229,8 +239,8 @@ const midiSchedulerSendMethods = {
   },
 
   dispose() {
-    for (const [ch] of this._activeByChannel.entries()) {
-      this._stopActiveChannel(ch);
+    for (const [ch, active] of this._activeByChannel.entries()) {
+      this._stopActiveChannel(active?.channel ?? ch, active?.outputId ?? null);
     }
     this._activeByChannel.clear();
     this._activeNotes.clear();
@@ -242,6 +252,7 @@ const midiSchedulerSendMethods = {
       this._noteOffTimerId = 0;
     }
     this.output = null;
+    this._outputsById.clear();
   },
 };
 

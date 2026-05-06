@@ -287,6 +287,36 @@ describe('MidiEventRouter 7', function() {
     expect(sent[0].durationTicks).to.equal(1);
   });
 
+  it('forwards track output metadata to the scheduler', function() {
+    const sent = [];
+    const metas = [];
+    const scheduler = makeSchedulerStub(sent);
+    scheduler.hasAnyOutput = () => true;
+    scheduler.hasOutput = outputId => outputId === 'track-out';
+    scheduler.sendNote = (spec, meta = {}) => {
+      sent.push({ ...spec });
+      metas.push({ ...meta });
+    };
+    const { router } = makeRouter({
+      enabled: true,
+      sfx: {
+        '1': {
+          note: 60,
+          outputId: 'track-out',
+          trackId: 'track-1'
+        }
+      }
+    }, { scheduler });
+    router._shouldSend = () => true;
+    router._nowMs = () => 0;
+
+    router._onEvent({ sfxId: 1, tick: 1, timeMs: 0, tps: 50 });
+
+    expect(sent).to.have.lengthOf(1);
+    expect(sent[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
+    expect(metas[0]).to.include({ outputId: 'track-out', trackId: 'track-1' });
+  });
+
   it('covers attach cleanup and tick defaults', function() {
     const { router: routerA, mapping } = makeRouter({ timing: { bpmBase: 10 } });
     const routerB = new MidiEventRouter({ timing: { bpmBase: 120 } });

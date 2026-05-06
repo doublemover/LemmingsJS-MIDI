@@ -1093,23 +1093,14 @@ function detectMidiProjectConflicts(project = {}, options = {}) {
         message: `Track ${track.name} channel ${rawTrack.channel} will be clamped to ${track.channel}.`
       });
     }
-    if (track.outputId) {
+    if (track.outputId && availableOutputIds && !availableOutputIds.has(track.outputId)) {
       issues.push({
-        severity: 'info',
-        code: 'track_output_ignored',
+        severity: 'warning',
+        code: 'invalid_track_output',
         trackId: track.id,
         path: ['tracks', index, 'outputId'],
-        message: `Track ${track.name} stores output ${track.outputId}; phase 1 playback still uses the selected project output.`
+        message: `Track output ${track.outputId} is not available.`
       });
-      if (availableOutputIds && !availableOutputIds.has(track.outputId)) {
-        issues.push({
-          severity: 'warning',
-          code: 'invalid_track_output',
-          trackId: track.id,
-          path: ['tracks', index, 'outputId'],
-          message: `Track output ${track.outputId} is not available.`
-        });
-      }
     }
   });
 

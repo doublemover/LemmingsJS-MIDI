@@ -143,8 +143,11 @@ const gameViewMidiMethods = {
       const Router = getDependency('MidiEventRouter', MidiEventRouter);
       this.midiRouter = new Router(this._midiMapping);
     }
+    const webMidi = this._getWebMidi();
+    if (webMidi?.enabled) {
+      this.midiRouter?.setOutputs?.(webMidi.outputs || []);
+    }
     if (!this._midiOut) {
-      const webMidi = this._getWebMidi();
       if (webMidi?.enabled && webMidi.outputs?.length) {
         this._midiOut = webMidi.outputs[0];
       }

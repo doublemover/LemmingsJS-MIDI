@@ -340,6 +340,7 @@ describe('MidiProject', function() {
 
     const codes = report.issues.map(issue => issue.code);
     expect(report.ok).to.equal(false);
+    expect(codes).to.not.include('track_output_ignored');
     expect(codes).to.include.members([
       'duplicate_source_key',
       'missing_track',
