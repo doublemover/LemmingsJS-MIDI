@@ -344,6 +344,20 @@
               <input id="midiGlobalAccent" type="number" min="0" max="4" step="0.05" />
             </label>
             <label class="midi-field midi-field--compact">
+              <span>Density Win</span>
+              <input id="midiGlobalDensityWindow" type="number" min="0" max="960" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Dur Scale</span>
+              <input id="midiGlobalDurationScale" type="number" min="0" max="1" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--toggle midi-field--compact">
+              <span>View Pan</span>
+              <input id="midiGlobalViewPan" type="checkbox" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
               <span>Dur</span>
               <input id="midiGlobalDurationDefault" type="number" min="1" max="960" step="1" />
             </label>
@@ -354,10 +368,6 @@
             <label class="midi-field midi-field--compact">
               <span>Max Dur</span>
               <input id="midiGlobalDurationMax" type="number" min="1" max="960" step="1" />
-            </label>
-            <label class="midi-field midi-field--toggle midi-field--compact">
-              <span>View Pan</span>
-              <input id="midiGlobalViewPan" type="checkbox" />
             </label>
             <label class="midi-field midi-field--compact">
               <span>Attack</span>

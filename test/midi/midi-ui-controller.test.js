@@ -96,6 +96,8 @@ const registerSequencerDom = (doc) => {
     midiGlobalIntensity: 'input',
     midiGlobalAccent: 'input',
     midiGlobalViewPan: 'input',
+    midiGlobalDensityWindow: 'input',
+    midiGlobalDurationScale: 'input',
     midiGlobalDurationDefault: 'input',
     midiGlobalDurationMin: 'input',
     midiGlobalDurationMax: 'input',
@@ -380,6 +382,12 @@ describe('midiUiController sequencer', function() {
     const accent = doc.getElementById('midiGlobalAccent');
     accent.value = '0.8';
     accent.dispatchEvent({ type: 'change', target: accent });
+    const densityWindow = doc.getElementById('midiGlobalDensityWindow');
+    densityWindow.value = '12';
+    densityWindow.dispatchEvent({ type: 'change', target: densityWindow });
+    const durationScale = doc.getElementById('midiGlobalDurationScale');
+    durationScale.value = '0.25';
+    durationScale.dispatchEvent({ type: 'change', target: durationScale });
     const durationDefault = doc.getElementById('midiGlobalDurationDefault');
     durationDefault.value = '10';
     durationDefault.dispatchEvent({ type: 'change', target: durationDefault });
@@ -413,7 +421,7 @@ describe('midiUiController sequencer', function() {
     const stored = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
     expect(stored.tracks[0].velocityScale).to.equal(0.5);
     expect(stored.global.velocityRange.default).to.equal(96);
-    expect(stored.global.density.velocityBoost).to.equal(0.8);
+    expect(stored.global.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
     expect(stored.global.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(stored.global.position.viewPan).to.equal(true);
     expect(stored.global.envelope).to.include({ attack: 1.25, release: 0.75 });
@@ -424,17 +432,23 @@ describe('midiUiController sequencer', function() {
 
     const runtime = view.projectConfigs.at(-1);
     expect(runtime.velocityRange.default).to.equal(96);
-    expect(runtime.density.velocityBoost).to.equal(0.8);
+    expect(runtime.density).to.include({ velocityBoost: 0.8, windowTicks: 12, durationScale: 0.25 });
     expect(runtime.durationTicks).to.include({ default: 10, min: 2, max: 32 });
     expect(runtime.position.viewPan).to.equal(true);
     expect(runtime.envelope).to.include({ attack: 1.25, release: 0.75 });
     expect(runtime.position.mappings[0]).to.include({ target: 'note', axis: 'x', axisOp: 'mul', enabled: true });
     expect(runtime.sfx['1'].velocity).to.equal(48);
 
-    controller.applyRuntimePatch({ durationTicks: { default: 12, min: 3, max: 48 }, envelope: { sustain: 1.5 } });
+    controller.applyRuntimePatch({
+      density: { windowTicks: 18, durationScale: 0.75 },
+      durationTicks: { default: 12, min: 3, max: 48 },
+      envelope: { sustain: 1.5 }
+    });
     const afterPatch = JSON.parse(win.localStorage.getItem(PROJECT_STORAGE_KEY));
+    expect(afterPatch.global.density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(afterPatch.global.durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(afterPatch.global.envelope.sustain).to.equal(1.5);
+    expect(view.projectConfigs.at(-1).density).to.include({ windowTicks: 18, durationScale: 0.75 });
     expect(view.projectConfigs.at(-1).durationTicks).to.include({ default: 12, min: 3, max: 48 });
     expect(view.projectConfigs.at(-1).envelope.sustain).to.equal(1.5);
 

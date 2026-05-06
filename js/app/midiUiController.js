@@ -1164,12 +1164,13 @@ const createMidiUiController = ({
       });
     }
     project = current;
-    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.envelope || patch.mpe || patch.limits || patch.reverse) {
+    if (patch.scale || patch.noteRange || patch.velocityRange || patch.durationTicks || patch.density || patch.envelope || patch.mpe || patch.limits || patch.reverse) {
       patchGlobal({
         ...(patch.scale ? { scale: { ...current.global.scale, ...patch.scale } } : {}),
         ...(patch.noteRange ? { noteRange: { ...current.global.noteRange, ...patch.noteRange } } : {}),
         ...(patch.velocityRange ? { velocityRange: { ...current.global.velocityRange, ...patch.velocityRange } } : {}),
         ...(patch.durationTicks ? { durationTicks: { ...current.global.durationTicks, ...patch.durationTicks } } : {}),
+        ...(patch.density ? { density: { ...current.global.density, ...patch.density } } : {}),
         ...(patch.envelope ? { envelope: { ...current.global.envelope, ...patch.envelope } } : {}),
         ...(patch.mpe ? { mpe: { ...current.global.mpe, ...patch.mpe } } : {}),
         ...(patch.limits ? { limits: { ...current.global.limits, ...patch.limits } } : {}),
@@ -1648,6 +1649,8 @@ const createMidiUiController = ({
     const current = ensureProject();
     setInputValue(document?.getElementById('midiGlobalIntensity'), current.global.velocityRange.default);
     setInputValue(document?.getElementById('midiGlobalAccent'), current.global.density.velocityBoost);
+    setInputValue(document?.getElementById('midiGlobalDensityWindow'), current.global.density.windowTicks);
+    setInputValue(document?.getElementById('midiGlobalDurationScale'), current.global.density.durationScale);
     setChecked(document?.getElementById('midiGlobalViewPan'), current.global.position.viewPan);
     setInputValue(document?.getElementById('midiGlobalDurationDefault'), current.global.durationTicks.default);
     setInputValue(document?.getElementById('midiGlobalDurationMin'), current.global.durationTicks.min);
@@ -2116,10 +2119,18 @@ const createMidiUiController = ({
       const velocityRange = { ...current.global.velocityRange, default: Number(event.target.value) || current.global.velocityRange.default };
       updateGlobal({ velocityRange });
     });
-    bindById('midiGlobalAccent', 'change', event => {
+    const updateGlobalDensity = (patch) => {
       const current = ensureProject();
-      const density = { ...current.global.density, velocityBoost: Number(event.target.value) || 0 };
-      updateGlobal({ density });
+      updateGlobal({ density: { ...current.global.density, ...patch } });
+    };
+    bindById('midiGlobalAccent', 'change', event => {
+      updateGlobalDensity({ velocityBoost: Number(event.target.value) || 0 });
+    });
+    bindById('midiGlobalDensityWindow', 'change', event => {
+      updateGlobalDensity({ windowTicks: Number(event.target.value) || 0 });
+    });
+    bindById('midiGlobalDurationScale', 'change', event => {
+      updateGlobalDensity({ durationScale: Number(event.target.value) || 0 });
     });
     bindById('midiGlobalViewPan', 'change', event => {
       const current = ensureProject();
