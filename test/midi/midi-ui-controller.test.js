@@ -671,6 +671,52 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('not valid JSON');
   });
 
+  it('runs template operations from keyboard shortcuts', function() {
+    const { controller, doc, view } = createControllerHarness();
+    controller.bindMidiUi();
+    const workspace = doc.getElementById('midiSequencerWorkspace');
+    const importInput = doc.getElementById('midiProjectImportInput');
+    let importClicks = 0;
+    let prevented = 0;
+    let stopped = 0;
+    importInput.click = () => {
+      importClicks += 1;
+    };
+    const dispatchShortcut = (target, key) => target.dispatchEvent({
+      type: 'keydown',
+      key,
+      ctrlKey: true,
+      preventDefault() {
+        prevented += 1;
+      },
+      stopPropagation() {
+        stopped += 1;
+      }
+    });
+
+    dispatchShortcut(workspace, 's');
+    const template = controller.getProjectTemplates()[0];
+    expect(template.name).to.equal('Factory MIDI Project Template');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Saved template Factory MIDI Project Template');
+
+    dispatchShortcut(workspace, 'e');
+    expect(view.downloads.at(-1).filename).to.equal('factory-midi-project.lemmings-midi-project.json');
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Exported project');
+
+    dispatchShortcut(workspace, 'i');
+    expect(importClicks).to.equal(1);
+
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 83 } });
+    const templateSelect = doc.getElementById('midiTemplateSelect');
+    templateSelect.value = template.id;
+    dispatchShortcut(templateSelect, 'Enter');
+    expect(controller.getProject()).to.include({ name: 'Factory MIDI Project Template', templateId: template.id });
+    expect(controller.getProject().sources[0].mapping.note).to.equal(60);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Reset project from Factory MIDI Project Template');
+    expect(prevented).to.equal(4);
+    expect(stopped).to.equal(4);
+  });
+
   it('learns a direct source note through the MIDI input capture hook', function() {
     const captureCalls = [];
     const fakeInputController = {

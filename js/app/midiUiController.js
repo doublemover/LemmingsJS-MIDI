@@ -2169,6 +2169,12 @@ const createMidiUiController = ({
       updateGlobal({ reverse: { ...current.global.reverse, allNotesOffOnToggle: !!event.target.checked } });
     });
     bindById('midiTemplateSelect', 'change', () => setStatus('Template ready'));
+    bindById('midiTemplateSelect', 'keydown', event => {
+      if (event.key !== 'Enter' || !(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+      event.preventDefault?.();
+      event.stopPropagation?.();
+      resetProject();
+    });
     bindById('midiTemplateSaveButton', 'click', () => saveProjectTemplate());
     bindById('midiProjectExportButton', 'click', () => exportProject());
     bindById('midiProjectImportButton', 'click', () => document?.getElementById('midiProjectImportInput')?.click?.());
@@ -2512,9 +2518,24 @@ const createMidiUiController = ({
     bindById('midiRecordCommitButton', 'click', () => commitRecording());
     bindById('midiRecordCancelButton', 'click', () => cancelRecording());
     bindById('midiSequencerWorkspace', 'keydown', event => {
-      if (event.key !== 'Escape' || !cancelActiveCapture()) return;
+      if (event.key === 'Escape' && cancelActiveCapture()) {
+        event.preventDefault?.();
+        event.stopPropagation?.();
+        return;
+      }
+      if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return;
+      const key = String(event.key || '').toLowerCase();
+      const importInput = () => document?.getElementById('midiProjectImportInput')?.click?.();
+      const shortcutActions = {
+        s: saveProjectTemplate,
+        e: exportProject,
+        i: importInput
+      };
+      const action = shortcutActions[key];
+      if (!action) return;
       event.preventDefault?.();
       event.stopPropagation?.();
+      action();
     });
     setMidiUiHook();
     render();
