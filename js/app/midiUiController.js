@@ -879,8 +879,7 @@ const createMidiUiController = ({
   };
 
   const startRecording = () => {
-    const clipId = ensureSelectedClipId();
-    const clip = ensureProject().clips.find(entry => entry.id === clipId);
+    const clip = selectedClip();
     if (!clip) {
       renderRecordPanel();
       return false;

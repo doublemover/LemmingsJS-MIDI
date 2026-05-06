@@ -801,6 +801,24 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Recorded 1 note into One Step');
   });
 
+  it('does not create clips when recording without a selected clip', function() {
+    const fakeInputController = {
+      setNoteCapture() {},
+      setMessageCapture() {
+        throw new Error('record capture should not start');
+      },
+      attach() {},
+      detach() {}
+    };
+    const { controller, doc } = createControllerHarness();
+    controller.setMidiInputController(fakeInputController);
+    controller.bindMidiUi();
+
+    expect(controller.startRecording()).to.equal(false);
+    expect(controller.getProject().clips).to.have.lengthOf(0);
+    expect(doc.getElementById('midiRecordStatus').textContent).to.equal('Create a clip before recording.');
+  });
+
   it('cancels recording and clears message capture on dispose', function() {
     const messageCaptureCalls = [];
     const fakeInputController = {
