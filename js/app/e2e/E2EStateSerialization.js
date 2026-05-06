@@ -417,9 +417,9 @@ const getGameState = (view) => {
       height: manager.miniMap.height,
       scaleX: manager.miniMap.scaleX,
       scaleY: manager.miniMap.scaleY,
-      liveDotCount: manager.miniMap.liveDots?.length
-        ? manager.miniMap.liveDots.length / 2
-        : 0,
+      liveDotCount: Number.isFinite(manager.miniMap.liveDotsLength)
+        ? manager.miniMap.liveDotsLength / 2
+        : (manager.miniMap.liveDots?.length ? manager.miniMap.liveDots.length / 2 : 0),
       deadCount: manager.miniMap.deadCount ?? 0,
       selectedDot: manager.miniMap.selectedDot || null
     }

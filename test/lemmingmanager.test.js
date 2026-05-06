@@ -115,6 +115,20 @@ describe('LemmingManager core behavior', function() {
     expect(mm.dots.length).to.equal(2);
   });
 
+  it('refreshes minimap dots down to an empty active set', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    const mm = makeMiniMap();
+    manager.setMiniMap(mm);
+    manager.addLemming(10, 10);
+    manager.refreshMiniMapDots();
+    expect(mm.dots.length).to.equal(2);
+
+    manager.lemmings.length = 0;
+    manager.activeLemmings.length = 0;
+    manager.refreshMiniMapDots();
+    expect(mm.dots.length).to.equal(0);
+  });
+
   it('processes super lemmings twice per tick', function() {
     const { manager } = makeManager({
       width: 40,

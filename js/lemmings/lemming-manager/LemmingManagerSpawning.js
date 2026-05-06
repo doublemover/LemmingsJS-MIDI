@@ -42,6 +42,47 @@ const lemmingManagerSpawningMethods = {
     this.miniMap = miniMap;
   },
 
+  refreshMiniMapDots() {
+    if (!this.miniMap) return false;
+    const lems = this.activeLemmings;
+    const lemsCount = lems.length;
+    if (this._minimapDotBuffer.length < lemsCount * 2) {
+      this._minimapDotBuffer = new Uint8Array(lemsCount * 2);
+    }
+    const dots = this._minimapDotBuffer;
+    const visited = this._mmVisited;
+    let visitStamp = (this._mmVisitStamp + 1) & 0xffff;
+    if (visitStamp === 0) {
+      visited.fill(0);
+      visitStamp = 1;
+    }
+    this._mmVisitStamp = visitStamp;
+    const scaleX = this.miniMap.scaleX;
+    const scaleY = this.miniMap.scaleY;
+    let idx = 0;
+    let hasSelectedDot = false;
+    for (let i = 0; i < lems.length; i += 1) {
+      const lem = lems[i];
+      if (lem.removed || lem.disabled) continue;
+      const x = (lem.x * scaleX) | 0;
+      const y = (lem.y * scaleY) | 0;
+      if (lem.id === this.selectedIndex) {
+        this._selectedMiniMapDot[0] = x;
+        this._selectedMiniMapDot[1] = y;
+        hasSelectedDot = true;
+      }
+      const key = (y << 8) | x;
+      if (visited[key] === visitStamp) continue;
+      visited[key] = visitStamp;
+      dots[idx++] = x;
+      dots[idx++] = y;
+    }
+    this.minimapDots = dots;
+    this.miniMap.setLiveDots(this.minimapDots, idx);
+    this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
+    return true;
+  },
+
   _addActiveLemming(lem) {
     lem._activeIndex = this.activeLemmings.length;
     this.activeLemmings.push(lem);
@@ -168,41 +209,7 @@ const lemmingManagerSpawningMethods = {
         app.laggedOut = count;
       }
       if (this.miniMap && ((++this.mmTickCounter % 10) === 0)) {
-        const lemsCount = lems.length;
-        if (this._minimapDotBuffer.length < lemsCount * 2) {
-          this._minimapDotBuffer = new Uint8Array(lemsCount * 2);
-        }
-        const dots = this._minimapDotBuffer;
-        const visited = this._mmVisited;
-        let visitStamp = (this._mmVisitStamp + 1) & 0xffff;
-        if (visitStamp === 0) {
-          visited.fill(0);
-          visitStamp = 1;
-        }
-        this._mmVisitStamp = visitStamp;
-        const scaleX = this.miniMap.scaleX;
-        const scaleY = this.miniMap.scaleY;
-        let idx = 0;
-        let hasSelectedDot = false;
-        for (let i = 0; i < lems.length; i += 1) {
-          const lem = lems[i];
-          if (lem.removed || lem.disabled) continue;
-          const x = (lem.x * scaleX) | 0;
-          const y = (lem.y * scaleY) | 0;
-          if (lem.id === this.selectedIndex) {
-            this._selectedMiniMapDot[0] = x;
-            this._selectedMiniMapDot[1] = y;
-            hasSelectedDot = true;
-          }
-          const key = (y << 8) | x;
-          if (visited[key] === visitStamp) continue;
-          visited[key] = visitStamp;
-          dots[idx++] = x;
-          dots[idx++] = y;
-        }
-        this.minimapDots = dots;
-        this.miniMap.setLiveDots(this.minimapDots, idx);
-        this.miniMap.setSelectedDot(hasSelectedDot ? this._selectedMiniMapDot : null);
+        this.refreshMiniMapDots();
       }
       if (this._activeDirty) {
         this._compactActiveLemmings();

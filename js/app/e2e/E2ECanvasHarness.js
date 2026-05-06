@@ -129,12 +129,17 @@ const getBuffer = (view, name) => {
       stride: minimap?.width ?? null,
       format: 'u8'
     });
-  case 'minimap-live-dots':
-    return packBuffer('minimap-live-dots', minimap?.liveDots || null, {
+  case 'minimap-live-dots': {
+    const liveDotsLength = Number.isFinite(minimap?.liveDotsLength)
+      ? Math.max(0, Math.trunc(minimap.liveDotsLength))
+      : (minimap?.liveDots?.length ?? 0);
+    const liveDots = minimap?.liveDots?.subarray?.(0, liveDotsLength) || minimap?.liveDots || null;
+    return packBuffer('minimap-live-dots', liveDots, {
       pairStride: 2,
-      count: minimap?.liveDots?.length ? minimap.liveDots.length / 2 : 0,
+      count: liveDotsLength / 2,
       format: 'xy'
     });
+  }
   case 'minimap-dead-dots': {
     const count = minimap?.deadCount ?? 0;
     const data = minimap?.deadDots?.subarray(0, count * 2) || null;
