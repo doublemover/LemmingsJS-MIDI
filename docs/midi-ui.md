@@ -21,8 +21,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
   search, category, assignment, conflict, and clean filters.
 - Tracks: create and select tracks, set channel, instrument label, mute, solo,
   arm, velocity scale, priority, and voice budget.
-- Keyboard navigation: focus the Sources, Tracks, or Clips list and use
-  Arrow keys, Home, and End to move the active selection.
+- Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
+  fields and use Arrow keys, Home, and End to move through the active region.
 - Modulation: set global intensity, accent, view pan, and compact position
   lanes for note, velocity, pan, duration, timbre, and envelope targets.
 - Clips: create reusable step, chord, or arp clips and edit compact step

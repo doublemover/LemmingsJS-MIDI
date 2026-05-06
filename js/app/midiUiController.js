@@ -67,6 +67,14 @@ const AUTOMATION_TARGET_LABELS = Object.freeze({
 });
 
 const STEP_FIELD_COUNT = 32;
+const STEP_GRID_COLUMNS = 4;
+const STEP_GRID_FIELD_CLASSES = Object.freeze([
+  'midi-step-note',
+  'midi-step-velocity',
+  'midi-step-probability',
+  'midi-step-hold',
+  'midi-step-tie'
+]);
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
@@ -146,6 +154,41 @@ const handleListboxNavigation = (event, items, getId, currentId, selectId) => {
   event.preventDefault?.();
   const nextId = getId(items[nextIndex]);
   if (nextId && nextId !== currentId) selectId(nextId);
+  return true;
+};
+
+const stepGridFieldClass = (target) => STEP_GRID_FIELD_CLASSES.find(className => target?.classList?.contains?.(className)) || null;
+
+const focusStepGridField = (grid, fieldClass, stepIndex) => {
+  const fields = Array.from(grid?.querySelectorAll?.(`.${fieldClass}`) || []);
+  const field = fields.find(item => Number(item.dataset?.stepIndex) === stepIndex);
+  field?.focus?.();
+};
+
+const handleStepGridNavigation = (event, grid, stepCount) => {
+  if (!event || stepCount <= 0) return false;
+  const fieldClass = stepGridFieldClass(event.target);
+  if (!fieldClass) return false;
+  const currentIndex = Number(event.target?.dataset?.stepIndex);
+  if (!Number.isInteger(currentIndex)) return false;
+  const key = event.key;
+  if (!['ArrowRight', 'ArrowLeft', 'ArrowDown', 'ArrowUp', 'Home', 'End'].includes(key)) return false;
+  let nextIndex = currentIndex;
+  if (key === 'Home') {
+    nextIndex = 0;
+  } else if (key === 'End') {
+    nextIndex = stepCount - 1;
+  } else if (key === 'ArrowRight') {
+    nextIndex = Math.min(currentIndex + 1, stepCount - 1);
+  } else if (key === 'ArrowLeft') {
+    nextIndex = Math.max(currentIndex - 1, 0);
+  } else if (key === 'ArrowDown') {
+    nextIndex = Math.min(currentIndex + STEP_GRID_COLUMNS, stepCount - 1);
+  } else if (key === 'ArrowUp') {
+    nextIndex = Math.max(currentIndex - STEP_GRID_COLUMNS, 0);
+  }
+  event.preventDefault?.();
+  if (nextIndex !== currentIndex) focusStepGridField(grid, fieldClass, nextIndex);
   return true;
 };
 
@@ -1197,22 +1240,31 @@ const createMidiUiController = ({
     if (!grid) return;
     removeChildren(grid);
     if (!clip) {
+      grid.setAttribute('aria-rowcount', '0');
+      grid.setAttribute('aria-colcount', String(STEP_GRID_COLUMNS));
       const empty = document.createElement('div');
       empty.className = 'midi-selection-summary';
+      empty.setAttribute('role', 'note');
       empty.textContent = 'Create a clip to edit steps';
       grid.appendChild(empty);
       return;
     }
     const count = Math.min(clip.lengthSteps || 0, STEP_FIELD_COUNT);
+    grid.setAttribute('aria-rowcount', String(Math.ceil(count / STEP_GRID_COLUMNS)));
+    grid.setAttribute('aria-colcount', String(STEP_GRID_COLUMNS));
     for (let index = 0; index < count; index += 1) {
       const step = clip.steps[index] || createDefaultMidiStep(index, { note: null });
+      const stepLabel = `Step ${index + 1}`;
       const cell = document.createElement('div');
       cell.className = 'midi-step-cell';
       cell.dataset.stepIndex = String(index);
       cell.setAttribute('role', 'gridcell');
+      cell.setAttribute('aria-rowindex', String(Math.floor(index / STEP_GRID_COLUMNS) + 1));
+      cell.setAttribute('aria-colindex', String((index % STEP_GRID_COLUMNS) + 1));
+      cell.setAttribute('aria-label', stepLabel);
       const label = document.createElement('div');
       label.className = 'midi-step-cell__index';
-      label.textContent = `Step ${index + 1}`;
+      label.textContent = stepLabel;
       const noteLabel = document.createElement('label');
       noteLabel.textContent = 'Note';
       const note = document.createElement('input');
@@ -1223,6 +1275,7 @@ const createMidiUiController = ({
       note.max = '127';
       note.step = '1';
       note.value = step.note == null ? '' : String(step.note);
+      note.setAttribute('aria-label', `${stepLabel} note`);
       note.addEventListener('change', event => updateSelectedClipStep(index, { note: toNumberOrNull(event.target.value) }));
       noteLabel.appendChild(note);
       const velocityLabel = document.createElement('label');
@@ -1235,6 +1288,7 @@ const createMidiUiController = ({
       velocity.max = '127';
       velocity.step = '1';
       velocity.value = step.velocity == null ? '' : String(step.velocity);
+      velocity.setAttribute('aria-label', `${stepLabel} velocity`);
       velocity.addEventListener('change', event => updateSelectedClipStep(index, { velocity: toNumberOrNull(event.target.value) }));
       velocityLabel.appendChild(velocity);
       const probabilityLabel = document.createElement('label');
@@ -1247,6 +1301,7 @@ const createMidiUiController = ({
       probability.max = '1';
       probability.step = '0.05';
       probability.value = step.probability == null ? '1' : String(step.probability);
+      probability.setAttribute('aria-label', `${stepLabel} probability`);
       probability.addEventListener('change', event => updateSelectedClipStep(index, { probability: toNumberOrNull(event.target.value) ?? 1 }));
       probabilityLabel.appendChild(probability);
       const holdLabel = document.createElement('label');
@@ -1256,6 +1311,7 @@ const createMidiUiController = ({
       hold.dataset.stepIndex = String(index);
       hold.type = 'checkbox';
       hold.checked = !!step.hold;
+      hold.setAttribute('aria-label', `${stepLabel} hold`);
       hold.addEventListener('change', event => updateSelectedClipStep(index, { hold: !!event.target.checked }));
       holdLabel.appendChild(hold);
       const tieLabel = document.createElement('label');
@@ -1265,6 +1321,7 @@ const createMidiUiController = ({
       tie.dataset.stepIndex = String(index);
       tie.type = 'checkbox';
       tie.checked = !!step.tie;
+      tie.setAttribute('aria-label', `${stepLabel} tie`);
       tie.addEventListener('change', event => updateSelectedClipStep(index, { tie: !!event.target.checked }));
       tieLabel.appendChild(tie);
       cell.append(label, noteLabel, velocityLabel, probabilityLabel, holdLabel, tieLabel);
@@ -1681,6 +1738,11 @@ const createMidiUiController = ({
         ensureProject().ui.selectedClipId,
         clipId => dispatchProjectIntent({ type: 'clip.select', clipId })
       );
+    });
+    bindById('midiStepPatternGrid', 'keydown', event => {
+      const clip = selectedClip();
+      const stepCount = Math.min(clip?.lengthSteps || 0, STEP_FIELD_COUNT);
+      handleStepGridNavigation(event, document?.getElementById('midiStepPatternGrid'), stepCount);
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));

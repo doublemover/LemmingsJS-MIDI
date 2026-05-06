@@ -308,6 +308,34 @@ test('MIDI sequencer listboxes support keyboard navigation', async ({ page }) =>
   await expect(page.locator('#midiClipList')).toHaveAttribute('aria-activedescendant', 'midi-clip-option-fill');
 });
 
+test('MIDI step grid keyboard navigation preserves the edited field', async ({ page }) => {
+  await openMidiUi(page);
+  await page.evaluate(() => {
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add', clip: { id: 'grid-clip', name: 'Grid Clip', lengthSteps: 8 } });
+    window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'grid-clip' });
+  });
+  const activeStep = () => page.evaluate(() => {
+    const element = document.activeElement;
+    return {
+      className: element?.className || '',
+      stepIndex: element?.dataset?.stepIndex || '',
+      label: element?.getAttribute?.('aria-label') || ''
+    };
+  });
+
+  await page.locator('.midi-step-note[data-step-index="0"]').focus();
+  await page.keyboard.press('ArrowRight');
+  await expect.poll(activeStep).toMatchObject({ className: 'midi-step-note', stepIndex: '1' });
+  await page.keyboard.press('ArrowDown');
+  await expect.poll(activeStep).toMatchObject({ className: 'midi-step-note', stepIndex: '5' });
+  await page.keyboard.press('End');
+  await expect.poll(activeStep).toMatchObject({ className: 'midi-step-note', stepIndex: '7', label: 'Step 8 note' });
+
+  await page.locator('.midi-step-probability[data-step-index="3"]').focus();
+  await page.keyboard.press('Home');
+  await expect.poll(activeStep).toMatchObject({ className: 'midi-step-probability', stepIndex: '0', label: 'Step 1 probability' });
+});
+
 test('MIDI sequencer layout avoids horizontal overflow at desktop and phone sizes', async ({ page }) => {
   for (const viewport of [
     { width: 1280, height: 900 },

@@ -409,7 +409,13 @@ describe('midiUiController sequencer', function() {
     expect(stored.sources[0]).to.include({ mode: 'clip', clipId: 'riff', mapping: null });
     expect(view.projectConfigs.at(-1).sfx['1']).to.include({ note: 65, velocity: 90, durationTicks: 7, clipId: 'riff' });
     expect(view.projectConfigs.at(-1).sfx['1'].notes).to.deep.equal([65, 69]);
-    expect(doc.getElementById('midiStepPatternGrid').children).to.have.lengthOf(4);
+    const stepGrid = doc.getElementById('midiStepPatternGrid');
+    expect(stepGrid.children).to.have.lengthOf(4);
+    expect(stepGrid.getAttribute('aria-rowcount')).to.equal('1');
+    expect(stepGrid.getAttribute('aria-colcount')).to.equal('4');
+    expect(stepGrid.children[0].getAttribute('aria-rowindex')).to.equal('1');
+    expect(stepGrid.children[0].getAttribute('aria-colindex')).to.equal('1');
+    expect(stepGrid.children[0].children[1].children[0].getAttribute('aria-label')).to.equal('Step 1 note');
 
     expect(controller.audition({ sourceId: 'sfx-1' })).to.equal(true);
     expect(sent.map(entry => entry.spec.note)).to.deep.equal([65, 69]);
