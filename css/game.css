@@ -613,7 +613,7 @@ canvas {
 
 .midi-automation-row {
     display: grid;
-    grid-template-columns: auto minmax(72px, 1fr) minmax(48px, 0.7fr) minmax(52px, 0.7fr) minmax(52px, 0.7fr) auto;
+    grid-template-columns: auto minmax(72px, 1fr) minmax(48px, 0.7fr) minmax(52px, 0.7fr) minmax(52px, 0.7fr) minmax(52px, 0.7fr) auto;
     gap: 6px;
     align-items: end;
     min-width: 0;
@@ -788,7 +788,7 @@ body.midi-disabled .midi-region select {
     }
 
     .midi-automation-row {
-        grid-template-columns: auto minmax(80px, 1fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) auto;
+        grid-template-columns: auto minmax(80px, 1fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) minmax(56px, 0.8fr) auto;
     }
 
     .midi-learn-panel {
@@ -803,6 +803,7 @@ body.midi-disabled .midi-region select {
     .midi-inline-fields,
     .midi-assignment-row,
     .midi-filter-row,
+    .midi-automation-row,
     .midi-button-row {
         grid-template-columns: 1fr;
         flex-direction: column;

@@ -1147,8 +1147,10 @@ const createMidiUiController = ({
       return false;
     }
     const notes = resolveAuditionNotes(mapping);
-    const velocity = mapping.velocity ?? ensureProject().global.velocityRange.default ?? 80;
-    const durationTicks = mapping.durationTicks ?? ensureProject().global.durationTicks.default ?? 6;
+    const current = ensureProject();
+    const rawVelocity = mapping.velocity ?? current.global.velocityRange.default ?? 80;
+    const velocity = clamp(Math.round(rawVelocity * (track.velocityScale ?? 1)), 1, 127);
+    const durationTicks = mapping.durationTicks ?? current.global.durationTicks.default ?? 6;
     let sent = false;
     for (const note of notes) {
       sent = scheduler.sendNote({
@@ -1156,6 +1158,11 @@ const createMidiUiController = ({
         velocity,
         durationTicks,
         channel: track.channel,
+        pan: mapping.pan ?? null,
+        timbre: mapping.timbre ?? null,
+        pitchBend: mapping.pitchBend ?? null,
+        trackId: track.id,
+        voiceBudget: track.voiceBudget,
         outputId: track.outputId ?? null,
         timeMs: Date.now()
       }, {
@@ -1165,6 +1172,8 @@ const createMidiUiController = ({
         priority: track.priority,
         sourceId: source?.id ?? null,
         trackId: track.id,
+        voiceBudget: track.voiceBudget,
+        outputId: track.outputId ?? null,
         clipId: clip?.id ?? null
       }) || sent;
     }

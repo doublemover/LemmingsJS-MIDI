@@ -471,6 +471,18 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalXNoteMax', '18');
   await page.locator('#midiEnvelopeOverrideToggle').check();
   await midi.automationAddButton().click();
+  const laneLayout = await page.locator('.midi-automation-row').last().evaluate(row => {
+    const children = Array.from(row.children);
+    const rowRect = row.getBoundingClientRect();
+    const removeRect = children[children.length - 1].getBoundingClientRect();
+    return {
+      childCount: children.length,
+      rowHeight: rowRect.height,
+      removeTopOffset: removeRect.top - rowRect.top
+    };
+  });
+  expect(laneLayout.childCount).toBe(7);
+  expect(laneLayout.removeTopOffset).toBeLessThan(laneLayout.rowHeight / 2);
   await page.locator('.midi-automation-axis-op').last().selectOption('mul');
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());

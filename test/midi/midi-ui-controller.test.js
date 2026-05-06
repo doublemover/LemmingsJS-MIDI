@@ -1030,7 +1030,16 @@ describe('midiUiController sequencer', function() {
     controller.bindMidiUi();
     expect(doc.getElementById('midiSchedulerPressure').textContent).to.equal('Scheduler: count-limit');
     controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
-    controller.dispatchProjectIntent({ type: 'track.update', trackId: 'track-1', patch: { channel: 4 } });
+    controller.dispatchProjectIntent({
+      type: 'track.update',
+      trackId: 'track-1',
+      patch: { channel: 4, priority: 4, velocityScale: 0.5, voiceBudget: 5 }
+    });
+    controller.dispatchProjectIntent({
+      type: 'source.mapping.update',
+      sourceId: 'sfx-1',
+      patch: { velocity: 100, pan: -32, timbre: 91, pitchBend: 0.5 }
+    });
     controller.onEnabled();
 
     expect(doc.getElementById('midiInSelect').value).to.equal('in-1');
@@ -1047,8 +1056,26 @@ describe('midiUiController sequencer', function() {
 
     expect(controller.audition()).to.equal(true);
     const note = sent.find(entry => entry.spec);
-    expect(note.spec).to.include({ note: 60, velocity: 80, durationTicks: 4, channel: 4, outputId: 'out-1' });
-    expect(note.meta).to.include({ eventType: 'audition', sourceId: 'sfx-1', trackId: 'track-1' });
+    expect(note.spec).to.include({
+      note: 60,
+      velocity: 50,
+      durationTicks: 4,
+      channel: 4,
+      pan: -32,
+      timbre: 91,
+      pitchBend: 0.5,
+      trackId: 'track-1',
+      voiceBudget: 5,
+      outputId: 'out-1'
+    });
+    expect(note.meta).to.include({
+      eventType: 'audition',
+      priority: 4,
+      sourceId: 'sfx-1',
+      trackId: 'track-1',
+      voiceBudget: 5,
+      outputId: 'out-1'
+    });
 
     expect(controller.panic()).to.equal(true);
     expect(sent.some(entry => entry.panic)).to.equal(true);
