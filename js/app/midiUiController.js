@@ -566,7 +566,9 @@ const createMidiUiController = ({
         filename,
         'application/json'
       );
-      logOutput(`Exported ${options.asTemplate ? 'template' : 'project'}`);
+      const message = `Exported ${options.asTemplate ? 'template' : 'project'}`;
+      setStatus(message);
+      logOutput(message);
     }
     return payload;
   };

@@ -629,6 +629,8 @@ describe('midiUiController sequencer', function() {
       mimeType: 'application/json'
     });
     expect(JSON.parse(view.downloads[0].text).project.sources[0].mapping.note).to.equal(76);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Exported project');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Exported project');
 
     const template = controller.saveProjectTemplate({ id: 'lead-template', name: 'Lead Template', now: 10 });
     expect(template).to.include({ id: 'lead-template', name: 'Lead Template' });
