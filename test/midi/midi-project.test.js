@@ -342,6 +342,32 @@ describe('MidiProject', function() {
     expect(project.sources.every(source => source.mode === 'direct')).to.equal(true);
   });
 
+  it('duplicates clips without stealing source assignments', function() {
+    let project = createMidiProjectFromMidiConfig({
+      sfx: { '1': { name: 'skill-select', note: 60 } },
+      triggers: {}
+    });
+
+    project = reduceMidiProject(project, { type: 'clip.add', clip: { id: 'riff', name: 'Riff', type: 'arp', lengthSteps: 2 } });
+    project = reduceMidiProject(project, { type: 'clip.step.update', clipId: 'riff', stepIndex: 0, patch: { note: 64 } });
+    project = reduceMidiProject(project, { type: 'clip.update', clipId: 'riff', patch: { arp: { mode: 'updown', pattern: { preset: 'custom', steps: ['up', 'down'] } } } });
+    project = reduceMidiProject(project, { type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+    project = reduceMidiProject(project, { type: 'clip.duplicate', clipId: 'riff' });
+
+    const original = project.clips.find(clip => clip.id === 'riff');
+    const duplicate = project.clips.find(clip => clip.id !== 'riff');
+    expect(duplicate).to.include({ id: 'riff-copy', name: 'Riff Copy', type: 'arp', lengthSteps: 2 });
+    expect(duplicate.steps[0]).to.include({ note: 64 });
+    expect(duplicate.arp.pattern.steps).to.deep.equal(['up', 'down']);
+    expect(project.sources[0]).to.include({ mode: 'clip', clipId: 'riff' });
+    expect(project.ui.selectedClipId).to.equal('riff-copy');
+
+    project = reduceMidiProject(project, { type: 'clip.step.update', clipId: 'riff-copy', stepIndex: 0, patch: { note: 72 } });
+    project = reduceMidiProject(project, { type: 'clip.update', clipId: 'riff-copy', patch: { arp: { mode: 'down', pattern: { preset: 'custom', steps: ['down'] } } } });
+    expect(project.clips.find(clip => clip.id === original.id).steps[0].note).to.equal(64);
+    expect(project.clips.find(clip => clip.id === original.id).arp.pattern.steps).to.deep.equal(['up', 'down']);
+  });
+
   it('flags reducer-assigned missing clips and lowers them as disabled runtime mappings', function() {
     let project = createMidiProjectFromMidiConfig({
       enabled: true,

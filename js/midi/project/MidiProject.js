@@ -78,6 +78,17 @@ const uniqueId = (base, used) => {
   return candidate;
 };
 
+const uniqueName = (base, used) => {
+  let candidate = base;
+  let index = 2;
+  while (used.has(candidate)) {
+    candidate = `${base} ${index}`;
+    index += 1;
+  }
+  used.add(candidate);
+  return candidate;
+};
+
 const cloneObject = (value, fallback = {}) => {
   const cloned = cloneSafeObject(value);
   return isPlainObject(cloned) ? cloned : fallback;
@@ -769,6 +780,24 @@ const addClip = (project, clip = {}) => {
   };
 };
 
+const duplicateClip = (project, clipId, options = {}) => {
+  const clip = project.clips.find(item => item.id === clipId);
+  if (!clip) return project;
+  const id = uniqueId(
+    sanitizeId(options.id, `${clip.id}-copy`),
+    new Set(project.clips.map(item => item.id))
+  );
+  const name = uniqueName(
+    sanitizeId(options.name, `${clip.name} Copy`),
+    new Set(project.clips.map(item => item.name))
+  );
+  return {
+    ...project,
+    clips: [...project.clips, createDefaultMidiClip({ ...cloneObject(clip), id, name })],
+    ui: { ...project.ui, selectedClipId: id, activeRegion: 'clips' }
+  };
+};
+
 const removeClip = (project, clipId) => {
   const index = project.clips.findIndex(clip => clip.id === clipId);
   if (index < 0) return project;
@@ -928,6 +957,9 @@ function reduceMidiProject(project, intent = {}) {
     break;
   case 'clip.add':
     next = addClip(current, intent.clip);
+    break;
+  case 'clip.duplicate':
+    next = duplicateClip(current, intent.clipId ?? current.ui.selectedClipId, intent.clip);
     break;
   case 'clip.update':
     next = { ...current, clips: updateById(current.clips, intent.clipId, updatePatch(intent.patch)) };

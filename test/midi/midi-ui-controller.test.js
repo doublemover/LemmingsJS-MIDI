@@ -40,6 +40,7 @@ const registerSequencerDom = (doc) => {
     midiTrackAdd: 'button',
     midiTrackList: 'div',
     midiClipAddButton: 'button',
+    midiClipDuplicateButton: 'button',
     midiClipRemoveButton: 'button',
     midiClipList: 'div',
     midiSelectedSourceSummary: 'div',
@@ -1120,6 +1121,29 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('midiRecordStatus').textContent).to.equal('Record writes captured notes into clip steps.');
     expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Removed clip Riff');
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('Removed clip Riff');
+  });
+
+  it('duplicates the selected clip from the clip library controls', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+    const duplicateButton = doc.getElementById('midiClipDuplicateButton');
+    expect(duplicateButton.disabled).to.equal(true);
+
+    controller.dispatchProjectIntent({ type: 'clip.add', clip: { id: 'riff', name: 'Riff', lengthSteps: 4 } });
+    controller.dispatchProjectIntent({ type: 'clip.step.update', clipId: 'riff', stepIndex: 0, patch: { note: 65, velocity: 90 } });
+    controller.dispatchProjectIntent({ type: 'source.clip.assign', sourceId: 'sfx-1', clipId: 'riff' });
+    expect(duplicateButton.disabled).to.equal(false);
+
+    duplicateButton.dispatchEvent({ type: 'click', target: duplicateButton });
+
+    const project = controller.getProject();
+    expect(project.clips.map(clip => clip.id)).to.deep.equal(['riff', 'riff-copy']);
+    expect(project.ui.selectedClipId).to.equal('riff-copy');
+    expect(project.clips[1]).to.include({ name: 'Riff Copy', lengthSteps: 4 });
+    expect(project.clips[1].steps[0]).to.include({ note: 65, velocity: 90 });
+    expect(project.sources[0]).to.include({ mode: 'clip', clipId: 'riff' });
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Duplicated clip Riff Copy');
+    expect(doc.getElementById('midiOutputLog').textContent).to.contain('Duplicated clip Riff Copy');
   });
 
   it('reports responsive step grid aria geometry', function() {

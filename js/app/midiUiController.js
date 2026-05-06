@@ -1439,7 +1439,9 @@ const createMidiUiController = ({
     const activeClip = current.clips.find(clip => clip.id === current.ui.selectedClipId) || current.clips[0] || null;
     const activeOptionId = activeClip ? listOptionId('clip', activeClip.id) : '';
     configureListbox(list, activeOptionId);
+    const duplicateButton = document?.getElementById('midiClipDuplicateButton');
     const removeButton = document?.getElementById('midiClipRemoveButton');
+    if (duplicateButton) duplicateButton.disabled = !activeClip;
     if (removeButton) removeButton.disabled = !activeClip;
     for (const clip of current.clips) {
       const selected = current.ui.selectedClipId === clip.id;
@@ -2113,6 +2115,17 @@ const createMidiUiController = ({
     dispatchProjectIntent({ type: 'clip.update', clipId: clip.id, patch });
   };
 
+  const duplicateSelectedClip = () => {
+    const clip = selectedClip();
+    if (!clip) return false;
+    const next = dispatchProjectIntent({ type: 'clip.duplicate', clipId: clip.id });
+    const duplicate = next.clips.find(item => item.id === next.ui.selectedClipId);
+    const message = `Duplicated clip ${duplicate?.name || clip.name}`;
+    setStatus(message);
+    logOutput(message);
+    return true;
+  };
+
   const removeSelectedClip = () => {
     const clip = selectedClip();
     if (!clip) return false;
@@ -2296,6 +2309,7 @@ const createMidiUiController = ({
     });
     bindById('midiTrackAdd', 'click', () => dispatchProjectIntent({ type: 'track.add', track: {} }));
     bindById('midiClipAddButton', 'click', () => dispatchProjectIntent({ type: 'clip.add', clip: {} }));
+    bindById('midiClipDuplicateButton', 'click', () => duplicateSelectedClip());
     bindById('midiClipRemoveButton', 'click', () => removeSelectedClip());
     bindById('midiAssignSourceButton', 'click', () => {
       const source = selectedSource();
