@@ -45,9 +45,7 @@ import {
 } from './protocolMetadata.js';
 import {
   buildToolCatalog,
-  createLegacyToolAliases,
-  parseBooleanEnv,
-  resolveToolCandidates
+  resolveToolName
 } from './toolRouting.js';
 
 import {
@@ -91,20 +89,6 @@ const DEFAULT_BASE_URL = process.env.LEMMINGS_MCP_BASE_URL || 'https://localhost
 const DEFAULT_PATH = process.env.LEMMINGS_MCP_PATH || '/?e2e=1';
 const DEFAULT_VIEWPORT = { width: 1280, height: 720, deviceScaleFactor: 1 };
 const ENABLED_TOOL_SURFACES = parseEnabledSurfaces(process.env.LEMMINGS_MCP_SURFACES);
-
-const MCP_SURFACE_SPLIT_ROLLOUT = parseBooleanEnv(
-  process.env.LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT,
-  true
-);
-const MCP_LEGACY_TOOL_ALIASES_ENABLED = parseBooleanEnv(
-  process.env.LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES,
-  true
-);
-const MCP_DOTTED_TOOL_FALLBACK_ENABLED = parseBooleanEnv(
-  process.env.LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK,
-  true
-);
-
 
 const RESOURCE_URI_RE = /^lemmings:\/\/sessions\/([^/]+)\/resources\/([^/]+)$/;
 
@@ -329,9 +313,7 @@ const TOOL_HANDLER_REGISTRY = {
   eventsPollTool
 };
 
-const ACTIVE_TOOL_SURFACES = MCP_SURFACE_SPLIT_ROLLOUT
-  ? ENABLED_TOOL_SURFACES
-  : new Set(ALL_TOOL_SURFACES);
+const ACTIVE_TOOL_SURFACES = ENABLED_TOOL_SURFACES;
 
 const surfaceRegistry = buildSurfaceRegistry(
   TOOL_SCHEMA_REGISTRY,
@@ -346,23 +328,14 @@ const { toolDefs: TOOL_DEFS, toolRoutes: TOOL_ROUTES } = buildToolCatalog(
     toJsonSchemaCompat
   }
 );
-const LEGACY_TOOL_ALIASES = createLegacyToolAliases(MCP_LEGACY_TOOL_ALIASES_ENABLED);
 
 const resolveTool = (rawName) => {
-  const { candidates } = resolveToolCandidates(rawName, {
-    legacyToolAliases: LEGACY_TOOL_ALIASES,
-    dottedFallbackEnabled: MCP_DOTTED_TOOL_FALLBACK_ENABLED,
-    toToolName
-  });
-  let route = null;
-  for (const candidate of candidates) {
-    route = TOOL_ROUTES.get(candidate);
-    if (route) break;
-  }
+  const requestedName = resolveToolName(rawName);
+  const route = TOOL_ROUTES.get(requestedName);
   if (!route) {
     throw new Error(`Unknown tool: ${rawName}`);
   }
-  if (MCP_SURFACE_SPLIT_ROLLOUT && !ENABLED_TOOL_SURFACES.has(route.surface)) {
+  if (!ENABLED_TOOL_SURFACES.has(route.surface)) {
     throw new Error(`Tool disabled by surface policy: ${rawName}`);
   }
   return route;
@@ -427,9 +400,6 @@ server.setRequestHandler(ReadResourceRequestSchema, async (request) => {
 const createProtocolMetadata = () => buildProtocolMetadata({
   protocolVersion: MCP_PROTOCOL_VERSION,
   schemaFrozenAt: MCP_PROTOCOL_SCHEMA_FROZEN_AT,
-  dottedFallbackEnabled: MCP_DOTTED_TOOL_FALLBACK_ENABLED,
-  legacyAliasesEnabled: MCP_LEGACY_TOOL_ALIASES_ENABLED,
-  legacyToolAliases: LEGACY_TOOL_ALIASES,
   skillNames: SKILL_NAMES,
   lemmingDeltaFields: LEMMING_DELTA_FIELDS
 });

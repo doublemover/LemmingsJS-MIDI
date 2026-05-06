@@ -250,8 +250,7 @@ Notes:
 ## Phase 14: MCP v2 compact defaults and tool ergonomics
 - [x] Switch tool responses to compact JSON by default (no pretty printing) and
   omit excluded sections instead of returning null placeholders.
-- [x] Make short tool names primary (dots mapped to underscores) and retain
-  legacy aliases for compatibility.
+- [x] Make shipped underscore tool names the only MCP call names.
 - [x] Set default event envelopes to `minimal` and avoid auto-attaching agent
   echo events unless explicitly requested.
 - [x] Shorten session/resource/watch/event IDs to reduce payload size and URI
@@ -648,8 +647,7 @@ Notes:
   `test/bench-hotpaths.test.js`.
 
 ## Phase 34: MCP throughput tier 2 + API cutover
-- [x] Remove legacy MCP tool aliases and dotted-name compatibility shims; keep
-  short canonical tool names only.
+- [x] Keep short canonical MCP tool names only.
   Touchpoints: `mcp/server.js`, `docs/mcp/README.md`, `docs/mcp/protocol-v2.md`.
 - [x] Split remaining heavy state/delta/spectator logic from `mcp/server.js`
   into dedicated modules to reduce hot-path branching and improve testability.
@@ -721,15 +719,13 @@ Notes:
 
 ## Phase 40: MCP server surface split and semantic-first workflows
 - [x] Freeze versioned semantic schemas in the current MCP surface first
-  (`game.*`, `editor.*`) with explicit deprecation aliases and compatibility
-  windows for existing clients.
+  (`game.*`, `editor.*`) with hard-cut underscore call names.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `docs/mcp/protocol-v2.md`.
 - [x] Replace catch-all editor mutation flows with typed verbs (`objects.list`,
   `objects.place`, `objects.update`, `objects.delete`) that support paging,
   bbox filtering, compact field profiles, and revision-aware deltas.
   Touchpoints: `mcp/server.js`, `mcp/tools/*`, `test/mcp*.test.js`.
-- [x] Add migration adapters and protocol compatibility smoke tests so legacy
-  clients can upgrade without hard cutovers.
+- [x] Remove non-canonical protocol support after the semantic tools shipped.
   Touchpoints: `mcp/server.js`, `test/mcp*.test.js`, `docs/mcp/*`.
 - [x] Split MCP into dedicated game/editor/interact registrations/manifests
   only after semantic APIs and adapters are stable.
@@ -797,7 +793,7 @@ Notes:
 - [x] Add preview/audition and MIDI-learn affordances that remain fully
   automatable in E2E harness flows.
   Touchpoints: `js/app/midiUiController.js`, `e2e/midi-ui.spec.js`.
-- [x] Remove legacy controls only after feature-flag soak coverage and parity
+- [x] Finalize expressive controls as the only mapping UI after accessibility
   checks pass across desktop/mobile layouts.
   Touchpoints: `js/app/midiUiController.js`, `test/midi/*.test.js`.
 
@@ -895,7 +891,7 @@ Notes:
   `mcp/watchPolling.js` (552). Target tree: `mcp/schemas.js`,
   `mcp/protocolMetadata.js`, `mcp/sessionTools.js`, `mcp/gameTools.js`,
   `mcp/editorObjectTools.js`, `mcp/visionTools.js`; keep `mcp/server.js` as
-  startup, registry, and runtime export wiring. Preserve tool names, aliases,
+  startup, registry, and runtime export wiring. Preserve shipped tool names,
   schemas, and protocol metadata.
 - [x] Modularize E2E/editor harnesses and specs. Current inventory:
   `js/app/e2eHarness.js` (2004), `e2e/harness.editor.spec.js` (1062). Target
@@ -951,3 +947,28 @@ Notes:
   on, then run `npm run format`, `npm run check-undefined`, `npm run lint`,
   `npm run typecheck:critical`, `npm test`, `npm run test-bench-unit`, and
   `npm run depcheck` before completing the phase.
+
+## Phase 49: Hard-cut cleanup and current guardrails
+- [x] Remove non-canonical MCP tool-name paths and rollout environment toggles
+  so `listTools` names are the only accepted call names.
+  Touchpoints: `mcp/server.js`, `mcp/toolRouting.js`,
+  `mcp/protocolMetadata.js`, `docs/mcp/*`, `test/mcp*.test.js`.
+- [x] Remove retired MIDI legacy-control rollout paths and keep expressive MIDI
+  mapping controls as the only UI contract.
+  Touchpoints: `js/app/midiUiController.js`, `js/app/midi-ui/*`,
+  `js/core/rolloutFlags.js`, `docs/midi-ui.md`, `test/midi/*`.
+- [x] Add existing audit/typecheck/MCP client/MCP smoke/benchmark smoke checks
+  to CI with an HTTPS server startup step for browser-backed smoke scripts.
+  Touchpoints: `.github/workflows/test.yml`.
+- [x] Expand critical typecheck coverage to the newly extracted high-risk
+  modules that can pass without introducing repo-wide mixin declarations.
+  Touchpoints: `tsconfig.checkjs.json`.
+- [x] Continue second-pass modularization of the largest remaining editor and
+  MIDI UI files by extracting feature flags, refresh-section derivation,
+  editor pointer method groups, editor UI binding groups, and E2E editor apply
+  helpers/result assembly.
+  Touchpoints: `js/app/midi-ui/*`, `js/app/e2e/*`,
+  `js/editor/editor-controller/*`, `js/app/editor-ui/*`.
+- [x] Move the root `mcp_editor_apply_spec.md` into `docs/mcp/editor-apply.md`
+  and rewrite it as the shipped contract rather than a proposal.
+  Touchpoints: `docs/mcp/editor-apply.md`, `docs/mcp/README.md`.

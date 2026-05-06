@@ -218,39 +218,6 @@ test('Expressive MIDI controls expose keyboard editing, arp patterns, and previe
   expect(result.previewResultType).toBe('boolean');
 });
 
-test('Legacy MIDI controls remain available behind feature flag', async ({ page }) => {
-  const midi = await openMidiUi(page, '/?mlc=true');
-  await midi.enable();
-  await midi.eventDetails().first().waitFor();
-  await midi.openFirstEventDetails();
-  const result = await page.evaluate(() => {
-    const api = window.__LEMMINGS_MIDI_UI__;
-    const details = document.querySelector('#midiEventList details');
-    if (!details || !api) {
-      return { ok: false };
-    }
-    details.open = true;
-    const rows = Array.from(details.querySelectorAll('label'));
-    const hasRow = (label, selector) => {
-      const row = rows.find(item => item.querySelector('span')?.textContent?.trim() === label);
-      return !!row?.querySelector(selector);
-    };
-    return {
-      ok: true,
-      featureFlags: api.getFeatureFlags?.() || {},
-      keyRowSelect: hasRow('Key', 'select'),
-      arpModeSelect: hasRow('Arp mode', 'select'),
-      keyboardRow: hasRow('Keyboard', '.midi-note-picker')
-    };
-  });
-
-  expect(result.ok).toBe(true);
-  expect(result.featureFlags.legacyControls).toBe(true);
-  expect(result.keyRowSelect).toBe(true);
-  expect(result.arpModeSelect).toBe(true);
-  expect(result.keyboardRow).toBe(false);
-});
-
 test('Expressive controls keep mobile layout parity', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   const midi = await openMidiUi(page);

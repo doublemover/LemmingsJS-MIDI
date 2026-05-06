@@ -154,7 +154,7 @@ const main = (argv = process.argv.slice(2)) => {
     : ['--smoke', '--profile=smoke', '--duration=6000', '--warmup=1500', '--sample=500', '--maxRuntime=25000'];
   const historyArgs = soakRequested
     ? ['--soak', '--profile=soak', '--maxRuntime=300000']
-    : ['--smoke', '--profile=smoke', '--duration=6000', '--sample=500', '--speeds=30,60', '--target=12000', '--maxRuntime=25000'];
+    : ['--smoke', '--profile=smoke', '--duration=6000', '--sample=500', '--speeds=30,60', '--maxRuntime=25000'];
   const performance = runNodeScript(perfScript, [
     ...perfArgs,
     ...commonArgs

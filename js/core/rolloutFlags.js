@@ -1,35 +1,23 @@
 /**
  * @typedef {object} RuntimeRolloutFlags
- * @property {boolean} mcpSurfaceSplit
  * @property {boolean} historyCodec
  * @property {boolean} renderPresentPath
- * @property {boolean} midiExpressiveUi
  */
 
 /** @type {Readonly<RuntimeRolloutFlags>} */
 const DEFAULT_RUNTIME_ROLLOUT_FLAGS = Object.freeze({
-  mcpSurfaceSplit: true,
   historyCodec: true,
-  renderPresentPath: true,
-  midiExpressiveUi: true
+  renderPresentPath: true
 });
 
 const ROLLOUT_QUERY_KEYS = Object.freeze({
-  mcpSurfaceSplit: Object.freeze({
-    rollout: ['rolloutMcpSplit', 'rmcp'],
-    rollback: ['rollbackMcpSplit', 'rbmcp']
-  }),
   historyCodec: Object.freeze({
-    rollout: ['rolloutHistoryCodec', 'rhc'],
-    rollback: ['rollbackHistoryCodec', 'rbhc']
+    rollout: ['rolloutHistoryCodec'],
+    rollback: ['rollbackHistoryCodec']
   }),
   renderPresentPath: Object.freeze({
-    rollout: ['rolloutRenderPresent', 'rrp'],
-    rollback: ['rollbackRenderPresent', 'rbrp']
-  }),
-  midiExpressiveUi: Object.freeze({
-    rollout: ['rolloutMidiUi', 'rmu'],
-    rollback: ['rollbackMidiUi', 'rbmu']
+    rollout: ['rolloutRenderPresent'],
+    rollback: ['rollbackRenderPresent']
   })
 });
 
@@ -107,7 +95,7 @@ const resolveRuntimeRolloutFlags = ({
     resolved[key] = coerceRolloutFlag(runtime[key], resolved[key]);
   }
 
-  const rollbackAll = parseBoolish(readQueryValue(activeQuery, ['rollbackAll', 'rba']));
+  const rollbackAll = parseBoolish(readQueryValue(activeQuery, ['rollbackAll']));
   if (rollbackAll === true) {
     for (const key of Object.keys(resolved)) {
       resolved[key] = false;

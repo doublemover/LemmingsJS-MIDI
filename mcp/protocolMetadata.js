@@ -57,21 +57,12 @@ const buildToolResponse = (payload) => ({
 const buildProtocolMetadata = ({
   protocolVersion,
   schemaFrozenAt,
-  dottedFallbackEnabled,
-  legacyAliasesEnabled,
-  legacyToolAliases,
   skillNames,
   lemmingDeltaFields
 }) => ({
   version: protocolVersion,
   schemaFrozenAt,
-  acceptedToolNameForms: [
-    'underscore',
-    ...(dottedFallbackEnabled ? ['dotted'] : [])
-  ],
-  dottedFallbackEnabled,
-  legacyAliasesEnabled,
-  deprecatedToolAliases: legacyToolAliases,
+  acceptedToolNameForms: ['underscore'],
   unsupportedOptions: {
     spectatorOpenBrowser: true
   },

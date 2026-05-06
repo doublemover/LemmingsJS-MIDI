@@ -13,7 +13,7 @@ implementation notes in this folder.
 - Tool names are short (dots mapped to underscores by hosts), and only the
   short underscore forms are accepted.
 - `session.create.protocol` returns protocol version/freeze metadata and
-  compatibility alias mappings.
+  hard-cut tool naming metadata.
 
 ## Semantic editor object tools
 
@@ -22,7 +22,7 @@ implementation notes in this folder.
 - `objects.place` inserts terrain/gadget/steel entries using typed payloads.
 - `objects.update` applies typed entry updates by index/uid references.
 - `objects.delete` removes entries by typed references.
-- `editor.apply` remains available as a compatibility/migration path.
+- `editor.apply` remains the batch editor mutation tool.
 
 ## Protocol mappings
 

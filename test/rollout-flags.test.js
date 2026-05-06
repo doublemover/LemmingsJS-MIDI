@@ -12,67 +12,59 @@ describe('rolloutFlags', function () {
   it('accepts runtime override objects', function () {
     const resolved = resolveRuntimeRolloutFlags({
       runtimeFlags: {
-        historyCodec: false,
-        midiExpressiveUi: false
+        historyCodec: false
       }
     });
 
     expect(resolved.historyCodec).to.equal(false);
-    expect(resolved.midiExpressiveUi).to.equal(false);
-    expect(resolved.mcpSurfaceSplit).to.equal(true);
   });
 
   it('applies query rollout and rollback toggles', function () {
     const resolved = resolveRuntimeRolloutFlags({
-      search: '?rolloutRenderPresent=true&rollbackMidiUi=1'
+      search: '?rolloutRenderPresent=true&rollbackHistoryCodec=1'
     });
 
     expect(resolved.renderPresentPath).to.equal(true);
-    expect(resolved.midiExpressiveUi).to.equal(false);
+    expect(resolved.historyCodec).to.equal(false);
   });
 
   it('supports rollbackAll emergency toggle', function () {
     const resolved = resolveRuntimeRolloutFlags({
       search: '?rollbackAll=1',
       runtimeFlags: {
-        mcpSurfaceSplit: true,
         historyCodec: true,
-        renderPresentPath: true,
-        midiExpressiveUi: true
+        renderPresentPath: true
       }
     });
 
     expect(resolved).to.deep.equal({
-      mcpSurfaceSplit: false,
       historyCodec: false,
-      renderPresentPath: false,
-      midiExpressiveUi: false
+      renderPresentPath: false
     });
   });
 
   it('accepts explicit query objects and ignores unknown values', function () {
-    const query = new URLSearchParams('rolloutMidiUi=bogus&rollbackRenderPresent=1');
+    const query = new URLSearchParams('rolloutHistoryCodec=bogus&rollbackRenderPresent=1');
     const resolved = resolveRuntimeRolloutFlags({
       query,
-      runtimeFlags: { midiExpressiveUi: true, renderPresentPath: true }
+      runtimeFlags: { historyCodec: true, renderPresentPath: true }
     });
-    expect(resolved.midiExpressiveUi).to.equal(true);
+    expect(resolved.historyCodec).to.equal(true);
     expect(resolved.renderPresentPath).to.equal(false);
   });
 
   it('respects caller-provided defaults for runtime rollout baselines', function () {
     const resolved = resolveRuntimeRolloutFlags({
-      defaults: { historyCodec: false, midiExpressiveUi: false },
-      runtimeFlags: { mcpSurfaceSplit: true }
+      defaults: { historyCodec: false },
+      runtimeFlags: { renderPresentPath: true }
     });
 
     expect(resolved.historyCodec).to.equal(false);
-    expect(resolved.midiExpressiveUi).to.equal(false);
-    expect(resolved.mcpSurfaceSplit).to.equal(true);
+    expect(resolved.renderPresentPath).to.equal(true);
   });
 
-  it('prefers first matching query alias for each rollout key', function () {
-    const query = new URLSearchParams('rolloutRenderPresent=false&rrp=true');
+  it('uses canonical query names for rollout flags', function () {
+    const query = new URLSearchParams('rolloutRenderPresent=false');
     const resolved = resolveRuntimeRolloutFlags({ query });
     expect(resolved.renderPresentPath).to.equal(false);
   });

@@ -164,12 +164,12 @@ const gameViewQueryMethods = {
     const renderRolloutEnabled = this.rolloutFlags?.renderPresentPath !== false;
     this.offscreenPresentExperiment = renderRolloutEnabled && this.parseProfileBool(
       query,
-      ['offscreenPresent', 'osp'],
+      ['offscreenPresent'],
       rendering.offscreenPresentExperiment === true
     );
     this.workerOffscreenExperiment = renderRolloutEnabled && this.parseProfileBool(
       query,
-      ['workerOffscreen', 'osw'],
+      ['workerOffscreen'],
       rendering.workerOffscreenExperiment === true
     );
     this.stage?.setRenderExperimentFlags?.({
@@ -185,9 +185,9 @@ const gameViewQueryMethods = {
       : new URLSearchParams('');
     const setParam = (longName, shortName, value, def, always) => {
       params.delete(longName);
-      params.delete(shortName);
+      if (shortName) params.delete(shortName);
       if (always || (value !== undefined && value !== def)) {
-        params.set(this.shortcut ? shortName : longName, value);
+        params.set(this.shortcut && shortName ? shortName : longName, value);
       }
     };
   
@@ -212,8 +212,8 @@ const gameViewQueryMethods = {
     setParam('performanceAPI', 'pa', this.performanceAPI, false);
     setParam('perfMetrics', 'pm', this.perfMetrics, this.performanceAPI);
     setParam('perfOverlay', 'po', this.perfOverlay, false);
-    setParam('offscreenPresent', 'osp', this.offscreenPresentExperiment, false);
-    setParam('workerOffscreen', 'osw', this.workerOffscreenExperiment, false);
+    setParam('offscreenPresent', null, this.offscreenPresentExperiment, false);
+    setParam('workerOffscreen', null, this.workerOffscreenExperiment, false);
     setParam('profile', 'pr', this.startupProfile, DEFAULT_RUNTIME_PROFILE);
   
     if (this.shortcut) {

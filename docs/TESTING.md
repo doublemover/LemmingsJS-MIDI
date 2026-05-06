@@ -79,37 +79,28 @@ npm run bench-smoke -- --soak
 - `avgMs`, `p50Ms`, `p95Ms`, `p99Ms`, `worstMs`
 - `allocBytesAvg`, `allocBytesP95`, `allocBytesWorst`
 
-For render experiments, use query flags in non-default runs and keep rollback
-ready:
+For render experiments, use canonical query flags in non-default runs and keep
+rollback ready:
 
-- `offscreenPresent=true` (`osp=true`): legacy query name for the Canvas2D
-  staging plus `drawImage` present-path experiment when supported.
-- `workerOffscreen=true` (`osw=true`): requests worker/offscreen path; runtime
-  falls back automatically when unsupported.
+- `offscreenPresent=true`: requests the Canvas2D staging plus `drawImage`
+  present-path experiment when supported.
+- `workerOffscreen=true`: requests worker/offscreen path; runtime falls back
+  automatically when unsupported.
 
 Runtime diagnostics now expose capability matrix and rollout-flag snapshots
 through `window.__E2E__.getDiagnostics()` / `window.__E2E__.getState()`:
 
 - `capabilities.webMidi`, `capabilities.offscreenCanvas`,
   `capabilities.imageBitmap`, `capabilities.worker`.
-- `capabilities.renderPaths` for deterministic fallback selection. New
-  diagnostics use `presentPathSupported`/`drawimage_present`; the older
-  `offscreenPresentSupported` field is retained as a compatibility alias.
+- `capabilities.renderPaths` for deterministic fallback selection. Diagnostics
+  use `presentPathSupported`/`drawimage_present`.
 - `rolloutFlags` for staged rollout / emergency rollback state.
 
 Rollout and rollback query toggles:
 
-- `rollbackAll=1` (`rba=1`): disables all high-risk rollout flags.
-- `rollbackRenderPresent=1` (`rbrp=1`): disables offscreen/worker present-path
-  experiments.
-- `rollbackHistoryCodec=1` (`rbhc=1`): disables cold history compression/dedupe.
-- `rollbackMidiUi=1` (`rbmu=1`): forces legacy MIDI controls.
-
-MCP rollout environment toggles:
-
-- `LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT`
-- `LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES`
-- `LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK`
+- `rollbackAll=1`: disables all high-risk rollout flags.
+- `rollbackRenderPresent=1`: disables offscreen/worker present-path experiments.
+- `rollbackHistoryCodec=1`: disables cold history compression/dedupe.
 
 `bench-long-session` enforces thresholds for:
 

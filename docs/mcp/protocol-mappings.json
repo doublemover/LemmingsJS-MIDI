@@ -2,16 +2,8 @@
   "version": "2.1.0",
   "schemaFrozenAt": "2026-02-23",
   "acceptedToolNameForms": [
-    "underscore",
-    "dotted"
+    "underscore"
   ],
-  "deprecatedToolAliases": {
-    "editor_mutate": "editor_apply",
-    "editor_objects_list": "objects_list",
-    "editor_objects_place": "objects_place",
-    "editor_objects_update": "objects_update",
-    "editor_objects_delete": "objects_delete"
-  },
   "skillNames": [
     "climber",
     "floater",

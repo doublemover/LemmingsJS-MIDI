@@ -430,29 +430,4 @@ describe('midiUiController 2', function() {
     expect(findRowInputByLabel(mapping, 'Key')).to.equal(null);
     expect(controller.getFeatureFlags().expressiveControls).to.equal(true);
   });
-
-  it('falls back to legacy mapping controls when query flag is set', function() {
-    const doc = new TestDocument();
-    const win = createTestWindow();
-    win.location = { search: '?mlc=true' };
-    const eventList = registerElement(doc, 'div', 'midiEventList');
-    registerElement(doc, 'div', 'midiTriggerList');
-    registerElement(doc, 'select', 'midiEnvTarget');
-    registerElement(doc, 'div', 'errorDisplay');
-  
-    const controller = createMidiUiController({
-      document: doc,
-      window: win,
-      getMidiConfig: () => ({
-        sfx: { '1': { note: 60 } },
-        timing: { bpmBase: 120 }
-      })
-    });
-  
-    controller.refreshMidiUiFromConfig();
-    const mapping = eventList.children[0];
-    expect(findRowInputByLabel(mapping, 'Keyboard')).to.equal(null);
-    expect(findRowInputByLabel(mapping, 'Key')).to.be.ok;
-    expect(controller.getFeatureFlags().legacyControls).to.equal(true);
-  });
 });

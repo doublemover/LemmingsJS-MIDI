@@ -50,7 +50,7 @@ const createBuildMappingEditor = ({
       event.preventDefault();
       details.open = !details.open;
     });
-    const useExpressiveControls = !midiUiFeatureFlags.legacyControls && midiUiFeatureFlags.expressiveControls;
+    const useExpressiveControls = midiUiFeatureFlags.expressiveControls !== false;
   
     const modeSelect = document.createElement('select');
     ['note', 'degree', 'chord'].forEach(mode => {

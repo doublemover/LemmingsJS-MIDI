@@ -62,12 +62,12 @@ currently carry most runtime complexity: renderer, time travel/history, and MCP.
   (`LEMMINGS_MCP_SURFACES`) to prevent cross-surface leakage.
 
 ### Contract and evolution
-- Tool names are short-first; legacy aliases are compatibility shims.
+- Tool names are short-first; only shipped underscore names are accepted.
 - Harness methods are the source of runtime behavior for tool handlers.
 - When adding a tool:
   1. add harness capability,
   2. add tool schema + handler,
-  3. add smoke/compat tests,
+  3. add smoke/client tests,
   4. update docs/examples to shipped names only.
 
 ### Stability checks

@@ -17,7 +17,6 @@ describe('capabilityMatrix', function () {
     expect(capabilities.offscreenCanvas.supported).to.equal(false);
     expect(capabilities.imageBitmap.supported).to.equal(false);
     expect(capabilities.renderPaths.presentPathSupported).to.equal(false);
-    expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(false);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(false);
     expect(capabilities.renderPaths.deterministicFallback).to.equal('canvas2d_main_thread');
   });
@@ -53,7 +52,6 @@ describe('capabilityMatrix', function () {
     expect(capabilities.imageBitmap.supported).to.equal(true);
     expect(capabilities.worker.supported).to.equal(true);
     expect(capabilities.renderPaths.presentPathSupported).to.equal(true);
-    expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(true);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(true);
   });
 
@@ -67,7 +65,6 @@ describe('capabilityMatrix', function () {
       navigatorRef: {}
     });
     expect(capabilities.renderPaths.presentPathSupported).to.equal(true);
-    expect(capabilities.renderPaths.offscreenPresentSupported).to.equal(true);
     expect(capabilities.renderPaths.workerOffscreenSupported).to.equal(false);
     expect(capabilities.renderPaths.deterministicFallback).to.equal('drawimage_present');
   });
@@ -78,7 +75,7 @@ describe('capabilityMatrix', function () {
       imageBitmap: { supported: false },
       worker: { supported: true },
       renderPaths: {
-        offscreenPresentSupported: false,
+        presentPathSupported: false,
         workerOffscreenSupported: false,
         deterministicFallback: 'canvas2d_main_thread'
       }
@@ -89,7 +86,6 @@ describe('capabilityMatrix', function () {
       worker: { supported: false },
       renderPaths: {
         presentPathSupported: true,
-        offscreenPresentSupported: true,
         workerOffscreenSupported: false,
         deterministicFallback: 'drawimage_present'
       }

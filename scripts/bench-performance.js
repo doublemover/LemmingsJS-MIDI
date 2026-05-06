@@ -34,7 +34,7 @@ const BENCH_PROFILES = {
     query: { profile: 'perf', performanceAPI: 'true', perfOverlay: 'true', benchReverse: 'true' }
   },
   smoke: {
-    mode: 'sequence',
+    mode: 'bench',
     durationMs: 6000,
     sampleMs: 500,
     entrances: 30,

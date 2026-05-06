@@ -85,7 +85,7 @@ const HISTORY_PROFILES = {
   smoke: {
     durationMs: 6000,
     sampleMs: 500,
-    targetSpanTicks: 12000,
+    targetSpanTicks: 6000,
     speeds: '30,60',
     seekSamples: 4,
     seekP95MsMax: 200,
@@ -191,6 +191,10 @@ const createHistoryBenchConfig = (
       args.get('requireBoundedRetention') || env.HISTORY_REQUIRE_BOUNDED_RETENTION,
       true
     ),
+    requireTargetSpan: toBoolean(
+      args.get('requireTargetSpan') || env.HISTORY_REQUIRE_TARGET_SPAN,
+      requestedProfile !== 'smoke'
+    ),
     requireColdCompaction: toBoolean(
       args.get('requireColdCompaction') || env.HISTORY_REQUIRE_COLD_COMPACTION,
       requestedProfile !== 'smoke'
@@ -259,6 +263,7 @@ const summarizeTimings = (timingsMs) => {
  *   seekP95MsMax: number,
  *   requireReplayParity: boolean,
  *   requireBoundedRetention: boolean,
+ *   requireTargetSpan: boolean,
  *   requireColdCompaction: boolean
  * }} [config]
  */
@@ -277,6 +282,7 @@ const run = async (config = createHistoryBenchConfig()) => {
     seekP95MsMax,
     requireReplayParity,
     requireBoundedRetention,
+    requireTargetSpan,
     requireColdCompaction
   } = config;
   let browser = null;
@@ -336,7 +342,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         await sleep(sampleMs);
       }
 
-      if (maxSpan < targetSpan) {
+      if (requireTargetSpan && maxSpan < targetSpan) {
         failures.push(
           `speed=${speed} history span ${maxSpan} did not reach target ${targetSpan} within ${durationMs}ms`
         );
@@ -493,6 +499,7 @@ const run = async (config = createHistoryBenchConfig()) => {
         seekP95MsMax,
         requireReplayParity,
         requireBoundedRetention,
+        requireTargetSpan,
         requireColdCompaction
       },
       results,

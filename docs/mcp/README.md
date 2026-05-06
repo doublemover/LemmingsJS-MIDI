@@ -7,6 +7,7 @@ Files:
 - `docs/mcp/lemmings-mcp-implementation-notes-memresources.md`
 - `docs/mcp/lemmings-mcp-zod-schema.ts`
 - `docs/mcp/protocol-v2.md`
+- `docs/mcp/editor-apply.md`
 - `docs/mcp/protocol-mappings.json`
 - `docs/mcp/call-examples.md`
 - `docs/mcp/publishing.md`
@@ -19,12 +20,6 @@ Files:
   - `LEMMINGS_MCP_PATH` (default `/?e2e=1`)
   - `LEMMINGS_MCP_SURFACES` (optional CSV of enabled tool surfaces:
     `game,editor,interact`; default enables all)
-  - `LEMMINGS_ROLLOUT_MCP_SURFACE_SPLIT` (default `true`):
-    when `false`, bypasses surface split restrictions and exposes all surfaces.
-  - `LEMMINGS_ROLLOUT_MCP_LEGACY_ALIASES` (default `true`):
-    enables legacy alias names such as `editor_mutate` / `editor.mutate`.
-  - `LEMMINGS_ROLLOUT_MCP_DOTTED_FALLBACK` (default `true`):
-    allows dotted-name fallback to underscore tool names.
 
 ## Host notes
 - Codex CLI: configure a stdio MCP server that runs `node mcp/server.js`.
@@ -46,7 +41,7 @@ Files:
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
 - Short underscore tool names are the only supported call names.
-- Dotted tool names are accepted as compatibility input aliases.
+- MCP calls use the shipped underscore tool names exactly.
 
 ## Tool surfaces
 - `game`: `session.*`, `time.*`, `state.*`, `lemming.*`, `skill.*`
@@ -54,12 +49,11 @@ Files:
   `objects.update`, `objects.delete`
 - `interact`: `input.*`, `vision.*`, `watch.*`, `events.*`
 - Surface gating is controlled via `LEMMINGS_MCP_SURFACES`.
-- Emergency rollback can be staged via `LEMMINGS_ROLLOUT_MCP_*` environment flags.
 
 ## Defaults (protocol v2)
 - `state.get` defaults to the compact preset.
 - Events default to `minimal` (only non-agent, trimmed fields).
-- `session.create.protocol` includes versioning and compatibility metadata.
+- `session.create.protocol` includes versioning and hard-cut tool naming metadata.
 
 ## Smoke test checklist
 - `session.create` returns a session id and `ready=true`.

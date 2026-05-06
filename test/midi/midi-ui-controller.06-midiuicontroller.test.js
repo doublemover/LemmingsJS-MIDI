@@ -141,7 +141,6 @@ describe('midiUiController 6', function() {
     expect(win.__LEMMINGS_MIDI_UI__).to.be.ok;
     expect(win.__LEMMINGS_MIDI_UI__.getIntentState().overrides.repeat.enabled).to.equal(true);
     expect(controller.getFeatureFlags()).to.have.property('expressiveControls');
-    expect(win.__LEMMINGS_MIDI_UI__.getFeatureFlags()).to.have.property('legacyControls');
     const previewResult = win.__LEMMINGS_MIDI_UI__.auditionMapping({ targetKey: 'sfx', id: 1 });
     expect(previewResult).to.equal(false);
   });

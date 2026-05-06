@@ -142,10 +142,9 @@ to fetch the latest envelope when needed.
 ## 6) Tool names and responsibilities
 
 ### High-level tool groups
-Note: the MCP server exposes short tool names (primary) with dots replaced by
-underscores (`state.get` → `state_get`) to satisfy host naming constraints. The
-canonical names below are dotted; use underscores when calling (full tool:
-`lemmings.state_get`). Legacy aliases remain for compatibility.
+Note: the MCP server exposes short tool names with underscores (`state_get`) to
+satisfy host naming constraints. The grouped names below are for documentation;
+use underscores when calling (full tool: `lemmings.state_get`).
 
 ### High-level tool groups
 - **Session**: `session.*`
@@ -187,9 +186,8 @@ Create a new session and launch the game page.
 
 **Notes**
 - Must wait until `__E2E__.getState().ready === true` before returning.
-- `spectator.openBrowser` is accepted only for compatibility. This server does
-  not open a local browser window for spectators; requests with this option
-  return a warning and continue without opening a browser.
+- `spectator.openBrowser` is not supported. This server does not open a local
+  browser window for spectators.
 
 ---
 

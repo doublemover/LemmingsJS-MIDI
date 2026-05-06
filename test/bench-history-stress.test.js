@@ -77,6 +77,7 @@ describe('bench-history-stress helpers', function () {
         HISTORY_HEADLESS: 'off',
         HISTORY_REQUIRE_REPLAY_PARITY: '0',
         HISTORY_REQUIRE_BOUNDED_RETENTION: 'no',
+        HISTORY_REQUIRE_TARGET_SPAN: 'yes',
         HISTORY_REQUIRE_COLD_COMPACTION: 'yes'
       },
       log: { warn() {} }
@@ -87,6 +88,30 @@ describe('bench-history-stress helpers', function () {
     expect(config.headless).to.equal(false);
     expect(config.requireReplayParity).to.equal(false);
     expect(config.requireBoundedRetention).to.equal(false);
+    expect(config.requireTargetSpan).to.equal(true);
     expect(config.requireColdCompaction).to.equal(true);
+  });
+
+  it('treats target span as a long-profile gate by default', function () {
+    const smoke = createHistoryBenchConfig({
+      argv: ['--profile=smoke'],
+      env: {},
+      log: { warn() {} }
+    });
+    const soak = createHistoryBenchConfig({
+      argv: ['--profile=soak'],
+      env: {},
+      log: { warn() {} }
+    });
+    const strictSmoke = createHistoryBenchConfig({
+      argv: ['--profile=smoke', '--requireTargetSpan=true'],
+      env: {},
+      log: { warn() {} }
+    });
+
+    expect(smoke.targetSpan).to.equal(6000);
+    expect(smoke.requireTargetSpan).to.equal(false);
+    expect(soak.requireTargetSpan).to.equal(true);
+    expect(strictSmoke.requireTargetSpan).to.equal(true);
   });
 });

@@ -53,7 +53,7 @@ describe('release readiness checklist', function () {
     expect(summary.missingSections).to.include.members([
       'Performance',
       'Accessibility',
-      'Rollback Rehearsal'
+      'Runtime Controls'
     ]);
     expect(summary.uncheckedItems).to.deep.equal([
       { section: 'Migration', text: 'migration rehearsal pending' }

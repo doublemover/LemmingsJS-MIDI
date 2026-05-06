@@ -10,7 +10,7 @@ const REQUIRED_SECTIONS = Object.freeze([
   'Migration',
   'Performance',
   'Accessibility',
-  'Rollback Rehearsal'
+  'Runtime Controls'
 ]);
 
 const normalizePathSeparators = (value) => String(value || '').replace(/\\/g, '/');

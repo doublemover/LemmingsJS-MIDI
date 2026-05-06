@@ -77,7 +77,6 @@ describe('e2e harness diagnostics', function () {
               webMidi: { supported: false, enabled: false, fallbackPath: 'audio_only' },
               renderPaths: {
                 presentPathSupported: false,
-                offscreenPresentSupported: false,
                 workerOffscreenSupported: false,
                 deterministicFallback: 'canvas2d_main_thread'
               }

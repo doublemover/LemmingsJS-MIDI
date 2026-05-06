@@ -1,13 +1,17 @@
 # MCP Tool Spec: `editor.apply` (Full Level Editor Control)
 
-This repository already exposes an MCP server (`mcp/server.js`) that can:
+This repository exposes an MCP server (`mcp/server.js`) that can:
 - create sessions and drive the UI with Playwright
 - fetch rich, structured state via `state.get` (including editor session + assets + validation issues)
 - apply in-game skills and input actions
 
-**What’s missing for “LLM-grade” level editing** is a *first-class mutating API* for the editor: something that can directly inspect and modify the editor model (header, skillset, terrain, gadgets, steel, selection, history), without relying on fragile mouse/keyboard automation.
+The `editor.apply` tool is the first-class mutating API for the editor. It can
+directly inspect and modify the editor model (header, skillset, terrain,
+gadgets, steel, selection, history), without relying on fragile mouse/keyboard
+automation.
 
-This spec defines **one new MCP tool**—`editor.apply`—that provides **complete read/write coverage of the editor’s functionality**, matching every editor UI tool and enabling reliable programmatic manipulation of every item in a level.
+This spec defines the shipped `editor.apply` contract. The server exposes it as
+`editor_apply`.
 
 ---
 
@@ -45,8 +49,8 @@ This spec defines **one new MCP tool**—`editor.apply`—that provides **comple
 
 ## Tool name
 
-Internal tool name (MCP server): `editor.apply`  
-External tool name (as exported by `mcp/server.js`): `editor_apply` (because the server replaces `.` with `_`)
+Internal canonical name: `editor.apply`  
+External call name: `editor_apply`
 
 ---
 
@@ -756,4 +760,3 @@ If you want to ship quickly, implement in this order:
 6. Stable `uid` support + `query.find` + `selection.hitTest`
 
 That already enables an LLM to fully build and modify levels without UI automation.
-

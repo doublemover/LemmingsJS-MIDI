@@ -80,8 +80,7 @@ Top-level fields:
 - `outputName`: selected MIDI output device name (or `null`).
 - `intentRevision`: current `MidiIntent` revision.
 - `learnTarget`: active MIDI-learn target (or `null`).
-- `featureFlags`: MIDI UI feature flags (`expressiveControls`,
-  `legacyControls`, `audition`).
+- `featureFlags`: MIDI UI feature flags (`expressiveControls`, `audition`).
 
 ### stage
 - `panEnabled`.

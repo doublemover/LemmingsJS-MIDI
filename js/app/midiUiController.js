@@ -36,6 +36,11 @@ import {
   resolveMidiId,
   toDeviceList
 } from './midi-ui/midiUiDevices.js';
+import {
+  createDefaultMidiUiFeatureFlags,
+  resolveMidiUiFeatureFlags
+} from './midi-ui/midiUiFeatureFlags.js';
+import { deriveRefreshSectionsFromPatch } from './midi-ui/midiUiRefreshSections.js';
 import { cloneSafeObject, isPlainObject, mergeDeepSafe } from '../util/safeObject.js';
 
 const mergeDeep = mergeDeepSafe;
@@ -47,21 +52,6 @@ const formatNumber = (value, digits = 2) => {
   if (!fixed.includes('.')) return fixed;
   return fixed.replace(/\.?0+$/, '');
 };
-
-const MIDI_UI_FEATURE_FLAG_DEFAULTS = Object.freeze({
-  expressiveControls: true,
-  legacyControls: false,
-  audition: true
-});
-
-const parseFlagValue = (value, fallback) => {
-  if (typeof value !== 'string') return fallback;
-  const normalized = value.trim().toLowerCase();
-  if (normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on') return true;
-  if (normalized === '0' || normalized === 'false' || normalized === 'no' || normalized === 'off') return false;
-  return fallback;
-};
-
 
 /**
  * Create the browser MIDI UI controller and bind it to runtime dependencies.
@@ -94,7 +84,7 @@ export const createMidiUiController = ({
   let scheduledRefreshNonce = 0;
   let queuedRefreshAll = false;
   let queuedRefreshForce = false;
-  let midiUiFeatureFlags = { ...MIDI_UI_FEATURE_FLAG_DEFAULTS };
+  let midiUiFeatureFlags = createDefaultMidiUiFeatureFlags();
   let bpmIntervalId = null;
   let debugIntervalId = null;
   const domListeners = [];
@@ -131,47 +121,6 @@ export const createMidiUiController = ({
       applyOverridesToRuntime();
     }
     return midiIntentState;
-  };
-
-  const deriveRefreshSectionsFromPatch = (patch) => {
-    if (!isPlainObject(patch)) return null;
-    const sections = new Set();
-    if (Object.prototype.hasOwnProperty.call(patch, 'timing')) {
-      sections.add('bpm');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'scale')) {
-      sections.add('scale');
-    }
-    if (
-      Object.prototype.hasOwnProperty.call(patch, 'velocityRange') ||
-      Object.prototype.hasOwnProperty.call(patch, 'density')
-    ) {
-      sections.add('velocity');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'repeat')) {
-      sections.add('repeat');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'input')) {
-      sections.add('view');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'envelope')) {
-      sections.add('envelope');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'position')) {
-      sections.add('position');
-      sections.add('view');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'sfx')) {
-      sections.add('events');
-      sections.add('envTargets');
-      sections.add('envelope');
-    }
-    if (Object.prototype.hasOwnProperty.call(patch, 'triggers')) {
-      sections.add('triggers');
-      sections.add('envTargets');
-      sections.add('envelope');
-    }
-    return sections.size ? sections : null;
   };
 
   const queueMidiUiRefresh = ({ sections = null, force = false } = {}) => {
@@ -337,73 +286,8 @@ export const createMidiUiController = ({
     return lemmings?.getMidiConfig?.() || lemmings?.getMidiBaseConfig?.() || null;
   };
 
-  const resolveMidiUiFeatureFlags = () => {
-    const config = getConfig() || {};
-    const configFlags = config?.ui?.featureFlags?.midiUi
-      || config?.featureFlags?.midiUi
-      || {};
-    const rolloutFlags = getRuntimeDependency('rolloutFlags', null);
-    const query = typeof URLSearchParams === 'function'
-      ? new URLSearchParams(window?.location?.search || '')
-      : null;
-    const readQueryFlag = (...names) => {
-      if (!query) return null;
-      for (const name of names) {
-        if (!query.has(name)) continue;
-        return query.get(name);
-      }
-      return null;
-    };
-    const resolveFlag = ({
-      configValue,
-      defaultValue,
-      queryNames,
-      storageKey
-    }) => {
-      const configDefault = typeof configValue === 'boolean' ? configValue : defaultValue;
-      const queryRaw = readQueryFlag(...queryNames);
-      if (queryRaw != null) {
-        return parseFlagValue(queryRaw, configDefault);
-      }
-      const storedRaw = readStoredMidiId(storage, storageKey);
-      if (storedRaw != null) {
-        return parseFlagValue(storedRaw, configDefault);
-      }
-      return configDefault;
-    };
-    const flags = {
-      expressiveControls: resolveFlag({
-        configValue: configFlags.expressiveControls,
-        defaultValue: MIDI_UI_FEATURE_FLAG_DEFAULTS.expressiveControls,
-        queryNames: ['midiExpressiveControls', 'mec'],
-        storageKey: 'lemmings.midi.ui.expressiveControls'
-      }),
-      legacyControls: resolveFlag({
-        configValue: configFlags.legacyControls,
-        defaultValue: MIDI_UI_FEATURE_FLAG_DEFAULTS.legacyControls,
-        queryNames: ['midiLegacyControls', 'mlc'],
-        storageKey: 'lemmings.midi.ui.legacyControls'
-      }),
-      audition: resolveFlag({
-        configValue: configFlags.audition,
-        defaultValue: MIDI_UI_FEATURE_FLAG_DEFAULTS.audition,
-        queryNames: ['midiAudition', 'mau'],
-        storageKey: 'lemmings.midi.ui.audition'
-      })
-    };
-    if (flags.legacyControls) {
-      flags.expressiveControls = false;
-    }
-    if (rolloutFlags?.midiExpressiveUi === false) {
-      flags.expressiveControls = false;
-      flags.legacyControls = true;
-    }
-    if (!flags.expressiveControls) {
-      flags.legacyControls = true;
-    }
-    return flags;
-  };
-  midiUiFeatureFlags = resolveMidiUiFeatureFlags();
+  const readMidiUiFeatureFlags = () => resolveMidiUiFeatureFlags({ getConfig, storage, window });
+  midiUiFeatureFlags = readMidiUiFeatureFlags();
 
   const getEffectiveConfig = () => {
     const base = getConfig() || {};
@@ -1096,10 +980,9 @@ export const createMidiUiController = ({
     const repeatSection = document.getElementById('midiRepeatSection');
 
     ensureSchemaHash();
-    midiUiFeatureFlags = resolveMidiUiFeatureFlags();
+    midiUiFeatureFlags = readMidiUiFeatureFlags();
     if (document?.body?.classList) {
       document.body.classList.toggle('midi-expressive-controls', !!midiUiFeatureFlags.expressiveControls);
-      document.body.classList.toggle('midi-legacy-controls', !!midiUiFeatureFlags.legacyControls);
     }
 
     const storedEnabled = readStoredMidiId(storage, midiStorageKeys.enabled);
