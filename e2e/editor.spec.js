@@ -15,6 +15,13 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => typeof window.__E2E__?.getEditorLevelText === 'function');
 });
 
+const setEditorField = async (page, selector, value) => {
+  await page.locator(selector).evaluate((element, nextValue) => {
+    element.value = String(nextValue);
+    element.dispatchEvent(new Event('change', { bubbles: true }));
+  }, value);
+};
+
 test('Editor UI loads and tool selection updates state', async ({ page }) => {
   await expect(page.locator('#editorCanvas')).toBeVisible();
 
@@ -93,6 +100,22 @@ test('Save and import keep saved list wired up', async ({ page }) => {
     const select = document.getElementById('editorSavedSelect');
     return select && select.value === '';
   });
+});
+
+test('Validation panel renders and applies fix buttons', async ({ page }) => {
+  await setEditorField(page, '#editorHeaderLemmings', 5);
+  await setEditorField(page, '#editorHeaderSaveRequirement', 8);
+
+  const issue = page.locator('#editorIssuesList .issue-item', {
+    hasText: 'Save requirement exceeds lemmings.'
+  });
+  await expect(issue).toBeVisible();
+  await issue.getByRole('button', { name: 'Clamp save requirement' }).click();
+  await expect(page.locator('#editorIssuesList')).not.toContainText('Save requirement exceeds lemmings.');
+
+  const header = await page.evaluate(() => window.__E2E__.getState().editor.session.level.header);
+  expect(header.SAVE_REQUIREMENT).toBe(5);
+  expect(header.LEMMINGS).toBe(5);
 });
 
 test('Canvas interaction clears focused editor inputs', async ({ page }) => {
