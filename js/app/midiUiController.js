@@ -264,6 +264,12 @@ const createMidiUiController = ({
   let refreshTimer = null;
   let lastStatus = 'Project loading';
   let factorySourceIndex = null;
+  const uiMetrics = {
+    renderCount: 0,
+    queuedRenderCount: 0,
+    lastRenderAt: 0,
+    lastRenderDurationMs: 0
+  };
   const learnState = {
     active: false,
     pending: null,
@@ -490,11 +496,19 @@ const createMidiUiController = ({
 
   const queueRender = () => {
     if (refreshTimer != null || typeof window?.setTimeout !== 'function') return;
+    uiMetrics.queuedRenderCount += 1;
     refreshTimer = window.setTimeout(() => {
       refreshTimer = null;
       render();
     }, 0);
   };
+
+  const nowMs = () => {
+    const value = window?.performance?.now?.();
+    return Number.isFinite(value) ? value : Date.now();
+  };
+
+  const getUiMetrics = () => cloneSafeObject(uiMetrics);
 
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
     project = sanitizeMidiProject(nextProject);
@@ -2054,17 +2068,24 @@ const createMidiUiController = ({
   };
 
   const render = () => {
-    syncRuntimeSources();
-    applyProjectToRuntime();
-    renderTransport();
-    renderSourceList();
-    renderTrackList();
-    renderClipList();
-    renderInspector();
-    renderModulation();
-    renderClipInspector();
-    renderOutputStatus();
-    if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
+    const startedAt = nowMs();
+    try {
+      syncRuntimeSources();
+      applyProjectToRuntime();
+      renderTransport();
+      renderSourceList();
+      renderTrackList();
+      renderClipList();
+      renderInspector();
+      renderModulation();
+      renderClipInspector();
+      renderOutputStatus();
+      if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
+    } finally {
+      uiMetrics.renderCount += 1;
+      uiMetrics.lastRenderAt = Date.now();
+      uiMetrics.lastRenderDurationMs = Math.max(0, nowMs() - startedAt);
+    }
   };
 
   const addDomListener = (element, eventName, handler) => {
@@ -2668,6 +2689,7 @@ const createMidiUiController = ({
       importProjectFile,
       saveProjectTemplate,
       getProjectTemplates,
+      getUiMetrics,
       startLearn,
       confirmLearn,
       cancelLearn,
@@ -2718,6 +2740,7 @@ const createMidiUiController = ({
     importProjectFile,
     saveProjectTemplate,
     getProjectTemplates,
+    getUiMetrics,
     startLearn,
     confirmLearn,
     cancelLearn,

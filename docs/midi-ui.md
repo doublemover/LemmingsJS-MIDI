@@ -82,6 +82,7 @@ factory projects.
 - `importProject(payload)`
 - `saveProjectTemplate({ id?, name? })`
 - `getProjectTemplates()`
+- `getUiMetrics()`
 - `startLearn()`
 - `confirmLearn()`
 - `cancelLearn()`
@@ -101,6 +102,7 @@ factory projects.
 - `midiImportProject(payload)`
 - `midiSaveProjectTemplate(options)`
 - `midiGetProjectTemplates()`
+- `midiGetUiMetrics()`
 - `midiStartLearn()`
 - `midiConfirmLearn()`
 - `midiCancelLearn()`

@@ -213,9 +213,15 @@ describe('midiUiController sequencer', function() {
       'importProject',
       'saveProjectTemplate',
       'getProjectTemplates',
+      'getUiMetrics',
       'audition',
       'panic'
     ]);
+    const metrics = win.__LEMMINGS_MIDI_UI__.getUiMetrics();
+    expect(metrics.renderCount).to.be.at.least(1);
+    expect(metrics.lastRenderDurationMs).to.be.at.least(0);
+    win.__LEMMINGS_MIDI_UI__.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
+    expect(win.__LEMMINGS_MIDI_UI__.getUiMetrics().renderCount).to.be.greaterThan(metrics.renderCount);
   });
 
   it('dispatches project intents and writes only the project storage key', function() {
