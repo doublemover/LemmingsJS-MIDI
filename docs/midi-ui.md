@@ -93,6 +93,7 @@ factory projects.
 `window.__E2E__` exposes:
 
 - `midiGetProject()`
+- `midiGetRuntimeConfig()`
 - `midiDispatchProjectIntent(intent)`
 - `midiResetProject(templateId)`
 - `midiExportProject(options)`

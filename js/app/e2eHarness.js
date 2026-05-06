@@ -140,6 +140,7 @@ const createE2EApi = (context) => ({
   startBench: (entrances) => startBench(context.view, entrances),
   stopBench: () => stopBench(context.view),
   midiGetProject: () => context.midiUi?.getProject?.() || null,
+  midiGetRuntimeConfig: () => context.midiUi?.getMidiConfig?.() || null,
   midiDispatchProjectIntent: (intent) => context.midiUi?.dispatchProjectIntent?.(intent) || null,
   midiResetProject: (templateId) => context.midiUi?.resetProject?.(templateId) || null,
   midiExportProject: (options) => context.midiUi?.exportProject?.(options) || null,

@@ -239,6 +239,14 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   expect(clip.steps[0]).toMatchObject({ note: 66, velocity: 91, durationTicks: 9 });
   expect(clip.steps[1]).toMatchObject({ note: 70 });
   expect(source).toMatchObject({ mode: 'clip', clipId: clip.id });
+  const runtime = await page.evaluate(() => window.__E2E__.midiGetRuntimeConfig());
+  expect(runtime.sfx['1']).toMatchObject({
+    note: 66,
+    velocity: 91,
+    durationTicks: 9,
+    clipId: clip.id
+  });
+  expect(runtime.sfx['1'].notes).toEqual([66, 70]);
   await expect(midi.outputLog()).toContainText(/Audition|skipped/);
 
   await page.reload();
