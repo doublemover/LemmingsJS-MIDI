@@ -59,6 +59,7 @@ const config = {
         returnState: 'editor'
       });
     });
+    await page.locator('#editorPaletteTerrain button[data-type="terrain"]').first().click();
     await page.locator('#editorHeaderSaveRequirement').evaluate((element) => {
       element.value = '8';
       element.dispatchEvent(new Event('change', { bubbles: true }));
@@ -75,7 +76,7 @@ const config = {
   targets: [
     { name: 'editor-shell', type: 'selector', selector: '.editor-app' },
     { name: 'editor-canvas-selector', type: 'selector', selector: '#editorCanvas' },
-    { name: 'editor-palette', type: 'selector', selector: '#editorPaletteTerrain' },
+    { name: 'editor-palette', type: 'selector', selector: '.palette-block' },
     { name: 'editor-inspector', type: 'selector', selector: 'aside.editor-panel:has(#editorHeaderTitle)' },
     { name: 'editor-file-controls', type: 'selector', selector: '.editor-controls' },
     { name: 'editor-selection-actions', type: 'selector', selector: '#editorSelectionActions' },
@@ -99,6 +100,16 @@ const config = {
     {
       name: 'editor-file-controls',
       selector: '.editor-controls',
+      checks: ['horizontalOverflow', 'clippedText']
+    },
+    {
+      name: 'editor-palette',
+      selector: '.palette-block',
+      checks: ['horizontalOverflow']
+    },
+    {
+      name: 'editor-palette-recent',
+      selector: '#editorPaletteRecent',
       checks: ['horizontalOverflow', 'clippedText']
     },
     {

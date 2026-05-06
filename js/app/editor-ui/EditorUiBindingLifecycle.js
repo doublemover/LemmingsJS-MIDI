@@ -57,6 +57,7 @@ const editorUiBindingLifecycleMethods = {
       paletteSearch: get('editorPaletteSearch'),
       paletteViewList: get('editorPaletteViewList'),
       paletteViewGrid: get('editorPaletteViewGrid'),
+      paletteRecent: get('editorPaletteRecent'),
       paletteTerrain: get('editorPaletteTerrain'),
       paletteGadgets: get('editorPaletteGadgets'),
       paletteTriggers: get('editorPaletteTriggers'),

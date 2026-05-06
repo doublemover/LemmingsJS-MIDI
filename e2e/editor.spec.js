@@ -86,6 +86,31 @@ test('Palette view toggle switches list and grid layouts', async ({ page }) => {
   await expect(terrainList).not.toHaveClass(/grid/);
 });
 
+test('Palette recent strip records and reselects pieces', async ({ page }) => {
+  const terrainButton = page.locator('#editorPaletteTerrain button[data-type="terrain"]').first();
+  const terrainId = Number(await terrainButton.getAttribute('data-id'));
+  expect(Number.isFinite(terrainId)).toBe(true);
+
+  await terrainButton.click();
+  const recentTerrain = page.locator(`#editorPaletteRecent button[data-type="terrain"][data-id="${terrainId}"]`);
+  await expect(recentTerrain).toBeVisible();
+  await expect(recentTerrain).toHaveAttribute('aria-pressed', 'true');
+
+  await page.locator('#editorPaletteTabs button[data-tab="gadgets"]').click();
+  const gadgetButton = page.locator('#editorPaletteGadgets button[data-type="gadget"]').first();
+  const gadgetId = Number(await gadgetButton.getAttribute('data-id'));
+  expect(Number.isFinite(gadgetId)).toBe(true);
+  await gadgetButton.click();
+
+  const recentButtons = page.locator('#editorPaletteRecent button');
+  await expect(recentButtons.first()).toHaveAttribute('data-type', 'gadget');
+  await expect(recentButtons.first()).toHaveAttribute('data-id', String(gadgetId));
+
+  await recentTerrain.click();
+  const selectedTerrainId = await page.evaluate(() => window.__E2E__.getState().editor.controller.selectedTerrainId);
+  expect(selectedTerrainId).toBe(terrainId);
+});
+
 test('Save and import keep saved list wired up', async ({ page }) => {
   await page.click('#editorSavedSave');
   await expect(page.locator('#editorSavedSelect')).toContainText('E2E Save');

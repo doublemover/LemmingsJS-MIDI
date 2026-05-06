@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import FakeTimers from '@sinonjs/fake-timers';
 import { EditorUiController } from '../../js/app/editorUiController.js';
+import { TestDocument } from '../helpers/test-dom.js';
 
 const createClassList = () => {
   const set = new Set();
@@ -149,6 +150,77 @@ describe('EditorUiController palette throughput helpers', () => {
     expect(ui._paletteEntries.gadget[0].button.hidden).to.equal(false);
     expect(ui._paletteEntries.trigger[0].button.hidden).to.equal(true);
     expect(scheduleCount).to.equal(1);
+  });
+
+  it('records recent palette entries with de-dupe and cap', () => {
+    const ui = Object.create(EditorUiController.prototype);
+    let renderCount = 0;
+    ui._recentPaletteEntries = [];
+    ui._renderRecentPaletteEntries = () => {
+      renderCount += 1;
+    };
+
+    for (let i = 0; i < 10; i += 1) {
+      ui._recordRecentPaletteEntry({ id: i, name: `Terrain ${i}`, width: 8, height: 8 }, 'terrain');
+    }
+    ui._recordRecentPaletteEntry({ id: 4, name: 'Terrain 4', width: 8, height: 8 }, 'terrain');
+
+    expect(ui._recentPaletteEntries).to.have.lengthOf(8);
+    expect(ui._recentPaletteEntries[0].id).to.equal(4);
+    expect(ui._recentPaletteEntries.filter(entry => entry.id === 4)).to.have.lengthOf(1);
+    expect(ui._recentPaletteEntries.map(entry => entry.id)).to.deep.equal([4, 9, 8, 7, 6, 5, 3, 2]);
+    expect(renderCount).to.equal(11);
+  });
+
+  it('renders recent palette buttons and reuses selection behavior', () => {
+    const doc = new TestDocument();
+    const recent = doc.createElement('div');
+    const ui = Object.create(EditorUiController.prototype);
+    const selected = { terrain: null, gadget: null, trigger: null };
+    ui.document = doc;
+    ui.el = { paletteRecent: recent };
+    ui.controller = {
+      selectedTerrainId: null,
+      selectedGadgetId: null,
+      selectedTriggerId: null,
+      setSelectedTerrain(id) {
+        selected.terrain = id;
+        this.selectedTerrainId = id;
+      },
+      setSelectedGadget(id) {
+        selected.gadget = id;
+        this.selectedGadgetId = id;
+      },
+      setSelectedTrigger(id) {
+        selected.trigger = id;
+        this.selectedTriggerId = id;
+      }
+    };
+    ui._paletteEntries = {
+      terrain: [{
+        id: 3,
+        entry: { id: 3, name: 'Rock', width: 8, height: 8 },
+        button: { classList: createClassList() }
+      }],
+      gadget: [],
+      trigger: []
+    };
+    ui._recentPaletteEntries = [{
+      id: 3,
+      type: 'terrain',
+      label: '#3 Rock (8x8)',
+      entry: { id: 3, name: 'Rock', width: 8, height: 8 }
+    }];
+
+    ui._renderRecentPaletteEntries();
+    expect(recent.hidden).to.equal(false);
+    expect(recent.children).to.have.lengthOf(1);
+    expect(recent.children[0].dataset.type).to.equal('terrain');
+    expect(recent.children[0].dataset.id).to.equal('3');
+    expect(recent.children[0].getAttribute('aria-label')).to.equal('Select recent #3 Rock (8x8)');
+
+    recent.children[0].dispatchEvent({ type: 'click' });
+    expect(selected.terrain).to.equal(3);
   });
 
   it('hydrates previews in visible active-tab batches', () => {

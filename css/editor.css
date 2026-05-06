@@ -116,6 +116,7 @@ body {
 .editor-controls input:focus-visible,
 .tool-grid button:focus-visible,
 .palette-tabs button:focus-visible,
+.palette-recent button:focus-visible,
 .palette-view-toggle button:focus-visible,
 .palette-list button:focus-visible,
 .editor-button:focus-visible,
@@ -302,6 +303,34 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.palette-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.palette-recent[hidden] {
+  display: none;
+}
+
+.palette-recent button {
+  border: 1px solid var(--panel-border);
+  background: #f6efe5;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 11px;
+  min-height: 26px;
+  padding: 3px 6px;
+}
+
+.palette-recent button.active {
+  border-color: var(--accent);
+  background: #f7d6c5;
 }
 
 #editorPaletteSearch {

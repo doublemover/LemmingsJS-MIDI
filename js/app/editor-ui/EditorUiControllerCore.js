@@ -78,6 +78,7 @@ class EditorUiController {
       gadget: [],
       trigger: []
     };
+    this._recentPaletteEntries = [];
     this._palettePreviewQueue = [];
     this._palettePreviewIndex = 0;
     this._palettePreviewTimer = null;
@@ -119,9 +120,7 @@ class EditorUiController {
       button.type = 'button';
       button.dataset.id = String(entry.id);
       button.dataset.type = type;
-      const size = `${entry.width || 0}x${entry.height || 0}`;
-      const triggerFlag = entry.triggerEffectId ? ` | T${entry.triggerEffectId}` : '';
-      const labelText = `#${entry.id} ${entry.name} (${size})${triggerFlag}`;
+      const labelText = this._getPaletteLabelText(entry);
       const label = this.document.createElement('span');
       label.className = 'palette-label';
       label.textContent = labelText;
@@ -135,16 +134,7 @@ class EditorUiController {
       previewWrap.appendChild(previewImg);
       button.append(previewWrap, label);
       button.addEventListener('click', () => {
-        const id = Number(entry.id);
-        if (type === 'terrain') {
-          this.controller.setSelectedTerrain(id);
-        } else if (type === 'trigger') {
-          this.controller.setSelectedTrigger(id);
-          this.controller.setSelectedGadget(id);
-        } else {
-          this.controller.setSelectedGadget(id);
-        }
-        this._refreshPaletteSelection();
+        this._selectPaletteEntry(entry, type, { recordRecent: true });
       });
       container.appendChild(button);
       nextEntries.push({

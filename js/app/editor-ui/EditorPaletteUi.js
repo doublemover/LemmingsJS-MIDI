@@ -37,6 +37,9 @@ import {
   saveLevel,
   validateLevel
 } from './EditorUiControllerShared.js';
+
+const MAX_RECENT_PALETTE_ENTRIES = 8;
+
 const editorPaletteUiMethods = {
   _setPaletteTab(tab) {
     this._activeTab = tab;
@@ -68,9 +71,94 @@ const editorPaletteUiMethods = {
     this._renderPaletteList(this.el.paletteTerrain, this.assets.terrain, 'terrain');
     this._renderPaletteList(this.el.paletteGadgets, this.assets.gadgets, 'gadget');
     this._renderPaletteList(this.el.paletteTriggers, this.assets.triggers, 'trigger');
+    this._pruneRecentPaletteEntries();
+    this._renderRecentPaletteEntries();
     this._applyPaletteFilter();
     this._setPaletteTab(this._activeTab);
     this._refreshPaletteSelection();
+  },
+
+  _getPaletteLabelText(entry) {
+    const size = `${entry?.width || 0}x${entry?.height || 0}`;
+    const triggerFlag = entry?.triggerEffectId ? ` | T${entry.triggerEffectId}` : '';
+    return `#${entry?.id} ${entry?.name || 'Piece'} (${size})${triggerFlag}`;
+  },
+
+  _selectPaletteEntry(entry, type, options = {}) {
+    const id = Number(entry?.id);
+    if (!Number.isFinite(id)) return;
+    if (type === 'terrain') {
+      this.controller.setSelectedTerrain(id);
+    } else if (type === 'trigger') {
+      this.controller.setSelectedTrigger(id);
+      this.controller.setSelectedGadget(id);
+    } else {
+      this.controller.setSelectedGadget(id);
+    }
+    if (options.recordRecent) {
+      this._recordRecentPaletteEntry(entry, type);
+    }
+    this._refreshPaletteSelection();
+  },
+
+  _getPaletteRecord(type, id) {
+    const entries = this._paletteEntries?.[type] || [];
+    return entries.find(record => Number(record.id) === Number(id)) || null;
+  },
+
+  _recordRecentPaletteEntry(entry, type) {
+    const id = Number(entry?.id);
+    if (!Number.isFinite(id)) return;
+    const next = {
+      id,
+      type,
+      label: this._getPaletteLabelText(entry),
+      entry
+    };
+    const existing = this._recentPaletteEntries || [];
+    this._recentPaletteEntries = [
+      next,
+      ...existing.filter(item => !(item.type === type && Number(item.id) === id))
+    ].slice(0, MAX_RECENT_PALETTE_ENTRIES);
+    this._renderRecentPaletteEntries();
+  },
+
+  _pruneRecentPaletteEntries() {
+    const available = new Set();
+    for (const type of ['terrain', 'gadget', 'trigger']) {
+      for (const record of this._paletteEntries?.[type] || []) {
+        available.add(`${type}:${record.id}`);
+      }
+    }
+    this._recentPaletteEntries = (this._recentPaletteEntries || [])
+      .filter(item => available.has(`${item.type}:${item.id}`));
+  },
+
+  _renderRecentPaletteEntries() {
+    const container = this.el.paletteRecent;
+    if (!container) return;
+    container.innerHTML = '';
+    const entries = this._recentPaletteEntries || [];
+    container.hidden = entries.length === 0;
+    for (const item of entries) {
+      const button = this.document.createElement('button');
+      button.type = 'button';
+      button.dataset.type = item.type;
+      button.dataset.id = String(item.id);
+      button.textContent = item.type === 'terrain'
+        ? `T#${item.id}`
+        : item.type === 'trigger'
+          ? `Tr#${item.id}`
+          : `O#${item.id}`;
+      button.title = `Select recent ${item.label}`;
+      button.setAttribute('aria-label', button.title);
+      button.addEventListener('click', () => {
+        const record = this._getPaletteRecord(item.type, item.id);
+        this._selectPaletteEntry(record?.entry || item.entry, item.type, { recordRecent: true });
+      });
+      container.appendChild(button);
+    }
+    this._refreshRecentPaletteSelection();
   },
 
   _bindPaletteView() {
@@ -252,6 +340,23 @@ const editorPaletteUiMethods = {
     setActive('terrain', this.controller.selectedTerrainId);
     setActive('gadget', this.controller.selectedGadgetId);
     setActive('trigger', this.controller.selectedTriggerId);
+    this._refreshRecentPaletteSelection();
+  },
+
+  _refreshRecentPaletteSelection() {
+    const buttons = this.el.paletteRecent?.querySelectorAll?.('button') || [];
+    buttons.forEach(button => {
+      const type = button.dataset?.type;
+      const id = Number(button.dataset?.id);
+      const selectedId = type === 'terrain'
+        ? this.controller.selectedTerrainId
+        : type === 'trigger'
+          ? this.controller.selectedTriggerId
+          : this.controller.selectedGadgetId;
+      const isActive = Number.isFinite(id) && Number(selectedId) === id;
+      button.classList.toggle('active', isActive);
+      button.setAttribute?.('aria-pressed', isActive ? 'true' : 'false');
+    });
   },
 
   _refreshHeaderFields(level = this.session?.level) {
