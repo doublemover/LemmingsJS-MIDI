@@ -49,15 +49,17 @@ On load and reset the storage layer removes obsolete MIDI keys such as
 `lemmings.midi.intent`, `lemmings.midi.overrides`, old device ids, tab state,
 section state, schema hash, and the old audition feature flag.
 
-Old local override data is intentionally not migrated. A missing project creates
-a fresh project from the current factory template. Reset can target the factory
+Old local override data is intentionally not migrated, and runtime override
+fallback paths are hard-cut from the sequencer path. A missing project creates a
+fresh project from the current factory template. Reset can target the factory
 template or a saved user template.
 
 ## Runtime Adapter
 
-`projectToMidiConfig(project, factoryConfig)` converts the active project back
-into the existing `MidiMapping` config shape. This milestone keeps the existing
-`MidiEventRouter` and `MidiScheduler`.
+`projectToMidiConfig(project, factoryConfig)` converts the active project into
+the runtime `MidiMapping` config consumed by `MidiEventRouter` and
+`MidiScheduler`. The runtime path remains project-driven; legacy override
+fallback paths are not editable contracts.
 
 `detectMidiProjectConflicts(project, options)` is a pure project-domain report
 used by the UI and tests. It inspects raw references before sanitizer repair,
@@ -78,9 +80,9 @@ The adapter:
 - honors mute and solo by disabling mappings hidden by track state.
 - applies per-track velocity scale to direct and clip mappings before routing.
 
-Per-track output ids and voice budgets are persisted now, but the current
-runtime still has one scheduler output. Full per-track output dispatch belongs
-to a later scheduler/router phase.
+Per-track output ids lower into runtime mappings and are resolved by the
+router/scheduler dispatch path. Tracks without an explicit output use the
+selected project output. Voice budgets remain project-owned scheduling metadata.
 
 ## UI Regions
 

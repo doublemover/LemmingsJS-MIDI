@@ -35,6 +35,13 @@ should let users design, route, audition, sequence, automate, and perform MIDI
 responses with the polish expected from music software, while remaining
 deterministic and testable without real hardware.
 
+Current status: the project-based sequencer, source browser filters, track/clip
+editing, learn/record flows, modulation lanes, template import/export, legacy
+storage cleanup, and per-track output dispatch are implemented. Remaining
+Milestone 1 work should stay limited to focused polish, missing
+runtime-confidence tests, and small editor controls rather than broad sequencer
+rewrites.
+
 **Product Goals**
 
 - Make first-run setup obvious: enable MIDI, pick devices, confirm permissions,

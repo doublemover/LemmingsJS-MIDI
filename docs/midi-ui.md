@@ -6,7 +6,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 ## Setup
 
 - Enable: attaches or detaches MIDI routing.
-- Input and Output: select WebMIDI devices when available.
+- Input and Project Output: select the WebMIDI input and default output device
+  when available.
 - Channel: input channel, either `omni` or 1-16.
 - BPM: base transport tempo used by the MIDI runtime.
 - Template: choose the factory template or a saved user template for reset.
@@ -20,8 +21,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Sources: browse SFX, triggers, MIDI flags, system, and procgen sources with
   search, category, changed, current-level availability, assignment, conflict,
   and clean filters.
-- Tracks: create and select tracks, set output, channel, instrument label,
-  mute, solo, arm, velocity scale, priority, and voice budget.
+- Tracks: create and select tracks, set optional per-track output, channel,
+  instrument label, mute, solo, arm, velocity scale, priority, and voice budget.
 - Keyboard navigation: focus the Sources, Tracks, Clips, or step-pattern grid
   fields and use Arrow keys, Home, and End to move through the active region.
 - Modulation: set global intensity, accent, view pan, and add, edit, or remove
@@ -34,7 +35,8 @@ old two-pane Events/Triggers/ADSR configuration UI.
 - Inspector: edit the selected source direct mapping with note, degree, octave,
   chord, velocity, duration, envelope override, clip, audition controls, and
   conflict warnings for the selected route. Changed sources can be reverted to
-  the factory or runtime default mapping.
+  the factory template mapping, or to the project default for sources not
+  present in the factory template.
 - Learn: arm a selected direct source, capture the next MIDI note-on as a
   pending note/velocity/channel assignment, then commit or cancel it.
 - Record: capture a short mocked or live MIDI phrase into consecutive steps of
@@ -105,7 +107,7 @@ factory projects.
 - `npm run capture:e2e:midi` captures the sequencer regions under
   `temp/e2e-captures/`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
-  cleanup, setup, track routing, direct mapping, clip creation/editing,
-  clip assignment, import/export/template reset, learn capture, short recording,
-  modulation controls, audition, persistence, filters, conflict warnings, and
-  responsive overflow checks.
+  cleanup, setup, project and per-track output routing, direct mapping, clip
+  creation/editing, clip assignment, import/export/template reset, learn
+  capture, short recording, modulation controls, audition, persistence, filters,
+  conflict warnings, and responsive overflow checks.
