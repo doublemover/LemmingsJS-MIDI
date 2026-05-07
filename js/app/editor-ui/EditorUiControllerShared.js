@@ -40,9 +40,11 @@ import {
 } from '../../editor/EditorStorage.js';
 import {
   createEditorProject,
+  createEditorProjectPackArchive,
   createEditorProjectPackBundle,
   deleteEditorProjectLevel,
   duplicateEditorProjectLevel,
+  installEditorProjectPackArchive,
   listSavedProjects,
   loadEditorProject,
   renameEditorProjectLevel,
@@ -130,6 +132,7 @@ export {
   ShortcutOverlay,
   createClassicLevelData,
   createEditorProject,
+  createEditorProjectPackArchive,
   createEditorProjectPackBundle,
   createValidationReport,
   createEditorLevelFromClassic,
@@ -158,6 +161,7 @@ export {
   saveEditorProject,
   saveLevel,
   upsertEditorProjectLevel,
+  installEditorProjectPackArchive,
   checkEditorSolvabilityAdvisory,
   validateLevel
 };

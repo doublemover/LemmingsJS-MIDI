@@ -106,6 +106,9 @@ should remain compact and JSON-safe:
 - `recentCertificates`: bounded list of recent local challenge certificate
   decisions, including source, result type, fallback action, and assist reason
   when applicable.
+- `certificatePolicy`: explicit certificate semantics. Its scope is
+  `local-tactical`, `fullLevelSolvability` is `false`, and procgen must not
+  claim a generated run or level is solved from these checks alone.
 - E2E/debug URLs can force deterministic certificate coverage with
   `gapChance`, `gapMinWidth`, `gapMaxWidth`, `recentCertificateLimit`, and
   `procgenCertificateVerification` query parameters.

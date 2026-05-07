@@ -1,13 +1,17 @@
 import { expect } from 'chai';
 import {
+  EDITOR_PROJECT_ARCHIVE_KIND,
   EDITOR_PROJECT_BUNDLE_KIND,
   PROJECT_STORAGE_KEYS,
   createEditorProject,
+  createEditorProjectFromPackArchive,
   createEditorProjectLevel,
+  createEditorProjectPackArchive,
   createEditorProjectPackBundle,
   deleteEditorProject,
   deleteEditorProjectLevel,
   duplicateEditorProjectLevel,
+  installEditorProjectPackArchive,
   listSavedProjects,
   loadEditorProject,
   renameEditorProjectLevel,
@@ -220,6 +224,81 @@ describe('EditorProjectStorage', () => {
     expect(bundle.packValidationReport.summary).to.deep.equal({ errors: 0, warnings: 2 });
     expect(bundle.project.levels[0].validation).to.deep.equal({ errors: 0, warnings: 1 });
     expect(bundle.validationReports[1].report).to.equal(null);
+  });
+
+  it('exports and installs editor pack archives with validation reports', () => {
+    const storage = new MemoryStorage();
+    const project = createEditorProject({
+      id: 'project-a',
+      name: 'Pack A',
+      levels: [
+        { id: 'one', title: 'First Level', style: 'dirt', text: 'TITLE First Level\nSTYLE dirt\n', updatedAt: 1 }
+      ],
+      activeLevelId: 'one',
+      updatedAt: 2
+    });
+    const archive = createEditorProjectPackArchive(project, {
+      exportedAt: 100,
+      packValidationReport: { summary: { errors: 0, warnings: 0 } },
+      reportsByLevelId: {
+        one: { summary: { errors: 0, warnings: 0 } }
+      }
+    });
+
+    expect(archive.kind).to.equal(EDITOR_PROJECT_ARCHIVE_KIND);
+    expect(archive.manifest).to.deep.include({
+      fileCount: 3,
+      validationSummary: { errors: 0, warnings: 0 }
+    });
+    expect(archive.files.map(file => file.path)).to.deep.equal([
+      'info.nxmi',
+      'levels.nxmi',
+      'levels/first-level-one.nxlv'
+    ]);
+
+    const parsed = createEditorProjectFromPackArchive(JSON.stringify(archive), {
+      createdAt: 200,
+      updatedAt: 201
+    });
+    expect(parsed.ok).to.equal(true);
+    expect(parsed.report.summary).to.deep.include({ errors: 0, blockers: 0 });
+    expect(parsed.project.name).to.equal('Pack A');
+    expect(parsed.project.levels[0]).to.deep.include({
+      id: 'one',
+      title: 'First Level',
+      style: 'dirt',
+      text: 'TITLE First Level\nSTYLE dirt\n'
+    });
+
+    const installed = installEditorProjectPackArchive(storage, archive, {
+      createdAt: 300,
+      updatedAt: 301
+    });
+    expect(installed.ok).to.equal(true);
+    expect(installed.projectId).to.equal('project-a');
+    expect(loadEditorProject(storage, 'project-a').levels[0].title).to.equal('First Level');
+  });
+
+  it('rejects incomplete pack archives without saving partial projects', () => {
+    const storage = new MemoryStorage();
+    const result = installEditorProjectPackArchive(storage, {
+      kind: EDITOR_PROJECT_ARCHIVE_KIND,
+      project: {
+        id: 'broken',
+        name: 'Broken',
+        levels: [{ id: 'missing', title: 'Missing', path: 'levels/missing.nxlv' }]
+      },
+      files: [{ path: 'info.nxmi', text: 'TITLE Broken\n' }]
+    });
+
+    expect(result.ok).to.equal(false);
+    expect(result.projectId).to.equal(null);
+    expect(result.report.summary.errors).to.equal(2);
+    expect(result.report.issues.map(issue => issue.code)).to.deep.equal([
+      'pack_archive_missing_manifest',
+      'pack_archive_missing_level_file'
+    ]);
+    expect(loadEditorProject(storage, 'broken')).to.equal(null);
   });
 
   it('exposes deterministic helpers for metadata and sorting', () => {

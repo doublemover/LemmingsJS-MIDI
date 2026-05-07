@@ -55,8 +55,15 @@ describe('SolverRunner', function () {
     });
 
     expect(result.resultType).to.equal(SOLVER_RESULT_TYPES.SOLVED);
+    expect(result.replayVerified).to.equal(true);
+    expect(result.replayAuthority).to.equal('synthetic-runtime');
     expect(result.actions).to.have.length(1);
     expect(result.budgetUsage.actions).to.equal(1);
+    expect(result.replaySummary).to.deep.include({
+      verifier: 'runtime-replay',
+      verified: true,
+      authority: 'synthetic-runtime'
+    });
     expect(result.replaySummary.savedCount).to.equal(1);
     expect(result.replaySummary.appliedActions).to.eql([
       {
@@ -205,6 +212,8 @@ describe('SolverRunner', function () {
     });
 
     expect(result.resultType).to.equal(SOLVER_RESULT_TYPES.UNKNOWN);
+    expect(result.replayVerified).to.equal(false);
+    expect(result.replayAuthority).to.equal('non-authoritative-adapter');
     expect(result.explanations[0].code).to.equal(
       SOLVER_EXPLANATION_CODES.MISSING_RUNTIME_ADAPTER
     );

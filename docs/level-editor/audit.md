@@ -45,8 +45,10 @@ Not implemented or not claimed in this checkpoint:
   editor-only transforms, comments, unknown sections, or grouped terrain.
 - Solver-backed export blocking.
 - Real archive/install tooling for exported editor pack bundles. The editor can
-  now store local projects and export a JSON handoff bundle with `info.nxmi`,
-  `levels.nxmi`, level `.nxlv` text, and validation reports.
+  store local projects, export the JSON handoff bundle with `info.nxmi`,
+  `levels.nxmi`, level `.nxlv` text, and validation reports, and now export or
+  install an editor pack archive with manifest validation before local storage
+  writes.
 
 ## Workflow Coverage Map
 
@@ -58,7 +60,7 @@ Not implemented or not claimed in this checkpoint:
 | Import failures | UI file handlers report read/parse failures into status and validation | Keep visible failure coverage green |
 | Validation quick fixes | Unit coverage exists for validation and fix callbacks | Mark destructive fixes and expose that status to UI/E2E |
 | Visual states | Editor capture target exists | Split capture states for shell, palette/inspector, validation, file controls, and playtest |
-| Project workflow | Local project storage and pack JSON export exist | Add archive/install export only after the final pack format is settled |
+| Project workflow | Local project storage, pack JSON export, and pack archive install exist | Keep archive install validation aligned with future pack metadata fields |
 
 ## UX Issues
 

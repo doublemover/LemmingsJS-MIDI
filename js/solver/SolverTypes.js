@@ -123,6 +123,19 @@ const normalizeActionScriptAction = action => {
   };
 };
 
+const getSolverReplayVerification = (result = {}) => {
+  const replaySummary = isPlainObject(result.replaySummary) ? result.replaySummary : null;
+  const authority = replaySummary?.authority || replaySummary?.verifier || null;
+  const replayVerified = result.resultType === SOLVER_RESULT_TYPES.SOLVED &&
+    replaySummary?.verified === true &&
+    replaySummary?.verifier === 'runtime-replay' &&
+    authority !== 'non-authoritative-adapter';
+  return {
+    replayVerified,
+    replayAuthority: authority
+  };
+};
+
 const createSolverResult = ({
   resultType,
   summary = '',
@@ -135,6 +148,7 @@ const createSolverResult = ({
   const type = Object.values(SOLVER_RESULT_TYPES).includes(resultType)
     ? resultType
     : SOLVER_RESULT_TYPES.UNKNOWN;
+  const replayStatus = getSolverReplayVerification({ resultType: type, replaySummary });
   return {
     resultType: type,
     summary: String(summary || type),
@@ -147,6 +161,8 @@ const createSolverResult = ({
       wallTimeMs: toNonNegativeInteger(budgetUsage.wallTimeMs, 0)
     },
     replaySummary,
+    replayVerified: replayStatus.replayVerified,
+    replayAuthority: replayStatus.replayAuthority,
     captures: Array.isArray(captures) ? captures.map(item => String(item)) : []
   };
 };
@@ -203,6 +219,7 @@ export {
   SOLVER_RESULT_TYPES,
   createBudgetMeter,
   createSolverResult,
+  getSolverReplayVerification,
   normalizeActionScriptAction,
   normalizeSolverOptions
 };

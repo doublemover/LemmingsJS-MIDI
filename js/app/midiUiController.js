@@ -510,6 +510,21 @@ const createMidiUiController = ({
 
   const getUiMetrics = () => cloneSafeObject(uiMetrics);
 
+  const getSchedulerPressure = () => {
+    const router = getLemmings()?.midiRouter;
+    const report = router?.getRateReport?.();
+    const snapshot = report?.snapshot || router?.getRateSnapshot?.();
+    const queued = Math.max(0, Math.round(Number(snapshot?.next?.count) || 0));
+    const text = report?.reason
+      ? `Scheduler: ${report.reason}`
+      : (queued ? `Scheduler: queued ${queued}` : 'Scheduler: idle');
+    return {
+      text,
+      reason: report?.reason || null,
+      queued
+    };
+  };
+
   const commitProject = (nextProject, { persist = true, apply = true, renderUi = true } = {}) => {
     project = sanitizeMidiProject(nextProject);
     if (persist) project = saveMidiProject(storage, project);
@@ -539,6 +554,49 @@ const createMidiUiController = ({
     const id = templateId || selectedTemplateId();
     if (!id || id === 'midi-mapping') return 'Factory';
     return getProjectTemplates().find(template => template.id === id)?.name || 'Factory';
+  };
+
+  const summarizeMidiDevices = (devices, selectedId) => {
+    const list = toDeviceList(devices)
+      .map(device => ({
+        id: device?.id || '',
+        name: device?.name || device?.id || 'Unnamed device',
+        state: device?.state || null,
+        connection: device?.connection || null
+      }))
+      .filter(device => device.id);
+    const selected = list.find(device => device.id === selectedId) || null;
+    return {
+      count: list.length,
+      selectedId: selected?.id || null,
+      selectedName: selected?.name || null,
+      devices: list
+    };
+  };
+
+  const getMidiSetupState = () => {
+    const current = ensureProject();
+    const webMidi = getWebMidi();
+    const templateId = selectedTemplateId();
+    return {
+      enabled: !!current.enabled,
+      webMidiEnabled: !!webMidi?.enabled,
+      input: summarizeMidiDevices(webMidi?.inputs, current.devices.inputId),
+      output: summarizeMidiDevices(webMidi?.outputs, current.devices.outputId),
+      template: {
+        id: templateId,
+        label: selectedTemplateLabel(templateId),
+        savedCount: getProjectTemplates().length
+      },
+      status: lastStatus,
+      error: document?.getElementById('errorDisplay')?.textContent || '',
+      scheduler: getSchedulerPressure(),
+      outputLog: outputLog.slice(),
+      recovery: {
+        resetAvailable: true,
+        panicAvailable: true
+      }
+    };
   };
 
   const resetProject = (templateId = null) => {
@@ -2065,14 +2123,7 @@ const createMidiUiController = ({
   };
 
   const renderOutputStatus = () => {
-    const router = getLemmings()?.midiRouter;
-    const report = router?.getRateReport?.();
-    const snapshot = report?.snapshot || router?.getRateSnapshot?.();
-    const queued = Math.max(0, Math.round(Number(snapshot?.next?.count) || 0));
-    const pressure = report?.reason
-      ? `Scheduler: ${report.reason}`
-      : (queued ? `Scheduler: queued ${queued}` : 'Scheduler: idle');
-    setText(document?.getElementById('midiSchedulerPressure'), pressure);
+    setText(document?.getElementById('midiSchedulerPressure'), getSchedulerPressure().text);
     setText(document?.getElementById('midiOutputLog'), outputLog[0] || 'No output yet');
   };
 
@@ -2699,6 +2750,7 @@ const createMidiUiController = ({
       saveProjectTemplate,
       getProjectTemplates,
       getUiMetrics,
+      getMidiSetupState,
       startLearn,
       confirmLearn,
       cancelLearn,
@@ -2750,6 +2802,7 @@ const createMidiUiController = ({
     saveProjectTemplate,
     getProjectTemplates,
     getUiMetrics,
+    getMidiSetupState,
     startLearn,
     confirmLearn,
     cancelLearn,

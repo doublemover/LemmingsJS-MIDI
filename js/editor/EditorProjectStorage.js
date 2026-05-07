@@ -2,6 +2,7 @@ import { getRuntimeDependency } from '../core/dependencies.js';
 
 const EDITOR_PROJECT_VERSION = 1;
 const EDITOR_PROJECT_BUNDLE_KIND = 'lemmings.editor.pack.bundle';
+const EDITOR_PROJECT_ARCHIVE_KIND = 'lemmings.editor.pack.archive';
 const PROJECT_STORAGE_KEYS = Object.freeze({
   index: 'lemmings.editor.projects',
   projectPrefix: 'lemmings.editor.project.'
@@ -88,6 +89,88 @@ const sanitizeProjectLevel = (entry = {}, index = 0) => {
     text,
     updatedAt: Number.isFinite(entry.updatedAt) ? entry.updatedAt : 0
   };
+};
+
+const normalizeArchivePath = (path) => String(path || '')
+  .replace(/\\/g, '/')
+  .replace(/^\/+/, '')
+  .replace(/\/+/g, '/')
+  .trim();
+
+const createArchiveReportIssue = (code, message, options = {}) => ({
+  index: Number.isFinite(options.index) ? options.index : 0,
+  source: 'pack-archive-install',
+  severity: options.severity || 'error',
+  code,
+  target: options.target || 'pack',
+  message,
+  blocker: options.blocker !== false,
+  blocksEditing: false,
+  blocksExport: options.blocksExport !== false,
+  destructive: false,
+  exportFormat: null,
+  hasFix: false,
+  fixLabel: null,
+  metadata: options.metadata || {}
+});
+
+const createArchiveInstallReport = (issues = [], metadata = {}) => {
+  const summary = {
+    total: issues.length,
+    errors: issues.filter(issue => issue.severity === 'error').length,
+    warnings: issues.filter(issue => issue.severity === 'warning').length,
+    infos: issues.filter(issue => issue.severity === 'info').length,
+    blockers: issues.filter(issue => issue.blocker === true).length,
+    destructive: 0,
+    unsupportedPreservedData: 0
+  };
+  return {
+    kind: 'editor-pack-archive-install-report',
+    schemaVersion: 1,
+    summary,
+    pack: {
+      title: String(metadata.title || ''),
+      levelCount: Number.isFinite(metadata.levelCount) ? metadata.levelCount : 0,
+      fileCount: Number.isFinite(metadata.fileCount) ? metadata.fileCount : 0
+    },
+    issues
+  };
+};
+
+const normalizeArchiveFiles = (archive = {}) => {
+  const rawFiles = Array.isArray(archive.files)
+    ? archive.files
+    : (Array.isArray(archive.entries) ? archive.entries : []);
+  const files = [];
+  for (const [index, file] of rawFiles.entries()) {
+    const path = normalizeArchivePath(file?.path);
+    if (!path) continue;
+    const text = typeof file.text === 'string' ? file.text : String(file?.content || '');
+    files.push({
+      path,
+      mediaType: file?.mediaType || 'text/plain',
+      text,
+      size: Number.isFinite(file?.size) ? file.size : text.length,
+      index
+    });
+  }
+  return files;
+};
+
+const getArchiveFileMap = (files, issues) => {
+  const map = new Map();
+  for (const file of files) {
+    if (map.has(file.path)) {
+      issues.push(createArchiveReportIssue(
+        'pack_archive_duplicate_path',
+        `Pack archive contains duplicate path ${file.path}.`,
+        { target: file.path, index: issues.length }
+      ));
+      continue;
+    }
+    map.set(file.path, file);
+  }
+  return map;
 };
 
 const sanitizeEditorProject = (project = {}) => {
@@ -377,6 +460,161 @@ const createEditorProjectPackBundle = (project, options = {}) => {
   };
 };
 
+const createEditorProjectPackArchive = (project, options = {}) => {
+  const bundle = createEditorProjectPackBundle(project, options);
+  const files = bundle.files.map(file => ({
+    path: normalizeArchivePath(file.path),
+    mediaType: file.mediaType || 'text/plain',
+    encoding: 'utf8',
+    size: String(file.text || '').length,
+    text: String(file.text || '')
+  }));
+  return {
+    kind: EDITOR_PROJECT_ARCHIVE_KIND,
+    schemaVersion: 1,
+    exportedAt: bundle.exportedAt,
+    project: bundle.project,
+    manifest: {
+      fileCount: files.length,
+      totalBytes: files.reduce((sum, file) => sum + file.size, 0),
+      validationSummary: bundle.packValidationReport?.summary || null
+    },
+    files,
+    packValidationReport: bundle.packValidationReport,
+    validationReports: bundle.validationReports
+  };
+};
+
+const parseEditorProjectPackArchive = (input) => {
+  if (typeof input === 'string') {
+    try {
+      return JSON.parse(input);
+    } catch (error) {
+      return null;
+    }
+  }
+  return input && typeof input === 'object' ? input : null;
+};
+
+const getArchiveProjectLevelDescriptors = (archive, files) => {
+  const declared = Array.isArray(archive?.project?.levels) ? archive.project.levels : [];
+  if (declared.length) {
+    return declared.map((level, index) => ({
+      id: normalizeId(level?.id) || `level-${index + 1}`,
+      title: normalizeName(level?.title, `Level ${index + 1}`),
+      style: normalizeName(level?.style, ''),
+      path: normalizeArchivePath(level?.path),
+      index
+    }));
+  }
+  return files
+    .filter(file => /^levels\/.+\.nxlv$/i.test(file.path))
+    .map((file, index) => ({
+      id: `level-${index + 1}`,
+      title: getTextHeader(file.text, 'TITLE') || `Level ${index + 1}`,
+      style: getTextHeader(file.text, 'STYLE') || '',
+      path: file.path,
+      index
+    }));
+};
+
+const createEditorProjectFromPackArchive = (input, options = {}) => {
+  const archive = parseEditorProjectPackArchive(input);
+  const issues = [];
+  if (!archive) {
+    const report = createArchiveInstallReport([
+      createArchiveReportIssue(
+        'pack_archive_parse_failed',
+        'Pack archive JSON could not be parsed.'
+      )
+    ]);
+    return { ok: false, project: null, report, archive: null };
+  }
+
+  if (archive.kind !== EDITOR_PROJECT_ARCHIVE_KIND && archive.kind !== EDITOR_PROJECT_BUNDLE_KIND) {
+    issues.push(createArchiveReportIssue(
+      'pack_archive_kind_unsupported',
+      'Pack archive kind is not supported.',
+      { metadata: { kind: archive.kind || null } }
+    ));
+  }
+
+  const files = normalizeArchiveFiles(archive);
+  const fileMap = getArchiveFileMap(files, issues);
+  for (const requiredPath of ['info.nxmi', 'levels.nxmi']) {
+    if (!fileMap.has(requiredPath)) {
+      issues.push(createArchiveReportIssue(
+        'pack_archive_missing_manifest',
+        `Pack archive is missing ${requiredPath}.`,
+        { target: requiredPath, index: issues.length }
+      ));
+    }
+  }
+
+  const descriptors = getArchiveProjectLevelDescriptors(archive, files);
+  const levels = [];
+  if (!descriptors.length) {
+    issues.push(createArchiveReportIssue(
+      'pack_archive_missing_levels',
+      'Pack archive contains no installable .nxlv levels.',
+      { target: 'levels', index: issues.length }
+    ));
+  }
+
+  for (const descriptor of descriptors) {
+    const file = descriptor.path ? fileMap.get(descriptor.path) : null;
+    if (!file) {
+      issues.push(createArchiveReportIssue(
+        'pack_archive_missing_level_file',
+        `Pack archive is missing level file ${descriptor.path || '(none)'}.`,
+        { target: descriptor.path || `levels.${descriptor.index}`, index: issues.length }
+      ));
+      continue;
+    }
+    levels.push(sanitizeProjectLevel({
+      id: descriptor.id,
+      title: descriptor.title || getTextHeader(file.text, 'TITLE'),
+      style: descriptor.style || getTextHeader(file.text, 'STYLE'),
+      text: file.text,
+      updatedAt: Number.isFinite(options.updatedAt) ? options.updatedAt : 0
+    }, descriptor.index));
+  }
+
+  const metadata = {
+    title: archive.project?.name || getTextHeader(fileMap.get('info.nxmi')?.text, 'TITLE') || 'Installed Pack',
+    levelCount: levels.length,
+    fileCount: files.length
+  };
+  const report = createArchiveInstallReport(issues, metadata);
+  if (report.summary.blockers > 0) {
+    return { ok: false, project: null, report, archive };
+  }
+
+  const project = createEditorProject({
+    id: options.id || archive.project?.id || undefined,
+    name: metadata.title,
+    levels,
+    activeLevelId: archive.project?.activeLevelId || levels[0]?.id || null,
+    createdAt: Number.isFinite(options.createdAt) ? options.createdAt : Date.now(),
+    updatedAt: Number.isFinite(options.updatedAt) ? options.updatedAt : Date.now()
+  });
+  return { ok: true, project, report, archive };
+};
+
+const installEditorProjectPackArchive = (storage = getDefaultStorage(), input, options = {}) => {
+  const result = createEditorProjectFromPackArchive(input, options);
+  if (!result.ok || !result.project) {
+    return { ...result, projectId: null };
+  }
+  const projectId = options.save === false
+    ? result.project.id
+    : saveEditorProject(storage, result.project);
+  return {
+    ...result,
+    projectId
+  };
+};
+
 const __test__ = {
   compareSavedProjects,
   getTextHeader,
@@ -384,17 +622,21 @@ const __test__ = {
 };
 
 export {
+  EDITOR_PROJECT_ARCHIVE_KIND,
   EDITOR_PROJECT_BUNDLE_KIND,
   EDITOR_PROJECT_VERSION,
   PROJECT_STORAGE_KEYS,
   createEditorProject,
   createEditorProjectId,
   createEditorProjectLevel,
+  createEditorProjectFromPackArchive,
+  createEditorProjectPackArchive,
   createEditorProjectLevelId,
   createEditorProjectPackBundle,
   deleteEditorProject,
   deleteEditorProjectLevel,
   duplicateEditorProjectLevel,
+  installEditorProjectPackArchive,
   listSavedProjects,
   loadEditorProject,
   renameEditorProjectLevel,

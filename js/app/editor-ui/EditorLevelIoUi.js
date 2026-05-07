@@ -18,6 +18,7 @@ import {
   ShortcutOverlay,
   createClassicLevelData,
   createEditorProject,
+  createEditorProjectPackArchive,
   createEditorLevelFromClassic,
   createEditorProjectPackBundle,
   createValidationReport,
@@ -32,6 +33,7 @@ import {
   getRuntimeDependency,
   getStyle,
   getStyleNames,
+  installEditorProjectPackArchive,
   listSavedProjects,
   listSavedLevels,
   loadEditorProject,
@@ -323,6 +325,48 @@ const editorLevelIoUiMethods = {
     downloadTextFile(this.document, JSON.stringify(bundle, null, 2), filename, 'application/json');
     this._updateStatus('Project pack export');
     return true;
+  },
+
+  _exportCurrentProjectPackArchive() {
+    if (!this._currentProject) {
+      const project = this._createProjectFromCurrentLevel();
+      if (!project) return false;
+    } else {
+      this._saveCurrentLevelToProject();
+    }
+    const reportsByLevelId = this._buildProjectValidationReports(this._currentProject);
+    const packValidationReport = this._buildProjectPackValidationReport(this._currentProject);
+    const archive = createEditorProjectPackArchive(this._currentProject, {
+      packValidationReport,
+      reportsByLevelId
+    });
+    const filename = `${sanitizeFileName(this._currentProject.name)}.editor-pack-archive.json`;
+    downloadTextFile(this.document, JSON.stringify(archive, null, 2), filename, 'application/json');
+    this._updateStatus('Project pack archive export');
+    return true;
+  },
+
+  _installProjectPackArchiveText(text) {
+    const result = installEditorProjectPackArchive(undefined, text);
+    if (!result.ok || !result.project) {
+      const summary = result.report?.summary;
+      const reason = summary?.errors
+        ? `${summary.errors} archive error${summary.errors === 1 ? '' : 's'}`
+        : 'invalid archive';
+      this.window?.alert?.(`Pack archive install failed: ${reason}.`);
+      this._updateStatus('Pack archive install failed');
+      return result;
+    }
+    this._currentProject = result.project;
+    this._refreshProjectList(result.project.id);
+    this._refreshProjectLevelList(result.project.activeLevelId);
+    const active = result.project.levels.find(level => level.id === result.project.activeLevelId)
+      || result.project.levels[0];
+    if (active) {
+      this._loadLevelFromText(active.text, { resetSaved: false });
+    }
+    this._updateStatus(`Pack archive installed: ${result.project.name}`);
+    return result;
   },
 
   _saveCurrentLevel() {

@@ -1721,6 +1721,19 @@ describe('midiUiController sequencer', function() {
     expect(doc.getElementById('errorDisplay').textContent).to.contain('No output device');
     expect(allNotesOffCalls).to.equal(1);
     expect(clearQueueCalls).to.equal(1);
+
+    const setup = controller.getMidiSetupState();
+    expect(setup).to.deep.include({
+      enabled: false,
+      webMidiEnabled: true,
+      status: 'MIDI disabled'
+    });
+    expect(setup.input).to.deep.include({ count: 0, selectedId: null, selectedName: null });
+    expect(setup.output).to.deep.include({ count: 0, selectedId: null, selectedName: null });
+    expect(setup.template).to.deep.include({ id: 'midi-mapping', label: 'Factory', savedCount: 0 });
+    expect(setup.error).to.contain('No input device');
+    expect(setup.scheduler).to.deep.equal({ text: 'Scheduler: idle', reason: null, queued: 0 });
+    expect(setup.recovery).to.deep.equal({ resetAvailable: true, panicAvailable: true });
   });
 
   it('refreshes mocked devices, auditions through the selected track, and panics', function() {
@@ -1811,6 +1824,11 @@ describe('midiUiController sequencer', function() {
 
     expect(controller.panic()).to.equal(true);
     expect(sent.some(entry => entry.panic)).to.equal(true);
+    const setup = controller.getMidiSetupState();
+    expect(setup.input).to.deep.include({ count: 1, selectedId: 'in-1', selectedName: 'Input 1' });
+    expect(setup.output).to.deep.include({ count: 1, selectedId: 'out-1', selectedName: 'Output 1' });
+    expect(setup.scheduler).to.deep.include({ text: 'Scheduler: count-limit', reason: 'count-limit' });
+    expect(setup.outputLog[0]).to.contain('Panic sent');
   });
 
   it('falls back to the next output when the selected MIDI output disappears', function() {

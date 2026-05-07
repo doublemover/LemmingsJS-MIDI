@@ -45,6 +45,12 @@ intentionally brief so it can stay current.
 - Export Pack downloads a JSON bundle containing `info.nxmi`, `levels.nxmi`,
   per-level `.nxlv` text, per-level validation reports, and a pack consistency
   report. The JSON is an editor handoff bundle, not a zip installer.
+- Export Archive downloads an installable editor pack archive JSON with a
+  manifest, file payloads, validation reports, and byte counts.
+- Install Pack imports an editor pack archive or legacy handoff bundle into
+  local project storage only after required manifests and referenced level files
+  validate. Failed installs leave existing projects untouched and return an
+  archive install report instead of silently dropping levels.
 
 ## Validation
 

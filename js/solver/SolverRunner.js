@@ -925,10 +925,16 @@ const createReplayResult = ({
   explanations = [],
   budgetUsage,
   runner,
-  appliedActions
+  appliedActions,
+  sourceKind = null
 }) => {
   const replaySummary = {
     ...runner.getFinalStateSummary(),
+    verifier: 'runtime-replay',
+    verified: resultType === SOLVER_RESULT_TYPES.SOLVED,
+    authority: sourceKind === SYNTHETIC_RUNNER_KIND
+      ? 'synthetic-runtime'
+      : (runner.isRuntimeAuthoritative === false ? 'non-authoritative-adapter' : 'real-runtime'),
     appliedActions: appliedActions.map(item => ({ ...item }))
   };
   return createSolverResult({
@@ -948,6 +954,7 @@ const createReplayFailure = ({
   budgetUsage,
   runner,
   appliedActions,
+  sourceKind = null,
   code = SOLVER_EXPLANATION_CODES.REPLAY_DIVERGED
 }) => createReplayResult({
   resultType: SOLVER_RESULT_TYPES.FAILED,
@@ -956,7 +963,8 @@ const createReplayFailure = ({
   explanations: [{ code, detail }],
   budgetUsage,
   runner,
-  appliedActions
+  appliedActions,
+  sourceKind
 });
 
 const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
@@ -983,7 +991,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
     explanations: [SOLVER_EXPLANATION_CODES.BUDGET_EXHAUSTED],
     budgetUsage,
     runner,
-    appliedActions
+    appliedActions,
+    sourceKind: created.sourceKind
   });
 
   const checkFinalPostconditions = () => {
@@ -996,7 +1005,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           actions,
           budgetUsage,
           runner,
-          appliedActions
+          appliedActions,
+          sourceKind: created.sourceKind
         });
       }
     }
@@ -1015,6 +1025,7 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           budgetUsage,
           runner,
           appliedActions,
+          sourceKind: created.sourceKind,
           code: SOLVER_EXPLANATION_CODES.TIMING_WINDOW_TOO_NARROW
         });
       }
@@ -1032,7 +1043,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           actions,
           budgetUsage,
           runner,
-          appliedActions
+          appliedActions,
+          sourceKind: created.sourceKind
         });
       }
 
@@ -1046,7 +1058,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           actions,
           budgetUsage,
           runner,
-          appliedActions
+          appliedActions,
+          sourceKind: created.sourceKind
         });
       }
       appliedActions.push({
@@ -1073,7 +1086,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           }],
           budgetUsage,
           runner,
-          appliedActions
+          appliedActions,
+          sourceKind: created.sourceKind
         });
       }
       return createReplayResult({
@@ -1082,7 +1096,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
         actions,
         budgetUsage,
         runner,
-        appliedActions
+        appliedActions,
+        sourceKind: created.sourceKind
       });
     }
 
@@ -1094,6 +1109,7 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
         budgetUsage,
         runner,
         appliedActions,
+        sourceKind: created.sourceKind,
         code: SOLVER_EXPLANATION_CODES.SAVE_COUNT_UNREACHABLE
       });
     }

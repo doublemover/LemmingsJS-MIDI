@@ -151,6 +151,7 @@ const createE2EApi = (context) => ({
   midiSaveProjectTemplate: (options) => context.midiUi?.saveProjectTemplate?.(options) || null,
   midiGetProjectTemplates: () => context.midiUi?.getProjectTemplates?.() || [],
   midiGetUiMetrics: () => context.midiUi?.getUiMetrics?.() || null,
+  midiGetSetupState: () => context.midiUi?.getMidiSetupState?.() || null,
   midiStartLearn: () => context.midiUi?.startLearn?.() || false,
   midiConfirmLearn: () => context.midiUi?.confirmLearn?.() || false,
   midiCancelLearn: () => context.midiUi?.cancelLearn?.() || false,

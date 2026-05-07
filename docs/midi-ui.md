@@ -83,6 +83,7 @@ factory projects.
 - `saveProjectTemplate({ id?, name? })`
 - `getProjectTemplates()`
 - `getUiMetrics()`
+- `getMidiSetupState()`
 - `startLearn()`
 - `confirmLearn()`
 - `cancelLearn()`
@@ -105,6 +106,9 @@ factory projects.
 - `midiSaveProjectTemplate(options)`
 - `midiGetProjectTemplates()`
 - `midiGetUiMetrics()`
+- `midiGetSetupState()`: first-run/device-health snapshot with selected
+  input/output, selected template, scheduler pressure, recent output log, and
+  reset/panic recovery availability.
 - `midiStartLearn()`
 - `midiConfirmLearn()`
 - `midiCancelLearn()`

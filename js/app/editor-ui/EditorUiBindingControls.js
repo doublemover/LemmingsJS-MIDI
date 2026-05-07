@@ -214,6 +214,31 @@ const editorUiBindingControlMethods = {
       });
     }
 
+    if (this.el.projectExportArchive) {
+      this._addDomListener(this.el.projectExportArchive, 'click', () => {
+        this._exportCurrentProjectPackArchive?.();
+      });
+    }
+
+    if (this.el.projectInstallPack && this.el.projectInstallPackInput) {
+      this._addDomListener(this.el.projectInstallPack, 'click', () => {
+        this.el.projectInstallPackInput.click();
+      });
+      this._addDomListener(this.el.projectInstallPackInput, 'change', async (event) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        try {
+          const text = await readTextFile(file);
+          if (!text) throw new Error('Pack archive file is empty.');
+          this._installProjectPackArchiveText?.(text);
+        } catch (error) {
+          reportImportFailure(this, 'Pack archive', error);
+        } finally {
+          event.target.value = '';
+        }
+      });
+    }
+
     if (this.el.savedExport) {
       this._addDomListener(this.el.savedExport, 'click', () => {
         this._exportCurrentLevel();

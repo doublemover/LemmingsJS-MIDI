@@ -334,6 +334,11 @@ const procgenTerrainPlanningMethods = {
           hazard: assist.scan.hazard ? { ...assist.scan.hazard } : null
         } : null
       })),
+      certificatePolicy: {
+        scope: 'local-tactical',
+        solvabilityClaim: 'none',
+        fullLevelSolvability: false
+      },
       trackingSizes: this._getTrackingSizes()
     };
   },

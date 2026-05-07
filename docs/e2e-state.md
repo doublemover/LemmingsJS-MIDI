@@ -52,6 +52,9 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
   as a user template.
 - `window.__E2E__.midiGetProjectTemplates()` returns saved MIDI templates.
 - `window.__E2E__.midiGetUiMetrics()` returns MIDI UI render metrics.
+- `window.__E2E__.midiGetSetupState()` returns a compact MIDI setup snapshot
+  with WebMIDI/device health, selected template, scheduler pressure, recent
+  output log, and reset/panic recovery availability.
 - `window.__E2E__.midiStartLearn()` / `midiConfirmLearn()` /
   `midiCancelLearn()` drive MIDI learn.
 - `window.__E2E__.midiCaptureLearnNote(note, velocity, channel)` injects a

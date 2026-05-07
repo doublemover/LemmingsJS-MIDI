@@ -5,6 +5,7 @@ import {
   SOLVER_RESULT_TYPES,
   createBudgetMeter,
   createSolverResult,
+  getSolverReplayVerification,
   normalizeActionScriptAction,
   normalizeSolverOptions
 } from '../js/solver/SolverTypes.js';
@@ -65,8 +66,23 @@ describe('SolverTypes', function() {
       budgetUsage: { ticks: 5, nodes: 6, actions: 1, wallTimeMs: 2 }
     });
     expect(result.resultType).to.equal(SOLVER_RESULT_TYPES.SOLVED);
+    expect(result.replayVerified).to.equal(false);
+    expect(result.replayAuthority).to.equal(null);
     expect(result.actions).to.deep.equal([action]);
     expect(result.explanations[0].code).to.equal(SOLVER_EXPLANATION_CODES.NO_ROUTE_TO_EXIT);
+
+    const replayed = createSolverResult({
+      resultType: SOLVER_RESULT_TYPES.SOLVED,
+      replaySummary: {
+        verifier: 'runtime-replay',
+        verified: true,
+        authority: 'real-runtime'
+      }
+    });
+    expect(getSolverReplayVerification(replayed)).to.deep.equal({
+      replayVerified: true,
+      replayAuthority: 'real-runtime'
+    });
   });
 
   it('tracks budgets and produces timeout results', function() {

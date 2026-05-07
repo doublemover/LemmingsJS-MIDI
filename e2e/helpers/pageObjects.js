@@ -155,6 +155,10 @@ class MidiUiPage {
     return this.page.evaluate(() => window.__E2E__.midiGetUiMetrics());
   }
 
+  setupState() {
+    return this.page.evaluate(() => window.__E2E__.midiGetSetupState());
+  }
+
   templateSelect() {
     return this.page.locator(midiUiSelectors.templateSelect);
   }

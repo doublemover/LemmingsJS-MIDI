@@ -15,6 +15,10 @@ Every solver entrypoint returns:
 - `explanations`: stable explanation codes with optional detail.
 - `budgetUsage`: ticks, nodes, actions, and wall time consumed.
 - `replaySummary`: verifier output, or `null` when replay did not run.
+- `replayVerified`: `true` only when a `solved` result came through the replay
+  verifier.
+- `replayAuthority`: replay authority label such as `real-runtime`,
+  `synthetic-runtime`, `non-authoritative-adapter`, or a local advisory verifier.
 - `captures`: optional local `temp/` artifact references.
 
 ## Input Contract
@@ -53,6 +57,12 @@ The runtime runner exposes a small adapter contract: step ticks, apply an action
 script entry, snapshot current state, and summarize the replay. Synthetic
 fixtures use the same adapter shape as real runtime runs so tests can exercise
 deterministic replay without a browser.
+
+Only replay output with verifier `runtime-replay` sets `replayVerified`.
+Non-synthetic adapters must be authoritative before a replay can become
+`solved`; otherwise the result is `unknown` with `missing-runtime-adapter`.
+Local tactical checks and procgen certificates may verify bounded local
+challenges, but their authority is not full-level solvability.
 
 ## MCP Tools
 

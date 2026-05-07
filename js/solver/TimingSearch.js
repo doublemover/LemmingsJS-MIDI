@@ -18,11 +18,16 @@ const DEFAULT_SKILL_FOR_EDGE = Object.freeze({
   'blocker-turn': 'blocker'
 });
 
+const mutationBoundsForSegment = segment => segment?.mutation?.affectedBounds ?? null;
+
 const windowForSegment = (segment, fallbackTick) => {
   const raw = segment.roughActionWindow;
   if (raw) {
+    const mutationBounds = mutationBoundsForSegment(segment);
     return {
-      start: Math.max(0, Math.floor(Number(raw.start) || 0)),
+      start: mutationBounds
+        ? 0
+        : Math.max(0, Math.floor(Number(raw.start) || 0)),
       end: Math.max(0, Math.floor(Number(raw.end) || 0))
     };
   }
@@ -30,6 +35,17 @@ const windowForSegment = (segment, fallbackTick) => {
     start: Math.max(0, fallbackTick - 6),
     end: fallbackTick + 6
   };
+};
+
+const spatialPreconditionsForSegment = segment => {
+  const bounds = mutationBoundsForSegment(segment);
+  if (!bounds) return [];
+  const x = Math.max(0, Math.floor(Number(bounds.x) || 0));
+  const margin = segment.type === 'build' ? 4 : 2;
+  return [{
+    type: 'lemmingXAtLeast',
+    x: Math.max(0, x - margin)
+  }];
 };
 
 const actionForSegment = (segment, tickCursor) => {
@@ -46,7 +62,8 @@ const actionForSegment = (segment, tickCursor) => {
     window,
     preconditions: [
       { type: 'skillAvailable', skillType, count: 1 },
-      'target-active'
+      'target-active',
+      ...spatialPreconditionsForSegment(segment)
     ],
     expectedPostconditions: [
       { type: 'activeCountAtLeast', count: 1 }

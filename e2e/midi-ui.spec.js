@@ -139,12 +139,20 @@ test('MIDI sequencer reports permission denial and mocked device lifecycle', asy
   let midi = await openMidiUi(page, { permission: 'denied' });
   await midi.enable();
   await expect(page.locator('#errorDisplay')).toContainText('WebMIDI permission denied');
+  const deniedSetup = await midi.setupState();
+  expect(deniedSetup.error).toContain('WebMIDI permission denied');
+  expect(deniedSetup.recovery).toEqual({ resetAvailable: true, panicAvailable: true });
 
   await page.goto('about:blank');
   midi = await openMidiUi(page);
   await midi.enable();
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
+  await expect.poll(() => midi.setupState()).toMatchObject({
+    input: { count: 1, selectedId: 'pw-input-1', selectedName: 'Playwright Input' },
+    output: { count: 1, selectedId: 'pw-output-1', selectedName: 'Playwright Output' },
+    template: { id: 'midi-mapping', label: 'Factory' }
+  });
 
   const disconnected = await page.evaluate(() => ({
     input: window.__WEBMIDI_STUB__.disconnectInput('pw-input-1'),
@@ -164,6 +172,11 @@ test('MIDI sequencer reports permission denial and mocked device lifecycle', asy
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-2');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-2');
   await expect(page.locator('#errorDisplay')).toHaveText('');
+  await expect.poll(() => midi.setupState()).toMatchObject({
+    input: { count: 1, selectedId: 'pw-input-2', selectedName: 'Recovered Input' },
+    output: { count: 1, selectedId: 'pw-output-2', selectedName: 'Recovered Output' },
+    error: ''
+  });
 });
 
 test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {

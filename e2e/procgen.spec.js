@@ -50,6 +50,11 @@ test('procgen exposes debug state and records no-op assist decisions', async ({ 
   expect(procgen.recentChunks.length).toBeGreaterThan(0);
   expect(procgen.recentPieces.length).toBeGreaterThan(0);
   expect(procgen.recentPieces.every(piece => piece.theme === procgen.selectedTheme)).toBe(true);
+  expect(procgen.certificatePolicy).toEqual({
+    scope: 'local-tactical',
+    solvabilityClaim: 'none',
+    fullLevelSolvability: false
+  });
   expect(procgen.trackingSizes.recentChunks).toBeLessThanOrEqual(64);
   expect(procgen.trackingSizes.recentPieces).toBeLessThanOrEqual(128);
   expect(procgen.trackingSizes.recentAssists).toBeLessThanOrEqual(32);

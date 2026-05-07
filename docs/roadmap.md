@@ -35,13 +35,14 @@ events. It should let users design, route, audition, sequence, automate, and
 perform MIDI responses with the polish expected from music software, while
 remaining deterministic and testable without real hardware.
 
-Current status: checkpointed on May 6, 2026. The project-based sequencer,
+Current status: checkpointed on May 7, 2026. The project-based sequencer,
 source browser filters, track/clip editing, learn/record flows, modulation
 lanes, template import/export, legacy storage cleanup, per-track output
-dispatch, targeted mocked-device coverage, and disposable desktop/tablet/mobile
-captures are implemented. Remaining Milestone 1 work should stay limited to
-focused polish, missing runtime-confidence tests, and small editor controls
-rather than broad sequencer rewrites.
+dispatch, mocked device/setup-state coverage, scheduler pressure summaries,
+output-log confidence checks, and disposable desktop/tablet/mobile captures are
+implemented. Remaining Milestone 1 work should stay limited to focused polish,
+starter-template gaps, small editor controls, and live-device confidence rather
+than broad sequencer rewrites.
 
 **Product Goals**
 
@@ -232,10 +233,11 @@ usable UX, and robust workflow tests.
 Current status: checkpointed on May 7, 2026. The classic-subset audit,
 visible lossy/unsupported-data warnings, validation report export, semantic
 round-trip tests, palette throughput improvements, solver advisory hooks, local
-project storage, project-level actions, and pack JSON handoff export are
-implemented. Remaining editor work should focus on real pack archive/install
-tooling, additional visual workflow captures, and NeoLemmix expansion only when
-that larger compatibility phase is deliberately started.
+project storage, project-level actions, pack JSON handoff export, browser-safe
+pack archive export/install, incomplete-archive rejection, and refreshed desktop
+editor capture are implemented. Remaining editor work should focus on
+additional visual workflow captures and NeoLemmix expansion only when that
+larger compatibility phase is deliberately started.
 
 **Audit Scope**
 
@@ -385,6 +387,12 @@ theme, then efficiently and tastefully adds level pieces ahead of the lemmings
 as they progress. It should feel like a coherent generated Lemmings level, not
 random pixels or a stress-test mode with hazards sprinkled around.
 
+Current status: checkpointed on May 7, 2026. The procgen debug state exposes
+theme, seed, generated end, lead frontier, recent chunks, assists, and explicit
+certificate policy. Certificates are scoped to local tactical checks and must
+not claim full-level solvability. Fixed-seed E2E, desktop capture, and bounded
+soak evidence are available under ignored `temp/` artifacts.
+
 **Core Behavior**
 
 - Pick one theme/style for the run and stay visually coherent.
@@ -499,6 +507,12 @@ that can reason about levels, replay candidate solutions through the real game
 runtime, verify procgen chunks, and eventually provide useful editor
 solvability guidance. The solver should be ambitious, but honest about result
 types: solved, failed, unknown, timed out, or unsupported.
+
+Current status: checkpointed on May 7, 2026. The local solver result schema and
+MCP route output expose replay verification and replay authority fields. A
+`solved` result remains meaningful only when replay verification succeeds, and
+non-real adapter results stay explicitly labeled instead of being promoted to
+full runtime proof.
 
 **Core Principles**
 

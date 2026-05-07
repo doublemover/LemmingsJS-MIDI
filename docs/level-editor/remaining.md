@@ -40,11 +40,11 @@ second roadmap file. The durable contract is:
   and a validation report summary for every included level.
 
 Initial UI entry points are implemented as local project storage, project and
-project-level selectors, save/add/duplicate/rename/delete level actions, and a
-pack JSON export containing `info.nxmi`, `levels.nxmi`, per-level `.nxlv` text,
-per-level validation reports, and a pack consistency report. The next pack
-checkpoint should turn that JSON handoff into real archive/install tooling once
-the desired pack installer format is settled.
+project-level selectors, save/add/duplicate/rename/delete level actions, a pack
+JSON handoff export, and an installable editor pack archive export/import path.
+Archive installs require `info.nxmi`, `levels.nxmi`, and every referenced level
+file before saving a local project, so incomplete archives produce validation
+reports instead of partial project writes.
 
 ## Pack-Level Validation
 

@@ -54,6 +54,8 @@ const compactRoute = result => ({
   summary: result.summary,
   explanations: result.explanations,
   budgetUsage: result.budgetUsage,
+  replayVerified: result.replayVerified === true,
+  replayAuthority: result.replayAuthority ?? null,
   graphHash: result.graphHash ?? null,
   routeSearchStats: result.routeSearchStats ?? null,
   crowd: result.crowd ?? null,
