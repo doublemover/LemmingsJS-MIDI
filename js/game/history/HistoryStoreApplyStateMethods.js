@@ -137,6 +137,7 @@ const historyStoreApplyStateMethods = {
       miniMap.deadTTLs = new Uint8Array(keyframe.minimapState.deadTTLs || []);
       miniMap.deadCount = keyframe.minimapState.deadCount ?? 0;
     }
+    this._refreshMiniMapDots(manager);
 
     if (game.level?.groundMask && keyframe.groundMask) {
       game.level.groundMask.mask = new Uint8Array(keyframe.groundMask);

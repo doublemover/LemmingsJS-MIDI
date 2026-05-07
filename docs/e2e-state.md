@@ -8,7 +8,17 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.getDiagnostics()` returns deterministic environment diagnostics
   (runtime profile, rollout/capability snapshots, feature flags, and active
   cache snapshots).
+- `window.__E2E__.getCanvasMetrics()` returns canvas/stage sizing diagnostics.
+- `window.__E2E__.getCaptureRects(options?)` returns page-space CSS rectangles
+  for visual capture tooling.
 - `window.__E2E__.getBuffer(name)` returns one heavy buffer at a time.
+- `window.__E2E__.stageWorldFromPage(point)` converts a page point to a game
+  world point.
+- `window.__E2E__.stagePageFromWorld(point)` converts a game world point to a
+  page point.
+- `window.__E2E__.centerStageOn(point)` centers the stage on a world point.
+- `window.__E2E__.getMinimapPagePoint(options?)` returns a usable page point in
+  the minimap.
 - `window.__E2E__.step(count)` steps forward/backward (negative allowed).
 - `window.__E2E__.seek(tickIndex)` seeks via time travel (if available).
 - `window.__E2E__.pause()` / `window.__E2E__.resume()` control the game timer.
@@ -20,17 +30,88 @@ API at `window.__E2E__` for Playwright to read state and drive time travel.
 - `window.__E2E__.startBenchSequence()` starts the sequence bench run.
 - `window.__E2E__.startBench(entrances)` starts a single bench run.
 - `window.__E2E__.stopBench()` stops bench flags.
+- `window.__E2E__.getDelta(tickIndex)` and
+  `window.__E2E__.getDeltas(fromTick, toTick, maxTicks?)` return history deltas.
 - `window.__E2E__.setEditorPlaytest(enabled)` toggles editor playtest.
 - `window.__E2E__.getEditorHistoryEntry(index)` returns one editor history
   entry with full text.
 - `window.__E2E__.selectLemmingById(id)` selects a lemming by ID (returns
   `true` on success).
-- `window.__E2E__.midiGetIntentState()` returns the current MIDI intent state.
-- `window.__E2E__.midiDispatchIntent(intent)` dispatches a MIDI intent action.
-- `window.__E2E__.midiSetOverrides(patch)` applies MIDI override patches.
-- `window.__E2E__.midiCaptureLearnNote(note)` injects a MIDI-learn capture note.
-- `window.__E2E__.midiAuditionMapping(targetKey, id, entry?)` triggers mapping
-  preview/audition through the live MIDI router.
+- `window.__E2E__.midiGetProject()` returns the current MIDI project.
+- `window.__E2E__.midiGetRuntimeConfig()` returns the lowered runtime MIDI
+  config used by the existing MIDI router and scheduler.
+- `window.__E2E__.midiDispatchProjectIntent(intent)` dispatches a MIDI project
+  intent.
+- `window.__E2E__.midiResetProject(templateId)` resets the project from the
+  factory template or a saved template.
+- `window.__E2E__.midiExportProject(options)` returns a sanitized MIDI project
+  export payload.
+- `window.__E2E__.midiImportProject(payload)` imports a sanitized MIDI project
+  or template payload.
+- `window.__E2E__.midiSaveProjectTemplate(options)` stores the current project
+  as a user template.
+- `window.__E2E__.midiGetProjectTemplates()` returns saved MIDI templates.
+- `window.__E2E__.midiGetUiMetrics()` returns MIDI UI render metrics.
+- `window.__E2E__.midiStartLearn()` / `midiConfirmLearn()` /
+  `midiCancelLearn()` drive MIDI learn.
+- `window.__E2E__.midiCaptureLearnNote(note, velocity, channel)` injects a
+  learned note into the active learn capture.
+- `window.__E2E__.midiStartRecording()` / `midiCommitRecording()` /
+  `midiCancelRecording()` drive MIDI clip recording.
+- `window.__E2E__.midiCaptureRecordMessage(message)` injects a MIDI message into
+  the active recording capture.
+- `window.__E2E__.midiAudition(request)` triggers project audition through the
+  live MIDI router.
+
+## getCaptureRects(options?)
+
+`getCaptureRects` returns:
+
+```js
+{
+  version: 1,
+  rects: {
+    canvas: { x, y, width, height }
+  },
+  diagnostics: {
+    route,
+    mode,
+    missing,
+    available
+  }
+}
+```
+
+Runtime rectangle ids are omitted when the current route cannot provide them.
+Known ids include:
+
+- `canvas`: `#gameCanvas` or `#editorCanvas`.
+- `stageCanvas`: the Stage canvas element.
+- `game`: the rendered game image rectangle.
+- `gui`: the rendered HUD image rectangle.
+- `minimap`: the minimap area inside the HUD.
+- `editorCanvas`: the editor canvas element.
+- `editorSelection`: current editor selection bounds when a selection exists.
+
+For world-space capture, pass a world rectangle and optional padding:
+
+```js
+window.__E2E__.getCaptureRects({
+  worldRect: {
+    id: 'lead-area',
+    rect: { x: 0, y: 0, width: 320, height: 160 },
+    padding: 8
+  }
+});
+```
+
+All returned rectangles are finite positive CSS-pixel rectangles suitable for
+the Playwright visual capture helper. The helper writes disposable screenshots
+under ignored `temp/e2e-captures/`; no manifests, baselines, or generated images
+are checked in.
+
+`diagnostics.missing` explains omitted ids. Missing surfaces are expected on
+routes that do not expose that surface.
 
 ## getState() structure
 
@@ -46,6 +127,7 @@ Top-level fields:
 - `bench`: bench metrics snapshot (if available).
 - `diagnostics`: runtime profile + feature flags + cache snapshot summary.
 - `midi`: midi enable/router summary.
+- `procgen`: compact procgen debug state when the procgen controller is active.
 
 ### view
 - `gameType`, `levelGroupIndex`, `levelIndex`.
@@ -61,14 +143,14 @@ Top-level fields:
 
 ### diagnostics
 - `version`: schema version (currently `1`).
-- `profile`: runtime profile (`gameplay`, `editor`, `perf`, etc.).
+- `profile`: runtime profile (`classic`, `midi`, `editor`, `e2e`, `perf`,
+  etc.). Legacy `gameplay` query values are normalized to `classic`.
 - `rolloutFlags`: active staged-rollout/rollback flags.
 - `capabilities`: runtime/browser capability matrix for WebMIDI and render
   paths.
 - `featureFlags`: normalized boolean flag snapshot from `GameView`.
 - `caches.fileProvider`: `memoryEntries`, `localStorageBytes`,
   `indexedDbBytes` when available.
-- `caches.midiOverrideKeys`: sorted list of active MIDI override keys.
 - `caches.cacheStorageKeys`: sorted Cache Storage keys (`null` in
   `getState()`, populated by `getDiagnostics()`).
 - `serviceWorker`: `supported`, `controlled`.
@@ -78,9 +160,18 @@ Top-level fields:
 - `enabled`: current MIDI enabled state.
 - `hasRouter`: whether the runtime MIDI router is attached.
 - `outputName`: selected MIDI output device name (or `null`).
-- `intentRevision`: current `MidiIntent` revision.
-- `learnTarget`: active MIDI-learn target (or `null`).
-- `featureFlags`: MIDI UI feature flags (`expressiveControls`, `audition`).
+- `projectId`: current MIDI project id.
+- `selectedTrackId`: selected MIDI track id.
+- `selectedSourceId`: selected MIDI source id.
+
+### procgen
+- `selectedTheme`: selected style/theme for the seeded run.
+- `seed`: normalized procgen seed.
+- `generatedEndX`: current generated terrain extent.
+- `frontier`: live rightmost viable lemming summary.
+- `lookahead`: threshold/distance data used to decide when to generate.
+- `recentChunks`, `recentPieces`, `recentAssists`: bounded debug lists.
+- `trackingSizes`: sizes of bounded procgen tracking structures.
 
 ### stage
 - `panEnabled`.

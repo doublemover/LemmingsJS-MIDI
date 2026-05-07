@@ -76,7 +76,6 @@ import {
   getMinimapPagePoint
 } from './E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,
@@ -100,7 +99,9 @@ const getEditorState = (view, editorUi) => {
   const controller = editorUi?.controller || null;
   const history = editorUi?.history || null;
   const level = session?.level || null;
-  const issues = serializeIssues(validateLevel(level, editorUi?.assets || null));
+  const issues = serializeIssues(validateLevel(level, editorUi?.assets || null, {
+    solverAdvisorySource: view?.game?.level || null
+  }));
   return {
     mode: !!view?.editorMode,
     playtest: !!view?.editorPlaytest,
@@ -127,7 +128,22 @@ const getEditorState = (view, editorUi) => {
         selectionCount: editorUi._selection?.length ?? 0,
         suppressHeader: !!editorUi._suppressHeader,
         suppressInspector: !!editorUi._suppressInspector,
-        paletteSearch: editorUi.el?.paletteSearch?.value ?? ''
+        paletteSearch: editorUi.el?.paletteSearch?.value ?? '',
+        solvability: editorUi._lastSolvabilityCheck
+          ? {
+            status: editorUi._lastSolvabilityCheck.status || 'idle',
+            message: editorUi._lastSolvabilityCheck.message || '',
+            warningCount: editorUi._lastSolvabilityCheck.warningCount || 0,
+            warnings: Array.isArray(editorUi._lastSolvabilityCheck.warnings)
+              ? editorUi._lastSolvabilityCheck.warnings.map(warning => ({
+                code: warning.code || null,
+                message: warning.message || '',
+                target: warning.target || null
+              }))
+              : [],
+            budgetUsage: editorUi._lastSolvabilityCheck.budgetUsage || null
+          }
+          : null
       }
       : null,
     assets: serializeAssets(editorUi?.assets || null),

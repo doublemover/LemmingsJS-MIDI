@@ -55,5 +55,9 @@ Editor asset metadata is loaded from classic DAT files and used for:
 The editor mapping converts `EditorLevel` to classic runtime data:
 - `STYLE` -> `graphicSet1` via `StyleRegistry` ground set.
 - Terrain and gadget entries -> `LevelElement` with `DrawProperties`.
+- Terrain `ONE_WAY` is an editor/NXLV terrain flag and does not lower into
+  classic `.lvl` terrain data. Classic arrow behavior comes from one-way object
+  triggers, so preserving it requires explicit arrow gadgets rather than a
+  terrain flag round-trip.
 - `TIME_LIMIT` of `INFINITE` -> 6039 seconds (99:99) for classic runtime.
 - Steel rectangles are projected into classic `Level.steel` ranges.

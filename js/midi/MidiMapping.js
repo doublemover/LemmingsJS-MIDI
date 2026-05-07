@@ -59,6 +59,7 @@ class MidiMapping {
    *   pitchBend:number,
    *   frequencyHz:number,
    *   channel:number|null,
+   *   voiceBudget:number|null,
    *   arp:object|null
    * }|null}
    */
@@ -300,6 +301,9 @@ class MidiMapping {
       pitchBend,
       frequencyHz,
       channel: sfx.channel ?? null,
+      voiceBudget: sfx.voiceBudget ?? null,
+      outputId: sfx.outputId ?? null,
+      trackId: sfx.trackId ?? null,
       arp: sfx.arp ?? null
     };
   }

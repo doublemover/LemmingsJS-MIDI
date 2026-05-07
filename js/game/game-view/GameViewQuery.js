@@ -343,8 +343,7 @@ const gameViewQueryMethods = {
         benchSequence: !!this.benchSequence
       },
       caches: {
-        fileProvider: sanitizedFileProviderStats,
-        midiOverrideKeys: Object.keys(this._midiOverrides || {}).sort()
+        fileProvider: sanitizedFileProviderStats
       },
       renderExperiments: this.stage?.getRenderExperimentStatus?.() || null
     };

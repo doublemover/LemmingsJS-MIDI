@@ -6,6 +6,10 @@ import {
 import { buildGameToolHandlers } from '../mcp/tools/game.js';
 import { buildInteractToolHandlers } from '../mcp/tools/interact.js';
 import {
+  buildSolverToolHandlers,
+  buildSolverToolSpecs
+} from '../mcp/tools/solver.js';
+import {
   ALL_TOOL_SURFACES,
   buildSurfaceRegistry,
   parseEnabledSurfaces
@@ -32,7 +36,10 @@ const makeSchemas = () => ({
   VisionSequenceSchema: {},
   WatchCreateSchema: {},
   WatchCancelSchema: {},
-  EventsPollSchema: {}
+  EventsPollSchema: {},
+  SolverSnapshotSchema: {},
+  SolverRouteSchema: {},
+  SolverReplaySchema: {}
 });
 
 const makeHandlers = () => ({
@@ -57,7 +64,10 @@ const makeHandlers = () => ({
   visionSequenceTool: () => {},
   watchCreateTool: () => {},
   watchCancelTool: () => {},
-  eventsPollTool: () => {}
+  eventsPollTool: () => {},
+  solverSnapshotTool: () => {},
+  solverRouteTool: () => {},
+  solverReplayTool: () => {}
 });
 
 describe('mcp tool surfaces', function () {
@@ -94,6 +104,21 @@ describe('mcp tool surfaces', function () {
     expect(() => buildEditorToolHandlers({})).to.throw('Missing editor tool handler');
   });
 
+  it('builds solver specs and handler routes after local API stabilization', function () {
+    const names = buildSolverToolSpecs(makeSchemas()).map((spec) => spec.name);
+    expect(names).to.deep.equal([
+      'solver.snapshot',
+      'solver.route',
+      'solver.replay'
+    ]);
+
+    const handlers = makeHandlers();
+    const solverHandlers = buildSolverToolHandlers(handlers);
+    expect(solverHandlers.get('solver.snapshot')).to.equal(handlers.solverSnapshotTool);
+    expect(solverHandlers.get('solver.route')).to.equal(handlers.solverRouteTool);
+    expect(solverHandlers.get('solver.replay')).to.equal(handlers.solverReplayTool);
+  });
+
   it('routes typed editor object verbs to the editor surface', function () {
     const registry = buildSurfaceRegistry(makeSchemas(), makeHandlers(), new Set(ALL_TOOL_SURFACES));
     expect(registry.toolSurfaceByName.get('objects.list')).to.equal('editor');
@@ -125,6 +150,11 @@ describe('mcp tool surfaces', function () {
     const interactToolNames = interactOnly.specs.map((spec) => spec.name);
     expect(interactToolNames).to.include('input.action');
     expect(interactToolNames).to.not.include('objects.place');
+
+    const solverOnly = buildSurfaceRegistry(schemas, handlers, new Set(['solver']));
+    const solverToolNames = solverOnly.specs.map((spec) => spec.name);
+    expect(solverToolNames).to.include('solver.replay');
+    expect(solverToolNames).to.not.include('state.get');
   });
 
   it('defaults to all known surfaces when enabledSurfaces is omitted', function () {
@@ -133,5 +163,6 @@ describe('mcp tool surfaces', function () {
     expect(names).to.include('state.get');
     expect(names).to.include('objects.list');
     expect(names).to.include('input.action');
+    expect(names).to.include('solver.replay');
   });
 });

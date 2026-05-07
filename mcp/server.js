@@ -32,6 +32,7 @@ import { createVisionToolHandlers } from './visionTools.js';
 import { createGameToolHandlers } from './gameTools.js';
 import { createSessionToolHandlers } from './sessionTools.js';
 import { createWatchToolHandlers } from './watchTools.js';
+import { createSolverToolHandlers } from './solverTools.js';
 import { createServerHelpers } from './serverHelpers.js';
 import {
   buildProtocolMetadata,
@@ -70,6 +71,9 @@ import {
   SessionCloseSchema,
   SessionCreateSchema,
   SkillApplySchema,
+  SolverReplaySchema,
+  SolverRouteSchema,
+  SolverSnapshotSchema,
   StateDeltaSchema,
   StateGetSchema,
   TimeSchema,
@@ -264,6 +268,18 @@ const {
   nudgeWatchPolling
 });
 
+const {
+  solverSnapshotTool,
+  solverRouteTool,
+  solverReplayTool
+} = createSolverToolHandlers({
+  schemas: {
+    SolverSnapshotSchema,
+    SolverRouteSchema,
+    SolverReplaySchema
+  }
+});
+
 const TOOL_SCHEMA_REGISTRY = {
   SessionCreateSchema,
   SessionCloseSchema,
@@ -285,7 +301,10 @@ const TOOL_SCHEMA_REGISTRY = {
   VisionSequenceSchema,
   WatchCreateSchema,
   WatchCancelSchema,
-  EventsPollSchema
+  EventsPollSchema,
+  SolverSnapshotSchema,
+  SolverRouteSchema,
+  SolverReplaySchema
 };
 
 const TOOL_HANDLER_REGISTRY = {
@@ -310,7 +329,10 @@ const TOOL_HANDLER_REGISTRY = {
   visionSequenceTool,
   watchCreateTool,
   watchCancelTool,
-  eventsPollTool
+  eventsPollTool,
+  solverSnapshotTool,
+  solverRouteTool,
+  solverReplayTool
 };
 
 const ACTIVE_TOOL_SURFACES = ENABLED_TOOL_SURFACES;

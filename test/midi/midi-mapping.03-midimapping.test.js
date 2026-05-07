@@ -379,6 +379,15 @@ describe('MidiMapping 3', function() {
     expect(spec.note).to.equal(50);
   });
 
+  it('carries track voice budgets into mapped event specs', function() {
+    const mapping = makeMapping({
+      sfx: { '1': { note: 60, trackId: 'lead', voiceBudget: 3 } }
+    });
+
+    const spec = mapping.mapEvent({ sfxId: 1 }, {}, 0);
+    expect(spec).to.include({ trackId: 'lead', voiceBudget: 3 });
+  });
+
   it('defaults axisOp to add when not provided', function() {
     const spec = mapEvent({
       velocityRange: { min: 0, max: 100, default: 0 },

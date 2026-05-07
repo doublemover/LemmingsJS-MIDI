@@ -63,10 +63,12 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
   it('covers constructor fallbacks and speed defaults', function() {
     const patches = [];
     const view = {
-      getMidiConfig() { return { input: { channel: null } }; },
-      applyMidiOverrides(patch) { patches.push(patch); }
+      getMidiConfig() { return { input: { channel: null } }; }
     };
-    const controller = new MidiInputController(view, { getConfig: 123 });
+    const controller = new MidiInputController(view, {
+      getConfig: 123,
+      onConfigChange: patch => patches.push(patch)
+    });
     expect(controller.getConfig()).to.eql({ input: { channel: null } });
     const nullView = new MidiInputController(null);
     expect(nullView.getConfig()).to.equal(undefined);
@@ -179,7 +181,6 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
     const patches = [];
     const view = {
       getMidiConfig() { return { input: { channel: null } }; },
-      applyMidiOverrides(patch) { patches.push(patch); },
       selectSpeedFactor(value) { this.speed = value; },
       gameSpeedFactor: 1,
       moveToLevel() { this.restarted = true; },
@@ -219,7 +220,10 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
       },
       position: { viewPan: true }
     };
-    const controller = new MidiInputController(view, { getConfig: null });
+    const controller = new MidiInputController(view, {
+      getConfig: null,
+      onConfigChange: patch => patches.push(patch)
+    });
     controller._onMessage({ data: [0xF8] });
     controller.setConfig(config);
     controller._applyConfigPatch({ timing: { bpmBase: 120 } });
@@ -281,7 +285,6 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
           position: { viewPan: false }
         };
       },
-      applyMidiOverrides() {},
       moveToLevel() { this.restarted = true; },
       suspend() { this.paused = true; },
       continue() { this.resumed = true; },
@@ -350,7 +353,6 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
           position: { viewPan: false }
         };
       },
-      applyMidiOverrides(patch) { patches.push(patch); },
       selectSpeedFactor(value) { this.speed = value; },
       gameSpeedFactor: 1,
       moveToLevel() { this.restarted = true; },
@@ -360,7 +362,9 @@ describe('MidiInputController coverage: branches and fallbacks 1', function() {
       midiEnabled: true,
       game: { queueCommand() { this.queued = true; }, gameGui: {} }
     };
-    const controller = new MidiInputController(view);
+    const controller = new MidiInputController(view, {
+      onConfigChange: patch => patches.push(patch)
+    });
     controller.getConfig();
     controller.setConfig();
     const nullViewController = new MidiInputController(null);

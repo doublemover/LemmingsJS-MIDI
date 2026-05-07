@@ -16,8 +16,14 @@ import {
   buildInteractToolHandlers,
   buildInteractToolSpecs
 } from './interact.js';
+import {
+  SOLVER_NAMESPACES,
+  SOLVER_SURFACE,
+  buildSolverToolHandlers,
+  buildSolverToolSpecs
+} from './solver.js';
 
-const ALL_TOOL_SURFACES = Object.freeze([GAME_SURFACE, EDITOR_SURFACE, INTERACT_SURFACE]);
+const ALL_TOOL_SURFACES = Object.freeze([GAME_SURFACE, EDITOR_SURFACE, INTERACT_SURFACE, SOLVER_SURFACE]);
 const DEFAULT_ENABLED_SURFACES = new Set(ALL_TOOL_SURFACES);
 
 const SURFACE_MODULES = Object.freeze([
@@ -38,6 +44,12 @@ const SURFACE_MODULES = Object.freeze([
     namespaces: INTERACT_NAMESPACES,
     buildSpecs: buildInteractToolSpecs,
     buildHandlers: buildInteractToolHandlers
+  },
+  {
+    surface: SOLVER_SURFACE,
+    namespaces: SOLVER_NAMESPACES,
+    buildSpecs: buildSolverToolSpecs,
+    buildHandlers: buildSolverToolHandlers
   }
 ]);
 

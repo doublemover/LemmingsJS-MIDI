@@ -55,7 +55,6 @@ import {
   getMinimapPagePoint
 } from './E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,
@@ -262,9 +261,16 @@ const serializeIssues = (issues) => {
   if (!Array.isArray(issues)) return { hasErrors: false, issues: [] };
   const sanitized = issues.map(issue => ({
     severity: issue.severity,
+    code: issue.code || null,
+    source: issue.source || null,
     message: issue.message,
     fixLabel: issue.fixLabel || null,
-    hasFix: typeof issue.fix === 'function'
+    hasFix: typeof issue.fix === 'function',
+    solverAdvisory: issue.solverAdvisory === true,
+    advisoryCode: issue.advisoryCode || null,
+    blocking: issue.blocking === true,
+    blocksEditing: issue.blocksEditing === true,
+    blocksExport: issue.blocksExport === true
   }));
   const hasErrors = sanitized.some(issue => issue.severity === 'error');
   return { hasErrors, issues: sanitized };
@@ -308,10 +314,11 @@ const serializeLemming = (manager, lem) => {
     lastTriggerType: Number.isFinite(lem.lastTriggerType) ? lem.lastTriggerType : null
   };
 };
-const serializeTrigger = (trigger) => {
+const serializeTrigger = (trigger, observer = false) => {
   if (!trigger) return null;
   return {
     id: trigger.__historyId ?? null,
+    observer: !!observer,
     type: trigger.type,
     x1: trigger.x1,
     y1: trigger.y1,
@@ -342,6 +349,21 @@ const serializeMapObject = (obj) => {
       : null
   };
 };
+
+const serializeSteelRanges = (ranges) => {
+  if (!ranges || typeof ranges.length !== 'number') return [];
+  const entries = [];
+  for (let i = 0; i + 3 < ranges.length; i += 4) {
+    entries.push({
+      x: ranges[i],
+      y: ranges[i + 1],
+      width: ranges[i + 2],
+      height: ranges[i + 3]
+    });
+  }
+  return entries;
+};
+
 const isGameReady = (view) => {
   const game = view?.game;
   const stage = view?.stage;
@@ -379,6 +401,16 @@ const getViewState = (view) => {
     configPath: view.gameResources?.config?.path ?? null
   };
 };
+const resolveProcgenController = (source) => {
+  if (!source) return null;
+  if (typeof source.getDebugState === 'function') return source;
+  return source.procgenController || source.procgen?.controller || null;
+};
+const getProcgenState = (source) => {
+  const controller = resolveProcgenController(source);
+  if (!controller || typeof controller.getDebugState !== 'function') return null;
+  return controller.getDebugState();
+};
 const getGameState = (view) => {
   const game = view?.game;
   if (!game) return null;
@@ -402,14 +434,19 @@ const getGameState = (view) => {
     ? manager._nukeTargets.map(lem => lem?.id).filter(id => Number.isFinite(id))
     : [];
 
-  const triggers = triggerManager?._triggers
-    ? Array.from(triggerManager._triggers).map(serializeTrigger)
-    : [];
+  const triggers = [];
+  if (triggerManager?._triggers) {
+    triggers.push(...Array.from(triggerManager._triggers).map(trigger => serializeTrigger(trigger, false)));
+  }
+  if (triggerManager?._observerTriggers) {
+    triggers.push(...Array.from(triggerManager._observerTriggers).map(trigger => serializeTrigger(trigger, true)));
+  }
   const dynamicCount = triggers.filter(trigger => trigger && trigger.ownerId != null).length;
 
   const objects = Array.isArray(level?.objects)
     ? level.objects.map(serializeMapObject)
     : [];
+  const steel = serializeSteelRanges(level?.steelRanges);
 
   const minimap = manager?.miniMap
     ? {
@@ -417,9 +454,9 @@ const getGameState = (view) => {
       height: manager.miniMap.height,
       scaleX: manager.miniMap.scaleX,
       scaleY: manager.miniMap.scaleY,
-      liveDotCount: manager.miniMap.liveDots?.length
-        ? manager.miniMap.liveDots.length / 2
-        : 0,
+      liveDotCount: Number.isFinite(manager.miniMap.liveDotsLength)
+        ? manager.miniMap.liveDotsLength / 2
+        : (manager.miniMap.liveDots?.length ? manager.miniMap.liveDots.length / 2 : 0),
       deadCount: manager.miniMap.deadCount ?? 0,
       selectedDot: manager.miniMap.selectedDot || null
     }
@@ -517,6 +554,10 @@ const getGameState = (view) => {
       count: objects.length,
       entries: objects
     },
+    steel: {
+      count: steel.length,
+      entries: steel
+    },
     minimap,
     bench,
     soundEvents: soundEvents
@@ -548,7 +589,9 @@ export {
   serializeLemming,
   serializeTrigger,
   serializeMapObject,
+  serializeSteelRanges,
   isGameReady,
   getViewState,
+  getProcgenState,
   getGameState
 };

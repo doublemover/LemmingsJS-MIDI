@@ -103,6 +103,9 @@ const historyStoreApplyDeltaMethods = {
       if (flags & DELTA_FLAG_LEMMING_MUTATIONS) {
         this._rebuildActiveLemmings(manager);
       }
+      if (flags & (DELTA_FLAG_LEMMING_MUTATIONS | DELTA_FLAG_LEMMING_MANAGER)) {
+        this._refreshMiniMapDots(manager);
+      }
       if (flags & DELTA_FLAG_MINIMAP_DEATHS) {
         this._applyMinimapDeaths(manager, delta.minimapDeaths, useNext);
       }
@@ -240,6 +243,16 @@ const historyStoreApplyDeltaMethods = {
     }
     manager.activeLemmings = active;
     manager._activeDirty = false;
+  },
+
+  _refreshMiniMapDots(manager) {
+    if (!manager?.miniMap) return;
+    if (typeof manager.refreshMiniMapDots === 'function') {
+      manager.refreshMiniMapDots();
+      return;
+    }
+    manager.miniMap.setLiveDots?.(new Uint8Array(0), 0);
+    manager.miniMap.setSelectedDot?.(null);
   },
 
   _applyEntranceChanges(level, changes, useNext) {
@@ -415,7 +428,6 @@ const historyStoreApplyDeltaMethods = {
         if (!ignoreSpeed) {
           timer.speedFactor = state.speedFactor;
         }
-        timer.frameTime = state.frameTime;
         timer.tickIndex = Number.isFinite(state.tickIndex) ? state.tickIndex : derivedTick;
       }
     } else if (derivedTick != null) {

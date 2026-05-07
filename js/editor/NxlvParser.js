@@ -25,7 +25,9 @@ const ENTRY_NUMERIC_KEYS = new Set([
   'HEIGHT',
   'PAIRING',
   'SKILL',
-  'LEMMINGS'
+  'LEMMINGS',
+  'MIDI_FLAG_ID',
+  'MIDI_FLAG_COOLDOWN'
 ]);
 
 const ENTRY_BOOLEAN_KEYS = new Set([
@@ -34,7 +36,8 @@ const ENTRY_BOOLEAN_KEYS = new Set([
   'NO_OVERWRITE',
   'ERASE',
   'ONE_WAY',
-  'STEEL'
+  'STEEL',
+  'MIDI_FLAG'
 ]);
 
 function parseNumberValue(value) {

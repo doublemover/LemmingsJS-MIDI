@@ -1,4 +1,15 @@
-import { DEFAULT_LEVEL_WIDTH, DEFAULT_LEVEL_HEIGHT } from '../level/ClassicLevelConstants.js';
+import {
+  DEFAULT_LEVEL_WIDTH,
+  DEFAULT_LEVEL_HEIGHT,
+  LEVEL_OBJECT_COUNT,
+  LEVEL_TERRAIN_COUNT,
+  LEVEL_STEEL_COUNT,
+  LEVEL_NAME_LENGTH
+} from '../level/ClassicLevelConstants.js';
+import {
+  EDITOR_ADVISORY_WARNING_CODES,
+  checkEditorSolvabilityAdvisory
+} from '../solver/EditorAdvisory.js';
 import { createGadgetEntry, removeEntryAt } from './EditorEntryFactory.js';
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
@@ -9,6 +20,10 @@ const coerceNumber = (value, fallback = 0) => {
 
 const isFiniteNumber = (value) => Number.isFinite(value);
 const ROTATION_STEPS = new Set([0, 90, 180, 270]);
+const VALIDATOR_HANDLED_ADVISORY_CODES = new Set([
+  EDITOR_ADVISORY_WARNING_CODES.MISSING_ENTRANCE,
+  EDITOR_ADVISORY_WARNING_CODES.MISSING_EXIT
+]);
 const MAX_ENTRANCES = 4;
 const MAX_EXITS = 4;
 const MAX_LEVEL_WIDTH = DEFAULT_LEVEL_WIDTH;
@@ -33,8 +48,12 @@ const findPieceIndices = (entries, pieceId) => {
   return matches;
 };
 
-const createIssue = (severity, message, fixLabel = null, fix = null) => {
-  return { severity, message, fixLabel, fix };
+const createIssue = (severity, message, fixLabel = null, fix = null, details = null) => {
+  const issue = { severity, message, fixLabel, fix };
+  if (details && typeof details === 'object') {
+    Object.assign(issue, details);
+  }
+  return issue;
 };
 
 const normalizeRotation = (value) => {
@@ -42,6 +61,256 @@ const normalizeRotation = (value) => {
   const normalized = ((numeric % 360) + 360) % 360;
   const snapped = Math.round(normalized / 90) * 90;
   return ((snapped % 360) + 360) % 360;
+};
+
+const createDestructiveIssue = (code, message, fixLabel = null, fix = null, details = {}) => {
+  return createIssue('warning', message, fixLabel, fix, {
+    code,
+    exportFormat: 'classicLvl',
+    destructive: true,
+    ...details
+  });
+};
+
+const normalizeSolverAdvisoryConfig = (options) => {
+  if (options?.solverAdvisory === false) return null;
+  return options?.solverAdvisory && typeof options.solverAdvisory === 'object'
+    ? options.solverAdvisory
+    : {};
+};
+
+const toSolverAdvisoryIssueCode = (code) => {
+  const normalized = String(code || 'unknown')
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '_')
+    .replace(/^_+|_+$/g, '');
+  return `solver_advisory_${normalized || 'unknown'}`;
+};
+
+const appendSolverAdvisoryIssues = (issues, level, assets, options) => {
+  const config = normalizeSolverAdvisoryConfig(options);
+  if (!config) return;
+  const { source = null, ...advisoryOptions } = config;
+  const advisorySource = source || options?.solverAdvisorySource || options?.runtimeLevel || level;
+  if (!advisorySource) return;
+  const advisory = checkEditorSolvabilityAdvisory(advisorySource, {
+    assets,
+    entranceId: assets?.entranceId,
+    exitId: assets?.exitId,
+    ...advisoryOptions
+  });
+  for (const warning of advisory.warnings || []) {
+    if (VALIDATOR_HANDLED_ADVISORY_CODES.has(warning.code)) continue;
+    issues.push(createIssue(
+      'warning',
+      `Solver advisory: ${warning.message}`,
+      null,
+      null,
+      {
+        code: toSolverAdvisoryIssueCode(warning.code),
+        source: 'solver-advisory',
+        solverAdvisory: true,
+        advisoryCode: warning.code,
+        target: warning.target ?? null,
+        blocking: false,
+        blocksEditing: advisory.blocksEditing === true,
+        blocksExport: advisory.blocksExport === true,
+        budgetUsage: advisory.budgetUsage || null
+      }
+    ));
+  }
+};
+
+const truncateEntries = (level, key, max) => {
+  const entries = Array.isArray(level?.[key]) ? level[key] : [];
+  entries.length = Math.min(entries.length, max);
+};
+
+const getUnsupportedPropKeys = (entry, allowedKeys) => {
+  const props = entry?.props;
+  if (!props) return [];
+  return Object.keys(props).filter(key => !allowedKeys.has(key));
+};
+
+const hasUnsupportedProps = (entry, allowedKeys) => {
+  return getUnsupportedPropKeys(entry, allowedKeys).length > 0;
+};
+
+const stripUnsupportedProps = (entry, allowedKeys) => {
+  if (!entry?.props) return;
+  for (const key of Object.keys(entry.props)) {
+    if (!allowedKeys.has(key)) {
+      delete entry.props[key];
+    }
+  }
+};
+
+const countPreservedNxlvMetadata = (level) => {
+  if (!level) return 0;
+  let count = 0;
+  if (Array.isArray(level.unknownLines)) count += level.unknownLines.length;
+  if (Array.isArray(level.unknownSections)) count += level.unknownSections.length;
+  if (Array.isArray(level.skillsetUnknownLines)) count += level.skillsetUnknownLines.length;
+  const addEntryUnknownLines = (entries) => {
+    if (!Array.isArray(entries)) return;
+    for (const entry of entries) {
+      if (Array.isArray(entry?.unknownLines)) count += entry.unknownLines.length;
+    }
+  };
+  addEntryUnknownLines(level.terrains);
+  addEntryUnknownLines(level.gadgets);
+  addEntryUnknownLines(level.steel);
+  if (Array.isArray(level.terrainGroups)) {
+    for (const group of level.terrainGroups) {
+      if (Array.isArray(group?.unknownLines)) count += group.unknownLines.length;
+      addEntryUnknownLines(group?.terrains);
+    }
+  }
+  return count;
+};
+
+const normalizeIssueForReport = (issue, index, source = 'level-validation') => {
+  const severity = issue?.severity === 'error'
+    ? 'error'
+    : issue?.severity === 'warning'
+      ? 'warning'
+      : 'info';
+  const destructive = issue?.destructive === true || issue?.exportFormat === 'classicLvl';
+  return {
+    index,
+    source,
+    severity,
+    code: issue?.code || null,
+    target: issue?.target || null,
+    message: String(issue?.message || ''),
+    blocker: severity === 'error' || issue?.blocking === true || issue?.blocksExport === true,
+    blocksEditing: issue?.blocksEditing === true,
+    blocksExport: severity === 'error' || issue?.blocksExport === true,
+    destructive,
+    exportFormat: issue?.exportFormat || null,
+    hasFix: typeof issue?.fix === 'function',
+    fixLabel: issue?.fixLabel || null,
+    metadata: {
+      count: Number.isFinite(issue?.count) ? issue.count : null,
+      max: Number.isFinite(issue?.max) ? issue.max : null,
+      props: Array.isArray(issue?.props) ? [...issue.props] : null,
+      advisoryCode: issue?.advisoryCode || null
+    }
+  };
+};
+
+const summarizeReportIssues = (issues) => ({
+  total: issues.length,
+  errors: issues.filter(issue => issue.severity === 'error').length,
+  warnings: issues.filter(issue => issue.severity === 'warning').length,
+  infos: issues.filter(issue => issue.severity === 'info').length,
+  blockers: issues.filter(issue => issue.blocker).length,
+  destructive: issues.filter(issue => issue.destructive).length,
+  unsupportedPreservedData: issues.filter(issue => issue.exportFormat === 'classicLvl').length
+});
+
+const levelIdentity = (level, index = 0) => ({
+  index,
+  id: level?.getHeader?.('ID') ?? level?.id ?? null,
+  title: String(level?.getHeader?.('TITLE') ?? level?.title ?? `Level ${index + 1}`),
+  style: String(level?.getHeader?.('STYLE') ?? level?.style ?? ''),
+  width: getHeaderNumber(level, 'WIDTH', DEFAULT_LEVEL_WIDTH),
+  height: getHeaderNumber(level, 'HEIGHT', DEFAULT_LEVEL_HEIGHT)
+});
+
+const validatePackConsistency = (pack = {}, assetsByStyle = null) => {
+  const levels = Array.isArray(pack?.levels)
+    ? pack.levels
+    : (Array.isArray(pack) ? pack : []);
+  const issues = [];
+  if (!levels.length) {
+    issues.push({
+      severity: 'error',
+      code: 'pack_missing_levels',
+      target: 'pack.levels',
+      message: 'Pack has no levels.',
+      blocking: true
+    });
+    return issues.map((issue, index) => normalizeIssueForReport(issue, index, 'pack-validation'));
+  }
+
+  const titleSeen = new Map();
+  const idSeen = new Map();
+  levels.forEach((level, index) => {
+    const identity = levelIdentity(level, index);
+    const titleKey = identity.title.trim().toLowerCase();
+    const idKey = identity.id == null ? '' : String(identity.id).trim().toLowerCase();
+    if (!identity.style) {
+      issues.push({
+        severity: 'warning',
+        code: 'pack_missing_style',
+        target: `levels[${index}].STYLE`,
+        message: `Level ${index + 1} has no style.`,
+        blocking: false
+      });
+    } else if (assetsByStyle && !assetsByStyle[identity.style]) {
+      issues.push({
+        severity: 'warning',
+        code: 'pack_missing_style_assets',
+        target: `levels[${index}].STYLE`,
+        message: `Level ${index + 1} references missing style assets: ${identity.style}.`,
+        blocking: false
+      });
+    }
+    if (titleKey) {
+      if (titleSeen.has(titleKey)) {
+        issues.push({
+          severity: 'warning',
+          code: 'pack_duplicate_title',
+          target: `levels[${index}].TITLE`,
+          message: `Duplicate level title: ${identity.title}.`,
+          blocking: false
+        });
+      } else {
+        titleSeen.set(titleKey, index);
+      }
+    }
+    if (idKey) {
+      if (idSeen.has(idKey)) {
+        issues.push({
+          severity: 'warning',
+          code: 'pack_duplicate_id',
+          target: `levels[${index}].ID`,
+          message: `Duplicate level id: ${identity.id}.`,
+          blocking: false
+        });
+      } else {
+        idSeen.set(idKey, index);
+      }
+    }
+  });
+
+  return issues.map((issue, index) => normalizeIssueForReport(issue, index, 'pack-validation'));
+};
+
+const createValidationReport = (level, assets = null, options = {}) => {
+  const rawIssues = Array.isArray(options.issues)
+    ? options.issues
+    : validateLevel(level, assets, options.validationOptions || options);
+  const levelIssues = rawIssues.map((issue, index) => normalizeIssueForReport(issue, index));
+  const packIssues = options.pack
+    ? validatePackConsistency(options.pack, options.assetsByStyle || null)
+    : [];
+  const issues = [...levelIssues, ...packIssues];
+  return {
+    kind: 'editor-validation-report',
+    schemaVersion: 1,
+    level: levelIdentity(level),
+    pack: options.pack
+      ? {
+        title: String(options.pack.title || options.pack.name || ''),
+        levelCount: Array.isArray(options.pack.levels) ? options.pack.levels.length : 0
+      }
+      : null,
+    summary: summarizeReportIssues(issues),
+    issues
+  };
 };
 
 const validateLevel = (level, assets = null, options = {}) => {
@@ -65,12 +334,49 @@ const validateLevel = (level, assets = null, options = {}) => {
     issues.push(createIssue('warning', 'Title is empty.', 'Set title', () => {
       level.setHeader('TITLE', 'Untitled');
     }));
+  } else if (String(title).length > LEVEL_NAME_LENGTH) {
+    const titleText = String(title);
+    issues.push(createDestructiveIssue(
+      'classic_title_length',
+      `Classic .lvl export stores ${LEVEL_NAME_LENGTH} title characters; the remaining ${titleText.length - LEVEL_NAME_LENGTH} will be omitted.`,
+      'Truncate title',
+      () => {
+        level.setHeader('TITLE', titleText.slice(0, LEVEL_NAME_LENGTH));
+      },
+      {
+        target: 'header.TITLE',
+        count: titleText.length,
+        max: LEVEL_NAME_LENGTH
+      }
+    ));
   }
 
   if (Array.isArray(level.terrainGroups) && level.terrainGroups.length > 0) {
-    issues.push(createIssue(
-      'warning',
-      'Terrain groups are not supported in editor preview/runtime.'
+    issues.push(createDestructiveIssue(
+      'classic_terrain_groups',
+      'Terrain groups are not exported to classic .lvl; ungroup terrain before classic export.',
+      null,
+      null,
+      {
+        target: 'terrainGroups',
+        count: level.terrainGroups.length,
+        max: 0
+      }
+    ));
+  }
+
+  const preservedMetadataCount = countPreservedNxlvMetadata(level);
+  if (preservedMetadataCount) {
+    issues.push(createDestructiveIssue(
+      'classic_preserved_nxlv_metadata',
+      'Comments and unknown NXLV sections are preserved for NXLV but are not exported to classic .lvl.',
+      null,
+      null,
+      {
+        target: 'nxlvMetadata',
+        count: preservedMetadataCount,
+        max: 0
+      }
     ));
   }
 
@@ -216,6 +522,55 @@ const validateLevel = (level, assets = null, options = {}) => {
   const exitId = assets?.exitId ?? null;
   const gadgets = Array.isArray(level.gadgets) ? level.gadgets : [];
   const steelEntries = Array.isArray(level.steel) ? level.steel : [];
+  const directTerrains = Array.isArray(level.terrains) ? level.terrains : [];
+
+  if (gadgets.length > LEVEL_OBJECT_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_object_count',
+      `Classic .lvl export stores ${LEVEL_OBJECT_COUNT} gadgets; the remaining ${gadgets.length - LEVEL_OBJECT_COUNT} will be omitted.`,
+      'Keep first gadgets',
+      () => {
+        truncateEntries(level, 'gadgets', LEVEL_OBJECT_COUNT);
+      },
+      {
+        target: 'gadgets',
+        count: gadgets.length,
+        max: LEVEL_OBJECT_COUNT
+      }
+    ));
+  }
+
+  if (directTerrains.length > LEVEL_TERRAIN_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_terrain_count',
+      `Classic .lvl export stores ${LEVEL_TERRAIN_COUNT} terrain pieces; the remaining ${directTerrains.length - LEVEL_TERRAIN_COUNT} will be omitted.`,
+      'Keep first terrain',
+      () => {
+        truncateEntries(level, 'terrains', LEVEL_TERRAIN_COUNT);
+      },
+      {
+        target: 'terrains',
+        count: directTerrains.length,
+        max: LEVEL_TERRAIN_COUNT
+      }
+    ));
+  }
+
+  if (steelEntries.length > LEVEL_STEEL_COUNT) {
+    issues.push(createDestructiveIssue(
+      'classic_steel_count',
+      `Classic .lvl export stores ${LEVEL_STEEL_COUNT} steel rectangles; the remaining ${steelEntries.length - LEVEL_STEEL_COUNT} will be omitted.`,
+      'Keep first steel',
+      () => {
+        truncateEntries(level, 'steel', LEVEL_STEEL_COUNT);
+      },
+      {
+        target: 'steel',
+        count: steelEntries.length,
+        max: LEVEL_STEEL_COUNT
+      }
+    ));
+  }
 
   if (Number.isFinite(entranceId)) {
     const entrances = findPieceIndices(gadgets, entranceId);
@@ -334,15 +689,36 @@ const validateLevel = (level, assets = null, options = {}) => {
   }
 
   const terrainEntries = [
-    ...(Array.isArray(level.terrains) ? level.terrains : []),
+    ...directTerrains,
     ...(Array.isArray(level.terrainGroups)
       ? level.terrainGroups.flatMap(group => Array.isArray(group?.terrains) ? group.terrains : [])
       : [])
   ];
   const gadgetEntries = Array.isArray(level.gadgets) ? level.gadgets : [];
   const gadgetOnlyProps = ['SKILL', 'LEMMINGS', 'PAIRING'];
-  const terrainUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'ONE_WAY', 'WIDTH', 'HEIGHT'];
-  const gadgetUnsupportedProps = ['ROTATE', 'FLIP_HORIZONTAL', 'WIDTH', 'HEIGHT'];
+  const terrainClassicProps = new Set([
+    'STYLE',
+    'PIECE',
+    'X',
+    'Y',
+    'FLIP_VERTICAL',
+    'NO_OVERWRITE',
+    'ERASE'
+  ]);
+  const gadgetClassicProps = new Set([
+    'STYLE',
+    'PIECE',
+    'X',
+    'Y',
+    'FLIP_VERTICAL',
+    'NO_OVERWRITE'
+  ]);
+  const steelClassicProps = new Set([
+    'X',
+    'Y',
+    'WIDTH',
+    'HEIGHT'
+  ]);
 
   const hasAnyProps = (entry, keys) => {
     const props = entry?.props;
@@ -373,26 +749,62 @@ const validateLevel = (level, assets = null, options = {}) => {
     ));
   }
 
-  const terrainWithUnsupported = terrainEntries.filter(entry => hasAnyProps(entry, terrainUnsupportedProps));
+  const terrainWithUnsupported = terrainEntries.filter(entry => hasUnsupportedProps(entry, terrainClassicProps));
   if (terrainWithUnsupported.length) {
-    issues.push(createIssue(
-      'warning',
-      'Terrain entries include unsupported classic properties (rotate/flip H/resize/one-way).',
+    const propKeys = Array.from(new Set(terrainWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, terrainClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_terrain_props',
+      `Terrain entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
       'Remove unsupported terrain props',
       () => {
-        for (const entry of terrainWithUnsupported) stripProps(entry, terrainUnsupportedProps);
+        for (const entry of terrainWithUnsupported) stripUnsupportedProps(entry, terrainClassicProps);
+      },
+      {
+        target: 'terrains',
+        count: terrainWithUnsupported.length,
+        props: propKeys
       }
     ));
   }
 
-  const gadgetWithUnsupported = gadgetEntries.filter(entry => hasAnyProps(entry, gadgetUnsupportedProps));
+  const gadgetWithUnsupported = gadgetEntries.filter(entry => hasUnsupportedProps(entry, gadgetClassicProps));
   if (gadgetWithUnsupported.length) {
-    issues.push(createIssue(
-      'warning',
-      'Gadget entries include unsupported classic properties (rotate/flip H/resize).',
+    const propKeys = Array.from(new Set(gadgetWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, gadgetClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_gadget_props',
+      `Gadget entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
       'Remove unsupported gadget props',
       () => {
-        for (const entry of gadgetWithUnsupported) stripProps(entry, gadgetUnsupportedProps);
+        for (const entry of gadgetWithUnsupported) stripUnsupportedProps(entry, gadgetClassicProps);
+      },
+      {
+        target: 'gadgets',
+        count: gadgetWithUnsupported.length,
+        props: propKeys
+      }
+    ));
+  }
+
+  const steelWithUnsupported = steelEntries.filter(entry => hasUnsupportedProps(entry, steelClassicProps));
+  if (steelWithUnsupported.length) {
+    const propKeys = Array.from(new Set(steelWithUnsupported.flatMap(entry => {
+      return getUnsupportedPropKeys(entry, steelClassicProps);
+    }))).sort();
+    issues.push(createDestructiveIssue(
+      'classic_unsupported_steel_props',
+      `Steel entries include properties classic .lvl cannot export (${propKeys.join(', ')}).`,
+      'Remove unsupported steel props',
+      () => {
+        for (const entry of steelWithUnsupported) stripUnsupportedProps(entry, steelClassicProps);
+      },
+      {
+        target: 'steel',
+        count: steelWithUnsupported.length,
+        props: propKeys
       }
     ));
   }
@@ -432,13 +844,20 @@ const validateLevel = (level, assets = null, options = {}) => {
       'Snap rotations',
       () => {
         for (const { entry, snapped } of snapRotations) {
-          if (entry?.props) entry.props.ROTATE = snapped;
+          if (entry?.props && Object.prototype.hasOwnProperty.call(entry.props, 'ROTATE')) {
+            entry.props.ROTATE = snapped;
+          }
         }
       }
     ));
   }
 
+  appendSolverAdvisoryIssues(issues, level, assets, options);
   return issues;
 };
 
-export { validateLevel };
+export {
+  createValidationReport,
+  validateLevel,
+  validatePackConsistency
+};

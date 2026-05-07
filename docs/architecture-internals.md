@@ -76,6 +76,7 @@ currently carry most runtime complexity: renderer, time travel/history, and MCP.
 
 ## Startup profiles and mode boundaries
 
-Runtime profiles (`gameplay`, `editor`, `perf`) exist to avoid paying for
-subsystems that are not needed in a given mode. Keep new mode-sensitive
+Runtime profiles (`classic`, `midi`, `editor`, `e2e`, `perf`) exist to avoid
+paying for subsystems that are not needed in a given mode. Legacy
+`profile=gameplay` URLs normalize to `classic`. Keep new mode-sensitive
 features profile-aware in `js/app/boot.js` and `js/game/GameView.js`.

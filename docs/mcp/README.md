@@ -1,16 +1,17 @@
 # MCP docs
 
-This directory contains the MCP interface spec, implementation notes, and the Zod schema reference.
+This directory contains the shipped MCP usage docs, protocol reference, editor
+mutation contract, examples, and historical design notes.
 
 Files:
-- `docs/mcp/lemmings-mcp-interface-spec-memresources.md`
-- `docs/mcp/lemmings-mcp-implementation-notes-memresources.md`
-- `docs/mcp/lemmings-mcp-zod-schema.ts`
 - `docs/mcp/protocol-v2.md`
 - `docs/mcp/editor-apply.md`
 - `docs/mcp/protocol-mappings.json`
 - `docs/mcp/call-examples.md`
 - `docs/mcp/publishing.md`
+- `docs/mcp/lemmings-mcp-interface-spec-memresources.md` (historical design reference)
+- `docs/mcp/lemmings-mcp-implementation-notes-memresources.md` (historical implementation notes)
+- `docs/mcp/lemmings-mcp-zod-schema.ts` (schema reference snapshot)
 
 ## Server usage
 - Start the game server: `npm run start-https` (serves `https://localhost:8080`).

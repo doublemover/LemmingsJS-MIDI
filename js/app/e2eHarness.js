@@ -23,6 +23,7 @@ import {
   serializeMapObject,
   isGameReady,
   getViewState,
+  getProcgenState,
   getGameState
 } from './e2e/E2EStateSerialization.js';
 import {
@@ -54,10 +55,10 @@ import {
   getStageWorldPointFromPage,
   getStagePagePointFromWorld,
   centerStageOn,
-  getMinimapPagePoint
+  getMinimapPagePoint,
+  getCaptureRects
 } from './e2e/E2ECanvasHarness.js';
 import {
-  getMidiOverrides,
   pauseGame,
   resumeGame,
   stepGame,
@@ -82,6 +83,7 @@ const createE2EApi = (context) => ({
     context.view = next?.view || context.view;
     context.editorUi = next?.editorUi || context.editorUi;
     context.midiUi = next?.midiUi || context.midiUi;
+    context.procgenController = next?.procgenController || context.procgenController || null;
   },
   getState: () => {
     const view = context.view;
@@ -96,17 +98,19 @@ const createE2EApi = (context) => ({
       editor: getEditorState(view, editorUi),
       bench: getBenchMetrics(view),
       diagnostics: getEnvironmentDiagnostics(view),
+      procgen: getProcgenState(context.procgenController || view),
       midi: {
         enabled: !!view?.midiEnabled,
         hasRouter: !!view?.midiRouter,
         outputName: view?.midiOut?.name || null,
-        intentRevision: context.midiUi?.getMidiIntentState?.()?.revision ?? null,
-        learnTarget: context.midiUi?.getMidiIntentState?.()?.learn?.target ?? null,
-        featureFlags: context.midiUi?.getFeatureFlags?.() || null
+        projectId: context.midiUi?.getProject?.()?.id ?? null,
+        selectedTrackId: context.midiUi?.getProject?.()?.ui?.selectedTrackId ?? null,
+        selectedSourceId: context.midiUi?.getProject?.()?.ui?.selectedSourceId ?? null
       }
     };
   },
   getCanvasMetrics: () => getCanvasMetrics(context.view),
+  getCaptureRects: (options) => getCaptureRects(context.view, context.editorUi, options),
   getBuffer: (name) => getBuffer(context.view, name),
   getEditorLevelText: () => getEditorLevelText(context.view),
   stageWorldFromPage: (point) => getStageWorldPointFromPage(context.view, point),
@@ -138,21 +142,38 @@ const createE2EApi = (context) => ({
   startBenchSequence: () => startBenchSequence(context.view),
   startBench: (entrances) => startBench(context.view, entrances),
   stopBench: () => stopBench(context.view),
-  midiGetOverrides: () => getMidiOverrides(context.view, context.midiUi),
-  midiGetIntentState: () => context.midiUi?.getMidiIntentState?.() || null,
-  midiDispatchIntent: (intent) => context.midiUi?.dispatchMidiIntent?.(intent) || null,
-  midiSetOverrides: (patch) => context.midiUi?.setMidiOverrides?.(patch) || false,
-  midiCaptureLearnNote: (note) => context.midiUi?.captureLearnNote?.(note) || false,
-  midiAuditionMapping: (targetKey, id, entry) => context.midiUi?.auditionMapping?.(targetKey, id, entry) || false
+  midiGetProject: () => context.midiUi?.getProject?.() || null,
+  midiGetRuntimeConfig: () => context.midiUi?.getMidiConfig?.() || null,
+  midiDispatchProjectIntent: (intent) => context.midiUi?.dispatchProjectIntent?.(intent) || null,
+  midiResetProject: (templateId) => context.midiUi?.resetProject?.(templateId) || null,
+  midiExportProject: (options) => context.midiUi?.exportProject?.(options) || null,
+  midiImportProject: (payload) => context.midiUi?.importProject?.(payload) || null,
+  midiSaveProjectTemplate: (options) => context.midiUi?.saveProjectTemplate?.(options) || null,
+  midiGetProjectTemplates: () => context.midiUi?.getProjectTemplates?.() || [],
+  midiGetUiMetrics: () => context.midiUi?.getUiMetrics?.() || null,
+  midiStartLearn: () => context.midiUi?.startLearn?.() || false,
+  midiConfirmLearn: () => context.midiUi?.confirmLearn?.() || false,
+  midiCancelLearn: () => context.midiUi?.cancelLearn?.() || false,
+  midiCaptureLearnNote: (note, velocity, channel) => context.midiUi?.captureLearnNote?.(note, velocity, channel) || false,
+  midiStartRecording: () => context.midiUi?.startRecording?.() || false,
+  midiCommitRecording: () => context.midiUi?.commitRecording?.() || false,
+  midiCancelRecording: () => context.midiUi?.cancelRecording?.() || false,
+  midiCaptureRecordMessage: (message) => context.midiUi?.captureRecordMessage?.(message) || false,
+  midiAudition: (request) => context.midiUi?.audition?.(request) || false
 });
-const installE2EHarness = ({ view, editorUi, midiUi } = {}) => {
+const installE2EHarness = ({ view, editorUi, midiUi, procgenController } = {}) => {
   if (!isE2EEnabled()) return null;
   const root = getRuntimeDependency('window', null) || {};
   if (root.__E2E__ && typeof root.__E2E__._setContext === 'function') {
-    root.__E2E__._setContext({ view, editorUi, midiUi });
+    root.__E2E__._setContext({ view, editorUi, midiUi, procgenController });
     return root.__E2E__;
   }
-  const context = { view: view || null, editorUi: editorUi || null, midiUi: midiUi || null };
+  const context = {
+    view: view || null,
+    editorUi: editorUi || null,
+    midiUi: midiUi || null,
+    procgenController: procgenController || null
+  };
   const api = createE2EApi(context);
   root.__E2E__ = api;
   return api;

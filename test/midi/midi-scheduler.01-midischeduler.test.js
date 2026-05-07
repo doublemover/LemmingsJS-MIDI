@@ -34,6 +34,87 @@ describe('MidiScheduler 1', function() {
     });
   });
 
+  it('routes notes and panic to registered track outputs', function() {
+    const projectCalls = [];
+    const trackCalls = [];
+    const projectOutput = makeOutput([1], projectCalls, 'project-out');
+    const trackOutput = makeOutput([1], trackCalls, 'track-out');
+    withFakeClockAndPerformance((clock) => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(projectOutput);
+      scheduler.setOutputs([projectOutput, trackOutput]);
+      scheduler.setTickMs(10);
+
+      const ok = scheduler.sendNote({
+        note: 60,
+        velocity: 64,
+        durationTicks: 2,
+        outputId: 'track-out'
+      });
+
+      expect(ok).to.equal(true);
+      expect(projectCalls.some(call => call.type === 'noteOn')).to.equal(false);
+      expect(trackCalls.some(call => call.type === 'noteOn' && call.note === 60)).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'noteOff' && call.note === 60)).to.equal(true);
+
+      clock.tick(25);
+      expect(scheduler._activeNotes.size).to.equal(0);
+
+      projectCalls.length = 0;
+      trackCalls.length = 0;
+      expect(scheduler.sendNote({ note: 62, durationTicks: 0, outputId: 'missing-out' })).to.equal(false);
+      expect(projectCalls.length).to.equal(0);
+      expect(trackCalls.length).to.equal(0);
+
+      scheduler.sendNote({ note: 64, durationTicks: 0 });
+      scheduler.sendNote({ note: 65, durationTicks: 0, outputId: 'track-out' });
+      scheduler.allNotesOff();
+      expect(projectCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+      expect(trackCalls.some(call => call.type === 'allNotesOff')).to.equal(true);
+    });
+  });
+
+  it('preserves routing metadata on unreserved planned sends', function() {
+    const calls = [];
+    const output = makeOutput([1], calls, 'out-1');
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    scheduler.setOutput(output);
+    scheduler.setOutputs([output]);
+    scheduler.setTickMs(10);
+    const sendTimeMs = scheduler._nowMs() + 1000;
+
+    const ok = scheduler.sendNote(
+      {
+        note: 60,
+        velocity: 64,
+        durationTicks: 2,
+        timeMs: sendTimeMs,
+        trackId: 'lead',
+        outputId: 'out-1',
+        voiceBudget: 4
+      },
+      {
+        sfxId: 3,
+        priority: 2,
+        triggerType: 'skill'
+      }
+    );
+
+    expect(ok).to.equal(true);
+    expect(scheduler._ratePlanned).to.have.lengthOf(2);
+    for (const entry of scheduler._ratePlanned) {
+      expect(entry).to.include({
+        sfxId: 3,
+        priority: 2,
+        triggerType: 'skill',
+        trackId: 'lead',
+        outputId: 'out-1',
+        voiceBudget: 4
+      });
+    }
+    expect(scheduler._ratePlanned.map(entry => entry.phase)).to.deep.equal(['on', 'off']);
+  });
+
   it('swaps attack and release velocity when reversing', function() {
     const calls = [];
     const output = makeOutput([1], calls);
@@ -72,6 +153,27 @@ describe('MidiScheduler 1', function() {
 
       const noteOffs = calls.filter(c => c.type === 'noteOff').map(c => c.note);
       expect(noteOffs).to.include(60);
+    });
+  });
+
+  it('steals the oldest note on a track when its voice budget is exceeded', function() {
+    const calls = [];
+    const output = makeOutput([1], calls);
+    withFakeClockAndPerformance((clock) => {
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(output);
+
+      scheduler.sendNote({ note: 60, velocity: 64, durationTicks: 0, trackId: 'lead', voiceBudget: 1 });
+      clock.tick(1);
+      scheduler.sendNote({ note: 62, velocity: 64, durationTicks: 0, trackId: 'pad', voiceBudget: 1 });
+      clock.tick(1);
+      scheduler.sendNote({ note: 64, velocity: 64, durationTicks: 0, trackId: 'lead', voiceBudget: 1 });
+
+      const noteOffs = calls.filter(c => c.type === 'noteOff').map(c => c.note);
+      expect(noteOffs).to.deep.equal([60]);
+      expect([...scheduler._activeNotes.values()].map(info => info.note).sort()).to.deep.equal([62, 64]);
+      expect(scheduler._countActiveNotesForTrack('lead')).to.equal(1);
+      expect(scheduler._countActiveNotesForTrack('pad')).to.equal(1);
     });
   });
 

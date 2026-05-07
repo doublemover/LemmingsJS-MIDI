@@ -13,7 +13,6 @@ describe('MidiInputController coverage: branches and fallbacks 2', function() {
       continue() { calls.resume += 1; },
       moveToLevel() { calls.restart += 1; },
       setMidiEnabled(value) { this.midiEnabled = value; },
-      applyMidiOverrides(patch) { patches.push(patch); },
       midiEnabled: true,
       gameSpeedFactor: 2,
       game: { queueCommand() { calls.queued = true; }, gameGui: {} }
@@ -42,7 +41,10 @@ describe('MidiInputController coverage: branches and fallbacks 2', function() {
       },
       position: { viewPan: false }
     };
-    const controller = new MidiInputController(view, { getConfig: () => config });
+    const controller = new MidiInputController(view, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
     controller._setSpeedFactor = value => calls.setSpeed.push(value);
     controller._handleTransport(0xFA, config);
     controller._handleTransport(0xFC, config);
@@ -68,7 +70,6 @@ describe('MidiInputController coverage: branches and fallbacks 2', function() {
   it('uses default ranges for speed and intensity controls', function() {
     const patches = [];
     const view = {
-      applyMidiOverrides(patch) { patches.push(patch); },
       game: { queueCommand() {}, gameGui: {} },
       gameSpeedFactor: 1
     };
@@ -81,7 +82,10 @@ describe('MidiInputController coverage: branches and fallbacks 2', function() {
         }
       }
     };
-    const controller = new MidiInputController(view, { getConfig: () => config });
+    const controller = new MidiInputController(view, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
     let speed = null;
     controller._setSpeedFactor = value => { speed = value; };
 

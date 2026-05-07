@@ -15,9 +15,9 @@ describe('MidiInputController coverage: config and mapping', function() {
     expect(controller.channel).to.equal('omni');
   });
 
-  it('applyConfigPatch uses handler before view overrides', function() {
+  it('applyConfigPatch uses the project config handler', function() {
     const patches = [];
-    const view = { applyMidiOverrides() { patches.push('view'); } };
+    const view = {};
     const controller = new MidiInputController(view, {
       onConfigChange: patch => patches.push(patch)
     });
@@ -113,10 +113,9 @@ describe('MidiInputController coverage: config and mapping', function() {
     expect(handled).to.equal(false);
   });
 
-  it('applies view overrides and handles transport actions', function() {
+  it('applies config handler patches and handles transport actions', function() {
     const patches = [];
     const view = {
-      applyMidiOverrides(patch) { patches.push(patch); },
       moveToLevel() { this.moved = true; },
       suspend() { this.paused = true; },
       continue() { this.resumed = true; }
@@ -127,7 +126,10 @@ describe('MidiInputController coverage: config and mapping', function() {
         transport: { start: 'restart', stop: 'pause', continue: 'resume' }
       }
     };
-    const controller = new MidiInputController(view, { getConfig: () => config });
+    const controller = new MidiInputController(view, {
+      getConfig: () => config,
+      onConfigChange: patch => patches.push(patch)
+    });
     controller._applyConfigPatch({ timing: { bpmBase: 111 } });
     expect(patches[0].timing.bpmBase).to.equal(111);
 

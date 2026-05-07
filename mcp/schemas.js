@@ -442,6 +442,37 @@ const EventsPollSchema = z.object({
   after: z.string().optional()
 });
 
+const SolverOptionsSchema = z.object({
+  seed: z.number().int().nonnegative().optional(),
+  mode: z.enum(['tactical', 'route', 'full']).optional(),
+  skillSubset: z.array(z.string().min(1)).optional(),
+  targetSaveCount: z.number().int().nonnegative().optional(),
+  maxTicks: z.number().int().positive().optional(),
+  maxNodes: z.number().int().positive().optional(),
+  maxActions: z.number().int().nonnegative().optional(),
+  maxWallTimeMs: z.number().int().positive().optional(),
+  allowDestructiveSkills: z.boolean().optional(),
+  verify: z.boolean().optional()
+}).passthrough();
+
+const SolverSourceSchema = z.any();
+
+const SolverSnapshotSchema = z.object({
+  source: SolverSourceSchema,
+  options: SolverOptionsSchema.optional()
+});
+
+const SolverRouteSchema = z.object({
+  source: SolverSourceSchema,
+  options: SolverOptionsSchema.optional()
+});
+
+const SolverReplaySchema = z.object({
+  source: SolverSourceSchema,
+  actions: z.array(z.any()).optional(),
+  options: SolverOptionsSchema.optional()
+});
+
 
 export {
   DEFAULT_LEM_DELTA_FIELDS,
@@ -472,6 +503,9 @@ export {
   SessionCloseSchema,
   SessionCreateSchema,
   SkillApplySchema,
+  SolverReplaySchema,
+  SolverRouteSchema,
+  SolverSnapshotSchema,
   StateDeltaSchema,
   StateGetSchema,
   TimeSchema,

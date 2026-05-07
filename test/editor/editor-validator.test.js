@@ -1,6 +1,12 @@
 import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
-import { validateLevel } from '../../js/editor/EditorValidator.js';
+import {
+  createValidationReport,
+  validateLevel,
+  validatePackConsistency
+} from '../../js/editor/EditorValidator.js';
+import { createSmallGapFixture } from '../../js/solver/SolverFixtures.js';
+import { EDITOR_ADVISORY_WARNING_CODES } from '../../js/solver/EditorAdvisory.js';
 
 const createLevel = () => {
   const level = new EditorLevel();
@@ -17,6 +23,38 @@ const createLevel = () => {
   level.terrains = [];
   level.gadgets = [];
   return level;
+};
+
+const installRuntimeFixture = (level, fixture) => {
+  level.setHeader('TITLE', 'Advisory route');
+  level.setHeader('WIDTH', fixture.width);
+  level.setHeader('HEIGHT', fixture.height);
+  level.setHeader('LEMMINGS', 1);
+  level.setHeader('SAVE_REQUIREMENT', 1);
+  level.gadgets = [
+    { props: { PIECE: 1, X: fixture.entrances[0].x, Y: fixture.entrances[0].y } },
+    { props: { PIECE: 2, X: fixture.exits[0].x, Y: fixture.exits[0].y } }
+  ];
+  level.width = fixture.width;
+  level.height = fixture.height;
+  level.groundMask = {
+    width: fixture.width,
+    height: fixture.height,
+    mask: fixture.groundMask,
+    hasGroundAt(x, y) {
+      const ix = Math.floor(x);
+      const iy = Math.floor(y);
+      if (ix < 0 || iy < 0 || ix >= fixture.width || iy >= fixture.height) return false;
+      return fixture.groundMask[ix + iy * fixture.width] !== 0;
+    }
+  };
+  level.entrances = fixture.entrances.map(entry => ({ ...entry }));
+  level.exits = fixture.exits.map(entry => ({ ...entry }));
+  level.oneWay = fixture.oneWay.map(entry => ({ ...entry }));
+  level.hazards = fixture.hazards.map(entry => ({ ...entry }));
+  for (const [skill, count] of Object.entries(fixture.skills || {})) {
+    level.setSkill(skill, count);
+  }
 };
 
 describe('EditorValidator', () => {
@@ -276,7 +314,7 @@ describe('EditorValidator', () => {
       props: { X: 0, Y: 0, ROTATE: 45, FLIP_HORIZONTAL: true, WIDTH: 4, HEIGHT: 4 }
     });
     level.steel = [
-      { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999, LEMMINGS: 5 } }
+      { props: { X: 0, Y: 0, WIDTH: 9999, HEIGHT: 9999, LEMMINGS: 5, PIECE: 1 } }
     ];
 
     const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
@@ -287,8 +325,9 @@ describe('EditorValidator', () => {
     expect(issues.some(issue => issue.message.includes('Spawn interval is out of range'))).to.equal(true);
     expect(issues.some(issue => issue.message.includes('Time limit exceeds classic max'))).to.equal(true);
     const gadgetPropsIssue = issues.find(issue => issue.message.includes('Gadget-only properties'));
-    const terrainUnsupportedIssue = issues.find(issue => issue.message.includes('Terrain entries include unsupported classic properties'));
-    const gadgetUnsupportedIssue = issues.find(issue => issue.message.includes('Gadget entries include unsupported classic properties'));
+    const terrainUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_terrain_props');
+    const gadgetUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_gadget_props');
+    const steelUnsupportedIssue = issues.find(issue => issue.code === 'classic_unsupported_steel_props');
     const oversizeIssue = issues.find(issue => issue.message.includes('Steel sizes exceed the level bounds'));
     const widthIssue = issues.find(issue => issue.message.includes('Width exceeds classic preview max'));
     const heightIssue = issues.find(issue => issue.message.includes('Height exceeds classic preview max'));
@@ -299,6 +338,11 @@ describe('EditorValidator', () => {
     expect(gadgetPropsIssue).to.exist;
     expect(terrainUnsupportedIssue).to.exist;
     expect(gadgetUnsupportedIssue).to.exist;
+    expect(steelUnsupportedIssue).to.exist;
+    expect(terrainUnsupportedIssue.destructive).to.equal(true);
+    expect(terrainUnsupportedIssue.props).to.include.members(['FLIP_HORIZONTAL', 'HEIGHT', 'ONE_WAY', 'ROTATE', 'SKILL', 'WIDTH']);
+    expect(gadgetUnsupportedIssue.props).to.include.members(['FLIP_HORIZONTAL', 'HEIGHT', 'ROTATE', 'WIDTH']);
+    expect(steelUnsupportedIssue.props).to.include('PIECE');
     expect(oversizeIssue).to.exist;
     expect(widthIssue).to.exist;
     expect(heightIssue).to.exist;
@@ -310,6 +354,7 @@ describe('EditorValidator', () => {
     gadgetPropsIssue.fix();
     terrainUnsupportedIssue.fix();
     gadgetUnsupportedIssue.fix();
+    steelUnsupportedIssue.fix();
     oversizeIssue.fix();
     widthIssue.fix();
     heightIssue.fix();
@@ -319,8 +364,41 @@ describe('EditorValidator', () => {
     timeLimitIssue.fix();
     expect(level.terrains[0].props).to.not.have.property('SKILL');
     expect(level.terrains[0].props).to.not.have.property('ROTATE');
+    expect(level.terrains[0].props).to.not.have.property('ONE_WAY');
     expect(level.gadgets[0].props).to.not.have.property('ROTATE');
     expect(level.steel[0].props).to.not.have.property('LEMMINGS');
+    expect(level.steel[0].props).to.not.have.property('PIECE');
+  });
+
+  it('warns and fixes destructive classic export caps', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.gadgets = Array.from({ length: 33 }, (_, index) => ({ props: { PIECE: index, X: index, Y: 0 } }));
+    level.terrains = Array.from({ length: 401 }, (_, index) => ({ props: { PIECE: index, X: index, Y: 0 } }));
+    level.steel = Array.from({ length: 33 }, (_, index) => ({
+      props: { X: index, Y: 0, WIDTH: 4, HEIGHT: 4 }
+    }));
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const titleIssue = issues.find(issue => issue.code === 'classic_title_length');
+    const objectIssue = issues.find(issue => issue.code === 'classic_object_count');
+    const terrainIssue = issues.find(issue => issue.code === 'classic_terrain_count');
+    const steelIssue = issues.find(issue => issue.code === 'classic_steel_count');
+
+    expect(titleIssue).to.include({ destructive: true, target: 'header.TITLE', max: 32 });
+    expect(objectIssue).to.include({ destructive: true, target: 'gadgets', max: 32 });
+    expect(terrainIssue).to.include({ destructive: true, target: 'terrains', max: 400 });
+    expect(steelIssue).to.include({ destructive: true, target: 'steel', max: 32 });
+
+    titleIssue.fix();
+    objectIssue.fix();
+    terrainIssue.fix();
+    steelIssue.fix();
+
+    expect(level.getHeader('TITLE')).to.have.length(32);
+    expect(level.gadgets).to.have.length(32);
+    expect(level.terrains).to.have.length(400);
+    expect(level.steel).to.have.length(32);
   });
 
   it('clamps negative time limits and invalid start positions', () => {
@@ -342,5 +420,119 @@ describe('EditorValidator', () => {
     expect(level.getHeader('TIME_LIMIT')).to.equal(0);
     expect(level.getHeader('START_X')).to.equal(0);
     expect(level.getHeader('START_Y')).to.equal(0);
+  });
+
+  it('attaches non-blocking solver advisory warnings to validation output', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture({
+      skills: {},
+      oneWay: [{ x: 20, y: 58, width: 20, height: 4 }]
+    });
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+    const advisoryIssues = issues.filter(issue => issue.solverAdvisory);
+    const codes = advisoryIssues.map(issue => issue.code);
+    const gapIssue = advisoryIssues.find(issue => {
+      return issue.advisoryCode === EDITOR_ADVISORY_WARNING_CODES.UNREACHABLE_GAP;
+    });
+
+    expect(codes).to.include('solver_advisory_unreachable_gap');
+    expect(codes).to.include('solver_advisory_insufficient_skills');
+    expect(codes).to.include('solver_advisory_unsupported_mechanic');
+    expect(gapIssue).to.include({
+      severity: 'warning',
+      source: 'solver-advisory',
+      blocking: false,
+      blocksEditing: false,
+      blocksExport: false
+    });
+    expect(gapIssue.fix).to.equal(null);
+    expect(gapIssue.budgetUsage.scannedColumns).to.be.greaterThan(0);
+  });
+
+  it('uses the supplied runtime source for editor solver advisory validation', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'Editor source');
+    level.setHeader('WIDTH', 140);
+    level.setHeader('HEIGHT', 72);
+    level.setHeader('LEMMINGS', 1);
+    level.setHeader('SAVE_REQUIREMENT', 1);
+    level.gadgets = [
+      { props: { PIECE: 1, X: 12, Y: 57 } },
+      { props: { PIECE: 2, X: 120, Y: 57 } }
+    ];
+    const runtimeSource = createSmallGapFixture({ skills: {} });
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 }, {
+      solverAdvisorySource: runtimeSource
+    });
+
+    expect(issues.some(issue => issue.code === 'solver_advisory_unreachable_gap')).to.equal(true);
+  });
+
+  it('uses editor skillsets for solver advisory skill budgets', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture();
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 });
+
+    expect(issues.some(issue => issue.code === 'solver_advisory_unreachable_gap')).to.equal(false);
+    expect(issues.some(issue => issue.code === 'solver_advisory_insufficient_skills')).to.equal(false);
+  });
+
+  it('can disable solver advisory validation', () => {
+    const level = createLevel();
+    const fixture = createSmallGapFixture({ skills: {} });
+    installRuntimeFixture(level, fixture);
+
+    const issues = validateLevel(level, { entranceId: 1, exitId: 2 }, {
+      solverAdvisory: false
+    });
+
+    expect(issues.some(issue => issue.solverAdvisory)).to.equal(false);
+  });
+
+  it('exports validation report entries with blocker and destructive metadata', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'Report');
+    level.terrainGroups = [{ terrains: [], unknownLines: ['GROUP 1'] }];
+
+    const report = createValidationReport(level, { entranceId: 1, exitId: 2 });
+    const saveIssue = report.issues.find(issue => issue.message === 'Save requirement exceeds lemmings.');
+    const groupIssue = report.issues.find(issue => issue.code === 'classic_terrain_groups');
+
+    expect(report.kind).to.equal('editor-validation-report');
+    expect(report.level.title).to.equal('Report');
+    expect(report.summary.errors).to.be.greaterThan(0);
+    expect(saveIssue.blocker).to.equal(true);
+    expect(saveIssue.blocksExport).to.equal(true);
+    expect(groupIssue.destructive).to.equal(true);
+    expect(groupIssue.exportFormat).to.equal('classicLvl');
+  });
+
+  it('reports pack-level duplicate and missing-style consistency warnings', () => {
+    const first = createLevel();
+    first.setHeader('TITLE', 'Repeat');
+    first.setHeader('ID', 'level-a');
+    first.setHeader('STYLE', 'dirt');
+    const second = createLevel();
+    second.setHeader('TITLE', 'Repeat');
+    second.setHeader('ID', 'level-a');
+    second.setHeader('STYLE', 'missing-style');
+
+    const issues = validatePackConsistency({
+      title: 'Pack',
+      levels: [first, second]
+    }, {
+      dirt: {}
+    });
+    const codes = issues.map(issue => issue.code);
+
+    expect(codes).to.include('pack_duplicate_title');
+    expect(codes).to.include('pack_duplicate_id');
+    expect(codes).to.include('pack_missing_style_assets');
+    expect(issues.every(issue => issue.source === 'pack-validation')).to.equal(true);
   });
 });

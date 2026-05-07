@@ -135,12 +135,17 @@ const gameViewMidiMethods = {
     if (!this.midiRouter) {
       await this._ensureWebMidiEnabled();
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
-      this.applyMidiOverrides(this._midiOverrides);
+      if (this._midiProjectConfig) {
+        this.setMidiProjectConfig(this._midiProjectConfig);
+      }
       const Router = getDependency('MidiEventRouter', MidiEventRouter);
       this.midiRouter = new Router(this._midiMapping);
     }
+    const webMidi = this._getWebMidi();
+    if (webMidi?.enabled) {
+      this.midiRouter?.setOutputs?.(webMidi.outputs || []);
+    }
     if (!this._midiOut) {
-      const webMidi = this._getWebMidi();
       if (webMidi?.enabled && webMidi.outputs?.length) {
         this._midiOut = webMidi.outputs[0];
       }
@@ -162,18 +167,10 @@ const gameViewMidiMethods = {
     }
   },
 
-  applyMidiOverrides(overrides) {
-    if (!this._midiBaseConfig) return;
-    const merged = typeof MidiMapping?.mergeConfigs === 'function'
-      ? MidiMapping.mergeConfigs(this._midiBaseConfig, overrides || {})
-      : { ...this._midiBaseConfig, ...(overrides || {}) };
-    this._midiMapping = new MidiMapping(merged);
+  setMidiProjectConfig(config) {
+    this._midiProjectConfig = cloneConfig(config || {});
+    this._midiMapping = new MidiMapping(this._midiProjectConfig);
     if (this.midiRouter) this.midiRouter.setMapping(this._midiMapping);
-  },
-
-  setMidiOverrides(overrides) {
-    this._midiOverrides = cloneConfig(overrides || {});
-    this.applyMidiOverrides(this._midiOverrides);
   },
 
   getMidiConfig() {

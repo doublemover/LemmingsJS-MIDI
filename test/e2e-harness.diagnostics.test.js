@@ -90,8 +90,7 @@ describe('e2e harness diagnostics', function () {
                 memoryEntries: 3,
                 localStorageBytes: 10,
                 indexedDbBytes: 11
-              },
-              midiOverrideKeys: ['beta', 'alpha']
+              }
             }
           };
         }
@@ -103,7 +102,7 @@ describe('e2e harness diagnostics', function () {
       expect(state.diagnostics.profile).to.equal('perf');
       expect(state.diagnostics.rolloutFlags.historyCodec).to.equal(false);
       expect(state.diagnostics.capabilities.webMidi.supported).to.equal(false);
-      expect(state.diagnostics.caches.midiOverrideKeys).to.deep.equal(['alpha', 'beta']);
+      expect(state.diagnostics.caches.fileProvider.memoryEntries).to.equal(3);
       expect(state.diagnostics.caches.cacheStorageKeys).to.equal(null);
       expect(state.diagnostics.serviceWorker.controlled).to.equal(true);
 

@@ -183,7 +183,6 @@ function init({ windowRef, documentRef, embedMode }) {
 
   lemmings = new GameView();
   lemmings.applyProfileHistoryRetentionPolicy?.();
-  lemmings.setMidiOverrides?.(midiUi.getMidiOverrides?.() || {});
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
@@ -210,7 +209,7 @@ function init({ windowRef, documentRef, embedMode }) {
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
-    onConfigChange: patch => midiUi.setMidiOverrides(patch)
+    onConfigChange: patch => midiUi.applyRuntimePatch(patch)
   });
   midiUi.setMidiInputController(midiInputController);
   const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();
@@ -282,16 +281,18 @@ function init({ windowRef, documentRef, embedMode }) {
   }
   const levelPrevButton = optionalElement(documentRef, 'levelPrevButton');
   const levelNextButton = optionalElement(documentRef, 'levelNextButton');
-  if (levelPrevButton) {
-    levelPrevButton.addEventListener('click', () => {
-      lemmings.moveToLevel(-1);
+  const bindLevelArrow = (element, delta) => {
+    if (!element) return;
+    const move = () => lemmings.moveToLevel(delta);
+    element.addEventListener('click', move);
+    element.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault?.();
+      move();
     });
-  }
-  if (levelNextButton) {
-    levelNextButton.addEventListener('click', () => {
-      lemmings.moveToLevel(1);
-    });
-  }
+  };
+  bindLevelArrow(levelPrevButton, -1);
+  bindLevelArrow(levelNextButton, 1);
 
   const savedSelect = optionalElement(documentRef, 'savedLevelSelect');
   const savedSaveButton = optionalElement(documentRef, 'savedLevelSave');

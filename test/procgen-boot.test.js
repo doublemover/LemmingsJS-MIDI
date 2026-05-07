@@ -67,15 +67,16 @@ describe('procgenBoot helpers', function () {
     }
   });
 
-  it('prefers a non-last style when no file provider is available', async function () {
+  it('selects one deterministic compatible style without reading the previous run', async function () {
     resetStyleRegistry();
     registerStyle('alpha', { groundSet: 0 });
     registerStyle('beta', { groundSet: 1 });
     const writes = new Map();
+    let readCount = 0;
     globalThis.window = {
       localStorage: {
-        getItem(key) {
-          if (key === 'procgen.style') return 'alpha';
+        getItem() {
+          readCount += 1;
           return null;
         },
         setItem(key, value) {
@@ -85,8 +86,9 @@ describe('procgenBoot helpers', function () {
     };
 
     const style = await procgenBoot.pickProcgenStyle(null, { path: 'lemmings' }, () => 0);
-    expect(style).to.equal('beta');
-    expect(writes.get('procgen.style')).to.equal('beta');
+    expect(style).to.equal('alpha');
+    expect(readCount).to.equal(0);
+    expect(writes.get('procgen.style')).to.equal('alpha');
   });
 
   it('falls through style candidates when assets are missing', async function () {
@@ -119,12 +121,66 @@ describe('procgenBoot helpers', function () {
     const style = await procgenBoot.pickProcgenStyle(
       provider,
       { path: 'lemmings' },
-      () => 0.999
+      () => 0
     );
     expect(style).to.equal('beta');
     expect(calls.some(name => name.includes('VGAGR0'))).to.equal(true);
     expect(calls.some(name => name.includes('VGAGR1'))).to.equal(true);
     expect(writes.get('procgen.style')).to.equal('beta');
+  });
+
+  it('builds a selected theme contract for debug state', function () {
+    resetStyleRegistry();
+    registerStyle('alpha', { groundSet: 3 });
+
+    const contract = procgenBoot.buildProcgenThemeContract('alpha', { path: 'lemmings' });
+
+    expect(contract).to.deep.equal({
+      selectedTheme: 'alpha',
+      styleName: 'alpha',
+      groundSet: 3,
+      packPath: 'lemmings'
+    });
+  });
+
+  it('builds deterministic debug controller options from query params', function () {
+    const options = procgenBoot.buildProcgenControllerOptions(
+      new URLSearchParams([
+        ['gapChance', '1'],
+        ['gapMinWidth', '5'],
+        ['gapMaxWidth', '5'],
+        ['recentCertificateLimit', '8'],
+        ['procgenCertificateVerification', 'false']
+      ]),
+      {
+        gapChance: 0.08,
+        gapMinWidth: 3,
+        gapMaxWidth: 9,
+        recentCertificateLimit: 32,
+        procgenCertificateVerification: true
+      }
+    );
+
+    expect(options).to.include({
+      gapChance: 1,
+      gapMinWidth: 5,
+      gapMaxWidth: 5,
+      recentCertificateLimit: 8,
+      procgenCertificateVerification: false
+    });
+
+    const fallback = procgenBoot.buildProcgenControllerOptions(
+      new URLSearchParams('gapChance=not-a-number&procgenCertificateVerification=maybe'),
+      {
+        gapChance: 0.25,
+        procgenCertificateVerification: true
+      }
+    );
+
+    expect(fallback).to.include({
+      gapChance: 0.25,
+      procgenCertificateVerification: true
+    });
   });
 
   it('disposes active procgen runtime once and clears references', function () {

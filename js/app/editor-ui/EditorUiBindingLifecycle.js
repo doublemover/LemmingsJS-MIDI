@@ -48,6 +48,9 @@ const editorUiBindingLifecycleMethods = {
       savedImportInput: get('editorSavedImportInput'),
       savedImportClassicInput: get('editorSavedImportClassicInput'),
       playtestToggle: get('editorPlaytestToggle'),
+      solvabilityCheck: get('editorSolvabilityCheck'),
+      validationReportExport: get('editorValidationReportExport'),
+      solvabilityStatus: get('editorSolvabilityStatus'),
       toolList: get('editorToolList'),
       snapToggle: get('editorSnapToggle'),
       gridSize: get('editorGridSize'),
@@ -57,6 +60,7 @@ const editorUiBindingLifecycleMethods = {
       paletteSearch: get('editorPaletteSearch'),
       paletteViewList: get('editorPaletteViewList'),
       paletteViewGrid: get('editorPaletteViewGrid'),
+      paletteRecent: get('editorPaletteRecent'),
       paletteTerrain: get('editorPaletteTerrain'),
       paletteGadgets: get('editorPaletteGadgets'),
       paletteTriggers: get('editorPaletteTriggers'),
@@ -200,6 +204,7 @@ const editorUiBindingLifecycleMethods = {
     this._bindBrushControls();
     this._bindSavedControls();
     this._bindLevelSelectors();
+    this._bindValidationControls();
     this._bindPlaytest();
     this._bindCanvasInput();
     this._bindKeybindings();

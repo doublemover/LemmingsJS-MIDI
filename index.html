@@ -42,183 +42,479 @@
   <script type="module" src="js/app/boot.js"></script>
 </head>
 <body oncontextmenu="return false;">
-  <div id="controlLeft" class="control-panel left">
-    <div class="panel-section panel-header">
-      <div class="panel-title panel-toggle" id="midiPanelToggle">MIDI</div>
-      <label class="panel-row midi-enable-row">
-        <span>MIDI enabled</span>
+  <div id="midiSequencerWorkspace" class="midi-sequencer" aria-label="MIDI sequencer workspace">
+    <div id="midiTransportStrip" class="midi-transport">
+      <div class="midi-transport__title">MIDI Sequencer</div>
+      <label class="midi-field midi-field--toggle">
+        <span>Enable</span>
         <input type="checkbox" id="midiEnabledToggle" />
       </label>
-      <button id="midiDefaultsButton" type="button" class="button-danger">reset all</button>
+      <label class="midi-field">
+        <span>Input</span>
+        <select id="midiInSelect"></select>
+      </label>
+      <label class="midi-field">
+        <span>Output</span>
+        <select id="midiOutSelect"></select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Channel</span>
+        <select id="midiInputChannel"></select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>BPM</span>
+        <input type="number" id="midiBpmBase" min="40" max="240" step="1" />
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Beats</span>
+        <input type="number" id="midiTimeSignatureBeats" min="1" max="16" step="1" />
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Unit</span>
+        <select id="midiTimeSignatureUnit">
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="4">4</option>
+          <option value="8">8</option>
+          <option value="16">16</option>
+        </select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Key</span>
+        <select id="midiScaleRoot"></select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Scale</span>
+        <select id="midiScaleName"></select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Quant</span>
+        <select id="midiQuantize">
+          <option value="off">Off</option>
+          <option value="1/4">1/4</option>
+          <option value="1/8">1/8</option>
+          <option value="1/16">1/16</option>
+          <option value="1/32">1/32</option>
+        </select>
+      </label>
+      <label class="midi-field midi-field--compact">
+        <span>Swing</span>
+        <input type="number" id="midiSwing" min="0" max="1" step="0.05" />
+      </label>
+      <label class="midi-field">
+        <span>Template</span>
+        <select id="midiTemplateSelect"></select>
+      </label>
+      <button id="midiProjectResetButton" type="button" aria-label="Reset MIDI project">Reset</button>
+      <button id="midiPanicButton" type="button" aria-label="Panic all MIDI notes">Panic</button>
+      <label class="midi-field midi-field--toggle">
+        <span>Reverse Panic</span>
+        <input type="checkbox" id="midiReversePanicToggle" />
+      </label>
+      <button id="midiTemplateSaveButton" type="button" aria-label="Save MIDI template">Save Template</button>
+      <button id="midiProjectExportButton" type="button" aria-label="Export MIDI project">Export</button>
+      <button id="midiProjectImportButton" type="button" aria-label="Import MIDI project">Import</button>
+      <input id="midiProjectImportInput" class="midi-hidden-file-input" type="file" accept="application/json,.json" />
+      <div id="midiProjectStatus" class="midi-status" role="status">Project loading</div>
+      <div id="errorDisplay" class="midi-error" role="status"></div>
     </div>
-    <div class="panel-section panel-tabs">
-      <div class="tabs" data-tab-group="midi-left">
-        <button class="tab-button active" data-tab-group="midi-left" data-tab-target="midiTabLeft">MIDI</button>
-        <button class="tab-button" data-tab-group="midi-left" data-tab-target="midiTabGlobalFx">Global FX</button>
-      </div>
-    </div>
-    <div class="tab-panel active" id="midiTabLeft" data-tab-group="midi-left">
-      <details class="panel-section" id="midiIoSection" data-section-key="io" open>
-        <summary class="panel-title">I/O</summary>
-        <label class="panel-row">
-          <span>Input</span>
-          <select id="midiInSelect"></select>
-        </label>
-        <label class="panel-row">
-          <span>Output</span>
-          <select id="midiOutSelect"></select>
-        </label>
-        <label class="panel-row">
-          <span>Input channel</span>
-          <select id="midiInputChannel"></select>
-        </label>
-        <button id="midiResetButton" type="button">MIDI reset</button>
-        <label class="panel-row">
-          <span>View pan</span>
-          <input type="checkbox" id="midiViewPanToggle" />
-        </label>
-        <div id="errorDisplay" class="panel-error"></div>
-      </details>
-      <div class="panel-section">
-        <div class="panel-title panel-title-row">
-          <span>Base BPM</span>
-          <input type="number" id="midiBpmBase" min="40" max="240" step="1" class="input-compact input-align-right" />
+    <div class="midi-workspace-grid">
+      <section id="midiSourceBrowser" class="midi-region midi-source-browser" aria-label="MIDI source browser">
+        <div class="midi-region__header">
+          <h2>Sources</h2>
+          <span id="midiSourceCount" role="status" aria-live="polite" aria-label="0 sources shown">0</span>
         </div>
-        <div class="panel-row panel-row-wide">
-          <span id="midiBpmCurrent">--</span>
+        <label class="midi-field midi-field--stacked">
+          <span>Search</span>
+          <input id="midiSourceSearch" type="search" autocomplete="off" />
+        </label>
+        <div class="midi-filter-row">
+          <select id="midiSourceKindFilter" aria-label="Source category">
+            <option value="all">All categories</option>
+            <option value="sfx">SFX</option>
+            <option value="trigger">Triggers</option>
+            <option value="midiFlag">MIDI flags</option>
+            <option value="system">System</option>
+            <option value="procgen">Procgen</option>
+          </select>
+          <select id="midiSourceAssignFilter" aria-label="Assignment filter">
+            <option value="all">All sources</option>
+            <option value="changed">Changed</option>
+            <option value="available">Available in level</option>
+            <option value="assigned">Assigned</option>
+            <option value="unassigned">Unassigned</option>
+            <option value="enabled">Enabled</option>
+            <option value="disabled">Disabled</option>
+            <option value="conflicts">Conflicts</option>
+            <option value="clean">Clean</option>
+          </select>
         </div>
-      </div>
-      <details class="panel-section" id="midiDebugSection" data-section-key="debug">
-        <summary class="panel-title">MIDI Debug</summary>
-        <div class="panel-row panel-row-wide">
-          <span id="midiDebugInput">Input: --</span>
+        <div id="midiSourceList" class="midi-source-list" role="listbox" aria-label="Event sources"></div>
+      </section>
+      <section id="midiTrackWorkspace" class="midi-region midi-track-workspace" aria-label="MIDI tracks">
+        <div class="midi-region__header">
+          <h2>Tracks</h2>
+          <button id="midiTrackAdd" type="button" aria-label="Add MIDI track">Add</button>
+          <button id="midiTrackRemove" type="button" aria-label="Remove selected MIDI track">Remove</button>
         </div>
-        <div class="panel-row panel-row-wide">
-          <span id="midiDebugOutput">Output: --</span>
-        </div>
-      </details>
-    </div>
-    <div class="tab-panel" id="midiTabGlobalFx" data-tab-group="midi-left">
-      <div class="panel-section">
-        <label class="panel-row range-row">
-          <span>Intensity</span>
-          <div class="range-input">
-            <span class="range-label">10</span>
-            <input type="range" id="midiIntensity" min="10" max="127" step="1" />
-            <span class="range-label">127</span>
+        <div id="midiTrackList" class="midi-track-list" role="listbox" aria-label="Project tracks"></div>
+        <div id="midiClipLibrary" class="midi-clip-library">
+          <div class="midi-region__header midi-region__header--compact">
+            <h2>Clips</h2>
+            <button id="midiClipAddButton" type="button" aria-label="Add MIDI clip">Add</button>
+            <button id="midiClipDuplicateButton" type="button" aria-label="Duplicate selected MIDI clip">Duplicate</button>
+            <button id="midiClipRemoveButton" type="button" aria-label="Remove selected MIDI clip">Remove</button>
           </div>
-        </label>
-        <label class="panel-row range-row">
-          <span>Accent</span>
-          <div class="range-input">
-            <span class="range-label">0</span>
-            <input type="range" id="midiAccent" min="0" max="1" step="0.01" />
-            <span class="range-label">1</span>
-          </div>
-        </label>
-      </div>
-      <details class="panel-section" id="midiPositionSection" data-section-key="position" open>
-        <summary class="panel-title">Positional Modifiers</summary>
-        <div class="panel-row">
-          <span>Position mappings</span>
-          <button id="midiPositionAdd" type="button">Add mapping</button>
+          <div id="midiClipList" class="midi-clip-list" role="listbox" aria-label="Project clips"></div>
         </div>
-        <div id="midiPositionList"></div>
-      </details>
-      <details class="panel-section" id="midiRepeatSection" data-section-key="repeat">
-        <summary class="panel-title panel-title-row">
-          <span>Global Repeat</span>
-          <label class="panel-title-toggle">
-            <span>Enabled</span>
-            <input type="checkbox" id="midiRepeatEnabled" />
+        <div id="midiSelectedSourceSummary" class="midi-selection-summary">No source selected</div>
+        <div class="midi-assignment-row">
+          <select id="midiAssignTrackSelect" aria-label="Assign source to track"></select>
+          <button id="midiAssignSourceButton" type="button" aria-label="Assign selected source to track">Assign Source</button>
+        </div>
+      </section>
+      <section id="midiInspector" class="midi-region midi-inspector" aria-label="MIDI inspector">
+        <div class="midi-region__header">
+          <h2>Inspector</h2>
+          <div class="midi-button-row">
+            <button id="midiAuditionButton" type="button" aria-label="Audition selected source">Audition</button>
+            <button id="midiClipAuditionButton" type="button" aria-label="Audition selected clip">Clip</button>
+          </div>
+        </div>
+        <div id="midiTrackInspector" class="midi-inspector-group">
+          <h3>Track</h3>
+          <label class="midi-field midi-field--stacked">
+            <span>Name</span>
+            <input id="midiTrackName" type="text" />
           </label>
-        </summary>
-        <label class="panel-row">
-          <span>Repeat max count</span>
-          <input type="number" id="midiRepeatCount" min="0" max="32" step="1" />
-        </label>
-        <label class="panel-row">
-          <span>Repeat window (beats)</span>
-          <select id="midiRepeatSpacing"></select>
-        </label>
-        <label class="panel-row">
-          <span>Repeat target</span>
-          <select id="midiRepeatTarget"></select>
-        </label>
-        <label class="panel-row range-row">
-          <span>Repeat amount</span>
-          <div class="range-input">
-            <span class="range-label">-1</span>
-            <input type="range" id="midiRepeatAmount" min="-1" max="1" step="0.05" />
-            <span class="range-label">1</span>
+          <label class="midi-field midi-field--stacked">
+            <span>Instrument</span>
+            <input id="midiTrackInstrument" type="text" />
+          </label>
+          <label class="midi-field midi-field--stacked">
+            <span>Output</span>
+            <select id="midiTrackOutputSelect"></select>
+          </label>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Channel</span>
+              <input id="midiTrackChannel" type="number" min="1" max="16" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Priority</span>
+              <input id="midiTrackPriority" type="number" min="0" max="4" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Voices</span>
+              <input id="midiTrackVoiceBudget" type="number" min="1" max="32" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Scale</span>
+              <input id="midiTrackVelocityScale" type="number" min="0" max="4" step="0.05" />
+            </label>
           </div>
-        </label>
-      </details>
-    </div>
-  </div>
-  <div id="controlRight" class="control-panel right">
-    <div class="tabs" data-tab-group="midi-right">
-      <button class="tab-button active" data-tab-group="midi-right" data-tab-target="midiTabEvents">Events</button>
-      <button class="tab-button" data-tab-group="midi-right" data-tab-target="midiTabTriggers">Triggers</button>
-      <button class="tab-button" data-tab-group="midi-right" data-tab-target="midiTabAdsr">ADSR</button>
-    </div>
-    <div class="tab-panel active" id="midiTabEvents" data-tab-group="midi-right">
-      <div class="panel-section">
-        <div class="panel-title">Key and scale</div>
-        <label class="panel-row">
-          <span>Key</span>
-          <select id="midiKeySelect"></select>
-        </label>
-        <label class="panel-row">
-          <span>Scale</span>
-          <select id="midiScaleSelect"></select>
-        </label>
-      </div>
-      <div id="midiEventList"></div>
-    </div>
-    <div class="tab-panel" id="midiTabTriggers" data-tab-group="midi-right">
-      <div id="midiTriggerList"></div>
-    </div>
-    <div class="tab-panel" id="midiTabAdsr" data-tab-group="midi-right">
-      <div class="panel-section">
-        <div class="panel-title">Envelope</div>
-        <label class="panel-row">
-          <span>Target</span>
-          <select id="midiEnvTarget"></select>
-        </label>
-        <label class="panel-row range-row">
-          <span>Attack</span>
-          <div class="range-input">
-            <span class="range-label">0</span>
-            <input type="range" id="midiEnvAttack" min="0" max="2" step="0.05" />
-            <span class="range-label">2</span>
+          <div class="midi-toggle-row">
+            <label><input id="midiTrackMute" type="checkbox" /> Mute</label>
+            <label><input id="midiTrackSolo" type="checkbox" /> Solo</label>
+            <label><input id="midiTrackArm" type="checkbox" /> Arm</label>
           </div>
-        </label>
-        <label class="panel-row range-row">
-          <span>Decay</span>
-          <div class="range-input">
-            <span class="range-label">0</span>
-            <input type="range" id="midiEnvDecay" min="0" max="1" step="0.05" />
-            <span class="range-label">1</span>
+        </div>
+        <div id="midiSourceInspector" class="midi-inspector-group">
+          <h3>Source</h3>
+          <div class="midi-button-row">
+            <button id="midiSourceRevertButton" type="button" aria-label="Revert selected source mapping">Revert Source</button>
           </div>
-        </label>
-        <label class="panel-row range-row">
-          <span>Sustain</span>
-          <div class="range-input">
-            <span class="range-label">0.25</span>
-            <input type="range" id="midiEnvSustain" min="0.25" max="2" step="0.05" />
-            <span class="range-label">2</span>
+          <label class="midi-field midi-field--toggle">
+            <span>Enabled</span>
+            <input id="midiSourceEnabled" type="checkbox" />
+          </label>
+          <label class="midi-field midi-field--stacked">
+            <span>Route</span>
+            <select id="midiSourceTrackSelect"></select>
+          </label>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Mode</span>
+              <select id="midiSourceModeSelect">
+                <option value="direct">Direct</option>
+                <option value="clip">Clip</option>
+              </select>
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Clip</span>
+              <select id="midiSourceClipSelect"></select>
+            </label>
+            <button id="midiAssignClipButton" type="button" aria-label="Assign selected clip to source">Assign Clip</button>
           </div>
-        </label>
-        <label class="panel-row range-row">
-          <span>Release</span>
-          <div class="range-input">
-            <span class="range-label">0</span>
-            <input type="range" id="midiEnvRelease" min="0" max="2" step="0.05" />
-            <span class="range-label">2</span>
+          <div id="midiConflictSummary" class="midi-conflict-summary" role="status" aria-live="polite">
+            No conflicts for the selected source.
           </div>
-        </label>
-      </div>
+          <div id="midiLearnPanel" class="midi-learn-panel" aria-live="polite">
+            <div id="midiLearnStatus" class="midi-learn-status" role="status">Learn waits for the next note-on.</div>
+            <div class="midi-button-row">
+              <button id="midiLearnButton" type="button" aria-label="Start MIDI learn">Learn</button>
+              <button id="midiLearnConfirmButton" type="button" aria-label="Commit MIDI learn">Commit</button>
+              <button id="midiLearnCancelButton" type="button" aria-label="Cancel MIDI learn">Cancel</button>
+            </div>
+          </div>
+          <div class="midi-toggle-row">
+            <label><input id="midiEnvelopeOverrideToggle" type="checkbox" /> Envelope override</label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Note</span>
+              <input id="midiMappingNote" type="number" min="0" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Degree</span>
+              <input id="midiMappingDegree" type="number" min="0" max="24" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Octave</span>
+              <input id="midiMappingOctave" type="number" min="0" max="10" step="1" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Velocity</span>
+              <input id="midiMappingVelocity" type="number" min="1" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Duration</span>
+              <input id="midiMappingDuration" type="number" min="1" max="96" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Chord</span>
+              <select id="midiMappingChord">
+                <option value="">None</option>
+                <option value="triad">Triad</option>
+                <option value="seventh">Seventh</option>
+                <option value="sixth">Sixth</option>
+                <option value="ninth">Ninth</option>
+                <option value="power">Power</option>
+                <option value="sus2">Sus2</option>
+                <option value="sus4">Sus4</option>
+                <option value="octave">Octave</option>
+              </select>
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Inversion</span>
+              <input id="midiMappingChordInversion" type="number" min="0" max="4" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Arp</span>
+              <select id="midiMappingArp">
+                <option value="">None</option>
+                <option value="up">Up</option>
+                <option value="down">Down</option>
+                <option value="updown">Up/Down</option>
+              </select>
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Pan</span>
+              <input id="midiMappingPan" type="number" min="-127" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Timbre</span>
+              <input id="midiMappingTimbre" type="number" min="0" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Bend</span>
+              <input id="midiMappingPitchBend" type="number" min="-1" max="1" step="0.05" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Attack</span>
+              <input id="midiEnvAttack" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Decay</span>
+              <input id="midiEnvDecay" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Sustain</span>
+              <input id="midiEnvSustain" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Release</span>
+              <input id="midiEnvRelease" type="number" min="0" max="2" step="0.05" />
+            </label>
+          </div>
+        </div>
+        <div id="midiModulationInspector" class="midi-inspector-group">
+          <div class="midi-region__header midi-region__header--compact">
+            <h3>Modulation</h3>
+            <button id="midiAutomationAddButton" type="button" aria-label="Add modulation lane">Add Mod</button>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Intensity</span>
+              <input id="midiGlobalIntensity" type="number" min="1" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Vel Min</span>
+              <input id="midiGlobalVelocityMin" type="number" min="1" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Vel Max</span>
+              <input id="midiGlobalVelocityMax" type="number" min="1" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Note Min</span>
+              <input id="midiGlobalNoteMin" type="number" min="0" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Note Max</span>
+              <input id="midiGlobalNoteMax" type="number" min="0" max="127" step="1" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Accent</span>
+              <input id="midiGlobalAccent" type="number" min="0" max="4" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Density Win</span>
+              <input id="midiGlobalDensityWindow" type="number" min="0" max="960" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Dur Scale</span>
+              <input id="midiGlobalDurationScale" type="number" min="0" max="1" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--toggle midi-field--compact">
+              <span>View Pan</span>
+              <input id="midiGlobalViewPan" type="checkbox" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Pan Min</span>
+              <input id="midiGlobalPanMin" type="number" min="-127" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Pan Max</span>
+              <input id="midiGlobalPanMax" type="number" min="-127" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Pan Dead</span>
+              <input id="midiGlobalPanDeadZone" type="number" min="0" max="0.5" step="0.01" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Timbre Min</span>
+              <input id="midiGlobalTimbreMin" type="number" min="0" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Timbre Max</span>
+              <input id="midiGlobalTimbreMax" type="number" min="0" max="127" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>X Offset Min</span>
+              <input id="midiGlobalXNoteMin" type="number" min="-48" max="48" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>X Offset Max</span>
+              <input id="midiGlobalXNoteMax" type="number" min="-48" max="48" step="1" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Max Notes</span>
+              <input id="midiGlobalMaxActiveNotes" type="number" min="1" max="512" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Per Tick</span>
+              <input id="midiGlobalMaxEventsPerTick" type="number" min="1" max="512" step="1" />
+            </label>
+          </div>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Dur</span>
+              <input id="midiGlobalDurationDefault" type="number" min="1" max="960" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Min Dur</span>
+              <input id="midiGlobalDurationMin" type="number" min="1" max="960" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Max Dur</span>
+              <input id="midiGlobalDurationMax" type="number" min="1" max="960" step="1" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Attack</span>
+              <input id="midiGlobalEnvAttack" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Decay</span>
+              <input id="midiGlobalEnvDecay" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Sustain</span>
+              <input id="midiGlobalEnvSustain" type="number" min="0" max="2" step="0.05" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Release</span>
+              <input id="midiGlobalEnvRelease" type="number" min="0" max="2" step="0.05" />
+            </label>
+          </div>
+          <div id="midiAutomationList" class="midi-automation-list" aria-label="Position modulation lanes"></div>
+        </div>
+          <div id="midiClipInspector" class="midi-inspector-group">
+            <h3>Clip</h3>
+          <div class="midi-inline-fields">
+            <label class="midi-field midi-field--compact">
+              <span>Name</span>
+              <input id="midiClipName" type="text" />
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Type</span>
+              <select id="midiClipType">
+                <option value="stepPattern">Steps</option>
+                <option value="chord">Chord</option>
+                <option value="arp">Arp</option>
+              </select>
+            </label>
+            <label id="midiClipArpModeField" class="midi-field midi-field--compact">
+              <span>Arp</span>
+              <select id="midiClipArpMode">
+                <option value="up">Up</option>
+                <option value="down">Down</option>
+                <option value="updown">Up/Down</option>
+              </select>
+            </label>
+            <label id="midiClipArpPatternField" class="midi-field midi-field--compact">
+              <span>Pattern</span>
+              <select id="midiClipArpPattern">
+                <option value="up">Up</option>
+                <option value="down">Down</option>
+                <option value="updown">Up/Down</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+            <label class="midi-field midi-field--compact">
+              <span>Steps</span>
+              <input id="midiClipLengthSteps" type="number" min="1" max="32" step="1" />
+            </label>
+          </div>
+          <div id="midiRecordPanel" class="midi-learn-panel" aria-live="polite">
+            <div id="midiRecordStatus" class="midi-learn-status" role="status">Record writes captured notes into clip steps.</div>
+            <div class="midi-button-row">
+              <button id="midiRecordButton" type="button" aria-label="Start MIDI recording">Record</button>
+              <button id="midiRecordCommitButton" type="button" aria-label="Commit MIDI recording">Commit</button>
+              <button id="midiRecordCancelButton" type="button" aria-label="Cancel MIDI recording">Cancel</button>
+            </div>
+          </div>
+          <div id="midiStepPatternGrid" class="midi-step-grid" role="grid" aria-label="Step pattern"></div>
+        </div>
+      </section>
+      <section id="midiOutputStatus" class="midi-region midi-output-status" aria-label="MIDI output status">
+        <div id="midiSchedulerPressure" role="status" aria-live="polite">Scheduler: idle</div>
+        <div id="midiOutputLog" class="midi-output-log" role="status" aria-live="polite">No output yet</div>
+      </section>
     </div>
   </div>
   <div id="etc" style="color:#fff; position: absolute; bottom:0; left: 0;">
@@ -243,14 +539,34 @@
         </div>
       </div>
       <span id="levelName" class="level_name"></span>
-      <img id="levelPrevButton" class="arrow_l" src="img/arrow_l.png" width="37" height="58"/>
-      <img id="levelNextButton" class="arrow_r" src="img/arrow_r.png" width="37" height="58"/>
+      <img
+        id="levelPrevButton"
+        class="arrow_l"
+        src="img/arrow_l.png"
+        width="37"
+        height="58"
+        alt="Previous level"
+        role="button"
+        tabindex="0"
+        aria-label="Previous level"
+      />
+      <img
+        id="levelNextButton"
+        class="arrow_r"
+        src="img/arrow_r.png"
+        width="37"
+        height="58"
+        alt="Next level"
+        role="button"
+        tabindex="0"
+        aria-label="Next level"
+      />
     </div>
   </div>
   <div id="shortcutOverlay" class="shortcut-overlay" aria-hidden="true">
-    <div class="shortcut-overlay__panel" role="dialog" aria-modal="true">
+    <div class="shortcut-overlay__panel" role="dialog" aria-modal="true" aria-labelledby="shortcutOverlayTitle">
       <div class="shortcut-overlay__header">
-        <div class="shortcut-overlay__title">Game Shortcuts</div>
+        <div class="shortcut-overlay__title" id="shortcutOverlayTitle">Game Shortcuts</div>
         <button type="button" class="shortcut-overlay__close">Close</button>
       </div>
       <div class="shortcut-overlay__content"></div>

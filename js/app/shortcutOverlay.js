@@ -7,6 +7,7 @@ class ShortcutOverlay {
     this._doc = this.root?.ownerDocument || document;
     this._content = null;
     this._close = null;
+    this._previousFocus = null;
     this._bind();
     this.render();
   }
@@ -17,6 +18,11 @@ class ShortcutOverlay {
     this._close = this.root.querySelector('.shortcut-overlay__close');
     this.root.addEventListener('click', (event) => {
       if (event.target === this.root) this.hide();
+    });
+    this.root.addEventListener('keydown', (event) => {
+      if (event.key !== 'Escape') return;
+      event.preventDefault();
+      this.hide();
     });
     this._close?.addEventListener('click', () => this.hide());
   }
@@ -75,15 +81,24 @@ class ShortcutOverlay {
 
   show() {
     if (!this.root) return;
+    const wasVisible = this.root.classList.contains('is-visible');
+    if (!wasVisible) {
+      this._previousFocus = this._doc?.activeElement || null;
+    }
     this.render();
     this.root.classList.add('is-visible');
     this.root.setAttribute('aria-hidden', 'false');
+    this._focusInitialControl();
   }
 
   hide() {
     if (!this.root) return;
+    const wasVisible = this.root.classList.contains('is-visible');
     this.root.classList.remove('is-visible');
     this.root.setAttribute('aria-hidden', 'true');
+    if (wasVisible) {
+      this._restorePreviousFocus();
+    }
   }
 
   toggle(force = null) {
@@ -91,6 +106,28 @@ class ShortcutOverlay {
     const next = force === null ? !this.root.classList.contains('is-visible') : !!force;
     if (next) this.show();
     else this.hide();
+  }
+
+  _focusInitialControl() {
+    const target = this._close || this.root.querySelector('button, [href], input, select, textarea, [tabindex]');
+    if (typeof target?.focus !== 'function') return;
+    try {
+      target.focus({ preventScroll: true });
+    } catch (error) {
+      target.focus();
+    }
+  }
+
+  _restorePreviousFocus() {
+    const target = this._previousFocus;
+    this._previousFocus = null;
+    if (!target || typeof target.focus !== 'function') return;
+    if (target.isConnected === false) return;
+    try {
+      target.focus({ preventScroll: true });
+    } catch (error) {
+      target.focus();
+    }
   }
 }
 

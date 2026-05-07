@@ -2,9 +2,43 @@ import { clearLocalStorage, waitForHarnessReady } from './harness.js';
 
 const midiUiSelectors = Object.freeze({
   enabledToggle: '#midiEnabledToggle',
-  controlRight: '#controlRight',
-  eventDetails: '#midiEventList details',
-  triggerDetails: '#midiTriggerList details'
+  workspace: '#midiSequencerWorkspace',
+  sourceRows: '#midiSourceList .midi-source-row',
+  sourceAssignFilter: '#midiSourceAssignFilter',
+  conflictRows: '#midiSourceList .midi-source-row.has-conflict',
+  trackRows: '#midiTrackList .midi-track-row',
+  trackRemoveButton: '#midiTrackRemove',
+  clipRows: '#midiClipList .midi-clip-row',
+  clipAddButton: '#midiClipAddButton',
+  clipDuplicateButton: '#midiClipDuplicateButton',
+  clipRemoveButton: '#midiClipRemoveButton',
+  clipInspector: '#midiClipInspector',
+  clipAuditionButton: '#midiClipAuditionButton',
+  sourceModeSelect: '#midiSourceModeSelect',
+  sourceClipSelect: '#midiSourceClipSelect',
+  conflictSummary: '#midiConflictSummary',
+  conflictBadges: '#midiSourceList .midi-conflict-badge',
+  modulationInspector: '#midiModulationInspector',
+  automationRows: '#midiAutomationList .midi-automation-row',
+  automationRemoveButtons: '#midiAutomationList .midi-automation-remove',
+  automationAddButton: '#midiAutomationAddButton',
+  automationPointBeatFields: '#midiAutomationList .midi-automation-point-beat',
+  automationPointValueFields: '#midiAutomationList .midi-automation-point-value',
+  templateSelect: '#midiTemplateSelect',
+  templateSaveButton: '#midiTemplateSaveButton',
+  projectExportButton: '#midiProjectExportButton',
+  projectImportButton: '#midiProjectImportButton',
+  learnPanel: '#midiLearnPanel',
+  learnButton: '#midiLearnButton',
+  learnConfirmButton: '#midiLearnConfirmButton',
+  learnStatus: '#midiLearnStatus',
+  recordPanel: '#midiRecordPanel',
+  recordButton: '#midiRecordButton',
+  recordCommitButton: '#midiRecordCommitButton',
+  recordStatus: '#midiRecordStatus',
+  stepCells: '#midiStepPatternGrid .midi-step-cell',
+  inspector: '#midiInspector',
+  outputLog: '#midiOutputLog'
 });
 
 class MidiUiPage {
@@ -25,20 +59,160 @@ class MidiUiPage {
     await this.enabledToggle().check();
   }
 
-  controlRight() {
-    return this.page.locator(midiUiSelectors.controlRight);
+  workspace() {
+    return this.page.locator(midiUiSelectors.workspace);
   }
 
-  eventDetails() {
-    return this.page.locator(midiUiSelectors.eventDetails);
+  sourceRows() {
+    return this.page.locator(midiUiSelectors.sourceRows);
   }
 
-  async openFirstEventDetails() {
-    await this.eventDetails().first().locator('summary').click();
+  sourceAssignFilter() {
+    return this.page.locator(midiUiSelectors.sourceAssignFilter);
   }
 
-  tabButton(targetId) {
-    return this.page.locator(`[data-tab-target="${targetId}"]`);
+  conflictRows() {
+    return this.page.locator(midiUiSelectors.conflictRows);
+  }
+
+  trackRows() {
+    return this.page.locator(midiUiSelectors.trackRows);
+  }
+
+  trackRemoveButton() {
+    return this.page.locator(midiUiSelectors.trackRemoveButton);
+  }
+
+  clipRows() {
+    return this.page.locator(midiUiSelectors.clipRows);
+  }
+
+  clipAddButton() {
+    return this.page.locator(midiUiSelectors.clipAddButton);
+  }
+
+  clipDuplicateButton() {
+    return this.page.locator(midiUiSelectors.clipDuplicateButton);
+  }
+
+  clipRemoveButton() {
+    return this.page.locator(midiUiSelectors.clipRemoveButton);
+  }
+
+  clipInspector() {
+    return this.page.locator(midiUiSelectors.clipInspector);
+  }
+
+  clipAuditionButton() {
+    return this.page.locator(midiUiSelectors.clipAuditionButton);
+  }
+
+  sourceModeSelect() {
+    return this.page.locator(midiUiSelectors.sourceModeSelect);
+  }
+
+  sourceClipSelect() {
+    return this.page.locator(midiUiSelectors.sourceClipSelect);
+  }
+
+  conflictSummary() {
+    return this.page.locator(midiUiSelectors.conflictSummary);
+  }
+
+  conflictBadges() {
+    return this.page.locator(midiUiSelectors.conflictBadges);
+  }
+
+  modulationInspector() {
+    return this.page.locator(midiUiSelectors.modulationInspector);
+  }
+
+  automationRows() {
+    return this.page.locator(midiUiSelectors.automationRows);
+  }
+
+  automationRemoveButtons() {
+    return this.page.locator(midiUiSelectors.automationRemoveButtons);
+  }
+
+  automationAddButton() {
+    return this.page.locator(midiUiSelectors.automationAddButton);
+  }
+
+  automationPointBeatFields() {
+    return this.page.locator(midiUiSelectors.automationPointBeatFields);
+  }
+
+  automationPointValueFields() {
+    return this.page.locator(midiUiSelectors.automationPointValueFields);
+  }
+
+  runtimeConfig() {
+    return this.page.evaluate(() => window.__E2E__.midiGetRuntimeConfig());
+  }
+
+  uiMetrics() {
+    return this.page.evaluate(() => window.__E2E__.midiGetUiMetrics());
+  }
+
+  templateSelect() {
+    return this.page.locator(midiUiSelectors.templateSelect);
+  }
+
+  templateSaveButton() {
+    return this.page.locator(midiUiSelectors.templateSaveButton);
+  }
+
+  projectExportButton() {
+    return this.page.locator(midiUiSelectors.projectExportButton);
+  }
+
+  projectImportButton() {
+    return this.page.locator(midiUiSelectors.projectImportButton);
+  }
+
+  learnPanel() {
+    return this.page.locator(midiUiSelectors.learnPanel);
+  }
+
+  learnButton() {
+    return this.page.locator(midiUiSelectors.learnButton);
+  }
+
+  learnConfirmButton() {
+    return this.page.locator(midiUiSelectors.learnConfirmButton);
+  }
+
+  learnStatus() {
+    return this.page.locator(midiUiSelectors.learnStatus);
+  }
+
+  recordPanel() {
+    return this.page.locator(midiUiSelectors.recordPanel);
+  }
+
+  recordButton() {
+    return this.page.locator(midiUiSelectors.recordButton);
+  }
+
+  recordCommitButton() {
+    return this.page.locator(midiUiSelectors.recordCommitButton);
+  }
+
+  recordStatus() {
+    return this.page.locator(midiUiSelectors.recordStatus);
+  }
+
+  stepCells() {
+    return this.page.locator(midiUiSelectors.stepCells);
+  }
+
+  inspector() {
+    return this.page.locator(midiUiSelectors.inspector);
+  }
+
+  outputLog() {
+    return this.page.locator(midiUiSelectors.outputLog);
   }
 }
 

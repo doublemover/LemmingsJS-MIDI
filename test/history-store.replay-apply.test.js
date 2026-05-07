@@ -127,6 +127,33 @@ describe('HistoryStore replay application', function() {
     expect(manager._nukeTargets).to.eql([lem]);
   });
 
+  it('replays timer speed changes without assigning read-only frameTime', function() {
+    const history = new HistoryStore();
+    let speedFactor = 4;
+    const timer = {
+      tickIndex: 6,
+      get speedFactor() { return speedFactor; },
+      set speedFactor(value) { speedFactor = value; },
+      get frameTime() { return 60 / speedFactor; }
+    };
+    const game = {
+      timeTravel: { ignoreSpeedOnReverse: true },
+      getGameTimer: () => timer
+    };
+    const delta = {
+      tick: 4,
+      timerChanges: {
+        prev: { speedFactor: 2, frameTime: 30 },
+        next: { speedFactor: 4, frameTime: 15 }
+      }
+    };
+
+    expect(() => history._applyScalarChanges(game, delta, false)).to.not.throw();
+    expect(timer.tickIndex).to.equal(4);
+    expect(timer.speedFactor).to.equal(4);
+    expect(timer.frameTime).to.equal(15);
+  });
+
   it('resets entrance tracking when entrance list changes', function() {
     const history = new HistoryStore();
     const level = { entrances: [{ _opened: false }] };

@@ -115,16 +115,77 @@ describe('MidiInputController', function() {
       }
     };
     const controller = new MidiInputController(view, { getConfig: () => config });
-    let captured = null;
-    controller.setNoteCapture((note) => {
-      captured = note;
+    const captured = [];
+    controller.setNoteCapture((note, velocity, channel) => {
+      captured.push({ note, velocity, channel });
       return true;
     });
 
     controller._onMessage({ data: [0x90, 60, 100] });
 
-    expect(captured).to.equal(60);
+    expect(captured).to.deep.equal([{ note: 60, velocity: 100, channel: 1 }]);
     expect(commands.length).to.equal(0);
+  });
+
+  it('capture handlers respect channel filtering, velocity-zero note-ons, and fallthrough', function() {
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = {
+      input: {
+        channel: 2,
+        notes: { skillBase: 60, skillOrder: ['CLIMBER'] }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    const captured = [];
+    controller.setNoteCapture((note, velocity, channel) => {
+      captured.push({ note, velocity, channel });
+      return false;
+    });
+
+    controller._onMessage({ data: [0x90, 60, 100] });
+    controller._onMessage({ data: [0x91, 60, 0] });
+    controller._onMessage({ data: [0x91, 60, 100] });
+
+    expect(captured).to.deep.equal([{ note: 60, velocity: 100, channel: 2 }]);
+    expect(commands.length).to.equal(1);
+    expect(commands[0].skill).to.equal(SkillTypes.CLIMBER);
+  });
+
+  it('captures normalized MIDI messages after channel filtering and can swallow dispatch', function() {
+    const commands = [];
+    const view = {
+      game: {
+        queueCommand(cmd) { commands.push(cmd); },
+        gameGui: {}
+      }
+    };
+    const config = {
+      input: {
+        channel: 3,
+        notes: { skillBase: 60, skillOrder: ['CLIMBER'] }
+      }
+    };
+    const controller = new MidiInputController(view, { getConfig: () => config });
+    const messages = [];
+    controller.setMessageCapture((message) => {
+      messages.push(message);
+      return true;
+    });
+
+    controller._onMessage({ data: [0x90, 60, 100], timeStamp: 5 });
+    controller._onMessage({ data: [0x92, 61, 0], timeStamp: 6 });
+    controller._onMessage({ data: [0x82, 61, 0], timeStamp: 7 });
+
+    expect(messages).to.have.lengthOf(2);
+    expect(messages[0]).to.include({ status: 0x92, type: 0x90, channel: 3, note: 61, velocity: 0, timestamp: 6 });
+    expect(messages[1]).to.include({ status: 0x82, type: 0x80, channel: 3, note: 61, velocity: 0, timestamp: 7 });
+    expect(commands).to.have.lengthOf(0);
   });
 
   it('stores the last MIDI message on window', function() {
@@ -178,12 +239,12 @@ describe('MidiInputController', function() {
     expect(calls.some(call => call.type === 'midimessage' && call.removed)).to.equal(true);
   });
 
-  it('applies config patches through the view when no handler is provided', function() {
+  it('ignores config patches when no handler is provided', function() {
     const patches = [];
-    const view = { applyMidiOverrides(patch) { patches.push(patch); } };
+    const view = {};
     const controller = new MidiInputController(view, { getConfig: () => ({ input: { channel: 'omni' } }) });
     controller._applyConfigPatch({ timing: { bpmBase: 140 } });
-    expect(patches).to.eql([{ timing: { bpmBase: 140 } }]);
+    expect(patches).to.eql([]);
   });
 
   it('uses the view config getter and adjusts speed with game timer', function() {

@@ -64,6 +64,48 @@ describe('NxlvWriter', function () {
     assert.strictEqual(parsed.gadgets[0].props.FLIP_VERTICAL, true);
   });
 
+  it('semantically round-trips comments and unknown sections', function () {
+    const text = [
+      '# top note',
+      'TITLE Preserve Notes',
+      'STYLE dirt',
+      '$SKILLSET',
+      '  # skill note',
+      '  SKILL CLIMBER 1',
+      '  TALISMAN legacy',
+      '$END',
+      '$TERRAIN',
+      '  # terrain note',
+      '  STYLE dirt',
+      '  PIECE terrain_1',
+      '  X 10',
+      '  Y 20',
+      '  CUSTOM_TERRAIN_FIELD keep-me',
+      '$END',
+      '$NEOLEMMIX_ONLY',
+      '  # unknown section note',
+      '  CUSTOM value',
+      '$END',
+      '# trailing note'
+    ].join('\n');
+
+    const parsed = NxlvParser.parse(text);
+    const written = NxlvWriter.write(parsed);
+    const reparsed = NxlvParser.parse(written);
+
+    assert.strictEqual(reparsed.getHeader('TITLE'), 'Preserve Notes');
+    assert.ok(reparsed.unknownLines.includes('# top note'));
+    assert.ok(reparsed.unknownLines.includes('# trailing note'));
+    assert.ok(reparsed.skillsetUnknownLines.some(line => line.includes('# skill note')));
+    assert.ok(reparsed.skillsetUnknownLines.some(line => line.includes('TALISMAN legacy')));
+    assert.ok(reparsed.terrains[0].unknownLines.some(line => line.includes('# terrain note')));
+    assert.strictEqual(reparsed.terrains[0].props.CUSTOM_TERRAIN_FIELD, 'keep-me');
+    assert.strictEqual(reparsed.unknownSections.length, 1);
+    assert.strictEqual(reparsed.unknownSections[0].name, 'NEOLEMMIX_ONLY');
+    assert.ok(reparsed.unknownSections[0].lines.some(line => line.includes('# unknown section note')));
+    assert.ok(reparsed.unknownSections[0].lines.some(line => line.includes('CUSTOM value')));
+  });
+
   it('handles missing skillset unknown lines', function () {
     const level = new EditorLevel();
     level.setHeader('TITLE', 'Skillset');

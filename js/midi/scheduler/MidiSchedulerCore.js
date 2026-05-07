@@ -6,6 +6,7 @@ import { midiSchedulerSendMethods } from './MidiSchedulerSendMethods.js';
 class MidiScheduler {
   constructor(config = {}) {
     this.output = null;
+    this._outputsById = new Map();
     this.tickMs = 60;
     this._activeByChannel = new Map();
     this._activeNotes = new Map();

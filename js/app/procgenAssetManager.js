@@ -51,6 +51,7 @@ const getTerrainStats = (image) => {
 class ProcgenAssetManager {
   constructor({ styleName, config, fileProvider, random } = {}) {
     this.styleName = styleName || 'dirt';
+    this.groundSet = null;
     this.config = config || null;
     this.fileProvider = fileProvider || null;
     this.random = typeof random === 'function' ? random : Math.random;
@@ -72,6 +73,8 @@ class ProcgenAssetManager {
       this.fileProvider
     );
     this.assets = assets;
+    this.styleName = assets?.styleName || this.styleName;
+    this.groundSet = Number.isFinite(assets?.groundSet) ? assets.groundSet | 0 : null;
     this._buildTerrainCatalog(assets);
     this._buildGadgetCatalog(assets);
     return this;
@@ -80,12 +83,17 @@ class ProcgenAssetManager {
   _buildTerrainCatalog(assets) {
     const images = assets?.terrainImages || [];
     const entries = [];
+    const styleName = assets?.styleName || this.styleName;
+    const groundSet = Number.isFinite(assets?.groundSet) ? assets.groundSet | 0 : null;
     for (let id = 0; id < images.length; id++) {
       const image = images[id];
       const stats = getTerrainStats(image);
       if (!stats) continue;
       entries.push({
         id,
+        styleName,
+        theme: styleName,
+        groundSet,
         image,
         frame: stats.frame,
         width: stats.width,
@@ -164,6 +172,19 @@ class ProcgenAssetManager {
 
   pickDecorPiece(maxWidth) {
     return this._pickFromList(this.decorPieces, maxWidth);
+  }
+
+  getThemeSummary() {
+    return {
+      selectedTheme: this.styleName,
+      styleName: this.styleName,
+      groundSet: this.groundSet,
+      terrainPieceCount: this.terrainPieces.length,
+      groundPieceCount: this.groundPieces.length,
+      decorPieceCount: this.decorPieces.length,
+      decorGadgetCount: this.gadgetDecor.length,
+      hazardGadgetCount: this.gadgetHazards.length
+    };
   }
 }
 

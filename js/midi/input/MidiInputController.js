@@ -32,6 +32,7 @@ class MidiInputController {
     this.input = null;
     this.channel = 'omni';
     this._noteCapture = null;
+    this._messageCapture = null;
     this._lastInputChannel = undefined;
     this._lastCcConfigRef = undefined;
     this._lastNotesConfigRef = undefined;
@@ -165,6 +166,10 @@ class MidiInputController {
     this._noteCapture = typeof handler === 'function' ? handler : null;
   }
 
+  setMessageCapture(handler) {
+    this._messageCapture = typeof handler === 'function' ? handler : null;
+  }
+
   _matchesChannel(channel) {
     if (this.channel === 'omni') return true;
     return channel === this.channel;
@@ -173,10 +178,6 @@ class MidiInputController {
   _applyConfigPatch(patch) {
     if (this.onConfigChange) {
       this.onConfigChange(patch);
-      return;
-    }
-    if (this.view?.applyMidiOverrides) {
-      this.view.applyMidiOverrides(patch);
     }
   }
 
@@ -332,6 +333,20 @@ class MidiInputController {
     const type = status & 0xF0;
     const channel = (status & 0x0F) + 1;
     if (!this._matchesChannel(channel)) return;
+    if (this._messageCapture) {
+      const handled = this._messageCapture({
+        data: Array.from(data),
+        status,
+        type,
+        channel,
+        note: data[1],
+        velocity: data[2] ?? 0,
+        cc: data[1],
+        value: data[2] ?? 0,
+        timestamp: event?.timestamp ?? event?.timeStamp ?? event?.receivedTime ?? Date.now()
+      });
+      if (handled) return;
+    }
     if (type === 0x90 || type === 0x80) {
       const note = data[1];
       const velocity = data[2] ?? 0;

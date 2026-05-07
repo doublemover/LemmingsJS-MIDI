@@ -407,7 +407,9 @@ const gameViewLevelSelectionMethods = {
     this.applyQuery();
     if (!this._midiMapping) {
       this._midiMapping = await this._loadMidiMapping();
-      this.applyMidiOverrides(this._midiOverrides);
+    }
+    if (this._midiProjectConfig) {
+      this.setMidiProjectConfig(this._midiProjectConfig);
     }
     this.configs = await this.gameFactory.configReader.configs;
     this.arrayToSelect(this.elementSelectGameType, this.configs.map(c => c.name));

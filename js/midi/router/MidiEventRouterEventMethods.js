@@ -23,7 +23,11 @@ const midiEventRouterEventMethods = {
     try {
       if (!event || event.sfxId == null) return;
       if (!this.mapping.config?.enabled) return;
-      if (!this.scheduler.output) return;
+      if (typeof this.scheduler.hasAnyOutput === 'function') {
+        if (!this.scheduler.hasAnyOutput()) return;
+      } else if (!this.scheduler.output) {
+        return;
+      }
       const now = this._nowMs();
       const tick = event.tick;
       if (tick != null && this._tickCounter.tick !== tick) {
@@ -51,6 +55,9 @@ const midiEventRouterEventMethods = {
       const sfx = triggerCfg ? { ...baseSfx, ...triggerCfg } : baseSfx;
       const spec = this.mapping.mapEvent(event, context, density, sfx);
       if (!spec) return;
+      if (typeof this.scheduler.hasOutput === 'function' && !this.scheduler.hasOutput(spec.outputId ?? null)) {
+        return;
+      }
       spec.reverse = !!event.reverse;
       if (tick != null && this._tickCounter.count >= maxPerTick) return;
       if (tick != null) {
@@ -60,7 +67,15 @@ const midiEventRouterEventMethods = {
         this._lastTickBySfx.set(event.sfxId, event.tick);
       }
       const priority = this._getEventPriority(event, sfx);
-      const meta = { sfxId: event.sfxId, eventType: event.type, priority, triggerType: event.triggerType ?? null };
+      const meta = {
+        sfxId: event.sfxId,
+        eventType: event.type,
+        priority,
+        triggerType: event.triggerType ?? null,
+        trackId: spec.trackId ?? null,
+        voiceBudget: spec.voiceBudget ?? null,
+        outputId: spec.outputId ?? null
+      };
       const scheduleAhead = this.mapping.config?.timing?.scheduleAheadMs ?? 0;
       const base = this._resolveScheduleBase(event.timeMs, event.frameMs, event.speedFactor);
       const rawTime = Number.isFinite(event.timeMs) && base != null ? base + event.timeMs : now;
