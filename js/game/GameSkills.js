@@ -1,6 +1,13 @@
 import { EventHandler } from '../util/EventHandler.js';
 import { SkillTypes } from './SkillTypes.js';
 
+const MIN_SKILL_TYPE = SkillTypes.UNKNOWN;
+const MAX_SKILL_TYPE = SkillTypes.DIGGER;
+
+const isValidSkillType = (type) => (
+  Number.isInteger(type) && type >= MIN_SKILL_TYPE && type <= MAX_SKILL_TYPE
+);
+
 class GameSkills {
   constructor(level) {
     this.selectedSkill = SkillTypes.CLIMBER;
@@ -37,7 +44,7 @@ class GameSkills {
     return true;
   }
   getSkill(type) {
-    if (!SkillTypes[Object.keys(SkillTypes)[type]])
+    if (!isValidSkillType(type))
       return 0;
     const val = this.skills[type];
     if (val === Infinity) return 99;
@@ -47,10 +54,10 @@ class GameSkills {
     return this.selectedSkill;
   }
   setSelectedSkill(skill) {
-    if (this.selectedSkill == skill) {
+    if (this.selectedSkill === skill) {
       return false;
     }
-    if (!SkillTypes[Object.keys(SkillTypes)[skill]]) {
+    if (!isValidSkillType(skill)) {
       return false;
     }
     this.selectedSkill = skill;

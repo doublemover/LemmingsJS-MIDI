@@ -63,6 +63,20 @@ describe('EditorStorage', () => {
     expect(list[3].updatedAt).to.equal(0);
   });
 
+  it('migrates legacy array index payloads to versioned envelopes', () => {
+    const storage = new MemoryStorage();
+    storage.setItem(STORAGE_KEYS.index, JSON.stringify([
+      { id: 'a', name: 'Alpha', updatedAt: 2 },
+      { id: 'b', name: 'Beta', updatedAt: 1 }
+    ]));
+    const list = listSavedLevels(storage);
+    expect(list.map((entry) => entry.id)).to.deep.equal(['a', 'b']);
+    const migrated = JSON.parse(storage.getItem(STORAGE_KEYS.index));
+    expect(migrated.version).to.equal(2);
+    expect(migrated.entries).to.be.an('array');
+    expect(migrated.entries).to.have.length(2);
+  });
+
   it('orders names in both directions', () => {
     const storage = new MemoryStorage();
     storage.setItem(STORAGE_KEYS.index, JSON.stringify([
@@ -149,6 +163,9 @@ describe('EditorStorage', () => {
     const list = listSavedLevels(storage);
     expect(list).to.have.length(1);
     expect(list[0].name).to.equal('First');
+    const indexPayload = JSON.parse(storage.getItem(STORAGE_KEYS.index));
+    expect(indexPayload.version).to.equal(2);
+    expect(indexPayload.entries).to.be.an('array');
   });
 
   it('uses Date.now when updatedAt is not finite', () => {

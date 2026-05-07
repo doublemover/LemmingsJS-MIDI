@@ -1,3 +1,23 @@
+const DEFAULT_HISTORY_RETENTION = Object.freeze({
+  enableHistoryCap: true,
+  historyCapTicks: 20000,
+  historyWarnTicks: 15000
+});
+
+const getNowMs = () => {
+  if (typeof performance !== 'undefined' && typeof performance.now === 'function') {
+    return performance.now();
+  }
+  return Date.now();
+};
+
+const resolveRafApi = () => {
+  if (typeof window === 'undefined') return null;
+  if (typeof window.requestAnimationFrame !== 'function') return null;
+  if (typeof window.cancelAnimationFrame !== 'function') return null;
+  return window;
+};
+
 class TimeTravelController {
   constructor(game, history) {
     this.game = game;
@@ -12,14 +32,46 @@ class TimeTravelController {
     this.ignoreSpeedOnReverse = true;
     this._resumeForward = false;
     this._prevInputEnabled = null;
+    this._rafApi = null;
+    this._historyRetention = this._configureHistoryRetention();
   }
 
   get isReversing() { return this._reverseActive; }
+
+  getHistoryRetention() {
+    return { ...this._historyRetention };
+  }
+
+  _configureHistoryRetention() {
+    return this.setHistoryRetention(DEFAULT_HISTORY_RETENTION);
+  }
+
+  setHistoryRetention(policy = null) {
+    const requested = {
+      ...DEFAULT_HISTORY_RETENTION,
+      ...(policy && typeof policy === 'object' ? policy : {})
+    };
+    if (!this.history?.configureRetention) {
+      this._historyRetention = { ...requested };
+      return this.getHistoryRetention();
+    }
+    this._historyRetention = this.history.configureRetention(requested);
+    return this.getHistoryRetention();
+  }
 
   _resolveTimer() {
     const timer = this.game?.getGameTimer?.();
     if (timer) this.timer = timer;
     return this.timer;
+  }
+
+  _getDeltaAt(tickIndex) {
+    if (!this.history) return null;
+    if (typeof this.history.getDelta === 'function') {
+      const delta = this.history.getDelta(tickIndex);
+      if (delta !== undefined && delta !== null) return delta;
+    }
+    return this.history.deltas?.[tickIndex] ?? null;
   }
 
   stepBackward(count = 1) {
@@ -33,9 +85,12 @@ class TimeTravelController {
         break;
       }
       const targetTick = timer.tickIndex - 1;
-      const delta = this.history.getDelta?.(targetTick)
-        ?? this.history.deltas?.[targetTick];
+      const delta = this._getDeltaAt(targetTick);
       if (!delta) {
+        this.seekToTick(targetTick);
+        break;
+      }
+      if (typeof this.history.applyDeltaBackward !== 'function') {
         this.seekToTick(targetTick);
         break;
       }
@@ -56,13 +111,17 @@ class TimeTravelController {
     const target = Math.max(0, Math.trunc(targetTickIndex));
     const keyframe = this.history.getKeyframeAtOrBefore(target);
     if (!keyframe) return;
+    if (typeof this.history.applyKeyframe !== 'function') return;
     this.history.applyKeyframe(this.game, keyframe);
-    timer.tickIndex = keyframe.tickIndex ?? target;
+    const keyframeTick = Number.isFinite(keyframe.tickIndex)
+      ? Math.max(0, Math.trunc(keyframe.tickIndex))
+      : target;
+    timer.tickIndex = Math.min(target, keyframeTick);
     let cursor = timer.tickIndex;
     while (cursor < target) {
-      const delta = this.history.getDelta?.(cursor)
-        ?? this.history.deltas?.[cursor];
+      const delta = this._getDeltaAt(cursor);
       if (!delta) break;
+      if (typeof this.history.applyDeltaForward !== 'function') break;
       this.history.applyDeltaForward(this.game, delta);
       cursor += 1;
       timer.tickIndex = cursor;
@@ -75,9 +134,11 @@ class TimeTravelController {
 
   startReverse() {
     const timer = this._resolveTimer();
-    if (this._reverseActive || !timer || !this.game) return;
+    const rafApi = resolveRafApi();
+    if (this._reverseActive || !timer || !this.game || !rafApi) return;
     this.playbackDirection = -1;
     this._reverseActive = true;
+    this._rafApi = rafApi;
     this._resumeForward = !!timer.isRunning?.();
     if (this._prevInputEnabled === null) {
       this._prevInputEnabled = this.game.inputEnabled ?? true;
@@ -88,11 +149,14 @@ class TimeTravelController {
     }
     timer.suspend?.();
     this.history?.pause?.();
-    this._lastTime = performance.now();
+    this._lastTime = getNowMs();
     this._reverseCarryMs = 0;
     const loop = (now) => {
       if (!this._reverseActive) return;
-      const frameTime = timer.frameTime || timer.TIME_PER_FRAME_MS || 60;
+      const frameTimeCandidate = timer.frameTime || timer.TIME_PER_FRAME_MS || 60;
+      const frameTime = Number.isFinite(frameTimeCandidate) && frameTimeCandidate > 0
+        ? frameTimeCandidate
+        : 60;
       let delta = (now - this._lastTime) + this._reverseCarryMs;
       if (delta >= frameTime) {
         const rawSteps = Math.floor(delta / frameTime);
@@ -105,19 +169,21 @@ class TimeTravelController {
         this._lastTime = now;
         this.stepBackward(steps);
       }
-      this._reverseRaf = window.requestAnimationFrame(loop);
+      this._reverseRaf = this._rafApi?.requestAnimationFrame?.(loop) ?? 0;
     };
-    this._reverseRaf = window.requestAnimationFrame(loop);
+    this._reverseRaf = this._rafApi.requestAnimationFrame(loop);
   }
 
   stopReverse() {
     if (!this._reverseActive) return;
     const timer = this._resolveTimer();
     this._reverseActive = false;
+    const rafApi = this._rafApi || resolveRafApi();
     if (this._reverseRaf) {
-      window.cancelAnimationFrame(this._reverseRaf);
+      rafApi?.cancelAnimationFrame?.(this._reverseRaf);
       this._reverseRaf = 0;
     }
+    this._rafApi = null;
     this._reverseCarryMs = 0;
     if (this._resumeForward && timer) {
       this.history?.truncateAfter?.(timer.tickIndex);

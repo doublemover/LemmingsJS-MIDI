@@ -1,4 +1,4 @@
-import { BaseLogger, withPerformance } from '../util/LogHandler.js';
+import { BaseLogger } from '../util/LogHandler.js';
 import { BinaryReader } from './BinaryReader.js';
 import { BitReader } from './BitReader.js';
 import { BitWriter } from './BitWriter.js';
@@ -99,61 +99,61 @@ class UnpackFilePart extends BaseLogger {
    * @returns {BinaryReader}
    */
   #doUnpacking(fileReader) {
-    return withPerformance(
-      'doUnpacking',
-      {
-        track: 'UnpackFilePart',
-        trackGroup: 'IO',
-        color: 'tertiary-light',
-        tooltipText: `doUnpacking ${fileReader.filename}`
-      },
-      () => {
-        const bitReader = new BitReader(
-          fileReader,
-          this.#offset,
-          this.#compressedSize,
-          this.#initialBufferLen
-        );
-        const outBuffer = new BitWriter(bitReader, this.#decompressedSize);
+    const endMeasure = this.startMeasure('doUnpacking', {
+      track: 'UnpackFilePart',
+      trackGroup: 'IO',
+      color: 'tertiary-light',
+      tooltipText: `doUnpacking ${fileReader.filename}`
+    });
+    try {
+      const bitReader = new BitReader(
+        fileReader,
+        this.#offset,
+        this.#compressedSize,
+        this.#initialBufferLen
+      );
+      const outBuffer = new BitWriter(bitReader, this.#decompressedSize);
 
-        while (!outBuffer.eof() && !bitReader.eof()) {
-          if (bitReader.read(1) === 0) {
-            switch (bitReader.read(1)) {
-            case 0:
-              outBuffer.copyRawData(bitReader.read(3) + 1);
-              break;
-            case 1:
-              outBuffer.copyReferencedData(2, 8);
-              break;
-            }
-          } else {
-            switch (bitReader.read(2)) {
-            case 0:
-              outBuffer.copyReferencedData(3, 9);
-              break;
-            case 1:
-              outBuffer.copyReferencedData(4, 10);
-              break;
-            case 2:
-              outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
-              break;
-            case 3:
-              outBuffer.copyRawData(bitReader.read(8) + 9);
-              break;
-            }
+      while (!outBuffer.eof() && !bitReader.eof()) {
+        if (bitReader.read(1) === 0) {
+          switch (bitReader.read(1)) {
+          case 0:
+            outBuffer.copyRawData(bitReader.read(3) + 1);
+            break;
+          case 1:
+            outBuffer.copyReferencedData(2, 8);
+            break;
+          }
+        } else {
+          switch (bitReader.read(2)) {
+          case 0:
+            outBuffer.copyReferencedData(3, 9);
+            break;
+          case 1:
+            outBuffer.copyReferencedData(4, 10);
+            break;
+          case 2:
+            outBuffer.copyReferencedData(bitReader.read(8) + 1, 12);
+            break;
+          case 3:
+            outBuffer.copyRawData(bitReader.read(8) + 9);
+            break;
           }
         }
+      }
 
-        if (this.#checksum === 0) {
-          this.log.debug(`doUnpacking(${fileReader.filename}) skipping checksum`);
-        } else if (this.#checksum === bitReader.getCurrentChecksum()) {
-          this.log.debug(`doUnpacking(${fileReader.filename}) done!`);
-        } else {
-          this.log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
-        }
-        // Create a BinaryReader over the decompressed buffer
-        return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
-      }).call(this);
+      if (this.#checksum === 0) {
+        this.log.debug(`doUnpacking(${fileReader.filename}) skipping checksum`);
+      } else if (this.#checksum === bitReader.getCurrentChecksum()) {
+        this.log.debug(`doUnpacking(${fileReader.filename}) done!`);
+      } else {
+        this.log.log(`doUnpacking(${fileReader.filename}): Checksum mismatch!`);
+      }
+      // Create a BinaryReader over the decompressed buffer
+      return outBuffer.getFileReader(`${fileReader.filename}[${this.#index}]`);
+    } finally {
+      endMeasure();
+    }
   }
 }
 

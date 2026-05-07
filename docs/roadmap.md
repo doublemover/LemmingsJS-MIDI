@@ -1,216 +1,781 @@
 # Roadmap
 
-This roadmap consolidates outstanding items from the README (In Progress,
-Roadmap, Bugs and Misc) plus the current workstreams. It is the single place to
-track ongoing and future work. Keep this roadmap current as work lands.
+Historical completed roadmap entries live in git history. This file is the
+current source of truth for future work and should stay focused on active
+product and tooling direction.
 
-## Phase 1: E2E harness adoption and baseline testing
-- [x] Expand game E2E coverage using `window.__E2E__` (startup, navigation,
-  saved-level ordering, time travel invariants, reverse playback).
-- [x] Add harness-backed regression tests for input and view controls.
-- [x] Add harness-backed MIDI UI tests once permission flows are stable.
+## Format
 
-Notes:
-- "Ready" means the level is loaded, everything is visible and interactable, and
-  the game can advance without error.
-- Saved levels always follow default packs under a separate group label, sorted
-  by name then time.
-- Input/view regression should cover all controls.
-- MIDI UI tests should be UI-only when reliable MIDI access is not available.
-- Define and enforce invariants (state hash symmetry, lemming counts/positions,
-  minimap state, command log, sound events).
+Each milestone uses the same shape:
 
-## Phase 2: Editor testing and completion (multi-phase)
-- [x] Phase 2.0: Fix editor page layout (game view too low, side panels too large, top of game should be at top of window just like the game page)
-- [x] Phase 2.1: Verify core editor tools plus overlay/inspector coverage
-  (palette, placement, selection, brush, triggers, steel).
-- [x] Phase 2.2: Verify edit-mode toggle, input suppression, and level selection
-  loads into the editor while editing; confirm playtest flow.
-- [x] Phase 2.3: Cover editing workflows (multi-select, drag/resize,
-  copy/paste/duplicate, undo/redo, snap/nudge, delete/duplicate).
-- [x] Phase 2.4: Validate saved-level pipeline (saved dropdown, localStorage
-  persistence, import/export for `.nxlv` and classic `.lvl`).
-- [x] Phase 2.5: Evaluate brush/eraser feasibility (tileable assets + grid size)
-  and style registry coverage for terrain/gadgets.
-- [x] Phase 2.6: Ensure steel rectangle editing and resizable gadgets behave
-  correctly; enforce classic limits.
-- [x] Phase 2.7: Defer `.nxlv` round-trip tests/unknown section handling for now;
-  focus on editor runtime mapping validation (blank level defaults, preview
-  mapping, trigger behavior).
-- [x] Phase 2.8: Fix editor view jumps (layout/canvas offsets, scale, event
-  ordering).
-- [x] Phase 2.9: Polish UI/UX and editor documentation.
+- **Outcome:** What should be true for users or maintainers when the milestone
+  is done.
+- **Scope:** Work that belongs in the milestone.
+- **Workflow Coverage:** Real workflows that must be exercised, preferably by
+  headless Playwright or deterministic unit/integration tests.
+- **Deliverables:** Concrete code, docs, tools, or artifacts.
+- **Acceptance:** Observable completion criteria.
+- **Out of Scope:** Tempting work that should not be mixed into the milestone.
 
-Notes:
-- Cover all tools and inspector fields.
-- Show the saved-level selector only when saved levels exist; ordering/naming
-  is not important.
-- Brush grid sizes: 1/2/4/8/16/32; skip if assets are not tileable.
-- Define edit-mode toggle expectations (pause state, HUD visibility, command
-  suppression, playtest lock).
-- Clarify steel behavior/limits (mask rules, overlap handling, limit enforcement).
-- View-jump repro steps pending; do a brief exploration first.
-- Keep editor docs brief.
+Prefer hard cutovers over aliases, shims, fallbacks, or retired behavior tests.
+When a milestone replaces an old path, remove the old path in the same phase.
 
-## Phase 3: UX, input, and presentation
-- [x] Add a shortcut overlay toggle (game/editor) that fades in/out and is easy
-  to dismiss.
-- [x] Fix keyboard view navigation acceleration (too fast at either speed).
-- [x] Robust touch controls and ensure scaling on iPad.
-- [x] Improve the website (summary metadata for social embeds).
+## Sequencing
 
-Notes:
-- Overlay fade duration is 250 ms; use F1 and ? if possible; separate overlays
-  for game and editor.
-- Keyboard view acceleration should be smooth with a low max speed cap; Shift
-  should still feel useful for faster pan.
-- Touch targets: landscape by default; portrait only on larger tablets; use
-  sensible gesture mappings.
+1. Level editor audit and productization.
+2. Procedural generation productization.
+3. Solver and solvability platform.
+4. MIDI sequencer follow-up polish only when captures, tests, or real workflow
+   use expose a concrete gap.
 
-## Phase 4: Time travel and history coverage
-- [x] Expand HistoryStore snapshots/deltas to cover mutable gameplay state
-  (lemmings, manager, triggers, objects, ground, minimap deaths, victory,
-  skills, timer, sound events).
-- [x] Reverse playback (toggle + step) with input suppression and HUD direction
-  indicator.
-- [x] Reverse playback updates minimap deaths and emits reverse sound events.
-- [x] Ignore game speed changes during reverse playback (speedFactor remains
-  stable while rewinding).
+## Milestone 1: DAW-Like Multichannel MIDI Sequencer UI
 
-Notes:
-- Determinism is explicitly out of scope for this phase.
+**Outcome:** The MIDI surface is a DAW-like multichannel sequencer for gameplay
+events. It should let users design, route, audition, sequence, automate, and
+perform MIDI responses with the polish expected from music software, while
+remaining deterministic and testable without real hardware.
 
-## Phase 5: MIDI sequencing and UI
-- [x] Iterate on the MIDI UI and mapping UX.
-- [x] Add MIDI debug display.
-- [ ] [Deferred] Ability to place flags to trigger MIDI events.
+Current status: checkpointed on May 7, 2026. The project-based sequencer,
+source browser filters, track/clip editing, learn/record flows, modulation
+lanes, template import/export, legacy storage cleanup, per-track output
+dispatch, mocked device/setup-state coverage, scheduler pressure summaries,
+output-log confidence checks, and disposable desktop/tablet/mobile captures are
+implemented. Remaining Milestone 1 work should stay limited to focused polish,
+starter-template gaps, small editor controls, and live-device confidence rather
+than broad sequencer rewrites.
 
-## Phase 6: Performance and benchmarks
-- [x] Ensure any bench-specific metrics are surfaced via the e2e harness, ideally through their own function
-- [x] Evaluate bench modes (bench, bench2, benchSequence, benchReverse) for     
-  effectiveness and necessity.
-- [x] Standalone updated performance benchmark.
-- [x] Standalone stress test for history memory (ticks at 30x/60x/120x until    
-  exhaustion).
-- [x] Investigate GameTimer catchup slowdown as a perf spike failsafe.
+**Product Goals**
 
-## Phase 7: Gameplay parity, packs, and assets
-- [ ] Find external references that confirm these things before implementing
-- [ ] Arrow walls: confirm builder bounce behavior, fix 2-2-19 left arrows,
-  consider built-stairs handling.
-- [ ] Traps: add missing squish, fix generic trap using splat death.
-- [ ] Bombs: remove ground overlapping steel to reveal it.
-- [ ] Super lemmings act twice per tick.
-- [ ] No palette-swapped frying animation (2-2-9, 1-4-30).
-- [ ] Building stairs off horizontal edge causes wraparound steps.
-- [ ] Pack navigation bugs: previous pack flashing/crash when navigating
-  1 -> 2 then past 2-4-20; cannot go back to version 1 from version 2.
-- [ ] Xmas 91/92 and Holiday 93/94 polish (steel sprite data, triggers,
-  palettes).
-- [ ] Pack decompression/patch/compression pipeline.
-- [ ] Full support for pack-specific glitches.
-- [ ] Support for other popular pack types.
-- [ ] High resolution and 32-bit color sprite support.
-- [ ] Procedural endless level generation.
+- Make first-run setup obvious: enable MIDI, pick devices, confirm permissions,
+  choose a starter template, hear a preview, and recover from device errors.
+- Treat game events, trigger flags, procgen events, and global modulation as
+  sequencer sources that can be assigned to tracks and channels.
+- Support multichannel routing with clear track strips, output devices,
+  channels, instruments, mute/solo/arm, velocity, priority, and panic controls.
+- Make editing musical: piano-roll style note entry, step sequencing, chord
+  editing, arpeggiators, envelopes, repeats, probability, swing, quantization,
+  and automation lanes.
+- Make mappings easy to understand at a glance: what is enabled, what changed,
+  what conflicts, what is silent, what track/channel it routes through, and what
+  global rules affect it.
+- Make live performance safe: all-notes-off, stuck-note detection, scheduler
+  pressure display, output log, device reconnect handling, and readable status.
+- Make recovery safe: undo/reset per field, mapping, clip, track, profile, and
+  whole project.
 
-## Phase 9: Gamepad support (deferred)
-- [ ] [Deferred] Add `joypad.js` as a dependency and implement full gamepad
-  support (gameplay + editor bindings, navigation, remapping).
+**Sequencer Model**
 
-## Phase 10: MCP automation + in-memory resources
-- [x] Build MCP server with `@modelcontextprotocol/sdk` (v1) and stdio transport,
-  plus npm scripts for local runs.
-- [x] Session management + Playwright boot for `https://localhost:8080/?e2e=1`
-  with localhost cert handling and focus management.
-- [x] Harness additions for MCP (notably `selectLemmingById`) and doc updates in
-  `docs/e2e-state.md` and `docs/mcp/`.
-- [x] Implement core tools: time control, `state.get`, lemmings summary, input
-  actions/keys, lemming select, and skill apply.
-- [x] In-memory resource store with LRU/TTL and `resources/read` (plus optional
-  `resources/list`) for `lemmings://` URIs.
-- [x] Vision capture tools (single + sequence) with manifest support.
-- [x] Events queue, watch create/cancel, and events poll with per-call envelopes.
-- [x] Spectator UI plus human input relay (opt-in).
-- [x] Host setup notes and smoke tests for Codex CLI, Claude Code, and LM Studio.
+- Preserve the existing intent-style state model, but expand it into a canonical
+  MIDI project model:
+  - project metadata and schema version.
+  - devices and output routing.
+  - tracks with channel/output/instrument labels.
+  - event sources mapped to clips or direct mappings.
+  - clips/patterns for notes, chords, arps, repeats, and automation.
+  - global tempo/key/scale/quantization/swing settings.
+  - per-track and per-mapping envelopes, velocity curves, priority, and limits.
+  - diagnostics and migration metadata.
+- Hard-cut obsolete duplicate persistence paths after migration; do not keep
+  legacy aliases as editable contracts.
+- Define import/export JSON for MIDI projects and templates.
+- Support factory templates and user templates.
 
-Notes:
-- Default to stdio; LM Studio can use HTTP if needed.
-- Always include the events envelope when non-empty.
+**Interface Scope**
 
-## Phase 11: MCP client compatibility checks
-- [x] Add automated checks that capture Codex CLI/Claude Code/LM Studio versions,
-  verify MCP config formats, and flag format updates we need to track.
+- Transport and setup:
+  - device chooser.
+  - input channel and output routing.
+  - tempo/BPM and game-speed relationship.
+  - quantization and swing.
+  - MIDI reset and panic.
+  - device health and permission state.
+- Track mixer:
+  - multiple MIDI tracks.
+  - output device and channel per track.
+  - track name and instrument label.
+  - mute/solo/arm.
+  - track volume/velocity scale.
+  - priority and voice budget.
+  - scheduler pressure and recent output indicators.
+- Source browser:
+  - SFX events.
+  - trigger types.
+  - MIDI flags.
+  - procgen/challenge events when available.
+  - global/system events.
+  - search, category filters, changed-only, enabled-only, conflict-only,
+    available-in-level, and assigned/unassigned views.
+- Arrangement and pattern editing:
+  - map an event source directly to a note/chord/arp or to a reusable clip.
+  - clip/pattern library.
+  - step sequencer grid with note, rest, hold, tie, velocity, probability, and
+    channel/track awareness.
+  - compact piano-roll style editor for short MIDI phrases.
+  - chord builder with common shapes, inversions, voicing, and scale locking.
+  - arpeggiator editor with direction, pattern, rate, octave range, gate, and
+    reset behavior.
+  - repeat/rhythm editor that reads as musical timing rather than raw config.
+- Automation and modulation:
+  - envelope editor with curve preview.
+  - velocity curves.
+  - global intensity and accent.
+  - position-based modulation mapped to velocity, pitch, CC, repeat, density, or
+    track selection.
+  - per-track and per-event automation lanes where they add real value.
+- Inspector:
+  - selected source, track, clip, or step.
+  - contextual controls only.
+  - validation/conflict status.
+  - audition controls.
+  - reset/revert at the smallest useful scope.
+- Learn and recording:
+  - global Learn mode.
+  - arm a target from the inspector.
+  - capture note/channel/velocity.
+  - show pending assignment before commit.
+  - record a short step pattern from mocked or real MIDI input.
+  - detect and resolve conflicts.
+  - keyboard-only capture flow with mocked WebMIDI in tests.
+- Audition:
+  - preview selected mapping.
+  - preview clip/pattern.
+  - preview chord/arp over a short beat window.
+  - preview through the selected track/channel/output.
+  - preview with current key/scale/global shaping.
+  - visible output log and all-notes-off/panic.
+- Layout:
+  - desktop: stable DAW-like workspace with transport, browser, track/mixer, and
+    inspector regions.
+  - tablet: collapsible browser/inspector with the sequencer grid still usable.
+  - phone/narrow: task-focused single-column flows for setup, browse, edit, and
+    audition without clipped labels.
+- Accessibility:
+  - semantic controls.
+  - focus order matching visual order.
+  - keyboard navigation for browser, track list, piano keys, step grid, tabs,
+    template operations, and inspector controls.
+  - visible focus states.
+  - aria labels for icon-only controls.
+  - no hidden focused element when panels change.
+- Performance:
+  - no full mapping or track rebuild for single-field edits.
+  - large mapping sets and clip libraries remain responsive.
+  - no recurring layout thrash while MIDI input is active.
+  - UI refresh metrics exposed to diagnostics in E2E mode.
 
-## Phase 12: Broken tests
-- [ ] None recorded (latest run: `npm test`, no errors).
+**Workflow Coverage**
 
-## Phase 13: Procedural endless mode (procgen)
-- [x] Add `procgen.html` with full-viewport canvas, no HUD/minimap/cursor, no MIDI UI.
-- [x] Use pack/style 2 assets for the procgen level bootstrap.
-- [x] Define a basic procgen spec doc (fixed constants, endless spawning, safe landing platform, rightward ground extension).
-- [x] Implement rightmost-lemming camera tracking with clamping and smooth follow.
-- [x] Add minimal E2E smoke coverage for procgen readiness and endless spawning.
+- First-run no-device state with clear permission and device messaging.
+- First-run with mocked input/output devices.
+- Enable MIDI, choose input/output, configure tracks/channels, send reset, and
+  use panic.
+- Create a project from a factory template; edit it, duplicate it, export it,
+  import it, and reset it.
+- Create multiple tracks and route different event sources to different
+  channels.
+- Search and filter sources by text, category, enabled state, changed state,
+  conflict state, assigned state, and current-level availability.
+- Assign an event source to:
+  - direct note.
+  - chord.
+  - arp.
+  - step pattern.
+  - reusable clip.
+  - automation/modulation target.
+- Edit a step pattern with note/rest/hold/velocity/probability and verify the
+  generated MIDI events.
+- Use learn mode to capture a mocked note and resolve a conflict.
+- Record a short mocked MIDI phrase into a step pattern.
+- Audition a track, source mapping, chord, arp, and clip without real hardware.
+- Verify persistence across reload.
+- Verify migration hard-cuts obsolete storage after migration.
+- Desktop/tablet/mobile visual capture runs for setup, track mixer, source
+  browser, sequencer grid, inspector, learn, diagnostics, and import/export.
 
-## Phase 14: MCP v2 compact defaults and tool ergonomics
-- [x] Switch tool responses to compact JSON by default (no pretty printing) and
-  omit excluded sections instead of returning null placeholders.
-- [x] Make short tool names primary (dots mapped to underscores) and retain
-  legacy aliases for compatibility.
-- [x] Set default event envelopes to `minimal` and avoid auto-attaching agent
-  echo events unless explicitly requested.
-- [x] Shorten session/resource/watch/event IDs to reduce payload size and URI
-  length in responses.
+**Deliverables**
 
-## Phase 15: MCP v2 deltas, summaries, and skill semantics
-- [x] Expose HistoryStore deltas via the harness and implement `state.delta`
-  with filtering defaults that suppress x/y motion churn.
-- [x] Fix lemming summary counts and top-K selection heuristics; support both
-  rect schemas and include selected lemming when requested.
-- [x] Add protocol mappings on `session.create` (skill names + lemming field
-  codes) and clamp non-finite skill counts to JSON-safe values.
-- [x] Improve `skill.apply` verification with skill-specific checks and
-  fast-fail when skills are unavailable.
+- New MIDI sequencer architecture docs.
+- Expanded canonical MIDI project state and migration.
+- Refactored UI modules for transport/setup, tracks, source browser, sequencer
+  grid, inspector, templates, learn, audition, diagnostics, and layout.
+- Project/template import/export UI.
+- Conflict detection and validation.
+- Expanded Playwright coverage using mocked WebMIDI and generic visual capture
+  helpers.
+- Focused unit coverage for project validation, sequencing, conflict detection,
+  scheduler reservations, migrations, and intent/project updates.
 
-## Phase 16: MCP v2 docs, examples, and compatibility checks
-- [x] Document compact defaults, delta usage, and event modes in `docs/mcp/`.
-- [x] Update client call examples/configs for the short tool names and default  
-  compact preset.
-- [x] Add smoke tests for `state.get`/`state.delta`/`skill.apply` using the new  
-  defaults and update the compatibility matrix.
+**Acceptance**
 
-## Phase 17: MCP client compatibility + MCPB publishing readiness
-- [x] Fold LM Studio into the MCP config examples and add Claude Desktop + VS
-  Code examples.
-- [x] Add MCPB bundle templates (manifest, server registry entry, mcpb ignore)
-  and document the packaging steps.
-- [x] Add a disabled-by-default CI workflow for MCPB validation (Windows/macOS).
-- [x] Update MCP docs with publishing/registry checklist and compatibility notes.
+- A user can build a multichannel MIDI project from scratch without editing
+  JSON.
+- Game events can drive multiple tracks/channels with note, chord, arp, clip,
+  and automation behavior.
+- The UI works without MIDI hardware through the mocked test path.
+- Major MIDI sequencer states have disposable local captures and overflow
+  checks.
+- No obsolete legacy mapping UI or duplicate persistence path remains after the
+  migration/cutover phase.
 
-## Phase 18: MCP editor.apply tool (editor mutation API)
-- [x] Add stable UID support for editor entries and expose them in editor state.
-- [x] Implement `editor.apply` in the E2E harness (ops, batching, history,
-  preview refresh, validation, export).
-- [x] Add `editor.apply` tool in MCP server + schema + docs and resources export.
-- [x] Add tests for editor.apply flows (new/load/save/export, entry CRUD,
-  selection, history, validate).
+**Out of Scope**
 
-## Phase 19: Editor audit fixes + parity guardrails
-  - [x] Load `terrainGroups` into editor preview/runtime or warn as unsupported.
-  - [x] Preserve section-local comments in NXLV round-trips.
-  - [x] Add validation caps for width/height/brush/steel sizes and unsafe header
-    values; clarify INFINITE time handling.
-  - [x] Hide/disable or implement unsupported inspector fields (rotate, flip H,
-    resize, one-way) and add warnings for gadget-only props in classic mode.
-  - [x] Add editor UX safety upgrades (history cap, dirty indicator, undo/redo
-    buttons, preview refresh label coalescing).
+- Audio recording, audio mixing, plugin hosting, soft synths, or waveform
+  editing.
+- Supporting non-WebMIDI browser APIs.
+- Network sync or cloud project storage.
 
-## Phase 20: Procgen terrain stamping + assets
-- [x] Add procgen asset manager (terrain/object categorization from packs).
-- [x] Replace pixel writes with terrain-piece stamping and chunk streaming.
-- [x] Add decoration and hazard placement with counterplay rules.
+## Milestone 2: Level Editor Audit and Productization
 
-## Phase 21: Procgen AI director + solvability
-- [x] Add environment sensing primitives (drop/wall/gap/hazard scans).
-- [x] Implement skill-assist behaviors (builder, bash, mine, dig, floater,
-  blocker coordination).
-- [x] Add pacing/budget controls plus debug overlay for AI decisions.
+**Outcome:** The level editor is evaluated from real workflows, then upgraded
+into a trustworthy creation tool with documented capabilities, clear limits,
+usable UX, and robust workflow tests.
+
+Current status: checkpointed on May 7, 2026. The classic-subset audit,
+visible lossy/unsupported-data warnings, validation report export, semantic
+round-trip tests, palette throughput improvements, solver advisory hooks, local
+project storage, project-level actions, pack JSON handoff export, browser-safe
+pack archive export/install, incomplete-archive rejection, and refreshed desktop
+editor capture are implemented. Remaining editor work should focus on
+additional visual workflow captures and NeoLemmix expansion only when that
+larger compatibility phase is deliberately started.
+
+**Audit Scope**
+
+- Perform a current-state editor audit before changing behavior:
+  - layout screenshots across desktop/tablet/mobile.
+  - local `temp/` captures for major flows where visual evidence is useful.
+  - docs-vs-code matrix.
+  - implemented vs claimed feature matrix.
+  - severity-ranked UX issues.
+  - severity-ranked correctness/data-integrity issues.
+  - test coverage map for each workflow.
+- Evaluate the editor as a product, not just as code:
+  - how quickly a user can create a playable level.
+  - how easy it is to select, move, inspect, duplicate, align, reorder, and
+    delete pieces.
+  - whether validation explains problems and offers safe fixes.
+  - whether playtest flow feels connected to editing.
+  - whether import/export errors are understandable.
+  - whether classic subset limits are obvious.
+  - whether NeoLemmix limitations are explicit.
+
+**Productization Scope**
+
+- Workflow and navigation:
+  - New level.
+  - Open classic level.
+  - Open saved level.
+  - Import `.nxlv`.
+  - Import classic `.lvl`.
+  - Save locally.
+  - Export `.nxlv`.
+  - Export classic `.lvl`.
+  - Playtest and return to editing.
+  - Undo/redo across all meaningful edits.
+- Canvas UX:
+  - pan/zoom behavior that never fights placement.
+  - selection outlines and handles that remain visible at common zoom levels.
+  - marquee select.
+  - drag, nudge, duplicate, copy/paste.
+  - align/distribute and ordering controls.
+  - grid/snap controls that are visible and predictable.
+  - context actions for common operations.
+- Palette UX:
+  - terrain/object/trigger browsing with thumbnails.
+  - search/filter/sort.
+  - style switch behavior.
+  - missing asset handling.
+  - recently used pieces.
+  - favorites or pinned pieces if audit shows palette scanning is slow.
+- Inspector UX:
+  - single selection editor.
+  - multi-selection summary and batch edit.
+  - safe numeric editing with commit/revert behavior.
+  - transform controls.
+  - flags/properties only where they apply.
+  - selected entry identity, uid, type, and source style.
+- Validation UX:
+  - clear error/warning separation.
+  - fix buttons grouped by issue.
+  - export blocking only for true blockers.
+  - validation report export.
+  - pack-level consistency checks where data is available.
+- Data integrity:
+  - round-trip `.nxlv` comments and unknown sections.
+  - preserve unknown data that the editor does not understand.
+  - hard-cut unsupported runtime preview paths into explicit warnings.
+  - no silent data loss during import, save, export, playtest, or style switch.
+- NeoLemmix decision track:
+  - decide whether the editor remains a classic subset or expands.
+  - if expanding, phase parser/model/UI/runtime work for `$TERRAINGROUP`,
+    `$TALISMAN`, `$PRETEXT`, `$POSTTEXT`, lemming placement, custom trigger
+    boxes, and style metadata.
+  - document unsupported NeoLemmix features in the UI, not only in docs.
+- Project workflow:
+  - project or pack export bundle plan.
+  - level metadata and level list handling.
+  - local project storage strategy.
+  - import/export validation reports.
+
+**Workflow Coverage**
+
+- Create a blank level, place entrance/exit/terrain/steel/trap/MIDI flag,
+  validate, playtest, save, export, import back, and compare semantic state.
+- Load a built-in classic level, modify it, save locally, reload, and export.
+- Import `.nxlv` with comments, unknown sections, terrain groups, and unsupported
+  props; verify preservation or explicit warnings.
+- Exercise selection:
+  - click select.
+  - shift multi-select.
+  - marquee select.
+  - move.
+  - resize where supported.
+  - duplicate.
+  - copy/paste.
+  - reorder.
+  - delete.
+  - undo/redo each.
+- Exercise palette:
+  - search.
+  - style switch.
+  - thumbnail loading.
+  - missing asset state.
+- Exercise validation:
+  - missing entrance.
+  - missing exit.
+  - out-of-bounds pieces.
+  - invalid counts.
+  - unsupported classic props.
+  - terrain groups.
+  - steel bounds.
+- Exercise playtest:
+  - timer state.
+  - input suppression while editing.
+  - return to editor.
+  - history/seek/reverse interactions where relevant.
+- Run visual capture matrices for editor shell, canvas, palette, inspector,
+  validation, save/import/export, and playtest states.
+
+**Deliverables**
+
+- Editor audit report committed under `docs/level-editor/`.
+- Updated editor docs based on current behavior.
+- Expanded Playwright editor workflows using generic visual capture tooling.
+- UX fixes prioritized from the audit.
+- Clear classic-subset vs NeoLemmix-expansion decision and follow-up plan.
+- Optional project export design if the audit confirms it is the next highest
+  value editor workflow.
+
+**Acceptance**
+
+- The editor can create and round-trip a playable level through tested
+  workflows.
+- Major UX states have screenshot captures and overflow checks.
+- Unsupported or lossy operations are impossible or explicitly warned.
+- Editor docs match current behavior.
+
+**Out of Scope**
+
+- Implementing every NeoLemmix feature before the audit is complete.
+- Adding solver-backed validation before the solver milestone produces a stable
+  interface.
+
+## Milestone 3: Procedural Level-Piece Streaming
+
+**Outcome:** Procgen is an endless left-to-right mode that picks one visual
+theme, then efficiently and tastefully adds level pieces ahead of the lemmings
+as they progress. It should feel like a coherent generated Lemmings level, not
+random pixels or a stress-test mode with hazards sprinkled around.
+
+Current status: checkpointed on May 7, 2026. The procgen debug state exposes
+theme, seed, generated end, lead frontier, recent chunks, assists, and explicit
+certificate policy. Certificates are scoped to local tactical checks and must
+not claim full-level solvability. Fixed-seed E2E, desktop capture, and bounded
+soak evidence are available under ignored `temp/` artifacts.
+
+**Core Behavior**
+
+- Pick one theme/style for the run and stay visually coherent.
+- Build the world out of real level pieces from that theme:
+  - terrain pieces.
+  - decorative pieces.
+  - simple obstacles.
+  - occasional gadgets only when they make sense for the theme and generated
+    path.
+- Stream pieces from left to right as the lemmings advance.
+- Track progression from the actual rightmost viable lemming position, not from
+  lemming id. Lemmings can turn around, bounce, die, or get stuck, so the
+  generator must derive the lead edge from current positions and viability.
+- Maintain a generation lookahead that varies enough to avoid a mechanical feel
+  but always creates needed terrain before lemmings reach it.
+- Keep generation bounded and efficient:
+  - avoid full scans over all historic lemmings or pieces.
+  - prune old tracking state.
+  - track only recent/near-future generated chunks.
+  - avoid unnecessary allocations in per-tick logic.
+- Use minimal automatic skill assists only where basic generated challenges
+  require them:
+  - build over smaller gaps.
+  - dig or mine through smaller barriers.
+  - bash through simple horizontal obstructions.
+  - assign floaters only for small, intentional fall challenges.
+- Do not spam skills. The ideal run should look like occasional purposeful
+  interventions, not constant AI control.
+
+**Generation Scope**
+
+- Theme selection:
+  - choose a compatible style from available packs.
+  - expose the selected theme in the URL/debug state.
+  - allow deterministic seeds for repros.
+- Piece placement:
+  - maintain a stable baseline path.
+  - add rises, dips, small gaps, small barriers, and visual variety.
+  - use pieces with sensible overlap and no obvious floating/ugly seams.
+  - avoid unreadable clutter around the active path.
+  - prefer tasteful, theme-appropriate decoration away from the route.
+- Lookahead and pacing:
+  - calculate a lead lemming/frontier each update.
+  - decide when more terrain is needed based on distance to generated end,
+    current speed, release rate, and recent lead movement.
+  - vary the lookahead threshold within safe bounds.
+  - guarantee the next playable segment exists before it can be reached.
+- Challenge design:
+  - small gaps that can be bridged with a low number of builders.
+  - small barriers that can be dug, mined, or bashed.
+  - safe landing surfaces for intentional drops.
+  - avoid unavoidable traps, impossible gaps, hard steel blockers, and
+    challenge chains that require precise expert timing.
+- Assist design:
+  - detect the next simple challenge before contact.
+  - spend the smallest useful skill.
+  - prefer the lead viable lemming.
+  - avoid repeated attempts on the same failed situation.
+  - expose recent assist decisions for debugging.
+- Camera:
+  - follow progression smoothly.
+  - do not jump because an old or wrong-id lemming becomes selected.
+  - keep the generated path readable ahead of the lead.
+
+**Workflow Coverage**
+
+- Start procgen and verify it chooses exactly one theme for the run.
+- Verify generated pieces come from the selected theme.
+- Step through fixed seeds and assert generated end stays safely ahead of the
+  rightmost viable lemming.
+- Verify the lead frontier changes correctly when the previous lead turns,
+  bounces, dies, or gets stuck.
+- Verify small gaps trigger minimal builder usage.
+- Verify small barriers trigger minimal dig/mine/bash usage.
+- Verify no assist is spent when terrain is already traversable.
+- Verify generation continues for a long run without unbounded tracking growth.
+- Capture temporary local screenshots around the lead and newest generated
+  pieces when debugging visual quality.
+
+**Deliverables**
+
+- Clear procgen spec in `docs/procgen.md` matching this product intent.
+- Theme selection and seed repro path.
+- Efficient rightmost viable lemming/frontier tracker.
+- Piece-streaming planner using real theme assets.
+- Safe lookahead policy with bounded variation.
+- Minimal skill-assist planner for basic generated challenges.
+- Debug state for selected theme, generated end, lead frontier, recent pieces,
+  and recent assists.
+- E2E and unit coverage for frontier tracking, lookahead, piece placement, and
+  minimal assists.
+- Long-run benchmark coverage for bounded memory and allocation behavior.
+
+**Acceptance**
+
+- Procgen reliably adds coherent theme pieces before lemmings need them.
+- The generated level reads as tasteful themed terrain, not noise.
+- Rightmost progression is based on live viable positions, not lemming id.
+- Small generated gaps/barriers are handled with minimal appropriate skills.
+- Long runs do not grow tracking state without bound.
+
+**Out of Scope**
+
+- Full campaign/level-pack generation.
+- Complex puzzle design requiring precise human timing.
+- Guaranteeing every possible seed is solvable before the solver milestone.
+
+## Milestone 4: Solver and Solvability Platform
+
+**Outcome:** The project gains a comprehensive deterministic solver platform
+that can reason about levels, replay candidate solutions through the real game
+runtime, verify procgen chunks, and eventually provide useful editor
+solvability guidance. The solver should be ambitious, but honest about result
+types: solved, failed, unknown, timed out, or unsupported.
+
+Current status: checkpointed on May 7, 2026. The local solver result schema and
+MCP route output expose replay verification and replay authority fields. A
+`solved` result remains meaningful only when replay verification succeeds, and
+non-real adapter results stay explicitly labeled instead of being promoted to
+full runtime proof.
+
+**Core Principles**
+
+- The real game runtime is the authority. Any proposed solution must replay
+  successfully in the actual simulation.
+- Solver state extraction can be optimized, but it must not become a divergent
+  gameplay implementation.
+- Every solver run is deterministic for a fixed level, seed, skill set, options,
+  and budget.
+- Bounded "unknown" is a valid result. Hanging or unbounded search is not.
+- Explanations matter: a failed or unknown solve should say what blocked
+  progress.
+
+**Foundations**
+
+- Deterministic headless runner:
+  - load built-in levels, editor levels, procgen chunks, and synthetic fixtures.
+  - step/pause/seek through existing runtime APIs.
+  - isolate solver runs from UI state.
+  - support fixed random seeds.
+- State snapshot and hashing:
+  - terrain mask.
+  - steel and one-way constraints.
+  - entrances/exits.
+  - hazards/traps/water.
+  - blockers.
+  - lemming positions, actions, directions, fall distance, timers, skills.
+  - active builder stairs and terrain mutations.
+  - victory/save counts and timer state.
+- Action script format:
+  - skill type.
+  - target lemming selector.
+  - tick or tick window.
+  - preconditions.
+  - expected postconditions.
+  - optional rationale.
+- Replay verifier:
+  - apply candidate scripts to the real runtime.
+  - confirm exit/save target.
+  - emit final state summary.
+  - detect divergence from expected postconditions.
+
+**Environment Understanding**
+
+- Geometry analysis:
+  - walkable surfaces.
+  - cliffs and fall distances.
+  - small gaps.
+  - large gaps.
+  - walls/barriers.
+  - ceilings.
+  - steel-blocked dig/bash/mine paths.
+  - landing zones.
+  - route continuity.
+- Hazard analysis:
+  - trap trigger areas.
+  - water/drown zones.
+  - fire/frying zones.
+  - fall-death zones.
+  - unavoidable hazards.
+  - hazards avoidable by route, bridge, dig, or timing.
+- Skill affordance analysis:
+  - builder reach and stair landing.
+  - basher horizontal tunnel candidates.
+  - miner diagonal tunnel candidates.
+  - digger vertical shaft candidates.
+  - floater/parachute survival.
+  - blocker turnarounds and crowd control.
+  - climber-specific routes where available.
+  - bomber/destructive changes only when allowed by pack mechanics and scope.
+- Reachability graph:
+  - coarse segments connected by walking, falling, building, digging, mining,
+    bashing, turning, and exiting.
+  - annotations for required skills, estimated timing windows, hazards, and
+    uncertainty.
+  - incremental invalidation when terrain changes.
+
+**Solver Layers**
+
+- Tactical local solvers:
+  - bridge small gaps with minimal builders.
+  - cross larger but bounded gaps with multiple builders when skill budget
+    allows.
+  - dig through small vertical barriers.
+  - bash through horizontal barriers.
+  - mine through diagonal barriers or down to a landing.
+  - survive falls with floaters.
+  - turn around with blockers when needed.
+  - route around or neutralize simple hazards.
+  - reach a nearby exit from a bounded local area.
+- Route planner:
+  - find candidate paths from entrance/frontier to exit.
+  - score routes by required skills, timing difficulty, hazard exposure, and
+    terrain mutations.
+  - prefer minimal-skill, low-risk routes.
+  - produce a plan skeleton before exact timing search.
+- Timing search:
+  - choose assignment ticks/windows.
+  - handle lemming identity changes, crowding, and selection ambiguity.
+  - use deterministic pruning for equivalent states.
+  - support beam/A-star-style search with explicit node/time/depth budgets.
+  - keep route-plan guidance separate from runtime verification.
+- Multi-lemming reasoning:
+  - identify useful candidate lemmings by position/action/direction.
+  - reason about lead lemming vs crowd.
+  - detect when a blocker or crowd-control action is required.
+  - avoid plans that save one lemming while dooming the required save count.
+- Terrain mutation planning:
+  - model generated builder stairs, dig shafts, bash tunnels, and mine tunnels.
+  - update reachability after replayed mutations.
+  - detect destructive actions blocked by steel or one-way constraints.
+- Pack/mechanics awareness:
+  - respect pack-specific mechanics that affect skill behavior.
+  - record unsupported mechanics as explicit unsupported result reasons.
+
+**Search and Budgeting**
+
+- Solver options:
+  - max ticks.
+  - max nodes.
+  - max wall time.
+  - max actions.
+  - skill subset.
+  - target save count.
+  - allowed/destructive skills.
+  - tactical-only vs route search vs full search.
+- Result types:
+  - `solved`: verified in runtime.
+  - `failed`: proof-like local reason within supported scope.
+  - `unknown`: search exhausted or unsupported complexity.
+  - `timeout`: wall-time budget reached.
+  - `unsupported`: required mechanic is outside solver scope.
+- Explanations:
+  - no route to exit.
+  - missing landing.
+  - gap exceeds builder budget.
+  - barrier blocked by steel.
+  - hazard unavoidable.
+  - timing window too narrow.
+  - save count unreachable.
+  - state explosion.
+  - unsupported mechanic.
+
+**Procgen Integration**
+
+- Each generated challenge can include an intended solution certificate:
+  - challenge type.
+  - expected skill.
+  - rough assignment window.
+  - expected landing/exit segment.
+  - minimal skill count.
+- Procgen verifies generated gap certificates synchronously through the local
+  tactical solver before placement.
+- Failed local verification causes procgen to simplify, replace, or extend
+  terrain rather than creating impossible content.
+- Fixed procgen seeds replay small generated gap certificates through solver
+  verification and expose accepted decisions through E2E debug state.
+
+**Editor Integration**
+
+- Validation can surface bounded solver advisory warnings when the editor has a
+  rendered preview or other source with route geometry.
+- Dedicated advisory "check solvability" command now refreshes the preview and
+  reports bounded ok/warning guidance without blocking editing or export.
+- Show solver result as guidance, not as an absolute guarantee.
+- Highlight likely problem areas:
+  - unreachable exit.
+  - impossible gap.
+  - lethal drop.
+  - steel-blocked intended dig/bash/mine.
+  - insufficient skill budget.
+  - missing entrance/exit.
+- Allow saving a temporary local failure capture under `temp/` for debugging.
+- Attach concise solver explanations and stable advisory codes to editor
+  validation output.
+
+**MCP/E2E Integration**
+
+- Expose solver runs through deterministic local APIs first.
+- Add MCP tools only after the local API and result schema stabilize.
+- Return compact result JSON with optional references to `temp/` captures during
+  local development.
+- Avoid huge state dumps by default.
+
+**Workflow Coverage**
+
+- Solve tactical positive fixtures for gap, wall, dig, mine, bash, floater, and
+  blocker cases.
+- Return meaningful failed/unknown/unsupported results for negative fixtures.
+- Replay every positive solver result in the real runtime.
+- Solve a small built-in classic level or curated mini-level end to end.
+- Verify procgen local challenge certificates for fixed seeds through unit and
+  E2E debug-state coverage.
+- Run editor-created levels through bounded advisory checks.
+- Verify deterministic output for repeated runs with identical inputs.
+- Verify all budgets terminate cleanly.
+- Save temporary local captures for selected solver failures when requested.
+
+**Deliverables**
+
+- Solver module tree with clear boundaries:
+  - runtime runner.
+  - state extraction.
+  - geometry analysis.
+  - hazard analysis.
+  - skill affordance analysis.
+  - reachability graph.
+  - tactical solvers.
+  - route planner.
+  - timing search.
+  - replay verifier.
+  - result/explanation formatting.
+- Action script schema and replay verifier.
+- Synthetic fixture suite.
+- Curated classic-level mini corpus.
+- Procgen challenge certificate API.
+- Editor advisory integration for validation plus dedicated advisory controls.
+- Solver docs covering capabilities, limits, result meanings, budgets, and
+  reproduction.
+
+**Acceptance**
+
+- Tactical fixtures are solved or rejected deterministically.
+- Positive solutions replay successfully in the real runtime.
+- Negative results are useful enough to guide a developer or level designer.
+- Procgen can use solver checks to avoid simple impossible generated chunks.
+- Editor solvability checks are advisory, bounded, and never block normal work.
+- The solver never hangs or silently exceeds budgets.
+
+**Out of Scope**
+
+- Claiming complete solvability for every original or custom Lemmings level.
+- Replacing gameplay logic with a separate authoritative simulation.
+- Non-deterministic external services.
+- Cloud solving.
+
+## Cross-Cutting Validation
+
+Use the narrowest useful validation while work is in progress. Before merging a
+complete milestone, run the relevant subset plus the standard repo checks:
+
+- `npm run format`
+- `npm run check-undefined`
+- `npm run lint`
+- `npm run typecheck:critical`
+- `npm test`
+- `npm run test-bench-unit`
+
+Milestones that touch Playwright should also run targeted E2E commands. Long
+soaks and broad seed corpuses should stay opt-in unless explicitly promoted to
+CI.
+
+Milestone closeout evidence uses the shared checkpoint format in
+[`TESTING.md`](TESTING.md): commands run, ignored `temp/` artifact paths,
+GitHub issues closed, skipped checks with reasons, unrelated failures, and
+follow-up risks. Capture artifacts remain disposable and must not become a
+second roadmap, gallery, or committed manifest.
+
+## Roadmap Maintenance Rules
+
+- Keep this file focused on active and future work.
+- Do not add separate plan files unless explicitly requested. If one is created,
+  absorb the durable work back into this file and remove the plan file.
+- Remove completed detail when it stops being useful; git preserves history.
+- Prefer observable deliverables over vague intentions.
+- Record hard-cut decisions directly in the relevant milestone.

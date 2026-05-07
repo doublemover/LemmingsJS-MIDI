@@ -23,4 +23,53 @@ describe('EventHandler', function() {
     ev.trigger(2);
     expect(calls).to.eql(['a2', 'c2']);
   });
+
+  it('uses a stable dispatch snapshot when handlers mutate subscriptions', function() {
+    const ev = new EventHandler();
+    const calls = [];
+    const late = () => calls.push('late');
+    const third = () => calls.push('third');
+    const first = () => {
+      calls.push('first');
+      ev.off(third);
+      ev.on(late);
+    };
+    const second = () => calls.push('second');
+
+    ev.on(first);
+    ev.on(second);
+    ev.on(third);
+    ev.trigger();
+    expect(calls).to.eql(['first', 'second', 'third']);
+
+    calls.length = 0;
+    ev.trigger();
+    expect(calls).to.eql(['first', 'second', 'late']);
+  });
+
+  it('reuses the listener snapshot until subscriptions change', function() {
+    const ev = new EventHandler();
+    let calls = 0;
+    let snapshots = 0;
+    const originalFrom = Array.from;
+    ev.on(() => { calls += 1; });
+
+    try {
+      Array.from = function(...args) {
+        snapshots += 1;
+        return originalFrom.apply(this, args);
+      };
+      ev.trigger();
+      ev.trigger();
+      expect(calls).to.equal(2);
+      expect(snapshots).to.equal(1);
+
+      ev.on(() => { calls += 1; });
+      ev.trigger();
+      expect(calls).to.equal(4);
+      expect(snapshots).to.equal(2);
+    } finally {
+      Array.from = originalFrom;
+    }
+  });
 });

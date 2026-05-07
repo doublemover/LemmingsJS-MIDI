@@ -1,13 +1,9 @@
 import { expect } from 'chai';
-import { Lemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { Lemmings } from './helpers/lemmings.js';
 import '../js/lemmings/LemmingStateType.js';
 import { Lemming } from '../js/lemmings/Lemming.js';
 
 describe('Lemming state boundary checks', function () {
-  useGlobalLemmings({
-    game: { lemmingManager: { miniMap: { calls: [], addDeath(...a) { this.calls.push(a); } } } }
-  });
-
   it('renderDebug sets pixel only with action', function () {
     const lem = new Lemming(4, 8);
     const calls = [];
@@ -23,12 +19,13 @@ describe('Lemming state boundary checks', function () {
 
   it('process clamps bottom death position', function () {
     const level = { width: 20, height: 10 };
-    const lem = new Lemming(3, 27);
+    const miniMap = { calls: [], addDeath(...a) { this.calls.push(a); } };
+    const lem = new Lemming(3, 27, undefined, { miniMap });
     lem.action = { process() { return Lemmings.LemmingStateType.WALKING; } };
 
     const res = lem.process(level);
     expect(res).to.equal(Lemmings.LemmingStateType.OUT_OF_LEVEL);
-    expect(globalThis.lemmings.game.lemmingManager.miniMap.calls[0]).to.deep.equal([3, 4]);
+    expect(miniMap.calls[0]).to.deep.equal([3, 4]);
   });
 
   it('process returns whatever the action provides', function () {

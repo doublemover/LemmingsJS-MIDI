@@ -13,4 +13,28 @@
 - `level.useOddTable` – Set to `true` when the pack uses an ODDTABLE resource.
 - `mechanics` *(optional)* – Object of gameplay flags that override or extend the defaults.
 
-`packMechanics.js` supplies defaults like `classicBuilder` or `bomberAssist` for each pack. `ConfigReader` merges these defaults with the `mechanics` object from `config.json` so game code only needs to consult a single merged `mechanics` field.
+`packMechanics.js` supplies defaults like `classicBuilder`, `bomberAssist`, `pauseGlitch`, `nukeGlitch`, and `rightClickGlitch` for each pack. `ConfigReader` merges these defaults with the `mechanics` object from `config.json` so game code only needs to consult a single merged `mechanics` field.
+
+## Runtime startup profiles
+
+The browser runtime also supports URL startup profiles:
+
+- `profile=classic` (default): normal gameplay startup behavior.
+- `profile=editor`: boots gameplay once, then enters editor mode and loads the selected level into the editor.
+- `profile=midi`: normal gameplay with MIDI UI startup defaults.
+- `profile=e2e`: E2E-oriented startup defaults.
+- `profile=perf`: enables perf-focused runtime defaults (`performanceAPI=true` and `perfOverlay=true`).
+
+Short alias: `pr=<classic|midi|editor|e2e|perf>`.
+
+Legacy `profile=gameplay` URLs are normalized to `classic`.
+
+## Bench Profiles
+
+`scripts/bench-performance.js` supports benchmark profiles:
+
+- `--profile=default`: sequence benchmark with perf instrumentation.
+- `--profile=stress`: high-entity stress run (`bench2` path).
+- `--profile=reverse`: sustained reverse-playback stress run.
+
+Overrides (`--mode`, `--duration`, `--sample`, `--entrances`) still apply per run.

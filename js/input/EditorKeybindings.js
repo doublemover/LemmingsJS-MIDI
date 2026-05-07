@@ -1,7 +1,34 @@
 import { KeybindingRegistry, parseKeybindingConfig } from './KeybindingRegistry.js';
 import { formatBindingSpec } from './KeybindingFormatter.js';
+import { GamepadInputController } from './GamepadInputController.js';
 import { EditorTools } from '../editor/EditorTools.js';
+import { getRuntimeDependency } from '../core/dependencies.js';
 
+/**
+ * Keyboard and gamepad shortcut bridge for editor actions.
+ *
+ * @param {object} controller
+ * @param {{
+ *   fileProvider?: {loadString?: (path: string) => Promise<string>} | null,
+ *   onToolChange?: (tool: number) => void,
+ *   onCopy?: () => void,
+ *   onPaste?: () => void,
+ *   onDuplicate?: () => void,
+ *   onNudge?: (dx: number, dy: number, distance: number) => void,
+ *   onSnap?: () => void,
+ *   onUndo?: () => void,
+ *   onRedo?: () => void,
+ *   onDelete?: () => void,
+ *   onBringToFront?: () => void,
+ *   onSendToBack?: () => void,
+ *   onMoveForward?: () => void,
+ *   onMoveBackward?: () => void,
+ *   onPlaytestToggle?: () => void,
+ *   onToggleShortcutOverlay?: () => void,
+ *   onPreview?: () => void,
+ *   onBindingsLoaded?: () => void
+ * }} [options]
+ */
 class EditorKeybindings {
   constructor(controller, options = {}) {
     this.controller = controller;
@@ -22,18 +49,38 @@ class EditorKeybindings {
     this._onToggleShortcutOverlay = options.onToggleShortcutOverlay || null;
     this._onPreview = options.onPreview || null;
     this._onBindingsLoaded = options.onBindingsLoaded || null;
+    this.window = options.window || getRuntimeDependency('window', null);
+    this.performance = options.performance || getRuntimeDependency('performance', null);
+    this.requestAnimationFrame = options.requestAnimationFrame ||
+      this.window?.requestAnimationFrame?.bind?.(this.window) ||
+      null;
+    this.cancelAnimationFrame = options.cancelAnimationFrame ||
+      this.window?.cancelAnimationFrame?.bind?.(this.window) ||
+      null;
     this._down = this._onKeyDown.bind(this);
     this.keybindings = new KeybindingRegistry();
     this._actions = this._createActionHandlers();
+    this.gamepad = new GamepadInputController({
+      mode: 'editor',
+      fileProvider: options.fileProvider || null,
+      window: this.window,
+      navigator: options.navigator ?? this.window?.navigator ?? getRuntimeDependency('navigator', null),
+      storage: options.storage ?? this.window?.localStorage ?? getRuntimeDependency('localStorage', null),
+      onAction: (action, type) => {
+        this._handleAction(action, type);
+      }
+    });
     this._loadKeybindings(options.fileProvider || null);
   }
 
   bind() {
-    window.addEventListener('keydown', this._down);
+    this.window?.addEventListener?.('keydown', this._down);
   }
 
   dispose() {
-    window.removeEventListener('keydown', this._down);
+    this.window?.removeEventListener?.('keydown', this._down);
+    this.gamepad?.dispose?.();
+    this.gamepad = null;
   }
 
   _loadKeybindings(fileProvider) {
@@ -67,12 +114,21 @@ class EditorKeybindings {
     return specs.map(spec => formatBindingSpec(spec)).filter(Boolean);
   }
 
+  getGamepadDisplayBindings(action) {
+    return this.gamepad?.getDisplayBindings(action) || [];
+  }
+
+  setGamepadBindings(config, options) {
+    this.gamepad?.setConfig?.(config, options);
+  }
+
   _createActionHandlers() {
     return {
       editorToolSelect: { down: () => this._setTool(EditorTools.SELECT) },
       editorToolTerrain: { down: () => this._setTool(EditorTools.TERRAIN) },
       editorToolGadget: { down: () => this._setTool(EditorTools.GADGET) },
       editorToolTrigger: { down: () => this._setTool(EditorTools.TRIGGER) },
+      editorToolMidiFlag: { down: () => this._setTool(EditorTools.MIDI_FLAG) },
       editorToolEntrance: { down: () => this._setTool(EditorTools.ENTRANCE) },
       editorToolExit: { down: () => this._setTool(EditorTools.EXIT) },
       editorToolSteel: { down: () => this._setTool(EditorTools.STEEL) },
@@ -144,10 +200,11 @@ class EditorKeybindings {
     };
   }
 
-  _handleAction(action) {
+  _handleAction(action, type = 'down') {
     const handler = this._actions[action];
-    if (!handler?.down) return false;
-    handler.down();
+    const fn = type === 'up' ? handler?.up : handler?.down;
+    if (!fn) return false;
+    fn();
     this._onPreview?.();
     return true;
   }

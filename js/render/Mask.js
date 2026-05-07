@@ -12,6 +12,9 @@ class Mask {
     this.width = width;
     this.height = height;
     this.data = null;
+    this.transparentSpans = null;
+    this.transparentOffsets = null;
+    this.clearableCount = 0;
     if (fr != null) {
       this.loadFromFile(fr, width, height);
     }
@@ -45,6 +48,60 @@ class Mask {
       bitBufferLen--;
     }
     this.data = pixBuf;
+    this._buildTransparentMetrics();
+  }
+
+  getTransparentSpans() {
+    if (!this.transparentSpans || !this.transparentOffsets) {
+      this._buildTransparentMetrics();
+    }
+    return this.transparentSpans;
+  }
+
+  _buildTransparentMetrics() {
+    const data = this.data;
+    const width = this.width | 0;
+    const height = this.height | 0;
+    if (!data || width <= 0 || height <= 0) {
+      this.transparentSpans = {
+        rows: new Int16Array(0),
+        starts: new Int16Array(0),
+        lengths: new Int16Array(0),
+        offsets: new Int32Array(0)
+      };
+      this.transparentOffsets = this.transparentSpans.offsets;
+      this.clearableCount = 0;
+      return;
+    }
+
+    const rows = [];
+    const starts = [];
+    const lengths = [];
+    const offsets = [];
+    for (let y = 0; y < height; y += 1) {
+      const row = y * width;
+      let x = 0;
+      while (x < width) {
+        while (x < width && data[row + x] === 0) x += 1;
+        if (x >= width) break;
+        const start = x;
+        while (x < width && data[row + x] !== 0) {
+          offsets.push(row + x);
+          x += 1;
+        }
+        rows.push(y);
+        starts.push(start);
+        lengths.push(x - start);
+      }
+    }
+    this.transparentSpans = {
+      rows: Int16Array.from(rows),
+      starts: Int16Array.from(starts),
+      lengths: Int16Array.from(lengths),
+      offsets: Int32Array.from(offsets)
+    };
+    this.transparentOffsets = this.transparentSpans.offsets;
+    this.clearableCount = this.transparentOffsets.length;
   }
 }
 export { Mask };

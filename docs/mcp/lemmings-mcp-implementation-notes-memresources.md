@@ -1,5 +1,9 @@
 # LemmingsJS MCP Implementation Notes (Playwright + MCP SDK/Inspector + In‑Memory Resources)
 
+Status: historical implementation notes. The shipped server is under `mcp/`,
+with current usage documented in [`README.md`](README.md) and
+[`protocol-v2.md`](protocol-v2.md).
+
 This document is the “how to build it” companion to the interface spec. It focuses on practical implementation choices, recommended dependencies, and development workflow using the MCP SDK + Inspector.
 
 ---

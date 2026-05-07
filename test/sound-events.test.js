@@ -1,6 +1,11 @@
 import { expect } from 'chai';
 import { withGlobalLemmings } from './helpers/lemmings.js';
-import { SoundEventBus, getSoundBus } from '../js/game/SoundEvents.js';
+import {
+  SoundEventBus,
+  SoundEventTypes,
+  SoundEffectIds,
+  getSoundBus
+} from '../js/game/SoundEvents.js';
 
 describe('SoundEventBus', function() {
   it('skips emit when event is missing or queue is disabled', function() {
@@ -54,6 +59,14 @@ describe('SoundEventBus', function() {
     expect(payload.sfxId).to.equal(2);
     expect(payload.data).to.equal(1);
   });
+
+  it('skips enqueueing when the queue is full and no listeners exist', function() {
+    const bus = new SoundEventBus({ getGameTicks: () => 0, frameTime: 60 });
+    bus._queueLimit = 1;
+    bus.emitSfx(SoundEventTypes.SKILL_SELECT, SoundEffectIds.SKILL_SELECT);
+    bus.emitSfx(SoundEventTypes.SKILL_ASSIGN, SoundEffectIds.SKILL_ASSIGN);
+    expect(bus._queue.length).to.equal(1);
+  });
 });
 
 describe('getSoundBus', function() {
@@ -64,26 +77,7 @@ describe('getSoundBus', function() {
     });
   });
 
-  it('falls back to lemmings global when globalThis is missing', function() {
-    const bus = new SoundEventBus(null);
-    const prev = Object.getOwnPropertyDescriptor(globalThis, 'lemmings');
-    let access = 0;
-    Object.defineProperty(globalThis, 'lemmings', {
-      configurable: true,
-      get() {
-        access += 1;
-        if (access === 1) return null;
-        return { game: { soundEvents: bus } };
-      }
-    });
-    try {
-      expect(getSoundBus()).to.equal(bus);
-    } finally {
-      if (prev) {
-        Object.defineProperty(globalThis, 'lemmings', prev);
-      } else {
-        delete globalThis.lemmings;
-      }
-    }
+  it('returns null when no app context is available', function() {
+    expect(getSoundBus()).to.equal(null);
   });
 });

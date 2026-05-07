@@ -66,7 +66,13 @@ describe('Game', function() {
     });
 
     setDependency('TriggerManager', class {
-      constructor(timer) { this.timer = timer; this.disposed = false; this.added = null; }
+      constructor(timer, levelW, levelH) {
+        this.timer = timer;
+        this.levelW = levelW;
+        this.levelH = levelH;
+        this.disposed = false;
+        this.added = null;
+      }
       addRange(arr) { this.added = arr; }
       dispose() { this.disposed = true; }
     });
@@ -86,7 +92,7 @@ describe('Game', function() {
     setDependency('GameGui', class {
       constructor() { this.renderCalled = 0; this.setDisplay = null; this.disposed = false; }
       setGuiDisplay(d) { this.setDisplay = d; }
-      render() { this.renderCalled++; }
+      render() { this.renderCalled++; return true; }
       dispose() { this.disposed = true; }
     });
 
@@ -106,7 +112,7 @@ describe('Game', function() {
     Object.entries(originals).forEach(([k,v]) => { Lemmings[k] = v; });
   });
 
-  it('loadLevel initializes managers and returns itself', async function() {
+  it('loadLevel initializes managers', async function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     const ret = await game.loadLevel(0, 1);
@@ -119,11 +125,49 @@ describe('Game', function() {
     expect(game.gameDisplay).to.be.instanceOf(Lemmings.GameDisplay);
   });
 
+  it('passes loaded level dimensions into TriggerManager', async function() {
+    const level = {
+      timeLimit: 5,
+      colorPalette: 0,
+      width: 2048,
+      height: 256,
+      triggers: [],
+      objects: [],
+      screenPositionX: 0
+    };
+    const game = new Game(new Lemmings.GameResources());
+    await game.loadCustomLevel(level);
+
+    expect(game.triggerManager.levelW).to.equal(2048);
+    expect(game.triggerManager.levelH).to.equal(256);
+  });
+
   it('loadCustomLevel returns null without a level', async function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     const ret = await game.loadCustomLevel(null);
     expect(ret).to.equal(null);
+  });
+
+  it('loadLevel closes performance measures when loading fails', async function() {
+    const res = new Lemmings.GameResources();
+    const game = new Game(res);
+    let endMeasureCalls = 0;
+    game.startMeasure = () => () => {
+      endMeasureCalls += 1;
+    };
+    res.getLevel = async () => {
+      throw new Error('load failed');
+    };
+    let thrown = null;
+    try {
+      await game.loadLevel(0, 0);
+    } catch (error) {
+      thrown = error;
+    }
+
+    expect(thrown).to.be.instanceOf(Error);
+    expect(endMeasureCalls).to.equal(1);
   });
 
   it('loadCustomLevel initializes managers and returns itself', async function() {
@@ -241,19 +285,19 @@ describe('Game', function() {
     expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.FAILED_OUT_OF_TIME);
   });
 
-  it('getGameState returns RUNNING when bench mode is enabled', function() {    
+  it('getGameState returns RUNNING when bench mode is enabled', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ bench: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
-  it('getGameState returns RUNNING when benchReverse is enabled', function() {  
+  it('getGameState returns RUNNING when benchReverse is enabled', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ benchReverse: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
@@ -341,7 +385,7 @@ describe('Game', function() {
     game.onGameEnd.on(() => { ended++; });
     game.checkForGameOver();
     expect(game.gameVictoryCondition.finalizeCalled).to.equal(1);
-    expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.SUCCEEDED);    
+    expect(game.finalGameState).to.equal(Lemmings.GameStateTypes.SUCCEEDED);
     expect(ended).to.equal(1);
   });
 
@@ -349,11 +393,11 @@ describe('Game', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     withGlobalLemmings({ endless: true }, () => {
-      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);    
+      expect(game.getGameState()).to.equal(Lemmings.GameStateTypes.RUNNING);
     });
   });
 
-  it('getGameState returns failed out of time when needed', function() {        
+  it('getGameState returns failed out of time when needed', function() {
     const res = new Lemmings.GameResources();
     const game = new Game(res);
     game.gameTimer = { getGameLeftTime: () => 0 };

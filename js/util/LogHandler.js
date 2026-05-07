@@ -1,4 +1,7 @@
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getAppContext } from '../core/dependencies.js';
+import { recordPerformanceMeasure } from './performanceInstrumentation.js';
+
+const NOOP = () => {};
 
 class Logger {
   constructor(moduleName) {
@@ -6,10 +9,10 @@ class Logger {
   }
 
   _enabled() {
-    return typeof lemmings !== 'undefined' &&
-            lemmings &&
-            lemmings.game &&
-            lemmings.game.showDebug === true;
+    const app = getAppContext();
+    return !!app &&
+            !!app.game &&
+            app.game.showDebug === true;
   }
 
   /** log an info message */
@@ -66,32 +69,28 @@ class BaseLogger {
      * @returns {Function}
      */
   startMeasure(name, devtools = {}) {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getAppContext();
     const perfEnabled = !!app &&
             (app.performanceAPI === true || app.perfMetrics === true);
     if (!perfEnabled ||
             typeof performance === 'undefined' ||
             typeof performance.now !== 'function' ||
             typeof performance.measure !== 'function') {
-      return () => {};
+      return NOOP;
     }
     const start = performance.now();
     return () => {
-      try {
-        performance.measure(name, {
-          start,
-          detail: { devtools }
-        });
-      } catch {
-        /* ignored */
-      }
+      recordPerformanceMeasure(name, {
+        start,
+        detail: { devtools }
+      });
     };
   }
 }
 
 function withPerformance(name, devtools = {}, fn) {
   return function(...args) {
-    const app = typeof lemmings !== 'undefined' ? lemmings : null;
+    const app = getAppContext();
     const perfEnabled = !!app &&
             (app.performanceAPI === true || app.perfMetrics === true);
     if (!perfEnabled ||
@@ -104,14 +103,10 @@ function withPerformance(name, devtools = {}, fn) {
     try {
       return fn.apply(this, args);
     } finally {
-      try {
-        performance.measure(name, {
-          start,
-          detail: { devtools }
-        });
-      } catch {
-        /* ignored */
-      }
+      recordPerformanceMeasure(name, {
+        start,
+        detail: { devtools }
+      });
     }
   };
 }

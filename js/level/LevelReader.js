@@ -80,17 +80,19 @@ class LevelReader extends BaseLogger {
     fr.setOffset(LEVEL_OBJECT_OFFSET);
     for (let i = 0; i < LEVEL_OBJECT_COUNT; i++) {
       const newOb = new LevelElement();
-      newOb.x = fr.readWord() - OBJECT_X_OFFSET;
-      newOb.y = fr.readWord();
-      newOb.id = fr.readWord();
+      const rawX = fr.readWord();
+      const rawY = fr.readWord();
+      const rawId = fr.readWord();
       const flags = fr.readWord();
+      if (rawX === 0 && rawY === 0 && rawId === 0 && flags === 0)
+        continue;
+      newOb.x = rawX - OBJECT_X_OFFSET;
+      newOb.y = rawY;
+      newOb.id = rawId;
       const isUpsideDown = ((flags & 0x0080) > 0);
       const noOverwrite = ((flags & 0x8000) > 0);
       const onlyOverwrite = ((flags & 0x4000) > 0);
       newOb.drawProperties = new DrawProperties(isUpsideDown, noOverwrite, onlyOverwrite, false);
-      /// ignore empty items/objects
-      if (flags == 0)
-        continue;
       this.objects.push(newOb);
     }
   }

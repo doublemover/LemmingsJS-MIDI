@@ -14,7 +14,8 @@
       "args": ["${__dirname}/mcp/server.js"],
       "env": {
         "LEMMINGS_MCP_BASE_URL": "${user_config.base_url}",
-        "LEMMINGS_MCP_PATH": "${user_config.path}"
+        "LEMMINGS_MCP_PATH": "${user_config.path}",
+        "LEMMINGS_MCP_SURFACES": "${user_config.surfaces}"
       }
     }
   },
@@ -32,6 +33,13 @@
       "description": "Path to load for MCP sessions",
       "required": false,
       "default": "/?e2e=1"
+    },
+    "surfaces": {
+      "type": "string",
+      "title": "Tool Surfaces",
+      "description": "Comma-separated tool surfaces to enable (game,editor,interact)",
+      "required": false,
+      "default": "game,editor,interact"
     }
   }
 }

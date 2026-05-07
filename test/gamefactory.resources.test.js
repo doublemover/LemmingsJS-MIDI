@@ -1,6 +1,7 @@
 import { expect } from 'chai';
-import { Lemmings, setDependency, setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
+import { setGlobalLemmings, useGlobalLemmings } from './helpers/lemmings.js';
 import { GameFactory } from '../js/game/GameFactory.js';
+import { applyDependencyOverrides } from './support/deps.js';
 
 useGlobalLemmings({ game: { showDebug: false } });
 
@@ -17,19 +18,6 @@ const makeConfigReaderStub = (getConfig) => class ConfigReaderStub {
   }
 };
 
-const applyDeps = (overrides) => {
-  const originals = {};
-  for (const [key, value] of Object.entries(overrides)) {
-    originals[key] = Lemmings[key];
-    setDependency(key, value);
-  }
-  return () => {
-    for (const [key, value] of Object.entries(originals)) {
-      setDependency(key, value);
-    }
-  };
-};
-
 const withPerfStub = async (perf, lemmings, fn) => {
   const origPerf = globalThis.performance;
   globalThis.performance = perf;
@@ -43,6 +31,10 @@ const withPerfStub = async (perf, lemmings, fn) => {
 };
 
 describe('GameFactory resource helpers', function () {
+  afterEach(function () {
+    delete globalThis.__LEMMINGS_RUNTIME_REVISION__;
+  });
+
   it('loads config and resources and builds Game', async function () {
     const mockConfig = { path: 'data', level: {} };
     const ConfigReaderStub = makeConfigReaderStub(() => mockConfig);
@@ -53,7 +45,7 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -89,7 +81,7 @@ describe('GameFactory resource helpers', function () {
     class GameStub {
       constructor(res) { this.res = res; }
     }
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -110,7 +102,7 @@ describe('GameFactory resource helpers', function () {
 
   it('rejects when config is missing', async function () {
     const ConfigReaderStub = makeConfigReaderStub(() => null);
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub
     });
@@ -134,7 +126,7 @@ describe('GameFactory resource helpers', function () {
     const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -159,7 +151,7 @@ describe('GameFactory resource helpers', function () {
     const ConfigReaderStub = makeConfigReaderStub(() => ({ path: 'data', level: {} }));
     class GameResourcesStub {}
     class GameStub {}
-    const restore = applyDeps({
+    const restore = applyDependencyOverrides({
       FileProvider: FileProviderStub,
       ConfigReader: ConfigReaderStub,
       GameResources: GameResourcesStub,
@@ -175,5 +167,34 @@ describe('GameFactory resource helpers', function () {
       }
     );
     restore();
+  });
+
+  it('passes runtime cache-bust revision to FileProvider', async function () {
+    class CapturingFileProvider {
+      constructor(root, options) {
+        this.root = root;
+        this.options = options || {};
+      }
+      loadString() {
+        return Promise.resolve('[]');
+      }
+    }
+    const restore = applyDependencyOverrides({
+      FileProvider: CapturingFileProvider,
+      ConfigReader: makeConfigReaderStub(() => ({ path: 'data', level: {} }))
+    });
+    const previousLocation = globalThis.location;
+    globalThis.location = { search: '?rev=phase30a' };
+    try {
+      const gf = new GameFactory('root');
+      expect(gf.fileProvider.options.cacheBustRevision).to.equal('phase30a');
+    } finally {
+      if (previousLocation === undefined) {
+        delete globalThis.location;
+      } else {
+        globalThis.location = previousLocation;
+      }
+      restore();
+    }
   });
 });

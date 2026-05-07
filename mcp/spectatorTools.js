@@ -1,0 +1,253 @@
+import fs from 'node:fs/promises';
+import http from 'node:http';
+import { WebSocketServer } from 'ws';
+import { normalizeSpectatorStreamConfig, SpectatorBroadcaster } from './spectatorBroadcaster.js';
+
+/**
+ * Build spectator lifecycle helpers bound to the MCP runtime dependencies.
+ *
+ * @param {{
+ *   spectatorHtmlPath: string,
+ *   captureFrame: (session: any, options: object) => Promise<any>,
+ *   resolveCanvasMetrics: (session: any) => Promise<any>,
+ *   normalizeKeyToken: (token: string) => string,
+ *   ensureGameFocus: (session: any) => Promise<void>
+ * }} deps
+ * @returns {{
+ *   startSpectatorServer: (session: any, options?: object) => Promise<string>,
+ *   stopSpectatorServer: (session: any) => void
+ * }}
+ */
+const createSpectatorTools = ({
+  spectatorHtmlPath,
+  captureFrame,
+  resolveCanvasMetrics,
+  normalizeKeyToken,
+  ensureGameFocus
+}) => {
+  const toNumberOrNaN = (value) => {
+    try {
+      return Number(value);
+    } catch {
+      return Number.NaN;
+    }
+  };
+
+  const normalizeSpectatorPort = (value) => {
+    const parsed = toNumberOrNaN(value);
+    if (!Number.isFinite(parsed)) return 0;
+    const normalized = Math.trunc(parsed);
+    if (normalized < 0 || normalized > 65535) return 0;
+    return normalized;
+  };
+
+  const handleSpectatorInput = async (session, payload) => {
+    if (!payload || !session.spectator?.allowHumanInput) return;
+    if (payload.type === 'key') {
+      if (!['down', 'up', 'press'].includes(payload.action)) return;
+      const normalizedKey = normalizeKeyToken(payload.key);
+      const key = String(normalizedKey ?? '').trim();
+      if (!key) return;
+      await ensureGameFocus(session);
+      if (payload.action === 'down') {
+        await session.page.keyboard.down(key);
+      } else if (payload.action === 'up') {
+        await session.page.keyboard.up(key);
+      } else {
+        await session.page.keyboard.press(key);
+      }
+      session.events.add({
+        source: 'human',
+        type: 'input',
+        summary: `key:${payload.action}:${key}`
+      });
+      return;
+    }
+    if (payload.type === 'click') {
+      if (!Number.isFinite(payload.x) || !Number.isFinite(payload.y)) return;
+      if (payload.x < 0 || payload.x > 1 || payload.y < 0 || payload.y > 1) return;
+      const metrics = await resolveCanvasMetrics(session);
+      if (!metrics) return;
+      const rectX = Number(metrics?.rect?.x);
+      const rectY = Number(metrics?.rect?.y);
+      const rectWidth = Number(metrics?.rect?.width);
+      const rectHeight = Number(metrics?.rect?.height);
+      if (
+        !Number.isFinite(rectX) ||
+        !Number.isFinite(rectY) ||
+        !Number.isFinite(rectWidth) ||
+        !Number.isFinite(rectHeight) ||
+        rectWidth <= 0 ||
+        rectHeight <= 0
+      ) {
+        return;
+      }
+      const normX = Math.min(1, Math.max(0, payload.x));
+      const normY = Math.min(1, Math.max(0, payload.y));
+      const maxOffsetX = Math.max(0, rectWidth - 1);
+      const maxOffsetY = Math.max(0, rectHeight - 1);
+      const x = rectX + Math.min(maxOffsetX, normX * rectWidth);
+      const y = rectY + Math.min(maxOffsetY, normY * rectHeight);
+      await session.page.mouse.click(x, y);
+      session.events.add({
+        source: 'human',
+        type: 'input',
+        summary: `click:${payload.x.toFixed(2)},${payload.y.toFixed(2)}`
+      });
+    }
+  };
+
+  const startSpectatorServer = async (session, options = {}) => {
+    const html = await fs.readFile(spectatorHtmlPath, 'utf8');
+    const port = normalizeSpectatorPort(options.port);
+    const allowHumanInput = options.allowHumanInput === true;
+    const streamConfig = normalizeSpectatorStreamConfig(options);
+    const broadcaster = new SpectatorBroadcaster({
+      frameSkipPolicy: streamConfig.frameSkipPolicy
+    });
+
+    const server = http.createServer((req, res) => {
+      if (req.url && req.url !== '/' && req.url !== '/index.html') {
+        res.writeHead(404);
+        res.end('Not found');
+        return;
+      }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      res.end(html);
+    });
+
+    const wss = new WebSocketServer({ server });
+
+    wss.on('connection', (ws) => {
+      broadcaster.attach(ws);
+      ws.send(JSON.stringify({
+        type: 'hello',
+        allowHumanInput,
+        streamConfig
+      }));
+      if (session.spectator?.lastFrame) {
+        ws.send(JSON.stringify(session.spectator.lastFrame));
+      }
+      ws.on('message', async (data) => {
+        if (!allowHumanInput) return;
+        let payload;
+        try {
+          payload = JSON.parse(data.toString());
+        } catch {
+          return;
+        }
+        try {
+          await handleSpectatorInput(session, payload);
+        } catch (error) {
+          session.events.add({
+            source: 'system',
+            type: 'error',
+            summary: 'spectator input failed',
+            data: { message: error?.message || String(error) }
+          });
+        }
+      });
+      ws.on('close', () => {
+        broadcaster.detach(ws);
+      });
+      ws.on('error', () => {
+        broadcaster.detach(ws);
+      });
+    });
+
+    await new Promise((resolve, reject) => {
+      const onError = (error) => {
+        server.off('listening', onListening);
+        reject(error);
+      };
+      const onListening = () => {
+        server.off('error', onError);
+        resolve();
+      };
+      server.once('error', onError);
+      server.once('listening', onListening);
+      server.listen(port, '127.0.0.1');
+    });
+    const address = server.address();
+    const actualPort = typeof address === 'object' && address ? address.port : port;
+    const baseUrl = `http://127.0.0.1:${actualPort}`;
+
+    session.spectator = {
+      server,
+      wss,
+      broadcaster,
+      allowHumanInput,
+      streamConfig,
+      url: baseUrl,
+      lastFrame: null,
+      frameTimer: null,
+      isCapturing: false
+    };
+
+    session.spectator.frameTimer = setInterval(async () => {
+      const spectator = session.spectator;
+      if (!spectator) return;
+      if (spectator.isCapturing) return;
+      if (spectator.broadcaster.getSnapshot().connectedClients <= 0) return;
+      spectator.isCapturing = true;
+      try {
+        const result = await captureFrame(session, {
+          target: 'stageCanvas',
+          format: 'jpeg',
+          quality: spectator.streamConfig.jpegQuality,
+          delivery: 'inline'
+        });
+        if (session.spectator !== spectator) return;
+        if (result.ok && result.frame?.dataBase64) {
+          const payload = {
+            type: 'frame',
+            mimeType: result.frame.mimeType,
+            dataBase64: result.frame.dataBase64,
+            tickIndex: result.frame.tickIndex ?? null,
+            takenAt: result.frame.takenAt ?? null
+          };
+          spectator.lastFrame = payload;
+          spectator.broadcaster.broadcast(payload);
+        }
+      } catch (err) {
+        session.events.add({
+          source: 'system',
+          type: 'error',
+          summary: 'spectator capture failed',
+          data: { message: err ? String(err) : 'unknown' }
+        });
+      } finally {
+        if (session.spectator === spectator) {
+          spectator.isCapturing = false;
+        }
+      }
+    }, streamConfig.frameIntervalMs);
+
+    return baseUrl;
+  };
+
+  const stopSpectatorServer = (session) => {
+    if (!session.spectator) return;
+    const { server, wss, frameTimer, broadcaster } = session.spectator;
+    if (frameTimer) clearInterval(frameTimer);
+    broadcaster?.closeAll();
+    try {
+      wss?.close();
+    } catch {
+      /* ignore */
+    }
+    try {
+      server?.close();
+    } catch {
+      /* ignore */
+    }
+    session.spectator = null;
+  };
+
+  return {
+    startSpectatorServer,
+    stopSpectatorServer
+  };
+};
+
+export { createSpectatorTools };

@@ -123,6 +123,25 @@ describe('NxlvParser', function () {
     assert.strictEqual(level.terrains[0].props.X, 1);
   });
 
+  it('parses MIDI flag gadget props with semantic types', function () {
+    const text = [
+      '$GADGET',
+      '  STYLE dirt',
+      '  PIECE 3',
+      '  X 50',
+      '  Y 60',
+      '  MIDI_FLAG true',
+      '  MIDI_FLAG_ID 7',
+      '  MIDI_FLAG_COOLDOWN 12',
+      '$END'
+    ].join('\n');
+
+    const level = NxlvParser.parse(text);
+    assert.strictEqual(level.gadgets[0].props.MIDI_FLAG, true);
+    assert.strictEqual(level.gadgets[0].props.MIDI_FLAG_ID, 7);
+    assert.strictEqual(level.gadgets[0].props.MIDI_FLAG_COOLDOWN, 12);
+  });
+
   it('initializes skillset unknown lines when missing', function () {
     const original = Object.getOwnPropertyDescriptor(EditorLevel.prototype, 'skillsetUnknownLines');
     let firstAssignment = true;

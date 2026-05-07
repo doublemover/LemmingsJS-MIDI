@@ -4,6 +4,7 @@ import { NodeFileProvider } from './NodeFileProvider.js';
 import { PNG } from 'pngjs';
 import fs from 'fs';
 import path from 'path';
+import { once } from 'events';
 import { PackFilePart } from '../js/data/PackFilePart.js';
 
 function usage() {
@@ -31,7 +32,6 @@ async function main() {
   // Use an empty root path so absolute input paths work correctly
   const provider = new NodeFileProvider('');
   const datReader = await provider.loadBinary(path.dirname(datFile), path.basename(datFile));
-  const buf = fs.readFileSync(datFile);
   const container = new Lemmings.FileContainer(datReader);
 
   // Map of part index -> new raw buffer
@@ -111,34 +111,41 @@ async function main() {
     part._compressedData = packed.byteArray; // store temporarily
   }
 
-  // Serialize new container
+  // Serialize new container using streamed writes so large packs do not require
+  // a single contiguous output allocation.
   const HEADER_SIZE = 10;
+  const outStream = fs.createWriteStream(outFile);
   let total = 0;
-  for (const part of container.parts) {
-    const size = (part._compressedData ? part._compressedData.length : part.compressedSize) + HEADER_SIZE;
-    total += size;
-  }
-  const out = new Uint8Array(total);
-  let offset = 0;
+  const writeChunk = async (chunk) => {
+    if (!outStream.write(chunk)) {
+      await once(outStream, 'drain');
+    }
+  };
+
   for (const part of container.parts) {
     const data = part._compressedData || datReader.data.subarray(part.offset, part.offset + part.compressedSize);
-    out[offset] = part.initialBufferLen;
-    out[offset+1] = part.checksum;
-    out[offset+2] = (part.unknown1 >> 8) & 0xFF;
-    out[offset+3] = part.unknown1 & 0xFF;
-    out[offset+4] = (part.decompressedSize >> 8) & 0xFF;
-    out[offset+5] = part.decompressedSize & 0xFF;
-    out[offset+6] = (part.unknown0 >> 8) & 0xFF;
-    out[offset+7] = part.unknown0 & 0xFF;
+    const header = new Uint8Array(HEADER_SIZE);
+    header[0] = part.initialBufferLen;
+    header[1] = part.checksum;
+    header[2] = (part.unknown1 >> 8) & 0xFF;
+    header[3] = part.unknown1 & 0xFF;
+    header[4] = (part.decompressedSize >> 8) & 0xFF;
+    header[5] = part.decompressedSize & 0xFF;
+    header[6] = (part.unknown0 >> 8) & 0xFF;
+    header[7] = part.unknown0 & 0xFF;
     const size = data.length + HEADER_SIZE;
-    out[offset+8] = (size >> 8) & 0xFF;
-    out[offset+9] = size & 0xFF;
-    out.set(data, offset + HEADER_SIZE);
-    offset += size;
+    header[8] = (size >> 8) & 0xFF;
+    header[9] = size & 0xFF;
+    await writeChunk(header);
+    await writeChunk(data);
+    total += size;
   }
 
-  fs.writeFileSync(outFile, out);
-  console.log(`Wrote ${outFile}`);
+  await new Promise((resolve, reject) => {
+    outStream.once('error', reject);
+    outStream.end(resolve);
+  });
+  console.log(`Wrote ${outFile} (${total} bytes)`);
 }
 
 await main();

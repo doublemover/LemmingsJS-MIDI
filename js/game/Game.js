@@ -15,7 +15,35 @@ import { ObjectManager } from '../level/ObjectManager.js';
 import { ParticleTable } from '../render/ParticleTable.js';
 import { SoundEventBus, SoundEventTypes, SoundEffectIds } from './SoundEvents.js';
 import { TriggerManager } from '../level/TriggerManager.js';
-import { getDependency } from '../core/dependencies.js';
+import { getAppContext, getDependency } from '../core/dependencies.js';
+import { createGameRuntime } from './GameRuntime.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
+
+const RUN_LOGIC_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Game State',
+  color: 'secondary',
+  tooltipText: 'runGameLogic'
+});
+
+const GAME_OVER_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Game State',
+  color: 'tertiary',
+  tooltipText: 'checkForGameOver'
+});
+
+const RENDER_MEASURE_DETAIL = Object.freeze({
+  track: 'Game',
+  trackGroup: 'Render',
+  color: 'primary-dark',
+  tooltipText: 'render'
+});
+
+const getApp = () => getAppContext();
 
 class Game extends BaseLogger {
   constructor (gameResources) {
@@ -39,6 +67,7 @@ class Game extends BaseLogger {
     this.soundEvents          = null;
     this.history              = null;
     this.timeTravel           = null;
+    this.runtime              = null;
     this.inputEnabled         = true;
 
     this.onGameEnd      = new EventHandler();
@@ -84,6 +113,7 @@ class Game extends BaseLogger {
     this.soundEvents     = null;
     this.history         = null;
     this.timeTravel      = null;
+    this.runtime         = null;
 
     this.finalGameState  = GameStateTypes.UNKNOWN;
   }
@@ -95,10 +125,13 @@ class Game extends BaseLogger {
       color: 'primary',
       tooltipText: `loadLevel ${levelGroupIndex}:${levelIndex}`
     });
-    const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
-    await this._initLevel(level, { levelGroupIndex, levelIndex });
-    endMeasure();
-    return this; // keeps legacy promise signature intact
+    try {
+      const level = await this.gameResources.getLevel(levelGroupIndex, levelIndex);
+      await this._initLevel(level, { levelGroupIndex, levelIndex });
+      return this;
+    } finally {
+      endMeasure();
+    }
   }
 
   async loadCustomLevel(level, options = {}) {
@@ -131,6 +164,8 @@ class Game extends BaseLogger {
     const TimeTravel = getDependency('TimeTravelController', TimeTravelController);
     this.timeTravel = new TimeTravel(this, this.history);
     this.gameTimer?.setTimeTravelController?.(this.timeTravel);
+    this.runtime = createGameRuntime(this, getApp());
+    level.setRuntime?.(this.runtime);
 
     const CommandMgr = getDependency('CommandManager', CommandManager);
     const Skills = getDependency('GameSkills', GameSkills);
@@ -139,7 +174,7 @@ class Game extends BaseLogger {
     this.commandManager       = new CommandMgr(this, this.gameTimer);
     this.skills               = new Skills(level);
     this.gameVictoryCondition = new Victory(level);
-    this.triggerManager       = new Triggers(this.gameTimer);
+    this.triggerManager       = new Triggers(this.gameTimer, level.width, level.height, 16, this.runtime);
     this.triggerManager.addRange(level.triggers);
 
     const [masks, lemSprite] = await Promise.all([
@@ -157,6 +192,7 @@ class Game extends BaseLogger {
       this.gameVictoryCondition,
       masks,
       particleTable,
+      this.runtime
     );
 
     const skillPanelSprites = await this.gameResources.getSkillPanelSprite(level.colorPalette);
@@ -231,26 +267,33 @@ class Game extends BaseLogger {
   }
 
   runGameLogic () {
-    const endMeasure = this.startMeasure('Game runGameLogic', {
-      track: 'Game',
-      trackGroup: 'Game State',
-      color: 'secondary',
-      tooltipText: 'runGameLogic'
-    });
-    if (!this.level) {
-      this.log.log('level not loaded!');
-      endMeasure();
-      return;
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (!this.level) {
+        this.log.log('level not loaded!');
+        return;
+      }
+      this.lemmingManager.tick();
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('Game runGameLogic', {
+          start: perfStart,
+          detail: { devtools: RUN_LOGIC_MEASURE_DETAIL }
+        });
+      }
     }
-    this.lemmingManager.tick();
-    endMeasure();
   }
 
   getGameState () {
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
+    const app = getApp();
+    if (app?.bench || app?.bench2 || app?.benchReverse) {
       return GameStateTypes.RUNNING;
     }
-    if (typeof lemmings !== 'undefined' && lemmings.endless) {
+    if (app?.endless) {
       return GameStateTypes.RUNNING;
     }
     if (this.finalGameState !== GameStateTypes.UNKNOWN) {
@@ -267,7 +310,7 @@ class Game extends BaseLogger {
       return won ? GameStateTypes.SUCCEEDED
         : GameStateTypes.FAILED_LESS_LEMMINGS;
     }
-    if (!lemmings?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
+    if (!app?.endless && this.gameTimer?.getGameLeftTime() <= 0) {
       return won ? GameStateTypes.SUCCEEDED
         : GameStateTypes.FAILED_OUT_OF_TIME;
     }
@@ -275,50 +318,67 @@ class Game extends BaseLogger {
   }
 
   checkForGameOver () {
-    const endMeasure = this.startMeasure('Game checkForGameOver', {
-      track: 'Game',
-      trackGroup: 'Game State',
-      color: 'tertiary',
-      tooltipText: 'checkForGameOver'
-    });
-    if (typeof lemmings !== 'undefined' && (lemmings.bench || lemmings.bench2 || lemmings.benchReverse)) {
-      endMeasure();
-      return;
-    }
-    if (this.finalGameState !== GameStateTypes.UNKNOWN) {
-      endMeasure();
-      return;
-    }
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (app?.bench || app?.bench2 || app?.benchReverse) {
+        return;
+      }
+      if (this.finalGameState !== GameStateTypes.UNKNOWN) {
+        return;
+      }
 
-    const state = this.getGameState();
-    if (state !== GameStateTypes.RUNNING &&
-        state !== GameStateTypes.UNKNOWN) {
-      this.gameVictoryCondition.doFinalize();
-      this.finalGameState = state;
-      const Result = getDependency('GameResult', GameResult);
-      this.onGameEnd?.trigger(new Result(this));
+      const state = this.getGameState();
+      if (state !== GameStateTypes.RUNNING &&
+          state !== GameStateTypes.UNKNOWN) {
+        this.gameVictoryCondition.doFinalize();
+        this.finalGameState = state;
+        const Result = getDependency('GameResult', GameResult);
+        this.onGameEnd?.trigger(new Result(this));
+      }
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('Game checkForGameOver', {
+          start: perfStart,
+          detail: { devtools: GAME_OVER_MEASURE_DETAIL }
+        });
+      }
     }
-    endMeasure();
   }
 
   render () {
-    const endMeasure = this.startMeasure('Game render', {
-      track: 'Game',
-      trackGroup: 'Render',
-      color: 'primary-dark',
-      tooltipText: 'render'
-    });
-    if (this.gameDisplay) {
-      this.gameDisplay.render();
-      if (this.showDebug) this.gameDisplay.renderDebug();
+    const app = getApp();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (this.gameDisplay) {
+        this.gameDisplay.render();
+        if (this.showDebug) this.gameDisplay.renderDebug();
+        this.display?.commitFrameForBackgroundRestore?.();
+      }
+      if (this.guiDisplay) {
+        const guiDirty = this.gameGui.render();
+        if (guiDirty) {
+          this.guiDisplay.redraw();
+        } else if (this.display?.hasPendingDirty?.()) {
+          this.display.redraw();
+        }
+      } else if (this.display) {
+        this.display.redraw();
+      }
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('Game render', {
+          start: perfStart,
+          detail: { devtools: RENDER_MEASURE_DETAIL }
+        });
+      }
     }
-    if (this.guiDisplay) {
-      this.gameGui.render();
-      this.guiDisplay.redraw();
-    } else if (this.display) {
-      this.display.redraw();
-    }
-    endMeasure();
   }
 }
 export { Game };

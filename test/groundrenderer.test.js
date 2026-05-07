@@ -4,6 +4,7 @@ import '../js/render/ColorPalette.js';
 import { DrawProperties } from '../js/render/DrawProperties.js';
 import { GroundRenderer } from '../js/render/GroundRenderer.js';
 import { DisplayImage } from '../js/render/DisplayImage.js';
+import { Frame } from '../js/render/Frame.js';
 
 class SimpleImageData {
   constructor(width, height) {
@@ -30,6 +31,10 @@ function makePalette(color) {
 
 function makeTerrain(arr, width, height, palette) {
   return { width, height, frames: [Uint8Array.from(arr)], palette };
+}
+
+function makeRgbaTerrain(frame) {
+  return { width: frame.width, height: frame.height, frames: [frame], palette: null };
 }
 
 function color32(r, g, b) {
@@ -144,5 +149,65 @@ describe('GroundRenderer small maps', function() {
     display.setBackground(gr.img.getData());
     const BLACK = color32(0, 0, 0);
     expect(display.buffer32[0]).to.equal(BLACK);
+  });
+
+  it('renders RGBA terrain frames with transparency masks', function() {
+    const rgba = new Frame(2, 1);
+    rgba.clear();
+    rgba.setPixel(0, 0, color32(9, 8, 7));
+    const terrainImages = [makeRgbaTerrain(rgba)];
+    const levelReader = {
+      levelWidth: 2,
+      levelHeight: 1,
+      terrains: [{ id: 0, x: 0, y: 0, drawProperties: new DrawProperties(false, false, false, false) }]
+    };
+
+    const gr = new GroundRenderer();
+    gr.createGroundMap(levelReader, terrainImages);
+
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(2, 1);
+    display.setBackground(gr.img.getData());
+
+    const BLACK = color32(0, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([color32(9, 8, 7), BLACK]);
+  });
+
+  it('downscales indexed terrain using sourceScale factors', function() {
+    const pal = makePalette(color32(2, 4, 6));
+    const src = {
+      width: 4,
+      height: 4,
+      frames: [Uint8Array.from([
+        1, 0x80, 1, 0x80,
+        0x80, 0x80, 0x80, 0x80,
+        1, 0x80, 0x80, 0x80,
+        0x80, 0x80, 0x80, 0x80
+      ])],
+      palette: pal,
+      sourceScaleX: 2,
+      sourceScaleY: 2
+    };
+    const levelReader = {
+      levelWidth: 2,
+      levelHeight: 2,
+      terrains: [{ id: 0, x: 0, y: 0, drawProperties: new DrawProperties(false, false, false, false) }]
+    };
+
+    const gr = new GroundRenderer();
+    gr.createGroundMap(levelReader, [src]);
+
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(2, 2);
+    display.setBackground(gr.img.getData());
+
+    const c = color32(2, 4, 6);
+    const BLACK = color32(0, 0, 0);
+    expect(Array.from(display.buffer32)).to.eql([
+      c, c,
+      c, BLACK
+    ]);
   });
 });

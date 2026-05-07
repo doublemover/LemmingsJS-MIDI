@@ -1,29 +1,51 @@
 import { DisplayImage } from '../render/DisplayImage.js';
 
 class ProcgenStageAdapter {
-  constructor({ view, controller, canvas }) {
+  constructor({ view, controller, canvas, windowRef }) {
     this.view = view || null;
     this.controller = controller || null;
     this.canvas = canvas || null;
+    this.window = windowRef || controller?.window || globalThis?.window || null;
     this.stage = view?.stage || null;
+    this._wheelHandler = null;
     this._resizeHandler = null;
     this._snapOverridden = false;
+    this._snapScaleOriginal = null;
+    this._installed = false;
     this.maxScale = 6;
     this.zoomStep = 1.1;
   }
 
   install() {
-    if (!this.stage) return;
+    if (this._installed || !this.stage) return;
     this._ensureGuiBuffer();
     this._overrideScaleClamp();
     this._bindZoom();
     this._bindResize();
+    this._installed = true;
+  }
+
+  /** Release all bound listeners and restore stage behavior. */
+  dispose() {
+    this._unbindZoom();
+    this._unbindResize();
+    this._restoreScaleClamp();
+    this._installed = false;
+  }
+
+  updateStageSize() {
+    if (!this.stage) return;
+    this._ensureGuiBuffer();
+    this.stage.updateStageSize?.();
   }
 
   _bindZoom() {
-    if (!this.canvas) return;
-    this.canvas.addEventListener('wheel', event => {
+    if (!this.canvas || this._wheelHandler) return;
+    this._wheelHandler = event => {
       event.preventDefault();
+      if (!Number.isFinite(event?.deltaY) || event.deltaY === 0) {
+        return;
+      }
       const stage = this.stage;
       const stageImage = stage?.gameImgProps;
       if (!stage || !stageImage) return;
@@ -33,14 +55,28 @@ class ProcgenStageAdapter {
       if (next === current) return;
       stage.applyViewport(stageImage, stageImage.viewPoint.x || 0, stageImage.viewPoint.y || 0, next);
       stage.redraw();
-    }, { passive: false });
+    };
+    this.canvas.addEventListener('wheel', this._wheelHandler, { passive: false });
+  }
+
+  _unbindZoom() {
+    if (!this.canvas || !this._wheelHandler) return;
+    this.canvas.removeEventListener('wheel', this._wheelHandler);
+    this._wheelHandler = null;
   }
 
   _bindResize() {
+    if (this._resizeHandler || !this.window?.addEventListener) return;
     this._resizeHandler = () => {
-      this._ensureGuiBuffer();
+      this.updateStageSize();
     };
-    window.addEventListener('resize', this._resizeHandler);
+    this.window.addEventListener('resize', this._resizeHandler);
+  }
+
+  _unbindResize() {
+    if (!this._resizeHandler || !this.window?.removeEventListener) return;
+    this.window.removeEventListener('resize', this._resizeHandler);
+    this._resizeHandler = null;
   }
 
   _clampScale(scale) {
@@ -66,6 +102,7 @@ class ProcgenStageAdapter {
   _overrideScaleClamp() {
     if (this._snapOverridden || !this.stage) return;
     this._snapOverridden = true;
+    this._snapScaleOriginal = this.stage.snapScale;
     this.stage.snapScale = (rawScale) => {
       const display = this.stage?.gameImgProps?.display;
       const { width: dispW, height: dispH } = display?.worldDataSize || {};
@@ -81,6 +118,13 @@ class ProcgenStageAdapter {
     };
   }
 
+  _restoreScaleClamp() {
+    if (!this._snapOverridden || !this.stage) return;
+    this.stage.snapScale = this._snapScaleOriginal;
+    this._snapScaleOriginal = null;
+    this._snapOverridden = false;
+  }
+
   _getWorldWidth() {
     const level = this.view?.game?.level || this.controller?.level;
     const extent = this.controller?.getGroundExtentX?.();
@@ -91,7 +135,11 @@ class ProcgenStageAdapter {
   _ensureGuiBuffer() {
     if (!this.stage) return;
     const guiProps = this.stage.guiImgProps;
+    if (!guiProps || typeof guiProps !== 'object') return;
     if (guiProps?.display) return;
+    if (typeof guiProps?.viewPoint?.setX !== 'function' || typeof guiProps?.viewPoint?.setY !== 'function') {
+      return;
+    }
     const display = new DisplayImage(this.stage);
     display.initSize(1, 1);
     guiProps.display = display;

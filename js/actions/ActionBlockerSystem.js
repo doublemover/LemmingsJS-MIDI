@@ -12,7 +12,7 @@ class ActionBlockerSystem extends ActionBaseSystem {
   }
 
   process(level, lem) {
-    if (lem.state == 0) {
+    if (lem.state === 0) {
       const trigger1 = new Trigger(TriggerTypes.BLOCKER_LEFT, lem.x - 6, lem.y + 4, lem.x - 3, lem.y - 10, 0, 0, lem);
       const trigger2 = new Trigger(TriggerTypes.BLOCKER_RIGHT, lem.x + 7, lem.y + 4, lem.x + 4, lem.y - 10, 0, 0, lem);
       this.triggerManager.add(trigger1);

@@ -1,5 +1,18 @@
 import { EventHandler } from '../util/EventHandler.js';
-import { withPerformance } from '../util/LogHandler.js';
+import { getAppContext } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
+
+const EMIT_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'SoundEvents',
+    trackGroup: 'Game State',
+    color: 'secondary',
+    tooltipText: 'emit'
+  })
+});
 
 const SoundEventTypes = Object.freeze({
   LEVEL_START: 'level-start',
@@ -60,39 +73,56 @@ class SoundEventBus {
   }
 
   emit(event) {
-    return withPerformance(
-      'SoundEventBus emit',
-      {
-        track: 'SoundEvents',
-        trackGroup: 'Game State',
-        color: 'secondary',
-        tooltipText: 'emit'
-      },
-      () => {
-        if (!event) return;
-        const hasListeners = this.onEvent?.handlers?.size > 0;
-        if (!hasListeners &&
-            (this._queueLimit <= 0 || this._queue.length >= this._queueLimit)) {
-          return;
-        }
-        const tick = this.gameTimer?.getGameTicks?.() ?? 0;
-        const frameMs = this.gameTimer?.frameTime ?? this.gameTimer?.TIME_PER_FRAME_MS ?? 60;
-        const payload = {
-          id: ++this._sequence,
-          tick,
-          timeMs: tick * frameMs,
-          frameMs,
-          speedFactor: this.gameTimer?.speedFactor ?? 1,
-          tps: this.gameTimer?.tps ?? null,
-          ...event
-        };
-        if (this._queueLimit > 0 && this._queue.length < this._queueLimit) {
-          this._queue.push(payload);
-        }
-        this.history?.recordSoundEvent?.(payload);
-        if (this.onEvent) this.onEvent.trigger(payload);
+    const app = getAppContext();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (!event) return;
+      const handlers = this.onEvent?.handlers || null;
+      const hasListeners = !!handlers && handlers.size > 0;
+      const hasHistory = !!this.history?.recordSoundEvent;
+      const queueLimit = this._queueLimit | 0;
+      const queue = this._queue;
+      const queueLen = queue.length;
+      const queueOpen = queueLimit > 0 && queueLen < queueLimit;
+
+      if (!hasListeners && !hasHistory && !queueOpen) {
+        return;
       }
-    ).call(this);
+
+      const timer = this.gameTimer;
+      const tick = timer?.getGameTicks?.() ?? 0;
+      const frameMs = timer?.frameTime ?? timer?.TIME_PER_FRAME_MS ?? 60;
+      const payload = {
+        id: this._sequence + 1,
+        tick,
+        timeMs: tick * frameMs,
+        frameMs,
+        speedFactor: timer?.speedFactor ?? 1,
+        tps: timer?.tps ?? null
+      };
+      this._sequence += 1;
+
+      for (const key in event) {
+        if (!Object.prototype.hasOwnProperty.call(event, key)) continue;
+        payload[key] = event[key];
+      }
+
+      if (queueOpen) {
+        queue.push(payload);
+      }
+      this.history?.recordSoundEvent?.(payload);
+      if (this.onEvent) this.onEvent.trigger(payload);
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('SoundEventBus emit', {
+          start: perfStart,
+          detail: EMIT_MEASURE_DETAIL
+        });
+      }
+    }
   }
 
   emitSfx(type, sfxId, data = {}) {
@@ -119,11 +149,9 @@ class SoundEventBus {
 }
 
 const getSoundBus = () => {
-  if (typeof globalThis !== 'undefined' && globalThis.lemmings?.game?.soundEvents) {
-    return globalThis.lemmings.game.soundEvents;
-  }
-  if (typeof lemmings !== 'undefined' && lemmings?.game?.soundEvents) {
-    return lemmings.game.soundEvents;
+  const app = getAppContext();
+  if (app?.game?.soundEvents) {
+    return app.game.soundEvents;
   }
   return null;
 };

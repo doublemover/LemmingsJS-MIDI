@@ -6,6 +6,11 @@ import '../js/render/ColorPalette.js';
 // minimal global env for logging
 const miniMapStub = { onGroundChanged() {} };
 
+const setRuntime = (level, runtime) => {
+  level.setRuntime?.(runtime);
+  return level;
+};
+
 describe('Level ground operations', function() {
   let restore;
   beforeEach(function() {
@@ -32,7 +37,7 @@ describe('Level ground operations', function() {
     expect(Array.from(level.groundImage.slice(idx, idx + 3))).to.eql([0, 0, 0]);
   });
 
-  it('clears ground with masks while skipping steel and bounds', function() {   
+  it('clears ground with masks while skipping steel and bounds', function() {
     const level = new Level(3, 3);
     const palette = new Lemmings.ColorPalette();
     palette.setColorRGB(1, 10, 20, 30);
@@ -56,12 +61,67 @@ describe('Level ground operations', function() {
     expect(result.removed).to.be.greaterThan(0);
   });
 
+  it('invalidates minimap bounds when masked clears modify terrain', function() {
+    const invalidateCalls = [];
+    const miniMap = {
+      onGroundChanged() {},
+      invalidateRegion(...args) { invalidateCalls.push(args); }
+    };
+
+    const level = setRuntime(new Level(3, 3), { miniMap });
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(3 * 3 * 4));
+    level.setPalettes(palette, palette);
+    level.setGroundAt(1, 1, 1);
+
+    const mask = {
+      offsetX: 0,
+      offsetY: 0,
+      width: 1,
+      height: 1,
+      at() { return false; }
+    };
+    level.clearGroundWithMask(mask, 1, 1);
+
+    expect(invalidateCalls).to.eql([[1, 1, 1, 1]]);
+  });
+
+  it('reveals steel terrain on demand without clearing the steel mask', function() {
+    const level = new Level(2, 2);
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(2 * 2 * 4));
+    level.setPalettes(palette, palette);
+
+    level.setGroundAt(0, 0, 1);
+    level.steelMask.setMaskAt(0, 0);
+
+    const mask = {
+      offsetX: 0,
+      offsetY: 0,
+      width: 1,
+      height: 1,
+      at() { return false; }
+    };
+
+    const unchanged = level._clearGroundWithMaskInternal(mask, 0, 0);
+    expect(unchanged.changed).to.equal(false);
+    expect(level.hasGroundAt(0, 0)).to.equal(true);
+    expect(Array.from(level.groundImage.slice(0, 3))).to.eql([10, 20, 30]);
+
+    const revealed = level._clearGroundWithMaskInternal(mask, 0, 0, { revealSteel: true });
+    expect(revealed.changed).to.equal(true);
+    expect(level.hasGroundAt(0, 0)).to.equal(true);
+    expect(Array.from(level.groundImage.slice(0, 3))).to.eql([0, 0, 0]);
+  });
+
   it('records ground changes when history is available', function() {
     const calls = [];
-    globalThis.lemmings.game.history = {
+    const history = {
       recordGroundChange(...args) { calls.push(args); }
     };
-    const level = new Level(1, 1);
+    const level = setRuntime(new Level(1, 1), { history });
     const palette = new Lemmings.ColorPalette();
     palette.setColorRGB(1, 10, 20, 30);
     level.setGroundImage(new Uint8ClampedArray(1 * 1 * 4));
@@ -79,5 +139,28 @@ describe('Level ground operations', function() {
     level.clearGroundAt(0, 0);
 
     expect(calls.length).to.equal(3);
+  });
+
+  it('writes rectangular terrain in bulk and invalidates minimap region once', function() {
+    const invalidateCalls = [];
+    const miniMap = {
+      onGroundChanged() {},
+      invalidateRegion(...args) { invalidateCalls.push(args); }
+    };
+    const level = setRuntime(new Level(4, 4), { miniMap });
+    const palette = new Lemmings.ColorPalette();
+    palette.setColorRGB(1, 10, 20, 30);
+    level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+    level.setPalettes(palette, palette);
+
+    const changed = level.setGroundRect(1, 1, 2, 2, 1, {
+      recordHistory: false,
+      invalidateMiniMap: true
+    });
+
+    expect(changed).to.equal(4);
+    expect(level.hasGroundAt(1, 1)).to.equal(true);
+    expect(level.hasGroundAt(2, 2)).to.equal(true);
+    expect(invalidateCalls).to.eql([[1, 1, 2, 2]]);
   });
 });

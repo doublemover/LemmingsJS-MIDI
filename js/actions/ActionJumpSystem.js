@@ -20,7 +20,7 @@ class ActionJumpSystem extends ActionBaseSystem {
     lem.frameIndex++;
     lem.x += (lem.lookRight ? 1 : -1);
 
-    if (lem.state == null) {
+    if (lem.state === null || lem.state === undefined) {
       lem.state = 0; // how far we've jumped so far
     }
 

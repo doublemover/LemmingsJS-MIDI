@@ -1,31 +1,565 @@
 #!/usr/bin/env node
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
 
-const CATEGORY_PATTERNS = {
-  core: ['test/*game*.test.js'],
-  bench: ['test/bench*.test.js'],
+const require = createRequire(import.meta.url);
+const mochaBin = require.resolve('mocha/bin/mocha.js');
+const eslintBin = path.join(
+  path.dirname(require.resolve('eslint/package.json')),
+  'bin',
+  'eslint.js'
+);
+const tscBin = path.join(
+  path.dirname(require.resolve('typescript/package.json')),
+  'bin',
+  'tsc'
+);
+const CHECK_JS_CONFIG = 'tsconfig.checkjs.json';
+const DEFAULT_TEST_RUNTIME_BUDGET_MS = 180000;
+const DEFAULT_BASE_REF_CANDIDATES = Object.freeze([
+  'origin/main',
+  'origin/master',
+  'main',
+  'master'
+]);
+const OFFLINE_TOOL_SOURCE_FILES = Object.freeze(new Set([
+  'tools/archiveDir.js',
+  'tools/cleanExports.js',
+  'tools/packLevels.js',
+  'tools/packPipeline.js'
+]));
+
+const RUNTIME_GUARD_TARGETS = Object.freeze([
+  'js/app/**/*.js',
+  'js/editor/**/*.js',
+  'js/game/**/*.js',
+  'js/lemmings/**/*.js',
+  'js/midi/**/*.js',
+  'js/render/**/*.js',
+  'js/util/**/*.js'
+]);
+
+const CATEGORY_PATTERNS = Object.freeze({
+  core: ['--recursive'],
+  game: ['test/*game*.test.js'],
+  bench: ['test/*bench*.test.js'],
+  release: ['test/release-readiness.test.js'],
   workflow: ['test/*workflow*.test.js'],
   tools: ['test/tools/*.test.js'],
   'offline-tools': ['test/offline-tools/*.test.js'],
-  editor: ['test/editor/*.test.js']
+  editor: [
+    'test/editor/*.test.js',
+    'test/editor-*.test.js',
+    'test/input/editor-*.test.js'
+  ]
+});
+
+const CATEGORY_ORDER = Object.freeze([
+  'core',
+  'game',
+  'editor',
+  'tools',
+  'offline-tools',
+  'bench',
+  'release',
+  'workflow'
+]);
+const CHANGED_FILE_CATEGORY_RULES = Object.freeze([
+  {
+    category: 'release',
+    matches: normalized => (
+      normalized === 'docs/release-readiness.md' ||
+      normalized.startsWith('scripts/check-release-readiness') ||
+      normalized === 'test/release-readiness.test.js'
+    )
+  },
+  {
+    category: 'editor',
+    matches: normalized => (
+      normalized.startsWith('js/editor/') ||
+      normalized.startsWith('js/app/editor') ||
+      normalized.startsWith('js/input/Editor') ||
+      normalized.startsWith('css/editor') ||
+      normalized.startsWith('test/editor/') ||
+      /^test\/editor-.*\.test\.js$/.test(normalized) ||
+      /^test\/input\/editor-.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'offline-tools',
+    matches: normalized => (
+      normalized.startsWith('tools/offline/') ||
+      normalized.startsWith('test/offline-tools/') ||
+      OFFLINE_TOOL_SOURCE_FILES.has(normalized)
+    )
+  },
+  {
+    category: 'tools',
+    matches: normalized => (
+      normalized.startsWith('tools/') ||
+      normalized.startsWith('test/tools/') ||
+      normalized.startsWith('scripts/check-undefined') ||
+      normalized.startsWith('scripts/check-mcp-client-compat')
+    )
+  },
+  {
+    category: 'bench',
+    matches: normalized => (
+      normalized.startsWith('scripts/bench-') ||
+      /^test\/bench.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'workflow',
+    matches: normalized => (
+      normalized.startsWith('.github/workflows/') ||
+      /^test\/.*workflow.*\.test\.js$/.test(normalized)
+    )
+  },
+  {
+    category: 'core',
+    matches: normalized => (
+      normalized.startsWith('docs/') ||
+      normalized.endsWith('.md') ||
+      normalized === 'README' ||
+      normalized === 'README.md' ||
+      normalized.startsWith('js/') ||
+      normalized.startsWith('test/') ||
+      normalized.startsWith('mcp/') ||
+      normalized.startsWith('scripts/') ||
+      normalized.startsWith('css/') ||
+      normalized === 'package.json'
+    )
+  }
+]);
+
+const parseBoolEnv = (value) => {
+  if (value == null) return false;
+  const normalized = String(value).trim().toLowerCase();
+  return normalized === '1' || normalized === 'true' || normalized === 'yes' || normalized === 'on';
 };
 
-const categories = process.argv.slice(2);
-
-if (categories.length === 0) {
-  const res = spawnSync('mocha', ['--recursive'], { stdio: 'inherit' });
-  process.exit(res.status);
-}
-
-const patterns = [];
-for (const cat of categories) {
-  const globs = CATEGORY_PATTERNS[cat];
-  if (!globs) {
-    console.error(`Unknown category: ${cat}`);
-    process.exit(1);
+const toNumberOrNaN = (value) => {
+  try {
+    return Number(value);
+  } catch {
+    return Number.NaN;
   }
-  patterns.push(...globs);
+};
+
+const resolveRuntimeBudgetMs = (value) => {
+  const parsed = toNumberOrNaN(value);
+  if (!Number.isFinite(parsed) || parsed <= 0) return DEFAULT_TEST_RUNTIME_BUDGET_MS;
+  return Math.trunc(parsed);
+};
+
+const parseCliArgs = (argv = []) => {
+  const result = {
+    changed: false,
+    baseRef: null,
+    printSelection: false,
+    categories: []
+  };
+
+  for (const rawArg of argv) {
+    const arg = String(rawArg || '');
+    if (!arg) continue;
+    if (arg === '--changed') {
+      result.changed = true;
+      continue;
+    }
+    if (arg.startsWith('--base=')) {
+      const value = arg.slice('--base='.length).trim();
+      if (!value) {
+        throw new Error('Missing value for --base');
+      }
+      result.baseRef = value;
+      continue;
+    }
+    if (arg === '--print-selection' || arg === '--dry-run') {
+      result.printSelection = true;
+      continue;
+    }
+    if (arg.startsWith('--')) {
+      throw new Error(`Unknown option: ${arg}`);
+    }
+    result.categories.push(arg);
+  }
+
+  return result;
+};
+
+const normalizeFilePath = (filePath) => String(filePath || '').replace(/\\/g, '/');
+
+const inferCategoriesFromChangedFiles = (files) => {
+  const categories = new Set();
+  if (!Array.isArray(files) || files.length === 0) {
+    categories.add('core');
+    return Array.from(categories);
+  }
+
+  for (const file of files) {
+    const normalized = normalizeFilePath(file);
+    if (!normalized) continue;
+    for (const rule of CHANGED_FILE_CATEGORY_RULES) {
+      if (!rule.matches(normalized)) continue;
+      categories.add(rule.category);
+      break;
+    }
+  }
+
+  if (categories.size === 0) {
+    categories.add('core');
+  }
+  return Array.from(categories).sort((a, b) => a.localeCompare(b));
+};
+
+const defaultRunGitCommand = (args) => spawnSync('git', args, { encoding: 'utf8' });
+
+const readGitFileList = (args, runGitCommand = defaultRunGitCommand) => {
+  const result = runGitCommand(args);
+  if (!result || result.error || result.status !== 0) {
+    return null;
+  }
+  const stdout = String(result.stdout || '');
+  return stdout
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+};
+
+const readGitScalar = (args, runGitCommand = defaultRunGitCommand) => {
+  const result = runGitCommand(args);
+  if (!result || result.error || result.status !== 0) {
+    return null;
+  }
+  const stdout = String(result.stdout || '').trim();
+  return stdout || null;
+};
+
+const gitRefExists = (ref, runGitCommand = defaultRunGitCommand) => {
+  if (!ref) return false;
+  return readGitScalar(['rev-parse', '--verify', '--quiet', ref], runGitCommand) != null;
+};
+
+const resolveBaseRef = ({ baseRef = null, runGitCommand = defaultRunGitCommand } = {}) => {
+  if (baseRef) {
+    return {
+      ref: baseRef,
+      source: 'explicit'
+    };
+  }
+
+  const upstream = readGitScalar(
+    ['rev-parse', '--abbrev-ref', '--symbolic-full-name', '@{upstream}'],
+    runGitCommand
+  );
+  if (upstream) {
+    return {
+      ref: upstream,
+      source: 'upstream'
+    };
+  }
+
+  const remoteHead = readGitScalar(
+    ['symbolic-ref', '--quiet', '--short', 'refs/remotes/origin/HEAD'],
+    runGitCommand
+  );
+  if (remoteHead) {
+    return {
+      ref: remoteHead,
+      source: 'origin-head'
+    };
+  }
+
+  for (const candidate of DEFAULT_BASE_REF_CANDIDATES) {
+    if (!gitRefExists(candidate, runGitCommand)) continue;
+    return {
+      ref: candidate,
+      source: 'fallback'
+    };
+  }
+
+  return null;
+};
+
+const collectChangedFiles = ({ baseRef, runGitCommand = defaultRunGitCommand } = {}) => {
+  if (!baseRef) return null;
+  const files = new Set();
+  const baseSpec = `${baseRef}...HEAD`;
+
+  const compared = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD', baseSpec], runGitCommand);
+  if (!compared) return null;
+  for (const file of compared) files.add(file);
+
+  const staged = readGitFileList(['diff', '--name-only', '--cached', '--diff-filter=ACMRD'], runGitCommand) || [];
+  for (const file of staged) files.add(file);
+
+  const unstaged = readGitFileList(['diff', '--name-only', '--diff-filter=ACMRD'], runGitCommand) || [];
+  for (const file of unstaged) files.add(file);
+  const untracked = readGitFileList(['ls-files', '--others', '--exclude-standard'], runGitCommand) || [];
+  for (const file of untracked) files.add(file);
+
+  return Array.from(files).sort((a, b) => a.localeCompare(b));
+};
+
+const formatSelectionLines = ({
+  resolvedBase = null,
+  changedFiles = null,
+  categories = [],
+  mochaArgs = []
+} = {}) => {
+  const lines = [];
+  if (resolvedBase) {
+    lines.push(`Resolved base ref: ${resolvedBase.ref} (${resolvedBase.source})`);
+  } else {
+    lines.push('Resolved base ref: none');
+  }
+  if (Array.isArray(changedFiles)) {
+    lines.push(`Changed files (${changedFiles.length}): ${changedFiles.join(', ') || '(none)'}`);
+  } else {
+    lines.push('Changed files: unavailable');
+  }
+  lines.push(`Selected categories: ${categories.join(', ') || '(none)'}`);
+  lines.push(`Mocha args: ${mochaArgs.join(' ') || '(none)'}`);
+  return lines;
+};
+
+const validateCategories = (categories) => {
+  for (const category of categories) {
+    if (!CATEGORY_PATTERNS[category]) {
+      throw new Error(`Unknown category: ${category}`);
+    }
+  }
+};
+
+const buildMochaArgsForCategories = (categories) => {
+  const unique = new Set(categories);
+  validateCategories(unique);
+  if (unique.has('core')) {
+    return ['--recursive'];
+  }
+
+  const args = [];
+  for (const category of CATEGORY_ORDER) {
+    if (!unique.has(category)) continue;
+    args.push(...CATEGORY_PATTERNS[category]);
+  }
+  return args.length ? args : ['--recursive'];
+};
+
+const runMocha = (
+  args,
+  {
+    spawn = spawnSync,
+    log = console,
+    exit = process.exit,
+    enforceBudget = false,
+    budgetMs = DEFAULT_TEST_RUNTIME_BUDGET_MS,
+    preRunElapsedMs = 0
+  } = {}
+) => {
+  const mochaStart = Date.now();
+  const res = spawn(process.execPath, [mochaBin, ...args], { stdio: 'inherit' });
+  const mochaElapsedMs = Math.max(0, Date.now() - mochaStart);
+  const totalElapsedMs = preRunElapsedMs + mochaElapsedMs;
+  if (res.error) {
+    log.error(`Failed to run mocha: ${res.error.message}`);
+    exit(1);
+    return;
+  }
+  if (typeof res.status !== 'number') {
+    log.error('Mocha exited without a status code.');
+    exit(1);
+    return;
+  }
+  if (res.status === 0) {
+    log.log(`Test runtime: ${(totalElapsedMs / 1000).toFixed(2)}s (budget ${(budgetMs / 1000).toFixed(2)}s)`);
+    if (enforceBudget && totalElapsedMs > budgetMs) {
+      log.error(`Test runtime budget exceeded: ${totalElapsedMs}ms > ${budgetMs}ms`);
+      exit(1);
+      return;
+    }
+  }
+  exit(res.status);
+};
+
+const runRuntimeGlobalGuard = (
+  {
+    spawn = spawnSync,
+    log = console,
+    exit = process.exit
+  } = {}
+) => {
+  const args = ['--max-warnings=0', ...RUNTIME_GUARD_TARGETS];
+  const res = spawn(process.execPath, [eslintBin, ...args], { stdio: 'inherit' });
+  if (res.error) {
+    log.error(`Failed to run runtime global guard: ${res.error.message}`);
+    exit(1);
+    return false;
+  }
+  if (typeof res.status !== 'number') {
+    log.error('Runtime global guard exited without a status code.');
+    exit(1);
+    return false;
+  }
+  if (res.status !== 0) {
+    exit(res.status);
+    return false;
+  }
+  return true;
+};
+
+const runCriticalTypecheckGuard = (
+  {
+    spawn = spawnSync,
+    log = console,
+    exit = process.exit
+  } = {}
+) => {
+  const args = ['-p', CHECK_JS_CONFIG, '--pretty', 'false'];
+  const res = spawn(process.execPath, [tscBin, ...args], { stdio: 'inherit' });
+  if (res.error) {
+    log.error(`Failed to run critical typecheck guard: ${res.error.message}`);
+    exit(1);
+    return false;
+  }
+  if (typeof res.status !== 'number') {
+    log.error('Critical typecheck guard exited without a status code.');
+    exit(1);
+    return false;
+  }
+  if (res.status !== 0) {
+    exit(res.status);
+    return false;
+  }
+  return true;
+};
+
+const main = (
+  argv = process.argv.slice(2),
+  {
+    spawn = spawnSync,
+    runGitCommand = defaultRunGitCommand,
+    log = console,
+    exit = process.exit
+  } = {}
+) => {
+  const runStartMs = Date.now();
+  const enforceRuntimeBudget = parseBoolEnv(process.env.LEMMINGS_TEST_ENFORCE_BUDGET);
+  const runtimeBudgetMs = resolveRuntimeBudgetMs(process.env.LEMMINGS_TEST_BUDGET_MS);
+  let parsed;
+  try {
+    parsed = parseCliArgs(argv);
+  } catch (error) {
+    log.error(error.message);
+    exit(1);
+    return;
+  }
+
+  const categories = new Set(parsed.categories);
+  let resolvedBase = null;
+  let changedFiles = null;
+
+  if (parsed.changed) {
+    resolvedBase = resolveBaseRef({
+      baseRef: parsed.baseRef,
+      runGitCommand
+    });
+    if (!resolvedBase) {
+      log.warn('Unable to resolve a safe base ref from git; falling back to full suite.');
+      categories.add('core');
+    } else {
+      changedFiles = collectChangedFiles({
+        baseRef: resolvedBase.ref,
+        runGitCommand
+      });
+    }
+    if (!changedFiles) {
+      if (resolvedBase) {
+        log.warn(`Unable to resolve changed files from git for base ${resolvedBase.ref}; falling back to full suite.`);
+        categories.add('core');
+      }
+    } else {
+      const inferred = inferCategoriesFromChangedFiles(changedFiles);
+      for (const category of inferred) {
+        categories.add(category);
+      }
+      log.log(`Changed-file test selection: ${Array.from(categories).sort().join(', ')}`);
+      log.log(`Changed-file base ref: ${resolvedBase.ref} (${resolvedBase.source})`);
+    }
+  }
+
+  if (categories.size === 0) {
+    categories.add('core');
+  }
+
+  let mochaArgs;
+  try {
+    mochaArgs = buildMochaArgsForCategories(Array.from(categories));
+  } catch (error) {
+    log.error(error.message);
+    exit(1);
+    return;
+  }
+
+  if (parsed.printSelection) {
+    const selectionLines = formatSelectionLines({
+      resolvedBase,
+      changedFiles,
+      categories: Array.from(categories).sort((a, b) => a.localeCompare(b)),
+      mochaArgs
+    });
+    for (const line of selectionLines) {
+      log.log(line);
+    }
+    exit(0);
+    return;
+  }
+
+  if (!runRuntimeGlobalGuard({ spawn, log, exit })) {
+    return;
+  }
+  if (!runCriticalTypecheckGuard({ spawn, log, exit })) {
+    return;
+  }
+  const preMochaElapsedMs = Math.max(0, Date.now() - runStartMs);
+  runMocha(mochaArgs, {
+    spawn,
+    log,
+    exit,
+    enforceBudget: enforceRuntimeBudget,
+    budgetMs: runtimeBudgetMs,
+    preRunElapsedMs: preMochaElapsedMs
+  });
+};
+
+const isMain = (() => {
+  try {
+    return path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+  } catch (error) {
+    return false;
+  }
+})();
+
+if (isMain) {
+  main();
 }
 
-const res = spawnSync('mocha', patterns, { stdio: 'inherit' });
-process.exit(res.status);
+export {
+  CATEGORY_PATTERNS,
+  RUNTIME_GUARD_TARGETS,
+  buildMochaArgsForCategories,
+  collectChangedFiles,
+  formatSelectionLines,
+  inferCategoriesFromChangedFiles,
+  main,
+  parseCliArgs,
+  parseBoolEnv,
+  resolveBaseRef,
+  runCriticalTypecheckGuard,
+  resolveRuntimeBudgetMs,
+  runRuntimeGlobalGuard
+};

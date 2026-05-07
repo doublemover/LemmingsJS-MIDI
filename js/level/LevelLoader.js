@@ -8,6 +8,17 @@ import { OddTableReader } from '../data/OddTableReader.js';
 import { SolidLayer } from '../render/SolidLayer.js';
 import { VGASpecReader } from '../data/VGASpecReader.js';
 
+const PACK_RESOURCE_FALLBACKS = Object.freeze({
+  xmas92: Object.freeze(['xmas91'])
+});
+
+const isMissingResourceError = (error) => {
+  if (!error) return false;
+  if (error.code === 'ENOENT') return true;
+  const message = String(error.message || '');
+  return message.includes('ENOENT');
+};
+
 const mergeLevelProperties = (baseProperties, oddProperties) => {
   if (!oddProperties) return baseProperties;
 
@@ -57,6 +68,47 @@ class LevelLoader {
     this.fileProvider = fileProvider;
     this.config = config;
     this.levelIndexResolve = new LevelIndexResolve(config);
+    this.resourceFallbackPaths = this.#buildResourceFallbackPaths();
+  }
+
+  #buildResourceFallbackPaths() {
+    const defaults = PACK_RESOURCE_FALLBACKS[this.config?.path] || [];
+    const configured = Array.isArray(this.config?.resourceFallbackPaths)
+      ? this.config.resourceFallbackPaths
+      : [];
+    const merged = [this.config?.path, ...configured, ...defaults];
+    const unique = [];
+    for (let i = 0; i < merged.length; i += 1) {
+      const entry = merged[i];
+      if (typeof entry !== 'string' || entry.length === 0) continue;
+      if (unique.includes(entry)) continue;
+      unique.push(entry);
+    }
+    return unique;
+  }
+
+  /**
+   * Load a pack resource from the active pack first, then configured fallback
+   * packs. This keeps runtime level logic unchanged while supporting packs
+   * that intentionally reuse shared terrain/object files.
+   */
+  async #loadBinaryWithFallback(filename) {
+    let lastMissing = null;
+    const roots = this.resourceFallbackPaths;
+    for (let i = 0; i < roots.length; i += 1) {
+      const root = roots[i];
+      try {
+        return await this.fileProvider.loadBinary(root, filename);
+      } catch (error) {
+        if (isMissingResourceError(error)) {
+          lastMissing = error;
+          continue;
+        }
+        throw error;
+      }
+    }
+    if (lastMissing) throw lastMissing;
+    throw new Error(`Unable to load resource: ${filename}`);
   }
 
   async getLevel (levelMode, levelIndex) {
@@ -69,7 +121,7 @@ class LevelLoader {
     if (levelInfo == null) return null;
 
     const useOddTable   = levelInfo.useOddTable && this.config.level.useOddTable;
-    const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);   
+    const paddedFileId  = ('0000' + levelInfo.fileId).slice(-3);
 
     const baseLevel     = this.fileProvider.loadBinary(
       this.config.path,
@@ -119,11 +171,11 @@ class LevelLoader {
     // 3 · Fetch graphics set(s) in parallel                                   //
     // ----------------------------------------------------------------------- //
     await loadSteelSprites();
-    const vgagrFile    = this.fileProvider.loadBinary(
-      this.config.path, `VGAGR${levelReader.graphicSet1}.DAT`);
-    const groundFile   = this.fileProvider.loadBinary(
-      this.config.path, `GROUND${levelReader.graphicSet1}O.DAT`);
-    const vgaspecFile  = (levelReader.graphicSet2 !== 0) ? this.fileProvider.loadBinary(this.config.path, `VGASPEC${levelReader.graphicSet2 - 1}.DAT`) : null;
+    const vgagrFile    = this.#loadBinaryWithFallback(`VGAGR${levelReader.graphicSet1}.DAT`);
+    const groundFile   = this.#loadBinaryWithFallback(`GROUND${levelReader.graphicSet1}O.DAT`);
+    const vgaspecFile  = (levelReader.graphicSet2 !== 0)
+      ? this.#loadBinaryWithFallback(`VGASPEC${levelReader.graphicSet2 - 1}.DAT`)
+      : null;
 
     const [vgagrBuf, groundBuf, vgaspecBuf] =
       await Promise.all([vgagrFile, groundFile, vgaspecFile]);
@@ -157,9 +209,9 @@ class LevelLoader {
     level.setPalettes(groundReader.colorPalette, groundReader.groundPalette);
 
     level.setSteelAreas(levelReader.steel);
-    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages()); 
+    level.newSetSteelAreas(levelReader, groundReader.getTerrainImages());
 
-    return level;  
+    return level;
   }
 }
 

@@ -74,6 +74,10 @@ Replaces sprites in an existing DAT archive with PNG data. Multiple frames can
 be supplied as a sprite sheet when `--sheet-orientation` matches the sheet
 layout.
 
+Implementation note:
+- Output serialization is streamed with backpressure handling, so patching large
+  DAT archives does not require a single full-size output allocation.
+
 ## packLevels.js
 
 ```
@@ -82,6 +86,32 @@ node tools/packLevels.js <level dir> <out DAT>
 
 Compresses a directory of 2048 byte `.lvl` files into a single DAT file. Useful
 for building custom level packs.
+
+Implementation note:
+- Packed bytes are streamed to disk as each level is processed to keep memory
+  usage stable on large level directories.
+
+## packPipeline.js
+
+```
+node tools/packPipeline.js unpack <input DAT> <out dir>
+node tools/packPipeline.js pack <meta.json> <out DAT>
+node tools/packPipeline.js patch <input DAT> <out DAT> --part <index> --offset <byte> --file <patch bin>
+```
+
+Provides a generic DAT workflow:
+- `unpack` writes each decompressed part to `part-###.bin` plus a `meta.json`
+  manifest.
+- `pack` rebuilds a DAT archive from the manifest and part files.
+- `patch` applies a binary patch to one decompressed part and writes a rebuilt
+  DAT in one step.
+
+Implementation notes:
+- `pack` rejects absolute, null-byte, or parent-traversal part paths in
+  `meta.json`; part files must stay inside the metadata directory.
+- Archive caches used by `NodeFileProvider` are bounded by entry count and
+  estimated payload bytes and can still be cleared explicitly with
+  `clearCache()`.
 
 ## archiveDir.js
 

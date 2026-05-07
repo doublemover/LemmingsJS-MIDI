@@ -15,7 +15,7 @@ function patchModule() {
     'const cfgPath = path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');',
     'cfgPath = cfgPath || path.join(path.dirname(new URL(import.meta.url).pathname), \'..\', \'config.json\');'
   );
-const tmp = path.join(path.dirname(fileURLToPath(origPath)), 'listSprites.patched.js');
+  const tmp = path.join(path.dirname(fileURLToPath(origPath)), 'listSprites.patched.js');
   fs.writeFileSync(tmp, code);
   return tmp;
 }

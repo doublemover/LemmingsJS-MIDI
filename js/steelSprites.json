@@ -10,5 +10,21 @@
     "GROUND0O.DAT": [51, 52, 53, 54],
     "GROUND1O.DAT": [56, 57, 58, 59],
     "GROUND2O.DAT": [29, 30, 31, 32]
+  },
+  "xmas91": {
+    "GROUND0O.DAT": [51, 52, 53],
+    "GROUND2O.DAT": [29]
+  },
+  "xmas92": {
+    "GROUND0O.DAT": [51, 52, 53],
+    "GROUND2O.DAT": [29]
+  },
+  "holiday93": {
+    "GROUND1O.DAT": [56, 57, 58, 59],
+    "GROUND2O.DAT": [29]
+  },
+  "holiday94": {
+    "GROUND1O.DAT": [56, 57, 58, 59],
+    "GROUND2O.DAT": [29]
   }
 }

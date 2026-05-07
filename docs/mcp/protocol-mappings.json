@@ -1,4 +1,9 @@
 {
+  "version": "2.1.0",
+  "schemaFrozenAt": "2026-02-23",
+  "acceptedToolNameForms": [
+    "underscore"
+  ],
   "skillNames": [
     "climber",
     "floater",

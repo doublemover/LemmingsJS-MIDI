@@ -22,21 +22,22 @@ describe('MidiMapping helpers', function() {
     expect(arrayOverride.noteRange).to.eql([1, 2, 3]);
   });
 
+  it('filters unsafe config merge keys without touching prototypes', function() {
+    const merged = __test__.mergeConfig(
+      { noteRange: { min: 40, max: 60 } },
+      JSON.parse('{"noteRange":{"max":72},"__proto__":{"polluted":true},"constructor":{"prototype":{"polluted":true}}}')
+    );
+
+    expect(merged.noteRange.max).to.equal(72);
+    expect(Object.prototype.hasOwnProperty.call(merged, '__proto__')).to.equal(false);
+    expect(Object.prototype.hasOwnProperty.call(merged, 'constructor')).to.equal(false);
+    expect(Object.getPrototypeOf(merged)).to.equal(null);
+    expect({}.polluted).to.equal(undefined);
+  });
+
   it('builds position mappings and axis values', function() {
     const mappings = __test__.resolvePositionMappings({ mappings: [{ axis: 'x' }] }, { min: 1, max: 2 });
     expect(mappings).to.have.length(1);
-
-    const toggles = __test__.resolvePositionMappings(
-      {
-        xToNote: true,
-        yToVelocity: true,
-        yToTimbre: true,
-        xNoteRange: { min: -5, max: 5 },
-        timbreRange: { min: 10, max: 20 }
-      },
-      { min: 10, max: 20 }
-    );
-    expect(toggles).to.have.length(3);
 
     const empty = __test__.resolvePositionMappings({}, { min: 1, max: 2 });
     expect(empty).to.have.length(0);
@@ -146,7 +147,12 @@ describe('MidiMapping helpers', function() {
     const fallbackScale = __test__.resolveScale(null);
     expect(fallbackScale.name).to.equal('chromatic-minor');
 
-    const mappings = __test__.resolvePositionMappings({ yToVelocity: true, yToTimbre: true }, null);
+    const mappings = __test__.resolvePositionMappings({
+      mappings: [
+        { axis: 'y', target: 'velocity', min: 127, max: 1 },
+        { axis: 'y', target: 'timbre', min: 127, max: 0 }
+      ]
+    }, null);
     expect(mappings[0].min).to.equal(127);
     expect(mappings[0].max).to.equal(1);
     expect(mappings[1].min).to.equal(127);
@@ -165,7 +171,7 @@ describe('MidiMapping helpers', function() {
     expect(__test__.clampNoteToRange(130, { min: 60 })).to.equal(118);
 
     const baseScale = { degrees: [0, 2, 4], root: 0 };
-    const chord = __test__.buildChordNotes(0, baseScale, 4, 'triad', 0);        
+    const chord = __test__.buildChordNotes(0, baseScale, 4, 'triad', 0);
     expect(chord).to.have.length(3);
   });
 
@@ -173,7 +179,7 @@ describe('MidiMapping helpers', function() {
     expect(__test__.isPlainObject(0)).to.not.be.ok;
 
     const mappings = __test__.resolvePositionMappings({ xToNote: true }, null);
-    expect(mappings[0].min).to.equal(0);
+    expect(mappings).to.have.length(0);
 
     const nullMappings = __test__.resolvePositionMappings(null, null);
     expect(nullMappings).to.have.length(0);
@@ -209,11 +215,11 @@ describe('MidiMapping helpers', function() {
     expect(customMappings).to.have.length(1);
 
     const mappings = __test__.resolvePositionMappings({
-      xToNote: true,
-      xNoteRange: { min: -5, max: 5 },
-      yToVelocity: true,
-      yToTimbre: true,
-      timbreRange: { min: 10, max: 20 }
+      mappings: [
+        { axis: 'x', target: 'note', min: -5, max: 5 },
+        { axis: 'y', target: 'velocity', min: 4, max: 2 },
+        { axis: 'y', target: 'timbre', min: 20, max: 10 }
+      ]
     }, { min: 2, max: 4 });
     expect(mappings).to.have.length(3);
 

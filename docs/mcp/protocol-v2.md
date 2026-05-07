@@ -10,8 +10,19 @@ implementation notes in this folder.
 - `state.get` defaults to the compact preset.
 - Events are minimal by default (`events.mode=minimal`), and tool
   responses include only non-agent events with trimmed fields.
-- Tool names are short and primary (dots mapped to underscores by hosts), with
-  legacy aliases retained for backward compatibility.
+- Tool names are short (dots mapped to underscores by hosts), and only the
+  short underscore forms are accepted.
+- `session.create.protocol` returns protocol version/freeze metadata and
+  hard-cut tool naming metadata.
+
+## Semantic editor object tools
+
+- `objects.list` provides typed listing with paging, bbox filters, and
+  revision-aware deltas.
+- `objects.place` inserts terrain/gadget/steel entries using typed payloads.
+- `objects.update` applies typed entry updates by index/uid references.
+- `objects.delete` removes entries by typed references.
+- `editor.apply` remains the batch editor mutation tool.
 
 ## Protocol mappings
 
@@ -28,7 +39,7 @@ implementation notes in this folder.
 
 ## state.delta
 
-- New tool for returning filtered history deltas.
+- Returns filtered history deltas.
 - Defaults to changes since the last `state.get` tick.
 - Supports filtering lemming fields and excluding x/y motion churn.
 

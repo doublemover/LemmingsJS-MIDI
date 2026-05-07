@@ -16,7 +16,8 @@
       "args": ["${__dirname}/server/index.js"],
       "env": {
         "LOG_LEVEL": "info",
-        "API_KEY": "${user_config.api_key}"
+        "API_KEY": "${user_config.api_key}",
+        "LEMMINGS_MCP_SURFACES": "game,editor,interact"
       }
     }
   },

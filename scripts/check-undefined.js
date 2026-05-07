@@ -1,190 +1,193 @@
 import fs from 'fs';
 import path from 'path';
-import { parse } from 'acorn';
-import { createRequire } from 'module';
+import { Linter } from 'eslint';
 import { processHtmlFile as extractHtmlSnippets } from './processHtmlFile.js';
-const require = createRequire(import.meta.url);
+import { checkUndefinedGlobals } from './lint-globals.js';
 
-
-const definedFunctions = new Set();
-const definedMethods = new Set();
-const calls = [];
-
-const builtinFunctions = new Set([
-  'require',
-  'setTimeout',
-  'clearTimeout',
-  'setInterval',
-  'clearInterval',
-  'describe',
-  'it',
-  'before',
-  'after',
-  'expect',
-  '$',
-  'jQuery'
+const defaultHtmlFiles = Object.freeze([
+  'index.html',
+  'editor.html',
+  'procgen.html'
 ]);
 
-const builtinObjects = new Set([
-  'console',
-  'Math',
-  'JSON',
-  'document',
-  'window',
-  'WebMidi',
-  'jQuery',
-  '$'
-]);
+const ignoredPathParts = Object.freeze(new Set([
+  '.git',
+  'node_modules',
+  'coverage',
+  'dist',
+  'test-results'
+]));
 
-const builtinMethods = new Set([
-  'log',
-  'error',
-  'warn',
-  'info',
-  'push',
-  'pop',
-  'forEach',
-  'map',
-  'addEventListener',
-  'removeEventListener',
-  'querySelector',
-  'getElementById',
-  'appendChild',
-  'replace',
-  'split',
-  'join',
-  'indexOf',
-  'slice',
-  'substring',
-  'createElement',
-  'ready',
-  'css',
-  'addClass',
-  'removeClass',
-  'values',
-  'catch',
-  'then'
-]);
+const ignoredJsPathParts = Object.freeze(new Set([
+  'js/vendor'
+]));
 
-function walk(node, visitor) {
-  if (!node || typeof node.type !== 'string') return;
-  visitor(node);
-  for (const key of Object.keys(node)) {
-    const value = node[key];
-    if (Array.isArray(value)) {
-      for (const c of value) walk(c, visitor);
-    } else if (value && typeof value.type === 'string') {
-      walk(value, visitor);
+const jsExtensions = Object.freeze(new Set([
+  '.js',
+  '.mjs',
+  '.cjs'
+]));
+
+const linter = new Linter();
+
+const checkConfig = Object.freeze({
+  languageOptions: {
+    ecmaVersion: 2022,
+    sourceType: 'module',
+    globals: checkUndefinedGlobals
+  },
+  rules: {
+    'no-undef': ['error', { typeof: true }]
+  }
+});
+
+const scriptConfig = Object.freeze({
+  ...checkConfig,
+  languageOptions: Object.freeze({
+    ...checkConfig.languageOptions,
+    sourceType: 'script'
+  })
+});
+
+const isIgnoredPath = (filePath, ignoredParts) => {
+  const normalized = filePath.replace(/\\/g, '/');
+  return Array.from(ignoredParts).some((part) => normalized.includes(`/${part}/`) || normalized.endsWith(`/${part}`));
+};
+
+const discoverRootHtmlFiles = () => {
+  const discovered = new Set();
+  for (const fileName of defaultHtmlFiles) {
+    const resolved = path.resolve(fileName);
+    if (fs.existsSync(resolved)) discovered.add(resolved);
+  }
+
+  const rootEntries = fs.readdirSync(process.cwd(), { withFileTypes: true });
+  for (const entry of rootEntries) {
+    if (!entry.isFile()) continue;
+    if (!entry.name.toLowerCase().endsWith('.html')) continue;
+    discovered.add(path.resolve(entry.name));
+  }
+  return Array.from(discovered);
+};
+
+const normalizeCliFiles = (argv) => {
+  const jsFiles = [];
+  const htmlFiles = [];
+
+  for (const raw of argv) {
+    const file = path.resolve(raw);
+    const ext = path.extname(file).toLowerCase();
+    if (jsExtensions.has(ext)) {
+      jsFiles.push(file);
+    } else if (ext === '.html') {
+      htmlFiles.push(file);
     }
   }
-}
 
-function collectFromAst(ast, file, withCalls) {
-  walk(ast, node => {
-    if (node.type === 'FunctionDeclaration' && node.id) {
-      definedFunctions.add(node.id.name);
-    } else if (node.type === 'VariableDeclarator' && node.id.type === 'Identifier' && node.init && (node.init.type === 'FunctionExpression' || node.init.type === 'ArrowFunctionExpression')) {
-      definedFunctions.add(node.id.name);
-    } else if (node.type === 'ClassDeclaration' && node.body && node.body.body) {
-      for (const m of node.body.body) {
-        if ((m.type === 'MethodDefinition' || m.type === 'PropertyDefinition') && m.key.type === 'Identifier') {
-          definedMethods.add(m.key.name);
-        }
-      }
-    } else if (withCalls && node.type === 'CallExpression') {
-      if (node.callee.type === 'Identifier') {
-        calls.push({ type: 'function', name: node.callee.name, file, line: node.loc.start.line });
-      } else if (node.callee.type === 'MemberExpression' && !node.callee.computed && node.callee.property.type === 'Identifier') {
-        let objName = null;
-        if (node.callee.object.type === 'Identifier') objName = node.callee.object.name;
-        else if (node.callee.object.type === 'ThisExpression') objName = 'this';
-        calls.push({ type: 'method', name: node.callee.property.name, object: objName, file, line: node.loc.start.line });
-      }
-    }
-  });
-}
+  return { jsFiles, htmlFiles };
+};
 
-function parseJS(code, file) {
-  try {
-    return parse(code, { ecmaVersion: 'latest', sourceType: 'module', locations: true });
-  } catch {
-    try {
-      return parse(code, { ecmaVersion: 'latest', sourceType: 'script', locations: true });
-    } catch {
-      try {
-        return parse(`function tmp(){${code}\n}`, { ecmaVersion: 'latest', sourceType: 'script', locations: true });
-      } catch {
-        return null;
-      }
-    }
+const dedupeFiles = (files) => Array.from(new Set(files.map((file) => path.resolve(file))));
+
+const formatMessage = (file, message) => ({
+  file,
+  line: message.line || 1,
+  column: message.column || 1,
+  message: message.message
+});
+
+const lintCode = ({ code, file, config }) => (
+  linter.verify(code, config)
+    .filter((message) => message.severity === 2)
+    .map((message) => formatMessage(file, message))
+);
+
+const wrapHtmlSnippet = (snippet) => {
+  if (snippet.type === 'handler') {
+    return `function __html_handler__() {\n${snippet.code}\n}`;
   }
-}
+  return snippet.code;
+};
 
-function processJSFile(file, withCalls = false) {
-  const code = fs.readFileSync(file, 'utf8');
-  const ast = parseJS(code, file);
-  if (ast) collectFromAst(ast, file, withCalls);
-}
+const lintHtmlFile = (htmlFile) => {
+  const extracted = extractHtmlSnippets(htmlFile, { includeExternalScripts: true });
+  const snippets = Array.isArray(extracted) ? extracted : extracted.snippets;
+  const entryScripts = Array.isArray(extracted?.entryScripts) ? extracted.entryScripts : [];
+  const code = (snippets || []).map(wrapHtmlSnippet).join('\n');
+  const errors = code.trim()
+    ? lintCode({ code, file: htmlFile, config: scriptConfig })
+    : [];
 
-function gatherFiles(dir, exts, results = []) {
-  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-    if (entry.name === 'node_modules' || entry.name === '.git') continue;
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) {
-      gatherFiles(full, exts, results);
-    } else if (exts.some(ext => entry.name.endsWith(ext))) {
-      if (entry.name === 'jquery.js') continue;
-      results.push(full);
-    }
+  return {
+    errors,
+    entryScripts
+  };
+};
+
+const lintJsFiles = (files) => {
+  const errors = [];
+
+  for (const file of files) {
+    if (!fs.existsSync(file) || !fs.statSync(file).isFile()) continue;
+    if (isIgnoredPath(file, ignoredPathParts) || isIgnoredPath(file, ignoredJsPathParts)) continue;
+
+    const code = fs.readFileSync(file, 'utf8');
+    errors.push(...lintCode({ code, file, config: checkConfig }));
   }
-  return results;
-}
 
+  return errors;
+};
 
-const extra = process.argv.slice(2);
-let jsFiles = [];
-let htmlFiles = [];
+const compareErrors = (a, b) => (
+  a.file.localeCompare(b.file) ||
+  a.line - b.line ||
+  a.column - b.column ||
+  a.message.localeCompare(b.message)
+);
 
-if (extra.length) {
-  for (const f of extra) {
-    if (f.endsWith('.js')) jsFiles.push(f);
-    else if (f.endsWith('.html')) htmlFiles.push(f);
+const dedupeErrors = (errors) => {
+  const deduped = [];
+  const seen = new Set();
+  for (const error of errors) {
+    const key = `${error.file}:${error.line}:${error.column}:${error.message}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    deduped.push(error);
   }
-} else {
-  jsFiles = gatherFiles('js', ['.js']);
-  htmlFiles = gatherFiles('.', ['.html']);
-}
+  return deduped.sort(compareErrors);
+};
 
+const main = (argv = process.argv.slice(2)) => {
+  const explicit = argv.length > 0;
+  const cli = normalizeCliFiles(argv);
+  const htmlFiles = explicit ? cli.htmlFiles : discoverRootHtmlFiles();
 
-for (const file of jsFiles) processJSFile(file, extra.length > 0);
-for (const file of htmlFiles) {
-  const snippets = extractHtmlSnippets(file);
-  for (const snippet of snippets) {
-    const ast = parseJS(snippet.code, file);
-    if (ast) collectFromAst(ast, file, true);
-  }
-}
+  const errors = [];
+  const jsFiles = new Set(cli.jsFiles.map((file) => path.resolve(file)));
 
-const errors = [];
-for (const call of calls) {
-  if (call.type === 'function') {
-    if (!definedFunctions.has(call.name) && !builtinFunctions.has(call.name)) {
-      errors.push({ file: call.file, line: call.line, name: call.name });
-    }
-  } else if (call.type === 'method') {
-    if (builtinObjects.has(call.object)) continue;
-    if (!definedMethods.has(call.name) && !builtinMethods.has(call.name)) {
-      errors.push({ file: call.file, line: call.line, name: call.name });
+  for (const htmlFile of htmlFiles) {
+    if (!fs.existsSync(htmlFile) || !fs.statSync(htmlFile).isFile()) continue;
+    if (isIgnoredPath(htmlFile, ignoredPathParts)) continue;
+
+    const result = lintHtmlFile(htmlFile);
+    errors.push(...result.errors);
+    for (const entryScript of result.entryScripts) {
+      jsFiles.add(path.resolve(entryScript));
     }
   }
-}
 
-if (errors.length) {
-  console.error('Undefined calls found:');
-  for (const err of errors) {
-    console.error(`  ${err.file}:${err.line} - ${err.name} is not defined`);
+  errors.push(...lintJsFiles(dedupeFiles(Array.from(jsFiles))));
+
+  const deduped = dedupeErrors(errors);
+  if (deduped.length) {
+    console.error('Undefined references found:');
+    for (const error of deduped) {
+      console.error(`  ${error.file}:${error.line}:${error.column} - ${error.message}`);
+    }
+    process.exit(1);
   }
-  process.exit(1);
-} else {
+
   console.log('No undefined calls detected.');
-}
+};
+
+main();

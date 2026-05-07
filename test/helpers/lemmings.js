@@ -3,7 +3,9 @@ import {
   getDependency,
   setDependency,
   clearDependency,
-  resetDependencies
+  resetDependencies,
+  getAppContext,
+  setAppContext
 } from '../../js/core/dependencies.js';
 
 const defaults = { ...Exports };
@@ -38,15 +40,25 @@ const Lemmings = new Proxy(defaults, {
 
 export { Lemmings, setDependency, clearDependency, resetDependencies };
 
+const setTestAppContext = (value) => {
+  const prevApp = getAppContext();
+  setAppContext(value || null);
+  return () => {
+    setAppContext(prevApp);
+  };
+};
+
 const setGlobalLemmings = (value) => {
   const prev = globalThis.lemmings;
   globalThis.lemmings = value;
+  const restoreApp = setTestAppContext(value);
   return () => {
     if (prev === undefined) {
       delete globalThis.lemmings;
     } else {
       globalThis.lemmings = prev;
     }
+    restoreApp();
   };
 };
 
@@ -72,13 +84,16 @@ const withGlobalLemmings = (value, fn) => {
 const withMissingGlobalLemmings = (fn) => {
   const hadProp = Object.prototype.hasOwnProperty.call(globalThis, 'lemmings');
   const prev = globalThis.lemmings;
+  const prevApp = getAppContext();
   delete globalThis.lemmings;
+  setAppContext(null);
   const restore = () => {
     if (hadProp) {
       globalThis.lemmings = prev;
     } else {
       delete globalThis.lemmings;
     }
+    setAppContext(prevApp);
   };
   try {
     const result = fn();
@@ -94,9 +109,9 @@ const withMissingGlobalLemmings = (fn) => {
 };
 
 const withShowDebug = (value, fn) => {
-  const game = globalThis.lemmings?.game;
+  const game = getAppContext()?.game;
   if (!game) {
-    throw new Error('globalThis.lemmings.game is required for withShowDebug');
+    throw new Error('app context with .game is required for withShowDebug');
   }
   const hadProp = Object.prototype.hasOwnProperty.call(game, 'showDebug');
   const prev = game.showDebug;
@@ -122,10 +137,28 @@ const withShowDebug = (value, fn) => {
 };
 
 const useGlobalLemmings = (value) => {
+  const cloneValue = (input) => {
+    if (Array.isArray(input)) {
+      return input.map(cloneValue);
+    }
+    if (input && typeof input === 'object') {
+      const proto = Object.getPrototypeOf(input);
+      if (proto === Object.prototype || proto === null) {
+        const copy = {};
+        for (const [key, val] of Object.entries(input)) {
+          copy[key] = cloneValue(val);
+        }
+        return copy;
+      }
+    }
+    return input;
+  };
+
   let restore;
   beforeEach(() => {
     const resolved = typeof value === 'function' ? value() : value;
-    restore = setGlobalLemmings(resolved);
+    const isolated = cloneValue(resolved);
+    restore = setGlobalLemmings(isolated);
   });
   afterEach(() => {
     restore();
@@ -133,6 +166,7 @@ const useGlobalLemmings = (value) => {
 };
 
 export {
+  setTestAppContext,
   setGlobalLemmings,
   withGlobalLemmings,
   withLemmingsGame,

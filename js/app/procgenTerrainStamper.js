@@ -18,52 +18,119 @@ const getPaletteLookup = (palette) => {
 class ProcgenTerrainStamper {
   constructor(level) {
     this.level = level || null;
+    this._dest32 = null;
+    this._destBuffer = null;
+    this._mask = null;
+    this._levelWidth = 0;
+    this._levelHeight = 0;
   }
 
   stamp(piece, x, y, drawProperties = {}) {
     const level = this.level;
-    if (!level || !piece?.image || !piece?.frame) return;
+    if (!level || !piece?.image || !piece?.frame) return null;
     const img = piece.image;
     const width = img.width | 0;
     const height = img.height | 0;
-    if (width <= 0 || height <= 0) return;
+    if (width <= 0 || height <= 0) return null;
 
-    const dest32 = new Uint32Array(level.groundImage.buffer);
-    const mask = level.groundMask.mask;
-    const levelW = level.width | 0;
-    const levelH = level.height | 0;
+    this._ensureLevelViews(level);
+    const dest32 = this._dest32;
+    const mask = this._mask;
+    const levelW = this._levelWidth;
+    const levelH = this._levelHeight;
+    if (!dest32 || !mask || levelW <= 0 || levelH <= 0) return null;
 
     const palLookup = getPaletteLookup(img.palette);
-    if (!palLookup) return;
+    if (!palLookup) return null;
+
+    const xOffset = x | 0;
+    const yOffset = y | 0;
+    const srcX0 = Math.max(0, -xOffset);
+    const srcY0 = Math.max(0, -yOffset);
+    const srcX1 = Math.min(width, levelW - xOffset);
+    const srcY1 = Math.min(height, levelH - yOffset);
+    if (srcX0 >= srcX1 || srcY0 >= srcY1) return null;
 
     const isUpsideDown = !!drawProperties.isUpsideDown;
     const noOverwrite = !!drawProperties.noOverwrite;
     const onlyOverwrite = !!drawProperties.onlyOverwrite;
     const isErase = !!drawProperties.isErase;
+    const black = ColorPalette.black;
+    let minX = levelW;
+    let minY = levelH;
+    let maxX = -1;
+    let maxY = -1;
 
-    for (let dy = 0; dy < height; dy++) {
+    for (let dy = srcY0; dy < srcY1; dy++) {
       const srcY = isUpsideDown ? (height - 1 - dy) : dy;
-      const outY = y + dy;
-      if (outY < 0 || outY >= levelH) continue;
+      const outY = yOffset + dy;
       const srcRow = srcY * width;
       const destRow = outY * levelW;
-      for (let dx = 0; dx < width; dx++) {
-        const outX = x + dx;
-        if (outX < 0 || outX >= levelW) continue;
+      for (let dx = srcX0; dx < srcX1; dx++) {
+        const outX = xOffset + dx;
         const ci = piece.frame[srcRow + dx];
         if (ci & 0x80) continue;
         const idx = destRow + outX;
         if (isErase) {
+          if (mask[idx] === 0 && dest32[idx] === black) continue;
           mask[idx] = 0;
-          dest32[idx] = ColorPalette.black;
+          dest32[idx] = black;
+          if (outX < minX) minX = outX;
+          if (outY < minY) minY = outY;
+          if (outX > maxX) maxX = outX;
+          if (outY > maxY) maxY = outY;
           continue;
         }
         if (noOverwrite && mask[idx]) continue;
         if (onlyOverwrite && !mask[idx]) continue;
+        const next = palLookup[ci];
+        if (mask[idx] === 1 && dest32[idx] === next) continue;
         mask[idx] = 1;
-        dest32[idx] = palLookup[ci];
+        dest32[idx] = next;
+        if (outX < minX) minX = outX;
+        if (outY < minY) minY = outY;
+        if (outX > maxX) maxX = outX;
+        if (outY > maxY) maxY = outY;
       }
     }
+    if (maxX >= minX && maxY >= minY) {
+      const rect = {
+        x: minX,
+        y: minY,
+        width: (maxX - minX) + 1,
+        height: (maxY - minY) + 1
+      };
+      level.applyGroundBulkChange?.(rect.x, rect.y, rect.width, rect.height, {
+        invalidateMiniMap: true
+      });
+      return rect;
+    }
+    return null;
+  }
+
+  /**
+   * Cache typed-array views for the current level buffer so repeated stamps
+   * avoid recreating `Uint32Array` wrappers in hot terrain generation paths.
+   */
+  _ensureLevelViews(level) {
+    const image = level?.groundImage;
+    const mask = level?.groundMask?.mask;
+    const buffer = image?.buffer ?? null;
+    if (!buffer || !mask) {
+      this._dest32 = null;
+      this._destBuffer = null;
+      this._mask = null;
+      this._levelWidth = 0;
+      this._levelHeight = 0;
+      return;
+    }
+    if (this._destBuffer !== buffer || !this._dest32) {
+      this._destBuffer = buffer;
+      this._dest32 = new Uint32Array(buffer);
+    }
+    this._mask = mask;
+    this._levelWidth = level.width | 0;
+    this._levelHeight = level.height | 0;
   }
 }
 

@@ -78,6 +78,44 @@ describe('GameDisplay', function() {
     expect(gd.hoverLemming).to.equal(lem);
   });
 
+  it('rebinds mouse listeners when the gui display changes', function() {
+    const lem = makeLemming(4);
+    let queueCount = 0;
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      game: { queueCommand() { queueCount += 1; } },
+      lemmingManager: { getNearestLemming() { return lem; } }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    const firstDisplay = makeDisplay();
+    const secondDisplay = makeDisplay();
+
+    gd.setGuiDisplay(firstDisplay);
+    gd.setGuiDisplay(secondDisplay);
+
+    expect(firstDisplay.onMouseDown.handlers.size).to.equal(0);
+    expect(firstDisplay.onMouseMove.handlers.size).to.equal(0);
+    expect(secondDisplay.onMouseDown.handlers.size).to.equal(1);
+    expect(secondDisplay.onMouseMove.handlers.size).to.equal(1);
+
+    firstDisplay.onMouseDown.trigger({ x: 1, y: 2 });
+    expect(queueCount).to.equal(0);
+    secondDisplay.onMouseDown.trigger({ x: 1, y: 2 });
+    expect(queueCount).to.equal(1);
+  });
+
+  it('detaches listeners when gui display is cleared', function() {
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    const display = makeDisplay();
+
+    gd.setGuiDisplay(display);
+    gd.setGuiDisplay(null);
+
+    expect(display.onMouseDown.handlers.size).to.equal(0);
+    expect(display.onMouseMove.handlers.size).to.equal(0);
+    expect(gd.display).to.equal(null);
+  });
+
   it('updates hover and flags gui changes', function() {
     const prev = makeLemming(1);
     prev.removed = true;
@@ -144,6 +182,70 @@ describe('GameDisplay', function() {
     expect(calls[0][5]).to.equal(255);
   });
 
+  it('renders selection and hover on the stage overlay plane when available', function() {
+    const baseCalls = [];
+    const overlayCalls = [];
+    const overlayDisplay = {
+      clearCalls: 0,
+      clear() { this.clearCalls += 1; },
+      drawCornerRect(...args) { overlayCalls.push(args); }
+    };
+    const stage = {
+      visible: null,
+      getGameOverlayDisplay() { return overlayDisplay; },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({
+      stage,
+      drawCornerRect(...args) { baseCalls.push(args); }
+    });
+    const selected = makeLemming(1);
+    const hover = makeLemming(2);
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: {
+        render() {},
+        getSelectedLemming() { return selected; }
+      }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+    gd.hoverLemming = hover;
+
+    gd.render();
+
+    expect(baseCalls.length).to.equal(0);
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(overlayCalls.length).to.equal(2);
+    expect(stage.visible).to.equal(true);
+  });
+
+  it('keeps overlay display lazy until needed and still clears stale overlay state', function() {
+    const overlayDisplay = { clearCalls: 0, clear() { this.clearCalls += 1; } };
+    const stage = {
+      visible: null,
+      getCalls: 0,
+      getGameOverlayDisplay() {
+        this.getCalls += 1;
+        return overlayDisplay;
+      },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({ stage });
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+
+    gd.render();
+    gd.renderDebug();
+    expect(stage.getCalls).to.equal(0);
+
+    gd._overlayHadContent = true;
+    gd.render();
+    expect(stage.getCalls).to.equal(1);
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(stage.visible).to.equal(false);
+  });
+
   it('exposes drawCorner test hook', function() {
     const display = makeDisplay({ drawRect(...args) { this.args = args; } });
     const { game, lemmingManager, level, objectManager, triggerManager } = makeContext();
@@ -169,6 +271,34 @@ describe('GameDisplay', function() {
 
     expect(display.args).to.have.length(6);
     expect(gd._dashOffset).to.equal(1);
+  });
+
+  it('renders debug hover overlays through the stage overlay plane when available', function() {
+    const overlayDisplay = {
+      clearCalls: 0,
+      clear() { this.clearCalls += 1; },
+      drawDashedRect(...args) { this.args = args; }
+    };
+    const stage = {
+      visible: null,
+      getGameOverlayDisplay() { return overlayDisplay; },
+      setGameOverlayVisible(value) { this.visible = value; }
+    };
+    const display = makeDisplay({ stage });
+    const { game, lemmingManager, level, objectManager, triggerManager } = makeContext({
+      lemmingManager: { renderDebug() {} },
+      level: { renderDebug() {} },
+      triggerManager: { renderDebug() {} }
+    });
+    const gd = new GameDisplay(game, level, lemmingManager, objectManager, triggerManager);
+    gd.display = display;
+    gd.hoverLemming = makeLemming(3);
+
+    gd.renderDebug();
+
+    expect(overlayDisplay.clearCalls).to.equal(1);
+    expect(overlayDisplay.args).to.have.length(6);
+    expect(stage.visible).to.equal(true);
   });
 
   it('skips input when disabled and uses fallback hover scheduling', function() {

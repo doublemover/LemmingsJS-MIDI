@@ -6,14 +6,23 @@ import { registerServiceWorker } from './registerServiceWorker.js';
 import { installE2EHarness } from './e2eHarness.js';
 import { ShortcutOverlay } from './shortcutOverlay.js';
 import { bindCanvasFocusBlur } from './canvasFocusBlur.js';
+import { ANALYTICS_EVENT_TYPES, createAnalyticsService } from './analytics.js';
+import {
+  detectEmbedMode,
+  optionalElement,
+  resolveRequiredElements
+} from './domResolver.js';
+import {
+  getRuntimeDependency,
+  setRuntimeContext
+} from '../core/dependencies.js';
+import { DEFAULT_RUNTIME_PROFILE } from '../core/runtimeProfiles.js';
+import { resolveRuntimeRolloutFlags } from '../core/rolloutFlags.js';
 import {
   listSavedLevels,
   loadSavedLevel,
   saveLevel
 } from '../editor/EditorStorage.js';
-
-const $ = globalThis.$ || globalThis.jQuery;
-const jQuery = globalThis.jQuery || $;
 
 const GAME_SHORTCUT_SECTIONS = [
   {
@@ -70,63 +79,226 @@ const GAME_SHORTCUT_SECTIONS = [
   }
 ];
 
+const REQUIRED_BOOT_IDS = Object.freeze([
+  'shortcutOverlay',
+  'gameTypeSelect',
+  'levelGroupSelect',
+  'levelIndexSelect',
+  'gameCanvas'
+]);
+
+const getRuntimeWindow = () => getRuntimeDependency('window', null);
+const getRuntimeDocument = () => getRuntimeDependency('document', null);
+const getRuntimeWebMidi = () => getRuntimeDependency('webMidi', null);
+
+const getAmbientRuntimeDependency = (key, globalKey, fallback = null) => {
+  if (typeof globalThis !== 'undefined' &&
+      Object.prototype.hasOwnProperty.call(globalThis, globalKey)) {
+    const value = globalThis[globalKey];
+    return value === undefined ? fallback : value;
+  }
+  return getRuntimeDependency(key, fallback);
+};
+
+const hydrateRuntimeContext = () => {
+  const windowRef = getAmbientRuntimeDependency('window', 'window', null);
+  const documentRef = getAmbientRuntimeDependency('document', 'document', null);
+  const locationRef = getAmbientRuntimeDependency('location', 'location', windowRef?.location || null);
+  const runtimeRolloutFlags = resolveRuntimeRolloutFlags({
+    search: locationRef?.search || '',
+    runtimeFlags: getAmbientRuntimeDependency('rolloutFlags', '__LEMMINGS_ROLLOUT_FLAGS__', null)
+  });
+  setRuntimeContext({
+    window: windowRef,
+    document: documentRef,
+    navigator: getAmbientRuntimeDependency('navigator', 'navigator', windowRef?.navigator || null),
+    location: locationRef,
+    history: getAmbientRuntimeDependency('history', 'history', windowRef?.history || null),
+    localStorage: getAmbientRuntimeDependency('localStorage', 'localStorage', windowRef?.localStorage || null),
+    caches: getAmbientRuntimeDependency('caches', 'caches', null),
+    performance: getAmbientRuntimeDependency('performance', 'performance', (typeof performance !== 'undefined' ? performance : null)),
+    webMidi: getAmbientRuntimeDependency('webMidi', 'WebMidi', null),
+    rolloutFlags: runtimeRolloutFlags,
+    bootNoAutoStart: getAmbientRuntimeDependency('bootNoAutoStart', '__LEMMINGS_BOOT_NO_AUTO_START__', false)
+  });
+  return { windowRef, documentRef };
+};
+
+const appendBootFailureMessage = (documentRef, error, embedMode) => {
+  if (!documentRef) return;
+  const message = error?.message || 'Runtime boot failed.';
+  documentRef.documentElement?.setAttribute?.('data-boot-error', message);
+  if (!embedMode) return;
+  const host = documentRef.querySelector?.('.game_container') || documentRef.body;
+  if (!host || !documentRef.createElement) return;
+  if (documentRef.getElementById?.('bootFailureNotice')) return;
+  const notice = documentRef.createElement('div');
+  notice.id = 'bootFailureNotice';
+  notice.textContent = message;
+  notice.className = 'boot-failure-notice';
+  host.appendChild(notice);
+};
+
 let midiUi = null;
 let midiInputController = null;
 let lemmings;
+let resizeBound = false;
+let cachedGameContainer = null;
+let cachedCanvas = null;
+let analytics = null;
 
-function init() {
+const setLemmingsForTest = (value) => {
+  lemmings = value;
+};
+
+const createBootAnalytics = ({ windowRef, documentRef } = {}) => {
+  analytics = createAnalyticsService({
+    window: windowRef,
+    document: documentRef,
+    navigator: windowRef?.navigator || null,
+    location: windowRef?.location || null,
+    localStorage: getRuntimeDependency('localStorage', windowRef?.localStorage || null),
+    profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+    surface: 'game',
+    runtimeDisabled: getRuntimeDependency('analyticsDisabled', false) === true,
+    hardDisabled: getRuntimeDependency('analyticsHardDisabled', false) === true,
+    enableManagedBeacon: getRuntimeDependency('analyticsBeaconEnabled', false) === true,
+    managedBeaconEndpoint: getRuntimeDependency('analyticsBeaconEndpoint', null),
+    sampleRate: getRuntimeDependency('analyticsSampleRate', 1)
+  });
+  analytics.installWindowApi(windowRef);
+  return analytics;
+};
+
+function init({ windowRef, documentRef, embedMode }) {
+  if (!windowRef || !documentRef) {
+    throw new Error('Runtime boot requires both window and document references.');
+  }
   midiUi = createMidiUiController({
-    window: globalThis.window,
-    document: globalThis.document,
+    window: windowRef,
+    document: documentRef,
     getLemmings: () => lemmings,
-    getWebMidi: () => globalThis.WebMidi
+    getWebMidi: () => getRuntimeWebMidi()
   });
 
   lemmings = new GameView();
+  lemmings.applyProfileHistoryRetentionPolicy?.();
   lemmings.midiEnabled = midiUi.getStoredEnabled();
   lemmings.includeSavedLevels = true;
   lemmings.autoExitEditorOnSelect = true;
+  analytics?.setContext?.({
+    surface: 'game',
+    profile: lemmings.startupProfile || DEFAULT_RUNTIME_PROFILE
+  });
+  const bootNodes = resolveRequiredElements(documentRef, REQUIRED_BOOT_IDS, {
+    context: 'boot',
+    embedMode: embedMode === true
+  });
+  const shortcutOverlayRoot = bootNodes.shortcutOverlay;
+  const gameTypeSelect = bootNodes.gameTypeSelect;
+  const levelGroupSelect = bootNodes.levelGroupSelect;
+  const levelIndexSelect = bootNodes.levelIndexSelect;
+  const gameCanvas = bootNodes.gameCanvas;
   lemmings.shortcutOverlay = new ShortcutOverlay({
-    root: document.getElementById('shortcutOverlay'),
+    root: shortcutOverlayRoot,
     title: 'Game Shortcuts',
     sections: GAME_SHORTCUT_SECTIONS,
     getBindings: action => lemmings.shortcuts?.getDisplayBindings?.(action) || []
   });
-  installE2EHarness({ view: lemmings });
+  installE2EHarness({ view: lemmings, midiUi });
 
   midiInputController = new MidiInputController(lemmings, {
     getConfig: () => midiUi.getMidiConfig(),
-    onConfigChange: patch => midiUi.setMidiOverrides(patch)
+    onConfigChange: patch => midiUi.applyRuntimePatch(patch)
   });
   midiUi.setMidiInputController(midiInputController);
-  globalThis.onEnabled = () => midiUi?.onEnabled?.();
-  globalThis.onMidiError = (message) => midiUi?.showError?.(message);
+  const midiStatusHandlers = midiUi.getMidiStatusHandlers?.();
+  lemmings.setMidiStatusHandlers?.({
+    onEnabled: () => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_MIDI_TOGGLE, { enabled: true });
+      midiStatusHandlers?.onEnabled?.();
+    },
+    onError: (message) => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
+        code: 'midi_error',
+        surface: 'game',
+        profile: lemmings.startupProfile || DEFAULT_RUNTIME_PROFILE,
+        embedMode: embedMode === true
+      });
+      midiStatusHandlers?.onError?.(message);
+    }
+  });
 
-  lemmings.elementSelectGameType = document.getElementById('gameTypeSelect');
-  lemmings.elementSelectLevelGroup = document.getElementById('levelGroupSelect');
-  lemmings.elementSelectLevel = document.getElementById('levelIndexSelect');
-  lemmings.gameCanvas = document.getElementById('gameCanvas');
+  lemmings.elementSelectGameType = gameTypeSelect;
+  lemmings.elementSelectLevelGroup = levelGroupSelect;
+  lemmings.elementSelectLevel = levelIndexSelect;
+  lemmings.gameCanvas = gameCanvas;
+  cachedCanvas = gameCanvas;
+  cachedGameContainer = documentRef.querySelector('.game_container');
   bindCanvasFocusBlur(lemmings.gameCanvas);
   const setupPromise = lemmings.setup();
   if (setupPromise?.then) {
-    setupPromise.then(() => midiUi?.refreshMidiUiFromConfig?.()).catch(() => {});
+    setupPromise.then(async () => {
+      if (lemmings.startupProfile === 'editor') {
+        lemmings.enterEditorMode();
+        await lemmings.loadEditorLevelFromSelection();
+      }
+      midiUi?.refreshMidiUiFromConfig?.();
+    }).catch(() => {});
   }
   // use GameView.strToNum to parse dropdown values
   lemmings.elementSelectGameType.addEventListener('change', (e) => {
-    lemmings.selectGameType(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectGameType(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'gameType',
+      value
+    });
   });
   lemmings.elementSelectLevelGroup.addEventListener('change', (e) => {
-    lemmings.selectLevelGroup(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectLevelGroup(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'levelGroup',
+      value
+    });
   });
   lemmings.elementSelectLevel.addEventListener('change', (e) => {
-    lemmings.selectLevel(lemmings.strToNum(e.target.value));
+    const value = lemmings.strToNum(e.target.value);
+    lemmings.selectLevel(value);
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_LEVEL_SELECT, {
+      control: 'levelIndex',
+      value
+    });
   });
+  const midiEnabledToggle = optionalElement(documentRef, 'midiEnabledToggle');
+  if (midiEnabledToggle) {
+    midiEnabledToggle.addEventListener('change', (e) => {
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_MIDI_TOGGLE, {
+        enabled: !!e.target.checked
+      });
+    });
+  }
+  const levelPrevButton = optionalElement(documentRef, 'levelPrevButton');
+  const levelNextButton = optionalElement(documentRef, 'levelNextButton');
+  const bindLevelArrow = (element, delta) => {
+    if (!element) return;
+    const move = () => lemmings.moveToLevel(delta);
+    element.addEventListener('click', move);
+    element.addEventListener('keydown', (event) => {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault?.();
+      move();
+    });
+  };
+  bindLevelArrow(levelPrevButton, -1);
+  bindLevelArrow(levelNextButton, 1);
 
-  const savedSelect = document.getElementById('savedLevelSelect');
-  const savedSaveButton = document.getElementById('savedLevelSave');
-  const savedExportButton = document.getElementById('savedLevelExport');
-  const savedImportButton = document.getElementById('savedLevelImport');
-  const savedImportInput = document.getElementById('savedLevelImportInput');
+  const savedSelect = optionalElement(documentRef, 'savedLevelSelect');
+  const savedSaveButton = optionalElement(documentRef, 'savedLevelSave');
+  const savedExportButton = optionalElement(documentRef, 'savedLevelExport');
+  const savedImportButton = optionalElement(documentRef, 'savedLevelImport');
+  const savedImportInput = optionalElement(documentRef, 'savedLevelImportInput');
 
   let currentSavedId = '';
 
@@ -140,12 +312,12 @@ function init() {
     if (!savedSelect) return;
     const entries = listSavedLevels();
     savedSelect.innerHTML = '';
-    const placeholder = document.createElement('option');
+    const placeholder = documentRef.createElement('option');
     placeholder.value = '';
     placeholder.textContent = 'Saved levels';
     savedSelect.appendChild(placeholder);
     for (const entry of entries) {
-      const opt = document.createElement('option');
+      const opt = documentRef.createElement('option');
       opt.value = entry.id;
       opt.textContent = entry.name;
       savedSelect.appendChild(opt);
@@ -170,6 +342,9 @@ function init() {
       if (!text) return;
       lemmings.loadEditorLevelFromText(text);
       currentSavedId = id;
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+        action: 'load'
+      });
     });
   }
 
@@ -186,6 +361,9 @@ function init() {
       if (id) {
         currentSavedId = id;
         refreshSavedList(id);
+        analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+          action: 'save'
+        });
       }
     });
   }
@@ -198,13 +376,16 @@ function init() {
       const filename = `${sanitizeFileName(title)}.nxlv`;
       const blob = new Blob([text], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
+      const link = documentRef.createElement('a');
       link.href = url;
       link.download = filename;
-      document.body.appendChild(link);
+      documentRef.body.appendChild(link);
       link.click();
-      document.body.removeChild(link);
+      documentRef.body.removeChild(link);
       URL.revokeObjectURL(url);
+      analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+        action: 'export'
+      });
     });
   }
 
@@ -223,6 +404,9 @@ function init() {
         lemmings.loadEditorLevelFromText(text);
         currentSavedId = '';
         refreshSavedList('');
+        analytics?.track?.(ANALYTICS_EVENT_TYPES.GAMEPLAY_SAVED_LEVEL, {
+          action: 'import'
+        });
       };
       reader.readAsText(file);
       e.target.value = '';
@@ -231,74 +415,133 @@ function init() {
 }
 
 function setSize() {
+  const windowRef = getRuntimeWindow();
+  const documentRef = getRuntimeDocument();
+  if (!windowRef || !documentRef) return;
   const baseW = 800;
   const baseH = 480;
   const ratio = baseW / baseH;
-  const gameContainer = jQuery('.game_container');
-  const docEl = document.documentElement;
-  const viewport = window.visualViewport;
-  const width = Math.max(1, viewport?.width || docEl.clientWidth || window.innerWidth);
-  const height = Math.max(1, viewport?.height || docEl.clientHeight || window.innerHeight);
+  const gameContainer = cachedGameContainer || documentRef.querySelector('.game_container');
+  if (!cachedGameContainer) {
+    cachedGameContainer = gameContainer;
+  }
+  const docEl = documentRef.documentElement;
+  const viewport = windowRef.visualViewport;
+  const width = Math.max(1, viewport?.width || docEl.clientWidth || windowRef.innerWidth);
+  const height = Math.max(1, viewport?.height || docEl.clientHeight || windowRef.innerHeight);
   const isPortrait = height > width;
   const isTablet = Math.max(width, height) >= 900;
-  document.body.classList.toggle('portrait-small', isPortrait && !isTablet);
+  documentRef.body.classList.toggle('portrait-small', isPortrait && !isTablet);
   let containerWidth, containerHeight;
 
   if (width >= height * ratio) {
     containerWidth = height * ratio;
     containerHeight = height;
-    gameContainer.css('margin-top', '');
-    gameContainer.css('margin-left', (width - containerWidth) / 2);
-    gameContainer.removeClass('small');
+    if (gameContainer) {
+      gameContainer.style.marginTop = '';
+      gameContainer.style.marginLeft = `${(width - containerWidth) / 2}px`;
+      gameContainer.classList.remove('small');
+    }
   } else {
     containerWidth = width;
     containerHeight = width / ratio;
-    gameContainer.css('margin-top', (height - containerHeight) / 2);
-    gameContainer.css('margin-left', '');
-    gameContainer.addClass('small');
+    if (gameContainer) {
+      gameContainer.style.marginTop = `${(height - containerHeight) / 2}px`;
+      gameContainer.style.marginLeft = '';
+      gameContainer.classList.add('small');
+    }
   }
 
   if (containerWidth > width) containerWidth = width;
   if (containerHeight > height) containerHeight = height;
 
-  gameContainer.width(containerWidth);
-  gameContainer.height(containerHeight);
+  if (gameContainer) {
+    gameContainer.style.width = `${containerWidth}px`;
+    gameContainer.style.height = `${containerHeight}px`;
+  }
 
-  const canvas = document.getElementById('gameCanvas');
+  const canvas = lemmings?.gameCanvas || cachedCanvas || optionalElement(documentRef, 'gameCanvas');
+  if (!cachedCanvas && canvas) {
+    cachedCanvas = canvas;
+  }
   if (canvas) {
-    canvas.width = baseW;
-    canvas.height = baseH;
+    if (canvas.width !== baseW) {
+      canvas.width = baseW;
+    }
+    if (canvas.height !== baseH) {
+      canvas.height = baseH;
+    }
     canvas.style.width = containerWidth + 'px';
     canvas.style.height = containerHeight + 'px';
   }
 
-  if (window.lemmings && window.lemmings.stage) {
-    window.lemmings.stage.scheduleUpdateStageSize();
+  if (lemmings?.stage) {
+    lemmings.stage.scheduleUpdateStageSize();
   }
 }
 
 function bindResize() {
-  if (typeof $ === 'function' && $(window)?.on) {
-    $(window).on('resize orientationchange', function() {
-      setSize();
-    });
-  } else {
-    window.addEventListener('resize', setSize);
-    window.addEventListener('orientationchange', setSize);
-  }
+  const windowRef = getRuntimeWindow();
+  if (!windowRef) return;
+  if (resizeBound) return;
+  resizeBound = true;
+  windowRef.addEventListener('resize', setSize);
+  windowRef.addEventListener('orientationchange', setSize);
+  windowRef.visualViewport?.addEventListener?.('resize', setSize);
 }
 
 function start() {
-  init();
-  midiUi?.bindMidiUi();
-  midiUi?.scheduleMidiUiRefresh();
-  registerServiceWorker();
-  setSize();
-  bindResize();
+  const { windowRef, documentRef } = hydrateRuntimeContext();
+  const embedMode = detectEmbedMode({ windowRef, documentRef });
+  createBootAnalytics({ windowRef, documentRef });
+  try {
+    init({ windowRef, documentRef, embedMode });
+    analytics?.trackPageView?.({
+      surface: 'game',
+      profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      embedMode: embedMode === true
+    });
+    midiUi?.bindMidiUi();
+    midiUi?.scheduleMidiUiRefresh();
+    registerServiceWorker({
+      profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      window: windowRef,
+      document: documentRef,
+      location: windowRef?.location || null
+    });
+    setSize();
+    bindResize();
+  } catch (error) {
+    analytics?.track?.(ANALYTICS_EVENT_TYPES.RUNTIME_BOOT_ERROR, {
+      code: 'boot_error',
+      surface: 'game',
+      profile: lemmings?.startupProfile || DEFAULT_RUNTIME_PROFILE,
+      embedMode: embedMode === true
+    });
+    appendBootFailureMessage(documentRef, error, embedMode);
+    if (!embedMode) {
+      throw error;
+    }
+  }
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', start);
-} else {
-  start();
+{
+  const { documentRef } = hydrateRuntimeContext();
+  const noAutoStart = getRuntimeDependency('bootNoAutoStart', false) === true;
+  if (!noAutoStart && documentRef) {
+    if (documentRef.readyState === 'loading') {
+      documentRef.addEventListener('DOMContentLoaded', start);
+    } else {
+      start();
+    }
+  } else if (!noAutoStart && !documentRef) {
+    throw new Error('Runtime boot requires a document reference.');
+  }
 }
+
+export {
+  bindResize,
+  setLemmingsForTest,
+  setSize,
+  start
+};

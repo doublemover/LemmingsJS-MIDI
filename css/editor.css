@@ -89,6 +89,52 @@ body {
   color: var(--ink);
 }
 
+.editor-project-menu {
+  position: relative;
+}
+
+.editor-project-menu summary {
+  border: 1px solid var(--panel-border);
+  background: #f4efe6;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 10px;
+}
+
+.editor-project-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-project-menu[open] summary {
+  border-color: var(--accent-dark);
+  background: #fffdf9;
+}
+
+.editor-project-menu__content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 12;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  gap: 8px;
+  width: min(440px, 80vw);
+  padding: 10px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 12px 24px var(--shadow);
+}
+
+.editor-project-menu__content label {
+  display: grid;
+  gap: 4px;
+}
+
+.editor-project-menu__content button {
+  text-align: center;
+}
+
 .dirty-indicator {
   padding: 4px 8px;
   border: 1px solid var(--panel-border);
@@ -111,13 +157,32 @@ body {
   color: #fff;
 }
 
+.editor-controls button:focus-visible,
+.editor-controls select:focus-visible,
+.editor-controls input:focus-visible,
+.editor-project-menu summary:focus-visible,
+.tool-grid button:focus-visible,
+.palette-tabs button:focus-visible,
+.palette-recent button:focus-visible,
+.palette-view-toggle button:focus-visible,
+.palette-list button:focus-visible,
+.editor-button:focus-visible,
+.inspector-grid input:focus-visible,
+.inspector-grid select:focus-visible,
+.control-row input:focus-visible,
+.control-row select:focus-visible,
+.shortcut-overlay__close:focus-visible {
+  outline: 3px solid rgba(210, 106, 60, 0.55);
+  outline-offset: 2px;
+}
+
 .editor-main {
   display: grid;
   grid-template-columns: minmax(200px, 280px) 1fr minmax(220px, 320px);
   gap: 12px;
   padding: 8px 12px 12px;
   min-height: 0;
-  height: 100%;
+  overflow: hidden;
 }
 
 .editor-panel {
@@ -130,6 +195,8 @@ body {
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .panel-title {
@@ -245,6 +312,14 @@ body {
   image-rendering: pixelated;
 }
 
+.palette-preview.pending {
+  background:
+    linear-gradient(90deg, rgba(210, 106, 60, 0.08), rgba(210, 106, 60, 0.18), rgba(210, 106, 60, 0.08)),
+    #fffdf9;
+  background-size: 180% 100%;
+  animation: palette-preview-pulse 900ms linear infinite;
+}
+
 .palette-preview.empty {
   background:
     repeating-linear-gradient(
@@ -257,6 +332,15 @@ body {
     #fffdf9;
 }
 
+@keyframes palette-preview-pulse {
+  from {
+    background-position: 100% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
 .palette-label {
   display: block;
   line-height: 1.25;
@@ -266,6 +350,34 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.palette-recent {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.palette-recent[hidden] {
+  display: none;
+}
+
+.palette-recent button {
+  border: 1px solid var(--panel-border);
+  background: #f6efe5;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 11px;
+  min-height: 26px;
+  padding: 3px 6px;
+}
+
+.palette-recent button.active {
+  border-color: var(--accent);
+  background: #f7d6c5;
 }
 
 #editorPaletteSearch {
@@ -377,6 +489,40 @@ body {
   gap: 8px;
 }
 
+.compact-row {
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.inline-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.inline-controls input[type="number"],
+.inline-controls input[type="text"] {
+  min-width: 64px;
+  max-width: 120px;
+  padding: 4px 6px;
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+}
+
+.inline-controls .editor-button {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.inline-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
 .selection-flags {
   border: 1px solid var(--panel-border);
   border-radius: 8px;
@@ -408,6 +554,39 @@ body {
 .issue-list {
   display: grid;
   gap: 8px;
+}
+
+.validation-toolbar {
+  display: grid;
+  gap: 6px;
+}
+
+.validation-toolbar .editor-button {
+  text-align: center;
+}
+
+.validation-status {
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 8px;
+}
+
+.validation-status[data-status="ok"] {
+  border-left: 4px solid #2f7a48;
+  color: var(--ink);
+}
+
+.validation-status[data-status="warnings"] {
+  border-left: 4px solid var(--warn);
+  color: var(--ink);
+}
+
+.validation-status[data-status="unavailable"] {
+  border-left: 4px solid var(--error);
+  color: var(--ink);
 }
 
 .issue-item {
@@ -445,7 +624,42 @@ body {
   border-left: 4px solid var(--warn);
 }
 
-.issue-item button {
+.issue-item.has-destructive-fix {
+  background: #fff8ee;
+}
+
+.issue-severity {
+  align-self: flex-start;
+  border-radius: 4px;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #efe6d9;
+  color: var(--muted);
+}
+
+.issue-item.error .issue-severity {
+  background: rgba(179, 54, 45, 0.12);
+  color: var(--error);
+}
+
+.issue-item.warning .issue-severity {
+  background: rgba(199, 124, 47, 0.14);
+  color: var(--warn);
+}
+
+.issue-message {
+  line-height: 1.35;
+}
+
+.issue-note {
+  color: var(--warn);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.issue-action {
   align-self: flex-start;
   background: var(--accent);
   color: #fff;
@@ -455,9 +669,53 @@ body {
   font-size: 11px;
 }
 
+.issue-action.destructive {
+  background: var(--warn);
+  border: 1px solid #9b6326;
+}
+
 @media (max-width: 1100px) {
   .editor-main {
     grid-template-columns: 1fr;
+    align-content: start;
+    grid-auto-rows: max-content;
+    overflow-y: auto;
+  }
+
+  .editor-canvas-panel {
+    min-height: min(70vh, 640px);
+  }
+}
+
+@media (max-width: 640px) {
+  .editor-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .editor-title {
+    font-size: 16px;
+  }
+
+  .editor-controls {
+    width: 100%;
+    gap: 8px;
+  }
+
+  .editor-controls label {
+    flex: 1 1 140px;
+  }
+
+  .editor-controls select,
+  .editor-controls input,
+  .editor-controls button {
+    max-width: 100%;
+  }
+
+  .editor-main {
+    padding: 6px;
   }
 }
 

@@ -8,15 +8,15 @@ test.beforeEach(async ({ page }) => {
       window.localStorage?.clear?.();
     } catch (error) {}
   });
-  await page.goto('/');
+  await page.goto('/?e2e=1');
 });
 
 test('Game loads the first level on startup', async ({ page }) => {
   await page.waitForFunction(() => {
-    return Boolean(window.lemmings?.game?.level);
+    return window.__E2E__?.getState?.()?.ready === true;
   });
-  const hasLevel = await page.evaluate(() => Boolean(window.lemmings?.game?.level));
-  expect(hasLevel).toBe(true);
+  const ready = await page.evaluate(() => window.__E2E__?.getState?.()?.ready === true);
+  expect(ready).toBe(true);
 });
 
 test('Arrow navigation updates the selected level', async ({ page }) => {
@@ -41,6 +41,35 @@ test('Arrow navigation updates the selected level', async ({ page }) => {
   }, initialValue);
 });
 
+test('Level arrows support keyboard activation', async ({ page }) => {
+  const levelSelect = page.locator('#levelIndexSelect');
+  await page.waitForFunction(() => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.options.length > 1;
+  });
+  const initialValue = await levelSelect.inputValue();
+  const next = page.locator('#levelNextButton');
+  const prev = page.locator('#levelPrevButton');
+
+  await expect(next).toHaveAttribute('role', 'button');
+  await expect(next).toHaveAttribute('aria-label', 'Next level');
+  await next.focus();
+  await expect(next).toBeFocused();
+  await page.keyboard.press('Enter');
+  await page.waitForFunction((prevValue) => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.value !== prevValue;
+  }, initialValue);
+
+  await prev.focus();
+  await expect(prev).toBeFocused();
+  await page.keyboard.press('Space');
+  await page.waitForFunction((prevValue) => {
+    const select = document.getElementById('levelIndexSelect');
+    return select && select.value === prevValue;
+  }, initialValue);
+});
+
 test('Space toggles pause state', async ({ page }) => {
   await page.goto('/?e2e=1');
   await page.waitForFunction(() => window.__E2E__?.getState?.().ready);
@@ -50,4 +79,28 @@ test('Space toggles pause state', async ({ page }) => {
   await page.waitForFunction(() => window.__E2E__?.getState?.().game?.timer?.running === false);
   await page.keyboard.press('Space');
   await page.waitForFunction(() => window.__E2E__?.getState?.().game?.timer?.running === true);
+});
+
+test('Game shortcut overlay focuses close control and restores canvas focus', async ({ page }) => {
+  await page.waitForFunction(() => window.__E2E__?.getState?.().ready);
+  await page.waitForSelector('#shortcutOverlay .shortcut-row');
+  const canvas = page.locator('#gameCanvas');
+  const overlay = page.locator('#shortcutOverlay');
+  const close = overlay.locator('.shortcut-overlay__close');
+
+  await canvas.evaluate(element => {
+    element.setAttribute('tabindex', '-1');
+  });
+  await canvas.focus();
+  await expect(canvas).toBeFocused();
+
+  await expect(async () => {
+    await page.keyboard.press('F1');
+    await expect(overlay).toHaveAttribute('aria-hidden', 'false', { timeout: 1000 });
+  }).toPass({ timeout: 5000 });
+  await expect(close).toBeFocused();
+
+  await page.keyboard.press('Escape');
+  await expect(overlay).toHaveAttribute('aria-hidden', 'true');
+  await expect(canvas).toBeFocused();
 });

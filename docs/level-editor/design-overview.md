@@ -1,8 +1,9 @@
 # Level Editor Design Overview
 
 ## Goals
-- Provide a fully featured in-game level editor for NeoLemmix `.nxlv`.
-- Support save/load to localStorage and import/export `.nxlv` files.
+- Provide a classic-subset level editor for `.nxlv` workflows.
+- Support save/load to localStorage plus import/export for `.nxlv` and
+  classic `.lvl` files.
 - Offer comprehensive tools for terrain, gadgets, triggers, entrances, exits, steel, and selection edits.
 - Keep editor logic deterministic and testable (100% coverage in `js/editor/**`).
 
@@ -38,7 +39,8 @@
 - LocalStorage entries:
   - `lemmings.editor.levels` (index)
   - `lemmings.editor.level.<id>` (NXLV text)
-- Import/Export uses file picker + Blob download.
+- Import/Export uses file picker + Blob download for text `.nxlv` and binary
+  classic `.lvl` payloads.
 
 ## Testing
 - All `js/editor/**` logic is covered at 100% via `npm run coverage-editor`.

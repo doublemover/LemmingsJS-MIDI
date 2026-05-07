@@ -28,4 +28,21 @@ describe('Level.newSetSteelAreas', function() {
     expect(Array.from(level.steelRanges)).to.eql([0, 0, 1, 1]);
     expect(level.steelMask.hasMaskAt(0, 0)).to.equal(true);
   });
+
+  it('records each steel terrain range once even when multiple pixels match', function() {
+    const level = new Level(4, 4);
+    const pal = new Lemmings.ColorPalette();
+    level.setGroundImage(new Uint8ClampedArray(4 * 4 * 4));
+    level.setPalettes(pal, pal);
+    level.setSteelAreas([Object.assign(new Range(), { x: 0, y: 0, width: 2, height: 2 })]);
+
+    const levelReader = { levelWidth: 4, levelHeight: 4, terrains: [{ id: 1, x: 0, y: 0 }] };
+    const terrainImages = { 1: { isSteel: true, steelWidth: 2, steelHeight: 2, width: 2, height: 2 } };
+
+    level.newSetSteelAreas(levelReader, terrainImages);
+
+    expect(Array.from(level.steelRanges)).to.eql([0, 0, 2, 2]);
+    expect(level.steelMask.hasMaskAt(0, 0)).to.equal(true);
+    expect(level.steelMask.hasMaskAt(1, 1)).to.equal(true);
+  });
 });

@@ -1,0 +1,38 @@
+{
+  "manifest_version": "0.3",
+  "name": "lemmings-mcp-interact",
+  "version": "0.0.4",
+  "description": "Lemmings MCP input/vision/watch tool surface",
+  "author": {
+    "name": "doublemover"
+  },
+  "server": {
+    "type": "node",
+    "entry_point": "mcp/server.js",
+    "mcp_config": {
+      "command": "node",
+      "args": ["${__dirname}/mcp/server.js"],
+      "env": {
+        "LEMMINGS_MCP_BASE_URL": "${user_config.base_url}",
+        "LEMMINGS_MCP_PATH": "${user_config.path}",
+        "LEMMINGS_MCP_SURFACES": "interact"
+      }
+    }
+  },
+  "user_config": {
+    "base_url": {
+      "type": "string",
+      "title": "Base URL",
+      "description": "Base URL for the running game server",
+      "required": false,
+      "default": "https://localhost:8080"
+    },
+    "path": {
+      "type": "string",
+      "title": "Path",
+      "description": "Path to load for MCP sessions",
+      "required": false,
+      "default": "/?e2e=1"
+    }
+  }
+}

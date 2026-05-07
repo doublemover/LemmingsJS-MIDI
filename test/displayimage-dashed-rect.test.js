@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { useGlobalLemmings } from './helpers/lemmings.js';
-import { DisplayImage } from '../js/render/DisplayImage.js';
+import { DisplayImage, __test__ } from '../js/render/DisplayImage.js';
 
 class SimpleImageData {
   constructor(width, height) {
@@ -68,5 +68,37 @@ describe('DisplayImage dashed/marching rectangles', function () {
     set(1, 2, color2);
 
     expect(Array.from(display.buffer32)).to.eql(expected);
+  });
+
+  it('clips marching ant rectangles that extend outside the display bounds', function () {
+    const stage = new MockStage();
+    const display = stage.getGameDisplay();
+    display.initSize(4, 3);
+    display.clear(0);
+
+    display.drawMarchingAntRect(-1, -1, 3, 2, 2, 0, 0xFFFFFFFF, 0xFF000000);
+
+    expect(Object.prototype.hasOwnProperty.call(display.buffer32, '-1')).to.equal(false);
+    const changed = Array.from(display.buffer32).some(value => value !== 0);
+    expect(changed).to.equal(true);
+  });
+
+  it('keeps marching-ant caches collision-proof for large dimensions', function () {
+    __test__._marchingAntPerimeterCache.clear();
+    __test__._marchingAntPatternCache.clear();
+
+    const perimeterA = __test__.getMarchingAntPerimeterOffsets(2, 0, 1);
+    const perimeterB = __test__.getMarchingAntPerimeterOffsets(1, 256, 1);
+    expect(perimeterA).to.not.equal(perimeterB);
+    expect(perimeterA.length).to.equal(2);
+    expect(perimeterB.length).to.equal(514);
+    expect(__test__._marchingAntPerimeterCache.size).to.equal(2);
+
+    const patternA = __test__.getMarchingAntPaintPattern(2, 1, 0);
+    const patternB = __test__.getMarchingAntPaintPattern(1, 257, 0);
+    expect(patternA).to.not.equal(patternB);
+    expect(patternA.first.length + patternA.second.length).to.equal(2);
+    expect(patternB.first.length + patternB.second.length).to.equal(1);
+    expect(__test__._marchingAntPatternCache.size).to.equal(2);
   });
 });

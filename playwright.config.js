@@ -1,5 +1,29 @@
 import { defineConfig } from '@playwright/test';
 
+const DEFAULT_PLAYWRIGHT_BASE_URL = 'https://localhost:8080';
+
+const resolvePlaywrightBaseUrl = (value = process.env.LEMMINGS_E2E_BASE_URL) => {
+  const candidate = String(value || '').trim() || DEFAULT_PLAYWRIGHT_BASE_URL;
+  let url;
+  try {
+    url = new URL(candidate);
+  } catch {
+    throw new Error(`Invalid LEMMINGS_E2E_BASE_URL: ${candidate}`);
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') {
+    throw new Error(`LEMMINGS_E2E_BASE_URL must use http or https: ${candidate}`);
+  }
+  return url.origin;
+};
+
+const resolvePlaywrightWebServerPort = (baseUrl) => {
+  const url = new URL(baseUrl);
+  if (url.port) return Number(url.port);
+  return url.protocol === 'https:' ? 443 : 80;
+};
+
+const baseURL = resolvePlaywrightBaseUrl();
+
 export default defineConfig({
   testDir: './e2e',
   timeout: 30000,
@@ -8,7 +32,7 @@ export default defineConfig({
   },
   reporter: [['list']],
   use: {
-    baseURL: 'https://localhost:8080',
+    baseURL,
     browserName: 'chromium',
     ignoreHTTPSErrors: true,
     permissions: ['midi'],
@@ -21,7 +45,13 @@ export default defineConfig({
   },
   webServer: {
     command: 'npm run start-https',
-    port: 8080,
+    port: resolvePlaywrightWebServerPort(baseURL),
     reuseExistingServer: !process.env.CI
   }
 });
+
+export {
+  DEFAULT_PLAYWRIGHT_BASE_URL,
+  resolvePlaywrightBaseUrl,
+  resolvePlaywrightWebServerPort
+};

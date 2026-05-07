@@ -3,6 +3,15 @@
 These examples use the short tool names (dots replaced with underscores) and the
 compact `state.get` preset defaults.
 
+Available tool sets by surface:
+- `game`: `session_create`, `session_close`, `time_pause`, `time_resume`,
+  `time_step`, `state_get`, `state_delta`, `lemming_summary`,
+  `lemming_select`, `skill_apply`
+- `editor`: `editor_apply`, `objects_list`, `objects_place`,
+  `objects_update`, `objects_delete`
+- `interact`: `input_action`, `input_keys`, `vision_capture`,
+  `vision_captureSequence`, `watch_create`, `watch_cancel`, `events_poll`
+
 ## Create a session with minimal events
 
 ```json
@@ -55,6 +64,62 @@ compact `state.get` preset defaults.
   ],
   "preview": { "refresh": true },
   "returnState": "editor"
+}
+```
+
+## List editor objects with paging + revision delta
+
+```json
+{
+  "sessionId": "<id>",
+  "kind": "terrain",
+  "page": 0,
+  "pageSize": 50,
+  "fields": "compact",
+  "sinceRevision": 12
+}
+```
+
+## Place, update, and delete editor objects via typed tools
+
+```json
+{
+  "sessionId": "<id>",
+  "objects": [
+    {
+      "kind": "terrain",
+      "piece": 1,
+      "x": 120,
+      "y": 80
+    }
+  ],
+  "options": {
+    "returnState": "editor"
+  }
+}
+```
+
+```json
+{
+  "sessionId": "<id>",
+  "updates": [
+    {
+      "ref": { "kind": "terrain", "uid": "t_123" },
+      "set": { "X": 140, "Y": 88 }
+    }
+  ],
+  "options": {
+    "returnState": "editor"
+  }
+}
+```
+
+```json
+{
+  "sessionId": "<id>",
+  "refs": [
+    { "kind": "terrain", "uid": "t_123" }
+  ]
 }
 ```
 

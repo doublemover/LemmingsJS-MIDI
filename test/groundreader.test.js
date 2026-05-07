@@ -1,6 +1,5 @@
 import { expect } from 'chai';
 import { Lemmings, setDependency, useGlobalLemmings, withShowDebug } from './helpers/lemmings.js';
-import { withConsoleStub } from './helpers/console.js';
 import { BinaryReader } from '../js/data/BinaryReader.js';
 import '../js/data/BitReader.js';
 import '../js/data/BitWriter.js';
@@ -125,17 +124,21 @@ describe('GroundReader', function() {
   });
 
   it('returns early when ground file size is invalid', function() {
+    let gr = null;
     const logs = withMockLogHandler(() => {
       const br = new BinaryReader(new Uint8Array(10), 0, 10, 'bad.dat');
       const vgaT = new BinaryReader(new Uint8Array([0]));
       const vgaO = new BinaryReader(new Uint8Array([0]));
-      const gr = new GroundReader(br, vgaT, vgaO);
+      gr = new GroundReader(br, vgaT, vgaO);
       return gr.log.logged;
     });
     expect(logs.some(m => m.includes('wrong size'))).to.equal(true);
+    expect(gr.valid).to.equal(false);
+    expect(gr.imgTerrain).to.have.lengthOf(64);
+    expect(gr.imgObjects).to.have.lengthOf(16);
   });
 
-  it('loads steel sprites from disk when fetch fails', async function() {
+  it('uses bundled steel sprites when file-url fetch fails', async function() {
     const sprites = await withFetchStub(async () => { throw new Error('fail'); }, async () => {
       Lemmings.resetSteelSprites();
       return Lemmings.loadSteelSprites();
@@ -166,21 +169,21 @@ describe('GroundReader', function() {
   });
 
   it('logs when terrain folder name is unknown', function() {
-    const buf = new Uint8Array(1056);
-    const tOff = 28 * 16;
-    buf[tOff] = 1;
-    buf[tOff + 1] = 1;
-    buf[tOff + 5] = 3;
-    const pal = 960 + 24;
-    for (let i = 0; i < 48; i++) buf[pal + i] = 0;
-    const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT');
-    const vgaT = new BinaryReader(new Uint8Array([0, 0, 0, 0]));
-    const vgaO = new BinaryReader(new Uint8Array([0, 0, 0, 0, 0]));
-    const logs = [];
-    const restoreConsole = withConsoleStub({ log: (...args) => logs.push(args) });
-    new GroundReader(ground, vgaT, vgaO);
-    restoreConsole();
-    expect(logs.length).to.be.greaterThan(0);
+    const logs = withMockLogHandler(() => {
+      const buf = new Uint8Array(1056);
+      const tOff = 28 * 16;
+      buf[tOff] = 1;
+      buf[tOff + 1] = 1;
+      buf[tOff + 5] = 3;
+      const pal = 960 + 24;
+      for (let i = 0; i < 48; i++) buf[pal + i] = 0;
+      const ground = new BinaryReader(buf, 0, buf.length, 'GROUND0O.DAT');
+      const vgaT = new BinaryReader(new Uint8Array([0, 0, 0, 0]));
+      const vgaO = new BinaryReader(new Uint8Array([0, 0, 0, 0, 0]));
+      const reader = new GroundReader(ground, vgaT, vgaO);
+      return reader.log.logged;
+    });
+    expect(logs.some(m => m.includes('folder name for GROUND0O.DAT is unknown'))).to.equal(true);
   });
 
   it('logs when object data hits EOF', function() {

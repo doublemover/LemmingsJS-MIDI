@@ -4,8 +4,32 @@ import { ActionBlockerSystem } from '../actions/ActionBlockerSystem.js';
 import { ActionDiggSystem } from '../actions/ActionDiggSystem.js';
 import { ActionMineSystem } from '../actions/ActionMineSystem.js';
 import { SkillTypes } from './SkillTypes.js';
-import { getDependency } from '../core/dependencies.js';
-import { withPerformance } from '../util/LogHandler.js';
+import { LemmingStateType } from '../lemmings/LemmingStateType.js';
+import { getAppContext, getDependency } from '../core/dependencies.js';
+import {
+  canMeasurePerformance,
+  recordPerformanceMeasure
+} from '../util/performanceInstrumentation.js';
+
+const RENDER_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'GameDisplay',
+    trackGroup: 'Render',
+    color: 'primary',
+    tooltipText: 'render'
+  })
+});
+
+const RENDER_DEBUG_MEASURE_DETAIL = Object.freeze({
+  devtools: Object.freeze({
+    track: 'GameDisplay',
+    trackGroup: 'Render',
+    color: 'secondary',
+    tooltipText: 'renderDebug'
+  })
+});
+
+const LEMMING_HIGHLIGHT_SIZE = Object.freeze({ width: 10, height: 13 });
 
 class GameDisplay {
   constructor(game, level, lemmingManager, objectManager, triggerManager) {
@@ -25,12 +49,23 @@ class GameDisplay {
     this._dashOffset = 0;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+    this._overlayHadContent = false;
     this._redundantActions = {
       [SkillTypes.BASHER]: getDependency('ActionBashSystem', ActionBashSystem),
       [SkillTypes.BLOCKER]: getDependency('ActionBlockerSystem', ActionBlockerSystem),
       [SkillTypes.DIGGER]: getDependency('ActionDiggSystem', ActionDiggSystem),
       [SkillTypes.MINER]: getDependency('ActionMineSystem', ActionMineSystem)
     };
+  }
+  _detachGuiListeners() {
+    if (this.display && this._mouseHandler) {
+      this.display.onMouseDown?.off?.(this._mouseHandler);
+      this._mouseHandler = null;
+    }
+    if (this.display && this._mouseMoveHandler) {
+      this.display.onMouseMove?.off?.(this._mouseMoveHandler);
+      this._mouseMoveHandler = null;
+    }
   }
   _scheduleHoverUpdate() {
     if (this._hoverRafId) return;
@@ -53,7 +88,15 @@ class GameDisplay {
     if (!cand) {
       cand = this.lemmingManager.getNearestLemming(x, y);
     }
-    if (cand?.action?.getActionName?.() === 'exploding') cand = null;
+    const exploding =
+      !!cand && (
+        cand.state === LemmingStateType.EXPLODING ||
+        cand.action === this.lemmingManager?.actions?.[LemmingStateType.EXPLODING] ||
+        cand?.action?.getActionName?.() === 'exploding'
+      );
+    if (exploding) {
+      cand = null;
+    }
     if (prev !== cand && this.game?.gameGui) {
       this.hoverLemming = cand;
       this.game.gameGui.backgroundChanged = true;
@@ -63,7 +106,12 @@ class GameDisplay {
     }
   }
   setGuiDisplay(display) {
-    this.display = display;
+    if (display === this.display && this._mouseHandler && this._mouseMoveHandler) return;
+    this._detachGuiListeners();
+    this.display = display || null;
+    if (!this.display?.onMouseDown?.on || !this.display?.onMouseMove?.on) {
+      return;
+    }
     this._mouseHandler = (e) => {
       if (this.game?.inputEnabled === false) return;
       const lem = this.lemmingManager.getNearestLemming(e.x, e.y);
@@ -83,61 +131,95 @@ class GameDisplay {
     this.display.onMouseMove.on(this._mouseMoveHandler);
   }
   render() {
-    return withPerformance(
-      'GameDisplay render',
-      {
-        track: 'GameDisplay',
-        trackGroup: 'Render',
-        color: 'primary',
-        tooltipText: 'render'
-      },
-      () => {
-        if (this.display == null)
-          return;
-        this.level.render(this.display);
-        this.objectManager.render(this.display);
-        this.lemmingManager.render(this.display);
-        if (!this.game.showDebug) {
-          const sel = this.lemmingManager.getSelectedLemming();
-          if (sel && !sel.removed) this.#drawSelection(sel);
-
-          if (this.hoverLemming && !this.hoverLemming.removed) {
-            this.#drawHover(this.hoverLemming);
-          }
+    const app = getAppContext();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (this.display === null)
+        return;
+      this.level.render(this.display);
+      this.objectManager.render(this.display);
+      this.lemmingManager.render(this.display);
+      let hasOverlay = false;
+      let selected = null;
+      let hover = null;
+      if (!this.game.showDebug) {
+        selected = this.lemmingManager.getSelectedLemming();
+        hover = this.hoverLemming;
+        hasOverlay = !!((selected && !selected.removed) || (hover && !hover.removed));
+      }
+      const needsOverlayLayer = hasOverlay || this._overlayHadContent;
+      const overlayDisplay = needsOverlayLayer ? this._getGameOverlayDisplay() : null;
+      const targetDisplay = overlayDisplay || this.display;
+      if (overlayDisplay && needsOverlayLayer) {
+        overlayDisplay.clear(0x00000000);
+      }
+      if (!this.game.showDebug) {
+        if (selected && !selected.removed) {
+          this.#drawSelection(selected, targetDisplay);
+        }
+        if (hover && !hover.removed) {
+          this.#drawHover(hover, targetDisplay);
         }
       }
-    ).call(this);
+      if (overlayDisplay) {
+        this._overlayHadContent = hasOverlay;
+        this.display?.stage?.setGameOverlayVisible?.(hasOverlay);
+      }
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('GameDisplay render', {
+          start: perfStart,
+          detail: RENDER_MEASURE_DETAIL
+        });
+      }
+    }
   }
   renderDebug() {
-    return withPerformance(
-      'GameDisplay renderDebug',
-      {
-        track: 'GameDisplay',
-        trackGroup: 'Render',
-        color: 'secondary',
-        tooltipText: 'renderDebug'
-      },
-      () => {
-        if (this.display == null)
-          return;
-        this.level.renderDebug(this.display);
-        this.lemmingManager.renderDebug(this.display);
-        this.triggerManager.renderDebug(this.display);
-        if (this.hoverLemming) {
-          const x = this.hoverLemming.x - 5;
-          const y = this.hoverLemming.y - 11;
-          this.display.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
-          this._dashOffset = (this._dashOffset + 1) % 6;
-        }
+    const app = getAppContext();
+    const perfEnabled = !!app &&
+      (app.performanceAPI === true || app.perfMetrics === true) &&
+      canMeasurePerformance();
+    const perfStart = perfEnabled ? performance.now() : 0;
+    try {
+      if (this.display === null)
+        return;
+      this.level.renderDebug(this.display);
+      this.lemmingManager.renderDebug(this.display);
+      this.triggerManager.renderDebug(this.display);
+      const hasOverlay = !!this.hoverLemming;
+      const needsOverlayLayer = hasOverlay || this._overlayHadContent;
+      const overlayDisplay = needsOverlayLayer ? this._getGameOverlayDisplay() : null;
+      const targetDisplay = overlayDisplay || this.display;
+      if (overlayDisplay && needsOverlayLayer) {
+        overlayDisplay.clear(0x00000000);
       }
-    ).call(this);
+      if (this.hoverLemming) {
+        const x = this.hoverLemming.x - 5;
+        const y = this.hoverLemming.y - 11;
+        targetDisplay.drawDashedRect(x, y, 10, 13, 3, this._dashOffset);
+        this._dashOffset = (this._dashOffset + 1) % 6;
+      }
+      if (overlayDisplay) {
+        this._overlayHadContent = hasOverlay;
+        this.display?.stage?.setGameOverlayVisible?.(hasOverlay);
+      }
+    } finally {
+      if (perfEnabled) {
+        recordPerformanceMeasure('GameDisplay renderDebug', {
+          start: perfStart,
+          detail: RENDER_DEBUG_MEASURE_DETAIL
+        });
+      }
+    }
   }
-
   #drawCorner(x, y, r, g, b) {
     this.display.drawRect(x, y, 2, 2, r, g, b, true);
   }
 
-  #drawSelection(lem) {
+  #drawSelection(lem, target = this.display) {
     const x = lem.x - 5;
     const y = lem.y - 11; // sits a bit higher
 
@@ -151,10 +233,10 @@ class GameDisplay {
       }
     }
 
-    this.display.drawCornerRect(
+    target.drawCornerRect(
       x,
       y,
-      { width: 10, height: 13 },
+      LEMMING_HIGHLIGHT_SIZE,
       color & 0xff,
       (color >> 8) & 0xff,
       (color >> 16) & 0xff,
@@ -162,12 +244,19 @@ class GameDisplay {
     );
   }
 
-  #drawHover(lem) {
+  #drawHover(lem, target = this.display) {
     const x = lem.x - 5;
     const y = lem.y - 11; // sits a bit higher
     const color = 0x5e5e5e; // slightly lighter grey
 
-    this.display.drawCornerRect(x, y, { width: 10, height: 13 }, color & 0xff, (color >> 8) & 0xff, (color >> 16) & 0xff);
+    target.drawCornerRect(
+      x,
+      y,
+      LEMMING_HIGHLIGHT_SIZE,
+      color & 0xff,
+      (color >> 8) & 0xff,
+      (color >> 16) & 0xff
+    );
   }
 
   static __test__ = {
@@ -176,19 +265,17 @@ class GameDisplay {
     }
   };
 
+  _getGameOverlayDisplay() {
+    return this.display?.stage?.getGameOverlayDisplay?.() || null;
+  }
+
   dispose() {
-    if (this.display && this._mouseHandler) {
-      this.display.onMouseDown.off(this._mouseHandler);
-      this._mouseHandler = null;
-    }
-    if (this.display && this._mouseMoveHandler) {
-      this.display.onMouseMove.off(this._mouseMoveHandler);
-      this._mouseMoveHandler = null;
-    }
+    this._detachGuiListeners();
     if (this._hoverRafId && typeof window !== 'undefined' && window.cancelAnimationFrame) {
       window.cancelAnimationFrame(this._hoverRafId);
       this._hoverRafId = 0;
     }
+    this.display?.stage?.setGameOverlayVisible?.(false);
     this.display = null;
     this.game = null;
     this.level = null;
@@ -197,6 +284,7 @@ class GameDisplay {
     this.triggerManager = null;
     this.hoverIndex = -1;
     this.hoverLemming = null;
+    this._overlayHadContent = false;
   }
 }
 

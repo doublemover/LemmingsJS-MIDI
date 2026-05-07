@@ -1,5 +1,9 @@
 import { EventHandler } from '../util/EventHandler.js';
 import { Position2D } from '../util/Position2D.js';
+import { getAppContext } from '../core/dependencies.js';
+
+const PASSIVE_LISTENER = Object.freeze({ passive: true });
+const ACTIVE_LISTENER = Object.freeze({ passive: false });
 
 class MouseMoveEventArguements extends Position2D {
   constructor(x = 0, y = 0, deltaX = 0, deltaY = 0, button = false) {
@@ -25,7 +29,7 @@ class ZoomEventArgs extends Position2D {
 }
 
 class UserInputManager {
-  constructor(listenElement) {
+  constructor(listenElement, options = {}) {
     this.mouseDownX = 0;
     this.mouseDownY = 0;
     this.lastMouseX = 0;
@@ -41,6 +45,7 @@ class UserInputManager {
     this.onZoom = new EventHandler();
     this.listenElement = listenElement;
     this._listeners = [];
+    this._passiveMouseMove = options.passiveMouseMove !== false;
     this.twoTouch = false;
     this.lastTouchDistance = 0;
 
@@ -52,9 +57,6 @@ class UserInputManager {
     this._addListener('mousemove', (e) => {
       let relativePos = this.getRelativePosition(this.listenElement, e.clientX, e.clientY);
       this.handleMouseMove(relativePos);
-      e.stopPropagation();
-      e.preventDefault();
-      return false;
     });
     this._addListener('touchmove', (e) => {
       if (e.touches.length > 2) {
@@ -150,6 +152,11 @@ class UserInputManager {
       this.handleMouseUp(relativePos);
       return false;
     });
+    this._addListener('contextmenu', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      return false;
+    });
     this._addListener('mouseleave', (e) => {
       e.stopPropagation();
       e.preventDefault();
@@ -177,6 +184,8 @@ class UserInputManager {
       }
       let relativePos = this.getRelativePosition(this.listenElement, e.changedTouches[0].clientX, e.changedTouches[0].clientY);
       this.handleMouseUp(relativePos);
+      e.stopPropagation();
+      e.preventDefault();
       return false;
     });
     this._addListener('touchleave', (e) => {
@@ -212,11 +221,26 @@ class UserInputManager {
   }
 
   _addListener(type, handler, options = null) {
-    const useOptions = options || (type.startsWith('touch') || type === 'wheel'
-      ? { passive: false }
-      : undefined);
+    let useOptions = options;
+    if (useOptions == null) {
+      useOptions = this._defaultListenerOptions(type);
+    }
     this.listenElement.addEventListener(type, handler, useOptions);
     this._listeners.push([type, handler, useOptions]);
+  }
+
+  /**
+   * Listener options are explicit so the browser can keep high-frequency move
+   * handlers on the fast path while still allowing touch/wheel default-prevent.
+   */
+  _defaultListenerOptions(type) {
+    if (type === 'mousemove' || type === 'mouseleave') {
+      return this._passiveMouseMove ? PASSIVE_LISTENER : undefined;
+    }
+    if (type.startsWith('touch') || type === 'wheel') {
+      return ACTIVE_LISTENER;
+    }
+    return undefined;
   }
 
   dispose() {
@@ -236,11 +260,22 @@ class UserInputManager {
   }
 
   getRelativePosition(element, clientX, clientY) {
-    const rect = element.getBoundingClientRect();
-    const scaleX = element.width / rect.width;
-    const scaleY = element.height / rect.height;
-    const x = (clientX - rect.left) * scaleX;
-    const y = (clientY - rect.top) * scaleY;
+    const rect = element?.getBoundingClientRect?.() || {
+      left: 0,
+      top: 0,
+      width: 0,
+      height: 0
+    };
+    const rectWidth = Number.isFinite(rect.width) ? rect.width : 0;
+    const rectHeight = Number.isFinite(rect.height) ? rect.height : 0;
+    const canvasWidth = Number.isFinite(element?.width) ? element.width : rectWidth;
+    const canvasHeight = Number.isFinite(element?.height) ? element.height : rectHeight;
+    const scaleX = rectWidth > 0 ? ((canvasWidth > 0 ? canvasWidth : rectWidth) / rectWidth) : 1;
+    const scaleY = rectHeight > 0 ? ((canvasHeight > 0 ? canvasHeight : rectHeight) / rectHeight) : 1;
+    const left = Number.isFinite(rect.left) ? rect.left : 0;
+    const top = Number.isFinite(rect.top) ? rect.top : 0;
+    const x = (clientX - left) * scaleX;
+    const y = (clientY - top) * scaleY;
     return new Position2D(x, y);
   }
   handleMouseMove(position) {
@@ -304,25 +339,8 @@ class UserInputManager {
     this.lastMouseX = position.x;
     this.lastMouseY = position.y;
 
-
-    const stage = globalThis?.lemmings?.stage;
     const evt = new ZoomEventArgs(position.x, position.y, deltaY);
-
-    if (stage && stage.getStageImageAt) {
-      this.onZoom.trigger(evt);
-
-      const stageImage = stage.getStageImageAt(position.x, position.y);
-      if (
-        stageImage &&
-        stageImage.display &&
-        stageImage.display.worldDataSize.width === 1600
-      ) {
-        stage.updateViewPoint(stageImage, position.x, position.y, deltaY);
-        return;
-      }
-    } else {
-      this.onZoom.trigger(evt);
-    }
+    this.onZoom.trigger(evt);
   }
 }
 

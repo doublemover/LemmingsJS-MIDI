@@ -1,8 +1,12 @@
 import { BaseLogger } from '../util/LogHandler.js';
 
 /**
- * Reads binary data with flexible offset, length, and endian options.
- * Used for game/resource file decoding.
+ * Reads binary data through a logical window over a backing byte array.
+ * Explicit offsets are logical offsets relative to this reader's window.
+ *
+ * Legacy method names are preserved for compatibility:
+ * - readInt/readWord read big-endian values.
+ * - readIntBE/readWordBE read little-endian values despite the BE suffix.
  * @class
  */
 class BinaryReader extends BaseLogger {
@@ -61,6 +65,7 @@ class BinaryReader extends BaseLogger {
     this.#pos = this.#hiddenOffset;
 
     let dataLength = 0;
+    let baseHiddenOffset = 0;
     if (dataArray == null) {
       this.#data = new Uint8Array(0);
       dataLength = 0;
@@ -68,6 +73,7 @@ class BinaryReader extends BaseLogger {
     } else if (dataArray instanceof BinaryReader) {
       this.#data = dataArray.data;
       dataLength = dataArray.length;
+      baseHiddenOffset = dataArray.hiddenOffset;
       this.log.log('BinaryReader from BinaryReader; size: ' + dataLength);
     } else if (dataArray instanceof Uint8Array) {
       this.#data = dataArray;
@@ -114,8 +120,8 @@ class BinaryReader extends BaseLogger {
     }
 
     if (length == null) length = dataLength - offset;
-    this.#hiddenOffset = offset;
-    this.#length = length;
+    this.#hiddenOffset = baseHiddenOffset + offset;
+    this.#length = Math.max(0, Math.min(length, dataLength - offset));
     this.#pos = this.#hiddenOffset;
     this.ready = Promise.resolve(this.#data);
   }
@@ -140,100 +146,136 @@ class BinaryReader extends BaseLogger {
     return this.#pos;
   }
 
+  #resolveReadOffset(offset) {
+    if (offset === undefined || offset === null) return this.#pos;
+    return this.#hiddenOffset + Math.trunc(Number(offset));
+  }
+
+  #windowEnd() {
+    return Math.min(this.#data.length, this.#hiddenOffset + this.#length);
+  }
+
+  #canRead(pos, byteCount, label) {
+    if (!Number.isFinite(pos) || !Number.isFinite(byteCount) || byteCount < 0) {
+      this.log.log(`${label}: invalid offset for ${this.filename}`);
+      return false;
+    }
+    if (pos < this.#hiddenOffset || pos + byteCount > this.#windowEnd()) {
+      this.log.log(
+        `${label}: read out of data: ${this.filename} - window: ${this.#hiddenOffset}+${this.#length} @ ${pos}`
+      );
+      return false;
+    }
+    return true;
+  }
+
   /**
-   * Reads one byte at the current position (or absolute offset if given).
+   * Reads one byte at the current position or logical offset.
    * Advances position after read.
-   * @param {number} [offset] - Absolute (not logical) offset in data. If provided, sets the position.
+   * @param {number} [offset] - Logical offset. If provided, sets the position.
    * @returns {number} Byte value (0–255), or 0 if out-of-bounds.
    */
   readByte(offset) {
-    if (offset !== undefined && offset !== null) {
-      this.#pos = (offset + this.#hiddenOffset);
-    }
-    if (this.#pos < 0 || this.#pos >= this.#data.length) {
-      this.log.log(`read out of data: ${this.filename} - size: ${this.#data.length} @ ${this.#pos}`);
+    this.#pos = this.#resolveReadOffset(offset);
+    if (!this.#canRead(this.#pos, 1, 'readByte')) {
       return 0;
     }
     return this.#data[this.#pos++];
   }
 
   /**
-   * Reads a little-endian integer (4 bytes by default).
+   * Legacy alias for readIntBigEndian().
    * @param {number} [length=4] - Number of bytes to read (1–4).
-   * @param {number} [offset] - Absolute offset in data. If omitted, uses current position.
+   * @param {number} [offset] - Logical offset. If omitted, uses current position.
    * @returns {number} Parsed integer.
    */
   readInt(length = 4, offset) {
-    if (offset == null) offset = this.#pos;
-    if (length === 4) {
-      // Fast path for 4 bytes, little-endian
-      const v = (this.#data[offset] << 24) |
-                (this.#data[offset + 1] << 16) |
-                (this.#data[offset + 2] << 8) |
-                (this.#data[offset + 3]);
-      this.#pos = offset + 4;
-      return v;
-    }
-    let v = 0;
-    for (let i = length; i > 0; i--) {
-      v = (v << 8) | this.#data[offset++];
-    }
-    this.#pos = offset;
-    return v;
+    return this.readIntBigEndian(length, offset);
   }
 
   /**
-   * Reads a big-endian 4-byte integer.
-   * @param {number} [offset] - Absolute offset in data.
+   * Legacy alias for readIntLittleEndian(4, offset).
+   * @param {number} [offset] - Logical offset.
    * @returns {number} Parsed integer.
    */
   readIntBE(offset) {
-    if (offset == null) offset = this.#pos;
-    const v = (this.#data[offset]) |
-              (this.#data[offset + 1] << 8) |
-              (this.#data[offset + 2] << 16) |
-              (this.#data[offset + 3] << 24);
-    this.#pos = offset + 4;
-    return v;
+    return this.readIntLittleEndian(4, offset);
   }
 
   /**
-   * Reads a big-endian 2-byte word.
-   * @param {number} [offset] - Absolute offset in data.
+   * Legacy alias for readWordBigEndian().
+   * @param {number} [offset] - Logical offset.
    * @returns {number} Parsed word (0–65535).
    */
   readWord(offset) {
-    if (offset == null) offset = this.#pos;
-    const v = (this.#data[offset] << 8) | (this.#data[offset + 1]);
-    this.#pos = offset + 2;
-    return v;
+    return this.readWordBigEndian(offset);
   }
 
   /**
-   * Reads a little-endian 2-byte word.
-   * @param {number} [offset] - Absolute offset in data.
+   * Legacy alias for readWordLittleEndian().
+   * @param {number} [offset] - Logical offset.
    * @returns {number} Parsed word (0–65535).
    */
   readWordBE(offset) {
-    if (offset == null) offset = this.#pos;
-    const v = (this.#data[offset]) | (this.#data[offset + 1] << 8);
-    this.#pos = offset + 2;
+    return this.readWordLittleEndian(offset);
+  }
+
+  readIntBigEndian(length = 4, offset) {
+    const byteCount = Math.trunc(Number(length));
+    const pos = this.#resolveReadOffset(offset);
+    if (byteCount < 1 || byteCount > 4 || !this.#canRead(pos, byteCount, 'readIntBigEndian')) {
+      return 0;
+    }
+    let v = 0;
+    for (let i = 0; i < byteCount; i += 1) {
+      v = (v << 8) | this.#data[pos + i];
+    }
+    this.#pos = pos + byteCount;
+    return v;
+  }
+
+  readIntLittleEndian(length = 4, offset) {
+    const byteCount = Math.trunc(Number(length));
+    const pos = this.#resolveReadOffset(offset);
+    if (byteCount < 1 || byteCount > 4 || !this.#canRead(pos, byteCount, 'readIntLittleEndian')) {
+      return 0;
+    }
+    let v = 0;
+    for (let i = byteCount - 1; i >= 0; i -= 1) {
+      v = (v << 8) | this.#data[pos + i];
+    }
+    this.#pos = pos + byteCount;
+    return v;
+  }
+
+  readWordBigEndian(offset) {
+    const pos = this.#resolveReadOffset(offset);
+    if (!this.#canRead(pos, 2, 'readWordBigEndian')) return 0;
+    const v = (this.#data[pos] << 8) | this.#data[pos + 1];
+    this.#pos = pos + 2;
+    return v;
+  }
+
+  readWordLittleEndian(offset) {
+    const pos = this.#resolveReadOffset(offset);
+    if (!this.#canRead(pos, 2, 'readWordLittleEndian')) return 0;
+    const v = this.#data[pos] | (this.#data[pos + 1] << 8);
+    this.#pos = pos + 2;
     return v;
   }
 
   /**
    * Reads a string of the given length from the current position.
    * @param {number} length - Number of bytes/chars to read.
-   * @param {number} [offset] - If provided, sets position before reading.
+   * @param {number} [offset] - Logical offset. If provided, sets position before reading.
    * @returns {string} The decoded string (ASCII).
    */
   readString(length, offset) {
-    if (offset !== undefined && offset !== null) {
-      this.#pos = offset + this.#hiddenOffset;
-    }
+    this.#pos = this.#resolveReadOffset(offset);
     let chars = [];
+    const end = this.#windowEnd();
     for (let i = 0; i < length; i++) {
-      if (this.#pos >= this.#data.length) break;
+      if (this.#pos < this.#hiddenOffset || this.#pos >= end) break;
       chars.push(String.fromCharCode(this.#data[this.#pos++]));
     }
     return chars.join('');

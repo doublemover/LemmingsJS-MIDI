@@ -47,6 +47,10 @@ describe('BinaryReader', function () {
     assert.strictEqual(reader.readIntBE(0), 0x04030201);
     assert.strictEqual(reader.readWord(4), 0x0506);
     assert.strictEqual(reader.readWordBE(4), 0x0605);
+    assert.strictEqual(reader.readIntBigEndian(4, 0), 0x01020304);
+    assert.strictEqual(reader.readIntLittleEndian(4, 0), 0x04030201);
+    assert.strictEqual(reader.readWordBigEndian(4), 0x0506);
+    assert.strictEqual(reader.readWordLittleEndian(4), 0x0605);
     assert.strictEqual(reader.readString(3, 6), 'ABC');
   });
 
@@ -181,9 +185,21 @@ describe('BinaryReader', function () {
     assert.strictEqual(reader.readByte(), 2);
     assert.strictEqual(reader.getOffset(), 1);
     const str = reader.readString(4);
-    assert.strictEqual(str.length, 2);
+    assert.strictEqual(str.length, 1);
     assert.strictEqual(str.charCodeAt(0), 3);
-    assert.strictEqual(str.charCodeAt(1), 4);
+    assert.strictEqual(reader.readByte(), 0);
+  });
+
+  it('uses logical offsets consistently inside non-zero windows', function () {
+    const reader = new BinaryReader(Uint8Array.from([0, 1, 2, 3, 4, 5]), 1, 4);
+
+    assert.strictEqual(reader.readByte(0), 1);
+    assert.strictEqual(reader.readWord(1), 0x0203);
+    assert.strictEqual(reader.readWordBE(2), 0x0403);
+    assert.strictEqual(reader.readIntBigEndian(4, 0), 0x01020304);
+    assert.strictEqual(reader.readIntLittleEndian(4, 0), 0x04030201);
+    assert.strictEqual(reader.readIntBigEndian(4, 1), 0);
+    assert.strictEqual(reader.readString(8, 0), String.fromCharCode(1, 2, 3, 4));
   });
 
   it('rejects when FileReader emits an error', async function () {

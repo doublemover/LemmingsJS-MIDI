@@ -1,15 +1,17 @@
 # MCP docs
 
-This directory contains the MCP interface spec, implementation notes, and the Zod schema reference.
+This directory contains the shipped MCP usage docs, protocol reference, editor
+mutation contract, examples, and historical design notes.
 
 Files:
-- `docs/mcp/lemmings-mcp-interface-spec-memresources.md`
-- `docs/mcp/lemmings-mcp-implementation-notes-memresources.md`
-- `docs/mcp/lemmings-mcp-zod-schema.ts`
 - `docs/mcp/protocol-v2.md`
+- `docs/mcp/editor-apply.md`
 - `docs/mcp/protocol-mappings.json`
 - `docs/mcp/call-examples.md`
 - `docs/mcp/publishing.md`
+- `docs/mcp/lemmings-mcp-interface-spec-memresources.md` (historical design reference)
+- `docs/mcp/lemmings-mcp-implementation-notes-memresources.md` (historical implementation notes)
+- `docs/mcp/lemmings-mcp-zod-schema.ts` (schema reference snapshot)
 
 ## Server usage
 - Start the game server: `npm run start-https` (serves `https://localhost:8080`).
@@ -17,6 +19,8 @@ Files:
 - Override defaults with environment variables:
   - `LEMMINGS_MCP_BASE_URL` (default `https://localhost:8080`)
   - `LEMMINGS_MCP_PATH` (default `/?e2e=1`)
+  - `LEMMINGS_MCP_SURFACES` (optional CSV of enabled tool surfaces:
+    `game,editor,interact`; default enables all)
 
 ## Host notes
 - Codex CLI: configure a stdio MCP server that runs `node mcp/server.js`.
@@ -37,11 +41,20 @@ Files:
 ## Tool naming
 - Tool names are exposed with dots replaced by underscores (for host validation).
   Example: `state.get` becomes `state_get` (full tool: `lemmings.state_get`).
-- Short tool names are primary; legacy aliases remain for compatibility.
+- Short underscore tool names are the only supported call names.
+- MCP calls use the shipped underscore tool names exactly.
+
+## Tool surfaces
+- `game`: `session.*`, `time.*`, `state.*`, `lemming.*`, `skill.*`
+- `editor`: `editor.apply`, `objects.list`, `objects.place`,
+  `objects.update`, `objects.delete`
+- `interact`: `input.*`, `vision.*`, `watch.*`, `events.*`
+- Surface gating is controlled via `LEMMINGS_MCP_SURFACES`.
 
 ## Defaults (protocol v2)
 - `state.get` defaults to the compact preset.
 - Events default to `minimal` (only non-agent, trimmed fields).
+- `session.create.protocol` includes versioning and hard-cut tool naming metadata.
 
 ## Smoke test checklist
 - `session.create` returns a session id and `ready=true`.

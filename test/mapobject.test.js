@@ -1,10 +1,10 @@
 import { expect } from 'chai';
-import { setGlobalLemmings, useGlobalLemmings, withGlobalLemmings } from './helpers/lemmings.js';
+import { useGlobalLemmings } from './helpers/lemmings.js';
 import { MapObject } from '../js/level/MapObject.js';
 import { TriggerTypes } from '../js/level/TriggerTypes.js';
 import { Animation } from '../js/render/Animation.js';
 import { ColorPalette } from '../js/render/ColorPalette.js';
-import '../js/render/Frame.js';
+import { Frame } from '../js/render/Frame.js';
 
 /** simple helper to create an object image stub */
 function makeObjectImage(loop = true, palette = null) {
@@ -24,20 +24,13 @@ function makeObjectImage(loop = true, palette = null) {
 }
 
 const withSoundEvents = (events, fn) => {
-  const restore = setGlobalLemmings({
-    game: {
-      soundEvents: {
-        emitSfx(type, id, payload) {
-          events.push({ type, id, payload });
-        }
+  return fn({
+    soundEvents: {
+      emitSfx(type, id, payload) {
+        events.push({ type, id, payload });
       }
     }
   });
-  try {
-    return fn();
-  } finally {
-    restore();
-  }
 };
 
 useGlobalLemmings({ game: { showDebug: false } });
@@ -70,29 +63,26 @@ describe('MapObject', function () {
 
   it('records animation changes when history is available', function () {
     const records = [];
-    withGlobalLemmings({
-      game: {
-        history: {
-          recordObjectAnimation(obj, prev, next) {
-            records.push({ obj, prev, next });
-          }
+    const runtime = {
+      history: {
+        recordObjectAnimation(obj, prev, next) {
+          records.push({ obj, prev, next });
         }
       }
-    }, () => {
-      MapObject._frameCache = new WeakMap();
-      const img = makeObjectImage(false);
-      const anim = new Animation();
-      const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, anim);
-      anim.firstFrameIndex = 12;
-      anim.isFinished = true;
+    };
+    MapObject._frameCache = new WeakMap();
+    const img = makeObjectImage(false);
+    const anim = new Animation();
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, anim, 0, runtime);
+    anim.firstFrameIndex = 12;
+    anim.isFinished = true;
 
-      mo.onTrigger(20);
+    mo.onTrigger(20);
 
-      expect(records).to.have.length(1);
-      expect(records[0].prev.firstFrameIndex).to.equal(12);
-      expect(records[0].next.firstFrameIndex).to.equal(20);
-      expect(records[0].next.isFinished).to.equal(false);
-    });
+    expect(records).to.have.length(1);
+    expect(records[0].prev.firstFrameIndex).to.equal(12);
+    expect(records[0].next.firstFrameIndex).to.equal(20);
+    expect(records[0].next.isFinished).to.equal(false);
   });
 
   it('draws frames using the provided palette', function () {
@@ -109,12 +99,54 @@ describe('MapObject', function () {
     expect(Array.from(buf.slice(0, 2))).to.eql([c0, c1]);
   });
 
+  it('reuses predecoded Frame sprites without reconversion', function() {
+    MapObject._frameCache = new WeakMap();
+    const rgba = new Frame(2, 1);
+    rgba.setPixel(0, 0, ColorPalette.colorFromRGB(9, 8, 7));
+    const img = {
+      width: 2,
+      height: 1,
+      frames: [rgba],
+      palette: null,
+      animationLoop: true,
+      firstFrameIndex: 0
+    };
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, new Animation());
+    expect(mo.animation.frames[0]).to.equal(rgba);
+  });
+
+  it('downscales predecoded Frame sprites using sourceScale factors', function() {
+    MapObject._frameCache = new WeakMap();
+    const rgba = new Frame(4, 2);
+    rgba.clear();
+    rgba.setPixel(0, 0, ColorPalette.colorFromRGB(1, 2, 3));
+    rgba.setPixel(2, 0, ColorPalette.colorFromRGB(4, 5, 6));
+    const img = {
+      width: 4,
+      height: 2,
+      frames: [rgba],
+      palette: null,
+      sourceScaleX: 2,
+      sourceScaleY: 2,
+      animationLoop: true,
+      firstFrameIndex: 0
+    };
+
+    const mo = new MapObject({ id: 0, x: 0, y: 0, drawProperties: {} }, img, new Animation());
+    const frame = mo.animation.frames[0];
+    expect(frame.width).to.equal(2);
+    expect(frame.height).to.equal(1);
+    const c0 = ColorPalette.colorFromRGB(1, 2, 3) >>> 0;
+    const c1 = ColorPalette.colorFromRGB(4, 5, 6) >>> 0;
+    expect(Array.from(frame.getBuffer().slice(0, 2))).to.eql([c0, c1]);
+  });
+
   it('emits trap and fire sounds on trigger', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0);
+      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0, runtime);
 
       const trap = { type: TriggerTypes.TRAP, soundIndex: 2 };
       mo.onTrigger(0, { id: 1, x: 10, y: 11 }, trap, 9, 8);
@@ -128,10 +160,10 @@ describe('MapObject', function () {
 
   it('falls back to lemming position when trigger coordinates are missing', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 9, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0);
+      const mo = new MapObject({ id: 9, x: 1, y: 2, drawProperties: {} }, img, new Animation(), 0, runtime);
 
       const trap = { type: TriggerTypes.TRAP, soundIndex: 2 };
       const lem = { id: 4, x: 7, y: 8 };
@@ -145,10 +177,10 @@ describe('MapObject', function () {
 
   it('falls back to object position when no trigger or lemming coordinates are provided', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 12, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0);
+      const mo = new MapObject({ id: 12, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0, runtime);
 
       const trap = { type: TriggerTypes.TRAP, soundIndex: 3 };
       mo.onTrigger(0, null, trap);
@@ -162,10 +194,10 @@ describe('MapObject', function () {
 
   it('skips sound emission when sfxId is not positive', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP);
+      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP, runtime);
       mo.onTrigger(0, null, { type: TriggerTypes.TRAP, soundIndex: 0 });
       expect(events.length).to.equal(0);
     });
@@ -173,10 +205,10 @@ describe('MapObject', function () {
 
   it('handles trap triggers without explicit trigger data', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP);
+      const mo = new MapObject({ id: 5, x: 1, y: 2, drawProperties: {} }, img, new Animation(), TriggerTypes.TRAP, runtime);
       mo.onTrigger(0);
       expect(events.length).to.equal(0);
     });
@@ -184,10 +216,10 @@ describe('MapObject', function () {
 
   it('emits frying sounds and preserves explicit trigger coordinates', function () {
     const events = [];
-    withSoundEvents(events, () => {
+    withSoundEvents(events, (runtime) => {
       MapObject._frameCache = new WeakMap();
       const img = makeObjectImage(true);
-      const mo = new MapObject({ id: 6, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0);
+      const mo = new MapObject({ id: 6, x: 3, y: 4, drawProperties: {} }, img, new Animation(), 0, runtime);
       const fry = { type: TriggerTypes.FRYING };
       mo.onTrigger(0, { id: 1, x: 9, y: 8 }, fry, 0, 0);
       expect(events.length).to.equal(1);

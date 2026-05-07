@@ -49,25 +49,43 @@ describe('MiniMap', function() {
 
     counter.value = 5;
     miniMap.invalidateRegion(0, 0, 2, 2);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
     expect(miniMap.terrain[0]).to.equal(5);
 
     miniMap.fog.fill(0);
     miniMap.reveal(0, 10);
     expect(miniMap.fog[0]).to.equal(1);
+    miniMap.fog.fill(0);
+    miniMap.reveal(-10, 5);
+    expect(Object.prototype.hasOwnProperty.call(miniMap.fog, '-1')).to.equal(false);
+    expect(miniMap.fog[0]).to.equal(0);
   });
 
   it('handles pointer events and death tracking', function() {
     const counter = { value: 1 };
     const level = makeLevel(counter);
     const guiDisplay = makeGuiDisplay();
-    const miniMap = new MiniMap({}, level, guiDisplay);
+    const records = [];
+    const miniMap = new MiniMap({}, level, guiDisplay, {
+      history: { recordMinimapDeath: (entry) => records.push(entry) }
+    });
 
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
-    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
 
     guiDisplay.onMouseDown.trigger({ x: destX + 10, y: destY + 5 });
-    const expectedX = ((level.width - guiDisplay.worldDataSize.width)
-      * ((10) / miniMap.width)) | 0;
+    const expectedX = Math.max(
+      0,
+      Math.min(
+        level.width - guiDisplay.worldDataSize.width,
+        ((level.width - guiDisplay.worldDataSize.width) * (10 / (miniMap.width - 1))) | 0
+      )
+    );
     expect(level.screenPositionX).to.equal(expectedX);
 
     guiDisplay.onMouseMove.trigger({ x: destX + 15, y: destY + 5 });
@@ -76,20 +94,77 @@ describe('MiniMap', function() {
     guiDisplay.onMouseUp.trigger({ x: destX + 20, y: destY + 5 });
     expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
 
-    guiDisplay.onMouseDown.trigger({ x: 1, y: 1 });
-    expect(guiDisplay.setScreenPositionCalls.length).to.equal(3);
+    guiDisplay.onMouseMove.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
+    expect(level.screenPositionX).to.equal(0);
 
-    const records = [];
+    guiDisplay.onMouseDown.trigger({ x: destX + 1, y: destY + miniMap.height - 1 });
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
+
+    guiDisplay.onMouseDown.trigger({ x: 1, y: 1 });
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
+    guiDisplay.onMouseDown.trigger({ x: Number.NaN, y: destY + 1 });
+    expect(guiDisplay.setScreenPositionCalls.length).to.equal(4);
+
+    miniMap.deadCount = miniMap.deadTTLs.length;
+    miniMap.addDeath(5, 5);
+    expect(records.length).to.equal(1);
+    expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
+  });
+
+  it('uses stage viewport width for pointer mapping when available', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 500;
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
+    const stageWidth = 120;
+
     withGlobalLemmings({
-      game: {
-        history: { recordMinimapDeath: (entry) => records.push(entry) }
+      stage: {
+        getGameViewRect() {
+          return { x: 0, y: 0, w: stageWidth, h: 25 };
+        }
       }
     }, () => {
-      miniMap.deadCount = miniMap.deadTTLs.length;
-      miniMap.addDeath(5, 5);
-      expect(records.length).to.equal(1);
-      expect(miniMap.deadTTLs.length).to.be.greaterThan(32);
+      guiDisplay.onMouseDown.trigger({ x: destX + 10, y: destY + 5 });
     });
+
+    const expectedX = Math.max(
+      0,
+      Math.min(
+        level.width - stageWidth,
+        ((level.width - stageWidth) * (10 / (miniMap.width - 1))) | 0
+      )
+    );
+    expect(level.screenPositionX).to.equal(expectedX);
+  });
+
+  it('normalizes invalid level dimensions to finite minimap scales', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 0;
+    level.height = Number.NaN;
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    expect(Number.isFinite(miniMap.scaleX)).to.equal(true);
+    expect(Number.isFinite(miniMap.scaleY)).to.equal(true);
+    expect(miniMap.scaleX).to.be.greaterThan(0);
+    expect(miniMap.scaleY).to.be.greaterThan(0);
+
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
+    miniMap.invalidateRegion(0, 0, 4, 4);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      expect(() => miniMap.render()).to.not.throw();
+      guiDisplay.onMouseDown.trigger({ x: destX + 20, y: destY + 5 });
+    });
+    expect(Number.isFinite(level.screenPositionX)).to.equal(true);
   });
 
   it('renders viewport, dots, and death flashes', function() {
@@ -164,6 +239,12 @@ describe('MiniMap', function() {
     const guiDisplay = makeGuiDisplay();
     const miniMap = new MiniMap({}, level, guiDisplay);
     miniMap.invalidateRegion(0, 0, 1, 1);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
     expect(miniMap.terrain[0]).to.equal(72);
 
     withGlobalLemmings(null, () => {
@@ -197,7 +278,7 @@ describe('MiniMap', function() {
     const guiDisplay = makeGuiDisplay();
     const miniMap = new MiniMap({}, level, guiDisplay);
     const destX = guiDisplay.worldDataSize.width - miniMap.width;
-    const destY = guiDisplay.worldDataSize.height - miniMap.height - 1;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
 
     miniMap.guiDisplay = null;
     guiDisplay.onMouseDown.trigger({ x: destX + 1, y: destY + 1 });
@@ -212,5 +293,93 @@ describe('MiniMap', function() {
 
     miniMap._mouseDown = true;
     guiDisplay.onMouseMove.trigger({ x: 1, y: 1 });
+  });
+
+  it('reuses cached minimap frame composition when inputs are unchanged', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+      miniMap.render();
+    });
+    const diagnostics = miniMap.getRenderDiagnostics();
+    expect(diagnostics.composes).to.be.greaterThan(0);
+    expect(diagnostics.reuses).to.be.greaterThan(0);
+  });
+
+  it('bounds terrain revalidation queue growth under heavy updates', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    const updates = miniMap.width * miniMap.height + 10;
+    for (let i = 0; i < updates; i += 1) {
+      const miniMapX = i % miniMap.width;
+      const miniMapY = 0;
+      miniMap.invalidateRegion(
+        Math.floor(miniMapX / miniMap.scaleX),
+        Math.floor(miniMapY / miniMap.scaleY),
+        1 / miniMap.scaleX,
+        1 / miniMap.scaleY
+      );
+    }
+
+    expect(miniMap.getRenderDiagnostics().terrainDirtyCount).to.be.at.most(miniMap.size);
+
+    withGlobalLemmings({
+      stage: { getGameViewRect() { return { x: 0, y: 0, w: 50, h: 25 }; } },
+      game: { timeTravel: { isReversing: false } }
+    }, () => {
+      miniMap.render();
+    });
+
+    expect(miniMap.getRenderDiagnostics().terrainDirtyCount).to.be.at.least(0);
+  });
+
+  it('keeps viewport pinned when map width does not exceed visible width', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    level.width = 120;
+    const guiDisplay = makeGuiDisplay();
+    guiDisplay.worldDataSize.width = 200;
+    const miniMap = new MiniMap({}, level, guiDisplay);
+    const destX = guiDisplay.worldDataSize.width - miniMap.width;
+    const destY = guiDisplay.worldDataSize.height - miniMap.height;
+
+    guiDisplay.onMouseDown.trigger({ x: destX + miniMap.width - 1, y: destY + 5 });
+    expect(level.screenPositionX).to.equal(0);
+    expect(guiDisplay.setScreenPositionCalls.at(-1).x).to.equal(0);
+  });
+
+  it('evicts overwritten dirty indices when queue is saturated', function() {
+    const counter = { value: 1 };
+    const level = makeLevel(counter);
+    const guiDisplay = makeGuiDisplay();
+    const miniMap = new MiniMap({}, level, guiDisplay);
+
+    const overwritten = 17;
+    miniMap._terrainDirtyCount = miniMap.size;
+    miniMap._terrainDirtyRead = 0;
+    miniMap._terrainDirtyWrite = 0;
+    miniMap._terrainDirtyFlags.fill(0);
+    miniMap._terrainDirtyIndices[0] = overwritten;
+    miniMap._terrainDirtyFlags[overwritten] = 1;
+
+    const miniMapX = 22;
+    miniMap.invalidateRegion(
+      Math.floor(miniMapX / miniMap.scaleX),
+      0,
+      1 / miniMap.scaleX,
+      1 / miniMap.scaleY
+    );
+
+    expect(miniMap._terrainDirtyFlags[overwritten]).to.equal(0);
+    expect(miniMap._terrainDirtyCount).to.equal(miniMap.size);
   });
 });

@@ -3,12 +3,16 @@ import {
   setDependency,
   getDependency,
   clearDependency,
-  resetDependencies
+  resetDependencies,
+  setRuntimeContext,
+  clearRuntimeContext,
+  getRuntimeDependency
 } from '../js/core/dependencies.js';
 
 describe('dependencies', function() {
   afterEach(function() {
     resetDependencies();
+    clearRuntimeContext();
   });
 
   it('returns fallback when no override is set', function() {
@@ -34,5 +38,18 @@ describe('dependencies', function() {
     resetDependencies();
     expect(getDependency('One', null)).to.equal(null);
     expect(getDependency('Two', null)).to.equal(null);
+  });
+
+  it('prefers explicit runtime context over globals', function() {
+    const originalWindow = globalThis.window;
+    const globalWindow = { name: 'global' };
+    const runtimeWindow = { name: 'runtime' };
+    globalThis.window = globalWindow;
+    try {
+      setRuntimeContext({ window: runtimeWindow });
+      expect(getRuntimeDependency('window')).to.equal(runtimeWindow);
+    } finally {
+      globalThis.window = originalWindow;
+    }
   });
 });

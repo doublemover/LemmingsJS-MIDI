@@ -23,8 +23,14 @@
 
 ## Limits and coalescing
 
-- History keeps a configurable number of snapshots; the editor UI sets this to a very large cap for full-session history.
-- Drag operations coalesce into a single snapshot when the drag completes.
+- History keeps configurable entry and byte limits. The editor UI uses bounded
+  defaults (`maxEntries` and `maxBytes`) so long sessions cannot grow without a
+  retention cap.
+- Drag and brush operations commit one snapshot when the pointer interaction
+  completes. Programmatic batch edits can use explicit transactions to produce
+  one undo step.
+- When configured, adjacent snapshots with the same label can coalesce within a
+  short time window. History exposes `getStats()` for UI/debug telemetry.
 
 ## API
 
@@ -32,3 +38,5 @@
 - `undo()` / `redo()`
 - `canUndo()` / `canRedo()`
 - `clear()`
+- `getStats()`
+- `beginTransaction(label)` / `endTransaction(label)` / `cancelTransaction()`

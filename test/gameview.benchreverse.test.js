@@ -35,4 +35,15 @@ describe('GameView benchReverse flags', function() {
     expect(view.bench2).to.equal(true);
     expect(view.benchSequence).to.equal(true);
   });
+
+  it('keeps benchReverse enabled under perf profile when no other bench flags are set', function() {
+    globalThis.window = {
+      location: { search: '?profile=perf&benchReverse=true' }
+    };
+    const view = new GameView();
+    expect(view.startupProfile).to.equal('perf');
+    expect(view.benchReverse).to.equal(true);
+    expect(view.performanceAPI).to.equal(true);
+    expect(view.perfOverlay).to.equal(true);
+  });
 });

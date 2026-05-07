@@ -3,11 +3,27 @@ import { SkillTypes } from '../../game/SkillTypes.js';
 
 const clamp = (value, min, max) => Math.max(min, Math.min(max, value));
 
+const normalizeInputChannel = (channel) => {
+  if (typeof channel === 'number' && Number.isFinite(channel)) {
+    return clamp(channel | 0, 1, 16);
+  }
+  const normalized = String(channel ?? 'omni').trim().toLowerCase();
+  if (!normalized || normalized === 'omni') return 'omni';
+  const numeric = Number(normalized);
+  if (Number.isFinite(numeric)) {
+    return clamp(Math.trunc(numeric), 1, 16);
+  }
+  return normalized;
+};
+
 const scaleValue = (value, min, max) => {
   const t = clamp(value / 127, 0, 1);
   return min + (max - min) * t;
 };
 
+/**
+ * Translate live MIDI input events into gameplay and MIDI-config intents.
+ */
 class MidiInputController {
   constructor(view, { getConfig, onConfigChange } = {}) {
     this.view = view;
@@ -16,16 +32,117 @@ class MidiInputController {
     this.input = null;
     this.channel = 'omni';
     this._noteCapture = null;
+    this._messageCapture = null;
+    this._lastInputChannel = undefined;
+    this._lastCcConfigRef = undefined;
+    this._lastNotesConfigRef = undefined;
+    this._ccMappings = new Map();
+    this._noteActions = new Map();
+    this._noteSkills = new Map();
     this._handler = this._onMessage.bind(this);
   }
 
   setConfig(config) {
-    const channel = config?.input?.channel ?? 'omni';
-    if (typeof channel === 'number') {
-      this.channel = clamp(channel | 0, 1, 16);
-    } else {
-      this.channel = String(channel || 'omni').toLowerCase();
+    this._lastInputChannel = config?.input?.channel;
+    this._lastCcConfigRef = config?.input?.cc;
+    this._lastNotesConfigRef = config?.input?.notes;
+    this.channel = normalizeInputChannel(this._lastInputChannel);
+    this._buildCcMappingIndex(this._lastCcConfigRef);
+    this._buildNoteMappingIndex(this._lastNotesConfigRef);
+  }
+
+  /**
+   * Index configured CC mappings by controller number to avoid per-message scans.
+   * @param {object|null|undefined} ccConfig
+   */
+  _buildCcMappingIndex(ccConfig) {
+    this._ccMappings.clear();
+    if (!ccConfig || typeof ccConfig !== 'object') return;
+    for (const [key, mapping] of Object.entries(ccConfig)) {
+      const cc = Number.isFinite(mapping?.cc) ? Math.trunc(mapping.cc) : null;
+      if (cc == null) continue;
+      const list = this._ccMappings.get(cc) || [];
+      list.push({ key, mapping });
+      this._ccMappings.set(cc, list);
     }
+  }
+
+  _buildNoteMappingIndex(notesCfg) {
+    this._noteActions.clear();
+    this._noteSkills.clear();
+    if (!notesCfg || typeof notesCfg !== 'object') return;
+    const skillBase = Number.isFinite(notesCfg.skillBase) ? Math.trunc(notesCfg.skillBase) : 60;
+    const skillOrder = Array.isArray(notesCfg.skillOrder) ? notesCfg.skillOrder : [];
+    for (let i = 0; i < skillOrder.length; i += 1) {
+      const key = skillOrder[i];
+      const skill = SkillTypes[key];
+      if (skill != null) {
+        this._noteSkills.set(skillBase + i, skill);
+      }
+    }
+    const actions = notesCfg.actions || {};
+    if (!actions || typeof actions !== 'object') return;
+    for (const [action, mapped] of Object.entries(actions)) {
+      if (!Number.isFinite(mapped)) continue;
+      this._noteActions.set(Math.trunc(mapped), action);
+    }
+  }
+
+  /**
+   * Resolve cached CC mappings and self-heal stale entries when config objects
+   * are mutated in place.
+   * @param {number} ccNumber
+   * @param {object|null|undefined} ccConfig
+   * @returns {Array<{key:string,mapping:object}>}
+   */
+  _resolveCcEntries(ccNumber, ccConfig) {
+    if (!ccConfig || typeof ccConfig !== 'object') return [];
+    let entries = this._ccMappings.get(ccNumber) || [];
+    let hasStale = false;
+    let validEntries = [];
+    if (entries.length) {
+      validEntries = entries.filter(({ key, mapping }) => {
+        const currentMapping = ccConfig[key];
+        const sameReference = currentMapping === mapping;
+        const sameControllerNumber = Number.isFinite(currentMapping?.cc) &&
+          Math.trunc(currentMapping.cc) === ccNumber;
+        const valid = sameReference && sameControllerNumber;
+        if (!valid) hasStale = true;
+        return valid;
+      });
+    }
+    if (hasStale) {
+      this._buildCcMappingIndex(ccConfig);
+      validEntries = this._ccMappings.get(ccNumber) || [];
+    }
+    if (validEntries.length) return validEntries;
+    const scanned = [];
+    for (const [key, mapping] of Object.entries(ccConfig)) {
+      if (!Number.isFinite(mapping?.cc) || Math.trunc(mapping.cc) !== ccNumber) continue;
+      scanned.push({ key, mapping });
+    }
+    if (scanned.length) {
+      this._ccMappings.set(ccNumber, scanned);
+    }
+    return scanned;
+  }
+
+  /**
+   * Track only config fields that affect input dispatch hot paths.
+   * @param {object|null|undefined} config
+   */
+  _syncConfig(config) {
+    const nextInputChannel = config?.input?.channel;
+    const nextCcConfig = config?.input?.cc;
+    const nextNotesConfig = config?.input?.notes;
+    if (
+      nextInputChannel === this._lastInputChannel &&
+      nextCcConfig === this._lastCcConfigRef &&
+      nextNotesConfig === this._lastNotesConfigRef
+    ) {
+      return;
+    }
+    this.setConfig(config);
   }
 
   attach(input) {
@@ -49,6 +166,10 @@ class MidiInputController {
     this._noteCapture = typeof handler === 'function' ? handler : null;
   }
 
+  setMessageCapture(handler) {
+    this._messageCapture = typeof handler === 'function' ? handler : null;
+  }
+
   _matchesChannel(channel) {
     if (this.channel === 'omni') return true;
     return channel === this.channel;
@@ -57,10 +178,6 @@ class MidiInputController {
   _applyConfigPatch(patch) {
     if (this.onConfigChange) {
       this.onConfigChange(patch);
-      return;
-    }
-    if (this.view?.applyMidiOverrides) {
-      this.view.applyMidiOverrides(patch);
     }
   }
 
@@ -119,23 +236,21 @@ class MidiInputController {
       if (handled) return;
     }
     const notesCfg = config?.input?.notes || {};
-    const skillBase = notesCfg.skillBase ?? 60;
-    const skillOrder = notesCfg.skillOrder || [];
-    const skillIdx = note - skillBase;
-    if (skillIdx >= 0 && skillIdx < skillOrder.length) {
-      const key = skillOrder[skillIdx];
-      const skill = SkillTypes[key];
-      if (skill != null && this.view?.game?.queueCommand) {
+    if (notesCfg !== this._lastNotesConfigRef) {
+      this._lastNotesConfigRef = notesCfg;
+      this._buildNoteMappingIndex(notesCfg);
+    }
+    const skill = this._noteSkills.get(note);
+    if (skill != null) {
+      if (this.view?.game?.queueCommand) {
         this.view.game.queueCommand(new CommandSelectSkill(skill));
         if (this.view.game.gameGui) this.view.game.gameGui.skillSelectionChanged = true;
       }
       return;
     }
 
-    const actions = notesCfg.actions || {};
-    const match = Object.entries(actions).find(([, mapped]) => mapped === note);
-    if (!match) return;
-    const action = match[0];
+    const action = this._noteActions.get(note);
+    if (!action) return;
     if (action === 'pause') this._pauseGame();
     if (action === 'resume') this._resumeGame();
     if (action === 'restart') this._restartLevel();
@@ -152,10 +267,15 @@ class MidiInputController {
   }
 
   _handleControlChange(cc, value, config) {
-    const ccCfg = config?.input?.cc || {};
-    const entries = Object.entries(ccCfg);
-    for (const [key, mapping] of entries) {
-      if ((mapping?.cc ?? -1) !== cc) continue;
+    const ccNumber = Math.trunc(cc);
+    const nextCcConfig = config?.input?.cc;
+    if (nextCcConfig && nextCcConfig !== this._lastCcConfigRef) {
+      this._lastCcConfigRef = nextCcConfig;
+      this._buildCcMappingIndex(nextCcConfig);
+    }
+    const entries = this._resolveCcEntries(ccNumber, nextCcConfig);
+    if (!entries || !entries.length) return;
+    for (const { key, mapping } of entries) {
       if (key === 'speed') {
         const min = mapping.min ?? 0.1;
         const max = mapping.max ?? 8;
@@ -197,7 +317,7 @@ class MidiInputController {
 
   _onMessage(event) {
     const config = this.getConfig?.() || {};
-    this.setConfig(config);
+    this._syncConfig(config);
     const data = event?.data;
     if (!data || data.length === 0) return;
     if (typeof window !== 'undefined') {
@@ -213,6 +333,20 @@ class MidiInputController {
     const type = status & 0xF0;
     const channel = (status & 0x0F) + 1;
     if (!this._matchesChannel(channel)) return;
+    if (this._messageCapture) {
+      const handled = this._messageCapture({
+        data: Array.from(data),
+        status,
+        type,
+        channel,
+        note: data[1],
+        velocity: data[2] ?? 0,
+        cc: data[1],
+        value: data[2] ?? 0,
+        timestamp: event?.timestamp ?? event?.timeStamp ?? event?.receivedTime ?? Date.now()
+      });
+      if (handled) return;
+    }
     if (type === 0x90 || type === 0x80) {
       const note = data[1];
       const velocity = data[2] ?? 0;

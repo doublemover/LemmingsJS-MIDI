@@ -5,22 +5,28 @@ import { Position2D } from '../../js/util/Position2D.js';
 
 const makeElement = () => {
   const listeners = new Map();
+  const optionsByType = new Map();
   return {
     width: 100,
     height: 100,
     style: {},
-    addEventListener(type, handler) {
+    addEventListener(type, handler, options) {
       listeners.set(type, handler);
+      optionsByType.set(type, options);
     },
-    removeEventListener(type, handler) {
+    removeEventListener(type, handler, options) {
       if (listeners.get(type) === handler) {
         listeners.delete(type);
+      }
+      if (optionsByType.get(type) === options) {
+        optionsByType.delete(type);
       }
     },
     getBoundingClientRect() {
       return { left: 0, top: 0, width: 100, height: 100 };
     },
-    _listeners: listeners
+    _listeners: listeners,
+    _listenerOptions: optionsByType
   };
 };
 
@@ -75,6 +81,19 @@ describe('UserInputManager', function() {
     element._listeners.get('wheel')(makeEvent({ clientX: 2, clientY: 3, deltaY: 5 }));
   });
 
+  it('prevents native context menu events on the canvas surface', function () {
+    const element = makeElement();
+    new UserInputManager(element);
+    let prevented = false;
+    let stopped = false;
+    element._listeners.get('contextmenu')({
+      preventDefault() { prevented = true; },
+      stopPropagation() { stopped = true; }
+    });
+    expect(prevented).to.equal(true);
+    expect(stopped).to.equal(true);
+  });
+
   it('handles touch gestures and cleanup', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);
@@ -105,28 +124,87 @@ describe('UserInputManager', function() {
     expect(zoomEvents.length).to.be.greaterThan(0);
   });
 
-  it('handles wheel zoom with and without stage targets', function() {
+  it('handles wheel zoom via onZoom without directly mutating stage view', function() {
     const element = makeElement();
     const manager = new UserInputManager(element);
     const zoomEvents = [];
     manager.onZoom.on((evt) => zoomEvents.push(evt));
 
-    const stageImage = { display: { worldDataSize: { width: 1600 } } };
+    const stageImage = { display: { worldDataSize: { width: 3000 } } };
+    let updateCalls = 0;
     const stage = {
+      gameImgProps: stageImage,
       getStageImageAt() { return stageImage; },
-      updateViewPoint() { stage.updated = true; }
+      updateViewPoint() { updateCalls += 1; }
     };
     withGlobalLemmings({ stage }, () => {
       manager.handleWheel(new Position2D(5, 5), 1);
-      expect(stage.updated).to.equal(true);
+      expect(updateCalls).to.equal(0);
 
       stage.getStageImageAt = () => null;
       manager.handleWheel(new Position2D(5, 5), 1);
       expect(zoomEvents.length).to.equal(2);
+      expect(updateCalls).to.equal(0);
     });
 
     manager.handleWheel(new Position2D(5, 5), 1);
     expect(zoomEvents.length).to.equal(3);
+    expect(updateCalls).to.equal(0);
+  });
+
+  it('configures passive listener options for touch and wheel events', function() {
+    const element = makeElement();
+    new UserInputManager(element);
+    expect(element._listenerOptions.get('touchmove')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('touchstart')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('wheel')).to.deep.equal({ passive: false });
+    expect(element._listenerOptions.get('mousemove')).to.deep.equal({ passive: true });
+    expect(element._listenerOptions.get('mouseleave')).to.deep.equal({ passive: true });
+  });
+
+  it('uses fallback zoom event path when stage omits getStageImageAt', function() {
+    const element = makeElement();
+    const manager = new UserInputManager(element);
+    const zoomEvents = [];
+    manager.onZoom.on((evt) => zoomEvents.push(evt));
+    withGlobalLemmings({ stage: {} }, () => {
+      manager.handleWheel(new Position2D(4, 6), -2);
+    });
+    expect(zoomEvents).to.have.lengthOf(1);
+    expect(zoomEvents[0].deltaZoom).to.equal(-2);
+  });
+
+  it('scales relative positions from canvas space', function() {
+    const element = makeElement();
+    element.width = 200;
+    element.height = 300;
+    element.getBoundingClientRect = () => ({ left: 10, top: 20, width: 100, height: 150 });
+    const manager = new UserInputManager(element);
+
+    const point = manager.getRelativePosition(element, 60, 95);
+    expect(point.x).to.equal(100);
+    expect(point.y).to.equal(150);
+  });
+
+  it('keeps relative position finite when canvas or rect dimensions are zero', function() {
+    const element = makeElement();
+    element.width = 0;
+    element.height = 0;
+    element.getBoundingClientRect = () => ({ left: 10, top: 20, width: 0, height: 0 });
+    const manager = new UserInputManager(element);
+
+    const point = manager.getRelativePosition(element, 60, 95);
+    expect(Number.isFinite(point.x)).to.equal(true);
+    expect(Number.isFinite(point.y)).to.equal(true);
+    expect(point.x).to.equal(50);
+    expect(point.y).to.equal(75);
+  });
+
+  it('uses safe defaults when the element does not expose bounding rect APIs', function() {
+    const manager = new UserInputManager(makeElement());
+    const point = manager.getRelativePosition({}, 12, 34);
+    expect(point.x).to.equal(12);
+    expect(point.y).to.equal(34);
   });
 
   it('disposes listeners safely', function() {

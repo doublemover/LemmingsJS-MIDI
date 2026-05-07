@@ -1,10 +1,27 @@
 import { LemmingStateType } from './LemmingStateType.js';
 import { BaseLogger } from '../util/LogHandler.js';
-import { SoundEventTypes, SoundEffectIds, getSoundBus } from '../game/SoundEvents.js';
+import { SoundEventTypes, SoundEffectIds } from '../game/SoundEvents.js';
+import { getRuntimeMiniMap, getRuntimeSoundEvents } from '../game/GameRuntime.js';
+
+const addMiniMapDeath = (runtime, x, y) => {
+  getRuntimeMiniMap(runtime)?.addDeath(x, y);
+};
 
 class Lemming extends BaseLogger {
-  constructor(x = 0, y = 0, id) {
+  constructor(x = 0, y = 0, id, runtime = null) {
     super();
+    this.runtime = runtime;
+    this.reset(x, y, id);
+  }
+
+  setRuntime(runtime = null) {
+    this.runtime = runtime;
+  }
+
+  /**
+   * Reinitialize this instance so managers can reuse pooled objects.
+   */
+  reset(x = 0, y = 0, id) {
     this.lookRight = true;
     this.frameIndex = 0;
     this.canClimb = false;
@@ -15,6 +32,9 @@ class Lemming extends BaseLogger {
     this.state = 0;
     this.hasExploded = false;
     this.disabled = false;
+    this.lastTriggerType = null;
+    this.countdownAction = null;
+    this._activeIndex = -1;
     this.x = x;
     this.y = y;
     this.id = id;
@@ -56,7 +76,7 @@ class Lemming extends BaseLogger {
 
   render(gameDisplay) {
     if (!this.action) return;
-    if (this.countdownAction != null) {
+    if (this.countdownAction !== null && this.countdownAction !== undefined) {
       this.countdownAction.draw(gameDisplay, this);
     }
     this.action.draw(gameDisplay, this);
@@ -75,28 +95,24 @@ class Lemming extends BaseLogger {
       if (lemY >= level.height) {
         newY = level.height - 6;
       }
-      const soundBus = getSoundBus();
+      const soundBus = getRuntimeSoundEvents(this.runtime);
       soundBus?.emitSfx?.(
         SoundEventTypes.LEMMING_FELL_OFF,
         SoundEffectIds.FELL_OFF,
         { lemmingId: this.id, x: lemX, y: newY }
       );
-      if (lemmings?.game?.lemmingManager?.miniMap) {
-        lemmings.game.lemmingManager.miniMap.addDeath(lemX, newY);
-      }
+      addMiniMapDeath(this.runtime, lemX, newY);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run main action
     if (!this.action) {
-      if (lemmings?.game?.lemmingManager?.miniMap) {
-        lemmings.game.lemmingManager.miniMap.addDeath(lemX, this.y);
-      }
+      addMiniMapDeath(this.runtime, lemX, this.y);
       return LemmingStateType.OUT_OF_LEVEL;
     }
     // run secondary action
     if (this.countdownAction) {
       let newAction = this.countdownAction.process(level, this);
-      if (newAction != LemmingStateType.NO_STATE_TYPE) {
+      if (newAction !== LemmingStateType.NO_STATE_TYPE) {
         return newAction;
       }
     }
@@ -122,7 +138,7 @@ class Lemming extends BaseLogger {
   }
 
   isDisabled() { return this.disabled; }
-  isRemoved() { return (this.action == null); }
+  isRemoved() { return this.action === null; }
 }
 
 Lemming.LEM_MIN_Y = -5;

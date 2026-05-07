@@ -101,7 +101,7 @@ describe('LemmingManager coverage', function() {
     manager.miniMap = {
       scaleX: 1,
       scaleY: 1,
-      setLiveDots(arr) { this.dots = arr; },
+      setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
       setSelectedDot(dot) { this.sel = dot; }
     };
     const makeLem = (id) => ({
@@ -147,7 +147,7 @@ describe('LemmingManager coverage', function() {
     const { manager, gvc } = makeManager();
     let called = 0;
     globalThis.lemmings.endless = true;
-    globalThis.lemmings.game.soundEvents = { emitSfx() { called++; } };
+    manager.runtime = { soundEvents: { emitSfx() { called++; } } };
     manager.releaseTickIndex = 4;
     manager.addNewLemmings();
     expect(manager.lemmings.length).to.equal(1);
@@ -217,6 +217,8 @@ describe('LemmingManager coverage', function() {
       [TriggerTypes.EXIT_LEVEL, LemmingStateType.EXITING],
       [TriggerTypes.KILL, LemmingStateType.SPLATTING],
       [TriggerTypes.FRYING, LemmingStateType.FRYING],
+      [TriggerTypes.UNKNOWN_2, LemmingStateType.SPLATTING],
+      [TriggerTypes.UNKNOWN_3, LemmingStateType.SPLATTING],
       [TriggerTypes.TRAP, LemmingStateType.SPLATTING]
     ];
     for (const [triggerType, expected] of cases) {
@@ -240,11 +242,10 @@ describe('LemmingManager coverage', function() {
     expect(manager.lemmings[0].custom).to.equal(true);
   });
 
-  it('uses the default lemming constructor by default', function() {
+  it('requires an explicit lemming constructor', function() {
     const { manager } = makeManager();
     manager._lemmingCtor = null;
-    manager.addLemming(1, 1);
-    expect(manager.lemmings[0]).to.be.instanceOf(Lemming);
+    expect(() => manager.addLemming(1, 1)).to.throw(/explicit lemming constructor/);
   });
 
   it('ticks with minimap updates and compacts active list', function() {
@@ -299,7 +300,7 @@ describe('LemmingManager coverage', function() {
     manager.miniMap = {
       scaleX: 1,
       scaleY: 1,
-      setLiveDots(arr) { this.dots = arr; },
+      setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
       setSelectedDot(dot) { this.sel = dot; }
     };
     manager.mmTickCounter = 9;

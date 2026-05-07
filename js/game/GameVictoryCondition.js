@@ -1,6 +1,8 @@
+import { getAppContext } from '../core/dependencies.js';
+
 const getApp = () => {
-  if (typeof globalThis !== 'undefined' && globalThis.lemmings) return globalThis.lemmings;
-  if (typeof lemmings !== 'undefined') return lemmings;
+  const app = getAppContext();
+  if (app) return app;
   return null;
 };
 
@@ -27,7 +29,7 @@ class GameVictoryCondition {
     }
     let oldReleaseRate = this.releaseRate;
     let newReleaseRate = this.boundToRange(this.minReleaseRate, this.releaseRate + count, GameVictoryCondition.maxReleaseRate);
-    if (newReleaseRate == oldReleaseRate) {
+    if (newReleaseRate === oldReleaseRate) {
       return false;
     }
     this.releaseRate = newReleaseRate;

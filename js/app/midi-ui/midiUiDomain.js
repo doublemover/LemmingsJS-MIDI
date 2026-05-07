@@ -1,6 +1,7 @@
 import { SoundEffectIds } from '../../game/SoundEvents.js';
 import { SkillTypes } from '../../game/SkillTypes.js';
 import { TriggerTypes } from '../../level/TriggerTypes.js';
+import { fromMidiFlagTriggerType, toMidiFlagTriggerType } from '../../midi/MidiFlagTriggers.js';
 
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const CHORD_OPTIONS = [
@@ -13,6 +14,21 @@ const CHORD_OPTIONS = [
   'sus4',
   'octave'
 ];
+const ARP_PATTERN_VERSION = 1;
+const ARP_PATTERN_STEP_OPTIONS = [
+  { value: 'up', label: '↑' },
+  { value: 'down', label: '↓' },
+  { value: 'hold', label: '•' }
+];
+const ARP_PATTERN_PRESETS = [
+  { value: 'up', label: 'Up', steps: ['up'] },
+  { value: 'down', label: 'Down', steps: ['down'] },
+  { value: 'updown', label: 'Up/down', steps: ['up', 'up', 'down', 'down'] },
+  { value: 'custom', label: 'Custom', steps: ['up', 'hold', 'down', 'hold'] }
+];
+const ARP_PATTERN_MAX_STEPS = 16;
+const ARP_PATTERN_MIN_STEPS = 1;
+const ARP_PATTERN_DEFAULT_STEPS = 8;
 const POSITION_AXIS_OPERATORS = [
   { value: 'add', label: '+' },
   { value: 'sub', label: '-' },
@@ -95,6 +111,102 @@ const EXCLUDED_TRIGGER_NAMES = new Set(['UNKNOWN_2', 'UNKNOWN_3']);
 const TRIGGER_NAME_BY_VALUE = new Map(
   Object.entries(TriggerTypes).map(([name, value]) => [value, name])
 );
+const ARP_PATTERN_PRESET_VALUES = new Set(ARP_PATTERN_PRESETS.map(entry => entry.value));
+const ARP_PATTERN_STEP_VALUES = new Set(ARP_PATTERN_STEP_OPTIONS.map(entry => entry.value));
+
+const isPlainObject = (value) => !!value && typeof value === 'object' && !Array.isArray(value);
+
+const clampArpPatternLength = (value, fallback = ARP_PATTERN_DEFAULT_STEPS) => {
+  const next = Number.isFinite(value) ? Math.trunc(value) : fallback;
+  return Math.max(ARP_PATTERN_MIN_STEPS, Math.min(ARP_PATTERN_MAX_STEPS, next));
+};
+
+const normalizeArpPatternStep = (value) => {
+  if (typeof value !== 'string') return 'hold';
+  const next = value.trim().toLowerCase();
+  if (!ARP_PATTERN_STEP_VALUES.has(next)) return 'hold';
+  return next;
+};
+
+const resolveArpPatternPreset = (value, fallback = 'up') => {
+  const next = typeof value === 'string' ? value.trim().toLowerCase() : '';
+  if (ARP_PATTERN_PRESET_VALUES.has(next)) return next;
+  return ARP_PATTERN_PRESET_VALUES.has(fallback) ? fallback : 'up';
+};
+
+const createArpPatternFromPreset = (preset, length = ARP_PATTERN_DEFAULT_STEPS) => {
+  const resolvedPreset = resolveArpPatternPreset(preset);
+  const resolvedLength = clampArpPatternLength(length);
+  const presetEntry = ARP_PATTERN_PRESETS.find(entry => entry.value === resolvedPreset)
+    || ARP_PATTERN_PRESETS[0];
+  const source = Array.isArray(presetEntry.steps) && presetEntry.steps.length
+    ? presetEntry.steps
+    : ['up'];
+  const steps = [];
+  for (let i = 0; i < resolvedLength; i += 1) {
+    const value = source[i % source.length];
+    steps.push(normalizeArpPatternStep(value));
+  }
+  return {
+    version: ARP_PATTERN_VERSION,
+    preset: resolvedPreset,
+    steps
+  };
+};
+
+const sanitizeArpPattern = (pattern, fallbackPreset = 'up') => {
+  const source = isPlainObject(pattern) ? pattern : null;
+  const requestedPreset = resolveArpPatternPreset(source?.preset ?? fallbackPreset, fallbackPreset);
+  const requestedLength = clampArpPatternLength(
+    Array.isArray(source?.steps) ? source.steps.length : ARP_PATTERN_DEFAULT_STEPS
+  );
+  const basePattern = createArpPatternFromPreset(requestedPreset, requestedLength);
+  if (!Array.isArray(source?.steps) || !source.steps.length) {
+    return basePattern;
+  }
+  const mappedSteps = source.steps
+    .slice(0, ARP_PATTERN_MAX_STEPS)
+    .map(normalizeArpPatternStep);
+  const normalizedSteps = mappedSteps.length
+    ? mappedSteps
+    : basePattern.steps;
+  const presetSteps = createArpPatternFromPreset(requestedPreset, normalizedSteps.length).steps;
+  const matchesPreset = normalizedSteps.length === presetSteps.length &&
+    normalizedSteps.every((step, idx) => step === presetSteps[idx]);
+  return {
+    version: ARP_PATTERN_VERSION,
+    preset: matchesPreset ? requestedPreset : 'custom',
+    steps: normalizedSteps
+  };
+};
+
+const deriveArpModeFromPattern = (pattern, fallback = 'up') => {
+  const normalized = sanitizeArpPattern(pattern, fallback);
+  if (normalized.preset === 'up' || normalized.preset === 'down' || normalized.preset === 'updown') {
+    return normalized.preset;
+  }
+  const steps = normalized.steps || [];
+  if (!steps.length) return resolveArpPatternPreset(fallback);
+  if (steps.every(step => step === 'down')) return 'down';
+  if (steps.every(step => step === 'up')) return 'up';
+  return resolveArpPatternPreset(fallback);
+};
+
+const migrateArpConfig = (arp) => {
+  if (!isPlainObject(arp)) return null;
+  const next = { ...arp };
+  const mode = resolveArpPatternPreset(next.mode, 'up');
+  const pattern = sanitizeArpPattern(next.pattern, mode);
+  next.mode = deriveArpModeFromPattern(pattern, mode);
+  next.pattern = pattern;
+  if (Number.isFinite(next.length)) {
+    next.length = Math.max(1, Math.min(16, Math.trunc(next.length)));
+  }
+  if (next.independent !== true) {
+    delete next.independent;
+  }
+  return next;
+};
 
 const resolveSkillAvailability = (level, skills) => {
   const available = new Set();
@@ -139,7 +251,58 @@ const collectTriggerTypes = (level) => {
   if (levelHasSteel(level)) {
     types.add(TriggerTypes.STEEL);
   }
+  const midiFlags = Array.isArray(level.midiFlags) ? level.midiFlags : [];
+  for (const flag of midiFlags) {
+    const triggerType = Number.isFinite(flag?.triggerType)
+      ? Math.trunc(flag.triggerType)
+      : toMidiFlagTriggerType(flag?.id);
+    if (Number.isFinite(triggerType)) {
+      types.add(triggerType);
+    }
+  }
   return types;
+};
+
+const buildTriggerLabel = (triggerType) => {
+  if (TRIGGER_NAME_BY_VALUE.has(triggerType)) {
+    return TRIGGER_NAME_BY_VALUE.get(triggerType);
+  }
+  const midiFlagId = fromMidiFlagTriggerType(triggerType);
+  if (midiFlagId != null) {
+    return `MIDI_FLAG_${midiFlagId}`;
+  }
+  return `TRIGGER_${triggerType}`;
+};
+
+const listTriggerEntries = (config = null, availableTriggerTypes = null, level = null) => {
+  const values = new Set();
+  const addValue = (value) => {
+    if (!Number.isFinite(value) || value <= 0) return;
+    const triggerValue = Math.trunc(value);
+    if (availableTriggerTypes && !availableTriggerTypes.has(triggerValue)) return;
+    values.add(triggerValue);
+  };
+  for (const [name, value] of Object.entries(TriggerTypes)) {
+    if (!Number.isFinite(value) || value <= 0 || EXCLUDED_TRIGGER_NAMES.has(name)) continue;
+    addValue(value);
+  }
+  const overrideIds = Object.keys(config?.triggers || {})
+    .map(key => Number(key))
+    .filter(value => Number.isFinite(value));
+  overrideIds.forEach(addValue);
+  if (availableTriggerTypes) {
+    for (const value of availableTriggerTypes) {
+      addValue(value);
+    }
+  }
+  const midiFlags = Array.isArray(level?.midiFlags) ? level.midiFlags : [];
+  for (const flag of midiFlags) {
+    addValue(flag?.triggerType);
+    addValue(toMidiFlagTriggerType(flag?.id));
+  }
+  return Array.from(values)
+    .sort((a, b) => a - b)
+    .map(value => ({ value, name: buildTriggerLabel(value) }));
 };
 
 const collectTrapSfxIds = (level) => {
@@ -231,58 +394,30 @@ const resolvePositionMappings = (config) => {
   if (Array.isArray(position.mappings)) {
     return position.mappings.map(entry => normalizePositionMapping({ ...entry }));
   }
-  const velocityRange = config?.velocityRange || {};
-  const timbreRange = position.timbreRange || {};
-  const mappings = [];
-  if (position.xToNote) {
-    const xRange = position.xNoteRange || {};
-    mappings.push({
-      axis: 'x',
-      axisX: true,
-      axisY: false,
-      axisOp: 'add',
-      target: 'note',
-      min: xRange.min ?? 0,
-      max: xRange.max ?? 0,
-      enabled: true
-    });
-  }
-  if (position.yToVelocity) {
-    mappings.push({
-      axis: 'y',
-      axisX: false,
-      axisY: true,
-      axisOp: 'add',
-      target: 'velocity',
-      min: velocityRange.max ?? 127,
-      max: velocityRange.min ?? 1,
-      enabled: true
-    });
-  }
-  if (position.yToTimbre) {
-    mappings.push({
-      axis: 'y',
-      axisX: false,
-      axisY: true,
-      axisOp: 'add',
-      target: 'timbre',
-      min: timbreRange.max ?? 127,
-      max: timbreRange.min ?? 0,
-      enabled: true
-    });
-  }
-  return mappings;
+  // Hard-cutover behavior: only explicit mapping entries are surfaced to UI.
+  return [];
 };
 
 export {
   NOTE_NAMES,
   CHORD_OPTIONS,
+  ARP_PATTERN_VERSION,
+  ARP_PATTERN_STEP_OPTIONS,
+  ARP_PATTERN_PRESETS,
+  ARP_PATTERN_DEFAULT_STEPS,
+  resolveArpPatternPreset,
+  createArpPatternFromPreset,
+  sanitizeArpPattern,
+  deriveArpModeFromPattern,
+  migrateArpConfig,
   POSITION_AXIS_OPERATORS,
   POSITION_TARGETS,
   REPEAT_TARGETS,
   REPEAT_WINDOW_OPTIONS,
   EXCLUDED_TRIGGER_NAMES,
   TRIGGER_NAME_BY_VALUE,
+  buildTriggerLabel,
+  listTriggerEntries,
   TRAP_SFX_IDS,
   EXCLUDED_SFX_IDS,
   SFX_NAME_BY_ID,

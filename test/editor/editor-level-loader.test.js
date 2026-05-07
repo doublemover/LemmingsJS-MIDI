@@ -1,7 +1,12 @@
 import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
 import { createClassicLevelData, loadEditorLevel } from '../../js/editor/EditorLevelLoader.js';
+import { createEditorLevelFromClassic } from '../../js/editor/ClassicLevelConverter.js';
 import { resetStyleRegistry, registerClassicStyles, registerStyle } from '../../js/editor/StyleRegistry.js';
+import { BinaryReader } from '../../js/data/BinaryReader.js';
+import { LevelReader } from '../../js/level/LevelReader.js';
+import { LevelWriter } from '../../js/level/LevelWriter.js';
+import { toMidiFlagTriggerType } from '../../js/midi/MidiFlagTriggers.js';
 
 const buildEntry = (props) => ({ props, order: Object.keys(props), unknownLines: [] });
 
@@ -199,10 +204,168 @@ describe('EditorLevelLoader', () => {
     expect(reader.terrains[0].id).to.equal(4);
     expect(reader.terrains[0].drawProperties.isUpsideDown).to.equal(true);
     expect(reader.terrains[0].drawProperties.isErase).to.equal(true);
+    expect(reader.terrains[0].drawProperties).to.not.have.property('oneWay');
+    expect(reader.terrains[0].drawProperties).to.not.have.property('isOneWay');
     expect(reader.objects[0].id).to.equal(3);
     expect(reader.objects[0].drawProperties.noOverwrite).to.equal(true);
     expect(reader.steel).to.have.length(1);
     expect(reader.steel[0].width).to.equal(6);
+  });
+
+  it('does not lower editor terrain one-way flags into classic terrain data', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 4, name: 'block' }]
+    });
+    const level = buildLevel();
+    level.terrains[0].props.ONE_WAY = true;
+
+    const data = createClassicLevelData(level, { styleName: 'preview' });
+    const terrain = data.levelReader.terrains[0];
+
+    expect(terrain.drawProperties).to.not.have.property('oneWay');
+    expect(terrain.drawProperties).to.not.have.property('isOneWay');
+  });
+
+  it('returns lossy classic export warnings and caps binary lists', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 0, name: 'block' }],
+      gadgetPieces: [{ id: 0, name: 'exit' }]
+    });
+    const level = buildLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.terrainGroups = [{ terrains: [buildEntry({ STYLE: 'preview', PIECE: 'block', X: 1, Y: 2 })] }];
+    level.terrains = Array.from({ length: 401 }, (_, index) => buildEntry({
+      STYLE: 'preview',
+      PIECE: 'block',
+      X: index,
+      Y: 0,
+      ONE_WAY: index === 0 ? true : undefined
+    }));
+    level.gadgets = Array.from({ length: 33 }, (_, index) => buildEntry({
+      STYLE: 'preview',
+      PIECE: 'exit',
+      X: index,
+      Y: 0,
+      MIDI_FLAG: index === 0 ? true : undefined
+    }));
+    level.steel = Array.from({ length: 33 }, (_, index) => buildEntry({
+      X: index,
+      Y: 0,
+      WIDTH: 4,
+      HEIGHT: 4,
+      PIECE: index === 0 ? 1 : undefined
+    }));
+
+    const data = createClassicLevelData(level, { styleName: 'preview' });
+    const codes = data.warnings.map(warning => warning.code);
+
+    expect(data.metadata).to.deep.equal({ format: 'classicLvl', lossy: true });
+    expect(data.levelReader.levelProperties.levelName).to.have.length(32);
+    expect(data.levelReader.terrains).to.have.length(400);
+    expect(data.levelReader.objects).to.have.length(32);
+    expect(data.levelReader.steel).to.have.length(32);
+    expect(codes).to.include.members([
+      'classic_title_length',
+      'classic_terrain_groups',
+      'classic_unsupported_terrain_props',
+      'classic_unsupported_gadget_props',
+      'classic_unsupported_steel_props',
+      'classic_terrains_count',
+      'classic_gadgets_count',
+      'classic_steel_count'
+    ]);
+    expect(data.warnings.find(warning => warning.code === 'classic_unsupported_terrain_props').props)
+      .to.include('ONE_WAY');
+    expect(data.warnings.find(warning => warning.code === 'classic_unsupported_gadget_props').props)
+      .to.include('MIDI_FLAG');
+    expect(data.warnings.every(warning => warning.destructive)).to.equal(true);
+  });
+
+  it('documents lossy classic export/import for unsupported editor metadata', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      terrainPieces: [{ id: 4, name: 'block' }],
+      gadgetPieces: [{ id: 3, name: 'plain-object' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'This title is definitely longer than thirty two characters');
+    level.setHeader('STYLE', 'preview');
+    level.terrains = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'block',
+        X: 10,
+        Y: 20,
+        ONE_WAY: true
+      })
+    ];
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'plain-object',
+        X: 48,
+        Y: 64,
+        MIDI_FLAG: true,
+        MIDI_FLAG_ID: 7
+      })
+    ];
+    level.unknownSections = [{ name: 'NEOLEMMIX_ONLY', lines: ['CUSTOM value'] }];
+
+    const classic = createClassicLevelData(level, { styleName: 'preview' });
+    const bytes = new LevelWriter().write(classic.levelReader);
+    const reader = new LevelReader(new BinaryReader(bytes));
+    const imported = createEditorLevelFromClassic(reader, { styleName: 'preview' });
+
+    expect(classic.metadata.lossy).to.equal(true);
+    expect(classic.warnings.map(warning => warning.code)).to.include.members([
+      'classic_title_length',
+      'classic_preserved_nxlv_metadata',
+      'classic_unsupported_terrain_props',
+      'classic_unsupported_gadget_props'
+    ]);
+    expect(imported.getHeader('TITLE')).to.have.length(32);
+    expect(imported.terrains[0].props).to.not.have.property('ONE_WAY');
+    expect(imported.gadgets[0].props).to.not.have.property('MIDI_FLAG');
+    expect(imported.gadgets[0].props).to.not.have.property('MIDI_FLAG_ID');
+    expect(imported.unknownSections).to.deep.equal([]);
+  });
+
+  it('round-trips classic gadgets without modifier flags through binary export/import', () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 2,
+      gadgetPieces: [{ id: 3, name: 'plain-object' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'Plain Gadget');
+    level.setHeader('STYLE', 'preview');
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'plain-object',
+        X: 48,
+        Y: 64
+      })
+    ];
+
+    const classic = createClassicLevelData(level, { styleName: 'preview' });
+    const bytes = new LevelWriter().write(classic.levelReader);
+    const reader = new LevelReader(new BinaryReader(bytes));
+    const imported = createEditorLevelFromClassic(reader, { styleName: 'preview' });
+
+    expect(reader.objects).to.have.length(1);
+    expect(imported.gadgets).to.have.length(1);
+    expect(imported.gadgets[0].props).to.include({
+      STYLE: 'preview',
+      PIECE: 3,
+      X: 48,
+      Y: 64
+    });
   });
 
   it('falls back to default style values and ignores unknown skills', () => {
@@ -343,6 +506,99 @@ describe('EditorLevelLoader', () => {
       steelRanges: [{ x: 0, y: 0, width: 1, height: 1 }]
     });
     expect(runtime.newSetSteelAreasArgs).to.equal(null);
+  });
+
+  it('extracts midi flag triggers using trigger bounds and strict enabled semantics', async () => {
+    resetStyleRegistry();
+    registerStyle('preview', {
+      groundSet: 3,
+      gadgetPieces: [{ id: 0, name: 'flagobj' }]
+    });
+    const level = new EditorLevel();
+    level.setHeader('STYLE', 'preview');
+    level.gadgets = [
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 10,
+        Y: 20,
+        MIDI_FLAG: true,
+        MIDI_FLAG_ID: 5,
+        MIDI_FLAG_COOLDOWN: 12
+      }),
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 30,
+        Y: 40,
+        MIDI_FLAG: true
+      }),
+      buildEntry({
+        STYLE: 'preview',
+        PIECE: 'flagobj',
+        X: 50,
+        Y: 60,
+        MIDI_FLAG: false,
+        MIDI_FLAG_ID: 8
+      })
+    ];
+    const { deps, fileProvider } = createFakeDeps();
+    const GroundReaderWithTriggers = class extends deps.GroundReader {
+      constructor(ground, terrain, objects) {
+        super(ground, terrain, objects);
+        this.objectImages = [{
+          id: 0,
+          width: 16,
+          height: 10,
+          trigger_left: 2,
+          trigger_top: 3,
+          trigger_width: 4,
+          trigger_height: 5
+        }];
+      }
+    };
+    const runtime = await loadEditorLevel(level, { gametype: 1, path: 'game' }, fileProvider, {
+      ...deps,
+      GroundReader: GroundReaderWithTriggers
+    });
+    expect(runtime.midiFlags).to.deep.equal([
+      {
+        id: 5,
+        triggerType: toMidiFlagTriggerType(5),
+        pieceId: 0,
+        x1: 12,
+        y1: 23,
+        x2: 16,
+        y2: 28,
+        cooldownTicks: 12
+      },
+      {
+        id: 1,
+        triggerType: toMidiFlagTriggerType(1),
+        pieceId: 0,
+        x1: 32,
+        y1: 43,
+        x2: 36,
+        y2: 48,
+        cooldownTicks: 8
+      }
+    ]);
+  });
+
+  it('extracts midi flags with fallback dimensions when trigger bounds are unavailable', async () => {
+    resetStyleRegistry();
+    registerStyle('preview', { groundSet: 3 });
+    const level = buildLevel();
+    level.gadgets[0].props.MIDI_FLAG = true;
+    const { deps, fileProvider } = createFakeDeps();
+    const runtime = await loadEditorLevel(level, { gametype: 1, path: 'game' }, fileProvider, deps);
+    expect(runtime.midiFlags).to.have.length(1);
+    expect(runtime.midiFlags[0].id).to.equal(1);
+    expect(runtime.midiFlags[0].x1).to.equal(30);
+    expect(runtime.midiFlags[0].y1).to.equal(40);
+    expect(runtime.midiFlags[0].x2).to.equal(38);
+    expect(runtime.midiFlags[0].y2).to.equal(48);
+    expect(runtime.midiFlags[0].cooldownTicks).to.equal(8);
   });
 
   it('skips steel processing when no steel ranges are provided', async () => {

@@ -1,7 +1,9 @@
 # MIDI Mapping Cheatsheet
 
-This document summarizes the default MIDI mappings in `midi-mapping.json`.
-Edit that file to customize your setup.
+This document summarizes the factory MIDI template in
+[`../midi-mapping.json`](../midi-mapping.json). Fresh sequencer projects are
+created from this file, then editable state is stored in
+`lemmings.midi.project.v1`.
 
 For UI behavior and controls, see `docs/midi-ui.md`.
 
@@ -41,9 +43,6 @@ Default skill order:
 | 11 | accent | 0-1 | 0.4 |
 | 16 | scale.root | 0-11 | 0 |
 | 17 | scale.name | chromatic-minor, major, minor, dorian, mixolydian, pentatonic, chromatic | chromatic-minor |
-| 18 | position.xToNote | toggle | off |
-| 19 | position.yToVelocity | toggle | on |
-| 20 | position.yToTimbre | toggle | on |
 | 21 | position.viewPan | toggle | off |
 | 22 | repeat.maxRepeats | 0-32 | 0 |
 | 23 | repeat.windowBeats | 1-8 | 4 |
@@ -57,6 +56,21 @@ Default skill order:
 | 31 | durationTicks.default | 1-24 | 6 |
 | 80 | timing.timeSignature.beats | 1-12 | 4 |
 | 81 | timing.timeSignature.unit | 1, 2, 4, 8, 16 | 4 |
+
+Position routing in the runtime mapper uses explicit entries in
+`position.mappings`. Legacy toggle-style flags such as `position.xToNote`,
+`position.yToVelocity`, and `position.yToTimbre` may still appear in older local
+data or input CC metadata, but they are ignored by the event mapper unless they
+are represented as explicit mapping entries.
+
+Fresh sequencer projects import those explicit `position.mappings` as project
+automation lanes. The sequencer lowers enabled lanes back into the runtime
+mapping, while global intensity, accent, envelope defaults, and view pan are
+stored in the project global block.
+
+Project import/export JSON is sanitized through the same canonical project
+model. Exported templates use the same project shape with hardware device ids
+and enabled state cleared before storage or reset.
 
 ## Target ranges
 
@@ -76,9 +90,12 @@ are omitted. Values outside the ranges are clamped.
 
 ## Customization tips
 
-- Edit the `input` section in `midi-mapping.json` to change note or CC mappings.
-- Use `input.channel` to switch between omni and a specific MIDI channel.       
-- Mapping changes take effect on refresh.
+- Use the in-game sequencer UI for editable mappings, clips, tracks, devices,
+  modulation, import/export, user templates, and audition.
+- Edit `midi-mapping.json` only to change the factory template used by fresh
+  projects and reset.
+- Use project `devices.inputChannel` to switch between omni and a specific MIDI
+  channel.
 - There is no standard MIDI CC for time signatures; the defaults use CC 80/81,
   but you can remap or disable them in `midi-mapping.json`.
 

@@ -7,9 +7,9 @@ bundles plus GitHub registry publication. Streamable HTTP is not wired up yet.
 
 The MCPB bundle uses the repo root as the runtime base:
 
-- `mcp/server.js` (stdio server entry)
-- `mcp/spectator.html` (optional spectator UI)
+- `mcp/` (stdio server entry, tools, spectator UI, and support modules)
 - `keybindings.json` (tool input mappings)
+- `manifest.json`, `package.json`, `server.json`, `.mcpbignore`
 
 Use the MCPB bundle templates in `mcpb/` and build a staging bundle with:
 
@@ -18,6 +18,25 @@ node scripts/build-mcpb-bundle.js
 ```
 
 This creates `dist/mcpb/` with the files and templates needed for `mcpb`.
+
+Surface bundles are also available:
+
+```
+node scripts/build-mcpb-bundle.js --surface game
+node scripts/build-mcpb-bundle.js --surface editor
+node scripts/build-mcpb-bundle.js --surface interact
+```
+
+These output to `dist/mcpb-game/`, `dist/mcpb-editor/`, and
+`dist/mcpb-interact/` using the surface templates when present:
+
+- `mcpb/manifest.<surface>.json`
+- `mcpb/package.<surface>.json`
+- `mcpb/server.<surface>.json`
+
+If a surface-specific template is missing, the build falls back to the generic
+template for that file. The current repo ships surface-specific metadata for all
+three public surfaces.
 
 ## Dependencies
 
@@ -43,7 +62,9 @@ npx @anthropic-ai/mcpb pack dist/lemmings-mcp.mcpb
 
 1. Create a GitHub release (tag `vX.Y.Z`) and upload the `.mcpb` asset.
 2. Compute SHA-256 for the `.mcpb` file.
-3. Update `mcpb/server.json` with the release URL and SHA-256.
+3. Update `mcpb/server.json` or the matching `mcpb/server.<surface>.json` with
+   the release URL and SHA-256.
 4. Publish with the MCP registry tooling (manual for now).
 
-See `mcpb/README.md` and `mcpb/server.json` for the exact fields and placeholders.
+See `mcpb/README.md` and the relevant `mcpb/server*.json` file for the exact
+fields and placeholders.

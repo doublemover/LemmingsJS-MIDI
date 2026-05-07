@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { installExternalAssetStubs } from './helpers/externalAssets.js';
 import { decodeE2EBuffer } from './helpers/e2eState.js';
-import { clearLocalStorage, waitForHarnessReady } from './helpers/harness.js';
+import { HarnessGamePage } from './helpers/pageObjects.js';
 
 test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
-  await clearLocalStorage(page);
-  await page.goto('/?e2e=1');
-  await waitForHarnessReady(page);
+  const harness = new HarnessGamePage(page);
+  await harness.goto();
 });
 
 const snapshotInvariantState = (state) => {
@@ -83,7 +82,7 @@ test('Time travel restores invariant state', async ({ page }) => {
   expect(restoredSnapshot).toEqual(baselineSnapshot);
 });
 
-test('Reverse playback toggles and rewinds ticks', async ({ page }) => {        
+test('Reverse playback toggles and rewinds ticks', async ({ page }) => {
   await page.evaluate(() => window.__E2E__.pause());
   await page.evaluate(() => window.__E2E__.step(10));
   const tickBefore = await page.evaluate(() => window.__E2E__.getState().game.timer.tickIndex);
@@ -114,7 +113,7 @@ test('Reverse playback does not change speed factor', async ({ page }) => {
   await page.evaluate(() => window.__E2E__.stopReverse());
 });
 
-test('Harness returns buffers with decodable metadata', async ({ page }) => {   
+test('Harness returns buffers with decodable metadata', async ({ page }) => {
   const groundMask = await page.evaluate(() => window.__E2E__.getBuffer('ground-mask'));
   expect(groundMask).toBeTruthy();
   const decodedMask = decodeE2EBuffer(groundMask);
@@ -149,20 +148,7 @@ test('Minimap click preserves zoom scale', async ({ page }) => {
     () => window.__E2E__?.getState?.().stage?.gameScale ?? 1
   );
 
-  const minimapPoint = await page.evaluate(() => {
-    const stage = window.lemmings?.stage;
-    const gui = stage?.guiImgProps;
-    const display = gui?.display;
-    const rect = stage?.stageCav?.getBoundingClientRect?.();
-    if (!stage || !gui || !display || !rect) return null;
-    const destX = display.worldDataSize.width - 127;
-    const destY = display.worldDataSize.height - 24 - 1;
-    const scale = gui.viewPoint?.scale ?? 1;
-    return {
-      x: rect.left + gui.x + destX * scale + 2,
-      y: rect.top + gui.y + destY * scale + 2
-    };
-  });
+  const minimapPoint = await page.evaluate(() => window.__E2E__?.getMinimapPagePoint?.() || null);
   if (!minimapPoint) throw new Error('Missing minimap position.');
   await page.mouse.click(minimapPoint.x, minimapPoint.y);
 

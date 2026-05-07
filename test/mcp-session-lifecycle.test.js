@@ -1,0 +1,156 @@
+import { expect } from 'chai';
+import { disposeAllSessionRuntimes, disposeSessionRuntime } from '../mcp/sessionLifecycle.js';
+
+const createSession = (id) => {
+  const calls = [];
+  const session = {
+    id,
+    resources: {
+      clearSession(sessionId) {
+        calls.push(`clear:${sessionId}`);
+      }
+    },
+    context: {
+      async close() {
+        calls.push('context.close');
+      }
+    },
+    browser: {
+      async close() {
+        calls.push('browser.close');
+      }
+    }
+  };
+  return { session, calls };
+};
+
+describe('session lifecycle disposal', function () {
+  it('disposes spectator/watch hooks and closes browser resources', async function () {
+    const { session, calls } = createSession('s1');
+    const hookCalls = [];
+    await disposeSessionRuntime(session, {
+      stopSpectatorServer(target) {
+        hookCalls.push(`spectator:${target.id}`);
+      },
+      stopWatchLoop(target) {
+        hookCalls.push(`watch:${target.id}`);
+      }
+    });
+
+    expect(hookCalls).to.deep.equal(['spectator:s1', 'watch:s1']);
+    expect(calls).to.deep.equal(['clear:s1', 'context.close', 'browser.close']);
+  });
+
+  it('continues cleanup when close methods throw', async function () {
+    const { session, calls } = createSession('s2');
+    session.context.close = async () => {
+      calls.push('context.close');
+      throw new Error('context fail');
+    };
+    session.browser.close = async () => {
+      calls.push('browser.close');
+      throw new Error('browser fail');
+    };
+
+    await disposeSessionRuntime(session);
+    expect(calls).to.deep.equal(['clear:s2', 'context.close', 'browser.close']);
+  });
+
+  it('continues cleanup when resource clearing throws', async function () {
+    const { session, calls } = createSession('s2b');
+    session.resources.clearSession = () => {
+      calls.push('clear:s2b');
+      throw new Error('clear fail');
+    };
+
+    await disposeSessionRuntime(session);
+    expect(calls).to.deep.equal(['clear:s2b', 'context.close', 'browser.close']);
+  });
+
+  it('continues cleanup when spectator/watch hooks throw', async function () {
+    const { session, calls } = createSession('s3');
+    await disposeSessionRuntime(session, {
+      stopSpectatorServer() {
+        throw new Error('spectator fail');
+      },
+      stopWatchLoop() {
+        throw new Error('watch fail');
+      }
+    });
+    expect(calls).to.deep.equal(['clear:s3', 'context.close', 'browser.close']);
+  });
+
+  it('disposes all sessions from an iterable', async function () {
+    const first = createSession('a');
+    const second = createSession('b');
+    await disposeAllSessionRuntimes([first.session, second.session]);
+
+    expect(first.calls).to.include.members(['clear:a', 'context.close', 'browser.close']);
+    expect(second.calls).to.include.members(['clear:b', 'context.close', 'browser.close']);
+  });
+
+  it('disposes multiple sessions concurrently', async function () {
+    const first = createSession('p1');
+    const second = createSession('p2');
+    const starts = [];
+    let resolveFirst;
+    let resolveSecond;
+
+    first.session.watchController = {
+      stopAndWait() {
+        starts.push('p1');
+        return new Promise((resolve) => {
+          resolveFirst = resolve;
+        });
+      }
+    };
+    second.session.watchController = {
+      stopAndWait() {
+        starts.push('p2');
+        return new Promise((resolve) => {
+          resolveSecond = resolve;
+        });
+      }
+    };
+
+    const disposing = disposeAllSessionRuntimes([first.session, second.session]);
+    for (let i = 0; i < 8 && starts.length < 2; i += 1) {
+      await Promise.resolve();
+    }
+    expect(starts).to.have.members(['p1', 'p2']);
+
+    resolveFirst();
+    resolveSecond();
+    await disposing;
+    expect(first.calls).to.include('clear:p1');
+    expect(second.calls).to.include('clear:p2');
+  });
+
+  it('waits for watch controller shutdown before clearing resources', async function () {
+    const { session } = createSession('w1');
+    const order = [];
+    session.watchController = {
+      async stopAndWait() {
+        order.push('watch:stop-start');
+        await Promise.resolve();
+        order.push('watch:stop-end');
+      }
+    };
+    session.resources.clearSession = () => {
+      order.push('clear');
+    };
+
+    await disposeSessionRuntime(session, {
+      stopWatchLoop() {
+        order.push('hook:watch');
+      }
+    });
+
+    expect(order).to.deep.equal([
+      'hook:watch',
+      'watch:stop-start',
+      'watch:stop-end',
+      'clear'
+    ]);
+  });
+});

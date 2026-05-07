@@ -24,7 +24,7 @@ class StubLevel {
   constructor() { this.ground = new Set(); this.clearedMasks = []; }
   key(x, y) { return `${x},${y}`; }
   hasGroundAt(x, y) { return this.ground.has(this.key(x, y)); }
-  clearGroundWithMask(mask, x, y) { this.clearedMasks.push({ mask, x, y }); return true; }
+  clearGroundWithMask(mask, x, y, opts = null) { this.clearedMasks.push({ mask, x, y, opts }); return true; }
 }
 
 class StubTriggerManager {
@@ -72,11 +72,13 @@ describe('ActionDrowningSystem behavior', function() {
   });
 
   it('draw records death once frame >= 15', function() {
+    const miniMap = { deaths: 0, addDeath() { this.deaths++; } };
     const sys = new ActionDrowningSystem(stubSprites);
+    sys.setRuntime({ miniMap });
     const lem = new StubLemming();
     lem.frameIndex = 15;
     sys.draw({ drawFrame() {} }, lem);
-    expect(globalThis.lemmings.game.lemmingManager.miniMap.deaths).to.equal(1);
+    expect(miniMap.deaths).to.equal(1);
   });
 });
 
@@ -91,6 +93,7 @@ describe('ActionExplodingSystem behavior', function() {
     expect(sys.process(level, lem)).to.equal(Lemmings.LemmingStateType.NO_STATE_TYPE);
     expect(tm.removed[0]).to.equal(lem);
     expect(level.clearedMasks.length).to.equal(1);
+    expect(level.clearedMasks[0].opts).to.eql({ revealSteel: true });
 
     // at frame 51 -> 52 should exit
     lem.frameIndex = 51;

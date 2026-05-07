@@ -12,7 +12,7 @@ import '../js/LemmingsBootstrap.js';
 const makeMiniMap = (overrides = {}) => ({
   scaleX: 1,
   scaleY: 1,
-  setLiveDots(arr) { this.dots = arr; },
+  setLiveDots(arr, activeLength = arr.length) { this.dots = arr.slice(0, activeLength); },
   setSelectedDot() {},
   ...overrides
 });
@@ -115,6 +115,54 @@ describe('LemmingManager core behavior', function() {
     expect(mm.dots.length).to.equal(2);
   });
 
+  it('refreshes minimap dots down to an empty active set', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    const mm = makeMiniMap();
+    manager.setMiniMap(mm);
+    manager.addLemming(10, 10);
+    manager.refreshMiniMapDots();
+    expect(mm.dots.length).to.equal(2);
+
+    manager.lemmings.length = 0;
+    manager.activeLemmings.length = 0;
+    manager.refreshMiniMapDots();
+    expect(mm.dots.length).to.equal(0);
+  });
+
+  it('processes super lemmings twice per tick', function() {
+    const { manager } = makeManager({
+      width: 40,
+      height: 40,
+      levelInit(level) { level.isSuperLemming = true; }
+    });
+    manager.addLemming(10, 10);
+    const lem = manager.lemmings[0];
+    let processCalls = 0;
+    lem.process = () => {
+      processCalls += 1;
+      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    };
+
+    manager.tick();
+
+    expect(processCalls).to.equal(2);
+  });
+
+  it('processes non-super lemmings once per tick', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    manager.addLemming(10, 10);
+    const lem = manager.lemmings[0];
+    let processCalls = 0;
+    lem.process = () => {
+      processCalls += 1;
+      return Lemmings.LemmingStateType.NO_STATE_TYPE;
+    };
+
+    manager.tick();
+
+    expect(processCalls).to.equal(1);
+  });
+
   it('spawns and removes lemmings mid-level', function() {
     const { manager, gvc } = makeManager({ width: 50, height: 50, releaseCount: 1 });
 
@@ -160,6 +208,34 @@ describe('LemmingManager core behavior', function() {
     const lem3 = manager.lemmings[2];
     nearest = manager.getNearestLemming(19, 19);
     expect(nearest).to.equal(lem3);
+  });
+
+  it('reuses pooled lemming instances with reset state', function() {
+    const { manager } = makeManager({ width: 40, height: 40 });
+    manager.addLemming(6, 6);
+    const first = manager.lemmings[0];
+    first.disable();
+    first.hasParachute = true;
+    first.canClimb = true;
+    first.countdown = 9;
+    first.lastTriggerType = TriggerTypes.KILL;
+    first.lookRight = false;
+
+    manager.removeOne(first);
+    manager.addLemming(12, 14);
+    const reused = manager.lemmings[1];
+
+    expect(reused).to.equal(first);
+    expect(reused.id).to.equal(1);
+    expect(reused.x).to.equal(12);
+    expect(reused.y).to.equal(14);
+    expect(reused.removed).to.equal(false);
+    expect(reused.disabled).to.equal(false);
+    expect(reused.countdown).to.equal(0);
+    expect(reused.canClimb).to.equal(false);
+    expect(reused.hasParachute).to.equal(false);
+    expect(reused.lastTriggerType).to.equal(null);
+    expect(reused.lookRight).to.equal(true);
   });
 
   it('cycleSelection skips removed and disabled lemmings', function() {
@@ -224,7 +300,7 @@ describe('LemmingManager additional', function() {
     const lem = manager.lemmings[0];
     manager.setLemmingState(lem, Lemmings.LemmingStateType.BLOCKING);
     let removed=false; manager.triggerManager.removeByOwner=()=>{removed=true;};
-    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);        
+    const ok = manager.doLemmingAction(lem, Lemmings.SkillTypes.DIGGER);
     expect(ok).to.be.true;
     expect(removed).to.be.true;
   });
@@ -250,6 +326,16 @@ describe('LemmingManager triggers and nuking', function() {
     state = manager.runTrigger(lem);
     expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
     expect(lem.lastTriggerType).to.equal(TriggerTypes.TRAP);
+
+    manager.triggerManager.trigger = () => TriggerTypes.UNKNOWN_2;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.UNKNOWN_2);
+
+    manager.triggerManager.trigger = () => TriggerTypes.UNKNOWN_3;
+    state = manager.runTrigger(lem);
+    expect(state).to.equal(Lemmings.LemmingStateType.SPLATTING);
+    expect(lem.lastTriggerType).to.equal(TriggerTypes.UNKNOWN_3);
 
     manager.triggerManager.trigger = () => TriggerTypes.EXIT_LEVEL;
     state = manager.runTrigger(lem);
@@ -288,7 +374,7 @@ describe('LemmingManager triggers and nuking', function() {
     expect(logs[0]).to.match(/unknown trigger type/i);
   });
 
-  it('nuking skips disabled targets and ends when applied', function() {        
+  it('nuking skips disabled targets and ends when applied', function() {
     const { manager } = makeManager();
     manager.addLemming(1, 1);
     manager.addLemming(2, 2);
@@ -322,7 +408,7 @@ describe('LemmingManager triggers and nuking', function() {
     expect(manager._nukeTargets).to.equal(null);
   });
 
-  it('clears nuke targets when index jumps beyond count', function() {     
+  it('clears nuke targets when index jumps beyond count', function() {
     const { manager } = makeManager();
     manager._nukeTargets = [{ id: 1 }];
     let calls = 0;

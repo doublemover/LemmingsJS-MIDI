@@ -1,6 +1,7 @@
 import { PackFilePart } from '../js/data/PackFilePart.js';
 import fs from 'fs';
 import path from 'path';
+import { once } from 'events';
 
 function usage() {
   console.log('Usage: node tools/packLevels.js <level dir> <out DAT>');
@@ -13,16 +14,23 @@ function usage() {
     return;
   }
 
-  const files = fs.readdirSync(levelDir)
-    .filter(f => fs.statSync(path.join(levelDir, f)).isFile())
+  const files = (await fs.promises.readdir(levelDir, { withFileTypes: true }))
+    .filter(entry => entry.isFile())
+    .map(entry => entry.name)
     .sort();
 
   const HEADER_SIZE = 10;
-  const parts = [];
+  const outStream = fs.createWriteStream(outFile);
   let totalSize = 0;
 
+  const writeChunk = async (chunk) => {
+    if (!outStream.write(chunk)) {
+      await once(outStream, 'drain');
+    }
+  };
+
   for (const file of files) {
-    const buf = fs.readFileSync(path.join(levelDir, file));
+    const buf = await fs.promises.readFile(path.join(levelDir, file));
     if (buf.length !== 2048) {
       console.warn(`Skipping ${file}: expected 2048 bytes, got ${buf.length}`);
       continue;
@@ -40,18 +48,15 @@ function usage() {
       (size >> 8) & 0xFF,
       size & 0xFF
     ]);
-    parts.push({ header, byteArray });
+    await writeChunk(header);
+    await writeChunk(byteArray);
     totalSize += size;
   }
 
-  const out = new Uint8Array(totalSize);
-  let offset = 0;
-  for (const { header, byteArray } of parts) {
-    out.set(header, offset);
-    out.set(byteArray, offset + HEADER_SIZE);
-    offset += header.length + byteArray.length;
-  }
+  await new Promise((resolve, reject) => {
+    outStream.once('error', reject);
+    outStream.end(resolve);
+  });
 
-  fs.writeFileSync(outFile, out);
-  console.log(`Wrote ${outFile}`);
+  console.log(`Wrote ${outFile} (${totalSize} bytes)`);
 })();

@@ -1,4 +1,4 @@
-import { BaseLogger, withPerformance } from '../util/LogHandler.js';
+import { BaseLogger } from '../util/LogHandler.js';
 import { BinaryReader } from './BinaryReader.js';
 import { UnpackFilePart } from './UnpackFilePart.js';
 
@@ -50,45 +50,45 @@ class FileContainer extends BaseLogger {
    * @param {BinaryReader} fileReader - Input file reader.
    */
   read(fileReader) {
-    withPerformance(
-      'FileContainer.read',
-      {
-        track: 'FileContainer',
-        trackGroup: 'IO',
-        color: 'secondary-dark',
-        tooltipText: `read ${fileReader.filename}`
-      },
-      () => {
-        this.#parts.length = 0; // Reset
-        let pos = 0;
-        const HEADER_SIZE = 10;
+    const endMeasure = this.startMeasure('FileContainer.read', {
+      track: 'FileContainer',
+      trackGroup: 'IO',
+      color: 'secondary-dark',
+      tooltipText: `read ${fileReader.filename}`
+    });
+    try {
+      this.#parts.length = 0; // Reset
+      let pos = 0;
+      const HEADER_SIZE = 10;
 
-        while (pos + HEADER_SIZE < fileReader.length) {
-          fileReader.setOffset(pos);
+      while (pos + HEADER_SIZE < fileReader.length) {
+        fileReader.setOffset(pos);
 
-          // New part instance
-          let part = new UnpackFilePart(fileReader);
-          part.offset = pos + HEADER_SIZE;
-          // Header parsing
-          part.initialBufferLen = fileReader.readByte();
-          part.checksum = fileReader.readByte();
-          part.unknown1 = fileReader.readWord();
-          part.decompressedSize = fileReader.readWord();
-          part.unknown0 = fileReader.readWord();
-          let size = fileReader.readWord();
-          part.compressedSize = size - HEADER_SIZE;
-          part.index = this.#parts.length;
+        // New part instance
+        let part = new UnpackFilePart(fileReader);
+        part.offset = pos + HEADER_SIZE;
+        // Header parsing
+        part.initialBufferLen = fileReader.readByte();
+        part.checksum = fileReader.readByte();
+        part.unknown1 = fileReader.readWord();
+        part.decompressedSize = fileReader.readWord();
+        part.unknown0 = fileReader.readWord();
+        let size = fileReader.readWord();
+        part.compressedSize = size - HEADER_SIZE;
+        part.index = this.#parts.length;
 
-          // Sanity checks
-          if (part.offset < 0 || size > 0xFFFFFF || size < HEADER_SIZE) {
-            this.log.log(`out of sync ${fileReader.filename}`);
-            break;
-          }
-          this.#parts.push(part);
-          pos += size;
+        // Sanity checks
+        if (part.offset < 0 || size > 0xFFFFFF || size < HEADER_SIZE) {
+          this.log.log(`out of sync ${fileReader.filename}`);
+          break;
         }
-        this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
-      })();
+        this.#parts.push(part);
+        pos += size;
+      }
+      this.log.debug(`${fileReader.filename} has ${this.#parts.length} file-parts.`);
+    } finally {
+      endMeasure();
+    }
   }
 
   /** @returns {UnpackFilePart[]} Array of all file parts (read-only view). */

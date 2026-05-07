@@ -57,6 +57,23 @@ class ParticleTable {
     gameDisplay.drawFrame(frame, x, y);
   }
 
+  drawMany(gameDisplay, frameIndex, points) {
+    const frame = this.#frames?.[frameIndex];
+    if (!frame || !gameDisplay || !Array.isArray(points) || points.length < 1) {
+      return 0;
+    }
+    let drawn = 0;
+    for (let i = 0; i < points.length; i += 1) {
+      const point = points[i];
+      const x = point?.x;
+      const y = point?.y;
+      if (!Number.isFinite(x) || !Number.isFinite(y)) continue;
+      gameDisplay.drawFrame(frame, x, y);
+      drawn += 1;
+    }
+    return drawn;
+  }
+
   #buildFrames() {
     const frames = new Array(this.#particleData.length);
     const table = this.#colorIndexTable;

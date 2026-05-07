@@ -3,6 +3,8 @@
 <head>
   <title>Lemmings Editor</title>
   <meta charset="UTF-8" />
+  <meta name="lemmings-analytics" content="runtime" />
+  <meta name="lemmings-analytics-endpoint" content="" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="icon" type="image/png" href="img/favicon.png" />
   <link type="text/css" rel="stylesheet" href="css/editor.css">
@@ -29,13 +31,36 @@
           Saved
           <select id="editorSavedSelect" title="Choose a saved editor level from local storage."></select>
         </label>
+        <details class="editor-project-menu">
+          <summary title="Open project and pack controls.">Project</summary>
+          <div class="editor-project-menu__content">
+            <label title="Choose an editor project from local storage.">
+              Project
+              <select id="editorProjectSelect" title="Choose an editor project from local storage."></select>
+            </label>
+            <label title="Choose a level within the active editor project.">
+              Level
+              <select id="editorProjectLevelSelect" title="Choose a level within the active editor project."></select>
+            </label>
+            <button class="secondary" id="editorProjectNew" type="button" title="Create a new project from the current level.">New Project</button>
+            <button class="secondary" id="editorProjectSaveLevel" type="button" title="Save the current level into the active project.">Save Level</button>
+            <button class="secondary" id="editorProjectAddLevel" type="button" title="Add the current level as a new project level.">Add Level</button>
+            <button class="secondary" id="editorProjectDuplicateLevel" type="button" title="Duplicate the active project level.">Duplicate</button>
+            <button class="secondary" id="editorProjectRenameLevel" type="button" title="Rename the active project level.">Rename</button>
+            <button class="secondary" id="editorProjectDeleteLevel" type="button" title="Delete the active project level.">Delete</button>
+            <button class="secondary" id="editorProjectExportPack" type="button" title="Export the active project as a pack bundle JSON with nxmi text and validation summaries.">Export Pack</button>
+            <button class="secondary" id="editorProjectExportArchive" type="button" title="Export the active project as an installable editor pack archive JSON.">Export Archive</button>
+            <button class="secondary" id="editorProjectInstallPack" type="button" title="Install an editor pack archive into local project storage.">Install Pack</button>
+            <input id="editorProjectInstallPackInput" type="file" accept=".json,application/json" hidden />
+          </div>
+        </details>
         <button id="editorNewLevel" type="button" title="Create a new blank level.">New Level</button>
         <button id="editorSavedSave" type="button" title="Save the current level to local storage.">Save</button>
         <button class="secondary" id="editorUndo" type="button" title="Undo the last change.">Undo</button>
         <button class="secondary" id="editorRedo" type="button" title="Redo the last undone change.">Redo</button>
         <span id="editorDirtyStatus" class="dirty-indicator" title="Shows whether there are unsaved changes.">Saved</span>
         <button id="editorSavedExport" type="button" title="Export the current level in editor format (.nxlv).">Export</button>
-        <button id="editorSavedExportClassic" type="button" title="Export the current level as a classic LVL file.">Export LVL</button>
+        <button id="editorSavedExportClassic" type="button" title="Export a lossy classic LVL file; use NXLV to preserve editor and NeoLemmix data.">Export LVL</button>
         <button class="secondary" id="editorSavedImport" type="button" title="Import a saved editor level (.nxlv).">Import</button>
         <button class="secondary" id="editorSavedImportClassic" type="button" title="Import a classic LVL file into the editor.">Import LVL</button>
         <button class="secondary" id="editorPlaytestToggle" type="button" title="Toggle playtest mode to run the level.">Playtest</button>
@@ -47,11 +72,12 @@
     <div class="editor-main">
       <aside class="editor-panel">
         <div class="panel-title">Tools</div>
-        <div class="tool-grid" id="editorToolList">
+        <div class="tool-grid" id="editorToolList" role="group" aria-label="Editor tools">
           <button type="button" data-tool="select" data-tooltip="Select and move existing items.">Select</button>
           <button type="button" data-tool="terrain" data-tooltip="Place terrain pieces.">Terrain</button>
           <button type="button" data-tool="gadget" data-tooltip="Place interactive objects.">Object</button>
           <button type="button" data-tool="trigger" data-tooltip="Place trigger regions.">Trigger</button>
+          <button type="button" data-tool="midi-flag" data-tooltip="Place MIDI flag triggers.">MIDI Flag</button>
           <button type="button" data-tool="entrance" data-tooltip="Place entrances (spawners).">Entrance</button>
           <button type="button" data-tool="exit" data-tooltip="Place exits.">Exit</button>
           <button type="button" data-tool="steel" data-tooltip="Draw steel areas.">Steel</button>
@@ -79,18 +105,19 @@
 
         <div class="panel-title">Palette</div>
         <div class="palette-block">
-          <div class="palette-tabs" id="editorPaletteTabs" title="Switch between terrain, object, and trigger palettes.">
-            <button type="button" data-tab="terrain" class="active" title="Show terrain palette.">Terrain</button>
-            <button type="button" data-tab="gadgets" title="Show object palette.">Objects</button>
-            <button type="button" data-tab="triggers" title="Show trigger palette.">Triggers</button>
+          <div class="palette-tabs" id="editorPaletteTabs" role="group" aria-label="Palette categories" title="Switch between terrain, object, and trigger palettes.">
+            <button type="button" data-tab="terrain" class="active" aria-pressed="true" title="Show terrain palette.">Terrain</button>
+            <button type="button" data-tab="gadgets" aria-pressed="false" title="Show object palette.">Objects</button>
+            <button type="button" data-tab="triggers" aria-pressed="false" title="Show trigger palette.">Triggers</button>
           </div>
           <div class="palette-toolbar">
             <input id="editorPaletteSearch" type="text" placeholder="Filter pieces" title="Filter palette entries by name or id." />
             <div class="palette-view-toggle" role="group" aria-label="Palette view mode">
-              <button type="button" id="editorPaletteViewList" class="active" title="List view">List</button>
-              <button type="button" id="editorPaletteViewGrid" title="Grid view">Grid</button>
+              <button type="button" id="editorPaletteViewList" class="active" aria-pressed="true" title="List view">List</button>
+              <button type="button" id="editorPaletteViewGrid" aria-pressed="false" title="Grid view">Grid</button>
             </div>
           </div>
+          <div class="palette-recent" id="editorPaletteRecent" role="group" aria-label="Recently used palette pieces" hidden></div>
           <div class="palette-list" id="editorPaletteTerrain"></div>
           <div class="palette-list" id="editorPaletteGadgets" hidden></div>
           <div class="palette-list" id="editorPaletteTriggers" hidden></div>
@@ -99,7 +126,7 @@
 
       <section class="editor-canvas-panel">
         <div class="canvas-wrap">
-          <canvas id="editorCanvas" width="800" height="480"></canvas>
+          <canvas id="editorCanvas" width="800" height="480" aria-label="Level editor canvas"></canvas>
         </div>
         <div class="status-strip">
           <span id="editorCursorStatus">X:— Y:—</span>
@@ -140,6 +167,14 @@
         </div>
         <details class="selection-flags" id="editorSelectionFlags">
           <summary title="Toggle placement flags for the selected item.">Placement Flags</summary>
+          <label class="control-row" title="Emit a dedicated MIDI trigger event for this gadget trigger area.">
+            MIDI Flag
+            <input id="editorSelMidiFlag" type="checkbox" title="Emit a dedicated MIDI trigger event for this gadget trigger area." />
+          </label>
+          <label class="control-row" title="MIDI flag id used for trigger mapping in the MIDI sequencer.">
+            MIDI Flag ID
+            <input id="editorSelMidiFlagId" type="number" min="1" max="9999" title="MIDI flag id used for trigger mapping in the MIDI sequencer." />
+          </label>
           <label class="control-row" title="Flip the selection horizontally.">
             Flip H
             <input id="editorSelFlipH" type="checkbox" title="Flip the selection horizontally." />
@@ -168,18 +203,60 @@
             <button class="editor-button" id="editorSelectionMoveBackward" type="button" title="Move selection backward by one layer.">Move Back</button>
             <button class="editor-button" id="editorSelectionSendBack" type="button" title="Send selection to back (bottom layer).">Send to Back</button>
           </div>
-          <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Object</button>
+          <div class="selection-order">
+            <button class="editor-button" id="editorSelectionAlignLeft" type="button" title="Align selected items to the left edge.">Align Left</button>
+            <button class="editor-button" id="editorSelectionAlignCenter" type="button" title="Align selected items to the horizontal center.">Align Center</button>
+            <button class="editor-button" id="editorSelectionAlignRight" type="button" title="Align selected items to the right edge.">Align Right</button>
+            <button class="editor-button" id="editorSelectionDistributeX" type="button" title="Distribute selected items evenly across X.">Distribute X</button>
+            <button class="editor-button" id="editorSelectionAlignTop" type="button" title="Align selected items to the top edge.">Align Top</button>
+            <button class="editor-button" id="editorSelectionAlignMiddle" type="button" title="Align selected items to the vertical center.">Align Middle</button>
+            <button class="editor-button" id="editorSelectionAlignBottom" type="button" title="Align selected items to the bottom edge.">Align Bottom</button>
+            <button class="editor-button" id="editorSelectionDistributeY" type="button" title="Distribute selected items evenly across Y.">Distribute Y</button>
+          </div>
+          <label class="control-row compact-row" title="Replace selected terrain/object pieces with this id.">
+            Replace Piece
+            <div class="inline-controls">
+              <input id="editorSelectionReplacePiece" type="number" title="Piece id to apply to the current selection." />
+              <button class="editor-button" id="editorSelectionReplaceApply" type="button" title="Apply replacement piece id to selected terrain/object entries.">Apply</button>
+            </div>
+          </label>
+          <label class="control-row compact-row" title="Randomize selected terrain/object entries from a piece-id list.">
+            Randomize Pieces
+            <div class="inline-controls">
+              <input id="editorSelectionRandomPieces" type="text" placeholder="1,2,3" title="Comma-separated piece ids to randomize from." />
+              <input id="editorSelectionRandomSeed" type="number" placeholder="seed" title="Optional seed for deterministic randomization." />
+              <label class="inline-toggle" title="Only choose pieces with matching width and height.">
+                <input id="editorSelectionRandomSameSize" type="checkbox" />
+                Same size
+              </label>
+              <button class="editor-button" id="editorSelectionRandomApply" type="button" title="Randomize selected terrain/object pieces using these ids.">Apply</button>
+            </div>
+          </label>
+          <label class="control-row compact-row" title="Scale selected entries around their selection center.">
+            Transform
+            <div class="inline-controls">
+              <input id="editorSelectionScaleX" type="number" value="1" step="0.05" title="Horizontal scale factor." />
+              <input id="editorSelectionScaleY" type="number" value="1" step="0.05" title="Vertical scale factor." />
+              <button class="editor-button" id="editorSelectionTransformApply" type="button" title="Scale the current selection group around its center.">Apply</button>
+            </div>
+          </label>
+          <button class="editor-button" id="editorDeleteSelection" type="button" title="Delete the current selection.">Delete Selection</button>
         </div>
 
         <div class="panel-title">Validation</div>
-        <div class="issue-list" id="editorIssuesList"></div>
+        <div class="validation-toolbar">
+          <button class="editor-button" id="editorSolvabilityCheck" type="button" title="Run a bounded advisory solvability check.">Check Solvability</button>
+          <button class="editor-button" id="editorValidationReportExport" type="button" title="Export current validation issues and pack consistency checks as JSON.">Export Report</button>
+          <span id="editorSolvabilityStatus" class="validation-status" data-status="idle" aria-live="polite">Solvability not checked</span>
+        </div>
+        <div class="issue-list" id="editorIssuesList" role="list" aria-live="polite"></div>
       </aside>
     </div>
   </div>
   <div id="editorShortcutOverlay" class="shortcut-overlay" aria-hidden="true">
-    <div class="shortcut-overlay__panel" role="dialog" aria-modal="true">
+    <div class="shortcut-overlay__panel" role="dialog" aria-modal="true" aria-labelledby="editorShortcutOverlayTitle">
       <div class="shortcut-overlay__header">
-        <div class="shortcut-overlay__title">Editor Shortcuts</div>
+        <div class="shortcut-overlay__title" id="editorShortcutOverlayTitle">Editor Shortcuts</div>
         <button type="button" class="shortcut-overlay__close" title="Close the shortcut overlay.">Close</button>
       </div>
       <div class="shortcut-overlay__content"></div>

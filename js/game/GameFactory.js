@@ -2,29 +2,58 @@ import { ConfigReader } from '../data/ConfigReader.js';
 import { FileProvider } from '../data/FileProvider.js';
 import { Game } from './Game.js';
 import { GameResources } from './GameResources.js';
-import { getDependency } from '../core/dependencies.js';
+import { getDependency, getAppContext, getRuntimeDependency } from '../core/dependencies.js';
+import { resolveRuntimeRevision } from '../core/cacheBust.js';
+import { getRuntimeProfilePreset } from '../core/runtimeProfiles.js';
+
+const getApp = () => {
+  const app = getAppContext();
+  if (app) return app;
+  return null;
+};
+
+const getPerformanceApi = () => getRuntimeDependency(
+  'performance',
+  (typeof performance !== 'undefined' ? performance : null)
+);
+
+const resolvePerfInstrumentation = (app) => {
+  const preset = getRuntimeProfilePreset(app?.startupProfile);
+  const instrumentation = preset.instrumentation || {};
+  const usePerformanceApi = (app?.performanceAPI ?? instrumentation.performanceAPI) === true;
+  const usePerfMetrics = (app?.perfMetrics ?? instrumentation.perfMetrics) === true;
+  const perfApi = getPerformanceApi();
+  const enabled = (usePerformanceApi || usePerfMetrics) &&
+    typeof perfApi?.measure === 'function' &&
+    typeof perfApi?.now === 'function';
+  return {
+    enabled: !!enabled,
+    perfApi
+  };
+};
 
 class GameFactory {
-  constructor(rootPath) {
+  constructor(rootPath, options = {}) {
     this.rootPath = rootPath;
+    this.runtimeRevision = resolveRuntimeRevision(options);
     const Provider = getDependency('FileProvider', FileProvider);
-    this.fileProvider = new Provider(rootPath);
+    this.fileProvider = new Provider(rootPath, {
+      cacheBustRevision: this.runtimeRevision
+    });
     let configFileReader = this.fileProvider.loadString('config.json');
     const Reader = getDependency('ConfigReader', ConfigReader);
     this.configReader = new Reader(configFileReader);
   }
   /** return a game object to control/run the game */
   async getGame(gameType, gameResources = null) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
-    const perfStart = perfEnabled ? performance.now() : 0;
+    const app = getApp();
+    const perfInstrumentation = resolvePerfInstrumentation(app);
+    const perfEnabled = perfInstrumentation.enabled;
+    const perfStart = perfEnabled ? perfInstrumentation.perfApi.now() : 0;
     const finish = () => {
       if (!perfEnabled) return;
       try {
-        performance.measure('GameFactory getGame', {
+        perfInstrumentation.perfApi.measure('GameFactory getGame', {
           start: perfStart,
           detail: { devtools: { track: 'GameFactory', trackGroup: 'Load', color: 'primary', tooltipText: 'getGame' } }
         });
@@ -50,16 +79,14 @@ class GameFactory {
   }
   /** return a Game Resources that gives access to images, maps, sounds  */
   async getGameResources(gameType) {
-    const perfEnabled = typeof lemmings !== 'undefined' &&
-      (lemmings.performanceAPI === true || lemmings.perfMetrics === true) &&
-      typeof performance !== 'undefined' &&
-      typeof performance.measure === 'function' &&
-      typeof performance.now === 'function';
-    const perfStart = perfEnabled ? performance.now() : 0;
+    const app = getApp();
+    const perfInstrumentation = resolvePerfInstrumentation(app);
+    const perfEnabled = perfInstrumentation.enabled;
+    const perfStart = perfEnabled ? perfInstrumentation.perfApi.now() : 0;
     const finish = () => {
       if (!perfEnabled) return;
       try {
-        performance.measure('GameFactory getGameResources', {
+        perfInstrumentation.perfApi.measure('GameFactory getGameResources', {
           start: perfStart,
           detail: { devtools: { track: 'GameFactory', trackGroup: 'Load', color: 'secondary', tooltipText: 'getGameResources' } }
         });
@@ -69,7 +96,7 @@ class GameFactory {
     };
     try {
       const config = await this.configReader.getConfig(gameType);
-      if (config == null) {
+      if (config === null || config === undefined) {
         throw new Error('Game config not found');
       }
       const Resources = getDependency('GameResources', GameResources);

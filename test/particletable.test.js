@@ -59,6 +59,26 @@ describe('ParticleTable', function() {
     expect(() => pt.draw(null, 0, 0, 0)).to.not.throw();
   });
 
+  it('drawMany batches multiple particle draws for the same frame', function() {
+    const pal = makePalette();
+    const pt = new ParticleTable(pal);
+    const calls = [];
+    const display = {
+      drawFrame(frame, x, y) {
+        calls.push({ frame, x, y });
+      }
+    };
+    const count = pt.drawMany(display, 0, [
+      { x: 1, y: 2 },
+      { x: Number.NaN, y: 3 },
+      { x: 4, y: 5 }
+    ]);
+    expect(count).to.equal(2);
+    expect(calls).to.have.length(2);
+    expect(calls[0].x).to.equal(1);
+    expect(calls[1].x).to.equal(4);
+  });
+
   it('builds a placeholder frame when particle data is empty', function() {
     const originalCache = ParticleTable._frameCache;
     ParticleTable._frameCache = new WeakMap();
