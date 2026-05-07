@@ -143,6 +143,46 @@ describe('procgenBoot helpers', function () {
     });
   });
 
+  it('builds deterministic debug controller options from query params', function () {
+    const options = procgenBoot.buildProcgenControllerOptions(
+      new URLSearchParams([
+        ['gapChance', '1'],
+        ['gapMinWidth', '5'],
+        ['gapMaxWidth', '5'],
+        ['recentCertificateLimit', '8'],
+        ['procgenCertificateVerification', 'false']
+      ]),
+      {
+        gapChance: 0.08,
+        gapMinWidth: 3,
+        gapMaxWidth: 9,
+        recentCertificateLimit: 32,
+        procgenCertificateVerification: true
+      }
+    );
+
+    expect(options).to.include({
+      gapChance: 1,
+      gapMinWidth: 5,
+      gapMaxWidth: 5,
+      recentCertificateLimit: 8,
+      procgenCertificateVerification: false
+    });
+
+    const fallback = procgenBoot.buildProcgenControllerOptions(
+      new URLSearchParams('gapChance=not-a-number&procgenCertificateVerification=maybe'),
+      {
+        gapChance: 0.25,
+        procgenCertificateVerification: true
+      }
+    );
+
+    expect(fallback).to.include({
+      gapChance: 0.25,
+      procgenCertificateVerification: true
+    });
+  });
+
   it('disposes active procgen runtime once and clears references', function () {
     const calls = [];
     procgenBoot.setActiveProcgenRuntimeForTest({

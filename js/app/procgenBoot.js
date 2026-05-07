@@ -201,6 +201,36 @@ const resolveProcgenSeed = (params) => {
   return normalizeSeed(Date.now());
 };
 
+const readFiniteQueryOption = (params, name) => {
+  if (!params?.has?.(name)) return null;
+  const value = Number(params.get(name));
+  return Number.isFinite(value) ? value : null;
+};
+
+const readBooleanQueryOption = (params, name) => {
+  if (!params?.has?.(name)) return null;
+  const value = String(params.get(name) ?? '').trim().toLowerCase();
+  if (['1', 'true', 'yes', 'on', ''].includes(value)) return true;
+  if (['0', 'false', 'no', 'off'].includes(value)) return false;
+  return null;
+};
+
+const buildProcgenControllerOptions = (params, baseOptions = {}) => {
+  const options = { ...baseOptions };
+  for (const name of [
+    'gapChance',
+    'gapMinWidth',
+    'gapMaxWidth',
+    'recentCertificateLimit'
+  ]) {
+    const value = readFiniteQueryOption(params, name);
+    if (value != null) options[name] = value;
+  }
+  const verify = readBooleanQueryOption(params, 'procgenCertificateVerification');
+  if (verify != null) options.procgenCertificateVerification = verify;
+  return options;
+};
+
 const buildProcgenEditorLevel = (styleName) => {
   const level = new EditorLevel();
   level.setHeader('TITLE', 'Procgen');
@@ -332,7 +362,7 @@ const init = async () => {
       level,
       assets: assetManager,
       stamper,
-      options: {
+      options: buildProcgenControllerOptions(params, {
         groundHeight: PROCGEN_GROUND_HEIGHT,
         initialGroundWidth: PROCGEN_INITIAL_GROUND_WIDTH,
         entranceX,
@@ -343,7 +373,7 @@ const init = async () => {
         rngSeed: procgenSeed,
         selectedTheme: themeContract.selectedTheme,
         themeContract
-      }
+      })
     });
     controller.start();
     runtime.controller = controller;
@@ -424,6 +454,7 @@ export {
   buildProcgenThemeContract,
   pickProcgenStyle,
   resolveProcgenSeed,
+  buildProcgenControllerOptions,
   buildProcgenEditorLevel,
   init,
   resizeCanvas,

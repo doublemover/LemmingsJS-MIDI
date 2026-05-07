@@ -65,3 +65,39 @@ test('procgen exposes debug state and records no-op assist decisions', async ({ 
     });
   }).toBe(true);
 });
+
+test('procgen exposes solver-verified gap certificates for fixed seeds', async ({ page }) => {
+  await page.goto('/procgen.html?e2e=1&seed=certificate-e2e&aiDebug=1&gapChance=1&gapMinWidth=5&gapMaxWidth=5&recentCertificateLimit=8');
+  await waitForHarnessReady(page);
+  await page.evaluate(() => window.__E2E__.pause());
+
+  await expect.poll(async () => {
+    await page.evaluate(() => window.__E2E__.step(120));
+    return page.evaluate(() => {
+      const certificates = window.__E2E__?.getState?.()?.procgen?.recentCertificates || [];
+      return certificates.some(entry => (
+        entry.challengeType === 'bridge-gap' &&
+        entry.decision === 'accept' &&
+        entry.resultType === 'solved'
+      ));
+    });
+  }, { timeout: 10000 }).toBe(true);
+
+  const procgen = await page.evaluate(() => window.__E2E__.getState().procgen);
+  const accepted = procgen.recentCertificates.find(entry => (
+    entry.challengeType === 'bridge-gap' &&
+    entry.decision === 'accept' &&
+    entry.resultType === 'solved'
+  ));
+
+  expect(accepted).toEqual(expect.objectContaining({
+    expectedSkill: 'builder',
+    width: 5
+  }));
+  expect(procgen.recentChunks.some(entry => (
+    entry.type === 'gap' &&
+    entry.certificateDecision === 'accept' &&
+    entry.certificateResultType === 'solved'
+  ))).toBe(true);
+  expect(procgen.trackingSizes.recentCertificates).toBeLessThanOrEqual(8);
+});

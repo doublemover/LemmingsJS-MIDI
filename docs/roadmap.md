@@ -646,8 +646,8 @@ types: solved, failed, unknown, timed out, or unsupported.
   tactical solver before placement.
 - Failed local verification causes procgen to simplify, replace, or extend
   terrain rather than creating impossible content.
-- Fixed procgen seeds should replay through solver verification for small
-  generated challenges.
+- Fixed procgen seeds replay small generated gap certificates through solver
+  verification and expose accepted decisions through E2E debug state.
 
 **Editor Integration**
 
@@ -682,7 +682,8 @@ types: solved, failed, unknown, timed out, or unsupported.
 - Return meaningful failed/unknown/unsupported results for negative fixtures.
 - Replay every positive solver result in the real runtime.
 - Solve a small built-in classic level or curated mini-level end to end.
-- Verify procgen local challenge certificates for fixed seeds.
+- Verify procgen local challenge certificates for fixed seeds through unit and
+  E2E debug-state coverage.
 - Run editor-created levels through bounded advisory checks.
 - Verify deterministic output for repeated runs with identical inputs.
 - Verify all budgets terminate cleanly.

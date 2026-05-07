@@ -101,6 +101,9 @@ should remain compact and JSON-safe:
 - `recentChunks`: bounded list of recent generated route chunks.
 - `recentCertificates`: bounded list of recent local challenge certificate
   decisions, including result type and fallback action.
+- E2E/debug URLs can force deterministic certificate coverage with
+  `gapChance`, `gapMinWidth`, `gapMaxWidth`, `recentCertificateLimit`, and
+  `procgenCertificateVerification` query parameters.
 - `recentPieces`: bounded list of recent stamped pieces, including style/theme.
 - `recentAssists`: bounded list of recent assist decisions and no-op scans.
 - `trackingSizes`: sizes of cooldown, stuck, gap, chunk, piece, and assist
