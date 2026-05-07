@@ -25,6 +25,7 @@ const editorUiBindingLifecycleMethods = {
     this._refreshSelection(null);
     this._refreshValidation();
     this._refreshSavedList();
+    this._refreshProjectList();
     this._bindEvents();
     await this._refreshPreview('Init', { preserveView: false, token });
   },
@@ -36,6 +37,15 @@ const editorUiBindingLifecycleMethods = {
       levelGroup: get('editorLevelGroupSelect'),
       levelIndex: get('editorLevelIndexSelect'),
       savedSelect: get('editorSavedSelect'),
+      projectSelect: get('editorProjectSelect'),
+      projectLevelSelect: get('editorProjectLevelSelect'),
+      projectNew: get('editorProjectNew'),
+      projectSaveLevel: get('editorProjectSaveLevel'),
+      projectAddLevel: get('editorProjectAddLevel'),
+      projectDuplicateLevel: get('editorProjectDuplicateLevel'),
+      projectRenameLevel: get('editorProjectRenameLevel'),
+      projectDeleteLevel: get('editorProjectDeleteLevel'),
+      projectExportPack: get('editorProjectExportPack'),
       newLevel: get('editorNewLevel'),
       savedSave: get('editorSavedSave'),
       undo: get('editorUndo'),

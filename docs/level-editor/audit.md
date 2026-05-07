@@ -44,7 +44,9 @@ Not implemented or not claimed in this checkpoint:
 - Classic `.lvl` preservation of editor-only terrain flags such as `ONE_WAY`,
   editor-only transforms, comments, unknown sections, or grouped terrain.
 - Solver-backed export blocking.
-- Pack/project bundle export.
+- Real archive/install tooling for exported editor pack bundles. The editor can
+  now store local projects and export a JSON handoff bundle with `info.nxmi`,
+  `levels.nxmi`, level `.nxlv` text, and validation reports.
 
 ## Workflow Coverage Map
 
@@ -53,9 +55,10 @@ Not implemented or not claimed in this checkpoint:
 | Create playable level | Unit and harness coverage exists for editor state, tools, entrance/exit, round-trip workflow | Keep semantic create/validate/playtest/save/export/import test green |
 | Import `.nxlv` with unknown data | Parser/writer tests cover parts of preservation | Add explicit semantic round-trip for comments, unknown sections, terrain groups, and unsupported data warnings |
 | Classic `.lvl` import/export | Harness coverage exports/imports a classic level | Add lossy-export contract tests and cap validation before export |
-| Import failures | UI file handlers catch some read errors, but failures can still be console-oriented | Surface parse/read failures in editor status/validation UI |
+| Import failures | UI file handlers report read/parse failures into status and validation | Keep visible failure coverage green |
 | Validation quick fixes | Unit coverage exists for validation and fix callbacks | Mark destructive fixes and expose that status to UI/E2E |
 | Visual states | Editor capture target exists | Split capture states for shell, palette/inspector, validation, file controls, and playtest |
+| Project workflow | Local project storage and pack JSON export exist | Add archive/install export only after the final pack format is settled |
 
 ## UX Issues
 

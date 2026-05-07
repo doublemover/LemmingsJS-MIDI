@@ -129,6 +129,23 @@ const getEditorState = (view, editorUi) => {
         suppressHeader: !!editorUi._suppressHeader,
         suppressInspector: !!editorUi._suppressInspector,
         paletteSearch: editorUi.el?.paletteSearch?.value ?? '',
+        project: editorUi._currentProject
+          ? {
+            id: editorUi._currentProject.id || null,
+            name: editorUi._currentProject.name || '',
+            activeLevelId: editorUi._currentProject.activeLevelId || null,
+            levelCount: Array.isArray(editorUi._currentProject.levels)
+              ? editorUi._currentProject.levels.length
+              : 0,
+            levels: Array.isArray(editorUi._currentProject.levels)
+              ? editorUi._currentProject.levels.map(level => ({
+                id: level.id || null,
+                title: level.title || '',
+                style: level.style || ''
+              }))
+              : []
+          }
+          : null,
         solvability: editorUi._lastSolvabilityCheck
           ? {
             status: editorUi._lastSolvabilityCheck.status || 'idle',

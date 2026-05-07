@@ -229,6 +229,14 @@ rather than broad sequencer rewrites.
 into a trustworthy creation tool with documented capabilities, clear limits,
 usable UX, and robust workflow tests.
 
+Current status: checkpointed on May 7, 2026. The classic-subset audit,
+visible lossy/unsupported-data warnings, validation report export, semantic
+round-trip tests, palette throughput improvements, solver advisory hooks, local
+project storage, project-level actions, and pack JSON handoff export are
+implemented. Remaining editor work should focus on real pack archive/install
+tooling, additional visual workflow captures, and NeoLemmix expansion only when
+that larger compatibility phase is deliberately started.
+
 **Audit Scope**
 
 - Perform a current-state editor audit before changing behavior:

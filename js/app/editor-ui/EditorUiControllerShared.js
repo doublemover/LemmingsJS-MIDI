@@ -10,6 +10,7 @@ import {
   createValidationReport,
   validateLevel
 } from '../../editor/EditorValidator.js';
+import { NxlvParser } from '../../editor/NxlvParser.js';
 import { checkEditorSolvabilityAdvisory } from '../../solver/EditorAdvisory.js';
 import { getEntryBounds } from '../../editor/EditorHitTest.js';
 import { ensureLevelEntryUids } from '../../editor/EditorEntryFactory.js';
@@ -37,6 +38,17 @@ import {
   loadSavedLevel,
   saveLevel
 } from '../../editor/EditorStorage.js';
+import {
+  createEditorProject,
+  createEditorProjectPackBundle,
+  deleteEditorProjectLevel,
+  duplicateEditorProjectLevel,
+  listSavedProjects,
+  loadEditorProject,
+  renameEditorProjectLevel,
+  saveEditorProject,
+  upsertEditorProjectLevel
+} from '../../editor/EditorProjectStorage.js';
 
 const MAX_HISTORY = 200;
 const MAX_HISTORY_BYTES = 16 * 1024 * 1024;
@@ -112,14 +124,19 @@ export {
   MAX_BRUSH_SIZE,
   MAX_HISTORY,
   MAX_HISTORY_BYTES,
+  NxlvParser,
   PALETTE_PREVIEW_BATCH_SIZE,
   PALETTE_SEARCH_DEBOUNCE_MS,
   ShortcutOverlay,
   createClassicLevelData,
+  createEditorProject,
+  createEditorProjectPackBundle,
   createValidationReport,
   createEditorLevelFromClassic,
+  deleteEditorProjectLevel,
   downloadBinaryFile,
   downloadTextFile,
+  duplicateEditorProjectLevel,
   ensureLevelEntryUids,
   formatRotation,
   formatValue,
@@ -127,15 +144,20 @@ export {
   getRuntimeDependency,
   getStyle,
   getStyleNames,
+  listSavedProjects,
   listSavedLevels,
+  loadEditorProject,
   loadSavedLevel,
   normalizeRotation,
   normalizeText,
   parseNumber,
   readArrayBufferFile,
   readTextFile,
+  renameEditorProjectLevel,
   sanitizeFileName,
+  saveEditorProject,
   saveLevel,
+  upsertEditorProjectLevel,
   checkEditorSolvabilityAdvisory,
   validateLevel
 };

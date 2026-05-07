@@ -89,6 +89,52 @@ body {
   color: var(--ink);
 }
 
+.editor-project-menu {
+  position: relative;
+}
+
+.editor-project-menu summary {
+  border: 1px solid var(--panel-border);
+  background: #f4efe6;
+  color: var(--ink);
+  cursor: pointer;
+  list-style: none;
+  padding: 6px 10px;
+}
+
+.editor-project-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.editor-project-menu[open] summary {
+  border-color: var(--accent-dark);
+  background: #fffdf9;
+}
+
+.editor-project-menu__content {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 12;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  gap: 8px;
+  width: min(440px, 80vw);
+  padding: 10px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: 0 12px 24px var(--shadow);
+}
+
+.editor-project-menu__content label {
+  display: grid;
+  gap: 4px;
+}
+
+.editor-project-menu__content button {
+  text-align: center;
+}
+
 .dirty-indicator {
   padding: 4px 8px;
   border: 1px solid var(--panel-border);
@@ -114,6 +160,7 @@ body {
 .editor-controls button:focus-visible,
 .editor-controls select:focus-visible,
 .editor-controls input:focus-visible,
+.editor-project-menu summary:focus-visible,
 .tool-grid button:focus-visible,
 .palette-tabs button:focus-visible,
 .palette-recent button:focus-visible,

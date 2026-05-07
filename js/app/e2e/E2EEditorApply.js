@@ -74,6 +74,14 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
 
   const getLevel = () => ctx.session.level;
 
+  const syncEditorUiSession = () => {
+    if (!ctx.editorUi) return;
+    ctx.editorUi.session = ctx.session;
+    if (ctx.editorUi.controller) {
+      ctx.editorUi.controller.session = ctx.session;
+    }
+  };
+
   const applySnap = (x, y, snapMode) => {
     if (!snapMode || snapMode === 'useCurrent') {
       return ctx.controller._snap ? ctx.controller._snap(x, y) : { x, y };
@@ -131,6 +139,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
         view?.createBlankEditorLevel?.({ render: false });
         ctx.session = view?.editorSession || ctx.session;
         ctx.controller.session = ctx.session;
+        syncEditorUiSession();
         ensureLevelEntryUids(ctx.session.level);
         if (args?.header && ctx.session.level) {
           for (const [key, val] of Object.entries(args.header)) {
@@ -161,6 +170,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
         }
         ctx.session = view?.editorSession || ctx.session;
         ctx.controller.session = ctx.session;
+        syncEditorUiSession();
         ensureLevelEntryUids(ctx.session.level);
         if (args?.resetHistory) {
           ctx.controller.resetHistory(args?.sourceLabel || 'Import');
@@ -726,6 +736,7 @@ const applyEditorOps = async (view, editorUi, ops = [], options = {}) => {
           view.loadEditorLevelFromText(rollbackText, { render: false });
           ctx.session = view?.editorSession || ctx.session;
           ctx.controller.session = ctx.session;
+          syncEditorUiSession();
           ensureLevelEntryUids(ctx.session.level);
         }
         return buildApplyError(errorCode, errorMessage, undefined, results);

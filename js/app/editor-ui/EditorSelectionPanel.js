@@ -283,6 +283,7 @@ const editorSelectionPanelMethods = {
     if (!this.view) return;
     const token = this._asyncToken;
     this._currentSavedId = '';
+    this._currentProject = null;
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
@@ -297,6 +298,7 @@ const editorSelectionPanelMethods = {
     this._refreshSelection(null);
     this._refreshValidation();
     this._refreshSavedList('');
+    this._refreshProjectList?.('');
     this._drawSelectionOverlay();
     this._updateStatus(label || 'Load');
   },

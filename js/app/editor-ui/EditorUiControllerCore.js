@@ -65,6 +65,7 @@ class EditorUiController {
     this._selection = [];
     this._activeTab = 'terrain';
     this._currentSavedId = '';
+    this._currentProject = null;
     this._playtest = false;
     this._previewInFlight = false;
     this._previewQueued = false;

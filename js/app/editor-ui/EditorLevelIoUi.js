@@ -12,13 +12,19 @@ import {
   MAX_BRUSH_SIZE,
   MAX_HISTORY,
   MAX_HISTORY_BYTES,
+  NxlvParser,
   PALETTE_PREVIEW_BATCH_SIZE,
   PALETTE_SEARCH_DEBOUNCE_MS,
   ShortcutOverlay,
   createClassicLevelData,
+  createEditorProject,
   createEditorLevelFromClassic,
+  createEditorProjectPackBundle,
+  createValidationReport,
+  deleteEditorProjectLevel,
   downloadBinaryFile,
   downloadTextFile,
+  duplicateEditorProjectLevel,
   ensureLevelEntryUids,
   formatRotation,
   formatValue,
@@ -26,15 +32,20 @@ import {
   getRuntimeDependency,
   getStyle,
   getStyleNames,
+  listSavedProjects,
   listSavedLevels,
+  loadEditorProject,
   loadSavedLevel,
   normalizeRotation,
   normalizeText,
   parseNumber,
   readArrayBufferFile,
   readTextFile,
+  renameEditorProjectLevel,
   sanitizeFileName,
+  saveEditorProject,
   saveLevel,
+  upsertEditorProjectLevel,
   validateLevel
 } from './EditorUiControllerShared.js';
 import {
@@ -56,6 +67,262 @@ const editorLevelIoUiMethods = {
       this.el.savedSelect.appendChild(opt);
     }
     this.el.savedSelect.value = selectedId || '';
+  },
+
+  _refreshProjectList(selectedId = this._currentProject?.id || '') {
+    if (!this.el.projectSelect) return;
+    const entries = listSavedProjects();
+    this.el.projectSelect.innerHTML = '';
+    const placeholder = this.document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Projects';
+    this.el.projectSelect.appendChild(placeholder);
+    for (const entry of entries) {
+      const opt = this.document.createElement('option');
+      opt.value = entry.id;
+      opt.textContent = `${entry.name} (${entry.levelCount})`;
+      this.el.projectSelect.appendChild(opt);
+    }
+    this.el.projectSelect.value = selectedId || '';
+    this._refreshProjectLevelList(this._currentProject?.activeLevelId || '');
+  },
+
+  _refreshProjectLevelList(selectedId = this._currentProject?.activeLevelId || '') {
+    if (!this.el.projectLevelSelect) return;
+    this.el.projectLevelSelect.innerHTML = '';
+    const placeholder = this.document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = 'Project levels';
+    this.el.projectLevelSelect.appendChild(placeholder);
+    const levels = Array.isArray(this._currentProject?.levels) ? this._currentProject.levels : [];
+    for (const level of levels) {
+      const opt = this.document.createElement('option');
+      opt.value = level.id;
+      opt.textContent = level.title;
+      this.el.projectLevelSelect.appendChild(opt);
+    }
+    this.el.projectLevelSelect.value = selectedId || '';
+  },
+
+  _getCurrentProjectLevelPayload(title = this.view?.getEditorLevelTitle?.() || 'Untitled') {
+    const level = this.session?.level;
+    return {
+      title: normalizeText(title) || this.view?.getEditorLevelTitle?.() || 'Untitled',
+      style: level?.getHeader?.('STYLE') || '',
+      text: this.view?.getEditorLevelText?.() || '',
+      updatedAt: Date.now()
+    };
+  },
+
+  _promptText(message, fallback) {
+    const prompt = this.window?.prompt;
+    if (typeof prompt !== 'function') return normalizeText(fallback);
+    return normalizeText(prompt(message, fallback));
+  },
+
+  _saveProjectAndRefresh(project, label = 'Project') {
+    this._currentProject = project;
+    saveEditorProject(undefined, project);
+    this._refreshProjectList(project.id);
+    this._refreshProjectLevelList(project.activeLevelId);
+    this._updateStatus(label);
+  },
+
+  _createProjectFromCurrentLevel() {
+    const defaultName = this.view?.getEditorLevelTitle?.() || 'Untitled Project';
+    const name = this._promptText('Project name', defaultName);
+    if (!name) return null;
+    const project = createEditorProject({
+      name,
+      text: this.view?.getEditorLevelText?.() || '',
+      title: this.view?.getEditorLevelTitle?.() || 'Untitled',
+      style: this.session?.level?.getHeader?.('STYLE') || ''
+    });
+    this._saveProjectAndRefresh(project, 'New project');
+    return project;
+  },
+
+  _saveCurrentLevelToProject(options = {}) {
+    let project = this._currentProject;
+    if (!project) {
+      project = this._createProjectFromCurrentLevel();
+      return !!project;
+    }
+    const forceNew = options.forceNew === true;
+    const activeId = forceNew ? null : project.activeLevelId;
+    const activeLevel = project.levels.find(level => level.id === project.activeLevelId);
+    const fallbackTitle = this.view?.getEditorLevelTitle?.() || 'Untitled';
+    const title = forceNew
+      ? this._promptText('Project level name', fallbackTitle)
+      : (options.preserveTitle === true ? activeLevel?.title || fallbackTitle : fallbackTitle);
+    if (forceNew && !title) return false;
+    project = upsertEditorProjectLevel(project, {
+      id: activeId || undefined,
+      ...this._getCurrentProjectLevelPayload(title)
+    });
+    this._saveProjectAndRefresh(project, forceNew ? 'Project level added' : 'Project level saved');
+    this._setDirty(false);
+    return true;
+  },
+
+  _loadProjectById(id) {
+    const project = loadEditorProject(undefined, id);
+    if (!project) return false;
+    this._currentProject = project;
+    this._refreshProjectList(project.id);
+    this._refreshProjectLevelList(project.activeLevelId);
+    const active = project.levels.find(level => level.id === project.activeLevelId) || project.levels[0];
+    if (active) {
+      this._loadLevelFromText(active.text, { resetSaved: false });
+    }
+    this._updateStatus('Project loaded');
+    return true;
+  },
+
+  _loadProjectLevel(levelId) {
+    if (!this._currentProject || !levelId) return false;
+    const level = this._currentProject.levels.find(entry => entry.id === levelId);
+    if (!level) return false;
+    this._currentProject.activeLevelId = level.id;
+    saveEditorProject(undefined, this._currentProject);
+    this._refreshProjectList(this._currentProject.id);
+    this._refreshProjectLevelList(level.id);
+    this._loadLevelFromText(level.text, { resetSaved: false });
+    this._updateStatus('Project level loaded');
+    return true;
+  },
+
+  _duplicateProjectLevel() {
+    if (!this._currentProject?.activeLevelId) return false;
+    this._saveCurrentLevelToProject({ preserveTitle: true });
+    const activeLevel = this._currentProject.activeLevelId;
+    const source = this._currentProject.levels.find(level => level.id === activeLevel);
+    const title = this._promptText('Duplicate level as', `${source?.title || 'Level'} Copy`);
+    if (!title) return false;
+    const project = duplicateEditorProjectLevel(this._currentProject, activeLevel, { title });
+    this._saveProjectAndRefresh(project, 'Project level duplicated');
+    this._loadProjectLevel(project.activeLevelId);
+    return true;
+  },
+
+  _renameProjectLevel() {
+    if (!this._currentProject?.activeLevelId) return false;
+    const level = this._currentProject.levels.find(entry => entry.id === this._currentProject.activeLevelId);
+    if (!level) return false;
+    const title = this._promptText('Rename project level', level.title);
+    if (!title) return false;
+    const project = renameEditorProjectLevel(this._currentProject, level.id, title);
+    this._saveProjectAndRefresh(project, 'Project level renamed');
+    return true;
+  },
+
+  _deleteProjectLevel() {
+    if (!this._currentProject?.activeLevelId) return false;
+    const confirm = this.window?.confirm;
+    if (typeof confirm === 'function' && !confirm('Delete this project level?')) return false;
+    const activeLevel = this._currentProject.activeLevelId;
+    const project = deleteEditorProjectLevel(this._currentProject, activeLevel);
+    this._saveProjectAndRefresh(project, 'Project level deleted');
+    if (project.activeLevelId) {
+      this._loadProjectLevel(project.activeLevelId);
+    } else {
+      this._createNewLevel();
+    }
+    return true;
+  },
+
+  _buildProjectValidationReports(project) {
+    const reports = {};
+    for (const levelEntry of project?.levels || []) {
+      let parsedLevel = null;
+      try {
+        parsedLevel = levelEntry.id === project.activeLevelId && this.session?.level
+          ? this.session.level
+          : NxlvParser.parse(levelEntry.text);
+      } catch (error) {
+        reports[levelEntry.id] = {
+          kind: 'editor-validation-report',
+          schemaVersion: 1,
+          level: {
+            id: levelEntry.id,
+            title: levelEntry.title,
+            style: levelEntry.style
+          },
+          pack: null,
+          summary: { total: 1, errors: 1, warnings: 0, infos: 0, blockers: 1, destructive: 0, unsupportedPreservedData: 0 },
+          issues: [{
+            index: 0,
+            source: 'project-export',
+            severity: 'error',
+            code: 'project_level_parse_failed',
+            target: `levels.${levelEntry.id}`,
+            message: 'Project level could not be parsed for validation.',
+            blocker: true,
+            blocksEditing: false,
+            blocksExport: true,
+            destructive: false,
+            exportFormat: null,
+            hasFix: false,
+            fixLabel: null,
+            metadata: {}
+          }]
+        };
+        continue;
+      }
+      reports[levelEntry.id] = createValidationReport(parsedLevel, this.assets || null, {
+        pack: {
+          title: project.name,
+          levels: [parsedLevel]
+        },
+        assetsByStyle: this.assets?.styleName
+          ? { [this.assets.styleName]: this.assets }
+          : null
+      });
+    }
+    return reports;
+  },
+
+  _buildProjectPackValidationReport(project) {
+    const levels = [];
+    for (const levelEntry of project?.levels || []) {
+      try {
+        levels.push(levelEntry.id === project.activeLevelId && this.session?.level
+          ? this.session.level
+          : NxlvParser.parse(levelEntry.text));
+      } catch (error) {
+        // Per-level reports carry parse failures; pack consistency can still
+        // run on parseable levels.
+      }
+    }
+    const level = levels[0] || this.session?.level || null;
+    return createValidationReport(level, this.assets || null, {
+      pack: {
+        title: project?.name || 'Editor project',
+        levels
+      },
+      assetsByStyle: this.assets?.styleName
+        ? { [this.assets.styleName]: this.assets }
+        : null
+    });
+  },
+
+  _exportCurrentProjectPack() {
+    if (!this._currentProject) {
+      const project = this._createProjectFromCurrentLevel();
+      if (!project) return false;
+    } else {
+      this._saveCurrentLevelToProject();
+    }
+    const reportsByLevelId = this._buildProjectValidationReports(this._currentProject);
+    const packValidationReport = this._buildProjectPackValidationReport(this._currentProject);
+    const bundle = createEditorProjectPackBundle(this._currentProject, {
+      packValidationReport,
+      reportsByLevelId
+    });
+    const filename = `${sanitizeFileName(this._currentProject.name)}.editor-pack.json`;
+    downloadTextFile(this.document, JSON.stringify(bundle, null, 2), filename, 'application/json');
+    this._updateStatus('Project pack export');
+    return true;
   },
 
   _saveCurrentLevel() {
@@ -91,7 +358,9 @@ const editorLevelIoUiMethods = {
     this._refreshUndoRedo();
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
+    this._currentProject = null;
     this._refreshSavedList('');
+    this._refreshProjectList('');
     await this._reloadAssets(token);
     if (!this._isAsyncCurrent(token)) return;
     await this._refreshStyleOptions();
@@ -249,6 +518,10 @@ const editorLevelIoUiMethods = {
     }
     this._clearTransientIssue?.('import');
     this._clearSolvabilityCheck?.();
+    if (options.resetSaved) {
+      this._currentProject = null;
+      this._refreshProjectList('');
+    }
     this.session = this.view.editorSession;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
@@ -283,6 +556,10 @@ const editorLevelIoUiMethods = {
     }
     this._clearTransientIssue?.('import');
     this._clearSolvabilityCheck?.();
+    if (options.resetSaved) {
+      this._currentProject = null;
+      this._refreshProjectList('');
+    }
     session.level = editorLevel;
     this.session = session;
     this.controller.session = this.session;

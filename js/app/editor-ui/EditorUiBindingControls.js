@@ -156,6 +156,64 @@ const editorUiBindingControlMethods = {
       });
     }
 
+    if (this.el.projectSelect) {
+      this._addDomListener(this.el.projectSelect, 'change', () => {
+        const id = this.el.projectSelect.value;
+        if (!id) return;
+        this._loadProjectById?.(id);
+      });
+    }
+
+    if (this.el.projectLevelSelect) {
+      this._addDomListener(this.el.projectLevelSelect, 'change', () => {
+        const id = this.el.projectLevelSelect.value;
+        if (!id) return;
+        this._loadProjectLevel?.(id);
+      });
+    }
+
+    if (this.el.projectNew) {
+      this._addDomListener(this.el.projectNew, 'click', () => {
+        this._createProjectFromCurrentLevel?.();
+      });
+    }
+
+    if (this.el.projectSaveLevel) {
+      this._addDomListener(this.el.projectSaveLevel, 'click', () => {
+        this._saveCurrentLevelToProject?.();
+      });
+    }
+
+    if (this.el.projectAddLevel) {
+      this._addDomListener(this.el.projectAddLevel, 'click', () => {
+        this._saveCurrentLevelToProject?.({ forceNew: true });
+      });
+    }
+
+    if (this.el.projectDuplicateLevel) {
+      this._addDomListener(this.el.projectDuplicateLevel, 'click', () => {
+        this._duplicateProjectLevel?.();
+      });
+    }
+
+    if (this.el.projectRenameLevel) {
+      this._addDomListener(this.el.projectRenameLevel, 'click', () => {
+        this._renameProjectLevel?.();
+      });
+    }
+
+    if (this.el.projectDeleteLevel) {
+      this._addDomListener(this.el.projectDeleteLevel, 'click', () => {
+        this._deleteProjectLevel?.();
+      });
+    }
+
+    if (this.el.projectExportPack) {
+      this._addDomListener(this.el.projectExportPack, 'click', () => {
+        this._exportCurrentProjectPack?.();
+      });
+    }
+
     if (this.el.savedExport) {
       this._addDomListener(this.el.savedExport, 'click', () => {
         this._exportCurrentLevel();

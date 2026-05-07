@@ -39,10 +39,12 @@ second roadmap file. The durable contract is:
 - Pack bundles own `levels.nxmi`, `info.nxmi`, style references, level order,
   and a validation report summary for every included level.
 
-Initial UI entry points should stay small: project name, level list,
-duplicate/rename/delete, import errors, validation report export, and pack
-export. Pack export should refuse only true validation errors; classic
-lossiness and solver advisory findings remain warnings.
+Initial UI entry points are implemented as local project storage, project and
+project-level selectors, save/add/duplicate/rename/delete level actions, and a
+pack JSON export containing `info.nxmi`, `levels.nxmi`, per-level `.nxlv` text,
+per-level validation reports, and a pack consistency report. The next pack
+checkpoint should turn that JSON handoff into real archive/install tooling once
+the desired pack installer format is settled.
 
 ## Pack-Level Validation
 

@@ -31,6 +31,26 @@
           Saved
           <select id="editorSavedSelect" title="Choose a saved editor level from local storage."></select>
         </label>
+        <details class="editor-project-menu">
+          <summary title="Open project and pack controls.">Project</summary>
+          <div class="editor-project-menu__content">
+            <label title="Choose an editor project from local storage.">
+              Project
+              <select id="editorProjectSelect" title="Choose an editor project from local storage."></select>
+            </label>
+            <label title="Choose a level within the active editor project.">
+              Level
+              <select id="editorProjectLevelSelect" title="Choose a level within the active editor project."></select>
+            </label>
+            <button class="secondary" id="editorProjectNew" type="button" title="Create a new project from the current level.">New Project</button>
+            <button class="secondary" id="editorProjectSaveLevel" type="button" title="Save the current level into the active project.">Save Level</button>
+            <button class="secondary" id="editorProjectAddLevel" type="button" title="Add the current level as a new project level.">Add Level</button>
+            <button class="secondary" id="editorProjectDuplicateLevel" type="button" title="Duplicate the active project level.">Duplicate</button>
+            <button class="secondary" id="editorProjectRenameLevel" type="button" title="Rename the active project level.">Rename</button>
+            <button class="secondary" id="editorProjectDeleteLevel" type="button" title="Delete the active project level.">Delete</button>
+            <button class="secondary" id="editorProjectExportPack" type="button" title="Export the active project as a pack bundle JSON with nxmi text and validation summaries.">Export Pack</button>
+          </div>
+        </details>
         <button id="editorNewLevel" type="button" title="Create a new blank level.">New Level</button>
         <button id="editorSavedSave" type="button" title="Save the current level to local storage.">Save</button>
         <button class="secondary" id="editorUndo" type="button" title="Undo the last change.">Undo</button>

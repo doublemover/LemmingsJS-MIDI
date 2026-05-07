@@ -32,6 +32,20 @@ intentionally brief so it can stay current.
   `.lvl` export/import drops terrain `ONE_WAY`; classic one-way behavior must be
   modeled as arrow/object gadgets separately.
 
+## Project and pack workflow
+
+- Project stores a local multi-level editor project in
+  `lemmings.editor.projects` / `lemmings.editor.project.*`.
+- The compact Project menu opens project and project-level selectors plus pack
+  actions without taking space from the palette/canvas workflow.
+- New Project captures the current level as the first project level.
+- Save Level updates the active project level; Add Level captures the current
+  level as a new project level.
+- Duplicate, Rename, and Delete operate on the active project level.
+- Export Pack downloads a JSON bundle containing `info.nxmi`, `levels.nxmi`,
+  per-level `.nxlv` text, per-level validation reports, and a pack consistency
+  report. The JSON is an editor handoff bundle, not a zip installer.
+
 ## Validation
 
 The Validation panel lists issues with quick-fix actions where possible. Fix
