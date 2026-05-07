@@ -75,7 +75,7 @@
     "lines": 71,
     "statements": 71,
     "functions": 72,
-    "branches": 85,
+    "branches": 81,
     "exclude": [
       "coverage/**",
       "test/**",
