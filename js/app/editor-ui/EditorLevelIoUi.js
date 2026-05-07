@@ -81,6 +81,7 @@ const editorLevelIoUiMethods = {
     if (!this.view) return;
     const token = this._nextAsyncToken();
     this._clearTransientIssue?.('import');
+    this._clearSolvabilityCheck?.();
     this.view.createBlankEditorLevel({ render: false });
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
@@ -247,6 +248,7 @@ const editorLevelIoUiMethods = {
       return;
     }
     this._clearTransientIssue?.('import');
+    this._clearSolvabilityCheck?.();
     this.session = this.view.editorSession;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
@@ -280,6 +282,7 @@ const editorLevelIoUiMethods = {
       return;
     }
     this._clearTransientIssue?.('import');
+    this._clearSolvabilityCheck?.();
     session.level = editorLevel;
     this.session = session;
     this.controller.session = this.session;

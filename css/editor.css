@@ -509,6 +509,39 @@ body {
   gap: 8px;
 }
 
+.validation-toolbar {
+  display: grid;
+  gap: 6px;
+}
+
+.validation-toolbar .editor-button {
+  text-align: center;
+}
+
+.validation-status {
+  border: 1px solid var(--panel-border);
+  background: #fffdf9;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+  padding: 6px 8px;
+}
+
+.validation-status[data-status="ok"] {
+  border-left: 4px solid #2f7a48;
+  color: var(--ink);
+}
+
+.validation-status[data-status="warnings"] {
+  border-left: 4px solid var(--warn);
+  color: var(--ink);
+}
+
+.validation-status[data-status="unavailable"] {
+  border-left: 4px solid var(--error);
+  color: var(--ink);
+}
+
 .issue-item {
   padding: 8px;
   border: 1px solid var(--panel-border);

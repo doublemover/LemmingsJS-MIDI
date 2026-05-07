@@ -128,7 +128,22 @@ const getEditorState = (view, editorUi) => {
         selectionCount: editorUi._selection?.length ?? 0,
         suppressHeader: !!editorUi._suppressHeader,
         suppressInspector: !!editorUi._suppressInspector,
-        paletteSearch: editorUi.el?.paletteSearch?.value ?? ''
+        paletteSearch: editorUi.el?.paletteSearch?.value ?? '',
+        solvability: editorUi._lastSolvabilityCheck
+          ? {
+            status: editorUi._lastSolvabilityCheck.status || 'idle',
+            message: editorUi._lastSolvabilityCheck.message || '',
+            warningCount: editorUi._lastSolvabilityCheck.warningCount || 0,
+            warnings: Array.isArray(editorUi._lastSolvabilityCheck.warnings)
+              ? editorUi._lastSolvabilityCheck.warnings.map(warning => ({
+                code: warning.code || null,
+                message: warning.message || '',
+                target: warning.target || null
+              }))
+              : [],
+            budgetUsage: editorUi._lastSolvabilityCheck.budgetUsage || null
+          }
+          : null
       }
       : null,
     assets: serializeAssets(editorUi?.assets || null),

@@ -48,6 +48,8 @@ const editorUiBindingLifecycleMethods = {
       savedImportInput: get('editorSavedImportInput'),
       savedImportClassicInput: get('editorSavedImportClassicInput'),
       playtestToggle: get('editorPlaytestToggle'),
+      solvabilityCheck: get('editorSolvabilityCheck'),
+      solvabilityStatus: get('editorSolvabilityStatus'),
       toolList: get('editorToolList'),
       snapToggle: get('editorSnapToggle'),
       gridSize: get('editorGridSize'),
@@ -201,6 +203,7 @@ const editorUiBindingLifecycleMethods = {
     this._bindBrushControls();
     this._bindSavedControls();
     this._bindLevelSelectors();
+    this._bindValidationControls();
     this._bindPlaytest();
     this._bindCanvasInput();
     this._bindKeybindings();

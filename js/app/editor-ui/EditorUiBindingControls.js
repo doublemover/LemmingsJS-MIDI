@@ -252,6 +252,13 @@ const editorUiBindingControlMethods = {
     });
   },
 
+  _bindValidationControls() {
+    if (!this.el.solvabilityCheck) return;
+    this._addDomListener(this.el.solvabilityCheck, 'click', () => {
+      this._runSolvabilityCheck?.();
+    });
+  },
+
   _bindCanvasInput() {
     const display = this.view?.stage?.getGameDisplay?.();
     if (!display) return;

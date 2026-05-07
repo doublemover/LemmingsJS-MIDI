@@ -247,6 +247,47 @@ test('Validation panel renders and applies fix buttons', async ({ page }) => {
   expect(header.LEMMINGS).toBe(5);
 });
 
+test('Solvability check reports bounded advisory guidance', async ({ page }) => {
+  const ids = await getEditorAssetIds(page);
+  expect(Number.isFinite(ids.terrainId)).toBe(true);
+  expect(Number.isFinite(ids.entranceId)).toBe(true);
+  expect(Number.isFinite(ids.exitId)).toBe(true);
+
+  await applyEditorOps(page, [
+    {
+      type: 'level.new',
+      args: {
+        header: {
+          TITLE: 'E2E Solvability Advisory',
+          STYLE: 'dirt',
+          WIDTH: 640,
+          HEIGHT: 192,
+          LEMMINGS: 8,
+          SAVE_REQUIREMENT: 5
+        },
+        resetHistory: true
+      }
+    },
+    { type: 'entry.add', args: { kind: 'terrain', props: { PIECE: ids.terrainId, X: 64, Y: 120, ONE_WAY: true } } },
+    { type: 'entry.add', args: { kind: 'gadget', props: { PIECE: ids.entranceId, X: 32, Y: 88 } } }
+  ], {
+    history: { record: false },
+    preview: { refresh: true, preserveViewport: true },
+    validate: { run: true },
+    returnState: 'editor'
+  });
+
+  await page.click('#editorSolvabilityCheck');
+  await expect(page.locator('#editorSolvabilityStatus')).toHaveAttribute('data-status', 'warnings');
+  await expect(page.locator('#editorSolvabilityStatus')).toContainText('Solvability: 1 advisory warning');
+
+  const solvability = await page.evaluate(() => window.__E2E__.getState().editor.ui.solvability);
+  expect(solvability.status).toBe('warnings');
+  expect(solvability.warningCount).toBe(1);
+  expect(solvability.warnings.map(warning => warning.code)).toContain('missing-exit');
+  expect(solvability.budgetUsage).toBeTruthy();
+});
+
 test('Unsupported NeoLemmix data imports with visible warnings and preserved export text', async ({ page }) => {
   const ids = await getEditorAssetIds(page);
   expect(Number.isFinite(ids.terrainId)).toBe(true);

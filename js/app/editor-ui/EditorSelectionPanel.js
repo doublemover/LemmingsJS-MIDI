@@ -35,6 +35,7 @@ import {
   readTextFile,
   sanitizeFileName,
   saveLevel,
+  checkEditorSolvabilityAdvisory,
   validateLevel
 } from './EditorUiControllerShared.js';
 import {
@@ -82,6 +83,17 @@ const setBatchCheckState = (check, enabled) => {
   check.indeterminate = !!enabled;
   check.disabled = !enabled;
 };
+
+const hasEditorGadgetPiece = (level, pieceId) => {
+  if (!Number.isFinite(pieceId) || !Array.isArray(level?.gadgets)) return false;
+  return level.gadgets.some(entry => Number(entry?.props?.PIECE) === pieceId);
+};
+
+const createAdvisoryWarningKey = warning => [
+  warning?.code || '',
+  warning?.target || '',
+  warning?.message || ''
+].join('|');
 
 const editorSelectionPanelMethods = {
   _setSelectionFields(data) {
@@ -273,6 +285,7 @@ const editorSelectionPanelMethods = {
     this.session = this.view.editorSession || this.session;
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
+    this._clearSolvabilityCheck();
     this.controller.clearSelection();
     await this._reloadAssets(token);
     if (!this._isAsyncCurrent(token)) return;
@@ -289,6 +302,7 @@ const editorSelectionPanelMethods = {
 
   _refreshAfterEdit(label) {
     this._clearTransientIssue?.('import');
+    this._clearSolvabilityCheck();
     this._refreshValidation();
     this._drawSelectionOverlay();
     this._updateStatus(label || 'Edit');
@@ -324,6 +338,116 @@ const editorSelectionPanelMethods = {
       ...(this._transientIssues || [])
     ];
     this._renderIssues(issues);
+  },
+
+  _clearSolvabilityCheck() {
+    this._lastSolvabilityCheck = null;
+    this._renderSolvabilityStatus();
+  },
+
+  _renderSolvabilityStatus(state = this._lastSolvabilityCheck) {
+    if (!this.el.solvabilityStatus) return;
+    const status = state?.status || 'idle';
+    this.el.solvabilityStatus.dataset.status = status;
+    this.el.solvabilityStatus.dataset.warningCount = String(state?.warningCount ?? 0);
+    this.el.solvabilityStatus.textContent = state?.message || 'Solvability not checked';
+  },
+
+  async _waitForPreviewIdle(token) {
+    const win = this.window;
+    for (let i = 0; i < 120; i += 1) {
+      if (!this._previewInFlight && !this._previewQueued) return true;
+      if (!this._isAsyncCurrent(token)) return false;
+      await new Promise(resolve => (win?.setTimeout || setTimeout)(resolve, 16));
+    }
+    return !this._previewInFlight && !this._previewQueued;
+  },
+
+  async _runSolvabilityCheck() {
+    if (this._solvabilityCheckInFlight) return;
+    this._solvabilityCheckInFlight = true;
+    const token = this._asyncToken;
+    if (this.el.solvabilityCheck) this.el.solvabilityCheck.disabled = true;
+    this._lastSolvabilityCheck = {
+      status: 'running',
+      message: 'Solvability: checking preview...',
+      warningCount: 0,
+      warnings: [],
+      budgetUsage: null
+    };
+    this._renderSolvabilityStatus();
+    try {
+      await this._refreshPreview('Solvability', { preserveView: true, token });
+      await this._waitForPreviewIdle(token);
+      if (!this._isAsyncCurrent(token)) return;
+      const editorLevel = this.session?.level || null;
+      const runtimeSource = this.view?.game?.level || null;
+      const source = runtimeSource || editorLevel;
+      if (!source) {
+        this._lastSolvabilityCheck = {
+          status: 'unavailable',
+          message: 'Solvability: no level source available',
+          warningCount: 0,
+          warnings: [],
+          budgetUsage: null
+        };
+      } else {
+        const options = {
+          assets: this.assets,
+          entranceId: this.assets?.entranceId,
+          exitId: this.assets?.exitId
+        };
+        const primaryAdvisory = checkEditorSolvabilityAdvisory(source, options);
+        const editorAdvisory = editorLevel && runtimeSource && runtimeSource !== editorLevel
+          ? checkEditorSolvabilityAdvisory(editorLevel, options)
+          : null;
+        const editorHasEntrance = hasEditorGadgetPiece(editorLevel, this.assets?.entranceId);
+        const editorHasExit = hasEditorGadgetPiece(editorLevel, this.assets?.exitId);
+        const warningKeys = new Set();
+        const warnings = [];
+        const pushWarning = (warning, origin) => {
+          if (origin === 'runtime' &&
+              warning?.code === 'missing-entrance' &&
+              editorHasEntrance) {
+            return;
+          }
+          if (origin === 'runtime' &&
+              warning?.code === 'missing-exit' &&
+              editorHasExit) {
+            return;
+          }
+          const key = createAdvisoryWarningKey(warning);
+          if (warningKeys.has(key)) return;
+          warningKeys.add(key);
+          warnings.push({
+            code: warning.code || null,
+            message: warning.message || '',
+            target: warning.target || null
+          });
+        };
+        for (const warning of editorAdvisory?.warnings || []) {
+          pushWarning(warning, 'editor');
+        }
+        for (const warning of primaryAdvisory.warnings || []) {
+          pushWarning(warning, runtimeSource ? 'runtime' : 'editor');
+        }
+        this._lastSolvabilityCheck = {
+          status: warnings.length ? 'warnings' : 'ok',
+          message: warnings.length
+            ? `Solvability: ${warnings.length} advisory warning${warnings.length === 1 ? '' : 's'}`
+            : 'Solvability: no obvious route warnings',
+          warningCount: warnings.length,
+          warnings,
+          budgetUsage: primaryAdvisory.budgetUsage || editorAdvisory?.budgetUsage || null
+        };
+      }
+      this._renderSolvabilityStatus();
+      this._refreshValidation();
+      this._updateStatus('Solvability');
+    } finally {
+      this._solvabilityCheckInFlight = false;
+      if (this.el.solvabilityCheck) this.el.solvabilityCheck.disabled = false;
+    }
   },
 
   _setTransientIssue(id, issue) {

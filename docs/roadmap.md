@@ -653,8 +653,8 @@ types: solved, failed, unknown, timed out, or unsupported.
 
 - Validation can surface bounded solver advisory warnings when the editor has a
   rendered preview or other source with route geometry.
-- Add a dedicated advisory "check solvability" command after preview-backed
-  validation has enough user-facing mileage.
+- Dedicated advisory "check solvability" command now refreshes the preview and
+  reports bounded ok/warning guidance without blocking editing or export.
 - Show solver result as guidance, not as an absolute guarantee.
 - Highlight likely problem areas:
   - unreachable exit.
@@ -706,8 +706,7 @@ types: solved, failed, unknown, timed out, or unsupported.
 - Synthetic fixture suite.
 - Curated classic-level mini corpus.
 - Procgen challenge certificate API.
-- Editor advisory integration for validation plus future dedicated advisory
-  controls after API stabilization.
+- Editor advisory integration for validation plus dedicated advisory controls.
 - Solver docs covering capabilities, limits, result meanings, budgets, and
   reproduction.
 

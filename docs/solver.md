@@ -65,3 +65,8 @@ Editor validation now surfaces solver advisory findings as warning-only issues
 when a level or rendered editor preview exposes route geometry. Advisory
 warnings carry stable `solver_advisory_*` codes for E2E diagnostics, but they do
 not add quick fixes and must never block editing, saving, or export.
+
+The editor also exposes a manual **Check Solvability** command in the validation
+panel. It refreshes the preview, runs the same bounded advisory pass, and reports
+a compact ok/warning status for designers and E2E without changing validation or
+export blocking behavior.

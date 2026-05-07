@@ -101,6 +101,8 @@ class EditorUiController {
     this.shortcutOverlay = null;
     this._dirty = false;
     this._baseTitle = this.document?.title || 'Lemmings Editor';
+    this._lastSolvabilityCheck = null;
+    this._solvabilityCheckInFlight = false;
 
     this._bindElements();
     this._bindController();
