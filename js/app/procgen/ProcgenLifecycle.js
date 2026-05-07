@@ -352,6 +352,10 @@ const procgenLifecycleMethods = {
       spent: entry.spent === true,
       success: entry.success !== false,
       targetX: Number.isFinite(entry.targetX) ? entry.targetX : null,
+      certificateId: entry.certificateId ?? null,
+      challengeType: entry.challengeType ?? null,
+      certificateDecision: entry.certificateDecision ?? null,
+      certificateResultType: entry.certificateResultType ?? null,
       lemming: lemming ? {
         id: lemming.id ?? null,
         x: Number.isFinite(lemming.x) ? lemming.x : null,

@@ -184,3 +184,41 @@ npm run capture:e2e:game-hud
 ```
 
 Output stays under ignored `temp/e2e-captures/`.
+
+## Milestone checkpoint evidence
+
+Milestone work should leave a short, reproducible evidence note before issue
+closeout. Keep working artifacts under ignored `temp/` and commit only the code,
+tests, and durable docs needed by the feature.
+
+Use this compact format for each lane or issue group:
+
+```text
+Issues:
+Commands:
+Temp artifacts:
+GitHub closeout:
+Skipped checks:
+Unrelated failures:
+Follow-up risks:
+```
+
+The Capture matrix below is the standard milestone map for the current
+editor, procgen, solver, MIDI, and validation work. Run the narrow lane checks
+while a lane is in progress, then run the standard gate before final closeout.
+
+| Area | Issues | Capture matrix | Required checkpoint commands | Disposable evidence |
+| --- | --- | --- | --- | --- |
+| MIDI polish | #924-#928 | `midi-transport`, `midi-source-browser`, `midi-track-workspace`, `midi-clip-library`, `midi-inspector`, `midi-learn`, `midi-record`, `midi-output-status`; desktop/tablet/mobile when layout changes | `npm run test-e2e -- e2e/midi-ui.spec.js`; `npm run capture:e2e:midi -- --viewport=desktop --json`; `npm run capture:e2e:midi -- --viewport=tablet --json`; `npm run capture:e2e:midi -- --viewport=mobile --json` | `temp/e2e-captures/`, `temp/midi-lane-*.md` |
+| Editor productization | #929-#932 | states `shell`, `canvas-palette-inspector`, `validation`, `save-import-export`, `playtest`; desktop required, tablet/mobile when controls change | `npm run test-editor`; `npm run test-e2e:harness`; `npm run capture:e2e:editor -- --viewport=desktop --json` | `temp/e2e-captures/`, `temp/editor-lane-*.md` |
+| Procgen productization | #933-#938 | states `overview`, `frontier`, `newest-pieces`; desktop required for seed review, targeted mobile only for shell/layout changes | `npm run test-e2e -- e2e/procgen.spec.js`; `npm run capture:e2e:procgen -- --viewport=desktop --json`; `npm run bench-procgen-soak`; `npm run test-bench-unit` | `temp/e2e-captures/`, `temp/procgen-lane-*.md` |
+| Solver platform | #939-#949 | no standalone screenshot gate until a UI/editor advisory surface changes; capture editor advisory or solver failure surfaces only when they are user-visible | `npm test`; focused `test/solver*.test.js`; `npm run test-e2e:harness` when runtime adapters or editor advisory flows change; MCP checks after solver tools change | `temp/solver-lane-*.md`, optional `temp/solver-failures/` |
+| Validation and closeout | #950-#951 | capture docs and runner drift are checked by tests; do not create committed galleries or manifests | `npm run format`; `npm run check-undefined`; `npm run lint`; `npm run typecheck:critical`; `npm test`; `npm run test-bench-unit` | `temp/milestone-integration-*.md` |
+
+GitHub issue closeout comments should cite the commands that actually ran, any
+relevant ignored artifact paths, and any skipped checks with the concrete
+reason. Do not close an issue on visual captures alone when behavior changed;
+pair captures with a deterministic unit, harness, or E2E check where available.
+Keep capture output disposable: do not create committed galleries or manifests.
+Use `npm run release-readiness` only when the release checklist or release gate
+scripts change; it is not the issue closeout checklist.

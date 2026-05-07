@@ -34,8 +34,42 @@ Status: no NeoLemmix expansion features are implemented yet; this is a backlog.
 - Custom trigger areas and rotation modes not supported by classic renderer.
 - Gimmicks (zombies, water, clock terrain, etc.) need engine support to preview.
 
-## Suggested phasing
-1. Parser/writer expansion for the new sections.
-2. Editor data model additions + UI panels.
-3. Validation + pack metadata tooling.
-4. Runtime preview parity work.
+## Phased implementation plan
+
+1. Parser and writer preservation:
+   - Parse and round-trip `$LEMMING`, `$TALISMAN`, `$PRETEXT`, `$POSTTEXT`,
+     `$TERRAINGROUP`, expanded `$GADGET` fields, `levels.nxmi`, and
+     `info.nxmi`.
+   - Acceptance: unknown values survive save/export, unsupported sections are
+     visible in validation, and classic subset export warnings remain explicit.
+
+2. Data model hard cutover:
+   - Add typed model fields for placed lemmings, terrain groups, talismans,
+     text blocks, custom trigger boxes, style metadata, and pack metadata.
+   - Acceptance: editor state has one canonical owner for each feature; no
+     compatibility aliases or duplicate editable paths are introduced.
+
+3. UI editing slices:
+   - Add focused panels for terrain-group order/visibility, talisman goals,
+     pre/post text, lemming placement flags, custom trigger boxes, and pack
+     metadata.
+   - Acceptance: unsupported runtime-preview behavior is shown as warning-only
+     state beside the relevant controls.
+
+4. Validation and pack tooling:
+   - Extend validation reports from classic caps into NeoLemmix metadata,
+     cross-level references, missing style aliases, talisman constraints, and
+     pack ordering.
+   - Acceptance: pack export can emit a single report covering level-level and
+     pack-level issues without claiming solver-backed solvability.
+
+5. Runtime preview parity:
+   - Implement only the preview/runtime mechanics needed to make the UI truthful:
+     placed lemmings, custom trigger areas, rotation variants, zombies/water
+     where supported by engine work, and style variant resolution.
+   - Acceptance: features without runtime parity stay editable only when the UI
+     clearly marks them as preserved/unpreviewed data.
+
+Classic-subset behavior remains the stable baseline throughout these phases.
+Expansion work should add explicit unsupported-state warnings before enabling
+editing for any feature the runtime cannot preview truthfully.

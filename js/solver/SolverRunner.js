@@ -5,8 +5,22 @@ import {
   normalizeActionScriptAction,
   normalizeSolverOptions
 } from './SolverTypes.js';
+import { GameStateTypes } from '../game/GameStateTypes.js';
+import { SkillTypes } from '../game/SkillTypes.js';
+import { extractSolverState, stableHash } from './SolverState.js';
 
 const SYNTHETIC_RUNNER_KIND = 'synthetic';
+
+const SKILL_TYPE_BY_NAME = Object.freeze({
+  climber: SkillTypes.CLIMBER,
+  floater: SkillTypes.FLOATER,
+  bomber: SkillTypes.BOMBER,
+  blocker: SkillTypes.BLOCKER,
+  builder: SkillTypes.BUILDER,
+  basher: SkillTypes.BASHER,
+  miner: SkillTypes.MINER,
+  digger: SkillTypes.DIGGER
+});
 
 const cloneRectList = value => Array.isArray(value)
   ? value.map(rect => ({ ...rect }))
@@ -79,6 +93,30 @@ const hashSummary = value => {
   }
   return (hash >>> 0).toString(16).padStart(8, '0');
 };
+
+const withStateHash = summary => ({
+  ...summary,
+  stateHash: summary.stateHash ?? hashSummary(summary)
+});
+
+const hasRunnerAdapterShape = value => (
+  value != null &&
+  typeof value.step === 'function' &&
+  typeof value.applyAction === 'function' &&
+  typeof value.getFinalStateSummary === 'function'
+);
+
+const normalizeSkillTypeForRuntime = skillType => {
+  if (Number.isInteger(skillType)) return skillType;
+  const key = String(skillType || '').trim().toLowerCase();
+  return SKILL_TYPE_BY_NAME[key] ?? SkillTypes.UNKNOWN;
+};
+
+const summaryCount = (summary, key, fallback = 0) => Math.max(0, toInteger(summary?.[key], fallback));
+
+const activeFromSummary = summary => Array.isArray(summary?.lemmings)
+  ? summary.lemmings.filter(lemming => !lemming.saved && !lemming.dead && !lemming.removed && !lemming.disabled)
+  : [];
 
 class SyntheticSolverRunner {
   constructor(fixture = {}, options = {}) {
@@ -378,6 +416,300 @@ class SyntheticSolverRunner {
   }
 }
 
+class DelegatingRuntimeSolverRunner {
+  constructor(sourceKind, runner, source = {}) {
+    this.kind = sourceKind;
+    this.runner = runner;
+    this.id = String(source.id ?? runner.id ?? sourceKind);
+    this.isRuntimeAuthoritative = source.authoritative !== false &&
+      runner.isRuntimeAuthoritative !== false;
+  }
+
+  get tick() {
+    return toInteger(this.runner.tick ?? this.runner.getFinalStateSummary?.().tick, 0);
+  }
+
+  getSavedCount() {
+    return summaryCount(this.getFinalStateSummary(), 'savedCount', 0);
+  }
+
+  getDeadCount() {
+    return summaryCount(this.getFinalStateSummary(), 'deadCount', 0);
+  }
+
+  getActiveLemmings() {
+    if (typeof this.runner.getActiveLemmings === 'function') return this.runner.getActiveLemmings();
+    return activeFromSummary(this.getFinalStateSummary());
+  }
+
+  getSkillCount(skillType) {
+    if (typeof this.runner.getSkillCount === 'function') return this.runner.getSkillCount(skillType);
+    return summaryCount(this.getFinalStateSummary()?.skills, String(skillType || ''), 0);
+  }
+
+  selectLemming(target) {
+    if (typeof this.runner.selectLemming === 'function') return this.runner.selectLemming(target);
+    return selectLemmingFromList(this.getActiveLemmings(), target);
+  }
+
+  isTerminal() {
+    if (typeof this.runner.isTerminal === 'function') return this.runner.isTerminal();
+    const summary = this.getFinalStateSummary();
+    return summary.activeCount <= 0 && summary.leftCount <= 0;
+  }
+
+  step(count = 1) {
+    return this.runner.step(count);
+  }
+
+  applyAction(action) {
+    return this.runner.applyAction(action);
+  }
+
+  getFinalStateSummary() {
+    return withStateHash({
+      sourceKind: this.kind,
+      id: this.id,
+      ...this.runner.getFinalStateSummary()
+    });
+  }
+}
+
+const selectLemmingFromList = (lemmings, target) => {
+  const active = Array.isArray(lemmings) ? lemmings : [];
+  if (target == null) return active[0] ?? null;
+  if (typeof target === 'number') return active.find(lemming => lemming.id === target) ?? null;
+  if (typeof target === 'string') {
+    if (target === 'first' || target === 'lead' || target === 'frontier') return active[0] ?? null;
+    return active.find(lemming => String(lemming.id) === target) ?? null;
+  }
+  if (typeof target === 'object') {
+    if (target.id != null) {
+      return active.find(lemming => String(lemming.id) === String(target.id)) ?? null;
+    }
+    if (target.index != null) return active[toInteger(target.index, -1)] ?? null;
+    if (target.role === 'frontier') {
+      return [...active].sort((a, b) => b.x - a.x || a.y - b.y || Number(a.id) - Number(b.id))[0] ?? null;
+    }
+    if (target.role === 'crowd' || target.role === 'lead') return active[0] ?? null;
+  }
+  return active[0] ?? null;
+};
+
+class RuntimeGameSolverRunner {
+  constructor(sourceKind, source = {}, options = {}) {
+    this.kind = sourceKind;
+    this.source = source;
+    this.runtime = source.game ?? source.runtime ?? source.adapter ?? source;
+    this.id = String(source.id ?? this.runtime?.id ?? this.runtime?.level?.id ?? sourceKind);
+    this.options = normalizeSolverOptions(options);
+    this.isRuntimeAuthoritative = source.authoritative !== false &&
+      this.runtime?.isRuntimeAuthoritative !== false;
+  }
+
+  get tick() {
+    return toInteger(
+      this.runtime?.tick ??
+        this.runtime?.getTick?.() ??
+        this.getTimer()?.tickIndex ??
+        this.getTimer()?.getGameTicks?.(),
+      0
+    );
+  }
+
+  getTimer() {
+    return this.runtime?.getGameTimer?.() ?? this.runtime?.gameTimer ?? this.source?.timer ?? null;
+  }
+
+  getManager() {
+    return this.runtime?.getLemmingManager?.() ??
+      this.runtime?.lemmingManager ??
+      this.source?.lemmingManager ??
+      null;
+  }
+
+  getSkills() {
+    return this.runtime?.getGameSkills?.() ?? this.runtime?.skills ?? this.source?.skillsRuntime ?? null;
+  }
+
+  getVictory() {
+    return this.runtime?.getVictoryCondition?.() ??
+      this.runtime?.gameVictoryCondition ??
+      this.source?.victory ??
+      null;
+  }
+
+  getActiveLemmings() {
+    const manager = this.getManager();
+    if (typeof manager?.getLemmings === 'function') return manager.getLemmings();
+    if (Array.isArray(manager?.activeLemmings)) return manager.activeLemmings;
+    if (Array.isArray(this.runtime?.lemmings)) return this.runtime.lemmings;
+    return [];
+  }
+
+  getSavedCount() {
+    const victory = this.getVictory();
+    return toInteger(victory?.getSurvivorsCount?.() ?? victory?.survivorCount, 0);
+  }
+
+  getDeadCount() {
+    const summary = this.getFinalStateSummary();
+    return summary.deadCount;
+  }
+
+  getSkillCount(skillType) {
+    const runtimeSkillType = normalizeSkillTypeForRuntime(skillType);
+    const skills = this.getSkills();
+    if (typeof skills?.getSkill === 'function') return toInteger(skills.getSkill(runtimeSkillType), 0);
+    if (typeof skills?.canReuseSkill === 'function') return skills.canReuseSkill(runtimeSkillType) ? 1 : 0;
+    const rawSkills = skills?.skills ?? this.runtime?.level?.skills ?? this.source?.skills ?? {};
+    if (Array.isArray(rawSkills)) return toInteger(rawSkills[runtimeSkillType], 0);
+    return toInteger(rawSkills?.[String(skillType || '').toLowerCase()], 0);
+  }
+
+  selectLemming(target) {
+    const manager = this.getManager();
+    if (target && typeof target === 'object' && target.id != null && typeof manager?.getLemming === 'function') {
+      const byId = manager.getLemming(target.id);
+      if (byId && !byId.removed && !byId.disabled) return byId;
+    }
+    if (typeof target === 'number' && typeof manager?.getLemming === 'function') {
+      const byId = manager.getLemming(target);
+      if (byId && !byId.removed && !byId.disabled) return byId;
+    }
+    return selectLemmingFromList(this.getActiveLemmings(), target);
+  }
+
+  isTerminal() {
+    if (typeof this.runtime?.isTerminal === 'function') return this.runtime.isTerminal();
+    const state = this.runtime?.getGameState?.();
+    if (state != null && state !== GameStateTypes.RUNNING && state !== GameStateTypes.UNKNOWN) return true;
+    const victory = this.getVictory();
+    const left = toInteger(victory?.getLeftCount?.() ?? victory?.leftCount, 0);
+    const out = toInteger(victory?.getOutCount?.() ?? victory?.outCount, this.getActiveLemmings().length);
+    return left <= 0 && out <= 0;
+  }
+
+  step(count = 1) {
+    const safeCount = Math.max(1, toInteger(count, 1));
+    if (typeof this.runtime?.step === 'function' && this.runtime !== this) {
+      return this.runtime.step(safeCount);
+    }
+    const timer = this.getTimer();
+    if (typeof timer?.tick === 'function') {
+      timer.tick(safeCount);
+      return this.getFinalStateSummary();
+    }
+    if (typeof this.runtime?.runGameLogic === 'function') {
+      for (let i = 0; i < safeCount; i += 1) {
+        this.runtime.runGameLogic();
+      }
+      return this.getFinalStateSummary();
+    }
+    return this.getFinalStateSummary();
+  }
+
+  applyAction(action) {
+    const normalized = normalizeActionScriptAction(action);
+    if (typeof this.runtime?.applySolverAction === 'function') {
+      return this.runtime.applySolverAction(normalized);
+    }
+    const lemming = this.selectLemming(normalized.target);
+    if (!lemming) {
+      return {
+        ok: false,
+        detail: `No runtime target lemming for ${normalized.skillType || 'action'}`
+      };
+    }
+    const skillType = normalizeSkillTypeForRuntime(normalized.skillType);
+    const skills = this.getSkills();
+    const manager = this.getManager();
+    if (!manager || !skills || skillType === SkillTypes.UNKNOWN) {
+      return {
+        ok: false,
+        detail: `Runtime cannot apply ${normalized.skillType || 'action'}`
+      };
+    }
+    if (typeof skills.canReuseSkill === 'function' && !skills.canReuseSkill(skillType)) {
+      return {
+        ok: false,
+        detail: `No ${normalized.skillType} skill remains`
+      };
+    }
+    if (!manager.doLemmingAction?.(lemming, skillType)) {
+      return {
+        ok: false,
+        detail: `Runtime rejected ${normalized.skillType} for lemming ${lemming.id}`
+      };
+    }
+    if (typeof skills.reuseSkill === 'function' && !skills.reuseSkill(skillType)) {
+      return {
+        ok: false,
+        detail: `Runtime could not consume ${normalized.skillType}`
+      };
+    }
+    return {
+      ok: true,
+      lemmingId: lemming.id,
+      skillType: normalized.skillType
+    };
+  }
+
+  getFinalStateSummary() {
+    if (typeof this.runtime?.getSolverSummary === 'function') {
+      return withStateHash({
+        sourceKind: this.kind,
+        id: this.id,
+        ...this.runtime.getSolverSummary()
+      });
+    }
+    let snapshot = null;
+    try {
+      snapshot = extractSolverState(this.runtime, {
+        sourceKind: this.kind,
+        id: this.id
+      });
+    } catch {
+      snapshot = null;
+    }
+    const victory = this.getVictory();
+    const active = this.getActiveLemmings();
+    const savedCount = toInteger(victory?.getSurvivorsCount?.() ?? victory?.survivorCount, 0);
+    const releaseCount = toInteger(victory?.getReleaseCount?.() ?? victory?.releaseCount ?? snapshot?.victory.releaseCount, active.length);
+    const leftCount = toInteger(victory?.getLeftCount?.() ?? victory?.leftCount ?? snapshot?.victory.leftCount, 0);
+    const activeCount = toInteger(victory?.getOutCount?.() ?? victory?.outCount, active.length);
+    const lemmings = snapshot?.lemmings ?? active.map((lemming, index) => ({
+      id: lemming?.id ?? index,
+      x: toInteger(lemming?.x, 0),
+      y: toInteger(lemming?.y, 0),
+      lookRight: lemming?.lookRight !== false,
+      action: String(lemming?.action?.getActionName?.() ?? lemming?.action ?? ''),
+      saved: false,
+      dead: !!lemming?.removed,
+      removed: !!lemming?.removed,
+      disabled: !!lemming?.disabled
+    }));
+    const summary = {
+      sourceKind: this.kind,
+      id: this.id,
+      tick: this.tick,
+      width: snapshot?.width ?? this.runtime?.level?.width ?? this.source?.width ?? 0,
+      height: snapshot?.height ?? this.runtime?.level?.height ?? this.source?.height ?? 0,
+      savedCount,
+      deadCount: Math.max(0, releaseCount - leftCount - activeCount - savedCount),
+      activeCount,
+      needCount: toInteger(victory?.getNeedCount?.() ?? victory?.needCount ?? snapshot?.victory.needCount, 1),
+      releaseCount,
+      leftCount,
+      skills: snapshot?.skills?.counts ?? {},
+      lemmings,
+      hashes: snapshot?.hashes ?? null,
+      snapshotHash: snapshot?.snapshotHash ?? null
+    };
+    return withStateHash(summary);
+  }
+}
+
 const createSyntheticRunner = (fixture, options = {}) => {
   const source = fixture?.fixture?.kind === SYNTHETIC_RUNNER_KIND ? fixture.fixture : fixture;
   return new SyntheticSolverRunner(source, options);
@@ -389,19 +721,44 @@ const createRunnerFromSyntheticFixture = (fixture, options = {}) => ({
   result: null
 });
 
-const createEditorLevelRunner = () => createUnsupportedRunnerResult(
+const createRuntimeSourceRunner = (sourceKind, source, options = {}, missingDetail) => {
+  const facade = source?.runner ?? source?.runtime ?? source?.game ?? source?.adapter ?? null;
+  if (hasRunnerAdapterShape(facade)) {
+    return {
+      sourceKind,
+      runner: new DelegatingRuntimeSolverRunner(sourceKind, facade, source),
+      result: null
+    };
+  }
+  if (facade || source?.getGameTimer || source?.getLemmingManager) {
+    return {
+      sourceKind,
+      runner: new RuntimeGameSolverRunner(sourceKind, source, options),
+      result: null
+    };
+  }
+  return createUnsupportedRunnerResult(sourceKind, missingDetail);
+};
+
+const createEditorLevelRunner = (source, options = {}) => createRuntimeSourceRunner(
   'editor',
-  'Editor level sources need the editor-to-runtime loader before replay can run'
+  source,
+  options,
+  'Editor level sources require an initialized editor playtest runtime or runner adapter'
 );
 
-const createProcgenChunkRunner = () => createUnsupportedRunnerResult(
+const createProcgenChunkRunner = (source, options = {}) => createRuntimeSourceRunner(
   'procgen',
-  'Procgen chunks need a chunk-to-runtime adapter before replay can run'
+  source,
+  options,
+  'Procgen chunks require an initialized procgen runtime or runner adapter'
 );
 
-const createBuiltInLevelRunner = () => createUnsupportedRunnerResult(
+const createBuiltInLevelRunner = (source, options = {}) => createRuntimeSourceRunner(
   'builtin',
-  'Built-in level descriptors need the pack loader before replay can run'
+  source,
+  options,
+  'Built-in level descriptors require an initialized game runtime or runner adapter'
 );
 
 const createRunnerFromSource = (source, options = {}) => {
@@ -415,18 +772,14 @@ const createRunnerFromSource = (source, options = {}) => {
   return createUnsupportedRunnerResult('unknown', 'Unknown solver runner source');
 };
 
-const isRunnerAdapter = value => (
-  value != null &&
-  typeof value.step === 'function' &&
-  typeof value.applyAction === 'function' &&
-  typeof value.getFinalStateSummary === 'function'
-);
+const isRunnerAdapter = value => hasRunnerAdapterShape(value);
 
 const resolveRunner = (runnerOrSource, options) => {
   if (isRunnerAdapter(runnerOrSource)) {
     return { sourceKind: runnerOrSource.kind || 'adapter', runner: runnerOrSource, result: null };
   }
-  if (runnerOrSource?.runner || runnerOrSource?.result) return runnerOrSource;
+  if (runnerOrSource?.result) return runnerOrSource;
+  if (runnerOrSource?.runner && typeof runnerOrSource.sourceKind === 'string') return runnerOrSource;
   return createRunnerFromSource(runnerOrSource, options);
 };
 
@@ -661,7 +1014,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
           actions,
           budgetUsage,
           runner,
-          appliedActions
+          appliedActions,
+          code: SOLVER_EXPLANATION_CODES.TIMING_WINDOW_TOO_NARROW
         });
       }
 
@@ -708,6 +1062,20 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
     if (runner.getSavedCount() >= targetSaveCount) {
       const postconditionFailure = checkFinalPostconditions();
       if (postconditionFailure) return postconditionFailure;
+      if (created.sourceKind !== SYNTHETIC_RUNNER_KIND && runner.isRuntimeAuthoritative === false) {
+        return createReplayResult({
+          resultType: SOLVER_RESULT_TYPES.UNKNOWN,
+          summary: `${created.sourceKind} replay reached the save target without an authoritative runtime adapter`,
+          actions,
+          explanations: [{
+            code: SOLVER_EXPLANATION_CODES.MISSING_RUNTIME_ADAPTER,
+            detail: 'Non-synthetic solved results require authoritative runtime replay.'
+          }],
+          budgetUsage,
+          runner,
+          appliedActions
+        });
+      }
       return createReplayResult({
         resultType: SOLVER_RESULT_TYPES.SOLVED,
         summary: `Replay solved ${runner.kind || 'runner'} ${runner.id || ''} in ${budgetUsage.ticks} ticks`.trim(),
@@ -744,6 +1112,8 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
 };
 
 export {
+  DelegatingRuntimeSolverRunner,
+  RuntimeGameSolverRunner,
   SyntheticSolverRunner,
   createBuiltInLevelRunner,
   createEditorLevelRunner,

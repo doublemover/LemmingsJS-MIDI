@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { EditorLevel } from '../../js/editor/EditorLevel.js';
-import { validateLevel } from '../../js/editor/EditorValidator.js';
+import {
+  createValidationReport,
+  validateLevel,
+  validatePackConsistency
+} from '../../js/editor/EditorValidator.js';
 import { createSmallGapFixture } from '../../js/solver/SolverFixtures.js';
 import { EDITOR_ADVISORY_WARNING_CODES } from '../../js/solver/EditorAdvisory.js';
 
@@ -488,5 +492,47 @@ describe('EditorValidator', () => {
     });
 
     expect(issues.some(issue => issue.solverAdvisory)).to.equal(false);
+  });
+
+  it('exports validation report entries with blocker and destructive metadata', () => {
+    const level = createLevel();
+    level.setHeader('TITLE', 'Report');
+    level.terrainGroups = [{ terrains: [], unknownLines: ['GROUP 1'] }];
+
+    const report = createValidationReport(level, { entranceId: 1, exitId: 2 });
+    const saveIssue = report.issues.find(issue => issue.message === 'Save requirement exceeds lemmings.');
+    const groupIssue = report.issues.find(issue => issue.code === 'classic_terrain_groups');
+
+    expect(report.kind).to.equal('editor-validation-report');
+    expect(report.level.title).to.equal('Report');
+    expect(report.summary.errors).to.be.greaterThan(0);
+    expect(saveIssue.blocker).to.equal(true);
+    expect(saveIssue.blocksExport).to.equal(true);
+    expect(groupIssue.destructive).to.equal(true);
+    expect(groupIssue.exportFormat).to.equal('classicLvl');
+  });
+
+  it('reports pack-level duplicate and missing-style consistency warnings', () => {
+    const first = createLevel();
+    first.setHeader('TITLE', 'Repeat');
+    first.setHeader('ID', 'level-a');
+    first.setHeader('STYLE', 'dirt');
+    const second = createLevel();
+    second.setHeader('TITLE', 'Repeat');
+    second.setHeader('ID', 'level-a');
+    second.setHeader('STYLE', 'missing-style');
+
+    const issues = validatePackConsistency({
+      title: 'Pack',
+      levels: [first, second]
+    }, {
+      dirt: {}
+    });
+    const codes = issues.map(issue => issue.code);
+
+    expect(codes).to.include('pack_duplicate_title');
+    expect(codes).to.include('pack_duplicate_id');
+    expect(codes).to.include('pack_missing_style_assets');
+    expect(issues.every(issue => issue.source === 'pack-validation')).to.equal(true);
   });
 });

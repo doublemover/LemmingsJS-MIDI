@@ -54,6 +54,20 @@ script entry, snapshot current state, and summarize the replay. Synthetic
 fixtures use the same adapter shape as real runtime runs so tests can exercise
 deterministic replay without a browser.
 
+## MCP Tools
+
+The MCP solver surface is available after the local result schema is stabilized:
+
+- `solver.snapshot`: extracts compact state hashes and counts without returning
+  terrain masks.
+- `solver.route`: builds a bounded reachability route skeleton. It returns
+  `unknown` until timing search and runtime replay verify a candidate.
+- `solver.replay`: runs action scripts through the same replay authority path
+  used by local tests.
+
+These tools return compact JSON for local development and automation. They do
+not claim full level solvability unless the replay result is `solved`.
+
 ## Current Scope
 
 This checkpoint establishes local modules for runtime replay, state extraction,

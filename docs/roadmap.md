@@ -743,6 +743,12 @@ Milestones that touch Playwright should also run targeted E2E commands. Long
 soaks and broad seed corpuses should stay opt-in unless explicitly promoted to
 CI.
 
+Milestone closeout evidence uses the shared checkpoint format in
+[`TESTING.md`](TESTING.md): commands run, ignored `temp/` artifact paths,
+GitHub issues closed, skipped checks with reasons, unrelated failures, and
+follow-up risks. Capture artifacts remain disposable and must not become a
+second roadmap, gallery, or committed manifest.
+
 ## Roadmap Maintenance Rules
 
 - Keep this file focused on active and future work.

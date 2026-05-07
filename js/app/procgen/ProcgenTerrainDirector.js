@@ -366,6 +366,169 @@ const procgenTerrainDirectorMethods = {
     });
   },
 
+  _getAssistChallengeType(option) {
+    if (!option) return null;
+    if (option.key === 'builder' && option.reason === 'small-gap') {
+      return PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP;
+    }
+    if (option.key === 'floater' && option.reason === 'unsafe-drop') {
+      return PROCGEN_CHALLENGE_TYPES.FALL_SURVIVAL;
+    }
+    if (option.key === 'bash') return PROCGEN_CHALLENGE_TYPES.BASH_BARRIER;
+    if (option.key === 'dig') return PROCGEN_CHALLENGE_TYPES.DIG_BARRIER;
+    if (option.key === 'mine') return PROCGEN_CHALLENGE_TYPES.MINE_SLOPE;
+    return null;
+  },
+
+  _getAssistChallengeSkillName(option) {
+    if (!option) return null;
+    if (option.key === 'bash') return 'basher';
+    if (option.key === 'dig') return 'digger';
+    if (option.key === 'mine') return 'miner';
+    if (option.key === 'builder') return 'builder';
+    if (option.key === 'floater') return 'floater';
+    return option.key || null;
+  },
+
+  _createAssistChallengeCertificate(option, lemming, scan, tick) {
+    const challengeType = this._getAssistChallengeType(option);
+    if (!challengeType) return null;
+    const localTargetX = challengeType === PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP
+      ? 48
+      : 62;
+    return createProcgenChallengeCertificate({
+      id: `procgen-assist-${this._recentCertificateSerial + 1}-${challengeType}`,
+      challengeType,
+      expectedSkill: this._getAssistChallengeSkillName(option),
+      assignmentWindow: {
+        start: Math.max(0, Math.floor((tick ?? 0) - 8)),
+        end: Math.max(0, Math.floor((tick ?? 0) + 16))
+      },
+      expectedLandingSegment: {
+        x0: localTargetX,
+        y0: 57,
+        x1: localTargetX + 18,
+        y1: 57
+      },
+      expectedExitSegment: {
+        x0: 104,
+        y0: 57,
+        x1: 120,
+        y1: 57
+      },
+      minimalSkillCount: 1,
+      source: {
+        reason: option.reason,
+        lemmingId: lemming?.id ?? null,
+        scan
+      }
+    });
+  },
+
+  _createBarrierChallengeFixture(option, scan) {
+    const width = 140;
+    const height = 72;
+    const footY = 57;
+    const supportY = footY + 1;
+    const barrierHeight = Math.max(4, Math.min(24, Math.floor(scan?.wall?.height ?? 10)));
+    const groundMask = new Uint8Array(width * height);
+    const steelMask = new Uint8Array(width * height);
+    this._fillProcgenChallengeGround(groundMask, width, height, 0, width, supportY, this.groundHeight);
+    this._fillProcgenChallengeGround(
+      groundMask,
+      width,
+      height,
+      62,
+      70,
+      footY - barrierHeight + 1,
+      barrierHeight
+    );
+    const skillName = this._getAssistChallengeSkillName(option);
+    return {
+      kind: 'procgen-local-challenge',
+      id: `procgen-${option?.key || 'barrier'}-barrier`,
+      width,
+      height,
+      groundMask,
+      steelMask,
+      entrances: [{ x: 12, y: footY }],
+      exits: [{ x: 120, y: footY }],
+      lemmings: [{ id: 0, x: 20, y: footY, lookRight: true, action: 'walking' }],
+      skills: skillName ? { [skillName]: 1 } : {},
+      challenge: {
+        type: option?.key === 'dig'
+          ? 'dig-barrier'
+          : option?.key === 'mine'
+            ? 'mine-barrier'
+            : 'bash-barrier',
+        sourceHeight: barrierHeight
+      }
+    };
+  },
+
+  _createFallChallengeFixture(scan, tick) {
+    const width = 120;
+    const height = 140;
+    const footY = 23;
+    const supportY = footY + 1;
+    const safeFall = Math.max(1, Math.floor(this.maxDrop || 60));
+    const fallDistance = Math.max(
+      safeFall + 8,
+      Math.floor(scan?.gap?.drop ?? this.aiFloaterDrop ?? safeFall) + 8,
+      72
+    );
+    const landingFootY = Math.min(height - this.groundHeight - 2, footY + fallDistance);
+    const groundMask = new Uint8Array(width * height);
+    this._fillProcgenChallengeGround(groundMask, width, height, 0, 32, supportY, this.groundHeight);
+    this._fillProcgenChallengeGround(
+      groundMask,
+      width,
+      height,
+      48,
+      width,
+      landingFootY + 1,
+      this.groundHeight
+    );
+    return {
+      kind: 'procgen-local-challenge',
+      id: 'procgen-floater-fall',
+      width,
+      height,
+      groundMask,
+      steelMask: new Uint8Array(width * height),
+      entrances: [{ x: 10, y: footY }],
+      exits: [{ x: 104, y: landingFootY }],
+      lemmings: [{ id: 0, x: 12, y: footY, lookRight: true, action: 'walking' }],
+      skills: { floater: 1 },
+      challenge: {
+        type: 'floater-fall'
+      },
+      fall: {
+        x: 34,
+        fromY: footY,
+        toY: landingFootY,
+        safeFallDistance: safeFall,
+        assignmentTick: Math.max(0, Math.floor(tick ?? 0))
+      }
+    };
+  },
+
+  _createAssistChallengeFixture(option, lemming, scan, tick) {
+    const challengeType = this._getAssistChallengeType(option);
+    if (!challengeType) return null;
+    if (challengeType === PROCGEN_CHALLENGE_TYPES.BRIDGE_GAP) {
+      return this._createGapChallengeFixture(
+        Number.isFinite(option?.targetX) ? option.targetX : lemming?.x ?? 0,
+        scan?.gap?.width ?? 4,
+        lemming?.y
+      );
+    }
+    if (challengeType === PROCGEN_CHALLENGE_TYPES.FALL_SURVIVAL) {
+      return this._createFallChallengeFixture(scan, tick);
+    }
+    return this._createBarrierChallengeFixture(option, scan);
+  },
+
   _normalizeVerifierOutput(output, certificate) {
     if (output?.verificationResult) return output;
     return createProcgenChallengeCertificate({
@@ -410,10 +573,55 @@ const procgenTerrainDirectorMethods = {
     };
   },
 
+  _verifyAssistChallenge(option, lemming, scan, tick) {
+    const certificate = this._createAssistChallengeCertificate(option, lemming, scan, tick);
+    const chunk = certificate
+      ? this._createAssistChallengeFixture(option, lemming, scan, tick)
+      : null;
+    if (!certificate || !chunk) return null;
+    let verified = null;
+    let fallback = {
+      decision: PROCGEN_FALLBACK_DECISIONS.ACCEPT,
+      resultType: 'skipped',
+      reasonCodes: [],
+      summary: 'Procgen certificate verification is disabled'
+    };
+    if (this.procgenCertificateVerification) {
+      const options = {
+        ...this.procgenCertificateOptions,
+        controller: this
+      };
+      const raw = this.procgenCertificateVerifier
+        ? this.procgenCertificateVerifier(certificate, chunk, options)
+        : verifyProcgenChallengeCertificateSync(certificate, chunk, options);
+      verified = this._normalizeVerifierOutput(raw, certificate);
+      fallback = decideProcgenFallback(verified.verificationResult);
+    } else {
+      verified = certificate;
+    }
+    this._trackProcgenCertificate(verified, fallback, {
+      source: 'assist',
+      reason: option?.reason || null,
+      lemmingId: lemming?.id ?? null,
+      startX: option?.targetX ?? lemming?.x,
+      endX: option?.targetX,
+      width: scan?.gap?.width ?? scan?.wall?.height ?? null,
+      surfaceY: lemming?.y
+    });
+    return {
+      certificate: verified,
+      fallback,
+      accepted: fallback.decision === PROCGEN_FALLBACK_DECISIONS.ACCEPT
+    };
+  },
+
   _trackProcgenCertificate(verified, fallback, meta = {}) {
     this._recentCertificateSerial += 1;
     this._recentCertificates.push({
       serial: this._recentCertificateSerial,
+      source: meta.source || 'terrain',
+      reason: meta.reason || null,
+      lemmingId: meta.lemmingId ?? null,
       id: verified?.id ?? null,
       challengeType: verified?.challengeType ?? PROCGEN_CHALLENGE_TYPES.UNKNOWN,
       expectedSkill: verified?.expectedSkill ?? null,

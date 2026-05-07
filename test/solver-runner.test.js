@@ -122,4 +122,91 @@ describe('SolverRunner', function () {
       );
     }
   });
+
+  it('creates runtime-authoritative adapters for non-synthetic source entrypoints', function () {
+    const makeAdapter = (id) => {
+      let tick = 0;
+      let savedCount = 0;
+      return {
+        id,
+        isRuntimeAuthoritative: true,
+        step(count = 1) {
+          tick += count;
+          if (tick >= 3) savedCount = 1;
+        },
+        applyAction(action) {
+          return {
+            ok: true,
+            lemmingId: 7,
+            skillType: action.skillType
+          };
+        },
+        getFinalStateSummary() {
+          return {
+            id,
+            tick,
+            savedCount,
+            deadCount: 0,
+            activeCount: savedCount ? 0 : 1,
+            needCount: 1,
+            releaseCount: 1,
+            leftCount: 0,
+            lemmings: savedCount ? [] : [{ id: 7, x: tick, y: 0, action: 'walking' }]
+          };
+        }
+      };
+    };
+
+    for (const kind of ['editor', 'procgen', 'builtin']) {
+      const created = createRunnerFromSource({
+        kind,
+        runner: makeAdapter(`${kind}-adapter`)
+      });
+
+      expect(created.result).to.equal(null);
+      expect(created.sourceKind).to.equal(kind);
+      expect(created.runner.getFinalStateSummary()).to.include({
+        sourceKind: kind,
+        id: `${kind}-adapter`
+      });
+    }
+  });
+
+  it('requires authoritative runtime replay before non-synthetic solved results', function () {
+    let tick = 0;
+    const result = verifyActionReplay({
+      kind: 'editor',
+      runner: {
+        id: 'advisory-adapter',
+        isRuntimeAuthoritative: false,
+        step(count = 1) {
+          tick += count;
+        },
+        applyAction(action) {
+          return { ok: true, lemmingId: 0, skillType: action.skillType };
+        },
+        getFinalStateSummary() {
+          return {
+            id: 'advisory-adapter',
+            tick,
+            savedCount: tick >= 1 ? 1 : 0,
+            deadCount: 0,
+            activeCount: tick >= 1 ? 0 : 1,
+            needCount: 1,
+            releaseCount: 1,
+            leftCount: 0,
+            lemmings: tick >= 1 ? [] : [{ id: 0, x: 0, y: 0 }]
+          };
+        }
+      }
+    }, [], {
+      maxTicks: 4,
+      targetSaveCount: 1
+    });
+
+    expect(result.resultType).to.equal(SOLVER_RESULT_TYPES.UNKNOWN);
+    expect(result.explanations[0].code).to.equal(
+      SOLVER_EXPLANATION_CODES.MISSING_RUNTIME_ADAPTER
+    );
+  });
 });

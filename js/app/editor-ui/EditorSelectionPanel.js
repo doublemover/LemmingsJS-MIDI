@@ -17,6 +17,7 @@ import {
   ShortcutOverlay,
   createClassicLevelData,
   createEditorLevelFromClassic,
+  createValidationReport,
   downloadBinaryFile,
   downloadTextFile,
   ensureLevelEntryUids,
@@ -338,6 +339,35 @@ const editorSelectionPanelMethods = {
       ...(this._transientIssues || [])
     ];
     this._renderIssues(issues);
+  },
+
+  _buildCurrentValidationReport() {
+    const level = this.session?.level;
+    const issues = [
+      ...validateLevel(level, this.assets || null, {
+        solverAdvisorySource: this.view?.game?.level || null
+      }),
+      ...buildClassicSubsetIssues(level),
+      ...(this._transientIssues || [])
+    ];
+    return createValidationReport(level, this.assets || null, {
+      issues,
+      pack: {
+        title: 'Current editor session',
+        levels: level ? [level] : []
+      },
+      assetsByStyle: this.assets?.styleName
+        ? { [this.assets.styleName]: this.assets }
+        : null
+    });
+  },
+
+  _exportValidationReport() {
+    const report = this._buildCurrentValidationReport();
+    const title = this.view?.getEditorLevelTitle?.() || report.level.title || 'level';
+    const filename = `${sanitizeFileName(title)}.validation.json`;
+    downloadTextFile(this.document, JSON.stringify(report, null, 2), filename, 'application/json');
+    this._updateStatus('Validation report');
   },
 
   _clearSolvabilityCheck() {

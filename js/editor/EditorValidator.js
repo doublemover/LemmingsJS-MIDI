@@ -170,6 +170,149 @@ const countPreservedNxlvMetadata = (level) => {
   return count;
 };
 
+const normalizeIssueForReport = (issue, index, source = 'level-validation') => {
+  const severity = issue?.severity === 'error'
+    ? 'error'
+    : issue?.severity === 'warning'
+      ? 'warning'
+      : 'info';
+  const destructive = issue?.destructive === true || issue?.exportFormat === 'classicLvl';
+  return {
+    index,
+    source,
+    severity,
+    code: issue?.code || null,
+    target: issue?.target || null,
+    message: String(issue?.message || ''),
+    blocker: severity === 'error' || issue?.blocking === true || issue?.blocksExport === true,
+    blocksEditing: issue?.blocksEditing === true,
+    blocksExport: severity === 'error' || issue?.blocksExport === true,
+    destructive,
+    exportFormat: issue?.exportFormat || null,
+    hasFix: typeof issue?.fix === 'function',
+    fixLabel: issue?.fixLabel || null,
+    metadata: {
+      count: Number.isFinite(issue?.count) ? issue.count : null,
+      max: Number.isFinite(issue?.max) ? issue.max : null,
+      props: Array.isArray(issue?.props) ? [...issue.props] : null,
+      advisoryCode: issue?.advisoryCode || null
+    }
+  };
+};
+
+const summarizeReportIssues = (issues) => ({
+  total: issues.length,
+  errors: issues.filter(issue => issue.severity === 'error').length,
+  warnings: issues.filter(issue => issue.severity === 'warning').length,
+  infos: issues.filter(issue => issue.severity === 'info').length,
+  blockers: issues.filter(issue => issue.blocker).length,
+  destructive: issues.filter(issue => issue.destructive).length,
+  unsupportedPreservedData: issues.filter(issue => issue.exportFormat === 'classicLvl').length
+});
+
+const levelIdentity = (level, index = 0) => ({
+  index,
+  id: level?.getHeader?.('ID') ?? level?.id ?? null,
+  title: String(level?.getHeader?.('TITLE') ?? level?.title ?? `Level ${index + 1}`),
+  style: String(level?.getHeader?.('STYLE') ?? level?.style ?? ''),
+  width: getHeaderNumber(level, 'WIDTH', DEFAULT_LEVEL_WIDTH),
+  height: getHeaderNumber(level, 'HEIGHT', DEFAULT_LEVEL_HEIGHT)
+});
+
+const validatePackConsistency = (pack = {}, assetsByStyle = null) => {
+  const levels = Array.isArray(pack?.levels)
+    ? pack.levels
+    : (Array.isArray(pack) ? pack : []);
+  const issues = [];
+  if (!levels.length) {
+    issues.push({
+      severity: 'error',
+      code: 'pack_missing_levels',
+      target: 'pack.levels',
+      message: 'Pack has no levels.',
+      blocking: true
+    });
+    return issues.map((issue, index) => normalizeIssueForReport(issue, index, 'pack-validation'));
+  }
+
+  const titleSeen = new Map();
+  const idSeen = new Map();
+  levels.forEach((level, index) => {
+    const identity = levelIdentity(level, index);
+    const titleKey = identity.title.trim().toLowerCase();
+    const idKey = identity.id == null ? '' : String(identity.id).trim().toLowerCase();
+    if (!identity.style) {
+      issues.push({
+        severity: 'warning',
+        code: 'pack_missing_style',
+        target: `levels[${index}].STYLE`,
+        message: `Level ${index + 1} has no style.`,
+        blocking: false
+      });
+    } else if (assetsByStyle && !assetsByStyle[identity.style]) {
+      issues.push({
+        severity: 'warning',
+        code: 'pack_missing_style_assets',
+        target: `levels[${index}].STYLE`,
+        message: `Level ${index + 1} references missing style assets: ${identity.style}.`,
+        blocking: false
+      });
+    }
+    if (titleKey) {
+      if (titleSeen.has(titleKey)) {
+        issues.push({
+          severity: 'warning',
+          code: 'pack_duplicate_title',
+          target: `levels[${index}].TITLE`,
+          message: `Duplicate level title: ${identity.title}.`,
+          blocking: false
+        });
+      } else {
+        titleSeen.set(titleKey, index);
+      }
+    }
+    if (idKey) {
+      if (idSeen.has(idKey)) {
+        issues.push({
+          severity: 'warning',
+          code: 'pack_duplicate_id',
+          target: `levels[${index}].ID`,
+          message: `Duplicate level id: ${identity.id}.`,
+          blocking: false
+        });
+      } else {
+        idSeen.set(idKey, index);
+      }
+    }
+  });
+
+  return issues.map((issue, index) => normalizeIssueForReport(issue, index, 'pack-validation'));
+};
+
+const createValidationReport = (level, assets = null, options = {}) => {
+  const rawIssues = Array.isArray(options.issues)
+    ? options.issues
+    : validateLevel(level, assets, options.validationOptions || options);
+  const levelIssues = rawIssues.map((issue, index) => normalizeIssueForReport(issue, index));
+  const packIssues = options.pack
+    ? validatePackConsistency(options.pack, options.assetsByStyle || null)
+    : [];
+  const issues = [...levelIssues, ...packIssues];
+  return {
+    kind: 'editor-validation-report',
+    schemaVersion: 1,
+    level: levelIdentity(level),
+    pack: options.pack
+      ? {
+        title: String(options.pack.title || options.pack.name || ''),
+        levelCount: Array.isArray(options.pack.levels) ? options.pack.levels.length : 0
+      }
+      : null,
+    summary: summarizeReportIssues(issues),
+    issues
+  };
+};
+
 const validateLevel = (level, assets = null, options = {}) => {
   if (!level) return [];
   const issues = [];
@@ -713,4 +856,8 @@ const validateLevel = (level, assets = null, options = {}) => {
   return issues;
 };
 
-export { validateLevel };
+export {
+  createValidationReport,
+  validateLevel,
+  validatePackConsistency
+};

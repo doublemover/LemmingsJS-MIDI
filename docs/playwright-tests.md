@@ -120,3 +120,21 @@ matching issues fail the CLI. Supported checks are `horizontalOverflow`,
 
 When captures are useful for an issue or review, attach selected PNGs from the
 run directory manually. Keep `temp/e2e-captures/` disposable.
+
+## Milestone Capture Matrix
+
+Use the capture scripts as disposable review evidence for the active milestone
+lanes. They check layout overflow and produce local PNGs and JSON summaries, but
+they are not a replacement for behavior tests.
+
+| Surface | Command | Expected use |
+| --- | --- | --- |
+| MIDI desktop/tablet/mobile | `npm run capture:e2e:midi -- --viewport=desktop --json`; repeat for `tablet` and `mobile` | Verify setup, track mixer, source browser, clip editor, inspector, diagnostics, and import/export states after MIDI polish changes. |
+| Editor desktop | `npm run capture:e2e:editor -- --viewport=desktop --json` | Verify editor shell, palette, canvas, inspector, validation, import/export, and playtest states after editor changes. |
+| Procgen desktop | `npm run capture:e2e:procgen -- --viewport=desktop --json` | Verify the selected theme, generated frontier, newest pieces, debug panels, and camera readability after procgen changes. |
+| Solver advisory surfaces | `npm run capture:e2e:editor -- --viewport=desktop --target="validation-warnings,validation-inspector-with-warnings" --json` | Verify user-visible solver/editor advisory warnings and compact failure text after advisory surface changes. |
+| Shared HUD/runtime | `npm run capture:e2e:game-hud -- --viewport=desktop --json` | Verify game HUD and runtime capture rectangles after shared harness or HUD changes. |
+
+Record the capture command output directory in the issue closeout note. Leave
+the files under `temp/e2e-captures/`; do not commit screenshots, capture JSON,
+or generated manifests.

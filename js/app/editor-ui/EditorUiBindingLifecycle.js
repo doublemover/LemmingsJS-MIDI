@@ -49,6 +49,7 @@ const editorUiBindingLifecycleMethods = {
       savedImportClassicInput: get('editorSavedImportClassicInput'),
       playtestToggle: get('editorPlaytestToggle'),
       solvabilityCheck: get('editorSolvabilityCheck'),
+      validationReportExport: get('editorValidationReportExport'),
       solvabilityStatus: get('editorSolvabilityStatus'),
       toolList: get('editorToolList'),
       snapToggle: get('editorSnapToggle'),

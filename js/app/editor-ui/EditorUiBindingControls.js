@@ -253,10 +253,16 @@ const editorUiBindingControlMethods = {
   },
 
   _bindValidationControls() {
-    if (!this.el.solvabilityCheck) return;
-    this._addDomListener(this.el.solvabilityCheck, 'click', () => {
-      this._runSolvabilityCheck?.();
-    });
+    if (this.el.solvabilityCheck) {
+      this._addDomListener(this.el.solvabilityCheck, 'click', () => {
+        this._runSolvabilityCheck?.();
+      });
+    }
+    if (this.el.validationReportExport) {
+      this._addDomListener(this.el.validationReportExport, 'click', () => {
+        this._exportValidationReport?.();
+      });
+    }
   },
 
   _bindCanvasInput() {

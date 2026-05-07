@@ -7,6 +7,10 @@ import {
   SOLVER_RESULT_TYPES,
   createSolverResult
 } from '../js/solver/SolverTypes.js';
+import {
+  PROCGEN_CHALLENGE_TYPES,
+  PROCGEN_FALLBACK_DECISIONS
+} from '../js/solver/ProcgenCertificates.js';
 
 const walkAction = { getActionName: () => 'walk' };
 const actionNamed = name => ({ getActionName: () => name });
@@ -634,5 +638,117 @@ describe('ProcgenController', function () {
     const assists = controller.getDebugState().recentAssists;
     expect(assists.some(assist => assist.reason === 'small-gap' && assist.skillName === 'builder')).to.equal(true);
     expect(assists.some(assist => assist.reason === 'small-barrier' && assist.skillName === 'basher')).to.equal(true);
+  });
+
+  it('records verified non-gap challenge certificates for assist decisions', function () {
+    const calls = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          doLemmingAction(_lem, skill) {
+            calls.push(skill);
+            return true;
+          }
+        }),
+        getGameTimer: () => ({ tickIndex: 50 })
+      },
+      level: { width: 200, height: 140 },
+      options: {
+        procgenCertificateVerifier(certificate, chunk) {
+          expect(chunk.kind).to.equal('procgen-local-challenge');
+          expect(certificate.challengeType).to.be.oneOf([
+            PROCGEN_CHALLENGE_TYPES.BASH_BARRIER,
+            PROCGEN_CHALLENGE_TYPES.FALL_SURVIVAL
+          ]);
+          return createSolverResult({
+            resultType: SOLVER_RESULT_TYPES.SOLVED,
+            summary: `${certificate.challengeType} verified`
+          });
+        }
+      }
+    });
+    controller._initAiDirector();
+    const barrierLemming = { id: 7, x: 52, y: 60, lookRight: true, action: walkAction };
+    const fallLemming = { id: 8, x: 64, y: 60, lookRight: true, action: walkAction };
+
+    const barrierResult = controller._decideAssist(barrierLemming, {
+      direction: 1,
+      gap: null,
+      wall: { dx: 2, height: controller.maxStepUp + 3 },
+      hazard: null
+    }, 50);
+    const fallResult = controller._decideAssist(fallLemming, {
+      direction: 1,
+      gap: { dx: 4, width: 10, drop: controller.aiFloaterDrop + 4 },
+      wall: null,
+      hazard: null
+    }, 55);
+
+    expect(barrierResult).to.equal('bash');
+    expect(fallResult).to.equal('floater');
+    expect(calls).to.deep.equal([SkillTypes.BASHER, SkillTypes.FLOATER]);
+    const debug = controller.getDebugState();
+    expect(debug.recentCertificates.some(entry => {
+      return entry.source === 'assist' &&
+        entry.challengeType === PROCGEN_CHALLENGE_TYPES.BASH_BARRIER &&
+        entry.decision === PROCGEN_FALLBACK_DECISIONS.ACCEPT;
+    })).to.equal(true);
+    expect(debug.recentCertificates.some(entry => {
+      return entry.source === 'assist' &&
+        entry.challengeType === PROCGEN_CHALLENGE_TYPES.FALL_SURVIVAL &&
+        entry.decision === PROCGEN_FALLBACK_DECISIONS.ACCEPT;
+    })).to.equal(true);
+    expect(debug.recentAssists.some(assist => {
+      return assist.challengeType === PROCGEN_CHALLENGE_TYPES.BASH_BARRIER &&
+        assist.certificateDecision === PROCGEN_FALLBACK_DECISIONS.ACCEPT;
+    })).to.equal(true);
+  });
+
+  it('keeps assist decisions advisory when a non-gap certificate is rejected', function () {
+    const calls = [];
+    const controller = new ProcgenController({
+      game: {
+        getLemmingManager: () => ({
+          doLemmingAction(_lem, skill) {
+            calls.push(skill);
+            return true;
+          }
+        }),
+        getGameTimer: () => ({ tickIndex: 70 })
+      },
+      level: { width: 200, height: 120 },
+      options: {
+        procgenCertificateVerifier: () => createSolverResult({
+          resultType: SOLVER_RESULT_TYPES.UNSUPPORTED,
+          summary: 'unsupported injected assist check',
+          explanations: [SOLVER_EXPLANATION_CODES.UNSUPPORTED_MECHANIC]
+        })
+      }
+    });
+    controller._initAiDirector();
+    const lemming = { id: 9, x: 50, y: 60, lookRight: true, action: walkAction };
+
+    const result = controller._decideAssist(lemming, {
+      direction: 1,
+      gap: null,
+      wall: { dx: 2, height: controller.maxStepUp + 2 },
+      hazard: null
+    }, 70);
+
+    expect(result).to.equal('bash');
+    expect(calls).to.deep.equal([SkillTypes.BASHER]);
+    const debug = controller.getDebugState();
+    const certificate = debug.recentCertificates.at(-1);
+    expect(certificate).to.include({
+      source: 'assist',
+      challengeType: PROCGEN_CHALLENGE_TYPES.BASH_BARRIER,
+      decision: PROCGEN_FALLBACK_DECISIONS.REPLACE,
+      resultType: SOLVER_RESULT_TYPES.UNSUPPORTED
+    });
+    expect(debug.recentAssists.at(-1)).to.include({
+      challengeType: PROCGEN_CHALLENGE_TYPES.BASH_BARRIER,
+      certificateDecision: PROCGEN_FALLBACK_DECISIONS.REPLACE,
+      certificateResultType: SOLVER_RESULT_TYPES.UNSUPPORTED
+    });
   });
 });

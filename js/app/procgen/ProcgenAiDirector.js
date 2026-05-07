@@ -387,6 +387,13 @@ const procgenAiDirectorMethods = {
     }
     for (const option of skillOrder) {
       if (!this._canSpend(option.key)) continue;
+      const certificate = this._verifyAssistChallenge?.(option, lemming, scan, tick) || null;
+      const certificateMeta = certificate ? {
+        certificateId: certificate.certificate?.id ?? null,
+        challengeType: certificate.certificate?.challengeType ?? null,
+        certificateDecision: certificate.fallback?.decision ?? null,
+        certificateResultType: certificate.fallback?.resultType ?? null
+      } : {};
       if (manager.doLemmingAction(lemming, option.skill)) {
         this._noteAiAction(lemming, tick, option.cooldown, {
           action: option.key,
@@ -394,7 +401,8 @@ const procgenAiDirectorMethods = {
           skillType: option.skill,
           spent: true,
           scan,
-          targetX: option.targetX
+          targetX: option.targetX,
+          ...certificateMeta
         });
         return option.key;
       }
@@ -408,7 +416,8 @@ const procgenAiDirectorMethods = {
         lemming,
         scan,
         success: false,
-        targetX: option.targetX
+        targetX: option.targetX,
+        ...certificateMeta
       });
     }
     return null;

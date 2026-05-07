@@ -246,6 +246,31 @@ describe('EditorUiController lifecycle', function() {
     expect(status.textContent).to.contain('1 error');
   });
 
+  it('builds exportable validation reports from current UI issues', function() {
+    const level = new EditorLevel();
+    level.setHeader('TITLE', 'Report UI');
+    level.setHeader('STYLE', 'dirt');
+    level.setHeader('LEMMINGS', 1);
+    level.setHeader('SAVE_REQUIREMENT', 2);
+
+    const ui = Object.create(EditorUiController.prototype);
+    ui.session = { level };
+    ui.assets = { entranceId: 1, exitId: 2, styleName: 'dirt' };
+    ui._transientIssues = [{
+      severity: 'warning',
+      message: 'Imported data preserved but not previewed.'
+    }];
+    ui.view = { game: { level: null } };
+
+    const report = ui._buildCurrentValidationReport();
+
+    expect(report.kind).to.equal('editor-validation-report');
+    expect(report.level.title).to.equal('Report UI');
+    expect(report.pack.levelCount).to.equal(1);
+    expect(report.summary.errors).to.be.greaterThan(0);
+    expect(report.issues.some(issue => issue.message === 'Imported data preserved but not previewed.')).to.equal(true);
+  });
+
   it('enables conservative batch inspector fields for homogeneous multi-selection', function() {
     const doc = new TestDocument();
     const ui = Object.create(EditorUiController.prototype);

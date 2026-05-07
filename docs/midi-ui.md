@@ -119,6 +119,11 @@ factory projects.
 
 - `npm run capture:e2e:midi` captures the sequencer regions under
   `temp/e2e-captures/`.
+- Hardware-free MIDI checkpoint commands:
+  `npm run test-e2e -- e2e/midi-ui.spec.js`,
+  `npm run capture:e2e:midi -- --viewport=desktop --json`,
+  `npm run capture:e2e:midi -- --viewport=tablet --json`, and
+  `npm run capture:e2e:midi -- --viewport=mobile --json`.
 - `e2e/midi-ui.spec.js` covers first-run project creation, fresh-reset legacy
   cleanup, setup, transport meter, project and per-track output routing, direct
   mapping, clip creation/editing, clip assignment, import/export/template reset,

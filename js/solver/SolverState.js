@@ -376,6 +376,40 @@ const normalizeHazards = source => {
     .sort((a, b) => a.y - b.y || a.x - b.x || String(a.kind).localeCompare(String(b.kind)));
 };
 
+const normalizeMutationRecord = (item, index, fallbackKind) => ({
+  ...normalizeRect(item, index),
+  kind: String(item?.kind ?? item?.type ?? fallbackKind),
+  skillType: item?.skillType == null ? null : String(item.skillType),
+  direction: item?.direction == null ? null : normalizeOneWayDirection(item.direction),
+  tick: item?.tick == null ? null : toNonNegativeInteger(item.tick, 0),
+  source: item?.source == null ? null : String(item.source)
+});
+
+const normalizeMutationRecords = source => {
+  const groups = [
+    ['terrainMutations', 'mutation'],
+    ['mutations', 'mutation'],
+    ['builderStairs', 'builder-stair'],
+    ['digShafts', 'dig-shaft'],
+    ['bashTunnels', 'bash-tunnel'],
+    ['mineTunnels', 'mine-tunnel']
+  ];
+  const out = [];
+  for (const [key, fallbackKind] of groups) {
+    const records = Array.isArray(source?.[key]) ? source[key] : [];
+    for (const record of records) {
+      out.push(normalizeMutationRecord(record, out.length, fallbackKind));
+    }
+  }
+  return out.sort((a, b) => (
+    a.y - b.y ||
+    a.x - b.x ||
+    a.width - b.width ||
+    String(a.kind).localeCompare(String(b.kind)) ||
+    a.index - b.index
+  ));
+};
+
 const readGameFacade = input => {
   if (!input) return null;
   if (input.level || typeof input.getGameTimer === 'function' || typeof input.getLemmingManager === 'function') {
@@ -513,6 +547,7 @@ const publicSnapshotForHash = snapshot => ({
   exits: snapshot.exits,
   hazards: snapshot.hazards,
   lemmings: snapshot.lemmings,
+  terrainMutations: snapshot.terrainMutations,
   skills: snapshot.skills,
   timer: snapshot.timer,
   victory: snapshot.victory
@@ -541,14 +576,24 @@ const extractSolverState = (input, options = {}) => {
     samplerName: 'isSteelAt'
   });
   const terrainHash = source.terrainHash ?? hashMask(baseGroundMask, width, height, 'terrain');
+  const terrainMutations = normalizeMutationRecords(source);
+  const terrainMutationMaskHash = hashMask(groundMask, width, height, 'terrain-mutation');
   const terrainMutationHash = source.terrainMutationHash ??
     source.groundMutationHash ??
-    hashMask(groundMask, width, height, 'terrain-mutation');
+    stableHash({
+      maskHash: terrainMutationMaskHash,
+      mutations: terrainMutations
+    });
   const steelHash = source.steelHash ?? hashMask(steelMask, width, height, 'steel');
   const steelConstraints = normalizeSteelConstraints(source, steelMask, width, height);
   const snapshot = {
     kind: 'solver-state',
-    sourceKind: source.kind || (readGameFacade(input)?.level ? 'game' : 'level'),
+    sourceKind: options.sourceKind ||
+      input?.sourceKind ||
+      input?.kind ||
+      input?.type ||
+      source.kind ||
+      (readGameFacade(input)?.level ? 'game' : 'level'),
     id: String(options.id ?? source.id ?? source.name ?? 'level'),
     width,
     height,
@@ -572,6 +617,7 @@ const extractSolverState = (input, options = {}) => {
     entrances: normalizeEntrances(source),
     exits: normalizeExits(source),
     hazards: normalizeHazards(source),
+    terrainMutations,
     lemmings: normalizeLemmings(input),
     skills: normalizeSkills(input),
     timer: normalizeTimer(input),
@@ -583,6 +629,7 @@ const extractSolverState = (input, options = {}) => {
     steel: steelHash,
     oneWay: stableHash(snapshot.oneWay),
     hazards: stableHash(snapshot.hazards),
+    terrainMutations: stableHash(snapshot.terrainMutations),
     entrances: stableHash(snapshot.entrances),
     exits: stableHash(snapshot.exits),
     lemmings: stableHash(snapshot.lemmings),

@@ -8,9 +8,9 @@ test.beforeEach(async ({ page }) => {
   await installExternalAssetStubs(page);
 });
 
-const openMidiUi = async (page, { resetStorage = false, withDevices = true } = {}) => {
+const openMidiUi = async (page, { resetStorage = false, withDevices = true, permission = 'granted' } = {}) => {
   if (resetStorage) await clearLocalStorage(page);
-  await installWebMidiStub(page, { withDevices });
+  await installWebMidiStub(page, { withDevices, permission });
   const midi = new MidiUiPage(page);
   await midi.goto('/?e2e=1');
   await waitForHarnessReady(page);
@@ -133,6 +133,37 @@ test('MIDI sequencer creates a fresh project and clears legacy storage', async (
   await expect(page.locator('#midiOutSelect')).toContainText('No output devices');
   await expect(page.locator('#errorDisplay')).toContainText('No input device');
   await expect(page.locator('#errorDisplay')).toContainText('No output device');
+});
+
+test('MIDI sequencer reports permission denial and mocked device lifecycle', async ({ page }) => {
+  let midi = await openMidiUi(page, { permission: 'denied' });
+  await midi.enable();
+  await expect(page.locator('#errorDisplay')).toContainText('WebMIDI permission denied');
+
+  await page.goto('about:blank');
+  midi = await openMidiUi(page);
+  await midi.enable();
+  await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
+  await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
+
+  const disconnected = await page.evaluate(() => ({
+    input: window.__WEBMIDI_STUB__.disconnectInput('pw-input-1'),
+    output: window.__WEBMIDI_STUB__.disconnectOutput('pw-output-1')
+  }));
+  expect(disconnected).toEqual({ input: true, output: true });
+  await expect(page.locator('#midiInSelect')).toContainText('No input devices');
+  await expect(page.locator('#midiOutSelect')).toContainText('No output devices');
+  await expect(page.locator('#errorDisplay')).toContainText('No input device');
+  await expect(page.locator('#errorDisplay')).toContainText('No output device');
+
+  const reconnected = await page.evaluate(() => ({
+    input: window.__WEBMIDI_STUB__.reconnectInput('pw-input-2', 'Recovered Input'),
+    output: window.__WEBMIDI_STUB__.reconnectOutput('pw-output-2', 'Recovered Output')
+  }));
+  expect(reconnected).toEqual({ input: true, output: true });
+  await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-2');
+  await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-2');
+  await expect(page.locator('#errorDisplay')).toHaveText('');
 });
 
 test('MIDI sequencer supports setup, track routing, direct mapping, and audition', async ({ page }) => {

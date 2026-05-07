@@ -76,6 +76,10 @@ and no MIDI UI.
   solver verifies those certificates synchronously during generation; rejected
   gaps are simplified or replaced with extended terrain according to the solver
   fallback decision.
+- Dynamic non-gap assists also emit compact local challenge certificates for
+  barrier clearing and unsafe falls. These certificates record synchronous
+  accept/extend/replace/simplify decisions for debug and review, but they do
+  not mark a run solved; runtime replay remains the only full-route authority.
 
 ## Production hardening notes
 - Hazard scans use a rebuilt hazard index instead of per-scan trigger-set
@@ -100,7 +104,8 @@ should remain compact and JSON-safe:
   end.
 - `recentChunks`: bounded list of recent generated route chunks.
 - `recentCertificates`: bounded list of recent local challenge certificate
-  decisions, including result type and fallback action.
+  decisions, including source, result type, fallback action, and assist reason
+  when applicable.
 - E2E/debug URLs can force deterministic certificate coverage with
   `gapChance`, `gapMinWidth`, `gapMaxWidth`, `recentCertificateLimit`, and
   `procgenCertificateVerification` query parameters.
@@ -125,7 +130,8 @@ This state is for tests and local debugging. It is not a save format.
 ## Productization status
 
 This checkpoint productizes themed piece streaming, frontier-driven lookahead,
-minimal assists, and local certificate checks for generated gaps. The checks are
-bounded and advisory to generation only: they can simplify or replace local
-chunks, while the runtime replay verifier remains authoritative for complete
+minimal assists, and local certificate checks for generated gaps, non-gap
+barriers, and unsafe falls. The checks are bounded and local: terrain generation
+can simplify or replace local chunks, dynamic assists only record their local
+decision, and the runtime replay verifier remains authoritative for complete
 solutions.

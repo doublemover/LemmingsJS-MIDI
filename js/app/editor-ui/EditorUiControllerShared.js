@@ -6,7 +6,10 @@ import { LevelReader } from '../../level/LevelReader.js';
 import { LevelWriter } from '../../level/LevelWriter.js';
 import { createEditorLevelFromClassic } from '../../editor/ClassicLevelConverter.js';
 import { createClassicLevelData } from '../../editor/EditorLevelLoader.js';
-import { validateLevel } from '../../editor/EditorValidator.js';
+import {
+  createValidationReport,
+  validateLevel
+} from '../../editor/EditorValidator.js';
 import { checkEditorSolvabilityAdvisory } from '../../solver/EditorAdvisory.js';
 import { getEntryBounds } from '../../editor/EditorHitTest.js';
 import { ensureLevelEntryUids } from '../../editor/EditorEntryFactory.js';
@@ -113,6 +116,7 @@ export {
   PALETTE_SEARCH_DEBOUNCE_MS,
   ShortcutOverlay,
   createClassicLevelData,
+  createValidationReport,
   createEditorLevelFromClassic,
   downloadBinaryFile,
   downloadTextFile,

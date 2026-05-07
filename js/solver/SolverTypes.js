@@ -20,10 +20,13 @@ const SOLVER_EXPLANATION_CODES = Object.freeze({
   MISSING_ENTRANCE: 'missing-entrance',
   MISSING_EXIT: 'missing-exit',
   MISSING_LANDING: 'missing-landing',
+  MISSING_RUNTIME_ADAPTER: 'missing-runtime-adapter',
   NO_ROUTE_TO_EXIT: 'no-route-to-exit',
+  ONE_WAY_BLOCKED: 'one-way-blocked',
   REPLAY_DIVERGED: 'replay-diverged',
   SAVE_COUNT_UNREACHABLE: 'save-count-unreachable',
   STATE_EXPLOSION: 'state-explosion',
+  ARTIFACT_WRITE_FAILED: 'artifact-write-failed',
   TIMING_WINDOW_TOO_NARROW: 'timing-window-too-narrow',
   UNSUPPORTED_MECHANIC: 'unsupported-mechanic'
 });
