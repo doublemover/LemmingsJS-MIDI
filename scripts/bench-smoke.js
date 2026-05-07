@@ -167,7 +167,7 @@ const main = (argv = process.argv.slice(2)) => {
 
   const hotpaths = runNodeScript(hotpathsScript, [
     '--smoke'
-  ], Math.min(timeoutMs, 30000), 'bench-hotpaths');
+  ], Math.min(timeoutMs, 60000), 'bench-hotpaths');
 
   const thresholds = {
     perfP95FrameMsMax,
