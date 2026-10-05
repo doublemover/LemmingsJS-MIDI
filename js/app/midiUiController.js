@@ -1268,6 +1268,7 @@ const createMidiUiController = ({
     const rawVelocity = mapping.velocity ?? current.global.velocityRange.default ?? 80;
     const velocity = clamp(Math.round(rawVelocity * (track.velocityScale ?? 1)), 1, 127);
     const durationTicks = mapping.durationTicks ?? current.global.durationTicks.default ?? 6;
+    const timeMs = scheduler._nowMs?.() ?? (typeof performance !== 'undefined' ? performance.now() : Date.now());
     let sent = false;
     for (const note of notes) {
       sent = scheduler.sendNote({
@@ -1281,7 +1282,7 @@ const createMidiUiController = ({
         trackId: track.id,
         voiceBudget: track.voiceBudget,
         outputId: track.outputId ?? null,
-        timeMs: Date.now()
+        timeMs
       }, {
         sfxId: source?.kind === 'sfx' ? Number(source.sourceKey) || 0 : 0,
         triggerType: source && source.kind !== 'sfx' ? Number(source.sourceKey) || null : null,

@@ -150,7 +150,7 @@ class MidiMapping {
 
     const defaultNote = Math.round((noteRange.min + noteRange.max) / 2);
     let note = sfx.note ?? defaultNote;
-    let pitchBend = 0;
+    let pitchBend = Number.isFinite(sfx.pitchBend) ? clamp(sfx.pitchBend, -1, 1) : 0;
 
     if (Number.isFinite(sfx.frequencyHz) && sfx.frequencyHz > 0) {
       const floatNote = noteFromFrequency(sfx.frequencyHz);
@@ -164,7 +164,7 @@ class MidiMapping {
       note = baseNote;
     }
 
-    if (pitchBendOverride != null && !Number.isFinite(sfx.frequencyHz)) {
+    if (pitchBendOverride != null && !Number.isFinite(sfx.pitchBend) && !(Number.isFinite(sfx.frequencyHz) && sfx.frequencyHz > 0)) {
       pitchBend = clamp(pitchBendOverride, -1, 1);
     }
 
@@ -238,8 +238,8 @@ class MidiMapping {
     durationTicks = clamp(Math.round(durationTicks * clamp(sustain, 0.25, 2)), durationCfg.min ?? 1, durationCfg.max ?? 999);
     const releaseVelocity = clamp(Math.round(velocity * clamp(release, 0, 2)), 1, 127);
 
-    let timbre = null;
-    if (timbreOverride != null) {
+    let timbre = Number.isFinite(sfx.timbre) ? Math.round(clamp(sfx.timbre, 0, 127)) : null;
+    if (timbre == null && timbreOverride != null) {
       const tMin = positionCfg.timbreRange?.min ?? 0;
       const tMax = positionCfg.timbreRange?.max ?? 127;
       const tLow = Math.min(tMin, tMax);
@@ -247,14 +247,14 @@ class MidiMapping {
       timbre = Math.round(clamp(timbreOverride, tLow, tHigh));
     }
 
-    let pan = null;
-    if (panOverride != null) {
+    let pan = Number.isFinite(sfx.pan) ? Math.round(clamp(sfx.pan, -127, 127)) : null;
+    if (pan == null && panOverride != null) {
       const pMin = positionCfg.panRange?.min ?? -127;
       const pMax = positionCfg.panRange?.max ?? 127;
       const pLow = Math.min(pMin, pMax);
       const pHigh = Math.max(pMin, pMax);
       pan = Math.round(clamp(panOverride, pLow, pHigh));
-    } else if (positionCfg.viewPan && Number.isFinite(event.x)) {
+    } else if (pan == null && positionCfg.viewPan && Number.isFinite(event.x)) {
       const viewRect = context.viewRect;
       const viewWidth = viewRect?.w ?? context.levelWidth ?? null;
       if (Number.isFinite(viewWidth) && viewWidth > 0) {

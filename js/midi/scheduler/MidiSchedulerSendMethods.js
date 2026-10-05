@@ -47,15 +47,11 @@ const midiSchedulerSendMethods = {
         ? clamp(toPositiveInt(spec.voiceBudget, this._maxActiveNotes), 1, this._maxActiveNotes)
         : null;
 
-      if (this.config.mpe?.enabled) {
-        if (Number.isFinite(spec.pitchBend) && spec.pitchBend !== 0) {
-          channel.sendPitchBend(clamp(spec.pitchBend, -1, 1), { time: sendTimeMs });
-        } else {
-          channel.sendPitchBend(0, { time: sendTimeMs });
-        }
-        if (spec.timbre != null && Number.isFinite(spec.timbre)) {
-          channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
-        }
+      if (this.config.mpe?.enabled || Number.isFinite(spec.pitchBend)) {
+        channel.sendPitchBend(clamp(spec.pitchBend ?? 0, -1, 1), { time: sendTimeMs });
+      }
+      if (spec.timbre != null && Number.isFinite(spec.timbre)) {
+        channel.sendControlChange(timbreCc, clamp(spec.timbre, 0, 127), { time: sendTimeMs });
       }
       if (spec.pan != null && Number.isFinite(spec.pan)) {
         const panRange = this.config.position?.panRange;
@@ -67,6 +63,16 @@ const midiSchedulerSendMethods = {
         channel.sendControlChange(10, clamp(panValue, 0, 127), { time: sendTimeMs });
       }
 
+      const now = this._nowMs();
+      for (const [token, pending] of this._pendingNoteOns) {
+        if (pending.timeMs <= now) this._pendingNoteOns.delete(token);
+      }
+      let usedChannels = this._usedOutputChannels.get(output);
+      if (!usedChannels) {
+        usedChannels = new Set();
+        this._usedOutputChannels.set(output, usedChannels);
+      }
+      usedChannels.add(channelNumber);
       const startedAt = sendTimeMs;
       const token = ++this._noteOffSeq;
       if (
@@ -81,6 +87,9 @@ const midiSchedulerSendMethods = {
       }
 
       channel.sendNoteOn(spec.note, { rawAttack: attackVelocity, time: sendTimeMs });
+      if (sendTimeMs > now) {
+        this._pendingNoteOns.set(token, { output, channel: channelNumber, note: spec.note, timeMs: sendTimeMs });
+      }
       if (typeof window !== 'undefined') {
         window.lastMidiOutputMessage = {
           type: 'noteOn',
@@ -189,7 +198,7 @@ const midiSchedulerSendMethods = {
       this._noteOffTimerId = 0;
     }
     if (!this._noteOffs.length) return;
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const now = this._nowMs();
     const delay = Math.max(0, this._noteOffs[0].timeMs - now);
     this._noteOffTimerId = setTimeout(() => this._processNoteOffs(), delay);
   },
@@ -197,7 +206,7 @@ const midiSchedulerSendMethods = {
   _processNoteOffs() {
     this._noteOffTimerId = 0;
     if (!this.hasAnyOutput() || !this._noteOffs.length) return;
-    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const now = this._nowMs();
     let idx = 0;
     while (idx < this._noteOffs.length && this._noteOffs[idx].timeMs <= now + 1) {
       const entry = this._noteOffs[idx];
@@ -215,7 +224,6 @@ const midiSchedulerSendMethods = {
   },
 
   allNotesOff() {
-    if (!this.hasAnyOutput()) return;
     const mpe = this.config.mpe;
     let channels;
     if (mpe?.enabled) {
@@ -227,14 +235,40 @@ const midiSchedulerSendMethods = {
     } else {
       channels = [normalizeChannelNumber(this.config.defaultChannel, 1)];
     }
-    for (const output of this._listOutputs()) {
-      for (const ch of channels) {
+    const outputs = new Set([...this._listOutputs(), ...this._usedOutputChannels.keys()]);
+    const now = this._nowMs();
+    for (const output of outputs) {
+      let cleared = false;
+      try {
+        // WebMidi's clear wrapper can silently do nothing when native clear is unavailable.
+        if (typeof output.clear === 'function' && (!output._midiOutput || typeof output._midiOutput.clear === 'function')) {
+          output.clear();
+          cleared = true;
+        }
+      } catch (error) {
+        // Future note-ons still need a paired emergency note-off if clear fails.
+      }
+      const usedChannels = new Set([...channels, ...(this._usedOutputChannels.get(output) || [])]);
+      for (const active of this._activeNotes.values()) {
+        if (this._resolveOutput(active.outputId) === output) usedChannels.add(active.channel);
+      }
+      for (const ch of usedChannels) {
         const channel = output.channels?.[ch];
         if (!channel) continue;
         channel.sendAllNotesOff?.();
         channel.sendPitchBend?.(0);
       }
+      if (!cleared) {
+        for (const pending of this._pendingNoteOns.values()) {
+          if (pending.output !== output || pending.timeMs <= now) continue;
+          const channel = output.channels?.[pending.channel];
+          channel?.sendNoteOff?.(pending.note, { time: pending.timeMs + 1 });
+          channel?.sendPitchBend?.(0, { time: pending.timeMs + 1 });
+        }
+      }
     }
+    this._usedOutputChannels.clear();
+    this._pendingNoteOns.clear();
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {
       clearTimeout(this._noteOffTimerId);
@@ -248,30 +282,14 @@ const midiSchedulerSendMethods = {
   },
 
   clearQueue() {
-    this._noteOffs.length = 0;
-    if (this._noteOffTimerId) {
-      clearTimeout(this._noteOffTimerId);
-      this._noteOffTimerId = 0;
-    }
-    this._activeByChannel.clear();
-    this._activeNotes.clear();
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
+    this.allNotesOff();
   },
 
   dispose() {
     for (const [ch, active] of this._activeByChannel.entries()) {
       this._stopActiveChannel(active?.channel ?? ch, active?.outputId ?? null);
     }
-    this._activeByChannel.clear();
-    this._activeNotes.clear();
-    this._noteOffs.length = 0;
-    this._rateSent.length = 0;
-    this._ratePlanned.length = 0;
-    if (this._noteOffTimerId) {
-      clearTimeout(this._noteOffTimerId);
-      this._noteOffTimerId = 0;
-    }
+    this.allNotesOff();
     this.output = null;
     this._outputsById.clear();
   },

@@ -10,6 +10,8 @@ class MidiScheduler {
     this.tickMs = 60;
     this._activeByChannel = new Map();
     this._activeNotes = new Map();
+    this._usedOutputChannels = new Map();
+    this._pendingNoteOns = new Map();
     this._maxActiveNotes = 32;
     this._memberChannels = [];
     this._noteOffs = [];

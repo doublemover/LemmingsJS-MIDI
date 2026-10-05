@@ -122,11 +122,11 @@ describe('MidiScheduler coverage: core behavior', function() {
     });
   });
 
-  it('handles allNotesOff when output is missing', function() {
+  it('clears local state on allNotesOff when output is missing', function() {
     const scheduler = new MidiScheduler({ mpe: { enabled: false } });
     scheduler._noteOffs.push({ timeMs: 1, token: 1 });
     scheduler.allNotesOff();
-    expect(scheduler._noteOffs.length).to.equal(1);
+    expect(scheduler._noteOffs.length).to.equal(0);
   });
 
   it('clears queues even when channels are absent', function() {

@@ -240,7 +240,7 @@ const midiSchedulerRateMethods = {
     let messages = 1;
     if (this.config.mpe?.enabled) {
       messages += 1;
-    } else if (spec.pitchBend != null && Number.isFinite(spec.pitchBend) && spec.pitchBend !== 0) {
+    } else if (Number.isFinite(spec.pitchBend)) {
       messages += 1;
     }
     if (spec.timbre != null && Number.isFinite(spec.timbre)) messages += 1;
