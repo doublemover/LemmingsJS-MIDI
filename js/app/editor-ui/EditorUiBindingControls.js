@@ -145,8 +145,16 @@ const editorUiBindingControlMethods = {
         if (!id) return;
         const text = loadSavedLevel(undefined, id);
         if (!text) return;
-        this._currentSavedId = id;
-        this._loadLevelFromText(text, { resetSaved: false });
+        if (!this._confirmLevelReplacement()) {
+          this.el.savedSelect.value = this._currentSavedId || '';
+          return;
+        }
+        if (this._loadLevelFromText(text, { resetSaved: false, skipUnsavedGuard: true })) {
+          this._currentSavedId = id;
+          this._currentProject = null;
+          this._setDirty(false);
+          this._refreshProjectList('');
+        }
       });
     }
 
@@ -160,7 +168,7 @@ const editorUiBindingControlMethods = {
       this._addDomListener(this.el.projectSelect, 'change', () => {
         const id = this.el.projectSelect.value;
         if (!id) return;
-        this._loadProjectById?.(id);
+        if (!this._loadProjectById?.(id)) this.el.projectSelect.value = this._currentProject?.id || '';
       });
     }
 
@@ -168,7 +176,7 @@ const editorUiBindingControlMethods = {
       this._addDomListener(this.el.projectLevelSelect, 'change', () => {
         const id = this.el.projectLevelSelect.value;
         if (!id) return;
-        this._loadProjectLevel?.(id);
+        if (!this._loadProjectLevel?.(id)) this.el.projectLevelSelect.value = this._currentProject?.activeLevelId || '';
       });
     }
 
@@ -263,7 +271,6 @@ const editorUiBindingControlMethods = {
           const text = await readTextFile(file);
           if (!text) throw new Error('Level file is empty.');
           if (!this._isAsyncCurrent(token)) return;
-          this._currentSavedId = '';
           this._loadLevelFromText(text, { resetSaved: true, token });
         } catch (error) {
           reportImportFailure(this, 'NXLV', error);
@@ -287,7 +294,6 @@ const editorUiBindingControlMethods = {
           if (!this._isAsyncCurrent(token)) return;
           const binary = new BinaryReader(buffer, 0, undefined, file.name);
           const levelReader = new LevelReader(binary);
-          this._currentSavedId = '';
           this._loadLevelFromClassic(levelReader, { resetSaved: true, token });
         } catch (error) {
           reportImportFailure(this, 'LVL', error);
@@ -301,6 +307,10 @@ const editorUiBindingControlMethods = {
   _bindLevelSelectors() {
     if (this.el.gameType) {
       this._addDomListener(this.el.gameType, 'change', async (event) => {
+        if (!this._confirmLevelReplacement()) {
+          event.target.value = String(this.view?.gameType ?? '');
+          return;
+        }
         const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectGameType?.(value);
@@ -310,6 +320,10 @@ const editorUiBindingControlMethods = {
     }
     if (this.el.levelGroup) {
       this._addDomListener(this.el.levelGroup, 'change', async (event) => {
+        if (!this._confirmLevelReplacement()) {
+          event.target.value = String(this.view?.levelGroupIndex ?? '');
+          return;
+        }
         const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectLevelGroup?.(value);
@@ -319,6 +333,10 @@ const editorUiBindingControlMethods = {
     }
     if (this.el.levelIndex) {
       this._addDomListener(this.el.levelIndex, 'change', async (event) => {
+        if (!this._confirmLevelReplacement()) {
+          event.target.value = String(this.view?.levelIndex ?? '');
+          return;
+        }
         const token = this._nextAsyncToken();
         const value = this.view?.strToNum?.(event.target.value) ?? event.target.value;
         await this.view?.selectLevel?.(value);

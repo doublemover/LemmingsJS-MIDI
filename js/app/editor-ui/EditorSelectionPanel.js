@@ -316,7 +316,7 @@ const editorSelectionPanelMethods = {
   _setDirty(isDirty) {
     this._dirty = !!isDirty;
     if (this.el.dirtyStatus) {
-      this.el.dirtyStatus.textContent = this._dirty ? 'Unsaved' : 'Saved';
+      this.el.dirtyStatus.textContent = this._dirty ? 'Unsaved' : (this._currentSavedId || this._currentProject ? 'Saved' : 'Not saved');
       this.el.dirtyStatus.classList.toggle('is-dirty', this._dirty);
     }
     if (this.document) {

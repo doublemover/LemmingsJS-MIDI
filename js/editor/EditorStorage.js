@@ -1,4 +1,5 @@
 import { getRuntimeDependency } from '../core/dependencies.js';
+import { writeStorageEntries } from './EditorStorageTransaction.js';
 
 const STORAGE_KEYS = Object.freeze({
   index: 'lemmings.editor.levels',
@@ -20,7 +21,8 @@ const safeGetItem = (storage, key) => {
 
 const safeSetItem = (storage, key, value) => {
   try {
-    storage?.setItem?.(key, value);
+    if (typeof storage?.setItem !== 'function') return false;
+    storage.setItem(key, value);
     return true;
   } catch (e) {
     return false;
@@ -72,7 +74,7 @@ const writeIndex = (storage, entries) => {
     version: EDITOR_STORAGE_VERSION,
     entries
   });
-  safeSetItem(storage, STORAGE_KEYS.index, payload);
+  return safeSetItem(storage, STORAGE_KEYS.index, payload);
 };
 
 const createLevelId = (now = () => Date.now()) => {
@@ -120,8 +122,10 @@ const saveLevel = (storage = getDefaultStorage(), payload = {}) => {
   } else {
     index.push({ id, name, updatedAt: now });
   }
-  safeSetItem(storage, STORAGE_KEYS.levelPrefix + id, text);
-  writeIndex(storage, index);
+  if (!writeStorageEntries(storage, [
+    [STORAGE_KEYS.levelPrefix + id, text],
+    [STORAGE_KEYS.index, JSON.stringify({ version: EDITOR_STORAGE_VERSION, entries: index })]
+  ])) return null;
   return id;
 };
 

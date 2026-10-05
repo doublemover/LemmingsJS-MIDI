@@ -122,12 +122,38 @@ const editorLevelIoUiMethods = {
     return normalizeText(prompt(message, fallback));
   },
 
+  _reportStorageFailure() {
+    this._setDirty(true);
+    this._updateStatus('Save failed');
+    this.window?.alert?.('Could not save to browser storage. Your edits are still open.');
+    if (this.window?.confirm?.('Download an NXLV recovery copy of your current edits?')) {
+      const text = this.view?.getEditorLevelText?.();
+      if (typeof text === 'string') {
+        const title = this.view?.getEditorLevelTitle?.() || 'Untitled';
+        downloadTextFile(this.document, text, `${sanitizeFileName(title)}.recovery.nxlv`);
+      }
+    }
+  },
+
+  _confirmLevelReplacement() {
+    if (!this._dirty) return true;
+    const choice = this.window?.prompt?.('You have unsaved changes. Type save, discard, or cancel.', 'cancel');
+    const action = normalizeText(choice).toLowerCase();
+    if (action === 'discard') return true;
+    if (action !== 'save') return false;
+    return this._currentProject ? this._saveCurrentLevelToProject() : this._saveCurrentLevel();
+  },
+
   _saveProjectAndRefresh(project, label = 'Project') {
+    if (!saveEditorProject(undefined, project)) {
+      this._reportStorageFailure();
+      return false;
+    }
     this._currentProject = project;
-    saveEditorProject(undefined, project);
     this._refreshProjectList(project.id);
     this._refreshProjectLevelList(project.activeLevelId);
     this._updateStatus(label);
+    return true;
   },
 
   _createProjectFromCurrentLevel() {
@@ -140,7 +166,8 @@ const editorLevelIoUiMethods = {
       title: this.view?.getEditorLevelTitle?.() || 'Untitled',
       style: this.session?.level?.getHeader?.('STYLE') || ''
     });
-    this._saveProjectAndRefresh(project, 'New project');
+    if (!this._saveProjectAndRefresh(project, 'New project')) return null;
+    this._setDirty(false);
     return project;
   },
 
@@ -162,20 +189,22 @@ const editorLevelIoUiMethods = {
       id: activeId || undefined,
       ...this._getCurrentProjectLevelPayload(title)
     });
-    this._saveProjectAndRefresh(project, forceNew ? 'Project level added' : 'Project level saved');
+    if (!this._saveProjectAndRefresh(project, forceNew ? 'Project level added' : 'Project level saved')) return false;
     this._setDirty(false);
     return true;
   },
 
   _loadProjectById(id) {
+    if (!loadEditorProject(undefined, id) || !this._confirmLevelReplacement()) return false;
     const project = loadEditorProject(undefined, id);
     if (!project) return false;
     this._currentProject = project;
+    this._currentSavedId = '';
     this._refreshProjectList(project.id);
     this._refreshProjectLevelList(project.activeLevelId);
     const active = project.levels.find(level => level.id === project.activeLevelId) || project.levels[0];
     if (active) {
-      this._loadLevelFromText(active.text, { resetSaved: false });
+      this._loadLevelFromText(active.text, { resetSaved: false, skipUnsavedGuard: true });
     }
     this._updateStatus('Project loaded');
     return true;
@@ -183,26 +212,28 @@ const editorLevelIoUiMethods = {
 
   _loadProjectLevel(levelId) {
     if (!this._currentProject || !levelId) return false;
+    if (!this._currentProject.levels.some(entry => entry.id === levelId) || !this._confirmLevelReplacement()) return false;
     const level = this._currentProject.levels.find(entry => entry.id === levelId);
     if (!level) return false;
-    this._currentProject.activeLevelId = level.id;
-    saveEditorProject(undefined, this._currentProject);
+    const project = { ...this._currentProject, activeLevelId: level.id };
+    if (!this._saveProjectAndRefresh(project)) return false;
+    this._currentSavedId = '';
     this._refreshProjectList(this._currentProject.id);
     this._refreshProjectLevelList(level.id);
-    this._loadLevelFromText(level.text, { resetSaved: false });
+    this._loadLevelFromText(level.text, { resetSaved: false, skipUnsavedGuard: true });
     this._updateStatus('Project level loaded');
     return true;
   },
 
   _duplicateProjectLevel() {
     if (!this._currentProject?.activeLevelId) return false;
-    this._saveCurrentLevelToProject({ preserveTitle: true });
+    if (!this._saveCurrentLevelToProject({ preserveTitle: true })) return false;
     const activeLevel = this._currentProject.activeLevelId;
     const source = this._currentProject.levels.find(level => level.id === activeLevel);
     const title = this._promptText('Duplicate level as', `${source?.title || 'Level'} Copy`);
     if (!title) return false;
     const project = duplicateEditorProjectLevel(this._currentProject, activeLevel, { title });
-    this._saveProjectAndRefresh(project, 'Project level duplicated');
+    if (!this._saveProjectAndRefresh(project, 'Project level duplicated')) return false;
     this._loadProjectLevel(project.activeLevelId);
     return true;
   },
@@ -214,7 +245,7 @@ const editorLevelIoUiMethods = {
     const title = this._promptText('Rename project level', level.title);
     if (!title) return false;
     const project = renameEditorProjectLevel(this._currentProject, level.id, title);
-    this._saveProjectAndRefresh(project, 'Project level renamed');
+    if (!this._saveProjectAndRefresh(project, 'Project level renamed')) return false;
     return true;
   },
 
@@ -224,7 +255,8 @@ const editorLevelIoUiMethods = {
     if (typeof confirm === 'function' && !confirm('Delete this project level?')) return false;
     const activeLevel = this._currentProject.activeLevelId;
     const project = deleteEditorProjectLevel(this._currentProject, activeLevel);
-    this._saveProjectAndRefresh(project, 'Project level deleted');
+    if (!this._saveProjectAndRefresh(project, 'Project level deleted')) return false;
+    this._setDirty(false);
     if (project.activeLevelId) {
       this._loadProjectLevel(project.activeLevelId);
     } else {
@@ -308,45 +340,43 @@ const editorLevelIoUiMethods = {
     });
   },
 
+  _getCurrentProjectForExport() {
+    const payload = this._getCurrentProjectLevelPayload();
+    return this._currentProject
+      ? upsertEditorProjectLevel(this._currentProject, { id: this._currentProject.activeLevelId || undefined, ...payload })
+      : createEditorProject({ name: payload.title, ...payload });
+  },
+
   _exportCurrentProjectPack() {
-    if (!this._currentProject) {
-      const project = this._createProjectFromCurrentLevel();
-      if (!project) return false;
-    } else {
-      this._saveCurrentLevelToProject();
-    }
-    const reportsByLevelId = this._buildProjectValidationReports(this._currentProject);
-    const packValidationReport = this._buildProjectPackValidationReport(this._currentProject);
-    const bundle = createEditorProjectPackBundle(this._currentProject, {
+    const project = this._getCurrentProjectForExport();
+    const reportsByLevelId = this._buildProjectValidationReports(project);
+    const packValidationReport = this._buildProjectPackValidationReport(project);
+    const bundle = createEditorProjectPackBundle(project, {
       packValidationReport,
       reportsByLevelId
     });
-    const filename = `${sanitizeFileName(this._currentProject.name)}.editor-pack.json`;
+    const filename = `${sanitizeFileName(project.name)}.editor-pack.json`;
     downloadTextFile(this.document, JSON.stringify(bundle, null, 2), filename, 'application/json');
     this._updateStatus('Project pack export');
     return true;
   },
 
   _exportCurrentProjectPackArchive() {
-    if (!this._currentProject) {
-      const project = this._createProjectFromCurrentLevel();
-      if (!project) return false;
-    } else {
-      this._saveCurrentLevelToProject();
-    }
-    const reportsByLevelId = this._buildProjectValidationReports(this._currentProject);
-    const packValidationReport = this._buildProjectPackValidationReport(this._currentProject);
-    const archive = createEditorProjectPackArchive(this._currentProject, {
+    const project = this._getCurrentProjectForExport();
+    const reportsByLevelId = this._buildProjectValidationReports(project);
+    const packValidationReport = this._buildProjectPackValidationReport(project);
+    const archive = createEditorProjectPackArchive(project, {
       packValidationReport,
       reportsByLevelId
     });
-    const filename = `${sanitizeFileName(this._currentProject.name)}.editor-pack-archive.json`;
+    const filename = `${sanitizeFileName(project.name)}.editor-pack-archive.json`;
     downloadTextFile(this.document, JSON.stringify(archive, null, 2), filename, 'application/json');
     this._updateStatus('Project pack archive export');
     return true;
   },
 
   _installProjectPackArchiveText(text) {
+    if (!this._confirmLevelReplacement()) return { ok: false, cancelled: true, project: null };
     const result = installEditorProjectPackArchive(undefined, text);
     if (!result.ok || !result.project) {
       const summary = result.report?.summary;
@@ -363,33 +393,37 @@ const editorLevelIoUiMethods = {
     const active = result.project.levels.find(level => level.id === result.project.activeLevelId)
       || result.project.levels[0];
     if (active) {
-      this._loadLevelFromText(active.text, { resetSaved: false });
+      this._loadLevelFromText(active.text, { resetSaved: false, skipUnsavedGuard: true });
     }
     this._updateStatus(`Pack archive installed: ${result.project.name}`);
     return result;
   },
 
   _saveCurrentLevel() {
-    if (!this.view?.editorSession?.level) return;
+    if (!this.view?.editorSession?.level) return false;
     const defaultName = this.view.getEditorLevelTitle?.() || 'Untitled';
     const prompt = this.window?.prompt;
-    if (typeof prompt !== 'function') return;
+    if (typeof prompt !== 'function') return false;
     const name = normalizeText(prompt('Save level as', defaultName));
-    if (!name) return;
+    if (!name) return false;
     const text = this.view.getEditorLevelText();
     const id = saveLevel(undefined, {
       id: this._currentSavedId || undefined,
       name,
       text
     });
-    if (!id) return;
+    if (!id) {
+      this._reportStorageFailure();
+      return false;
+    }
     this._currentSavedId = id;
     this._refreshSavedList(id);
     this._setDirty(false);
+    return true;
   },
 
   async _createNewLevel() {
-    if (!this.view) return;
+    if (!this.view || !this._confirmLevelReplacement()) return false;
     const token = this._nextAsyncToken();
     this._clearTransientIssue?.('import');
     this._clearSolvabilityCheck?.();
@@ -398,11 +432,11 @@ const editorLevelIoUiMethods = {
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.resetHistory('New');
-    this._setDirty(false);
     this._refreshUndoRedo();
     this._needsDefaultEntrances = true;
     this._currentSavedId = '';
     this._currentProject = null;
+    this._setDirty(false);
     this._refreshSavedList('');
     this._refreshProjectList('');
     await this._reloadAssets(token);
@@ -547,7 +581,7 @@ const editorLevelIoUiMethods = {
   },
 
   _loadLevelFromText(text, options = {}) {
-    if (!this.view) return;
+    if (!this.view || (!options.skipUnsavedGuard && !this._confirmLevelReplacement())) return false;
     const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
     let level = null;
     try {
@@ -563,6 +597,7 @@ const editorLevelIoUiMethods = {
     this._clearTransientIssue?.('import');
     this._clearSolvabilityCheck?.();
     if (options.resetSaved) {
+      this._currentSavedId = '';
       this._currentProject = null;
       this._refreshProjectList('');
     }
@@ -570,10 +605,10 @@ const editorLevelIoUiMethods = {
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
+    this.controller.resetHistory('Import');
+    this._setDirty(false);
     this._reloadAssets(token).then(async () => {
       if (!this._isAsyncCurrent(token)) return;
-      this.controller.resetHistory('Import');
-      this._setDirty(false);
       this._refreshUndoRedo();
       this._refreshHeaderFields(level);
       this._refreshSelection(null);
@@ -581,10 +616,11 @@ const editorLevelIoUiMethods = {
       if (options.resetSaved) this._refreshSavedList('');
       await this._refreshPreview('Import', { preserveView: false, token });
     });
+    return true;
   },
 
   _loadLevelFromClassic(levelReader, options = {}) {
-    if (!this.view) return;
+    if (!this.view || (!options.skipUnsavedGuard && !this._confirmLevelReplacement())) return false;
     const token = Number.isFinite(options.token) ? options.token : this._nextAsyncToken();
     const session = this.view.ensureEditorSession?.() || this.session;
     let editorLevel = null;
@@ -601,6 +637,7 @@ const editorLevelIoUiMethods = {
     this._clearTransientIssue?.('import');
     this._clearSolvabilityCheck?.();
     if (options.resetSaved) {
+      this._currentSavedId = '';
       this._currentProject = null;
       this._refreshProjectList('');
     }
@@ -609,10 +646,10 @@ const editorLevelIoUiMethods = {
     this.controller.session = this.session;
     ensureLevelEntryUids(this.session?.level);
     this.controller.clearSelection();
+    this.controller.resetHistory('Import LVL');
+    this._setDirty(false);
     this._reloadAssets(token).then(async () => {
       if (!this._isAsyncCurrent(token)) return;
-      this.controller.resetHistory('Import LVL');
-      this._setDirty(false);
       this._refreshUndoRedo();
       this._refreshHeaderFields(editorLevel);
       this._refreshSelection(null);
@@ -620,6 +657,7 @@ const editorLevelIoUiMethods = {
       if (options.resetSaved) this._refreshSavedList('');
       await this._refreshPreview('Import LVL', { preserveView: false, token });
     });
+    return true;
   },
 
   async _reloadAssets(token = this._asyncToken) {

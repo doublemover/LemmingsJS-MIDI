@@ -145,7 +145,7 @@ describe('EditorStorage', () => {
       removeItem() { throw new Error('fail'); }
     };
     const id = saveLevel(storage, { id: 'bad', name: 'Bad', text: 'x', updatedAt: 1 });
-    expect(id).to.equal('bad');
+    expect(id).to.equal(null);
     const removed = deleteLevel(storage, 'bad');
     expect(removed).to.equal(true);
   });

@@ -1,4 +1,5 @@
 import { getRuntimeDependency } from '../core/dependencies.js';
+import { writeStorageEntries } from './EditorStorageTransaction.js';
 
 const EDITOR_PROJECT_VERSION = 1;
 const EDITOR_PROJECT_BUNDLE_KIND = 'lemmings.editor.pack.bundle';
@@ -23,7 +24,8 @@ const safeGetItem = (storage, key) => {
 
 const safeSetItem = (storage, key, value) => {
   try {
-    storage?.setItem?.(key, value);
+    if (typeof storage?.setItem !== 'function') return false;
+    storage.setItem(key, value);
     return true;
   } catch (error) {
     return false;
@@ -310,9 +312,6 @@ const saveEditorProject = (storage = getDefaultStorage(), project) => {
     ...project,
     updatedAt: now
   });
-  if (!safeSetItem(storage, PROJECT_STORAGE_KEYS.projectPrefix + sanitized.id, JSON.stringify(sanitized))) {
-    return sanitized.id;
-  }
   const parsed = parseIndex(safeGetItem(storage, PROJECT_STORAGE_KEYS.index));
   const entries = sanitizeProjectIndex(parsed.entries);
   const nextEntry = projectToIndexEntry(sanitized);
@@ -322,7 +321,10 @@ const saveEditorProject = (storage = getDefaultStorage(), project) => {
   } else {
     entries.push(nextEntry);
   }
-  writeProjectIndex(storage, entries);
+  if (!writeStorageEntries(storage, [
+    [PROJECT_STORAGE_KEYS.projectPrefix + sanitized.id, JSON.stringify(sanitized)],
+    [PROJECT_STORAGE_KEYS.index, JSON.stringify({ version: EDITOR_PROJECT_VERSION, entries })]
+  ])) return null;
   return sanitized.id;
 };
 
@@ -609,10 +611,14 @@ const installEditorProjectPackArchive = (storage = getDefaultStorage(), input, o
   const projectId = options.save === false
     ? result.project.id
     : saveEditorProject(storage, result.project);
-  return {
-    ...result,
-    projectId
-  };
+  if (!projectId) {
+    const report = createArchiveInstallReport([
+      ...result.report.issues,
+      createArchiveReportIssue('pack_archive_storage_failed', 'Pack archive could not be saved to local storage.')
+    ], result.report.pack);
+    return { ...result, ok: false, report, projectId: null };
+  }
+  return { ...result, projectId };
 };
 
 const __test__ = {

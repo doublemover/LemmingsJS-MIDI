@@ -132,7 +132,7 @@ describe('EditorProjectStorage', () => {
 
     expect(listSavedProjects(storage)).to.deep.equal([]);
     expect(loadEditorProject(storage, 'missing')).to.equal(null);
-    expect(saveEditorProject(storage, createEditorProject({ id: 'safe' }))).to.equal('safe');
+    expect(saveEditorProject(storage, createEditorProject({ id: 'safe' }))).to.equal(null);
     expect(deleteEditorProject(storage, 'safe')).to.equal(true);
   });
 
