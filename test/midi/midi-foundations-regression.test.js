@@ -131,6 +131,8 @@ describe('MIDI foundations regressions', function() {
     expect(firstCalls.filter(call => call.type === 'allNotesOff').map(call => call.id)).to.deep.equal([1, 4]);
     expect(secondCalls.filter(call => call.type === 'allNotesOff').map(call => call.id)).to.deep.equal([1, 9]);
     expect(scheduler._activeNotes.size).to.equal(0);
+    expect(scheduler._usedOutputChannels.size).to.equal(2);
+    scheduler.dispose();
     expect(scheduler._usedOutputChannels.size).to.equal(0);
   });
 
@@ -157,6 +159,39 @@ describe('MIDI foundations regressions', function() {
       });
     });
   }
+
+  it('keeps used-channel Panic messages intact across repeated Panic and queue clearing', function() {
+    withFakeClockAndPerformance(clock => {
+      const fixture = makeScheduledOutput('out', clock);
+      const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+      scheduler.setOutput(fixture.output);
+      scheduler.sendNote({ note: 60, channel: 4, durationTicks: 0 });
+      fixture.flush();
+      expect([...fixture.active]).to.deep.equal(['4:60']);
+      scheduler.allNotesOff();
+      scheduler.clearQueue();
+      scheduler.allNotesOff();
+      fixture.flush();
+      expect([...fixture.active]).to.deep.equal([]);
+      scheduler.dispose();
+    });
+  });
+
+  it('releases sustain and silences other outputs even when one has disconnected', function() {
+    const calls = [];
+    const scheduler = new MidiScheduler({ mpe: { enabled: false } });
+    const disconnected = makeOutput([1, 4], [], 'gone');
+    const connected = makeOutput([1, 9], calls, 'live');
+    scheduler.setOutput(disconnected);
+    scheduler.sendNote({ note: 60, channel: 4, durationTicks: 0 });
+    scheduler.setOutputs([connected]);
+    scheduler.sendNote({ note: 62, channel: 9, outputId: 'live', durationTicks: 0 });
+    disconnected.channels[4].sendControlChange = () => { throw new Error('Disconnected'); };
+    expect(() => scheduler.allNotesOff()).not.to.throw();
+    expect(calls.some(call => call.type === 'cc' && call.id === 9 && call.cc === 64 && call.value === 0)).to.equal(true);
+    expect(calls.some(call => call.type === 'cc' && call.id === 9 && call.cc === 120 && call.value === 0)).to.equal(true);
+    expect(scheduler._activeNotes.size).to.equal(0);
+  });
 
   it('clearQueue and disposal stop ordinary held notes', function() {
     for (const method of ['clearQueue', 'dispose']) {

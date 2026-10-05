@@ -255,19 +255,28 @@ const midiSchedulerSendMethods = {
       for (const ch of usedChannels) {
         const channel = output.channels?.[ch];
         if (!channel) continue;
-        channel.sendAllNotesOff?.();
-        channel.sendPitchBend?.(0);
+        try {
+          channel.sendControlChange?.(64, 0);
+          channel.sendControlChange?.(120, 0);
+          channel.sendAllNotesOff?.();
+          channel.sendPitchBend?.(0);
+        } catch (error) {
+          // A disconnected output must not prevent Panic reaching the other channels.
+        }
       }
       if (!cleared) {
         for (const pending of this._pendingNoteOns.values()) {
           if (pending.output !== output || pending.timeMs <= now) continue;
           const channel = output.channels?.[pending.channel];
-          channel?.sendNoteOff?.(pending.note, { time: pending.timeMs + 1 });
-          channel?.sendPitchBend?.(0, { time: pending.timeMs + 1 });
+          try {
+            channel?.sendNoteOff?.(pending.note, { time: pending.timeMs + 1 });
+            channel?.sendPitchBend?.(0, { time: pending.timeMs + 1 });
+          } catch (error) {
+            // Continue silencing other queued notes when an output has disconnected.
+          }
         }
       }
     }
-    this._usedOutputChannels.clear();
     this._pendingNoteOns.clear();
     this._noteOffs.length = 0;
     if (this._noteOffTimerId) {
@@ -282,14 +291,21 @@ const midiSchedulerSendMethods = {
   },
 
   clearQueue() {
-    this.allNotesOff();
+    if (this._activeNotes.size || this._pendingNoteOns.size || this._noteOffs.length) this.allNotesOff();
+    this._rateSent.length = 0;
+    this._ratePlanned.length = 0;
   },
 
   dispose() {
     for (const [ch, active] of this._activeByChannel.entries()) {
-      this._stopActiveChannel(active?.channel ?? ch, active?.outputId ?? null);
+      try {
+        this._stopActiveChannel(active?.channel ?? ch, active?.outputId ?? null);
+      } catch (error) {
+        // Panic still needs to silence the remaining outputs during disposal.
+      }
     }
     this.allNotesOff();
+    this._usedOutputChannels.clear();
     this.output = null;
     this._outputsById.clear();
   },
