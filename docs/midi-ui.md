@@ -1,5 +1,7 @@
 # Game sound editor
 
+Pitch labels use C4 for MIDI note 60; MIDI note 74 is D5.
+
 Choose **MIDI Studio** in the game toolbar. It starts hidden on every page load;
 opening it does not enable audio or request device access. On wide screens the
 editor docks beside the game instead of covering terrain. Smaller screens use

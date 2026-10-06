@@ -2327,7 +2327,12 @@ const createMidiUiController = ({
     setText(document?.getElementById('midiOutputLog'), outputLog[0] || 'No output yet');
   };
 
+  let rendering = false;
   const render = () => {
+    // Removing a changed, focused input can synchronously emit another change.
+    // Finish this render before rebuilding the same grid again.
+    if (rendering) { queueRender(); return; }
+    rendering = true;
     const startedAt = nowMs();
     try {
       syncRuntimeSources();
@@ -2344,6 +2349,7 @@ const createMidiUiController = ({
       localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
+      rendering = false;
       uiMetrics.renderCount += 1;
       uiMetrics.lastRenderAt = Date.now();
       uiMetrics.lastRenderDurationMs = Math.max(0, nowMs() - startedAt);

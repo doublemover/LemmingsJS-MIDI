@@ -21,7 +21,7 @@ const openMidiUi = async (page, { resetStorage = false, withDevices = true, perm
 const revealMidiControl = async (page, selector) => {
   const view = await page.locator(selector).first().evaluate(element => element.closest('.midi-editor-view')?.id || null);
   const buttons = { midiSoundsView: 'midiViewSounds', midiDevicesView: 'midiViewDevices', midiProjectView: 'midiViewProject', midiExpertView: 'midiViewExpert' };
-  if (buttons[view]) await page.locator(`#${buttons[view]}`).click();
+  if (buttons[view] && !await page.locator(`#${view}`).isVisible()) await page.locator(`#${buttons[view]}`).click();
 };
 
 const setFieldValue = async (page, selector, value) => {
@@ -1076,7 +1076,7 @@ test('MIDI studio is opt-in, keeps saved audio state, and closes transient captu
   await page.locator('#midiMappingNote').fill('74');
   await revealMidiControl(page, '#midiMappingNote');
   await page.locator('#midiMappingNote').press('Tab');
-  await expect(page.locator('#midiMappingNoteName')).toHaveText('D4');
+  await expect(page.locator('#midiMappingNoteName')).toHaveText('D5');
   await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add' }));
   const saved = await page.evaluate(() => window.__E2E__.midiGetProject());
   for (let i = 0; i < 3; i += 1) {

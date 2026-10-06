@@ -983,6 +983,8 @@ body.game-page.studio-open { display: grid; grid-template-columns: minmax(0, 1fr
 #midiExpertView .midi-source-list, #midiExpertView .midi-track-list, #midiExpertView .midi-clip-list { max-height: 220px; overflow-y: auto; }
 #midiExpertView .midi-inline-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-wrap: wrap; }
 #midiExpertView .midi-output-status { display: block; }
+#midiExpertView .midi-automation-row { grid-template-columns: repeat(auto-fit, minmax(min(100%, 120px), 1fr)); }
+#midiExpertView .midi-automation-row > button { grid-row: 1; grid-column: -2 / -1; align-self: start; }
 @media (max-width: 900px) {
     body.game-page.studio-open { display: flex; }
     .studio-open .midi-sequencer { order: 2; flex: 0 1 52dvh; min-height: 240px; margin: 4px; }
