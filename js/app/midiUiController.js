@@ -528,12 +528,25 @@ const createMidiUiController = ({
     return project;
   };
 
+  let appliedRuntimeView = null;
+  let appliedRuntimeConfig = null;
+  let appliedRuntimeMapping = null;
+  let appliedRuntimeRouter = null;
   const applyProjectToRuntime = () => {
     const lemmings = getLemmings();
     if (!lemmings) return;
     const config = getProjectConfig();
-    if (typeof lemmings.setMidiProjectConfig === 'function') {
+    if (typeof lemmings.setMidiProjectConfig === 'function' && (
+      appliedRuntimeView !== lemmings ||
+      appliedRuntimeConfig !== config ||
+      appliedRuntimeRouter !== lemmings.midiRouter ||
+      appliedRuntimeMapping !== lemmings.getMidiConfig?.()
+    )) {
       lemmings.setMidiProjectConfig(config);
+      appliedRuntimeView = lemmings;
+      appliedRuntimeConfig = config;
+      appliedRuntimeMapping = lemmings.getMidiConfig?.();
+      appliedRuntimeRouter = lemmings.midiRouter;
     }
     lemmings.midiEnabled = !!project?.enabled;
   };
@@ -2180,7 +2193,7 @@ const createMidiUiController = ({
     getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
     if (!localAudio) localAudio = createPreviewAudio({ onStateChange: renderLocalSummary });
     if (!localGamePreview) localGamePreview = createLocalGamePreview({
-      getLemmings, getConfig: getProjectConfig, audio: localAudio, onStateChange: renderLocalSummary
+      getLemmings, getConfig: getProjectConfig, immutableConfig: true, audio: localAudio, onStateChange: renderLocalSummary
     });
     return localGamePreview;
   };

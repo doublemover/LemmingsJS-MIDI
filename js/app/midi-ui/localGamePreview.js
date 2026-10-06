@@ -16,11 +16,12 @@ const localConfig = (source) => {
   return config;
 };
 
-const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), onStateChange, audio = createBrowserNotePreview() } = {}) => {
+const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({}), immutableConfig = false, onStateChange, audio = createBrowserNotePreview() } = {}) => {
   let router = null;
   let attachedView = null;
   let generation = 0;
   let configKey = null;
+  let sourceConfig = null;
   let status = 'off';
   let message = 'Browser preview is off.';
   let disposed = false;
@@ -43,6 +44,7 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
     router?.dispose();
     router = null;
     configKey = null;
+    sourceConfig = null;
   };
   const stop = () => {
     generation += 1;
@@ -53,8 +55,11 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
   };
   const syncConfig = () => {
     if (!router || disposed) return false;
-    const config = localConfig(getConfig());
+    const source = getConfig();
+    if (immutableConfig && source === sourceConfig) return false;
+    const config = localConfig(source);
     const nextKey = JSON.stringify(config);
+    sourceConfig = source;
     if (nextKey === configKey) return false;
     router.scheduler.allNotesOff();
     router.setMapping(config);
@@ -96,11 +101,13 @@ const createLocalGamePreview = ({ getLemmings = () => null, getConfig = () => ({
         report('error', 'The game changed while audio was starting. Try preview again.');
         return false;
       }
-      const config = localConfig(getConfig());
+      const source = getConfig();
+      const config = localConfig(source);
       router = new MidiEventRouter(config);
       router.setOutput(audio.output);
       router.setOutputs([audio.output]);
       configKey = JSON.stringify(config);
+      sourceConfig = source;
       attachedView = view;
       view.setMidiPreviewRouter(router, stop);
       report('live', 'Listening to game notes in the browser. No MIDI is sent.');

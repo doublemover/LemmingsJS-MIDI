@@ -6,7 +6,7 @@ import {
 } from './SolverTypes.js';
 import { buildReachabilityGraph } from './ReachabilityGraph.js';
 import { analyzeSolverCrowd } from './SolverCrowd.js';
-import { stableHash } from './SolverState.js';
+import { extractSolverState, isSolverState, stableHash } from './SolverState.js';
 
 const EDGE_TYPE_ORDER = Object.freeze({
   spawn: 0,
@@ -114,8 +114,11 @@ const planSolverRoute = (input, options = {}) => {
     ...normalizeSolverOptions(options),
     allowDestructiveSkills: options.allowDestructiveSkills !== false
   };
-  const graph = options.graph ?? buildReachabilityGraph(input, options);
-  const crowd = options.crowd ?? analyzeSolverCrowd(input, options);
+  const snapshot = options.graph != null && options.crowd != null
+    ? input
+    : (isSolverState(input) ? input : extractSolverState(input, options));
+  const graph = options.graph ?? buildReachabilityGraph(snapshot, options);
+  const crowd = options.crowd ?? analyzeSolverCrowd(snapshot, options);
   if (crowd.targetSaveCount > 0 && crowd.maximumReachableSaveCount < crowd.targetSaveCount) {
     const result = createSolverResult({
       resultType: SOLVER_RESULT_TYPES.FAILED,

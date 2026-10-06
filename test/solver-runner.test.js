@@ -9,6 +9,9 @@ import {
 } from '../js/solver/SolverTypes.js';
 import {
   createBuiltInLevelRunner,
+  SyntheticSolverRunner,
+  RuntimeGameSolverRunner,
+  DelegatingRuntimeSolverRunner,
   createEditorLevelRunner,
   createProcgenChunkRunner,
   createRunnerFromSource,
@@ -16,6 +19,50 @@ import {
 } from '../js/solver/SolverRunner.js';
 
 describe('SolverRunner', function () {
+  it('omits discarded built-in step summaries but preserves the public step return', function () {
+    const runner = new SyntheticSolverRunner(createFlatWalkFixture());
+    const original = runner.getFinalStateSummary;
+    let summaries = 0;
+    runner.getFinalStateSummary = function () { summaries += 1; return original.call(this); };
+    const result = verifyActionReplay(runner, [], { maxTicks: 4, targetSaveCount: 1 });
+    expect(result.budgetUsage.ticks).to.equal(4);
+    expect(summaries).to.equal(1);
+    expect(runner.step(2).tick).to.equal(6);
+    expect(summaries).to.equal(2);
+  });
+
+  it('advances runtime and nested built-in runners without constructing summaries', function () {
+    let tick = 0;
+    let summaries = 0;
+    const runtime = {
+      getGameTimer: () => ({ tick: count => { tick += count; } }),
+      getSolverSummary: () => { summaries += 1; return { tick }; }
+    };
+    const runner = new RuntimeGameSolverRunner('builtin', { runtime });
+    const nested = new DelegatingRuntimeSolverRunner('builtin', runner);
+    nested._advanceWithoutSummary(3);
+    expect(tick).to.equal(3);
+    expect(summaries).to.equal(0);
+    expect(nested.step(2).tick).to.equal(5);
+    expect(summaries).to.equal(1);
+    runtime.step = count => { tick += count; return 'custom-return'; };
+    expect(runner.step(2)).to.equal('custom-return');
+    runner._advanceWithoutSummary(2);
+    expect(tick).to.equal(9);
+  });
+
+  it('retains overridden adapter step semantics through direct and delegated replay', function () {
+    class CustomRunner extends SyntheticSolverRunner {
+      step(count = 1) { this.stepCalls = (this.stepCalls || 0) + 1; return super.step(count); }
+    }
+    for (const delegated of [false, true]) {
+      const custom = new CustomRunner(createFlatWalkFixture());
+      const runner = delegated ? new DelegatingRuntimeSolverRunner('builtin', custom) : custom;
+      verifyActionReplay(runner, [], { maxTicks: 4, targetSaveCount: 1 });
+      expect(custom.stepCalls).to.equal(4);
+    }
+  });
+
   it('creates a deterministic runner from synthetic fixture descriptors', function () {
     const created = createRunnerFromSource({
       kind: 'synthetic',

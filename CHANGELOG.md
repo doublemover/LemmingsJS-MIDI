@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `DisplayImage.drawDashedRect` now handles the RGB signature used by the editor overlay.
 
 ### Changed
+- Remove discarded solver step summaries, share route input snapshots, skip irrelevant object ground checks, reuse unchanged history scalars, and preserve MIDI arpeggio progression across unchanged UI refreshes.
 - Replace the default MIDI control catalogue with readable game events and one sound inspector; separate Devices, Project, and Expert workspaces, show active key truthfully, and dock the editor beside the game.
 - Move game selectors and saved-level tools above the play surface, place level arrows in a right-side touch rail, and size the canvas to the remaining responsive space.
 - Start MIDI Studio with event palettes and collapse detailed routing by default; reuse unchanged derived MIDI configs instead of rebuilding them per input message.

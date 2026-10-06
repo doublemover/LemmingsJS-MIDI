@@ -370,19 +370,19 @@ const historyStoreDiffMethods = {
     }
     this._skillsState = nextSkills;
 
-    const nextVictory = this._readVictory(game.getVictoryCondition?.());
+    const nextVictory = this._readVictory(game.getVictoryCondition?.(), this._victoryState);
     if (this._victoryState && nextVictory && !this._victoryEqual(this._victoryState, nextVictory)) {
       delta.victoryChanges = { prev: this._victoryState, next: nextVictory };
     }
     this._victoryState = nextVictory;
 
-    const nextTimer = this._readTimer(game.getGameTimer?.());
+    const nextTimer = this._readTimer(game.getGameTimer?.(), undefined, this._timerState);
     if (this._timerState && nextTimer && !this._timerEqual(this._timerState, nextTimer)) {
       delta.timerChanges = { prev: this._timerState, next: nextTimer };
     }
     this._timerState = nextTimer;
 
-    const nextGame = this._readGameState(game);
+    const nextGame = this._readGameState(game, this._gameState);
     if (this._gameState && nextGame && !this._gameStateEqual(this._gameState, nextGame)) {
       delta.gameChanges = { prev: this._gameState, next: nextGame };
     }
@@ -429,8 +429,9 @@ const historyStoreDiffMethods = {
     return true;
   },
 
-  _readVictory(victory) {
+  _readVictory(victory, previous = null) {
     if (!victory) return null;
+    if (previous && this._victoryEqual(previous, victory)) return previous;
     return {
       releaseRate: victory.releaseRate,
       minReleaseRate: victory.minReleaseRate,
@@ -451,8 +452,9 @@ const historyStoreDiffMethods = {
         && !!a.isFinalize === !!b.isFinalize;
   },
 
-  _readTimer(timer, { includeTickIndex = false } = {}) {
+  _readTimer(timer, { includeTickIndex = false } = {}, previous = null) {
     if (!timer) return null;
+    if (!includeTickIndex && previous && this._timerEqual(previous, timer)) return previous;
     const state = {
       speedFactor: timer.speedFactor,
       frameTime: timer.frameTime
@@ -469,8 +471,9 @@ const historyStoreDiffMethods = {
         && a.frameTime === b.frameTime;
   },
 
-  _readGameState(game) {
+  _readGameState(game, previous = null) {
     if (!game) return null;
+    if (previous && previous.finalGameState === game.finalGameState) return previous;
     return { finalGameState: game.finalGameState };
   },
 

@@ -207,10 +207,11 @@ const createControllerHarness = ({
     },
     ...lemmings
   };
+  let currentView = view;
   const controller = createMidiUiController({
     window: win,
     document: doc,
-    getLemmings: () => view,
+    getLemmings: () => currentView,
     getWebMidi: () => webMidi,
     ...(createPreviewAudio ? { createPreviewAudio } : {}),
     downloadTextFile(document, text, filename, mimeType) {
@@ -221,10 +222,33 @@ const createControllerHarness = ({
       return Promise.resolve(file?.text ?? '');
     }
   });
-  return { controller, doc, win, view, webMidi };
+  return { controller, doc, win, view, webMidi, setView(next) { currentView = next; } };
 };
 
 describe('midiUiController sequencer', function() {
+  it('skips unchanged runtime mapping applications and preserves every invalidation boundary', function() {
+    const { controller, view, setView } = createControllerHarness();
+    controller.bindMidiUi();
+    const initial = view.projectConfigs.length;
+    for (let i = 0; i < 3; i += 1) controller.refreshMidiUiFromConfig();
+    expect(view.projectConfigs.length).to.equal(initial);
+    view._midiConfig = {};
+    controller.refreshMidiUiFromConfig();
+    expect(view.projectConfigs.length).to.equal(initial + 1);
+    view.midiRouter = {};
+    controller.refreshMidiUiFromConfig();
+    expect(view.projectConfigs.length).to.equal(initial + 2);
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 75 } });
+    expect(view.projectConfigs.length).to.equal(initial + 3);
+    const nextView = { ...view, projectConfigs: [] };
+    setView(nextView);
+    controller.refreshMidiUiFromConfig();
+    expect(nextView.projectConfigs.length).to.equal(1);
+    controller.refreshMidiUiFromConfig();
+    expect(nextView.projectConfigs.length).to.equal(1);
+    controller.dispose();
+  });
+
   it('starts hidden and toggles repeatedly without changing saved MIDI state', function() {
     const { controller, doc, win, view } = createControllerHarness();
     controller.bindMidiUi();

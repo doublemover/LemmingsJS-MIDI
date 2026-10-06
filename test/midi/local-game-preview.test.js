@@ -87,6 +87,29 @@ const setup = (options = {}) => {
 };
 
 describe('local game note preview', function() {
+  it('reuses immutable source identity without resetting arpeggios and refreshes after restart', async function() {
+    const state = setup({ immutableConfig: true });
+    await state.local.start();
+    const router = state.view.midiPreviewRouter;
+    router._arpStateBySfx.set('test', { index: 2 });
+    const original = router.setMapping;
+    let updates = 0;
+    router.setMapping = function(mapping) { updates += 1; original.call(this, mapping); };
+    expect(state.local.syncConfig()).to.equal(false);
+    expect(state.local.syncConfig()).to.equal(false);
+    expect(router._arpStateBySfx.get('test')).to.deep.equal({ index: 2 });
+    expect(updates).to.equal(0);
+    state.source = { ...state.source, sfx: { [SoundEffectIds.SPAWN]: { note: 73 } } };
+    expect(state.local.syncConfig()).to.equal(true);
+    expect(updates).to.equal(1);
+    expect(router._arpStateBySfx.size).to.equal(0);
+    state.local.stop();
+    expect(await state.local.start()).to.equal(true);
+    expect(state.view.midiPreviewRouter).not.to.equal(router);
+    expect(state.view.midiPreviewRouter.mapping.config.sfx[SoundEffectIds.SPAWN].note).to.equal(73);
+    await state.local.dispose();
+  });
+
   it('refuses excluded mobile preview before initializing browser audio or routing', async function() {
     const { view, audio, local } = setup();
     view.midiAvailable = false;

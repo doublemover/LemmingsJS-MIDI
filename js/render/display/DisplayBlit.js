@@ -195,7 +195,7 @@ const displayBlitMethods = {
 
   drawFrameFlags(frame, x, y, cfg) {
     this._blit(frame, x, y, {
-      checkGround:   true,
+      checkGround:   !!(cfg.onlyOverwrite || cfg.noOverwrite),
       onlyOverwrite: cfg.onlyOverwrite,
       noOverwrite:   cfg.noOverwrite,
       upsideDown:    cfg.isUpsideDown,

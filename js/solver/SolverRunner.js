@@ -181,11 +181,15 @@ class SyntheticSolverRunner {
     return this.getActiveLemmings().length === 0;
   }
 
-  step(count = 1) {
+  _advanceWithoutSummary(count = 1) {
     const safeCount = Math.max(1, toInteger(count, 1));
     for (let i = 0; i < safeCount; i += 1) {
       this.#stepOneTick();
     }
+  }
+
+  step(count = 1) {
+    this._advanceWithoutSummary(count);
     return this.getFinalStateSummary();
   }
 
@@ -458,6 +462,10 @@ class DelegatingRuntimeSolverRunner {
     return summary.activeCount <= 0 && summary.leftCount <= 0;
   }
 
+  _advanceWithoutSummary(count = 1) {
+    advanceWithoutSummary(this.runner, count);
+  }
+
   step(count = 1) {
     return this.runner.step(count);
   }
@@ -590,22 +598,30 @@ class RuntimeGameSolverRunner {
     return left <= 0 && out <= 0;
   }
 
-  step(count = 1) {
+  _advanceWithoutSummary(count = 1) {
     const safeCount = Math.max(1, toInteger(count, 1));
     if (typeof this.runtime?.step === 'function' && this.runtime !== this) {
-      return this.runtime.step(safeCount);
+      this.runtime.step(safeCount);
+      return;
     }
     const timer = this.getTimer();
     if (typeof timer?.tick === 'function') {
       timer.tick(safeCount);
-      return this.getFinalStateSummary();
+      return;
     }
     if (typeof this.runtime?.runGameLogic === 'function') {
       for (let i = 0; i < safeCount; i += 1) {
         this.runtime.runGameLogic();
       }
-      return this.getFinalStateSummary();
     }
+  }
+
+  step(count = 1) {
+    const safeCount = Math.max(1, toInteger(count, 1));
+    if (typeof this.runtime?.step === 'function' && this.runtime !== this) {
+      return this.runtime.step(safeCount);
+    }
+    this._advanceWithoutSummary(safeCount);
     return this.getFinalStateSummary();
   }
 
@@ -709,6 +725,14 @@ class RuntimeGameSolverRunner {
     return withStateHash(summary);
   }
 }
+
+const advanceWithoutSummary = (runner, count = 1) => {
+  const builtIn = (runner instanceof SyntheticSolverRunner && runner.step === SyntheticSolverRunner.prototype.step) ||
+    (runner instanceof RuntimeGameSolverRunner && runner.step === RuntimeGameSolverRunner.prototype.step) ||
+    (runner instanceof DelegatingRuntimeSolverRunner && runner.step === DelegatingRuntimeSolverRunner.prototype.step);
+  if (builtIn) runner._advanceWithoutSummary(count);
+  else runner.step(count);
+};
 
 const createSyntheticRunner = (fixture, options = {}) => {
   const source = fixture?.fixture?.kind === SYNTHETIC_RUNNER_KIND ? fixture.fixture : fixture;
@@ -1121,7 +1145,7 @@ const verifyActionReplay = (runnerOrSource, actions = [], options = {}) => {
       return timeout();
     }
 
-    runner.step();
+    advanceWithoutSummary(runner);
     budgetUsage.ticks += 1;
     budgetUsage.nodes += 1;
   }

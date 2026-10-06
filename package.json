@@ -29,6 +29,7 @@
     "test-offline-tools": "node scripts/runTests.js offline-tools",
     "test-editor": "node scripts/runTests.js editor",
     "test:changed": "node scripts/runTests.js --changed",
+    "test:work-removal": "mocha test/work-removal.test.js test/solver-runner.test.js test/solver-tactical.test.js test/solver-integration.test.js test/displayimage-coverage.test.js test/history-store.diffing.test.js test/history-store.replay-apply.test.js test/time-travel-controller.seek.test.js test/midi/midi-ui-controller.test.js test/midi/local-game-preview.test.js test/midi/game-spatial-sounds.test.js test/midi/browser-note-preview.test.js",
     "test-e2e": "playwright test",
     "test-e2e:harness": "playwright test e2e/harness.game.spec.js e2e/harness.editor-mode.spec.js e2e/harness.editor-saved.spec.js e2e/harness.editor.01-editor-harness-exposes-state-and-history.spec.js e2e/harness.editor.02-editor-pack-switch-refreshes-palettes-and-placem.spec.js e2e/harness.editor.03-editor-eraser-removes-terrain-entries.spec.js e2e/harness.editor.04-editor-entrance-and-exit-tools-enforce-classic-l.spec.js e2e/harness.editor.05-editor-roundtrip-workflow.spec.js e2e/harness.editor.06-editor-playtest-runtime-workflow.spec.js",
     "test-e2e:ui": "playwright test --ui",
