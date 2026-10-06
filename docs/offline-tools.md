@@ -9,6 +9,22 @@ All scripts accept paths to level packs. A pack can be a folder or an archive
 (`.zip`, `.tar`, `.tar.gz`, `.tgz`, or `.rar`). The `NodeFileProvider` class lets
 the tools read from these sources without extracting them first.
 
+## exportAllLevels.js
+
+`npm run export-all-levels -- <new-output-directory>` exports every configured
+base-pack level as classic-data JSON, including resolved odd-table variants.
+The default destination is `exports/all-levels`. The destination must not exist;
+the command never overwrites an earlier export or modifies source packs.
+Each JSON has a stable pack/rank/index identity and source archive/part metadata.
+A manifest records titles, SHA-256 hashes and per-pack counts. Every record is
+read back and compared, and its classic data is serialized with LevelWriter and
+parsed with LevelReader to verify semantic roundtrip equality. Missing archive
+parts fail explicitly. Progress is printed after each pack.
+
+These JSON files are an archival/tooling format, not editor project archives.
+They preserve classic special-graphics references and require the source pack
+assets. The editor imports NXLV or LVL rather than this JSON schema.
+
 ## exportAllPacks.js
 
 ```

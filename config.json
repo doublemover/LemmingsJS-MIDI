@@ -39,7 +39,7 @@
     "level.groups"             : ["xmas"],
     "level.useOddTable"        : false,
     "level.order":  [
-      [0,1,2,3,4]
+      [0,1,2,3]
     ]
   },
   {
@@ -51,7 +51,7 @@
     "level.groups"             : ["xmas"],
     "level.useOddTable"        : false,
     "level.order":  [
-      [0,1,2,3,4]
+      [0,1,2,3]
     ]
   },
   {
