@@ -1,10 +1,14 @@
 import { getAppContext, getRuntimeDependency } from '../core/dependencies.js';
+import { resolveGameSoundSource, GAME_SOUND_EVENTS, getEventBehavior, createEventBehaviorPatch, transposeEventPitch, soundNoteName } from './midi-ui/midiSoundEditor.js';
+import { createBrowserNotePreview } from './midi-ui/browserNotePreview.js';
+import { createLocalGamePreview } from './midi-ui/localGamePreview.js';
 import { GAME_EVENT_MIDI_PRESETS, applyGameEventMidiPreset } from '../midi/project/GameEventMidiPresets.js';
 import {
   AUTOMATION_AXES,
   AUTOMATION_TARGETS,
   ARP_MODES,
   createDefaultMidiStep,
+  createMidiSourceFromMapping,
   createEmptyDirectMapping,
   createMidiProjectExportPayload,
   createMidiProjectFromMidiConfig,
@@ -139,7 +143,7 @@ const filenameSafe = (value, fallback) => {
 const isActionableConflict = (issue) => issue?.severity !== 'info';
 
 const setText = (element, value) => {
-  if (element) element.textContent = value;
+  if (element && element.textContent !== String(value)) element.textContent = value;
 };
 
 const setInputValue = (element, value) => {
@@ -249,7 +253,8 @@ const createMidiUiController = ({
   getWebMidi = () => getRuntimeDependency('webMidi', null),
   getMidiConfig = null,
   downloadTextFile = downloadTextFileDefault,
-  readTextFile = readTextFileDefault
+  readTextFile = readTextFileDefault,
+  createPreviewAudio = createBrowserNotePreview
 } = {}) => {
   const storage = window?.localStorage || getRuntimeDependency('localStorage', null);
   const domListeners = [];
@@ -268,6 +273,14 @@ const createMidiUiController = ({
   let cachedRuntimeProject = null;
   let cachedRuntimeFactory = null;
   let cachedRuntimeConfig = null;
+  let midiEnablePromise = null;
+  let midiEnableRequest = 0;
+  let midiConnectionPending = false;
+  let disposed = false;
+  let soundView = 'sounds';
+  let localAudio = null;
+  let localGamePreview = null;
+  let localInteraction = 0;
   const uiMetrics = {
     renderCount: 0,
     queuedRenderCount: 0,
@@ -1114,28 +1127,31 @@ const createMidiUiController = ({
     const outputs = toDeviceList(webMidi?.outputs);
     const inputSelect = document?.getElementById('midiInSelect');
     const outputSelect = document?.getElementById('midiOutSelect');
-    setAvailableMidiOutputs(outputs);
+    if (current.enabled) setAvailableMidiOutputs(outputs);
     populateMidiSelect(document, inputSelect, inputs, 'No input devices');
     populateMidiSelect(document, outputSelect, outputs, 'No output devices');
     const currentInput = preserveSelection ? (current.devices.inputId || activeMidiInput?.id || inputSelect?.value) : null;
     const currentOutput = preserveSelection ? (current.devices.outputId || getLemmings()?.midiOut?.id || outputSelect?.value) : null;
     const inputId = resolveMidiId(inputs, currentInput);
     const outputId = resolveMidiId(outputs, currentOutput);
-    if (inputSelect) inputSelect.value = inputId || '';
-    if (outputSelect) outputSelect.value = outputId || '';
-    if (inputId !== current.devices.inputId || outputId !== current.devices.outputId) {
+    if (!current.enabled) {
+      if (inputs.length && inputSelect) appendOption(document, inputSelect, '', 'Choose an input');
+      if (outputs.length && outputSelect) appendOption(document, outputSelect, '', 'Choose an output');
+    }
+    if (inputSelect) inputSelect.value = current.enabled ? (inputId || '') : (inputs.some(item => item.id === current.devices.inputId) ? current.devices.inputId : '');
+    if (outputSelect) outputSelect.value = current.enabled ? (outputId || '') : (outputs.some(item => item.id === current.devices.outputId) ? current.devices.outputId : '');
+    if (current.enabled && (inputId !== current.devices.inputId || outputId !== current.devices.outputId)) {
       project = saveMidiProject(storage, reduceMidiProject(current, {
         type: 'devices.set',
         devices: { inputId, outputId }
       }));
       applyProjectToRuntime();
     }
-    setActiveMidiInput(inputId);
-    setActiveMidiOutput(outputId);
+    setActiveMidiInput(current.enabled ? inputId : null);
+    if (current.enabled) setActiveMidiOutput(outputId);
     renderTrackOutputOptions(document?.getElementById('midiTrackOutputSelect'), selectedTrack()?.outputId);
     const missing = [];
-    if (!inputs.length) missing.push('No input device');
-    if (!outputs.length) missing.push('No output device');
+    if (!outputs.length && current.enabled) missing.push('No output device');
     showError(missing.join('. '));
   };
 
@@ -1173,6 +1189,7 @@ const createMidiUiController = ({
   };
 
   const panic = () => {
+    stopLocalPreview();
     const scheduler = getLemmings()?.midiRouter?.scheduler;
     scheduler?.allNotesOff?.();
     scheduler?.clearQueue?.();
@@ -2027,8 +2044,8 @@ const createMidiUiController = ({
     const clip = selectedClip();
     const phrasePreview = source?.mode === 'direct' && source.mapping?.phrase?.enabled;
     const auditionButton = document?.getElementById('midiAuditionButton');
-    setText(auditionButton, phrasePreview ? 'Preview first note' : 'Audition');
-    auditionButton?.setAttribute('aria-label', phrasePreview ? 'Preview first note of selected phrase' : 'Audition selected source');
+    setText(auditionButton, phrasePreview ? 'Send first note to MIDI' : 'Send MIDI test');
+    auditionButton?.setAttribute('aria-label', phrasePreview ? 'Send first phrase note to MIDI output' : 'Send selected source to MIDI output');
     const report = getConflictReport();
     setInputValue(document?.getElementById('midiTrackName'), track?.name);
     setInputValue(document?.getElementById('midiTrackInstrument'), track?.instrumentLabel);
@@ -2129,6 +2146,143 @@ const createMidiUiController = ({
       : 'midi-mapping';
   };
 
+  const renderLocalSummary = () => {
+    const localState = localGamePreview?.getState?.();
+    const audioState = localAudio?.getState?.();
+    const hardwareOn = !!getLemmings()?.midiEnabled && !!getWebMidi()?.enabled && !!getLemmings()?.midiOut;
+    const label = localState?.status === 'starting' ? 'Starting local audio'
+      : localState?.enabled ? 'Listening to game locally'
+        : audioState?.activeVoices ? 'Previewing this sound locally' : 'Local sound off';
+    setText(document?.getElementById('midiOutputSummary'), `${label} · MIDI ${hardwareOn ? 'on' : 'off'}`);
+    setText(document?.getElementById('midiLocalListenButton'), localState?.enabled || localState?.status === 'starting' || audioState?.activeVoices ? 'Stop listening' : 'Listen to game');
+  };
+
+  const ensureLocalPreview = () => {
+    getLemmings()?.setLocalAudioStopHandler?.(stopLocalPreview);
+    if (!localAudio) localAudio = createPreviewAudio({ onStateChange: renderLocalSummary });
+    if (!localGamePreview) localGamePreview = createLocalGamePreview({
+      getLemmings, getConfig: getProjectConfig, audio: localAudio, onStateChange: renderLocalSummary
+    });
+    return localGamePreview;
+  };
+
+  const stopLocalPreview = () => {
+    localInteraction += 1;
+    localGamePreview?.stop?.();
+    localAudio?.stop?.();
+    renderLocalSummary();
+  };
+
+  const chooseSoundView = (name) => {
+    soundView = ['sounds', 'devices', 'project', 'expert'].includes(name) ? name : 'sounds';
+    for (const view of ['sounds', 'devices', 'project', 'expert']) {
+      const suffix = view[0].toUpperCase() + view.slice(1);
+      const section = document?.getElementById(`midi${suffix}View`);
+      if (section) section.hidden = view !== soundView;
+      document?.getElementById(`midiView${suffix}`)?.setAttribute('aria-pressed', String(view === soundView));
+    }
+  };
+
+  const selectGameSound = (event) => {
+    const current = ensureProject();
+    const existing = resolveGameSoundSource(current, event);
+    if (existing) dispatchProjectIntent({ type: 'source.select', sourceId: existing.id });
+    else {
+      const mapping = getFactoryConfig()?.sfx?.[event.id] || { name: event.label, note: 60, disabled: true };
+      const source = createMidiSourceFromMapping('sfx', event.id, mapping, current.tracks[0]?.id);
+      commitProject({ ...current, sources: [...current.sources, source], ui: { ...current.ui, selectedSourceId: source.id } });
+    }
+  };
+
+  const renderSoundEditor = () => {
+    const current = ensureProject();
+    const source = selectedSource();
+    const mapping = source?.mapping || {};
+    const behavior = getEventBehavior(source);
+    const eventLabel = GAME_SOUND_EVENTS.find(event => resolveGameSoundSource(current, event)?.id === source?.id)?.label || source?.label || 'Choose an event';
+    const list = document?.getElementById('midiGameEventList');
+    const focused = document?.activeElement?.dataset?.gameEventId;
+    if (list) {
+      removeChildren(list);
+      const hasActiveEvent = GAME_SOUND_EVENTS.some(event => resolveGameSoundSource(current, event)?.id === source?.id);
+      for (const [index, event] of GAME_SOUND_EVENTS.entries()) {
+        const item = resolveGameSoundSource(current, event);
+        const row = document.createElement('button');
+        row.type = 'button'; row.className = 'midi-game-event'; row.dataset.gameEventId = String(event.id);
+        row.setAttribute('role', 'option');
+        row.setAttribute('aria-selected', String(item?.id === source?.id));
+        row.tabIndex = item?.id === source?.id || (!hasActiveEvent && index === 0) ? 0 : -1;
+        const label = document.createElement('strong'); label.textContent = event.label;
+        const summary = document.createElement('span');
+        const kind = getEventBehavior(item);
+        summary.textContent = !item?.enabled ? 'Off' : ({note:'One note',falling:'Falling phrase',rising:'Rising phrase',steps:'One note / event',custom:'Custom'})[kind];
+        row.append(label, summary);
+        row.addEventListener('click', () => selectGameSound(event));
+        list.appendChild(row);
+        if (focused === String(event.id)) row.focus?.();
+      }
+    }
+    setText(document?.getElementById('midiSoundTitle'), source ? `${eventLabel} sound` : eventLabel);
+    setText(document?.getElementById('midiActiveKeySummary'), `Key: ${KEY_ROOT_LABELS[current.global.scale.root] || 'C'} ${SCALE_LABELS[current.global.scale.name] || current.global.scale.name}`);
+    setChecked(document?.getElementById('midiSoundEnabled'), source?.enabled);
+    setInputValue(document?.getElementById('midiSoundBehavior'), behavior);
+    setInputValue(document?.getElementById('midiSoundPitch'), behavior === 'custom' ? '' : mapping.note ?? mapping.notes?.[0] ?? 60);
+    const basePitch = mapping.note ?? mapping.notes?.[0] ?? 60;
+    const heardPitch = clampNoteToRange(basePitch, current.global.noteRange);
+    setText(document?.getElementById('midiSoundPitchName'), behavior === 'custom' ? 'Custom'
+      : heardPitch === basePitch ? `${soundNoteName(basePitch)} (${basePitch})`
+        : `${soundNoteName(basePitch)} → ${soundNoteName(heardPitch)} (range limit)`);
+    setInputValue(document?.getElementById('midiSoundLevel'), mapping.velocity ?? current.global.velocityRange.default);
+    setText(document?.getElementById('midiSoundLevelValue'), `${mapping.velocity ?? current.global.velocityRange.default}`);
+    setInputValue(document?.getElementById('midiSoundSpacing'), mapping.phrase?.spacingTicks ?? 2);
+    const spacing = document?.getElementById('midiSoundSpacingField');
+    if (spacing) spacing.hidden = !['falling', 'rising'].includes(behavior);
+    for (const id of ['midiSoundPitch', 'midiSoundSpacing', 'midiSoundLevel', 'midiSoundEnabled', 'midiSoundPreview', 'midiSoundBehavior']) {
+      const control = document?.getElementById(id);
+      if (control) control.disabled = !source || (behavior === 'custom' && ['midiSoundPitch', 'midiSoundSpacing', 'midiSoundPreview'].includes(id));
+    }
+    const notes = (Array.isArray(mapping.notes) && mapping.notes.length ? [...mapping.notes] : [mapping.note ?? 60])
+      .map(note => clampNoteToRange(note, current.global.noteRange));
+    if (mapping.phrase?.enabled || mapping.arp?.enabled) {
+      notes.sort((a,b) => a-b);
+      if ((mapping.phrase?.mode || mapping.arp?.mode) === 'down') notes.reverse();
+    }
+    const contour = document?.getElementById('midiSoundContour');
+    if (contour) {
+      contour.hidden = behavior === 'custom';
+      removeChildren(contour);
+      contour.setAttribute('aria-label', behavior === 'custom' ? 'Custom sound: use detailed wiring' : notes.map(soundNoteName).join(', '));
+      const low = Math.min(...notes), high = Math.max(...notes);
+      for (const note of notes.slice(0, 8)) {
+        const bar = document.createElement('span');
+        bar.style.height = `${16 + (note - low) / Math.max(1, high - low) * 34}px`;
+        bar.title = `${soundNoteName(note)} (${note})`; bar.textContent = soundNoteName(note);
+        contour.appendChild(bar);
+      }
+    }
+    setText(document?.getElementById('midiSoundHint'), behavior === 'custom'
+      ? 'Your custom routing is preserved. Use detailed wiring to edit it, or explicitly choose a new behavior.'
+      : mapping.phrase?.enabled ? 'Each event starts this phrase. New events replace only unsounded notes; Land has its own plain note.'
+        : behavior === 'steps' ? 'Each successive game event advances one note. The game supplies the rhythm.'
+          : 'One plain note at the exact game event. Listen here uses browser audio only.');
+    chooseSoundView(soundView);
+    renderLocalSummary();
+  };
+
+  const renderConnectionControls = () => {
+    const available = !!getWebMidi()?.enabled;
+    const message = midiConnectionPending ? 'Connecting to MIDI devices…' : 'Connect MIDI to choose a device';
+    if (!available) {
+      populateMidiSelect(document, document?.getElementById('midiInSelect'), [], message);
+      populateMidiSelect(document, document?.getElementById('midiOutSelect'), [], message);
+    }
+    const channel = document?.getElementById('midiInputChannel');
+    if (channel) channel.disabled = !available;
+    setText(document?.getElementById('midiDeviceStatus'), midiConnectionPending
+      ? 'Waiting for browser access'
+      : (available ? 'Browser MIDI access ready' : 'No device connection'));
+  };
+
   const renderTransport = () => {
     const current = ensureProject();
     const enabledToggle = document?.getElementById('midiEnabledToggle');
@@ -2145,7 +2299,8 @@ const createMidiUiController = ({
     setChecked(document?.getElementById('midiReversePanicToggle'), current.global.reverse.allNotesOffOnToggle);
     renderTemplateOptions();
     document?.body?.classList?.toggle('midi-disabled', !current.enabled);
-    setStatus(current.enabled ? 'MIDI enabled' : 'MIDI disabled');
+    renderConnectionControls();
+    if (lastStatus === 'Project loading') setStatus('Project ready');
   };
 
   const renderOutputStatus = () => {
@@ -2166,6 +2321,8 @@ const createMidiUiController = ({
       renderModulation();
       renderClipInspector();
       renderOutputStatus();
+      renderSoundEditor();
+      localGamePreview?.syncConfig?.();
       if (getWebMidi()?.enabled) refreshDeviceLists({ preserveSelection: true });
     } finally {
       uiMetrics.renderCount += 1;
@@ -2302,6 +2459,7 @@ const createMidiUiController = ({
     if (!workspace) return;
     if (!visible) cancelActiveCapture();
     workspace.hidden = !visible;
+    document?.body?.classList?.toggle('studio-open', visible);
     toggle?.setAttribute('aria-expanded', String(visible));
     if (focus) {
       const target = visible ? document?.getElementById('midiWorkspaceClose') : toggle;
@@ -2311,6 +2469,7 @@ const createMidiUiController = ({
 
   const bindMidiUi = () => {
     if (bound) return;
+    disposed = false;
     ensureProject();
     cleanupLegacyMidiProjectStorage(storage);
     setWorkspaceVisible(false, { focus: false });
@@ -2319,6 +2478,70 @@ const createMidiUiController = ({
       setWorkspaceVisible(!!workspace?.hidden);
     });
     bindById('midiWorkspaceClose', 'click', () => setWorkspaceVisible(false));
+    for (const name of ['sounds', 'devices', 'project', 'expert']) {
+      bindById(`midiView${name[0].toUpperCase() + name.slice(1)}`, 'click', () => chooseSoundView(name));
+    }
+    bindById('midiGameEventList', 'keydown', event => {
+      if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+      const current = ensureProject();
+      const index = Math.max(0, GAME_SOUND_EVENTS.findIndex(item => resolveGameSoundSource(current, item)?.id === selectedSource()?.id));
+      const next = event.key === 'Home' ? 0 : event.key === 'End' ? GAME_SOUND_EVENTS.length - 1
+        : clamp(index + (event.key === 'ArrowDown' ? 1 : -1), 0, GAME_SOUND_EVENTS.length - 1);
+      event.preventDefault?.(); event.stopPropagation?.();
+      selectGameSound(GAME_SOUND_EVENTS[next]);
+      const list = document?.getElementById('midiGameEventList');
+      Array.from(list?.children || []).find(row => row.dataset.gameEventId === String(GAME_SOUND_EVENTS[next].id))?.focus?.();
+    });
+    bindById('midiEditProjectKey', 'click', () => chooseSoundView('project'));
+    bindById('midiSoundAdvanced', 'click', () => chooseSoundView('expert'));
+    bindById('midiSoundEnabled', 'change', event => updateSelectedSource({ enabled: !!event.target.checked }));
+    bindById('midiSoundBehavior', 'change', event => {
+      const source = selectedSource();
+      const patch = createEventBehaviorPatch(source, event.target.value, ensureProject().global.scale);
+      if (!patch) { chooseSoundView('expert'); return; }
+      updateSelectedSource({ mode: 'direct', clipId: null, mapping: { ...source.mapping, ...patch } });
+    });
+    bindById('midiSoundPitch', 'change', event => updateSelectedMapping(transposeEventPitch(selectedSource()?.mapping, event.target.value)));
+    bindById('midiSoundSpacing', 'change', event => updateSelectedMapping({ phrase: { ...selectedSource()?.mapping?.phrase, spacingTicks: Number(event.target.value) } }));
+    bindById('midiSoundLevel', 'change', event => updateSelectedMapping({ velocity: Number(event.target.value) }));
+    bindById('midiLocalListenButton', 'click', async () => {
+      const preview = ensureLocalPreview();
+      if (preview.getState().enabled || preview.getState().status === 'starting' || localAudio?.getState()?.activeVoices) { stopLocalPreview(); return; }
+      const interaction = ++localInteraction;
+      midiEnableRequest += 1;
+      midiConnectionPending = false;
+      const started = preview.start();
+      if (ensureProject().enabled) dispatchProjectIntent({ type: 'enabled.set', enabled: false });
+      const startedOk = await started;
+      if (interaction !== localInteraction || disposed) return;
+      if (!startedOk) setStatus(preview.getState().message || 'Local audio could not start');
+      renderLocalSummary();
+    });
+    bindById('midiSoundPreview', 'click', async () => {
+      const source = selectedSource();
+      if (!source || getEventBehavior(source) === 'custom') return;
+      ensureLocalPreview();
+      midiEnableRequest += 1;
+      midiConnectionPending = false;
+      stopLocalPreview();
+      const interaction = ++localInteraction;
+      const view = getLemmings();
+      if (view?.midiEnabled) view.setMidiEnabled?.(false);
+      if (ensureProject().enabled) dispatchProjectIntent({ type: 'enabled.set', enabled: false });
+      const mapping = source.mapping;
+      const notes = [...(mapping.notes?.length ? mapping.notes : [mapping.note ?? 60])];
+      if (mapping.phrase?.enabled || mapping.arp?.enabled) notes.sort((a,b) => a-b);
+      if ((mapping.phrase?.mode || mapping.arp?.mode) === 'down') notes.reverse();
+      const tickMs = Math.max(1, Number(view?.game?.getGameTimer?.()?.frameTime) || 60);
+      const sounding = mapping.phrase?.enabled ? notes.slice(0, 8) : [notes[0]];
+      const range = ensureProject().global.velocityRange;
+      const track = ensureProject().tracks.find(item => item.id === source.trackId);
+      const velocity = clamp(Math.round((mapping.velocity ?? range.default) * (track?.velocityScale ?? 1)), range.min, range.max);
+      const ok = await localAudio.preview(sounding.map((note,index) => ({ note: clampNoteToRange(note, ensureProject().global.noteRange), velocity, pan: mapping.pan, pitchBend: mapping.pitchBend, durationMs: (mapping.durationTicks || 2) * tickMs, offsetMs: index * (mapping.phrase?.spacingTicks || 2) * tickMs })), { replace: true });
+      if (interaction !== localInteraction || disposed) return;
+      if (!ok) setStatus(localAudio.getState().message || 'Local audio could not start');
+      renderLocalSummary();
+    });
     const presetSelect = document?.getElementById('midiGamePresetSelect');
     const presetMode = document?.getElementById('midiGamePresetMode');
     if (presetMode) presetMode.value = 'phrase';
@@ -2345,26 +2568,57 @@ const createMidiUiController = ({
     });
     bindById('midiEnabledToggle', 'change', async event => {
       const enabled = !!event.target.checked;
+      const request = ++midiEnableRequest;
+      if (enabled) stopLocalPreview();
       dispatchProjectIntent({ type: 'enabled.set', enabled });
       const lemmings = getLemmings();
-      if (lemmings?.setMidiEnabled) await lemmings.setMidiEnabled(enabled);
-      if (enabled && getWebMidi()?.enabled) onEnabled();
-      if (!enabled) {
-        unbindDeviceListeners();
-        setActiveMidiInput(null);
-        showError('');
+      try {
+        if (enabled && lemmings?.setMidiEnabled) {
+          midiConnectionPending = true;
+          renderConnectionControls();
+          const reusedEnable = !!midiEnablePromise;
+          if (!midiEnablePromise) {
+            midiEnablePromise = Promise.resolve(lemmings.setMidiEnabled(true)).finally(() => { midiEnablePromise = null; });
+          }
+          await midiEnablePromise;
+          if (reusedEnable && request === midiEnableRequest && ensureProject().enabled) {
+            await lemmings.setMidiEnabled(true);
+          }
+        } else if (lemmings?.setMidiEnabled) {
+          await lemmings.setMidiEnabled(false);
+        }
+        if (request !== midiEnableRequest) {
+          if (disposed || !ensureProject().enabled) await lemmings?.setMidiEnabled?.(false);
+          return;
+        }
+        if (enabled && !getWebMidi()?.enabled) {
+          dispatchProjectIntent({ type: 'enabled.set', enabled: false });
+          await lemmings?.setMidiEnabled?.(false);
+        }
+        if (enabled && getWebMidi()?.enabled) onEnabled();
+        if (!enabled) {
+          unbindDeviceListeners();
+          setActiveMidiInput(null);
+          showError('');
+        }
+      } catch (error) {
+        if (request === midiEnableRequest) showError(error?.message || 'Could not connect MIDI devices');
+      } finally {
+        if (request === midiEnableRequest) {
+          midiConnectionPending = false;
+          render();
+        }
       }
-      render();
     });
     bindById('midiInSelect', 'change', event => {
       const inputId = event.target.value || null;
       dispatchProjectIntent({ type: 'devices.set', devices: { inputId } });
-      setActiveMidiInput(inputId);
+      if (ensureProject().enabled) setActiveMidiInput(inputId);
     });
     bindById('midiOutSelect', 'change', event => {
       const outputId = event.target.value || null;
       dispatchProjectIntent({ type: 'devices.set', devices: { outputId } });
-      setActiveMidiOutput(outputId);
+      if (ensureProject().enabled) setActiveMidiOutput(outputId);
     });
     bindById('midiInputChannel', 'change', event => {
       dispatchProjectIntent({ type: 'devices.set', devices: { inputChannel: event.target.value || 'omni' } });
@@ -2497,8 +2751,16 @@ const createMidiUiController = ({
       const clipId = document?.getElementById('midiSourceClipSelect')?.value || selectedClip()?.id || null;
       if (source && clipId) dispatchProjectIntent({ type: 'source.clip.assign', sourceId: source.id, clipId });
     });
-    bindById('midiAuditionButton', 'click', () => audition());
-    bindById('midiClipAuditionButton', 'click', () => audition({ clipId: selectedClip()?.id, trackId: selectedTrack()?.id }));
+    bindById('midiAuditionButton', 'click', () => {
+      if (!ensureProject().enabled) { chooseSoundView('devices'); setStatus('Choose MIDI output before sending a hardware test'); return; }
+      stopLocalPreview();
+      audition();
+    });
+    bindById('midiClipAuditionButton', 'click', () => {
+      if (!ensureProject().enabled) { chooseSoundView('devices'); setStatus('Choose MIDI output before sending a hardware test'); return; }
+      stopLocalPreview();
+      audition({ clipId: selectedClip()?.id, trackId: selectedTrack()?.id });
+    });
     bindById('midiLearnButton', 'click', () => startLearn());
     bindById('midiLearnConfirmButton', 'click', () => confirmLearn());
     bindById('midiLearnCancelButton', 'click', () => cancelLearn());
@@ -2835,6 +3097,11 @@ const createMidiUiController = ({
   };
 
   const dispose = () => {
+    disposed = true;
+    localInteraction += 1;
+    getLemmings()?.setLocalAudioStopHandler?.(null);
+    localGamePreview?.dispose?.();
+    if (!localGamePreview) localAudio?.dispose?.();
     if (refreshTimer != null && typeof window?.clearTimeout === 'function') {
       window.clearTimeout(refreshTimer);
     }
@@ -2843,6 +3110,8 @@ const createMidiUiController = ({
     }
     refreshTimer = null;
     deviceRefreshTimer = null;
+    midiEnableRequest += 1;
+    midiConnectionPending = false;
     unbindDeviceListeners();
     disposeDomListeners();
     clearMidiUiHook();

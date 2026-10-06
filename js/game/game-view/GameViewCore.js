@@ -111,6 +111,10 @@ class GameView extends BaseLogger {
     const Shortcuts = getDependency('KeyboardShortcuts', KeyboardShortcuts);
     this.shortcuts = new Shortcuts(this);
     this.midiRouter = null;
+    this.midiPreviewRouter = null;
+    this._localAudioStop = null;
+    this._midiPreviewOnDispose = null;
+    this._midiPreviewDisposed = false;
     this._midiOut = null;
     this._midiMapping = null;
     this._midiBaseConfig = null;

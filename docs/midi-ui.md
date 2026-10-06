@@ -1,55 +1,70 @@
-# MIDI UI Guide
+# Game sound editor
 
-The MIDI Studio is an opt-in sequencer workspace layered over `/`, including the
-GitHub Pages entry point. Choose **MIDI Studio** at the top right to open it.
-Every page load starts with the workspace hidden, even when a saved project has
-MIDI enabled. Opening or closing the studio does not change routing, audio,
-project settings, or the saved enabled state. Visibility is not persisted.
+Choose **MIDI Studio** in the game toolbar. It starts hidden on every page load;
+opening it does not enable audio or request device access. On wide screens the
+editor docks beside the game instead of covering terrain. Smaller screens use
+a bottom editor; short landscape screens switch to an editing view, and Close
+returns to the full game. Game controls stay above the play surface and level
+arrows stay in the right rail.
 
-**Close studio** returns focus to the opener and cancels uncommitted Learn or
-Record captures. Escape cancels a pending capture first; another Escape closes
-the studio. Use **Panic / stop notes** when you want to stop MIDI output notes.
+## Make one sound
 
-The transport separates device connections from musical timing. Project and
-template operations, track output/performance, and project-wide conditions and
-modulation use expandable sections. Direct note editing displays scientific
-pitch notation (MIDI 60 = C4); durations are labelled in game ticks.
+1. In **Sounds**, select a readable event such as Spawn, Land, Exit, Build or Dig.
+2. Choose one note, a falling/rising phrase, or one pattern note per event.
+3. Edit base pitch, phrase spacing where applicable, and level. The contour and
+   note names describe the mapping. The active project key is shown separately.
+4. **Listen here** auditions that sound using browser tones. **Listen to game**
+   follows the real simulation's events and game-clock phrases locally.
 
-## Game layout and event palettes
+Exit and Drown resolve their effective trigger overrides, so the simple editor
+changes the voice actually heard rather than an SFX alias hidden by precedence.
+Opening a custom chord, scale-degree or clip mapping never rewrites it. Its
+unsupported simple fields are disabled with an explicit Custom label; use
+**Edit detailed wiring** to retain and edit the full mapping.
 
-Game, difficulty, level, and saved-level controls live above the play surface.
-Previous/next level arrows occupy a dedicated right-hand rail with touch-sized
-targets. The canvas fits the remaining measured space at its native aspect
-ratio; toolbar wrapping and mobile viewport changes trigger a new fit.
+**Project** contains the active key/scale, candidate starting palettes, and
+save/import/export tools. Choosing a candidate is not applying it. **Devices**
+contains optional hardware connection and routing; **Expert** retains detailed
+source/track/clip/modulation editing. Stored BPM, meter, quantize and swing are
+expert metadata and do not shift gameplay event onsets.
 
-The studio opens to a small event-palette panel. Detailed source routing, clips,
-and mapping controls stay behind **Event wiring & detailed musical editing**.
-Choose **Quiet phrases per event** for a short falling run on each spawn and a
-rising run on exit, or **One note per event** to step those patterns once per
-spawn/exit. Landing has a separate plain note in both styles. Major, minor,
-and chromatic palettes give the other supported actions fitting voices.
-Applying a palette preserves enablement, devices, tracks, clips, automation,
-and transport, while replacing supported gameplay mappings and selecting its
-scale. Each individual lemming emits a distinct spawn event; hatch-opening
-remains separate. Only safe landings emit the landing event. Unmapped spawn
-and landing events are silent, preserving existing projects.
+## Local audio and MIDI safety
 
-Phrase notes follow game ticks, not a separate tempo grid. Rapid repeats replace
-only that event voice's unsounded tail; already-sounding notes finish cleanly.
-Pending work is bounded to 16 voices with at most 8 notes each. Pause freezes
-phrase progress, while reset, panic, output changes, and rewind clear pending
-forward tails. Reverse events retain a single-note accent. The selected phrase's
-**Preview first note** control auditions one pitch; hear the full phrase by
-letting the game run. A saved minimum-velocity limit can make a quiet palette
-louder; presets preserve that user limit.
+Local listening owns a separate Web Audio context and local-only output adapter.
+It never requests WebMIDI permission or falls back to a hardware output. Entering
+local listening turns external output off; any already-owned hardware notes
+receive their normal cleanup note-offs, then no new hardware notes are emitted.
+External output is not automatically restored afterward. Choosing hardware
+output stops local playback. The header reports the current destination once.
 
-The simulation supplies event timing. Stored BPM/meter/quantize/swing fields do
-not quantize gameplay events in the current runtime. Musical key and scale
-arrangement remain independently editable.
+Audio unlock happens only in response to Listen. Unsupported audio, denied or
+interrupted resume, rapid repeated clicks, cancellation while resume is pending,
+level changes and disposal are handled without leaving sounding notes behind.
+Stop listening cancels both live and one-shot local audio. Closing the editor
+keeps live listening running; reopen it to stop.
+
+The local instrument is a quiet triangle-tone preview with pitch, note length,
+velocity, pan and pitch bend. It is not a recreation of an external synthesizer's
+programs or timbre. Voices and queued notes are bounded, with a maximum note
+lifetime as a safety cutoff. Existing game-clock phrase replacement, pause,
+rewind and panic contracts remain in effect for live listening.
+
+Expert **Send MIDI test** controls are explicitly hardware tests, distinct from
+local **Listen here**. MIDI device selectors show a disabled connection prompt
+until access is available instead of rendering empty dropdowns.
+
+## Event palettes
+
+Major, minor and chromatic palettes support quiet five-note spawn descents and
+exit ascents, or one arpeggio note per event. Land is a separate plain note.
+Rapid events replace only the matching voice's unsounded tail; sounding notes
+retain their note-offs. Pending phrases are bounded to 16 voices with at most
+8 notes each. The simulation remains the timing authority. Explicit saved
+velocity limits can make a quiet palette louder and are preserved.
 
 ## Setup
 
-- Enable: attaches or detaches MIDI routing.
+- Send to MIDI devices: explicitly attaches or detaches external MIDI routing.
 - Input and Project Output: select the WebMIDI input and default output device
   when available.
 - Channel: input channel, either `omni` or 1-16.
@@ -62,7 +77,7 @@ arrangement remain independently editable.
   sanitized project JSON in or out of the sequencer.
 - Panic: sends all-notes-off and clears queued MIDI notes.
 
-## Workspace
+## Expert workspace
 
 - Sources: browse SFX, triggers, MIDI flags, system, and procgen sources with
   search, category, changed, current-level availability, assignment, conflict,

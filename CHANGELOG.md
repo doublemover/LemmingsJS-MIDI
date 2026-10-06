@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Browser-only game listening and per-sound preview with exclusive local/hardware destinations, bounded Web Audio voices, and cancellable user-gesture unlock.
 - Opt-in spawn/landing events and major/minor/chromatic gameplay-event palettes with event-stepped notes or bounded, adaptive game-clock phrases.
 - `NodeFileProvider` can load files from `.zip`, `.tar.gz`, `.tgz`, and `.rar` archives and exposes `clearCache()`.
 - Node tools export sprites and package levels.
@@ -18,11 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - MIDI device hot-plug listeners refresh input/output lists while preserving selections.
 
 ### Fixed
+- Remove duplicate MIDI enabled/disabled status, explain inactive device selectors, and prevent stale hardware-enable completion from overriding a later local-preview choice.
 - Debounced stage resize updates to avoid redundant canvas layout work.
 - MIDI enable failures now surface in the UI and the error display resets cleanly.
 - `DisplayImage.drawDashedRect` now handles the RGB signature used by the editor overlay.
 
 ### Changed
+- Replace the default MIDI control catalogue with readable game events and one sound inspector; separate Devices, Project, and Expert workspaces, show active key truthfully, and dock the editor beside the game.
 - Move game selectors and saved-level tools above the play surface, place level arrows in a right-side touch rail, and size the canvas to the remaining responsive space.
 - Start MIDI Studio with event palettes and collapse detailed routing by default; reuse unchanged derived MIDI configs instead of rebuilding them per input message.
 - MIDI Studio now starts hidden on every page load, with explicit open/close controls, grouped transport and advanced settings, and named note pitches. Saved MIDI routing remains independent of workspace visibility.

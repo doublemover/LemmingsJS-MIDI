@@ -26,8 +26,9 @@ describe('game page layout contract', function() {
 
   it('starts with studio hidden and its detailed wiring collapsed', function() {
     expect($('#midiSequencerWorkspace').is('[hidden]')).to.equal(true);
-    expect($('#midiAdvancedWorkspace').is('details')).to.equal(true);
-    expect($('#midiAdvancedWorkspace').attr('open')).to.equal(undefined);
+    expect($('#midiExpertView').is('[hidden]')).to.equal(true);
+    expect($('#midiGameEventList').closest('#midiSoundsView').length).to.equal(1);
+    expect($('#midiDevicesView').is('[hidden]')).to.equal(true);
     expect($('#midiGamePresetApply').closest('#midiAdvancedWorkspace').length).to.equal(0);
     expect($('#midiSourceList').closest('#midiAdvancedWorkspace').length).to.equal(1);
   });

@@ -912,3 +912,98 @@ body.midi-disabled .midi-region select {
     border: 1px solid #32524c;
     box-shadow: 0 12px 32px #0009;
 }
+/* Event-first workbench: game and sound editor share the viewport. */
+.game-chrome { order: 0; }
+.game { order: 1; }
+.midi-sequencer, .midi-sequencer:has(> .midi-advanced-workspace:not([open])) {
+    position: static;
+    inset: auto;
+    width: auto;
+    height: auto;
+    max-height: none;
+    min-width: 0;
+    min-height: 0;
+    margin: 4px 4px 4px 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid #2a4540;
+    border-radius: 8px;
+    overflow: hidden;
+    background: #0b1417;
+    box-shadow: none;
+    pointer-events: auto;
+}
+.midi-sequencer[hidden], .midi-sequencer [hidden] { display: none !important; }
+body.game-page.studio-open { display: grid; grid-template-columns: minmax(0, 1fr) 420px; grid-template-rows: auto minmax(0, 1fr); }
+.studio-open .game-chrome { grid-column: 1 / -1; grid-row: 1; }
+.studio-open .game { grid-column: 1; grid-row: 2; }
+.studio-open .midi-sequencer { grid-column: 2; grid-row: 2; }
+.midi-studio-header { padding: 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; flex: none; }
+.midi-studio-header strong { color: #cff4e8; font-size: 16px; }
+.midi-listen-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: 100%; }
+#midiLocalListenButton { background: #245a49; min-height: 38px; }
+#midiOutputSummary { font-size: 11px; color: #afc7bd; }
+.midi-view-tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 0 10px 10px; border-bottom: 1px solid #29413b; flex: none; }
+.midi-view-tabs button { padding: 7px 3px; background: transparent; border-color: transparent; }
+.midi-view-tabs button[aria-pressed="true"] { background: #24453b; color: #e2fff2; border-color: #58927c; }
+.midi-editor-view { min-height: 0; min-width: 0; overflow-y: auto; flex: 1 1 auto; padding: 10px; }
+.midi-editor-view > h2, .midi-editor-view h3 { font-size: 15px; margin: 4px 0 10px; color: #c8eee0; }
+.midi-active-key { display: flex; align-items: center; gap: 6px; justify-content: space-between; margin-bottom: 10px; font-size: 12px; }
+.midi-active-key button { font-size: 11px; padding: 4px; }
+.midi-sounds-layout { display: grid; grid-template-columns: 112px minmax(0, 1fr); gap: 12px; align-items: start; }
+.midi-game-event-list { display: flex; flex-direction: column; gap: 4px; max-height: 440px; overflow-y: auto; }
+.midi-game-event { display: flex; flex-direction: column; gap: 3px; align-items: start; text-align: left; padding: 8px !important; flex-shrink: 0; }
+.midi-game-event strong { font-size: 12px; }
+.midi-game-event span { font-size: 10px; color: #9ebbb0; }
+.midi-game-event[aria-selected="true"] { border-color: #9de2be; background: #224a3b; }
+.midi-sound-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 5px; margin-bottom: 12px; }
+.midi-sound-heading h2 { font-size: 16px; color: #d1f2e2; margin: 0; }
+.midi-sound-heading label { font-size: 12px; white-space: nowrap; }
+.midi-sound-editor { min-width: 0; }
+.midi-sound-editor > .midi-field { display: flex; flex-direction: column; align-items: stretch; gap: 6px; margin-bottom: 14px; font-size: 12px; }
+.midi-sound-editor input[type="range"] { padding: 0; border: 0; }
+.midi-sound-contour { display: flex; align-items: end; gap: 4px; height: 64px; border-bottom: 1px solid #365446; margin: 6px 0 14px; overflow: hidden; }
+.midi-sound-contour span { display: flex; align-items: end; justify-content: center; flex: 1; min-width: 0; padding: 2px; border-radius: 3px 3px 0 0; background: #38684f; color: #e4ffe9; font-size: 9px; }
+#midiSoundPreview { width: 100%; background: #295844; min-height: 38px; }
+#midiSoundAdvanced { font-size: 11px; background: transparent; padding: 5px; }
+.midi-editor-notice { flex: none; border-top: 1px solid #263d33; padding: 7px 10px; min-height: 16px; font-size: 11px; }
+#midiDevicesView > .midi-control-group { flex-direction: column; align-items: stretch; border: 0; padding: 0; }
+#midiDevicesView .midi-field { display: flex; align-items: stretch; flex-direction: column; margin-bottom: 14px; }
+#midiDevicesView .midi-field--toggle { flex-direction: row; align-items: center; }
+#midiDevicesView select { max-width: none; }
+#midiDevicesView #midiDeviceStatus { margin: 6px 0 14px; }
+#midiProjectView .midi-preset-panel { padding: 10px; }
+#midiProjectView .midi-preset-panel h2 { font-size: 14px; }
+#midiProjectView .midi-preset-panel p { font-size: 12px; }
+#midiProjectView .midi-preset-actions { display: flex; flex-direction: column; align-items: stretch; }
+#midiProjectView .midi-preset-actions .midi-field { flex: none; max-width: none; }
+#midiExpertView .midi-workspace-grid { display: flex; flex-direction: column; height: auto; padding: 0; }
+#midiExpertView .midi-region { overflow: visible; flex: none; }
+#midiExpertView .midi-source-list, #midiExpertView .midi-track-list, #midiExpertView .midi-clip-list { max-height: 220px; overflow-y: auto; }
+#midiExpertView .midi-inline-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); flex-wrap: wrap; }
+#midiExpertView .midi-output-status { display: block; }
+@media (max-width: 900px) {
+    body.game-page.studio-open { display: flex; }
+    .studio-open .midi-sequencer { order: 2; flex: 0 1 52dvh; min-height: 240px; margin: 4px; }
+    .studio-open .game { flex: 1 1 auto; min-height: 70px; }
+    .midi-studio-header { padding: 8px; }
+    .midi-game-event-list { max-height: 320px; }
+}
+@media (max-width: 420px) {
+    .midi-sounds-layout { grid-template-columns: 94px minmax(0, 1fr); gap: 8px; }
+    .midi-active-key { flex-wrap: wrap; }
+    .midi-sound-heading h2 { font-size: 14px; }
+    .midi-view-tabs { gap: 2px; padding: 0 6px 6px; }
+}
+@media (min-width: 901px) {
+    body.game-page.studio-open { grid-template-columns: minmax(0, 1fr) 380px; }
+}
+@media (max-width: 900px) {
+    .studio-open .midi-sequencer { min-height: 0; }
+    .studio-open .game { min-height: 128px; }
+}
+@media (max-width: 900px) and (max-height: 500px) {
+    .studio-open .game-chrome, .studio-open .game { display: none; }
+    .studio-open .midi-sequencer { flex: 1 1 auto; margin: 4px; }
+}

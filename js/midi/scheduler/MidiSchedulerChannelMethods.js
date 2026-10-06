@@ -136,6 +136,7 @@ const midiSchedulerChannelMethods = {
   },
 
   _initMpe(output = undefined) {
+    if (this.config?.enabled === false) return;
     const outputs = output === undefined
       ? this._listOutputs()
       : (output ? [output] : []);

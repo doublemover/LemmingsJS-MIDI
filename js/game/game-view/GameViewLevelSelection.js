@@ -444,6 +444,7 @@ const gameViewLevelSelectionMethods = {
     }
     if (this.game) {
       this.midiRouter?.detach?.();
+      this._detachMidiPreview?.();
       this.game.stop();
       this.game = null;
     }
@@ -498,8 +499,9 @@ const gameViewLevelSelectionMethods = {
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
-        this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
+        if (this.midiEnabled) this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       }
+      this._attachMidiPreview?.(game);
       game.start();
       const gameStateTypes = getGameStateTypes();
       this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));

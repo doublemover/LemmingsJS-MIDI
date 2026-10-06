@@ -18,6 +18,33 @@ const registerSequencerDom = (doc) => {
     midiGamePresetMode: 'select',
     midiGamePresetModeDescription: 'p',
     midiGamePresetDescription: 'p',
+    midiDeviceStatus: 'div',
+    midiOutputSummary: 'div',
+    midiLocalListenButton: 'button',
+    midiSoundsView: 'section',
+    midiDevicesView: 'section',
+    midiProjectView: 'section',
+    midiExpertView: 'section',
+    midiViewSounds: 'button',
+    midiViewDevices: 'button',
+    midiViewProject: 'button',
+    midiViewExpert: 'button',
+    midiEditProjectKey: 'button',
+    midiGameEventList: 'div',
+    midiActiveKeySummary: 'span',
+    midiSoundTitle: 'h2',
+    midiSoundEnabled: 'input',
+    midiSoundBehavior: 'select',
+    midiSoundContour: 'div',
+    midiSoundPitch: 'input',
+    midiSoundPitchName: 'output',
+    midiSoundSpacing: 'input',
+    midiSoundSpacingField: 'label',
+    midiSoundLevel: 'input',
+    midiSoundLevelValue: 'output',
+    midiSoundPreview: 'button',
+    midiSoundHint: 'p',
+    midiSoundAdvanced: 'button',
     midiProjectStatus: 'div',
     errorDisplay: 'div',
     midiEnabledToggle: 'input',
@@ -161,7 +188,8 @@ const createControllerHarness = ({
     triggers: {}
   },
   webMidi = { enabled: false, inputs: [], outputs: [] },
-  lemmings = {}
+  lemmings = {},
+  createPreviewAudio
 } = {}) => {
   const doc = new TestDocument();
   registerSequencerDom(doc);
@@ -184,6 +212,7 @@ const createControllerHarness = ({
     document: doc,
     getLemmings: () => view,
     getWebMidi: () => webMidi,
+    ...(createPreviewAudio ? { createPreviewAudio } : {}),
     downloadTextFile(document, text, filename, mimeType) {
       view.downloads = view.downloads || [];
       view.downloads.push({ text, filename, mimeType });
@@ -296,12 +325,135 @@ describe('midiUiController sequencer', function() {
     } });
     controller.bindMidiUi();
     doc.getElementById('midiGamePresetApply').dispatchEvent({ type: 'click' });
-    expect(doc.getElementById('midiAuditionButton').textContent).to.equal('Preview first note');
+    expect(doc.getElementById('midiAuditionButton').textContent).to.equal('Send first note to MIDI');
     expect(controller.audition()).to.equal(true);
     expect(sent).to.have.length(1);
     const selected = controller.getProject().sources.find(source => Number(source.sourceKey) === SoundEffectIds.SPAWN);
     expect(sent[0].note).to.equal(Math.max(...selected.mapping.notes));
     expect(doc.getElementById('midiOutputLog').textContent).to.contain('First-note preview');
+  });
+
+  it('starts with meaningful inactive device controls and a single project status', function() {
+    const { controller, doc } = createControllerHarness();
+    controller.bindMidiUi();
+    expect(doc.getElementById('midiInSelect').children[0].textContent).to.equal('Connect MIDI to choose a device');
+    expect(doc.getElementById('midiOutSelect').disabled).to.equal(true);
+    expect(doc.getElementById('midiProjectStatus').textContent).to.equal('Project ready');
+    expect(doc.getElementById('midiSoundsView').hidden).to.equal(false);
+    expect(doc.getElementById('midiDevicesView').hidden).to.equal(true);
+    expect(doc.getElementById('midiExpertView').hidden).to.equal(true);
+    expect(doc.getElementById('midiActiveKeySummary').textContent).to.contain('Key:');
+  });
+
+  it('keeps inactive hardware routing untouched while browsing and editing local sounds', function() {
+    let routingWrites = 0;
+    let hardwareStops = 0;
+    const { controller } = createControllerHarness({
+      webMidi: { enabled: true, inputs: [{id:'available-in',name:'Input'}], outputs: [{id:'available-out',name:'Output'}] },
+      lemmings: { midiRouter: { setOutputs() { routingWrites += 1; }, scheduler: { allNotesOff() { hardwareStops += 1; } } } }
+    });
+    controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'devices.set', devices: { inputId: 'saved-in', outputId: 'saved-out' } });
+    controller.dispatchProjectIntent({ type: 'source.mapping.update', sourceId: 'sfx-1', patch: { note: 74 } });
+    expect(controller.getProject().devices).to.include({ inputId: 'saved-in', outputId: 'saved-out' });
+    expect(routingWrites).to.equal(0);
+    expect(hardwareStops).to.equal(0);
+  });
+
+  it('does not let a pending MIDI connection override a later off choice', async function() {
+    let resolveEnable;
+    const calls = [];
+    const { controller, doc } = createControllerHarness({ lemmings: {
+      setMidiEnabled(enabled) {
+        calls.push(enabled);
+        return enabled ? new Promise(resolve => { resolveEnable = resolve; }) : Promise.resolve();
+      }
+    } });
+    controller.bindMidiUi();
+    const toggle = doc.getElementById('midiEnabledToggle');
+    const change = toggle.listeners.get('change')[0];
+    toggle.checked = true;
+    const enabling = change({ target: toggle });
+    expect(doc.getElementById('midiInSelect').children[0].textContent).to.contain('Connecting');
+    toggle.checked = false;
+    await change({ target: toggle });
+    resolveEnable();
+    await enabling;
+    expect(controller.getProject().enabled).to.equal(false);
+    expect(calls.at(-1)).to.equal(false);
+    expect(toggle.checked).to.equal(false);
+  });
+
+  it('honors the latest on choice after on-off-on during one pending connection', async function() {
+    let finish;
+    const calls = [];
+    const webMidi = { enabled: false, inputs: [], outputs: [] };
+    const { controller, doc } = createControllerHarness({ webMidi, lemmings: {
+      setMidiEnabled(enabled) {
+        calls.push(enabled);
+        if (enabled && calls.filter(value => value).length === 1) return new Promise(resolve => { finish = resolve; });
+        return Promise.resolve();
+      }
+    } });
+    controller.bindMidiUi();
+    const toggle = doc.getElementById('midiEnabledToggle');
+    const change = toggle.listeners.get('change')[0];
+    toggle.checked = true; const first = change({ target: toggle });
+    toggle.checked = false; await change({ target: toggle });
+    toggle.checked = true; const latest = change({ target: toggle });
+    webMidi.enabled = true; finish();
+    await Promise.all([first, latest]);
+    expect(calls).to.deep.equal([true, false, true]);
+    expect(controller.getProject().enabled).to.equal(true);
+    expect(toggle.checked).to.equal(true);
+  });
+
+  it('edits the effective exit trigger rather than the shadowed SFX mapping', function() {
+    const { controller, doc } = createControllerHarness({ factoryConfig: {
+      sfx: { [SoundEffectIds.EXIT]: { note: 60 } },
+      triggers: { [TriggerTypes.EXIT_LEVEL]: { note: 72 } }
+    } });
+    controller.bindMidiUi();
+    const exit = doc.getElementById('midiGameEventList').children.find(row => row.dataset.gameEventId === String(SoundEffectIds.EXIT));
+    exit.dispatchEvent({ type: 'click' });
+    expect(doc.getElementById('midiSoundPitch').value).to.equal('72');
+    const pitch = doc.getElementById('midiSoundPitch'); pitch.value = '76';
+    pitch.dispatchEvent({ type: 'change', target: pitch });
+    expect(controller.getMidiConfig().triggers[TriggerTypes.EXIT_LEVEL].note).to.equal(76);
+    expect(controller.getMidiConfig().sfx[SoundEffectIds.EXIT].note).to.equal(60);
+  });
+
+  it('keeps custom mappings unchanged when opening the simple editor', function() {
+    const { controller, doc } = createControllerHarness({ factoryConfig: { sfx: { '1': { degree: 3, chord: { type: 'seventh' } } } } });
+    controller.bindMidiUi();
+    const before = controller.getProject();
+    doc.getElementById('midiWorkspaceToggle').dispatchEvent({ type: 'click' });
+    expect(doc.getElementById('midiSoundBehavior').value).to.equal('custom');
+    expect(doc.getElementById('midiSoundPitch').disabled).to.equal(true);
+    expect(controller.getProject()).to.deep.equal(before);
+  });
+
+  it('auditions through local audio without hardware note sends or permission requests', async function() {
+    const captured = [];
+    let hardwareNotes = 0;
+    let permissionRequests = 0;
+    const audio = {
+      getState: () => ({ enabled: false, activeVoices: 0, status: 'off' }),
+      subscribe: () => () => {}, stop() {}, dispose() {},
+      preview(notes) { captured.push(notes); return Promise.resolve(true); }
+    };
+    const { controller, doc, view } = createControllerHarness({
+      createPreviewAudio: () => audio,
+      webMidi: { enabled: false, inputs: [], outputs: [], enable() { permissionRequests += 1; } },
+      lemmings: { midiRouter: { scheduler: { sendNote() { hardwareNotes += 1; } } } }
+    });
+    controller.bindMidiUi();
+    await doc.getElementById('midiSoundPreview').listeners.get('click')[0]();
+    expect(captured).to.have.length(1);
+    expect(captured[0][0]).to.include({ note: 60 });
+    expect(hardwareNotes).to.equal(0);
+    expect(permissionRequests).to.equal(0);
+    expect(view.midiEnabled).to.equal(false);
   });
 
   it('loads a factory project, removes legacy storage, and exposes the project hook', function() {
@@ -1794,7 +1946,7 @@ describe('midiUiController sequencer', function() {
     expect(summary).to.contain('direct mode');
   });
 
-  it('shows no-device setup state and clears routed outputs', function() {
+  it('shows no-device setup state without touching inactive hardware', function() {
     let registeredOutputs = null;
     let allNotesOffCalls = 0;
     let clearQueueCalls = 0;
@@ -1827,26 +1979,25 @@ describe('midiUiController sequencer', function() {
     controller.bindMidiUi();
     controller.onEnabled();
 
-    expect(registeredOutputs).to.deep.equal([]);
-    expect(view.midiOut).to.equal(null);
+    expect(registeredOutputs).to.equal(null);
+    expect(view.midiOut).to.equal(undefined);
     expect(controller.getProject().devices).to.include({ inputId: null, outputId: null });
     expect(doc.getElementById('midiInSelect').disabled).to.equal(true);
     expect(doc.getElementById('midiOutSelect').disabled).to.equal(true);
-    expect(doc.getElementById('errorDisplay').textContent).to.contain('No input device');
-    expect(doc.getElementById('errorDisplay').textContent).to.contain('No output device');
-    expect(allNotesOffCalls).to.equal(1);
-    expect(clearQueueCalls).to.equal(1);
+    expect(doc.getElementById('errorDisplay').textContent).to.equal('');
+    expect(allNotesOffCalls).to.equal(0);
+    expect(clearQueueCalls).to.equal(0);
 
     const setup = controller.getMidiSetupState();
     expect(setup).to.deep.include({
       enabled: false,
       webMidiEnabled: true,
-      status: 'MIDI disabled'
+      status: 'Project ready'
     });
     expect(setup.input).to.deep.include({ count: 0, selectedId: null, selectedName: null });
     expect(setup.output).to.deep.include({ count: 0, selectedId: null, selectedName: null });
     expect(setup.template).to.deep.include({ id: 'midi-mapping', label: 'Factory', savedCount: 0 });
-    expect(setup.error).to.contain('No input device');
+    expect(setup.error).to.equal('');
     expect(setup.scheduler).to.deep.equal({ text: 'Scheduler: idle', reason: null, queued: 0 });
     expect(setup.recovery).to.deep.equal({ resetAvailable: true, panicAvailable: true });
   });
@@ -1981,6 +2132,7 @@ describe('midiUiController sequencer', function() {
     });
 
     controller.bindMidiUi();
+    controller.dispatchProjectIntent({ type: 'enabled.set', enabled: true });
     controller.onEnabled();
     expect(controller.getProject().devices.outputId).to.equal('out-1');
 

@@ -73,6 +73,7 @@ const gameViewEditorModeMethods = {
   enterEditorMode() {
     if (this.editorMode) return;
     this.editorMode = true;
+    this._detachMidiPreview?.();
     this.editorPlaytest = false;
     const timer = this.game?.getGameTimer?.();
     this._editorWasRunning = !!timer?.isRunning?.();
@@ -94,6 +95,7 @@ const gameViewEditorModeMethods = {
   exitEditorMode() {
     if (!this.editorMode) return;
     this.editorMode = false;
+    this._attachMidiPreview?.();
     this.editorPlaytest = false;
     const timer = this.game?.getGameTimer?.();
     if (this._editorWasRunning) {
@@ -121,8 +123,10 @@ const gameViewEditorModeMethods = {
     if (!this.editorMode) return;
     const timer = this.game?.getGameTimer?.();
     if (this.editorPlaytest) {
+      this._attachMidiPreview?.();
       timer?.continue?.();
     } else {
+      this._detachMidiPreview?.();
       timer?.suspend?.();
     }
     if (this.game) {
@@ -174,6 +178,7 @@ const gameViewEditorModeMethods = {
     if (!config) return null;
     if (this.game) {
       this.midiRouter?.detach?.();
+      this._detachMidiPreview?.();
       this.game.stop();
       this.game = null;
     }
@@ -282,6 +287,9 @@ const gameViewEditorModeMethods = {
       (appWindow?.clearTimeout || globalThis.clearTimeout)?.(this.resumeTimer);
       this.resumeTimer = null;
     }
+    this._disposeMidiPreview?.();
+    this.midiEnabled = false;
+    this._midiEnableGeneration = (this._midiEnableGeneration || 0) + 1;
     clearAppContext(this);
     if (this.shortcuts) {
       this.shortcuts.dispose();

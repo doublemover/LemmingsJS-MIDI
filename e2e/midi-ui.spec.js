@@ -18,7 +18,14 @@ const openMidiUi = async (page, { resetStorage = false, withDevices = true, perm
   return midi;
 };
 
+const revealMidiControl = async (page, selector) => {
+  const view = await page.locator(selector).first().evaluate(element => element.closest('.midi-editor-view')?.id || null);
+  const buttons = { midiSoundsView: 'midiViewSounds', midiDevicesView: 'midiViewDevices', midiProjectView: 'midiViewProject', midiExpertView: 'midiViewExpert' };
+  if (buttons[view]) await page.locator(`#${buttons[view]}`).click();
+};
+
 const setFieldValue = async (page, selector, value) => {
+  await revealMidiControl(page, selector);
   await page.locator(selector).evaluate((element, nextValue) => {
     element.value = String(nextValue);
     element.dispatchEvent(new Event('change', { bubbles: true }));
@@ -68,8 +75,8 @@ test('MIDI sequencer gives editor controls scoped accessible names', async ({ pa
     midiClipDuplicateButton: 'Duplicate selected MIDI clip',
     midiClipRemoveButton: 'Remove selected MIDI clip',
     midiAssignSourceButton: 'Assign selected source to track',
-    midiAuditionButton: 'Audition selected source',
-    midiClipAuditionButton: 'Audition selected clip',
+    midiAuditionButton: 'Send selected source to MIDI output',
+    midiClipAuditionButton: 'Send selected clip to MIDI output',
     midiSourceRevertButton: 'Revert selected source mapping',
     midiAssignClipButton: 'Assign selected clip to source',
     midiLearnButton: 'Start MIDI learn',
@@ -131,7 +138,6 @@ test('MIDI sequencer creates a fresh project and clears legacy storage', async (
   await midi.enable();
   await expect(page.locator('#midiInSelect')).toContainText('No input devices');
   await expect(page.locator('#midiOutSelect')).toContainText('No output devices');
-  await expect(page.locator('#errorDisplay')).toContainText('No input device');
   await expect(page.locator('#errorDisplay')).toContainText('No output device');
 });
 
@@ -161,7 +167,6 @@ test('MIDI sequencer reports permission denial and mocked device lifecycle', asy
   expect(disconnected).toEqual({ input: true, output: true });
   await expect(page.locator('#midiInSelect')).toContainText('No input devices');
   await expect(page.locator('#midiOutSelect')).toContainText('No output devices');
-  await expect(page.locator('#errorDisplay')).toContainText('No input device');
   await expect(page.locator('#errorDisplay')).toContainText('No output device');
 
   const reconnected = await page.evaluate(() => ({
@@ -190,11 +195,16 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await midi.enable();
   await expect(page.locator('#midiInSelect')).toHaveValue('pw-input-1');
   await expect(page.locator('#midiOutSelect')).toHaveValue('pw-output-1');
+  await revealMidiControl(page, '#midiTrackOutputSelect');
   await page.locator('#midiTrackOutputSelect').selectOption('pw-output-1');
+  await revealMidiControl(page, '#midiScaleRoot');
   await page.locator('#midiScaleRoot').selectOption('2');
+  await revealMidiControl(page, '#midiScaleName');
   await page.locator('#midiScaleName').selectOption('major');
+  await revealMidiControl(page, '#midiQuantize');
   await page.locator('#midiQuantize').selectOption('1/8');
   await setField('#midiSwing', '0.25');
+  await revealMidiControl(page, '#midiReversePanicToggle');
   await page.locator('#midiReversePanicToggle').check();
 
   const project = await page.evaluate(() => {
@@ -207,10 +217,15 @@ test('MIDI sequencer supports setup, track routing, direct mapping, and audition
   await setField('#midiTrackPriority', '4');
   await setField('#midiTrackVoiceBudget', '6');
   await setField('#midiTrackVelocityScale', '0.75');
+  await revealMidiControl(page, '#midiTrackMute');
   await page.locator('#midiTrackMute').check();
+  await revealMidiControl(page, '#midiTrackMute');
   await page.locator('#midiTrackMute').uncheck();
+  await revealMidiControl(page, '#midiTrackSolo');
   await page.locator('#midiTrackSolo').check();
+  await revealMidiControl(page, '#midiTrackArm');
   await page.locator('#midiTrackArm').check();
+  await revealMidiControl(page, '#midiMappingArp');
   await page.locator('#midiMappingArp').selectOption('down');
   await setField('#midiMappingPan', '-24');
   await setField('#midiMappingTimbre', '88');
@@ -265,6 +280,7 @@ test('MIDI sequencer lowers direct chord mappings into runtime config', async ({
   };
   await midi.enable();
 
+  await revealMidiControl(page, '#midiMappingChord');
   await page.locator('#midiMappingChord').selectOption('seventh');
   await setField('#midiMappingDegree', '2');
   await setField('#midiMappingOctave', '5');
@@ -336,6 +352,7 @@ test('MIDI sequencer removes tracks and manages clip library controls', async ({
     window.__E2E__.midiDispatchProjectIntent({ type: 'track.select', trackId: 'drums' });
   });
   await expect(midi.trackRemoveButton()).toBeEnabled();
+  await page.locator('#midiViewExpert').click();
   await midi.trackRemoveButton().click();
 
   let project = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -354,6 +371,7 @@ test('MIDI sequencer removes tracks and manages clip library controls', async ({
   });
   await expect(midi.clipDuplicateButton()).toBeEnabled();
   await expect(midi.clipRemoveButton()).toBeEnabled();
+  await page.locator('#midiViewExpert').click();
   await midi.clipDuplicateButton().click();
 
   project = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -363,6 +381,7 @@ test('MIDI sequencer removes tracks and manages clip library controls', async ({
   expect(project.sources.find(source => source.id === 'sfx-1')).toMatchObject({ mode: 'clip', clipId: 'riff' });
 
   await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'clip.select', clipId: 'riff' }));
+  await page.locator('#midiViewExpert').click();
   await midi.clipRemoveButton().click();
   project = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(project.clips.map(clip => clip.id)).toEqual(['fill', 'riff-copy']);
@@ -376,6 +395,7 @@ test('MIDI sequencer panic button logs feedback', async ({ page }) => {
 
   await expect(midi.outputLog()).toHaveAttribute('role', 'status');
   await expect(midi.outputLog()).toHaveAttribute('aria-live', 'polite');
+  await revealMidiControl(page, '#midiPanicButton');
   await page.locator('#midiPanicButton').click();
   await expect(midi.outputLog()).toContainText('Panic sent');
 });
@@ -390,7 +410,7 @@ test('MIDI project persists across reload', async ({ page }) => {
   await waitForHarnessReady(page);
   await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
   await page.locator('#midiWorkspaceToggle').click();
-  await page.locator('#midiAdvancedWorkspace > summary').click();
+  await page.locator('#midiViewExpert').click();
   await page.waitForSelector('#midiSourceList .midi-source-row');
   const note = await page.evaluate(() => (
     window.__E2E__.midiGetProject().sources.find(source => source.id === 'sfx-1').mapping.note
@@ -456,12 +476,14 @@ test('MIDI sequencer learns a selected direct source note and resolves range war
 
   await setField('#midiGlobalNoteMax', '80');
   await expect(midi.learnPanel()).toBeVisible();
+  await page.locator('#midiViewExpert').click();
   await midi.learnButton().click();
   await expect(midi.learnStatus()).toContainText('Listening');
   const sent = await page.evaluate(() => window.__WEBMIDI_STUB__.sendNoteOn(86, 104, 6));
   expect(sent).toBe(true);
   await expect(midi.learnStatus()).toContainText('Pending note 86');
   await expect(midi.learnStatus()).toContainText('1 warning');
+  await page.locator('#midiViewExpert').click();
   await midi.learnConfirmButton().click();
   await expect(midi.conflictSummary()).toContainText('outside the project note range');
 
@@ -478,8 +500,10 @@ test('MIDI sequencer records mocked MIDI notes into a step clip', async ({ page 
   const midi = await openMidiUi(page);
   await midi.enable();
 
+  await page.locator('#midiViewExpert').click();
   await midi.clipAddButton().click();
   await expect(midi.recordPanel()).toBeVisible();
+  await page.locator('#midiViewExpert').click();
   await midi.recordButton().click();
   await expect(midi.recordStatus()).toContainText('Recording');
   await page.evaluate(() => {
@@ -487,6 +511,7 @@ test('MIDI sequencer records mocked MIDI notes into a step clip', async ({ page 
     window.__WEBMIDI_STUB__.sendNoteOff(62, 0, 1);
     window.__WEBMIDI_STUB__.sendNoteOn(65, 88, 1);
   });
+  await page.locator('#midiViewExpert').click();
   await midi.recordCommitButton().click();
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -505,17 +530,24 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
     }, value);
   };
 
+  await page.locator('#midiViewExpert').click();
   await midi.clipAddButton().click();
   await setField('#midiClipName', 'Lead Clip');
+  await revealMidiControl(page, '#midiClipType');
   await page.locator('#midiClipType').selectOption('arp');
+  await revealMidiControl(page, '#midiClipArpMode');
   await page.locator('#midiClipArpMode').selectOption('updown');
+  await revealMidiControl(page, '#midiClipArpPattern');
   await page.locator('#midiClipArpPattern').selectOption('custom');
   await setField('.midi-step-note[data-step-index="0"]', 66);
   await setField('.midi-step-velocity[data-step-index="0"]', 91);
   await setField('.midi-step-duration[data-step-index="0"]', 9);
   await setField('.midi-step-note[data-step-index="1"]', 70);
+  await page.locator('#midiViewExpert').click();
   await midi.sourceModeSelect().selectOption('clip');
+  await revealMidiControl(page, '#midiAssignClipButton');
   await page.locator('#midiAssignClipButton').click();
+  await page.locator('#midiViewExpert').click();
   await midi.clipAuditionButton().click();
 
   const project = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -545,7 +577,7 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
   await waitForHarnessReady(page);
   await expect(page.locator('#midiSequencerWorkspace')).toBeHidden();
   await page.locator('#midiWorkspaceToggle').click();
-  await page.locator('#midiAdvancedWorkspace > summary').click();
+  await page.locator('#midiViewExpert').click();
   await page.waitForSelector('#midiClipList .midi-clip-row');
   const reloaded = await page.evaluate(() => window.__E2E__.midiGetProject());
   expect(reloaded.clips.find(entry => entry.name === 'Lead Clip').steps[0].note).toBe(66);
@@ -554,7 +586,9 @@ test('MIDI sequencer creates, edits, assigns, auditions, and persists a clip', a
 
 test('MIDI clip inspector moves focus when arp controls hide', async ({ page }) => {
   const midi = await openMidiUi(page);
+  await page.locator('#midiViewExpert').click();
   await midi.clipAddButton().click();
+  await revealMidiControl(page, '#midiClipType');
   await page.locator('#midiClipType').selectOption('arp');
   await expect(page.locator('#midiClipArpPatternField')).toBeVisible();
   await page.locator('#midiClipArpPattern').focus();
@@ -576,6 +610,7 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   const midi = await openMidiUi(page);
   await expect(midi.sourceRows().first()).toBeVisible();
 
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('changed');
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
   await expect(page.locator('#midiSourceCount')).toHaveAttribute('aria-label', '0 sources shown');
@@ -589,8 +624,10 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
   await expect(midi.sourceRows()).toHaveCount(1);
   await expect(page.locator('#midiSourceCount')).toHaveAttribute('aria-label', '1 source shown');
   await expect(midi.sourceRows().first()).toContainText('Changed');
+  await revealMidiControl(page, '#midiSourceRevertButton');
   await page.locator('#midiSourceRevertButton').click();
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('all');
 
   await page.evaluate(() => {
@@ -616,10 +653,12 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
       }
     });
   });
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('available');
   const availableIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
   expect(availableIds).toContain('sfx-16');
   expect(availableIds).not.toContain('system-e2e-unavailable');
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('all');
 
   await page.evaluate(() => {
@@ -629,22 +668,30 @@ test('MIDI source browser search and filters remain usable', async ({ page }) =>
       patch: { enabled: false }
     });
   });
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('disabled');
   const disabledIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
   expect(disabledIds).toContain('sfx-2');
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('enabled');
   const enabledIds = await midi.sourceRows().evaluateAll(rows => rows.map(row => row.dataset.sourceId));
   expect(enabledIds).not.toContain('sfx-2');
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('assigned');
   await expect(midi.sourceRows().first()).toBeVisible();
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('unassigned');
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('all');
 
+  await revealMidiControl(page, '#midiSourceSearch');
   await page.locator('#midiSourceSearch').fill('skill');
   await expect(midi.sourceRows().first()).toContainText(/skill/i);
+  await revealMidiControl(page, '#midiSourceKindFilter');
   await page.locator('#midiSourceKindFilter').selectOption('trigger');
   await expect(page.locator('#midiSourceList')).toContainText(/No sources|Trigger|MIDI_FLAG/i);
+  await revealMidiControl(page, '#midiSourceSearch');
   await page.locator('#midiSourceSearch').fill('no-such-source-name');
   await expect(page.locator('#midiSourceList')).toContainText('No sources match');
 });
@@ -679,6 +726,7 @@ test('MIDI source filters keep an active listbox option', async ({ page }) => {
     });
   });
 
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('available');
   await expect(midi.sourceRows().first()).toBeVisible();
   const listState = await page.evaluate(() => {
@@ -726,6 +774,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalMaxEventsPerTick', '16');
   await setField('#midiGlobalEnvAttack', '1.25');
   await setField('#midiGlobalEnvRelease', '0.75');
+  await revealMidiControl(page, '#midiGlobalViewPan');
   await page.locator('#midiGlobalViewPan').check();
   await setField('#midiGlobalPanMin', '-48');
   await setField('#midiGlobalPanMax', '48');
@@ -734,7 +783,9 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   await setField('#midiGlobalTimbreMax', '100');
   await setField('#midiGlobalXNoteMin', '-18');
   await setField('#midiGlobalXNoteMax', '18');
+  await revealMidiControl(page, '#midiEnvelopeOverrideToggle');
   await page.locator('#midiEnvelopeOverrideToggle').check();
+  await page.locator('#midiViewExpert').click();
   await midi.automationAddButton().click();
   const laneLayout = await page.locator('.midi-automation-row').last().evaluate(row => {
     const children = Array.from(row.children);
@@ -802,6 +853,7 @@ test('MIDI sequencer edits modulation controls', async ({ page }) => {
   expect(project.automation.at(-1).points[0]).toEqual({ beat: 2, value: 0.7 });
   expect(runtime.position.mappings.at(-1).points).toEqual([{ beat: 2, value: 0.7 }]);
 
+  await page.locator('#midiViewExpert').click();
   await midi.automationRemoveButtons().last().click();
   await expect(midi.automationRows()).toHaveCount(automationCount);
   const afterRemove = await page.evaluate(() => window.__E2E__.midiGetProject());
@@ -838,8 +890,10 @@ test('MIDI sequencer surfaces source conflicts in the browser and inspector', as
   await expect(midi.conflictRows().first()).toHaveAttribute('aria-label', /Duplicate runtime key/);
   await expect(midi.conflictSummary()).toContainText('Duplicate runtime key');
 
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('clean');
   await expect(midi.conflictRows()).toHaveCount(0);
+  await page.locator('#midiViewExpert').click();
   await midi.sourceAssignFilter().selectOption('conflicts');
   expect(await midi.conflictBadges().count()).toBeGreaterThanOrEqual(2);
   await expect(midi.conflictRows().first()).toHaveAttribute('aria-label', /Duplicate runtime key/);
@@ -1014,15 +1068,19 @@ test('MIDI studio is opt-in, keeps saved audio state, and closes transient captu
   await expect(page.locator('#midiWorkspaceClose')).toBeFocused();
   await expect(page.locator('#midiTrackInspector')).not.toHaveAttribute('open');
   await expect(page.locator('#midiModulationInspector')).not.toHaveAttribute('open');
-  await expect(page.locator('#midiAdvancedWorkspace')).not.toHaveAttribute('open');
-  await page.locator('#midiAdvancedWorkspace > summary').click();
+  await expect(page.locator('#midiExpertView')).toBeHidden();
+  await page.locator('#midiViewExpert').click();
+  await revealMidiControl(page, '#midiEnabledToggle');
   await page.locator('#midiEnabledToggle').check();
+  await revealMidiControl(page, '#midiMappingNote');
   await page.locator('#midiMappingNote').fill('74');
+  await revealMidiControl(page, '#midiMappingNote');
   await page.locator('#midiMappingNote').press('Tab');
   await expect(page.locator('#midiMappingNoteName')).toHaveText('D4');
   await page.evaluate(() => window.__E2E__.midiDispatchProjectIntent({ type: 'clip.add' }));
   const saved = await page.evaluate(() => window.__E2E__.midiGetProject());
   for (let i = 0; i < 3; i += 1) {
+    await revealMidiControl(page, '#midiLearnButton');
     await page.locator('#midiLearnButton').click();
     await page.locator('#midiWorkspaceClose').click();
     await expect(workspace).toBeHidden();
@@ -1041,7 +1099,7 @@ test('MIDI studio is opt-in, keeps saved audio state, and closes transient captu
   await expect(workspace).toBeHidden();
   expect(await page.evaluate(() => window.__E2E__.midiGetProject())).toEqual(saved);
   await toggle.click();
-  await page.locator('#midiAdvancedWorkspace > summary').click();
+  await page.locator('#midiViewExpert').click();
   await expect(page.locator('#midiEnabledToggle')).toBeChecked();
   await expect(page.locator('#midiMappingNote')).toHaveValue('74');
 });

@@ -50,7 +50,8 @@ class MidiUiPage {
     await this.page.goto(path);
     await this.page.locator('#midiWorkspaceToggle').click();
     await this.page.locator('#midiSequencerWorkspace details').evaluateAll(elements => elements.forEach(element => { element.open = true; }));
-    await this.page.waitForSelector(midiUiSelectors.enabledToggle);
+    await this.page.locator('#midiViewExpert').click();
+    await this.page.waitForSelector(midiUiSelectors.sourceRows);
   }
 
   enabledToggle() {
@@ -58,7 +59,9 @@ class MidiUiPage {
   }
 
   async enable() {
-    await this.enabledToggle().check();
+    await this.page.locator('#midiViewDevices').click();
+    if (!await this.enabledToggle().isChecked()) await this.enabledToggle().click();
+    await this.page.locator('#midiViewExpert').click();
   }
 
   workspace() {

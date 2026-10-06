@@ -49,6 +49,36 @@ import {
   toMidiFlagTriggerType
 } from './GameViewShared.js';
 const gameViewMidiMethods = {
+  setLocalAudioStopHandler(handler) {
+    this._localAudioStop = typeof handler === 'function' ? handler : null;
+  },
+
+  setMidiPreviewRouter(router, onDispose = null) {
+    this._detachMidiPreview();
+    this.midiPreviewRouter = this._midiPreviewDisposed ? null : (router || null);
+    this._midiPreviewOnDispose = this.midiPreviewRouter && typeof onDispose === 'function' ? onDispose : null;
+    this._attachMidiPreview(this.game);
+  },
+
+  _attachMidiPreview(game = this.game) {
+    if (this._midiPreviewDisposed || !game?.soundEvents || (this.editorMode && !this.editorPlaytest)) return;
+    this.midiPreviewRouter?.attach(game.soundEvents, { game, stage: this.stage });
+  },
+
+  _detachMidiPreview() {
+    this.midiPreviewRouter?.detach?.();
+    this.midiPreviewRouter?.scheduler?.allNotesOff?.();
+  },
+
+  _disposeMidiPreview() {
+    const onDispose = this._midiPreviewOnDispose;
+    const router = this.midiPreviewRouter;
+    this._midiPreviewDisposed = true;
+    this.setMidiPreviewRouter(null);
+    if (onDispose) onDispose();
+    else router?.dispose?.();
+  },
+
   get midiOut() { return this._midiOut; },
 
   set midiOut(output) {
@@ -134,7 +164,9 @@ const gameViewMidiMethods = {
     }
     if (!this.midiRouter) {
       await this._ensureWebMidiEnabled();
+      if (!this.midiEnabled) return null;
       this._midiMapping = this._midiMapping || await this._loadMidiMapping();
+      if (!this.midiEnabled) return null;
       if (this._midiProjectConfig) {
         this.setMidiProjectConfig(this._midiProjectConfig);
       }
@@ -155,6 +187,9 @@ const gameViewMidiMethods = {
   },
 
   async setMidiEnabled(enabled) {
+    if (enabled) this._localAudioStop?.();
+    const request = (this._midiEnableGeneration || 0) + 1;
+    this._midiEnableGeneration = request;
     this.midiEnabled = !!enabled;
     if (!this.midiEnabled) {
       this.midiRouter?.detach?.();
@@ -162,6 +197,7 @@ const gameViewMidiMethods = {
       return;
     }
     await this.initMidiRouting();
+    if (!this.midiEnabled || request !== this._midiEnableGeneration) return;
     if (this.game?.soundEvents) {
       this.midiRouter?.attach(this.game.soundEvents, { game: this.game, stage: this.stage });
     }

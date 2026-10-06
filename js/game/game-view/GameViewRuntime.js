@@ -99,8 +99,9 @@ const gameViewRuntimeMethods = {
       this.stage.setCursorSprite(createCrosshairFrame(24));
       if (this.midiEnabled) {
         await this.initMidiRouting();
-        this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
+        if (this.midiEnabled) this.midiRouter?.attach(game.soundEvents, { game, stage: this.stage });
       }
+      this._attachMidiPreview?.(game);
       game.start();
       const gameStateTypes = getGameStateTypes();
       this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameStateTypes.RUNNING));
@@ -114,6 +115,7 @@ const gameViewRuntimeMethods = {
   },
 
   onGameEnd(gameResult) {
+    this._detachMidiPreview?.();
     const gameStateTypes = getGameStateTypes();
     this.changeHtmlText(this.elementGameState, gameStateTypes.toString(gameResult.state));
     this.stage.startFadeOut();
@@ -152,6 +154,7 @@ const gameViewRuntimeMethods = {
       return;
     }
     this.game.getGameTimer().suspend();
+    this.midiPreviewRouter?.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
   },
 
   suspendWithColor(color) {
@@ -162,6 +165,7 @@ const gameViewRuntimeMethods = {
     const clearTimeoutFn = appWindow?.clearTimeout || globalThis.clearTimeout;
     const setTimeoutFn = appWindow?.setTimeout || globalThis.setTimeout;
     this.game.getGameTimer().suspend();
+    this.midiPreviewRouter?.scheduler?.allNotesOff?.({ preserveGamePhrases: true });
     if (this.stage?.startOverlayFade) {
       let rect = null;
       if (this.bench || this.bench2 || this.benchReverse) {

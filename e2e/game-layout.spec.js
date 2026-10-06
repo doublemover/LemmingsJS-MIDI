@@ -48,7 +48,8 @@ for (const size of [{ width: 1366, height: 768 }, { width: 390, height: 844 }, {
     await check();
     for (let i = 0; i < 2; i += 1) {
       await page.locator('#midiWorkspaceToggle').click();
-      await expect(page.locator('#midiAdvancedWorkspace')).not.toHaveAttribute('open');
+      await expect(page.locator('#midiExpertView')).toBeHidden();
+      await expect(page.locator('#midiSoundsView')).toBeVisible();
       await page.locator('#midiWorkspaceClose').click();
       await expect(page.locator('#midiWorkspaceToggle')).toBeFocused();
     }
